@@ -66,17 +66,28 @@ int main()
 	sum = stupidsum_add(sum, buf[i], c);
 	buf[i] = c;
 	
-	//int cprint = (c >= 32 && c <= 126) ? c : '.';
-	//fprintf(stderr, "[%05X] %02X '%c' %08X\n", i, c, cprint, sum);
+	if (0)
+	{
+	    int j;
+	    fprintf(stderr, "[%5X] %08X  '", i, sum);
+	    for (j = i+1; j < i+1+WINDOWSIZE; j++)
+	    {
+		int d = buf[j % WINDOWSIZE];
+		fputc((d >= 32 && d <= 126) ? d : '.', stderr);
+	    }
+	    fprintf(stderr, "'\n");
+	}
 	
 	i = (i + 1) % WINDOWSIZE;
 	count++;
 	
 	if ((sum & (BLOBSIZE-1)) == 0)
 	{
-	    fprintf(stderr, "SPLIT @ %d (%d)\n", count, BLOBSIZE);
-	    count = i = 0;
+	    fprintf(stderr, "SPLIT @ %-8d (%d/%d)\n",
+		    count, BLOBSIZE, WINDOWSIZE);
+	    i = 0;
 	    memset(buf, 0, sizeof(buf));
+	    sum = 0;
 	    if (pipe)
 	    {
 		fflush(stderr);

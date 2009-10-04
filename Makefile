@@ -4,7 +4,7 @@ all: hsplit
 
 hsplit: hsplit.o
 
-hjoin: hjoin.o
+hjoin: hjoin.sh
 
 test: hsplit
 	./hsplit <testfile1 >tags1
@@ -13,6 +13,10 @@ test: hsplit
 
 %: %.o
 	gcc -o $@ $< $(LDFLAGS) $(LIBS)
+	
+%: %.sh
+	rm -f $@
+	ln -s $^ $@
 	
 %.o: %.c
 	gcc -c -o $@ $^ $(CPPFLAGS) $(CFLAGS)
