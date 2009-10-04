@@ -1,19 +1,21 @@
 CFLAGS=-Wall -g -Werror
 
-all: hsplit
+default: all
 
-hsplit: hsplit.o
+all: hashsplit hashjoin
 
-hjoin: hjoin.sh
+hashsplit: hashsplit.o
 
-test: hsplit hjoin
-	./hsplit <testfile1 >tags1
-	./hsplit <testfile2 >tags2
-	diff -u -U50 tags1 tags2 || true
+hashjoin: hashjoin.sh
+
+test: hashsplit hashjoin
+	./hashsplit <testfile1 >tags1
+	./hashsplit <testfile2 >tags2
+	diff -u tags1 tags2 || true
 	wc -c testfile1 testfile2
 	wc -l tags1 tags2
-	./hjoin <tags1 >out1
-	./hjoin <tags2 >out2
+	./hashjoin <tags1 >out1
+	./hashjoin <tags2 >out2
 	diff -u testfile1 out1
 	diff -u testfile2 out2
 
@@ -28,4 +30,5 @@ test: hsplit hjoin
 	gcc -c -o $@ $^ $(CPPFLAGS) $(CFLAGS)
 
 clean:
-	rm -f *.o *~ hsplit hjoin
+	rm -f *.o *~ hashsplit hashjoin hsplit hjoin \
+		out[12] tags[12] .*~

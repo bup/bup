@@ -1,5 +1,8 @@
 hsplit
 hjoin
+hashsplit
+hashjoin
 *.o
 *~
 tags[12]
+out[12]
