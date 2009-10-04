@@ -49,6 +49,7 @@ int main()
     
     memset(buf, 0, sizeof(buf));
     
+    // FIXME: read more than one byte at a time.  This is absurdly slow.
     while ((c = fgetc(stdin)) != EOF)
     {
 	sum = stupidsum_add(sum, buf[i], c);
@@ -86,6 +87,9 @@ int main()
 	
 	if (!pipe)
 	    pipe = popen("git hash-object --stdin -w", "w");
+	    
+        // FIXME: write more than one byte at a time.  This is absurdly
+        // slow.
 	fputc(c, pipe);
     }
     
