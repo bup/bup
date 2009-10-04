@@ -6,6 +6,11 @@ hsplit: hsplit.o
 
 hjoin: hjoin.o
 
+test: hsplit
+	./hsplit <testfile1 >tags1
+	./hsplit <testfile2 >tags2
+	diff -u -U50 tags1 tags2
+
 %: %.o
 	gcc -o $@ $< $(LDFLAGS) $(LIBS)
 	
