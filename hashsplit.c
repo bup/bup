@@ -9,13 +9,8 @@
 #define WINDOWSIZE (1<<(WINDOWBITS-1))
 
 
-static uint32_t rol(uint32_t v, unsigned bits)
-{
-    bits = bits % 32;
-    return (v << bits) | (v >> (32-bits));
-}
-
-
+// FIXME: replace this with a not-stupid rolling checksum algorithm,
+// such as the one used in rsync (Adler32?)
 static uint32_t stupidsum_add(uint32_t old, uint8_t drop, uint8_t add)
 {
     return ((old<<1) | (old>>31)) ^ drop ^ add;
@@ -43,13 +38,6 @@ static void test_sums()
 
 int main()
 {
-    assert(rol(1,0) == 1);
-    assert(rol(1,1) == 2);
-    assert(rol(1,32) == 1);
-    assert(rol(1,33) == 2);
-    assert(rol(0x12345678, 16) == 0x56781234);
-    assert(rol(0x12345678, 34) == 0x48d159e0);
-    assert(rol(0x92345678, 34) == 0x48d159e2);
     assert(WINDOWSIZE >= 32);
     assert(BLOBSIZE >= 32);
     test_sums();
