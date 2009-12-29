@@ -26,7 +26,7 @@ static void test_sums()
 	sum = stupidsum_add(sum, 0, i%256);
     uint32_t sum1 = sum;
     
-    for (i = 0; i < WINDOWSIZE; i++)
+    for (i = 0; i < WINDOWSIZE*2; i++)
 	sum = stupidsum_add(sum, i%256, i%256);
     assert(sum1 == sum);
     
