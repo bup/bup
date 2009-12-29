@@ -44,7 +44,7 @@ int main()
     
     uint8_t buf[WINDOWSIZE];
     uint32_t sum = 0;
-    int i = 0, count = 0, c;
+    int i = 0, count = 0, last_count = 0, c;
     FILE *pipe = NULL;
     
     memset(buf, 0, sizeof(buf));
@@ -72,8 +72,9 @@ int main()
 	
 	if ((sum & (BLOBSIZE-1)) == 0)
 	{
-	    fprintf(stderr, "SPLIT @ %-8d (%d/%d)\n",
-		    count, BLOBSIZE, WINDOWSIZE);
+	    fprintf(stderr, "SPLIT @ %-8d size=%-8d (%d/%d)\n",
+		    count, count - last_count, BLOBSIZE, WINDOWSIZE);
+	    last_count = count;
 	    i = 0;
 	    memset(buf, 0, sizeof(buf));
 	    sum = 0;
