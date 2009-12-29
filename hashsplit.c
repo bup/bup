@@ -70,7 +70,7 @@ int main()
 	i = (i + 1) % WINDOWSIZE;
 	count++;
 	
-	if ((sum & (BLOBSIZE-1)) == 0)
+	if ((sum & (BLOBSIZE-1)) == ((~0) & (BLOBSIZE-1)))
 	{
 	    fprintf(stderr, "SPLIT @ %-8d size=%-8d (%d/%d)\n",
 		    count, count - last_count, BLOBSIZE, WINDOWSIZE);
