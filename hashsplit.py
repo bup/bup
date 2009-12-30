@@ -14,43 +14,37 @@ def log(s):
 
 class Buf:
     def __init__(self):
-        self.list = []
-        self.total = 0
+        self.data = ''
+        self.start = 0
 
     def put(self, s):
+        #log('oldsize=%d+%d adding=%d' % (len(self.data), self.start, len(s)))
         if s:
-            self.list.append(s)
-            self.total += len(s)
+            self.data = buffer(self.data, self.start) + s
+            self.start = 0
+            
+    def peek(self, count):
+        return buffer(self.data, self.start, count)
+    
+    def eat(self, count):
+        self.start += count
 
     def get(self, count):
-        count = count
-        out = []
-        while count > 0 and self.list:
-            n = len(self.list[0])
-            if count >= n:
-                out.append(self.list[0])
-                self.list = self.list[1:]
-            else:
-                n = count
-                out.append(self.list[0][:n])
-                self.list[0] = self.list[0][n:]
-            count -= n
-            self.total -= n
-        return ''.join(out)
+        v = buffer(self.data, self.start, count)
+        self.start += count
+        return v
 
     def used(self):
-        return self.total
+        return len(self.data) - self.start
 
 
 def splitbuf(buf):
     #return buf.get(BLOBSIZE)
-    b = buf.get(buf.used())
-    try:
-        ofs = hashsplit.splitbuf(b)
-        if ofs:
-            return b[:ofs]
-    finally:
-        buf.put(b[ofs:])
+    b = buf.peek(buf.used())
+    ofs = hashsplit.splitbuf(b)
+    if ofs:
+        buf.eat(ofs)
+        return buffer(b, 0, ofs)
     return None
 
 
@@ -62,7 +56,7 @@ def save_blob(blob):
     dir = '.git/objects/%s' % hex[0:2]
     fn = '%s/%s' % (dir, hex[2:])
     try:
-        os.makedirs(dir)
+        os.mkdir(dir)
     except OSError, e:
         if e.errno != errno.EEXIST:
             raise
@@ -93,7 +87,7 @@ def do_main():
     lv = 0
     while blob or not eof:
         if not eof and (buf.used() < BLOBSIZE*2 or not blob):
-            bnew = sys.stdin.read(BLOBSIZE*4)
+            bnew = sys.stdin.read(1024*1024)
             if not len(bnew): eof = 1
             #log('got %d, total %d' % (len(bnew), buf.used()))
             buf.put(bnew)
