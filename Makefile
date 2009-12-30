@@ -1,14 +1,17 @@
-CFLAGS=-Wall -g -Werror
+CFLAGS=-Wall -g -Werror -I/usr/include/python2.5 -g -fwrapv -fPIC
 
 default: all
 
-all: hashsplit hashjoin datagen
+all: hashsplit hashjoin datagen hashsplit.so
 
 hashsplit: hashsplit.o
 
 datagen: datagen.o
 
 hashjoin: hashjoin.sh
+
+hashsplit.so: hashsplitmodule.o
+	$(CC) -shared -Wl,-Bsymbolic-functions -o $@ $<
 
 test: hashsplit hashjoin
 	./hashsplit.py <testfile1 >tags1
@@ -32,5 +35,5 @@ test: hashsplit hashjoin
 	gcc -c -o $@ $^ $(CPPFLAGS) $(CFLAGS)
 
 clean:
-	rm -f *.o *~ hashsplit hashjoin hsplit hjoin datagen \
+	rm -f *.o *.so *~ hashsplit hashjoin hsplit hjoin datagen \
 		out[12] tags[12] .*~

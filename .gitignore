@@ -4,6 +4,7 @@ hashsplit
 hashjoin
 datagen
 *.o
+*.so
 *~
 tags[12]
 out[12]

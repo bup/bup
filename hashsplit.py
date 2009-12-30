@@ -1,34 +1,15 @@
 #!/usr/bin/env python
 import sys, os, subprocess, errno, zlib, time
+import hashsplit
 from sha import sha
 
+# FIXME: duplicated in C module.  This shouldn't really be here at all...
 BLOBBITS = 14
 BLOBSIZE = 1 << (BLOBBITS-1)
-WINDOWBITS = 7
-WINDOWSIZE = 1 << (WINDOWBITS-1)
 
 
 def log(s):
     sys.stderr.write('%s\n' % s)
-
-
-# FIXME: replace this with a not-stupid rolling checksum algorithm,
-# such as the one used in rsync (Adler32?)
-def stupidsum_add(old, drop, add):
-    return (((old<<1) | ((old>>31)&0xffffffff)) & 0xffffffff) ^ drop ^ add
-
-
-def test_sums():
-    sum = 0
-    for i in range(WINDOWSIZE):
-        sum = stupidsum_add(sum, 0, i%256)
-    sum1 = sum
-    for i in range(WINDOWSIZE*5):
-        sum = stupidsum_add(sum, i%256, i%256)
-    assert(sum == sum1)
-    for i in range(WINDOWSIZE):
-        sum = stupidsum_add(sum, i%256, 0)
-    assert(sum == 0)
 
 
 class Buf:
@@ -63,19 +44,13 @@ class Buf:
 
 def splitbuf(buf):
     #return buf.get(BLOBSIZE)
-    window = [0] * WINDOWSIZE
-    sum = 0
-    i = 0
-    count = 0
-    for ent in buf.list:
-        for c in ent:
-            count += 1
-            b = ord(c)
-            sum = stupidsum_add(sum, window[i], b)
-            window[i] = b
-            i = (i + 1) % WINDOWSIZE
-            if (sum & (BLOBSIZE-1)) == ((~0) & (BLOBSIZE-1)):
-                return buf.get(count)
+    b = buf.get(buf.used())
+    try:
+        ofs = hashsplit.splitbuf(b)
+        if ofs:
+            return b[:ofs]
+    finally:
+        buf.put(b[ofs:])
     return None
 
 
@@ -133,8 +108,8 @@ def do_main():
 
         if blob:
             ofs += len(blob)
-            #log('SPLIT @ %-8d size=%-8d (%d/%d)'
-            #    % (ofs, len(blob), BLOBSIZE, WINDOWSIZE))
+            #log('SPLIT @ %-8d size=%-8d (blobsize=%d)'
+            #    % (ofs, len(blob), BLOBSIZE))
             save_blob(blob)
           
         nv = (ofs + buf.used())/1000000
@@ -146,7 +121,5 @@ def do_main():
         % (ofs/1024., secs, ofs/1024./secs))
 
 
-assert(WINDOWSIZE >= 32)
 assert(BLOBSIZE >= 32)
-test_sums()
 do_main()
