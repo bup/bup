@@ -9,8 +9,8 @@ hashsplit: hashsplit.o
 hashjoin: hashjoin.sh
 
 test: hashsplit hashjoin
-	./hashsplit <testfile1 >tags1
-	./hashsplit <testfile2 >tags2
+	./hashsplit.py <testfile1 >tags1
+	./hashsplit.py <testfile2 >tags2
 	diff -u tags1 tags2 || true
 	wc -c testfile1 testfile2
 	wc -l tags1 tags2

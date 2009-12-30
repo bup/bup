@@ -25,41 +25,87 @@ def test_sums():
     assert(sum == 0)
 
 
-def do_main():
-    buf = [0] * WINDOWSIZE
+class Buf:
+    def __init__(self):
+        self.list = []
+        self.total = 0
+
+    def put(self, s):
+        if s:
+            self.list.append(s)
+            self.total += len(s)
+
+    def get(self, count):
+        count = count
+        out = []
+        while count > 0 and self.list:
+            n = len(self.list[0])
+            if count >= n:
+                out.append(self.list[0])
+                self.list = self.list[1:]
+            else:
+                n = count
+                out.append(self.list[0][:n])
+                self.list[0] = self.list[0][n:]
+            count -= n
+            self.total -= n
+        return ''.join(out)
+
+    def used(self):
+        return self.total
+
+
+def splitbuf(buf):
+    #return buf.get(BLOBSIZE)
+    window = [0] * WINDOWSIZE
     sum = 0
     i = 0
     count = 0
-    last_count = 0
+    for ent in buf.list:
+        for c in ent:
+            count += 1
+            b = ord(c)
+            sum = stupidsum_add(sum, window[i], b)
+            window[i] = b
+            i = (i + 1) % WINDOWSIZE
+            if (sum & (BLOBSIZE-1)) == ((~0) & (BLOBSIZE-1)):
+                return buf.get(count)
+    return None
+
+
+def save_blob(blob):
+    pipe = subprocess.Popen(['git', 'hash-object', '--stdin', '-w'],
+                            stdin=subprocess.PIPE)
+    pipe.stdin.write(blob)
+    pipe.stdin.close()
+    pipe.wait()
     pipe = None
 
-    while 1:
-        c = sys.stdin.read(1)
-        if not len(c): break
-        c = ord(c)
-        sum = stupidsum_add(sum, buf[i], c)
-        buf[i] = c
-        i = (i + 1) % WINDOWSIZE
-        count += 1
 
-        if (sum & (BLOBSIZE-1)) == ((~0) & (BLOBSIZE-1)):
+def do_main():
+    ofs = 0
+    buf = Buf()
+    blob = 1
+
+    eof = 0
+    while blob or not eof:
+        if not eof and (buf.used() < BLOBSIZE*2 or not blob):
+            bnew = sys.stdin.read(BLOBSIZE*4)
+            if not len(bnew): eof = 1
+            # print 'got %d, total %d' % (len(bnew), buf.used())
+            buf.put(bnew)
+
+        blob = splitbuf(buf)
+        if not blob and not eof:
+            continue
+        if eof and not blob:
+            blob = buf.get(buf.used())
+
+        if blob:
+            ofs += len(blob)
             sys.stderr.write('SPLIT @ %-8d size=%-8d (%d/%d)\n'
-                             % (count, count - last_count,
-                                BLOBSIZE, WINDOWSIZE))
-            last_count = count
-            i = 0
-            buf = [0] * WINDOWSIZE
-            sum = 0
-            if pipe:
-                pipe.stdin.close()
-                pipe.wait()
-                pipe = None
-
-        if not pipe:
-            pipe = subprocess.Popen(['git', 'hash-object', '--stdin', '-w'],
-                                    stdin=subprocess.PIPE)
-        pipe.stdin.write(chr(c))
-
+                             % (ofs, len(blob), BLOBSIZE, WINDOWSIZE))
+            save_blob(blob)
 
 assert(WINDOWSIZE >= 32)
 assert(BLOBSIZE >= 32)

@@ -70,6 +70,13 @@ int main()
 	i = (i + 1) % WINDOWSIZE;
 	count++;
 	
+	if (!pipe)
+	    pipe = popen("git hash-object --stdin -w", "w");
+	    
+        // FIXME: write more than one byte at a time.  This is absurdly
+        // slow.
+	fputc(c, pipe);
+	
 	if ((sum & (BLOBSIZE-1)) == ((~0) & (BLOBSIZE-1)))
 	{
 	    fprintf(stderr, "SPLIT @ %-8d size=%-8d (%d/%d)\n",
@@ -85,13 +92,6 @@ int main()
 		pipe = NULL;
 	    }
 	}
-	
-	if (!pipe)
-	    pipe = popen("git hash-object --stdin -w", "w");
-	    
-        // FIXME: write more than one byte at a time.  This is absurdly
-        // slow.
-	fputc(c, pipe);
     }
     
     if (pipe)
