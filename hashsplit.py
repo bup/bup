@@ -48,6 +48,7 @@ def splitbuf(buf):
     return None
 
 
+ocache = {}
 def save_blob(blob):
     header = 'blob %d\0' % len(blob)
     sum = sha(header)
@@ -55,13 +56,13 @@ def save_blob(blob):
     hex = sum.hexdigest()
     dir = '.git/objects/%s' % hex[0:2]
     fn = '%s/%s' % (dir, hex[2:])
-    try:
-        os.mkdir(dir)
-    except OSError, e:
-        if e.errno != errno.EEXIST:
-            raise
-    if not os.path.exists(fn):
+    if not ocache.get(hex) and not os.path.exists(fn):
         #log('creating %s' % fn)
+        try:
+            os.mkdir(dir)
+        except OSError, e:
+            if e.errno != errno.EEXIST:
+                raise
         tfn = '%s.%d' % (fn, os.getpid())
         f = open(tfn, 'w')
         z = zlib.compressobj(1)
@@ -73,6 +74,7 @@ def save_blob(blob):
     else:
         #log('exists %s' % fn)
         pass
+    ocache[hex] = 1
     print hex
     return hex
 

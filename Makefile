@@ -35,5 +35,5 @@ test: all
 	gcc -c -o $@ $^ $(CPPFLAGS) $(CFLAGS)
 
 clean:
-	rm -f *.o *.so *~ hashsplit hashjoin hsplit hjoin datagen \
+	rm -f *.o *.so *~ hashsplit hashjoin hsplit hjoin datagen *.pyc \
 		out[12] tags[12] .*~
