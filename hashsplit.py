@@ -92,7 +92,7 @@ def save_blob(blob):
         if e.errno != errno.EEXIST:
             raise
     if not os.path.exists(fn):
-        log('creating %s' % fn)
+        #log('creating %s' % fn)
         tfn = '%s.%d' % (fn, os.getpid())
         f = open(tfn, 'w')
         z = zlib.compressobj(1)
@@ -102,9 +102,11 @@ def save_blob(blob):
         f.close()
         os.rename(tfn, fn)
     else:
-        log('exists %s' % fn)
+        #log('exists %s' % fn)
+        pass
     print hex
     return hex
+
 
 def do_main():
     ofs = 0
@@ -112,24 +114,33 @@ def do_main():
     blob = 1
 
     eof = 0
+    lv = 0
     while blob or not eof:
         if not eof and (buf.used() < BLOBSIZE*2 or not blob):
             bnew = sys.stdin.read(BLOBSIZE*4)
             if not len(bnew): eof = 1
-            # print 'got %d, total %d' % (len(bnew), buf.used())
+            #log('got %d, total %d' % (len(bnew), buf.used()))
             buf.put(bnew)
 
         blob = splitbuf(buf)
-        if not blob and not eof:
-            continue
         if eof and not blob:
             blob = buf.get(buf.used())
+        if not blob and buf.used() >= BLOBSIZE*8:
+            blob = buf.get(BLOBSIZE*4)  # limit max blob size
+        if not blob and not eof:
+            continue
 
         if blob:
             ofs += len(blob)
-            log('SPLIT @ %-8d size=%-8d (%d/%d)'
-                % (ofs, len(blob), BLOBSIZE, WINDOWSIZE))
+            #log('SPLIT @ %-8d size=%-8d (%d/%d)'
+            #    % (ofs, len(blob), BLOBSIZE, WINDOWSIZE))
             save_blob(blob)
+          
+        nv = (ofs + buf.used())/1000000
+        if nv != lv:
+            log(nv)
+            lv = nv
+
 
 assert(WINDOWSIZE >= 32)
 assert(BLOBSIZE >= 32)
