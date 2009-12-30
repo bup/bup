@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import sys, os, subprocess, errno, zlib
+import sys, os, subprocess, errno, zlib, time
 from sha import sha
 
 BLOBBITS = 14
@@ -109,6 +109,7 @@ def save_blob(blob):
 
 
 def do_main():
+    start_time = time.time()
     ofs = 0
     buf = Buf()
     blob = 1
@@ -140,6 +141,9 @@ def do_main():
         if nv != lv:
             log(nv)
             lv = nv
+    secs = time.time() - start_time
+    log('\n%.2fkbytes in %.2f secs = %.2f kbytes/sec' 
+        % (ofs/1024., secs, ofs/1024./secs))
 
 
 assert(WINDOWSIZE >= 32)
