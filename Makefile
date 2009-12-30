@@ -4,11 +4,7 @@ default: all
 
 all: hashsplit hashjoin datagen hashsplit.so
 
-hashsplit: hashsplit.o
-
 datagen: datagen.o
-
-hashjoin: hashjoin.sh
 
 hashsplit.so: hashsplitmodule.o
 	$(CC) -shared -Wl,-Bsymbolic-functions -o $@ $<
@@ -26,6 +22,10 @@ test: all
 
 %: %.o
 	gcc -o $@ $< $(LDFLAGS) $(LIBS)
+	
+%: %.py
+	rm -f $@
+	ln -s $^ $@
 	
 %: %.sh
 	rm -f $@
