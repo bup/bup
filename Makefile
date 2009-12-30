@@ -1,4 +1,4 @@
-CFLAGS=-Wall -g -Werror -I/usr/include/python2.5 -g -fwrapv -fPIC
+CFLAGS=-Wall -g -O2 -Werror -I/usr/include/python2.5 -g -fwrapv -fPIC
 
 default: all
 
