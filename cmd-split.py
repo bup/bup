@@ -1,15 +1,12 @@
 #!/usr/bin/env python
-import sys, os, subprocess, errno, zlib, time
+import sys, os, subprocess, errno, zlib, time, getopt
 import hashsplit
-from sha import sha
+import git
+from helpers import *
 
-# FIXME: duplicated in C module.  This shouldn't really be here at all...
-BLOBBITS = 14
-BLOBSIZE = 1 << (BLOBBITS-1)
-
-
-def log(s):
-    sys.stderr.write('%s\n' % s)
+BLOB_LWM = 8192*2
+BLOB_MAX = BLOB_LWM*2
+BLOB_HWM = 1024*1024
 
 
 class Buf:
@@ -18,7 +15,7 @@ class Buf:
         self.start = 0
 
     def put(self, s):
-        #log('oldsize=%d+%d adding=%d' % (len(self.data), self.start, len(s)))
+        #log('oldsize=%d+%d adding=%d\n' % (len(self.data), self.start, len(s)))
         if s:
             self.data = buffer(self.data, self.start) + s
             self.start = 0
@@ -39,7 +36,6 @@ class Buf:
 
 
 def splitbuf(buf):
-    #return buf.get(BLOBSIZE)
     b = buf.peek(buf.used())
     ofs = hashsplit.splitbuf(b)
     if ofs:
@@ -48,39 +44,7 @@ def splitbuf(buf):
     return None
 
 
-ocache = {}
-def save_blob(blob):
-    header = 'blob %d\0' % len(blob)
-    sum = sha(header)
-    sum.update(blob)
-    hex = sum.hexdigest()
-    dir = '.git/objects/%s' % hex[0:2]
-    fn = '%s/%s' % (dir, hex[2:])
-    if not ocache.get(hex) and not os.path.exists(fn):
-        #log('creating %s' % fn)
-        try:
-            os.mkdir(dir)
-        except OSError, e:
-            if e.errno != errno.EEXIST:
-                raise
-        tfn = '%s.%d' % (fn, os.getpid())
-        f = open(tfn, 'w')
-        z = zlib.compressobj(1)
-        f.write(z.compress(header))
-        f.write(z.compress(blob))
-        f.write(z.flush())
-        f.close()
-        os.rename(tfn, fn)
-    else:
-        #log('exists %s' % fn)
-        pass
-    ocache[hex] = 1
-    print hex
-    return hex
-
-
-def do_main():
-    start_time = time.time()
+def hashsplit_iter(f):
     ofs = 0
     buf = Buf()
     blob = 1
@@ -88,34 +52,65 @@ def do_main():
     eof = 0
     lv = 0
     while blob or not eof:
-        if not eof and (buf.used() < BLOBSIZE*2 or not blob):
-            bnew = sys.stdin.read(1024*1024)
+        if not eof and (buf.used() < BLOB_LWM or not blob):
+            bnew = sys.stdin.read(BLOB_HWM)
             if not len(bnew): eof = 1
-            #log('got %d, total %d' % (len(bnew), buf.used()))
+            #log('got %d, total %d\n' % (len(bnew), buf.used()))
             buf.put(bnew)
 
         blob = splitbuf(buf)
         if eof and not blob:
             blob = buf.get(buf.used())
-        if not blob and buf.used() >= BLOBSIZE*8:
-            blob = buf.get(BLOBSIZE*4)  # limit max blob size
+        if not blob and buf.used() >= BLOB_MAX:
+            blob = buf.get(BLOB_MAX)  # limit max blob size
         if not blob and not eof:
             continue
 
         if blob:
+            yield (ofs, len(blob), git.hash_blob(blob))
             ofs += len(blob)
-            #log('SPLIT @ %-8d size=%-8d (blobsize=%d)'
-            #    % (ofs, len(blob), BLOBSIZE))
-            save_blob(blob)
           
         nv = (ofs + buf.used())/1000000
         if nv != lv:
-            log(nv)
+            log('%d\t' % nv)
             lv = nv
-    secs = time.time() - start_time
-    log('\n%.2fkbytes in %.2f secs = %.2f kbytes/sec' 
-        % (ofs/1024., secs, ofs/1024./secs))
+            
+            
+def usage():
+    log('Usage: bup split [-t] <filename\n')
+    exit(97)
+    
+gen_tree = False
+
+def argparse(usage, argv, shortopts, allow_extra):
+    try:
+        (flags,extra) = getopt.getopt(argv[1:], shortopts)
+    except getopt.GetoptError, e:
+        log('%s: %s\n' % (argv[0], e))
+        usage()
+    if extra and not allow_extra:
+        log('%s: invalid argument "%s"\n' % (argv[0], extra[0]))
+        usage()
+    return flags
 
 
-assert(BLOBSIZE >= 32)
-do_main()
+flags = argparse(usage, sys.argv, 't', False)
+for (flag,parm) in flags:
+    if flag == '-t':
+        gen_tree = True
+
+
+start_time = time.time()
+shalist = []
+
+for (ofs, size, sha) in hashsplit_iter(sys.stdin):
+    #log('SPLIT @ %-8d size=%-8d\n' % (ofs, size))
+    if not gen_tree:
+        print sha
+    shalist.append(('100644', '%016x.bupchunk' % ofs, sha))
+if gen_tree:
+    print git.gen_tree(shalist)
+
+secs = time.time() - start_time
+log('\n%.2fkbytes in %.2f secs = %.2f kbytes/sec\n'
+    % (ofs/1024., secs, ofs/1024./secs))
