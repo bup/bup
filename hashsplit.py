@@ -1,10 +1,16 @@
 #!/usr/bin/env python
-import sys, subprocess
+import sys, os, subprocess, errno, zlib
+from sha import sha
 
 BLOBBITS = 14
 BLOBSIZE = 1 << (BLOBBITS-1)
 WINDOWBITS = 7
 WINDOWSIZE = 1 << (WINDOWBITS-1)
+
+
+def log(s):
+    sys.stderr.write('%s\n' % s)
+
 
 # FIXME: replace this with a not-stupid rolling checksum algorithm,
 # such as the one used in rsync (Adler32?)
@@ -74,13 +80,31 @@ def splitbuf(buf):
 
 
 def save_blob(blob):
-    pipe = subprocess.Popen(['git', 'hash-object', '--stdin', '-w'],
-                            stdin=subprocess.PIPE)
-    pipe.stdin.write(blob)
-    pipe.stdin.close()
-    pipe.wait()
-    pipe = None
-
+    header = 'blob %d\0' % len(blob)
+    sum = sha(header)
+    sum.update(blob)
+    hex = sum.hexdigest()
+    dir = '.git/objects/%s' % hex[0:2]
+    fn = '%s/%s' % (dir, hex[2:])
+    try:
+        os.makedirs(dir)
+    except OSError, e:
+        if e.errno != errno.EEXIST:
+            raise
+    if not os.path.exists(fn):
+        log('creating %s' % fn)
+        tfn = '%s.%d' % (fn, os.getpid())
+        f = open(tfn, 'w')
+        z = zlib.compressobj(1)
+        f.write(z.compress(header))
+        f.write(z.compress(blob))
+        f.write(z.flush())
+        f.close()
+        os.rename(tfn, fn)
+    else:
+        log('exists %s' % fn)
+    print hex
+    return hex
 
 def do_main():
     ofs = 0
@@ -103,8 +127,8 @@ def do_main():
 
         if blob:
             ofs += len(blob)
-            sys.stderr.write('SPLIT @ %-8d size=%-8d (%d/%d)\n'
-                             % (ofs, len(blob), BLOBSIZE, WINDOWSIZE))
+            log('SPLIT @ %-8d size=%-8d (%d/%d)'
+                % (ofs, len(blob), BLOBSIZE, WINDOWSIZE))
             save_blob(blob)
 
 assert(WINDOWSIZE >= 32)
