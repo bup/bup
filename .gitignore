@@ -1,7 +1,6 @@
-hsplit
-hjoin
-hashsplit
-hashjoin
+bup
+bup-split
+bup-join
 datagen
 *.o
 *.so
