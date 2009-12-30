@@ -13,7 +13,7 @@ hashjoin: hashjoin.sh
 hashsplit.so: hashsplitmodule.o
 	$(CC) -shared -Wl,-Bsymbolic-functions -o $@ $<
 
-test: hashsplit hashjoin
+test: all
 	./hashsplit.py <testfile1 >tags1
 	./hashsplit.py <testfile2 >tags2
 	diff -u tags1 tags2 || true

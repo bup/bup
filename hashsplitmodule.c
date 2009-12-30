@@ -16,34 +16,35 @@ static uint32_t stupidsum_add(uint32_t old, uint8_t drop, uint8_t add)
 }
 
 
+static int find_ofs(const unsigned char *buf, int len)
+{
+    unsigned char window[WINDOWSIZE];
+    uint32_t sum = 0;
+    int i = 0, count;
+    memset(window, 0, sizeof(window));
+    
+    for (count = 0; count < len; count++)
+    {
+	sum = stupidsum_add(sum, window[i], buf[count]);
+	window[i] = buf[count];
+	i = (i + 1) % WINDOWSIZE;
+	if ((sum & (BLOBSIZE-1)) == ((~0) & (BLOBSIZE-1)))
+	    return count+1;
+    }
+    return 0;
+}
+
+
 static PyObject *splitbuf(PyObject *self, PyObject *args)
 {
-    char *buf = NULL;
-    int len = 0, count;
+    unsigned char *buf = NULL;
+    int len = 0, out = 0;
 
-    if (!PyArg_ParseTuple(args, "et#", "utf-8", &buf, &len))
+    if (!PyArg_ParseTuple(args, "t#", &buf, &len))
 	return NULL;
-    
-    {
-	unsigned char window[WINDOWSIZE];
-	uint32_t sum = 0;
-	int i = 0;
-	memset(window, 0, sizeof(window));
-	
-	for (count = 0; count < len; count++)
-	{
-	    sum = stupidsum_add(sum, window[i], buf[count]);
-	    window[i] = buf[count];
-	    i = (i + 1) % WINDOWSIZE;
-	    if ((sum & (BLOBSIZE-1)) == ((~0) & (BLOBSIZE-1)))
-		goto done;
-	}
-    }
-    
-    count = -1;
-done:
-    PyMem_Free(buf);
-    return Py_BuildValue("i", count+1);
+    out = find_ofs(buf, len);
+    //return Py_BuildValue("i", len);//len>BLOBSIZE ? BLOBSIZE : len);
+    return Py_BuildValue("i", out);
 }
 
 
