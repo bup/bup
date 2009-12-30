@@ -1,4 +1,4 @@
-CFLAGS=-Wall -g -O2 -Werror -I/usr/include/python2.5 -g -fwrapv -fPIC
+CFLAGS=-Wall -g -O2 -Werror -I/usr/include/python2.5 -g -fPIC
 
 default: all
 
@@ -7,7 +7,7 @@ all: bup-split bup-join bup datagen hashsplit.so
 datagen: datagen.o
 
 hashsplit.so: hashsplitmodule.o
-	$(CC) -shared -Wl,-Bsymbolic-functions -o $@ $<
+	$(CC) -shared -o $@ $<
 
 test: all
 	./bup split <testfile1 >tags1
