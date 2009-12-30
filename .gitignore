@@ -2,6 +2,7 @@ hsplit
 hjoin
 hashsplit
 hashjoin
+datagen
 *.o
 *~
 tags[12]

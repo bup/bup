@@ -2,9 +2,11 @@ CFLAGS=-Wall -g -Werror
 
 default: all
 
-all: hashsplit hashjoin
+all: hashsplit hashjoin datagen
 
 hashsplit: hashsplit.o
+
+datagen: datagen.o
 
 hashjoin: hashjoin.sh
 
@@ -30,5 +32,5 @@ test: hashsplit hashjoin
 	gcc -c -o $@ $^ $(CPPFLAGS) $(CFLAGS)
 
 clean:
-	rm -f *.o *~ hashsplit hashjoin hsplit hjoin \
+	rm -f *.o *~ hashsplit hashjoin hsplit hjoin datagen \
 		out[12] tags[12] .*~
