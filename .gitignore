@@ -1,7 +1,7 @@
 bup
 bup-split
 bup-join
-datagen
+randomgen
 *.o
 *.so
 *~

@@ -2,9 +2,9 @@ CFLAGS=-Wall -g -O2 -Werror -I/usr/include/python2.5 -g -fPIC
 
 default: all
 
-all: bup-split bup-join bup datagen hashsplit.so
+all: bup-split bup-join bup randomgen hashsplit.so
 
-datagen: datagen.o
+randomgen: randomgen.o
 
 hashsplit.so: hashsplitmodule.o
 	$(CC) -shared -o $@ $<
@@ -40,5 +40,5 @@ bup-%: cmd-%.sh
 
 clean:
 	rm -f *.o *.so *~ .*~ *.pyc \
-		bup bup-split bup-join datagen \
+		bup bup-split bup-join randomgen \
 		out[12] tags[12]
