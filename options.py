@@ -57,7 +57,9 @@ class Options:
                         self._shortopts += f + (has_parm and ':' or '')
                         flagl_nice.append('-' + f)
                     else:
+                        assert(not f.startswith('no-')) # supported implicitly
                         self._longopts.append(f + (has_parm and '=' or ''))
+                        self._longopts.append('no-' + f)
                         flagl_nice.append('--' + f)
                 flags_nice = ', '.join(flagl_nice)
                 if has_parm:
@@ -91,12 +93,16 @@ class Options:
                 k = k[1:]
             if k in ['h', '?', 'help']:
                 self.usage()
-            k = self._aliases[k]
-            if not self._hasparms[k]:
-                assert(v == '')
-                opt[k] = (opt._opts.get(k) or 0) + 1
+            if k.startswith('no-'):
+                k = self._aliases[k[3:]]
+                opt[k] = None
             else:
-                opt[k] = v
+                k = self._aliases[k]
+                if not self._hasparms[k]:
+                    assert(v == '')
+                    opt[k] = (opt._opts.get(k) or 0) + 1
+                else:
+                    opt[k] = v
         for (f1,f2) in self._aliases.items():
             opt[f1] = opt[f2]
         return (opt,flags,extra)

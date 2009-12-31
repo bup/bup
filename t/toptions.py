@@ -45,3 +45,5 @@ def test_options():
     WVPASSEQ(extra, ['hanky'])
     WVPASSEQ((opt.t, opt.q, opt.p, opt.l, opt.onlylong,
               opt.neveropt), (3,1,7,'19',1,None))
+    (opt,flags,extra) = o.parse(['--onlylong', '-t', '--no-onlylong'])
+    WVPASSEQ((opt.t, opt.q, opt.onlylong), (1, None, None))
