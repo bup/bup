@@ -1,7 +1,6 @@
 #!/usr/bin/env python
-import sys, os, subprocess, errno, zlib, time, getopt
-import hashsplit
-import git
+import sys, os, subprocess, errno, zlib, time
+import hashsplit, git, options
 from helpers import *
 
 BLOB_LWM = 8192*2
@@ -74,41 +73,24 @@ def hashsplit_iter(f):
         if nv != lv:
             log('%d\t' % nv)
             lv = nv
-            
-            
-def usage():
-    log('Usage: bup split [-t] <filename\n')
-    exit(97)
-    
-gen_tree = False
 
-def argparse(usage, argv, shortopts, allow_extra):
-    try:
-        (flags,extra) = getopt.getopt(argv[1:], shortopts)
-    except getopt.GetoptError, e:
-        log('%s: %s\n' % (argv[0], e))
-        usage()
-    if extra and not allow_extra:
-        log('%s: invalid argument "%s"\n' % (argv[0], extra[0]))
-        usage()
-    return flags
-
-
-flags = argparse(usage, sys.argv, 't', False)
-for (flag,parm) in flags:
-    if flag == '-t':
-        gen_tree = True
-
+optspec = """
+bup split [-t] <filename
+--
+t,tree     output a tree instead of a series of blobs
+"""
+(opt, flags, extra) = options.Options('bup split', optspec).parse(sys.argv[1:])
 
 start_time = time.time()
 shalist = []
 
+ofs = 0
 for (ofs, size, sha) in hashsplit_iter(sys.stdin):
     #log('SPLIT @ %-8d size=%-8d\n' % (ofs, size))
-    if not gen_tree:
+    if not opt.tree:
         print sha
     shalist.append(('100644', '%016x.bupchunk' % ofs, sha))
-if gen_tree:
+if opt.tree:
     print git.gen_tree(shalist)
 
 secs = time.time() - start_time

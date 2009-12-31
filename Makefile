@@ -8,8 +8,12 @@ randomgen: randomgen.o
 
 hashsplit.so: hashsplitmodule.o
 	$(CC) -shared -o $@ $<
-
-test: all
+	
+runtests: all
+	./wvtest.py $(wildcard t/t*.py)
+	
+runtests-cmdline: all
+	@echo "Testing \"$@\" in Makefile:"
 	./bup split <testfile1 >tags1
 	./bup split <testfile2 >tags2
 	diff -u tags1 tags2 || true
@@ -19,6 +23,9 @@ test: all
 	./bup join <tags2 >out2
 	diff -u testfile1 out1
 	diff -u testfile2 out2
+	
+test: all runtests-cmdline
+	./wvtestrun $(MAKE) runtests
 
 %: %.o
 	gcc -o $@ $< $(LDFLAGS) $(LIBS)

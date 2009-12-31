@@ -1,0 +1,102 @@
+import textwrap, getopt
+from helpers import *
+
+class OptDict:
+    def __init__(self):
+        self._opts = {}
+
+    def __setitem__(self, k, v):
+        self._opts[k] = v
+        
+    def __getitem__(self, k):
+        return self._opts[k]
+
+    def __getattr__(self, k):
+        return self[k]
+
+
+class Options:
+    def __init__(self, exe, optspec):
+        self.exe = exe
+        self.optspec = optspec
+        self._aliases = {}
+        self._shortopts = 'h?'
+        self._longopts = ['help']
+        self._hasparms = {}
+        self._usagestr = self._gen_usage()
+        
+    def _gen_usage(self):
+        out = []
+        lines = self.optspec.strip().split('\n')
+        lines.reverse()
+        first_syn = True
+        while lines:
+            l = lines.pop()
+            if l == '--': break
+            out.append('%s: %s\n' % (first_syn and 'usage' or '   or', l))
+            first_syn = False
+        out.append('\n')
+        while lines:
+            l = lines.pop()
+            if l.startswith(' '):
+                out.append('\n%s\n' % l.lstrip())
+            elif l:
+                (flags, extra) = l.split(' ', 1)
+                extra = extra.strip()
+                if flags.endswith('='):
+                    flags = flags[:-1]
+                    has_parm = 1
+                else:
+                    has_parm = 0
+                flagl = flags.split(',')
+                flagl_nice = []
+                for f in flagl:
+                    self._aliases[f] = flagl[0]
+                    self._hasparms[f] = has_parm
+                    if len(f) == 1:
+                        self._shortopts += f + (has_parm and ':' or '')
+                        flagl_nice.append('-' + f)
+                    else:
+                        self._longopts.append(f + (has_parm and '=' or ''))
+                        flagl_nice.append('--' + f)
+                flags_nice = ', '.join(flagl_nice)
+                if has_parm:
+                    flags_nice += ' ...'
+                prefix = '    %-20s  ' % flags_nice
+                argtext = '\n'.join(textwrap.wrap(extra, width=70,
+                                                initial_indent=prefix,
+                                                subsequent_indent=' '*28))
+                out.append(argtext + '\n')
+            else:
+                out.append('\n')
+        return ''.join(out)
+    
+    def usage(self):
+        log(self._usagestr)
+        exit(97)
+        
+    def parse(self, args):
+        try:
+            (flags,extra) = getopt.gnu_getopt(args,
+                                              self._shortopts, self._longopts)
+        except getopt.GetoptError, e:
+            log('%s: %s\n' % (self.exe, e))
+            self.usage()
+
+        opt = OptDict()
+        for f in self._aliases.values():
+            opt[f] = None
+        for (k,v) in flags:
+            while k.startswith('-'):
+                k = k[1:]
+            if k in ['h', '?', 'help']:
+                self.usage()
+            k = self._aliases[k]
+            if not self._hasparms[k]:
+                assert(v == '')
+                opt[k] = (opt._opts.get(k) or 0) + 1
+            else:
+                opt[k] = v
+        for (f1,f2) in self._aliases.items():
+            opt[f1] = opt[f2]
+        return (opt,flags,extra)
