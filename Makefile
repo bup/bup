@@ -14,8 +14,8 @@ runtests: all
 	
 runtests-cmdline: all
 	@echo "Testing \"$@\" in Makefile:"
-	./bup split <testfile1 >tags1
-	./bup split <testfile2 >tags2
+	./bup split -b <testfile1 >tags1
+	./bup split -b <testfile2 >tags2
 	diff -u tags1 tags2 || true
 	wc -c testfile1 testfile2
 	wc -l tags1 tags2
