@@ -1,4 +1,5 @@
-import os, errno, zlib, time, sha
+import os, errno, zlib, time, sha, subprocess
+from helpers import *
 
 
 def hash_raw(type, s):
@@ -43,6 +44,31 @@ def _git_date(date):
     return time.strftime('%s %z', time.localtime(date))
 
 
+def _gitenv(repo):
+    os.environ['GIT_DIR'] = os.path.abspath(repo)
+
+
+def _read_ref(repo, refname):
+    p = subprocess.Popen(['git', 'show-ref', '--', refname],
+                         preexec_fn = lambda: _gitenv(repo),
+                         stdout = subprocess.PIPE)
+    out = p.stdout.read().strip()
+    p.wait()
+    if out:
+        return out.split()[0]
+    else:
+        return None
+
+
+def _update_ref(repo, refname, newval, oldval):
+    if not oldval:
+        oldval = ''
+    p = subprocess.Popen(['git', 'update-ref', '--', refname, newval, oldval],
+                         preexec_fn = lambda: _gitenv(repo))
+    p.wait()
+    return newval
+
+
 def gen_commit(tree, parent, author, adate, committer, cdate, msg):
     l = []
     if tree: l.append('tree %s' % tree)
@@ -52,3 +78,13 @@ def gen_commit(tree, parent, author, adate, committer, cdate, msg):
     l.append('')
     l.append(msg)
     return hash_raw('commit', '\n'.join(l))
+
+
+def gen_commit_easy(ref, tree, msg):
+    now = time.time()
+    userline = '%s <%s@%s>' % (userfullname(), username(), hostname())
+    oldref = ref and _read_ref('.git', ref) or None
+    commit = gen_commit(tree, oldref, userline, now, userline, now, msg)
+    if ref:
+        _update_ref('.git', ref, commit, oldref)
+    return commit
