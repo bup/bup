@@ -52,7 +52,7 @@ def hashsplit_iter(f):
     lv = 0
     while blob or not eof:
         if not eof and (buf.used() < BLOB_LWM or not blob):
-            bnew = sys.stdin.read(BLOB_HWM)
+            bnew = f.read(BLOB_HWM)
             if not len(bnew): eof = 1
             #log('got %d, total %d\n' % (len(bnew), buf.used()))
             buf.put(bnew)
@@ -74,8 +74,17 @@ def hashsplit_iter(f):
             log('%d\t' % nv)
             lv = nv
 
+
+def autofiles(filenames):
+    if not filenames:
+        yield sys.stdin
+    else:
+        for n in filenames:
+            yield open(n)
+
+
 optspec = """
-bup split [-t] <filename
+bup split [-t] [filenames...]
 --
 b,blobs    output a series of blob ids
 t,tree     output a tree id
@@ -90,16 +99,17 @@ if not (opt.blobs or opt.tree or opt.commit or opt.name):
     log("bup split: use one or more of -b, -t, -c, -n\n")
     o.usage()
 
-
 start_time = time.time()
 shalist = []
 
 ofs = 0
-for (ofs, size, sha) in hashsplit_iter(sys.stdin):
-    #log('SPLIT @ %-8d size=%-8d\n' % (ofs, size))
-    if opt.blobs:
-        print sha
-    shalist.append(('100644', '%016x.bupchunk' % ofs, sha))
+
+for f in autofiles(extra):
+    for (ofs, size, sha) in hashsplit_iter(f):
+        #log('SPLIT @ %-8d size=%-8d\n' % (ofs, size))
+        if opt.blobs:
+            print sha
+        shalist.append(('100644', '%016x.bupchunk' % ofs, sha))
 tree = git.gen_tree(shalist)
 if opt.tree:
     print tree
