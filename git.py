@@ -1,10 +1,9 @@
-import os, errno, zlib
-from sha import sha
+import os, errno, zlib, time, sha
 
 
 def hash_raw(type, s):
     header = '%s %d\0' % (type, len(s))
-    sum = sha(header)
+    sum = sha.sha(header)
     sum.update(s)
     hex = sum.hexdigest()
     dir = '.git/objects/%s' % hex[0:2]
@@ -38,3 +37,18 @@ def gen_tree(shalist):
     l = ['%s %s\0%s' % (mode,name,hex.decode('hex')) 
          for (mode,name,hex) in shalist]
     return hash_raw('tree', ''.join(l))
+
+
+def _git_date(date):
+    return time.strftime('%s %z', time.localtime(date))
+
+
+def gen_commit(tree, parent, author, adate, committer, cdate, msg):
+    l = []
+    if tree: l.append('tree %s' % tree)
+    if parent: l.append('parent %s' % parent)
+    if author: l.append('author %s %s' % (author, _git_date(adate)))
+    if committer: l.append('committer %s %s' % (committer, _git_date(cdate)))
+    l.append('')
+    l.append(msg)
+    return hash_raw('commit', '\n'.join(l))
