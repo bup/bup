@@ -103,13 +103,24 @@ start_time = time.time()
 shalist = []
 
 ofs = 0
-
+last_ofs = 0
 for f in autofiles(extra):
-    for (ofs, size, sha) in hashsplit_iter(f):
+    for (xofs, size, sha) in hashsplit_iter(f):
         #log('SPLIT @ %-8d size=%-8d\n' % (ofs, size))
         if opt.blobs:
             print sha
-        shalist.append(('100644', '%016x.bupchunk' % ofs, sha))
+            
+        # this silliness keeps chunk filenames "similar" when a file changes
+        # slightly.
+        bm = BLOB_MAX
+        while 1:
+            cn = ofs / bm * bm
+            #log('%x,%x,%x,%x\n' % (last_ofs,ofs,cn,bm))
+            if cn > last_ofs or ofs == last_ofs: break
+            bm /= 2
+        last_ofs = cn
+        shalist.append(('100644', 'bup.chunk.%016x' % cn, sha))
+        ofs += size
 tree = git.gen_tree(shalist)
 if opt.tree:
     print tree
