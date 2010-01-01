@@ -19,7 +19,7 @@ runtests-cmdline: all
 	diff -u tags1 tags2 || true
 	wc -c testfile1 testfile2
 	wc -l tags1 tags2
-	./bup join <tags1 >out1
+	./bup join $$(cat tags1) >out1
 	./bup join <tags2 >out2
 	diff -u testfile1 out1
 	diff -u testfile2 out2
