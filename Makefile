@@ -2,11 +2,11 @@ CFLAGS=-Wall -g -O2 -Werror -I/usr/include/python2.5 -g -fPIC
 
 default: all
 
-all: bup-split bup-join bup randomgen hashsplit.so
+all: bup-split bup-join bup randomgen chashsplit.so
 
 randomgen: randomgen.o
 
-hashsplit.so: hashsplitmodule.o
+chashsplit.so: chashsplitmodule.o
 	$(CC) -shared -o $@ $<
 	
 runtests: all

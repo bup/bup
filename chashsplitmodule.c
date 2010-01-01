@@ -54,7 +54,7 @@ static PyMethodDef hashsplit_methods[] = {
     { NULL, NULL, 0, NULL },  // sentinel
 };
 
-PyMODINIT_FUNC inithashsplit()
+PyMODINIT_FUNC initchashsplit()
 {
-    Py_InitModule("hashsplit", hashsplit_methods);
+    Py_InitModule("chashsplit", hashsplit_methods);
 }
