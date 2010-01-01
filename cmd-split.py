@@ -4,7 +4,7 @@ import hashsplit, git, options
 from helpers import *
 
 optspec = """
-bup split [-t] [filenames...]
+bup split [-tcb] [-n name] [--bench] [filenames...]
 --
 b,blobs    output a series of blob ids
 t,tree     output a tree id

@@ -1,5 +1,6 @@
 import sys
 import git, chashsplit
+from helpers import *
 
 BLOB_LWM = 8192*2
 BLOB_MAX = BLOB_LWM*2
@@ -88,7 +89,7 @@ def hashsplit_iter(files):
           
         nv = (ofs + buf.used())/1000000
         if nv != lv:
-            log('%d\t' % nv)
+            #log('%d\t' % nv)
             lv = nv
 
 
@@ -110,3 +111,13 @@ def split_to_tree(files):
         shalist.append(('100644', 'bup.chunk.%016x' % cn, sha))
     tree = git.gen_tree(shalist)
     return (shalist, tree)
+
+
+def split_to_blob_or_tree(files):
+    (shalist, tree) = split_to_tree(files)
+    if len(shalist) == 1:
+        return (shalist[0][0], shalist[0][2])
+    elif len(shalist) == 0:
+        return ('100644', git.hash_blob(''))
+    else:
+        return ('040000', tree)

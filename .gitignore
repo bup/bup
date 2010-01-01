@@ -1,6 +1,7 @@
 bup
 bup-split
 bup-join
+bup-save
 randomgen
 *.o
 *.so

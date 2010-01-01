@@ -2,7 +2,7 @@ CFLAGS=-Wall -g -O2 -Werror -I/usr/include/python2.5 -g -fPIC
 
 default: all
 
-all: bup-split bup-join bup randomgen chashsplit.so
+all: bup-split bup-join bup-save bup randomgen chashsplit.so
 
 randomgen: randomgen.o
 
@@ -46,6 +46,6 @@ bup-%: cmd-%.sh
 	gcc -c -o $@ $^ $(CPPFLAGS) $(CFLAGS)
 
 clean:
-	rm -f *.o *.so *~ .*~ *.pyc \
-		bup bup-split bup-join randomgen \
+	rm -f *.o *.so *~ .*~ *.pyc */*.pyc */*~ \
+		bup bup-split bup-join bup-save randomgen \
 		out[12] tags[12]
