@@ -43,17 +43,36 @@ def splitbuf(buf):
     return None
 
 
+def blobiter(files):
+    for f in files:
+        b = 1
+        while b:
+            b = f.read(BLOB_HWM)
+            if b:
+                yield b
+    yield '' # EOF indicator
+
+
+def autofiles(filenames):
+    if not filenames:
+        yield sys.stdin
+    else:
+        for n in filenames:
+            yield open(n)
+            
+    
 def hashsplit_iter(f):
     ofs = 0
     buf = Buf()
+    fi = blobiter(f)
     blob = 1
 
     eof = 0
     lv = 0
     while blob or not eof:
         if not eof and (buf.used() < BLOB_LWM or not blob):
-            bnew = f.read(BLOB_HWM)
-            if not len(bnew): eof = 1
+            bnew = fi.next()
+            if not bnew: eof = 1
             #log('got %d, total %d\n' % (len(bnew), buf.used()))
             buf.put(bnew)
 
@@ -73,14 +92,6 @@ def hashsplit_iter(f):
         if nv != lv:
             log('%d\t' % nv)
             lv = nv
-
-
-def autofiles(filenames):
-    if not filenames:
-        yield sys.stdin
-    else:
-        for n in filenames:
-            yield open(n)
 
 
 optspec = """
@@ -104,23 +115,21 @@ shalist = []
 
 ofs = 0
 last_ofs = 0
-for f in autofiles(extra):
-    for (xofs, size, sha) in hashsplit_iter(f):
-        #log('SPLIT @ %-8d size=%-8d\n' % (ofs, size))
-        if opt.blobs:
-            print sha
+for (ofs, size, sha) in hashsplit_iter(autofiles(extra)):
+    #log('SPLIT @ %-8d size=%-8d\n' % (ofs, size))
+    if opt.blobs:
+        print sha
             
-        # this silliness keeps chunk filenames "similar" when a file changes
-        # slightly.
-        bm = BLOB_MAX
-        while 1:
-            cn = ofs / bm * bm
-            #log('%x,%x,%x,%x\n' % (last_ofs,ofs,cn,bm))
-            if cn > last_ofs or ofs == last_ofs: break
-            bm /= 2
-        last_ofs = cn
-        shalist.append(('100644', 'bup.chunk.%016x' % cn, sha))
-        ofs += size
+    # this silliness keeps chunk filenames "similar" when a file changes
+    # slightly.
+    bm = BLOB_MAX
+    while 1:
+        cn = ofs / bm * bm
+        #log('%x,%x,%x,%x\n' % (last_ofs,ofs,cn,bm))
+        if cn > last_ofs or ofs == last_ofs: break
+        bm /= 2
+    last_ofs = cn
+    shalist.append(('100644', 'bup.chunk.%016x' % cn, sha))
 tree = git.gen_tree(shalist)
 if opt.tree:
     print tree
