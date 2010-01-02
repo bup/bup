@@ -93,8 +93,9 @@ def hashsplit_iter(files):
             lv = nv
 
 
-def split_to_tree(files):
-    shalist = []
+total_split = 0
+def split_to_shalist(files):
+    global total_split
     ofs = 0
     last_ofs = 0
     for (ofs, size, sha) in hashsplit_iter(files):
@@ -108,7 +109,12 @@ def split_to_tree(files):
             if cn > last_ofs or ofs == last_ofs: break
             bm /= 2
         last_ofs = cn
-        shalist.append(('100644', 'bup.chunk.%016x' % cn, sha))
+        total_split += size
+        yield ('100644', 'bup.chunk.%016x' % cn, sha)
+
+
+def split_to_tree(files):
+    shalist = list(split_to_shalist(files))
     tree = git.gen_tree(shalist)
     return (shalist, tree)
 

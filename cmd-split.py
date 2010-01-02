@@ -35,6 +35,7 @@ if opt.commit or opt.name:
         print commit
 
 secs = time.time() - start_time
+size = hashsplit.total_split
 if opt.bench:
     log('\nbup: %.2fkbytes in %.2f secs = %.2f kbytes/sec\n'
-        % (ofs/1024., secs, ofs/1024./secs))
+        % (size/1024., secs, size/1024./secs))
