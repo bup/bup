@@ -25,6 +25,66 @@ def direxpand(names):
                 add_error(e)
             else:
                 raise
+            
+
+def _normpath(dir):
+    p = os.path.normpath(dir)
+    return (p != '.') and p or ''
+
+
+class Tree:
+    def __init__(self, parent, name):
+        assert(name != '.')
+        assert(not (parent and not name))
+        self.parent = parent
+        self.name = name
+        self.sha = None
+        self.children = {}
+        if self.parent:
+            self.parent.children[self.name] = self
+    
+    def fullpath(self):
+        if self.parent:
+            return os.path.join(self.parent.fullpath(), self.name)
+        else:
+            return self.name
+        
+    def gettop(self):
+        p = self
+        while p.parent:
+            p = p.parent
+        return p
+        
+    def getdir(self, dir):
+        # FIXME: deal with '..' somehow
+        if dir.startswith('/'):
+            dir = dir[1:]
+        top = self.gettop()
+        if not dir:
+            return top
+        for part in _normpath(dir).split('/'):
+            sub = top.children.get(part)
+            if not sub:
+                sub = top.children[part] = Tree(top, part)
+            top = sub
+        return top
+    
+    def addfile(self, mode, fullname, id):
+        (dir, name) = os.path.split(fullname)
+        self.getdir(dir).children[name] = (mode, name, id)
+        
+    def shalist(self):
+        for c in self.children.values():
+            if isinstance(c, tuple):  # sha1 entry for a file
+                yield c
+            else:  # tree
+                t = ('40000', c.name, c.gen_tree())
+                yield t
+        
+    def gen_tree(self):
+        if not self.sha:
+            self.sha = git.gen_tree(self.shalist())
+        return self.sha
 
 
 optspec = """
@@ -41,7 +101,7 @@ if not (opt.tree or opt.commit or opt.name):
     log("bup save: use one or more of -t, -c, -n\n")
     o.usage()
 
-shalist = []
+root = Tree(None, '')
 for fn in direxpand(extra):
     try:
         # FIXME: symlinks etc.
@@ -53,8 +113,8 @@ for fn in direxpand(extra):
         add_error(e)
         continue
     (mode, id) = hashsplit.split_to_blob_or_tree([f])
-    shalist.append((mode, re.sub(r'/', '_', fn), id))
-tree = git.gen_tree(shalist)
+    root.addfile(mode, fn, id)
+tree = root.gen_tree()
 if opt.tree:
     print tree
 if opt.commit or opt.name:

@@ -35,6 +35,7 @@ def hash_blob(blob):
 
 
 def gen_tree(shalist):
+    shalist = sorted(shalist, key = lambda x: x[1])
     l = ['%s %s\0%s' % (mode,name,hex.decode('hex')) 
          for (mode,name,hex) in shalist]
     return hash_raw('tree', ''.join(l))

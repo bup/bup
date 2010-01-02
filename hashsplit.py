@@ -120,4 +120,4 @@ def split_to_blob_or_tree(files):
     elif len(shalist) == 0:
         return ('100644', git.hash_blob(''))
     else:
-        return ('040000', tree)
+        return ('40000', tree)
