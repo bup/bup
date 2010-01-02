@@ -124,5 +124,7 @@ if opt.commit or opt.name:
     if opt.commit:
         print commit
 
+git.flush_pack()
+
 if saved_errors:
     log('WARNING: %d errors encountered while saving.\n' % len(saved_errors))

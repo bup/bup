@@ -25,6 +25,7 @@ hashsplit.split_verbosely = opt.verbose
 start_time = time.time()
 
 (shalist,tree) = hashsplit.split_to_tree(hashsplit.autofiles(extra))
+
 if opt.blobs:
     for (mode,name,sum) in shalist:
         print sum
@@ -42,3 +43,5 @@ size = hashsplit.total_split
 if opt.bench:
     log('\nbup: %.2fkbytes in %.2f secs = %.2f kbytes/sec\n'
         % (size/1024., secs, size/1024./secs))
+
+git.flush_pack()
