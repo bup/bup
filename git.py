@@ -1,12 +1,16 @@
 import os, errno, zlib, time, sha, subprocess
 from helpers import *
 
-
+_objcache = {}
 def hash_raw(type, s):
+    global _objcache
     header = '%s %d\0' % (type, len(s))
     sum = sha.sha(header)
     sum.update(s)
+    bin = sum.digest()
     hex = sum.hexdigest()
+    if bin in _objcache:
+        return hex
     dir = '.git/objects/%s' % hex[0:2]
     fn = '%s/%s' % (dir, hex[2:])
     if not os.path.exists(fn):
@@ -27,6 +31,7 @@ def hash_raw(type, s):
     else:
         #log('exists %s' % fn)
         pass
+    _objcache[bin] = 1
     return hex
 
 

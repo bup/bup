@@ -79,7 +79,7 @@ def hashsplit_iter(files):
         if eof and not blob:
             blob = buf.get(buf.used())
         if not blob and buf.used() >= BLOB_MAX:
-            blob = buf.get(BLOB_MAX)  # limit max blob size
+            blob = buf.get(buf.used())  # limit max blob size
         if not blob and not eof:
             continue
 
