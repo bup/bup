@@ -10,6 +10,7 @@ b,blobs    output a series of blob ids
 t,tree     output a tree id
 c,commit   output a commit id
 n,name=    name of backup set to update (if any)
+v,verbose  increase log output (can be used more than once)
 bench      print benchmark timings to stderr
 """
 o = options.Options('bup split', optspec)
@@ -18,6 +19,8 @@ o = options.Options('bup split', optspec)
 if not (opt.blobs or opt.tree or opt.commit or opt.name):
     log("bup split: use one or more of -b, -t, -c, -n\n")
     o.usage()
+
+hashsplit.split_verbosely = opt.verbose
 
 start_time = time.time()
 

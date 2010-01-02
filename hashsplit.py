@@ -5,7 +5,7 @@ from helpers import *
 BLOB_LWM = 8192*2
 BLOB_MAX = BLOB_LWM*2
 BLOB_HWM = 1024*1024
-
+split_verbosely = 0
 
 class Buf:
     def __init__(self):
@@ -34,9 +34,12 @@ class Buf:
 
 
 def splitbuf(buf):
+    global split_verbosely
     b = buf.peek(buf.used())
     ofs = chashsplit.splitbuf(b)
     if ofs:
+        if split_verbosely >= 2:
+            log('.')
         buf.eat(ofs)
         return buffer(b, 0, ofs)
     return None
@@ -61,6 +64,7 @@ def autofiles(filenames):
             
     
 def hashsplit_iter(files):
+    global split_verbosely
     ofs = 0
     buf = Buf()
     fi = blobiter(files)
@@ -89,7 +93,8 @@ def hashsplit_iter(files):
           
         nv = (ofs + buf.used())/1000000
         if nv != lv:
-            #log('%d\t' % nv)
+            if split_verbosely >= 1:
+                log('%d\t' % nv)
             lv = nv
 
 
