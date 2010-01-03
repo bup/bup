@@ -125,10 +125,10 @@ def split_to_tree(w, files):
 
 
 def split_to_blob_or_tree(w, files):
-    (shalist, tree) = split_to_tree(w, files)
+    shalist = list(split_to_shalist(w, files))
     if len(shalist) == 1:
         return (shalist[0][0], shalist[0][2])
     elif len(shalist) == 0:
         return ('100644', w.new_blob(''))
     else:
-        return ('40000', tree)
+        return ('40000', w.new_tree(shalist))

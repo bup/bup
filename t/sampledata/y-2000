@@ -1,0 +1,2 @@
+this file should come *before* y/ in the sort order, because of that
+trailing slash.

@@ -1,4 +1,4 @@
-import os, errno, zlib, time, sha, subprocess, struct, mmap
+import os, errno, zlib, time, sha, subprocess, struct, mmap, stat
 from helpers import *
 
 verbose = 0
@@ -92,6 +92,14 @@ def calc_hash(type, content):
     return sum.digest()
 
 
+def _shalist_sort_key(ent):
+    (mode, name, id) = ent
+    if stat.S_ISDIR(int(mode, 8)):
+        return name + '/'
+    else:
+        return name
+
+
 _typemap = dict(blob=3, tree=2, commit=1, tag=8)
 class PackWriter:
     def __init__(self):
@@ -152,7 +160,7 @@ class PackWriter:
         return self.maybe_write('blob', blob)
 
     def new_tree(self, shalist):
-        shalist = sorted(shalist, key = lambda x: x[1])
+        shalist = sorted(shalist, key = _shalist_sort_key)
         l = ['%s %s\0%s' % (mode,name,bin) 
              for (mode,name,bin) in shalist]
         return self.maybe_write('tree', ''.join(l))
@@ -174,8 +182,8 @@ class PackWriter:
         commit = self._new_commit(tree, oldref,
                                   userline, now, userline, now,
                                   msg)
-        self.close()  # UGLY: needed so _update_ref can see the new objects
         if ref:
+            self.close()  # UGLY: needed so _update_ref can see the new objects
             _update_ref(ref, commit.encode('hex'), oldref)
         return commit
 

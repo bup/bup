@@ -1,29 +1,36 @@
 #!/usr/bin/env python
-import sys, re, errno
+import sys, re, errno, stat
 import hashsplit, git, options
 from helpers import *
 
-saved_errors = []
 
+saved_errors = []
 def add_error(e):
     saved_errors.append(e)
     log('\n%s\n' % e)
 
 
+def _direxpand(name):
+    st = os.lstat(name)
+    try:
+        if stat.S_ISDIR(st.st_mode):
+            for sub in os.listdir(name):
+                subfull = os.path.join(name, sub)
+                for fn_st in _direxpand(subfull):
+                    yield fn_st
+        else:
+            yield (name,st)
+    except OSError, e:
+        if e.errno in [errno.ENOENT, errno.EPERM, errno.EACCES]:
+            add_error(e)
+        else:
+            raise
+
+
 def direxpand(names):
     for n in names:
-        try:
-            for sub in os.listdir(n):
-                subfull = os.path.join(n, sub)
-                for sub2 in direxpand([subfull]):
-                    yield sub2
-        except OSError, e:
-            if e.errno == errno.ENOTDIR:
-                yield n
-            elif e.errno in [errno.ENOENT, errno.EPERM, errno.EACCES]:
-                add_error(e)
-            else:
-                raise
+        for fn_st in _direxpand(n):
+            yield fn_st
             
 
 def _normpath(dir):
@@ -55,13 +62,14 @@ class Tree:
         return p
         
     def getdir(self, dir):
-        # FIXME: deal with '..' somehow
+        # FIXME: deal with '..' somehow (look at how tar does it)
+        dir = _normpath(dir)
         if dir.startswith('/'):
             dir = dir[1:]
         top = self.gettop()
         if not dir:
             return top
-        for part in _normpath(dir).split('/'):
+        for part in dir.split('/'):
             sub = top.children.get(part)
             if not sub:
                 sub = top.children[part] = Tree(top, part)
@@ -107,20 +115,23 @@ if opt.verbose >= 2:
 
 w = git.PackWriter()
 root = Tree(None, '')
-for fn in direxpand(extra):
+for (fn,st) in direxpand(extra):
     if opt.verbose:
         log('\n%s ' % fn)
     try:
-        # FIXME: symlinks etc.
-        f = open(fn)
+        if stat.S_ISREG(st.st_mode):  # regular file
+            f = open(fn)
+            (mode, id) = hashsplit.split_to_blob_or_tree(w, [f])
+        elif stat.S_ISLNK(st.st_mode):  # symlink
+            (mode, id) = ('120000', w.new_blob(os.readlink(fn)))
+        else:
+            add_error(Exception('skipping special file "%s"' % fn))
     except IOError, e:
         add_error(e)
-        continue
     except OSError, e:
         add_error(e)
-        continue
-    (mode, id) = hashsplit.split_to_blob_or_tree(w, [f])
-    root.addfile(mode, fn, id)
+    else:
+        root.addfile(mode, fn, id)
 tree = root.gen_tree(w)
 if opt.verbose:
     log('\n')
@@ -131,6 +142,8 @@ if opt.commit or opt.name:
     ref = opt.name and ('refs/heads/%s' % opt.name) or None
     commit = w.new_commit(ref, tree, msg)
     if opt.commit:
+        if opt.verbose:
+            log('\n')
         print commit.encode('hex')
 
 w.close()
