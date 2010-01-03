@@ -23,6 +23,7 @@ if not (opt.blobs or opt.tree or opt.commit or opt.name):
 hashsplit.split_verbosely = opt.verbose
 if opt.verbose >= 2:
     git.verbose = opt.verbose - 1
+    opt.bench = 1
 
 start_time = time.time()
 

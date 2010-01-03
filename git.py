@@ -253,6 +253,7 @@ def gen_commit_easy(ref, tree, msg):
     userline = '%s <%s@%s>' % (userfullname(), username(), hostname())
     oldref = ref and _read_ref('.git', ref) or None
     commit = gen_commit(tree, oldref, userline, now, userline, now, msg)
+    flush_pack()
     if ref:
-        _update_ref('.git', ref, commit, oldref)
+        _update_ref('.git', ref, commit.encode('hex'), oldref)
     return commit
