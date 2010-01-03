@@ -16,13 +16,19 @@ runtests-cmdline: all
 	@echo "Testing \"$@\" in Makefile:"
 	./bup split --bench -b <testfile1 >tags1
 	./bup split -vvvv -b testfile2 >tags2
+	./bup split -t testfile2 >tags2t
+	./bup split -c testfile2 >tags2c
 	diff -u tags1 tags2 || true
 	wc -c testfile1 testfile2
 	wc -l tags1 tags2
 	./bup join $$(cat tags1) >out1
 	./bup join <tags2 >out2
+	./bup join <tags2t >out2t
+	./bup join <tags2c >out2c
 	diff -u testfile1 out1
 	diff -u testfile2 out2
+	diff -u testfile2 out2t
+	diff -u testfile2 out2c
 	
 test: all runtests-cmdline
 	./wvtestrun $(MAKE) runtests

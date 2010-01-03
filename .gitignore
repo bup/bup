@@ -8,4 +8,6 @@ randomgen
 *~
 *.pyc
 tags[12]
+tags2[tc]
 out[12]
+out2[tc]
