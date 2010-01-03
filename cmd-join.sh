@@ -1,5 +1,6 @@
 #!/bin/sh
 set -e
+export GIT_DIR="$BUP_DIR"
 
 get_one()
 {
