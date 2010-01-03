@@ -63,7 +63,7 @@ def autofiles(filenames):
             yield open(n)
             
     
-def hashsplit_iter(files):
+def hashsplit_iter(w, files):
     global split_verbosely
     ofs = 0
     buf = Buf()
@@ -88,7 +88,7 @@ def hashsplit_iter(files):
             continue
 
         if blob:
-            yield (ofs, len(blob), git.hash_blob(blob))
+            yield (ofs, len(blob), w.new_blob(blob))
             ofs += len(blob)
           
         nv = (ofs + buf.used())/1000000
@@ -99,11 +99,11 @@ def hashsplit_iter(files):
 
 
 total_split = 0
-def split_to_shalist(files):
+def split_to_shalist(w, files):
     global total_split
     ofs = 0
     last_ofs = 0
-    for (ofs, size, sha) in hashsplit_iter(files):
+    for (ofs, size, sha) in hashsplit_iter(w, files):
         #log('SPLIT @ %-8d size=%-8d\n' % (ofs, size))
         # this silliness keeps chunk filenames "similar" when a file changes
         # slightly.
@@ -118,17 +118,17 @@ def split_to_shalist(files):
         yield ('100644', 'bup.chunk.%016x' % cn, sha)
 
 
-def split_to_tree(files):
-    shalist = list(split_to_shalist(files))
-    tree = git.gen_tree(shalist)
+def split_to_tree(w, files):
+    shalist = list(split_to_shalist(w, files))
+    tree = w.new_tree(shalist)
     return (shalist, tree)
 
 
-def split_to_blob_or_tree(files):
-    (shalist, tree) = split_to_tree(files)
+def split_to_blob_or_tree(w, files):
+    (shalist, tree) = split_to_tree(w, files)
     if len(shalist) == 1:
         return (shalist[0][0], shalist[0][2])
     elif len(shalist) == 0:
-        return ('100644', git.hash_blob(''))
+        return ('100644', w.new_blob(''))
     else:
         return ('40000', tree)

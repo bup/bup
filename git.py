@@ -3,6 +3,9 @@ from helpers import *
 
 verbose = 0
 
+def repodir(sub = ''):
+    return os.path.join(os.environ.get('BUP_DIR', '.git'), sub)
+
 
 class PackIndex:
     def __init__(self, filename):
@@ -78,6 +81,9 @@ class MultiPackIndex:
     def add(self, hash):
         self.also[hash] = 1
 
+    def zap_also(self):
+        self.also = {}
+
 
 def calc_hash(type, content):
     header = '%s %d\0' % (type, len(content))
@@ -91,12 +97,23 @@ class PackWriter:
     def __init__(self):
         self.count = 0
         self.binlist = []
-        self.filename = '.git/objects/bup%d' % os.getpid()
+        self.objcache = MultiPackIndex(repodir('objects/pack'))
+        self.filename = None
+        self.file = None
+
+    def __del__(self):
+        self.close()
+
+    def _open(self):
+        assert(not self.file)
+        self.objcache.zap_also()
+        self.filename = repodir('objects/bup%d' % os.getpid())
         self.file = open(self.filename + '.pack', 'w+')
         self.file.write('PACK\0\0\0\2\0\0\0\0')
 
-    def write(self, bin, type, content):
-        global _typemap
+    def _write(self, bin, type, content):
+        if not self.file:
+            self._open()
         f = self.file
 
         if verbose:
@@ -121,15 +138,58 @@ class PackWriter:
         self.binlist.append(bin)
         return bin
 
-    def easy_write(self, type, content):
-        return self.write(calc_hash(type, content), type, content)
+    def write(self, type, content):
+        return self._write(calc_hash(type, content), type, content)
+
+    def maybe_write(self, type, content):
+        bin = calc_hash(type, content)
+        if not self.objcache.exists(bin):
+            self._write(bin, type, content)
+            self.objcache.add(bin)
+        return bin
+
+    def new_blob(self, blob):
+        return self.maybe_write('blob', blob)
+
+    def new_tree(self, shalist):
+        shalist = sorted(shalist, key = lambda x: x[1])
+        l = ['%s %s\0%s' % (mode,name,bin) 
+             for (mode,name,bin) in shalist]
+        return self.maybe_write('tree', ''.join(l))
+
+    def _new_commit(self, tree, parent, author, adate, committer, cdate, msg):
+        l = []
+        if tree: l.append('tree %s' % tree.encode('hex'))
+        if parent: l.append('parent %s' % parent)
+        if author: l.append('author %s %s' % (author, _git_date(adate)))
+        if committer: l.append('committer %s %s' % (committer, _git_date(cdate)))
+        l.append('')
+        l.append(msg)
+        return self.maybe_write('commit', '\n'.join(l))
+
+    def new_commit(self, ref, tree, msg):
+        now = time.time()
+        userline = '%s <%s@%s>' % (userfullname(), username(), hostname())
+        oldref = ref and _read_ref(ref) or None
+        commit = self._new_commit(tree, oldref,
+                                  userline, now, userline, now,
+                                  msg)
+        self.close()  # UGLY: needed so _update_ref can see the new objects
+        if ref:
+            _update_ref(ref, commit.encode('hex'), oldref)
+        return commit
 
     def abort(self):
-        self.file.close()
-        os.unlink(self.filename + '.pack')
+        f = self.file
+        if f:
+            self.file = None
+            f.close()
+            os.unlink(self.filename + '.pack')
 
     def close(self):
         f = self.file
+        if not f: return None
+        self.file = None
 
         # update object count
         f.seek(8)
@@ -150,75 +210,28 @@ class PackWriter:
 
         p = subprocess.Popen(['git', 'index-pack', '-v',
                               self.filename + '.pack'],
-                             preexec_fn = lambda: _gitenv('.git'),
+                             preexec_fn = _gitenv,
                              stdout = subprocess.PIPE)
         out = p.stdout.read().strip()
         if p.wait() or not out:
             raise Exception('git index-pack returned an error')
-        nameprefix = '.git/objects/pack/%s' % out
+        nameprefix = repodir('objects/pack/%s' % out)
         os.rename(self.filename + '.pack', nameprefix + '.pack')
         os.rename(self.filename + '.idx', nameprefix + '.idx')
         return nameprefix
-
-
-_packout = None
-def _write_object(bin, type, content):
-    global _packout
-    if not _packout:
-        _packout = PackWriter()
-    _packout.write(bin, type, content)
-
-
-def flush_pack():
-    global _packout
-    if _packout:
-        _packout.close()
-        _packout = None
-
-
-def abort_pack():
-    global _packout
-    if _packout:
-        _packout.abort()
-        _packout = None
-
-
-_objcache = None
-def hash_raw(type, s):
-    global _objcache
-    if not _objcache:
-        _objcache = MultiPackIndex('.git/objects/pack')
-    bin = calc_hash(type, s)
-    if _objcache.exists(bin):
-        return bin
-    else:
-        _write_object(bin, type, s)
-        _objcache.add(bin)
-        return bin
-
-
-def hash_blob(blob):
-    return hash_raw('blob', blob)
-
-
-def gen_tree(shalist):
-    shalist = sorted(shalist, key = lambda x: x[1])
-    l = ['%s %s\0%s' % (mode,name,bin) 
-         for (mode,name,bin) in shalist]
-    return hash_raw('tree', ''.join(l))
 
 
 def _git_date(date):
     return time.strftime('%s %z', time.localtime(date))
 
 
-def _gitenv(repo):
-    os.environ['GIT_DIR'] = os.path.abspath(repo)
+def _gitenv():
+    os.environ['GIT_DIR'] = os.path.abspath(repodir())
 
 
-def _read_ref(repo, refname):
+def _read_ref(refname):
     p = subprocess.Popen(['git', 'show-ref', '--', refname],
-                         preexec_fn = lambda: _gitenv(repo),
+                         preexec_fn = _gitenv,
                          stdout = subprocess.PIPE)
     out = p.stdout.read().strip()
     p.wait()
@@ -228,32 +241,10 @@ def _read_ref(repo, refname):
         return None
 
 
-def _update_ref(repo, refname, newval, oldval):
+def _update_ref(refname, newval, oldval):
     if not oldval:
         oldval = ''
     p = subprocess.Popen(['git', 'update-ref', '--', refname, newval, oldval],
-                         preexec_fn = lambda: _gitenv(repo))
+                         preexec_fn = _gitenv)
     p.wait()
     return newval
-
-
-def gen_commit(tree, parent, author, adate, committer, cdate, msg):
-    l = []
-    if tree: l.append('tree %s' % tree.encode('hex'))
-    if parent: l.append('parent %s' % parent)
-    if author: l.append('author %s %s' % (author, _git_date(adate)))
-    if committer: l.append('committer %s %s' % (committer, _git_date(cdate)))
-    l.append('')
-    l.append(msg)
-    return hash_raw('commit', '\n'.join(l))
-
-
-def gen_commit_easy(ref, tree, msg):
-    now = time.time()
-    userline = '%s <%s@%s>' % (userfullname(), username(), hostname())
-    oldref = ref and _read_ref('.git', ref) or None
-    commit = gen_commit(tree, oldref, userline, now, userline, now, msg)
-    flush_pack()
-    if ref:
-        _update_ref('.git', ref, commit.encode('hex'), oldref)
-    return commit
