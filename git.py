@@ -1,5 +1,73 @@
-import os, errno, zlib, time, sha, subprocess, struct
+import os, errno, zlib, time, sha, subprocess, struct, mmap
 from helpers import *
+
+
+class PackIndex:
+    def __init__(self, filename):
+        self.name = filename
+        f = open(filename)
+        self.map = mmap.mmap(f.fileno(), 0,
+                             mmap.MAP_SHARED, mmap.PROT_READ)
+        f.close()  # map will persist beyond file close
+        assert(str(self.map[0:8]) == '\377tOc\0\0\0\2')
+        self.fanout = list(struct.unpack('!256I', buffer(self.map, 8, 256*4)))
+        self.fanout.append(0)  # entry "-1"
+        nsha = self.fanout[255]
+        self.ofstable = buffer(self.map,
+                               8 + 256*4 + nsha*20 + nsha*4,
+                               nsha*4)
+        self.ofs64table = buffer(self.map,
+                                 8 + 256*4 + nsha*20 + nsha*4 + nsha*4)
+
+    def _ofs_from_idx(self, idx):
+        ofs = struct.unpack('!I', buffer(self.ofstable, idx*4, 4))[0]
+        if ofs & 0x80000000:
+            idx64 = ofs & 0x7fffffff
+            ofs = struct.unpack('!I', buffer(self.ofs64table, idx64*8, 8))[0]
+        return ofs
+
+    def _idx_from_hash(self, hash):
+        assert(len(hash) == 20)
+        b1 = ord(hash[0])
+        start = self.fanout[b1-1] # range -1..254
+        end = self.fanout[b1] # range 0..255
+        buf = buffer(self.map, 8 + 256*4, end*20)
+        want = buffer(hash)
+        while start < end:
+            mid = start + (end-start)/2
+            v = buffer(buf, mid*20, 20)
+            if v < want:
+                start = mid+1
+            elif v > want:
+                end = mid
+            else: # got it!
+                return mid
+        return None
+    def find_offset(self, hash):
+        idx = self._idx_from_hash(hash)
+        if idx != None:
+            return self._ofs_from_idx(idx)
+        return None
+
+    def exists(self, hash):
+        return (self._idx_from_hash(hash) != None) and True or None
+
+
+class MultiPackIndex:
+    def __init__(self, dir):
+        self.packs = []
+        for f in os.listdir(dir):
+            if f.endswith('.idx'):
+                self.packs.append(PackIndex(os.path.join(dir, f)))
+
+    def exists(self, hash):
+        for i in range(len(self.packs)):
+            p = self.packs[i]
+            if p.exists(hash):
+                # reorder so most recently used packs are searched first
+                self.packs = [p] + self.packs[:i] + self.packs[i+1:]
+                return True
+        return None
 
 
 def _old_write_object(bin, type, content):
@@ -22,6 +90,13 @@ def _old_write_object(bin, type, content):
         f.write(z.flush())
         f.close()
         os.rename(tfn, fn)
+
+
+def calc_hash(type, content):
+    header = '%s %d\0' % (type, len(content))
+    sum = sha.sha(header)
+    sum.update(content)
+    return sum.digest()
 
 
 _typemap = dict(blob=3, tree=2, commit=1, tag=8)
@@ -54,6 +129,10 @@ class PackWriter:
 
         self.count += 1
         self.binlist.append(bin)
+        return bin
+
+    def easy_write(self, type, content):
+        return self.write(calc_hash(type, content), type, content)
 
     def close(self):
         f = self.file
@@ -82,8 +161,11 @@ class PackWriter:
         out = p.stdout.read().strip()
         if p.wait() or not out:
             raise Exception('git index-pack returned an error')
-        os.rename(self.filename + '.pack', '.git/objects/pack/%s.pack' % out)
-        os.rename(self.filename + '.idx', '.git/objects/pack/%s.idx' % out)
+        nameprefix = '.git/objects/pack/%s' % out
+        os.rename(self.filename + '.pack', nameprefix + '.pack')
+        os.rename(self.filename + '.idx', nameprefix + '.idx')
+        return nameprefix
+
 
 _packout = None
 def _write_object(bin, type, content):
@@ -102,11 +184,8 @@ def flush_pack():
 _objcache = {}
 def hash_raw(type, s):
     global _objcache
-    header = '%s %d\0' % (type, len(s))
-    sum = sha.sha(header)
-    sum.update(s)
-    bin = sum.digest()
-    hex = sum.hexdigest()
+    bin = calc_hash(type, s)
+    hex = bin.encode('hex')
     if bin in _objcache:
         return hex
     else:
