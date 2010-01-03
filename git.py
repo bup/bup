@@ -20,7 +20,8 @@ class PackIndex:
                              mmap.MAP_SHARED, mmap.PROT_READ)
         f.close()  # map will persist beyond file close
         assert(str(self.map[0:8]) == '\377tOc\0\0\0\2')
-        self.fanout = list(struct.unpack('!256I', buffer(self.map, 8, 256*4)))
+        self.fanout = list(struct.unpack('!256I',
+                                         str(buffer(self.map, 8, 256*4))))
         self.fanout.append(0)  # entry "-1"
         nsha = self.fanout[255]
         self.ofstable = buffer(self.map,
@@ -30,10 +31,11 @@ class PackIndex:
                                  8 + 256*4 + nsha*20 + nsha*4 + nsha*4)
 
     def _ofs_from_idx(self, idx):
-        ofs = struct.unpack('!I', buffer(self.ofstable, idx*4, 4))[0]
+        ofs = struct.unpack('!I', str(buffer(self.ofstable, idx*4, 4)))[0]
         if ofs & 0x80000000:
             idx64 = ofs & 0x7fffffff
-            ofs = struct.unpack('!I', buffer(self.ofs64table, idx64*8, 8))[0]
+            ofs = struct.unpack('!I',
+                                str(buffer(self.ofs64table, idx64*8, 8)))[0]
         return ofs
 
     def _idx_from_hash(self, hash):
