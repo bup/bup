@@ -2,10 +2,18 @@ import os, errno, zlib, time, sha, subprocess, struct, mmap, stat
 from helpers import *
 
 verbose = 0
-repodir = os.environ.get('BUP_DIR', '.git')
+home_repodir = os.path.expanduser('~/.bup')
+repodir = None
+
+
+class GitError(Exception):
+    pass
+
 
 def repo(sub = ''):
     global repodir
+    if not repodir:
+        raise GitError('You should call check_repo_or_die()')
     gd = os.path.join(repodir, '.git')
     if os.path.exists(gd):
         repodir = gd
@@ -233,7 +241,7 @@ class PackWriter:
                              stdout = subprocess.PIPE)
         out = p.stdout.read().strip()
         if p.wait() or not out:
-            raise Exception('git index-pack returned an error')
+            raise GitError('git index-pack returned an error')
         nameprefix = repo('objects/pack/%s' % out)
         os.rename(self.filename + '.pack', nameprefix + '.pack')
         os.rename(self.filename + '.idx', nameprefix + '.idx')
@@ -241,10 +249,11 @@ class PackWriter:
 
 
 class PackWriter_Remote(PackWriter):
-    def __init__(self, conn, objcache=None):
+    def __init__(self, conn, objcache=None, onclose=None):
         PackWriter.__init__(self, objcache)
         self.file = conn
         self.filename = 'remote socket'
+        self.onclose = onclose
 
     def _open(self):
         assert(not "can't reopen a PackWriter_Remote")
@@ -252,7 +261,12 @@ class PackWriter_Remote(PackWriter):
     def close(self):
         if self.file:
             self.file.write('\0\0\0\0')
+            if self.onclose:
+                self.onclose()
         self.file = None
+
+    def abort(self):
+        raise GitError("don't know how to abort remote pack writing")
 
     def _raw_write(self, datalist):
         assert(self.file)
@@ -290,16 +304,31 @@ def _update_ref(refname, newval, oldval):
     return newval
 
 
-def init_repo():
+def guess_repo(path=None):
+    global repodir
+    if path:
+        repodir = path
+    if not repodir:
+        repodir = os.environ.get('BUP_DIR')
+        if not repodir:
+            repodir = os.path.expanduser('~/.bup')
+
+
+def init_repo(path=None):
+    guess_repo(path)
     d = repo()
     if os.path.exists(d) and not os.path.isdir(os.path.join(d, '.')):
-        raise Exception('"%d" exists but is not a directory\n' % d)
-    p = subprocess.Popen(['git', 'init', '--bare'],
+        raise GitError('"%d" exists but is not a directory\n' % d)
+    p = subprocess.Popen(['git', 'init', '--bare'], stdout=sys.stderr,
                          preexec_fn = _gitenv)
     return p.wait()
 
 
-def check_repo_or_die():
+def check_repo_or_die(path=None):
+    guess_repo(path)
     if not os.path.isdir(repo('objects/pack/.')):
-        log('error: %r is not a bup/git repository\n' % repo())
-        exit(15)
+        if repodir == home_repodir:
+            init_repo()
+        else:
+            log('error: %r is not a bup/git repository\n' % repo())
+            exit(15)

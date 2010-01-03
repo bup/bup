@@ -4,7 +4,20 @@ import options, git
 from helpers import *
 
 
-def list_indexes(conn):
+def init_dir(conn, arg):
+    git.init_repo(arg)
+    log('bup server: bupdir initialized: %r\n' % git.repodir)
+    conn.ok()
+
+
+def set_dir(conn, arg):
+    git.check_repo_or_die(arg)
+    log('bup server: bupdir is %r\n' % git.repodir)
+    conn.ok()
+
+    
+def list_indexes(conn, junk):
+    git.check_repo_or_die()
     for f in os.listdir(git.repo('objects/pack')):
         if f.endswith('.idx'):
             conn.write('%s\n' % f)
@@ -12,6 +25,7 @@ def list_indexes(conn):
 
 
 def send_index(conn, name):
+    git.check_repo_or_die()
     assert(name.find('/') < 0)
     assert(name.endswith('.idx'))
     idx = git.PackIndex(git.repo('objects/pack/%s' % name))
@@ -20,7 +34,8 @@ def send_index(conn, name):
     conn.ok()
     
             
-def receive_objects(conn):
+def receive_objects(conn, junk):
+    git.check_repo_or_die()
     w = git.PackWriter()
     while 1:
         ns = conn.read(4)
@@ -42,6 +57,7 @@ def receive_objects(conn):
                             % (n, len(buf)))
         w._raw_write(buf)
     w.close()
+    conn.ok()
 
 
 optspec = """
@@ -56,7 +72,16 @@ if extra:
 
 log('bup server: reading from stdin.\n')
 
-# FIXME: this protocol is totally lame and not at all future-proof
+commands = {
+    'init-dir': init_dir,
+    'set-dir': set_dir,
+    'list-indexes': list_indexes,
+    'send-index': send_index,
+    'receive-objects': receive_objects,
+}
+
+# FIXME: this protocol is totally lame and not at all future-proof.
+# (Especially since we abort completely as soon as *anything* bad happens)
 conn = Conn(sys.stdin, sys.stdout)
 lr = linereader(conn)
 for _line in lr:
@@ -64,22 +89,16 @@ for _line in lr:
     if not line:
         continue
     log('bup server: command: %r\n' % line)
-    if line == 'quit':
+    words = line.split(' ', 1)
+    cmd = words[0]
+    rest = len(words)>1 and words[1] or ''
+    if cmd == 'quit':
         break
-    elif line.startswith('set-dir '):
-        git.repodir = line[8:]
-        git.check_repo_or_die()
-        log('bup server: bupdir is %r\n' % git.repodir)
-        conn.ok()
-    elif line == 'list-indexes':
-        list_indexes(conn)
-    elif line.startswith('send-index '):
-        send_index(conn, line[11:])
-    elif line == 'receive-objects':
-        git.check_repo_or_die()
-        receive_objects(conn)
-        conn.ok()
     else:
-        raise Exception('unknown server command: %r\n' % line)
+        cmd = commands.get(cmd)
+        if cmd:
+            cmd(conn, rest)
+        else:
+            raise Exception('unknown server command: %r\n' % line)
 
 log('bup server: done\n')

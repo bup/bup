@@ -5,6 +5,7 @@ from helpers import *
 
 @wvtest
 def testpacks():
+    git.init_repo('pybuptest.tmp')
     git.verbose = 1
 
     now = str(time.time())  # hopefully not in any packs yet

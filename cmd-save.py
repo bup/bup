@@ -1,5 +1,5 @@
 #!/usr/bin/env python2.5
-import sys, re, errno, stat
+import sys, re, errno, stat, client
 import hashsplit, git, options
 from helpers import *
 
@@ -97,6 +97,7 @@ class Tree:
 optspec = """
 bup save [-tc] [-n name] <filenames...>
 --
+r,remote=  remote repository path
 t,tree     output a tree id
 c,commit   output a commit id
 n,name=    name of backup set to update (if any)
@@ -114,7 +115,14 @@ if opt.verbose >= 2:
     git.verbose = opt.verbose - 1
     hashsplit.split_verbosely = opt.verbose - 1
 
-w = git.PackWriter()
+if opt.remote:
+    cli = client.Client(opt.remote)
+    cli.sync_indexes()
+    w = cli.new_packwriter()
+else:
+    cli = None
+    w = git.PackWriter()
+    
 root = Tree(None, '')
 for (fn,st) in direxpand(extra):
     if opt.verbose:
@@ -148,6 +156,8 @@ if opt.commit or opt.name:
         print commit.encode('hex')
 
 w.close()
+if cli:
+    cli.close()
 
 if saved_errors:
     log('WARNING: %d errors encountered while saving.\n' % len(saved_errors))
