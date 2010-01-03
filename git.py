@@ -2,9 +2,10 @@ import os, errno, zlib, time, sha, subprocess, struct, mmap, stat
 from helpers import *
 
 verbose = 0
+repodir = os.environ.get('BUP_DIR', '.git')
 
-def repodir(sub = ''):
-    return os.path.join(os.environ.get('BUP_DIR', '.git'), sub)
+def repo(sub = ''):
+    return os.path.join(repodir, sub)
 
 
 class PackIndex:
@@ -102,12 +103,11 @@ def _shalist_sort_key(ent):
 
 _typemap = dict(blob=3, tree=2, commit=1, tag=8)
 class PackWriter:
-    def __init__(self):
+    def __init__(self, objcache=None):
         self.count = 0
-        self.binlist = []
-        self.objcache = MultiPackIndex(repodir('objects/pack'))
         self.filename = None
         self.file = None
+        self.objcache = objcache or MultiPackIndex(repo('objects/pack'))
 
     def __del__(self):
         self.close()
@@ -115,35 +115,40 @@ class PackWriter:
     def _open(self):
         assert(not self.file)
         self.objcache.zap_also()
-        self.filename = repodir('objects/bup%d' % os.getpid())
+        self.filename = repo('objects/bup%d' % os.getpid())
         self.file = open(self.filename + '.pack', 'w+')
         self.file.write('PACK\0\0\0\2\0\0\0\0')
 
-    def _write(self, bin, type, content):
+    def _raw_write(self, datalist):
         if not self.file:
             self._open()
         f = self.file
+        for d in datalist:
+            f.write(d)
+        self.count += 1
 
+    def _write(self, bin, type, content):
         if verbose:
             log('>')
-            
+
+        out = []
+
         sz = len(content)
         szbits = (sz & 0x0f) | (_typemap[type]<<4)
         sz >>= 4
         while 1:
             if sz: szbits |= 0x80
-            f.write(chr(szbits))
+            out.append(chr(szbits))
             if not sz:
                 break
             szbits = sz & 0x7f
             sz >>= 7
-        
-        z = zlib.compressobj(1)
-        f.write(z.compress(content))
-        f.write(z.flush())
 
-        self.count += 1
-        self.binlist.append(bin)
+        z = zlib.compressobj(1)
+        out.append(z.compress(content))
+        out.append(z.flush())
+
+        self._raw_write(out)
         return bin
 
     def write(self, type, content):
@@ -223,10 +228,29 @@ class PackWriter:
         out = p.stdout.read().strip()
         if p.wait() or not out:
             raise Exception('git index-pack returned an error')
-        nameprefix = repodir('objects/pack/%s' % out)
+        nameprefix = repo('objects/pack/%s' % out)
         os.rename(self.filename + '.pack', nameprefix + '.pack')
         os.rename(self.filename + '.idx', nameprefix + '.idx')
         return nameprefix
+
+
+class PackWriter_Remote(PackWriter):
+    def __init__(self, file, objcache=None):
+        PackWriter.__init__(self, objcache)
+        self.file = file
+        self.filename = 'remote socket'
+
+    def close(self):
+        if self.file:
+            self.file.write('\0\0\0\0')
+            self.file.flush()
+        self.file = None
+
+    def _raw_write(self, datalist):
+        assert(self.file)
+        data = ''.join(datalist)
+        assert(len(data))
+        self.file.write(struct.pack('!I', len(data)) + data)
 
 
 def _git_date(date):
@@ -234,7 +258,7 @@ def _git_date(date):
 
 
 def _gitenv():
-    os.environ['GIT_DIR'] = os.path.abspath(repodir())
+    os.environ['GIT_DIR'] = os.path.abspath(repo())
 
 
 def _read_ref(refname):
@@ -259,9 +283,15 @@ def _update_ref(refname, newval, oldval):
 
 
 def init_repo():
-    d = repodir()
+    d = repo()
     if os.path.exists(d) and not os.path.isdir(os.path.join(d, '.')):
         raise Exception('"%d" exists but is not a directory\n' % d)
     p = subprocess.Popen(['git', 'init', '--bare'],
                          preexec_fn = _gitenv)
     return p.wait()
+
+
+def check_repo_or_die():
+    if not os.path.isdir(repo('objects/pack/.')):
+        log('error: %r is not a git repository\n' % repo())
+        exit(15)

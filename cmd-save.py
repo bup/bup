@@ -105,6 +105,7 @@ v,verbose  increase log output (can be used more than once)
 o = options.Options('bup save', optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
 
+git.check_repo_or_die()
 if not (opt.tree or opt.commit or opt.name):
     log("bup save: use one or more of -t, -c, -n\n")
     o.usage()

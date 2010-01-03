@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import sys, os
+import sys, os, git
 
 argv = sys.argv
 exe = argv[0]
@@ -15,7 +15,6 @@ def usage():
         if c.startswith('bup-') and c.find('.') < 0:
             log('\t%s\n' % c[4:])
     exit(99)
-
 
 if len(argv) < 2 or not argv[1] or argv[1][0] == '-':
     usage()

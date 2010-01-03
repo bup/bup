@@ -1,8 +1,5 @@
 bup
-bup-split
-bup-join
-bup-save
-bup-init
+bup-*
 randomgen
 *.o
 *.so

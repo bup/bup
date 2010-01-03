@@ -45,3 +45,11 @@ def hostname():
         except OSError:
             pass
     return _hostname or 'localhost'
+
+
+def linereader(f):
+    while 1:
+        line = f.readline()
+        if not line:
+            break
+        yield line[:-1]
