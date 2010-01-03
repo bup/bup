@@ -5,6 +5,10 @@ verbose = 0
 repodir = os.environ.get('BUP_DIR', '.git')
 
 def repo(sub = ''):
+    global repodir
+    gd = os.path.join(repodir, '.git')
+    if os.path.exists(gd):
+        repodir = gd
     return os.path.join(repodir, sub)
 
 
@@ -235,15 +239,17 @@ class PackWriter:
 
 
 class PackWriter_Remote(PackWriter):
-    def __init__(self, file, objcache=None):
+    def __init__(self, conn, objcache=None):
         PackWriter.__init__(self, objcache)
-        self.file = file
+        self.file = conn
         self.filename = 'remote socket'
+
+    def _open(self):
+        assert(not "can't reopen a PackWriter_Remote")
 
     def close(self):
         if self.file:
             self.file.write('\0\0\0\0')
-            self.file.flush()
         self.file = None
 
     def _raw_write(self, datalist):
@@ -293,5 +299,5 @@ def init_repo():
 
 def check_repo_or_die():
     if not os.path.isdir(repo('objects/pack/.')):
-        log('error: %r is not a git repository\n' % repo())
+        log('error: %r is not a bup/git repository\n' % repo())
         exit(15)

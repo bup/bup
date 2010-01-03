@@ -1,8 +1,18 @@
-import sys, os, pwd, subprocess
+import sys, os, pwd, subprocess, errno
 
 
 def log(s):
     sys.stderr.write(s)
+
+
+def mkdirp(d):
+    try:
+        os.makedirs(d)
+    except OSError, e:
+        if e.errno == errno.EEXIST:
+            pass
+        else:
+            raise
 
 
 def readpipe(argv):
@@ -47,9 +57,48 @@ def hostname():
     return _hostname or 'localhost'
 
 
+class Conn:
+    def __init__(self, inp, outp):
+        self.inp = inp
+        self.outp = outp
+
+    def read(self, size):
+        self.outp.flush()
+        return self.inp.read(size)
+
+    def readline(self):
+        self.outp.flush()
+        return self.inp.readline()
+
+    def write(self, data):
+        self.outp.write(data)
+
+    def ok(self):
+        self.write('\nok\n')
+
+    def check_ok(self):
+        self.outp.flush()
+        for rl in linereader(self.inp):
+            if not rl:
+                continue
+            elif rl == 'ok':
+                return True
+            else:
+                raise Exception('expected "ok", got %r' % rl)
+
+
 def linereader(f):
     while 1:
         line = f.readline()
         if not line:
             break
         yield line[:-1]
+
+
+def chunkyreader(f, count):
+    while count > 0:
+        b = f.read(min(count, 65536))
+        if not b:
+            raise IOError('EOF with %d bytes remaining' % count)
+        yield b
+        count -= len(b)

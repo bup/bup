@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import sys, time, re
+import sys, time, re, struct
 import hashsplit, git, options
 from helpers import *
 
@@ -32,20 +32,61 @@ start_time = time.time()
 def server_connect(remote):
     rs = remote.split(':', 1)
     if len(rs) == 1:
-        p = subprocess.Popen(['bup', 'server', '-d', opt.remote],
+        (host, dir) = ('NONE', remote)
+        p = subprocess.Popen(['bup', 'server'],
                              stdin=subprocess.PIPE, stdout=subprocess.PIPE)
     else:
         (host, dir) = rs
         p = subprocess.Popen(['ssh', host, '--', 'bup', 'server'],
                              stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-        dir = re.sub(r'[\r\n]', ' ', dir)
-        p.stdin.write('set-dir\n%s\n' % dir)
-    return p
+    conn = Conn(p.stdout, p.stdin)
+    dir = re.sub(r'[\r\n]', ' ', dir)
+    conn.write('set-dir %s\n' % dir)
+    conn.check_ok()
+    
+    conn.write('list-indexes\n')
+    cachedir = git.repo('index-cache/%s' % re.sub(r'[^@:\w]', '_',
+                                                  "%s:%s" % (host, dir)))
+    packdir = git.repo('objects/pack')
+    mkdirp(cachedir)
+    all = {}
+    needed = {}
+    for line in linereader(conn):
+        if not line:
+            break
+        all[line] = 1
+        assert(line.find('/') < 0)
+        if (not os.path.exists(os.path.join(cachedir, line)) and
+            not os.path.exists(os.path.join(packdir, line))):
+                needed[line] = 1
+    conn.check_ok()
+                
+    for f in os.listdir(cachedir):
+        if f.endswith('.idx') and not f in all:
+            log('pruning old index: %r\n' % f)
+            os.unlink(os.path.join(cachedir, f))
+            
+    # FIXME this should be pipelined: request multiple indexes at a time, or
+    # we waste lots of network turnarounds.
+    for name in needed.keys():
+        log('requesting %r\n' % name)
+        conn.write('send-index %s\n' % name)
+        n = struct.unpack('!I', conn.read(4))[0]
+        assert(n)
+        log('   expect %d bytes\n' % n)
+        fn = os.path.join(cachedir, name)
+        f = open(fn + '.tmp', 'w')
+        for b in chunkyreader(conn, n):
+            f.write(b)
+        conn.check_ok()
+        f.close()
+        os.rename(fn + '.tmp', fn)
+    return (p, conn, cachedir)
 
 if opt.remote:
-    p = server_connect(opt.remote)
-    p.stdin.write('receive-objects\n')
-    w = git.PackWriter_Remote(p.stdin)
+    (p, conn, cachedir) = server_connect(opt.remote)
+    conn.write('receive-objects\n')
+    w = git.PackWriter_Remote(conn, objcache = git.MultiPackIndex(cachedir))
 else:
     w = git.PackWriter()
     
