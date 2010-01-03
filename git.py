@@ -1,6 +1,8 @@
 import os, errno, zlib, time, sha, subprocess, struct, mmap
 from helpers import *
 
+verbose = 0
+
 
 class PackIndex:
     def __init__(self, filename):
@@ -43,6 +45,7 @@ class PackIndex:
             else: # got it!
                 return mid
         return None
+        
     def find_offset(self, hash):
         idx = self._idx_from_hash(hash)
         if idx != None:
@@ -56,11 +59,14 @@ class PackIndex:
 class MultiPackIndex:
     def __init__(self, dir):
         self.packs = []
+        self.also = {}
         for f in os.listdir(dir):
             if f.endswith('.idx'):
                 self.packs.append(PackIndex(os.path.join(dir, f)))
 
     def exists(self, hash):
+        if hash in self.also:
+            return True
         for i in range(len(self.packs)):
             p = self.packs[i]
             if p.exists(hash):
@@ -69,27 +75,8 @@ class MultiPackIndex:
                 return True
         return None
 
-
-def _old_write_object(bin, type, content):
-    hex = bin.encode('hex')
-    header = '%s %d\0' % (type, len(content))
-    dir = '.git/objects/%s' % hex[0:2]
-    fn = '%s/%s' % (dir, hex[2:])
-    if not os.path.exists(fn):
-        #log('creating %s' % fn)
-        try:
-            os.mkdir(dir)
-        except OSError, e:
-            if e.errno != errno.EEXIST:
-                raise
-        tfn = '.git/objects/bup%d.tmp' % os.getpid()
-        f = open(tfn, 'w')
-        z = zlib.compressobj(1)
-        f.write(z.compress(header))
-        f.write(z.compress(content))
-        f.write(z.flush())
-        f.close()
-        os.rename(tfn, fn)
+    def add(self, hash):
+        self.also[hash] = 1
 
 
 def calc_hash(type, content):
@@ -112,6 +99,9 @@ class PackWriter:
         global _typemap
         f = self.file
 
+        if verbose:
+            log('>')
+            
         sz = len(content)
         szbits = (sz & 0x0f) | (_typemap[type]<<4)
         sz >>= 4
@@ -133,6 +123,10 @@ class PackWriter:
 
     def easy_write(self, type, content):
         return self.write(calc_hash(type, content), type, content)
+
+    def abort(self):
+        self.file.close()
+        os.unlink(self.filename + '.pack')
 
     def close(self):
         f = self.file
@@ -179,19 +173,28 @@ def flush_pack():
     global _packout
     if _packout:
         _packout.close()
+        _packout = None
 
 
-_objcache = {}
+def abort_pack():
+    global _packout
+    if _packout:
+        _packout.abort()
+        _packout = None
+
+
+_objcache = None
 def hash_raw(type, s):
     global _objcache
+    if not _objcache:
+        _objcache = MultiPackIndex('.git/objects/pack')
     bin = calc_hash(type, s)
-    hex = bin.encode('hex')
-    if bin in _objcache:
-        return hex
+    if _objcache.exists(bin):
+        return bin
     else:
         _write_object(bin, type, s)
-        _objcache[bin] = 1
-        return hex
+        _objcache.add(bin)
+        return bin
 
 
 def hash_blob(blob):
@@ -200,8 +203,8 @@ def hash_blob(blob):
 
 def gen_tree(shalist):
     shalist = sorted(shalist, key = lambda x: x[1])
-    l = ['%s %s\0%s' % (mode,name,hex.decode('hex')) 
-         for (mode,name,hex) in shalist]
+    l = ['%s %s\0%s' % (mode,name,bin) 
+         for (mode,name,bin) in shalist]
     return hash_raw('tree', ''.join(l))
 
 
@@ -236,7 +239,7 @@ def _update_ref(repo, refname, newval, oldval):
 
 def gen_commit(tree, parent, author, adate, committer, cdate, msg):
     l = []
-    if tree: l.append('tree %s' % tree)
+    if tree: l.append('tree %s' % tree.encode('hex'))
     if parent: l.append('parent %s' % parent)
     if author: l.append('author %s %s' % (author, _git_date(adate)))
     if committer: l.append('committer %s %s' % (committer, _git_date(cdate)))
