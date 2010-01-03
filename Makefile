@@ -14,21 +14,21 @@ runtests: all
 	
 runtests-cmdline: all
 	@echo "Testing \"$@\" in Makefile:"
-	./bup split --bench -b <testfile1 >tags1
-	./bup split -vvvv -b testfile2 >tags2
-	./bup split -t testfile2 >tags2t
-	./bup split -c testfile2 >tags2c
-	diff -u tags1 tags2 || true
+	./bup split --bench -b <testfile1 >tags1.tmp
+	./bup split -vvvv -b testfile2 >tags2.tmp
+	./bup split -t testfile2 >tags2t.tmp
+	./bup split -c testfile2 >tags2c.tmp
+	diff -u tags1.tmp tags2.tmp || true
 	wc -c testfile1 testfile2
-	wc -l tags1 tags2
-	./bup join $$(cat tags1) >out1
-	./bup join <tags2 >out2
-	./bup join <tags2t >out2t
-	./bup join <tags2c >out2c
-	diff -u testfile1 out1
-	diff -u testfile2 out2
-	diff -u testfile2 out2t
-	diff -u testfile2 out2c
+	wc -l tags1.tmp tags2.tmp
+	./bup join $$(cat tags1.tmp) >out1.tmp
+	./bup join <tags2.tmp >out2.tmp
+	./bup join <tags2t.tmp >out2t.tmp
+	./bup join <tags2c.tmp >out2c.tmp
+	diff -u testfile1 out1.tmp
+	diff -u testfile2 out2.tmp
+	diff -u testfile2 out2t.tmp
+	diff -u testfile2 out2c.tmp
 	
 test: all runtests-cmdline
 	./wvtestrun $(MAKE) runtests
@@ -54,4 +54,4 @@ bup-%: cmd-%.sh
 clean:
 	rm -f *.o *.so *~ .*~ *.pyc */*.pyc */*~ \
 		bup bup-split bup-join bup-save randomgen \
-		out[12] tags[12]
+		out[12] out2[tc] tags[12] tags2[tc] *.tmp
