@@ -2,6 +2,7 @@ bup
 bup-split
 bup-join
 bup-save
+bup-init
 randomgen
 *.o
 *.so

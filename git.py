@@ -248,3 +248,12 @@ def _update_ref(refname, newval, oldval):
                          preexec_fn = _gitenv)
     p.wait()
     return newval
+
+
+def init_repo():
+    d = repodir()
+    if os.path.exists(d) and not os.path.isdir(os.path.join(d, '.')):
+        raise Exception('"%d" exists but is not a directory\n' % d)
+    p = subprocess.Popen(['git', 'init', '--bare'],
+                         preexec_fn = _gitenv)
+    return p.wait()
