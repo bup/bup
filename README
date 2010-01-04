@@ -1,8 +1,257 @@
 
-What's this all about?
+bup 0.01: It backs things up
+============================
 
-See my blog entry:
-http://alumnit.ca/~apenwarr/log/?m=200910#04
+bup is a program that backs things up.  It's short for "backup." Can you
+believe that nobody else has named an open source program "bup" after all
+this time?  Me neither.
 
-Note that this implementation is only a proof of concept and probably not
-actually useful for anything yet.
+Despite its unassuming name, bup is pretty cool.  To give you an idea of
+just how cool it is, I wrote you this poem:
+
+                             Bup is teh awesome
+                          What rhymes with awesome?
+                            I guess maybe possum
+                           But that's irrelevant.
+			
+Hmm.  Did that help?  Maybe prose is more useful after all.
+
+
+Reasons bup is awesome
+----------------------
+
+bup has a few advantages over other backup software:
+
+ - It uses a rolling checksum algorithm (similar to rsync) to split large
+   files into chunks.  The most useful result of this is you can backup huge
+   virtual machine (VM) disk images, databases, and XML files incrementally,
+   even though they're typically all in one huge file, and not use tons of
+   disk space for multiple versions.
+   
+ - It uses the packfile format from git (the open source version control
+   system), so you can access the stored data even if you don't like bup's
+   user interface.
+   
+ - Unlike git, it writes packfiles *directly* (instead of having a separate
+   garbage collection / repacking stage) so it's fast even with gratuitously
+   huge amounts of data.
+   
+ - Data is "automagically" shared between incremental backups without having
+   to know which backup is based on which other one - even if the backups
+   are made from two different computers that don't even know about each
+   other.  You just tell bup to back stuff up, and it saves only the minimum
+   amount of data needed.
+   
+ - Even when a backup is incremental, you don't have to worry about
+   restoring the full backup, then each of the incrementals in turn; an
+   incremental backup *acts* as if it's a full backup, it just takes less
+   disk space.
+   
+ - It's written in python (with some C parts to make it faster) so it's easy
+   for you to extend and maintain.
+
+
+Reasons you might want to avoid bup
+-----------------------------------
+
+ - This is version 0.01.  What that means is this is the very first version. 
+   Therefore it will most probably not work for you, but we don't know why.
+   
+ - It requires python 2.5, a C compiler, and an installed git version >= 1.5.2.
+ 
+ - It only works on Linux (for now).
+ 
+ - It has almost no documentation.  Not even a man page!  This file is all
+   you get for now.
+   
+   
+Getting started
+---------------
+
+ - check out the bup source code using git:
+ 
+	git clone git://github.com/apenwarr/bup
+
+ - install the python 2.5 development libraries.  On Debian or Ubuntu, this
+   is:
+   	apt-get install python2.5-dev
+   	
+ - build the python module and symlinks:
+ 
+ 	make
+ 	
+ - run the tests:
+ 
+ 	make test
+ 	
+   (The tests should pass.  If they don't pass for you, stop here and send
+   me an email.)
+   
+ - Try making a local backup:
+ 
+ 	tar -cvf - /etc | bup split -n local-etc -vv
+ 	
+ - Try restoring your backup:
+ 
+ 	bup join local-etc | tar -tf -
+ 	
+ - Look at how much disk space your backup took:
+ 
+ 	du -s ~/.bup
+ 	
+ - Make another backup (which should be mostly identical to the last one;
+   notice that you don't have to *specify* that this backup is incremental,
+   it just saves space automatically):
+ 
+ 	tar -cvf - /etc | bup split -n local-etc -vv
+ 	
+ - Look how little extra space your second backup used on top of the first:
+ 
+ 	du -s ~/.bup
+ 	
+ - Restore your old backup again (the ~1 is git notation for "one older than
+   the most recent"):
+   
+   	bup join local-etc~1 | tar -tf -
+ 
+ - get a list of your previous backups:
+ 
+	GIT_DIR=~/.bup git log local-etc
+	
+ - make a backup on a remote server (which must already have the 'bup' command
+   somewhere in the PATH, and be accessible via ssh; make sure to replace
+   SERVERNAME with the actual hostname of your server):
+   
+   	tar -cvf - /etc | bup split -r SERVERNAME: -n local-etc -vv
+ 
+ - try restoring the remote backup:
+ 
+ 	bup join -r SERVERNAME: local-etc | tar -tf -
+
+That's all there is to it!
+
+
+How it works
+------------
+
+bup stores its data in a git-formatted repository.  Unfortunately, git
+itself doesn't actually behave very well for bup's use case (huge numbers of
+files, files with huge sizes, retaining file permissions/ownership are
+important), so we mostly don't use git's *code* except for a few helper
+programs.  For example, bup has its own git packfile writer written in
+python.
+
+Basically, 'bup split' reads the data on stdin (or from files specified on
+the command line), breaks it into chunks using a rolling checksum (similar to
+rsync), and saves those chunks into a new git packfile.  There is one git
+packfile per backup.
+
+When deciding whether to write a particular chunk into the new packfile, bup
+first checks all the other packfiles that exist to see if they already have that
+chunk.  If they do, the chunk is skipped.
+
+git packs come in two parts: the pack itself (*.pack) and the index (*.idx).
+The index is pretty small, and contains a list of all the objects in the
+pack.  Thus, when generating a remote backup, we don't have to have a copy
+of the packfiles from the remote server: the local end just downloads a copy
+of the server's *index* files, and compares objects against those when
+generating the new pack, which it sends directly to the server.
+
+The "-n" option to 'bup split' and 'bup save' is the name of the backup you
+want to create, but it's actually implemented as a git branch.  So you can
+do cute things like checkout a particular branch using git, and receive a
+bunch of chunk files corresponding to the file you split.
+
+If you use '-b' or '-t' or '-c' instead of '-n', bup split will output a
+list of blobs, a tree containing that list of blobs, or a commit containing
+that tree, respectively, to stdout.  You can use this to construct your own
+scripts that do something with those values.
+
+'bup save' basically just runs 'bup split' a whole bunch of times, once per
+file in a directory hierarchy, and assembles a git tree that contains all
+the resulting objects.  Among other things, that makes 'git diff' much more
+useful (compared to splitting a tarball, which is essentially a big binary
+blob).  However, since bup splits large files into smaller chunks, the
+resulting tree structure doesn't *exactly* correspond to what git itself
+would have stored.  Also, the tree format used by 'bup save' will probably
+change in the future to support storing file ownership, more complex file
+permissions, and so on.
+ 
+ 
+Things that are stupid for now but which we'll fix later
+--------------------------------------------------------
+
+Help with any of these problems, or others, is very, very welcome.  Let me
+know if you'd like to help.  Maybe we can start a mailing list.
+
+ - bup's incremental backup algorithm is braindead.
+ 
+   Bup reads the contents of every single file you want to back up, *then*
+   it checks if it has that content already, and if not, it backs up the
+   file.  Now, it happens to do that very fast (using mmap'ed git packfile
+   indexes), all things considered, but it's not nearly as fast as simply
+   noticing that the file inode+ctime is the same as before and just
+   skipping it.  There's nothing preventing us from adding this
+   optimization, though.  (Perhaps we could use the git indexfile format for
+   tracking this?)
+   
+ - 'bup save' is incomplete and there's no 'bup restore' yet.
+ 
+   'bup save' is supposed to recursively go through a given directory and
+   store all the files efficiently, and then you could use 'bup restore' to
+   restore all or some of them.  However, these features don't really work
+   yet.
+ 
+   Instead, for now the best way to use bup is to feed 'bup split' a big tar
+   file of your backup, then restore that tar file later with 'bup join'. 
+   This is cute, but inefficient; for example, tar files don't have an
+   index, so to restore a single file would require linearly reading through
+   the entire tarball.  (This is exactly like what always happens when you
+   make a backup using tar, but if we use git's native trees/blobs the way
+   they're meant to be used, it will be ridiculously faster.)
+   
+ - bup could use inotify for *really* efficient incremental backups.
+
+   You could even have your system doing "continuous" backups: whenever a
+   file changes, we immediately send an image of it to the server.  We could
+   give the continuous-backup process a really low CPU and I/O priority so
+   you wouldn't even know it was running.
+
+ - bup currently has no features that prune away *old* backups.
+ 
+   Because of the way the packfile system works, backups become "entangled"
+   in weird ways and it's not actually possible to delete one pack
+   (corresponding approximately to one backup) without risking screwing up
+   other backups.
+   
+   git itself has lots of ways of optimizing this sort of thing, but its
+   methods aren't really applicable here; bup packfiles are just too huge.
+   We'll have to do it in a totally different way.  There are lots of
+   options.  For now: make sure you've got lots of disk space :)
+
+ - bup doesn't ever validate existing backups/packs to ensure they're
+   correct.
+   
+   This would be easy to implement (given that git uses hashes and CRCs all
+   over the place), but nobody has implemented it.  For now, you could try
+   doing a test restore of your tarball; doing so should trigger git's error
+   handling if any of the objects are corrupted.
+
+ - bup has never been tested on anything but Linux.
+ 
+   There's nothing that makes it *inherently* non-portable, though, so
+   that's mostly a matter of someone putting in some effort.
+
+
+How you can help
+----------------
+
+bup is a work in progress and there are many ways it can still be improved. 
+If you'd like to contribute, please email me at <apenwarr@gmail.com>.  If
+enough people are interested, perhaps we should start a mailing list for
+it!
+
+Have fun,
+
+Avery
+January 2010
