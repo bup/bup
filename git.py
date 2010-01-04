@@ -332,3 +332,65 @@ def check_repo_or_die(path=None):
         else:
             log('error: %r is not a bup/git repository\n' % repo())
             exit(15)
+
+
+def _treeparse(buf):
+    ofs = 0
+    while ofs < len(buf):
+        z = buf[ofs:].find('\0')
+        assert(z > 0)
+        spl = buf[ofs:ofs+z].split(' ', 1)
+        assert(len(spl) == 2)
+        sha = buf[ofs+z+1:ofs+z+1+20]
+        ofs += z+1+20
+        yield (spl[0], spl[1], sha)
+
+
+class CatPipe:
+    def __init__(self):
+        self.p = subprocess.Popen(['git', 'cat-file', '--batch'],
+                                  stdin=subprocess.PIPE, 
+                                  stdout=subprocess.PIPE,
+                                  preexec_fn = _gitenv)
+
+    def get(self, id):
+        assert(id.find('\n') < 0)
+        assert(id.find('\r') < 0)
+        self.p.stdin.write('%s\n' % id)
+        hdr = self.p.stdout.readline()
+        spl = hdr.split(' ')
+        assert(len(spl) == 3)
+        assert(len(spl[0]) == 40)
+        (hex, type, size) = spl
+        yield type
+        for blob in chunkyreader(self.p.stdout, int(spl[2])):
+            yield blob
+        assert(self.p.stdout.readline() == '\n')
+
+    def _join(self, it):
+        type = it.next()
+        if type == 'blob':
+            for blob in it:
+                yield blob
+        elif type == 'tree':
+            treefile = ''.join(it)
+            for (mode, name, sha) in _treeparse(treefile):
+                for blob in self.join(sha.encode('hex')):
+                    yield blob
+        elif type == 'commit':
+            treeline = ''.join(it).split('\n')[0]
+            assert(treeline.startswith('tree '))
+            for blob in self.join(treeline[5:]):
+                yield blob
+        else:
+            raise GitError('unknown object type %r' % type)
+
+    def join(self, id):
+        for d in self._join(self.get(id)):
+            yield d
+        
+
+def cat(id):
+    c = CatPipe()
+    for d in c.join(id):
+        yield d

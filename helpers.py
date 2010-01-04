@@ -97,10 +97,16 @@ def linereader(f):
         yield line[:-1]
 
 
-def chunkyreader(f, count):
-    while count > 0:
-        b = f.read(min(count, 65536))
-        if not b:
-            raise IOError('EOF with %d bytes remaining' % count)
-        yield b
-        count -= len(b)
+def chunkyreader(f, count = None):
+    if count != None:
+        while count > 0:
+            b = f.read(min(count, 65536))
+            if not b:
+                raise IOError('EOF with %d bytes remaining' % count)
+            yield b
+            count -= len(b)
+    else:
+        while 1:
+            b = f.read(65536)
+            if not b: break
+            yield b

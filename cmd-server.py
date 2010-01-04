@@ -75,6 +75,15 @@ def update_ref(conn, refname):
     conn.ok()
 
 
+def cat(conn, id):
+    git.check_repo_or_die()
+    for blob in git.cat(id):
+        conn.write(struct.pack('!I', len(blob)))
+        conn.write(blob)
+    conn.write('\0\0\0\0')
+    conn.ok()
+
+
 optspec = """
 bup server
 """
@@ -95,6 +104,7 @@ commands = {
     'receive-objects': receive_objects,
     'read-ref': read_ref,
     'update-ref': update_ref,
+    'cat': cat,
 }
 
 # FIXME: this protocol is totally lame and not at all future-proof.

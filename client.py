@@ -69,9 +69,8 @@ class Client:
                 break
             all[line] = 1
             assert(line.find('/') < 0)
-            if (not os.path.exists(os.path.join(self.cachedir, line)) and
-                not os.path.exists(os.path.join(packdir, line))):
-                    needed[line] = 1
+            if not os.path.exists(os.path.join(self.cachedir, line)):
+                needed[line] = 1
         conn.check_ok()
 
         for f in os.listdir(self.cachedir):
@@ -123,3 +122,14 @@ class Client:
                         % (refname, newval.encode('hex'),
                            (oldval or '').encode('hex')))
         self.conn.check_ok()
+
+    def cat(self, id):
+        self.check_busy()
+        self._busy = 'cat'
+        self.conn.write('cat %s\n' % re.sub(r'[\n\r]', '_', id))
+        while 1:
+            sz = struct.unpack('!I', self.conn.read(4))[0]
+            if not sz: break
+            yield self.conn.read(sz)
+        self.conn.check_ok()
+        self._not_busy()
