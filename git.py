@@ -232,6 +232,7 @@ class PackWriter:
         f.close()
 
         p = subprocess.Popen(['git', 'index-pack', '-v',
+                              '--index-version=2',
                               self.filename + '.pack'],
                              preexec_fn = _gitenv,
                              stdout = subprocess.PIPE)

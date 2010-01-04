@@ -34,7 +34,7 @@ def testpacks():
 
     WVFAIL(r.find_offset('\0'*20))
 
-    r = git.MultiPackIndex('.git/objects/pack')
+    r = git.MultiPackIndex('pybuptest.tmp/objects/pack')
     WVPASS(r.exists(hashes[5]))
     WVPASS(r.exists(hashes[6]))
     WVFAIL(r.exists('\0'*20))
