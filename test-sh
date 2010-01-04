@@ -1,10 +1,14 @@
 #!/bin/bash
 set -e
-echo "Testing \"$@\" in Makefile:"
+echo "Testing \"integration\" in $0:"
 
 TOP="$(pwd)"
 export BUP_DIR="$TOP/buptest.tmp"
-alias bup="$TOP/bup"
+
+bup()
+{
+	"$TOP/bup" "$@"
+}
 
 set -x
 rm -rf "$BUP_DIR"
