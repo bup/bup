@@ -48,7 +48,7 @@ class Client:
                 raise ClientError('server tunnel returned exit code %d' % rv)
         self.conn = None
         self.p = None
-            
+
     def check_busy(self):
         if self._busy:
             raise ClientError('already busy with command %r' % self._busy)
@@ -105,3 +105,21 @@ class Client:
         objcache = git.MultiPackIndex(self.cachedir)
         return git.PackWriter_Remote(self.conn, objcache = objcache,
                                      onclose = self._not_busy)
+
+    def read_ref(self, refname):
+        self.check_busy()
+        self.conn.write('read-ref %s\n' % refname)
+        r = self.conn.readline().strip()
+        self.conn.check_ok()
+        if r:
+            assert(len(r) == 40)   # hexified sha
+            return r.decode('hex')
+        else:
+            return None   # nonexistent ref
+
+    def update_ref(self, refname, newval, oldval):
+        self.check_busy()
+        self.conn.write('update-ref %s\n%s\n%s\n' 
+                        % (refname, newval.encode('hex'),
+                           (oldval or '').encode('hex')))
+        self.conn.check_ok()

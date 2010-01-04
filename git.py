@@ -187,23 +187,19 @@ class PackWriter:
     def _new_commit(self, tree, parent, author, adate, committer, cdate, msg):
         l = []
         if tree: l.append('tree %s' % tree.encode('hex'))
-        if parent: l.append('parent %s' % parent)
+        if parent: l.append('parent %s' % parent.encode('hex'))
         if author: l.append('author %s %s' % (author, _git_date(adate)))
         if committer: l.append('committer %s %s' % (committer, _git_date(cdate)))
         l.append('')
         l.append(msg)
         return self.maybe_write('commit', '\n'.join(l))
 
-    def new_commit(self, ref, tree, msg):
+    def new_commit(self, parent, tree, msg):
         now = time.time()
         userline = '%s <%s@%s>' % (userfullname(), username(), hostname())
-        oldref = ref and _read_ref(ref) or None
-        commit = self._new_commit(tree, oldref,
+        commit = self._new_commit(tree, parent,
                                   userline, now, userline, now,
                                   msg)
-        if ref:
-            self.close()  # UGLY: needed so _update_ref can see the new objects
-            _update_ref(ref, commit.encode('hex'), oldref)
         return commit
 
     def abort(self):
@@ -283,25 +279,29 @@ def _gitenv():
     os.environ['GIT_DIR'] = os.path.abspath(repo())
 
 
-def _read_ref(refname):
+def read_ref(refname):
     p = subprocess.Popen(['git', 'show-ref', '--', refname],
                          preexec_fn = _gitenv,
                          stdout = subprocess.PIPE)
     out = p.stdout.read().strip()
-    p.wait()
+    rv = p.wait()
+    if rv:
+        assert(not out)
     if out:
-        return out.split()[0]
+        return out.split()[0].decode('hex')
     else:
         return None
 
 
-def _update_ref(refname, newval, oldval):
+def update_ref(refname, newval, oldval):
     if not oldval:
         oldval = ''
-    p = subprocess.Popen(['git', 'update-ref', '--', refname, newval, oldval],
+    p = subprocess.Popen(['git', 'update-ref', '--', refname,
+                          newval.encode('hex'), oldval.encode('hex')],
                          preexec_fn = _gitenv)
-    p.wait()
-    return newval
+    rv = p.wait()
+    if rv:
+        raise GitError('update_ref returned error code %d' % rv)
 
 
 def guess_repo(path=None):

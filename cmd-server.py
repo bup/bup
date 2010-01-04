@@ -60,6 +60,21 @@ def receive_objects(conn, junk):
     conn.ok()
 
 
+def read_ref(conn, refname):
+    git.check_repo_or_die()
+    r = git.read_ref(refname)
+    conn.write('%s\n' % (r or '').encode('hex'))
+    conn.ok()
+
+
+def update_ref(conn, refname):
+    git.check_repo_or_die()
+    newval = conn.readline().strip()
+    oldval = conn.readline().strip()
+    git.update_ref(refname, newval.decode('hex'), oldval.decode('hex'))
+    conn.ok()
+
+
 optspec = """
 bup server
 """
@@ -78,6 +93,8 @@ commands = {
     'list-indexes': list_indexes,
     'send-index': send_index,
     'receive-objects': receive_objects,
+    'read-ref': read_ref,
+    'update-ref': update_ref,
 }
 
 # FIXME: this protocol is totally lame and not at all future-proof.

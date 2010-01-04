@@ -78,13 +78,15 @@ class Conn:
 
     def check_ok(self):
         self.outp.flush()
+        rl = ''
         for rl in linereader(self.inp):
             if not rl:
                 continue
             elif rl == 'ok':
                 return True
             else:
-                raise Exception('expected "ok", got %r' % rl)
+                break
+        raise Exception('expected "ok", got %r' % rl)
 
 
 def linereader(f):

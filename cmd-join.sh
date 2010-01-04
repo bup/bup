@@ -1,5 +1,10 @@
 #!/bin/sh
 set -e
+
+if [ -z "$BUP_DIR" ]; then
+    BUP_DIR="$HOME/.bup"
+fi
+
 export GIT_DIR="$BUP_DIR"
 
 get_one()
