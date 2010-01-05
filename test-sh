@@ -35,7 +35,7 @@ diff -u testfile2 out2c.tmp
     git repack -Ad
     git prune
     (cd "$TOP/t/sampledata" && bup save -vvn master .) || exit 1
-    n=$(git fsck --full --strict 2>&1 | tee /dev/stderr | wc -l)
+    n=$(git fsck --full --strict 2>&1 | tee -a /dev/stderr | wc -l)
     if [ "$n" != 0 ]; then
         echo "git fsck error."
         exit 5
