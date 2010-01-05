@@ -1,4 +1,5 @@
-CFLAGS=-Wall -g -O2 -Werror `python2.5-config --includes` -g -fPIC
+PYINCLUDE:=$(shell python2.5-config --includes)
+CFLAGS=-Wall -g -O2 -Werror $(PYINCLUDE) -g -fPIC
 
 default: all
 
