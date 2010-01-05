@@ -1,4 +1,4 @@
-CFLAGS=-Wall -g -O2 -Werror -I/usr/include/python2.5 -g -fPIC
+CFLAGS=-Wall -g -O2 -Werror `python2.5-config --includes` -g -fPIC
 
 default: all
 
