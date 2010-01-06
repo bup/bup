@@ -8,6 +8,7 @@ BLOB_HWM = 1024*1024
 split_verbosely = 0
 max_pack_size = 1000*1000*1000
 max_pack_objects = 10*1000*1000
+fanout = 4096
 
 class Buf:
     def __init__(self):
@@ -122,8 +123,26 @@ def split_to_shalist(w, files):
         yield ('100644', 'bup.chunk.%016x' % cn, sha)
 
 
+def _next(i):
+    try:
+        return i.next()
+    except StopIteration:
+        return None
+
+
 def split_to_tree(w, files):
-    shalist = list(split_to_shalist(w, files))
+    sl = iter(split_to_shalist(w, files))
+    if not fanout:
+        shalist = list(sl)
+    else:
+        shalist = []
+        tmplist = []
+        for e in sl:
+            tmplist.append(e)
+            if len(tmplist) >= fanout and len(tmplist) >= 3:
+                shalist.append(('40000', tmplist[0][1], w.new_tree(tmplist)))
+                tmplist = []
+        shalist += tmplist
     tree = w.new_tree(shalist)
     return (shalist, tree)
 

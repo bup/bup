@@ -17,6 +17,7 @@ v,verbose  increase log output (can be used more than once)
 bench      print benchmark timings to stderr
 max-pack-size=  maximum bytes in a single pack
 max-pack-objects=  maximum number of objects in a single pack
+fanout=  maximum number of blobs in a single tree
 """
 o = options.Options('bup split', optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
@@ -34,6 +35,10 @@ if opt.max_pack_size:
     hashsplit.max_pack_size = int(opt.max_pack_size)
 if opt.max_pack_objects:
     hashsplit.max_pack_objects = int(opt.max_pack_objects)
+if opt.fanout:
+    hashsplit.fanout = int(opt.fanout)
+if opt.blobs:
+    hashsplit.fanout = 0
 
 start_time = time.time()
 
