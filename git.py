@@ -1,4 +1,4 @@
-import os, errno, zlib, time, sha, subprocess, struct, mmap, stat
+import os, errno, zlib, time, sha, subprocess, struct, mmap, stat, re
 from helpers import *
 
 verbose = 0
@@ -237,8 +237,9 @@ class PackWriter:
                              preexec_fn = _gitenv,
                              stdout = subprocess.PIPE)
         out = p.stdout.read().strip()
-        if p.wait() or not out:
-            raise GitError('git index-pack returned an error')
+        _git_wait('git index-pack', p)
+        if not out:
+            raise GitError('git index-pack produced no output')
         nameprefix = repo('objects/pack/%s' % out)
         os.rename(self.filename + '.pack', nameprefix + '.pack')
         os.rename(self.filename + '.idx', nameprefix + '.idx')
@@ -285,7 +286,7 @@ def read_ref(refname):
                          preexec_fn = _gitenv,
                          stdout = subprocess.PIPE)
     out = p.stdout.read().strip()
-    rv = p.wait()
+    rv = p.wait()  # not fatal
     if rv:
         assert(not out)
     if out:
@@ -300,9 +301,7 @@ def update_ref(refname, newval, oldval):
     p = subprocess.Popen(['git', 'update-ref', '--', refname,
                           newval.encode('hex'), oldval.encode('hex')],
                          preexec_fn = _gitenv)
-    rv = p.wait()
-    if rv:
-        raise GitError('update_ref returned error code %d' % rv)
+    _git_wait('git update-ref', p)
 
 
 def guess_repo(path=None):
@@ -322,9 +321,10 @@ def init_repo(path=None):
         raise GitError('"%d" exists but is not a directory\n' % d)
     p = subprocess.Popen(['git', '--bare', 'init'], stdout=sys.stderr,
                          preexec_fn = _gitenv)
-    rv = p.wait()
-    if rv != 0:
-        raise GitError('git init returned %d\n' % rv)
+    _git_wait('git init', p)
+    p = subprocess.Popen(['git', 'config', 'pack.indexVersion', '2'],
+                         stdout=sys.stderr, preexec_fn = _gitenv)
+    _git_wait('git config', p)
 
 
 def check_repo_or_die(path=None):
@@ -348,17 +348,60 @@ def _treeparse(buf):
         ofs += z+1+20
         yield (spl[0], spl[1], sha)
 
+_ver = None
+def ver():
+    global _ver
+    if not _ver:
+        p = subprocess.Popen(['git', '--version'],
+                             stdout=subprocess.PIPE)
+        gvs = p.stdout.read()
+        _git_wait('git --version', p)
+        m = re.match(r'git version (\S+.\S+)', gvs)
+        if not m:
+            raise GitError('git --version weird output: %r' % gvs)
+        _ver = tuple(m.group(1).split('.'))
+    needed = ('1','5','4')
+    if _ver < needed:
+        raise GitError('git version %s or higher is required; you have %s'
+                       % ('.'.join(needed), '.'.join(_ver)))
+    return _ver
 
+
+def _git_wait(cmd, p):
+    rv = p.wait()
+    if rv != 0:
+        raise GitError('%s returned %d' % (cmd, rv))
+
+
+def _git_capture(argv):
+    p = subprocess.Popen(argv, stdout=subprocess.PIPE, preexec_fn = _gitenv)
+    r = p.stdout.read()
+    _git_wait(repr(argv), p)
+    return r
+
+
+_ver_warned = 0
 class CatPipe:
     def __init__(self):
-        self.p = subprocess.Popen(['git', 'cat-file', '--batch'],
-                                  stdin=subprocess.PIPE, 
-                                  stdout=subprocess.PIPE,
-                                  preexec_fn = _gitenv)
+        global _ver_warned
+        wanted = ('1','5','6')
+        if ver() < wanted:
+            if not _ver_warned:
+                log('warning: git version < %s; bup will be slow.\n'
+                    % '.'.join(wanted))
+                _ver_warned = 1
+            self.get = self._slow_get
+        else:
+            self.p = subprocess.Popen(['git', 'cat-file', '--batch'],
+                                      stdin=subprocess.PIPE, 
+                                      stdout=subprocess.PIPE,
+                                      preexec_fn = _gitenv)
+            self.get = self._fast_get
 
-    def get(self, id):
+    def _fast_get(self, id):
         assert(id.find('\n') < 0)
         assert(id.find('\r') < 0)
+        assert(id[0] != '-')
         self.p.stdin.write('%s\n' % id)
         hdr = self.p.stdout.readline()
         spl = hdr.split(' ')
@@ -369,6 +412,20 @@ class CatPipe:
         for blob in chunkyreader(self.p.stdout, int(spl[2])):
             yield blob
         assert(self.p.stdout.readline() == '\n')
+
+    def _slow_get(self, id):
+        assert(id.find('\n') < 0)
+        assert(id.find('\r') < 0)
+        assert(id[0] != '-')
+        type = _git_capture(['git', 'cat-file', '-t', id]).strip()
+        yield type
+
+        p = subprocess.Popen(['git', 'cat-file', type, id],
+                             stdout=subprocess.PIPE,
+                             preexec_fn = _gitenv)
+        for blob in chunkyreader(p.stdout):
+            yield blob
+        _git_wait('git cat-file', p)
 
     def _join(self, it):
         type = it.next()
