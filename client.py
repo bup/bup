@@ -13,18 +13,36 @@ class Client:
         self.p = None
         self.conn = None
         rs = remote.split(':', 1)
+        nicedir = os.path.split(os.path.abspath(sys.argv[0]))[0]
+        nicedir = re.sub(r':', "_", nicedir)
         if len(rs) == 1:
             (host, dir) = ('NONE', remote)
+            def fixenv():
+                os.environ['PATH'] = ':'.join([nicedir,
+                                               os.environ.get('PATH', '')])
             argv = ['bup', 'server']
         else:
             (host, dir) = rs
-            argv = ['ssh', host, '--', 'bup', 'server']
+            fixenv = None
+            # WARNING: shell quoting security holes are possible here, so we
+            # have to be super careful.  We have to use 'sh -c' because
+            # csh-derived shells can't handle PATH= notation.  We can't
+            # set PATH in advance, because ssh probably replaces it.  We
+            # can't exec *safely* using argv, because *both* ssh and 'sh -c'
+            # allow shellquoting.  So we end up having to double-shellquote
+            # stuff here.
+            escapedir = re.sub(r'([^\w/])', r'\\\\\\\1', nicedir)
+            cmd = r"""
+                       sh -c PATH=%s:'$PATH bup server'
+                   """ % escapedir
+            argv = ['ssh', host, '--', cmd.strip()]
+            #log('argv is: %r\n' % argv)
         (self.host, self.dir) = (host, dir)
         self.cachedir = git.repo('index-cache/%s'
                                  % re.sub(r'[^@:\w]', '_', 
                                           "%s:%s" % (host, dir)))
         try:
-            self.p = p = Popen(argv, stdin=PIPE, stdout=PIPE)
+            self.p = p = Popen(argv, stdin=PIPE, stdout=PIPE, preexec_fn=fixenv)
         except OSError, e:
             raise ClientError, 'exec %r: %s' % (argv[0], e), sys.exc_info()[2]
         self.conn = conn = Conn(p.stdout, p.stdin)
