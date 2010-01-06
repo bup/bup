@@ -6,6 +6,8 @@ BLOB_LWM = 8192*2
 BLOB_MAX = BLOB_LWM*2
 BLOB_HWM = 1024*1024
 split_verbosely = 0
+max_pack_size = 1000*1000*1000
+max_pack_objects = 10*1000*1000
 
 class Buf:
     def __init__(self):
@@ -88,6 +90,8 @@ def hashsplit_iter(w, files):
             continue
 
         if blob:
+            if w.outbytes >= max_pack_size or w.count >= max_pack_objects:
+                w.breakpoint()
             yield (ofs, len(blob), w.new_blob(blob))
             ofs += len(blob)
           

@@ -96,14 +96,19 @@ class Client:
 
         self._indexes_synced = 1
 
+    def _make_objcache(self):
+        ob = self._busy
+        self._busy = None
+        self.sync_indexes()
+        self._busy = ob
+        return git.MultiPackIndex(self.cachedir)
+
     def new_packwriter(self):
-        assert(self._indexes_synced)
         self.check_busy()
         self._busy = 'receive-objects'
-        self.conn.write('receive-objects\n')
-        objcache = git.MultiPackIndex(self.cachedir)
-        return git.PackWriter_Remote(self.conn, objcache = objcache,
-                                     onclose = self._not_busy)
+        return PackWriter_Remote(self.conn,
+                                 objcache_maker = self._make_objcache,
+                                 onclose = self._not_busy)
 
     def read_ref(self, refname):
         self.check_busy()
@@ -133,3 +138,47 @@ class Client:
             yield self.conn.read(sz)
         self.conn.check_ok()
         self._not_busy()
+
+
+class PackWriter_Remote(git.PackWriter):
+    def __init__(self, conn, objcache_maker=None, onclose=None):
+        git.PackWriter.__init__(self, objcache_maker)
+        self.file = conn
+        self.filename = 'remote socket'
+        self.onclose = onclose
+        self._packopen = False
+
+    def _open(self):
+        if not self._packopen:
+            self._make_objcache()
+            self.file.write('receive-objects\n')
+            self._packopen = True
+
+    def _end(self):
+        if self._packopen and self.file:
+            self.file.write('\0\0\0\0')
+            self._packopen = False
+            id = self.file.readline().strip()
+            self.file.check_ok()
+            self.objcache = None
+            return id
+
+    def close(self):
+        id = self._end()
+        self.file = None
+        return id
+
+    def abort(self):
+        raise GitError("don't know how to abort remote pack writing")
+
+    def _raw_write(self, datalist):
+        assert(self.file)
+        if not self._packopen:
+            self._open()
+        data = ''.join(datalist)
+        assert(len(data))
+        self.file.write(struct.pack('!I', len(data)) + data)
+        self.outbytes += len(data)
+        self.count += 1
+
+

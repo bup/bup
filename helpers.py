@@ -71,6 +71,7 @@ class Conn:
         return self.inp.readline()
 
     def write(self, data):
+        #log('%d writing: %d bytes\n' % (os.getpid(), len(data)))
         self.outp.write(data)
 
     def ok(self):
@@ -80,6 +81,7 @@ class Conn:
         self.outp.flush()
         rl = ''
         for rl in linereader(self.inp):
+            #log('%d got line: %r\n' % (os.getpid(), rl))
             if not rl:
                 continue
             elif rl == 'ok':

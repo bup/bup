@@ -47,7 +47,9 @@ def receive_objects(conn, junk):
         if not n:
             log('bup server: received %d object%s.\n' 
                 % (w.count, w.count!=1 and "s" or ''))
-            w.close()
+            id = w.close()
+            conn.write('%s\n' % id)
+            conn.ok()
             return
         buf = conn.read(n)  # object sizes in bup are reasonably small
         #log('read %d bytes\n' % n)
@@ -56,8 +58,7 @@ def receive_objects(conn, junk):
             raise Exception('object read: expected %d bytes, got %d\n'
                             % (n, len(buf)))
         w._raw_write([buf])
-    w.close()
-    conn.ok()
+    # NOTREACHED
 
 
 def read_ref(conn, refname):

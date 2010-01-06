@@ -15,6 +15,8 @@ c,commit   output a commit id
 n,name=    name of backup set to update (if any)
 v,verbose  increase log output (can be used more than once)
 bench      print benchmark timings to stderr
+max-pack-size=  maximum bytes in a single pack
+max-pack-objects=  maximum number of objects in a single pack
 """
 o = options.Options('bup split', optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
@@ -28,6 +30,10 @@ hashsplit.split_verbosely = opt.verbose
 if opt.verbose >= 2:
     git.verbose = opt.verbose - 1
     opt.bench = 1
+if opt.max_pack_size:
+    hashsplit.max_pack_size = int(opt.max_pack_size)
+if opt.max_pack_objects:
+    hashsplit.max_pack_objects = int(opt.max_pack_objects)
 
 start_time = time.time()
 
@@ -35,7 +41,6 @@ refname = opt.name and 'refs/heads/%s' % opt.name or None
 if opt.remote:
     cli = client.Client(opt.remote)
     oldref = refname and cli.read_ref(refname) or None
-    cli.sync_indexes()
     w = cli.new_packwriter()
 else:
     cli = None

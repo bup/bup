@@ -76,11 +76,12 @@ class PackIndex:
 
 class MultiPackIndex:
     def __init__(self, dir):
-        self.packs = []
+        self.dir = dir
         self.also = {}
-        for f in os.listdir(dir):
+        self.packs = []
+        for f in os.listdir(self.dir):
             if f.endswith('.idx'):
-                self.packs.append(PackIndex(os.path.join(dir, f)))
+                self.packs.append(PackIndex(os.path.join(self.dir, f)))
 
     def exists(self, hash):
         if hash in self.also:
@@ -117,28 +118,37 @@ def _shalist_sort_key(ent):
 
 _typemap = dict(blob=3, tree=2, commit=1, tag=8)
 class PackWriter:
-    def __init__(self, objcache=None):
+    def __init__(self, objcache_maker=None):
         self.count = 0
+        self.outbytes = 0
         self.filename = None
         self.file = None
-        self.objcache = objcache or MultiPackIndex(repo('objects/pack'))
+        self.objcache_maker = objcache_maker
+        self.objcache = None
 
     def __del__(self):
         self.close()
 
+    def _make_objcache(self):
+        if not self.objcache:
+            if self.objcache_maker:
+                self.objcache = self.objcache_maker()
+            else:
+                self.objcache = MultiPackIndex(repo('objects/pack'))
+
     def _open(self):
-        assert(not self.file)
-        self.objcache.zap_also()
-        self.filename = repo('objects/bup%d' % os.getpid())
-        self.file = open(self.filename + '.pack', 'w+')
-        self.file.write('PACK\0\0\0\2\0\0\0\0')
+        if not self.file:
+            self._make_objcache()
+            self.filename = repo('objects/bup%d' % os.getpid())
+            self.file = open(self.filename + '.pack', 'w+')
+            self.file.write('PACK\0\0\0\2\0\0\0\0')
 
     def _raw_write(self, datalist):
-        if not self.file:
-            self._open()
+        self._open()
         f = self.file
         for d in datalist:
             f.write(d)
+            self.outbytes += len(d)
         self.count += 1
 
     def _write(self, bin, type, content):
@@ -165,11 +175,18 @@ class PackWriter:
         self._raw_write(out)
         return bin
 
+    def breakpoint(self):
+        id = self._end()
+        self.outbytes = self.count = 0
+        return id
+
     def write(self, type, content):
         return self._write(calc_hash(type, content), type, content)
 
     def maybe_write(self, type, content):
         bin = calc_hash(type, content)
+        if not self.objcache:
+            self._make_objcache()
         if not self.objcache.exists(bin):
             self._write(bin, type, content)
             self.objcache.add(bin)
@@ -209,7 +226,7 @@ class PackWriter:
             f.close()
             os.unlink(self.filename + '.pack')
 
-    def close(self):
+    def _end(self):
         f = self.file
         if not f: return None
         self.file = None
@@ -230,6 +247,7 @@ class PackWriter:
         f.write(sum.digest())
         
         f.close()
+        self.objcache = None
 
         p = subprocess.Popen(['git', 'index-pack', '-v',
                               '--index-version=2',
@@ -245,32 +263,8 @@ class PackWriter:
         os.rename(self.filename + '.idx', nameprefix + '.idx')
         return nameprefix
 
-
-class PackWriter_Remote(PackWriter):
-    def __init__(self, conn, objcache=None, onclose=None):
-        PackWriter.__init__(self, objcache)
-        self.file = conn
-        self.filename = 'remote socket'
-        self.onclose = onclose
-
-    def _open(self):
-        assert(not "can't reopen a PackWriter_Remote")
-
     def close(self):
-        if self.file:
-            self.file.write('\0\0\0\0')
-            if self.onclose:
-                self.onclose()
-        self.file = None
-
-    def abort(self):
-        raise GitError("don't know how to abort remote pack writing")
-
-    def _raw_write(self, datalist):
-        assert(self.file)
-        data = ''.join(datalist)
-        assert(len(data))
-        self.file.write(struct.pack('!I', len(data)) + data)
+        return self._end()
 
 
 def _git_date(date):
