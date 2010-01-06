@@ -55,7 +55,7 @@ def receive_objects(conn, junk):
             w.abort()
             raise Exception('object read: expected %d bytes, got %d\n'
                             % (n, len(buf)))
-        w._raw_write(buf)
+        w._raw_write([buf])
     w.close()
     conn.ok()
 
