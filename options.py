@@ -1,4 +1,4 @@
-import textwrap, getopt
+import textwrap, getopt, re
 from helpers import *
 
 class OptDict:
@@ -51,7 +51,9 @@ class Options:
                 flagl = flags.split(',')
                 flagl_nice = []
                 for f in flagl:
+                    f_nice = re.sub(r'\W', '_', f)
                     self._aliases[f] = flagl[0]
+                    self._aliases[f_nice] = flagl[0]
                     self._hasparms[f] = has_parm
                     if len(f) == 1:
                         self._shortopts += f + (has_parm and ':' or '')

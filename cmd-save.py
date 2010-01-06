@@ -119,7 +119,6 @@ refname = opt.name and 'refs/heads/%s' % opt.name or None
 if opt.remote:
     cli = client.Client(opt.remote)
     oldref = refname and cli.read_ref(refname) or None
-    cli.sync_indexes()
     w = cli.new_packwriter()
 else:
     cli = None

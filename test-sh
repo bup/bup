@@ -7,7 +7,7 @@ export BUP_DIR="$TOP/buptest.tmp"
 
 bup()
 {
-	"$TOP/bup" "$@"
+    "$TOP/bup" "$@"
 }
 
 set -x
@@ -16,14 +16,19 @@ bup init
 bup split --bench -b <testfile1 >tags1.tmp
 bup split -vvvv -b testfile2 >tags2.tmp
 bup split -t testfile2 >tags2t.tmp
-bup split -c testfile2 >tags2c.tmp
+bup split -t testfile2 --fanout 3 >tags2tf.tmp
+bup split -r "$BUP_DIR" -c testfile2 >tags2c.tmp
 diff -u tags1.tmp tags2.tmp || true
+if diff -q tags2t.tmp tags2tf.tmp; then
+    echo "fanout tree same as non-fanout tree!?"
+    false
+fi
 wc -c testfile1 testfile2
 wc -l tags1.tmp tags2.tmp
 bup join $(cat tags1.tmp) >out1.tmp
 bup join <tags2.tmp >out2.tmp
 bup join <tags2t.tmp >out2t.tmp
-bup join <tags2c.tmp >out2c.tmp
+bup join -r "$BUP_DIR" <tags2c.tmp >out2c.tmp
 diff -u testfile1 out1.tmp
 diff -u testfile2 out2.tmp
 diff -u testfile2 out2t.tmp
@@ -32,10 +37,13 @@ diff -u testfile2 out2c.tmp
 (
     set -e
     cd "$BUP_DIR" || exit 1
-    git repack -Ad
-    git prune
+    #git repack -Ad
+    #git prune
     (cd "$TOP/t/sampledata" && bup save -vvn master .) || exit 1
-    n=$(git fsck --full --strict 2>&1 | tee -a /dev/stderr | wc -l)
+    n=$(git fsck --full --strict 2>&1 | 
+	  egrep -v 'dangling (commit|tree)' |
+	  tee -a /dev/stderr | 
+	  wc -l)
     if [ "$n" != 0 ]; then
         echo "git fsck error."
         exit 5

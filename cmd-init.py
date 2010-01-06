@@ -20,6 +20,5 @@ if opt.remote:
     git.check_repo_or_die()
     cli = client.Client(opt.remote, create=True)
     cli.close()
-    exit(0)  # if close() didn't throw an exception
 else:
-    exit(git.init_repo())
+    git.init_repo()
