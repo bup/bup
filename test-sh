@@ -18,6 +18,7 @@ bup split -vvvv -b testfile2 >tags2.tmp
 bup split -t testfile2 >tags2t.tmp
 bup split -t testfile2 --fanout 3 >tags2tf.tmp
 bup split -r "$BUP_DIR" -c testfile2 >tags2c.tmp
+ls -lR | bup split -r "$BUP_DIR" -c --fanout 3 --max-pack-objects 3 -n lslr
 diff -u tags1.tmp tags2.tmp || true
 if diff -q tags2t.tmp tags2tf.tmp; then
     echo "fanout tree same as non-fanout tree!?"

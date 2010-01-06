@@ -199,6 +199,8 @@ class PackWriter_Remote(git.PackWriter):
             id = self.file.readline().strip()
             self.file.check_ok()
             self.objcache = None
+            if self.onclose:
+                self.onclose()
             return id
 
     def close(self):
