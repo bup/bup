@@ -1,4 +1,5 @@
 PYINCLUDE:=$(shell python2.5-config --includes)
+PYLIB:=$(shell python2.5-config --lib)
 CFLAGS=-Wall -g -O2 -Werror $(PYINCLUDE) -g -fPIC
 
 default: all
@@ -8,7 +9,7 @@ all: bup-split bup-join bup-save bup-init bup-server bup randomgen chashsplit.so
 randomgen: randomgen.o
 
 chashsplit.so: chashsplitmodule.o
-	$(CC) -shared -o $@ $<
+	$(CC) -shared -o $@ $< $(PYLIB)
 	
 runtests: all
 	./wvtest.py $(wildcard t/t*.py)
