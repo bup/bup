@@ -44,7 +44,7 @@ if __name__ != "__main__":   # we're imported as a module
     
     def _code():
         (filename, line, func, text) = traceback.extract_stack()[-3]
-        text = re.sub(r'^\w+\((.*)\)$', r'\1', text);
+        text = re.sub(r'^\w+\((.*)\)$', r'\1', unicode(text));
         return text
     
     
