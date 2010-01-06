@@ -82,13 +82,13 @@ class Conn:
         rl = ''
         for rl in linereader(self.inp):
             #log('%d got line: %r\n' % (os.getpid(), rl))
-            if not rl:
+            if not rl:  # empty line
                 continue
             elif rl == 'ok':
                 return True
             else:
-                break
-        raise Exception('expected "ok", got %r' % rl)
+                raise Exception('expected "ok", got %r' % rl)
+        raise Exception('server exited unexpectedly; see errors above')
 
 
 def linereader(f):

@@ -1,4 +1,4 @@
-import re, struct
+import re, struct, errno
 import git
 from helpers import *
 from subprocess import Popen, PIPE
@@ -10,6 +10,8 @@ class Client:
     def __init__(self, remote, create=False):
         self._busy = None
         self._indexes_synced = 0
+        self.p = None
+        self.conn = None
         rs = remote.split(':', 1)
         if len(rs) == 1:
             (host, dir) = ('NONE', remote)
@@ -21,7 +23,10 @@ class Client:
         self.cachedir = git.repo('index-cache/%s'
                                  % re.sub(r'[^@:\w]', '_', 
                                           "%s:%s" % (host, dir)))
-        self.p = p = Popen(argv, stdin=PIPE, stdout=PIPE)
+        try:
+            self.p = p = Popen(argv, stdin=PIPE, stdout=PIPE)
+        except OSError, e:
+            raise ClientError, 'exec %r: %s' % (argv[0], e), sys.exc_info()[2]
         self.conn = conn = Conn(p.stdout, p.stdin)
         if dir:
             dir = re.sub(r'[\r\n]', ' ', dir)
@@ -29,10 +34,16 @@ class Client:
                 conn.write('init-dir %s\n' % dir)
             else:
                 conn.write('set-dir %s\n' % dir)
-            conn.check_ok()
+            self.check_ok()
 
     def __del__(self):
-        self.close()
+        try:
+            self.close()
+        except IOError, e:
+            if e.errno == errno.EPIPE:
+                pass
+            else:
+                raise
 
     def close(self):
         if self.conn and not self._busy:
@@ -48,6 +59,15 @@ class Client:
                 raise ClientError('server tunnel returned exit code %d' % rv)
         self.conn = None
         self.p = None
+
+    def check_ok(self):
+        rv = self.p.poll()
+        if rv != None:
+            raise ClientError('server exited unexpectedly with code %r' % rv)
+        try:
+            self.conn.check_ok()
+        except Exception, e:
+            raise ClientError, e, sys.exc_info()[2]
 
     def check_busy(self):
         if self._busy:
@@ -71,7 +91,7 @@ class Client:
             assert(line.find('/') < 0)
             if not os.path.exists(os.path.join(self.cachedir, line)):
                 needed[line] = 1
-        conn.check_ok()
+        self.check_ok()
 
         for f in os.listdir(self.cachedir):
             if f.endswith('.idx') and not f in all:
@@ -90,7 +110,7 @@ class Client:
             f = open(fn + '.tmp', 'w')
             for b in chunkyreader(conn, n):
                 f.write(b)
-            conn.check_ok()
+            self.check_ok()
             f.close()
             os.rename(fn + '.tmp', fn)
 
@@ -114,7 +134,7 @@ class Client:
         self.check_busy()
         self.conn.write('read-ref %s\n' % refname)
         r = self.conn.readline().strip()
-        self.conn.check_ok()
+        self.check_ok()
         if r:
             assert(len(r) == 40)   # hexified sha
             return r.decode('hex')
@@ -126,7 +146,7 @@ class Client:
         self.conn.write('update-ref %s\n%s\n%s\n' 
                         % (refname, newval.encode('hex'),
                            (oldval or '').encode('hex')))
-        self.conn.check_ok()
+        self.check_ok()
 
     def cat(self, id):
         self.check_busy()
@@ -136,7 +156,7 @@ class Client:
             sz = struct.unpack('!I', self.conn.read(4))[0]
             if not sz: break
             yield self.conn.read(sz)
-        self.conn.check_ok()
+        self.check_ok()
         self._not_busy()
 
 
