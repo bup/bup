@@ -17,6 +17,9 @@ runtests: all
 runtests-cmdline: all
 	./test-sh
 	
+stupid:
+	PATH=/bin:/usr/bin $(MAKE) test
+	
 test: all runtests-cmdline
 	./wvtestrun $(MAKE) runtests
 
