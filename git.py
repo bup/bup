@@ -320,9 +320,11 @@ def init_repo(path=None):
     d = repo()
     if os.path.exists(d) and not os.path.isdir(os.path.join(d, '.')):
         raise GitError('"%d" exists but is not a directory\n' % d)
-    p = subprocess.Popen(['git', 'init', '--bare'], stdout=sys.stderr,
+    p = subprocess.Popen(['git', '--bare', 'init'], stdout=sys.stderr,
                          preexec_fn = _gitenv)
-    return p.wait()
+    rv = p.wait()
+    if rv != 0:
+        raise GitError('git init returned %d\n' % rv)
 
 
 def check_repo_or_die(path=None):
