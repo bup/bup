@@ -45,7 +45,7 @@ diff -u testfile2 out2c.tmp
 	  egrep -v 'dangling (commit|tree)' |
 	  tee -a /dev/stderr | 
 	  wc -l)
-    if [ "$n" != 0 ]; then
+    if [ "$n" -ne 0 ]; then
         echo "git fsck error."
         exit 5
     fi
