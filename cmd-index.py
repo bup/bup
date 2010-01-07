@@ -177,14 +177,14 @@ def handle_path(ri, wi, dir, name, pst):
             OsFile(name).fchdir()
         except OSError, e:
             add_error(Exception('in %s: %s' % (dir, str(e))))
-            return
+            return 0
         try:
             try:
                 ld = os.listdir('.')
                 #log('* %r: %r\n' % (name, ld))
             except OSError, e:
                 add_error(Exception('in %s: %s' % (path, str(e))))
-                return
+                return 0
             lds = []
             for p in ld:
                 try:
@@ -231,6 +231,7 @@ def _next(i):
 
 
 def merge_indexes(out, r1, r2):
+    log('Merging indexes.\n')
     i1 = iter(r1)
     i2 = iter(r2)
 
@@ -278,10 +279,10 @@ def update_index(path):
     (dir, name) = os.path.split(rpath)
     if dir and dir[-1] != '/':
         dir += '/'
-    if stat.S_ISDIR(st.st_mode) and rpath[-1] != '/':
+    if stat.S_ISDIR(st.st_mode) and (not rpath or rpath[-1] != '/'):
         name += '/'
     rig = MergeGetter(ri)
-    OsFile(dir).fchdir()
+    OsFile(dir or '/').fchdir()
     dirty = handle_path(rig, wi, dir, name, st)
 
     # make sure all the parents of the updated path exist and are invalidated
@@ -315,8 +316,9 @@ def update_index(path):
 
 
 optspec = """
-bup index [-v] <filenames...>
+bup index [-vp] <filenames...>
 --
+p,print    print index after updating
 v,verbose  increase log output (can be used more than once)
 """
 o = options.Options('bup index', optspec)
@@ -325,14 +327,15 @@ o = options.Options('bup index', optspec)
 for path in extra:
     update_index(path)
 
-for ent in IndexReader('index'):
-    if not ent.flags & IX_EXISTS:
-        print 'D ' + ent.name
-    elif not ent.flags & IX_HASHVALID:
-        print 'M ' + ent.name
-    else:
-        print '  ' + ent.name
-    #print repr(ent)
+if opt['print']:
+    for ent in IndexReader('index'):
+        if not ent.flags & IX_EXISTS:
+            print 'D ' + ent.name
+        elif not ent.flags & IX_HASHVALID:
+            print 'M ' + ent.name
+        else:
+            print '  ' + ent.name
+        #print repr(ent)
 
 if saved_errors:
     log('WARNING: %d errors encountered.\n' % len(saved_errors))
