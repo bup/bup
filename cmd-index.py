@@ -165,7 +165,7 @@ def add_error(e):
 # the use of fchdir() and lstat() are for two reasons:
 #  - help out the kernel by not making it repeatedly look up the absolute path
 #  - avoid race conditions caused by doing listdir() on a changing symlink
-def handle_path(ri, wi, dir, name, pst):
+def handle_path(ri, wi, dir, name, pst, xdev):
     dirty = 0
     path = dir + name
     #log('handle_path(%r,%r)\n' % (dir, name))
@@ -192,11 +192,15 @@ def handle_path(ri, wi, dir, name, pst):
                 except OSError, e:
                     add_error(Exception('in %s: %s' % (path, str(e))))
                     continue
+                if xdev != None and st.st_dev != xdev:
+                    log('Skipping %r: different filesystem.\n' 
+                        % os.path.realpath(p))
+                    continue
                 if stat.S_ISDIR(st.st_mode):
                     p += '/'
                 lds.append((p, st))
             for p,st in reversed(sorted(lds)):
-                dirty += handle_path(ri, wi, path, p, st)
+                dirty += handle_path(ri, wi, path, p, st, xdev)
         finally:
             os.chdir('..')
     #log('endloop: ri.cur:%r path:%r\n' % (ri.cur.name, path))
@@ -273,6 +277,10 @@ def update_index(path):
     wi = IndexWriter('index')
     rpath = os.path.realpath(path)
     st = os.lstat(rpath)
+    if opt.xdev:
+        xdev = st.st_dev
+    else:
+        xdev = None
     f = OsFile('.')
     if rpath[-1] == '/':
         rpath = rpath[:-1]
@@ -283,7 +291,7 @@ def update_index(path):
         name += '/'
     rig = MergeGetter(ri)
     OsFile(dir or '/').fchdir()
-    dirty = handle_path(rig, wi, dir, name, st)
+    dirty = handle_path(rig, wi, dir, name, st, xdev)
 
     # make sure all the parents of the updated path exist and are invalidated
     # if appropriate.
@@ -319,6 +327,7 @@ optspec = """
 bup index [-vp] <filenames...>
 --
 p,print    print index after updating
+x,xdev,one-file-system  don't cross filesystem boundaries
 v,verbose  increase log output (can be used more than once)
 """
 o = options.Options('bup index', optspec)
