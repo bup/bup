@@ -1,15 +1,24 @@
 PYINCLUDE:=$(shell python2.5-config --includes)
 PYLIB:=$(shell python2.5-config --lib)
+OS:=$(shell uname)
+MACHINE:=$(shell uname -m)
 CFLAGS=-Wall -g -O2 -Werror $(PYINCLUDE) -g -fPIC
+SHARED=-shared
+
+ifeq (${OS},Darwin)
+  CFLAGS += -arch $(MACHINE)
+  SHARED = -dynamiclib
+endif
 
 default: all
 
 all: bup-split bup-join bup-save bup-init bup-server bup randomgen chashsplit.so
 
 randomgen: randomgen.o
+	$(CC) $(CFLAGS) -o $@ $<
 
 chashsplit.so: chashsplitmodule.o
-	$(CC) -shared -o $@ $< $(PYLIB)
+	$(CC) $(CFLAGS) $(SHARED) -o $@ $< $(PYLIB)
 	
 runtests: all
 	./wvtest.py $(wildcard t/t*.py)
@@ -24,7 +33,7 @@ test: all runtests-cmdline
 	./wvtestrun $(MAKE) runtests
 
 %: %.o
-	gcc -o $@ $< $(LDFLAGS) $(LIBS)
+	$(CC) $(CFLAGS) (LDFLAGS) -o $@ $< $(LIBS)
 	
 bup: bup.py
 	rm -f $@
