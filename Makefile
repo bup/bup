@@ -12,7 +12,8 @@ endif
 
 default: all
 
-all: bup-split bup-join bup-save bup-init bup-server bup randomgen chashsplit.so
+all: bup-split bup-join bup-save bup-init bup-server bup-index \
+	bup randomgen chashsplit.so
 
 randomgen: randomgen.o
 	$(CC) $(CFLAGS) -o $@ $<
