@@ -274,9 +274,11 @@ class MergeGetter:
         return self.cur
 
 
-def update_index(path):
+def update_index(paths):
     ri = IndexReader(indexfile)
     wi = IndexWriter(indexfile)
+    rig = MergeGetter(ri)
+    
     rpath = os.path.realpath(path)
     st = os.lstat(rpath)
     if opt.xdev:
@@ -291,7 +293,6 @@ def update_index(path):
         dir += '/'
     if stat.S_ISDIR(st.st_mode) and (not rpath or rpath[-1] != '/'):
         name += '/'
-    rig = MergeGetter(ri)
     OsFile(dir or '/').fchdir()
     dirty = handle_path(rig, wi, dir, name, st, xdev)
 
@@ -341,7 +342,22 @@ o = options.Options('bup index', optspec)
 
 indexfile = opt.indexfile or 'index'
 
+xpaths = []
 for path in extra:
+    rp = os.path.realpath(path)
+    st = os.lstat(rp)
+    if stat.S_ISDIR(st.st_mode) and not rp.endswith('/'):
+        rp += '/'
+    xpaths.append(rp)
+
+paths = []
+for path in reversed(sorted(xpaths)):
+    if paths and path.endswith('/') and paths[-1].startswith(path):
+        paths[-1] = path
+    else:
+        paths.append(path)
+
+for path in paths:
     update_index(path)
 
 if opt.fake_valid and not extra:
