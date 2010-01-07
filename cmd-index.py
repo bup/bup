@@ -145,6 +145,8 @@ class IndexWriter:
         self.f.write(data)
 
     def add_ixentry(self, e):
+        if opt.fake_valid:
+            e.flags |= IX_HASHVALID
         if self.lastfile:
             assert(cmp(self.lastfile, e.name) > 0) # reverse order only
         self.lastfile = e.name
@@ -273,8 +275,8 @@ class MergeGetter:
 
 
 def update_index(path):
-    ri = IndexReader('index')
-    wi = IndexWriter('index')
+    ri = IndexReader(indexfile)
+    wi = IndexWriter(indexfile)
     rpath = os.path.realpath(path)
     st = os.lstat(rpath)
     if opt.xdev:
@@ -317,33 +319,50 @@ def update_index(path):
     
     f.fchdir()
     ri.save()
-    mi = IndexWriter('index')
+    mi = IndexWriter(indexfile)
     merge_indexes(mi, ri, wi.new_reader())
     wi.abort()
     mi.close()
 
 
 optspec = """
-bup index [-vp] <filenames...>
+bup index [options...] <filenames...>
 --
 p,print    print index after updating
+m,modified print only modified files (implies -p)
 x,xdev,one-file-system  don't cross filesystem boundaries
+fake-valid    mark all index entries as up-to-date even if they aren't
+f,indexfile=  the name of the index file (default 'index')
+s,status   print each filename with a status char (A/M/D) (implies -p)
 v,verbose  increase log output (can be used more than once)
 """
 o = options.Options('bup index', optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
 
+indexfile = opt.indexfile or 'index'
+
 for path in extra:
     update_index(path)
 
-if opt['print']:
-    for ent in IndexReader('index'):
-        if not ent.flags & IX_EXISTS:
-            print 'D ' + ent.name
-        elif not ent.flags & IX_HASHVALID:
-            print 'M ' + ent.name
+if opt.fake_valid and not extra:
+    mi = IndexWriter(indexfile)
+    merge_indexes(mi, IndexReader(indexfile),
+                  IndexWriter(indexfile).new_reader())
+    mi.close()
+
+if opt['print'] or opt.status or opt.modified:
+    for ent in IndexReader(indexfile):
+        if opt.modified and ent.flags & IX_HASHVALID:
+            continue
+        if opt.status:
+            if not ent.flags & IX_EXISTS:
+                print 'D ' + ent.name
+            elif not ent.flags & IX_HASHVALID:
+                print 'M ' + ent.name
+            else:
+                print '  ' + ent.name
         else:
-            print '  ' + ent.name
+            print ent.name
         #print repr(ent)
 
 if saved_errors:
