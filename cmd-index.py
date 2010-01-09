@@ -3,11 +3,16 @@ import sys, re, errno, stat, tempfile, struct, mmap
 import options
 from helpers import *
 
+INDEX_HDR = 'BUPI\0\0\0\1'
 INDEX_SIG = '!IIIIIQ20sH'
 ENTLEN = struct.calcsize(INDEX_SIG)
 
 IX_EXISTS = 0x8000
 IX_HASHVALID = 0x4000
+
+
+class IndexError(Exception):
+    pass
 
 
 class OsFile:
@@ -82,15 +87,20 @@ class IndexReader:
             else:
                 raise
         if f:
+            b = f.read(len(INDEX_HDR))
+            if b != INDEX_HDR:
+                raise IndexError('%s: header: expected %r, got %r'
+                                 % (filename, INDEX_HDR, b))
             st = os.fstat(f.fileno())
-        if f and st.st_size:
-            self.m = mmap.mmap(f.fileno(), 0,
-                               mmap.MAP_SHARED, mmap.PROT_READ|mmap.PROT_WRITE)
-            f.close()  # map will persist beyond file close
-            self.writable = True
+            if st.st_size:
+                self.m = mmap.mmap(f.fileno(), 0,
+                                   mmap.MAP_SHARED,
+                                   mmap.PROT_READ|mmap.PROT_WRITE)
+                f.close()  # map will persist beyond file close
+                self.writable = True
 
     def __iter__(self):
-        ofs = 0
+        ofs = len(INDEX_HDR)
         while ofs < len(self.m):
             eon = self.m.find('\0', ofs)
             assert(eon >= 0)
@@ -118,6 +128,7 @@ class IndexWriter:
         (dir,name) = os.path.split(filename)
         (ffd,self.tmpname) = tempfile.mkstemp('.tmp', filename, dir)
         self.f = os.fdopen(ffd, 'wb', 65536)
+        self.f.write(INDEX_HDR)
 
     def __del__(self):
         self.abort()
