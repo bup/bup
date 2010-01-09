@@ -46,13 +46,13 @@ class IxEntry:
                    self.ctime, self.mtime, self.uid, self.gid,
                    self.size, self.flags))
 
-    def pack(self):
+    def packed(self):
         return struct.pack(INDEX_SIG, self.dev, self.ctime, self.mtime,
                            self.uid, self.gid, self.size, self.sha,
                            self.flags)
 
     def repack(self):
-        self._m[self._ofs:self._ofs+ENTLEN] = self.pack()
+        self._m[self._ofs:self._ofs+ENTLEN] = self.packed()
 
     def from_stat(self, st):
         old = (self.dev, self.ctime, self.mtime,
@@ -71,6 +71,9 @@ class IxEntry:
             return 1  # dirty
         else:
             return 0  # not dirty
+
+    def __cmp__(a, b):
+        return cmp(a.name, b.name)
             
 
 class IndexReader:
@@ -99,6 +102,9 @@ class IndexReader:
                 f.close()  # map will persist beyond file close
                 self.writable = True
 
+    def __del__(self):
+        self.save()
+
     def __iter__(self):
         ofs = len(INDEX_HDR)
         while ofs < len(self.m):
@@ -111,6 +117,35 @@ class IndexReader:
     def save(self):
         if self.writable:
             self.m.flush()
+
+
+# Read all the iters in order; when more than one iter has the same entry,
+# the *later* iter in the list wins.  (ie. more recent iter entries replace
+# older ones)
+def _last_writer_wins_iter(iters):
+    l = []
+    for e in iters:
+        it = iter(e)
+        try:
+            l.append([it.next(), it])
+        except StopIteration:
+            pass
+    del iters  # to avoid accidents
+    while l:
+        l = list(sorted(l))
+        mv = l[0][0]
+        mi = [0]
+        for (i,(v,it)) in enumerate(l):
+            if v > mv:
+                mv = v
+                mi = [i]
+        yield mv
+        for i in mi:
+            try:
+                l[i][0] = l[i][1].next()
+            except StopIteration:
+                l[i] = None
+        l = filter(None, l)
 
 
 def ix_encode(st, sha, flags):
@@ -158,10 +193,11 @@ class IndexWriter:
     def add_ixentry(self, e):
         if opt.fake_valid:
             e.flags |= IX_HASHVALID
-        if self.lastfile:
-            assert(cmp(self.lastfile, e.name) > 0) # reverse order only
+        if self.lastfile and self.lastfile <= e.name:
+            raise IndexError('%r must come before %r' 
+                             % (e.name, self.lastfile))
         self.lastfile = e.name
-        data = e.name + '\0' + e.pack()
+        data = e.name + '\0' + e.packed()
         self.f.write(data)
 
     def new_reader(self):
@@ -240,35 +276,11 @@ def handle_path(ri, wi, dir, name, pst, xdev):
     return dirty
 
 
-def _next(i):
-    try:
-        return i.next()
-    except StopIteration:
-        return None
-
-
 def merge_indexes(out, r1, r2):
     log('Merging indexes.\n')
-    i1 = iter(r1)
-    i2 = iter(r2)
-
-    e1 = _next(i1)
-    e2 = _next(i2)
-    while e1 or e2:
-        if e1 and (not e2 or e2.name < e1.name):
-            if e1.flags & IX_EXISTS:
-                out.add_ixentry(e1)
-            e1 = _next(i1)
-        elif e2 and (not e1 or e1.name < e2.name):
-            if e2.flags & IX_EXISTS:
-                out.add_ixentry(e2)
-            e2 = _next(i2)
-        elif e1.name == e2.name:
-            assert(0)  # duplicate name? should never happen anymore.
-            if e2.flags & IX_EXISTS:
-                out.add_ixentry(e2)
-            e1 = _next(i1)
-            e2 = _next(i2)
+    for e in _last_writer_wins_iter([r1, r2]):
+        if e.flags & IX_EXISTS:
+            out.add_ixentry(e)
 
 
 class MergeGetter:
