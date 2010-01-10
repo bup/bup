@@ -7,7 +7,7 @@ ifneq ($(OS),CYGWIN_NT-5.1)
   CFLAGS += -fPIC
 endif
 SHARED=-shared
-SOEXT:=so
+SOEXT:=.so
 
 ifeq (${OS},Darwin)
   CFLAGS += -arch $(MACHINE)
@@ -15,18 +15,19 @@ ifeq (${OS},Darwin)
 endif
 ifeq ($(OS),CYGWIN_NT-5.1)
   LDFLAGS += -L/usr/bin
-  SOEXT:=dll
+  EXT:=.exe
+  SOEXT:=.dll
 endif
 
 default: all
 
 all: bup-split bup-join bup-save bup-init bup-server bup-index bup-tick \
-	bup randomgen chashsplit.$(SOEXT)
+	bup randomgen$(EXT) chashsplit$(SOEXT)
 
-randomgen: randomgen.o
+randomgen$(EXT): randomgen.o
 	$(CC) $(CFLAGS) -o $@ $<
 
-chashsplit.$(SOEXT): chashsplitmodule.o
+chashsplit$(SOEXT): chashsplitmodule.o
 	$(CC) $(CFLAGS) $(LDFLAGS) $(SHARED) -o $@ $< $(PYLIB)
 	
 runtests: all runtests-python runtests-cmdline
@@ -63,6 +64,6 @@ bup-%: cmd-%.sh
 
 clean:
 	rm -f *.o *.so *.dll *~ .*~ *.pyc */*.pyc */*~ \
-		bup bup-* randomgen \
+		bup bup-* randomgen$(EXT) \
 		out[12] out2[tc] tags[12] tags2[tc]
 	rm -rf *.tmp
