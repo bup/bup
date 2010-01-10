@@ -373,18 +373,26 @@ def update_index(path):
 
 
 optspec = """
-bup index [options...] <filenames...>
+bup index <-p|s|m|u> [options...] <filenames...>
 --
-p,print    print index after updating
-m,modified print only modified files (implies -p)
+p,print    print the index entries for the given names (also works with -u)
+m,modified print only added/deleted/modified files (implies -p)
+s,status   print each filename with a status char (A/M/D) (implies -p)
+u,update   (recursively) update the index entries for the given filenames
 x,xdev,one-file-system  don't cross filesystem boundaries
 fake-valid    mark all index entries as up-to-date even if they aren't
 f,indexfile=  the name of the index file (default 'index')
-s,status   print each filename with a status char (A/M/D) (implies -p)
 v,verbose  increase log output (can be used more than once)
 """
 o = options.Options('bup index', optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
+
+if not (opt.modified or opt['print'] or opt.status or opt.update):
+    log('bup index: you must supply one or more of -p, -s, -m, or -u\n')
+    exit(97)
+if opt.fake_valid and not opt.update:
+    log('bup index: --fake-valid is meaningless without -u\n')
+    exit(96)
 
 indexfile = opt.indexfile or 'index'
 
@@ -394,40 +402,49 @@ for path in extra:
     st = os.lstat(rp)
     if stat.S_ISDIR(st.st_mode) and not rp.endswith('/'):
         rp += '/'
-    xpaths.append(rp)
+        path += '/'
+    xpaths.append((rp, path))
 
 paths = []
-for path in reversed(sorted(xpaths)):
-    if paths and path.endswith('/') and paths[-1].startswith(path):
-        paths[-1] = path
+for (rp, path) in reversed(sorted(xpaths)):
+    if paths and rp.endswith('/') and paths[-1][0].startswith(rp):
+        paths[-1] = (rp, path)
     else:
-        paths.append(path)
+        paths.append((rp, path))
 
-for path in paths:
-    update_index(path)
-
-if opt.fake_valid and not extra:
-    mi = IndexWriter(indexfile)
-    merge_indexes(mi, IndexReader(indexfile),
-                  IndexWriter(indexfile).new_reader())
-    mi.close()
+if opt.update:
+    if not paths:
+        log('bup index: update (-u) requested but no paths given\n')
+        exit(96)
+    for (rp, path) in paths:
+        update_index(rp)
 
 if opt['print'] or opt.status or opt.modified:
+    pi = iter(paths or [('/', '/')])
+    (rpin, pin) = pi.next()
     for ent in IndexReader(indexfile):
+        if ent.name < rpin:
+            try:
+                (rpin, pin) = pi.next()
+            except StopIteration:
+                break  # no more files can possibly match
+        elif not ent.name.startswith(rpin):
+            continue   # not interested
         if opt.modified and ent.flags & IX_HASHVALID:
             continue
+        name = pin + ent.name[len(rpin):]
         if opt.status:
             if not ent.flags & IX_EXISTS:
-                print 'D ' + ent.name
+                print 'D ' + name
             elif not ent.flags & IX_HASHVALID:
                 if ent.sha == EMPTY_SHA:
-                    print 'A ' + ent.name
+                    print 'A ' + name
                 else:
-                    print 'M ' + ent.name
+                    print 'M ' + name
             else:
-                print '  ' + ent.name
+                print '  ' + name
         else:
-            print ent.name
+            print name
         #print repr(ent)
 
 if saved_errors:
