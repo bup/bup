@@ -398,9 +398,11 @@ class CatPipe:
         assert(id[0] != '-')
         self.p.stdin.write('%s\n' % id)
         hdr = self.p.stdout.readline()
+        if hdr.endswith(' missing\n'):
+            raise GitError('blob %r is missing' % id)
         spl = hdr.split(' ')
-        assert(len(spl) == 3)
-        assert(len(spl[0]) == 40)
+        if len(spl) != 3 or len(spl[0]) != 40:
+            raise GitError('expected blob, got %r' % spl)
         (hex, type, size) = spl
         yield type
         for blob in chunkyreader(self.p.stdout, int(spl[2])):
@@ -437,7 +439,8 @@ class CatPipe:
             for blob in self.join(treeline[5:]):
                 yield blob
         else:
-            raise GitError('unknown object type %r' % type)
+            raise GitError('invalid object type %r: expected blob/tree/commit'
+                           % type)
 
     def join(self, id):
         for d in self._join(self.get(id)):

@@ -21,16 +21,18 @@ randomgen: randomgen.o
 chashsplit.so: chashsplitmodule.o
 	$(CC) $(CFLAGS) $(SHARED) -o $@ $< $(PYLIB)
 	
-runtests: all
+runtests: all runtests-python runtests-cmdline
+
+runtests-python:
 	./wvtest.py $(wildcard t/t*.py)
 	
 runtests-cmdline: all
-	./test-sh
+	t/test.sh
 	
 stupid:
 	PATH=/bin:/usr/bin $(MAKE) test
 	
-test: all runtests-cmdline
+test: all
 	./wvtestrun $(MAKE) runtests
 
 %: %.o

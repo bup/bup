@@ -26,5 +26,6 @@ if opt.remote:
     cli.close()
 else:
     for id in extra:
+        #log('id=%r\n' % id)
         for blob in git.cat(id):
             sys.stdout.write(blob)
