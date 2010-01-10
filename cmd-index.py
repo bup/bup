@@ -162,6 +162,7 @@ def ix_encode(st, sha, flags):
 class IndexWriter:
     def __init__(self, filename):
         self.f = None
+        self.count = 0
         self.lastfile = None
         self.filename = None
         self.filename = filename = os.path.realpath(filename)
@@ -187,6 +188,10 @@ class IndexWriter:
             f.close()
             os.rename(self.tmpname, self.filename)
 
+    def _write(self, data):
+        self.f.write(data)
+        self.count += 1
+
     def add(self, name, st, hashgen=None):
         #log('ADDING %r\n' % name)
         if self.lastfile:
@@ -201,7 +206,7 @@ class IndexWriter:
         else:
             sha = EMPTY_SHA
         data = name + '\0' + ix_encode(st, sha, flags)
-        self.f.write(data)
+        self._write(data)
 
     def add_ixentry(self, e):
         if self.lastfile and self.lastfile <= e.name:
@@ -209,7 +214,7 @@ class IndexWriter:
                              % (e.name, self.lastfile))
         self.lastfile = e.name
         data = e.name + '\0' + e.packed()
-        self.f.write(data)
+        self._write(data)
 
     def new_reader(self):
         self.f.flush()
@@ -297,7 +302,7 @@ def handle_path(ri, wi, dir, name, pst, xdev, can_delete_siblings):
 
 
 def merge_indexes(out, r1, r2):
-    log('Merging indexes.\n')
+    log('bup: merging indexes.\n')
     for e in _last_writer_wins_iter([r1, r2]):
         #if e.flags & IX_EXISTS:
             out.add_ixentry(e)
@@ -366,10 +371,11 @@ def update_index(path):
     
     f.fchdir()
     ri.save()
-    mi = IndexWriter(indexfile)
-    merge_indexes(mi, ri, wi.new_reader())
+    if wi.count:
+        mi = IndexWriter(indexfile)
+        merge_indexes(mi, ri, wi.new_reader())
+        mi.close()
     wi.abort()
-    mi.close()
 
 
 optspec = """
