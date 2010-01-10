@@ -94,7 +94,7 @@ WVSTART "save/fsck"
     cd "$BUP_DIR" || exit 1
     #git repack -Ad
     #git prune
-    (cd "$TOP/t/sampledata" && WVPASS bup save -vvn master .) || WVFAIL
+    (cd "$TOP/t/sampledata" && WVPASS bup save -vvn master /) || WVFAIL
     n=$(git fsck --full --strict 2>&1 | 
 	  egrep -v 'dangling (commit|tree)' |
 	  tee -a /dev/stderr | 
