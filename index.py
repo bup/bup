@@ -94,7 +94,7 @@ class Reader:
                 self.writable = True
 
     def __del__(self):
-        self.save()
+        self.close()
 
     def __iter__(self):
         tstart = int(time.time())
@@ -109,6 +109,12 @@ class Reader:
     def save(self):
         if self.writable:
             self.m.flush()
+
+    def close(self):
+        self.save()
+        if self.writable:
+            self.m.close()
+            self.writable = False
 
     def filter(self, prefixes):
         #log("filtering %r\n" % prefixes)

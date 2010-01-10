@@ -174,6 +174,7 @@ def update_index(path):
     if wi.count:
         mi = index.Writer(indexfile)
         merge_indexes(mi, ri, wi.new_reader())
+        ri.close()
         mi.close()
     wi.abort()
 
