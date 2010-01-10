@@ -38,13 +38,13 @@ A $D/d/
 A $D/b
 A $D/a
 A $D/"
-WVPASSEQ "$(bup index -us $D/b $D/a --fake-valid)" \
+WVPASSEQ "$(bup index -us $D/a $D/b --fake-valid)" \
 "  $D/b
   $D/a"
 WVPASSEQ "$(bup index -us $D/a)" "  $D/a"  # stays unmodified
 touch $D/a
 WVPASS bup index -u $D/a  # becomes modified
-WVPASSEQ "$(bup index -s $D)" \
+WVPASSEQ "$(bup index -s $D/a $D $D/b)" \
 "A $D/d/e/
 A $D/d/
   $D/b
@@ -59,7 +59,8 @@ WVPASSEQ "$(cd $D && bup index -m)" \
 "d/e/
 d/
 a
-."
+./"
+WVPASSEQ "$(cd $D && bup index -s .)" "$(cd $D && bup index -s .)"
 
 
 WVSTART "split"

@@ -1,21 +1,7 @@
 #!/usr/bin/env python2.5
-import sys, re, errno, stat, tempfile, struct, mmap, time
-import options, git
+import os, sys, stat
+import options, git, index
 from helpers import *
-
-EMPTY_SHA = '\0'*20
-FAKE_SHA = '\x01'*20
-INDEX_HDR = 'BUPI\0\0\0\1'
-INDEX_SIG = '!IIIIIQ20sH'
-ENTLEN = struct.calcsize(INDEX_SIG)
-
-IX_EXISTS = 0x8000
-IX_HASHVALID = 0x4000
-
-
-class IndexError(Exception):
-    pass
-
 
 class OsFile:
     def __init__(self, path):
@@ -33,196 +19,6 @@ class OsFile:
         os.fchdir(self.fd)
 
 
-class IxEntry:
-    def __init__(self, name, m, ofs, tstart):
-        self._m = m
-        self._ofs = ofs
-        self.name = str(name)
-        self.tstart = tstart
-        (self.dev, self.ctime, self.mtime, self.uid, self.gid,
-         self.size, self.sha,
-         self.flags) = struct.unpack(INDEX_SIG, buffer(m, ofs, ENTLEN))
-
-    def __repr__(self):
-        return ("(%s,0x%04x,%d,%d,%d,%d,%d,0x%04x)" 
-                % (self.name, self.dev,
-                   self.ctime, self.mtime, self.uid, self.gid,
-                   self.size, self.flags))
-
-    def packed(self):
-        return struct.pack(INDEX_SIG, self.dev, self.ctime, self.mtime,
-                           self.uid, self.gid, self.size, self.sha,
-                           self.flags)
-
-    def repack(self):
-        self._m[self._ofs:self._ofs+ENTLEN] = self.packed()
-
-    def from_stat(self, st):
-        old = (self.dev, self.ctime, self.mtime,
-               self.uid, self.gid, self.size, self.flags & IX_EXISTS)
-        new = (st.st_dev, int(st.st_ctime), int(st.st_mtime),
-               st.st_uid, st.st_gid, st.st_size, IX_EXISTS)
-        self.dev = st.st_dev
-        self.ctime = int(st.st_ctime)
-        self.mtime = int(st.st_mtime)
-        self.uid = st.st_uid
-        self.gid = st.st_gid
-        self.size = st.st_size
-        self.flags |= IX_EXISTS
-        if int(st.st_ctime) >= self.tstart or old != new:
-            self.flags &= ~IX_HASHVALID
-            return 1  # dirty
-        else:
-            return 0  # not dirty
-
-    def __cmp__(a, b):
-        return cmp(a.name, b.name)
-            
-
-class IndexReader:
-    def __init__(self, filename):
-        self.filename = filename
-        self.m = ''
-        self.writable = False
-        f = None
-        try:
-            f = open(filename, 'r+')
-        except IOError, e:
-            if e.errno == errno.ENOENT:
-                pass
-            else:
-                raise
-        if f:
-            b = f.read(len(INDEX_HDR))
-            if b != INDEX_HDR:
-                raise IndexError('%s: header: expected %r, got %r'
-                                 % (filename, INDEX_HDR, b))
-            st = os.fstat(f.fileno())
-            if st.st_size:
-                self.m = mmap.mmap(f.fileno(), 0,
-                                   mmap.MAP_SHARED,
-                                   mmap.PROT_READ|mmap.PROT_WRITE)
-                f.close()  # map will persist beyond file close
-                self.writable = True
-
-    def __del__(self):
-        self.save()
-
-    def __iter__(self):
-        tstart = int(time.time())
-        ofs = len(INDEX_HDR)
-        while ofs < len(self.m):
-            eon = self.m.find('\0', ofs)
-            assert(eon >= 0)
-            yield IxEntry(buffer(self.m, ofs, eon-ofs),
-                          self.m, eon+1, tstart = tstart)
-            ofs = eon + 1 + ENTLEN
-
-    def save(self):
-        if self.writable:
-            self.m.flush()
-
-
-# Read all the iters in order; when more than one iter has the same entry,
-# the *later* iter in the list wins.  (ie. more recent iter entries replace
-# older ones)
-def _last_writer_wins_iter(iters):
-    l = []
-    for e in iters:
-        it = iter(e)
-        try:
-            l.append([it.next(), it])
-        except StopIteration:
-            pass
-    del iters  # to avoid accidents
-    while l:
-        l.sort()
-        mv = l[0][0]
-        mi = []
-        for (i,(v,it)) in enumerate(l):
-            #log('(%d) considering %d: %r\n' % (len(l), i, v))
-            if v > mv:
-                mv = v
-                mi = [i]
-            elif v == mv:
-                mi.append(i)
-        yield mv
-        for i in mi:
-            try:
-                l[i][0] = l[i][1].next()
-            except StopIteration:
-                l[i] = None
-        l = filter(None, l)
-
-
-def ix_encode(st, sha, flags):
-    return struct.pack(INDEX_SIG, st.st_dev, int(st.st_ctime),
-                       int(st.st_mtime), st.st_uid, st.st_gid,
-                       st.st_size, sha, flags)
-
-
-class IndexWriter:
-    def __init__(self, filename):
-        self.f = None
-        self.count = 0
-        self.lastfile = None
-        self.filename = None
-        self.filename = filename = os.path.realpath(filename)
-        (dir,name) = os.path.split(filename)
-        (ffd,self.tmpname) = tempfile.mkstemp('.tmp', filename, dir)
-        self.f = os.fdopen(ffd, 'wb', 65536)
-        self.f.write(INDEX_HDR)
-
-    def __del__(self):
-        self.abort()
-
-    def abort(self):
-        f = self.f
-        self.f = None
-        if f:
-            f.close()
-            os.unlink(self.tmpname)
-
-    def close(self):
-        f = self.f
-        self.f = None
-        if f:
-            f.close()
-            os.rename(self.tmpname, self.filename)
-
-    def _write(self, data):
-        self.f.write(data)
-        self.count += 1
-
-    def add(self, name, st, hashgen=None):
-        #log('ADDING %r\n' % name)
-        if self.lastfile:
-            assert(cmp(self.lastfile, name) > 0) # reverse order only
-        self.lastfile = name
-        flags = IX_EXISTS
-        sha = None
-        if hashgen:
-            sha = hashgen(name)
-            if sha:
-                flags |= IX_HASHVALID
-        else:
-            sha = EMPTY_SHA
-        data = name + '\0' + ix_encode(st, sha, flags)
-        self._write(data)
-
-    def add_ixentry(self, e):
-        if self.lastfile and self.lastfile <= e.name:
-            raise IndexError('%r must come before %r' 
-                             % (e.name, self.lastfile))
-        self.lastfile = e.name
-        data = e.name + '\0' + e.packed()
-        self._write(data)
-
-    def new_reader(self):
-        self.f.flush()
-        return IndexReader(self.tmpname)
-
-
 saved_errors = []
 def add_error(e):
     saved_errors.append(e)
@@ -236,7 +32,7 @@ def handle_path(ri, wi, dir, name, pst, xdev, can_delete_siblings):
     hashgen = None
     if opt.fake_valid:
         def hashgen(name):
-            return FAKE_SHA
+            return index.FAKE_SHA
     
     dirty = 0
     path = dir + name
@@ -269,7 +65,7 @@ def handle_path(ri, wi, dir, name, pst, xdev, can_delete_siblings):
                         % os.path.realpath(p))
                     continue
                 if stat.S_ISDIR(st.st_mode):
-                    p = _slashappend(p)
+                    p = slashappend(p)
                 lds.append((p, st))
             for p,st in reversed(sorted(lds)):
                 dirty += handle_path(ri, wi, path, p, st, xdev,
@@ -281,17 +77,17 @@ def handle_path(ri, wi, dir, name, pst, xdev, can_delete_siblings):
         #log('ricur:%r path:%r\n' % (ri.cur, path))
         if can_delete_siblings and dir and ri.cur.name.startswith(dir):
             #log('    --- deleting\n')
-            ri.cur.flags &= ~(IX_EXISTS | IX_HASHVALID)
+            ri.cur.flags &= ~(index.IX_EXISTS | index.IX_HASHVALID)
             ri.cur.repack()
             dirty += 1
         ri.next()
     if ri.cur and ri.cur.name == path:
         dirty += ri.cur.from_stat(pst)
-        if dirty or not (ri.cur.flags & IX_HASHVALID):
+        if dirty or not (ri.cur.flags & index.IX_HASHVALID):
             #log('   --- updating %r\n' % path)
             if hashgen:
                 ri.cur.sha = hashgen(name)
-                ri.cur.flags |= IX_HASHVALID
+                ri.cur.flags |= index.IX_HASHVALID
             ri.cur.repack()
         ri.next()
     else:
@@ -305,8 +101,8 @@ def handle_path(ri, wi, dir, name, pst, xdev, can_delete_siblings):
 
 def merge_indexes(out, r1, r2):
     log('bup: merging indexes.\n')
-    for e in _last_writer_wins_iter([r1, r2]):
-        #if e.flags & IX_EXISTS:
+    for e in index._last_writer_wins_iter([r1, r2]):
+        #if e.flags & index.IX_EXISTS:
             out.add_ixentry(e)
 
 
@@ -324,15 +120,9 @@ class MergeGetter:
         return self.cur
 
 
-def _slashappend(s):
-    if s and not s.endswith('/'):
-        return s + '/'
-    else:
-        return s
-
 def update_index(path):
-    ri = IndexReader(indexfile)
-    wi = IndexWriter(indexfile)
+    ri = index.Reader(indexfile)
+    wi = index.Writer(indexfile)
     rig = MergeGetter(ri)
     
     rpath = os.path.realpath(path)
@@ -345,7 +135,7 @@ def update_index(path):
     if rpath[-1] == '/':
         rpath = rpath[:-1]
     (dir, name) = os.path.split(rpath)
-    dir = _slashappend(dir)
+    dir = slashappend(dir)
     if stat.S_ISDIR(st.st_mode) and (not rpath or rpath[-1] != '/'):
         name += '/'
         can_delete_siblings = True
@@ -369,7 +159,7 @@ def update_index(path):
             rig.next()
         if rig.cur and rig.cur.name == p:
             if dirty:
-                rig.cur.flags &= ~IX_HASHVALID
+                rig.cur.flags &= ~index.IX_HASHVALID
                 rig.cur.repack()
         else:
             wi.add(p, os.lstat(p))
@@ -379,7 +169,7 @@ def update_index(path):
     f.fchdir()
     ri.save()
     if wi.count:
-        mi = IndexWriter(indexfile)
+        mi = index.Writer(indexfile)
         merge_indexes(mi, ri, wi.new_reader())
         mi.close()
     wi.abort()
@@ -410,21 +200,7 @@ if opt.fake_valid and not opt.update:
 git.check_repo_or_die()
 indexfile = opt.indexfile or git.repo('bupindex')
 
-xpaths = []
-for path in extra:
-    rp = os.path.realpath(path)
-    st = os.lstat(rp)
-    if stat.S_ISDIR(st.st_mode):
-        rp = _slashappend(rp)
-        path = _slashappend(path)
-    xpaths.append((rp, path))
-
-paths = []
-for (rp, path) in reversed(sorted(xpaths)):
-    if paths and rp.endswith('/') and paths[-1][0].startswith(rp):
-        paths[-1] = (rp, path)
-    else:
-        paths.append((rp, path))
+paths = index.reduce_paths(extra)
 
 if opt.update:
     if not paths:
@@ -434,26 +210,14 @@ if opt.update:
         update_index(rp)
 
 if opt['print'] or opt.status or opt.modified:
-    pi = iter(paths or [(_slashappend(os.path.realpath('.')), '')])
-    (rpin, pin) = pi.next()
-    for ent in IndexReader(indexfile):
-        if ent.name < rpin:
-            try:
-                (rpin, pin) = pi.next()
-            except StopIteration:
-                break  # no more files can possibly match
-        elif not ent.name.startswith(rpin):
-            continue   # not interested
-        if opt.modified and ent.flags & IX_HASHVALID:
+    for (name, ent) in index.Reader(indexfile).filter(extra or ['']):
+        if opt.modified and ent.flags & index.IX_HASHVALID:
             continue
-        name = pin + ent.name[len(rpin):]
-        if not name:
-            name = '.'
         if opt.status:
-            if not ent.flags & IX_EXISTS:
+            if not ent.flags & index.IX_EXISTS:
                 print 'D ' + name
-            elif not ent.flags & IX_HASHVALID:
-                if ent.sha == EMPTY_SHA:
+            elif not ent.flags & index.IX_HASHVALID:
+                if ent.sha == index.EMPTY_SHA:
                     print 'A ' + name
                 else:
                     print 'M ' + name

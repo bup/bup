@@ -112,3 +112,11 @@ def chunkyreader(f, count = None):
             b = f.read(65536)
             if not b: break
             yield b
+
+
+def slashappend(s):
+    if s and not s.endswith('/'):
+        return s + '/'
+    else:
+        return s
+
