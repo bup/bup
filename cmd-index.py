@@ -32,7 +32,7 @@ def handle_path(ri, wi, dir, name, pst, xdev, can_delete_siblings):
     hashgen = None
     if opt.fake_valid:
         def hashgen(name):
-            return index.FAKE_SHA
+            return (0, index.FAKE_SHA)
     
     dirty = 0
     path = dir + name
@@ -62,7 +62,7 @@ def handle_path(ri, wi, dir, name, pst, xdev, can_delete_siblings):
                     continue
                 if xdev != None and st.st_dev != xdev:
                     log('Skipping %r: different filesystem.\n' 
-                        % os.path.realpath(p))
+                        % index.realpath(p))
                     continue
                 if stat.S_ISDIR(st.st_mode):
                     p = slashappend(p)
@@ -86,7 +86,7 @@ def handle_path(ri, wi, dir, name, pst, xdev, can_delete_siblings):
         if dirty or not (ri.cur.flags & index.IX_HASHVALID):
             #log('   --- updating %r\n' % path)
             if hashgen:
-                ri.cur.sha = hashgen(name)
+                (ri.cur.gitmode, ri.cur.sha) = hashgen(name)
                 ri.cur.flags |= index.IX_HASHVALID
             ri.cur.repack()
         ri.next()
@@ -125,7 +125,7 @@ def update_index(path):
     wi = index.Writer(indexfile)
     rig = MergeGetter(ri)
     
-    rpath = os.path.realpath(path)
+    rpath = index.realpath(path)
     st = os.lstat(rpath)
     if opt.xdev:
         xdev = st.st_dev
@@ -181,6 +181,7 @@ bup index <-p|s|m|u> [options...] <filenames...>
 p,print    print the index entries for the given names (also works with -u)
 m,modified print only added/deleted/modified files (implies -p)
 s,status   print each filename with a status char (A/M/D) (implies -p)
+H,hash     print the hash for each object next to its name (implies -p)
 u,update   (recursively) update the index entries for the given filenames
 x,xdev,one-file-system  don't cross filesystem boundaries
 fake-valid    mark all index entries as up-to-date even if they aren't
@@ -192,10 +193,10 @@ o = options.Options('bup index', optspec)
 
 if not (opt.modified or opt['print'] or opt.status or opt.update):
     log('bup index: you must supply one or more of -p, -s, -m, or -u\n')
-    exit(97)
+    o.usage()
 if opt.fake_valid and not opt.update:
     log('bup index: --fake-valid is meaningless without -u\n')
-    exit(96)
+    o.usage()
 
 git.check_repo_or_die()
 indexfile = opt.indexfile or git.repo('bupindex')
@@ -205,7 +206,7 @@ paths = index.reduce_paths(extra)
 if opt.update:
     if not paths:
         log('bup index: update (-u) requested but no paths given\n')
-        exit(96)
+        o.usage()
     for (rp, path) in paths:
         update_index(rp)
 
@@ -213,18 +214,20 @@ if opt['print'] or opt.status or opt.modified:
     for (name, ent) in index.Reader(indexfile).filter(extra or ['']):
         if opt.modified and ent.flags & index.IX_HASHVALID:
             continue
+        line = ''
         if opt.status:
             if not ent.flags & index.IX_EXISTS:
-                print 'D ' + name
+                line += 'D '
             elif not ent.flags & index.IX_HASHVALID:
                 if ent.sha == index.EMPTY_SHA:
-                    print 'A ' + name
+                    line += 'A '
                 else:
-                    print 'M ' + name
+                    line += 'M '
             else:
-                print '  ' + name
-        else:
-            print name
+                line += '  '
+        if opt.hash:
+            line += ent.sha.encode('hex') + ' '
+        print line + (name or './')
         #print repr(ent)
 
 if saved_errors:

@@ -183,11 +183,14 @@ class PackWriter:
     def write(self, type, content):
         return self._write(calc_hash(type, content), type, content)
 
-    def maybe_write(self, type, content):
-        bin = calc_hash(type, content)
+    def exists(self, id):
         if not self.objcache:
             self._make_objcache()
-        if not self.objcache.exists(bin):
+        return self.objcache.exists(id)
+
+    def maybe_write(self, type, content):
+        bin = calc_hash(type, content)
+        if not self.exists(bin):
             self._write(bin, type, content)
             self.objcache.add(bin)
         return bin

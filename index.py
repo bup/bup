@@ -4,7 +4,7 @@ from helpers import *
 EMPTY_SHA = '\0'*20
 FAKE_SHA = '\x01'*20
 INDEX_HDR = 'BUPI\0\0\0\1'
-INDEX_SIG = '!IIIIIQ20sH'
+INDEX_SIG = '!IIIIIQII20sH'
 ENTLEN = struct.calcsize(INDEX_SIG)
 
 IX_EXISTS = 0x8000
@@ -21,7 +21,7 @@ class Entry:
         self.name = str(name)
         self.tstart = tstart
         (self.dev, self.ctime, self.mtime, self.uid, self.gid,
-         self.size, self.sha,
+         self.size, self.mode, self.gitmode, self.sha,
          self.flags) = struct.unpack(INDEX_SIG, buffer(m, ofs, ENTLEN))
 
     def __repr__(self):
@@ -31,9 +31,10 @@ class Entry:
                    self.size, self.flags))
 
     def packed(self):
-        return struct.pack(INDEX_SIG, self.dev, self.ctime, self.mtime,
-                           self.uid, self.gid, self.size, self.sha,
-                           self.flags)
+        return struct.pack(INDEX_SIG,
+                           self.dev, self.ctime, self.mtime, 
+                           self.uid, self.gid, self.size, self.mode,
+                           self.gitmode, self.sha, self.flags)
 
     def repack(self):
         self._m[self._ofs:self._ofs+ENTLEN] = self.packed()
@@ -49,12 +50,18 @@ class Entry:
         self.uid = st.st_uid
         self.gid = st.st_gid
         self.size = st.st_size
+        self.mode = st.st_mode
         self.flags |= IX_EXISTS
         if int(st.st_ctime) >= self.tstart or old != new:
             self.flags &= ~IX_HASHVALID
             return 1  # dirty
         else:
             return 0  # not dirty
+
+    def validate(self, sha):
+        assert(sha)
+        self.sha = sha
+        self.flags |= IX_HASHVALID
 
     def __cmp__(a, b):
         return cmp(a.name, b.name)
@@ -120,7 +127,7 @@ class Reader:
                 continue   # not interested
             else:
                 name = pin + ent.name[len(rpin):]
-                yield (name or './', ent)
+                yield (name, ent)
 
 
 # Read all the iters in order; when more than one iter has the same entry,
@@ -161,7 +168,7 @@ class Writer:
         self.count = 0
         self.lastfile = None
         self.filename = None
-        self.filename = filename = os.path.realpath(filename)
+        self.filename = filename = realpath(filename)
         (dir,name) = os.path.split(filename)
         (ffd,self.tmpname) = tempfile.mkstemp('.tmp', filename, dir)
         self.f = os.fdopen(ffd, 'wb', 65536)
@@ -196,15 +203,15 @@ class Writer:
         flags = IX_EXISTS
         sha = None
         if hashgen:
-            sha = hashgen(name)
+            (gitmode, sha) = hashgen(name)
             if sha:
                 flags |= IX_HASHVALID
         else:
-            sha = EMPTY_SHA
+            (gitmode, sha) = (0, EMPTY_SHA)
         data = name + '\0' + \
             struct.pack(INDEX_SIG, st.st_dev, int(st.st_ctime),
                         int(st.st_mtime), st.st_uid, st.st_gid,
-                        st.st_size, sha, flags)
+                        st.st_size, st.st_mode, gitmode, sha, flags)
         self._write(data)
 
     def add_ixentry(self, e):
@@ -220,10 +227,27 @@ class Writer:
         return Reader(self.tmpname)
 
 
+# like os.path.realpath, but doesn't follow a symlink for the last element.
+# (ie. if 'p' itself is itself a symlink, this one won't follow it)
+def realpath(p):
+    try:
+        st = os.lstat(p)
+    except OSError:
+        st = None
+    if st and stat.S_ISLNK(st.st_mode):
+        (dir, name) = os.path.split(p)
+        dir = os.path.realpath(dir)
+        out = os.path.join(dir, name)
+    else:
+        out = os.path.realpath(p)
+    #log('realpathing:%r,%r\n' % (p, out))
+    return out
+
+
 def reduce_paths(paths):
     xpaths = []
     for p in paths:
-        rp = os.path.realpath(p)
+        rp = realpath(p)
         st = os.lstat(rp)
         if stat.S_ISDIR(st.st_mode):
             rp = slashappend(rp)
