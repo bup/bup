@@ -3,6 +3,8 @@ import sys, re, errno, stat, tempfile, struct, mmap
 import options
 from helpers import *
 
+EMPTY_SHA = '\0'*20
+FAKE_SHA = '\x01'*20
 INDEX_HDR = 'BUPI\0\0\0\1'
 INDEX_SIG = '!IIIIIQ20sH'
 ENTLEN = struct.calcsize(INDEX_SIG)
@@ -56,9 +58,9 @@ class IxEntry:
 
     def from_stat(self, st):
         old = (self.dev, self.ctime, self.mtime,
-               self.uid, self.gid, self.size)
+               self.uid, self.gid, self.size, self.flags & IX_EXISTS)
         new = (st.st_dev, int(st.st_ctime), int(st.st_mtime),
-               st.st_uid, st.st_gid, st.st_size)
+               st.st_uid, st.st_gid, st.st_size, IX_EXISTS)
         self.dev = st.st_dev
         self.ctime = int(st.st_ctime)
         self.mtime = int(st.st_mtime)
@@ -132,13 +134,16 @@ def _last_writer_wins_iter(iters):
             pass
     del iters  # to avoid accidents
     while l:
-        l = list(sorted(l))
+        l.sort()
         mv = l[0][0]
-        mi = [0]
+        mi = []
         for (i,(v,it)) in enumerate(l):
+            #log('(%d) considering %d: %r\n' % (len(l), i, v))
             if v > mv:
                 mv = v
                 mi = [i]
+            elif v == mv:
+                mi.append(i)
         yield mv
         for i in mi:
             try:
@@ -182,17 +187,23 @@ class IndexWriter:
             f.close()
             os.rename(self.tmpname, self.filename)
 
-    def add(self, name, st):
+    def add(self, name, st, hashgen=None):
         #log('ADDING %r\n' % name)
         if self.lastfile:
             assert(cmp(self.lastfile, name) > 0) # reverse order only
         self.lastfile = name
-        data = name + '\0' + ix_encode(st, '\0'*20, IX_EXISTS|IX_HASHVALID)
+        flags = IX_EXISTS
+        sha = None
+        if hashgen:
+            sha = hashgen(name)
+            if sha:
+                flags |= IX_HASHVALID
+        else:
+            sha = EMPTY_SHA
+        data = name + '\0' + ix_encode(st, sha, flags)
         self.f.write(data)
 
     def add_ixentry(self, e):
-        if opt.fake_valid:
-            e.flags |= IX_HASHVALID
         if self.lastfile and self.lastfile <= e.name:
             raise IndexError('%r must come before %r' 
                              % (e.name, self.lastfile))
@@ -214,7 +225,12 @@ def add_error(e):
 # the use of fchdir() and lstat() are for two reasons:
 #  - help out the kernel by not making it repeatedly look up the absolute path
 #  - avoid race conditions caused by doing listdir() on a changing symlink
-def handle_path(ri, wi, dir, name, pst, xdev):
+def handle_path(ri, wi, dir, name, pst, xdev, can_delete_siblings):
+    hashgen = None
+    if opt.fake_valid:
+        def hashgen(name):
+            return FAKE_SHA
+    
     dirty = 0
     path = dir + name
     #log('handle_path(%r,%r)\n' % (dir, name))
@@ -249,13 +265,14 @@ def handle_path(ri, wi, dir, name, pst, xdev):
                     p += '/'
                 lds.append((p, st))
             for p,st in reversed(sorted(lds)):
-                dirty += handle_path(ri, wi, path, p, st, xdev)
+                dirty += handle_path(ri, wi, path, p, st, xdev,
+                                     can_delete_siblings = True)
         finally:
             os.chdir('..')
     #log('endloop: ri.cur:%r path:%r\n' % (ri.cur.name, path))
     while ri.cur and ri.cur.name > path:
         #log('ricur:%r path:%r\n' % (ri.cur, path))
-        if dir and ri.cur.name.startswith(dir):
+        if can_delete_siblings and dir and ri.cur.name.startswith(dir):
             #log('    --- deleting\n')
             ri.cur.flags &= ~(IX_EXISTS | IX_HASHVALID)
             ri.cur.repack()
@@ -263,12 +280,15 @@ def handle_path(ri, wi, dir, name, pst, xdev):
         ri.next()
     if ri.cur and ri.cur.name == path:
         dirty += ri.cur.from_stat(pst)
-        if dirty:
+        if dirty or not (ri.cur.flags & IX_HASHVALID):
             #log('   --- updating %r\n' % path)
+            if hashgen:
+                ri.cur.sha = hashgen(name)
+                ri.cur.flags |= IX_HASHVALID
             ri.cur.repack()
         ri.next()
     else:
-        wi.add(path, pst)
+        wi.add(path, pst, hashgen = hashgen)
         dirty += 1
     if opt.verbose > 1:  # all files, not just dirs
         sys.stdout.write('%s\n' % path)
@@ -279,7 +299,7 @@ def handle_path(ri, wi, dir, name, pst, xdev):
 def merge_indexes(out, r1, r2):
     log('Merging indexes.\n')
     for e in _last_writer_wins_iter([r1, r2]):
-        if e.flags & IX_EXISTS:
+        #if e.flags & IX_EXISTS:
             out.add_ixentry(e)
 
 
@@ -297,7 +317,7 @@ class MergeGetter:
         return self.cur
 
 
-def update_index(paths):
+def update_index(path):
     ri = IndexReader(indexfile)
     wi = IndexWriter(indexfile)
     rig = MergeGetter(ri)
@@ -316,8 +336,11 @@ def update_index(paths):
         dir += '/'
     if stat.S_ISDIR(st.st_mode) and (not rpath or rpath[-1] != '/'):
         name += '/'
+        can_delete_siblings = True
+    else:
+        can_delete_siblings = False
     OsFile(dir or '/').fchdir()
-    dirty = handle_path(rig, wi, dir, name, st, xdev)
+    dirty = handle_path(rig, wi, dir, name, st, xdev, can_delete_siblings)
 
     # make sure all the parents of the updated path exist and are invalidated
     # if appropriate.
@@ -397,7 +420,10 @@ if opt['print'] or opt.status or opt.modified:
             if not ent.flags & IX_EXISTS:
                 print 'D ' + ent.name
             elif not ent.flags & IX_HASHVALID:
-                print 'M ' + ent.name
+                if ent.sha == EMPTY_SHA:
+                    print 'A ' + ent.name
+                else:
+                    print 'M ' + ent.name
             else:
                 print '  ' + ent.name
         else:
