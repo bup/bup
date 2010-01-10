@@ -51,7 +51,11 @@ def hostname():
     global _hostname
     if not _hostname:
         try:
-            _hostname = readpipe(['hostname', '-f']).strip()
+            if sys.platform == 'cygwin':
+                hostcmd = ['hostname']
+            else:
+                hostcmd = ['hostname', '-f']
+            _hostname = readpipe(hostcmd).strip()
         except OSError:
             pass
     return _hostname or 'localhost'
