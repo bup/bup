@@ -195,7 +195,12 @@ class Writer:
         self.f = None
         if f:
             f.close()
-            os.rename(self.tmpname, self.filename)
+            try:
+                os.rename(self.tmpname, self.filename)
+            except OSError:
+                if os.path.exists(self.filename):
+                    os.unlink(self.filename)
+                os.rename(self.tmpname, self.filename)
 
     def _write(self, data):
         self.f.write(data)
