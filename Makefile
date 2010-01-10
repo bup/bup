@@ -12,7 +12,8 @@ endif
 
 default: all
 
-all: bup-split bup-join bup-save bup-init bup-server bup randomgen chashsplit.so
+all: bup-split bup-join bup-save bup-init bup-server bup-index bup-tick \
+	bup randomgen chashsplit.so
 
 randomgen: randomgen.o
 	$(CC) $(CFLAGS) -o $@ $<
@@ -20,16 +21,18 @@ randomgen: randomgen.o
 chashsplit.so: chashsplitmodule.o
 	$(CC) $(CFLAGS) $(SHARED) -o $@ $< $(PYLIB)
 	
-runtests: all
+runtests: all runtests-python runtests-cmdline
+
+runtests-python:
 	./wvtest.py $(wildcard t/t*.py)
 	
 runtests-cmdline: all
-	./test-sh
+	t/test.sh
 	
 stupid:
 	PATH=/bin:/usr/bin $(MAKE) test
 	
-test: all runtests-cmdline
+test: all
 	./wvtestrun $(MAKE) runtests
 
 %: %.o
