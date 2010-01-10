@@ -56,6 +56,7 @@ parts = ['']
 shalists = [[]]
 
 def _push(part):
+    assert(part)
     parts.append(part)
     shalists.append([])
 
@@ -90,8 +91,9 @@ for (transname,ent) in index.Reader(git.repo('bupindex')).filter(extra):
     dirp = dir.split('/')
     while parts > dirp:
         _pop()
-    for part in dirp[len(parts):]:
-        _push(part)
+    if dir != '/':
+        for part in dirp[len(parts):]:
+            _push(part)
 
     if not file:
         # directory already handled.

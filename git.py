@@ -200,8 +200,13 @@ class PackWriter:
 
     def new_tree(self, shalist):
         shalist = sorted(shalist, key = _shalist_sort_key)
-        l = ['%s %s\0%s' % (mode,name,bin) 
-             for (mode,name,bin) in shalist]
+        l = []
+        for (mode,name,bin) in shalist:
+            assert(mode)
+            assert(mode[0] != '0')
+            assert(name)
+            assert(len(bin) == 20)
+            l.append('%s %s\0%s' % (mode,name,bin))
         return self.maybe_write('tree', ''.join(l))
 
     def _new_commit(self, tree, parent, author, adate, committer, cdate, msg):
