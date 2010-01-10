@@ -22,7 +22,7 @@ class Entry:
         self.tstart = tstart
         (self.dev, self.ctime, self.mtime, self.uid, self.gid,
          self.size, self.mode, self.gitmode, self.sha,
-         self.flags) = struct.unpack(INDEX_SIG, buffer(m, ofs, ENTLEN))
+         self.flags) = struct.unpack(INDEX_SIG, str(buffer(m, ofs, ENTLEN)))
 
     def __repr__(self):
         return ("(%s,0x%04x,%d,%d,%d,%d,%d,0x%04x)" 
