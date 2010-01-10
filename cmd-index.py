@@ -1,6 +1,6 @@
 #!/usr/bin/env python2.5
 import sys, re, errno, stat, tempfile, struct, mmap
-import options
+import options, git
 from helpers import *
 
 EMPTY_SHA = '\0'*20
@@ -400,7 +400,8 @@ if opt.fake_valid and not opt.update:
     log('bup index: --fake-valid is meaningless without -u\n')
     exit(96)
 
-indexfile = opt.indexfile or 'index'
+git.check_repo_or_die()
+indexfile = opt.indexfile or git.repo('bupindex')
 
 xpaths = []
 for path in extra:
