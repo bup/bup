@@ -6,7 +6,10 @@ from helpers import *
 class OsFile:
     def __init__(self, path):
         self.fd = None
-        self.fd = os.open(path, os.O_RDONLY|os.O_LARGEFILE|os.O_NOFOLLOW)
+        try:
+            self.fd = os.open(path, os.O_RDONLY|os.O_LARGEFILE|os.O_NOFOLLOW)
+        except AttributeError:
+            self.fd = os.open(path, os.O_RDONLY|os.O_NOFOLLOW)
         #self.st = os.fstat(self.fd)
         
     def __del__(self):
