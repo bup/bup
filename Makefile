@@ -12,7 +12,7 @@ endif
 
 default: all
 
-all: bup-split bup-join bup-save bup-init bup-server bup-index \
+all: bup-split bup-join bup-save bup-init bup-server bup-index bup-tick \
 	bup randomgen chashsplit.so
 
 randomgen: randomgen.o

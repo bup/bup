@@ -1,5 +1,5 @@
 #!/usr/bin/env python2.5
-import sys, re, errno, stat, tempfile, struct, mmap
+import sys, re, errno, stat, tempfile, struct, mmap, time
 import options, git
 from helpers import *
 
@@ -34,10 +34,11 @@ class OsFile:
 
 
 class IxEntry:
-    def __init__(self, name, m, ofs):
+    def __init__(self, name, m, ofs, tstart):
         self._m = m
         self._ofs = ofs
         self.name = str(name)
+        self.tstart = tstart
         (self.dev, self.ctime, self.mtime, self.uid, self.gid,
          self.size, self.sha,
          self.flags) = struct.unpack(INDEX_SIG, buffer(m, ofs, ENTLEN))
@@ -68,7 +69,7 @@ class IxEntry:
         self.gid = st.st_gid
         self.size = st.st_size
         self.flags |= IX_EXISTS
-        if old != new:
+        if int(st.st_ctime) >= self.tstart or old != new:
             self.flags &= ~IX_HASHVALID
             return 1  # dirty
         else:
@@ -108,12 +109,13 @@ class IndexReader:
         self.save()
 
     def __iter__(self):
+        tstart = int(time.time())
         ofs = len(INDEX_HDR)
         while ofs < len(self.m):
             eon = self.m.find('\0', ofs)
             assert(eon >= 0)
             yield IxEntry(buffer(self.m, ofs, eon-ofs),
-                          self.m, eon+1)
+                          self.m, eon+1, tstart = tstart)
             ofs = eon + 1 + ENTLEN
 
     def save(self):
@@ -267,7 +269,7 @@ def handle_path(ri, wi, dir, name, pst, xdev, can_delete_siblings):
                         % os.path.realpath(p))
                     continue
                 if stat.S_ISDIR(st.st_mode):
-                    p += '/'
+                    p = _slashappend(p)
                 lds.append((p, st))
             for p,st in reversed(sorted(lds)):
                 dirty += handle_path(ri, wi, path, p, st, xdev,
@@ -322,6 +324,12 @@ class MergeGetter:
         return self.cur
 
 
+def _slashappend(s):
+    if s and not s.endswith('/'):
+        return s + '/'
+    else:
+        return s
+
 def update_index(path):
     ri = IndexReader(indexfile)
     wi = IndexWriter(indexfile)
@@ -337,8 +345,7 @@ def update_index(path):
     if rpath[-1] == '/':
         rpath = rpath[:-1]
     (dir, name) = os.path.split(rpath)
-    if dir and dir[-1] != '/':
-        dir += '/'
+    dir = _slashappend(dir)
     if stat.S_ISDIR(st.st_mode) and (not rpath or rpath[-1] != '/'):
         name += '/'
         can_delete_siblings = True
@@ -407,9 +414,9 @@ xpaths = []
 for path in extra:
     rp = os.path.realpath(path)
     st = os.lstat(rp)
-    if stat.S_ISDIR(st.st_mode) and not rp.endswith('/'):
-        rp += '/'
-        path += '/'
+    if stat.S_ISDIR(st.st_mode):
+        rp = _slashappend(rp)
+        path = _slashappend(path)
     xpaths.append((rp, path))
 
 paths = []
@@ -427,7 +434,7 @@ if opt.update:
         update_index(rp)
 
 if opt['print'] or opt.status or opt.modified:
-    pi = iter(paths or [('/', '/')])
+    pi = iter(paths or [(_slashappend(os.path.realpath('.')), '')])
     (rpin, pin) = pi.next()
     for ent in IndexReader(indexfile):
         if ent.name < rpin:
@@ -440,6 +447,8 @@ if opt['print'] or opt.status or opt.modified:
         if opt.modified and ent.flags & IX_HASHVALID:
             continue
         name = pin + ent.name[len(rpin):]
+        if not name:
+            name = '.'
         if opt.status:
             if not ent.flags & IX_EXISTS:
                 print 'D ' + name

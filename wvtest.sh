@@ -1,6 +1,3 @@
-WVIFS=" 
-"
-
 # we don't quote $TEXT in case it contains newlines; newlines
 # aren't allowed in test output.  However, we set -f so that
 # at least shell glob characters aren't processed.
@@ -28,10 +25,7 @@ _wvcheck()
 
 WVPASS()
 {
-	#xIFS="$IFS"
-	#IFS="$WVIFS"
 	TEXT="$*"
-	#IFS="$xIFS"
 	
 	if "$@"; then
 		_wvcheck 0 "$TEXT"
@@ -46,10 +40,7 @@ WVPASS()
 
 WVFAIL()
 {
-	#xIFS="$IFS"
-	#IFS="$WVIFS"
 	TEXT="$*"
-	#IFS="$xIFS"
 	
 	if "$@"; then
 		_wvcheck 1 "NOT($TEXT)"
@@ -59,6 +50,35 @@ WVFAIL()
 		_wvcheck 0 "NOT($TEXT)"
 		return 0
 	fi
+}
+
+
+_wvgetrv()
+{
+	( "$@" >&2 )
+	echo -n $?
+}
+
+
+WVPASSEQ()
+{
+	WVPASS [ "$#" -eq 2 ]
+	echo "Comparing:" >&2
+	echo "$1" >&2
+	echo "--" >&2
+	echo "$2" >&2
+	_wvcheck $(_wvgetrv [ "$1" = "$2" ]) "'$1' = '$2'"
+}
+
+
+WVPASSNE()
+{
+	WVPASS [ "$#" -eq 2 ]
+	echo "Comparing:" >&2
+	echo "$1" >&2
+	echo "--" >&2
+	echo "$2" >&2
+	_wvcheck $(_wvgetrv [ "$1" != "$2" ]) "'$1' != '$2'"
 }
 
 

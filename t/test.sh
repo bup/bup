@@ -16,8 +16,53 @@ WVSTART "init"
 rm -rf "$BUP_DIR"
 WVPASS bup init
 
-WVSTART "split"
+WVSTART "index"
+D=bupdata.tmp
+rm -rf $D
+mkdir $D
+WVPASSEQ "$(bup index -p)" ""
+WVPASSEQ "$(bup index -p $D)" ""
+WVFAIL [ -e $D.fake ]
+WVFAIL bup index -u $D.fake
+WVPASS bup index -u $D
+WVPASSEQ "$(bup index -p $D)" "$D/"
+touch $D/a $D/b
+mkdir $D/d $D/d/e
+WVPASSEQ "$(bup index -s $D/)" "A $D/"
+WVPASSEQ "$(bup index -s $D/b)" ""
+bup tick
+WVPASSEQ "$(bup index -us $D/b)" "A $D/b"
+WVPASSEQ "$(bup index -us $D)" \
+"A $D/d/e/
+A $D/d/
+A $D/b
+A $D/a
+A $D/"
+WVPASSEQ "$(bup index -us $D/b $D/a --fake-valid)" \
+"  $D/b
+  $D/a"
+WVPASSEQ "$(bup index -us $D/a)" "  $D/a"  # stays unmodified
+touch $D/a
+WVPASS bup index -u $D/a  # becomes modified
+WVPASSEQ "$(bup index -s $D)" \
+"A $D/d/e/
+A $D/d/
+  $D/b
+M $D/a
+A $D/"
+WVPASSEQ "$(cd $D && bup index -m .)" \
+"./d/e/
+./d/
+./a
+./"
+WVPASSEQ "$(cd $D && bup index -m)" \
+"d/e/
+d/
+a
+."
 
+
+WVSTART "split"
 WVPASS bup split --bench -b <testfile1 >tags1.tmp
 WVPASS bup split -vvvv -b testfile2 >tags2.tmp
 WVPASS bup split -t testfile2 >tags2t.tmp
