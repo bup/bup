@@ -3,6 +3,8 @@ bup-*
 randomgen
 *.o
 *.so
+*.exe
+*.dll
 *~
 *.pyc
 tags[12]

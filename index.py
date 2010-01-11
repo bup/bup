@@ -94,7 +94,7 @@ class Reader:
                 self.writable = True
 
     def __del__(self):
-        self.save()
+        self.close()
 
     def __iter__(self):
         tstart = int(time.time())
@@ -107,8 +107,14 @@ class Reader:
             ofs = eon + 1 + ENTLEN
 
     def save(self):
-        if self.writable:
+        if self.writable and self.m:
             self.m.flush()
+
+    def close(self):
+        self.save()
+        if self.writable and self.m:
+            self.m = None
+            self.writable = False
 
     def filter(self, prefixes):
         #log("filtering %r\n" % prefixes)

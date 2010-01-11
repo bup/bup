@@ -1,25 +1,34 @@
 PYINCLUDE:=$(shell python2.5-config --includes)
 PYLIB:=$(shell python2.5-config --lib)
-OS:=$(shell uname)
+OS:=$(shell uname | sed 's/[-_].*//')
 MACHINE:=$(shell uname -m)
-CFLAGS=-Wall -g -O2 -Werror $(PYINCLUDE) -g -fPIC
+CFLAGS=-Wall -g -O2 -Werror $(PYINCLUDE) -g
+ifneq ($(OS),CYGWIN)
+  CFLAGS += -fPIC
+endif
 SHARED=-shared
+SOEXT:=.so
 
 ifeq (${OS},Darwin)
   CFLAGS += -arch $(MACHINE)
   SHARED = -dynamiclib
 endif
+ifeq ($(OS),CYGWIN)
+  LDFLAGS += -L/usr/bin
+  EXT:=.exe
+  SOEXT:=.dll
+endif
 
 default: all
 
 all: bup-split bup-join bup-save bup-init bup-server bup-index bup-tick \
-	bup randomgen chashsplit.so
+	bup randomgen$(EXT) chashsplit$(SOEXT)
 
-randomgen: randomgen.o
+randomgen$(EXT): randomgen.o
 	$(CC) $(CFLAGS) -o $@ $<
 
-chashsplit.so: chashsplitmodule.o
-	$(CC) $(CFLAGS) $(SHARED) -o $@ $< $(PYLIB)
+chashsplit$(SOEXT): chashsplitmodule.o
+	$(CC) $(CFLAGS) $(LDFLAGS) $(SHARED) -o $@ $< $(PYLIB)
 	
 runtests: all runtests-python runtests-cmdline
 
@@ -54,7 +63,7 @@ bup-%: cmd-%.sh
 	gcc -c -o $@ $^ $(CPPFLAGS) $(CFLAGS)
 
 clean:
-	rm -f *.o *.so *~ .*~ *.pyc */*.pyc */*~ \
+	rm -f *.o *.so *.dll *.exe *~ .*~ *.pyc */*.pyc */*~ \
 		bup bup-* randomgen \
 		out[12] out2[tc] tags[12] tags2[tc]
 	rm -rf *.tmp

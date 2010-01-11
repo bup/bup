@@ -3,11 +3,17 @@ import os, sys, stat
 import options, git, index
 from helpers import *
 
+
+try:
+    O_LARGEFILE = os.O_LARGEFILE
+except AttributeError:
+    O_LARGEFILE = 0
+
+
 class OsFile:
     def __init__(self, path):
         self.fd = None
-        self.fd = os.open(path, os.O_RDONLY|os.O_LARGEFILE|os.O_NOFOLLOW)
-        #self.st = os.fstat(self.fd)
+        self.fd = os.open(path, os.O_RDONLY|O_LARGEFILE|os.O_NOFOLLOW)
         
     def __del__(self):
         if self.fd:
@@ -171,6 +177,7 @@ def update_index(path):
     if wi.count:
         mi = index.Writer(indexfile)
         merge_indexes(mi, ri, wi.new_reader())
+        ri.close()
         mi.close()
     wi.abort()
 
