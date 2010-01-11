@@ -1,9 +1,9 @@
 bup
 bup-*
 randomgen
-randomgen.exe
 *.o
 *.so
+*.exe
 *.dll
 *~
 *.pyc

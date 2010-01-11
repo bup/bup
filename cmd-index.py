@@ -3,14 +3,17 @@ import os, sys, stat
 import options, git, index
 from helpers import *
 
+
+try:
+    O_LARGEFILE = os.O_LARGEFILE
+except AttributeError:
+    O_LARGEFILE = 0
+
+
 class OsFile:
     def __init__(self, path):
         self.fd = None
-        try:
-            self.fd = os.open(path, os.O_RDONLY|os.O_LARGEFILE|os.O_NOFOLLOW)
-        except AttributeError:
-            self.fd = os.open(path, os.O_RDONLY|os.O_NOFOLLOW)
-        #self.st = os.fstat(self.fd)
+        self.fd = os.open(path, os.O_RDONLY|O_LARGEFILE|os.O_NOFOLLOW)
         
     def __del__(self):
         if self.fd:

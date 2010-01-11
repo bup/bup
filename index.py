@@ -107,13 +107,13 @@ class Reader:
             ofs = eon + 1 + ENTLEN
 
     def save(self):
-        if self.writable:
+        if self.writable and self.m:
             self.m.flush()
 
     def close(self):
         self.save()
-        if self.writable:
-            self.m.close()
+        if self.writable and self.m:
+            self.m = None
             self.writable = False
 
     def filter(self, prefixes):
@@ -195,12 +195,7 @@ class Writer:
         self.f = None
         if f:
             f.close()
-            try:
-                os.rename(self.tmpname, self.filename)
-            except OSError:
-                if os.path.exists(self.filename):
-                    os.unlink(self.filename)
-                os.rename(self.tmpname, self.filename)
+            os.rename(self.tmpname, self.filename)
 
     def _write(self, data):
         self.f.write(data)

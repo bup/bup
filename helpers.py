@@ -1,4 +1,4 @@
-import sys, os, pwd, subprocess, errno
+import sys, os, pwd, subprocess, errno, socket
 
 
 def log(s):
@@ -50,15 +50,8 @@ _hostname = None
 def hostname():
     global _hostname
     if not _hostname:
-        try:
-            if sys.platform == 'cygwin':
-                hostcmd = ['hostname']
-            else:
-                hostcmd = ['hostname', '-f']
-            _hostname = readpipe(hostcmd).strip()
-        except OSError:
-            pass
-    return _hostname or 'localhost'
+        _hostname = socket.getfqdn()
+    return _hostname
 
 
 class Conn:

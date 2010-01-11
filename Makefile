@@ -63,7 +63,7 @@ bup-%: cmd-%.sh
 	gcc -c -o $@ $^ $(CPPFLAGS) $(CFLAGS)
 
 clean:
-	rm -f *.o *.so *.dll *~ .*~ *.pyc */*.pyc */*~ \
-		bup bup-* randomgen$(EXT) \
+	rm -f *.o *.so *.dll *.exe *~ .*~ *.pyc */*.pyc */*~ \
+		bup bup-* randomgen \
 		out[12] out2[tc] tags[12] tags2[tc]
 	rm -rf *.tmp

@@ -39,8 +39,8 @@ class Client:
             #log('argv is: %r\n' % argv)
         (self.host, self.dir) = (host, dir)
         self.cachedir = git.repo('index-cache/%s'
-                                 % re.sub(r'[^@:\w]', '_', 
-                                          "%s-%s" % (host, dir)))
+                                 % re.sub(r'[^@\w]', '_', 
+                                          "%s:%s" % (host, dir)))
         try:
             self.p = p = Popen(argv, stdin=PIPE, stdout=PIPE, preexec_fn=fixenv)
         except OSError, e:
