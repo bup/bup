@@ -1,9 +1,9 @@
 PYINCLUDE:=$(shell python2.5-config --includes)
 PYLIB:=$(shell python2.5-config --lib)
-OS:=$(shell uname)
+OS:=$(shell uname | sed 's/[-_].*//')
 MACHINE:=$(shell uname -m)
 CFLAGS=-Wall -g -O2 -Werror $(PYINCLUDE) -g
-ifneq ($(OS),CYGWIN_NT-5.1)
+ifneq ($(OS),CYGWIN)
   CFLAGS += -fPIC
 endif
 SHARED=-shared
@@ -13,7 +13,7 @@ ifeq (${OS},Darwin)
   CFLAGS += -arch $(MACHINE)
   SHARED = -dynamiclib
 endif
-ifeq ($(OS),CYGWIN_NT-5.1)
+ifeq ($(OS),CYGWIN)
   LDFLAGS += -L/usr/bin
   EXT:=.exe
   SOEXT:=.dll
