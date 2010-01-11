@@ -47,8 +47,9 @@ def receive_objects(conn, junk):
         if not n:
             log('bup server: received %d object%s.\n' 
                 % (w.count, w.count!=1 and "s" or ''))
-            id = w.close()
-            conn.write('%s\n' % id)
+            fullpath = w.close()
+            (dir, name) = os.path.split(fullpath)
+            conn.write('%s.idx\n' % name)
             conn.ok()
             return
         buf = conn.read(n)  # object sizes in bup are reasonably small
