@@ -5,6 +5,9 @@ verbose = 0
 home_repodir = os.path.expanduser('~/.bup')
 repodir = None
 
+_typemap =  { 'blob':3, 'tree':2, 'commit':1, 'tag':4 }
+_typermap = { 3:'blob', 2:'tree', 1:'commit', 4:'tag' }
+
 
 class GitError(Exception):
     pass
@@ -18,6 +21,62 @@ def repo(sub = ''):
     if os.path.exists(gd):
         repodir = gd
     return os.path.join(repodir, sub)
+
+
+def _encode_packobj(type, content):
+    szout = ''
+    sz = len(content)
+    szbits = (sz & 0x0f) | (_typemap[type]<<4)
+    sz >>= 4
+    while 1:
+        if sz: szbits |= 0x80
+        szout += chr(szbits)
+        if not sz:
+            break
+        szbits = sz & 0x7f
+        sz >>= 7
+    z = zlib.compressobj(1)
+    yield szout
+    yield z.compress(content)
+    yield z.flush()
+
+
+def _encode_looseobj(type, content):
+    z = zlib.compressobj(1)
+    yield z.compress('%s %d\0' % (type, len(content)))
+    yield z.compress(content)
+    yield z.flush()
+
+
+def _decode_looseobj(buf):
+    assert(buf);
+    s = zlib.decompress(buf)
+    i = s.find('\0')
+    assert(i > 0)
+    l = s[:i].split(' ')
+    type = l[0]
+    sz = int(l[1])
+    content = s[i+1:]
+    assert(type in _typemap)
+    assert(sz == len(content))
+    return (type, content)
+
+
+def _decode_packobj(buf):
+    assert(buf)
+    c = ord(buf[0])
+    type = _typermap[(c & 0x70) >> 4]
+    sz = c & 0x0f
+    shift = 4
+    i = 0
+    while c & 0x80:
+        i += 1
+        c = ord(buf[i])
+        sz |= (c & 0x7f) << shift
+        shift += 7
+        if not (c & 0x80):
+            break
+    return (type, zlib.decompress(buf[i+1:]))
 
 
 class PackIndex:
@@ -71,17 +130,24 @@ class PackIndex:
         return None
 
     def exists(self, hash):
-        return (self._idx_from_hash(hash) != None) and True or None
+        return hash and (self._idx_from_hash(hash) != None) and True or None
 
 
+_mpi_count = 0
 class MultiPackIndex:
     def __init__(self, dir):
+        global _mpi_count
+        assert(_mpi_count == 0)
+        _mpi_count += 1
         self.dir = dir
         self.also = {}
         self.packs = []
-        for f in os.listdir(self.dir):
-            if f.endswith('.idx'):
-                self.packs.append(PackIndex(os.path.join(self.dir, f)))
+        self.refresh()
+
+    def __del__(self):
+        global _mpi_count
+        _mpi_count -= 1
+        assert(_mpi_count == 0)
 
     def exists(self, hash):
         if hash in self.also:
@@ -91,8 +157,17 @@ class MultiPackIndex:
             if p.exists(hash):
                 # reorder so most recently used packs are searched first
                 self.packs = [p] + self.packs[:i] + self.packs[i+1:]
-                return True
+                return p.name
         return None
+
+    def refresh(self):
+        d = dict([(p.name, 1) for p in self.packs])
+        if os.path.exists(self.dir):
+            for f in os.listdir(self.dir):
+                full = os.path.join(self.dir, f)
+                if f.endswith('.idx') and not d.get(full):
+                    self.packs.append(PackIndex(full))
+        #log('MultiPackIndex: using %d packs.\n' % len(self.packs))
 
     def add(self, hash):
         self.also[hash] = 1
@@ -116,7 +191,6 @@ def _shalist_sort_key(ent):
         return name
 
 
-_typemap = dict(blob=3, tree=2, commit=1, tag=8)
 class PackWriter:
     def __init__(self, objcache_maker=None):
         self.count = 0
@@ -154,25 +228,7 @@ class PackWriter:
     def _write(self, bin, type, content):
         if verbose:
             log('>')
-
-        out = []
-
-        sz = len(content)
-        szbits = (sz & 0x0f) | (_typemap[type]<<4)
-        sz >>= 4
-        while 1:
-            if sz: szbits |= 0x80
-            out.append(chr(szbits))
-            if not sz:
-                break
-            szbits = sz & 0x7f
-            sz >>= 7
-
-        z = zlib.compressobj(1)
-        out.append(z.compress(content))
-        out.append(z.flush())
-
-        self._raw_write(out)
+        self._raw_write(_encode_packobj(type, content))
         return bin
 
     def breakpoint(self):

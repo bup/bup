@@ -4,6 +4,22 @@ from helpers import *
 
 
 @wvtest
+def testencode():
+    s = 'hello world'
+    looseb = ''.join(git._encode_looseobj('blob', s))
+    looset = ''.join(git._encode_looseobj('tree', s))
+    loosec = ''.join(git._encode_looseobj('commit', s))
+    packb = ''.join(git._encode_packobj('blob', s))
+    packt = ''.join(git._encode_packobj('tree', s))
+    packc = ''.join(git._encode_packobj('commit', s))
+    WVPASSEQ(git._decode_looseobj(looseb), ('blob', s))
+    WVPASSEQ(git._decode_looseobj(looset), ('tree', s))
+    WVPASSEQ(git._decode_looseobj(loosec), ('commit', s))
+    WVPASSEQ(git._decode_packobj(packb), ('blob', s))
+    WVPASSEQ(git._decode_packobj(packt), ('tree', s))
+    WVPASSEQ(git._decode_packobj(packc), ('commit', s))
+
+@wvtest
 def testpacks():
     git.init_repo('pybuptest.tmp')
     git.verbose = 1

@@ -1,4 +1,4 @@
-import sys, os, pwd, subprocess, errno, socket
+import sys, os, pwd, subprocess, errno, socket, select
 
 
 def log(s):
@@ -71,8 +71,29 @@ class Conn:
         #log('%d writing: %d bytes\n' % (os.getpid(), len(data)))
         self.outp.write(data)
 
+    def has_input(self):
+        [rl, wl, xl] = select.select([self.inp.fileno()], [], [], 0)
+        if rl:
+            assert(rl[0] == self.inp.fileno())
+            return True
+        else:
+            return None
+
     def ok(self):
         self.write('\nok\n')
+
+    def drain_and_check_ok(self):
+        self.outp.flush()
+        rl = ''
+        for rl in linereader(self.inp):
+            #log('%d got line: %r\n' % (os.getpid(), rl))
+            if not rl:  # empty line
+                continue
+            elif rl == 'ok':
+                return True
+            else:
+                pass # ignore line
+        # NOTREACHED
 
     def check_ok(self):
         self.outp.flush()

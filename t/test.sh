@@ -50,16 +50,15 @@ A $D/d/
   $D/b
 M $D/a
 A $D/"
+
+# FIXME: currently directories are never marked unmodified, so -m just skips
+# them.  Eventually, we should actually store the hashes of completed
+# directories, at which time the output of -m will change, so we'll have to
+# change this test too.
 WVPASSEQ "$(cd $D && bup index -m .)" \
-"./d/e/
-./d/
-./a
-./"
+"./a"
 WVPASSEQ "$(cd $D && bup index -m)" \
-"d/e/
-d/
-a
-./"
+"a"
 WVPASSEQ "$(cd $D && bup index -s .)" "$(cd $D && bup index -s .)"
 
 

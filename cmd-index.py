@@ -219,7 +219,8 @@ if opt.update:
 
 if opt['print'] or opt.status or opt.modified:
     for (name, ent) in index.Reader(indexfile).filter(extra or ['']):
-        if opt.modified and ent.flags & index.IX_HASHVALID:
+        if opt.modified and (ent.flags & index.IX_HASHVALID
+                             or stat.S_ISDIR(ent.mode)):
             continue
         line = ''
         if opt.status:

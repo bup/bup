@@ -1,15 +1,16 @@
-import re, struct, errno
+import re, struct, errno, select
 import git
 from helpers import *
 from subprocess import Popen, PIPE
 
+
 class ClientError(Exception):
     pass
+
 
 class Client:
     def __init__(self, remote, create=False):
         self._busy = None
-        self._indexes_synced = 0
         self.p = None
         self.conn = None
         rs = remote.split(':', 1)
@@ -53,6 +54,7 @@ class Client:
             else:
                 conn.write('set-dir %s\n' % dir)
             self.check_ok()
+        self.sync_indexes_del()
 
     def __del__(self):
         try:
@@ -94,12 +96,11 @@ class Client:
     def _not_busy(self):
         self._busy = None
 
-    def sync_indexes(self):
+    def sync_indexes_del(self):
         self.check_busy()
         conn = self.conn
         conn.write('list-indexes\n')
         packdir = git.repo('objects/pack')
-        mkdirp(self.cachedir)
         all = {}
         needed = {}
         for line in linereader(conn):
@@ -111,41 +112,53 @@ class Client:
                 needed[line] = 1
         self.check_ok()
 
+        mkdirp(self.cachedir)
         for f in os.listdir(self.cachedir):
             if f.endswith('.idx') and not f in all:
                 log('pruning old index: %r\n' % f)
                 os.unlink(os.path.join(self.cachedir, f))
 
-        # FIXME this should be pipelined: request multiple indexes at a time, or
-        # we waste lots of network turnarounds.
-        for name in needed.keys():
-            log('requesting %r\n' % name)
-            conn.write('send-index %s\n' % name)
-            n = struct.unpack('!I', conn.read(4))[0]
-            assert(n)
-            log('   expect %d bytes\n' % n)
-            fn = os.path.join(self.cachedir, name)
-            f = open(fn + '.tmp', 'w')
-            for b in chunkyreader(conn, n):
-                f.write(b)
-            self.check_ok()
-            f.close()
-            os.rename(fn + '.tmp', fn)
-
-        self._indexes_synced = 1
+    def sync_index(self, name):
+        #log('requesting %r\n' % name)
+        mkdirp(self.cachedir)
+        self.conn.write('send-index %s\n' % name)
+        n = struct.unpack('!I', self.conn.read(4))[0]
+        assert(n)
+        log('   expect %d bytes\n' % n)
+        fn = os.path.join(self.cachedir, name)
+        f = open(fn + '.tmp', 'w')
+        for b in chunkyreader(self.conn, n):
+            f.write(b)
+        self.check_ok()
+        f.close()
+        os.rename(fn + '.tmp', fn)
 
     def _make_objcache(self):
         ob = self._busy
         self._busy = None
-        self.sync_indexes()
+        #self.sync_indexes()
         self._busy = ob
         return git.MultiPackIndex(self.cachedir)
+
+    def _suggest_pack(self, indexname):
+        log('received index suggestion: %s\n' % indexname)
+        ob = self._busy
+        if ob:
+            assert(ob == 'receive-objects')
+            self._busy = None
+            self.conn.write('\xff\xff\xff\xff')  # suspend receive-objects
+            self.conn.drain_and_check_ok()
+        self.sync_index(indexname)
+        if ob:
+            self.conn.write('receive-objects\n')
+            self._busy = ob
 
     def new_packwriter(self):
         self.check_busy()
         self._busy = 'receive-objects'
         return PackWriter_Remote(self.conn,
                                  objcache_maker = self._make_objcache,
+                                 suggest_pack = self._suggest_pack,
                                  onclose = self._not_busy)
 
     def read_ref(self, refname):
@@ -179,10 +192,11 @@ class Client:
 
 
 class PackWriter_Remote(git.PackWriter):
-    def __init__(self, conn, objcache_maker=None, onclose=None):
+    def __init__(self, conn, objcache_maker, suggest_pack, onclose):
         git.PackWriter.__init__(self, objcache_maker)
         self.file = conn
         self.filename = 'remote socket'
+        self.suggest_pack = suggest_pack
         self.onclose = onclose
         self._packopen = False
 
@@ -201,6 +215,8 @@ class PackWriter_Remote(git.PackWriter):
             self.objcache = None
             if self.onclose:
                 self.onclose()
+            if self.suggest_pack:
+                self.suggest_pack(id)
             return id
 
     def close(self):
@@ -221,4 +237,10 @@ class PackWriter_Remote(git.PackWriter):
         self.outbytes += len(data)
         self.count += 1
 
-
+        if self.file.has_input():
+            line = self.file.readline().strip()
+            assert(line.startswith('index '))
+            idxname = line[6:]
+            if self.suggest_pack:
+                self.suggest_pack(idxname)
+                self.objcache.refresh()

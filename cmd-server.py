@@ -3,6 +3,8 @@ import sys, struct, mmap
 import options, git
 from helpers import *
 
+suspended_w = None
+
 
 def init_dir(conn, arg):
     git.init_repo(arg)
@@ -32,11 +34,17 @@ def send_index(conn, name):
     conn.write(struct.pack('!I', len(idx.map)))
     conn.write(idx.map)
     conn.ok()
-    
-            
+
+
 def receive_objects(conn, junk):
+    global suspended_w
     git.check_repo_or_die()
-    w = git.PackWriter()
+    suggested = {}
+    if suspended_w:
+        w = suspended_w
+        suspended_w = None
+    else:
+        w = git.PackWriter()
     while 1:
         ns = conn.read(4)
         if not ns:
@@ -52,13 +60,30 @@ def receive_objects(conn, junk):
             conn.write('%s.idx\n' % name)
             conn.ok()
             return
+        elif n == 0xffffffff:
+            log('bup server: receive-objects suspended.\n')
+            suspended_w = w
+            conn.ok()
+            return
+            
         buf = conn.read(n)  # object sizes in bup are reasonably small
         #log('read %d bytes\n' % n)
         if len(buf) < n:
             w.abort()
             raise Exception('object read: expected %d bytes, got %d\n'
                             % (n, len(buf)))
-        w._raw_write([buf])
+        (type, content) = git._decode_packobj(buf)
+        sha = git.calc_hash(type, content)
+        oldpack = w.exists(sha)
+        if oldpack:
+            assert(oldpack.endswith('.idx'))
+            (dir,name) = os.path.split(oldpack)
+            if not (name in suggested):
+                log("bup server: suggesting index %s\n" % name)
+                conn.write('index %s\n' % name)
+                suggested[name] = 1
+        else:
+            w._raw_write([buf])
     # NOTREACHED
 
 
