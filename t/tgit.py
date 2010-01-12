@@ -32,7 +32,8 @@ def testpacks():
     
     w = git.PackWriter()
     hashes = []
-    for i in range(1000):
+    nobj = 1000
+    for i in range(nobj):
         hashes.append(w.write('blob', str(i)))
     log('\n')
     nameprefix = w.close()
@@ -43,10 +44,14 @@ def testpacks():
     r = git.PackIndex(nameprefix + '.idx')
     print repr(r.fanout)
 
-    for i in range(1000):
+    for i in range(nobj):
         WVPASS(r.find_offset(hashes[i]) > 0)
     WVPASS(r.exists(hashes[99]))
     WVFAIL(r.exists('\0'*20))
+
+    pi = iter(r)
+    for h in sorted(hashes):
+        WVPASSEQ(str(pi.next()).encode('hex'), h.encode('hex'))
 
     WVFAIL(r.find_offset('\0'*20))
 
