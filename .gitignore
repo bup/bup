@@ -1,6 +1,7 @@
 bup
 bup-*
 randomgen
+memtest
 *.o
 *.so
 *.exe

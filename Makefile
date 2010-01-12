@@ -22,7 +22,7 @@ endif
 default: all
 
 all: bup-split bup-join bup-save bup-init bup-server bup-index bup-tick \
-	bup randomgen$(EXT) chashsplit$(SOEXT)
+	bup memtest randomgen$(EXT) chashsplit$(SOEXT)
 
 randomgen$(EXT): randomgen.o
 	$(CC) $(CFLAGS) -o $@ $<
@@ -52,6 +52,10 @@ bup: bup.py
 	ln -s $^ $@
 	
 bup-%: cmd-%.py
+	rm -f $@
+	ln -s $^ $@
+	
+%: %.py
 	rm -f $@
 	ln -s $^ $@
 	
