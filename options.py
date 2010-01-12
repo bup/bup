@@ -104,6 +104,12 @@ class Options:
                     assert(v == '')
                     opt[k] = (opt._opts.get(k) or 0) + 1
                 else:
+                    try:
+                        vv = int(v)
+                        if str(vv) == v:
+                            v = vv
+                    except ValueError:
+                        pass
                     opt[k] = v
         for (f1,f2) in self._aliases.items():
             opt[f1] = opt[f2]
