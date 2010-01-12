@@ -6,8 +6,8 @@ BLOB_LWM = 8192*2
 BLOB_MAX = BLOB_LWM*2
 BLOB_HWM = 1024*1024
 split_verbosely = 0
-max_pack_size = 1000*1000*1000
-max_pack_objects = 10*1000*1000
+max_pack_size = 1000*1000*1000  # larger packs will slow down pruning
+max_pack_objects = 200*1000  # cache memory usage is about 83 bytes per object
 fanout = 4096
 
 class Buf:

@@ -238,6 +238,7 @@ class PackWriter:
         f = self.file
         if not f: return None
         self.file = None
+        self.objcache = None
 
         # update object count
         f.seek(8)
@@ -255,7 +256,6 @@ class PackWriter:
         f.write(sum.digest())
         
         f.close()
-        self.objcache = None
 
         p = subprocess.Popen(['git', 'index-pack', '-v',
                               '--index-version=2',
