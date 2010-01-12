@@ -82,7 +82,9 @@ for (transname,ent) in index.Reader(git.repo('bupindex')).filter(extra):
                 status = 'M'
         else:
             status = ' '
-        log('\n%s %s ' % (status, ent.name))
+        if opt.verbose >= 2 or (status in ['A','M'] 
+                                and not stat.S_ISDIR(ent.mode)):
+            log('\n%s %s ' % (status, ent.name))
 
     if not exists:
         continue
