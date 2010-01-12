@@ -52,7 +52,8 @@ else:
     oldref = refname and git.read_ref(refname) or None
     w = git.PackWriter()
     
-(shalist,tree) = hashsplit.split_to_tree(w, hashsplit.autofiles(extra))
+shalist = hashsplit.split_to_shalist(w, hashsplit.autofiles(extra))
+tree = w.new_tree(shalist)
 
 if opt.verbose:
     log('\n')

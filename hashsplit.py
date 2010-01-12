@@ -104,7 +104,7 @@ def hashsplit_iter(w, files):
 
 
 total_split = 0
-def split_to_shalist(w, files):
+def _split_to_shalist(w, files):
     global total_split
     ofs = 0
     last_ofs = 0
@@ -130,8 +130,8 @@ def _next(i):
         return None
 
 
-def split_to_tree(w, files):
-    sl = iter(split_to_shalist(w, files))
+def split_to_shalist(w, files):
+    sl = iter(_split_to_shalist(w, files))
     if not fanout:
         shalist = list(sl)
     else:
@@ -143,8 +143,7 @@ def split_to_tree(w, files):
                 shalist.append(('40000', tmplist[0][1], w.new_tree(tmplist)))
                 tmplist = []
         shalist += tmplist
-    tree = w.new_tree(shalist)
-    return (shalist, tree)
+    return shalist
 
 
 def split_to_blob_or_tree(w, files):
