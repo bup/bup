@@ -72,40 +72,40 @@ Getting started
 
  - check out the bup source code using git:
  
-	git clone git://github.com/apenwarr/bup
+        git clone git://github.com/apenwarr/bup
 
  - install the python 2.5 development libraries.  On Debian or Ubuntu, this
    is:
-   	apt-get install python2.5-dev
+        apt-get install python2.5-dev
    	
  - build the python module and symlinks:
  
- 	make
+        make
  	
  - run the tests:
  
- 	make test
+        make test
  	
-   (The tests should pass.  If they don't pass for you, stop here and send
-   me an email.)
+    (The tests should pass.  If they don't pass for you, stop here and send
+    me an email.)
    
  - Try making a local backup as a tar file:
  
- 	tar -cvf - /etc | bup split -n local-etc -vv
+        tar -cvf - /etc | bup split -n local-etc -vv
  	
  - Try restoring your backup tarball:
  
- 	bup join local-etc | tar -tf -
+        bup join local-etc | tar -tf -
  	
  - Look at how much disk space your backup took:
  
- 	du -s ~/.bup
+        du -s ~/.bup
  	
  - Make another backup (which should be mostly identical to the last one;
    notice that you don't have to *specify* that this backup is incremental,
    it just saves space automatically):
  
- 	tar -cvf - /etc | bup split -n local-etc -vv
+        tar -cvf - /etc | bup split -n local-etc -vv
  	
  - Look how little extra space your second backup used on top of the first:
  
@@ -114,37 +114,37 @@ Getting started
  - Restore your old backup again (the ~1 is git notation for "one older than
    the most recent"):
    
-   	bup join local-etc~1 | tar -tf -
+        bup join local-etc~1 | tar -tf -
  
  - get a list of your previous backups:
  
-	GIT_DIR=~/.bup git log local-etc
+        GIT_DIR=~/.bup git log local-etc
 	
  - make a backup on a remote server (which must already have the 'bup' command
    somewhere in the PATH, and be accessible via ssh; make sure to replace
    SERVERNAME with the actual hostname of your server):
    
-   	tar -cvf - /etc | bup split -r SERVERNAME: -n local-etc -vv
+        tar -cvf - /etc | bup split -r SERVERNAME: -n local-etc -vv
  
  - try restoring the remote backup tarball:
  
- 	bup join -r SERVERNAME: local-etc | tar -tf -
+        bup join -r SERVERNAME: local-etc | tar -tf -
  	
  - try using the new (slightly experimental) 'bup index' and 'bup save'
    style backups, which bypass 'tar' but have some missing features (see
    "Things that are stupid" below):
    	
-   	bup index -uv /etc
-   	bup save -n local-etc /etc
+        bup index -uv /etc
+        bup save -n local-etc /etc
    	
  - do it again and see how fast an incremental backup can be:
  
- 	bup index -uv /etc
- 	bup save -n local-etc /etc
+        bup index -uv /etc
+        bup save -n local-etc /etc
  	
-   (You can also use the "-r SERVERNAME:" option to 'bup save', just like
-    with 'bup split' and 'bup join'.  The index itself is always local,
-    so you don't need -r there.)
+    (You can also use the "-r SERVERNAME:" option to 'bup save', just like
+     with 'bup split' and 'bup join'.  The index itself is always local,
+     so you don't need -r there.)
  	
 That's all there is to it!
 
@@ -217,64 +217,64 @@ know if you'd like to help.  Maybe we can start a mailing list.
 
  - 'bup save' doesn't know about file metadata.
  
-   That means we aren't saving file attributes, mtimes, ownership, hard
-   links, MacOS resource forks, etc.  Clearly this needs to be improved.
+    That means we aren't saving file attributes, mtimes, ownership, hard
+    links, MacOS resource forks, etc.  Clearly this needs to be improved.
 
  - There's no 'bup restore' yet.
  
-   'bup save' saves files in the standard git 'tree of blobs' format, so you
-   could then "restore" the files using something like 'git checkout'.  But
-   that's a git command, not a bup command, so it's hard to explain and
-   doesn't support retrieving objects from a remote bup server without first
-   fetching and packing an entire (possibly huge) pack, which could be very
-   slow.  Also, like 'bup save', you would need extra features in order to
-   properly restore file metadata.  And files that bup has split into
-   chunks would need to be recombined somehow.
+    'bup save' saves files in the standard git 'tree of blobs' format, so you
+    could then "restore" the files using something like 'git checkout'.  But
+    that's a git command, not a bup command, so it's hard to explain and
+    doesn't support retrieving objects from a remote bup server without first
+    fetching and packing an entire (possibly huge) pack, which could be very
+    slow.  Also, like 'bup save', you would need extra features in order to
+    properly restore file metadata.  And files that bup has split into
+    chunks would need to be recombined somehow.
    
  - 'bup index' is slower than it should be.
  
-   It's still rather fast: it can iterate through all the filenames on my
-   600,000 file filesystem in a few seconds.  But sometimes you just want to
-   change a filename or two, so this is needlessly slow.  There should be
-   a way to binary search through the file list rather than always going
-   through it sequentially.  And if you only add a couple of filenames,
-   there's no need to rewrite the entire index; just leave the new files
-   in a second "extra index" file or something.
+    It's still rather fast: it can iterate through all the filenames on my
+    600,000 file filesystem in a few seconds.  But sometimes you just want to
+    change a filename or two, so this is needlessly slow.  There should be
+    a way to binary search through the file list rather than always going
+    through it sequentially.  And if you only add a couple of filenames,
+    there's no need to rewrite the entire index; just leave the new files
+    in a second "extra index" file or something.
    
  - bup could use inotify for *really* efficient incremental backups.
 
-   You could even have your system doing "continuous" backups: whenever a
-   file changes, we immediately send an image of it to the server.  We could
-   give the continuous-backup process a really low CPU and I/O priority so
-   you wouldn't even know it was running.
+    You could even have your system doing "continuous" backups: whenever a
+    file changes, we immediately send an image of it to the server.  We could
+    give the continuous-backup process a really low CPU and I/O priority so
+    you wouldn't even know it was running.
 
  - bup currently has no features that prune away *old* backups.
  
-   Because of the way the packfile system works, backups become "entangled"
-   in weird ways and it's not actually possible to delete one pack
-   (corresponding approximately to one backup) without risking screwing up
-   other backups.
+    Because of the way the packfile system works, backups become "entangled"
+    in weird ways and it's not actually possible to delete one pack
+    (corresponding approximately to one backup) without risking screwing up
+    other backups.
    
-   git itself has lots of ways of optimizing this sort of thing, but its
-   methods aren't really applicable here; bup packfiles are just too huge.
-   We'll have to do it in a totally different way.  There are lots of
-   options.  For now: make sure you've got lots of disk space :)
+    git itself has lots of ways of optimizing this sort of thing, but its
+    methods aren't really applicable here; bup packfiles are just too huge.
+    We'll have to do it in a totally different way.  There are lots of
+    options.  For now: make sure you've got lots of disk space :)
 
  - bup doesn't ever validate existing backups/packs to ensure they're
-   correct.
+    correct.
    
-   This would be easy to implement (given that git uses hashes and CRCs all
-   over the place), but nobody has implemented it.  For now, you could try
-   doing a test restore of your tarball; doing so should trigger git's error
-   handling if any of the objects are corrupted.  'git fsck' would
-   theoreticaly work too, but it's too slow for huge backups.
+    This would be easy to implement (given that git uses hashes and CRCs all
+    over the place), but nobody has implemented it.  For now, you could try
+    doing a test restore of your tarball; doing so should trigger git's error
+    handling if any of the objects are corrupted.  'git fsck' would
+    theoreticaly work too, but it's too slow for huge backups.
 
  - bup has never been tested on anything but Linux, MacOS, and Linux+Cygwin.
  
-   There's nothing that makes it *inherently* non-portable, though, so
-   that's mostly a matter of someone putting in some effort.  (For a
-   "native" Windows port, the most annoying thing is the absence of ssh in
-   a default Windows installation.)
+    There's nothing that makes it *inherently* non-portable, though, so
+    that's mostly a matter of someone putting in some effort.  (For a
+    "native" Windows port, the most annoying thing is the absence of ssh in
+    a default Windows installation.)
    
  - bup has no GUI.  Actually, that's not stupid, but you might consider it
    a limitation.  There are a bunch of Linux GUI backup programs; someday
