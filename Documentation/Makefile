@@ -1,0 +1,33 @@
+PANDOC:=$(shell \
+	if pandoc </dev/null 2>/dev/null; then \
+		echo pandoc; \
+	else \
+		echo "Warning: pandoc not installed; can't generate manpages." >&2; \
+		echo '@echo Skipping: pandoc'; \
+	fi)
+BUP_VERSION=$(shell git describe --match 'bup-*' | sed 's/^bup-//')
+BUP_DATE=$(shell git log --no-walk --pretty='%ci%n' | (read x y && echo $$x))
+
+default: all
+
+all: man html
+
+man: $(patsubst %.md,%,$(wildcard *.md))
+
+html: $(patsubst %.1.md,%.html,$(wildcard *.md))
+
+%: %.md.tmp Makefile
+	$(PANDOC) -s -r markdown -w man -o $@ $<
+	
+%.html: %.1.md.tmp Makefile
+	$(PANDOC) -s -r markdown -w html -o $@ $<
+	
+.PRECIOUS: %.1.md.tmp
+%.md.tmp: %.md Makefile
+	rm -f $@ $@.new
+	sed -e 's,%BUP_VERSION%,${BUP_VERSION},g' \
+	    -e 's,%BUP_DATE%,${BUP_DATE},g' <$< >$@.new
+	mv $@.new $@
+
+clean:
+	rm -f *~ .*~ *.[0-9] *.new *.tmp *.html

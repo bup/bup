@@ -1,5 +1,5 @@
-bup
-bup-*
+/bup
+/bup-*
 randomgen
 memtest
 *.o

@@ -21,7 +21,14 @@ default: all
 
 all: bup-split bup-join bup-save bup-init bup-server bup-index bup-tick \
 	bup-midx bup-fuse bup-ls bup-damage bup-fsck bup-margin bup-drecurse \
-	bup memtest randomgen$(EXT) _hashsplit$(SOEXT)
+	bup memtest randomgen$(EXT) _hashsplit$(SOEXT) \
+	Documentation/all
+	
+%/all:
+	$(MAKE) -C $* all
+	
+%/clean:
+	$(MAKE) -C $* clean
 
 randomgen$(EXT): randomgen.o
 	$(CC) $(CFLAGS) -o $@ $<
@@ -67,7 +74,7 @@ bup-%: cmd-%.sh
 %.o: %.c
 	gcc -c -o $@ $< $(CPPFLAGS) $(CFLAGS)
 
-clean:
+clean: Documentation/clean
 	rm -f *.o *.so *.dll *.exe *~ .*~ *.pyc */*.pyc */*~ \
 		bup bup-* randomgen memtest \
 		out[12] out2[tc] tags[12] tags2[tc]
