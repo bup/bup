@@ -1,4 +1,4 @@
-import sys, os, pwd, subprocess, errno, socket, select
+import sys, os, pwd, subprocess, errno, socket, select, mmap
 
 
 def log(s):
@@ -138,3 +138,19 @@ def slashappend(s):
     else:
         return s
 
+
+def _mmap_do(f, len, flags, prot):
+    if not len:
+        st = os.fstat(f.fileno())
+        len = st.st_size
+    map = mmap.mmap(f.fileno(), len, flags, prot)
+    f.close()  # map will persist beyond file close
+    return map
+
+
+def mmap_read(f, len = 0):
+    return _mmap_do(f, len, mmap.MAP_PRIVATE, mmap.PROT_READ)
+
+
+def mmap_readwrite(f, len = 0):
+    return _mmap_do(f, len, mmap.MAP_SHARED, mmap.PROT_READ|mmap.PROT_WRITE)

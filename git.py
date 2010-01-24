@@ -1,4 +1,4 @@
-import os, errno, zlib, time, sha, subprocess, struct, mmap, stat, re
+import os, errno, zlib, time, sha, subprocess, struct, stat, re
 from helpers import *
 
 verbose = 0
@@ -90,10 +90,7 @@ class PackBitmap:
         if not os.path.exists(self.mapname):
             self.gen_map()
         self.num = 1 << (MAP_BITS-3)
-        f = open(self.mapname)
-        self.map = mmap.mmap(f.fileno(), self.num,
-                             mmap.MAP_PRIVATE, mmap.PROT_READ)
-        f.close()
+        self.map = mmap_read(open(self.mapname), self.num)
 
     def gen_map(self):
         (dir,fn) = os.path.split(self.idxname)
@@ -128,10 +125,7 @@ class PackBitmap:
 class PackIndex:
     def __init__(self, filename):
         self.name = filename
-        f = open(filename)
-        self.map = mmap.mmap(f.fileno(), 0,
-                             mmap.MAP_SHARED, mmap.PROT_READ)
-        f.close()  # map will persist beyond file close
+        self.map = mmap_read(open(filename))
         assert(str(self.map[0:8]) == '\377tOc\0\0\0\2')
         self.fanout = list(struct.unpack('!256I',
                                          str(buffer(self.map, 8, 256*4))))

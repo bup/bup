@@ -1,4 +1,4 @@
-import os, stat, time, struct, tempfile, mmap
+import os, stat, time, struct, tempfile
 from helpers import *
 
 EMPTY_SHA = '\0'*20
@@ -87,10 +87,7 @@ class Reader:
                                  % (filename, INDEX_HDR, b))
             st = os.fstat(f.fileno())
             if st.st_size:
-                self.m = mmap.mmap(f.fileno(), 0,
-                                   mmap.MAP_SHARED,
-                                   mmap.PROT_READ|mmap.PROT_WRITE)
-                f.close()  # map will persist beyond file close
+                self.m = mmap_readwrite(f)
                 self.writable = True
 
     def __del__(self):
