@@ -1,5 +1,3 @@
-PYINCLUDE:=$(shell python2.5-config --includes)
-PYLIB:=$(shell python2.5-config --lib)
 OS:=$(shell uname | sed 's/[-_].*//')
 MACHINE:=$(shell uname -m)
 CFLAGS=-Wall -g -O2 -Werror $(PYINCLUDE) -g
@@ -27,8 +25,10 @@ all: bup-split bup-join bup-save bup-init bup-server bup-index bup-tick \
 randomgen$(EXT): randomgen.o
 	$(CC) $(CFLAGS) -o $@ $<
 
-chashsplit$(SOEXT): chashsplitmodule.o
-	$(CC) $(CFLAGS) $(LDFLAGS) $(SHARED) -o $@ $< $(PYLIB)
+chashsplit$(SOEXT): chashsplitmodule.c csetup.py
+	@rm -f $@
+	python csetup.py build
+	cp build/*/chashsplit.so .
 	
 runtests: all runtests-python runtests-cmdline
 
@@ -68,6 +68,6 @@ bup-%: cmd-%.sh
 
 clean:
 	rm -f *.o *.so *.dll *.exe *~ .*~ *.pyc */*.pyc */*~ \
-		bup bup-* randomgen \
+		bup bup-* randomgen memtest \
 		out[12] out2[tc] tags[12] tags2[tc]
-	rm -rf *.tmp
+	rm -rf *.tmp build

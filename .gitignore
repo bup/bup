@@ -13,3 +13,4 @@ tags2[tc]
 out[12]
 out2[tc]
 *.tmp
+/build
