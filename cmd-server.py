@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.5
+#!/usr/bin/env python
 import sys, struct, mmap
 import options, git
 from helpers import *

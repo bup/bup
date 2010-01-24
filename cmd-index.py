@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.5
+#!/usr/bin/env python
 import os, sys, stat
 import options, git, index
 from helpers import *

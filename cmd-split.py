@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.5
+#!/usr/bin/env python
 import sys, time, struct
 import hashsplit, git, options, client
 from helpers import *
