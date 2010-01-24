@@ -409,7 +409,8 @@ def read_ref(refname):
 def update_ref(refname, newval, oldval):
     if not oldval:
         oldval = ''
-    p = subprocess.Popen(['git', 'update-ref', '--', refname,
+    assert(refname.startswith('refs/heads/'))
+    p = subprocess.Popen(['git', 'update-ref', refname,
                           newval.encode('hex'), oldval.encode('hex')],
                          preexec_fn = _gitenv)
     _git_wait('git update-ref', p)
@@ -471,7 +472,7 @@ def ver():
         if not m:
             raise GitError('git --version weird output: %r' % gvs)
         _ver = tuple(m.group(1).split('.'))
-    needed = ('1','5','4')
+    needed = ('1','5', '3', '1')
     if _ver < needed:
         raise GitError('git version %s or higher is required; you have %s'
                        % ('.'.join(needed), '.'.join(_ver)))
