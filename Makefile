@@ -45,26 +45,26 @@ test: all
 	./wvtestrun $(MAKE) runtests
 
 %: %.o
-	$(CC) $(CFLAGS) (LDFLAGS) -o $@ $< $(LIBS)
+	$(CC) $(CFLAGS) (LDFLAGS) -o $@ $^ $(LIBS)
 	
 bup: bup.py
 	rm -f $@
-	ln -s $^ $@
+	ln -s $< $@
 	
 bup-%: cmd-%.py
 	rm -f $@
-	ln -s $^ $@
+	ln -s $< $@
 	
 %: %.py
 	rm -f $@
-	ln -s $^ $@
+	ln -s $< $@
 	
 bup-%: cmd-%.sh
 	rm -f $@
-	ln -s $^ $@
+	ln -s $< $@
 	
 %.o: %.c
-	gcc -c -o $@ $^ $(CPPFLAGS) $(CFLAGS)
+	gcc -c -o $@ $< $(CPPFLAGS) $(CFLAGS)
 
 clean:
 	rm -f *.o *.so *.dll *.exe *~ .*~ *.pyc */*.pyc */*~ \
