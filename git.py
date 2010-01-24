@@ -446,7 +446,7 @@ def check_repo_or_die(path=None):
             init_repo()
         else:
             log('error: %r is not a bup/git repository\n' % repo())
-            exit(15)
+            sys.exit(15)
 
 
 def _treeparse(buf):

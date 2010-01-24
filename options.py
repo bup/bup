@@ -77,7 +77,7 @@ class Options:
     
     def usage(self):
         log(self._usagestr)
-        exit(97)
+        sys.exit(97)
         
     def parse(self, args):
         try:

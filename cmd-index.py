@@ -240,4 +240,4 @@ if opt['print'] or opt.status or opt.modified:
 
 if saved_errors:
     log('WARNING: %d errors encountered.\n' % len(saved_errors))
-    exit(1)
+    sys.exit(1)

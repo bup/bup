@@ -14,7 +14,7 @@ def usage():
     for c in os.listdir(exepath):
         if c.startswith('bup-') and c.find('.') < 0:
             log('\t%s\n' % c[4:])
-    exit(99)
+    sys.exit(99)
 
 if len(argv) < 2 or not argv[1] or argv[1][0] == '-':
     usage()
@@ -33,4 +33,4 @@ try:
     os.execv(subpath, [subpath] + argv[2:])
 except OSError, e:
     log('%s: %s\n' % (subpath, e))
-    exit(98)
+    sys.exit(98)
