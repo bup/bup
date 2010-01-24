@@ -151,10 +151,10 @@ class PackIndex:
         start = self.fanout[b1-1] # range -1..254
         end = self.fanout[b1] # range 0..255
         buf = buffer(self.map, 8 + 256*4, end*20)
-        want = buffer(hash)
+        want = str(hash)
         while start < end:
             mid = start + (end-start)/2
-            v = buffer(buf, mid*20, 20)
+            v = str(buf[mid*20:(mid+1)*20])
             if v < want:
                 start = mid+1
             elif v > want:
