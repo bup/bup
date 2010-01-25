@@ -18,18 +18,26 @@ def merge(idxlist, total, bits, table):
     iters = [iter(i) for i in idxlist]
     iters = [[next(it), it] for it in iters]
     count = 0
+    iters.sort()
     while iters:
         if (count % 10000) == 0:
             log('\rMerging: %.2f%% (%d/%d)'
                 % (count*100.0/total, count, total))
-        e = min(iters)  # FIXME: very slow for long lists; use smarter algo
-        assert(e[0])
-        yield e[0]
+        e = iters[0][0]
+        yield e
         count += 1
-        prefix = git.extract_bits(e[0], bits)
+        prefix = git.extract_bits(e, bits)
         table[prefix] = count
-        e[0] = next(e[1])
-        iters = filter(lambda x: x[0], iters)
+        e = iters[0][0] = next(iters[0][1])
+        if not e:
+            iters = iters[1:]
+        else:
+            i = 1
+            while i < len(iters):
+                if iters[i][0] > e:
+                    break
+                i += 1
+            iters = iters[1:i] + [iters[0]] + iters[i:]
     log('\rMerging: done.                                    \n')
 
 
@@ -47,7 +55,7 @@ def do_midx(outdir, outfilename, infilenames):
         total += len(ix)
 
     if not total:
-        log('No new .idx files: nothing to do.\n')
+        log('%s: no new .idx files: nothing to do.\n' % outdir)
         return
 
     log('Merging %d indexes (%d objects).\n' % (len(infilenames), total))
@@ -76,6 +84,7 @@ def do_midx(outdir, outfilename, infilenames):
     f.seek(12)
     f.write(struct.pack('!%dQ' % entries, *table))
     f.close()
+    os.rename(outfilename + '.tmp', outfilename)
 
     # this is just for testing
     if 0:
@@ -88,7 +97,6 @@ def do_midx(outdir, outfilename, infilenames):
             assert(i == pi.next())
             assert(p.exists(i))
 
-    os.rename(outfilename + '.tmp', outfilename)
     print outfilename
 
 optspec = """
@@ -122,6 +130,7 @@ elif opt.auto or opt.force:
             for pack in m.packs:  # only .idx files without a .midx are open
                 if pack.name.endswith('.idx'):
                     needed[pack.name] = 1
+            del m
             do_midx(path, opt.output, needed.keys())
 else:
     log("bup midx: you must use -f or -a or provide input filenames\n")
