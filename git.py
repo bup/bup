@@ -234,6 +234,7 @@ class MultiPackIndex:
                     for sub in ix.idxnames:
                         if not d.get(os.path.join(self.dir, sub)):
                             self.packs.append(ix)
+                            d[ix.name] = 1
                             for name in ix.idxnames:
                                 d[os.path.join(self.dir, name)] = 1
                             break
@@ -241,7 +242,8 @@ class MultiPackIndex:
                 full = os.path.join(self.dir, f)
                 if f.endswith('.idx') and not d.get(full):
                     self.packs.append(PackIndex(full))
-        log('MultiPackIndex: using %d packs.\n' % len(self.packs))
+                    d[full] = 1
+        #log('MultiPackIndex: using %d packs.\n' % len(self.packs))
 
     def add(self, hash):
         self.also[hash] = 1
