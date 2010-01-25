@@ -2,6 +2,7 @@ import os, errno, zlib, time, sha, subprocess, struct, stat, re
 from helpers import *
 
 verbose = 0
+ignore_midx = 0
 home_repodir = os.path.expanduser('~/.bup')
 repodir = None
 
@@ -218,20 +219,29 @@ class MultiPackIndex:
         return None
 
     def refresh(self):
+        global ignore_midx
         d = dict([(p.name, 1) for p in self.packs])
         if os.path.exists(self.dir):
-            for f in os.listdir(self.dir):
-                full = os.path.join(self.dir, f)
-                if f.endswith('.midx') and not d.get(full):
-                    ix = PackMidx(full)
-                    self.packs.append(ix)
-                    for name in ix.idxnames:
-                        d[os.path.join(self.dir, name)] = 1
+            if not ignore_midx:
+                midxl = []
+                for f in os.listdir(self.dir):
+                    full = os.path.join(self.dir, f)
+                    if f.endswith('.midx') and not d.get(full):
+                        midxl.append(PackMidx(full))
+                midxl.sort(lambda x,y: -cmp(len(x),len(y)))
+                for ix in midxl:
+                    any = 0
+                    for sub in ix.idxnames:
+                        if not d.get(os.path.join(self.dir, sub)):
+                            self.packs.append(ix)
+                            for name in ix.idxnames:
+                                d[os.path.join(self.dir, name)] = 1
+                            break
             for f in os.listdir(self.dir):
                 full = os.path.join(self.dir, f)
                 if f.endswith('.idx') and not d.get(full):
                     self.packs.append(PackIndex(full))
-        #log('MultiPackIndex: using %d packs.\n' % len(self.packs))
+        log('MultiPackIndex: using %d packs.\n' % len(self.packs))
 
     def add(self, hash):
         self.also[hash] = 1

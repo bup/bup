@@ -28,12 +28,15 @@ memtest [-n elements] [-c cycles]
 --
 n,number=  number of objects per cycle
 c,cycles=  number of cycles to run
+ignore-midx  ignore .midx files, use only .idx files
 """
 o = options.Options(sys.argv[0], optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
 
 if extra:
     o.usage()
+
+git.ignore_midx = opt.ignore_midx
 
 git.check_repo_or_die()
 m = git.MultiPackIndex(git.repo('objects/pack'))
