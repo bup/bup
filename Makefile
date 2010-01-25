@@ -20,15 +20,15 @@ endif
 default: all
 
 all: bup-split bup-join bup-save bup-init bup-server bup-index bup-tick \
-	bup memtest randomgen$(EXT) chashsplit$(SOEXT)
+	bup memtest randomgen$(EXT) _hashsplit$(SOEXT)
 
 randomgen$(EXT): randomgen.o
 	$(CC) $(CFLAGS) -o $@ $<
 
-chashsplit$(SOEXT): chashsplitmodule.c csetup.py
+_hashsplit$(SOEXT): _hashsplit.c csetup.py
 	@rm -f $@
 	python csetup.py build
-	cp build/*/chashsplit.so .
+	cp build/*/_hashsplit.so .
 	
 runtests: all runtests-python runtests-cmdline
 

@@ -1,5 +1,5 @@
 import sys
-import git, chashsplit
+import git, _hashsplit
 from helpers import *
 
 BLOB_LWM = 8192*2
@@ -39,7 +39,7 @@ class Buf:
 def splitbuf(buf):
     global split_verbosely
     b = buf.peek(buf.used())
-    ofs = chashsplit.splitbuf(b)
+    ofs = _hashsplit.splitbuf(b)
     if ofs:
         if split_verbosely >= 2:
             log('.')

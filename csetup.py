@@ -1,8 +1,8 @@
 from distutils.core import setup, Extension
 
-chashsplit_mod = Extension('chashsplit', sources=['chashsplitmodule.c'])
+_hashsplit_mod = Extension('_hashsplit', sources=['_hashsplit.c'])
 
-setup(name='chashsplit',
+setup(name='_hashsplit',
       version='0.1',
       description='hashsplit helper library for bup',
-      ext_modules=[chashsplit_mod])
+      ext_modules=[_hashsplit_mod])
