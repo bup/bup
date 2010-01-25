@@ -79,49 +79,6 @@ def _decode_packobj(buf):
     return (type, zlib.decompress(buf[i+1:]))
 
 
-MAP_BITS = 20
-
-
-class PackBitmap:
-    def __init__(self, idxname):
-        self.idxname = idxname
-        assert(idxname.endswith('.idx'))
-        self.mapname = idxname[:-4] + '.map'
-        if not os.path.exists(self.mapname):
-            self.gen_map()
-        self.num = 1 << (MAP_BITS-3)
-        self.map = mmap_read(open(self.mapname), self.num)
-
-    def gen_map(self):
-        (dir,fn) = os.path.split(self.idxname)
-        log('Generating map for %s...\n' % fn)
-        count = 0
-        a = ['\0']*((1 << MAP_BITS)/8)
-        for bin in PackIndex(self.idxname):
-            idx = self.bin_to_idx(bin)
-            byte = idx / 8
-            bit = idx % 8
-            a[byte] = chr(ord(a[byte]) | (1 << (7-bit)))
-            count += 1
-        open(self.mapname, 'w+').write(''.join(a))
-
-    def bin_to_idx(self, bin):
-        v = 0
-        for i in range(MAP_BITS/8):
-            v = (v << 8) | ord(bin[i])
-        rest = MAP_BITS - MAP_BITS/8*8
-        x = ord(bin[MAP_BITS/8]) >> (8-rest)
-        v = (v << rest) | x
-        return v
-
-    def might_exist(self, bin):
-        idx = self.bin_to_idx(bin)
-        byte = idx / 8
-        bit = idx % 8
-        v = ord(self.map[byte])
-        return (v >> (7-bit)) & 1
-
-
 class PackIndex:
     def __init__(self, filename):
         self.name = filename
@@ -242,7 +199,6 @@ class MultiPackIndex:
         self.dir = dir
         self.also = {}
         self.packs = []
-        self.maps = []
         self.refresh()
 
     def __del__(self):
@@ -254,15 +210,10 @@ class MultiPackIndex:
         if hash in self.also:
             return True
         for i in range(len(self.packs)):
-            m = self.maps[i]
-            if not m.might_exist(hash):
-                # FIXME: this test should perhaps be inside PackIndex?
-                continue
             p = self.packs[i]
             if p.exists(hash):
                 # reorder so most recently used packs are searched first
                 self.packs = [p] + self.packs[:i] + self.packs[i+1:]
-                self.maps =  [m] + self.maps[:i]  + self.maps[i+1:]
                 return p.name
         return None
 
@@ -271,8 +222,14 @@ class MultiPackIndex:
         if os.path.exists(self.dir):
             for f in os.listdir(self.dir):
                 full = os.path.join(self.dir, f)
+                if f.endswith('.midx') and not d.get(full):
+                    ix = PackMidx(full)
+                    self.packs.append(ix)
+                    for name in ix.idxnames:
+                        d[os.path.join(self.dir, name)] = 1
+            for f in os.listdir(self.dir):
+                full = os.path.join(self.dir, f)
                 if f.endswith('.idx') and not d.get(full):
-                    self.maps.append(PackBitmap(full))
                     self.packs.append(PackIndex(full))
         #log('MultiPackIndex: using %d packs.\n' % len(self.packs))
 

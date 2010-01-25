@@ -52,8 +52,8 @@ def merge(idxlist):
     iters = [[next(it), it] for it in iters]
     count = 0
     while iters:
-        if (count % (total/100)) == 0:
-            log('\rMerging: %d%%' % (count*100/total))
+        if (count % 10000) == 0:
+            log('\rMerging: %d/%d' % (count, total))
         e = min(iters)  # FIXME: very slow for long lists
         assert(e[0])
         yield e[0]
@@ -62,7 +62,7 @@ def merge(idxlist):
         table[prefix] = count
         e[0] = next(e[1])
         iters = filter(lambda x: x[0], iters)
-    log('\rMerging: done.\n')
+    log('\rMerging: done.                                    \n')
 
 f = open(opt.output, 'w+')
 f.write('MIDX\0\0\0\1')
@@ -80,7 +80,7 @@ f.write(struct.pack('!%dQ' % entries, *table))
 f.close()
 
 # this is just for testing
-if 1:
+if 0:
     p = git.PackMidx(opt.output)
     assert(len(p.idxnames) == len(extra))
     print p.idxnames
