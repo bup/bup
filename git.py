@@ -176,6 +176,62 @@ class PackIndex:
         for i in xrange(self.fanout[255]):
             yield buffer(self.map, 8 + 256*4 + 20*i, 20)
 
+    def __len__(self):
+        return self.fanout[255]
+
+
+def extract_bits(buf, bits):
+    mask = (1<<bits) - 1
+    v = struct.unpack('!Q', buf[0:8])[0]
+    v = (v >> (64-bits)) & mask
+    return v
+
+
+class PackMidx:
+    def __init__(self, filename):
+        self.name = filename
+        assert(filename.endswith('.midx'))
+        self.map = mmap_read(open(filename))
+        assert(str(self.map[0:8]) == 'MIDX\0\0\0\1')
+        self.bits = struct.unpack('!I', self.map[8:12])[0]
+        self.entries = 2**self.bits
+        self.fanout = buffer(self.map, 12, self.entries*8)
+        shaofs = 12 + self.entries*8
+        nsha = self._fanget(self.entries-1)
+        self.shalist = buffer(self.map, shaofs, nsha*20)
+        self.idxnames = str(self.map[shaofs + 20*nsha:]).split('\0')
+
+    def _fanget(self, i):
+        start = i*8
+        s = self.fanout[start:start+8]
+        return struct.unpack('!Q', s)[0]
+    
+    def exists(self, hash):
+        want = str(hash)
+        el = extract_bits(want, self.bits)
+        if el:
+            start = self._fanget(el-1)
+        else:
+            start = 0
+        end = self._fanget(el)
+        while start < end:
+            mid = start + (end-start)/2
+            v = str(self.shalist[mid*20:(mid+1)*20])
+            if v < want:
+                start = mid+1
+            elif v > want:
+                end = mid
+            else: # got it!
+                return True
+        return None
+    
+    def __iter__(self):
+        for i in xrange(self._fanget(self.entries-1)):
+            yield buffer(self.shalist, i*20, 20)
+    
+    def __len__(self):
+        return self._fanget(self.entries-1)
+
 
 _mpi_count = 0
 class MultiPackIndex:
