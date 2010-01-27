@@ -417,18 +417,45 @@ def _gitenv():
     os.environ['GIT_DIR'] = os.path.abspath(repo())
 
 
-def read_ref(refname):
-    p = subprocess.Popen(['git', 'show-ref', '--', refname],
-                         preexec_fn = _gitenv,
-                         stdout = subprocess.PIPE)
+def list_refs(refname = None):
+    argv = ['git', 'show-ref', '--']
+    if refname:
+        argv += [refname]
+    p = subprocess.Popen(argv, preexec_fn = _gitenv, stdout = subprocess.PIPE)
     out = p.stdout.read().strip()
     rv = p.wait()  # not fatal
     if rv:
         assert(not out)
     if out:
-        return out.split()[0].decode('hex')
+        for d in out.split('\n'):
+            (sha, name) = d.split(' ', 1)
+            yield (name, sha.decode('hex'))
+
+
+def read_ref(refname):
+    l = list(list_refs(refname))
+    if l:
+        assert(len(l) == 1)
+        return l[0][1]
     else:
         return None
+
+
+def rev_list(ref):
+    assert(not ref.startswith('-'))
+    argv = ['git', 'rev-list', '--pretty=format:%ct', ref, '--']
+    p = subprocess.Popen(argv, preexec_fn = _gitenv, stdout = subprocess.PIPE)
+    commit = None
+    for row in p.stdout:
+        s = row.strip()
+        if s.startswith('commit '):
+            commit = s[7:].decode('hex')
+        else:
+            date = int(s)
+            yield (date, commit)
+    rv = p.wait()  # not fatal
+    if rv:
+        raise GitError, 'git rev-list returned error %d' % rv
 
 
 def update_ref(refname, newval, oldval):
@@ -484,6 +511,7 @@ def _treeparse(buf):
         sha = buf[ofs+z+1:ofs+z+1+20]
         ofs += z+1+20
         yield (spl[0], spl[1], sha)
+
 
 _ver = None
 def ver():
@@ -542,14 +570,22 @@ class CatPipe:
         self.p.stdin.write('%s\n' % id)
         hdr = self.p.stdout.readline()
         if hdr.endswith(' missing\n'):
-            raise GitError('blob %r is missing' % id)
+            raise KeyError('blob %r is missing' % id)
         spl = hdr.split(' ')
         if len(spl) != 3 or len(spl[0]) != 40:
             raise GitError('expected blob, got %r' % spl)
         (hex, type, size) = spl
-        yield type
-        for blob in chunkyreader(self.p.stdout, int(spl[2])):
-            yield blob
+        it = iter(chunkyreader(self.p.stdout, int(spl[2])))
+        try:
+            yield type
+            for blob in it:
+                yield blob
+        finally:
+            try:
+                while 1:
+                    it.next()
+            except StopIteration:
+                pass
         assert(self.p.stdout.readline() == '\n')
 
     def _slow_get(self, id):
