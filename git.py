@@ -1,4 +1,4 @@
-import os, errno, zlib, time, sha, subprocess, struct, stat, re
+import os, errno, zlib, time, sha, subprocess, struct, stat, re, tempfile
 from helpers import *
 
 verbose = 0
@@ -289,8 +289,10 @@ class PackWriter:
     def _open(self):
         if not self.file:
             self._make_objcache()
-            self.filename = repo('objects/bup%d' % os.getpid())
-            self.file = open(self.filename + '.pack', 'w+')
+            (fd,name) = tempfile.mkstemp(suffix='.pack', dir=repo('objects'))
+            self.file = os.fdopen(fd, 'w+b')
+            assert(name.endswith('.pack'))
+            self.filename = name[:-5]
             self.file.write('PACK\0\0\0\2\0\0\0\0')
 
     def _raw_write(self, datalist):
