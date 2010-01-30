@@ -210,7 +210,13 @@ class PackWriter_Remote(git.PackWriter):
         if self._packopen and self.file:
             self.file.write('\0\0\0\0')
             self._packopen = False
-            id = self.file.readline().strip()
+            while True:
+                line = self.file.readline().strip()
+                if line.startswith('index '):
+                    pass
+                else:
+                    break
+            id = line
             self.file.check_ok()
             self.objcache = None
             if self.onclose:
