@@ -20,7 +20,7 @@ endif
 default: all
 
 all: bup-split bup-join bup-save bup-init bup-server bup-index bup-tick \
-	bup-midx bup-fuse bup-ls \
+	bup-midx bup-fuse bup-ls bup-damage \
 	bup memtest randomgen$(EXT) _hashsplit$(SOEXT)
 
 randomgen$(EXT): randomgen.o
