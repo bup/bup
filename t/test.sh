@@ -87,7 +87,7 @@ WVPASS diff -u testfile2 out2.tmp
 WVPASS diff -u testfile2 out2t.tmp
 WVPASS diff -u testfile2 out2c.tmp
 
-WVSTART "save/fsck"
+WVSTART "save/git-fsck"
 (
     set -e
     cd "$BUP_DIR" || exit 1
@@ -100,3 +100,31 @@ WVSTART "save/fsck"
 	  wc -l)
     WVPASS [ "$n" -eq 0 ]
 ) || exit 1
+
+WVSTART "fsck"
+WVPASS bup fsck
+if bup fsck --par2-ok; then
+    WVSTART "fsck (par2)"
+else
+    WVSTART "fsck (PAR2 IS MISSING)"
+fi
+WVPASS bup fsck -g
+WVPASS bup fsck -r
+WVPASS bup damage $BUP_DIR/objects/pack/*.pack -n10 -s1 -S0
+WVFAIL bup fsck
+WVFAIL bup fsck --disable-par2
+chmod u+w $BUP_DIR/objects/pack/*.idx
+WVPASS bup damage $BUP_DIR/objects/pack/*.idx -n10 -s1 -S0
+WVFAIL bup fsck
+WVPASS bup damage $BUP_DIR/objects/pack/*.pack -n10 -s1024 --percent 0.4 -S0
+WVFAIL bup fsck
+WVFAIL bup fsck -rvv   # fails because repairs were needed
+if bup fsck --par2-ok; then
+    WVPASS bup fsck -r # ok because of repairs from last time
+    WVPASS bup damage $BUP_DIR/objects/pack/*.pack -n201 -s1 --equal -S0
+    WVFAIL bup fsck
+    WVFAIL bup fsck -rvv   # too many errors to be repairable
+    WVFAIL bup fsck -r   # too many errors to be repairable
+else
+    WVFAIL bup fsck -r # still fails because par2 was missing
+fi
