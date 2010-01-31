@@ -580,12 +580,9 @@ class CatPipe:
             yield type
             for blob in it:
                 yield blob
-        finally:
-            try:
-                while 1:
-                    it.next()
-            except StopIteration:
-                pass
+        except StopIteration:
+            while 1:
+                it.next()
         assert(self.p.stdout.readline() == '\n')
 
     def _slow_get(self, id):
