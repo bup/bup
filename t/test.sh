@@ -115,10 +115,10 @@ WVFAIL bup fsck
 WVFAIL bup fsck --disable-par2
 chmod u+w $BUP_DIR/objects/pack/*.idx
 WVPASS bup damage $BUP_DIR/objects/pack/*.idx -n10 -s1 -S0
-WVFAIL bup fsck
+WVFAIL bup fsck -j4
 WVPASS bup damage $BUP_DIR/objects/pack/*.pack -n10 -s1024 --percent 0.4 -S0
 WVFAIL bup fsck
-WVFAIL bup fsck -rvv   # fails because repairs were needed
+WVFAIL bup fsck -rvv -j99   # fails because repairs were needed
 if bup fsck --par2-ok; then
     WVPASS bup fsck -r # ok because of repairs from last time
     WVPASS bup damage $BUP_DIR/objects/pack/*.pack -n201 -s1 --equal -S0

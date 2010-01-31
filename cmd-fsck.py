@@ -78,6 +78,39 @@ def git_verify(base):
         return 0
     else:
         return run(['git', 'verify-pack', '--', base])
+    
+    
+def do_pack(base, last):
+    code = 0
+    if par2_ok and par2_exists and (opt.repair or not opt.generate):
+        vresult = par2_verify(base)
+        if vresult != 0:
+            if opt.repair:
+                rresult = par2_repair(base)
+                if rresult != 0:
+                    print '%s par2 repair: failed (%d)' % (last, rresult)
+                    code = rresult
+                else:
+                    print '%s par2 repair: succeeded (0)' % last
+                    code = 100
+            else:
+                print '%s par2 verify: failed (%d)' % (last, vresult)
+                code = vresult
+        else:
+            print '%s ok' % last
+    elif not opt.generate or (par2_ok and not par2_exists):
+        gresult = git_verify(base)
+        if gresult != 0:
+            print '%s git verify: failed (%d)' % (last, gresult)
+            code = gresult
+        else:
+            if par2_ok and opt.generate:
+                par2_generate(base)
+            print '%s ok' % last
+    else:
+        assert(opt.generate and (not par2_ok or par2_exists))
+        debug('    skipped: par2 file already generated.\n')
+    return code
 
 
 optspec = """
@@ -87,6 +120,7 @@ r,repair    attempt to repair errors using par2 (dangerous!)
 g,generate  generate auto-repair information using par2
 v,verbose   increase verbosity (can be used more than once)
 quick       just check pack sha1sum, don't use git verify-pack
+j,jobs=     run 'n' jobs in parallel
 par2-ok     immediately return 0 if par2 is ok, 1 if not
 disable-par2  ignore par2 even if it is available
 """
@@ -110,6 +144,7 @@ if not extra:
 
 code = 0
 count = 0
+outstanding = {}
 for name in extra:
     if name.endswith('.pack'):
         base = name[:-5]
@@ -130,36 +165,38 @@ for name in extra:
           % (last, par2_ok and par2_exists and 'par2' or 'git'))
     if not opt.verbose and istty:
         log('fsck (%d/%d)\r' % (count, len(extra)))
-
-    if par2_ok and par2_exists and (opt.repair or not opt.generate):
-        vresult = par2_verify(base)
-        if vresult != 0:
-            if opt.repair:
-                rresult = par2_repair(base)
-                if rresult != 0:
-                    print '%s par2 repair: failed (%d)' % (last, rresult)
-                    code = code or rresult
-                else:
-                    print '%s par2 repair: succeeded (0)' % last
-                    code = code or 100
-            else:
-                print '%s par2 verify: failed (%d)' % (last, vresult)
-                code = code or vresult
-        else:
-            print '%s ok' % last
-    elif not opt.generate or (par2_ok and not par2_exists):
-        gresult = git_verify(base)
-        if gresult != 0:
-            print '%s git verify: failed (%d)' % (last, gresult)
-            code = code or gresult
-        else:
-            if par2_ok and opt.generate:
-                par2_generate(base)
-            print '%s ok' % last
+    
+    if not opt.jobs:
+        nc = do_pack(base, last)
+        code = code or nc
+        count += 1
     else:
-        assert(opt.generate and (not par2_ok or par2_exists))
-        debug('    skipped: par2 file already generated.\n')
-    count += 1
+        while len(outstanding) >= opt.jobs:
+            (pid,nc) = os.wait()
+            nc >>= 8
+            if pid in outstanding:
+                del outstanding[pid]
+                code = code or nc
+                count += 1
+        pid = os.fork()
+        if pid:  # parent
+            outstanding[pid] = 1
+        else: # child
+            try:
+                sys.exit(do_pack(base, last))
+            except Exception, e:
+                log('exception: %r\n' % e)
+                sys.exit(99)
+                
+while len(outstanding):
+    (pid,nc) = os.wait()
+    nc >>= 8
+    if pid in outstanding:
+        del outstanding[pid]
+        code = code or nc
+        count += 1
+    if not opt.verbose and istty:
+        log('fsck (%d/%d)\r' % (count, len(extra)))
 
 if not opt.verbose and istty:
     log('fsck done.           \n')
