@@ -22,6 +22,14 @@ def next(it):
         return None
     
     
+def unlink(f):
+    try:
+        os.unlink(f)
+    except OSError, e:
+        if e.errno == errno.ENOENT:
+            pass  # it doesn't exist, that's what you asked for
+
+
 def readpipe(argv):
     p = subprocess.Popen(argv, stdout=subprocess.PIPE)
     r = p.stdout.read()

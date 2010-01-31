@@ -32,7 +32,7 @@ WVPASSEQ "$(bup index -s $D/)" "A $D/"
 WVPASSEQ "$(bup index -s $D/b)" ""
 bup tick
 WVPASSEQ "$(bup index -us $D/b)" "A $D/b"
-WVPASSEQ "$(bup index -us $D)" \
+WVPASSEQ "$(bup index -usx $D)" \
 "A $D/d/e/
 A $D/d/
 A $D/b

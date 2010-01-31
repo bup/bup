@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import os, sys, stat
+import os, sys, stat, time
 import options, git, index
 from helpers import *
 
@@ -34,75 +34,68 @@ def add_error(e):
 # the use of fchdir() and lstat() are for two reasons:
 #  - help out the kernel by not making it repeatedly look up the absolute path
 #  - avoid race conditions caused by doing listdir() on a changing symlink
-def handle_path(ri, wi, dir, name, pst, xdev, can_delete_siblings):
-    hashgen = None
-    if opt.fake_valid:
-        def hashgen(name):
-            return (0, index.FAKE_SHA)
-    
-    dirty = 0
-    path = dir + name
-    #log('handle_path(%r,%r)\n' % (dir, name))
-    if stat.S_ISDIR(pst.st_mode):
-        if opt.verbose == 1: # log dirs only
-            sys.stdout.write('%s\n' % path)
-            sys.stdout.flush()
+def dirlist(path):
+    l = []
+    try:
+        OsFile(path).fchdir()
+    except OSError, e:
+        add_error(e)
+        return l
+    for n in os.listdir('.'):
         try:
-            OsFile(name).fchdir()
+            st = os.lstat(n)
         except OSError, e:
-            add_error(Exception('in %s: %s' % (dir, str(e))))
-            return 0
+            add_error(Exception('in %s: %s' % (index.realpath(path), str(e))))
+            continue
+        if stat.S_ISDIR(st.st_mode):
+            n += '/'
+        l.append((os.path.join(path, n), st))
+    l.sort(reverse=True)
+    return l
+
+
+def _recursive_dirlist(path, xdev):
+    olddir = OsFile('.')
+    for (path,pst) in dirlist(path):
+        if xdev != None and pst.st_dev != xdev:
+            log('Skipping %r: different filesystem.\n' % path)
+            continue
+        if stat.S_ISDIR(pst.st_mode):
+            for i in _recursive_dirlist(path, xdev=xdev):
+                yield i
+        yield (path,pst)
+    olddir.fchdir()
+
+
+def _matchlen(a,b):
+    bi = iter(b)
+    count = 0
+    for ai in a:
         try:
-            try:
-                ld = os.listdir('.')
-                #log('* %r: %r\n' % (name, ld))
-            except OSError, e:
-                add_error(Exception('in %s: %s' % (path, str(e))))
-                return 0
-            lds = []
-            for p in ld:
-                try:
-                    st = os.lstat(p)
-                except OSError, e:
-                    add_error(Exception('in %s: %s' % (path, str(e))))
-                    continue
-                if xdev != None and st.st_dev != xdev:
-                    log('Skipping %r: different filesystem.\n' 
-                        % index.realpath(p))
-                    continue
-                if stat.S_ISDIR(st.st_mode):
-                    p = slashappend(p)
-                lds.append((p, st))
-            for p,st in reversed(sorted(lds)):
-                dirty += handle_path(ri, wi, path, p, st, xdev,
-                                     can_delete_siblings = True)
-        finally:
-            os.chdir('..')
-    #log('endloop: ri.cur:%r path:%r\n' % (ri.cur.name, path))
-    while ri.cur and ri.cur.name > path:
-        #log('ricur:%r path:%r\n' % (ri.cur, path))
-        if can_delete_siblings and dir and ri.cur.name.startswith(dir):
-            #log('    --- deleting\n')
-            ri.cur.flags &= ~(index.IX_EXISTS | index.IX_HASHVALID)
-            ri.cur.repack()
-            dirty += 1
-        ri.next()
-    if ri.cur and ri.cur.name == path:
-        dirty += ri.cur.from_stat(pst)
-        if dirty or not (ri.cur.flags & index.IX_HASHVALID):
-            #log('   --- updating %r\n' % path)
-            if hashgen:
-                (ri.cur.gitmode, ri.cur.sha) = hashgen(name)
-                ri.cur.flags |= index.IX_HASHVALID
-            ri.cur.repack()
-        ri.next()
-    else:
-        wi.add(path, pst, hashgen = hashgen)
-        dirty += 1
-    if opt.verbose > 1:  # all files, not just dirs
-        sys.stdout.write('%s\n' % path)
-        sys.stdout.flush()
-    return dirty
+            if bi.next() == ai:
+                count += 1
+        except StopIteration:
+            break
+    return count
+
+
+def recursive_dirlist(paths):
+    last = ()
+    for path in paths:
+        pathsplit = index.pathsplit(path)
+        while _matchlen(pathsplit, last) < len(last):
+            yield (''.join(last), None)
+            last.pop()
+        pst = os.lstat(path)
+        if opt.xdev:
+            xdev = pst.st_dev
+        else:
+            xdev = None
+        if stat.S_ISDIR(pst.st_mode):
+            for i in _recursive_dirlist(path, xdev=xdev):
+                yield i
+        yield (path,pst)
+        last = pathsplit[:-1]
 
 
 def merge_indexes(out, r1, r2):
@@ -112,7 +105,7 @@ def merge_indexes(out, r1, r2):
             out.add_ixentry(e)
 
 
-class MergeGetter:
+class IterHelper:
     def __init__(self, l):
         self.i = iter(l)
         self.cur = None
@@ -126,60 +119,52 @@ class MergeGetter:
         return self.cur
 
 
-def update_index(path):
+def update_index(top):
     ri = index.Reader(indexfile)
     wi = index.Writer(indexfile)
-    rig = MergeGetter(ri)
-    
-    rpath = index.realpath(path)
-    st = os.lstat(rpath)
-    if opt.xdev:
-        xdev = st.st_dev
-    else:
-        xdev = None
-    f = OsFile('.')
-    if rpath[-1] == '/':
-        rpath = rpath[:-1]
-    (dir, name) = os.path.split(rpath)
-    dir = slashappend(dir)
-    if stat.S_ISDIR(st.st_mode) and (not rpath or rpath[-1] != '/'):
-        name += '/'
-        can_delete_siblings = True
-    else:
-        can_delete_siblings = False
-    OsFile(dir or '/').fchdir()
-    dirty = handle_path(rig, wi, dir, name, st, xdev, can_delete_siblings)
+    rig = IterHelper(ri.iter(name=top))
+    tstart = int(time.time())
 
-    # make sure all the parents of the updated path exist and are invalidated
-    # if appropriate.
-    while 1:
-        (rpath, junk) = os.path.split(rpath)
-        if not rpath:
-            break
-        elif rpath == '/':
-            p = rpath
-        else:
-            p = rpath + '/'
-        while rig.cur and rig.cur.name > p:
-            #log('FINISHING: %r path=%r d=%r\n' % (rig.cur.name, p, dirty))
+    hashgen = None
+    if opt.fake_valid:
+        def hashgen(name):
+            return (0, index.FAKE_SHA)
+
+    #log('doing: %r\n' % paths)
+
+    for (path,pst) in recursive_dirlist([top]):
+        #log('got: %r\n' % path)
+        if opt.verbose>=2 or (opt.verbose==1 and stat.S_ISDIR(pst.st_mode)):
+            sys.stdout.write('%s\n' % path)
+            sys.stdout.flush()
+        while rig.cur and rig.cur.name > path:  # deleted paths
+            rig.cur.set_deleted()
+            rig.cur.repack()
             rig.next()
-        if rig.cur and rig.cur.name == p:
-            if dirty:
-                rig.cur.flags &= ~index.IX_HASHVALID
+        if rig.cur and rig.cur.name == path:    # paths that already existed
+            if pst:
+                rig.cur.from_stat(pst, tstart)
+            if not (rig.cur.flags & index.IX_HASHVALID):
+                if hashgen:
+                    (rig.cur.gitmode, rig.cur.sha) = hashgen(path)
+                    rig.cur.flags |= index.IX_HASHVALID
                 rig.cur.repack()
-        else:
-            wi.add(p, os.lstat(p))
-        if p == '/':
-            break
+            rig.next()
+        else:  # new paths
+            #log('adding: %r\n' % path)
+            wi.add(path, pst, hashgen = hashgen)
     
-    f.fchdir()
-    ri.save()
-    if wi.count:
-        mi = index.Writer(indexfile)
-        merge_indexes(mi, ri, wi.new_reader())
-        ri.close()
-        mi.close()
-    wi.abort()
+    if ri.exists():
+        ri.save()
+        wi.flush()
+        if wi.count:
+            mi = index.Writer(indexfile)
+            merge_indexes(mi, ri, wi.new_reader())
+            ri.close()
+            mi.close()
+        wi.abort()
+    else:
+        wi.close()
 
 
 optspec = """
@@ -214,7 +199,7 @@ if opt.update:
     if not paths:
         log('bup index: update (-u) requested but no paths given\n')
         o.usage()
-    for (rp, path) in paths:
+    for (rp,path) in paths:
         update_index(rp)
 
 if opt['print'] or opt.status or opt.modified:

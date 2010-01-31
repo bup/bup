@@ -3,8 +3,8 @@ from helpers import *
 
 EMPTY_SHA = '\0'*20
 FAKE_SHA = '\x01'*20
-INDEX_HDR = 'BUPI\0\0\0\1'
-INDEX_SIG = '!IIIIIQII20sH'
+INDEX_HDR = 'BUPI\0\0\0\2'
+INDEX_SIG = '!IIIIIQII20sHII'
 ENTLEN = struct.calcsize(INDEX_SIG)
 
 IX_EXISTS = 0x8000
@@ -14,15 +14,16 @@ class Error(Exception):
     pass
 
 
+def _encode(dev, ctime, mtime, uid, gi8d, size, mode, gitmode, sha, flags):
+    return struct.pack(INDEX_SIG,
+                       dev, ctime, mtime, uid, gid, size, mode,
+                       gitmode, sha, flags)
+
 class Entry:
-    def __init__(self, name, m, ofs, tstart):
-        self._m = m
-        self._ofs = ofs
+    def __init__(self, name):
         self.name = str(name)
-        self.tstart = tstart
-        (self.dev, self.ctime, self.mtime, self.uid, self.gid,
-         self.size, self.mode, self.gitmode, self.sha,
-         self.flags) = struct.unpack(INDEX_SIG, str(buffer(m, ofs, ENTLEN)))
+        self.children_ofs = 0
+        self.children_n = 0
 
     def __repr__(self):
         return ("(%s,0x%04x,%d,%d,%d,%d,%d,0x%04x)" 
@@ -34,12 +35,10 @@ class Entry:
         return struct.pack(INDEX_SIG,
                            self.dev, self.ctime, self.mtime, 
                            self.uid, self.gid, self.size, self.mode,
-                           self.gitmode, self.sha, self.flags)
+                           self.gitmode, self.sha, self.flags,
+                           self.children_ofs, self.children_n)
 
-    def repack(self):
-        self._m[self._ofs:self._ofs+ENTLEN] = self.packed()
-
-    def from_stat(self, st):
+    def from_stat(self, st, tstart):
         old = (self.dev, self.ctime, self.mtime,
                self.uid, self.gid, self.size, self.flags & IX_EXISTS)
         new = (st.st_dev, int(st.st_ctime), int(st.st_mtime),
@@ -52,19 +51,76 @@ class Entry:
         self.size = st.st_size
         self.mode = st.st_mode
         self.flags |= IX_EXISTS
-        if int(st.st_ctime) >= self.tstart or old != new:
+        if int(st.st_ctime) >= tstart or old != new:
             self.flags &= ~IX_HASHVALID
-            return 1  # dirty
-        else:
-            return 0  # not dirty
+            self.set_dirty()
 
     def validate(self, sha):
         assert(sha)
         self.sha = sha
         self.flags |= IX_HASHVALID
 
+    def set_deleted(self):
+        self.flags &= ~(IX_EXISTS | IX_HASHVALID)
+        self.set_dirty()
+
+    def set_dirty(self):
+        pass # FIXME
+
     def __cmp__(a, b):
         return cmp(a.name, b.name)
+
+
+class NewEntry(Entry):
+    def __init__(self, name, dev, ctime, mtime, uid, gid,
+                 size, mode, gitmode, sha, flags, children_ofs, children_n):
+        Entry.__init__(self, name)
+        (self.dev, self.ctime, self.mtime, self.uid, self.gid,
+         self.size, self.mode, self.gitmode, self.sha,
+         self.flags, self.children_ofs, self.children_n
+         ) = (dev, int(ctime), int(mtime), uid, gid,
+              size, mode, gitmode, sha, flags, children_ofs, children_n)
+
+
+class ExistingEntry(Entry):
+    def __init__(self, name, m, ofs):
+        Entry.__init__(self, name)
+        self._m = m
+        self._ofs = ofs
+        (self.dev, self.ctime, self.mtime, self.uid, self.gid,
+         self.size, self.mode, self.gitmode, self.sha,
+         self.flags, self.children_ofs, self.children_n
+         ) = struct.unpack(INDEX_SIG, str(buffer(m, ofs, ENTLEN)))
+
+    def repack(self):
+        self._m[self._ofs:self._ofs+ENTLEN] = self.packed()
+
+    def iter(self, name=None):
+        dname = name
+        if dname and not dname.endswith('/'):
+            dname += '/'
+        ofs = self.children_ofs
+        #log('myname=%r\n' % self.name)
+        assert(ofs <= len(self._m))
+        for i in range(self.children_n):
+            eon = self._m.find('\0', ofs)
+            #log('eon=0x%x ofs=0x%x i=%d cn=%d\n' % (eon, ofs, i, self.children_n))
+            assert(eon >= 0)
+            assert(eon >= ofs)
+            assert(eon > ofs)
+            child = ExistingEntry(self.name + str(buffer(self._m, ofs, eon-ofs)),
+                                  self._m, eon+1)
+            if (not dname
+                 or child.name.startswith(dname)
+                 or child.name.endswith('/') and dname.startswith(child.name)):
+                for e in child.iter(name=name):
+                    yield e
+            if not name or child.name == name or child.name.startswith(dname):
+                yield child
+            ofs = eon + 1 + ENTLEN
+
+    def __iter__(self):
+        return self.iter()
             
 
 class Reader:
@@ -93,15 +149,22 @@ class Reader:
     def __del__(self):
         self.close()
 
+    def iter(self, name=None):
+        if len(self.m):
+            dname = name
+            if dname and not dname.endswith('/'):
+                dname += '/'
+            root = ExistingEntry('/', self.m, len(self.m)-ENTLEN)
+            for sub in root.iter(name=name):
+                yield sub
+            if not dname or dname == root.name:
+                yield root
+
     def __iter__(self):
-        tstart = int(time.time())
-        ofs = len(INDEX_HDR)
-        while ofs < len(self.m):
-            eon = self.m.find('\0', ofs)
-            assert(eon >= 0)
-            yield Entry(buffer(self.m, ofs, eon-ofs),
-                          self.m, eon+1, tstart = tstart)
-            ofs = eon + 1 + ENTLEN
+        return self.iter()
+
+    def exists(self):
+        return self.m
 
     def save(self):
         if self.writable and self.m:
@@ -114,23 +177,11 @@ class Reader:
             self.writable = False
 
     def filter(self, prefixes):
-        #log("filtering %r\n" % prefixes)
-        paths = reduce_paths(prefixes)
-        #log("filtering %r\n" % paths)
-        pi = iter(paths)
-        (rpin, pin) = pi.next()
-        for ent in self:
-            #log('checking %r vs %r\n' % (ent.name, rpin))
-            while ent.name < rpin:
-                try:
-                    (rpin, pin) = pi.next()
-                except StopIteration:
-                    return  # no more files can possibly match
-            if not ent.name.startswith(rpin):
-                continue   # not interested
-            else:
-                name = pin + ent.name[len(rpin):]
-                yield (name, ent)
+        for (rp, path) in reduce_paths(prefixes):
+            for e in self.iter(rp):
+                assert(e.name.startswith(rp))
+                name = path + e.name[len(rp):]
+                yield (name, e)
 
 
 # Read all the iters in order; when more than one iter has the same entry,
@@ -165,8 +216,17 @@ def _last_writer_wins_iter(iters):
         l = filter(None, l)
 
 
+def pathsplit(p):
+    l = p.split('/')
+    l = list([i+'/' for i in l[:-1]]) + l[-1:]
+    if l[-1] == '':
+        l.pop()  # extra blank caused by terminating '/'
+    return l
+
+
 class Writer:
     def __init__(self, filename):
+        self.stack = []
         self.f = None
         self.count = 0
         self.lastfile = None
@@ -187,46 +247,84 @@ class Writer:
             f.close()
             os.unlink(self.tmpname)
 
+    def flush(self):
+        while self.stack:
+            self.add(''.join(self.stack[-1][0]), None)
+        self._pop_to(None, [])
+        self.f.flush()
+
     def close(self):
+        self.flush()
         f = self.f
         self.f = None
         if f:
             f.close()
             os.rename(self.tmpname, self.filename)
 
-    def _write(self, data):
-        self.f.write(data)
+    # FIXME: this function modifies 'entry' and can only pop a single level.
+    # That means its semantics are basically crazy.
+    def _pop_to(self, entry, edir):
+        assert(len(self.stack) - len(edir) <= 1)
+        while self.stack and self.stack[-1][0] > edir:
+            #log('popping %r with %d entries (%d)\n' 
+            #    % (''.join(self.stack[-1][0]), len(self.stack[-1][1]),
+            #       len(self.stack)))
+            p = self.stack.pop()
+            entry.children_ofs = self.f.tell()
+            entry.children_n = len(p[1])
+            for e in p[1]:
+                self._write(e)
+
+    def _write(self, entry):
+        #log('        writing %r\n' % entry.name)
+        es = pathsplit(entry.name)
+        self.f.write(es[-1] + '\0' + entry.packed())
         self.count += 1
 
-    def add(self, name, st, hashgen=None):
-        #log('ADDING %r\n' % name)
+    def _add(self, entry):
+        es = pathsplit(entry.name)
+        edir = es[:-1]
+        self._pop_to(entry, edir)
+        while len(self.stack) < len(edir):
+            self.stack.append([es[:len(self.stack)+1], [], ()])
+        if entry.name != '/':
+            self.stack[-1][1].append(entry)
+        else:
+            self._write(entry)
+
+    def add(self, name, st, hashgen = None):
         if self.lastfile:
             assert(cmp(self.lastfile, name) > 0) # reverse order only
-        self.lastfile = name
+        endswith = name.endswith('/')
         flags = IX_EXISTS
         sha = None
         if hashgen:
             (gitmode, sha) = hashgen(name)
-            if sha:
-                flags |= IX_HASHVALID
+            flags |= IX_HASHVALID
         else:
             (gitmode, sha) = (0, EMPTY_SHA)
-        data = name + '\0' + \
-            struct.pack(INDEX_SIG, st.st_dev, int(st.st_ctime),
-                        int(st.st_mtime), st.st_uid, st.st_gid,
-                        st.st_size, st.st_mode, gitmode, sha, flags)
-        self._write(data)
+        if st:
+            isdir = stat.S_ISDIR(st.st_mode)
+            assert(isdir == endswith)
+            e = NewEntry(name, st.st_dev, int(st.st_ctime),
+                         int(st.st_mtime), st.st_uid, st.st_gid,
+                         st.st_size, st.st_mode, gitmode, sha, flags,
+                         0, 0)
+        else:
+            assert(endswith)
+            e = NewEntry(name, 0, 0, 0, 0, 0, 0, 0, gitmode, sha, flags, 0, 0)
+        self.lastfile = name
+        self._add(e)
 
     def add_ixentry(self, e):
         if self.lastfile and self.lastfile <= e.name:
             raise Error('%r must come before %r' 
                              % (e.name, self.lastfile))
         self.lastfile = e.name
-        data = e.name + '\0' + e.packed()
-        self._write(data)
+        self._add(e)
 
     def new_reader(self):
-        self.f.flush()
+        self.flush()
         return Reader(self.tmpname)
 
 
@@ -251,10 +349,14 @@ def reduce_paths(paths):
     xpaths = []
     for p in paths:
         rp = realpath(p)
-        st = os.lstat(rp)
-        if stat.S_ISDIR(st.st_mode):
-            rp = slashappend(rp)
-            p = slashappend(p)
+        try:
+            st = os.lstat(rp)
+            if stat.S_ISDIR(st.st_mode):
+                rp = slashappend(rp)
+                p = slashappend(p)
+        except OSError, e:
+            if e.errno != errno.ENOENT:
+                raise
         xpaths.append((rp, p))
     xpaths.sort()
 
