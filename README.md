@@ -1,6 +1,6 @@
 
-bup 0.04: It backs things up
-============================
+bup: It backs things up
+=======================
 
 bup is a program that backs things up.  It's short for "backup." Can you
 believe that nobody else has named an open source program "bup" after all
@@ -58,10 +58,11 @@ Reasons you might want to avoid bup
    for you, but we don't know why.  It is also missing some
    probably-critical features.
    
- - It requires python 2.5, a C compiler, and an installed git version >= 1.5.2.
+ - It requires python >= 2.4, a C compiler, and an installed git version >=
+   1.5.3.1.
  
- - It currently only works on Linux, MacOS X 10.5, or Windows (with Cygwin).
-   Patches to support other platforms are welcome.
+ - It currently only works on Linux, MacOS X >= 10.4, or Windows (with
+   Cygwin).  Patches to support other platforms are welcome.
  
  - It has almost no documentation.  Not even a man page!  This file is all
    you get for now.
@@ -212,8 +213,8 @@ a lot of files have changed.
 Things that are stupid for now but which we'll fix later
 --------------------------------------------------------
 
-Help with any of these problems, or others, is very, very welcome.  Let me
-know if you'd like to help.  Maybe we can start a mailing list.
+Help with any of these problems, or others, is very, very welcome.  Join the
+mailing list (see below) if you'd like to help.
 
  - 'bup save' doesn't know about file metadata.
  
@@ -260,15 +261,6 @@ know if you'd like to help.  Maybe we can start a mailing list.
     We'll have to do it in a totally different way.  There are lots of
     options.  For now: make sure you've got lots of disk space :)
 
- - bup doesn't ever validate existing backups/packs to ensure they're
-    correct.
-   
-    This would be easy to implement (given that git uses hashes and CRCs all
-    over the place), but nobody has implemented it.  For now, you could try
-    doing a test restore of your tarball; doing so should trigger git's error
-    handling if any of the objects are corrupted.  'git fsck' would
-    theoreticaly work too, but it's too slow for huge backups.
-
  - bup has never been tested on anything but Linux, MacOS, and Linux+Cygwin.
  
     There's nothing that makes it *inherently* non-portable, though, so
@@ -299,4 +291,3 @@ and you can subscribe by sending a message to:
 Have fun,
 
 Avery
-January 2010
