@@ -141,8 +141,8 @@ class PackIndex:
 
 def extract_bits(buf, bits):
     mask = (1<<bits) - 1
-    v = struct.unpack('!Q', buf[0:8])[0]
-    v = (v >> (64-bits)) & mask
+    v = struct.unpack('!I', buf[0:4])[0]
+    v = (v >> (32-bits)) & mask
     return v
 
 
@@ -151,19 +151,27 @@ class PackMidx:
         self.name = filename
         assert(filename.endswith('.midx'))
         self.map = mmap_read(open(filename))
-        assert(str(self.map[0:8]) == 'MIDX\0\0\0\1')
-        self.bits = struct.unpack('!I', self.map[8:12])[0]
-        self.entries = 2**self.bits
-        self.fanout = buffer(self.map, 12, self.entries*8)
-        shaofs = 12 + self.entries*8
-        nsha = self._fanget(self.entries-1)
-        self.shalist = buffer(self.map, shaofs, nsha*20)
-        self.idxnames = str(self.map[shaofs + 20*nsha:]).split('\0')
+        if str(self.map[0:8]) == 'MIDX\0\0\0\1':
+            log('Warning: ignoring old-style midx %r\n' % filename)
+            self.bits = 0
+            self.entries = 1
+            self.fanout = buffer('\0\0\0\0')
+            self.shalist = buffer('\0'*20)
+            self.idxnames = []
+        else:
+            assert(str(self.map[0:8]) == 'MIDX\0\0\0\2')
+            self.bits = struct.unpack('!I', self.map[8:12])[0]
+            self.entries = 2**self.bits
+            self.fanout = buffer(self.map, 12, self.entries*4)
+            shaofs = 12 + self.entries*4
+            nsha = self._fanget(self.entries-1)
+            self.shalist = buffer(self.map, shaofs, nsha*20)
+            self.idxnames = str(self.map[shaofs + 20*nsha:]).split('\0')
 
     def _fanget(self, i):
-        start = i*8
-        s = self.fanout[start:start+8]
-        return struct.unpack('!Q', s)[0]
+        start = i*4
+        s = self.fanout[start:start+4]
+        return struct.unpack('!I', s)[0]
     
     def exists(self, hash):
         want = str(hash)

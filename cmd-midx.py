@@ -46,10 +46,10 @@ def do_midx(outdir, outfilename, infilenames):
     except OSError:
         pass
     f = open(outfilename + '.tmp', 'w+')
-    f.write('MIDX\0\0\0\1')
+    f.write('MIDX\0\0\0\2')
     f.write(struct.pack('!I', bits))
     assert(f.tell() == 12)
-    f.write('\0'*8*entries)
+    f.write('\0'*4*entries)
     
     for e in merge(inp, bits, table):
         f.write(e)
@@ -57,7 +57,7 @@ def do_midx(outdir, outfilename, infilenames):
     f.write('\0'.join([os.path.basename(p) for p in infilenames]))
 
     f.seek(12)
-    f.write(struct.pack('!%dQ' % entries, *table))
+    f.write(struct.pack('!%dI' % entries, *table))
     f.close()
     os.rename(outfilename + '.tmp', outfilename)
 
