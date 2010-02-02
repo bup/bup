@@ -29,15 +29,15 @@ def do_midx(outdir, outfilename, infilenames):
         inp.append(ix)
         total += len(ix)
 
-    if not total:
-        log('%s: no new .idx files: nothing to do.\n' % outdir)
+    log('Merging %d indexes (%d objects).\n' % (len(infilenames), total))
+    if total < 1024 and len(infilenames) < 3:
+        log('%s: not enough objects for a .midx to be useful.\n' % outdir)
         return
 
-    log('Merging %d indexes (%d objects).\n' % (len(infilenames), total))
-    pages = total/SHA_PER_PAGE
+    pages = int(total/SHA_PER_PAGE) or 1
     bits = int(math.ceil(math.log(pages, 2)))
     entries = 2**bits
-    log('table size: %d (%d bits)\n' % (entries*8, bits))
+    log('Table size: %d (%d bits)\n' % (entries*4, bits))
     
     table = [0]*entries
 
