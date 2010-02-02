@@ -48,9 +48,37 @@ static PyObject *splitbuf(PyObject *self, PyObject *args)
 }
 
 
+static PyObject *bitmatch(PyObject *self, PyObject *args)
+{
+    unsigned char *buf1 = NULL, *buf2 = NULL;
+    int len1 = 0, len2 = 0;
+    int byte, bit;
+
+    if (!PyArg_ParseTuple(args, "t#t#", &buf1, &len1, &buf2, &len2))
+	return NULL;
+    
+    bit = 0;
+    for (byte = 0; byte < len1 && byte < len2; byte++)
+    {
+	int b1 = buf1[byte], b2 = buf2[byte];
+	if (b1 != b2)
+	{
+	    for (bit = 0; bit < 8; bit++)
+		if ( (b1 & (0x80 >> bit)) != (b2 & (0x80 >> bit)) )
+		    break;
+	    break;
+	}
+    }
+    
+    return Py_BuildValue("i", byte*8 + bit);
+}
+
+
 static PyMethodDef hashsplit_methods[] = {
     { "splitbuf", splitbuf, METH_VARARGS,
 	"Split a list of strings based on a rolling checksum." },
+    { "bitmatch", bitmatch, METH_VARARGS,
+	"Count the number of matching prefix bits between two strings." },
     { NULL, NULL, 0, NULL },  // sentinel
 };
 

@@ -15,6 +15,13 @@ def mkdirp(d):
             raise
 
 
+def next(it):
+    try:
+        return it.next()
+    except StopIteration:
+        return None
+    
+    
 def readpipe(argv):
     p = subprocess.Popen(argv, stdout=subprocess.PIPE)
     r = p.stdout.read()

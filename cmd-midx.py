@@ -7,38 +7,13 @@ PAGE_SIZE=4096
 SHA_PER_PAGE=PAGE_SIZE/200.
 
 
-def next(it):
-    try:
-        return it.next()
-    except StopIteration:
-        return None
-    
-    
-def merge(idxlist, total, bits, table):
-    iters = [iter(i) for i in idxlist]
-    iters = [[next(it), it] for it in iters]
+def merge(idxlist, bits, table):
     count = 0
-    iters.sort()
-    while iters:
-        if (count % 10000) == 0:
-            log('\rMerging: %.2f%% (%d/%d)'
-                % (count*100.0/total, count, total))
-        e = iters[0][0]
-        yield e
+    for e in git.idxmerge(idxlist):
         count += 1
         prefix = git.extract_bits(e, bits)
         table[prefix] = count
-        e = iters[0][0] = next(iters[0][1])
-        if not e:
-            iters = iters[1:]
-        else:
-            i = 1
-            while i < len(iters):
-                if iters[i][0] > e:
-                    break
-                i += 1
-            iters = iters[1:i] + [iters[0]] + iters[i:]
-    log('\rMerging: done.                                    \n')
+        yield e
 
 
 def do_midx(outdir, outfilename, infilenames):
@@ -76,7 +51,7 @@ def do_midx(outdir, outfilename, infilenames):
     assert(f.tell() == 12)
     f.write('\0'*8*entries)
     
-    for e in merge(inp, total, bits, table):
+    for e in merge(inp, bits, table):
         f.write(e)
         
     f.write('\0'.join([os.path.basename(p) for p in infilenames]))

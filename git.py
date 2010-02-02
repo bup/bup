@@ -207,6 +207,9 @@ class MultiPackIndex:
         _mpi_count -= 1
         assert(_mpi_count == 0)
 
+    def __iter__(self):
+        return iter(idxmerge(self.packs))
+
     def exists(self, hash):
         if hash in self.also:
             return True
@@ -267,6 +270,32 @@ def _shalist_sort_key(ent):
         return name
 
 
+def idxmerge(idxlist):
+    total = sum([len(i) for i in idxlist])
+    iters = [iter(i) for i in idxlist]
+    iters = [[next(it), it] for it in iters]
+    count = 0
+    iters.sort()
+    while iters:
+        if (count % 10000) == 0:
+            log('Merging: %.2f%% (%d/%d)\r'
+                % (count*100.0/total, count, total))
+        e = iters[0][0]
+        yield e
+        count += 1
+        e = iters[0][0] = next(iters[0][1])
+        if not e:
+            iters = iters[1:]
+        else:
+            i = 1
+            while i < len(iters):
+                if iters[i][0] > e:
+                    break
+                i += 1
+            iters = iters[1:i] + [iters[0]] + iters[i:]
+    log('Merging: %.2f%% (%d/%d), done.\n' % (100, total, total))
+
+    
 class PackWriter:
     def __init__(self, objcache_maker=None):
         self.count = 0
