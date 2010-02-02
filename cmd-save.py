@@ -18,6 +18,7 @@ t,tree     output a tree id
 c,commit   output a commit id
 n,name=    name of backup set to update (if any)
 v,verbose  increase log output (can be used more than once)
+smaller=   only back up files smaller than n bytes
 """
 o = options.Options('bup save', optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
@@ -108,6 +109,8 @@ for (transname,ent) in index.Reader(git.repo('bupindex')).filter(extra):
         mode = '%o' % ent.mode
         id = ent.sha
         shalists[-1].append((mode, file, id))
+    elif opt.smaller and ent.size >= opt.smaller:
+        add_error('skipping large file "%s"' % ent.name)
     else:
         try:
             if stat.S_ISREG(ent.mode):
