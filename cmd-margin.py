@@ -23,6 +23,7 @@ longmatch = 0
 for i in mi:
     if i == last:
         continue
+    #assert(str(i) >= last)
     pm = _hashsplit.bitmatch(last, i)
     longmatch = max(longmatch, pm)
     last = i

@@ -1,4 +1,5 @@
 import os, errno, zlib, time, sha, subprocess, struct, stat, re, tempfile
+import heapq
 from helpers import *
 
 verbose = 0
@@ -273,26 +274,21 @@ def _shalist_sort_key(ent):
 def idxmerge(idxlist):
     total = sum([len(i) for i in idxlist])
     iters = [iter(i) for i in idxlist]
-    iters = [[next(it), it] for it in iters]
+    heap = [(next(it), it) for it in iters]
+    heapq.heapify(heap)
     count = 0
-    iters.sort()
-    while iters:
+    while heap:
         if (count % 10000) == 0:
             log('Merging: %.2f%% (%d/%d)\r'
                 % (count*100.0/total, count, total))
-        e = iters[0][0]
+        (e, it) = heap[0]
         yield e
         count += 1
-        e = iters[0][0] = next(iters[0][1])
-        if not e:
-            iters = iters[1:]
+        e = next(it)
+        if e:
+            heapq.heapreplace(heap, (e, it))
         else:
-            i = 1
-            while i < len(iters):
-                if iters[i][0] > e:
-                    break
-                i += 1
-            iters = iters[1:i] + [iters[0]] + iters[i:]
+            heapq.heappop(heap)
     log('Merging: %.2f%% (%d/%d), done.\n' % (100, total, total))
 
     
