@@ -151,7 +151,7 @@ class Reader:
         self.close()
 
     def iter(self, name=None):
-        if len(self.m):
+        if len(self.m) > len(INDEX_HDR)+ENTLEN:
             dname = name
             if dname and not dname.endswith('/'):
                 dname += '/'
@@ -319,23 +319,6 @@ class Writer:
     def new_reader(self):
         self.flush()
         return Reader(self.tmpname)
-
-
-# like os.path.realpath, but doesn't follow a symlink for the last element.
-# (ie. if 'p' itself is itself a symlink, this one won't follow it)
-def realpath(p):
-    try:
-        st = os.lstat(p)
-    except OSError:
-        st = None
-    if st and stat.S_ISLNK(st.st_mode):
-        (dir, name) = os.path.split(p)
-        dir = os.path.realpath(dir)
-        out = os.path.join(dir, name)
-    else:
-        out = os.path.realpath(p)
-    #log('realpathing:%r,%r\n' % (p, out))
-    return out
 
 
 def reduce_paths(paths):

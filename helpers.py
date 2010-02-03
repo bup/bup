@@ -1,4 +1,4 @@
-import sys, os, pwd, subprocess, errno, socket, select, mmap
+import sys, os, pwd, subprocess, errno, socket, select, mmap, stat
 
 
 def log(s):
@@ -46,6 +46,23 @@ def pathsplit(p):
     if l[-1] == '':
         l.pop()  # extra blank caused by terminating '/'
     return l
+
+
+# like os.path.realpath, but doesn't follow a symlink for the last element.
+# (ie. if 'p' itself is itself a symlink, this one won't follow it)
+def realpath(p):
+    try:
+        st = os.lstat(p)
+    except OSError:
+        st = None
+    if st and stat.S_ISLNK(st.st_mode):
+        (dir, name) = os.path.split(p)
+        dir = os.path.realpath(dir)
+        out = os.path.join(dir, name)
+    else:
+        out = os.path.realpath(p)
+    #log('realpathing:%r,%r\n' % (p, out))
+    return out
 
 
 _username = None

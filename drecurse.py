@@ -1,4 +1,4 @@
-import stat
+import stat, heapq
 from helpers import *
 
 try:
@@ -7,6 +7,9 @@ except AttributeError:
     O_LARGEFILE = 0
 
 
+# the use of fchdir() and lstat() is for two reasons:
+#  - help out the kernel by not making it repeatedly look up the absolute path
+#  - avoid race conditions caused by doing listdir() on a changing symlink
 class OsFile:
     def __init__(self, path):
         self.fd = None
@@ -21,72 +24,71 @@ class OsFile:
     def fchdir(self):
         os.fchdir(self.fd)
 
+    def stat(self):
+        return os.fstat(self.fd)
 
-# the use of fchdir() and lstat() are for two reasons:
-#  - help out the kernel by not making it repeatedly look up the absolute path
-#  - avoid race conditions caused by doing listdir() on a changing symlink
-def dirlist(path):
+
+_IFMT = stat.S_IFMT(0xffffffff)  # avoid function call in inner loop
+def _dirlist():
     l = []
-    try:
-        OsFile(path).fchdir()
-    except OSError, e:
-        add_error(e)
-        return l
     for n in os.listdir('.'):
         try:
             st = os.lstat(n)
         except OSError, e:
-            add_error(Exception('in %s: %s' % (index.realpath(path), str(e))))
+            add_error(Exception('%s: %s' % (realpath(n), str(e))))
             continue
-        if stat.S_ISDIR(st.st_mode):
+        if (st.st_mode & _IFMT) == stat.S_IFDIR:
             n += '/'
-        l.append((os.path.join(path, n), st))
+        l.append((n,st))
     l.sort(reverse=True)
     return l
 
 
-def _recursive_dirlist(path, xdev):
-    olddir = OsFile('.')
-    for (path,pst) in dirlist(path):
-        if xdev != None and pst.st_dev != xdev:
-            log('Skipping %r: different filesystem.\n' % path)
-            continue
-        if stat.S_ISDIR(pst.st_mode):
-            for i in _recursive_dirlist(path, xdev=xdev):
-                yield i
-        yield (path,pst)
-    olddir.fchdir()
-
-
-def _matchlen(a,b):
-    bi = iter(b)
-    count = 0
-    for ai in a:
-        try:
-            if bi.next() == ai:
-                count += 1
-        except StopIteration:
-            break
-    return count
+def _recursive_dirlist(prepend, xdev):
+    for (name,pst) in _dirlist():
+        if name.endswith('/'):
+            if xdev != None and pst.st_dev != xdev:
+                log('Skipping %r: different filesystem.\n' % (prepend+name))
+                continue
+            try:
+                OsFile(name).fchdir()
+            except OSError, e:
+                add_error('%s: %s' % (prepend, e))
+            else:
+                for i in _recursive_dirlist(prepend=prepend+name, xdev=xdev):
+                    yield i
+                os.chdir('..')
+        yield (prepend + name, pst)
 
 
 def recursive_dirlist(paths, xdev):
-    assert(type(paths) != type(''))
-    last = ()
-    for path in paths:
-        ps = pathsplit(path)
-        while _matchlen(ps, last) < len(last):
-            yield (''.join(last), None)
-            last.pop()
-        pst = os.lstat(path)
-        if xdev:
-            xdev = pst.st_dev
-        else:
-            xdev = None
-        if stat.S_ISDIR(pst.st_mode):
-            for i in _recursive_dirlist(path, xdev=xdev):
-                yield i
-        yield (path,pst)
-        last = ps[:-1]
-
-
+    startdir = OsFile('.')
+    try:
+        assert(type(paths) != type(''))
+        for path in paths:
+            try:
+                rpath = os.path.realpath(path)
+                pfile = OsFile(rpath)
+            except OSError, e:
+                add_error(e)
+                continue
+            pst = pfile.stat()
+            if xdev:
+                xdev = pst.st_dev
+            else:
+                xdev = None
+            if stat.S_ISDIR(pst.st_mode):
+                pfile.fchdir()
+                prepend = os.path.join(path, '')
+                for i in _recursive_dirlist(prepend=prepend, xdev=xdev):
+                    yield i
+                startdir.fchdir()
+            else:
+                prepend = path
+            yield (prepend,pst)
+    except:
+        try:
+            startdir.fchdir()
+        except:
+            pass
+        raise
