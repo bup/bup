@@ -1,101 +1,7 @@
 #!/usr/bin/env python
 import os, sys, stat, time
-import options, git, index
+import options, git, index, drecurse
 from helpers import *
-
-
-try:
-    O_LARGEFILE = os.O_LARGEFILE
-except AttributeError:
-    O_LARGEFILE = 0
-
-
-class OsFile:
-    def __init__(self, path):
-        self.fd = None
-        self.fd = os.open(path, os.O_RDONLY|O_LARGEFILE|os.O_NOFOLLOW)
-        
-    def __del__(self):
-        if self.fd:
-            fd = self.fd
-            self.fd = None
-            os.close(fd)
-
-    def fchdir(self):
-        os.fchdir(self.fd)
-
-
-saved_errors = []
-def add_error(e):
-    saved_errors.append(e)
-    log('\n%s\n' % e)
-
-
-# the use of fchdir() and lstat() are for two reasons:
-#  - help out the kernel by not making it repeatedly look up the absolute path
-#  - avoid race conditions caused by doing listdir() on a changing symlink
-def dirlist(path):
-    l = []
-    try:
-        OsFile(path).fchdir()
-    except OSError, e:
-        add_error(e)
-        return l
-    for n in os.listdir('.'):
-        try:
-            st = os.lstat(n)
-        except OSError, e:
-            add_error(Exception('in %s: %s' % (index.realpath(path), str(e))))
-            continue
-        if stat.S_ISDIR(st.st_mode):
-            n += '/'
-        l.append((os.path.join(path, n), st))
-    l.sort(reverse=True)
-    return l
-
-
-def _recursive_dirlist(path, xdev):
-    olddir = OsFile('.')
-    for (path,pst) in dirlist(path):
-        if xdev != None and pst.st_dev != xdev:
-            log('Skipping %r: different filesystem.\n' % path)
-            continue
-        if stat.S_ISDIR(pst.st_mode):
-            for i in _recursive_dirlist(path, xdev=xdev):
-                yield i
-        yield (path,pst)
-    olddir.fchdir()
-
-
-def _matchlen(a,b):
-    bi = iter(b)
-    count = 0
-    for ai in a:
-        try:
-            if bi.next() == ai:
-                count += 1
-        except StopIteration:
-            break
-    return count
-
-
-def recursive_dirlist(paths):
-    last = ()
-    for path in paths:
-        pathsplit = index.pathsplit(path)
-        while _matchlen(pathsplit, last) < len(last):
-            yield (''.join(last), None)
-            last.pop()
-        pst = os.lstat(path)
-        if opt.xdev:
-            xdev = pst.st_dev
-        else:
-            xdev = None
-        if stat.S_ISDIR(pst.st_mode):
-            for i in _recursive_dirlist(path, xdev=xdev):
-                yield i
-        yield (path,pst)
-        last = pathsplit[:-1]
 
 
 def merge_indexes(out, r1, r2):
@@ -132,7 +38,7 @@ def update_index(top):
 
     #log('doing: %r\n' % paths)
 
-    for (path,pst) in recursive_dirlist([top]):
+    for (path,pst) in drecurse.recursive_dirlist([top], xdev=opt.xdev):
         #log('got: %r\n' % path)
         if opt.verbose>=2 or (opt.verbose==1 and stat.S_ISDIR(pst.st_mode)):
             sys.stdout.write('%s\n' % path)

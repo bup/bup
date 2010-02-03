@@ -37,6 +37,17 @@ def readpipe(argv):
     return r
 
 
+# FIXME: this function isn't very generic, because it splits the filename
+# in an odd way and depends on a terminating '/' to indicate directories.
+# But it's used in a couple of places, so let's put it here.
+def pathsplit(p):
+    l = p.split('/')
+    l = list([i+'/' for i in l[:-1]]) + l[-1:]
+    if l[-1] == '':
+        l.pop()  # extra blank caused by terminating '/'
+    return l
+
+
 _username = None
 def username():
     global _username
@@ -169,3 +180,9 @@ def mmap_read(f, len = 0):
 
 def mmap_readwrite(f, len = 0):
     return _mmap_do(f, len, mmap.MAP_SHARED, mmap.PROT_READ|mmap.PROT_WRITE)
+
+
+saved_errors = []
+def add_error(e):
+    saved_errors.append(e)
+    log('\n%s\n' % e)

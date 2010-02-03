@@ -139,12 +139,13 @@ class Reader:
         if f:
             b = f.read(len(INDEX_HDR))
             if b != INDEX_HDR:
-                raise Error('%s: header: expected %r, got %r'
+                log('warning: %s: header: expected %r, got %r'
                                  % (filename, INDEX_HDR, b))
-            st = os.fstat(f.fileno())
-            if st.st_size:
-                self.m = mmap_readwrite(f)
-                self.writable = True
+            else:
+                st = os.fstat(f.fileno())
+                if st.st_size:
+                    self.m = mmap_readwrite(f)
+                    self.writable = True
 
     def __del__(self):
         self.close()
@@ -214,14 +215,6 @@ def _last_writer_wins_iter(iters):
             except StopIteration:
                 l[i] = None
         l = filter(None, l)
-
-
-def pathsplit(p):
-    l = p.split('/')
-    l = list([i+'/' for i in l[:-1]]) + l[-1:]
-    if l[-1] == '':
-        l.pop()  # extra blank caused by terminating '/'
-    return l
 
 
 class Writer:
