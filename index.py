@@ -14,22 +14,62 @@ class Error(Exception):
     pass
 
 
-def _encode(dev, ctime, mtime, uid, gi8d, size, mode, gitmode, sha, flags):
-    return struct.pack(INDEX_SIG,
-                       dev, ctime, mtime, uid, gid, size, mode,
-                       gitmode, sha, flags)
+class Level:
+    def __init__(self, ename, parent):
+        self.parent = parent
+        self.ename = ename
+        self.list = []
+        self.count = 0
+
+    def write(self, f):
+        (ofs,n) = (f.tell(), len(self.list))
+        if self.list:
+            count = len(self.list)
+            #log('popping %r with %d entries\n' 
+            #    % (''.join(self.ename), count))
+            for e in self.list:
+                e.write(f)
+            if self.parent:
+                self.parent.count += count + self.count
+        return (ofs,n)
+
+
+def _golevel(level, f, ename, newentry):
+    # close nodes back up the tree
+    assert(level)
+    while ename[:len(level.ename)] != level.ename:
+        n = BlankNewEntry(level.ename[-1])
+        (n.children_ofs,n.children_n) = level.write(f)
+        level.parent.list.append(n)
+        level = level.parent
+
+    # create nodes down the tree
+    while len(level.ename) < len(ename):
+        level = Level(ename[:len(level.ename)+1], level)
+
+    # are we in precisely the right place?
+    assert(ename == level.ename)
+    n = newentry or BlankNewEntry(ename and level.ename[-1] or None)
+    (n.children_ofs,n.children_n) = level.write(f)
+    if level.parent:
+        level.parent.list.append(n)
+    level = level.parent
+
+    return level
+
 
 class Entry:
-    def __init__(self, name):
+    def __init__(self, basename, name):
+        self.basename = str(basename)
         self.name = str(name)
         self.children_ofs = 0
         self.children_n = 0
 
     def __repr__(self):
-        return ("(%s,0x%04x,%d,%d,%d,%d,%d,0x%04x)" 
+        return ("(%s,0x%04x,%d,%d,%d,%d,%d,0x%04x,0x%08x/%d)" 
                 % (self.name, self.dev,
                    self.ctime, self.mtime, self.uid, self.gid,
-                   self.size, self.flags))
+                   self.size, self.flags, self.children_ofs, self.children_n))
 
     def packed(self):
         return struct.pack(INDEX_SIG,
@@ -70,11 +110,14 @@ class Entry:
     def __cmp__(a, b):
         return cmp(a.name, b.name)
 
+    def write(self, f):
+        f.write(self.basename + '\0' + self.packed())
+
 
 class NewEntry(Entry):
-    def __init__(self, name, dev, ctime, mtime, uid, gid,
+    def __init__(self, basename, name, dev, ctime, mtime, uid, gid,
                  size, mode, gitmode, sha, flags, children_ofs, children_n):
-        Entry.__init__(self, name)
+        Entry.__init__(self, basename, name)
         (self.dev, self.ctime, self.mtime, self.uid, self.gid,
          self.size, self.mode, self.gitmode, self.sha,
          self.flags, self.children_ofs, self.children_n
@@ -82,9 +125,16 @@ class NewEntry(Entry):
               size, mode, gitmode, sha, flags, children_ofs, children_n)
 
 
+class BlankNewEntry(NewEntry):
+    def __init__(self, basename):
+        NewEntry.__init__(self, basename, basename,
+                          0, 0, 0, 0, 0, 0, 0,
+                          0, EMPTY_SHA, 0, 0, 0)
+
+
 class ExistingEntry(Entry):
-    def __init__(self, name, m, ofs):
-        Entry.__init__(self, name)
+    def __init__(self, basename, name, m, ofs):
+        Entry.__init__(self, basename, name)
         self._m = m
         self._ofs = ofs
         (self.dev, self.ctime, self.mtime, self.uid, self.gid,
@@ -100,15 +150,14 @@ class ExistingEntry(Entry):
         if dname and not dname.endswith('/'):
             dname += '/'
         ofs = self.children_ofs
-        #log('myname=%r\n' % self.name)
         assert(ofs <= len(self._m))
         for i in range(self.children_n):
             eon = self._m.find('\0', ofs)
-            #log('eon=0x%x ofs=0x%x i=%d cn=%d\n' % (eon, ofs, i, self.children_n))
             assert(eon >= 0)
             assert(eon >= ofs)
             assert(eon > ofs)
-            child = ExistingEntry(self.name + str(buffer(self._m, ofs, eon-ofs)),
+            basename = str(buffer(self._m, ofs, eon-ofs))
+            child = ExistingEntry(basename, self.name + basename,
                                   self._m, eon+1)
             if (not dname
                  or child.name.startswith(dname)
@@ -150,12 +199,23 @@ class Reader:
     def __del__(self):
         self.close()
 
+    def forward_iter(self):
+        ofs = len(INDEX_HDR)
+        while ofs+ENTLEN <= len(self.m):
+            eon = self.m.find('\0', ofs)
+            assert(eon >= 0)
+            assert(eon >= ofs)
+            assert(eon > ofs)
+            basename = str(buffer(self.m, ofs, eon-ofs))
+            yield ExistingEntry(basename, basename, self.m, eon+1)
+            ofs = eon + 1 + ENTLEN
+
     def iter(self, name=None):
         if len(self.m) > len(INDEX_HDR)+ENTLEN:
             dname = name
             if dname and not dname.endswith('/'):
                 dname += '/'
-            root = ExistingEntry('/', self.m, len(self.m)-ENTLEN)
+            root = ExistingEntry('/', '/', self.m, len(self.m)-ENTLEN)
             for sub in root.iter(name=name):
                 yield sub
             if not dname or dname == root.name:
@@ -185,41 +245,9 @@ class Reader:
                 yield (name, e)
 
 
-# Read all the iters in order; when more than one iter has the same entry,
-# the *later* iter in the list wins.  (ie. more recent iter entries replace
-# older ones)
-def _last_writer_wins_iter(iters):
-    l = []
-    for e in iters:
-        it = iter(e)
-        try:
-            l.append([it.next(), it])
-        except StopIteration:
-            pass
-    del iters  # to avoid accidents
-    while l:
-        l.sort()
-        mv = l[0][0]
-        mi = []
-        for (i,(v,it)) in enumerate(l):
-            #log('(%d) considering %d: %r\n' % (len(l), i, v))
-            if v > mv:
-                mv = v
-                mi = [i]
-            elif v == mv:
-                mi.append(i)
-        yield mv
-        for i in mi:
-            try:
-                l[i][0] = l[i][1].next()
-            except StopIteration:
-                l[i] = None
-        l = filter(None, l)
-
-
 class Writer:
     def __init__(self, filename):
-        self.stack = []
+        self.rootlevel = self.level = Level([], None)
         self.f = None
         self.count = 0
         self.lastfile = None
@@ -241,9 +269,10 @@ class Writer:
             os.unlink(self.tmpname)
 
     def flush(self):
-        while self.stack:
-            self.add(''.join(self.stack[-1][0]), None)
-        self._pop_to(None, [])
+        if self.level:
+            self.level = _golevel(self.level, self.f, [], None)
+        assert(self.level == None)
+        self.count = self.rootlevel.count
         self.f.flush()
 
     def close(self):
@@ -254,41 +283,18 @@ class Writer:
             f.close()
             os.rename(self.tmpname, self.filename)
 
-    # FIXME: this function modifies 'entry' and can only pop a single level.
-    # That means its semantics are basically crazy.
-    def _pop_to(self, entry, edir):
-        assert(len(self.stack) - len(edir) <= 1)
-        while self.stack and self.stack[-1][0] > edir:
-            #log('popping %r with %d entries (%d)\n' 
-            #    % (''.join(self.stack[-1][0]), len(self.stack[-1][1]),
-            #       len(self.stack)))
-            p = self.stack.pop()
-            entry.children_ofs = self.f.tell()
-            entry.children_n = len(p[1])
-            for e in p[1]:
-                self._write(e)
-
-    def _write(self, entry):
-        #log('        writing %r\n' % entry.name)
-        es = pathsplit(entry.name)
-        self.f.write(es[-1] + '\0' + entry.packed())
-        self.count += 1
-
-    def _add(self, entry):
-        es = pathsplit(entry.name)
-        edir = es[:-1]
-        self._pop_to(entry, edir)
-        while len(self.stack) < len(edir):
-            self.stack.append([es[:len(self.stack)+1], [], ()])
-        if entry.name != '/':
-            self.stack[-1][1].append(entry)
-        else:
-            self._write(entry)
+    def _add(self, ename, entry):
+        if self.lastfile and self.lastfile <= ename:
+            raise Error('%r must come before %r' 
+                             % (''.join(e.name), ''.join(self.lastfile)))
+            self.lastfile = e.name
+        self.level = _golevel(self.level, self.f, ename, entry)
 
     def add(self, name, st, hashgen = None):
-        if self.lastfile:
-            assert(cmp(self.lastfile, name) > 0) # reverse order only
         endswith = name.endswith('/')
+        ename = pathsplit(name)
+        basename = ename[-1]
+        #log('add: %r %r\n' % (basename, name))
         flags = IX_EXISTS
         sha = None
         if hashgen:
@@ -299,22 +305,21 @@ class Writer:
         if st:
             isdir = stat.S_ISDIR(st.st_mode)
             assert(isdir == endswith)
-            e = NewEntry(name, st.st_dev, int(st.st_ctime),
+            e = NewEntry(basename, name, st.st_dev, int(st.st_ctime),
                          int(st.st_mtime), st.st_uid, st.st_gid,
                          st.st_size, st.st_mode, gitmode, sha, flags,
                          0, 0)
         else:
             assert(endswith)
-            e = NewEntry(name, 0, 0, 0, 0, 0, 0, 0, gitmode, sha, flags, 0, 0)
-        self.lastfile = name
-        self._add(e)
+            e = BlankNewEntry(basename)
+            e.gitmode = gitmode
+            e.sha = sha
+            e.flags = flags
+        self._add(ename, e)
 
     def add_ixentry(self, e):
-        if self.lastfile and self.lastfile <= e.name:
-            raise Error('%r must come before %r' 
-                             % (e.name, self.lastfile))
-        self.lastfile = e.name
-        self._add(e)
+        e.children_ofs = e.children_n = 0
+        self._add(pathsplit(e.name), e)
 
     def new_reader(self):
         self.flush()

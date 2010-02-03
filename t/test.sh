@@ -20,32 +20,41 @@ WVSTART "index"
 D=bupdata.tmp
 rm -rf $D
 mkdir $D
-WVPASSEQ "$(bup index -p)" ""
-WVPASSEQ "$(bup index -p $D)" ""
+WVPASSEQ "$(bup index --check -p)" ""
+WVPASSEQ "$(bup index --check -p $D)" ""
 WVFAIL [ -e $D.fake ]
-WVFAIL bup index -u $D.fake
-WVPASS bup index -u $D
-WVPASSEQ "$(bup index -p $D)" "$D/"
-touch $D/a $D/b
+WVFAIL bup index --check -u $D.fake
+WVPASS bup index --check -u $D
+WVPASSEQ "$(bup index --check -p $D)" "$D/"
+touch $D/a $D/b $D/f
 mkdir $D/d $D/d/e
 WVPASSEQ "$(bup index -s $D/)" "A $D/"
 WVPASSEQ "$(bup index -s $D/b)" ""
 bup tick
-WVPASSEQ "$(bup index -us $D/b)" "A $D/b"
-WVPASSEQ "$(bup index -usx $D)" \
+WVPASSEQ "$(bup index --check -us $D/b)" "A $D/b"
+WVPASSEQ "$(bup index --check -us $D/b $D/d)" \
 "A $D/d/e/
+A $D/d/
+A $D/b"
+touch $D/d/z
+WVPASSEQ "$(bup index --check -usx $D)" \
+"A $D/f
+A $D/d/z
+A $D/d/e/
 A $D/d/
 A $D/b
 A $D/a
 A $D/"
-WVPASSEQ "$(bup index -us $D/a $D/b --fake-valid)" \
+WVPASSEQ "$(bup index --check -us $D/a $D/b --fake-valid)" \
 "  $D/b
   $D/a"
-WVPASSEQ "$(bup index -us $D/a)" "  $D/a"  # stays unmodified
+WVPASSEQ "$(bup index --check -us $D/a)" "  $D/a"  # stays unmodified
 touch $D/a
 WVPASS bup index -u $D/a  # becomes modified
 WVPASSEQ "$(bup index -s $D/a $D $D/b)" \
-"A $D/d/e/
+"A $D/f
+A $D/d/z
+A $D/d/e/
 A $D/d/
   $D/b
 M $D/a
@@ -56,9 +65,13 @@ A $D/"
 # directories, at which time the output of -m will change, so we'll have to
 # change this test too.
 WVPASSEQ "$(cd $D && bup index -m .)" \
-"./a"
+"./f
+./d/z
+./a"
 WVPASSEQ "$(cd $D && bup index -m)" \
-"a"
+"f
+d/z
+a"
 WVPASSEQ "$(cd $D && bup index -s .)" "$(cd $D && bup index -s .)"
 
 
