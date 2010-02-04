@@ -6,6 +6,7 @@ BLOB_LWM = 8192*2
 BLOB_MAX = BLOB_LWM*2
 BLOB_HWM = 1024*1024
 split_verbosely = 0
+progress_callback = None
 max_pack_size = 1000*1000*1000  # larger packs will slow down pruning
 max_pack_objects = 200*1000  # cache memory usage is about 83 bytes per object
 fanout = 4096
@@ -37,7 +38,6 @@ class Buf:
 
 
 def splitbuf(buf):
-    global split_verbosely
     b = buf.peek(buf.used())
     ofs = _hashsplit.splitbuf(b)
     if ofs:
@@ -67,7 +67,6 @@ def autofiles(filenames):
             
     
 def hashsplit_iter(w, files):
-    global split_verbosely
     ofs = 0
     buf = Buf()
     fi = blobiter(files)
@@ -120,6 +119,8 @@ def _split_to_shalist(w, files):
             bm /= 2
         last_ofs = cn
         total_split += size
+        if progress_callback:
+            progress_callback(size)
         yield ('100644', 'bup.chunk.%016x' % cn, sha)
 
 

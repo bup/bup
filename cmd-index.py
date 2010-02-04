@@ -5,11 +5,15 @@ from helpers import *
 
 
 def _simplify_iter(iters):
+    total = sum([len(it) for it in iters])
     l = list([iter(it) for it in iters])
-    l = list([(next(it),it) for it in l])
     del iters
+    l = list([(next(it),it) for it in l])
     l = filter(lambda x: x[0], l)
+    count = 0
     while l:
+        if not (count % 1024):
+            progress('bup: merging indexes (%d/%d)\r' % (count, total))
         l.sort()
         (e,it) = l.pop()
         if not e:
@@ -20,10 +24,11 @@ def _simplify_iter(iters):
         n = next(it)
         if n:
             l.append((n,it))
+        count += 1
+    log('bup: merging indexes (%d/%d), done.\n' % (count, total))
 
 
 def merge_indexes(out, r1, r2):
-    log('bup: merging indexes.\n')
     for e in _simplify_iter([r1, r2]):
         #if e.flags & index.IX_EXISTS:
             out.add_ixentry(e)
@@ -81,8 +86,12 @@ def update_index(top):
 
     #log('doing: %r\n' % paths)
 
+    total = 0
     for (path,pst) in drecurse.recursive_dirlist([top], xdev=opt.xdev):
         #log('got: %r\n' % path)
+        if not (total % 128):
+            progress('Indexing: %d\r' % total)
+        total += 1
         if opt.verbose>=2 or (opt.verbose==1 and stat.S_ISDIR(pst.st_mode)):
             sys.stdout.write('%s\n' % path)
             sys.stdout.flush()
@@ -102,6 +111,7 @@ def update_index(top):
         else:  # new paths
             #log('adding: %r\n' % path)
             wi.add(path, pst, hashgen = hashgen)
+    progress('Indexing: %d, done.\n' % total)
     
     if ri.exists():
         ri.save()

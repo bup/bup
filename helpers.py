@@ -199,7 +199,18 @@ def mmap_readwrite(f, len = 0):
     return _mmap_do(f, len, mmap.MAP_SHARED, mmap.PROT_READ|mmap.PROT_WRITE)
 
 
+# count the number of elements in an iterator (consumes the iterator)
+def count(l):
+    return reduce(lambda x,y: x+1, l)
+
+
 saved_errors = []
 def add_error(e):
     saved_errors.append(e)
-    log('\n%s\n' % e)
+    log('%-70s\n' % e)
+
+
+istty = os.isatty(2)
+def progress(s):
+    if istty:
+        log(s)

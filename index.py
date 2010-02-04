@@ -6,6 +6,8 @@ FAKE_SHA = '\x01'*20
 INDEX_HDR = 'BUPI\0\0\0\2'
 INDEX_SIG = '!IIIIIQII20sHII'
 ENTLEN = struct.calcsize(INDEX_SIG)
+FOOTER_SIG = '!Q'
+FOOTLEN = struct.calcsize(FOOTER_SIG)
 
 IX_EXISTS = 0x8000
 IX_HASHVALID = 0x4000
@@ -151,7 +153,8 @@ class ExistingEntry(Entry):
             dname += '/'
         ofs = self.children_ofs
         assert(ofs <= len(self._m))
-        for i in range(self.children_n):
+        assert(self.children_n < 1000000)
+        for i in xrange(self.children_n):
             eon = self._m.find('\0', ofs)
             assert(eon >= 0)
             assert(eon >= ofs)
@@ -177,6 +180,7 @@ class Reader:
         self.filename = filename
         self.m = ''
         self.writable = False
+        self.count = 0
         f = None
         try:
             f = open(filename, 'r+')
@@ -195,13 +199,18 @@ class Reader:
                 if st.st_size:
                     self.m = mmap_readwrite(f)
                     self.writable = True
+                    self.count = struct.unpack(FOOTER_SIG,
+                          str(buffer(self.m, st.st_size-FOOTLEN, FOOTLEN)))[0]
 
     def __del__(self):
         self.close()
 
+    def __len__(self):
+        return self.count
+
     def forward_iter(self):
         ofs = len(INDEX_HDR)
-        while ofs+ENTLEN <= len(self.m):
+        while ofs+ENTLEN <= len(self.m)-FOOTLEN:
             eon = self.m.find('\0', ofs)
             assert(eon >= 0)
             assert(eon >= ofs)
@@ -215,7 +224,7 @@ class Reader:
             dname = name
             if dname and not dname.endswith('/'):
                 dname += '/'
-            root = ExistingEntry('/', '/', self.m, len(self.m)-ENTLEN)
+            root = ExistingEntry('/', '/', self.m, len(self.m)-FOOTLEN-ENTLEN)
             for sub in root.iter(name=name):
                 yield sub
             if not dname or dname == root.name:
@@ -271,9 +280,12 @@ class Writer:
     def flush(self):
         if self.level:
             self.level = _golevel(self.level, self.f, [], None)
+            self.count = self.rootlevel.count
+            if self.count:
+                self.count += 1
+            self.f.write(struct.pack(FOOTER_SIG, self.count))
+            self.f.flush()
         assert(self.level == None)
-        self.count = self.rootlevel.count
-        self.f.flush()
 
     def close(self):
         self.flush()

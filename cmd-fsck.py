@@ -3,7 +3,6 @@ import sys, os, glob, subprocess, time, sha
 import options, git
 from helpers import *
 
-istty = os.isatty(1)
 par2_ok = 0
 nullf = open('/dev/null')
 
@@ -163,8 +162,8 @@ for name in extra:
     sys.stdout.flush()
     debug('fsck: checking %s (%s)\n' 
           % (last, par2_ok and par2_exists and 'par2' or 'git'))
-    if not opt.verbose and istty:
-        log('fsck (%d/%d)\r' % (count, len(extra)))
+    if not opt.verbose:
+        progress('fsck (%d/%d)\r' % (count, len(extra)))
     
     if not opt.jobs:
         nc = do_pack(base, last)
@@ -195,8 +194,8 @@ while len(outstanding):
         del outstanding[pid]
         code = code or nc
         count += 1
-    if not opt.verbose and istty:
-        log('fsck (%d/%d)\r' % (count, len(extra)))
+    if not opt.verbose:
+        progress('fsck (%d/%d)\r' % (count, len(extra)))
 
 if not opt.verbose and istty:
     log('fsck done.           \n')

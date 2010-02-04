@@ -18,6 +18,7 @@ t,tree     output a tree id
 c,commit   output a commit id
 n,name=    name of backup set to update (if any)
 v,verbose  increase log output (can be used more than once)
+q,quiet    don't show progress meter
 smaller=   only back up files smaller than n bytes
 """
 o = options.Options('bup save', optspec)
@@ -31,9 +32,7 @@ if not extra:
     log("bup save: no filenames given.\n")
     o.usage()
 
-if opt.verbose >= 2:
-    git.verbose = opt.verbose - 1
-    hashsplit.split_verbosely = opt.verbose - 1
+opt.progress = (istty and not opt.quiet)
 
 refname = opt.name and 'refs/heads/%s' % opt.name or None
 if opt.remote:
@@ -68,8 +67,31 @@ def _pop():
     tree = w.new_tree(shalist)
     shalists[-1].append(('40000', part, tree))
 
+def progress_report(n):
+    global count
+    count += n
+    pct = count*100.0/total
+    progress('Saving: %.2f%% (%d/%dk, %d/%d files)\r'
+             % (pct, count/1024, total/1024, fcount, ftotal))
 
-for (transname,ent) in index.Reader(git.repo('bupindex')).filter(extra):
+
+r = index.Reader(git.repo('bupindex'))
+
+total = ftotal = 0
+if opt.progress:
+    for (transname,ent) in r.filter(extra):
+        if not (ftotal % 10024):
+            progress('Reading index: %d\r' % ftotal)
+        exists = (ent.flags & index.IX_EXISTS)
+        hashvalid = (ent.flags & index.IX_HASHVALID) and w.exists(ent.sha)
+        if exists and not hashvalid:
+            total += ent.size
+        ftotal += 1
+    progress('Reading index: %d, done.\n' % ftotal)
+    hashsplit.progress_callback = progress_report
+
+count = fcount = 0
+for (transname,ent) in r.filter(extra):
     (dir, file) = os.path.split(ent.name)
     exists = (ent.flags & index.IX_EXISTS)
     hashvalid = (ent.flags & index.IX_HASHVALID) and w.exists(ent.sha)
@@ -83,10 +105,13 @@ for (transname,ent) in index.Reader(git.repo('bupindex')).filter(extra):
                 status = 'M'
         else:
             status = ' '
-        if opt.verbose >= 2 or (status in ['A','M'] 
-                                and not stat.S_ISDIR(ent.mode)):
-            log('\n%s %s ' % (status, ent.name))
+        if opt.verbose >= 2 or stat.S_ISDIR(ent.mode):
+            log('%s %-70s\n' % (status, ent.name))
 
+    if opt.progress:
+        progress_report(0)
+    fcount += 1
+    
     if not exists:
         continue
 
@@ -102,6 +127,7 @@ for (transname,ent) in index.Reader(git.repo('bupindex')).filter(extra):
         # directory already handled.
         # FIXME: not using the indexed tree sha1's for anything, which is
         # a waste.  That's a potential optimization...
+        count += ent.size
         continue  
 
     id = None
@@ -116,12 +142,14 @@ for (transname,ent) in index.Reader(git.repo('bupindex')).filter(extra):
             if stat.S_ISREG(ent.mode):
                 f = open(ent.name)
                 (mode, id) = hashsplit.split_to_blob_or_tree(w, [f])
-            elif stat.S_ISDIR(ent.mode):
-                assert(0)  # handled above
-            elif stat.S_ISLNK(ent.mode):
-                (mode, id) = ('120000', w.new_blob(os.readlink(ent.name)))
             else:
-                add_error(Exception('skipping special file "%s"' % ent.name))
+                if stat.S_ISDIR(ent.mode):
+                    assert(0)  # handled above
+                elif stat.S_ISLNK(ent.mode):
+                    (mode, id) = ('120000', w.new_blob(os.readlink(ent.name)))
+                else:
+                    add_error(Exception('skipping special file "%s"' % ent.name))
+                count += ent.size
         except IOError, e:
             add_error(e)
         except OSError, e:
@@ -130,6 +158,12 @@ for (transname,ent) in index.Reader(git.repo('bupindex')).filter(extra):
             ent.validate(id)
             ent.repack()
             shalists[-1].append((mode, file, id))
+
+if opt.progress:
+    pct = total and count*100.0/total or 100
+    progress('Saving: %.2f%% (%d/%dk, %d/%d files), done.\n'
+             % (pct, count/1024, total/1024, fcount, ftotal))
+
 #log('parts out: %r\n' % parts)
 #log('stk out: %r\n' % shalists)
 while len(parts) > 1:
@@ -138,8 +172,6 @@ while len(parts) > 1:
 #log('stk out: %r\n' % shalists)
 assert(len(shalists) == 1)
 tree = w.new_tree(shalists[-1])
-if opt.verbose:
-    log('\n')
 if opt.tree:
     print tree.encode('hex')
 if opt.commit or opt.name:
@@ -147,8 +179,6 @@ if opt.commit or opt.name:
     ref = opt.name and ('refs/heads/%s' % opt.name) or None
     commit = w.new_commit(oldref, tree, msg)
     if opt.commit:
-        if opt.verbose:
-            log('\n')
         print commit.encode('hex')
 
 w.close()  # must close before we can update the ref
