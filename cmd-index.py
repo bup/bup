@@ -1,118 +1,40 @@
 #!/usr/bin/env python
-import os, sys, stat
-import options, git, index
+import os, sys, stat, time
+import options, git, index, drecurse
 from helpers import *
 
 
-try:
-    O_LARGEFILE = os.O_LARGEFILE
-except AttributeError:
-    O_LARGEFILE = 0
-
-
-class OsFile:
-    def __init__(self, path):
-        self.fd = None
-        self.fd = os.open(path, os.O_RDONLY|O_LARGEFILE|os.O_NOFOLLOW)
-        
-    def __del__(self):
-        if self.fd:
-            fd = self.fd
-            self.fd = None
-            os.close(fd)
-
-    def fchdir(self):
-        os.fchdir(self.fd)
-
-
-saved_errors = []
-def add_error(e):
-    saved_errors.append(e)
-    log('\n%s\n' % e)
-
-
-# the use of fchdir() and lstat() are for two reasons:
-#  - help out the kernel by not making it repeatedly look up the absolute path
-#  - avoid race conditions caused by doing listdir() on a changing symlink
-def handle_path(ri, wi, dir, name, pst, xdev, can_delete_siblings):
-    hashgen = None
-    if opt.fake_valid:
-        def hashgen(name):
-            return (0, index.FAKE_SHA)
-    
-    dirty = 0
-    path = dir + name
-    #log('handle_path(%r,%r)\n' % (dir, name))
-    if stat.S_ISDIR(pst.st_mode):
-        if opt.verbose == 1: # log dirs only
-            sys.stdout.write('%s\n' % path)
-            sys.stdout.flush()
-        try:
-            OsFile(name).fchdir()
-        except OSError, e:
-            add_error(Exception('in %s: %s' % (dir, str(e))))
-            return 0
-        try:
-            try:
-                ld = os.listdir('.')
-                #log('* %r: %r\n' % (name, ld))
-            except OSError, e:
-                add_error(Exception('in %s: %s' % (path, str(e))))
-                return 0
-            lds = []
-            for p in ld:
-                try:
-                    st = os.lstat(p)
-                except OSError, e:
-                    add_error(Exception('in %s: %s' % (path, str(e))))
-                    continue
-                if xdev != None and st.st_dev != xdev:
-                    log('Skipping %r: different filesystem.\n' 
-                        % index.realpath(p))
-                    continue
-                if stat.S_ISDIR(st.st_mode):
-                    p = slashappend(p)
-                lds.append((p, st))
-            for p,st in reversed(sorted(lds)):
-                dirty += handle_path(ri, wi, path, p, st, xdev,
-                                     can_delete_siblings = True)
-        finally:
-            os.chdir('..')
-    #log('endloop: ri.cur:%r path:%r\n' % (ri.cur.name, path))
-    while ri.cur and ri.cur.name > path:
-        #log('ricur:%r path:%r\n' % (ri.cur, path))
-        if can_delete_siblings and dir and ri.cur.name.startswith(dir):
-            #log('    --- deleting\n')
-            ri.cur.flags &= ~(index.IX_EXISTS | index.IX_HASHVALID)
-            ri.cur.repack()
-            dirty += 1
-        ri.next()
-    if ri.cur and ri.cur.name == path:
-        dirty += ri.cur.from_stat(pst)
-        if dirty or not (ri.cur.flags & index.IX_HASHVALID):
-            #log('   --- updating %r\n' % path)
-            if hashgen:
-                (ri.cur.gitmode, ri.cur.sha) = hashgen(name)
-                ri.cur.flags |= index.IX_HASHVALID
-            ri.cur.repack()
-        ri.next()
-    else:
-        wi.add(path, pst, hashgen = hashgen)
-        dirty += 1
-    if opt.verbose > 1:  # all files, not just dirs
-        sys.stdout.write('%s\n' % path)
-        sys.stdout.flush()
-    return dirty
+def _simplify_iter(iters):
+    total = sum([len(it) for it in iters])
+    l = list([iter(it) for it in iters])
+    del iters
+    l = list([(next(it),it) for it in l])
+    l = filter(lambda x: x[0], l)
+    count = 0
+    while l:
+        if not (count % 1024):
+            progress('bup: merging indexes (%d/%d)\r' % (count, total))
+        l.sort()
+        (e,it) = l.pop()
+        if not e:
+            continue
+        #log('merge: %r %r (%d)\n' % (e.ctime, e.name, len(l)))
+        if e.ctime:  # skip auto-generated entries
+            yield e
+        n = next(it)
+        if n:
+            l.append((n,it))
+        count += 1
+    log('bup: merging indexes (%d/%d), done.\n' % (count, total))
 
 
 def merge_indexes(out, r1, r2):
-    log('bup: merging indexes.\n')
-    for e in index._last_writer_wins_iter([r1, r2]):
+    for e in _simplify_iter([r1, r2]):
         #if e.flags & index.IX_EXISTS:
             out.add_ixentry(e)
 
 
-class MergeGetter:
+class IterHelper:
     def __init__(self, l):
         self.i = iter(l)
         self.cur = None
@@ -126,60 +48,88 @@ class MergeGetter:
         return self.cur
 
 
-def update_index(path):
+def check_index(reader):
+    try:
+        log('check: checking forward iteration...\n')
+        e = None
+        d = {}
+        for e in reader.forward_iter():
+            if e.children_n:
+                log('%08x+%-4d %r\n' % (e.children_ofs, e.children_n, e.name))
+                assert(e.children_ofs)
+                assert(e.name.endswith('/'))
+                assert(not d.get(e.children_ofs))
+                d[e.children_ofs] = 1
+        assert(not e or e.name == '/')  # last entry is *always* /
+        log('check: checking normal iteration...\n')
+        last = None
+        for e in reader:
+            if last:
+                assert(last > e.name)
+            last = e.name
+    except:
+        log('index error! at %r\n' % e)
+        raise
+    log('check: passed.\n')
+
+
+def update_index(top):
     ri = index.Reader(indexfile)
     wi = index.Writer(indexfile)
-    rig = MergeGetter(ri)
-    
-    rpath = index.realpath(path)
-    st = os.lstat(rpath)
-    if opt.xdev:
-        xdev = st.st_dev
-    else:
-        xdev = None
-    f = OsFile('.')
-    if rpath[-1] == '/':
-        rpath = rpath[:-1]
-    (dir, name) = os.path.split(rpath)
-    dir = slashappend(dir)
-    if stat.S_ISDIR(st.st_mode) and (not rpath or rpath[-1] != '/'):
-        name += '/'
-        can_delete_siblings = True
-    else:
-        can_delete_siblings = False
-    OsFile(dir or '/').fchdir()
-    dirty = handle_path(rig, wi, dir, name, st, xdev, can_delete_siblings)
+    rig = IterHelper(ri.iter(name=top))
+    tstart = int(time.time())
 
-    # make sure all the parents of the updated path exist and are invalidated
-    # if appropriate.
-    while 1:
-        (rpath, junk) = os.path.split(rpath)
-        if not rpath:
-            break
-        elif rpath == '/':
-            p = rpath
-        else:
-            p = rpath + '/'
-        while rig.cur and rig.cur.name > p:
-            #log('FINISHING: %r path=%r d=%r\n' % (rig.cur.name, p, dirty))
+    hashgen = None
+    if opt.fake_valid:
+        def hashgen(name):
+            return (0, index.FAKE_SHA)
+
+    #log('doing: %r\n' % paths)
+
+    total = 0
+    for (path,pst) in drecurse.recursive_dirlist([top], xdev=opt.xdev):
+        #log('got: %r\n' % path)
+        if not (total % 128):
+            progress('Indexing: %d\r' % total)
+        total += 1
+        if opt.verbose>=2 or (opt.verbose==1 and stat.S_ISDIR(pst.st_mode)):
+            sys.stdout.write('%s\n' % path)
+            sys.stdout.flush()
+        while rig.cur and rig.cur.name > path:  # deleted paths
+            rig.cur.set_deleted()
+            rig.cur.repack()
             rig.next()
-        if rig.cur and rig.cur.name == p:
-            if dirty:
-                rig.cur.flags &= ~index.IX_HASHVALID
+        if rig.cur and rig.cur.name == path:    # paths that already existed
+            if pst:
+                rig.cur.from_stat(pst, tstart)
+            if not (rig.cur.flags & index.IX_HASHVALID):
+                if hashgen:
+                    (rig.cur.gitmode, rig.cur.sha) = hashgen(path)
+                    rig.cur.flags |= index.IX_HASHVALID
                 rig.cur.repack()
-        else:
-            wi.add(p, os.lstat(p))
-        if p == '/':
-            break
+            rig.next()
+        else:  # new paths
+            #log('adding: %r\n' % path)
+            wi.add(path, pst, hashgen = hashgen)
+    progress('Indexing: %d, done.\n' % total)
     
-    f.fchdir()
-    ri.save()
-    if wi.count:
-        mi = index.Writer(indexfile)
-        merge_indexes(mi, ri, wi.new_reader())
-        ri.close()
-        mi.close()
-    wi.abort()
+    if ri.exists():
+        ri.save()
+        wi.flush()
+        if wi.count:
+            wr = wi.new_reader()
+            if opt.check:
+                log('check: before merging: oldfile\n')
+                check_index(ri)
+                log('check: before merging: newfile\n')
+                check_index(wr)
+            mi = index.Writer(indexfile)
+            merge_indexes(mi, ri, wr)
+            ri.close()
+            mi.close()
+        wi.abort()
+    else:
+        wi.close()
 
 
 optspec = """
@@ -189,17 +139,19 @@ p,print    print the index entries for the given names (also works with -u)
 m,modified print only added/deleted/modified files (implies -p)
 s,status   print each filename with a status char (A/M/D) (implies -p)
 H,hash     print the hash for each object next to its name (implies -p)
+l,long     print more information about each file
 u,update   (recursively) update the index entries for the given filenames
 x,xdev,one-file-system  don't cross filesystem boundaries
-fake-valid    mark all index entries as up-to-date even if they aren't
+fake-valid mark all index entries as up-to-date even if they aren't
+check      carefully check index file integrity
 f,indexfile=  the name of the index file (default 'index')
 v,verbose  increase log output (can be used more than once)
 """
 o = options.Options('bup index', optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
 
-if not (opt.modified or opt['print'] or opt.status or opt.update):
-    log('bup index: you must supply one or more of -p, -s, -m, or -u\n')
+if not (opt.modified or opt['print'] or opt.status or opt.update or opt.check):
+    log('bup index: supply one or more of -p, -s, -m, -u, or --check\n')
     o.usage()
 if opt.fake_valid and not opt.update:
     log('bup index: --fake-valid is meaningless without -u\n')
@@ -208,19 +160,25 @@ if opt.fake_valid and not opt.update:
 git.check_repo_or_die()
 indexfile = opt.indexfile or git.repo('bupindex')
 
+if opt.check:
+    log('check: starting initial check.\n')
+    check_index(index.Reader(indexfile))
+
 paths = index.reduce_paths(extra)
 
 if opt.update:
     if not paths:
         log('bup index: update (-u) requested but no paths given\n')
         o.usage()
-    for (rp, path) in paths:
+    for (rp,path) in paths:
         update_index(rp)
 
 if opt['print'] or opt.status or opt.modified:
     for (name, ent) in index.Reader(indexfile).filter(extra or ['']):
-        if opt.modified and (ent.flags & index.IX_HASHVALID
-                             or stat.S_ISDIR(ent.mode)):
+        if (opt.modified 
+            and (ent.flags & index.IX_HASHVALID
+                 or not ent.mode
+                 or stat.S_ISDIR(ent.mode))):
             continue
         line = ''
         if opt.status:
@@ -233,10 +191,16 @@ if opt['print'] or opt.status or opt.modified:
                     line += 'M '
             else:
                 line += '  '
+        if opt.long:
+            line += "%7s " % oct(ent.mode)
         if opt.hash:
             line += ent.sha.encode('hex') + ' '
         print line + (name or './')
         #print repr(ent)
+
+if opt.check:
+    log('check: starting final check.\n')
+    check_index(index.Reader(indexfile))
 
 if saved_errors:
     log('WARNING: %d errors encountered.\n' % len(saved_errors))

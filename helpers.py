@@ -1,4 +1,4 @@
-import sys, os, pwd, subprocess, errno, socket, select, mmap
+import sys, os, pwd, subprocess, errno, socket, select, mmap, stat
 
 
 def log(s):
@@ -22,11 +22,47 @@ def next(it):
         return None
     
     
+def unlink(f):
+    try:
+        os.unlink(f)
+    except OSError, e:
+        if e.errno == errno.ENOENT:
+            pass  # it doesn't exist, that's what you asked for
+
+
 def readpipe(argv):
     p = subprocess.Popen(argv, stdout=subprocess.PIPE)
     r = p.stdout.read()
     p.wait()
     return r
+
+
+# FIXME: this function isn't very generic, because it splits the filename
+# in an odd way and depends on a terminating '/' to indicate directories.
+# But it's used in a couple of places, so let's put it here.
+def pathsplit(p):
+    l = p.split('/')
+    l = list([i+'/' for i in l[:-1]]) + l[-1:]
+    if l[-1] == '':
+        l.pop()  # extra blank caused by terminating '/'
+    return l
+
+
+# like os.path.realpath, but doesn't follow a symlink for the last element.
+# (ie. if 'p' itself is itself a symlink, this one won't follow it)
+def realpath(p):
+    try:
+        st = os.lstat(p)
+    except OSError:
+        st = None
+    if st and stat.S_ISLNK(st.st_mode):
+        (dir, name) = os.path.split(p)
+        dir = os.path.realpath(dir)
+        out = os.path.join(dir, name)
+    else:
+        out = os.path.realpath(p)
+    #log('realpathing:%r,%r\n' % (p, out))
+    return out
 
 
 _username = None
@@ -161,3 +197,20 @@ def mmap_read(f, len = 0):
 
 def mmap_readwrite(f, len = 0):
     return _mmap_do(f, len, mmap.MAP_SHARED, mmap.PROT_READ|mmap.PROT_WRITE)
+
+
+# count the number of elements in an iterator (consumes the iterator)
+def count(l):
+    return reduce(lambda x,y: x+1, l)
+
+
+saved_errors = []
+def add_error(e):
+    saved_errors.append(e)
+    log('%-70s\n' % e)
+
+
+istty = os.isatty(2)
+def progress(s):
+    if istty:
+        log(s)
