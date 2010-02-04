@@ -206,7 +206,7 @@ class Reader:
         self.close()
 
     def __len__(self):
-        return self.count
+        return int(self.count)
 
     def forward_iter(self):
         ofs = len(INDEX_HDR)

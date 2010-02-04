@@ -136,7 +136,7 @@ class PackIndex:
             yield buffer(self.map, 8 + 256*4 + 20*i, 20)
 
     def __len__(self):
-        return self.fanout[255]
+        return int(self.fanout[255])
 
 
 def extract_bits(buf, bits):
