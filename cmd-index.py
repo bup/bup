@@ -89,12 +89,13 @@ def update_index(top):
     total = 0
     for (path,pst) in drecurse.recursive_dirlist([top], xdev=opt.xdev):
         #log('got: %r\n' % path)
-        if not (total % 128):
-            progress('Indexing: %d\r' % total)
-        total += 1
         if opt.verbose>=2 or (opt.verbose==1 and stat.S_ISDIR(pst.st_mode)):
             sys.stdout.write('%s\n' % path)
             sys.stdout.flush()
+            progress('Indexing: %d\r' % total)
+        elif not (total % 128):
+            progress('Indexing: %d\r' % total)
+        total += 1
         while rig.cur and rig.cur.name > path:  # deleted paths
             rig.cur.set_deleted()
             rig.cur.repack()
