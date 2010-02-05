@@ -11,7 +11,7 @@ def log(s):
 def usage():
     log('Usage: %s <subcmd> <options...>\n\n' % exe)
     log('Available subcommands:\n')
-    for c in os.listdir(exepath):
+    for c in sorted(os.listdir(exepath)):
         if c.startswith('bup-') and c.find('.') < 0:
             log('\t%s\n' % c[4:])
     sys.exit(99)
