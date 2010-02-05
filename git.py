@@ -230,11 +230,13 @@ class MultiPackIndex:
                 return p.name
         return None
 
-    def refresh(self):
-        global ignore_midx
+    def refresh(self, skip_midx = False, forget_packs = False):
+        if forget_packs:
+            self.packs = []
+        skip_midx = skip_midx or ignore_midx
         d = dict([(p.name, 1) for p in self.packs])
         if os.path.exists(self.dir):
-            if not ignore_midx:
+            if not skip_midx:
                 midxl = []
                 for f in os.listdir(self.dir):
                     full = os.path.join(self.dir, f)

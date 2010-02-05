@@ -75,6 +75,20 @@ def receive_objects(conn, junk):
         (type, content) = git._decode_packobj(buf)
         sha = git.calc_hash(type, content)
         oldpack = w.exists(sha)
+        if oldpack and (oldpack == True or oldpack.endswith('.midx')):
+            # FIXME: we shouldn't really have to know about midx files
+            # at this layer.  But exists() on a midx doesn't return the
+            # packname (since it doesn't know)... probably we should just
+            # fix that deficiency of midx files eventually, although it'll
+            # make the files bigger.  This method is certainly not very
+            # efficient.
+            w.objcache.refresh(skip_midx = True, forget_packs = True)
+            oldpack = w.objcache.exists(sha)
+            log('new suggestion: %r\n' % oldpack)
+            assert(oldpack)
+            assert(oldpack != True)
+            assert(not oldpack.endswith('.midx'))
+            w.objcache.refresh(skip_midx = False)
         if oldpack:
             assert(oldpack.endswith('.idx'))
             (dir,name) = os.path.split(oldpack)
