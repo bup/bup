@@ -4,12 +4,6 @@ import hashsplit, git, options, index
 from helpers import *
 
 
-saved_errors = []
-def add_error(e):
-    saved_errors.append(e)
-    log('\n%s\n' % e)
-
-
 optspec = """
 bup save [-tc] [-n name] <filenames...>
 --
@@ -138,22 +132,30 @@ for (transname,ent) in r.filter(extra):
     elif opt.smaller and ent.size >= opt.smaller:
         add_error('skipping large file "%s"' % ent.name)
     else:
-        try:
-            if stat.S_ISREG(ent.mode):
+        if stat.S_ISREG(ent.mode):
+            try:
                 f = open(ent.name)
-                (mode, id) = hashsplit.split_to_blob_or_tree(w, [f])
+            except IOError, e:
+                add_error(e)
+            except OSError, e:
+                add_error(e)
             else:
-                if stat.S_ISDIR(ent.mode):
-                    assert(0)  # handled above
-                elif stat.S_ISLNK(ent.mode):
-                    (mode, id) = ('120000', w.new_blob(os.readlink(ent.name)))
+                (mode, id) = hashsplit.split_to_blob_or_tree(w, [f])
+        else:
+            if stat.S_ISDIR(ent.mode):
+                assert(0)  # handled above
+            elif stat.S_ISLNK(ent.mode):
+                try:
+                    rl = os.readlink(ent.name)
+                except OSError, e:
+                    add_error(e)
+                except IOError, e:
+                    add_error(e)
                 else:
-                    add_error(Exception('skipping special file "%s"' % ent.name))
-                count += ent.size
-        except IOError, e:
-            add_error(e)
-        except OSError, e:
-            add_error(e)
+                    (mode, id) = ('120000', w.new_blob(rl))
+            else:
+                add_error(Exception('skipping special file "%s"' % ent.name))
+            count += ent.size
         if id:
             ent.validate(id)
             ent.repack()
