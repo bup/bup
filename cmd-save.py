@@ -1,6 +1,6 @@
 #!/usr/bin/env python
-import sys, re, errno, stat, client
-import hashsplit, git, options, index
+import sys, re, errno, stat, time, math
+import hashsplit, git, options, index, client
 from helpers import *
 
 
@@ -61,12 +61,42 @@ def _pop():
     tree = w.new_tree(shalist)
     shalists[-1].append(('40000', part, tree))
 
+lastremain = None
 def progress_report(n):
-    global count
+    global count, lastremain
     count += n
     pct = count*100.0/total
-    progress('Saving: %.2f%% (%d/%dk, %d/%d files)\r'
-             % (pct, count/1024, total/1024, fcount, ftotal))
+    now = time.time()
+    elapsed = now - tstart
+    kps = elapsed and int(count/1024./elapsed)
+    kps_frac = 10 ** int(math.log(kps+1, 10) - 1)
+    kps = int(kps/kps_frac)*kps_frac
+    if count:
+        remain = elapsed*1.0/count * (total-count)
+    else:
+        remain = 0.0
+    if (lastremain and (remain > lastremain)
+          and ((remain - lastremain)/lastremain < 0.05)):
+        remain = lastremain
+    else:
+        lastremain = remain
+    hours = int(remain/60/60)
+    mins = int(remain/60 - hours*60)
+    secs = int(remain - hours*60*60 - mins*60)
+    if elapsed < 30:
+        remainstr = ''
+        kpsstr = ''
+    else:
+        kpsstr = '%dk/s' % kps
+        if hours:
+            remainstr = '%dh%dm' % (hours, mins)
+        elif mins:
+            remainstr = '%dm%d' % (mins, secs)
+        else:
+            remainstr = '%ds' % secs
+    progress('Saving: %.2f%% (%d/%dk, %d/%d files) %s %s     \r'
+             % (pct, count/1024, total/1024, fcount, ftotal,
+                remainstr, kpsstr))
 
 
 r = index.Reader(git.repo('bupindex'))
@@ -84,6 +114,7 @@ if opt.progress:
     progress('Reading index: %d, done.\n' % ftotal)
     hashsplit.progress_callback = progress_report
 
+tstart = time.time()
 count = fcount = 0
 for (transname,ent) in r.filter(extra):
     (dir, file) = os.path.split(ent.name)
@@ -163,7 +194,7 @@ for (transname,ent) in r.filter(extra):
 
 if opt.progress:
     pct = total and count*100.0/total or 100
-    progress('Saving: %.2f%% (%d/%dk, %d/%d files), done.\n'
+    progress('Saving: %.2f%% (%d/%dk, %d/%d files), done.    \n'
              % (pct, count/1024, total/1024, fcount, ftotal))
 
 #log('parts out: %r\n' % parts)
