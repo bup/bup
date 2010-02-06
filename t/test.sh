@@ -78,7 +78,9 @@ WVPASSEQ "$(cd $D && bup index -s .)" "$(cd $D && bup index -s .)"
 WVSTART "split"
 WVPASS bup split --bench -b <t/testfile1 >tags1.tmp
 WVPASS bup split -vvvv -b t/testfile2 >tags2.tmp
-WVPASS bup midx -a
+WVPASS bup margin
+WVPASS bup midx -f
+WVPASS bup margin
 WVPASS bup split -t t/testfile2 >tags2t.tmp
 WVPASS bup split -t t/testfile2 --fanout 3 >tags2tf.tmp
 WVPASS bup split -r "$BUP_DIR" -c t/testfile2 >tags2c.tmp

@@ -30,7 +30,8 @@ def do_midx(outdir, outfilename, infilenames):
         total += len(ix)
 
     log('Merging %d indexes (%d objects).\n' % (len(infilenames), total))
-    if total < 1024 and len(infilenames) < 3:
+    if (not opt.force and (total < 1024 and len(infilenames) < 3)) \
+       or (opt.force and not total):
         log('%s: not enough objects for a .midx to be useful.\n' % outdir)
         return
 
