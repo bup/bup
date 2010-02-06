@@ -65,7 +65,7 @@ lastremain = None
 def progress_report(n):
     global count, lastremain
     count += n
-    pct = count*100.0/total
+    pct = total and (count*100.0/total) or 0
     now = time.time()
     elapsed = now - tstart
     kps = elapsed and int(count/1024./elapsed)
