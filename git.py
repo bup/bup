@@ -197,7 +197,7 @@ class PackMidx:
             yield buffer(self.shalist, i*20, 20)
     
     def __len__(self):
-        return self._fanget(self.entries-1)
+        return int(self._fanget(self.entries-1))
 
 
 _mpi_count = 0
