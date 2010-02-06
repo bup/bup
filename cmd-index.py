@@ -134,7 +134,7 @@ def update_index(top):
 
 
 optspec = """
-bup index <-p|s|m|u> [options...] <filenames...>
+bup index <-p|m|u> [options...] <filenames...>
 --
 p,print    print the index entries for the given names (also works with -u)
 m,modified print only added/deleted/modified files (implies -p)

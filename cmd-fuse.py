@@ -180,7 +180,7 @@ if not hasattr(fuse, '__version__'):
 fuse.fuse_python_api = (0, 2)
 
 optspec = """
-bup fuse [mountpoint]
+bup fuse [-d] [-f] <mountpoint>
 --
 d,debug   increase debug level
 f,foreground  run in foreground

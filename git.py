@@ -289,7 +289,7 @@ def idxmerge(idxlist):
     count = 0
     while heap:
         if (count % 10024) == 0:
-            progress('Creating midx: %.2f%% (%d/%d)\r'
+            progress('Reading indexes: %.2f%% (%d/%d)\r'
                      % (count*100.0/total, count, total))
         (e, it) = heap[0]
         yield e
@@ -299,7 +299,7 @@ def idxmerge(idxlist):
             heapq.heapreplace(heap, (e, it))
         else:
             heapq.heappop(heap)
-    log('Creating midx: %.2f%% (%d/%d), done.\n' % (100, total, total))
+    log('Reading indexes: %.2f%% (%d/%d), done.\n' % (100, total, total))
 
     
 class PackWriter:
