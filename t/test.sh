@@ -84,6 +84,10 @@ WVPASS bup split -t t/testfile2 --fanout 3 >tags2tf.tmp
 WVPASS bup split -r "$BUP_DIR" -c t/testfile2 >tags2c.tmp
 WVPASS ls -lR \
    | WVPASS bup split -r "$BUP_DIR" -c --fanout 3 --max-pack-objects 3 -n lslr
+WVPASS bup ls
+WVFAIL bup ls /does-not-exist
+WVPASS bup ls /lslr
+WVPASS bup ls /lslr/1971-01-01   # all dates always exist
 WVFAIL diff -u tags1.tmp tags2.tmp
 
 # fanout must be different from non-fanout

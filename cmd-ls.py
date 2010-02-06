@@ -32,6 +32,7 @@ o = options.Options('bup ls', optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
 
 git.check_repo_or_die()
+cp = git.CatPipe()
 
 if not extra:
     extra = ['/']
