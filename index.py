@@ -94,13 +94,24 @@ class Entry:
         self.mode = st.st_mode
         self.flags |= IX_EXISTS
         if int(st.st_ctime) >= tstart or old != new:
-            self.flags &= ~IX_HASHVALID
-            self.set_dirty()
+            self.invalidate()
 
-    def validate(self, sha):
+    def is_valid(self):
+        f = IX_HASHVALID|IX_EXISTS
+        return (self.flags & f) == f
+
+    def invalidate(self):
+        self.flags &= ~IX_HASHVALID
+        self.set_dirty()
+
+    def validate(self, gitmode, sha):
         assert(sha)
+        self.gitmode = gitmode
         self.sha = sha
-        self.flags |= IX_HASHVALID
+        self.flags |= IX_HASHVALID|IX_EXISTS
+
+    def is_deleted(self):
+        return (self.flags & IX_EXISTS) == 0
 
     def set_deleted(self):
         self.flags &= ~(IX_EXISTS | IX_HASHVALID)
@@ -109,8 +120,16 @@ class Entry:
     def set_dirty(self):
         pass # FIXME
 
+    def is_real(self):
+        return not self.is_fake()
+
+    def is_fake(self):
+        return not self.ctime
+
     def __cmp__(a, b):
-        return cmp(a.name, b.name)
+        return (cmp(a.name, b.name)
+                or -cmp(a.is_valid(), b.is_valid())
+                or -cmp(a.is_fake(), b.is_fake()))
 
     def write(self, f):
         f.write(self.basename + '\0' + self.packed())
@@ -135,8 +154,9 @@ class BlankNewEntry(NewEntry):
 
 
 class ExistingEntry(Entry):
-    def __init__(self, basename, name, m, ofs):
+    def __init__(self, parent, basename, name, m, ofs):
         Entry.__init__(self, basename, name)
+        self.parent = parent
         self._m = m
         self._ofs = ofs
         (self.dev, self.ctime, self.mtime, self.uid, self.gid,
@@ -146,6 +166,9 @@ class ExistingEntry(Entry):
 
     def repack(self):
         self._m[self._ofs:self._ofs+ENTLEN] = self.packed()
+        if self.parent and not self.is_valid():
+            self.parent.invalidate()
+            self.parent.repack()
 
     def iter(self, name=None):
         dname = name
@@ -160,7 +183,7 @@ class ExistingEntry(Entry):
             assert(eon >= ofs)
             assert(eon > ofs)
             basename = str(buffer(self._m, ofs, eon-ofs))
-            child = ExistingEntry(basename, self.name + basename,
+            child = ExistingEntry(self, basename, self.name + basename,
                                   self._m, eon+1)
             if (not dname
                  or child.name.startswith(dname)
@@ -216,7 +239,7 @@ class Reader:
             assert(eon >= ofs)
             assert(eon > ofs)
             basename = str(buffer(self.m, ofs, eon-ofs))
-            yield ExistingEntry(basename, basename, self.m, eon+1)
+            yield ExistingEntry(None, basename, basename, self.m, eon+1)
             ofs = eon + 1 + ENTLEN
 
     def iter(self, name=None):
@@ -224,7 +247,8 @@ class Reader:
             dname = name
             if dname and not dname.endswith('/'):
                 dname += '/'
-            root = ExistingEntry('/', '/', self.m, len(self.m)-FOOTLEN-ENTLEN)
+            root = ExistingEntry(None, '/', '/',
+                                 self.m, len(self.m)-FOOTLEN-ENTLEN)
             for sub in root.iter(name=name):
                 yield sub
             if not dname or dname == root.name:
@@ -364,3 +388,36 @@ def reduce_paths(paths):
     paths.sort(reverse=True)
     return paths
 
+
+class MergeIter:
+    def __init__(self, iters):
+        self.iters = iters
+
+    def __len__(self):
+        # FIXME: doesn't remove duplicated entries between iters.
+        # That only happens for parent directories, but will mean the
+        # actual iteration returns fewer entries than this function counts.
+        return sum(len(it) for it in self.iters)
+
+    def __iter__(self):
+        total = len(self)
+        l = [iter(it) for it in self.iters]
+        l = [(next(it),it) for it in l]
+        l = filter(lambda x: x[0], l)
+        count = 0
+        lastname = None
+        while l:
+            if not (count % 1024):
+                progress('bup: merging indexes (%d/%d)\r' % (count, total))
+            l.sort()
+            (e,it) = l.pop()
+            if not e:
+                continue
+            if e.name != lastname:
+                yield e
+                lastname = e.name
+            n = next(it)
+            if n:
+                l.append((n,it))
+            count += 1
+        log('bup: merging indexes (%d/%d), done.\n' % (count, total))

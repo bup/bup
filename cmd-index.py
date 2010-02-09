@@ -4,34 +4,10 @@ import options, git, index, drecurse
 from helpers import *
 
 
-def _simplify_iter(iters):
-    total = sum(len(it) for it in iters)
-    l = [iter(it) for it in iters]
-    del iters
-    l = [(next(it),it) for it in l]
-    l = filter(lambda x: x[0], l)
-    count = 0
-    while l:
-        if not (count % 1024):
-            progress('bup: merging indexes (%d/%d)\r' % (count, total))
-        l.sort()
-        (e,it) = l.pop()
-        if not e:
-            continue
-        #log('merge: %r %r (%d)\n' % (e.ctime, e.name, len(l)))
-        if e.ctime:  # skip auto-generated entries
-            yield e
-        n = next(it)
-        if n:
-            l.append((n,it))
-        count += 1
-    log('bup: merging indexes (%d/%d), done.\n' % (count, total))
-
-
 def merge_indexes(out, r1, r2):
-    for e in _simplify_iter([r1, r2]):
-        #if e.flags & index.IX_EXISTS:
-            out.add_ixentry(e)
+    for e in index.MergeIter([r1, r2]):
+        # FIXME: shouldn't we remove deleted entries eventually?  When?
+        out.add_ixentry(e)
 
 
 class IterHelper:
@@ -82,15 +58,12 @@ def update_index(top):
     hashgen = None
     if opt.fake_valid:
         def hashgen(name):
-            return (0, index.FAKE_SHA)
-
-    #log('doing: %r\n' % paths)
+            return (0100644, index.FAKE_SHA)
 
     total = 0
     for (path,pst) in drecurse.recursive_dirlist([top], xdev=opt.xdev):
-        #log('got: %r\n' % path)
         if opt.verbose>=2 or (opt.verbose==1 and stat.S_ISDIR(pst.st_mode)):
-            sys.stdout.write('%s\n' % path)
+            sys.stdout.write('%-70s\n' % path)
             sys.stdout.flush()
             progress('Indexing: %d\r' % total)
         elif not (total % 128):
@@ -107,10 +80,11 @@ def update_index(top):
                 if hashgen:
                     (rig.cur.gitmode, rig.cur.sha) = hashgen(path)
                     rig.cur.flags |= index.IX_HASHVALID
-                rig.cur.repack()
+            if opt.fake_invalid:
+                rig.cur.invalidate()
+            rig.cur.repack()
             rig.next()
         else:  # new paths
-            #log('adding: %r\n' % path)
             wi.add(path, pst, hashgen = hashgen)
     progress('Indexing: %d, done.\n' % total)
     
@@ -144,6 +118,7 @@ l,long     print more information about each file
 u,update   (recursively) update the index entries for the given filenames
 x,xdev,one-file-system  don't cross filesystem boundaries
 fake-valid mark all index entries as up-to-date even if they aren't
+fake-invalid mark all index entries as invalid
 check      carefully check index file integrity
 f,indexfile=  the name of the index file (default 'index')
 v,verbose  increase log output (can be used more than once)
@@ -154,8 +129,11 @@ o = options.Options('bup index', optspec)
 if not (opt.modified or opt['print'] or opt.status or opt.update or opt.check):
     log('bup index: supply one or more of -p, -s, -m, -u, or --check\n')
     o.usage()
-if opt.fake_valid and not opt.update:
-    log('bup index: --fake-valid is meaningless without -u\n')
+if (opt.fake_valid or opt.fake_invalid) and not opt.update:
+    log('bup index: --fake-{in,}valid are meaningless without -u\n')
+    o.usage()
+if opt.fake_valid and opt.fake_invalid:
+    log('bup index: --fake-valid is incompatible with --fake-invalid\n')
     o.usage()
 
 git.check_repo_or_die()
@@ -178,8 +156,7 @@ if opt['print'] or opt.status or opt.modified:
     for (name, ent) in index.Reader(indexfile).filter(extra or ['']):
         if (opt.modified 
             and (ent.flags & index.IX_HASHVALID
-                 or not ent.mode
-                 or stat.S_ISDIR(ent.mode))):
+                 or not ent.mode)):
             continue
         line = ''
         if opt.status:
@@ -193,11 +170,10 @@ if opt['print'] or opt.status or opt.modified:
             else:
                 line += '  '
         if opt.long:
-            line += "%7s " % oct(ent.mode)
+            line += "%7s %7s " % (oct(ent.mode), oct(ent.gitmode))
         if opt.hash:
             line += ent.sha.encode('hex') + ' '
         print line + (name or './')
-        #print repr(ent)
 
 if opt.check:
     log('check: starting final check.\n')

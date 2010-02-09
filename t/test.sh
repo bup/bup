@@ -30,13 +30,13 @@ touch $D/a $D/b $D/f
 mkdir $D/d $D/d/e
 WVPASSEQ "$(bup index -s $D/)" "A $D/"
 WVPASSEQ "$(bup index -s $D/b)" ""
-bup tick
 WVPASSEQ "$(bup index --check -us $D/b)" "A $D/b"
 WVPASSEQ "$(bup index --check -us $D/b $D/d)" \
 "A $D/d/e/
 A $D/d/
 A $D/b"
 touch $D/d/z
+bup tick
 WVPASSEQ "$(bup index --check -usx $D)" \
 "A $D/f
 A $D/d/z
@@ -49,30 +49,52 @@ WVPASSEQ "$(bup index --check -us $D/a $D/b --fake-valid)" \
 "  $D/b
   $D/a"
 WVPASSEQ "$(bup index --check -us $D/a)" "  $D/a"  # stays unmodified
-touch $D/a
-WVPASS bup index -u $D/a  # becomes modified
+WVPASSEQ "$(bup index --check -us $D/d --fake-valid)" \
+"  $D/d/z
+  $D/d/e/
+  $D/d/"
+touch $D/d/z
+WVPASS bup index -u $D/d/z  # becomes modified
 WVPASSEQ "$(bup index -s $D/a $D $D/b)" \
 "A $D/f
-A $D/d/z
-A $D/d/e/
-A $D/d/
+M $D/d/z
+  $D/d/e/
+M $D/d/
   $D/b
-M $D/a
+  $D/a
 A $D/"
 
-# FIXME: currently directories are never marked unmodified, so -m just skips
-# them.  Eventually, we should actually store the hashes of completed
-# directories, at which time the output of -m will change, so we'll have to
-# change this test too.
+WVPASS bup index -u $D/d/e $D/a --fake-invalid
 WVPASSEQ "$(cd $D && bup index -m .)" \
 "./f
 ./d/z
-./a"
+./d/e/
+./d/
+./a
+./"
 WVPASSEQ "$(cd $D && bup index -m)" \
 "f
 d/z
-a"
+d/e/
+d/
+a
+./"
 WVPASSEQ "$(cd $D && bup index -s .)" "$(cd $D && bup index -s .)"
+
+WVPASS bup save -t $D/d/e
+WVPASSEQ "$(cd $D && bup index -m)" \
+"f
+d/z
+d/
+a
+./"
+WVPASS bup save -t $D/d
+WVPASSEQ "$(cd $D && bup index -m)" \
+"f
+a
+./"
+WVPASS bup save -t $D
+WVPASSEQ "$(cd $D && bup index -m)" ""
 
 
 WVSTART "split"
@@ -142,7 +164,7 @@ WVFAIL bup fsck --quick
 WVFAIL bup fsck --quick -rvv -j99   # fails because repairs were needed
 if bup fsck --par2-ok; then
     WVPASS bup fsck -r # ok because of repairs from last time
-    WVPASS bup damage $BUP_DIR/objects/pack/*.pack -n201 -s1 --equal -S0
+    WVPASS bup damage $BUP_DIR/objects/pack/*.pack -n202 -s1 --equal -S0
     WVFAIL bup fsck
     WVFAIL bup fsck -rvv   # too many errors to be repairable
     WVFAIL bup fsck -r   # too many errors to be repairable

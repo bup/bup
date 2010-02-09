@@ -60,6 +60,7 @@ def _pop():
     shalist = shalists.pop()
     tree = w.new_tree(shalist)
     shalists[-1].append(('40000', part, tree))
+    return tree
 
 lastremain = None
 def progress_report(n):
@@ -149,15 +150,15 @@ for (transname,ent) in r.filter(extra):
             _push(part)
 
     if not file:
-        # directory already handled.
-        # FIXME: not using the indexed tree sha1's for anything, which is
-        # a waste.  That's a potential optimization...
+        # sub/parentdirectories already handled in the pop/push() part above.
+        ent.validate(040000, _pop())
+        ent.repack()
         count += ent.size
         continue  
 
     id = None
     if hashvalid:
-        mode = '%o' % ent.mode
+        mode = '%o' % ent.gitmode
         id = ent.sha
         shalists[-1].append((mode, file, id))
     elif opt.smaller and ent.size >= opt.smaller:
@@ -188,7 +189,7 @@ for (transname,ent) in r.filter(extra):
                 add_error(Exception('skipping special file "%s"' % ent.name))
             count += ent.size
         if id:
-            ent.validate(id)
+            ent.validate(int(mode, 8), id)
             ent.repack()
             shalists[-1].append((mode, file, id))
 
