@@ -55,7 +55,7 @@ def do_midx(outdir, outfilename, infilenames):
     for e in merge(inp, bits, table):
         f.write(e)
         
-    f.write('\0'.join([os.path.basename(p) for p in infilenames]))
+    f.write('\0'.join(os.path.basename(p) for p in infilenames))
 
     f.seek(12)
     f.write(struct.pack('!%dI' % entries, *table))

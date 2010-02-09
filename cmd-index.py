@@ -5,10 +5,10 @@ from helpers import *
 
 
 def _simplify_iter(iters):
-    total = sum([len(it) for it in iters])
-    l = list([iter(it) for it in iters])
+    total = sum(len(it) for it in iters)
+    l = [iter(it) for it in iters]
     del iters
-    l = list([(next(it),it) for it in l])
+    l = [(next(it),it) for it in l]
     l = filter(lambda x: x[0], l)
     count = 0
     while l:

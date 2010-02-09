@@ -42,7 +42,7 @@ def readpipe(argv):
 # But it's used in a couple of places, so let's put it here.
 def pathsplit(p):
     l = p.split('/')
-    l = list([i+'/' for i in l[:-1]]) + l[-1:]
+    l = [i+'/' for i in l[:-1]] + l[-1:]
     if l[-1] == '':
         l.pop()  # extra blank caused by terminating '/'
     return l

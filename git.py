@@ -234,7 +234,7 @@ class MultiPackIndex:
         if forget_packs:
             self.packs = []
         skip_midx = skip_midx or ignore_midx
-        d = dict([(p.name, 1) for p in self.packs])
+        d = dict((p.name, 1) for p in self.packs)
         if os.path.exists(self.dir):
             if not skip_midx:
                 midxl = []
@@ -282,8 +282,8 @@ def _shalist_sort_key(ent):
 
 
 def idxmerge(idxlist):
-    total = sum([len(i) for i in idxlist])
-    iters = [iter(i) for i in idxlist]
+    total = sum(len(i) for i in idxlist)
+    iters = (iter(i) for i in idxlist)
     heap = [(next(it), it) for it in iters]
     heapq.heapify(heap)
     count = 0
