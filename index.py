@@ -102,7 +102,6 @@ class Entry:
 
     def invalidate(self):
         self.flags &= ~IX_HASHVALID
-        self.set_dirty()
 
     def validate(self, gitmode, sha):
         assert(sha)
@@ -110,16 +109,15 @@ class Entry:
         self.sha = sha
         self.flags |= IX_HASHVALID|IX_EXISTS
 
+    def exists(self):
+        return not self.is_deleted()
+
     def is_deleted(self):
         return (self.flags & IX_EXISTS) == 0
 
     def set_deleted(self):
         if self.flags & IX_EXISTS:
             self.flags &= ~(IX_EXISTS | IX_HASHVALID)
-            self.set_dirty()
-
-    def set_dirty(self):
-        pass # FIXME
 
     def is_real(self):
         return not self.is_fake()

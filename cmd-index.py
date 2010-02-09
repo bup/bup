@@ -70,8 +70,9 @@ def update_index(top):
             progress('Indexing: %d\r' % total)
         total += 1
         while rig.cur and rig.cur.name > path:  # deleted paths
-            rig.cur.set_deleted()
-            rig.cur.repack()
+            if rig.cur.exists():
+                rig.cur.set_deleted()
+                rig.cur.repack()
             rig.next()
         if rig.cur and rig.cur.name == path:    # paths that already existed
             if pst:
@@ -155,8 +156,7 @@ if opt.update:
 if opt['print'] or opt.status or opt.modified:
     for (name, ent) in index.Reader(indexfile).filter(extra or ['']):
         if (opt.modified 
-            and (ent.flags & index.IX_HASHVALID
-                 or not ent.mode)):
+            and (ent.is_valid() or ent.is_deleted() or not ent.mode)):
             continue
         line = ''
         if opt.status:
