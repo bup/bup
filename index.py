@@ -114,8 +114,9 @@ class Entry:
         return (self.flags & IX_EXISTS) == 0
 
     def set_deleted(self):
-        self.flags &= ~(IX_EXISTS | IX_HASHVALID)
-        self.set_dirty()
+        if self.flags & IX_EXISTS:
+            self.flags &= ~(IX_EXISTS | IX_HASHVALID)
+            self.set_dirty()
 
     def set_dirty(self):
         pass # FIXME
@@ -170,7 +171,7 @@ class ExistingEntry(Entry):
             self.parent.invalidate()
             self.parent.repack()
 
-    def iter(self, name=None):
+    def iter(self, name=None, wantrecurse=None):
         dname = name
         if dname and not dname.endswith('/'):
             dname += '/'
@@ -188,8 +189,9 @@ class ExistingEntry(Entry):
             if (not dname
                  or child.name.startswith(dname)
                  or child.name.endswith('/') and dname.startswith(child.name)):
-                for e in child.iter(name=name):
-                    yield e
+                if not wantrecurse or wantrecurse(child):
+                    for e in child.iter(name=name, wantrecurse=wantrecurse):
+                        yield e
             if not name or child.name == name or child.name.startswith(dname):
                 yield child
             ofs = eon + 1 + ENTLEN
@@ -242,14 +244,14 @@ class Reader:
             yield ExistingEntry(None, basename, basename, self.m, eon+1)
             ofs = eon + 1 + ENTLEN
 
-    def iter(self, name=None):
+    def iter(self, name=None, wantrecurse=None):
         if len(self.m) > len(INDEX_HDR)+ENTLEN:
             dname = name
             if dname and not dname.endswith('/'):
                 dname += '/'
             root = ExistingEntry(None, '/', '/',
                                  self.m, len(self.m)-FOOTLEN-ENTLEN)
-            for sub in root.iter(name=name):
+            for sub in root.iter(name=name, wantrecurse=wantrecurse):
                 yield sub
             if not dname or dname == root.name:
                 yield root
@@ -270,9 +272,9 @@ class Reader:
             self.m = None
             self.writable = False
 
-    def filter(self, prefixes):
+    def filter(self, prefixes, wantrecurse=None):
         for (rp, path) in reduce_paths(prefixes):
-            for e in self.iter(rp):
+            for e in self.iter(rp, wantrecurse=wantrecurse):
                 assert(e.name.startswith(rp))
                 name = path + e.name[len(rp):]
                 yield (name, e)

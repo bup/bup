@@ -93,8 +93,10 @@ WVPASSEQ "$(cd $D && bup index -m)" \
 "f
 a
 ./"
-WVPASS bup save -t $D
+tree1=$(bup save -t $D)
 WVPASSEQ "$(cd $D && bup index -m)" ""
+tree2=$(bup save -t $D)
+WVPASSEQ "$tree1" "$tree2"
 
 
 WVSTART "split"

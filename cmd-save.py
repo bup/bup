@@ -54,11 +54,11 @@ def _push(part):
     parts.append(part)
     shalists.append([])
 
-def _pop():
+def _pop(force_tree):
     assert(len(parts) > 1)
     part = parts.pop()
     shalist = shalists.pop()
-    tree = w.new_tree(shalist)
+    tree = force_tree or w.new_tree(shalist)
     shalists[-1].append(('40000', part, tree))
     return tree
 
@@ -102,13 +102,19 @@ def progress_report(n):
 
 r = index.Reader(git.repo('bupindex'))
 
+def already_saved(ent):
+    return ent.is_valid() and w.exists(ent.sha) and ent.sha
+
+def wantrecurse(ent):
+    return not already_saved(ent)
+
 total = ftotal = 0
 if opt.progress:
-    for (transname,ent) in r.filter(extra):
+    for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse):
         if not (ftotal % 10024):
             progress('Reading index: %d\r' % ftotal)
         exists = (ent.flags & index.IX_EXISTS)
-        hashvalid = (ent.flags & index.IX_HASHVALID) and w.exists(ent.sha)
+        hashvalid = already_saved(ent)
         if exists and not hashvalid:
             total += ent.size
         ftotal += 1
@@ -117,10 +123,10 @@ if opt.progress:
 
 tstart = time.time()
 count = fcount = 0
-for (transname,ent) in r.filter(extra):
+for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse):
     (dir, file) = os.path.split(ent.name)
     exists = (ent.flags & index.IX_EXISTS)
-    hashvalid = (ent.flags & index.IX_HASHVALID) and w.exists(ent.sha)
+    hashvalid = already_saved(ent)
     if opt.verbose:
         if not exists:
             status = 'D'
@@ -144,15 +150,18 @@ for (transname,ent) in r.filter(extra):
     assert(dir.startswith('/'))
     dirp = dir.split('/')
     while parts > dirp:
-        _pop()
+        _pop(force_tree = None)
     if dir != '/':
         for part in dirp[len(parts):]:
             _push(part)
 
     if not file:
         # sub/parentdirectories already handled in the pop/push() part above.
-        ent.validate(040000, _pop())
-        ent.repack()
+        oldtree = already_saved(ent) # may be None
+        newtree = _pop(force_tree = oldtree)
+        if not oldtree:
+            ent.validate(040000, newtree)
+            ent.repack()
         count += ent.size
         continue  
 
@@ -198,12 +207,8 @@ if opt.progress:
     progress('Saving: %.2f%% (%d/%dk, %d/%d files), done.    \n'
              % (pct, count/1024, total/1024, fcount, ftotal))
 
-#log('parts out: %r\n' % parts)
-#log('stk out: %r\n' % shalists)
 while len(parts) > 1:
-    _pop()
-#log('parts out: %r\n' % parts)
-#log('stk out: %r\n' % shalists)
+    _pop(force_tree = None)
 assert(len(shalists) == 1)
 tree = w.new_tree(shalists[-1])
 if opt.tree:
