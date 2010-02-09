@@ -67,8 +67,15 @@ def recursive_dirlist(paths, xdev):
         assert(type(paths) != type(''))
         for path in paths:
             try:
-                rpath = os.path.realpath(path)
-                pfile = OsFile(rpath)
+                pst = os.lstat(path)
+                if stat.S_ISLNK(pst.st_mode):
+                    yield (path, pst)
+                    continue
+            except OSError, e:
+                add_error(e)
+                continue
+            try:
+                pfile = OsFile(path)
             except OSError, e:
                 add_error(e)
                 continue
