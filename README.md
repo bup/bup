@@ -34,7 +34,9 @@ bup has a few advantages over other backup software:
    
  - Unlike git, it writes packfiles *directly* (instead of having a separate
    garbage collection / repacking stage) so it's fast even with gratuitously
-   huge amounts of data.
+   huge amounts of data.  bup's improved index formats also allow you to
+   track far more filenames than git (millions) and keep track of far more
+   objects (hundreds or thousands of gigabytes).
    
  - Data is "automagically" shared between incremental backups without having
    to know which backup is based on which other one - even if the backups
@@ -42,10 +44,22 @@ bup has a few advantages over other backup software:
    other.  You just tell bup to back stuff up, and it saves only the minimum
    amount of data needed.
    
+ - You can back up directly to a remote bup server, without needing tons of
+   temporary disk space on the computer being backed up.  And if your backup
+   is interrupted halfway through, the next run will pick up where you left
+   off.  And it's easy to set up a bup server: just install bup on any
+   machine where you have ssh access.
+   
+ - Bup can use "par2" redundancy to recover corrupted backups even if your
+   disk has undetected bad sectors.
+   
  - Even when a backup is incremental, you don't have to worry about
    restoring the full backup, then each of the incrementals in turn; an
    incremental backup *acts* as if it's a full backup, it just takes less
    disk space.
+   
+ - You can mount your bup repository as a FUSE filesystem and access the
+   content that way, and even export it over Samba.
    
  - It's written in python (with some C parts to make it faster) so it's easy
    for you to extend and maintain.
@@ -63,9 +77,6 @@ Reasons you might want to avoid bup
  
  - It currently only works on Linux, MacOS X >= 10.4, or Windows (with
    Cygwin).  Patches to support other platforms are welcome.
- 
- - It has almost no documentation.  Not even a man page!  This file is all
-   you get for now.
    
    
 Getting started
@@ -213,7 +224,7 @@ a lot of files have changed.
 Things that are stupid for now but which we'll fix later
 --------------------------------------------------------
 
-Help with any of these problems, or others, is very, very welcome.  Join the
+Help with any of these problems, or others, is very welcome.  Join the
 mailing list (see below) if you'd like to help.
 
  - 'bup save' doesn't know about file metadata.
@@ -230,17 +241,16 @@ mailing list (see below) if you'd like to help.
     fetching and packing an entire (possibly huge) pack, which could be very
     slow.  Also, like 'bup save', you would need extra features in order to
     properly restore file metadata.  And files that bup has split into
-    chunks would need to be recombined somehow.
+    chunks will need to be recombined.  Although there's no restore tool,
+    'bup fuse' does accomplish some of this already.
    
  - 'bup index' is slower than it should be.
  
     It's still rather fast: it can iterate through all the filenames on my
-    600,000 file filesystem in a few seconds.  But sometimes you just want to
-    change a filename or two, so this is needlessly slow.  There should be
-    a way to binary search through the file list rather than always going
-    through it sequentially.  And if you only add a couple of filenames,
-    there's no need to rewrite the entire index; just leave the new files
-    in a second "extra index" file or something.
+    600,000 file filesystem in a few seconds.  But it still needs to rewrite
+    the entire index file just to add a single filename, which is pretty
+    nasty; it should just leave the new files in a second "extra index" file
+    or something.
    
  - bup could use inotify for *really* efficient incremental backups.
 
