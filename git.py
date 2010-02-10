@@ -251,13 +251,19 @@ class MultiPackIndex:
                             d[ix.name] = 1
                             for name in ix.idxnames:
                                 d[os.path.join(self.dir, name)] = 1
+                            any += 1
                             break
+                    if not any:
+                        log('midx: removing redundant: %s\n' 
+                            % os.path.basename(ix.name))
+                        unlink(ix.name)
             for f in os.listdir(self.dir):
                 full = os.path.join(self.dir, f)
                 if f.endswith('.idx') and not d.get(full):
                     self.packs.append(PackIndex(full))
                     d[full] = 1
-        #log('MultiPackIndex: using %d packs.\n' % len(self.packs))
+        log('MultiPackIndex: using %d index%s.\n' 
+            % (len(self.packs), len(self.packs)!=1 and 'es' or ''))
 
     def add(self, hash):
         self.also[hash] = 1
@@ -287,12 +293,15 @@ def idxmerge(idxlist):
     heap = [(next(it), it) for it in iters]
     heapq.heapify(heap)
     count = 0
+    last = None
     while heap:
         if (count % 10024) == 0:
             progress('Reading indexes: %.2f%% (%d/%d)\r'
                      % (count*100.0/total, count, total))
         (e, it) = heap[0]
-        yield e
+        if e != last:
+            yield e
+            last = e
         count += 1
         e = next(it)
         if e:

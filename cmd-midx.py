@@ -32,7 +32,7 @@ def do_midx(outdir, outfilename, infilenames):
     log('Merging %d indexes (%d objects).\n' % (len(infilenames), total))
     if (not opt.force and (total < 1024 and len(infilenames) < 3)) \
        or (opt.force and not total):
-        log('%s: not enough objects for a .midx to be useful.\n' % outdir)
+        log('midx: nothing to do.\n')
         return
 
     pages = int(total/SHA_PER_PAGE) or 1
@@ -96,11 +96,11 @@ if extra:
 elif opt.auto or opt.force:
     paths = [git.repo('objects/pack')]
     paths += glob.glob(git.repo('index-cache/*/.'))
-    if opt.force:
-        for path in paths:
+    for path in paths:
+        log('midx: scanning %s\n' % path)
+        if opt.force:
             do_midx(path, opt.output, glob.glob('%s/*.idx' % path))
-    elif opt.auto:
-        for path in paths:
+        elif opt.auto:
             m = git.MultiPackIndex(path)
             needed = {}
             for pack in m.packs:  # only .idx files without a .midx are open
@@ -108,6 +108,7 @@ elif opt.auto or opt.force:
                     needed[pack.name] = 1
             del m
             do_midx(path, opt.output, needed.keys())
+        log('\n')
 else:
     log("bup midx: you must use -f or -a or provide input filenames\n")
     o.usage()
