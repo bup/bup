@@ -1,5 +1,4 @@
 OS:=$(shell uname | sed 's/[-_].*//')
-MACHINE:=$(shell uname -m)
 CFLAGS=-Wall -g -O2 -Werror $(PYINCLUDE) -g
 ifneq ($(OS),CYGWIN)
   CFLAGS += -fPIC
@@ -8,6 +7,7 @@ SHARED=-shared
 SOEXT:=.so
 
 ifeq (${OS},Darwin)
+  MACHINE:=$(shell arch)
   CFLAGS += -arch $(MACHINE)
   SHARED = -dynamiclib
 endif
