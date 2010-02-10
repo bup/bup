@@ -204,7 +204,7 @@ _mpi_count = 0
 class MultiPackIndex:
     def __init__(self, dir):
         global _mpi_count
-        assert(_mpi_count == 0)
+        assert(_mpi_count == 0) # these things suck tons of VM; don't waste it
         _mpi_count += 1
         self.dir = dir
         self.also = {}
@@ -241,7 +241,16 @@ class MultiPackIndex:
                 for f in os.listdir(self.dir):
                     full = os.path.join(self.dir, f)
                     if f.endswith('.midx') and not d.get(full):
-                        midxl.append(PackMidx(full))
+                        mx = PackMidx(full)
+                        (mxd, mxf) = os.path.split(mx.name)
+                        broken = 0
+                        for n in mx.idxnames:
+                            if not os.path.exists(os.path.join(mxd, n)):
+                                log(('warning: index %s missing\n' +
+                                    '  used by %s\n') % (n, mxf))
+                                broken += 1
+                        if not broken:
+                            midxl.append(mx)
                 midxl.sort(lambda x,y: -cmp(len(x),len(y)))
                 for ix in midxl:
                     any = 0
