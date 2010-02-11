@@ -22,7 +22,7 @@ html: $(patsubst %.1.md,%.html,$(wildcard *.md))
 %.html: %.1.md.tmp Makefile
 	$(PANDOC) -s -r markdown -w html -o $@ $<
 	
-.PRECIOUS: %.1.md.tmp
+.PRECIOUS: %.md.tmp
 %.md.tmp: %.md Makefile
 	rm -f $@ $@.new
 	sed -e 's,%BUP_VERSION%,${BUP_VERSION},g' \
