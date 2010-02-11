@@ -1,4 +1,4 @@
-import sys, os, pwd, subprocess, errno, socket, select, mmap, stat
+import sys, os, pwd, subprocess, errno, socket, select, mmap, stat, re
 
 
 def log(s):
@@ -197,6 +197,28 @@ def mmap_read(f, len = 0):
 
 def mmap_readwrite(f, len = 0):
     return _mmap_do(f, len, mmap.MAP_SHARED, mmap.PROT_READ|mmap.PROT_WRITE)
+
+
+def parse_num(s):
+    g = re.match(r'([-+\d.e]+)\s*(\w*)', str(s))
+    if not g:
+        raise ValueError("can't parse %r as a number" % s)
+    (val, unit) = g.groups()
+    num = float(val)
+    unit = unit.lower()
+    if unit in ['t', 'tb']:
+        mult = 1024*1024*1024*1024
+    elif unit in ['g', 'gb']:
+        mult = 1024*1024*1024
+    elif unit in ['m', 'mb']:
+        mult = 1024*1024
+    elif unit in ['k', 'kb']:
+        mult = 1024
+    elif unit in ['', 'b']:
+        mult = 1
+    else:
+        raise ValueError("invalid unit %r in number %r" % (unit, s))
+    return int(num*mult)
 
 
 # count the number of elements in an iterator (consumes the iterator)

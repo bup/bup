@@ -32,11 +32,11 @@ if opt.verbose >= 2:
     git.verbose = opt.verbose - 1
     opt.bench = 1
 if opt.max_pack_size:
-    hashsplit.max_pack_size = int(opt.max_pack_size)
+    hashsplit.max_pack_size = parse_num(opt.max_pack_size)
 if opt.max_pack_objects:
-    hashsplit.max_pack_objects = int(opt.max_pack_objects)
+    hashsplit.max_pack_objects = parse_num(opt.max_pack_objects)
 if opt.fanout:
-    hashsplit.fanout = int(opt.fanout)
+    hashsplit.fanout = parse_num(opt.fanout)
 if opt.blobs:
     hashsplit.fanout = 0
 

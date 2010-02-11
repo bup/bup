@@ -21,7 +21,8 @@ default: all
 
 all: bup-split bup-join bup-save bup-init bup-server bup-index bup-tick \
 	bup-midx bup-fuse bup-ls bup-damage bup-fsck bup-margin bup-drecurse \
-	bup memtest randomgen$(EXT) _hashsplit$(SOEXT) \
+	bup-random \
+	bup memtest _hashsplit$(SOEXT) \
 	Documentation/all
 	
 %/all:
@@ -29,9 +30,6 @@ all: bup-split bup-join bup-save bup-init bup-server bup-index bup-tick \
 	
 %/clean:
 	$(MAKE) -C $* clean
-
-randomgen$(EXT): randomgen.o
-	$(CC) $(CFLAGS) -o $@ $<
 
 _hashsplit$(SOEXT): _hashsplit.c csetup.py
 	@rm -f $@

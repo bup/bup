@@ -74,11 +74,50 @@ static PyObject *bitmatch(PyObject *self, PyObject *args)
 }
 
 
+// I would have made this a lower-level function that just fills in a buffer
+// with random values, and then written those values from python.  But that's
+// about 20% slower in my tests, and since we typically generate random
+// numbers for benchmarking other parts of bup, any slowness in generating
+// random bytes will make our benchmarks inaccurate.  Plus nobody wants
+// pseudorandom bytes much except for this anyway.
+static PyObject *write_random(PyObject *self, PyObject *args)
+{
+    uint32_t buf[1024/4];
+    int fd = -1, seed = 0;
+    ssize_t ret;
+    long long len = 0, kbytes = 0, written = 0;
+
+    if (!PyArg_ParseTuple(args, "iLi", &fd, &len, &seed))
+	return NULL;
+    
+    srandom(seed);
+    
+    for (kbytes = len/1024; kbytes > 0; kbytes--)
+    {
+	int i;
+	for (i = 0; i < sizeof(buf)/sizeof(buf[0]); i++)
+	    buf[i] = random();
+	ret = write(fd, buf, sizeof(buf));
+	if (ret < 0)
+	    ret = 0;
+	written += ret;
+	if (ret < sizeof(buf))
+	    break;
+	if (!(kbytes%1024))
+	    fprintf(stderr, ".");
+    }
+    
+    return Py_BuildValue("L", written);
+}
+
+
 static PyMethodDef hashsplit_methods[] = {
     { "splitbuf", splitbuf, METH_VARARGS,
 	"Split a list of strings based on a rolling checksum." },
     { "bitmatch", bitmatch, METH_VARARGS,
 	"Count the number of matching prefix bits between two strings." },
+    { "write_random", write_random, METH_VARARGS,
+	"Write random bytes to the given file descriptor" },
     { NULL, NULL, 0, NULL },  // sentinel
 };
 
