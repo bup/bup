@@ -25,7 +25,8 @@ if opt.remote:
             sys.stdout.write(blob)
     cli.close()
 else:
+    cp = git.CatPipe()
     for id in extra:
         #log('id=%r\n' % id)
-        for blob in git.cat(id):
+        for blob in cp.join(id):
             sys.stdout.write(blob)
