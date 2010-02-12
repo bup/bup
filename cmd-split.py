@@ -13,6 +13,8 @@ b,blobs    output a series of blob ids
 t,tree     output a tree id
 c,commit   output a commit id
 n,name=    name of backup set to update (if any)
+N,noop     don't actually save the data anywhere
+q,quiet    don't print progress messages
 v,verbose  increase log output (can be used more than once)
 bench      print benchmark timings to stderr
 max-pack-size=  maximum bytes in a single pack
@@ -23,11 +25,13 @@ o = options.Options('bup split', optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
 
 git.check_repo_or_die()
-if not (opt.blobs or opt.tree or opt.commit or opt.name):
+if not (opt.blobs or opt.tree or opt.commit or opt.name or opt.noop):
     log("bup split: use one or more of -b, -t, -c, -n\n")
     o.usage()
+if opt.noop and (opt.blobs or opt.tree or opt.commit or opt.name):
+    log('bup split: -N is incompabile with -b, -t, -c, -n\n')
+    o.usage()
 
-hashsplit.split_verbosely = opt.verbose
 if opt.verbose >= 2:
     git.verbose = opt.verbose - 1
     opt.bench = 1
@@ -43,7 +47,9 @@ if opt.blobs:
 start_time = time.time()
 
 refname = opt.name and 'refs/heads/%s' % opt.name or None
-if opt.remote:
+if opt.noop:
+    cli = w = oldref = None
+elif opt.remote:
     cli = client.Client(opt.remote)
     oldref = refname and cli.read_ref(refname) or None
     w = cli.new_packwriter()
@@ -51,9 +57,20 @@ else:
     cli = None
     oldref = refname and git.read_ref(refname) or None
     w = git.PackWriter()
-    
-shalist = hashsplit.split_to_shalist(w, hashsplit.autofiles(extra))
-tree = w.new_tree(shalist)
+
+files = extra and (open(fn) for fn in extra) or [sys.stdin]
+if w:
+    shalist = hashsplit.split_to_shalist(w, files)
+    tree = w.new_tree(shalist)
+else:
+    last = 0
+    for blob in hashsplit.hashsplit_iter(files):
+        hashsplit.total_split += len(blob)
+        megs = hashsplit.total_split/1024/1024
+        if not opt.quiet and last != megs:
+            progress('%d Mbytes read\r' % megs)
+            last = megs
+    progress('%d Mbytes read, done.\n' % megs)
 
 if opt.verbose:
     log('\n')
@@ -69,7 +86,8 @@ if opt.commit or opt.name:
     if opt.commit:
         print commit.encode('hex')
 
-w.close()  # must close before we can update the ref
+if w:
+    w.close()  # must close before we can update the ref
         
 if opt.name:
     if cli:

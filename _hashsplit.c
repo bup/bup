@@ -2,8 +2,8 @@
 #include <assert.h>
 #include <stdint.h>
 
-#define BLOBBITS (14)
-#define BLOBSIZE (1<<(BLOBBITS-1))
+#define BLOBBITS (13)
+#define BLOBSIZE (1<<BLOBBITS)
 #define WINDOWBITS (7)
 #define WINDOWSIZE (1<<(WINDOWBITS-1))
 
