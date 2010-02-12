@@ -33,7 +33,8 @@ static int find_ofs(const unsigned char *buf, int len, int *bits)
 	    if (bits)
 	    {
 		*bits = BLOBBITS;
-		for (*bits = BLOBBITS; (sum >> *bits) & 1; (*bits)++)
+		sum >>= BLOBBITS;
+		for (*bits = BLOBBITS; (sum >>= 1) & 1; (*bits)++)
 		    ;
 	    }
 	    return count+1;
