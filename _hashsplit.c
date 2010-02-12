@@ -16,7 +16,7 @@ static uint32_t stupidsum_add(uint32_t old, uint8_t drop, uint8_t add)
 }
 
 
-static int find_ofs(const unsigned char *buf, int len)
+static int find_ofs(const unsigned char *buf, int len, int *bits)
 {
     unsigned char window[WINDOWSIZE];
     uint32_t sum = 0;
@@ -29,22 +29,37 @@ static int find_ofs(const unsigned char *buf, int len)
 	window[i] = buf[count];
 	i = (i + 1) % WINDOWSIZE;
 	if ((sum & (BLOBSIZE-1)) == ((~0) & (BLOBSIZE-1)))
+	{
+	    if (bits)
+	    {
+		*bits = BLOBBITS;
+		for (*bits = BLOBBITS; (sum >> *bits) & 1; (*bits)++)
+		    ;
+	    }
 	    return count+1;
+	}
     }
     return 0;
+}
+
+
+static PyObject *blobbits(PyObject *self, PyObject *args)
+{
+    if (!PyArg_ParseTuple(args, ""))
+	return NULL;
+    return Py_BuildValue("i", BLOBBITS);
 }
 
 
 static PyObject *splitbuf(PyObject *self, PyObject *args)
 {
     unsigned char *buf = NULL;
-    int len = 0, out = 0;
+    int len = 0, out = 0, bits = -1;
 
     if (!PyArg_ParseTuple(args, "t#", &buf, &len))
 	return NULL;
-    out = find_ofs(buf, len);
-    //return Py_BuildValue("i", len);//len>BLOBSIZE ? BLOBSIZE : len);
-    return Py_BuildValue("i", out);
+    out = find_ofs(buf, len, &bits);
+    return Py_BuildValue("ii", out, bits);
 }
 
 
@@ -112,6 +127,8 @@ static PyObject *write_random(PyObject *self, PyObject *args)
 
 
 static PyMethodDef hashsplit_methods[] = {
+    { "blobbits", blobbits, METH_VARARGS,
+	"Return the number of bits in the rolling checksum." },
     { "splitbuf", splitbuf, METH_VARARGS,
 	"Split a list of strings based on a rolling checksum." },
     { "bitmatch", bitmatch, METH_VARARGS,

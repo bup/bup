@@ -16,6 +16,7 @@ n,name=    name of backup set to update (if any)
 N,noop     don't actually save the data anywhere
 q,quiet    don't print progress messages
 v,verbose  increase log output (can be used more than once)
+copy       just copy input to output, hashsplitting along the way
 bench      print benchmark timings to stderr
 max-pack-size=  maximum bytes in a single pack
 max-pack-objects=  maximum number of objects in a single pack
@@ -25,11 +26,13 @@ o = options.Options('bup split', optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
 
 git.check_repo_or_die()
-if not (opt.blobs or opt.tree or opt.commit or opt.name or opt.noop):
-    log("bup split: use one or more of -b, -t, -c, -n\n")
+if not (opt.blobs or opt.tree or opt.commit or opt.name or
+        opt.noop or opt.copy):
+    log("bup split: use one or more of -b, -t, -c, -n, -N, --copy\n")
     o.usage()
-if opt.noop and (opt.blobs or opt.tree or opt.commit or opt.name):
-    log('bup split: -N is incompabile with -b, -t, -c, -n\n')
+if (opt.noop or opt.copy) and (opt.blobs or opt.tree or 
+                               opt.commit or opt.name):
+    log('bup split: -N is incompatible with -b, -t, -c, -n\n')
     o.usage()
 
 if opt.verbose >= 2:
@@ -47,7 +50,7 @@ if opt.blobs:
 start_time = time.time()
 
 refname = opt.name and 'refs/heads/%s' % opt.name or None
-if opt.noop:
+if opt.noop or opt.copy:
     cli = w = oldref = None
 elif opt.remote:
     cli = client.Client(opt.remote)
@@ -64,8 +67,10 @@ if w:
     tree = w.new_tree(shalist)
 else:
     last = 0
-    for blob in hashsplit.hashsplit_iter(files):
+    for (blob, bits) in hashsplit.hashsplit_iter(files):
         hashsplit.total_split += len(blob)
+        if opt.copy:
+            sys.stdout.write(str(blob))
         megs = hashsplit.total_split/1024/1024
         if not opt.quiet and last != megs:
             progress('%d Mbytes read\r' % megs)

@@ -1,14 +1,15 @@
-import sys
+import sys, math
 import git, _hashsplit
 from helpers import *
 
 BLOB_LWM = 8192*2
 BLOB_MAX = BLOB_LWM*2
 BLOB_HWM = 1024*1024
+MAX_PER_TREE = 256
 progress_callback = None
 max_pack_size = 1000*1000*1000  # larger packs will slow down pruning
 max_pack_objects = 200*1000  # cache memory usage is about 83 bytes per object
-fanout = 4096
+fanout = 16
 
 class Buf:
     def __init__(self):
@@ -16,7 +17,6 @@ class Buf:
         self.start = 0
 
     def put(self, s):
-        #log('oldsize=%d+%d adding=%d\n' % (len(self.data), self.start, len(s)))
         if s:
             self.data = buffer(self.data, self.start) + s
             self.start = 0
@@ -38,11 +38,11 @@ class Buf:
 
 def splitbuf(buf):
     b = buf.peek(buf.used())
-    ofs = _hashsplit.splitbuf(b)
+    (ofs, bits) = _hashsplit.splitbuf(b)
     if ofs:
         buf.eat(ofs)
-        return buffer(b, 0, ofs)
-    return None
+        return (buffer(b, 0, ofs), bits)
+    return (None, 0)
 
 
 def blobiter(files):
@@ -59,9 +59,9 @@ def hashsplit_iter(files):
     buf = Buf()
     fi = blobiter(files)
     while 1:
-        blob = splitbuf(buf)
+        (blob, bits) = splitbuf(buf)
         if blob:
-            yield blob
+            yield (blob, bits)
         else:
             if buf.used() >= BLOB_MAX:
                 # limit max blob size
@@ -71,40 +71,72 @@ def hashsplit_iter(files):
                 if not bnew:
                     # eof
                     if buf.used():
-                        yield buf.get(buf.used())
+                        yield (buf.get(buf.used()), 0)
                     return
                 buf.put(bnew)
 
 
 total_split = 0
-def _split_to_shalist(w, files):
+def _split_to_blobs(w, files):
     global total_split
-    ofs = 0
-    for blob in hashsplit_iter(files):
+    for (blob, bits) in hashsplit_iter(files):
         sha = w.new_blob(blob)
         total_split += len(blob)
         if w.outbytes >= max_pack_size or w.count >= max_pack_objects:
             w.breakpoint()
         if progress_callback:
             progress_callback(len(blob))
-        yield ('100644', '%016x' % ofs, sha)
-        ofs += len(blob)
+        yield (sha, len(blob), bits)
+
+
+def _make_shalist(l):
+    ofs = 0
+    shalist = []
+    for (mode, sha, size) in l:
+        shalist.append((mode, '%016x' % ofs, sha))
+        ofs += size
+    total = ofs
+    return (shalist, total)
+
+
+def _squish(w, stacks, n):
+    i = 0
+    while i<n or len(stacks[i]) > MAX_PER_TREE:
+        while len(stacks) <= i+1:
+            stacks.append([])
+        if len(stacks[i]) == 1:
+            stacks[i+1] += stacks[i]
+        elif stacks[i]:
+            (shalist, size) = _make_shalist(stacks[i])
+            tree = w.new_tree(shalist)
+            stacks[i+1].append(('40000', tree, size))
+        stacks[i] = []
+        i += 1
 
 
 def split_to_shalist(w, files):
-    sl = _split_to_shalist(w, files)
+    sl = _split_to_blobs(w, files)
     if not fanout:
-        shalist = list(sl)
+        shal = []
+        for (sha,size,bits) in sl:
+            shal.append(('100644', sha, size))
+        return _make_shalist(shal)[0]
     else:
-        shalist = []
-        tmplist = []
-        for e in sl:
-            tmplist.append(e)
-            if len(tmplist) >= fanout and len(tmplist) >= 3:
-                shalist.append(('40000', tmplist[0][1], w.new_tree(tmplist)))
-                tmplist = []
-        shalist += tmplist
-    return shalist
+        base_bits = _hashsplit.blobbits()
+        fanout_bits = int(math.log(fanout, 2))
+        def bits_to_idx(n):
+            assert(n >= base_bits)
+            return (n - base_bits)/fanout_bits
+        stacks = [[]]
+        for (sha,size,bits) in sl:
+            assert(bits <= 32)
+            stacks[0].append(('100644', sha, size))
+            if bits > base_bits:
+                _squish(w, stacks, bits_to_idx(bits))
+        #log('stacks: %r\n' % [len(i) for i in stacks])
+        _squish(w, stacks, len(stacks)-1)
+        #log('stacks: %r\n' % [len(i) for i in stacks])
+        return _make_shalist(stacks[-1])[0]
 
 
 def split_to_blob_or_tree(w, files):
