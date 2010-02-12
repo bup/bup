@@ -34,7 +34,7 @@ all: bup-split bup-join bup-save bup-init bup-server bup-index bup-tick \
 _hashsplit$(SOEXT): _hashsplit.c csetup.py
 	@rm -f $@
 	python csetup.py build
-	cp build/*/_hashsplit.so .
+	cp build/*/_hashsplit$(SOEXT) .
 	
 runtests: all runtests-python runtests-cmdline
 
