@@ -617,11 +617,14 @@ class CatPipe:
                                       stdout=subprocess.PIPE,
                                       preexec_fn = _gitenv)
             self.get = self._fast_get
+            self.inprogress = 0
 
     def _fast_get(self, id):
+        assert(not self.inprogress)
         assert(id.find('\n') < 0)
         assert(id.find('\r') < 0)
         assert(id[0] != '-')
+        self.inprogress += 1
         self.p.stdin.write('%s\n' % id)
         hdr = self.p.stdout.readline()
         if hdr.endswith(' missing\n'):
@@ -630,15 +633,16 @@ class CatPipe:
         if len(spl) != 3 or len(spl[0]) != 40:
             raise GitError('expected blob, got %r' % spl)
         (hex, type, size) = spl
-        it = iter(chunkyreader(self.p.stdout, int(spl[2])))
-        try:
-            yield type
-            for blob in it:
-                yield blob
-        except StopIteration:
-            while 1:
-                it.next()
-        assert(self.p.stdout.readline() == '\n')
+
+        def ondone():
+            assert(self.p.stdout.readline() == '\n')
+            self.inprogress -= 1
+
+        it = AutoFlushIter(chunkyreader(self.p.stdout, int(spl[2])),
+                           ondone = ondone)
+        yield type
+        for blob in it:
+            yield blob
 
     def _slow_get(self, id):
         assert(id.find('\n') < 0)
@@ -674,8 +678,11 @@ class CatPipe:
                            % type)
 
     def join(self, id):
-        for d in self._join(self.get(id)):
-            yield d
+        try:
+            for d in self._join(self.get(id)):
+                yield d
+        except StopIteration:
+            log('booger!\n')
         
 
 def cat(id):
