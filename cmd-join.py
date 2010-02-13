@@ -18,15 +18,22 @@ git.check_repo_or_die()
 if not extra:
     extra = linereader(sys.stdin)
 
+ret = 0
+
 if opt.remote:
     cli = client.Client(opt.remote)
-    for id in extra:
-        for blob in cli.cat(id):
-            sys.stdout.write(blob)
-    cli.close()
+    cat = cli.cat
 else:
     cp = git.CatPipe()
-    for id in extra:
-        #log('id=%r\n' % id)
-        for blob in cp.join(id):
+    cat = cp.join
+
+for id in extra:
+    try:
+        for blob in cat(id):
             sys.stdout.write(blob)
+    except KeyError, e:
+        sys.stdout.flush()
+        log('error: %s\n' % e)
+        ret = 1
+
+sys.exit(ret)

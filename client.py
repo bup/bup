@@ -85,7 +85,7 @@ class Client:
         if rv != None:
             raise ClientError('server exited unexpectedly with code %r' % rv)
         try:
-            self.conn.check_ok()
+            return self.conn.check_ok()
         except Exception, e:
             raise ClientError, e, sys.exc_info()[2]
 
@@ -191,8 +191,10 @@ class Client:
             sz = struct.unpack('!I', self.conn.read(4))[0]
             if not sz: break
             yield self.conn.read(sz)
-        self.check_ok()
+        e = self.check_ok()
         self._not_busy()
+        if e:
+            raise KeyError(str(e))
 
 
 class PackWriter_Remote(git.PackWriter):

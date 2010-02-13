@@ -97,6 +97,9 @@ def hostname():
     return _hostname
 
 
+class NotOk(Exception):
+    pass
+
 class Conn:
     def __init__(self, inp, outp):
         self.inp = inp
@@ -125,7 +128,11 @@ class Conn:
     def ok(self):
         self.write('\nok\n')
 
-    def drain_and_check_ok(self):
+    def error(self, s):
+        s = re.sub(r'\s+', ' ', str(s))
+        self.write('\nerror %s\n' % s)
+
+    def _check_ok(self, onempty):
         self.outp.flush()
         rl = ''
         for rl in linereader(self.inp):
@@ -133,23 +140,23 @@ class Conn:
             if not rl:  # empty line
                 continue
             elif rl == 'ok':
-                return True
+                return None
+            elif rl.startswith('error '):
+                #log('client: error: %s\n' % rl[6:])
+                return NotOk(rl[6:])
             else:
-                pass # ignore line
-        # NOTREACHED
+                onempty(rl)
+        raise Exception('server exited unexpectedly; see errors above')
+
+    def drain_and_check_ok(self):
+        def onempty(rl):
+            pass
+        return self._check_ok(onempty)
 
     def check_ok(self):
-        self.outp.flush()
-        rl = ''
-        for rl in linereader(self.inp):
-            #log('%d got line: %r\n' % (os.getpid(), rl))
-            if not rl:  # empty line
-                continue
-            elif rl == 'ok':
-                return True
-            else:
-                raise Exception('expected "ok", got %r' % rl)
-        raise Exception('server exited unexpectedly; see errors above')
+        def onempty(rl):
+            raise Exception('expected "ok", got %r' % rl)
+        return self._check_ok(onempty)
 
 
 def linereader(f):

@@ -118,11 +118,17 @@ def update_ref(conn, refname):
 
 def cat(conn, id):
     git.check_repo_or_die()
-    for blob in git.cat(id):
-        conn.write(struct.pack('!I', len(blob)))
-        conn.write(blob)
-    conn.write('\0\0\0\0')
-    conn.ok()
+    try:
+        for blob in git.cat(id):
+            conn.write(struct.pack('!I', len(blob)))
+            conn.write(blob)
+    except KeyError, e:
+        log('server: error: %s\n' % e)
+        conn.write('\0\0\0\0')
+        conn.error(e)
+    else:
+        conn.write('\0\0\0\0')
+        conn.ok()
 
 
 optspec = """
