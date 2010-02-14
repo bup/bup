@@ -643,6 +643,7 @@ class CatPipe:
         yield type
         for blob in it:
             yield blob
+        del it
 
     def _slow_get(self, id):
         assert(id.find('\n') < 0)
