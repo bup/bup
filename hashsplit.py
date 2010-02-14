@@ -54,26 +54,35 @@ def blobiter(files):
             yield b
 
 
-def hashsplit_iter(files):
-    assert(BLOB_HWM > BLOB_MAX)
-    buf = Buf()
-    fi = blobiter(files)
+def drainbuf(buf, finalize):
     while 1:
         (blob, bits) = splitbuf(buf)
         if blob:
             yield (blob, bits)
         else:
-            if buf.used() >= BLOB_MAX:
-                # limit max blob size
-                yield (buf.get(buf.used()), 0)
-            while buf.used() < BLOB_HWM:
-                bnew = next(fi)
-                if not bnew:
-                    # eof
-                    if buf.used():
-                        yield (buf.get(buf.used()), 0)
-                    return
-                buf.put(bnew)
+            break
+    if buf.used() > BLOB_MAX:
+        # limit max blob size
+        yield (buf.get(buf.used()), 0)
+    elif finalize and buf.used():
+        yield (buf.get(buf.used()), 0)
+
+
+def hashsplit_iter(files):
+    assert(BLOB_HWM > BLOB_MAX)
+    buf = Buf()
+    fi = blobiter(files)
+    while 1:
+        for i in drainbuf(buf, finalize=False):
+            yield i
+        while buf.used() < BLOB_HWM:
+            bnew = next(fi)
+            if not bnew:
+                # eof
+                for i in drainbuf(buf, finalize=True):
+                    yield i
+                return
+            buf.put(bnew)
 
 
 total_split = 0
