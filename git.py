@@ -617,14 +617,17 @@ class CatPipe:
                                       stdout=subprocess.PIPE,
                                       preexec_fn = _gitenv)
             self.get = self._fast_get
-            self.inprogress = 0
+            self.inprogress = None
 
     def _fast_get(self, id):
+        if self.inprogress:
+            log('_fast_get: opening %r while %r is open' 
+                % (id, self.inprogress))
         assert(not self.inprogress)
         assert(id.find('\n') < 0)
         assert(id.find('\r') < 0)
         assert(id[0] != '-')
-        self.inprogress += 1
+        self.inprogress = id
         self.p.stdin.write('%s\n' % id)
         hdr = self.p.stdout.readline()
         if hdr.endswith(' missing\n'):
@@ -636,7 +639,7 @@ class CatPipe:
 
         def ondone():
             assert(self.p.stdout.readline() == '\n')
-            self.inprogress -= 1
+            self.inprogress = None
 
         it = AutoFlushIter(chunkyreader(self.p.stdout, int(spl[2])),
                            ondone = ondone)
