@@ -14,19 +14,19 @@ os.environ['PYTHONPATH'] = libpath + ':' + os.environ.get('PYTHONPATH', '')
 from bup.helpers import *
 
 def usage():
-    log('Usage: bup <subcmd> <options...>\n\n')
-    log('Available subcommands:\n')
+    log('Usage: bup <command> <options...>\n\n')
+    log('Available commands:\n')
     for c in sorted(os.listdir(cmdpath) + os.listdir(exepath)):
         if c.startswith('bup-') and c.find('.') < 0:
             log('\t%s\n' % c[4:])
+    log("\nSee 'bup help <command>' for more information on " +
+        "a specific command.\n")
     sys.exit(99)
 
 if len(argv) < 2 or not argv[1] or argv[1][0] == '-':
     usage()
 
 subcmd = argv[1]
-if subcmd == 'help':
-    usage()
 
 def subpath(s):
     sp = os.path.join(exepath, 'bup-%s' % s)
@@ -40,7 +40,7 @@ if not os.path.exists(subpath(subcmd)):
 
 
 already_fixed = atoi(os.environ.get('BUP_FORCE_TTY'))
-if subcmd in ['ftp']:
+if subcmd in ['ftp', 'help']:
     already_fixed = True
 fix_stdout = not already_fixed and os.isatty(1)
 fix_stderr = not already_fixed and os.isatty(2)
