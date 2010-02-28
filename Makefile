@@ -21,7 +21,7 @@ default: all
 
 all: bup-split bup-join bup-save bup-init bup-server bup-index bup-tick \
 	bup-midx bup-fuse bup-ls bup-damage bup-fsck bup-margin bup-drecurse \
-	bup-random bup-ftp \
+	bup-random bup-ftp bup-newliner \
 	bup memtest _hashsplit$(SOEXT) \
 	Documentation/all
 	

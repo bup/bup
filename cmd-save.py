@@ -93,7 +93,7 @@ def progress_report(n):
             remainstr = '%dm%d' % (mins, secs)
         else:
             remainstr = '%ds' % secs
-    progress('Saving: %.2f%% (%d/%dk, %d/%d files) %s %s     \r'
+    progress('Saving: %.2f%% (%d/%dk, %d/%d files) %s %s\r'
              % (pct, count/1024, total/1024, fcount, ftotal,
                 remainstr, kpsstr))
 

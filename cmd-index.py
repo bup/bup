@@ -63,7 +63,7 @@ def update_index(top):
     total = 0
     for (path,pst) in drecurse.recursive_dirlist([top], xdev=opt.xdev):
         if opt.verbose>=2 or (opt.verbose==1 and stat.S_ISDIR(pst.st_mode)):
-            sys.stdout.write('%-70s\n' % path)
+            sys.stdout.write('%s\n' % path)
             sys.stdout.flush()
             progress('Indexing: %d\r' % total)
         elif not (total % 128):

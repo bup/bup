@@ -251,13 +251,19 @@ def count(l):
     return reduce(lambda x,y: x+1, l)
 
 
+def atoi(s):
+    try:
+        return int(s or '0')
+    except ValueError:
+        return 0
+
+
 saved_errors = []
 def add_error(e):
     saved_errors.append(e)
     log('%-70s\n' % e)
 
-
-istty = os.isatty(2)
+istty = os.isatty(2) or atoi(os.environ.get('BUP_FORCE_TTY'))
 def progress(s):
     if istty:
         log(s)
