@@ -20,11 +20,9 @@ o = options.Options('bup save', optspec)
 
 git.check_repo_or_die()
 if not (opt.tree or opt.commit or opt.name):
-    log("bup save: use one or more of -t, -c, -n\n")
-    o.usage()
+    o.fatal("use one or more of -t, -c, -n")
 if not extra:
-    log("bup save: no filenames given.\n")
-    o.usage()
+    o.fatal("no filenames given")
 
 opt.progress = (istty and not opt.quiet)
 

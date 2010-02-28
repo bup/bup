@@ -28,12 +28,10 @@ o = options.Options('bup split', optspec)
 git.check_repo_or_die()
 if not (opt.blobs or opt.tree or opt.commit or opt.name or
         opt.noop or opt.copy):
-    log("bup split: use one or more of -b, -t, -c, -n, -N, --copy\n")
-    o.usage()
+    o.fatal("use one or more of -b, -t, -c, -n, -N, --copy")
 if (opt.noop or opt.copy) and (opt.blobs or opt.tree or 
                                opt.commit or opt.name):
-    log('bup split: -N is incompatible with -b, -t, -c, -n\n')
-    o.usage()
+    o.fatal('-N is incompatible with -b, -t, -c, -n')
 
 if opt.verbose >= 2:
     git.verbose = opt.verbose - 1

@@ -9,8 +9,7 @@ o = options.Options('bup tick', optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
 
 if extra:
-    log("bup tick: no arguments expected\n")
-    o.usage()
+    o.fatal("no arguments expected")
 
 t = time.time()
 tleft = 1 - (t - int(t))

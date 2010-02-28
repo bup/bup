@@ -34,7 +34,7 @@ o = options.Options(sys.argv[0], optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
 
 if extra:
-    o.usage()
+    o.fatal('no arguments expected')
 
 git.ignore_midx = opt.ignore_midx
 

@@ -25,7 +25,7 @@ o = options.Options('bup damage', optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
 
 if not extra:
-    o.usage()
+    o.fatal('filenames expected')
 
 if opt.seed != None:
     random.seed(opt.seed)

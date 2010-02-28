@@ -105,8 +105,7 @@ o = options.Options('bup fuse', optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
 
 if len(extra) != 1:
-    log("bup fuse: exactly one argument expected\n")
-    o.usage()
+    o.fatal("exactly one argument expected")
 
 git.check_repo_or_die()
 top = vfs.RefList(None)

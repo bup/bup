@@ -128,14 +128,11 @@ o = options.Options('bup index', optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
 
 if not (opt.modified or opt['print'] or opt.status or opt.update or opt.check):
-    log('bup index: supply one or more of -p, -s, -m, -u, or --check\n')
-    o.usage()
+    o.fatal('supply one or more of -p, -s, -m, -u, or --check')
 if (opt.fake_valid or opt.fake_invalid) and not opt.update:
-    log('bup index: --fake-{in,}valid are meaningless without -u\n')
-    o.usage()
+    o.fatal('--fake-{in,}valid are meaningless without -u')
 if opt.fake_valid and opt.fake_invalid:
-    log('bup index: --fake-valid is incompatible with --fake-invalid\n')
-    o.usage()
+    o.fatal('--fake-valid is incompatible with --fake-invalid')
 
 git.check_repo_or_die()
 indexfile = opt.indexfile or git.repo('bupindex')
@@ -148,8 +145,7 @@ paths = index.reduce_paths(extra)
 
 if opt.update:
     if not paths:
-        log('bup index: update (-u) requested but no paths given\n')
-        o.usage()
+        o.fatal('update (-u) requested but no paths given')
     for (rp,path) in paths:
         update_index(rp)
 

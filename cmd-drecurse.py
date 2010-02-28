@@ -13,8 +13,7 @@ o = options.Options('bup drecurse', optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
 
 if len(extra) != 1:
-    log("drecurse: exactly one filename expected\n")
-    o.usage()
+    o.fatal("exactly one filename expected")
 
 it = drecurse.recursive_dirlist(extra, opt.xdev)
 if opt.profile:

@@ -73,19 +73,22 @@ class Options:
                 out.append(argtext + '\n')
             else:
                 out.append('\n')
-        return ''.join(out)
+        return ''.join(out).rstrip() + '\n'
     
     def usage(self):
         log(self._usagestr)
         sys.exit(97)
+
+    def fatal(self, s):
+        log('error: %s\n' % s)
+        return self.usage()
         
     def parse(self, args):
         try:
             (flags,extra) = getopt.gnu_getopt(args,
                                               self._shortopts, self._longopts)
         except getopt.GetoptError, e:
-            log('%s: %s\n' % (self.exe, e))
-            self.usage()
+            self.fatal(e)
 
         opt = OptDict()
         for f in self._aliases.values():

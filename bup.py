@@ -9,7 +9,7 @@ def log(s):
     sys.stderr.write(s)
 
 def usage():
-    log('Usage: %s <subcmd> <options...>\n\n' % exe)
+    log('Usage: bup <subcmd> <options...>\n\n')
     log('Available subcommands:\n')
     for c in sorted(os.listdir(exepath)):
         if c.startswith('bup-') and c.find('.') < 0:
@@ -26,7 +26,7 @@ if subcmd == 'help':
 subpath = os.path.join(exepath, 'bup-%s' % subcmd)
 
 if not os.path.exists(subpath):
-    log('%s: unknown command "%s"\n' % (exe, subcmd))
+    log('error: unknown command "%s"\n' % subcmd)
     usage()
 
 try:

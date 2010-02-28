@@ -86,8 +86,7 @@ o = options.Options('bup midx', optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
 
 if extra and (opt.auto or opt.force):
-    log("bup midx: you can't use -f/-a and also provide filenames\n")
-    o.usage()
+    o.fatal("you can't use -f/-a and also provide filenames")
 
 git.check_repo_or_die()
 
@@ -110,5 +109,4 @@ elif opt.auto or opt.force:
             do_midx(path, opt.output, needed.keys())
         log('\n')
 else:
-    log("bup midx: you must use -f or -a or provide input filenames\n")
-    o.usage()
+    o.fatal("you must use -f or -a or provide input filenames")

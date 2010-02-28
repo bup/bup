@@ -11,8 +11,7 @@ o = options.Options('bup margin', optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
 
 if extra:
-    log("bup margin: no arguments expected\n")
-    o.usage()
+    o.fatal("no arguments expected")
 
 git.check_repo_or_die()
 #git.ignore_midx = 1

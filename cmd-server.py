@@ -138,8 +138,7 @@ o = options.Options('bup server', optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
 
 if extra:
-    log('bup server: no arguments expected\n')
-    o.usage()
+    o.fatal('no arguments expected')
 
 log('bup server: reading from stdin.\n')
 
