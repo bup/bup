@@ -7,6 +7,7 @@ exepath = os.path.split(exe)[0] or '.'
 
 # fix the PYTHONPATH to include our lib dir
 libpath = os.path.join(exepath, 'lib')
+cmdpath = os.path.join(exepath, 'cmd')
 sys.path[:0] = [libpath]
 os.environ['PYTHONPATH'] = libpath + ':' + os.environ.get('PYTHONPATH', '')
 
@@ -15,7 +16,7 @@ from bup.helpers import *
 def usage():
     log('Usage: bup <subcmd> <options...>\n\n')
     log('Available subcommands:\n')
-    for c in sorted(os.listdir(exepath)):
+    for c in sorted(os.listdir(cmdpath) + os.listdir(exepath)):
         if c.startswith('bup-') and c.find('.') < 0:
             log('\t%s\n' % c[4:])
     sys.exit(99)
@@ -28,7 +29,10 @@ if subcmd == 'help':
     usage()
 
 def subpath(s):
-    return os.path.join(exepath, 'bup-%s' % s)
+    sp = os.path.join(exepath, 'bup-%s' % s)
+    if not os.path.exists(sp):
+        sp = os.path.join(cmdpath, 'bup-%s' % s)
+    return sp
 
 if not os.path.exists(subpath(subcmd)):
     log('error: unknown command "%s"\n' % subcmd)
