@@ -56,6 +56,9 @@ class BupFs(fuse.Fuse):
             st.st_mode = node.mode
             st.st_nlink = node.nlinks()
             st.st_size = node.size()
+            st.st_mtime = node.mtime
+            st.st_ctime = node.ctime
+            st.st_atime = node.atime
             return st
         except vfs.NoSuchFile:
             return -errno.ENOENT

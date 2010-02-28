@@ -497,9 +497,12 @@ def read_ref(refname):
         return None
 
 
-def rev_list(ref):
+def rev_list(ref, count=None):
     assert(not ref.startswith('-'))
-    argv = ['git', 'rev-list', '--pretty=format:%ct', ref, '--']
+    opts = []
+    if count:
+        opts += ['-n', str(atoi(count))]
+    argv = ['git', 'rev-list', '--pretty=format:%ct'] + opts + [ref, '--']
     p = subprocess.Popen(argv, preexec_fn = _gitenv, stdout = subprocess.PIPE)
     commit = None
     for row in p.stdout:
@@ -512,6 +515,12 @@ def rev_list(ref):
     rv = p.wait()  # not fatal
     if rv:
         raise GitError, 'git rev-list returned error %d' % rv
+
+
+def rev_get_date(ref):
+    for (date, commit) in rev_list(ref, count=1):
+        return date
+    raise GitError, 'no such commit %r' % ref
 
 
 def update_ref(refname, newval, oldval):

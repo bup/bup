@@ -54,6 +54,7 @@ class Node:
         self.name = name
         self.mode = mode
         self.hash = hash
+        self.ctime = self.mtime = self.atime = 0
         self._subs = None
         
     def __cmp__(a, b):
@@ -219,14 +220,19 @@ class CommitList(Node):
         for (date, commit) in revs:
             l = time.localtime(date)
             ls = time.strftime('%Y-%m-%d-%H%M%S', l)
-            commithex = commit.encode('hex')
-            self._subs[commithex] = Dir(self, commithex, 040000, commit)
-            self._subs[ls] = FakeSymlink(self, ls, commit.encode('hex'))
+            commithex = '.' + commit.encode('hex')
+            n1 = Dir(self, commithex, 040000, commit)
+            n2 = FakeSymlink(self, ls, commithex)
+            n1.ctime = n1.mtime = n2.ctime = n2.mtime = date
+            self._subs[commithex] = n1
+            self._subs[ls] = n2
             latest = max(revs)
         if latest:
             (date, commit) = latest
-            self._subs['latest'] = FakeSymlink(self, 'latest',
-                                               commit.encode('hex'))
+            commithex = '.' + commit.encode('hex')
+            n2 = FakeSymlink(self, 'latest', commithex)
+            n2.ctime = n2.mtime = date
+            self._subs['latest'] = n2
 
     
 class RefList(Node):
@@ -238,6 +244,9 @@ class RefList(Node):
         for (name,sha) in git.list_refs():
             if name.startswith('refs/heads/'):
                 name = name[11:]
-                self._subs[name] = CommitList(self, name, sha)
+                date = git.rev_get_date(sha.encode('hex'))
+                n1 = CommitList(self, name, sha)
+                n1.ctime = n1.mtime = date
+                self._subs[name] = n1
         
 
