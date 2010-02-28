@@ -68,10 +68,11 @@ class Entry:
         self.children_n = 0
 
     def __repr__(self):
-        return ("(%s,0x%04x,%d,%d,%d,%d,%d,0x%04x,0x%08x/%d)" 
+        return ("(%s,0x%04x,%d,%d,%d,%d,%d,%s/%s,0x%04x,0x%08x/%d)" 
                 % (self.name, self.dev,
                    self.ctime, self.mtime, self.uid, self.gid,
-                   self.size, self.flags, self.children_ofs, self.children_n))
+                   self.size, oct(self.mode), oct(self.gitmode),
+                   self.flags, self.children_ofs, self.children_n))
 
     def packed(self):
         return struct.pack(INDEX_SIG,
@@ -106,6 +107,7 @@ class Entry:
 
     def validate(self, gitmode, sha):
         assert(sha)
+        assert(gitmode)
         self.gitmode = gitmode
         self.sha = sha
         self.flags |= IX_HASHVALID|IX_EXISTS

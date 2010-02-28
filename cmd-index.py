@@ -31,11 +31,16 @@ def check_index(reader):
         d = {}
         for e in reader.forward_iter():
             if e.children_n:
-                log('%08x+%-4d %r\n' % (e.children_ofs, e.children_n, e.name))
+                if opt.verbose:
+                    log('%08x+%-4d %r\n' % (e.children_ofs, e.children_n,
+                                            e.name))
                 assert(e.children_ofs)
                 assert(e.name.endswith('/'))
                 assert(not d.get(e.children_ofs))
                 d[e.children_ofs] = 1
+            if e.flags & index.IX_HASHVALID:
+                assert(e.sha != index.EMPTY_SHA)
+                assert(e.gitmode)
         assert(not e or e.name == '/')  # last entry is *always* /
         log('check: checking normal iteration...\n')
         last = None
@@ -156,22 +161,22 @@ if opt['print'] or opt.status or opt.modified:
             continue
         line = ''
         if opt.status:
-            if not ent.flags & index.IX_EXISTS:
+            if ent.is_deleted():
                 line += 'D '
-            elif not ent.flags & index.IX_HASHVALID:
+            elif not ent.is_valid():
                 if ent.sha == index.EMPTY_SHA:
                     line += 'A '
                 else:
                     line += 'M '
             else:
                 line += '  '
-        if opt.long:
-            line += "%7s %7s " % (oct(ent.mode), oct(ent.gitmode))
         if opt.hash:
             line += ent.sha.encode('hex') + ' '
+        if opt.long:
+            line += "%7s %7s " % (oct(ent.mode), oct(ent.gitmode))
         print line + (name or './')
 
-if opt.check:
+if opt.check and (opt['print'] or opt.status or opt.modified or opt.update):
     log('check: starting final check.\n')
     check_index(index.Reader(indexfile))
 
