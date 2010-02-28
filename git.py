@@ -390,6 +390,7 @@ class PackWriter:
         l = []
         for (mode,name,bin) in shalist:
             assert(mode)
+            assert(mode != '0')
             assert(mode[0] != '0')
             assert(name)
             assert(len(bin) == 20)

@@ -93,7 +93,8 @@ class Entry:
         self.size = st.st_size
         self.mode = st.st_mode
         self.flags |= IX_EXISTS
-        if int(st.st_ctime) >= tstart or old != new:
+        if int(st.st_ctime) >= tstart or old != new \
+              or self.sha == EMPTY_SHA or not self.gitmode:
             self.invalidate()
 
     def is_valid(self):
