@@ -1,6 +1,6 @@
 #!/usr/bin/env python
-import git, options, client
-from helpers import *
+from bup import git, options, client
+from bup.helpers import *
 
 optspec = """
 [BUP_DIR=...] bup init [-r host:path]

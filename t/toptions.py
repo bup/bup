@@ -1,4 +1,4 @@
-import options
+from bup import options
 from wvtest import *
 
 @wvtest

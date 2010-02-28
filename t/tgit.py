@@ -1,6 +1,7 @@
-import git, time
+import time
+from bup import git
+from bup.helpers import *
 from wvtest import *
-from helpers import *
 
 
 @wvtest

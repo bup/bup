@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import sys
-import options, git, _hashsplit
-from helpers import *
+from bup import options, git, _hashsplit
+from bup.helpers import *
 
 
 optspec = """

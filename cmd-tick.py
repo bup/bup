@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import sys, time
-import options
+from bup import options
 
 optspec = """
 bup tick

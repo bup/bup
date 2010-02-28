@@ -1,5 +1,5 @@
 import stat, heapq
-from helpers import *
+from bup.helpers import *
 
 try:
     O_LARGEFILE = os.O_LARGEFILE

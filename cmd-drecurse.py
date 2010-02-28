@@ -1,6 +1,6 @@
 #!/usr/bin/env python
-import options, drecurse
-from helpers import *
+from bup import options, drecurse
+from bup.helpers import *
 
 optspec = """
 bup drecurse <path>

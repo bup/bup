@@ -1,5 +1,5 @@
 import os, stat, time, struct, tempfile
-from helpers import *
+from bup.helpers import *
 
 EMPTY_SHA = '\0'*20
 FAKE_SHA = '\x01'*20

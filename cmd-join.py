@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import sys, time, struct
-import hashsplit, git, options, client
-from helpers import *
+from bup import hashsplit, git, options, client
+from bup.helpers import *
 from subprocess import PIPE
 
 

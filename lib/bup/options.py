@@ -1,5 +1,5 @@
 import textwrap, getopt, re
-from helpers import *
+from bup.helpers import *
 
 class OptDict:
     def __init__(self):

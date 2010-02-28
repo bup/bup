@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import sys, os, re, stat, readline, fnmatch
-import options, git, shquote, vfs
-from helpers import *
+from bup import options, git, shquote, vfs
+from bup.helpers import *
 
 def print_node(text, n):
     if stat.S_ISDIR(n.mode):

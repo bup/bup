@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import os, sys, stat, time
-import options, git, index, drecurse
-from helpers import *
+from bup import options, git, index, drecurse
+from bup.helpers import *
 
 
 def merge_indexes(out, r1, r2):

@@ -1,4 +1,4 @@
-from helpers import *
+from bup.helpers import *
 from wvtest import *
 
 @wvtest

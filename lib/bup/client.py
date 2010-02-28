@@ -1,6 +1,6 @@
 import re, struct, errno, select
-import git
-from helpers import *
+from bup import git
+from bup.helpers import *
 from subprocess import Popen, PIPE
 
 

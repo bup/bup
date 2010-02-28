@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import sys, struct, mmap
-import options, git
-from helpers import *
+from bup import options, git
+from bup.helpers import *
 
 suspended_w = None
 

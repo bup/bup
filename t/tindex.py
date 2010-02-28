@@ -1,7 +1,7 @@
 import os
-import index
+from bup import index
+from bup.helpers import *
 from wvtest import *
-from helpers import *
 
 @wvtest
 def index_basic():

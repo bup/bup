@@ -21,8 +21,8 @@ default: all
 
 all: bup-split bup-join bup-save bup-init bup-server bup-index bup-tick \
 	bup-midx bup-fuse bup-ls bup-damage bup-fsck bup-margin bup-drecurse \
-	bup-random bup-ftp bup-newliner \
-	bup memtest _hashsplit$(SOEXT) \
+	bup-random bup-ftp bup-newliner bup-memtest \
+	bup lib/bup/_hashsplit$(SOEXT) \
 	Documentation/all
 	
 %/all:
@@ -31,10 +31,10 @@ all: bup-split bup-join bup-save bup-init bup-server bup-index bup-tick \
 %/clean:
 	$(MAKE) -C $* clean
 
-_hashsplit$(SOEXT): _hashsplit.c csetup.py
+lib/bup/_hashsplit$(SOEXT): lib/bup/_hashsplit.c lib/bup/csetup.py
 	@rm -f $@
-	python csetup.py build
-	cp build/*/_hashsplit$(SOEXT) .
+	cd lib/bup && python csetup.py build
+	cp lib/bup/build/*/_hashsplit$(SOEXT) lib/bup/
 	
 runtests: all runtests-python runtests-cmdline
 
@@ -53,7 +53,7 @@ test: all
 %: %.o
 	$(CC) $(CFLAGS) (LDFLAGS) -o $@ $^ $(LIBS)
 	
-bup: bup.py
+bup: main.py
 	rm -f $@
 	ln -s $< $@
 	
@@ -73,7 +73,8 @@ bup-%: cmd-%.sh
 	gcc -c -o $@ $< $(CPPFLAGS) $(CFLAGS)
 
 clean: Documentation/clean
-	rm -f *.o *.so *.dll *.exe *~ .*~ *.pyc */*.pyc */*~ \
+	rm -f *.o *.so */*/*.so *.dll *.exe .*~ *~ */*~ */*/*~ \
+		*.pyc */*.pyc */*/*.pyc\
 		bup bup-* randomgen memtest \
 		out[12] out2[tc] tags[12] tags2[tc]
-	rm -rf *.tmp build
+	rm -rf *.tmp build lib/bup/build

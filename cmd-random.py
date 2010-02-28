@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import sys, mmap
-import options, _hashsplit
-from helpers import *
+from bup import options, _hashsplit
+from bup.helpers import *
 
 optspec = """
 bup random [-S seed] <numbytes>

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import sys, os, re
-import options
+from bup import options
 
 optspec = """
 bup newliner

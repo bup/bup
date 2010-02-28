@@ -1,6 +1,6 @@
 import sys, math
-import git, _hashsplit
-from helpers import *
+from bup import git, _hashsplit
+from bup.helpers import *
 
 BLOB_LWM = 8192*2
 BLOB_MAX = BLOB_LWM*2

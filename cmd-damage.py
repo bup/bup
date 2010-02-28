@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import sys, os, random
-import options
-from helpers import *
+from bup import options
+from bup.helpers import *
 
 
 def randblock(n):

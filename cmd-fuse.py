@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import sys, os, stat, errno, fuse, re, time, tempfile
-import options, git, vfs
-from helpers import *
+from bup import options, git, vfs
+from bup.helpers import *
 
 
 class Stat(fuse.Stat):

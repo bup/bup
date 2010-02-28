@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import sys, re, struct, mmap
-import git, options
-from helpers import *
+from bup import git, options
+from bup.helpers import *
 
 
 def s_from_bytes(bytes):
@@ -21,6 +21,7 @@ def report(count):
     else:
         e1 = ''
     print ('%9s  ' + ('%10s ' * len(fields))) % tuple([e1] + fields)
+    sys.stdout.flush()
 
 
 optspec = """

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import sys, math, struct, glob, sha
-import options, git
-from helpers import *
+from bup import options, git
+from bup.helpers import *
 
 PAGE_SIZE=4096
 SHA_PER_PAGE=PAGE_SIZE/200.

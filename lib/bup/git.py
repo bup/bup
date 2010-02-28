@@ -1,6 +1,6 @@
 import os, errno, zlib, time, sha, subprocess, struct, stat, re, tempfile
 import heapq
-from helpers import *
+from bup.helpers import *
 
 verbose = 0
 ignore_midx = 0

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import sys, os, glob, subprocess, time, sha
-import options, git
-from helpers import *
+from bup import options, git
+from bup.helpers import *
 
 par2_ok = 0
 nullf = open('/dev/null')

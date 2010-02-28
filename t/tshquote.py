@@ -1,5 +1,5 @@
+from bup import shquote
 from wvtest import *
-import shquote
 
 def qst(line):
     return [s[1] for s in shquote.quotesplit(line)]

@@ -1,5 +1,5 @@
 import os, re, stat, time
-import git
+from bup import git
 from helpers import *
 
 EMPTY_SHA='\0'*20

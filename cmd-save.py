@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import sys, re, errno, stat, time, math
-import hashsplit, git, options, index, client
-from helpers import *
+from bup import hashsplit, git, options, index, client
+from bup.helpers import *
 
 
 optspec = """
