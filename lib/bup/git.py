@@ -81,7 +81,7 @@ def _decode_packobj(buf):
     return (type, zlib.decompress(buf[i+1:]))
 
 
-class PackIndex:
+class PackIdx:
     def __init__(self, filename):
         self.name = filename
         self.map = mmap_read(open(filename))
@@ -201,7 +201,7 @@ class PackMidx:
 
 
 _mpi_count = 0
-class MultiPackIndex:
+class PackIdxList:
     def __init__(self, dir):
         global _mpi_count
         assert(_mpi_count == 0) # these things suck tons of VM; don't waste it
@@ -269,9 +269,9 @@ class MultiPackIndex:
             for f in os.listdir(self.dir):
                 full = os.path.join(self.dir, f)
                 if f.endswith('.idx') and not d.get(full):
-                    self.packs.append(PackIndex(full))
+                    self.packs.append(PackIdx(full))
                     d[full] = 1
-        log('MultiPackIndex: using %d index%s.\n' 
+        log('PackIdxList: using %d index%s.\n' 
             % (len(self.packs), len(self.packs)!=1 and 'es' or ''))
 
     def add(self, hash):
@@ -337,7 +337,7 @@ class PackWriter:
             if self.objcache_maker:
                 self.objcache = self.objcache_maker()
             else:
-                self.objcache = MultiPackIndex(repo('objects/pack'))
+                self.objcache = PackIdxList(repo('objects/pack'))
 
     def _open(self):
         if not self.file:

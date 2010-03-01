@@ -25,7 +25,7 @@ def do_midx(outdir, outfilename, infilenames):
     inp = []
     total = 0
     for name in infilenames:
-        ix = git.PackIndex(name)
+        ix = git.PackIdx(name)
         inp.append(ix)
         total += len(ix)
 
@@ -100,7 +100,7 @@ elif opt.auto or opt.force:
         if opt.force:
             do_midx(path, opt.output, glob.glob('%s/*.idx' % path))
         elif opt.auto:
-            m = git.MultiPackIndex(path)
+            m = git.PackIdxList(path)
             needed = {}
             for pack in m.packs:  # only .idx files without a .midx are open
                 if pack.name.endswith('.idx'):

@@ -42,7 +42,7 @@ def testpacks():
     WVPASS(os.path.exists(nameprefix + '.pack'))
     WVPASS(os.path.exists(nameprefix + '.idx'))
 
-    r = git.PackIndex(nameprefix + '.idx')
+    r = git.PackIdx(nameprefix + '.idx')
     print repr(r.fanout)
 
     for i in range(nobj):
@@ -56,7 +56,7 @@ def testpacks():
 
     WVFAIL(r.find_offset('\0'*20))
 
-    r = git.MultiPackIndex('pybuptest.tmp/objects/pack')
+    r = git.PackIdxList('pybuptest.tmp/objects/pack')
     WVPASS(r.exists(hashes[5]))
     WVPASS(r.exists(hashes[6]))
     WVFAIL(r.exists('\0'*20))

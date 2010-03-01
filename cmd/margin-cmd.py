@@ -16,7 +16,7 @@ if extra:
 git.check_repo_or_die()
 #git.ignore_midx = 1
 
-mi = git.MultiPackIndex(git.repo('objects/pack'))
+mi = git.PackIdxList(git.repo('objects/pack'))
 last = '\0'*20
 longmatch = 0
 for i in mi:

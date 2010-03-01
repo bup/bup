@@ -40,7 +40,7 @@ if extra:
 git.ignore_midx = opt.ignore_midx
 
 git.check_repo_or_die()
-m = git.MultiPackIndex(git.repo('objects/pack'))
+m = git.PackIdxList(git.repo('objects/pack'))
 
 cycles = opt.cycles or 100
 number = opt.number or 10000

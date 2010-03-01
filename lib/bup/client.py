@@ -142,7 +142,7 @@ class Client:
         self._busy = None
         #self.sync_indexes()
         self._busy = ob
-        return git.MultiPackIndex(self.cachedir)
+        return git.PackIdxList(self.cachedir)
 
     def _suggest_pack(self, indexname):
         log('received index suggestion: %s\n' % indexname)
