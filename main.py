@@ -13,15 +13,57 @@ os.environ['PYTHONPATH'] = libpath + ':' + os.environ.get('PYTHONPATH', '')
 
 from bup.helpers import *
 
+
+def columnate(l, prefix):
+    l = l[:]
+    clen = max(len(s) for s in l)
+    ncols = (78 - len(prefix)) / (clen + 2)
+    if ncols <= 1:
+        ncols = 1
+        clen = 0
+    cols = []
+    while len(l) % ncols:
+        l.append('')
+    rows = len(l)/ncols
+    for s in range(0, len(l), rows):
+        cols.append(l[s:s+rows])
+    for row in zip(*cols):
+        print prefix + ''.join(('%-*s' % (clen+2, s)) for s in row)
+
+
 def usage():
     log('Usage: bup <command> <options...>\n\n')
-    log('Available commands:\n')
+    common = dict(
+        ftp = 'Browse backup sets using an ftp-like client',
+        fsck = 'Check backup sets for damage and add redundancy information',
+        fuse = 'Mount your backup sets as a filesystem',
+        index = 'Create or display the index of files to back up',
+        join = 'The reverse operation to "bup split"',
+        ls = 'Browse the files in your backup sets',
+        midx = 'Index objects to speed up future backups',
+        save = 'Save files into a backup set (note: run "bup index" first)',
+        split = 'Split a single file into its own backup set',
+    )
+
+    log('Common commands:\n')
+    for cmd,synopsis in sorted(common.items()):
+        print '    %-10s %s' % (cmd, synopsis)
+    log('\n')
+    
+    log('Other available commands:\n')
+    cmds = []
     for c in sorted(os.listdir(cmdpath) + os.listdir(exepath)):
         if c.startswith('bup-') and c.find('.') < 0:
-            log('\t%s\n' % c[4:])
-    log("\nSee 'bup help <command>' for more information on " +
+            cname = c[4:]
+            if cname not in common:
+                cmds.append(c[4:])
+    columnate(cmds, '    ')
+    log('\n')
+    
+    log("See 'bup help <command>' for more information on " +
         "a specific command.\n")
     sys.exit(99)
+
 
 if len(argv) < 2 or not argv[1] or argv[1][0] == '-':
     usage()
