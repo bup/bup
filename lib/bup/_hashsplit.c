@@ -108,7 +108,7 @@ static PyObject *write_random(PyObject *self, PyObject *args)
     
     srandom(seed);
     
-    for (kbytes = len/1024; kbytes > 0; kbytes--)
+    for (kbytes = 0; kbytes < len/1024; kbytes++)
     {
 	int i;
 	for (i = 0; i < sizeof(buf)/sizeof(buf[0]); i++)
@@ -119,10 +119,12 @@ static PyObject *write_random(PyObject *self, PyObject *args)
 	written += ret;
 	if (ret < sizeof(buf))
 	    break;
-	if (!(kbytes%1024))
-	    fprintf(stderr, ".");
+	if (kbytes/1024 > 0 && !(kbytes%1024))
+	    fprintf(stderr, "Random: %lld Mbytes\r", kbytes/1024);
     }
     
+    if (kbytes/1024 > 0)
+	fprintf(stderr, "Random: %lld Mbytes, done.\n", kbytes/1024);
     return Py_BuildValue("L", written);
 }
 

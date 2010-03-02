@@ -89,7 +89,8 @@ fix_stderr = not already_fixed and os.isatty(2)
 
 def force_tty():
     if fix_stdout or fix_stderr:
-        os.environ['BUP_FORCE_TTY'] = '1'
+        amt = (fix_stdout and 1 or 0) + (fix_stderr and 2 or 0)
+        os.environ['BUP_FORCE_TTY'] = str(amt)
 
 if fix_stdout or fix_stderr:
     realf = fix_stderr and 2 or 1
