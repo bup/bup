@@ -42,7 +42,7 @@ by all users.
 
 # SEE ALSO
 
-`fuse`(7), `fusermount`(1), `bup-ls`(1)
+`fuse`(7), `fusermount`(1), `bup-ls`(1), `bup-ftp`(1)
 
 # BUP
 

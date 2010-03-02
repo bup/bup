@@ -4,7 +4,7 @@
 
 # NAME
 
-bup server - the server side of a remote bup session
+bup server - the server side of the bup client-server relationship
 
 # SYNOPSIS
 

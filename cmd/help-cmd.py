@@ -12,7 +12,7 @@ if len(extra) == 0:
     # the wrapper program provides the default usage string
     os.execvp('bup', ['bup'])
 elif len(extra) == 1:
-    docname = 'bup-%s' % extra[0]
+    docname = (extra[0]=='bup' and 'bup' or ('bup-%s' % extra[0]))
     exe = sys.argv[0]
     (exepath, exefile) = os.path.split(exe)
     manpath = os.path.join(exepath, '../Documentation/' + docname + '.[1-9]')

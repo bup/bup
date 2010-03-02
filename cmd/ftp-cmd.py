@@ -132,6 +132,10 @@ for line in lines:
                             outf.close()
                         except Exception, e:
                             log('  error: %s\n' % e)
+        elif cmd == 'help' or cmd == '?':
+            log('Commands: ls cd pwd cat get mget help quit\n')
+        elif cmd == 'quit' or cmd == 'exit' or cmd == 'bye':
+            break
         else:
             raise Exception('no such command %r' % cmd)
     except Exception, e:

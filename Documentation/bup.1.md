@@ -8,7 +8,7 @@ bup - Backup program using rolling checksums and git file formats
 
 # SYNOPSIS
 
-bup <command> [options...]
+bup \<command\> [options...]
 
 # DESCRIPTION
 
@@ -26,37 +26,47 @@ pages.
 
 # COMMONLY USED SUBCOMMANDS
 
-`bup-index`(1)
-:   Manage the index of files to back up.
 `bup-fsck`(1)
-:   Verify or recover the bup repository.
+:   Check backup sets for damage and add redundancy information
+`bup-ftp`(1)
+:   Browse backup sets using an ftp-like client
 `bup-fuse`(1)
-:   Mount the bup repository as a filesystem.
-`bup-save`(1)
-:   Back up the files in the index.
-`bup-split`(1)
-:   Back up an individual file, such as a tarball.
+:   Mount your backup sets as a filesystem
+`bup-help`(1)
+:   Print detailed help for the given command
+`bup-index`(1)
+:   Create or display the index of files to back up
 `bup-join`(1)
-:   Retrieve a file backed up using `bup-split`(1).
+:   Retrieve a file backed up using `bup-split`(1)
+`bup-ls`(1)
+:   Browse the files in your backup sets
 `bup-midx`(1)
-:   Make backups go faster by generating midx files.
+:   Index objects to speed up future backups
+`bup-save`(1)
+:   Save files into a backup set (note: run "bup index" first)
+`bup-split`(1)
+:   Split a single file into its own backup set
 
 # RARELY USED SUBCOMMANDS
 
 `bup-damage`(1)
-:   Deliberately destroy data.
+:   Deliberately destroy data
 `bup-drecurse`(1)
-:   Recursively list files in your filesystem.
+:   Recursively list files in your filesystem
 `bup-init`(1)
-:   Initialize a bup repository.
-`bup-ls`(1)
-:   List the files in a bup repository.
+:   Initialize a bup repository
 `bup-margin`(1)
-:   Determine how close your bup repository is to armageddon.
+:   Determine how close your bup repository is to armageddon
+`bup-memtest`(1)
+:   Test bup memory usage statistics
+`bup-newliner`(1)
+:   Make sure progress messages don't overlap with output
+`bup-random`(1)
+:   Generate a stream of random output
 `bup-server`(1)
-:   The server side of the bup client-server relationship.
+:   The server side of the bup client-server relationship
 `bup-tick`(1)
-:   Sleep for up to one second.
+:   Wait for up to one second.
 
 # SEE ALSO
 

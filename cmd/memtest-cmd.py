@@ -25,13 +25,13 @@ def report(count):
 
 
 optspec = """
-memtest [-n elements] [-c cycles]
+bup memtest [-n elements] [-c cycles]
 --
 n,number=  number of objects per cycle
 c,cycles=  number of cycles to run
 ignore-midx  ignore .midx files, use only .idx files
 """
-o = options.Options(sys.argv[0], optspec)
+o = options.Options('bup memtest', optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
 
 if extra:

@@ -85,7 +85,7 @@ creating backups will remain efficient.
 
 # SEE ALSO
 
-`bup-save`(1), `bup-margin`(1)
+`bup-save`(1), `bup-margin`(1), `bup-memtest`(1)
 
 # BUP
 

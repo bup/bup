@@ -13,7 +13,8 @@ bup ls [-s] <paths...>
 # DESCRIPTION
 
 `bup ls` lists files and directories in your bup repository
-in the same layout as they would appear with `bup-fuse`(1).
+using the same directory hierarchy as they would have with
+`bup-fuse`(1).
 
 The top level directory is the branch (corresponding to
 the `-n` option in `bup save`), the next level is the date
@@ -31,11 +32,11 @@ you can view its contents using `bup join` or `git show`.
 
 # EXAMPLE
 
-    bup ls /myserver/1999-01-01/etc/profile
+    bup ls /myserver/latest/etc/profile
 
 # SEE ALSO
 
-`bup-join`(1), `bup-fuse`(1), `bup-save`(1), `git-show`(1)
+`bup-join`(1), `bup-fuse`(1), `bup-ftp`(1), `bup-save`(1), `git-show`(1)
 
 # BUP
 
