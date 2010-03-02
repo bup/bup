@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import sys, os, subprocess
+import sys, os, subprocess, signal
 
 argv = sys.argv
 exe = argv[0]
@@ -103,6 +103,15 @@ else:
     outf = 1
     errf = 2
 
+
+class SigException(Exception):
+    pass
+def handler(signum, frame):
+    raise SigException('signal %d received' % signum)
+
+signal.signal(signal.SIGTERM, handler)
+signal.signal(signal.SIGINT, handler)
+
 ret = 95
 try:
     try:
@@ -112,9 +121,12 @@ try:
     except OSError, e:
         log('%s: %s\n' % (subpath(subcmd), e))
         ret = 98
-    except KeyboardInterrupt, e:
+    except SigException, e:
         ret = 94
 finally:
+    if p and p.poll() == None:
+        os.kill(p.pid, signal.SIGTERM)
+        p.wait()
     if n:
         n.stdin.close()
         try:
