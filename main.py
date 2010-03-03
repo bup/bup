@@ -116,6 +116,7 @@ signal.signal(signal.SIGTERM, handler)
 signal.signal(signal.SIGINT, handler)
 
 ret = 95
+p = None
 try:
     try:
         p = subprocess.Popen([subpath(subcmd)] + argv[2:],
