@@ -65,16 +65,17 @@ def _pop(force_tree):
 
 lastremain = None
 def progress_report(n):
-    global count, lastremain
-    count += n
-    pct = total and (count*100.0/total) or 0
+    global count, subcount, lastremain
+    subcount += n
+    cc = count + subcount
+    pct = total and (cc*100.0/total) or 0
     now = time.time()
     elapsed = now - tstart
-    kps = elapsed and int(count/1024./elapsed)
+    kps = elapsed and int(cc/1024./elapsed)
     kps_frac = 10 ** int(math.log(kps+1, 10) - 1)
     kps = int(kps/kps_frac)*kps_frac
-    if count:
-        remain = elapsed*1.0/count * (total-count)
+    if cc:
+        remain = elapsed*1.0/cc * (total-cc)
     else:
         remain = 0.0
     if (lastremain and (remain > lastremain)
@@ -97,7 +98,7 @@ def progress_report(n):
         else:
             remainstr = '%ds' % secs
     progress('Saving: %.2f%% (%d/%dk, %d/%d files) %s %s\r'
-             % (pct, count/1024, total/1024, fcount, ftotal,
+             % (pct, cc/1024, total/1024, fcount, ftotal,
                 remainstr, kpsstr))
 
 
@@ -123,7 +124,7 @@ if opt.progress:
     hashsplit.progress_callback = progress_report
 
 tstart = time.time()
-count = fcount = 0
+count = subcount = fcount = 0
 for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse):
     (dir, file) = os.path.split(ent.name)
     exists = (ent.flags & index.IX_EXISTS)
@@ -163,7 +164,8 @@ for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse):
         if not oldtree:
             ent.validate(040000, newtree)
             ent.repack()
-        count += ent.size
+        if exists and not hashvalid:
+            count += ent.size
         continue
 
     # it's not a directory
@@ -198,11 +200,14 @@ for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse):
                     (mode, id) = ('120000', w.new_blob(rl))
             else:
                 add_error(Exception('skipping special file "%s"' % ent.name))
-            count += ent.size
         if id:
             ent.validate(int(mode, 8), id)
             ent.repack()
             shalists[-1].append((mode, file, id))
+    if exists and not hashvalid:
+        count += ent.size
+        subcount = 0
+
 
 if opt.progress:
     pct = total and count*100.0/total or 100
