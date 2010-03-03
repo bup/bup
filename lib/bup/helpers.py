@@ -1,8 +1,25 @@
 import sys, os, pwd, subprocess, errno, socket, select, mmap, stat, re
 
 
+# Write (blockingly) to sockets that may or may not be in blocking mode.
+# We need this because our stderr is sometimes eaten by subprocesses
+# (probably ssh) that sometimes make it nonblocking, if only temporarily,
+# leading to race conditions.  Ick.  We'll do it the hard way.
+def _hard_write(fd, buf):
+    while buf:
+        (r,w,x) = select.select([], [fd], [], None)
+        if not w:
+            raise IOError('select(fd) returned without being writable')
+        try:
+            sz = os.write(fd, buf)
+        except OSError, e:
+            if e.errno != errno.EAGAIN:
+                raise
+        assert(sz >= 0)
+        buf = buf[sz:]
+
 def log(s):
-    sys.stderr.write(s)
+    _hard_write(sys.stderr.fileno(), s)
 
 
 def mkdirp(d):
