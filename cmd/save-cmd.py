@@ -53,11 +53,14 @@ def _push(part):
     shalists.append([])
 
 def _pop(force_tree):
-    assert(len(parts) > 1)
+    assert(len(parts) >= 1)
     part = parts.pop()
     shalist = shalists.pop()
     tree = force_tree or w.new_tree(shalist)
-    shalists[-1].append(('40000', part, tree))
+    if shalists:
+        shalists[-1].append(('40000', part, tree))
+    else:  # this was the toplevel, so put it back for sanity
+        shalists.append(shalist)
     return tree
 
 lastremain = None
@@ -161,8 +164,9 @@ for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse):
             ent.validate(040000, newtree)
             ent.repack()
         count += ent.size
-        continue  
+        continue
 
+    # it's not a directory
     id = None
     if hashvalid:
         mode = '%o' % ent.gitmode

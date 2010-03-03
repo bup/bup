@@ -97,7 +97,9 @@ tree1=$(bup save -t $D)
 WVPASSEQ "$(cd $D && bup index -m)" ""
 tree2=$(bup save -t $D)
 WVPASSEQ "$tree1" "$tree2"
-
+WVPASSEQ "$(bup index -s / | grep ^D)" ""
+tree3=$(bup save -t /)
+WVPASSEQ "$tree1" "$tree3"
 
 WVSTART "split"
 WVPASS bup split --bench -b <t/testfile1 >tags1.tmp

@@ -41,6 +41,7 @@ def _golevel(level, f, ename, newentry):
     assert(level)
     while ename[:len(level.ename)] != level.ename:
         n = BlankNewEntry(level.ename[-1])
+        n.flags |= IX_EXISTS
         (n.children_ofs,n.children_n) = level.write(f)
         level.parent.list.append(n)
         level = level.parent
