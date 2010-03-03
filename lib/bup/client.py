@@ -14,7 +14,8 @@ class Client:
         self.p = None
         self.conn = None
         rs = remote.split(':', 1)
-        nicedir = os.path.split(os.path.abspath(sys.argv[0]))[0]
+        main_exe = os.environ.get('BUP_MAIN_EXE') or sys.argv[0]
+        nicedir = os.path.split(os.path.abspath(main_exe))[0]
         nicedir = re.sub(r':', "_", nicedir)
         if len(rs) == 1:
             (host, dir) = ('NONE', remote)

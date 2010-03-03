@@ -10,6 +10,7 @@ libpath = os.path.join(exepath, 'lib')
 cmdpath = os.path.join(exepath, 'cmd')
 sys.path[:0] = [libpath]
 os.environ['PYTHONPATH'] = libpath + ':' + os.environ.get('PYTHONPATH', '')
+os.environ['BUP_MAIN_EXE'] = os.path.abspath(exe)
 
 from bup.helpers import *
 
