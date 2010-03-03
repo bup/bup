@@ -1,5 +1,4 @@
-import textwrap, getopt, re
-from bup.helpers import *
+import sys, textwrap, getopt, re
 
 class OptDict:
     def __init__(self):
@@ -76,11 +75,11 @@ class Options:
         return ''.join(out).rstrip() + '\n'
     
     def usage(self):
-        log(self._usagestr)
+        sys.stderr.write(self._usagestr)
         sys.exit(97)
 
     def fatal(self, s):
-        log('error: %s\n' % s)
+        sys.stderr.write('error: %s\n' % s)
         return self.usage()
         
     def parse(self, args):
