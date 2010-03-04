@@ -9,8 +9,9 @@ ENTLEN = struct.calcsize(INDEX_SIG)
 FOOTER_SIG = '!Q'
 FOOTLEN = struct.calcsize(FOOTER_SIG)
 
-IX_EXISTS = 0x8000
-IX_HASHVALID = 0x4000
+IX_EXISTS = 0x8000        # file exists on filesystem
+IX_HASHVALID = 0x4000     # the stored sha1 matches the filesystem
+IX_SHAMISSING = 0x2000    # the stored sha1 object doesn't seem to exist
 
 class Error(Exception):
     pass
@@ -116,6 +117,9 @@ class Entry:
     def exists(self):
         return not self.is_deleted()
 
+    def sha_missing(self):
+        return (self.flags & IX_SHAMISSING) or not (self.flags & IX_HASHVALID)
+
     def is_deleted(self):
         return (self.flags & IX_EXISTS) == 0
 
@@ -166,6 +170,24 @@ class ExistingEntry(Entry):
          self.size, self.mode, self.gitmode, self.sha,
          self.flags, self.children_ofs, self.children_n
          ) = struct.unpack(INDEX_SIG, str(buffer(m, ofs, ENTLEN)))
+
+    # effectively, we don't bother messing with IX_SHAMISSING if
+    # not IX_HASHVALID, since it's redundant, and repacking is more
+    # expensive than not repacking.
+    # This is implemented by having sha_missing() check IX_HASHVALID too.
+    def set_sha_missing(self, val):
+        val = val and 1 or 0
+        oldval = self.sha_missing() and 1 or 0
+        if val != oldval:
+            flag = val and IX_SHAMISSING or 0
+            newflags = (self.flags & (~IX_SHAMISSING)) | flag
+            self.flags = newflags
+            self.repack()
+
+    def unset_sha_missing(self, flag):
+        if self.flags & IX_SHAMISSING:
+            self.flags &= ~IX_SHAMISSING
+            self.repack()
 
     def repack(self):
         self._m[self._ofs:self._ofs+ENTLEN] = self.packed()

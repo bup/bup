@@ -107,16 +107,20 @@ r = index.Reader(git.repo('bupindex'))
 def already_saved(ent):
     return ent.is_valid() and w.exists(ent.sha) and ent.sha
 
-def wantrecurse(ent):
+def wantrecurse_pre(ent):
     return not already_saved(ent)
 
+def wantrecurse_during(ent):
+    return not already_saved(ent) or ent.sha_missing()
+
 total = ftotal = 0
-if opt.progress:
-    for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse):
+if opt.progress or 1:
+    for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse_pre):
         if not (ftotal % 10024):
             progress('Reading index: %d\r' % ftotal)
-        exists = (ent.flags & index.IX_EXISTS)
+        exists = ent.exists()
         hashvalid = already_saved(ent)
+        ent.set_sha_missing(not hashvalid)
         if exists and not hashvalid:
             total += ent.size
         ftotal += 1
@@ -125,10 +129,11 @@ if opt.progress:
 
 tstart = time.time()
 count = subcount = fcount = 0
-for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse):
+for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse_during):
     (dir, file) = os.path.split(ent.name)
     exists = (ent.flags & index.IX_EXISTS)
     hashvalid = already_saved(ent)
+    oldsize = ent.size
     if opt.verbose:
         if not exists:
             status = 'D'
@@ -164,8 +169,8 @@ for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse):
         if not oldtree:
             ent.validate(040000, newtree)
             ent.repack()
-        if exists and not hashvalid:
-            count += ent.size
+        if exists and ent.sha_missing():
+            count += oldsize
         continue
 
     # it's not a directory
@@ -204,8 +209,8 @@ for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse):
             ent.validate(int(mode, 8), id)
             ent.repack()
             shalists[-1].append((mode, file, id))
-    if exists and not hashvalid:
-        count += ent.size
+    if exists and ent.sha_missing():
+        count += oldsize
         subcount = 0
 
 
