@@ -137,6 +137,7 @@ for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse_during):
     (dir, file) = os.path.split(ent.name)
     exists = (ent.flags & index.IX_EXISTS)
     hashvalid = already_saved(ent)
+    wasmissing = ent.sha_missing()
     oldsize = ent.size
     if opt.verbose:
         if not exists:
@@ -185,7 +186,7 @@ for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse_during):
             else:
                 ent.validate(040000, newtree)
             ent.repack()
-        if exists and ent.sha_missing():
+        if exists and wasmissing:
             count += oldsize
         continue
 
@@ -228,7 +229,7 @@ for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse_during):
             ent.validate(int(mode, 8), id)
             ent.repack()
             shalists[-1].append((mode, file, id))
-    if exists and ent.sha_missing():
+    if exists and wasmissing:
         count += oldsize
         subcount = 0
 
