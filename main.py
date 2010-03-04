@@ -99,12 +99,12 @@ if fix_stdout or fix_stderr:
     n = subprocess.Popen([subpath('newliner')],
                          stdin=subprocess.PIPE, stdout=os.dup(realf),
                          close_fds=True, preexec_fn=force_tty)
-    outf = fix_stdout and n.stdin.fileno() or 1
-    errf = fix_stderr and n.stdin.fileno() or 2
+    outf = fix_stdout and n.stdin.fileno() or None
+    errf = fix_stderr and n.stdin.fileno() or None
 else:
     n = None
-    outf = 1
-    errf = 2
+    outf = None
+    errf = None
 
 
 class SigException(Exception):
