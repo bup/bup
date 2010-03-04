@@ -132,6 +132,7 @@ if opt.progress or 1:
 tstart = time.time()
 count = subcount = fcount = 0
 lastskip_name = None
+lastdir = ''
 for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse_during):
     (dir, file) = os.path.split(ent.name)
     exists = (ent.flags & index.IX_EXISTS)
@@ -147,8 +148,12 @@ for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse_during):
                 status = 'M'
         else:
             status = ' '
-        if opt.verbose >= 2 or stat.S_ISDIR(ent.mode):
+        if opt.verbose >= 2:
             log('%s %-70s\n' % (status, ent.name))
+        elif not stat.S_ISDIR(ent.mode) and lastdir != dir:
+            if not lastdir.startswith(dir):
+                log('%s %-70s\n' % (status, os.path.join(dir, '')))
+            lastdir = dir
 
     if opt.progress:
         progress_report(0)
