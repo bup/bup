@@ -25,6 +25,7 @@ if not extra:
     o.fatal("no filenames given")
 
 opt.progress = (istty and not opt.quiet)
+opt.smaller = parse_num(opt.smaller or 0)
 
 refname = opt.name and 'refs/heads/%s' % opt.name or None
 if opt.remote:
@@ -121,14 +122,16 @@ if opt.progress or 1:
         exists = ent.exists()
         hashvalid = already_saved(ent)
         ent.set_sha_missing(not hashvalid)
-        if exists and not hashvalid:
-            total += ent.size
+        if not opt.smaller or ent.size < opt.smaller:
+            if exists and not hashvalid:
+                total += ent.size
         ftotal += 1
     progress('Reading index: %d, done.\n' % ftotal)
     hashsplit.progress_callback = progress_report
 
 tstart = time.time()
 count = subcount = fcount = 0
+lastskip_name = None
 for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse_during):
     (dir, file) = os.path.split(ent.name)
     exists = (ent.flags & index.IX_EXISTS)
@@ -153,6 +156,11 @@ for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse_during):
     
     if not exists:
         continue
+    if opt.smaller and ent.size >= opt.smaller:
+        if exists and not hashvalid:
+            add_error('skipping large file "%s"' % ent.name)
+            lastskip_name = ent.name
+        continue
 
     assert(dir.startswith('/'))
     dirp = dir.split('/')
@@ -167,7 +175,10 @@ for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse_during):
         oldtree = already_saved(ent) # may be None
         newtree = _pop(force_tree = oldtree)
         if not oldtree:
-            ent.validate(040000, newtree)
+            if lastskip_name and lastskip_name.startswith(ent.name):
+                ent.invalidate()
+            else:
+                ent.validate(040000, newtree)
             ent.repack()
         if exists and ent.sha_missing():
             count += oldsize
@@ -179,16 +190,16 @@ for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse_during):
         mode = '%o' % ent.gitmode
         id = ent.sha
         shalists[-1].append((mode, file, id))
-    elif opt.smaller and ent.size >= opt.smaller:
-        add_error('skipping large file "%s"' % ent.name)
     else:
         if stat.S_ISREG(ent.mode):
             try:
                 f = open(ent.name)
             except IOError, e:
                 add_error(e)
+                lastskip_name = ent.name
             except OSError, e:
                 add_error(e)
+                lastskip_name = ent.name
             else:
                 (mode, id) = hashsplit.split_to_blob_or_tree(w, [f])
         else:
@@ -199,12 +210,15 @@ for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse_during):
                     rl = os.readlink(ent.name)
                 except OSError, e:
                     add_error(e)
+                    lastskip_name = ent.name
                 except IOError, e:
                     add_error(e)
+                    lastskip_name = ent.name
                 else:
                     (mode, id) = ('120000', w.new_blob(rl))
             else:
                 add_error(Exception('skipping special file "%s"' % ent.name))
+                lastskip_name = ent.name
         if id:
             ent.validate(int(mode, 8), id)
             ent.repack()
