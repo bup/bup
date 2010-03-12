@@ -39,12 +39,16 @@ class Client:
                    """ % escapedir
             argv = ['ssh', host, '--', cmd.strip()]
             #log('argv is: %r\n' % argv)
+        def setup():
+            if fixenv:
+                fixenv()
+            os.setsid()
         (self.host, self.dir) = (host, dir)
         self.cachedir = git.repo('index-cache/%s'
                                  % re.sub(r'[^@\w]', '_', 
                                           "%s:%s" % (host, dir)))
         try:
-            self.p = p = Popen(argv, stdin=PIPE, stdout=PIPE, preexec_fn=fixenv)
+            self.p = p = Popen(argv, stdin=PIPE, stdout=PIPE, preexec_fn=setup)
         except OSError, e:
             raise ClientError, 'exec %r: %s' % (argv[0], e), sys.exc_info()[2]
         self.conn = conn = Conn(p.stdout, p.stdin)

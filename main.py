@@ -93,6 +93,7 @@ def force_tty():
     if fix_stdout or fix_stderr:
         amt = (fix_stdout and 1 or 0) + (fix_stderr and 2 or 0)
         os.environ['BUP_FORCE_TTY'] = str(amt)
+    os.setsid()  # make sure ctrl-c is sent just to us, not to child too
 
 if fix_stdout or fix_stderr:
     realf = fix_stderr and 2 or 1
@@ -108,15 +109,18 @@ else:
 
 
 class SigException(Exception):
-    pass
+    def __init__(self, signum):
+        self.signum = signum
+        Exception.__init__(self, 'signal %d received' % signum)
 def handler(signum, frame):
-    raise SigException('signal %d received' % signum)
+    raise SigException(signum)
 
 signal.signal(signal.SIGTERM, handler)
 signal.signal(signal.SIGINT, handler)
 
 ret = 95
 p = None
+killsig = signal.SIGTERM
 try:
     try:
         p = subprocess.Popen([subpath(subcmd)] + argv[2:],
@@ -126,10 +130,12 @@ try:
         log('%s: %s\n' % (subpath(subcmd), e))
         ret = 98
     except SigException, e:
+        log('\nbup: %s\n' % e)
+        killsig = e.signum
         ret = 94
 finally:
     if p and p.poll() == None:
-        os.kill(p.pid, signal.SIGTERM)
+        os.kill(p.pid, killsig)
         p.wait()
     if n:
         n.stdin.close()
