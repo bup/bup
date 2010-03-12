@@ -199,7 +199,7 @@ for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse_during):
     else:
         if stat.S_ISREG(ent.mode):
             try:
-                f = open(ent.name)
+                f = hashsplit.open_noatime(ent.name)
             except IOError, e:
                 add_error(e)
                 lastskip_name = ent.name

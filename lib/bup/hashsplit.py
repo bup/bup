@@ -156,3 +156,15 @@ def split_to_blob_or_tree(w, files):
         return ('100644', w.new_blob(''))
     else:
         return ('40000', w.new_tree(shalist))
+
+
+def open_noatime(name):
+    fd = _hashsplit.open_noatime(name)
+    try:
+        return os.fdopen(fd, 'rb', 1024*1024)
+    except:
+        try:
+            os.close(fd)
+        except:
+            pass
+        raise

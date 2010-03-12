@@ -1,6 +1,7 @@
 #include <Python.h>
 #include <assert.h>
 #include <stdint.h>
+#include <fcntl.h>
 
 #define BLOBBITS (13)
 #define BLOBSIZE (1<<BLOBBITS)
@@ -129,6 +130,39 @@ static PyObject *write_random(PyObject *self, PyObject *args)
 }
 
 
+static PyObject *open_noatime(PyObject *self, PyObject *args)
+{
+    char *filename = NULL;
+    int attrs, attrs_noatime, fd;
+    if (!PyArg_ParseTuple(args, "s", &filename))
+	return NULL;
+    attrs = O_RDONLY;
+#ifdef O_NOFOLLOW
+    attrs |= O_NOFOLLOW;
+#endif
+#ifdef O_LARGEFILE
+    attrs |= O_LARGEFILE;
+#endif
+    attrs_noatime = attrs;
+#ifdef O_NOATIME
+    attrs_noatime |= O_NOATIME;
+#endif
+    fd = open(filename, attrs_noatime);
+    if (fd < 0 && errno == EPERM)
+    {
+	// older Linux kernels would return EPERM if you used O_NOATIME
+	// and weren't the file's owner.  This pointless restriction was
+	// relaxed eventually, but we have to handle it anyway.
+	// (VERY old kernels didn't recognized O_NOATIME, but they would
+	// just harmlessly ignore it, so this branch won't trigger)
+	fd = open(filename, attrs);
+    }
+    if (fd < 0)
+	return PyErr_SetFromErrnoWithFilename(PyExc_IOError, filename);
+    return Py_BuildValue("i", fd);
+}
+
+
 static PyMethodDef hashsplit_methods[] = {
     { "blobbits", blobbits, METH_VARARGS,
 	"Return the number of bits in the rolling checksum." },
@@ -138,6 +172,8 @@ static PyMethodDef hashsplit_methods[] = {
 	"Count the number of matching prefix bits between two strings." },
     { "write_random", write_random, METH_VARARGS,
 	"Write random bytes to the given file descriptor" },
+    { "open_noatime", open_noatime, METH_VARARGS,
+	"open() the given filename for read with O_NOATIME if possible" },
     { NULL, NULL, 0, NULL },  // sentinel
 };
 
