@@ -351,9 +351,14 @@ class PackWriter:
     def _raw_write(self, datalist):
         self._open()
         f = self.file
-        for d in datalist:
-            f.write(d)
-            self.outbytes += len(d)
+        # in case we get interrupted (eg. KeyboardInterrupt), it's best if
+        # the file never has a *partial* blob.  So let's make sure it's
+        # all-or-nothing.  (The blob shouldn't be very big anyway, thanks
+        # to our hashsplit algorithm.)  f.write() does its own buffering,
+        # but that's okay because we'll flush it in _end().
+        oneblob = ''.join(datalist)
+        f.write(oneblob)
+        self.outbytes += len(oneblob)
         self.count += 1
 
     def _write(self, bin, type, content):
