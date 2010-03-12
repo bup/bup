@@ -47,9 +47,13 @@ def splitbuf(buf):
 
 def blobiter(files):
     for f in files:
+        ofs = 0
         while 1:
+            fadvise_done(f, max(0, ofs - 1024*1024))
             b = f.read(BLOB_HWM)
+            ofs += len(b)
             if not b:
+                fadvise_done(f, ofs)
                 break
             yield b
 
@@ -168,3 +172,9 @@ def open_noatime(name):
         except:
             pass
         raise
+
+
+def fadvise_done(f, ofs):
+    assert(ofs >= 0)
+    if ofs > 0:
+        _hashsplit.fadvise_done(f.fileno(), ofs)
