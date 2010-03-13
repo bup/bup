@@ -284,3 +284,13 @@ istty = os.isatty(2) or atoi(os.environ.get('BUP_FORCE_TTY'))
 def progress(s):
     if istty:
         log(s)
+
+
+def handle_ctrl_c():
+    oldhook = sys.excepthook
+    def newhook(exctype, value, traceback):
+        if exctype == KeyboardInterrupt:
+            log('Interrupted.\n')
+        else:
+            return oldhook(exctype, value, traceback)
+    sys.excepthook = newhook

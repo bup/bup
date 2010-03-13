@@ -142,6 +142,8 @@ if opt.fake_valid and opt.fake_invalid:
 git.check_repo_or_die()
 indexfile = opt.indexfile or git.repo('bupindex')
 
+handle_ctrl_c()
+
 if opt.check:
     log('check: starting initial check.\n')
     check_index(index.Reader(indexfile))

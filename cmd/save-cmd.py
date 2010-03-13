@@ -37,6 +37,8 @@ else:
     oldref = refname and git.read_ref(refname) or None
     w = git.PackWriter()
 
+handle_ctrl_c()
+
 
 def eatslash(dir):
     if dir.endswith('/'):
