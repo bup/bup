@@ -232,7 +232,7 @@ class PackWriter_Remote(git.PackWriter):
             self.objcache = None
             if self.onclose:
                 self.onclose()
-            if self.suggest_pack:
+            if id and self.suggest_pack:
                 self.suggest_pack(id)
             return id
 

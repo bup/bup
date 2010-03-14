@@ -56,8 +56,9 @@ def receive_objects(conn, junk):
             log('bup server: received %d object%s.\n' 
                 % (w.count, w.count!=1 and "s" or ''))
             fullpath = w.close()
-            (dir, name) = os.path.split(fullpath)
-            conn.write('%s.idx\n' % name)
+            if fullpath:
+                (dir, name) = os.path.split(fullpath)
+                conn.write('%s.idx\n' % name)
             conn.ok()
             return
         elif n == 0xffffffff:
