@@ -98,6 +98,10 @@ class Client:
         if self._busy:
             raise ClientError('already busy with command %r' % self._busy)
         
+    def ensure_busy(self):
+        if not self._busy:
+            raise ClientError('expected to be busy, but not busy?!')
+        
     def _not_busy(self):
         self._busy = None
 
@@ -125,6 +129,7 @@ class Client:
 
     def sync_index(self, name):
         #log('requesting %r\n' % name)
+        self.check_busy()
         mkdirp(self.cachedir)
         self.conn.write('send-index %s\n' % name)
         n = struct.unpack('!I', self.conn.read(4))[0]
@@ -154,21 +159,25 @@ class Client:
         ob = self._busy
         if ob:
             assert(ob == 'receive-objects')
-            self._busy = None
             self.conn.write('\xff\xff\xff\xff')  # suspend receive-objects
+            self._busy = None
             self.conn.drain_and_check_ok()
         self.sync_index(indexname)
         if ob:
-            self.conn.write('receive-objects\n')
             self._busy = ob
+            self.conn.write('receive-objects\n')
 
     def new_packwriter(self):
         self.check_busy()
-        self._busy = 'receive-objects'
+        def _set_busy():
+            self._busy = 'receive-objects'
+            self.conn.write('receive-objects\n')
         return PackWriter_Remote(self.conn,
                                  objcache_maker = self._make_objcache,
                                  suggest_pack = self._suggest_pack,
-                                 onclose = self._not_busy)
+                                 onopen = _set_busy,
+                                 onclose = self._not_busy,
+                                 ensure_busy = self.ensure_busy)
 
     def read_ref(self, refname):
         self.check_busy()
@@ -203,18 +212,23 @@ class Client:
 
 
 class PackWriter_Remote(git.PackWriter):
-    def __init__(self, conn, objcache_maker, suggest_pack, onclose):
+    def __init__(self, conn, objcache_maker, suggest_pack,
+                 onopen, onclose,
+                 ensure_busy):
         git.PackWriter.__init__(self, objcache_maker)
         self.file = conn
         self.filename = 'remote socket'
         self.suggest_pack = suggest_pack
+        self.onopen = onopen
         self.onclose = onclose
+        self.ensure_busy = ensure_busy
         self._packopen = False
 
     def _open(self):
         if not self._packopen:
             self._make_objcache()
-            self.file.write('receive-objects\n')
+            if self.onopen:
+                self.onopen()
             self._packopen = True
 
     def _end(self):
@@ -248,6 +262,8 @@ class PackWriter_Remote(git.PackWriter):
         assert(self.file)
         if not self._packopen:
             self._open()
+        if self.ensure_busy:
+            self.ensure_busy()
         data = ''.join(datalist)
         assert(len(data))
         self.file.write(struct.pack('!I', len(data)) + data)
