@@ -1,5 +1,5 @@
 import sys, math
-from bup import git, _hashsplit
+from bup import _hashsplit
 from bup.helpers import *
 
 BLOB_LWM = 8192*2
