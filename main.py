@@ -120,22 +120,26 @@ signal.signal(signal.SIGINT, handler)
 
 ret = 95
 p = None
-killsig = signal.SIGTERM
 try:
     try:
         p = subprocess.Popen([subpath(subcmd)] + argv[2:],
                              stdout=outf, stderr=errf, preexec_fn=force_tty)
-        ret = p.wait()
+        while 1:
+            # if we get a signal while waiting, we have to keep waiting, just
+            # in case our child doesn't die.
+            try:
+                ret = p.wait()
+                break
+            except SigException, e:
+                log('\nbup: %s\n' % e)
+                os.kill(p.pid, e.signum)
+                ret = 94
     except OSError, e:
         log('%s: %s\n' % (subpath(subcmd), e))
         ret = 98
-    except SigException, e:
-        log('\nbup: %s\n' % e)
-        killsig = e.signum
-        ret = 94
 finally:
     if p and p.poll() == None:
-        os.kill(p.pid, killsig)
+        os.kill(p.pid, signal.SIGTERM)
         p.wait()
     if n:
         n.stdin.close()
