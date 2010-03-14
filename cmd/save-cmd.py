@@ -117,7 +117,7 @@ def wantrecurse_during(ent):
     return not already_saved(ent) or ent.sha_missing()
 
 total = ftotal = 0
-if opt.progress or 1:
+if opt.progress:
     for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse_pre):
         if not (ftotal % 10024):
             progress('Reading index: %d\r' % ftotal)
