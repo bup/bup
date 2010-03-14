@@ -230,14 +230,17 @@ class PackIdxList:
                 return p.name
         return None
 
-    def refresh(self, skip_midx = False, forget_packs = False):
-        if forget_packs:
-            self.packs = []
+    def refresh(self, skip_midx = False):
         skip_midx = skip_midx or ignore_midx
-        d = dict((p.name, 1) for p in self.packs)
+        d = dict((p.name, p) for p in self.packs
+                 if not skip_midx or not isinstance(p, PackMidx))
         if os.path.exists(self.dir):
             if not skip_midx:
                 midxl = []
+                for ix in self.packs:
+                    if isinstance(ix, PackMidx):
+                        for name in ix.idxnames:
+                            d[os.path.join(self.dir, name)] = ix
                 for f in os.listdir(self.dir):
                     full = os.path.join(self.dir, f)
                     if f.endswith('.midx') and not d.get(full):
@@ -255,11 +258,12 @@ class PackIdxList:
                 for ix in midxl:
                     any = 0
                     for sub in ix.idxnames:
-                        if not d.get(os.path.join(self.dir, sub)):
-                            self.packs.append(ix)
-                            d[ix.name] = 1
+                        found = d.get(os.path.join(self.dir, sub))
+                        if not found or isinstance(found, PackIdx):
+                            # doesn't exist, or exists but not in a midx
+                            d[ix.name] = ix
                             for name in ix.idxnames:
-                                d[os.path.join(self.dir, name)] = 1
+                                d[os.path.join(self.dir, name)] = ix
                             any += 1
                             break
                     if not any:
@@ -269,8 +273,9 @@ class PackIdxList:
             for f in os.listdir(self.dir):
                 full = os.path.join(self.dir, f)
                 if f.endswith('.idx') and not d.get(full):
-                    self.packs.append(PackIdx(full))
-                    d[full] = 1
+                    ix = PackIdx(full)
+                    d[full] = ix
+            self.packs = list(set(d.values()))
         log('PackIdxList: using %d index%s.\n' 
             % (len(self.packs), len(self.packs)!=1 and 'es' or ''))
 

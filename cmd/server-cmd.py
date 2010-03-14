@@ -83,7 +83,7 @@ def receive_objects(conn, junk):
             # fix that deficiency of midx files eventually, although it'll
             # make the files bigger.  This method is certainly not very
             # efficient.
-            w.objcache.refresh(skip_midx = True, forget_packs = True)
+            w.objcache.refresh(skip_midx = True)
             oldpack = w.objcache.exists(sha)
             log('new suggestion: %r\n' % oldpack)
             assert(oldpack)
