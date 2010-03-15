@@ -108,6 +108,7 @@ def update_index(top):
             merge_indexes(mi, ri, wr)
             ri.close()
             mi.close()
+            wr.close()
         wi.abort()
     else:
         wi.close()
