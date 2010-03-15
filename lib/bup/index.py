@@ -293,6 +293,7 @@ class Reader:
     def close(self):
         self.save()
         if self.writable and self.m:
+            self.m.close()
             self.m = None
             self.writable = False
 
