@@ -1,7 +1,6 @@
 import re, struct, errno, select
-from bup import git
+from bup import git, ssh
 from bup.helpers import *
-from subprocess import Popen, PIPE
 
 
 class ClientError(Exception):
@@ -10,54 +9,27 @@ class ClientError(Exception):
 
 class Client:
     def __init__(self, remote, create=False):
-        self._busy = None
-        self.p = None
-        self.conn = None
+        self._busy = self.conn = self.p = None
         rs = remote.split(':', 1)
-        main_exe = os.environ.get('BUP_MAIN_EXE') or sys.argv[0]
-        nicedir = os.path.split(os.path.abspath(main_exe))[0]
-        nicedir = re.sub(r':', "_", nicedir)
         if len(rs) == 1:
-            (host, dir) = ('NONE', remote)
-            def fixenv():
-                os.environ['PATH'] = ':'.join([nicedir,
-                                               os.environ.get('PATH', '')])
-            argv = ['bup', 'server']
+            (host, dir) = (None, remote)
         else:
             (host, dir) = rs
-            fixenv = None
-            # WARNING: shell quoting security holes are possible here, so we
-            # have to be super careful.  We have to use 'sh -c' because
-            # csh-derived shells can't handle PATH= notation.  We can't
-            # set PATH in advance, because ssh probably replaces it.  We
-            # can't exec *safely* using argv, because *both* ssh and 'sh -c'
-            # allow shellquoting.  So we end up having to double-shellquote
-            # stuff here.
-            escapedir = re.sub(r'([^\w/])', r'\\\\\\\1', nicedir)
-            cmd = r"""
-                       sh -c PATH=%s:'$PATH bup server'
-                   """ % escapedir
-            argv = ['ssh', host, '--', cmd.strip()]
-            #log('argv is: %r\n' % argv)
-        def setup():
-            if fixenv:
-                fixenv()
-            os.setsid()
         (self.host, self.dir) = (host, dir)
         self.cachedir = git.repo('index-cache/%s'
                                  % re.sub(r'[^@\w]', '_', 
                                           "%s:%s" % (host, dir)))
         try:
-            self.p = p = Popen(argv, stdin=PIPE, stdout=PIPE, preexec_fn=setup)
+            self.p = ssh.connect(host, 'server')
         except OSError, e:
             raise ClientError, 'exec %r: %s' % (argv[0], e), sys.exc_info()[2]
-        self.conn = conn = Conn(p.stdout, p.stdin)
+        self.conn = Conn(self.p.stdout, self.p.stdin)
         if dir:
             dir = re.sub(r'[\r\n]', ' ', dir)
             if create:
-                conn.write('init-dir %s\n' % dir)
+                self.conn.write('init-dir %s\n' % dir)
             else:
-                conn.write('set-dir %s\n' % dir)
+                self.conn.write('set-dir %s\n' % dir)
             self.check_ok()
         self.sync_indexes_del()
 

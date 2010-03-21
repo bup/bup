@@ -15,6 +15,7 @@ s2 = randbytes(10000)
 def test_server_split_with_indexes():
     os.environ['BUP_MAIN_EXE'] = './bup'
     os.environ['BUP_DIR'] = bupdir = 'buptest_tclient.tmp'
+    subprocess.call(['rm', '-rf', bupdir])
     git.init_repo(bupdir)
     lw = git.PackWriter()
     c = client.Client(bupdir, create=True)
