@@ -267,3 +267,4 @@ if cli:
 
 if saved_errors:
     log('WARNING: %d errors encountered while saving.\n' % len(saved_errors))
+    sys.exit(1)
