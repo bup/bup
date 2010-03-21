@@ -393,14 +393,10 @@ def reduce_paths(paths):
     xpaths = []
     for p in paths:
         rp = realpath(p)
-        try:
-            st = os.lstat(rp)
-            if stat.S_ISDIR(st.st_mode):
-                rp = slashappend(rp)
-                p = slashappend(p)
-        except OSError, e:
-            if e.errno != errno.ENOENT:
-                raise
+        st = os.lstat(rp)
+        if stat.S_ISDIR(st.st_mode):
+            rp = slashappend(rp)
+            p = slashappend(p)
         xpaths.append((rp, p))
     xpaths.sort()
 

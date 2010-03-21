@@ -81,6 +81,20 @@ a
 ./"
 WVPASSEQ "$(cd $D && bup index -s .)" "$(cd $D && bup index -s .)"
 
+WVFAIL bup save -t $D/doesnt-exist-filename
+
+mv $BUP_DIR/bupindex $BUP_DIR/bi.old
+WVFAIL bup save -t $D/d/e/fifotest
+mkfifo $D/d/e/fifotest
+WVPASS bup index -u $D/d/e/fifotest
+WVFAIL bup save -t $D/d/e/fifotest
+WVFAIL bup save -t $D/d/e
+rm -f $D/d/e/fifotest
+WVPASS bup index -u $D/d/e
+WVFAIL bup save -t $D/d/e/fifotest
+mv $BUP_DIR/bi.old $BUP_DIR/bupindex
+
+WVPASS bup index -u $D/d/e
 WVPASS bup save -t $D/d/e
 WVPASSEQ "$(cd $D && bup index -m)" \
 "f
