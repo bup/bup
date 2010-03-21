@@ -9,7 +9,11 @@ class ClientError(Exception):
 
 class Client:
     def __init__(self, remote, create=False):
-        self._busy = self.conn = self.p = None
+        self._busy = self.conn = self.p = self.pout = self.pin = None
+        is_reverse = os.environ.get('BUP_SERVER_REVERSE')
+        if is_reverse:
+            assert(not remote)
+            remote = '%s:' % is_reverse
         rs = remote.split(':', 1)
         if len(rs) == 1:
             (host, dir) = (None, remote)
@@ -20,10 +24,16 @@ class Client:
                                  % re.sub(r'[^@\w]', '_', 
                                           "%s:%s" % (host, dir)))
         try:
-            self.p = ssh.connect(host, 'server')
+            if is_reverse:
+                self.pout = os.fdopen(3, 'rb')
+                self.pin = os.fdopen(4, 'wb')
+            else:
+                self.p = ssh.connect(host, 'server')
+                self.pout = self.p.stdout
+                self.pin = self.p.stdin
         except OSError, e:
             raise ClientError, 'exec %r: %s' % (argv[0], e), sys.exc_info()[2]
-        self.conn = Conn(self.p.stdout, self.p.stdin)
+        self.conn = Conn(self.pout, self.pin)
         if dir:
             dir = re.sub(r'[\r\n]', ' ', dir)
             if create:
@@ -45,22 +55,25 @@ class Client:
     def close(self):
         if self.conn and not self._busy:
             self.conn.write('quit\n')
-        if self.p:
-            self.p.stdin.close()
-            while self.p.stdout.read(65536):
+        if self.pin and self.pout:
+            self.pin.close()
+            while self.pout.read(65536):
                 pass
-            self.p.stdout.close()
+            self.pout.close()
+        if self.p:
             self.p.wait()
             rv = self.p.wait()
             if rv:
                 raise ClientError('server tunnel returned exit code %d' % rv)
         self.conn = None
-        self.p = None
+        self.p = self.pin = self.pout = None
 
     def check_ok(self):
-        rv = self.p.poll()
-        if rv != None:
-            raise ClientError('server exited unexpectedly with code %r' % rv)
+        if self.p:
+            rv = self.p.poll()
+            if rv != None:
+                raise ClientError('server exited unexpectedly with code %r'
+                                  % rv)
         try:
             return self.conn.check_ok()
         except Exception, e:

@@ -27,8 +27,12 @@ if not extra:
 opt.progress = (istty and not opt.quiet)
 opt.smaller = parse_num(opt.smaller or 0)
 
+is_reverse = os.environ.get('BUP_SERVER_REVERSE')
+if is_reverse and opt.remote:
+    o.fatal("don't use -r in reverse mode; it's automatic")
+
 refname = opt.name and 'refs/heads/%s' % opt.name or None
-if opt.remote:
+if opt.remote or is_reverse:
     cli = client.Client(opt.remote)
     oldref = refname and cli.read_ref(refname) or None
     w = cli.new_packwriter()
