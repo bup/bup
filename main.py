@@ -28,8 +28,10 @@ def columnate(l, prefix):
     rows = len(l)/ncols
     for s in range(0, len(l), rows):
         cols.append(l[s:s+rows])
+    out = ''
     for row in zip(*cols):
-        print prefix + ''.join(('%-*s' % (clen+2, s)) for s in row)
+        out += prefix + ''.join(('%-*s' % (clen+2, s)) for s in row) + '\n'
+    return out
 
 
 def usage():
@@ -49,7 +51,7 @@ def usage():
 
     log('Common commands:\n')
     for cmd,synopsis in sorted(common.items()):
-        print '    %-10s %s' % (cmd, synopsis)
+        log('    %-10s %s\n' % (cmd, synopsis))
     log('\n')
     
     log('Other available commands:\n')
@@ -59,7 +61,7 @@ def usage():
             cname = c[4:]
             if cname not in common:
                 cmds.append(c[4:])
-    columnate(cmds, '    ')
+    log(columnate(cmds, '    '))
     log('\n')
     
     log("See 'bup help <command>' for more information on " +
