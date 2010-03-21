@@ -97,9 +97,11 @@ def force_tty():
 
 if fix_stdout or fix_stderr:
     realf = fix_stderr and 2 or 1
+    drealf = os.dup(realf)  # Popen goes crazy with stdout=2
     n = subprocess.Popen([subpath('newliner')],
-                         stdin=subprocess.PIPE, stdout=os.dup(realf),
+                         stdin=subprocess.PIPE, stdout=drealf,
                          close_fds=True, preexec_fn=force_tty)
+    os.close(drealf)
     outf = fix_stdout and n.stdin.fileno() or None
     errf = fix_stderr and n.stdin.fileno() or None
 else:
