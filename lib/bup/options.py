@@ -15,9 +15,10 @@ class OptDict:
 
 
 class Options:
-    def __init__(self, exe, optspec):
+    def __init__(self, exe, optspec, optfunc=getopt.gnu_getopt):
         self.exe = exe
         self.optspec = optspec
+        self.optfunc = optfunc
         self._aliases = {}
         self._shortopts = 'h?'
         self._longopts = ['help']
@@ -84,8 +85,7 @@ class Options:
         
     def parse(self, args):
         try:
-            (flags,extra) = getopt.gnu_getopt(args,
-                                              self._shortopts, self._longopts)
+            (flags,extra) = self.optfunc(args, self._shortopts, self._longopts)
         except getopt.GetoptError, e:
             self.fatal(e)
 
