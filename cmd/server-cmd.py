@@ -76,7 +76,12 @@ def receive_objects(conn, junk):
         (type, content) = git._decode_packobj(buf)
         sha = git.calc_hash(type, content)
         oldpack = w.exists(sha)
-        if oldpack and (oldpack == True or oldpack.endswith('.midx')):
+        # FIXME: we only suggest a single index per cycle, because the client
+        # is currently dumb to download more than one per cycle anyway.
+        # Actually we should fix the client, but this is a minor optimization
+        # on the server side.
+        if not suggested and \
+          oldpack and (oldpack == True or oldpack.endswith('.midx')):
             # FIXME: we shouldn't really have to know about midx files
             # at this layer.  But exists() on a midx doesn't return the
             # packname (since it doesn't know)... probably we should just
@@ -90,7 +95,7 @@ def receive_objects(conn, junk):
             assert(oldpack != True)
             assert(not oldpack.endswith('.midx'))
             w.objcache.refresh(skip_midx = False)
-        if oldpack:
+        if not suggested and oldpack:
             assert(oldpack.endswith('.idx'))
             (dir,name) = os.path.split(oldpack)
             if not (name in suggested):
