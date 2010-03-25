@@ -10,7 +10,7 @@ o = options.Options('bup help', optspec)
 
 if len(extra) == 0:
     # the wrapper program provides the default usage string
-    os.execvp('bup', ['bup'])
+    os.execvp(os.environ['BUP_MAIN_EXE'], ['bup'])
 elif len(extra) == 1:
     docname = (extra[0]=='bup' and 'bup' or ('bup-%s' % extra[0]))
     exe = sys.argv[0]
