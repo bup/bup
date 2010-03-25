@@ -36,7 +36,8 @@ def columnate(l, prefix):
 
 
 def usage():
-    log('Usage: bup [-?|--help] COMMAND [ARGS]\n\n')
+    log('Usage: bup [-?|--help] [-d=BUP_DIR|--bup-dir=BUP_DIR] COMMAND [ARGS]'
+        + '\n\n')
     common = dict(
         ftp = 'Browse backup sets using an ftp-like client',
         fsck = 'Check backup sets for damage and add redundancy information',
@@ -75,16 +76,19 @@ if len(argv) < 2:
 
 # Handle global options.
 try:
-    global_args, subcmd = getopt.getopt(argv[1:], '?', ['help'])
+    global_args, subcmd = getopt.getopt(argv[1:], '?d:', ['help', 'bup-dir='])
 except getopt.GetoptError, ex:
     log('error: ' + ex.msg + '\n')
     usage()
 
 help_requested = None
+dest_dir = None
 
 for opt in global_args:
     if opt[0] == '-?' or opt[0] == '--help':
         help_requested = True
+    elif opt[0] == '-d' or opt[0] == '--bup-dir':
+        dest_dir = opt[1]
     else:
         log('error: unexpected option "%s"\n' % opt[0])
         usage()
@@ -104,6 +108,10 @@ if len(subcmd) > 1 and subcmd[1] == '--help' and subcmd[0] != 'help':
 subcmd_name = subcmd[0]
 if not subcmd_name:
     usage()
+
+subcmd_env = os.environ
+if dest_dir:
+    subcmd_env.update({"BUP_DIR" : dest_dir})
 
 def subpath(s):
     sp = os.path.join(exepath, 'bup-%s' % s)
