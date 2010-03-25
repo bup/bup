@@ -1,5 +1,6 @@
 #!/usr/bin/env python
-import sys, os, subprocess, signal
+
+import sys, os, subprocess, signal, getopt
 
 argv = sys.argv
 exe = argv[0]
@@ -35,7 +36,7 @@ def columnate(l, prefix):
 
 
 def usage():
-    log('Usage: bup <command> <options...>\n\n')
+    log('Usage: bup [-?|--help] COMMAND [ARGS]\n\n')
     common = dict(
         ftp = 'Browse backup sets using an ftp-like client',
         fsck = 'Check backup sets for damage and add redundancy information',
@@ -64,15 +65,45 @@ def usage():
     log(columnate(cmds, '    '))
     log('\n')
     
-    log("See 'bup help <command>' for more information on " +
+    log("See 'bup help COMMAND' for more information on " +
         "a specific command.\n")
     sys.exit(99)
 
 
-if len(argv) < 2 or not argv[1] or argv[1][0] == '-':
+if len(argv) < 2:
     usage()
 
-subcmd = argv[1]
+# Handle global options.
+try:
+    global_args, subcmd = getopt.getopt(argv[1:], '?', ['help'])
+except getopt.GetoptError, ex:
+    log('error: ' + ex.msg + '\n')
+    usage()
+
+help_requested = None
+
+for opt in global_args:
+    if opt[0] == '-?' or opt[0] == '--help':
+        help_requested = True
+    else:
+        log('error: unexpected option "%s"\n' % opt[0])
+        usage()
+
+if len(subcmd) == 0:
+    if help_requested:
+        subcmd = ['help']
+    else:
+        usage()
+
+if help_requested and subcmd[0] != 'help':
+    subcmd = ['help'] + subcmd
+
+if len(subcmd) > 1 and subcmd[1] == '--help' and subcmd[0] != 'help':
+    subcmd = ['help', subcmd[0]] + subcmd[2:]
+
+subcmd_name = subcmd[0]
+if not subcmd_name:
+    usage()
 
 def subpath(s):
     sp = os.path.join(exepath, 'bup-%s' % s)
@@ -80,13 +111,12 @@ def subpath(s):
         sp = os.path.join(cmdpath, 'bup-%s' % s)
     return sp
 
-if not os.path.exists(subpath(subcmd)):
-    log('error: unknown command "%s"\n' % subcmd)
+if not os.path.exists(subpath(subcmd_name)):
+    log('error: unknown command "%s"\n' % subcmd_name)
     usage()
 
-
 already_fixed = atoi(os.environ.get('BUP_FORCE_TTY'))
-if subcmd in ['ftp', 'help']:
+if subcmd_name in ['ftp', 'help']:
     already_fixed = True
 fix_stdout = not already_fixed and os.isatty(1)
 fix_stderr = not already_fixed and os.isatty(2)
@@ -126,7 +156,7 @@ ret = 95
 p = None
 try:
     try:
-        p = subprocess.Popen([subpath(subcmd)] + argv[2:],
+        p = subprocess.Popen([subpath(subcmd_name)] + subcmd[1:],
                              stdout=outf, stderr=errf, preexec_fn=force_tty)
         while 1:
             # if we get a signal while waiting, we have to keep waiting, just
@@ -139,7 +169,7 @@ try:
                 os.kill(p.pid, e.signum)
                 ret = 94
     except OSError, e:
-        log('%s: %s\n' % (subpath(subcmd), e))
+        log('%s: %s\n' % (subpath(subcmd_name), e))
         ret = 98
 finally:
     if p and p.poll() == None:
