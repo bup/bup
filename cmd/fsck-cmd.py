@@ -104,8 +104,14 @@ def do_pack(base, last):
             code = gresult
         else:
             if par2_ok and opt.generate:
-                par2_generate(base)
-            print '%s ok' % last
+                presult = par2_generate(base)
+                if presult != 0:
+                    print '%s par2 create: failed (%d)' % (last, presult)
+                    code = presult
+                else:
+                    print '%s ok' % last
+            else:
+                print '%s ok' % last
     else:
         assert(opt.generate and (not par2_ok or par2_exists))
         debug('    skipped: par2 file already generated.\n')
