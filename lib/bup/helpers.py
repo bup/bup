@@ -19,6 +19,7 @@ def _hard_write(fd, buf):
         buf = buf[sz:]
 
 def log(s):
+    sys.stdout.flush()
     _hard_write(sys.stderr.fileno(), s)
 
 
