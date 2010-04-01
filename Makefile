@@ -21,6 +21,28 @@ default: all
 
 all: cmds bup lib/bup/_hashsplit$(SOEXT) \
 	Documentation/all
+
+INSTALL=install
+MANDIR=$(DESTDIR)/usr/share/man
+DOCDIR=$(DESTDIR)/usr/share/doc/bup
+BINDIR=$(DESTDIR)/usr/bin
+LIBDIR=$(DESTDIR)/usr/lib/bup
+install: all
+	$(INSTALL) -d $(MANDIR)/man1 $(DOCDIR) $(BINDIR) \
+		$(LIBDIR)/bup $(LIBDIR)/cmd
+	$(INSTALL) -o 0 -g 0 -m 0644 \
+		$(wildcard Documentation/*.1) \
+		$(MANDIR)/man1
+	$(INSTALL) -o 0 -g 0 -m 0644 \
+		$(wildcard Documentation/*.html) \
+		$(DOCDIR)
+	$(INSTALL) -o 0 -g 0 -m 0755 bup $(BINDIR)
+	$(INSTALL) -o 0 -g 0 -m 0755 \
+		$(wildcard cmd/bup-*) \
+		$(LIBDIR)/cmd
+	$(INSTALL) -o 0 -g 0 -m 0644 \
+		$(wildcard lib/bup/*.so lib/bup/*.py) \
+		$(LIBDIR)/bup
 	
 %/all:
 	$(MAKE) -C $* all
