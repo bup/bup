@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import sys, math, struct, glob, sha
+import sys, math, struct, glob
 from bup import options, git
 from bup.helpers import *
 
@@ -19,7 +19,7 @@ def merge(idxlist, bits, table):
 def do_midx(outdir, outfilename, infilenames):
     if not outfilename:
         assert(outdir)
-        sum = sha.sha('\0'.join(infilenames)).hexdigest()
+        sum = Sha1('\0'.join(infilenames)).hexdigest()
         outfilename = '%s/midx-%s.midx' % (outdir, sum)
     
     inp = []

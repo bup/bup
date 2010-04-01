@@ -294,3 +294,16 @@ def handle_ctrl_c():
         else:
             return oldhook(exctype, value, traceback)
     sys.excepthook = newhook
+
+
+# hashlib is only available in python 2.5 or higher, but the 'sha' module
+# produces a DeprecationWarning in python 2.6 or higher.  We want to support
+# python 2.4 and above without any stupid warnings, so let's try using hashlib
+# first, and downgrade if it fails.
+try:
+    import hashlib
+except ImportError:
+    import sha
+    Sha1 = sha.sha
+else:
+    Sha1 = hashlib.sha1

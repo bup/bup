@@ -1,4 +1,4 @@
-import os, errno, zlib, time, sha, subprocess, struct, stat, re, tempfile
+import os, errno, zlib, time, subprocess, struct, stat, re, tempfile
 import heapq
 from bup.helpers import *
 
@@ -288,7 +288,7 @@ class PackIdxList:
 
 def calc_hash(type, content):
     header = '%s %d\0' % (type, len(content))
-    sum = sha.sha(header)
+    sum = Sha1(header)
     sum.update(content)
     return sum.digest()
 
@@ -446,7 +446,7 @@ class PackWriter:
 
         # calculate the pack sha1sum
         f.seek(0)
-        sum = sha.sha()
+        sum = Sha1()
         while 1:
             b = f.read(65536)
             sum.update(b)

@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import sys, os, glob, subprocess, time, sha
+import sys, os, glob, subprocess, time
 from bup import options, git
 from bup.helpers import *
 
@@ -59,7 +59,7 @@ def quick_verify(base):
     wantsum = f.read(20)
     assert(len(wantsum) == 20)
     f.seek(0)
-    sum = sha.sha()
+    sum = Sha1()
     for b in chunkyreader(f, os.fstat(f.fileno()).st_size - 20):
         sum.update(b)
     if sum.digest() != wantsum:
