@@ -5,10 +5,18 @@ import sys, os, subprocess, signal, getopt
 argv = sys.argv
 exe = argv[0]
 exepath = os.path.split(exe)[0] or '.'
+exeprefix = os.path.split(os.path.abspath(exepath))[0]
 
 # fix the PYTHONPATH to include our lib dir
-libpath = os.path.join(exepath, 'lib')
-cmdpath = os.path.join(exepath, 'cmd')
+if os.path.exists("%s/lib/bup/cmd/." % exeprefix):
+    # installed binary in /.../bin.
+    # eg. /usr/bin/bup means /usr/lib/bup/... is where our libraries are.
+    cmdpath = "%s/lib/bup/cmd" % exeprefix
+    libpath = "%s/lib/bup" % exeprefix
+else:
+    # running from the src directory without being installed first
+    cmdpath = os.path.join(exepath, 'cmd')
+    libpath = os.path.join(exepath, 'lib')
 sys.path[:0] = [libpath]
 os.environ['PYTHONPATH'] = libpath + ':' + os.environ.get('PYTHONPATH', '')
 os.environ['BUP_MAIN_EXE'] = os.path.abspath(exe)
