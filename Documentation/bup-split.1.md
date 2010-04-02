@@ -38,7 +38,7 @@ still processes the remainder of the tarball efficiently.
 (Note that `bup save` is usually a more efficient way to
 accomplish this, however.)
 
-To get the data back, use `git-join`(1).
+To get the data back, use `bup-join`(1).
 
 # OPTIONS
 
