@@ -82,7 +82,7 @@ Reasons you might want to avoid bup
 Getting started
 ---------------
 
- - check out the bup source code using git:
+ - Check out the bup source code using git:
  
         git clone git://github.com/apenwarr/bup
 
@@ -90,11 +90,11 @@ Getting started
    is:
         apt-get install python2.5-dev
    	
- - build the python module and symlinks:
+ - Build the python module and symlinks:
  
         make
  	
- - run the tests:
+ - Run the tests:
  
         make test
  	
@@ -128,28 +128,28 @@ Getting started
    
         bup join local-etc~1 | tar -tf -
  
- - get a list of your previous backups:
+ - Get a list of your previous backups:
  
         GIT_DIR=~/.bup git log local-etc
 	
- - make a backup on a remote server (which must already have the 'bup' command
+ - Make a backup on a remote server (which must already have the 'bup' command
    somewhere in the PATH, and be accessible via ssh; make sure to replace
    SERVERNAME with the actual hostname of your server):
    
         tar -cvf - /etc | bup split -r SERVERNAME: -n local-etc -vv
  
- - try restoring the remote backup tarball:
+ - Try restoring the remote backup tarball:
  
         bup join -r SERVERNAME: local-etc | tar -tf -
  	
- - try using the new (slightly experimental) 'bup index' and 'bup save'
+ - Try using the new (slightly experimental) 'bup index' and 'bup save'
    style backups, which bypass 'tar' but have some missing features (see
    "Things that are stupid" below):
    	
         bup index -uv /etc
         bup save -n local-etc /etc
    	
- - do it again and see how fast an incremental backup can be:
+ - Do it again and see how fast an incremental backup can be:
  
         bup index -uv /etc
         bup save -n local-etc /etc
@@ -278,9 +278,11 @@ mailing list (see below) if you'd like to help.
     "native" Windows port, the most annoying thing is the absence of ssh in
     a default Windows installation.)
    
- - bup has no GUI.  Actually, that's not stupid, but you might consider it
-   a limitation.  There are a bunch of Linux GUI backup programs; someday
-   I expect someone will adapt one of them to use bup.
+ - bup has no GUI.
+ 
+    Actually, that's not stupid, but you might consider it a limitation. 
+    There are a bunch of Linux GUI backup programs; someday I expect someone
+    will adapt one of them to use bup.
 
 
 How you can help
