@@ -86,9 +86,11 @@ Getting started
  
         git clone git://github.com/apenwarr/bup
 
- - install the python 2.5 development libraries.  On Debian or Ubuntu, this
-   is:
-        apt-get install python2.5-dev
+ - Install the needed python libraries (including the development
+   libraries).  On Debian or Ubuntu, this is usually:
+        apt-get install python2.6-dev python-fuse
+        
+    Substitute python2.5-dev or python2.4-dev if you have an older system.
    	
  - Build the python module and symlinks:
  
@@ -243,6 +245,12 @@ mailing list (see below) if you'd like to help.
     properly restore file metadata.  And files that bup has split into
     chunks will need to be recombined.  Although there's no restore tool,
     'bup fuse' does accomplish some of this already.
+    
+ - 'bup fuse' and 'bup ftp' don't auto-join large files.
+ 
+    That means you end up with a bunch of little chunk files that you have
+    to cat together by hand.  Fixing this would be easy, we just haven't
+    yet.
    
  - 'bup index' is slower than it should be.
  
@@ -277,6 +285,20 @@ mailing list (see below) if you'd like to help.
     that's mostly a matter of someone putting in some effort.  (For a
     "native" Windows port, the most annoying thing is the absence of ssh in
     a default Windows installation.)
+    
+ - bup needs better documentation.
+ 
+    According to a recent article about git in Linux Weekly News
+    (https://lwn.net/Articles/380983/), "it's a bit short on examples and
+    a user guide would be nice."  Documentation is the sort of thing that
+    will never be great unless someone from outside contributes it (since
+    the developers can never remember which parts are hard to understand).
+    
+ - bup is "relatively speedy" and has "pretty good" compression.
+ 
+    ...according to the same LWN article.  Clearly neither of those is good
+    enough.  We should have awe-inspiring speed and crazy-good compression. 
+    Must work on that.  Writing more parts in C might help with the speed.
    
  - bup has no GUI.
  
