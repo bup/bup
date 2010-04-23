@@ -16,6 +16,9 @@ class Stat(fuse.Stat):
         self.st_atime = 0
         self.st_mtime = 0
         self.st_ctime = 0
+        self.st_blocks = 0
+        self.st_blksize = 0
+        self.st_rdev = 0
 
 
 cache = {}
