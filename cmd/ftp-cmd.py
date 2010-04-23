@@ -116,8 +116,8 @@ for line in lines:
             rname = words[1]
             (dir,base) = os.path.split(rname)
             lname = len(words)>2 and words[2] or base
-            log('Saving %r\n' % lname)
             inf = pwd.resolve(rname).open()
+            log('Saving %r\n' % lname)
             write_to_file(inf, open(lname, 'wb'))
         elif cmd == 'mget':
             for parm in words[1:]:
