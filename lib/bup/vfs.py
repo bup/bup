@@ -142,6 +142,10 @@ class Node:
     
     
 class File(Node):
+    def __init__(self, parent, name, mode, hash):
+        Node.__init__(self, parent, name, mode, hash)
+        self._cached_size = None
+        
     def _content(self):
         return cp().join(self.hash.encode('hex'))
 
@@ -151,7 +155,9 @@ class File(Node):
     def size(self):
         # FIXME inefficient.  If a file is chunked, we could just check
         # the offset + size of the very last chunk.
-        return sum(len(blob) for blob in self._content())
+        if self._cached_size == None:
+            self._cached_size = sum(len(blob) for blob in self._content())
+        return self._cached_size
     
     def readbytes(self, ofs, count):
         # FIXME inefficient.  If a file is chunked, we could choose to
