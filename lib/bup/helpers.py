@@ -200,24 +200,6 @@ def chunkyreader(f, count = None):
             yield b
 
 
-class AutoFlushIter:
-    def __init__(self, it, ondone = None):
-        self.it = it
-        self.ondone = ondone
-
-    def __iter__(self):
-        return self
-        
-    def next(self):
-        return self.it.next()
-        
-    def __del__(self):
-        for i in self.it:
-            pass
-        if self.ondone:
-            self.ondone()
-
-
 def slashappend(s):
     if s and not s.endswith('/'):
         return s + '/'

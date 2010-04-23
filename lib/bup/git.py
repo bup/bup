@@ -639,6 +639,35 @@ def _git_capture(argv):
     return r
 
 
+class AbortableIter:
+    def __init__(self, it, onabort = None):
+        self.it = it
+        self.onabort = onabort
+        self.done = None
+
+    def __iter__(self):
+        return self
+        
+    def next(self):
+        try:
+            return self.it.next()
+        except StopIteration, e:
+            self.done = True
+            raise
+        except:
+            self.abort()
+            raise
+
+    def abort(self):
+        if not self.done:
+            self.done = True
+            if self.onabort:
+                self.onabort()
+        
+    def __del__(self):
+        self.abort()
+
+
 _ver_warned = 0
 class CatPipe:
     def __init__(self):
@@ -651,14 +680,28 @@ class CatPipe:
                 _ver_warned = 1
             self.get = self._slow_get
         else:
-            self.p = subprocess.Popen(['git', 'cat-file', '--batch'],
-                                      stdin=subprocess.PIPE, 
-                                      stdout=subprocess.PIPE,
-                                      preexec_fn = _gitenv)
+            self.p = self.inprogress = None
             self.get = self._fast_get
-            self.inprogress = None
+
+    def _abort(self):
+        if self.p:
+            self.p.stdout.close()
+            self.p.stdin.close()
+        self.p = None
+        self.inprogress = None
+
+    def _restart(self):
+        self._abort()
+        self.p = subprocess.Popen(['git', 'cat-file', '--batch'],
+                                  stdin=subprocess.PIPE, 
+                                  stdout=subprocess.PIPE,
+                                  preexec_fn = _gitenv)
 
     def _fast_get(self, id):
+        if not self.p or self.p.poll() != None:
+            self._restart()
+        assert(self.p)
+        assert(self.p.poll() == None)
         if self.inprogress:
             log('_fast_get: opening %r while %r is open' 
                 % (id, self.inprogress))
@@ -676,16 +719,17 @@ class CatPipe:
             raise GitError('expected blob, got %r' % spl)
         (hex, type, size) = spl
 
-        def ondone():
+        it = AbortableIter(chunkyreader(self.p.stdout, int(spl[2])),
+                           onabort = self._abort)
+        try:
+            yield type
+            for blob in it:
+                yield blob
             assert(self.p.stdout.readline() == '\n')
             self.inprogress = None
-
-        it = AutoFlushIter(chunkyreader(self.p.stdout, int(spl[2])),
-                           ondone = ondone)
-        yield type
-        for blob in it:
-            yield blob
-        del it
+        except Exception, e:
+            it.abort()
+            raise
 
     def _slow_get(self, id):
         assert(id.find('\n') < 0)
