@@ -24,25 +24,6 @@ os.environ['BUP_MAIN_EXE'] = os.path.abspath(exe)
 from bup.helpers import *
 
 
-def columnate(l, prefix):
-    l = l[:]
-    clen = max(len(s) for s in l)
-    ncols = (78 - len(prefix)) / (clen + 2)
-    if ncols <= 1:
-        ncols = 1
-        clen = 0
-    cols = []
-    while len(l) % ncols:
-        l.append('')
-    rows = len(l)/ncols
-    for s in range(0, len(l), rows):
-        cols.append(l[s:s+rows])
-    out = ''
-    for row in zip(*cols):
-        out += prefix + ''.join(('%-*s' % (clen+2, s)) for s in row) + '\n'
-    return out
-
-
 def usage():
     log('Usage: bup [-?|--help] [-d=BUP_DIR|--bup-dir=BUP_DIR] COMMAND [ARGS]'
         + '\n\n')

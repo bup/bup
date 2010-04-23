@@ -297,6 +297,25 @@ def handle_ctrl_c():
     sys.excepthook = newhook
 
 
+def columnate(l, prefix):
+    l = l[:]
+    clen = max(len(s) for s in l)
+    ncols = (78 - len(prefix)) / (clen + 2)
+    if ncols <= 1:
+        ncols = 1
+        clen = 0
+    cols = []
+    while len(l) % ncols:
+        l.append('')
+    rows = len(l)/ncols
+    for s in range(0, len(l), rows):
+        cols.append(l[s:s+rows])
+    out = ''
+    for row in zip(*cols):
+        out += prefix + ''.join(('%-*s' % (clen+2, s)) for s in row) + '\n'
+    return out
+
+
 # hashlib is only available in python 2.5 or higher, but the 'sha' module
 # produces a DeprecationWarning in python 2.6 or higher.  We want to support
 # python 2.4 and above without any stupid warnings, so let's try using hashlib

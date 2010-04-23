@@ -3,22 +3,24 @@ import sys, os, re, stat, readline, fnmatch
 from bup import options, git, shquote, vfs
 from bup.helpers import *
 
-def print_node(text, n):
+def node_name(text, n):
     if stat.S_ISDIR(n.mode):
-        print '%s/' % text
+        return '%s/' % text
     elif stat.S_ISLNK(n.mode):
-        print '%s@' % text
+        return '%s@' % text
     else:
-        print '%s' % text
+        return '%s' % text
 
 
 def do_ls(path, n):
+    l = []
     if stat.S_ISDIR(n.mode):
         for sub in n:
-            print_node(sub.name, sub)
+            l.append(node_name(sub.name, sub))
     else:
-        print_node(path, n)
-
+        l.append(node_name(path, n))
+    print columnate(l, '')
+    
 
 def write_to_file(inf, outf):
     for blob in chunkyreader(inf):
