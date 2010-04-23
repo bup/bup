@@ -5,6 +5,33 @@ from wvtest import *
 
 
 @wvtest
+def testmangle():
+    afile  = 0100644
+    afile2 = 0100770
+    alink  = 0120000
+    adir   = 0040000
+    adir2  = 0040777
+    WVPASSEQ(git.mangle_name("a", adir2, adir), "a")
+    WVPASSEQ(git.mangle_name(".bup", adir2, adir), ".bup.bupl")
+    WVPASSEQ(git.mangle_name("a.bupa", adir2, adir), "a.bupa.bupl")
+    WVPASSEQ(git.mangle_name("b.bup", alink, alink), "b.bup.bupl")
+    WVPASSEQ(git.mangle_name("b.bu", alink, alink), "b.bu")
+    WVPASSEQ(git.mangle_name("f", afile, afile2), "f")
+    WVPASSEQ(git.mangle_name("f.bup", afile, afile2), "f.bup.bupl")
+    WVPASSEQ(git.mangle_name("f.bup", afile, adir), "f.bup.bup")
+    WVPASSEQ(git.mangle_name("f", afile, adir), "f.bup")
+
+    WVPASSEQ(git.demangle_name("f.bup"), ("f", git.BUP_CHUNKED))
+    WVPASSEQ(git.demangle_name("f.bupl"), ("f", git.BUP_NORMAL))
+    WVPASSEQ(git.demangle_name("f.bup.bupl"), ("f.bup", git.BUP_NORMAL))
+
+    # for safety, we ignore .bup? suffixes we don't recognize.  Future
+    # versions might implement a .bup[a-z] extension as something other
+    # than BUP_NORMAL.
+    WVPASSEQ(git.demangle_name("f.bupa"), ("f.bupa", git.BUP_NORMAL))
+
+
+@wvtest
 def testencode():
     s = 'hello world'
     looseb = ''.join(git._encode_looseobj('blob', s))
@@ -19,6 +46,7 @@ def testencode():
     WVPASSEQ(git._decode_packobj(packb), ('blob', s))
     WVPASSEQ(git._decode_packobj(packt), ('tree', s))
     WVPASSEQ(git._decode_packobj(packc), ('commit', s))
+
 
 @wvtest
 def testpacks():

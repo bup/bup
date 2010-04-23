@@ -183,6 +183,7 @@ for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse_during):
             _push(part)
 
     if not file:
+        # no filename portion means this is a subdir.  But
         # sub/parentdirectories already handled in the pop/push() part above.
         oldtree = already_saved(ent) # may be None
         newtree = _pop(force_tree = oldtree)
@@ -201,7 +202,9 @@ for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse_during):
     if hashvalid:
         mode = '%o' % ent.gitmode
         id = ent.sha
-        shalists[-1].append((mode, file, id))
+        shalists[-1].append((mode, 
+                             git.mangle_name(file, ent.mode, ent.gitmode),
+                             id))
     else:
         if stat.S_ISREG(ent.mode):
             try:
@@ -234,7 +237,9 @@ for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse_during):
         if id:
             ent.validate(int(mode, 8), id)
             ent.repack()
-            shalists[-1].append((mode, file, id))
+            shalists[-1].append((mode,
+                                 git.mangle_name(file, ent.mode, ent.gitmode),
+                                 id))
     if exists and wasmissing:
         count += oldsize
         subcount = 0

@@ -149,11 +149,13 @@ class File(Node):
         return FileReader(self)
     
     def size(self):
-        # FIXME inefficient
+        # FIXME inefficient.  If a file is chunked, we could just check
+        # the offset + size of the very last chunk.
         return sum(len(blob) for blob in self._content())
     
     def readbytes(self, ofs, count):
-        # FIXME inefficient
+        # FIXME inefficient.  If a file is chunked, we could choose to
+        # read only the required chunks rather than joining the whole thing.
         buf = ''.join(self._content())
         return buf[ofs:ofs+count]
     
@@ -200,8 +202,12 @@ class Dir(Node):
             it = cp().get(self.hash.encode('hex') + ':')
             type = it.next()
         assert(type == 'tree')
-        for (mode,name,sha) in git._treeparse(''.join(it)):
+        for (mode,mangled_name,sha) in git._treeparse(''.join(it)):
             mode = int(mode, 8)
+            name = mangled_name
+            (name,bupmode) = git.demangle_name(mangled_name)
+            if bupmode == git.BUP_CHUNKED:
+                mode = 0100644
             if stat.S_ISDIR(mode):
                 self._subs[name] = Dir(self, name, mode, sha)
             elif stat.S_ISLNK(mode):

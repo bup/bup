@@ -263,7 +263,7 @@ def parse_num(s):
         raise ValueError("invalid unit %r in number %r" % (unit, s))
     return int(num*mult)
 
-
+    
 # count the number of elements in an iterator (consumes the iterator)
 def count(l):
     return reduce(lambda x,y: x+1, l)

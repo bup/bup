@@ -25,6 +25,25 @@ def repo(sub = ''):
     return os.path.join(repodir, sub)
 
 
+def mangle_name(name, mode, gitmode):
+    if stat.S_ISREG(mode) and not stat.S_ISREG(gitmode):
+        return name + '.bup'
+    elif name.endswith('.bup') or name[:-1].endswith('.bup'):
+        return name + '.bupl'
+    else:
+        return name
+
+
+(BUP_NORMAL, BUP_CHUNKED) = (0,1)
+def demangle_name(name):
+    if name.endswith('.bupl'):
+        return (name[:-5], BUP_NORMAL)
+    elif name.endswith('.bup'):
+        return (name[:-4], BUP_CHUNKED)
+    else:
+        return (name, BUP_NORMAL)
+
+
 def _encode_packobj(type, content):
     szout = ''
     sz = len(content)
