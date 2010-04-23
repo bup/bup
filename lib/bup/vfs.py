@@ -23,13 +23,103 @@ class TooManySymlinks(NodeError):
     pass
 
 
-class FileReader:
-    def __init__(self, node):
-        self.n = node
+def _treeget(hash):
+    it = cp().get(hash.encode('hex'))
+    type = it.next()
+    assert(type == 'tree')
+    return git._treeparse(''.join(it))
+
+
+def _tree_decode(hash):
+    tree = [(int(name,16),stat.S_ISDIR(int(mode,8)),sha)
+            for (mode,name,sha)
+            in _treeget(hash)]
+    assert(tree == list(sorted(tree)))
+    return tree
+
+
+def _chunk_len(hash):
+    return sum(len(b) for b in cp().join(hash.encode('hex')))
+
+
+def _last_chunk_info(hash):
+    tree = _tree_decode(hash)
+    assert(tree)
+    (ofs,isdir,sha) = tree[-1]
+    if isdir:
+        (subofs, sublen) = _last_chunk_info(sha)
+        return (ofs+subofs, sublen)
+    else:
+        return (ofs, _chunk_len(sha))
+
+
+def _total_size(hash):
+    (lastofs, lastsize) = _last_chunk_info(hash)
+    return lastofs + lastsize
+
+
+def _chunkiter(hash, startofs):
+    assert(startofs >= 0)
+    tree = _tree_decode(hash)
+
+    # skip elements before startofs
+    for i in xrange(len(tree)):
+        if i+1 >= len(tree) or tree[i+1][0] > startofs:
+            break
+    first = i
+
+    # iterate through what's left
+    for i in xrange(first, len(tree)):
+        (ofs,isdir,sha) = tree[i]
+        skipmore = startofs-ofs
+        if skipmore < 0:
+            skipmore = 0
+        if isdir:
+            for b in _chunkiter(sha, skipmore):
+                yield b
+        else:
+            yield ''.join(cp().join(sha.encode('hex')))[skipmore:]
+
+
+class _ChunkReader:
+    def __init__(self, hash, isdir, startofs):
+        if isdir:
+            self.it = _chunkiter(hash, startofs)
+            self.blob = None
+        else:
+            self.it = None
+            self.blob = cp().get(hash.encode('hex'))
+
+    def next(self, size):
+        out = ''
+        while len(out) < size:
+            if self.it and not self.blob:
+                try:
+                    self.blob = self.it.next()
+                except StopIteration:
+                    self.it = None
+            if self.blob:
+                want = size - len(out)
+                out += self.blob[:want]
+                self.blob = self.blob[want:]
+            if not self.it:
+                break
+        log('next(%d) returned %d\n' % (size, len(out)))
+        return out
+
+
+class _FileReader:
+    def __init__(self, hash, size, isdir):
+        self.hash = hash
         self.ofs = 0
-        self.size = self.n.size()
+        self.size = size
+        self.isdir = isdir
+        self.reader = None
 
     def seek(self, ofs):
+        if self.ofs == ofs:
+            return
+        self.reader = None
         if ofs > self.size:
             self.ofs = self.size
         elif ofs < 0:
@@ -43,7 +133,13 @@ class FileReader:
     def read(self, count = -1):
         if count < 0:
             count = self.size - self.ofs
-        buf = self.n.readbytes(self.ofs, count)
+        if not self.reader:
+            self.reader = _ChunkReader(self.hash, self.isdir, self.ofs)
+        try:
+            buf = self.reader.next(count)
+        except:
+            self.reader = None
+            raise  # our offsets will be all screwed up otherwise
         self.ofs += len(buf)
         return buf
 
@@ -131,48 +227,45 @@ class Node:
 
     def open(self):
         raise NotFile('%s is not a regular file' % self.name)
-    
-    def readbytes(self, ofs, count):
-        raise NotFile('%s is not a regular file' % self.name)
-    
-    def read(self, num = -1):
-        if num < 0:
-            num = self.size()
-        return self.readbytes(0, num)
-    
-    
-class File(Node):
-    def __init__(self, parent, name, mode, hash):
-        Node.__init__(self, parent, name, mode, hash)
-        self._cached_size = None
-        
-    def _content(self):
-        return cp().join(self.hash.encode('hex'))
 
+
+class File(Node):
+    def __init__(self, parent, name, mode, hash, bupmode):
+        Node.__init__(self, parent, name, mode, hash)
+        self.bupmode = bupmode
+        self._cached_size = None
+        self._filereader = None
+        
     def open(self):
-        return FileReader(self)
+        # You'd think FUSE might call this only once each time a file is
+        # opened, but no; it's really more of a refcount, and it's called
+        # once per read().  Thus, it's important to cache the filereader
+        # object here so we're not constantly re-seeking.
+        if not self._filereader:
+            self._filereader = _FileReader(self.hash, self.size(),
+                                           self.bupmode == git.BUP_CHUNKED)
+        return self._filereader
     
     def size(self):
-        # FIXME inefficient.  If a file is chunked, we could just check
-        # the offset + size of the very last chunk.
         if self._cached_size == None:
-            self._cached_size = sum(len(blob) for blob in self._content())
+            log('<<<<File.size() is calculating\n')
+            if self.bupmode == git.BUP_CHUNKED:
+                self._cached_size = _total_size(self.hash)
+            else:
+                self._cached_size = _chunk_len(self.hash)
         return self._cached_size
-    
-    def readbytes(self, ofs, count):
-        # FIXME inefficient.  If a file is chunked, we could choose to
-        # read only the required chunks rather than joining the whole thing.
-        buf = ''.join(self._content())
-        return buf[ofs:ofs+count]
-    
+
 
 _symrefs = 0
 class Symlink(File):
-    def __init__(self, parent, name, hash):
-        File.__init__(self, parent, name, 0120000, hash)
+    def __init__(self, parent, name, hash, bupmode):
+        File.__init__(self, parent, name, 0120000, hash, bupmode)
+
+    def size(self):
+        return len(self.readlink())
 
     def readlink(self):
-        return self.read(1024)
+        return ''.join(cp().join(self.hash.encode('hex')))
 
     def dereference(self):
         global _symrefs
@@ -191,10 +284,10 @@ class Symlink(File):
 
 class FakeSymlink(Symlink):
     def __init__(self, parent, name, toname):
-        Symlink.__init__(self, parent, name, EMPTY_SHA)
+        Symlink.__init__(self, parent, name, EMPTY_SHA, git.BUP_NORMAL)
         self.toname = toname
         
-    def _content(self):
+    def readlink(self):
         return self.toname
     
 
@@ -217,9 +310,9 @@ class Dir(Node):
             if stat.S_ISDIR(mode):
                 self._subs[name] = Dir(self, name, mode, sha)
             elif stat.S_ISLNK(mode):
-                self._subs[name] = Symlink(self, name, sha)
+                self._subs[name] = Symlink(self, name, sha, bupmode)
             else:
-                self._subs[name] = File(self, name, mode, sha)
+                self._subs[name] = File(self, name, mode, sha, bupmode)
                 
 
 class CommitList(Node):

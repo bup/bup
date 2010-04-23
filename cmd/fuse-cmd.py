@@ -93,7 +93,9 @@ class BupFs(fuse.Fuse):
     def read(self, path, size, offset):
         log('--read(%r)\n' % path)
         n = cache_get(self.top, path)
-        return n.readbytes(offset, size)
+        o = n.open()
+        o.seek(offset)
+        return o.read(size)
 
 
 if not hasattr(fuse, '__version__'):
