@@ -1,7 +1,13 @@
 #!/usr/bin/env python
-import sys, os, stat, errno, fuse, re, time, tempfile
+import sys, os, stat, errno, re, time, tempfile
 from bup import options, git, vfs
 from bup.helpers import *
+try:
+    import fuse
+except ImportError:
+    log('bup: error: The python "fuse" module is missing.\n' +
+        'To use bup fuse, first install the python-fuse package.\n')
+    sys.exit(1)
 
 
 class Stat(fuse.Stat):
