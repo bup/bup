@@ -19,8 +19,11 @@ endif
 
 default: all
 
-all: cmds bup lib/bup/_hashsplit$(SOEXT) \
-	Documentation/all
+all: bup Documentation/all
+
+bup: lib/bup/_version.py lib/bup/_hashsplit$(SOEXT) cmds
+
+Documentation/all: bup
 
 INSTALL=install
 MANDIR=$(DESTDIR)/usr/share/man
@@ -54,6 +57,12 @@ lib/bup/_hashsplit$(SOEXT): lib/bup/_hashsplit.c lib/bup/csetup.py
 	@rm -f $@
 	cd lib/bup && python csetup.py build
 	cp lib/bup/build/*/_hashsplit$(SOEXT) lib/bup/
+
+.PHONY: lib/bup/_version.py
+lib/bup/_version.py:
+	rm -f $@ $@.new
+	./format-subst.pl $@.pre >$@.new
+	mv $@.new $@
 	
 runtests: all runtests-python runtests-cmdline
 
@@ -95,7 +104,7 @@ bup-%: cmd-%.sh
 
 clean: Documentation/clean
 	rm -f *.o *.so */*/*.so *.dll *.exe .*~ *~ */*~ */*/*~ \
-		*.pyc */*.pyc */*/*.pyc\
-		bup bup-* cmd/bup-* randomgen memtest \
+		*.pyc */*.pyc */*/*.pyc \
+		bup bup-* cmd/bup-* lib/bup/_version.py randomgen memtest \
 		out[12] out2[tc] tags[12] tags2[tc]
 	rm -rf *.tmp build lib/bup/build

@@ -5,8 +5,8 @@ PANDOC:=$(shell \
 		echo "Warning: pandoc not installed; can't generate manpages." >&2; \
 		echo '@echo Skipping: pandoc'; \
 	fi)
-BUP_VERSION=$(shell git describe --match 'bup-*' | sed 's/^bup-//')
-BUP_DATE=$(shell git log --no-walk --pretty='%ci%n' | (read x y && echo $$x))
+BUP_VERSION:=$(shell ../bup version --tag)
+BUP_DATE:=$(shell ../bup version --date)
 
 default: all
 

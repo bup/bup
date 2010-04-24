@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-
 import sys, os, subprocess, signal, getopt
 
 argv = sys.argv
@@ -65,7 +64,8 @@ if len(argv) < 2:
 
 # Handle global options.
 try:
-    global_args, subcmd = getopt.getopt(argv[1:], '?d:', ['help', 'bup-dir='])
+    global_args, subcmd = getopt.getopt(argv[1:], '?Vd:',
+                                        ['help', 'version', 'bup-dir='])
 except getopt.GetoptError, ex:
     log('error: ' + ex.msg + '\n')
     usage()
@@ -76,6 +76,8 @@ dest_dir = None
 for opt in global_args:
     if opt[0] == '-?' or opt[0] == '--help':
         help_requested = True
+    if opt[0] == '-V' or opt[0] == '--version':
+        subcmd = ['version']
     elif opt[0] == '-d' or opt[0] == '--bup-dir':
         dest_dir = opt[1]
     else:
