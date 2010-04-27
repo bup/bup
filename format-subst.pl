@@ -19,7 +19,7 @@ while (<>) {
     s{ 
 	\$Format:([^\$].*)\$
     }{
-	fix(`git log -1 --format="$1"`)
+	fix(`git log -1 --pretty=format:"$1"`)
     }ex;
     print;
 }
