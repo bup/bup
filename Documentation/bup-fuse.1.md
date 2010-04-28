@@ -8,7 +8,7 @@ bup fuse - mount a bup repository as a filesystem
 
 # SYNOPSIS
 
-bup fuse [-d] [-f] <mountpoint>
+bup fuse [-d] [-f] [-o] <mountpoint>
 
 # DESCRIPTION
 
@@ -33,6 +33,9 @@ by all users.
 :   run in the foreground and exit only when the filesystem
     is unmounted.
 
+-o, --allow-other
+:   permit other users to access the filesystem. Necessary for
+    exporting the filesystem via Samba, for example.
 
 # EXAMPLE
 

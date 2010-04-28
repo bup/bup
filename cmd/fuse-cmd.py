@@ -114,6 +114,7 @@ bup fuse [-d] [-f] <mountpoint>
 --
 d,debug   increase debug level
 f,foreground  run in foreground
+o,allow-other allow other users to access the filesystem
 """
 o = options.Options('bup fuse', optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
@@ -131,6 +132,7 @@ if opt.foreground:
     f.fuse_args.setmod('foreground')
 print f.multithreaded
 f.multithreaded = False
-f.fuse_args.add('allow_other')
+if opt.allow_other:
+    f.fuse_args.add('allow_other')
 
 f.main()
