@@ -4,7 +4,7 @@
 
 # NAME
 
-bup help - open the documentation for a given bup command
+bup-help - open the documentation for a given bup command
 
 # SYNOPSIS
 

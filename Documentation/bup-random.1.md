@@ -4,7 +4,7 @@
 
 # NAME
 
-bup random - generate a stream of random output
+bup-random - generate a stream of random output
 
 # SYNOPSIS
 

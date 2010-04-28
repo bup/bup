@@ -4,7 +4,7 @@
 
 # NAME
 
-bup save - create a new bup backup set
+bup-save - create a new bup backup set
 
 # SYNOPSIS
 

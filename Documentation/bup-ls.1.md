@@ -4,7 +4,7 @@
 
 # NAME
 
-bup ls - list the contents of a bup repository
+bup-ls - list the contents of a bup repository
 
 # SYNOPSIS
 

@@ -4,7 +4,7 @@
 
 # NAME
 
-bup index - print and/or update the bup filesystem index
+bup-index - print and/or update the bup filesystem index
 
 # SYNOPSIS
 

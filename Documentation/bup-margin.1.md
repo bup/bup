@@ -4,7 +4,7 @@
 
 # NAME
 
-bup margin - figure out your deduplication safety margin
+bup-margin - figure out your deduplication safety margin
 
 # SYNOPSIS
 

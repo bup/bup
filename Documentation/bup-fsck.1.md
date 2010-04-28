@@ -4,7 +4,7 @@
 
 # NAME
 
-bup fsck - verify or repair a bup repository
+bup-fsck - verify or repair a bup repository
 
 # SYNOPSIS
 

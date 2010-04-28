@@ -4,7 +4,7 @@
 
 # NAME
 
-bup damage - randomly destroy blocks of a file
+bup-damage - randomly destroy blocks of a file
 
 # SYNOPSIS
 

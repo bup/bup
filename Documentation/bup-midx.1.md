@@ -4,7 +4,7 @@
 
 # NAME
 
-bup midx - create a multi-index (.midx) file from several .idx files
+bup-midx - create a multi-index (.midx) file from several .idx files
 
 # SYNOPSIS
 

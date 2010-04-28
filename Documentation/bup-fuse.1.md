@@ -4,7 +4,7 @@
 
 # NAME
 
-bup fuse - mount a bup repository as a filesystem
+bup-fuse - mount a bup repository as a filesystem
 
 # SYNOPSIS
 

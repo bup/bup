@@ -4,7 +4,7 @@
 
 # NAME
 
-bup memtest - test bup memory usage statistics
+bup-memtest - test bup memory usage statistics
 
 # SYNOPSIS
 

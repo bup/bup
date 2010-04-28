@@ -4,7 +4,7 @@
 
 # NAME
 
-bup drecurse - recursively list files in your filesystem
+bup-drecurse - recursively list files in your filesystem
 
 # SYNOPSIS
 

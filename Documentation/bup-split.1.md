@@ -4,7 +4,7 @@
 
 # NAME
 
-bup split - save individual files to bup backup sets
+bup-split - save individual files to bup backup sets
 
 # SYNOPSIS
 

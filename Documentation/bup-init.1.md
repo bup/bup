@@ -4,7 +4,7 @@
 
 # NAME
 
-bup init - initialize a bup repository
+bup-init - initialize a bup repository
 
 # SYNOPSIS
 

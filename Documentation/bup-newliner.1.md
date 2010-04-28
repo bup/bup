@@ -4,7 +4,7 @@
 
 # NAME
 
-bup newliner - make sure progress messages don't overlap with output
+bup-newliner - make sure progress messages don't overlap with output
 
 # SYNOPSIS
 

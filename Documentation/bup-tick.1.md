@@ -4,7 +4,7 @@
 
 # NAME
 
-bup tick - wait for up to one second
+bup-tick - wait for up to one second
 
 # SYNOPSIS
 

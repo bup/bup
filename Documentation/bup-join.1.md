@@ -4,7 +4,7 @@
 
 # NAME
 
-bup join - concatenate files from a bup repository
+bup-join - concatenate files from a bup repository
 
 # SYNOPSIS
 

@@ -4,7 +4,7 @@
 
 # NAME
 
-bup ftp - ftp-like client for navigating bup repositories
+bup-ftp - ftp-like client for navigating bup repositories
 
 # SYNOPSIS
 
