@@ -8,7 +8,7 @@ bup fuse - mount a bup repository as a filesystem
 
 # SYNOPSIS
 
-bup fuse [-d] [-f] [-o] <mountpoint>
+bup fuse [-d] [-f] [-o] \<mountpoint\>
 
 # DESCRIPTION
 

@@ -8,11 +8,11 @@ bup help - open the documentation for a given bup command
 
 # SYNOPSIS
 
-bup help <command>
+bup help \<command\>
 
 # DESCRIPTION
 
-`bup help <command>` opens the documentation for the given command. 
+`bup help <command>` opens the documentation for the given command.
 This is currently equivalent to typing `man bup-<command>`.
 
 

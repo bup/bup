@@ -8,7 +8,7 @@ bup drecurse - recursively list files in your filesystem
 
 # SYNOPSIS
 
-bup drecurse [-x] [-q] [--profile] <path>
+bup drecurse [-x] [-q] [--profile] \<path\>
 
 # DESCRIPTION
 
