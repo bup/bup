@@ -207,21 +207,21 @@ def slashappend(s):
         return s
 
 
-def _mmap_do(f, len, flags, prot):
-    if not len:
+def _mmap_do(f, sz, flags, prot):
+    if not sz:
         st = os.fstat(f.fileno())
-        len = st.st_size
-    map = mmap.mmap(f.fileno(), len, flags, prot)
+        sz = st.st_size
+    map = mmap.mmap(f.fileno(), sz, flags, prot)
     f.close()  # map will persist beyond file close
     return map
 
 
-def mmap_read(f, len = 0):
-    return _mmap_do(f, len, mmap.MAP_PRIVATE, mmap.PROT_READ)
+def mmap_read(f, sz = 0):
+    return _mmap_do(f, sz, mmap.MAP_PRIVATE, mmap.PROT_READ)
 
 
-def mmap_readwrite(f, len = 0):
-    return _mmap_do(f, len, mmap.MAP_SHARED, mmap.PROT_READ|mmap.PROT_WRITE)
+def mmap_readwrite(f, sz = 0):
+    return _mmap_do(f, sz, mmap.MAP_SHARED, mmap.PROT_READ|mmap.PROT_WRITE)
 
 
 def parse_num(s):
