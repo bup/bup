@@ -1,7 +1,14 @@
 #!/usr/bin/env python
-import sys, os, re, stat, readline, fnmatch
+import sys, os, re, stat, fnmatch
 from bup import options, git, shquote, vfs
 from bup.helpers import *
+
+try:
+    import readline
+except ImportError:
+    log('* readline module not available: line editing disabled.\n')
+    readline = None
+
 
 def node_name(text, n):
     if stat.S_ISDIR(n.mode):
@@ -89,9 +96,10 @@ pwd = top
 if extra:
     lines = extra
 else:
-    readline.set_completer_delims(' \t\n\r/')
-    readline.set_completer(completer)
-    readline.parse_and_bind("tab: complete")
+    if readline:
+        readline.set_completer_delims(' \t\n\r/')
+        readline.set_completer(completer)
+        readline.parse_and_bind("tab: complete")
     lines = inputiter()
 
 for line in lines:
