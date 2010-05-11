@@ -495,7 +495,7 @@ class PackWriter:
 
 
 def _git_date(date):
-    return time.strftime('%s %z', time.localtime(date))
+    return '%d %s' % (date, time.strftime('%z', time.localtime(date)))
 
 
 def _gitenv():
