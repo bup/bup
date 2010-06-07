@@ -1,11 +1,36 @@
-import re, struct, errno, select
+import re, struct, errno, select, time
 from bup import git, ssh
 from bup.helpers import *
+
+bwlimit = None
 
 
 class ClientError(Exception):
     pass
 
+
+def _raw_write_bwlimit(f, buf, bwcount, bwtime):
+    if not bwlimit:
+        f.write(buf)
+        return (len(buf), time.time())
+    else:
+        # We want to write in reasonably large blocks, but not so large that
+        # they're likely to overflow a router's queue.  So our bwlimit timing
+        # has to be pretty granular.  Also, if it takes too long from one
+        # transmit to the next, we can't just make up for lost time to bring
+        # the average back up to bwlimit - that will risk overflowing the
+        # outbound queue, which defeats the purpose.  So if we fall behind
+        # by more than one block delay, we shouldn't ever try to catch up.
+        for i in xrange(0,len(buf),4096):
+            now = time.time()
+            next = max(now, bwtime + 1.0*bwcount/bwlimit)
+            time.sleep(next-now)
+            sub = buf[i:i+4096]
+            f.write(sub)
+            bwcount = len(sub)  # might be less than 4096
+            bwtime = next
+        return (bwcount, bwtime)
+                       
 
 class Client:
     def __init__(self, remote, create=False):
@@ -208,6 +233,8 @@ class PackWriter_Remote(git.PackWriter):
         self.onclose = onclose
         self.ensure_busy = ensure_busy
         self._packopen = False
+        self._bwcount = 0
+        self._bwtime = time.time()
 
     def _open(self):
         if not self._packopen:
@@ -251,7 +278,9 @@ class PackWriter_Remote(git.PackWriter):
             self.ensure_busy()
         data = ''.join(datalist)
         assert(len(data))
-        self.file.write(struct.pack('!I', len(data)) + data)
+        outbuf = struct.pack('!I', len(data)) + data
+        (self._bwcount, self._bwtime) = \
+            _raw_write_bwlimit(self.file, outbuf, self._bwcount, self._bwtime)
         self.outbytes += len(data)
         self.count += 1
 

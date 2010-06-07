@@ -14,6 +14,7 @@ n,name=    name of backup set to update (if any)
 v,verbose  increase log output (can be used more than once)
 q,quiet    don't show progress meter
 smaller=   only back up files smaller than n bytes
+bwlimit=   maximum bytes/sec to transmit to server
 """
 o = options.Options('bup save', optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
@@ -26,6 +27,8 @@ if not extra:
 
 opt.progress = (istty and not opt.quiet)
 opt.smaller = parse_num(opt.smaller or 0)
+if opt.bwlimit:
+    client.bwlimit = parse_num(opt.bwlimit)
 
 is_reverse = os.environ.get('BUP_SERVER_REVERSE')
 if is_reverse and opt.remote:

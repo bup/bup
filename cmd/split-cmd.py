@@ -20,7 +20,8 @@ copy       just copy input to output, hashsplitting along the way
 bench      print benchmark timings to stderr
 max-pack-size=  maximum bytes in a single pack
 max-pack-objects=  maximum number of objects in a single pack
-fanout=  maximum number of blobs in a single tree
+fanout=    maximum number of blobs in a single tree
+bwlimit=   maximum bytes/sec to transmit to server
 """
 o = options.Options('bup split', optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
@@ -44,6 +45,8 @@ if opt.fanout:
     hashsplit.fanout = parse_num(opt.fanout)
 if opt.blobs:
     hashsplit.fanout = 0
+if opt.bwlimit:
+    client.bwlimit = parse_num(opt.bwlimit)
 
 is_reverse = os.environ.get('BUP_SERVER_REVERSE')
 if is_reverse and opt.remote:
