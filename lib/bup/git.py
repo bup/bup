@@ -1,3 +1,7 @@
+"""Git interaction library.
+bup repositories are in Git format. This library allows us to
+interact with the Git data structures.
+"""
 import os, errno, zlib, time, subprocess, struct, stat, re, tempfile
 import heapq
 from bup.helpers import *
@@ -16,16 +20,25 @@ class GitError(Exception):
 
 
 def repo(sub = ''):
+    """Get the path to the git repository or one of its subdirectories."""
     global repodir
     if not repodir:
         raise GitError('You should call check_repo_or_die()')
+
+    # If there's a .git subdirectory, then the actual repo is in there.
     gd = os.path.join(repodir, '.git')
     if os.path.exists(gd):
         repodir = gd
+
     return os.path.join(repodir, sub)
 
 
 def mangle_name(name, mode, gitmode):
+    """Mangle a file name to present an abstract name for segmented files.
+    Mangled file names will have the ".bup" extension added to them. If a
+    file's name already ends with ".bup", a ".bupl" extension is added to
+    disambiguate normal files from semgmented ones.
+    """
     if stat.S_ISREG(mode) and not stat.S_ISREG(gitmode):
         return name + '.bup'
     elif name.endswith('.bup') or name[:-1].endswith('.bup'):
@@ -36,6 +49,16 @@ def mangle_name(name, mode, gitmode):
 
 (BUP_NORMAL, BUP_CHUNKED) = (0,1)
 def demangle_name(name):
+    """Remove name mangling from a file name, if necessary.
+
+    The return value is a tuple (demangled_filename,mode), where mode is one of
+    the following:
+
+    * BUP_NORMAL  : files that should be read as-is from the repository
+    * BUP_CHUNKED : files that were chunked and need to be assembled
+
+    For more information on the name mangling algorythm, see mangle_name()
+    """
     if name.endswith('.bupl'):
         return (name[:-5], BUP_NORMAL)
     elif name.endswith('.bup'):
@@ -101,6 +124,7 @@ def _decode_packobj(buf):
 
 
 class PackIdx:
+    """Object representation of a Git pack index file."""
     def __init__(self, filename):
         self.name = filename
         self.map = mmap_read(open(filename))
@@ -142,12 +166,14 @@ class PackIdx:
         return None
         
     def find_offset(self, hash):
+        """Get the offset of an object inside the index file."""
         idx = self._idx_from_hash(hash)
         if idx != None:
             return self._ofs_from_idx(idx)
         return None
 
     def exists(self, hash):
+        """Return nonempty if the object exists in this index."""
         return hash and (self._idx_from_hash(hash) != None) and True or None
 
     def __iter__(self):
@@ -158,14 +184,20 @@ class PackIdx:
         return int(self.fanout[255])
 
 
-def extract_bits(buf, bits):
-    mask = (1<<bits) - 1
+def extract_bits(buf, nbits):
+    """Take the first 'nbits' bits from 'buf' and return them as an integer."""
+    mask = (1<<nbits) - 1
     v = struct.unpack('!I', buf[0:4])[0]
-    v = (v >> (32-bits)) & mask
+    v = (v >> (32-nbits)) & mask
     return v
 
 
 class PackMidx:
+    """Wrapper which contains data from multiple index files.
+    Multiple index (.midx) files constitute a wrapper around index (.idx) files
+    and make it possible for bup to expand Git's indexing capabilities to vast
+    amounts of files.
+    """
     def __init__(self, filename):
         self.name = filename
         assert(filename.endswith('.midx'))
@@ -193,6 +225,7 @@ class PackMidx:
         return struct.unpack('!I', s)[0]
     
     def exists(self, hash):
+        """Return nonempty if the object exists in the index files."""
         want = str(hash)
         el = extract_bits(want, self.bits)
         if el:
@@ -239,6 +272,7 @@ class PackIdxList:
         return iter(idxmerge(self.packs))
 
     def exists(self, hash):
+        """Return nonempty if the object exists in the index files."""
         if hash in self.also:
             return True
         for i in range(len(self.packs)):
@@ -250,6 +284,17 @@ class PackIdxList:
         return None
 
     def refresh(self, skip_midx = False):
+        """Refresh the index list.
+        This method verifies if .midx files were superseded (e.g. all of its
+        contents are in another, bigger .midx file) and removes the superseded
+        files.
+
+        If skip_midx is True, all work on .midx files will be skipped and .midx
+        files will be removed from the list.
+
+        The module-global variable 'ignore_midx' can force this function to
+        always act as if skip_midx was True.
+        """
         skip_midx = skip_midx or ignore_midx
         d = dict((p.name, p) for p in self.packs
                  if not skip_midx or not isinstance(p, PackMidx))
@@ -299,13 +344,16 @@ class PackIdxList:
             % (len(self.packs), len(self.packs)!=1 and 'es' or ''))
 
     def add(self, hash):
+        """Insert an additional object in the list."""
         self.also[hash] = 1
 
     def zap_also(self):
+        """Remove all additional objects from the list."""
         self.also = {}
 
 
 def calc_hash(type, content):
+    """Calculate some content's hash in the Git fashion."""
     header = '%s %d\0' % (type, len(content))
     sum = Sha1(header)
     sum.update(content)
@@ -321,6 +369,7 @@ def _shalist_sort_key(ent):
 
 
 def idxmerge(idxlist):
+    """Generate a list of all the objects reachable in a PackIdxList."""
     total = sum(len(i) for i in idxlist)
     iters = (iter(i) for i in idxlist)
     heap = [(next(it), it) for it in iters]
@@ -345,6 +394,7 @@ def idxmerge(idxlist):
 
     
 class PackWriter:
+    """Writes Git objects insid a pack file."""
     def __init__(self, objcache_maker=None):
         self.count = 0
         self.outbytes = 0
@@ -392,19 +442,23 @@ class PackWriter:
         return bin
 
     def breakpoint(self):
+        """Clear byte and object counts and return the last processed id."""
         id = self._end()
         self.outbytes = self.count = 0
         return id
 
     def write(self, type, content):
+        """Write an object in this pack file."""
         return self._write(calc_hash(type, content), type, content)
 
     def exists(self, id):
+        """Return non-empty if an object is found in the object cache."""
         if not self.objcache:
             self._make_objcache()
         return self.objcache.exists(id)
 
     def maybe_write(self, type, content):
+        """Write an object to the pack file if not present and return its id."""
         bin = calc_hash(type, content)
         if not self.exists(bin):
             self._write(bin, type, content)
@@ -412,9 +466,11 @@ class PackWriter:
         return bin
 
     def new_blob(self, blob):
+        """Create a blob object in the pack with the supplied content."""
         return self.maybe_write('blob', blob)
 
     def new_tree(self, shalist):
+        """Create a tree object in the pack."""
         shalist = sorted(shalist, key = _shalist_sort_key)
         l = []
         for (mode,name,bin) in shalist:
@@ -437,6 +493,7 @@ class PackWriter:
         return self.maybe_write('commit', '\n'.join(l))
 
     def new_commit(self, parent, tree, msg):
+        """Create a commit object in the pack."""
         now = time.time()
         userline = '%s <%s@%s>' % (userfullname(), username(), hostname())
         commit = self._new_commit(tree, parent,
@@ -445,6 +502,7 @@ class PackWriter:
         return commit
 
     def abort(self):
+        """Remove the pack file from disk."""
         f = self.file
         if f:
             self.file = None
@@ -491,6 +549,7 @@ class PackWriter:
         return nameprefix
 
     def close(self):
+        """Close the pack file and move it to its definitive path."""
         return self._end()
 
 
@@ -503,6 +562,9 @@ def _gitenv():
 
 
 def list_refs(refname = None):
+    """Generate a list of tuples in the form (refname,hash).
+    If a ref name is specified, list only this particular ref.
+    """
     argv = ['git', 'show-ref', '--']
     if refname:
         argv += [refname]
@@ -518,6 +580,7 @@ def list_refs(refname = None):
 
 
 def read_ref(refname):
+    """Get the commit id of the most recent commit made on a given ref."""
     l = list(list_refs(refname))
     if l:
         assert(len(l) == 1)
@@ -527,6 +590,15 @@ def read_ref(refname):
 
 
 def rev_list(ref, count=None):
+    """Generate a list of reachable commits in reverse chronological order.
+
+    This generator walks through commits, from child to parent, that are
+    reachable via the specified ref and yields a series of tuples of the form
+    (date,hash).
+
+    If count is a non-zero integer, limit the number of commits to "count"
+    objects.
+    """
     assert(not ref.startswith('-'))
     opts = []
     if count:
@@ -547,12 +619,14 @@ def rev_list(ref, count=None):
 
 
 def rev_get_date(ref):
+    """Get the date of the latest commit on the specified ref."""
     for (date, commit) in rev_list(ref, count=1):
         return date
     raise GitError, 'no such commit %r' % ref
 
 
 def update_ref(refname, newval, oldval):
+    """Change the commit pointed to by a branch."""
     if not oldval:
         oldval = ''
     assert(refname.startswith('refs/heads/'))
@@ -563,6 +637,12 @@ def update_ref(refname, newval, oldval):
 
 
 def guess_repo(path=None):
+    """Set the path value in the global variable "repodir".
+    This makes bup look for an existing bup repository, but not fail if a
+    repository doesn't exist. Usually, if you are interacting with a bup
+    repository, you would not be calling this function but using
+    check_repo_or_die().
+    """
     global repodir
     if path:
         repodir = path
@@ -573,6 +653,7 @@ def guess_repo(path=None):
 
 
 def init_repo(path=None):
+    """Create the Git bare repository for bup in a given path."""
     guess_repo(path)
     d = repo()
     if os.path.exists(d) and not os.path.isdir(os.path.join(d, '.')):
@@ -580,12 +661,18 @@ def init_repo(path=None):
     p = subprocess.Popen(['git', '--bare', 'init'], stdout=sys.stderr,
                          preexec_fn = _gitenv)
     _git_wait('git init', p)
+    # Force the index version configuration in order to ensure bup works
+    # regardless of the version of the installed Git binary.
     p = subprocess.Popen(['git', 'config', 'pack.indexVersion', '2'],
                          stdout=sys.stderr, preexec_fn = _gitenv)
     _git_wait('git config', p)
 
 
 def check_repo_or_die(path=None):
+    """Make sure a bup repository exists, and abort if not.
+    If the path to a particular repository was not specified, this function
+    initializes the default repository automatically.
+    """
     guess_repo(path)
     if not os.path.isdir(repo('objects/pack/.')):
         if repodir == home_repodir:
@@ -609,6 +696,14 @@ def _treeparse(buf):
 
 _ver = None
 def ver():
+    """Get Git's version and ensure a usable version is installed.
+
+    The returned version is formatted as an ordered tuple with each position
+    representing a digit in the version tag. For example, the following tuple
+    would represent version 1.6.6.9:
+
+        ('1', '6', '6', '9')
+    """
     global _ver
     if not _ver:
         p = subprocess.Popen(['git', '--version'],
@@ -639,7 +734,7 @@ def _git_capture(argv):
     return r
 
 
-class AbortableIter:
+class _AbortableIter:
     def __init__(self, it, onabort = None):
         self.it = it
         self.onabort = onabort
@@ -659,6 +754,7 @@ class AbortableIter:
             raise
 
     def abort(self):
+        """Abort iteration and call the abortion callback, if needed."""
         if not self.done:
             self.done = True
             if self.onabort:
@@ -670,6 +766,7 @@ class AbortableIter:
 
 _ver_warned = 0
 class CatPipe:
+    """Link to 'git cat-file' that is used to retrieve blob data."""
     def __init__(self):
         global _ver_warned
         wanted = ('1','5','6')
@@ -719,7 +816,7 @@ class CatPipe:
             raise GitError('expected blob, got %r' % spl)
         (hex, type, size) = spl
 
-        it = AbortableIter(chunkyreader(self.p.stdout, int(spl[2])),
+        it = _AbortableIter(chunkyreader(self.p.stdout, int(spl[2])),
                            onabort = self._abort)
         try:
             yield type
@@ -765,6 +862,11 @@ class CatPipe:
                            % type)
 
     def join(self, id):
+        """Generate a list of the content of all blobs that can be reached
+        from an object.  The hash given in 'id' must point to a blob, a tree
+        or a commit. The content of all blobs that can be seen from trees or
+        commits will be added to the list.
+        """
         try:
             for d in self._join(self.get(id)):
                 yield d
