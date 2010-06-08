@@ -17,6 +17,10 @@ all = ''
 while 1:
     l = r.split(all, 1)
     if len(l) <= 1:
+        if len(all) >= 160:
+            sys.stdout.write('%s\n' % all[:78])
+            sys.stdout.flush()
+            all = all[78:]
         try:
             b = os.read(sys.stdin.fileno(), 4096)
         except KeyboardInterrupt:
