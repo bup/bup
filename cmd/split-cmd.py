@@ -26,6 +26,7 @@ bwlimit=   maximum bytes/sec to transmit to server
 o = options.Options('bup split', optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
 
+handle_ctrl_c()
 git.check_repo_or_die()
 if not (opt.blobs or opt.tree or opt.commit or opt.name or
         opt.noop or opt.copy):

@@ -17,6 +17,8 @@ if len(extra) != 1:
 
 total = parse_num(extra[0])
 
+handle_ctrl_c()
+
 if opt.force or (not os.isatty(1) and
                  not atoi(os.environ.get('BUP_FORCE_TTY')) & 1):
     _hashsplit.write_random(sys.stdout.fileno(), total, opt.seed or 0)
