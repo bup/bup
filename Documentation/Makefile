@@ -1,9 +1,11 @@
 PANDOC:=$(shell \
 	if pandoc </dev/null 2>/dev/null; then \
 		echo pandoc; \
+		touch .docs-available; \
 	else \
 		echo "Warning: pandoc not installed; can't generate manpages." >&2; \
 		echo '@echo Skipping: pandoc'; \
+		rm -f .docs-available; \
 	fi)
 BUP_VERSION:=$(shell ../bup version --tag)
 BUP_DATE:=$(shell ../bup version --date)
@@ -30,4 +32,4 @@ html: $(patsubst %.1.md,%.html,$(wildcard *.md))
 	mv $@.new $@
 
 clean:
-	rm -f *~ .*~ *.[0-9] *.new *.tmp *.html
+	rm -f *~ .*~ *.[0-9] *.new *.tmp *.html .docs-available

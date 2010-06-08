@@ -33,10 +33,12 @@ LIBDIR=$(DESTDIR)/usr/lib/bup
 install: all
 	$(INSTALL) -d $(MANDIR)/man1 $(DOCDIR) $(BINDIR) \
 		$(LIBDIR)/bup $(LIBDIR)/cmd
-	$(INSTALL) -o 0 -g 0 -m 0644 \
+	[ ! -e Documentation/.docs-available ] || \
+	  $(INSTALL) -o 0 -g 0 -m 0644 \
 		$(wildcard Documentation/*.1) \
 		$(MANDIR)/man1
-	$(INSTALL) -o 0 -g 0 -m 0644 \
+	[ ! -e Documentation/.docs-available ] || \
+	  $(INSTALL) -o 0 -g 0 -m 0644 \
 		$(wildcard Documentation/*.html) \
 		$(DOCDIR)
 	$(INSTALL) -o 0 -g 0 -m 0755 bup $(BINDIR)
