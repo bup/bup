@@ -124,6 +124,18 @@ static PyObject *write_random(PyObject *self, PyObject *args)
 	    fprintf(stderr, "Random: %lld Mbytes\r", kbytes/1024);
     }
     
+    // handle non-multiples of 1024
+    if (len % 1024)
+    {
+	int i;
+	for (i = 0; i < sizeof(buf)/sizeof(buf[0]); i++)
+	    buf[i] = random();
+	ret = write(fd, buf, len % 1024);
+	if (ret < 0)
+	    ret = 0;
+	written += ret;
+    }
+    
     if (kbytes/1024 > 0)
 	fprintf(stderr, "Random: %lld Mbytes, done.\n", kbytes/1024);
     return Py_BuildValue("L", written);
