@@ -164,7 +164,7 @@ class PackIdx:
             else: # got it!
                 return mid
         return None
-        
+
     def find_offset(self, hash):
         """Get the offset of an object inside the index file."""
         idx = self._idx_from_hash(hash)
@@ -223,7 +223,7 @@ class PackMidx:
         start = i*4
         s = self.fanout[start:start+4]
         return struct.unpack('!I', s)[0]
-    
+
     def exists(self, hash):
         """Return nonempty if the object exists in the index files."""
         want = str(hash)
@@ -243,11 +243,11 @@ class PackMidx:
             else: # got it!
                 return True
         return None
-    
+
     def __iter__(self):
         for i in xrange(self._fanget(self.entries-1)):
             yield buffer(self.shalist, i*20, 20)
-    
+
     def __len__(self):
         return int(self._fanget(self.entries-1))
 
@@ -331,7 +331,7 @@ class PackIdxList:
                             any += 1
                             break
                     if not any:
-                        log('midx: removing redundant: %s\n' 
+                        log('midx: removing redundant: %s\n'
                             % os.path.basename(ix.name))
                         unlink(ix.name)
             for f in os.listdir(self.dir):
@@ -340,7 +340,7 @@ class PackIdxList:
                     ix = PackIdx(full)
                     d[full] = ix
             self.packs = list(set(d.values()))
-        log('PackIdxList: using %d index%s.\n' 
+        log('PackIdxList: using %d index%s.\n'
             % (len(self.packs), len(self.packs)!=1 and 'es' or ''))
 
     def add(self, hash):
@@ -392,7 +392,7 @@ def idxmerge(idxlist):
             heapq.heappop(heap)
     log('Reading indexes: %.2f%% (%d/%d), done.\n' % (100, total, total))
 
-    
+
 class PackWriter:
     """Writes Git objects insid a pack file."""
     def __init__(self, objcache_maker=None):
@@ -529,7 +529,7 @@ class PackWriter:
             sum.update(b)
             if not b: break
         f.write(sum.digest())
-        
+
         f.close()
 
         p = subprocess.Popen(['git', 'index-pack', '-v',
@@ -742,7 +742,7 @@ class _AbortableIter:
 
     def __iter__(self):
         return self
-        
+
     def next(self):
         try:
             return self.it.next()
@@ -759,7 +759,7 @@ class _AbortableIter:
             self.done = True
             if self.onabort:
                 self.onabort()
-        
+
     def __del__(self):
         self.abort()
 
@@ -790,7 +790,7 @@ class CatPipe:
     def _restart(self):
         self._abort()
         self.p = subprocess.Popen(['git', 'cat-file', '--batch'],
-                                  stdin=subprocess.PIPE, 
+                                  stdin=subprocess.PIPE,
                                   stdout=subprocess.PIPE,
                                   preexec_fn = _gitenv)
 
@@ -800,7 +800,7 @@ class CatPipe:
         assert(self.p)
         assert(self.p.poll() == None)
         if self.inprogress:
-            log('_fast_get: opening %r while %r is open' 
+            log('_fast_get: opening %r while %r is open'
                 % (id, self.inprogress))
         assert(not self.inprogress)
         assert(id.find('\n') < 0)
@@ -872,7 +872,7 @@ class CatPipe:
                 yield d
         except StopIteration:
             log('booger!\n')
-        
+
 
 def cat(id):
     c = CatPipe()
