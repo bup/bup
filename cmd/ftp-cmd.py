@@ -125,6 +125,7 @@ git.check_repo_or_die()
 
 top = vfs.RefList(None)
 pwd = top
+rv = 0
 
 if extra:
     lines = extra
@@ -156,6 +157,7 @@ for line in lines:
                 write_to_file(pwd.resolve(parm).open(), sys.stdout)
         elif cmd == 'get':
             if len(words) not in [2,3]:
+                rv = 1
                 raise Exception('Usage: get <filename> [localname]')
             rname = words[1]
             (dir,base) = os.path.split(rname)
@@ -175,13 +177,18 @@ for line in lines:
                             write_to_file(inf, outf)
                             outf.close()
                         except Exception, e:
+                            rv = 1
                             log('  error: %s\n' % e)
         elif cmd == 'help' or cmd == '?':
             log('Commands: ls cd pwd cat get mget help quit\n')
         elif cmd == 'quit' or cmd == 'exit' or cmd == 'bye':
             break
         else:
+            rv = 1
             raise Exception('no such command %r' % cmd)
     except Exception, e:
+        rv = 1
         log('error: %s\n' % e)
         #raise
+
+sys.exit(rv)

@@ -88,7 +88,7 @@ class _ChunkReader:
             self.blob = None
         else:
             self.it = None
-            self.blob = cp().get(hash.encode('hex'))
+            self.blob = ''.join(cp().join(hash.encode('hex')))[startofs:]
 
     def next(self, size):
         out = ''

@@ -26,8 +26,10 @@ WVFAIL [ -e $D.fake ]
 WVFAIL bup index --check -u $D.fake
 WVPASS bup index --check -u $D
 WVPASSEQ "$(bup index --check -p $D)" "$D/"
-touch $D/a $D/b $D/f
+touch $D/a
+bup random 128k >$D/b
 mkdir $D/d $D/d/e
+bup random 512 >$D/f
 WVPASSEQ "$(bup index -s $D/)" "A $D/"
 WVPASSEQ "$(bup index -s $D/b)" ""
 WVPASSEQ "$(bup index --check -us $D/b)" "A $D/b"
@@ -160,6 +162,14 @@ WVSTART "save/git-fsck"
 	  wc -l)
     WVPASS [ "$n" -eq 0 ]
 ) || exit 1
+
+WVSTART "ftp"
+WVPASS bup ftp "cat /master/latest/$TOP/$D/b" >$D/b.new
+WVPASS bup ftp "cat /master/latest/$TOP/$D/f" >$D/f.new
+WVPASS bup ftp "cat /master/latest/$TOP/$D/a" >$D/a.new
+WVPASSEQ "$(sha1sum <$D/b)" "$(sha1sum <$D/b.new)"
+WVPASSEQ "$(sha1sum <$D/f)" "$(sha1sum <$D/f.new)"
+WVPASSEQ "$(sha1sum <$D/a)" "$(sha1sum <$D/a.new)"
 
 WVSTART "fsck"
 WVPASS bup fsck
