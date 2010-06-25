@@ -26,6 +26,7 @@ bup: lib/bup/_version.py lib/bup/_hashsplit$(SOEXT) cmds
 Documentation/all: bup
 
 INSTALL=install
+PYTHON=python
 MANDIR=$(DESTDIR)/usr/share/man
 DOCDIR=$(DESTDIR)/usr/share/doc/bup
 BINDIR=$(DESTDIR)/usr/bin
@@ -57,7 +58,7 @@ install: all
 
 lib/bup/_hashsplit$(SOEXT): lib/bup/_hashsplit.c lib/bup/csetup.py
 	@rm -f $@
-	cd lib/bup && python csetup.py build
+	cd lib/bup && $(PYTHON) csetup.py build
 	cp lib/bup/build/*/_hashsplit$(SOEXT) lib/bup/
 
 .PHONY: lib/bup/_version.py
@@ -69,7 +70,7 @@ lib/bup/_version.py:
 runtests: all runtests-python runtests-cmdline
 
 runtests-python:
-	./wvtest.py $(wildcard t/t*.py)
+	$(PYTHON) wvtest.py $(wildcard t/t*.py)
 	
 runtests-cmdline: all
 	t/test.sh
@@ -78,7 +79,7 @@ stupid:
 	PATH=/bin:/usr/bin $(MAKE) test
 	
 test: all
-	./wvtestrun $(MAKE) runtests
+	./wvtestrun $(MAKE) PYTHON=$(PYTHON) runtests
 
 %: %.o
 	$(CC) $(CFLAGS) (LDFLAGS) -o $@ $^ $(LIBS)
