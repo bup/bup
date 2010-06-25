@@ -122,10 +122,14 @@ def update_ref(conn, refname):
     conn.ok()
 
 
+cat_pipe = None
 def cat(conn, id):
+    global cat_pipe
     git.check_repo_or_die()
+    if not cat_pipe:
+        cat_pipe = git.CatPipe()
     try:
-        for blob in git.cat(id):
+        for blob in cat_pipe.join(id):
             conn.write(struct.pack('!I', len(blob)))
             conn.write(blob)
     except KeyError, e:

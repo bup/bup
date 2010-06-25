@@ -872,9 +872,3 @@ class CatPipe:
                 yield d
         except StopIteration:
             log('booger!\n')
-
-
-def cat(id):
-    c = CatPipe()
-    for d in c.join(id):
-        yield d
