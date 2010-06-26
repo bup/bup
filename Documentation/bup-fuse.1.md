@@ -22,6 +22,8 @@ which support FUSE.
 enforce any file permissions!  All files will be readable
 by all users.
 
+When you're done accessing the mounted fuse filesystem, you
+should unmount it with `umount`(8).
 
 # OPTIONS
 
@@ -42,6 +44,9 @@ by all users.
     rm -rf /tmp/buptest
     mkdir /tmp/buptest
     sudo bup fuse -d /tmp/buptest
+    ls /tmp/buptest/*/latest
+    ...
+    umount /tmp/buptest
 
 # SEE ALSO
 
