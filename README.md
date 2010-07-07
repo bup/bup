@@ -247,12 +247,6 @@ mailing list (see below) if you'd like to help.
     chunks will need to be recombined.  Although there's no restore tool,
     'bup fuse' does accomplish some of this already.
     
- - 'bup fuse' and 'bup ftp' don't auto-join large files.
- 
-    That means you end up with a bunch of little chunk files that you have
-    to cat together by hand.  Fixing this would be easy, we just haven't
-    yet.
-   
  - 'bup index' is slower than it should be.
  
     It's still rather fast: it can iterate through all the filenames on my
