@@ -135,8 +135,9 @@ Getting started
         GIT_DIR=~/.bup git log local-etc
 	
  - Make a backup on a remote server (which must already have the 'bup' command
-   somewhere in the PATH, and be accessible via ssh; make sure to replace
-   SERVERNAME with the actual hostname of your server):
+   somewhere in the server's PATH (see /etc/profile, etc/environment,
+   ~/.profile, or ~/.bashrc), and be accessible via ssh.
+   Make sure to replace SERVERNAME with the actual hostname of your server):
    
         tar -cvf - /etc | bup split -r SERVERNAME: -n local-etc -vv
  
