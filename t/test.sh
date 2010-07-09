@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 . wvtest.sh
 #set -e
 
