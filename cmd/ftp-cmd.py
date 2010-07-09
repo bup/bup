@@ -3,13 +3,6 @@ import sys, os, re, stat, fnmatch
 from bup import options, git, shquote, vfs
 from bup.helpers import *
 
-try:
-    import readline
-except ImportError:
-    log('* readline module not available: line editing disabled.\n')
-    readline = None
-
-
 def node_name(text, n):
     if stat.S_ISDIR(n.mode):
         return '%s/' % text
@@ -116,7 +109,7 @@ def completer(text, state):
 
 
 optspec = """
-bup ftp
+bup ftp [commands...]
 """
 o = options.Options('bup ftp', optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
@@ -130,6 +123,12 @@ rv = 0
 if extra:
     lines = extra
 else:
+    try:
+        import readline
+    except ImportError:
+        log('* readline module not available: line editing disabled.\n')
+        readline = None
+
     if readline:
         readline.set_completer_delims(' \t\n\r/')
         readline.set_completer(completer)
