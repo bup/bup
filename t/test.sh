@@ -166,9 +166,11 @@ WVSTART "save/git-fsck"
 WVSTART "ftp"
 WVPASS bup ftp "cat /master/latest/$TOP/$D/b" >$D/b.new
 WVPASS bup ftp "cat /master/latest/$TOP/$D/f" >$D/f.new
+WVPASS bup ftp "cat /master/latest/$TOP/$D/f"{,} >$D/f2.new
 WVPASS bup ftp "cat /master/latest/$TOP/$D/a" >$D/a.new
 WVPASSEQ "$(sha1sum <$D/b)" "$(sha1sum <$D/b.new)"
 WVPASSEQ "$(sha1sum <$D/f)" "$(sha1sum <$D/f.new)"
+WVPASSEQ "$(cat $D/f.new{,} | sha1sum)" "$(sha1sum <$D/f2.new)"
 WVPASSEQ "$(sha1sum <$D/a)" "$(sha1sum <$D/a.new)"
 
 WVSTART "fsck"

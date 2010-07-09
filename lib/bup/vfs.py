@@ -89,6 +89,7 @@ class _ChunkReader:
         else:
             self.it = None
             self.blob = ''.join(cp().join(hash.encode('hex')))[startofs:]
+        self.ofs = startofs
 
     def next(self, size):
         out = ''
@@ -105,6 +106,7 @@ class _ChunkReader:
             if not self.it:
                 break
         log('next(%d) returned %d\n' % (size, len(out)))
+        self.ofs += len(out)
         return out
 
 
@@ -117,9 +119,6 @@ class _FileReader:
         self.reader = None
 
     def seek(self, ofs):
-        if self.ofs == ofs:
-            return
-        self.reader = None
         if ofs > self.size:
             self.ofs = self.size
         elif ofs < 0:
@@ -133,7 +132,7 @@ class _FileReader:
     def read(self, count = -1):
         if count < 0:
             count = self.size - self.ofs
-        if not self.reader:
+        if not self.reader or self.reader.ofs != self.ofs:
             self.reader = _ChunkReader(self.hash, self.isdir, self.ofs)
         try:
             buf = self.reader.next(count)
@@ -244,15 +243,17 @@ class File(Node):
         if not self._filereader:
             self._filereader = _FileReader(self.hash, self.size(),
                                            self.bupmode == git.BUP_CHUNKED)
+        self._filereader.seek(0)
         return self._filereader
     
     def size(self):
         if self._cached_size == None:
-            log('<<<<File.size() is calculating\n')
+            log('<<<<File.size() is calculating...\n')
             if self.bupmode == git.BUP_CHUNKED:
                 self._cached_size = _total_size(self.hash)
             else:
                 self._cached_size = _chunk_len(self.hash)
+            log('<<<<File.size() done.\n')
         return self._cached_size
 
 
