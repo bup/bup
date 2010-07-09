@@ -33,7 +33,7 @@ if not (opt.blobs or opt.tree or opt.commit or opt.name or
     o.fatal("use one or more of -b, -t, -c, -n, -N, --copy")
 if (opt.noop or opt.copy) and (opt.blobs or opt.tree or 
                                opt.commit or opt.name):
-    o.fatal('-N is incompatible with -b, -t, -c, -n')
+    o.fatal('-N and --copy are incompatible with -b, -t, -c, -n')
 
 if opt.verbose >= 2:
     git.verbose = opt.verbose - 1
