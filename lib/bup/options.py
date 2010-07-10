@@ -6,7 +6,7 @@ class OptDict:
 
     def __setitem__(self, k, v):
         self._opts[k] = v
-        
+
     def __getitem__(self, k):
         return self._opts[k]
 
@@ -51,14 +51,14 @@ class Options:
                 flagl = flags.split(',')
                 flagl_nice = []
                 for f in flagl:
-                    f_nice = re.sub(r'\W', '_', f)
                     self._aliases[f] = flagl[0]
-                    self._aliases[f_nice] = flagl[0]
                     self._hasparms[f] = has_parm
                     if len(f) == 1:
                         self._shortopts += f + (has_parm and ':' or '')
                         flagl_nice.append('-' + f)
                     else:
+                        f_nice = re.sub(r'\W', '_', f)
+                        self._aliases[f_nice] = flagl[0]
                         assert(not f.startswith('no-')) # supported implicitly
                         self._longopts.append(f + (has_parm and '=' or ''))
                         self._longopts.append('no-' + f)
@@ -90,21 +90,18 @@ class Options:
             self.fatal(e)
 
         opt = OptDict()
-        for f in self._aliases.values():
-            opt[f] = None
         for (k,v) in flags:
-            while k.startswith('-'):
-                k = k[1:]
-            if k in ['h', '?', 'help']:
+            k = k.lstrip('-')
+            if k in ('h', '?', 'help'):
                 self.usage()
             if k.startswith('no-'):
                 k = self._aliases[k[3:]]
-                opt[k] = None
+                v = 0
             else:
                 k = self._aliases[k]
                 if not self._hasparms[k]:
                     assert(v == '')
-                    opt[k] = (opt._opts.get(k) or 0) + 1
+                    v = (opt._opts.get(k) or 0) + 1
                 else:
                     try:
                         vv = int(v)
@@ -112,7 +109,7 @@ class Options:
                             v = vv
                     except ValueError:
                         pass
-                    opt[k] = v
-        for (f1,f2) in self._aliases.items():
-            opt[f1] = opt[f2]
+            opt[k] = v
+        for (f1,f2) in self._aliases.iteritems():
+            opt[f1] = opt._opts.get(f2)
         return (opt,flags,extra)
