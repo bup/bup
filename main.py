@@ -37,6 +37,7 @@ def usage():
         midx = 'Index objects to speed up future backups',
         save = 'Save files into a backup set (note: run "bup index" first)',
         split = 'Split a single file into its own backup set',
+        web = 'Launch a web server to examine backup sets',
     )
 
     log('Common commands:\n')

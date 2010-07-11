@@ -1,4 +1,5 @@
 import sys, os, pwd, subprocess, errno, socket, select, mmap, stat, re
+from bup import _version
 
 
 # Write (blockingly) to sockets that may or may not be in blocking mode.
@@ -309,3 +310,21 @@ except ImportError:
     Sha1 = sha.sha
 else:
     Sha1 = hashlib.sha1
+
+
+def version_date():
+    return _version.DATE.split(' ')[0]
+
+def version_commit():
+    return _version.COMMIT
+
+def version_tag():
+    names = _version.NAMES.strip()
+    assert(names[0] == '(')
+    assert(names[-1] == ')')
+    names = names[1:-1]
+    l = [n.strip() for n in names.split(',')]
+    for n in l:
+        if n.startswith('tag: bup-'):
+            return n[9:]
+    return 'unknown-%s' % _version.COMMIT[:7]

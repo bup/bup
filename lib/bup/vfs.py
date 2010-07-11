@@ -142,6 +142,9 @@ class _FileReader:
         self.ofs += len(buf)
         return buf
 
+    def close(self):
+        pass
+
 
 class Node:
     def __init__(self, parent, name, mode, hash):
