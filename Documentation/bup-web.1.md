@@ -12,7 +12,7 @@ bup web [[hostname]:port]
 
 # DESCRIPTION
 
-`bup web` is a starts a web server that can browse bup repositories. The file
+`bup web` starts a web server that can browse bup repositories. The file
 hierarchy is the same as that shown by `bup-fuse`(1), `bup-ls`(1) and
 `bup-ftp`(1).
 

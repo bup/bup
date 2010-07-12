@@ -54,6 +54,7 @@ class BupRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             # redirect browser - doing basically what apache does
             self.send_response(301)
             self.send_header("Location", path + "/")
+            self.send_header("Content-Length", 0)
             self.end_headers()
             return
 
