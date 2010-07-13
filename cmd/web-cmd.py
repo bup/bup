@@ -185,8 +185,12 @@ if len(extra) > 0:
 git.check_repo_or_die()
 top = vfs.RefList(None)
 
-httpd = BupHTTPServer(address, BupRequestHandler)
+try:
+    httpd = BupHTTPServer(address, BupRequestHandler)
+except socket.error, e:
+    log('socket%r: %s\n' % (address, e.args[1]))
+    sys.exit(1)
+
 sa = httpd.socket.getsockname()
-print "Serving HTTP on %s:%d..." % sa
-sys.stdout.flush()
+log("Serving HTTP on %s:%d...\n" % sa)
 httpd.serve_forever()
