@@ -5,13 +5,13 @@ from wvtest import *
 
 @wvtest
 def index_basic():
-    cd = os.path.realpath('')
+    cd = os.path.realpath('../../../t')
     WVPASS(cd)
-    sd = os.path.realpath('sampledata')
-    WVPASSEQ(index.realpath('sampledata'), cd + '/sampledata')
-    WVPASSEQ(os.path.realpath('sampledata/x'), sd + '/x')
-    WVPASSEQ(os.path.realpath('sampledata/etc'), os.path.realpath('/etc'))
-    WVPASSEQ(index.realpath('sampledata/etc'), sd + '/etc')
+    sd = os.path.realpath(cd + '/sampledata')
+    WVPASSEQ(index.realpath(cd + '/sampledata'), cd + '/sampledata')
+    WVPASSEQ(os.path.realpath(cd + '/sampledata/x'), sd + '/x')
+    WVPASSEQ(os.path.realpath(cd + '/sampledata/etc'), os.path.realpath('/etc'))
+    WVPASSEQ(index.realpath(cd + '/sampledata/etc'), sd + '/etc')
 
 
 @wvtest
