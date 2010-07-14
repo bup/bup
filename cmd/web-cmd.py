@@ -78,8 +78,8 @@ class BupRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     <H2>Directory listing for %(displaypath)s</H2>
     <TABLE>
       <TR>
-        <TH class=dir-name>Name</TH>
-        <TH class=dir-size>Size<TH>
+        <TH class="dir-name">Name</TH>
+        <TH class="dir-size">Size<TH>
       </TR>
 """ % { 'displaypath': displaypath })
         for sub in n:
@@ -95,8 +95,8 @@ class BupRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 # Note: a link to a directory displays with @ and links with /
                 size = '&nbsp;'
             f.write("""      <TR>
-        <TD class=dir-name><A href="%s">%s</A></TD>
-        <TD class=dir-size>%s</TD>
+        <TD class="dir-name"><A href="%s">%s</A></TD>
+        <TD class="dir-size">%s</TD>
       </TR>""" % (urllib.quote(linkname), cgi.escape(displayname), size))
         f.write("""
     </TABLE>
