@@ -48,16 +48,16 @@ class Client:
         self.cachedir = git.repo('index-cache/%s'
                                  % re.sub(r'[^@\w]', '_', 
                                           "%s:%s" % (host, dir)))
-        try:
-            if is_reverse:
-                self.pout = os.fdopen(3, 'rb')
-                self.pin = os.fdopen(4, 'wb')
-            else:
+        if is_reverse:
+            self.pout = os.fdopen(3, 'rb')
+            self.pin = os.fdopen(4, 'wb')
+        else:
+            try:
                 self.p = ssh.connect(host, 'server')
                 self.pout = self.p.stdout
                 self.pin = self.p.stdin
-        except OSError, e:
-            raise ClientError, 'exec %r: %s' % (argv[0], e), sys.exc_info()[2]
+            except OSError, e:
+                raise ClientError, 'connect: %s' % e, sys.exc_info()[2]
         self.conn = Conn(self.pout, self.pin)
         if dir:
             dir = re.sub(r'[\r\n]', ' ', dir)
