@@ -99,7 +99,7 @@ class BupRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         <TD class=dir-size>%s</TD>
       </TR>""" % (urllib.quote(linkname), cgi.escape(displayname), size))
         f.write("""
-    </UL>
+    </TABLE>
   </BODY>
 </HTML>""")
         length = f.tell()
