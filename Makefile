@@ -110,4 +110,4 @@ clean: Documentation/clean
 		*.pyc */*.pyc */*/*.pyc \
 		bup bup-* cmd/bup-* lib/bup/_version.py randomgen memtest \
 		out[12] out2[tc] tags[12] tags2[tc]
-	rm -rf *.tmp build lib/bup/build
+	rm -rf *.tmp t/*.tmp build lib/bup/build

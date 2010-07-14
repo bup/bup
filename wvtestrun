@@ -34,11 +34,11 @@ my ($gpasses, $gfails) = (0,0);
 sub bigkill($)
 {
     my $pid = shift;
-    
+
     if (@log) {
 	print "\n" . join("\n", @log) . "\n";
     }
-    
+
     print STDERR "\n! Killed by signal    FAILED\n";
 
     ($pid > 0) || die("pid is '$pid'?!\n");
@@ -46,19 +46,19 @@ sub bigkill($)
     local $SIG{CHLD} = sub { }; # this will wake us from sleep() faster
     kill 15, $pid;
     sleep(2);
-    
+
     if ($pid > 1) {
 	kill 9, -$pid;
     }
     kill 9, $pid;
-    
+
     exit(125);
 }
 
 # parent
 local $SIG{INT} = sub { bigkill($pid); };
 local $SIG{TERM} = sub { bigkill($pid); };
-local $SIG{ALRM} = sub { 
+local $SIG{ALRM} = sub {
     print STDERR "Alarm timed out!  No test results for too long.\n";
     bigkill($pid);
 };
@@ -67,7 +67,7 @@ sub colourize($)
 {
     my $result = shift;
     my $pass = ($result eq "ok");
-    
+
     if ($istty) {
 	my $colour = $pass ? "\e[32;1m" : "\e[31;1m";
 	return "$colour$result\e[0m";
@@ -81,7 +81,7 @@ sub mstime($$$)
     my ($floatsec, $warntime, $badtime) = @_;
     my $ms = int($floatsec * 1000);
     my $str = sprintf("%d.%03ds", $ms/1000, $ms % 1000);
-    
+
     if ($istty && $ms > $badtime) {
         return "\e[31;1m$str\e[0m";
     } elsif ($istty && $ms > $warntime) {
@@ -112,14 +112,14 @@ while (<$fh>)
 {
     chomp;
     s/\r//g;
-    
+
     if (/^\s*Testing "(.*)" in (.*):\s*$/)
     {
         alarm(120);
 	my ($sect, $file) = ($1, $2);
-	
+
 	endsect();
-	
+
 	printf("! %s  %s: ", $file, $sect);
 	@log = ();
 	$start = $stop;
@@ -127,17 +127,17 @@ while (<$fh>)
     elsif (/^!\s*(.*?)\s+(\S+)\s*$/)
     {
         alarm(120);
-    
+
 	my ($name, $result) = ($1, $2);
 	my $pass = ($result eq "ok");
-	
+
 	if (!$start) {
 	    printf("\n! Startup: ");
 	    $start = time();
 	}
-	
+
 	push @log, resultline($name, $result);
-	
+
 	if (!$pass) {
 	    $gfails++;
 	    if (@log) {

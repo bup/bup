@@ -7,18 +7,18 @@ from wvtest import *
 def index_basic():
     cd = os.path.realpath('')
     WVPASS(cd)
-    sd = os.path.realpath('t/sampledata')
-    WVPASSEQ(index.realpath('t/sampledata'), cd + '/t/sampledata')
-    WVPASSEQ(os.path.realpath('t/sampledata/x'), sd + '/x')
-    WVPASSEQ(os.path.realpath('t/sampledata/etc'), os.path.realpath('/etc'))
-    WVPASSEQ(index.realpath('t/sampledata/etc'), sd + '/etc')
+    sd = os.path.realpath('sampledata')
+    WVPASSEQ(index.realpath('sampledata'), cd + '/sampledata')
+    WVPASSEQ(os.path.realpath('sampledata/x'), sd + '/x')
+    WVPASSEQ(os.path.realpath('sampledata/etc'), os.path.realpath('/etc'))
+    WVPASSEQ(index.realpath('sampledata/etc'), sd + '/etc')
 
 
 @wvtest
 def index_writer():
     unlink('index.tmp')
     ds = os.stat('.')
-    fs = os.stat('t/tindex.py')
+    fs = os.stat('tindex.py')
     w = index.Writer('index.tmp')
     w.add('/var/tmp/sporky', fs)
     w.add('/etc/passwd', fs)
@@ -50,7 +50,7 @@ def index_dirty():
     unlink('index.tmp')
     unlink('index2.tmp')
     ds = os.stat('.')
-    fs = os.stat('t/tindex.py')
+    fs = os.stat('tindex.py')
     
     w1 = index.Writer('index.tmp')
     w1.add('/a/b/x', fs)

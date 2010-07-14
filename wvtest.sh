@@ -1,20 +1,44 @@
+#
+# Include this file in your shell script by using:
+#         #!/bin/sh
+#         . ./wvtest.sh
+#
+
 # we don't quote $TEXT in case it contains newlines; newlines
 # aren't allowed in test output.  However, we set -f so that
 # at least shell glob characters aren't processed.
-_textclean()
+_wvtextclean()
 {
 	( set -f; echo $* )
 }
 
+
+if [ -n "$BASH_VERSION" ]; then
+	_wvfind_caller()
+	{
+		LVL=$1
+		WVCALLER_FILE=${BASH_SOURCE[2]}
+		WVCALLER_LINE=${BASH_LINENO[1]}
+	}
+else
+	_wvfind_caller()
+	{
+		LVL=$1
+		WVCALLER_FILE="unknown"
+		WVCALLER_LINE=0
+	}
+fi
+
+
 _wvcheck()
 {
 	CODE="$1"
-	TEXT=$(_textclean "$2")
+	TEXT=$(_wvtextclean "$2")
 	OK=ok
 	if [ "$CODE" -ne 0 ]; then
 		OK=FAILED
 	fi
-	echo "! ${BASH_SOURCE[2]}:${BASH_LINENO[1]}  $TEXT  $OK" >&2
+	echo "! $WVCALLER_FILE:$WVCALLER_LINE  $TEXT  $OK" >&2
 	if [ "$CODE" -ne 0 ]; then
 		exit $CODE
 	else
@@ -26,7 +50,8 @@ _wvcheck()
 WVPASS()
 {
 	TEXT="$*"
-	
+
+	_wvfind_caller
 	if "$@"; then
 		_wvcheck 0 "$TEXT"
 		return 0
@@ -41,7 +66,8 @@ WVPASS()
 WVFAIL()
 {
 	TEXT="$*"
-	
+
+	_wvfind_caller
 	if "$@"; then
 		_wvcheck 1 "NOT($TEXT)"
 		# NOTREACHED
@@ -62,7 +88,8 @@ _wvgetrv()
 
 WVPASSEQ()
 {
-	WVPASS [ "$#" -eq 2 ]
+	_wvfind_caller
+	_wvcheck $(_wvgetrv [ "$#" -eq 2 ]) "exactly 2 arguments"
 	echo "Comparing:" >&2
 	echo "$1" >&2
 	echo "--" >&2
@@ -73,7 +100,8 @@ WVPASSEQ()
 
 WVPASSNE()
 {
-	WVPASS [ "$#" -eq 2 ]
+	_wvfind_caller
+	_wvcheck $(_wvgetrv [ "$#" -eq 2 ]) "exactly 2 arguments"
 	echo "Comparing:" >&2
 	echo "$1" >&2
 	echo "--" >&2
@@ -82,8 +110,25 @@ WVPASSNE()
 }
 
 
+WVPASSRC()
+{
+	RC=$?
+	_wvfind_caller
+	_wvcheck $(_wvgetrv [ $RC -eq 0 ]) "return code($RC) == 0"
+}
+
+
+WVFAILRC()
+{
+	RC=$?
+	_wvfind_caller
+	_wvcheck $(_wvgetrv [ $RC -ne 0 ]) "return code($RC) != 0"
+}
+
+
 WVSTART()
 {
 	echo >&2
-	echo "Testing \"$*\" in ${BASH_SOURCE[1]}:" >&2
+	_wvfind_caller
+	echo "Testing \"$*\" in $WVCALLER_FILE:" >&2
 }

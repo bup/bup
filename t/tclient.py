@@ -1,4 +1,5 @@
-import os, time, random, subprocess
+import sys, os, time, random, subprocess
+sys.path.append('../lib')
 from bup import client, git, hashsplit
 from wvtest import *
 
@@ -13,7 +14,7 @@ s2 = randbytes(10000)
     
 @wvtest
 def test_server_split_with_indexes():
-    os.environ['BUP_MAIN_EXE'] = './bup'
+    os.environ['BUP_MAIN_EXE'] = '../bup'
     os.environ['BUP_DIR'] = bupdir = 'buptest_tclient.tmp'
     subprocess.call(['rm', '-rf', bupdir])
     git.init_repo(bupdir)
@@ -31,7 +32,7 @@ def test_server_split_with_indexes():
 
 @wvtest
 def test_midx_refreshing():
-    os.environ['BUP_MAIN_EXE'] = bupmain = './bup'
+    os.environ['BUP_MAIN_EXE'] = bupmain = '../bup'
     os.environ['BUP_DIR'] = bupdir = 'buptest_tmidx.tmp'
     subprocess.call(['rm', '-rf', bupdir])
     git.init_repo(bupdir)
