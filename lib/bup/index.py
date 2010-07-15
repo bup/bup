@@ -305,6 +305,17 @@ class Reader:
                 yield (name, e)
 
 
+# FIXME: this function isn't very generic, because it splits the filename
+# in an odd way and depends on a terminating '/' to indicate directories.
+def pathsplit(p):
+    """Split a path into a list of elements of the file system hierarchy."""
+    l = p.split('/')
+    l = [i+'/' for i in l[:-1]] + l[-1:]
+    if l[-1] == '':
+        l.pop()  # extra blank caused by terminating '/'
+    return l
+
+
 class Writer:
     def __init__(self, filename):
         self.rootlevel = self.level = Level([], None)

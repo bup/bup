@@ -1,3 +1,4 @@
+"""Helper functions and classes for bup."""
 import sys, os, pwd, subprocess, errno, socket, select, mmap, stat, re
 from bup import _version
 
@@ -20,11 +21,17 @@ def _hard_write(fd, buf):
         buf = buf[sz:]
 
 def log(s):
+    """Print a log message to stderr."""
     sys.stdout.flush()
     _hard_write(sys.stderr.fileno(), s)
 
 
 def mkdirp(d):
+    """Recursively create directories on path 'd'.
+
+    Unlike os.makedirs(), it doesn't raise an exception if the last element of
+    the path already exists.
+    """
     try:
         os.makedirs(d)
     except OSError, e:
@@ -35,13 +42,19 @@ def mkdirp(d):
 
 
 def next(it):
+    """Get the next item from an iterator, None if we reached the end."""
     try:
         return it.next()
     except StopIteration:
         return None
-    
-    
+
+
 def unlink(f):
+    """Delete a file at path 'f' if it currently exists.
+
+    Unlike os.unlink(), does not throw an exception if the file didn't already
+    exist.
+    """
     try:
         os.unlink(f)
     except OSError, e:
@@ -50,26 +63,20 @@ def unlink(f):
 
 
 def readpipe(argv):
+    """Run a subprocess and return its output."""
     p = subprocess.Popen(argv, stdout=subprocess.PIPE)
     r = p.stdout.read()
     p.wait()
     return r
 
 
-# FIXME: this function isn't very generic, because it splits the filename
-# in an odd way and depends on a terminating '/' to indicate directories.
-# But it's used in a couple of places, so let's put it here.
-def pathsplit(p):
-    l = p.split('/')
-    l = [i+'/' for i in l[:-1]] + l[-1:]
-    if l[-1] == '':
-        l.pop()  # extra blank caused by terminating '/'
-    return l
-
-
-# like os.path.realpath, but doesn't follow a symlink for the last element.
-# (ie. if 'p' itself is itself a symlink, this one won't follow it)
 def realpath(p):
+    """Get the absolute path of a file.
+
+    Behaves like os.path.realpath, but doesn't follow a symlink for the last
+    element. (ie. if 'p' itself is a symlink, this one won't follow it, but it
+    will follow symlinks in p's directory)
+    """
     try:
         st = os.lstat(p)
     except OSError:
@@ -86,6 +93,7 @@ def realpath(p):
 
 _username = None
 def username():
+    """Get the user's login name."""
     global _username
     if not _username:
         uid = os.getuid()
@@ -98,6 +106,7 @@ def username():
 
 _userfullname = None
 def userfullname():
+    """Get the user's full name."""
     global _userfullname
     if not _userfullname:
         uid = os.getuid()
@@ -110,6 +119,7 @@ def userfullname():
 
 _hostname = None
 def hostname():
+    """Get the FQDN of this machine."""
     global _hostname
     if not _hostname:
         _hostname = socket.getfqdn()
@@ -120,23 +130,28 @@ class NotOk(Exception):
     pass
 
 class Conn:
+    """A helper class for bup's client-server protocol."""
     def __init__(self, inp, outp):
         self.inp = inp
         self.outp = outp
 
     def read(self, size):
+        """Read 'size' bytes from input stream."""
         self.outp.flush()
         return self.inp.read(size)
 
     def readline(self):
+        """Read from input stream until a newline is found."""
         self.outp.flush()
         return self.inp.readline()
 
     def write(self, data):
+        """Write 'data' to output stream."""
         #log('%d writing: %d bytes\n' % (os.getpid(), len(data)))
         self.outp.write(data)
 
     def has_input(self):
+        """Return true if input stream is readable."""
         [rl, wl, xl] = select.select([self.inp.fileno()], [], [], 0)
         if rl:
             assert(rl[0] == self.inp.fileno())
@@ -145,9 +160,11 @@ class Conn:
             return None
 
     def ok(self):
+        """Indicate end of output from last sent command."""
         self.write('\nok\n')
 
     def error(self, s):
+        """Indicate server error to the client."""
         s = re.sub(r'\s+', ' ', str(s))
         self.write('\nerror %s\n' % s)
 
@@ -168,17 +185,20 @@ class Conn:
         raise Exception('server exited unexpectedly; see errors above')
 
     def drain_and_check_ok(self):
+        """Remove all data for the current command from input stream."""
         def onempty(rl):
             pass
         return self._check_ok(onempty)
 
     def check_ok(self):
+        """Verify that server action completed successfully."""
         def onempty(rl):
             raise Exception('expected "ok", got %r' % rl)
         return self._check_ok(onempty)
 
 
 def linereader(f):
+    """Generate a list of input lines from 'f' without terminating newlines."""
     while 1:
         line = f.readline()
         if not line:
@@ -187,6 +207,13 @@ def linereader(f):
 
 
 def chunkyreader(f, count = None):
+    """Generate a list of chunks of data read from 'f'.
+
+    If count is None, read until EOF is reached.
+
+    If count is a positive integer, read 'count' bytes from 'f'. If EOF is
+    reached while reading, raise IOError.
+    """
     if count != None:
         while count > 0:
             b = f.read(min(count, 65536))
@@ -202,6 +229,7 @@ def chunkyreader(f, count = None):
 
 
 def slashappend(s):
+    """Append "/" to 's' if it doesn't aleady end in "/"."""
     if s and not s.endswith('/'):
         return s + '/'
     else:
@@ -218,14 +246,29 @@ def _mmap_do(f, sz, flags, prot):
 
 
 def mmap_read(f, sz = 0):
+    """Create a read-only memory mapped region on file 'f'.
+
+    If sz is 0, the region will cover the entire file.
+    """
     return _mmap_do(f, sz, mmap.MAP_PRIVATE, mmap.PROT_READ)
 
 
 def mmap_readwrite(f, sz = 0):
+    """Create a read-write memory mapped region on file 'f'.
+
+    If sz is 0, the region will cover the entire file.
+    """
     return _mmap_do(f, sz, mmap.MAP_SHARED, mmap.PROT_READ|mmap.PROT_WRITE)
 
 
 def parse_num(s):
+    """Parse data size information into a float number.
+
+    Here are some examples of conversions:
+        199.2k means 203981 bytes
+        1GB means 1073741824 bytes
+        2.1 tb means 2199023255552 bytes
+    """
     g = re.match(r'([-+\d.e]+)\s*(\w*)', str(s))
     if not g:
         raise ValueError("can't parse %r as a number" % s)
@@ -246,13 +289,14 @@ def parse_num(s):
         raise ValueError("invalid unit %r in number %r" % (unit, s))
     return int(num*mult)
 
-    
-# count the number of elements in an iterator (consumes the iterator)
+
 def count(l):
+    """Count the number of elements in an iterator. (consumes the iterator)"""
     return reduce(lambda x,y: x+1, l)
 
 
 def atoi(s):
+    """Convert the string 's' to an integer. Return 0 if s is not a number."""
     try:
         return int(s or '0')
     except ValueError:
@@ -261,16 +305,27 @@ def atoi(s):
 
 saved_errors = []
 def add_error(e):
+    """Append an error message to the list of saved errors.
+
+    Once processing is able to stop and output the errors, the saved errors are
+    accessible in the module variable helpers.saved_errors.
+    """
     saved_errors.append(e)
     log('%-70s\n' % e)
 
 istty = os.isatty(2) or atoi(os.environ.get('BUP_FORCE_TTY'))
 def progress(s):
+    """Calls log(s) if stderr is a TTY.  Does nothing otherwise."""
     if istty:
         log(s)
 
 
 def handle_ctrl_c():
+    """Replace the default exception handler for KeyboardInterrupt (Ctrl-C).
+
+    The new exception handler will make sure that bup will exit without an ugly
+    stacktrace when Ctrl-C is hit.
+    """
     oldhook = sys.excepthook
     def newhook(exctype, value, traceback):
         if exctype == KeyboardInterrupt:
@@ -281,6 +336,11 @@ def handle_ctrl_c():
 
 
 def columnate(l, prefix):
+    """Format elements of 'l' in columns with 'prefix' leading each line.
+
+    The number of columns is determined automatically based on the string
+    lengths.
+    """
     l = l[:]
     clen = max(len(s) for s in l)
     ncols = (78 - len(prefix)) / (clen + 2)
@@ -313,12 +373,20 @@ else:
 
 
 def version_date():
+    """Format bup's version date string for output."""
     return _version.DATE.split(' ')[0]
 
 def version_commit():
+    """Get the commit hash of bup's current version."""
     return _version.COMMIT
 
 def version_tag():
+    """Format bup's version tag (the official version number).
+
+    When generated from a commit other than one pointed to with a tag, the
+    returned string will be "unknown-" followed by the first seven positions of
+    the commit hash.
+    """
     names = _version.NAMES.strip()
     assert(names[0] == '(')
     assert(names[-1] == ')')
