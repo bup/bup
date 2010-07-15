@@ -792,6 +792,7 @@ class CatPipe:
         self.p = subprocess.Popen(['git', 'cat-file', '--batch'],
                                   stdin=subprocess.PIPE,
                                   stdout=subprocess.PIPE,
+                                  close_fds = True,
                                   preexec_fn = _gitenv)
 
     def _fast_get(self, id):
