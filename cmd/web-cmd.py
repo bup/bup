@@ -70,18 +70,31 @@ class BupRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     <TITLE>Directory listing for %(displaypath)s</TITLE>
     <STYLE>
       BODY, TABLE { font-family: sans-serif }
+      #breadcrumb { margin: 10px 0; }
       .dir-name { text-align: left }
       .dir-size { text-align: right }
     </STYLE>
   </HEAD>
   <BODY>
-    <H2>Directory listing for %(displaypath)s</H2>
+    <DIV id="breadcrumb">
+""" % { 'displaypath': displaypath })
+        if self.path == "/":
+            f.write("""<STRONG>[root]</STRONG>""")
+        else:
+            f.write("""<A href="/">[root]</A> """)
+            path_parts = self.path.split("/")
+            path_parts_cleaned = path_parts[1:len(path_parts)-1]
+            for index, value in enumerate(path_parts_cleaned[0:len(path_parts_cleaned)-1]):
+                f.write("""/ <A href="/%(path)s/">%(element)s</A> """ % { 'path' : "/".join(path_parts_cleaned[0:(index + 1)]) , 'element' : value})
+            f.write("""/ <STRONG>%s</STRONG>""" % path_parts_cleaned[len(path_parts_cleaned)-1])
+        f.write("""
+    </DIV>
     <TABLE>
       <TR>
         <TH class="dir-name">Name</TH>
         <TH class="dir-size">Size<TH>
       </TR>
-""" % { 'displaypath': displaypath })
+""")
         for sub in n:
             displayname = linkname = sub.name
             # Append / for directories or @ for symbolic links
