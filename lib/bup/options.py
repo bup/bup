@@ -18,6 +18,16 @@ def _default_onabort(msg):
     sys.exit(97)
 
 
+def _intify(v):
+    try:
+        vv = int(v or '')
+        if str(vv) == v:
+            return vv
+    except ValueError:
+        pass
+    return v
+
+
 class Options:
     def __init__(self, exe, optspec, optfunc=getopt.gnu_getopt,
                  onabort=_default_onabort):
@@ -29,6 +39,7 @@ class Options:
         self._shortopts = 'h?'
         self._longopts = ['help']
         self._hasparms = {}
+        self._defaults = {}
         self._usagestr = self._gen_usage()
 
     def _gen_usage(self):
@@ -54,11 +65,17 @@ class Options:
                     has_parm = 1
                 else:
                     has_parm = 0
+                g = re.search(r'\[([^\]]*)\]', extra)
+                if g:
+                    defval = g.group(1)
+                else:
+                    defval = None
                 flagl = flags.split(',')
                 flagl_nice = []
                 for f in flagl:
                     self._aliases[f] = flagl[0]
                     self._hasparms[f] = has_parm
+                    self._defaults[f] = _intify(defval)
                     if len(f) == 1:
                         self._shortopts += f + (has_parm and ':' or '')
                         flagl_nice.append('-' + f)
@@ -99,6 +116,11 @@ class Options:
             self.fatal(e)
 
         opt = OptDict()
+
+        for k,v in self._defaults.iteritems():
+            k = self._aliases[k]
+            opt[k] = v
+        
         for (k,v) in flags:
             k = k.lstrip('-')
             if k in ('h', '?', 'help'):
@@ -112,12 +134,7 @@ class Options:
                     assert(v == '')
                     v = (opt._opts.get(k) or 0) + 1
                 else:
-                    try:
-                        vv = int(v)
-                        if str(vv) == v:
-                            v = vv
-                    except ValueError:
-                        pass
+                    v = _intify(v)
             opt[k] = v
         for (f1,f2) in self._aliases.iteritems():
             opt[f1] = opt._opts.get(f2)
