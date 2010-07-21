@@ -43,35 +43,35 @@ class BupRequestHandler(tornado.web.RequestHandler):
 
         displaypath = cgi.escape(path)
         self.write("""
-<HTML>
-  <HEAD>
-    <TITLE>Directory listing for %(displaypath)s</TITLE>
-    <STYLE>
-      BODY, TABLE { font-family: sans-serif }
+<html>
+  <head>
+    <title>Directory listing for %(displaypath)s</title>
+    <style>
+      body, table { font-family: sans-serif }
       #breadcrumb { margin: 10px 0; }
       .dir-name { text-align: left }
       .dir-size { text-align: right }
-    </STYLE>
-  </HEAD>
-  <BODY>
-    <DIV id="breadcrumb">
+    </style>
+  </head>
+  <body>
+    <div id="breadcrumb">
 """ % { 'displaypath': displaypath })
         if path == "/":
-            self.write("""<STRONG>[root]</STRONG>""")
+            self.write("""<strong>[root]</strong>""")
         else:
-            self.write("""<A href="/">[root]</A> """)
+            self.write("""<a href="/">[root]</a> """)
             path_parts = path.split("/")
             path_parts_cleaned = path_parts[1:-1]
             for index, value in enumerate(path_parts_cleaned[0:-1]):
-                self.write("""/ <A href="/%(path)s/">%(element)s</A> """ % { 'path' : "/".join(path_parts_cleaned[0:(index + 1)]) , 'element' : value})
-            self.write("""/ <STRONG>%s</STRONG>""" % path_parts_cleaned[-1])
+                self.write("""/ <a href="/%(path)s/">%(element)s</a> """ % { 'path' : "/".join(path_parts_cleaned[0:(index + 1)]) , 'element' : value})
+            self.write("""/ <strong>%s</strong>""" % path_parts_cleaned[-1])
         self.write("""
-    </DIV>
-    <TABLE>
-      <TR>
-        <TH class="dir-name">Name</TH>
-        <TH class="dir-size">Size<TH>
-      </TR>
+    </div>
+    <table>
+      <tr>
+        <th class="dir-name">Name</th>
+        <th class="dir-size">Size<th>
+      </tr>
 """)
         for sub in n:
             displayname = linkname = sub.name
@@ -85,14 +85,14 @@ class BupRequestHandler(tornado.web.RequestHandler):
                 displayname = sub.name + "@"
                 # Note: a link to a directory displays with @ and links with /
                 size = '&nbsp;'
-            self.write("""      <TR>
-        <TD class="dir-name"><A href="%s">%s</A></TD>
-        <TD class="dir-size">%s</TD>
-      </TR>""" % (urllib.quote(linkname), cgi.escape(displayname), size))
+            self.write("""      <tr>
+        <td class="dir-name"><a href="%s">%s</a></td>
+        <td class="dir-size">%s</td>
+      </tr>""" % (urllib.quote(linkname), cgi.escape(displayname), size))
         self.write("""
-    </TABLE>
-  </BODY>
-</HTML>""")
+    </table>
+  </body>
+</html>""")
 
     def _get_file(self, path, n):
         """Process a request on a file.
