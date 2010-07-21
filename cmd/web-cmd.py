@@ -42,11 +42,12 @@ class BupRequestHandler(tornado.web.RequestHandler):
         self.set_header("Content-Type", "text/html")
 
         displaypath = cgi.escape(path)
-        self.write("""
+        self.write("""<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <html>
   <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <title>Directory listing for %(displaypath)s</title>
-    <style>
+    <style type="text/css">
       body, table { font-family: sans-serif }
       #breadcrumb { margin: 10px 0; }
       .dir-name { text-align: left }
@@ -70,7 +71,7 @@ class BupRequestHandler(tornado.web.RequestHandler):
     <table>
       <tr>
         <th class="dir-name">Name</th>
-        <th class="dir-size">Size<th>
+        <th class="dir-size">Size</th>
       </tr>
 """)
         for sub in n:
