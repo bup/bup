@@ -160,7 +160,7 @@ o = options.Options('bup web', optspec)
 if len(extra) > 1:
     o.fatal("at most one argument expected")
 
-address = ('', 8080)
+address = ('127.0.0.1', 8080)
 if len(extra) > 0:
     addressl = extra[0].split(':', 1)
     addressl[1] = int(addressl[1])
@@ -186,7 +186,7 @@ if __name__ == "__main__":
     http_server = tornado.httpserver.HTTPServer(application)
     http_server.listen(address[1], address=address[0])
 
-    print "Listening on port %s" % http_server._socket.getsockname()[1]
+    print "Serving HTTP on %s:%d..." % http_server._socket.getsockname()
     loop = tornado.ioloop.IOLoop.instance()
     loop.start()
 
