@@ -216,6 +216,13 @@ class Node:
         #log('parts: %r %r\n' % (path, parts))
         return start._lresolve(parts)
 
+    def try_lresolve(self, path):
+        try:
+            return self.lresolve(path)
+        except NoSuchFile:
+            # some symlinks don't actually point at a file that exists!
+            return self
+
     def resolve(self, path):
         return self.lresolve(path).lresolve('')
     
