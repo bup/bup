@@ -12,13 +12,16 @@ if os.path.exists("%s/lib/bup/cmd/." % exeprefix):
     # eg. /usr/bin/bup means /usr/lib/bup/... is where our libraries are.
     cmdpath = "%s/lib/bup/cmd" % exeprefix
     libpath = "%s/lib/bup" % exeprefix
+    resourcepath = libpath
 else:
     # running from the src directory without being installed first
     cmdpath = os.path.join(exepath, 'cmd')
     libpath = os.path.join(exepath, 'lib')
+    resourcepath = libpath
 sys.path[:0] = [libpath]
 os.environ['PYTHONPATH'] = libpath + ':' + os.environ.get('PYTHONPATH', '')
 os.environ['BUP_MAIN_EXE'] = os.path.abspath(exe)
+os.environ['BUP_RESOURCE_PATH'] = resourcepath
 
 from bup.helpers import *
 

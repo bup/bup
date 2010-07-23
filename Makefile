@@ -33,7 +33,8 @@ BINDIR=$(DESTDIR)/usr/bin
 LIBDIR=$(DESTDIR)/usr/lib/bup
 install: all
 	$(INSTALL) -d $(MANDIR)/man1 $(DOCDIR) $(BINDIR) \
-		$(LIBDIR)/bup $(LIBDIR)/cmd $(LIBDIR)/tornado
+		$(LIBDIR)/bup $(LIBDIR)/cmd $(LIBDIR)/tornado \
+		$(LIBDIR)/web
 	[ ! -e Documentation/.docs-available ] || \
 	  $(INSTALL) -o 0 -g 0 -m 0644 \
 		$(wildcard Documentation/*.1) \
@@ -52,7 +53,9 @@ install: all
 	$(INSTALL) -o 0 -g 0 -m 0644 \
 		$(wildcard lib/tornado/*.py) \
 		$(LIBDIR)/tornado
-
+	$(INSTALL) -o 0 -g 0 -m 0644 \
+		$(wildcard lib/web/*) \
+		$(LIBDIR)/web
 %/all:
 	$(MAKE) -C $* all
 	

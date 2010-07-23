@@ -2,11 +2,47 @@
 import sys, stat, cgi, shutil, urllib, mimetypes, posixpath, time
 import tornado.httpserver
 import tornado.ioloop
+import tornado.template
 import tornado.web
 from bup import options, git, vfs
 from bup.helpers import *
 
 handle_ctrl_c()
+
+
+def _compute_breadcrumbs(path):
+    """Returns a list of breadcrumb objects for a path."""
+    breadcrumbs = []
+    breadcrumbs.append(('[root]', '/'))
+    path_parts = path.split('/')[1:-1]
+    full_path = '/'
+    for part in path_parts:
+        full_path += part + '/'
+        breadcrumbs.append((part, full_path))
+    return breadcrumbs
+
+
+def _compute_dir_contents(n):
+    """Given a vfs node, returns an iterator for display info of all subs."""
+    contents = []
+    for sub in n:
+        display = link = sub.name
+
+        # link should be based on fully resolved type to avoid extra
+        # HTTP redirect.
+        if stat.S_ISDIR(sub.lresolve('').mode):
+            link = sub.name + "/"
+
+        size = None
+        if stat.S_ISDIR(sub.mode):
+            display = sub.name + '/'
+        elif stat.S_ISLNK(sub.mode):
+            display = sub.name + '@'
+        else:
+            size = sub.size()
+
+        yield (display, link, size)
+
 
 class BupRequestHandler(tornado.web.RequestHandler):
     def get(self, path):
@@ -39,61 +75,13 @@ class BupRequestHandler(tornado.web.RequestHandler):
             print 'Redirecting from %s to %s' % (path, path + '/')
             return self.redirect(path + '/', permanent=True)
 
-        self.set_header("Content-Type", "text/html")
-
-        displaypath = cgi.escape(path)
-        self.write("""<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
-<html>
-  <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-    <title>Directory listing for %(displaypath)s</title>
-    <style type="text/css">
-      body, table { font-family: sans-serif }
-      #breadcrumb { margin: 10px 0; }
-      .dir-name { text-align: left }
-      .dir-size { text-align: right }
-    </style>
-  </head>
-  <body>
-    <div id="breadcrumb">
-""" % { 'displaypath': displaypath })
-        if path == "/":
-            self.write("""<strong>[root]</strong>""")
-        else:
-            self.write("""<a href="/">[root]</a> """)
-            path_parts = path.split("/")
-            path_parts_cleaned = path_parts[1:-1]
-            for index, value in enumerate(path_parts_cleaned[0:-1]):
-                self.write("""/ <a href="/%(path)s/">%(element)s</a> """ % { 'path' : "/".join(path_parts_cleaned[0:(index + 1)]) , 'element' : value})
-            self.write("""/ <strong>%s</strong>""" % path_parts_cleaned[-1])
-        self.write("""
-    </div>
-    <table>
-      <tr>
-        <th class="dir-name">Name</th>
-        <th class="dir-size">Size</th>
-      </tr>
-""")
-        for sub in n:
-            displayname = linkname = sub.name
-            # Append / for directories or @ for symbolic links
-            size = str(sub.size())
-            if stat.S_ISDIR(sub.mode):
-                displayname = sub.name + "/"
-                linkname = sub.name + "/"
-                size = '&nbsp;'
-            if stat.S_ISLNK(sub.mode):
-                displayname = sub.name + "@"
-                # Note: a link to a directory displays with @ and links with /
-                size = '&nbsp;'
-            self.write("""      <tr>
-        <td class="dir-name"><a href="%s">%s</a></td>
-        <td class="dir-size">%s</td>
-      </tr>""" % (urllib.quote(linkname), cgi.escape(displayname), size))
-        self.write("""
-    </table>
-  </body>
-</html>""")
+        self.render(
+            'list-directory.html',
+            path=path,
+            breadcrumbs=_compute_breadcrumbs(path),
+            dir_contents=_compute_dir_contents(n),
+            # We need the standard url_escape so we don't escape /
+            url_escape=urllib.quote)
 
     def _get_file(self, path, n):
         """Process a request on a file.
@@ -169,10 +157,9 @@ if len(extra) > 0:
 git.check_repo_or_die()
 top = vfs.RefList(None)
 
-(pwd,junk) = os.path.split(sys.argv[0])
-
 settings = dict(
     debug = 1,
+    template_path = resource_path('web'),
 )
 
 # Disable buffering on stdout, for debug messages
