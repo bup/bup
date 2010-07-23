@@ -15,3 +15,4 @@ out[12]
 out2[tc]
 *.tmp
 /build
+*.swp
