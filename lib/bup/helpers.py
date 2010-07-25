@@ -348,6 +348,8 @@ def columnate(l, prefix):
     The number of columns is determined automatically based on the string
     lengths.
     """
+    if not l:
+        return ""
     l = l[:]
     clen = max(len(s) for s in l)
     ncols = (78 - len(prefix)) / (clen + 2)
