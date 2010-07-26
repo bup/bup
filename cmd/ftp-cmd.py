@@ -154,8 +154,12 @@ for line in lines:
             for parm in (words[1:] or ['.']):
                 do_ls(parm, pwd.try_resolve(parm))
         elif cmd == 'cd':
+            np = pwd
             for parm in words[1:]:
-                pwd = pwd.resolve(parm)
+                np = np.resolve(parm)
+                if not stat.S_ISDIR(np.mode):
+                    raise vfs.NotDir('%s is not a directory' % parm)
+            pwd = np
         elif cmd == 'pwd':
             print pwd.fullname()
         elif cmd == 'cat':
