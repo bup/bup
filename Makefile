@@ -36,24 +36,24 @@ install: all
 		$(LIBDIR)/bup $(LIBDIR)/cmd $(LIBDIR)/tornado \
 		$(LIBDIR)/web
 	[ ! -e Documentation/.docs-available ] || \
-	  $(INSTALL) -o 0 -g 0 -m 0644 \
+	  $(INSTALL) -m 0644 \
 		$(wildcard Documentation/*.1) \
 		$(MANDIR)/man1
 	[ ! -e Documentation/.docs-available ] || \
-	  $(INSTALL) -o 0 -g 0 -m 0644 \
+	  $(INSTALL) -m 0644 \
 		$(wildcard Documentation/*.html) \
 		$(DOCDIR)
-	$(INSTALL) -o 0 -g 0 -m 0755 bup $(BINDIR)
-	$(INSTALL) -o 0 -g 0 -m 0755 \
+	$(INSTALL) -m 0755 bup $(BINDIR)
+	$(INSTALL) -m 0755 \
 		$(wildcard cmd/bup-*) \
 		$(LIBDIR)/cmd
-	$(INSTALL) -o 0 -g 0 -m 0644 \
+	$(INSTALL) -m 0644 \
 		$(wildcard lib/bup/*.so lib/bup/*.py) \
 		$(LIBDIR)/bup
-	$(INSTALL) -o 0 -g 0 -m 0644 \
+	$(INSTALL) -m 0644 \
 		$(wildcard lib/tornado/*.py) \
 		$(LIBDIR)/tornado
-	$(INSTALL) -o 0 -g 0 -m 0644 \
+	$(INSTALL) -m 0644 \
 		$(wildcard lib/web/*) \
 		$(LIBDIR)/web
 %/all:
@@ -86,6 +86,8 @@ stupid:
 
 test: all
 	./wvtestrun $(MAKE) PYTHON=$(PYTHON) runtests
+
+check: test
 
 %: %.o
 	$(CC) $(CFLAGS) (LDFLAGS) -o $@ $^ $(LIBS)
