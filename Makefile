@@ -58,7 +58,7 @@ install: all
 		$(LIBDIR)/web
 %/all:
 	$(MAKE) -C $* all
-	
+
 %/clean:
 	$(MAKE) -C $* clean
 
@@ -72,42 +72,42 @@ lib/bup/_version.py:
 	rm -f $@ $@.new
 	./format-subst.pl $@.pre >$@.new
 	mv $@.new $@
-	
+
 runtests: all runtests-python runtests-cmdline
 
 runtests-python:
 	$(PYTHON) wvtest.py $(wildcard t/t*.py lib/*/t/t*.py)
-	
+
 runtests-cmdline: all
 	t/test.sh
-	
+
 stupid:
 	PATH=/bin:/usr/bin $(MAKE) test
-	
+
 test: all
 	./wvtestrun $(MAKE) PYTHON=$(PYTHON) runtests
 
 %: %.o
 	$(CC) $(CFLAGS) (LDFLAGS) -o $@ $^ $(LIBS)
-	
+
 bup: main.py
 	rm -f $@
 	ln -s $< $@
-	
+
 cmds: $(patsubst cmd/%-cmd.py,cmd/bup-%,$(wildcard cmd/*-cmd.py))
 
 cmd/bup-%: cmd/%-cmd.py
 	rm -f $@
 	ln -s $*-cmd.py $@
-	
+
 %: %.py
 	rm -f $@
 	ln -s $< $@
-	
+
 bup-%: cmd-%.sh
 	rm -f $@
 	ln -s $< $@
-	
+
 %.o: %.c
 	gcc -c -o $@ $< $(CPPFLAGS) $(CFLAGS)
 
