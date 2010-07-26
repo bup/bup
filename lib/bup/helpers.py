@@ -26,14 +26,17 @@ def log(s):
     _hard_write(sys.stderr.fileno(), s)
 
 
-def mkdirp(d):
+def mkdirp(d, mode=None):
     """Recursively create directories on path 'd'.
 
     Unlike os.makedirs(), it doesn't raise an exception if the last element of
     the path already exists.
     """
     try:
-        os.makedirs(d)
+        if mode:
+            os.makedirs(d, mode)
+        else:
+            os.makedirs(d)
     except OSError, e:
         if e.errno == errno.EEXIST:
             pass
