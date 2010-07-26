@@ -184,8 +184,17 @@ class Node:
         return ret
 
     def top(self):
+        """ Return the very top node of the tree. """
         if self.parent:
             return self.parent.top()
+        else:
+            return self
+
+    def fs_top(self):
+        """ Return the top node of the particular backup set, or the root
+            level if this node isn't inside a backup set. """
+        if self.parent and not isinstance(self.parent, CommitList):
+            return self.parent.fs_top()
         else:
             return self
 
@@ -207,12 +216,15 @@ class Node:
 
     # walk into a given sub-path of this node.  If the last element is
     # a symlink, leave it as a symlink, don't resolve it.  (like lstat())
-    def lresolve(self, path):
+    def lresolve(self, path, stay_inside_fs=False):
         start = self
         if not path:
             return start
         if path.startswith('/'):
-            start = self.top()
+            if stay_inside_fs:
+                start = self.fs_top()
+            else:
+                start = self.top()
             path = path[1:]
         parts = re.split(r'/+', path or '.')
         if not parts[-1]:
@@ -295,7 +307,8 @@ class Symlink(File):
                                   % self.fullname())
         _symrefs += 1
         try:
-            return self.parent.lresolve(self.readlink())
+            return self.parent.lresolve(self.readlink(),
+                                        stay_inside_fs=True)
         except NoSuchFile:
             raise NoSuchFile("%s: broken symlink to %r"
                              % (self.fullname(), self.readlink()))
