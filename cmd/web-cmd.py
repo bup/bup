@@ -30,7 +30,7 @@ def _compute_dir_contents(n):
 
         # link should be based on fully resolved type to avoid extra
         # HTTP redirect.
-        if stat.S_ISDIR(sub.try_lresolve('').mode):
+        if stat.S_ISDIR(sub.try_resolve().mode):
             link = sub.name + "/"
 
         size = None

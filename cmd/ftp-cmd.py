@@ -95,7 +95,7 @@ def completer(text, state):
         (dir, name, qtype, lastword, subs) = _last_res
         if state < len(subs):
             sn = subs[state]
-            sn1 = sn.resolve('')  # deref symlinks
+            sn1 = sn.try_resolve()  # find the type of any symlink target
             fullname = os.path.join(dir, sn.name)
             if stat.S_ISDIR(sn1.mode):
                 ret = shquote.what_to_add(qtype, lastword, fullname+'/',
@@ -105,7 +105,14 @@ def completer(text, state):
                                           terminate=True) + ' '
             return text + ret
     except Exception, e:
-        log('\nerror in completion: %s\n' % e)
+        if 0:
+            log('\n')
+            try:
+                import traceback
+                traceback.print_tb(sys.exc_traceback)
+            except Exception, e2:
+                log('Error printing traceback: %s\n' % e2)
+        log('\nError in completion: %s\n' % e)
 
 
 optspec = """
@@ -145,7 +152,7 @@ for line in lines:
     try:
         if cmd == 'ls':
             for parm in (words[1:] or ['.']):
-                do_ls(parm, pwd.resolve(parm))
+                do_ls(parm, pwd.try_resolve(parm))
         elif cmd == 'cd':
             for parm in words[1:]:
                 pwd = pwd.resolve(parm)

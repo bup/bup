@@ -205,8 +205,12 @@ class Node:
         else:
             return self.sub(first)
 
+    # walk into a given sub-path of this node.  If the last element is
+    # a symlink, leave it as a symlink, don't resolve it.  (like lstat())
     def lresolve(self, path):
         start = self
+        if not path:
+            return start
         if path.startswith('/'):
             start = self.top()
             path = path[1:]
@@ -216,15 +220,21 @@ class Node:
         #log('parts: %r %r\n' % (path, parts))
         return start._lresolve(parts)
 
-    def try_lresolve(self, path):
-        try:
-            return self.lresolve(path)
-        except NoSuchFile:
-            # some symlinks don't actually point at a file that exists!
-            return self
+    # walk into the given sub-path of this node, and dereference it if it
+    # was a symlink.
+    def resolve(self, path = ''):
+        return self.lresolve(path).lresolve('.')
 
-    def resolve(self, path):
-        return self.lresolve(path).lresolve('')
+    # like resolve(), but don't worry if the last symlink points at an
+    # invalid path.
+    # (still returns an error if any intermediate nodes were invalid)
+    def try_resolve(self, path = ''):
+        n = self.lresolve(path)
+        try:
+            n = n.lresolve('.')
+        except NoSuchFile:
+            pass
+        return n
     
     def nlinks(self):
         if self._subs == None:
@@ -286,6 +296,9 @@ class Symlink(File):
         _symrefs += 1
         try:
             return self.parent.lresolve(self.readlink())
+        except NoSuchFile:
+            raise NoSuchFile("%s: broken symlink to %r"
+                             % (self.fullname(), self.readlink()))
         finally:
             _symrefs -= 1
 
