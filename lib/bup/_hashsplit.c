@@ -9,33 +9,95 @@
 #define WINDOWSIZE (1<<(WINDOWBITS-1))
 
 
+typedef struct {
+    uint32_t sum;
+    uint8_t window[WINDOWSIZE];
+    int wofs;
+} Rollsum;
+
+
 // FIXME: replace this with a not-stupid rolling checksum algorithm,
 // such as the one used in rsync (Adler32?)
-static uint32_t stupidsum_add(uint32_t old, uint8_t drop, uint8_t add)
+static void rollsum_add(Rollsum *r, uint8_t drop, uint8_t add)
 {
-    return ((old<<1) | (old>>31)) ^ drop ^ add;
+    r->sum = ((r->sum<<1) | (r->sum>>31)) ^ drop ^ add;
+}
+
+
+static void rollsum_init(Rollsum *r)
+{
+    r->sum = r->wofs = 0;
+    memset(r->window, 0, WINDOWSIZE);
+}
+
+
+static void rollsum_roll(Rollsum *r, uint8_t ch)
+{
+    rollsum_add(r, r->window[r->wofs], ch);
+    r->window[r->wofs] = ch;
+    r->wofs = (r->wofs + 1) % WINDOWSIZE;
+}
+
+
+static uint32_t rollsum_sum(uint8_t *buf, size_t ofs, size_t len)
+{
+    int count;
+    Rollsum r;
+    rollsum_init(&r);
+    for (count = ofs; count < len; count++)
+	rollsum_roll(&r, buf[count]);
+    return r.sum;
+}
+
+
+static PyObject *selftest(PyObject *self, PyObject *args)
+{
+    uint8_t buf[100000];
+    uint32_t sum1a, sum1b, sum2a, sum2b, sum3a, sum3b;
+    int count;
+    
+    if (!PyArg_ParseTuple(args, ""))
+	return NULL;
+    
+    srandom(1);
+    for (count = 0; count < sizeof(buf); count++)
+	buf[count] = random();
+    
+    sum1a = rollsum_sum(buf, 0, sizeof(buf));
+    sum1b = rollsum_sum(buf, 1, sizeof(buf));
+    sum2a = rollsum_sum(buf, sizeof(buf) - WINDOWSIZE*5/2,
+			sizeof(buf) - WINDOWSIZE);
+    sum2b = rollsum_sum(buf, 0, sizeof(buf) - WINDOWSIZE);
+    sum3a = rollsum_sum(buf, 0, WINDOWSIZE+3);
+    sum3b = rollsum_sum(buf, 3, WINDOWSIZE+3);
+    
+    fprintf(stderr, "sum1a = 0x%08x\n", sum1a);
+    fprintf(stderr, "sum1b = 0x%08x\n", sum1b);
+    fprintf(stderr, "sum2a = 0x%08x\n", sum2a);
+    fprintf(stderr, "sum2b = 0x%08x\n", sum2b);
+    fprintf(stderr, "sum3a = 0x%08x\n", sum3a);
+    fprintf(stderr, "sum3b = 0x%08x\n", sum3b);
+    
+    return Py_BuildValue("i", sum1a==sum1b && sum2a==sum2b && sum3a==sum3b);
 }
 
 
 static int find_ofs(const unsigned char *buf, int len, int *bits)
 {
-    unsigned char window[WINDOWSIZE];
-    uint32_t sum = 0;
-    int i = 0, count;
-    memset(window, 0, sizeof(window));
+    Rollsum r;
+    int count;
     
+    rollsum_init(&r);
     for (count = 0; count < len; count++)
     {
-	sum = stupidsum_add(sum, window[i], buf[count]);
-	window[i] = buf[count];
-	i = (i + 1) % WINDOWSIZE;
-	if ((sum & (BLOBSIZE-1)) == ((~0) & (BLOBSIZE-1)))
+	rollsum_roll(&r, buf[count]);
+	if ((r.sum & (BLOBSIZE-1)) == ((~0) & (BLOBSIZE-1)))
 	{
 	    if (bits)
 	    {
 		*bits = BLOBBITS;
-		sum >>= BLOBBITS;
-		for (*bits = BLOBBITS; (sum >>= 1) & 1; (*bits)++)
+		r.sum >>= BLOBBITS;
+		for (*bits = BLOBBITS; (r.sum >>= 1) & 1; (*bits)++)
 		    ;
 	    }
 	    return count+1;
@@ -189,6 +251,8 @@ static PyObject *fadvise_done(PyObject *self, PyObject *args)
 
 
 static PyMethodDef hashsplit_methods[] = {
+    { "selftest", selftest, METH_VARARGS,
+	"Check that the rolling checksum rolls correctly (for unit tests)." },
     { "blobbits", blobbits, METH_VARARGS,
 	"Return the number of bits in the rolling checksum." },
     { "splitbuf", splitbuf, METH_VARARGS,

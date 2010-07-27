@@ -1,5 +1,5 @@
 import sys, os, time, random, subprocess
-from bup import client, git, hashsplit
+from bup import client, git
 from wvtest import *
 
 def randbytes(sz):
