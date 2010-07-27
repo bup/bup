@@ -3,6 +3,9 @@ import sys, os, re, stat, fnmatch
 from bup import options, git, shquote, vfs
 from bup.helpers import *
 
+handle_ctrl_c()
+
+
 def node_name(text, n):
     if stat.S_ISDIR(n.mode):
         return '%s/' % text
