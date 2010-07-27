@@ -14,17 +14,23 @@ class OptDict:
         return self[k]
 
 
+def _default_onabort(msg):
+    sys.exit(97)
+
+
 class Options:
-    def __init__(self, exe, optspec, optfunc=getopt.gnu_getopt):
+    def __init__(self, exe, optspec, optfunc=getopt.gnu_getopt,
+                 onabort=_default_onabort):
         self.exe = exe
         self.optspec = optspec
+        self._onabort = onabort
         self.optfunc = optfunc
         self._aliases = {}
         self._shortopts = 'h?'
         self._longopts = ['help']
         self._hasparms = {}
         self._usagestr = self._gen_usage()
-        
+
     def _gen_usage(self):
         out = []
         lines = self.optspec.strip().split('\n')
@@ -74,15 +80,18 @@ class Options:
             else:
                 out.append('\n')
         return ''.join(out).rstrip() + '\n'
-    
-    def usage(self):
+
+    def usage(self, msg=""):
         sys.stderr.write(self._usagestr)
-        sys.exit(97)
+        e = self._onabort and self._onabort(msg) or None
+        if e:
+            raise e
 
     def fatal(self, s):
-        sys.stderr.write('error: %s\n' % s)
-        return self.usage()
-        
+        msg = 'error: %s\n' % s
+        sys.stderr.write(msg)
+        return self.usage(msg)
+
     def parse(self, args):
         try:
             (flags,extra) = self.optfunc(args, self._shortopts, self._longopts)
