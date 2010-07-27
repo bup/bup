@@ -43,9 +43,12 @@ def _completer_get_subs(line):
     (qtype, lastword) = shquote.unfinished_word(line)
     (dir,name) = os.path.split(lastword)
     #log('\ncompleter: %r %r %r\n' % (qtype, lastword, text))
-    n = pwd.resolve(dir)
-    subs = list(filter(lambda x: x.name.startswith(name),
-                       n.subs()))
+    try:
+        n = pwd.resolve(dir)
+        subs = list(filter(lambda x: x.name.startswith(name),
+                           n.subs()))
+    except vfs.NoSuchFile, e:
+        subs = []
     return (dir, name, qtype, lastword, subs)
 
 
@@ -105,13 +108,12 @@ def completer(text, state):
                                           terminate=True) + ' '
             return text + ret
     except Exception, e:
-        if 0:
-            log('\n')
-            try:
-                import traceback
-                traceback.print_tb(sys.exc_traceback)
-            except Exception, e2:
-                log('Error printing traceback: %s\n' % e2)
+        log('\n')
+        try:
+            import traceback
+            traceback.print_tb(sys.exc_traceback)
+        except Exception, e2:
+            log('Error printing traceback: %s\n' % e2)
         log('\nError in completion: %s\n' % e)
 
 
