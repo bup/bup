@@ -57,7 +57,7 @@ static uint32_t rollsum_digest(Rollsum *r)
 
 static uint32_t rollsum_sum(uint8_t *buf, size_t ofs, size_t len)
 {
-    int count;
+    size_t count;
     Rollsum r;
     rollsum_init(&r);
     for (count = ofs; count < len; count++)
@@ -70,7 +70,7 @@ static PyObject *selftest(PyObject *self, PyObject *args)
 {
     uint8_t buf[100000];
     uint32_t sum1a, sum1b, sum2a, sum2b, sum3a, sum3b;
-    int count;
+    unsigned count;
     
     if (!PyArg_ParseTuple(args, ""))
 	return NULL;
@@ -190,14 +190,14 @@ static PyObject *write_random(PyObject *self, PyObject *args)
     
     for (kbytes = 0; kbytes < len/1024; kbytes++)
     {
-	int i;
+	unsigned i;
 	for (i = 0; i < sizeof(buf)/sizeof(buf[0]); i++)
 	    buf[i] = random();
 	ret = write(fd, buf, sizeof(buf));
 	if (ret < 0)
 	    ret = 0;
 	written += ret;
-	if (ret < sizeof(buf))
+	if (ret < (int)sizeof(buf))
 	    break;
 	if (kbytes/1024 > 0 && !(kbytes%1024))
 	    fprintf(stderr, "Random: %lld Mbytes\r", kbytes/1024);
@@ -206,7 +206,7 @@ static PyObject *write_random(PyObject *self, PyObject *args)
     // handle non-multiples of 1024
     if (len % 1024)
     {
-	int i;
+	unsigned i;
 	for (i = 0; i < sizeof(buf)/sizeof(buf[0]); i++)
 	    buf[i] = random();
 	ret = write(fd, buf, len % 1024);
