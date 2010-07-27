@@ -22,11 +22,23 @@ def _compute_breadcrumbs(path):
     return breadcrumbs
 
 
-def _compute_dir_contents(n):
+def _contains_hidden_files(n):
+    """Return True if n contains files starting with a '.', False otherwise."""
+    for sub in n:
+        name = sub.name
+        if len(name)>1 and name.startswith('.'):
+            return True
+
+    return False
+
+
+def _compute_dir_contents(n, show_hidden=False):
     """Given a vfs node, returns an iterator for display info of all subs."""
-    contents = []
     for sub in n:
         display = link = sub.name
+
+        if not show_hidden and len(display)>1 and display.startswith('.'):
+            continue
 
         # link should be based on fully resolved type to avoid extra
         # HTTP redirect.
@@ -75,11 +87,18 @@ class BupRequestHandler(tornado.web.RequestHandler):
             print 'Redirecting from %s to %s' % (path, path + '/')
             return self.redirect(path + '/', permanent=True)
 
+        try:
+            show_hidden = int(self.request.arguments.get('hidden', [0])[-1])
+        except ValueError, e:
+            show_hidden = False
+
         self.render(
             'list-directory.html',
             path=path,
             breadcrumbs=_compute_breadcrumbs(path),
-            dir_contents=_compute_dir_contents(n),
+            files_hidden=_contains_hidden_files(n),
+            hidden_shown=show_hidden,
+            dir_contents=_compute_dir_contents(n, show_hidden),
             # We need the standard url_escape so we don't escape /
             url_escape=urllib.quote)
 

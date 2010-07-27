@@ -17,6 +17,15 @@
       {% end %}
       <strong>{{ escape(breadcrumbs[-1][0]) }}</strong>
     </div>
+    {% if files_hidden %}
+    <div id="message">
+      {% if hidden_shown %}
+      <a href=".">Hide hidden files</a>
+      {% else %}
+      <a href="?hidden=1">Show hidden files</a>
+      {% end %}
+    </div>
+    {% end %}
     <table>
       <tr>
         <th class="dir-name">Name</th>
