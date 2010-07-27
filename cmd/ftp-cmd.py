@@ -12,20 +12,42 @@ def node_name(text, n):
         return '%s' % text
 
 
-def do_ls(path, n):
-    l = []
-    if stat.S_ISDIR(n.mode):
-        for sub in n:
-            l.append(node_name(sub.name, sub))
-    else:
-        l.append(node_name(path, n))
-    print columnate(l, '')
-    
+class OptionError(Exception):
+    pass
+
+
+ls_optspec = """
+ls [-a] [path...]
+--
+a,all   include hidden files in the listing
+"""
+ls_opt = options.Options('ls', ls_optspec, onabort=OptionError)
+
+def do_ls(cmd_args):
+    try:
+        (opt, flags, extra) = ls_opt.parse(cmd_args)
+    except OptionError, e:
+        return
+
+    L = []
+
+    for path in (extra or ['.']):
+        n = pwd.try_resolve(path)
+
+        if stat.S_ISDIR(n.mode):
+            for sub in n:
+                name = sub.name
+                if opt.all or not len(name)>1 or not name.startswith('.'):
+                    L.append(node_name(name, sub))
+        else:
+            L.append(node_name(path, n))
+        print columnate(L, '')
+
 
 def write_to_file(inf, outf):
     for blob in chunkyreader(inf):
         outf.write(blob)
-    
+
 
 def inputiter():
     if os.isatty(sys.stdin.fileno()):
@@ -153,8 +175,7 @@ for line in lines:
     #log('execute: %r %r\n' % (cmd, parm))
     try:
         if cmd == 'ls':
-            for parm in (words[1:] or ['.']):
-                do_ls(parm, pwd.try_resolve(parm))
+            do_ls(words[1:])
         elif cmd == 'cd':
             np = pwd
             for parm in words[1:]:
