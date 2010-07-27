@@ -31,12 +31,14 @@ static void rollsum_init(Rollsum *r)
 }
 
 
-static void rollsum_roll(Rollsum *r, uint8_t ch)
-{
-    rollsum_add(r, r->window[r->wofs], ch);
-    r->window[r->wofs] = ch;
-    r->wofs = (r->wofs + 1) % WINDOWSIZE;
-}
+// For some reason, gcc 4.3 (at least) optimizes badly if find_ofs()
+// is static and rollsum_roll is an inline function.  Let's use a macro
+// here instead to help out the optimizer.
+#define rollsum_roll(r, ch) do { \
+    rollsum_add((r), (r)->window[(r)->wofs], (ch)); \
+    (r)->window[(r)->wofs] = (ch); \
+    (r)->wofs = ((r)->wofs + 1) % WINDOWSIZE; \
+} while (0)
 
 
 static uint32_t rollsum_sum(uint8_t *buf, size_t ofs, size_t len)
