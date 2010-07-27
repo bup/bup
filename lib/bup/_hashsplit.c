@@ -8,25 +8,33 @@
 #define WINDOWBITS (7)
 #define WINDOWSIZE (1<<(WINDOWBITS-1))
 
+// According to librsync/rollsum.h:
+// "We should make this something other than zero to improve the
+// checksum algorithm: tridge suggests a prime number."
+// apenwarr: I unscientifically tried 0 and 7919, and they both ended up
+// slightly worse than the librsync value of 31 for my arbitrary test data.
+#define ROLLSUM_CHAR_OFFSET 31
 
 typedef struct {
-    uint32_t sum;
+    unsigned s1, s2;
     uint8_t window[WINDOWSIZE];
     int wofs;
 } Rollsum;
 
 
-// FIXME: replace this with a not-stupid rolling checksum algorithm,
-// such as the one used in rsync (Adler32?)
+// These formulas are based on rollsum.h in the librsync project.
 static void rollsum_add(Rollsum *r, uint8_t drop, uint8_t add)
 {
-    r->sum = ((r->sum<<1) | (r->sum>>31)) ^ drop ^ add;
+    r->s1 += add - drop;
+    r->s2 += r->s1 - (WINDOWSIZE * (drop + ROLLSUM_CHAR_OFFSET));
 }
 
 
 static void rollsum_init(Rollsum *r)
 {
-    r->sum = r->wofs = 0;
+    r->s1 = WINDOWSIZE * ROLLSUM_CHAR_OFFSET;
+    r->s2 = WINDOWSIZE * (WINDOWSIZE-1) * ROLLSUM_CHAR_OFFSET;
+    r->wofs = 0;
     memset(r->window, 0, WINDOWSIZE);
 }
 
@@ -41,6 +49,12 @@ static void rollsum_init(Rollsum *r)
 } while (0)
 
 
+static uint32_t rollsum_digest(Rollsum *r)
+{
+    return (r->s1 << 16) | (r->s2 & 0xffff);
+}
+
+
 static uint32_t rollsum_sum(uint8_t *buf, size_t ofs, size_t len)
 {
     int count;
@@ -48,7 +62,7 @@ static uint32_t rollsum_sum(uint8_t *buf, size_t ofs, size_t len)
     rollsum_init(&r);
     for (count = ofs; count < len; count++)
 	rollsum_roll(&r, buf[count]);
-    return r.sum;
+    return rollsum_digest(&r);
 }
 
 
@@ -93,13 +107,14 @@ static int find_ofs(const unsigned char *buf, int len, int *bits)
     for (count = 0; count < len; count++)
     {
 	rollsum_roll(&r, buf[count]);
-	if ((r.sum & (BLOBSIZE-1)) == ((~0) & (BLOBSIZE-1)))
+	if ((r.s2 & (BLOBSIZE-1)) == ((~0) & (BLOBSIZE-1)))
 	{
 	    if (bits)
 	    {
+		unsigned rsum = rollsum_digest(&r);
 		*bits = BLOBBITS;
-		r.sum >>= BLOBBITS;
-		for (*bits = BLOBBITS; (r.sum >>= 1) & 1; (*bits)++)
+		rsum >>= BLOBBITS;
+		for (*bits = BLOBBITS; (rsum >>= 1) & 1; (*bits)++)
 		    ;
 	    }
 	    return count+1;
