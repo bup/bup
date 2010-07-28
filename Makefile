@@ -114,8 +114,9 @@ bup-%: cmd-%.sh
 	gcc -c -o $@ $< $(CPPFLAGS) $(CFLAGS)
 
 clean: Documentation/clean
-	rm -f *.o *.so */*/*.so *.dll *.exe .*~ *~ */*~ */*/*~ \
-		*.pyc */*.pyc */*/*.pyc \
+	rm -f *.o lib/*/*.o *.so lib/*/*.so *.dll *.exe \
+		.*~ *~ */*~ lib/*/*~ lib/*/*/*~ \
+		*.pyc */*.pyc lib/*/*.pyc lib/*/*/*.pyc \
 		bup bup-* cmd/bup-* lib/bup/_version.py randomgen memtest \
 		out[12] out2[tc] tags[12] tags2[tc]
-	rm -rf *.tmp t/*.tmp build lib/bup/build
+	rm -rf *.tmp t/*.tmp lib/*/*/*.tmp build lib/bup/build
