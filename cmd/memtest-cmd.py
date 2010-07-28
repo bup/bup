@@ -3,6 +3,7 @@ import sys, re, struct, mmap
 from bup import git, options
 from bup.helpers import *
 
+handle_ctrl_c()
 
 def s_from_bytes(bytes):
     clist = [chr(b) for b in bytes]
@@ -27,8 +28,8 @@ def report(count):
 optspec = """
 bup memtest [-n elements] [-c cycles]
 --
-n,number=  number of objects per cycle
-c,cycles=  number of cycles to run
+n,number=  number of objects per cycle [10000]
+c,cycles=  number of cycles to run [100]
 ignore-midx  ignore .midx files, use only .idx files
 """
 o = options.Options('bup memtest', optspec)
@@ -42,15 +43,12 @@ git.ignore_midx = opt.ignore_midx
 git.check_repo_or_die()
 m = git.PackIdxList(git.repo('objects/pack'))
 
-cycles = opt.cycles or 100
-number = opt.number or 10000
-
 report(-1)
 f = open('/dev/urandom')
 a = mmap.mmap(-1, 20)
 report(0)
-for c in xrange(cycles):
-    for n in xrange(number):
+for c in xrange(opt.cycles):
+    for n in xrange(opt.number):
         b = f.read(3)
         if 0:
             bytes = list(struct.unpack('!BBB', b)) + [0]*17
@@ -62,4 +60,4 @@ for c in xrange(cycles):
             bin = str(a[0:20])
         #print bin.encode('hex')
         m.exists(bin)
-    report((c+1)*number)
+    report((c+1)*opt.number)
