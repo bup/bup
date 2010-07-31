@@ -144,7 +144,7 @@ we need your help!  Avery's out of control!  Join our mailing list!  Please!
 Save us! ...  oh boy, I sure hope he doesn't read this)
 
 In any case, stupidsum, although stupid, seems to do pretty well at its job. 
-You can find it in _hashsplit.c.  Basically, it converts the last 32 bytes
+You can find it in bupsplit.c.  Basically, it converts the last 32 bytes
 of the file into a 32-bit integer.  What we then do is take the lowest 13
 bits of the checksum, and if they're all 1's, we consider that to be the end
 of a chunk.  This happens on average once every 2^13 = 8192 bytes, so the

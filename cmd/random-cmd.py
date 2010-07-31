@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import sys, mmap
-from bup import options, _hashsplit
+from bup import options, _faster
 from bup.helpers import *
 
 optspec = """
@@ -21,7 +21,7 @@ handle_ctrl_c()
 
 if opt.force or (not os.isatty(1) and
                  not atoi(os.environ.get('BUP_FORCE_TTY')) & 1):
-    _hashsplit.write_random(sys.stdout.fileno(), total, opt.seed)
+    _faster.write_random(sys.stdout.fileno(), total, opt.seed)
 else:
     log('error: not writing binary data to a terminal. Use -f to force.\n')
     sys.exit(1)

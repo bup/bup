@@ -21,7 +21,7 @@ default: all
 
 all: bup Documentation/all
 
-bup: lib/bup/_version.py lib/bup/_hashsplit$(SOEXT) cmds
+bup: lib/bup/_version.py lib/bup/_faster$(SOEXT) cmds
 
 Documentation/all: bup
 
@@ -62,10 +62,11 @@ install: all
 %/clean:
 	$(MAKE) -C $* clean
 
-lib/bup/_hashsplit$(SOEXT): lib/bup/_hashsplit.c lib/bup/csetup.py
+lib/bup/_faster$(SOEXT): \
+		lib/bup/bupsplit.c lib/bup/_faster.c lib/bup/csetup.py
 	@rm -f $@
 	cd lib/bup && $(PYTHON) csetup.py build
-	cp lib/bup/build/*/_hashsplit$(SOEXT) lib/bup/
+	cp lib/bup/build/*/_faster$(SOEXT) lib/bup/
 
 .PHONY: lib/bup/_version.py
 lib/bup/_version.py:

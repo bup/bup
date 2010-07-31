@@ -1,8 +1,8 @@
 from distutils.core import setup, Extension
 
-_hashsplit_mod = Extension('_hashsplit', sources=['_hashsplit.c'])
+_faster_mod = Extension('_faster', sources=['_faster.c', 'bupsplit.c'])
 
-setup(name='_hashsplit',
+setup(name='_faster',
       version='0.1',
-      description='hashsplit helper library for bup',
-      ext_modules=[_hashsplit_mod])
+      description='accelerator library for bup',
+      ext_modules=[_faster_mod])

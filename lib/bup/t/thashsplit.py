@@ -1,6 +1,6 @@
-from bup import hashsplit, _hashsplit
+from bup import hashsplit, _faster
 from wvtest import *
 
 @wvtest
 def test_rolling_sums():
-    WVPASS(_hashsplit.selftest())
+    WVPASS(_faster.selftest())
