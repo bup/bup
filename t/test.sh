@@ -27,9 +27,9 @@ WVFAIL bup index --check -u $D.fake
 WVPASS bup index --check -u $D
 WVPASSEQ "$(bup index --check -p $D)" "$D/"
 touch $D/a
-bup random 128k >$D/b
+WVPASS bup random 128k >$D/b
 mkdir $D/d $D/d/e
-bup random 512 >$D/f
+WVPASS bup random 512 >$D/f
 WVPASSEQ "$(bup index -s $D/)" "A $D/"
 WVPASSEQ "$(bup index -s $D/b)" ""
 WVPASSEQ "$(bup index --check -us $D/b)" "A $D/b"
