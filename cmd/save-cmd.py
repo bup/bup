@@ -74,8 +74,9 @@ def _pop(force_tree):
     return tree
 
 lastremain = None
+lastprint = 0
 def progress_report(n):
-    global count, subcount, lastremain
+    global count, subcount, lastremain, lastprint
     subcount += n
     cc = count + subcount
     pct = total and (cc*100.0/total) or 0
@@ -107,9 +108,11 @@ def progress_report(n):
             remainstr = '%dm%d' % (mins, secs)
         else:
             remainstr = '%ds' % secs
-    progress('Saving: %.2f%% (%d/%dk, %d/%d files) %s %s\r'
-             % (pct, cc/1024, total/1024, fcount, ftotal,
-                remainstr, kpsstr))
+    if now - lastprint > 0.1:
+        progress('Saving: %.2f%% (%d/%dk, %d/%d files) %s %s\r'
+                 % (pct, cc/1024, total/1024, fcount, ftotal,
+                    remainstr, kpsstr))
+        lastprint = now
 
 
 r = index.Reader(git.repo('bupindex'))
