@@ -274,7 +274,7 @@ mailing list (see below) if you'd like to help.
     We'll have to do it in a totally different way.  There are lots of
     options.  For now: make sure you've got lots of disk space :)
 
- - bup has never been tested on anything but Linux, MacOS, and Linux+Cygwin.
+ - bup has never been tested on anything but Linux, MacOS, and Windows+Cygwin.
  
     There's nothing that makes it *inherently* non-portable, though, so
     that's mostly a matter of someone putting in some effort.  (For a
