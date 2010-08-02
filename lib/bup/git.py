@@ -682,7 +682,8 @@ def check_repo_or_die(path=None):
             sys.exit(15)
 
 
-def _treeparse(buf):
+def treeparse(buf):
+    """Generate a list of (mode, name, hash) tuples of objects from 'buf'."""
     ofs = 0
     while ofs < len(buf):
         z = buf[ofs:].find('\0')
@@ -850,7 +851,7 @@ class CatPipe:
                 yield blob
         elif type == 'tree':
             treefile = ''.join(it)
-            for (mode, name, sha) in _treeparse(treefile):
+            for (mode, name, sha) in treeparse(treefile):
                 for blob in self.join(sha.encode('hex')):
                     yield blob
         elif type == 'commit':

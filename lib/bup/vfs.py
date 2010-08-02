@@ -1,3 +1,8 @@
+"""Virtual File System representing bup's repository contents.
+
+The vfs.py library makes it possible to expose contents from bup's repository
+and abstracts internal name mangling and storage from the exposition layer.
+"""
 import os, re, stat, time
 from bup import git
 from helpers import *
@@ -6,20 +11,30 @@ EMPTY_SHA='\0'*20
 
 _cp = None
 def cp():
+    """Create a git.CatPipe object or reuse the already existing one."""
     global _cp
     if not _cp:
         _cp = git.CatPipe()
     return _cp
 
 class NodeError(Exception):
+    """VFS base exception."""
     pass
+
 class NoSuchFile(NodeError):
+    """Request of a file that does not exist."""
     pass
+
 class NotDir(NodeError):
+    """Attempt to do a directory action on a file that is not one."""
     pass
+
 class NotFile(NodeError):
+    """Access to a node that does not represent a file."""
     pass
+
 class TooManySymlinks(NodeError):
+    """Symlink dereferencing level is too deep."""
     pass
 
 
@@ -27,7 +42,7 @@ def _treeget(hash):
     it = cp().get(hash.encode('hex'))
     type = it.next()
     assert(type == 'tree')
-    return git._treeparse(''.join(it))
+    return git.treeparse(''.join(it))
 
 
 def _tree_decode(hash):
@@ -81,7 +96,7 @@ def _chunkiter(hash, startofs):
             yield ''.join(cp().join(sha.encode('hex')))[skipmore:]
 
 
-class _ChunkReader:
+class _ChunkReader(object):
     def __init__(self, hash, isdir, startofs):
         if isdir:
             self.it = _chunkiter(hash, startofs)
@@ -110,7 +125,7 @@ class _ChunkReader:
         return out
 
 
-class _FileReader:
+class _FileReader(object):
     def __init__(self, hash, size, isdir):
         self.hash = hash
         self.ofs = 0
@@ -146,7 +161,8 @@ class _FileReader:
         pass
 
 
-class Node:
+class Node(object):
+    """Base class for file representation."""
     def __init__(self, parent, name, mode, hash):
         self.parent = parent
         self.name = name
@@ -154,28 +170,31 @@ class Node:
         self.hash = hash
         self.ctime = self.mtime = self.atime = 0
         self._subs = None
-        
+
     def __cmp__(a, b):
         return cmp(a.name or None, b.name or None)
-    
+
     def __iter__(self):
         return iter(self.subs())
-    
+
     def fullname(self):
+        """Get this file's full path."""
         if self.parent:
             return os.path.join(self.parent.fullname(), self.name)
         else:
             return self.name
-    
+
     def _mksubs(self):
         self._subs = {}
-        
+
     def subs(self):
+        """Get a list of nodes that are contained in this node."""
         if self._subs == None:
             self._mksubs()
         return sorted(self._subs.values())
-        
+
     def sub(self, name):
+        """Get node named 'name' that is contained in this node."""
         if self._subs == None:
             self._mksubs()
         ret = self._subs.get(name)
@@ -184,15 +203,17 @@ class Node:
         return ret
 
     def top(self):
-        """ Return the very top node of the tree. """
+        """Return the very top node of the tree."""
         if self.parent:
             return self.parent.top()
         else:
             return self
 
     def fs_top(self):
-        """ Return the top node of the particular backup set, or the root
-            level if this node isn't inside a backup set. """
+        """Return the top node of the particular backup set.
+
+        If this node isn't inside a backup set, return the root level.
+        """
         if self.parent and not isinstance(self.parent, CommitList):
             return self.parent.fs_top()
         else:
@@ -214,9 +235,12 @@ class Node:
         else:
             return self.sub(first)
 
-    # walk into a given sub-path of this node.  If the last element is
-    # a symlink, leave it as a symlink, don't resolve it.  (like lstat())
     def lresolve(self, path, stay_inside_fs=False):
+        """Walk into a given sub-path of this node.
+
+        If the last element is a symlink, leave it as a symlink, don't resolve
+        it.  (like lstat())
+        """
         start = self
         if not path:
             return start
@@ -232,42 +256,47 @@ class Node:
         #log('parts: %r %r\n' % (path, parts))
         return start._lresolve(parts)
 
-    # walk into the given sub-path of this node, and dereference it if it
-    # was a symlink.
     def resolve(self, path = ''):
+        """Like lresolve(), and dereference it if it was a symlink."""
         return self.lresolve(path).lresolve('.')
 
-    # like resolve(), but don't worry if the last symlink points at an
-    # invalid path.
-    # (still returns an error if any intermediate nodes were invalid)
     def try_resolve(self, path = ''):
+        """Like resolve(), but don't worry if a symlink uses an invalid path.
+
+        Returns an error if any intermediate nodes were invalid.
+        """
         n = self.lresolve(path)
         try:
             n = n.lresolve('.')
         except NoSuchFile:
             pass
         return n
-    
+
     def nlinks(self):
+        """Get the number of hard links to the current node."""
         if self._subs == None:
             self._mksubs()
         return 1
 
     def size(self):
+        """Get the size of the current node."""
         return 0
 
     def open(self):
+        """Open the current node. It is an error to open a non-file node."""
         raise NotFile('%s is not a regular file' % self.name)
 
 
 class File(Node):
+    """A normal file from bup's repository."""
     def __init__(self, parent, name, mode, hash, bupmode):
         Node.__init__(self, parent, name, mode, hash)
         self.bupmode = bupmode
         self._cached_size = None
         self._filereader = None
-        
+
     def open(self):
+        """Open the file."""
         # You'd think FUSE might call this only once each time a file is
         # opened, but no; it's really more of a refcount, and it's called
         # once per read().  Thus, it's important to cache the filereader
@@ -277,8 +306,9 @@ class File(Node):
                                            self.bupmode == git.BUP_CHUNKED)
         self._filereader.seek(0)
         return self._filereader
-    
+
     def size(self):
+        """Get this file's size."""
         if self._cached_size == None:
             log('<<<<File.size() is calculating...\n')
             if self.bupmode == git.BUP_CHUNKED:
@@ -291,16 +321,25 @@ class File(Node):
 
 _symrefs = 0
 class Symlink(File):
+    """A symbolic link from bup's repository."""
     def __init__(self, parent, name, hash, bupmode):
         File.__init__(self, parent, name, 0120000, hash, bupmode)
 
     def size(self):
+        """Get the file size of the file at which this link points."""
         return len(self.readlink())
 
     def readlink(self):
+        """Get the path that this link points at."""
         return ''.join(cp().join(self.hash.encode('hex')))
 
     def dereference(self):
+        """Get the node that this link points at.
+
+        If the path is invalid, raise a NoSuchFile exception. If the level of
+        indirection of symlinks is 100 levels deep, raise a TooManySymlinks
+        exception.
+        """
         global _symrefs
         if _symrefs > 100:
             raise TooManySymlinks('too many levels of symlinks: %r'
@@ -317,18 +356,21 @@ class Symlink(File):
 
     def _lresolve(self, parts):
         return self.dereference()._lresolve(parts)
-    
+
 
 class FakeSymlink(Symlink):
+    """A symlink that is not stored in the bup repository."""
     def __init__(self, parent, name, toname):
         Symlink.__init__(self, parent, name, EMPTY_SHA, git.BUP_NORMAL)
         self.toname = toname
-        
+
     def readlink(self):
+        """Get the path that this link points at."""
         return self.toname
-    
+
 
 class Dir(Node):
+    """A directory stored inside of bup's repository."""
     def _mksubs(self):
         self._subs = {}
         it = cp().get(self.hash.encode('hex'))
@@ -338,7 +380,7 @@ class Dir(Node):
             it = cp().get(self.hash.encode('hex') + ':')
             type = it.next()
         assert(type == 'tree')
-        for (mode,mangled_name,sha) in git._treeparse(''.join(it)):
+        for (mode,mangled_name,sha) in git.treeparse(''.join(it)):
             mode = int(mode, 8)
             name = mangled_name
             (name,bupmode) = git.demangle_name(mangled_name)
@@ -350,12 +392,18 @@ class Dir(Node):
                 self._subs[name] = Symlink(self, name, sha, bupmode)
             else:
                 self._subs[name] = File(self, name, mode, sha, bupmode)
-                
+
 
 class CommitList(Node):
+    """A reverse-chronological list of commits on a branch in bup's repository.
+
+    Represents each commit as a directory and a symlink that points to the
+    directory. The symlink is named after the date. Prepends a dot to each hash
+    to make commits look like hidden directories.
+    """
     def __init__(self, parent, name, hash):
         Node.__init__(self, parent, name, 040000, hash)
-        
+
     def _mksubs(self):
         self._subs = {}
         revs = list(git.rev_list(self.hash.encode('hex')))
@@ -376,11 +424,16 @@ class CommitList(Node):
             n2.ctime = n2.mtime = date
             self._subs['latest'] = n2
 
-    
+
 class RefList(Node):
+    """A list of branches in bup's repository.
+
+    The sub-nodes of the ref list are a series of CommitList for each commit
+    hash pointed to by a branch.
+    """
     def __init__(self, parent):
         Node.__init__(self, parent, '/', 040000, EMPTY_SHA)
-        
+
     def _mksubs(self):
         self._subs = {}
         for (name,sha) in git.list_refs():
@@ -390,5 +443,5 @@ class RefList(Node):
                 n1 = CommitList(self, name, sha)
                 n1.ctime = n1.mtime = date
                 self._subs[name] = n1
-        
+
 
