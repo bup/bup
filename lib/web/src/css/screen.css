@@ -1,4 +1,16 @@
-body, table { font-family: sans-serif }
-#breadcrumb { margin: 10px 0; }
-.dir-name { text-align: left }
-.dir-size { text-align: right }
+* { outline: none; }
+body { font-family: Arial, Helvetica, sans-serif; font-size: 10px; }
+table { width: 100%; padding: 0 5%; }
+
+a { color: black; text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+#wrapper { margin: 20px; width: 100%; }
+#directories_wrapper { width: 100%; overflow: auto; margin-top: 10px; }
+#directories>div { width: 300px; float: left; border-left: 1px solid black; }
+
+.file_wrapper tbody th { text-align: left; }
+
+tr.active { background: #cccccc;}
+
+.clearing { clear: both; }

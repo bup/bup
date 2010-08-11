@@ -1,38 +1,19 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<!DOCTYPE HTML>
 <html>
-  <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-    <title>Directory listing for {{ escape(path) }}</title>
-    <link rel="stylesheet" href="{{ static_url("css/screen.css") }}" />
-  </head>
-  <body>
-    <div id="breadcrumb">
-      {% for (display, part_path) in breadcrumbs[:-1] %}
-        <a href="{{ url_escape(part_path) }}">{{ escape(display) }}</a> /
-      {% end %}
-      <strong>{{ escape(breadcrumbs[-1][0]) }}</strong>
-    </div>
-    {% if files_hidden %}
-    <div id="message">
-      {% if hidden_shown %}
-      <a href=".">Hide hidden files</a>
-      {% else %}
-      <a href="?hidden=1">Show hidden files</a>
-      {% end %}
-    </div>
-    {% end %}
-    <table>
-      <tr>
-        <th class="dir-name">Name</th>
-        <th class="dir-size">Size</th>
-      </tr>
-      {% for (display, link, size) in dir_contents %}
-        <tr>
-          <td class="dir-name"><a href="{{ url_escape(link) }}">{{ escape(display) }}</a></td>
-          <td class="dir-size">{% if size != None %}{{ size }}{% else %}&nbsp;{% end %}</td>
-        </tr>
-      {% end %}
-    </table>
-  </body>
+	<head>
+		<script type="text/javascript" src="{{ static_url('js/jquery-1.4.2.min.js') }}"></script>
+		<script type="text/javascript" src="{{ static_url('js/mustache-0.3.0.js') }}"></script>
+		<script type="text/javascript" src="{{ static_url('js/custom.js') }}"></script>
+		<link rel="stylesheet" href="{{ static_url('css/screen.css') }}" />
+	</head>
+	<body>
+		<div id="wrapper">
+			<div id="breadcrumb"> </div>
+			<div id="directories_wrapper">
+				<div id="directories">
+					<div id="clearing" class="clearing"></div>
+				</div>
+			</div>
+		</div>
+	</body>
 </html>
-

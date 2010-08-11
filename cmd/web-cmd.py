@@ -73,12 +73,16 @@ class BupRequestHandler(tornado.web.RequestHandler):
             return
         f = None
         is_json = int(self.request.arguments.get('json', [0])[-1])
-        if is_json:
-            self._list_directory_json(path, n)
-        elif stat.S_ISDIR(n.mode):
-            self._list_directory(path, n)
+        if stat.S_ISDIR(n.mode):
+            if is_json:
+                self._list_directory_json(path, n)
+            else:
+                self._list_directory(path, n)
         else:
-            self._get_file(path, n)
+            if is_json:
+                self._get_file_json(path, n)
+            else:
+                self._get_file(path, n)
 
     def _list_directory(self, path, n):
         """Helper to produce a directory listing.
@@ -117,10 +121,11 @@ class BupRequestHandler(tornado.web.RequestHandler):
         items = []
         directory_contents=_compute_dir_contents(n, show_hidden)
         for (name, item_path, size) in directory_contents:
-            item = '{"name":"%s","path":"%s","size":"%s"},' % (name, path + item_path, size)
+            item = '{"name":"%s","path":"%s","size":"%s"}' % (name, path + item_path, size)
             items.append(item)
         json += ",".join(items)
-        json += '}'
+        json += ']}'
+        self.write(json)
 
     def _get_file(self, path, n):
         """Process a request on a file.
@@ -140,6 +145,14 @@ class BupRequestHandler(tornado.web.RequestHandler):
             for blob in chunkyreader(f):
                 self.write(blob)
             f.close()
+
+    def _get_file_json(self, path, n):
+        name = path.split("/")[-1]
+        size = n.size()
+        mtime = self.date_time_string(n.mtime)
+        ctype = self._guess_type(path)
+
+        self.write('{"path":"%s","name":"%s","size":"%i","mtime":"%s","filetype":"%s"}' % (path,name,size,mtime,ctype))
 
     def _guess_type(self, path):
         """Guess the type of a file.
