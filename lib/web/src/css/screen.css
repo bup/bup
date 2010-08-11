@@ -1,0 +1,4 @@
+body, table { font-family: sans-serif }
+#breadcrumb { margin: 10px 0; }
+.dir-name { text-align: left }
+.dir-size { text-align: right }

@@ -179,6 +179,7 @@ top = vfs.RefList(None)
 settings = dict(
     debug = 1,
     template_path = resource_path('web'),
+    static_path = resource_path('web/src'),
 )
 
 # Disable buffering on stdout, for debug messages
