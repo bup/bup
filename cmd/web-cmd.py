@@ -72,7 +72,10 @@ class BupRequestHandler(tornado.web.RequestHandler):
             self.send_error(404)
             return
         f = None
-        if stat.S_ISDIR(n.mode):
+        is_json = int(self.request.arguments.get('json', [0])[-1])
+        if is_json:
+            self._list_directory_json(path, n)
+        elif stat.S_ISDIR(n.mode):
             self._list_directory(path, n)
         else:
             self._get_file(path, n)
