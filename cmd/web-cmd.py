@@ -113,11 +113,14 @@ class BupRequestHandler(tornado.web.RequestHandler):
             show_hidden = False
 
         self.set_header("Content-Type", "application/json")
-        self.write('{path:"%s",items:' % path)
+        json = '{"path":"%s","items":[' % path
+        items = []
         directory_contents=_compute_dir_contents(n, show_hidden)
         for (name, item_path, size) in directory_contents:
-            self.write('{name:"%s",path:"%s",size:"%s"}' % (name, path + item_path, size))
-        self.write('}')
+            item = '{"name":"%s","path":"%s","size":"%s"},' % (name, path + item_path, size)
+            items.append(item)
+        json += ",".join(items)
+        json += '}'
 
     def _get_file(self, path, n):
         """Process a request on a file.
