@@ -1,4 +1,10 @@
-import sys, textwrap, getopt, re
+"""Command-line options parser.
+With the help of an options spec string, easily parse command-line options.
+"""
+import sys
+import textwrap
+import getopt
+import re
 
 class OptDict:
     def __init__(self):
@@ -29,6 +35,18 @@ def _intify(v):
 
 
 class Options:
+    """Option parser.
+    When constructed, two strings are mandatory. The first one is the command
+    name showed before error messages. The second one is a string called an
+    optspec that specifies the synopsis and option flags and their description.
+    For more information about optspecs, consult the bup-options(1) man page.
+
+    Two optional arguments specify an alternative parsing function and an
+    alternative behaviour on abort (after having output the usage string).
+
+    By default, the parser function is getopt.gnu_getopt, and the abort
+    behaviour is to exit the program.
+    """
     def __init__(self, exe, optspec, optfunc=getopt.gnu_getopt,
                  onabort=_default_onabort):
         self.exe = exe
@@ -99,17 +117,25 @@ class Options:
         return ''.join(out).rstrip() + '\n'
 
     def usage(self, msg=""):
+        """Print usage string to stderr and abort."""
         sys.stderr.write(self._usagestr)
         e = self._onabort and self._onabort(msg) or None
         if e:
             raise e
 
     def fatal(self, s):
+        """Print an error message to stderr and abort with usage string."""
         msg = 'error: %s\n' % s
         sys.stderr.write(msg)
         return self.usage(msg)
 
     def parse(self, args):
+        """Parse a list of arguments and return (options, flags, extra).
+
+        In the returned tuple, "options" is an OptDict with known options,
+        "flags" is a list of option flags that were used on the command-line,
+        and "extra" is a list of positional arguments.
+        """
         try:
             (flags,extra) = self.optfunc(args, self._shortopts, self._longopts)
         except getopt.GetoptError, e:
@@ -120,7 +146,7 @@ class Options:
         for k,v in self._defaults.iteritems():
             k = self._aliases[k]
             opt[k] = v
-        
+
         for (k,v) in flags:
             k = k.lstrip('-')
             if k in ('h', '?', 'help'):
