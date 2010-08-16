@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import sys, os, re, stat, fnmatch
+import sys, os, stat, fnmatch
 from bup import options, git, shquote, vfs
 from bup.helpers import *
 

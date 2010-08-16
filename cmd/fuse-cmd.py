@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import sys, os, stat, errno, re, time, tempfile
+import sys, os, errno
 from bup import options, git, vfs
 from bup.helpers import *
 try:

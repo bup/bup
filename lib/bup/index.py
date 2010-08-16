@@ -1,4 +1,4 @@
-import os, stat, time, struct, tempfile
+import os, stat, struct, tempfile
 from bup.helpers import *
 
 EMPTY_SHA = '\0'*20

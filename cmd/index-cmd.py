@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import os, sys, stat, time
+import sys, stat, time
 from bup import options, git, index, drecurse
 from bup.helpers import *
 

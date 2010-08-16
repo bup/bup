@@ -1,4 +1,4 @@
-import re, struct, errno, select, time
+import re, struct, errno, time
 from bup import git, ssh
 from bup.helpers import *
 

@@ -1,8 +1,7 @@
 #!/usr/bin/env python
-import sys, time, struct
-from bup import hashsplit, git, options, client
+import sys
+from bup import git, options, client
 from bup.helpers import *
-from subprocess import PIPE
 
 
 optspec = """

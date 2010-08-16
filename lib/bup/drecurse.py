@@ -1,4 +1,4 @@
-import stat, heapq
+import stat
 from bup.helpers import *
 
 try:

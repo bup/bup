@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import sys, struct, mmap
+import sys, struct
 from bup import options, git
 from bup.helpers import *
 

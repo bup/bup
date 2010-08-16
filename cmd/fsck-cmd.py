@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import sys, os, glob, subprocess, time
+import sys, os, glob, subprocess
 from bup import options, git
 from bup.helpers import *
 

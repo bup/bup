@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import sys, os, glob
+import sys
 from bup import options
 from bup.helpers import *
 

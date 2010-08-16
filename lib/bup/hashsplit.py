@@ -1,4 +1,4 @@
-import sys, math
+import math
 from bup import _faster
 from bup.helpers import *
 

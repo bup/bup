@@ -1,8 +1,7 @@
 #!/usr/bin/env python
-import sys, stat, cgi, shutil, urllib, mimetypes, posixpath, time
+import sys, stat, urllib, mimetypes, posixpath, time
 import tornado.httpserver
 import tornado.ioloop
-import tornado.template
 import tornado.web
 from bup import options, git, vfs
 from bup.helpers import *

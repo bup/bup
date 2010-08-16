@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import sys, mmap
+import sys
 from bup import options, _faster
 from bup.helpers import *
 

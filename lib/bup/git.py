@@ -2,7 +2,7 @@
 bup repositories are in Git format. This library allows us to
 interact with the Git data structures.
 """
-import os, errno, zlib, time, subprocess, struct, stat, re, tempfile
+import os, zlib, time, subprocess, struct, stat, re, tempfile
 import heapq
 from bup.helpers import *
 
