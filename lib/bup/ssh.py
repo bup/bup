@@ -1,7 +1,16 @@
-import os, re, subprocess
+"""SSH connection.
+Connect to a remote host via SSH and execute a command on the host.
+"""
+import os
+import sys
+import re
+import subprocess
+
 from bup import helpers
 
+
 def connect(rhost, subcmd):
+    """Connect to 'rhost' and execute the bup subcommand 'subcmd' on it."""
     assert(not re.search(r'[^\w-]', subcmd))
     main_exe = os.environ.get('BUP_MAIN_EXE') or sys.argv[0]
     nicedir = os.path.split(os.path.abspath(main_exe))[0]
