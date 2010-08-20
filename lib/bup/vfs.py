@@ -346,11 +346,12 @@ class Symlink(File):
                                   % self.fullname())
         _symrefs += 1
         try:
-            return self.parent.lresolve(self.readlink(),
-                                        stay_inside_fs=True)
-        except NoSuchFile:
-            raise NoSuchFile("%s: broken symlink to %r"
-                             % (self.fullname(), self.readlink()))
+            try:
+                return self.parent.lresolve(self.readlink(),
+                                            stay_inside_fs=True)
+            except NoSuchFile:
+                raise NoSuchFile("%s: broken symlink to %r"
+                                 % (self.fullname(), self.readlink()))
         finally:
             _symrefs -= 1
 
