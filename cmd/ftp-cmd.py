@@ -97,7 +97,13 @@ def find_readline_lib():
 def init_readline_vars():
     """Work around trailing space automatically inserted by readline.
     See http://bugs.python.org/issue5833"""
-    import ctypes
+    try:
+        import ctypes
+    except ImportError:
+        # python before 2.5 didn't have the ctypes module; but those
+        # old systems probably also didn't have this readline bug, so
+        # just ignore it.
+        return
     lib_name = find_readline_lib()
     if lib_name is not None:
         lib = ctypes.cdll.LoadLibrary(lib_name)
