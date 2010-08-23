@@ -1,5 +1,5 @@
 import math
-from bup import _faster
+from bup import _helpers
 from bup.helpers import *
 
 BLOB_LWM = 8192*2
@@ -38,7 +38,7 @@ class Buf:
 
 def splitbuf(buf):
     b = buf.peek(buf.used())
-    (ofs, bits) = _faster.splitbuf(b)
+    (ofs, bits) = _helpers.splitbuf(b)
     if ofs:
         buf.eat(ofs)
         return (buffer(b, 0, ofs), bits)
@@ -135,7 +135,7 @@ def split_to_shalist(w, files):
             shal.append(('100644', sha, size))
         return _make_shalist(shal)[0]
     else:
-        base_bits = _faster.blobbits()
+        base_bits = _helpers.blobbits()
         fanout_bits = int(math.log(fanout, 2))
         def bits_to_idx(n):
             assert(n >= base_bits)
@@ -163,7 +163,7 @@ def split_to_blob_or_tree(w, files):
 
 
 def open_noatime(name):
-    fd = _faster.open_noatime(name)
+    fd = _helpers.open_noatime(name)
     try:
         return os.fdopen(fd, 'rb', 1024*1024)
     except:
@@ -177,4 +177,4 @@ def open_noatime(name):
 def fadvise_done(f, ofs):
     assert(ofs >= 0)
     if ofs > 0:
-        _faster.fadvise_done(f.fileno(), ofs)
+        _helpers.fadvise_done(f.fileno(), ofs)

@@ -1,8 +1,8 @@
 from distutils.core import setup, Extension
 
-_faster_mod = Extension('_faster', sources=['_faster.c', 'bupsplit.c'])
+_helpers_mod = Extension('_helpers', sources=['_helpers.c', 'bupsplit.c'])
 
-setup(name='_faster',
+setup(name='_helpers',
       version='0.1',
       description='accelerator library for bup',
-      ext_modules=[_faster_mod])
+      ext_modules=[_helpers_mod])

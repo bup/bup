@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import sys
-from bup import options, git, _faster
+from bup import options, git, _helpers
 from bup.helpers import *
 
 
@@ -23,7 +23,7 @@ for i in mi:
     if i == last:
         continue
     #assert(str(i) >= last)
-    pm = _faster.bitmatch(last, i)
+    pm = _helpers.bitmatch(last, i)
     longmatch = max(longmatch, pm)
     last = i
 print longmatch

@@ -174,7 +174,7 @@ static PyMethodDef faster_methods[] = {
     { NULL, NULL, 0, NULL },  // sentinel
 };
 
-PyMODINIT_FUNC init_faster(void)
+PyMODINIT_FUNC init_helpers(void)
 {
-    Py_InitModule("_faster", faster_methods);
+    Py_InitModule("_helpers", faster_methods);
 }
