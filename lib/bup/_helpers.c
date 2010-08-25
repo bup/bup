@@ -1,9 +1,16 @@
+#define _LARGEFILE64_SOURCE 1
+
 #include "bupsplit.h"
 #include <Python.h>
 #include <assert.h>
-#include <stdint.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <arpa/inet.h>
+#include <linux/fs.h>
+#include <stdint.h>
+#include <sys/ioctl.h>
+#include <sys/stat.h>
+#include <sys/time.h>
 
 static PyObject *selftest(PyObject *self, PyObject *args)
 {
@@ -193,7 +200,116 @@ static PyObject *fadvise_done(PyObject *self, PyObject *args)
 }
 
 
-static PyMethodDef faster_methods[] = {
+static int set_linux_file_attr(const char *path, unsigned long attr)
+{
+}
+
+
+static PyObject *py_get_linux_file_attr(PyObject *self, PyObject *args)
+{
+    int rc;
+    unsigned long attr;
+    char *path;
+    int fd;
+
+    if (!PyArg_ParseTuple(args, "s", &path))
+        return NULL;
+
+    fd = open(path, O_RDONLY | O_NONBLOCK | O_LARGEFILE | O_NOFOLLOW);
+    if (fd == -1)
+        return PyErr_SetFromErrnoWithFilename(PyExc_IOError, path);
+
+    attr = 0;
+    rc = ioctl(fd, FS_IOC_GETFLAGS, &attr);
+    if (rc == -1)
+    {
+        close(fd);
+        return PyErr_SetFromErrnoWithFilename(PyExc_IOError, path);
+    }
+
+    close(fd);
+    return Py_BuildValue("k", attr);
+}
+
+
+static PyObject *py_set_linux_file_attr(PyObject *self, PyObject *args)
+{
+    int rc;
+    unsigned long attr;
+    char *path;
+    int fd;
+
+    if (!PyArg_ParseTuple(args, "sk", &path, &attr))
+        return NULL;
+
+    fd = open(path, O_RDONLY | O_NONBLOCK | O_LARGEFILE | O_NOFOLLOW);
+    if(fd == -1)
+        return PyErr_SetFromErrnoWithFilename(PyExc_IOError, path);
+
+    rc = ioctl(fd, FS_IOC_SETFLAGS, &attr);
+    if (rc == -1)
+    {
+        close(fd);
+        return PyErr_SetFromErrnoWithFilename(PyExc_IOError, path);
+    }
+
+    close(fd);
+    return Py_True;
+}
+
+
+static PyObject *py_lutimes(PyObject *self, PyObject *args)
+{
+    int rc;
+    char *filename;
+    double access, modification;
+
+    if (!PyArg_ParseTuple(args, "s(dd)", &filename, &access, &modification))
+        return NULL;
+
+    if(isnan(access))
+    {
+        PyErr_SetString(PyExc_ValueError, "access time is NaN");
+        return NULL;
+    }
+    else if(isinf(access))
+    {
+        PyErr_SetString(PyExc_ValueError, "access time is infinite");
+        return NULL;
+    }
+    else if(isnan(modification))
+    {
+        PyErr_SetString(PyExc_ValueError, "modification time is NaN");
+        return NULL;
+    }
+    else if(isinf(modification))
+    {
+        PyErr_SetString(PyExc_ValueError, "modification time is infinite");
+        return NULL;
+    }
+
+    struct timeval tv[2];
+
+    double integral_part;
+    double fractional_part;
+
+    fractional_part = modf(access, &integral_part);
+    tv[0].tv_sec = integral_part;
+    tv[0].tv_usec = fractional_part * 1000000;
+
+    fractional_part = modf(modification, &integral_part);
+    tv[1].tv_sec = modification;
+    tv[1].tv_usec = fmod(modification, 1000000);
+
+    rc = lutimes(filename, tv);
+    if(rc != 0)
+        return PyErr_SetFromErrnoWithFilename(PyExc_IOError, filename);
+
+    return Py_True;
+}
+
+
+static PyMethodDef helper_methods[] = {
     { "selftest", selftest, METH_VARARGS,
 	"Check that the rolling checksum rolls correctly (for unit tests)." },
     { "blobbits", blobbits, METH_VARARGS,
@@ -212,10 +328,16 @@ static PyMethodDef faster_methods[] = {
 	"open() the given filename for read with O_NOATIME if possible" },
     { "fadvise_done", fadvise_done, METH_VARARGS,
 	"Inform the kernel that we're finished with earlier parts of a file" },
+    { "get_linux_file_attr", py_get_linux_file_attr, METH_VARARGS,
+      "Return the Linux attributes for the given file." },
+    { "set_linux_file_attr", py_set_linux_file_attr, METH_VARARGS,
+      "Set the Linux attributes for the given file." },
+    { "lutimes", py_lutimes, METH_VARARGS,
+      "Set the access and modification times for the given file or symlink." },
     { NULL, NULL, 0, NULL },  // sentinel
 };
 
 PyMODINIT_FUNC init_helpers(void)
 {
-    Py_InitModule("_helpers", faster_methods);
+    Py_InitModule("_helpers", helper_methods);
 }

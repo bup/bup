@@ -219,3 +219,60 @@ if bup fsck --par2-ok; then
 else
     WVFAIL bup fsck --quick -r # still fails because par2 was missing
 fi
+
+# Very simple metadata tests -- "make install" to a temp directory,
+# then check that bup meta can reproduce the metadata correctly
+# (according to coreutils stat) via create, extract, build-tree, and
+# settle-up.  The current use of stat is crude, and this does not test
+# devices, varying users/groups, acls, attrs, etc.
+WVSTART "meta"
+# Create a test tree and collect its info via stat(1).
+(
+  set -e
+  rm -rf "${TOP}/bupmeta.tmp"
+  mkdir -p "${TOP}/bupmeta.tmp"
+  make DESTDIR="${TOP}/bupmeta.tmp/src" install
+  mkdir "${TOP}/bupmeta.tmp/src/misc"
+  cp -a cmd/bup-* "${TOP}/bupmeta.tmp/src/misc/"
+  cd "${TOP}/bupmeta.tmp/src"
+  find . | sort | xargs stat \
+    | sed 's/Inode: [0-9]\+//' \
+    | sed '/^ \+Size: /d' \
+    | sed '/^Change: /d' \
+    > ../src-stat
+) || exit 1
+# Use the test tree to check bup meta.
+(
+  cd "${TOP}/bupmeta.tmp" || exit 1
+  WVPASS bup meta --create --recurse --file src.meta src
+  mkdir src-restore || exit 1
+  cd src-restore || exit 1
+  WVPASS bup meta --extract --file ../src.meta
+  WVPASS test -d src
+  (
+    set -e
+    cd src
+    find . | sort | xargs stat \
+      | sed 's/Inode: [0-9]\+//' \
+      | sed '/^ \+Size: /d' \
+      | sed '/^Change: /d' \
+      > ../../src-restore-stat
+  ) || exit 1
+  WVPASS diff -u ../src-stat ../src-restore-stat
+  rm -rf src
+  WVPASS bup meta --start-extract --file ../src.meta
+  WVPASS test -d src
+  WVPASS bup meta --finish-extract --file ../src.meta
+  (
+    set -e
+    cd src
+    find . | sort | xargs stat \
+      | sed 's/Inode: [0-9]\+//' \
+      | sed '/^ \+Size: /d' \
+      | sed '/^Change: /d' \
+      > ../../src-restore-stat
+  ) || exit 1
+  WVPASS diff -u ../src-stat ../src-restore-stat
+)
+
+exit 0
