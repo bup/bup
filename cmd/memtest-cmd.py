@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import sys, re, struct, mmap
+import sys, re, struct, mmap, time
 from bup import git, options
 from bup.helpers import *
 
@@ -10,19 +10,25 @@ def s_from_bytes(bytes):
     return ''.join(clist)
 
 
+last = start = 0
 def report(count):
-    fields = ['VmSize', 'VmRSS', 'VmData', 'VmStk']
+    global last, start
+    fields = ['VmSize', 'VmRSS', 'VmData', 'VmStk', 'ms']
     d = {}
     for line in open('/proc/self/status').readlines():
         l = re.split(r':\s*', line.strip(), 1)
         d[l[0]] = l[1]
+    now = time.time()
+    d['ms'] = int((now - last) * 1000)
     if count >= 0:
         e1 = count
         fields = [d[k] for k in fields]
     else:
         e1 = ''
+        start = now
     print ('%9s  ' + ('%10s ' * len(fields))) % tuple([e1] + fields)
     sys.stdout.flush()
+    last = time.time()
 
 
 optspec = """
@@ -61,3 +67,5 @@ for c in xrange(opt.cycles):
         #print bin.encode('hex')
         m.exists(bin)
     report((c+1)*opt.number)
+
+print 'Total time: %.3fs' % (time.time() - start)
