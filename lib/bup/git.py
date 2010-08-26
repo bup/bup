@@ -271,6 +271,9 @@ class PackIdxList:
     def __iter__(self):
         return iter(idxmerge(self.packs))
 
+    def __len__(self):
+        return sum(len(pack) for pack in self.packs)
+
     def exists(self, hash):
         """Return nonempty if the object exists in the index files."""
         if hash in self.also:
@@ -407,7 +410,7 @@ class PackWriter:
         self.close()
 
     def _make_objcache(self):
-        if not self.objcache:
+        if self.objcache == None:
             if self.objcache_maker:
                 self.objcache = self.objcache_maker()
             else:
