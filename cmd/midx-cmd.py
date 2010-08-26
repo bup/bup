@@ -4,7 +4,7 @@ from bup import options, git
 from bup.helpers import *
 
 PAGE_SIZE=4096
-SHA_PER_PAGE=PAGE_SIZE/200.
+SHA_PER_PAGE=PAGE_SIZE/20.
 
 
 def merge(idxlist, bits, table):
