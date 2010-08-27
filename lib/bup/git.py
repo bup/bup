@@ -231,6 +231,12 @@ class PackMidx:
         s = self.fanout[start:start+4]
         return struct.unpack('!I', s)[0]
 
+    def _get(self, i):
+        return str(self.shalist[i*20:(i+1)*20])
+
+    def _num(self, hash):
+        return struct.unpack('!I', hash[:4])[0]
+
     def exists(self, hash):
         """Return nonempty if the object exists in the index files."""
         global _total_searches, _total_steps
@@ -239,18 +245,28 @@ class PackMidx:
         el = extract_bits(want, self.bits)
         if el:
             start = self._fanget(el-1)
+            startv = el << (32-self.bits)
         else:
             start = 0
+            startv = 0
         end = self._fanget(el)
+        endv = (el+1) << (32-self.bits)
         _total_steps += 1   # lookup table is a step
+        hashv = self._num(hash)
+        #print '(%08x) %08x %08x %08x' % (extract_bits(want, 32), startv, hashv, endv)
         while start < end:
             _total_steps += 1
-            mid = start + (end-start)/2
-            v = str(self.shalist[mid*20:(mid+1)*20])
+            #print '! %08x %08x %08x   %d - %d' % (startv, hashv, endv, start, end)
+            mid = start + (hashv-startv)*(end-start-1)/(endv-startv)
+            #print '  %08x %08x %08x   %d %d %d' % (startv, hashv, endv, start, mid, end)
+            v = self._get(mid)
+            #print '    %08x' % self._num(v)
             if v < want:
                 start = mid+1
+                startv = self._num(v)
             elif v > want:
                 end = mid
+                endv = self._num(v)
             else: # got it!
                 return True
         return None
