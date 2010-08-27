@@ -192,12 +192,7 @@ class PackIdx:
         return int(self.fanout[255])
 
 
-def extract_bits(buf, nbits):
-    """Take the first 'nbits' bits from 'buf' and return them as an integer."""
-    mask = (1<<nbits) - 1
-    v = _helpers.firstword(buf)
-    v = (v >> (32-nbits)) & mask
-    return v
+extract_bits = _helpers.extract_bits
 
 
 class PackMidx:

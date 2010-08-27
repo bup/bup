@@ -77,6 +77,25 @@ static PyObject *firstword(PyObject *self, PyObject *args)
 }
 
 
+static PyObject *extract_bits(PyObject *self, PyObject *args)
+{
+    unsigned char *buf = NULL;
+    int len = 0, nbits = 0;
+    uint32_t v, mask;
+
+    if (!PyArg_ParseTuple(args, "t#i", &buf, &len, &nbits))
+	return NULL;
+    
+    if (len < 4)
+	return NULL;
+    
+    mask = (1<<nbits) - 1;
+    v = ntohl(*(uint32_t *)buf);
+    v = (v >> (32-nbits)) & mask;
+    return Py_BuildValue("I", v);
+}
+
+
 // I would have made this a lower-level function that just fills in a buffer
 // with random values, and then written those values from python.  But that's
 // about 20% slower in my tests, and since we typically generate random
@@ -185,6 +204,8 @@ static PyMethodDef faster_methods[] = {
 	"Count the number of matching prefix bits between two strings." },
     { "firstword", firstword, METH_VARARGS,
         "Return an int corresponding to the first 32 bits of buf." },
+    { "extract_bits", extract_bits, METH_VARARGS,
+	"Take the first 'nbits' bits from 'buf' and return them as an int." },
     { "write_random", write_random, METH_VARARGS,
 	"Write random bytes to the given file descriptor" },
     { "open_noatime", open_noatime, METH_VARARGS,
