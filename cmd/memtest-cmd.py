@@ -37,6 +37,7 @@ bup memtest [-n elements] [-c cycles]
 n,number=  number of objects per cycle [10000]
 c,cycles=  number of cycles to run [100]
 ignore-midx  ignore .midx files, use only .idx files
+existing   test with existing objects instead of fake ones
 """
 o = options.Options('bup memtest', optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
@@ -53,19 +54,30 @@ report(-1)
 f = open('/dev/urandom')
 a = mmap.mmap(-1, 20)
 report(0)
+
+if opt.existing:
+    def foreverit(mi):
+        while 1:
+            for e in mi:
+                yield e
+    objit = iter(foreverit(m))
+    
 for c in xrange(opt.cycles):
     for n in xrange(opt.number):
-        b = f.read(3)
-        if 0:
-            bytes = list(struct.unpack('!BBB', b)) + [0]*17
-            bytes[2] &= 0xf0
-            bin = struct.pack('!20s', s_from_bytes(bytes))
+        if opt.existing:
+            bin = objit.next()
+            assert(m.exists(bin))
         else:
+            b = f.read(3)
             a[0:2] = b[0:2]
             a[2] = chr(ord(b[2]) & 0xf0)
             bin = str(a[0:20])
-        #print bin.encode('hex')
-        m.exists(bin)
+
+            # technically, a randomly generated object id might exist.
+            # but the likelihood of that is the likelihood of finding
+            # a collision in sha-1 by accident, which is so unlikely that
+            # we don't care.
+            assert(not m.exists(bin))
     report((c+1)*opt.number)
 
 print 'Total time: %.3fs' % (time.time() - start)

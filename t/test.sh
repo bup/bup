@@ -139,6 +139,9 @@ WVFAIL diff -q tags2t.tmp tags2tf.tmp
 wc -c t/testfile1 t/testfile2
 wc -l tags1.tmp tags2.tmp
 
+WVPASS bup memtest -c1 -n100
+WVPASS bup memtest -c1 -n100 --existing
+
 WVSTART "join"
 WVPASS bup join $(cat tags1.tmp) >out1.tmp
 WVPASS bup join <tags2.tmp >out2.tmp
