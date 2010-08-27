@@ -14,6 +14,9 @@ repodir = None
 _typemap =  { 'blob':3, 'tree':2, 'commit':1, 'tag':4 }
 _typermap = { 3:'blob', 2:'tree', 1:'commit', 4:'tag' }
 
+_total_searches = 0
+_total_steps = 0
+
 
 class GitError(Exception):
     pass
@@ -148,13 +151,17 @@ class PackIdx:
         return ofs
 
     def _idx_from_hash(self, hash):
+        global _total_searches, _total_steps
+        _total_searches += 1
         assert(len(hash) == 20)
         b1 = ord(hash[0])
         start = self.fanout[b1-1] # range -1..254
         end = self.fanout[b1] # range 0..255
         buf = buffer(self.map, 8 + 256*4, end*20)
         want = str(hash)
+        _total_steps += 1  # lookup table is a step
         while start < end:
+            _total_steps += 1
             mid = start + (end-start)/2
             v = str(buf[mid*20:(mid+1)*20])
             if v < want:
@@ -226,6 +233,8 @@ class PackMidx:
 
     def exists(self, hash):
         """Return nonempty if the object exists in the index files."""
+        global _total_searches, _total_steps
+        _total_searches += 1
         want = str(hash)
         el = extract_bits(want, self.bits)
         if el:
@@ -233,7 +242,9 @@ class PackMidx:
         else:
             start = 0
         end = self._fanget(el)
+        _total_steps += 1   # lookup table is a step
         while start < end:
+            _total_steps += 1
             mid = start + (end-start)/2
             v = str(self.shalist[mid*20:(mid+1)*20])
             if v < want:
@@ -276,10 +287,13 @@ class PackIdxList:
 
     def exists(self, hash):
         """Return nonempty if the object exists in the index files."""
+        global _total_searches
+        _total_searches += 1
         if hash in self.also:
             return True
         for i in range(len(self.packs)):
             p = self.packs[i]
+            _total_searches -= 1  # will be incremented by sub-pack
             if p.exists(hash):
                 # reorder so most recently used packs are searched first
                 self.packs = [p] + self.packs[:i] + self.packs[i+1:]

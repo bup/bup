@@ -80,4 +80,7 @@ for c in xrange(opt.cycles):
             assert(not m.exists(bin))
     report((c+1)*opt.number)
 
+print ('%d objects searched in %d steps: avg %.3f steps/object' 
+       % (git._total_searches, git._total_steps,
+          git._total_steps*1.0/git._total_searches))
 print 'Total time: %.3fs' % (time.time() - start)
