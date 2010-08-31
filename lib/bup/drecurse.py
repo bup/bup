@@ -73,7 +73,7 @@ def recursive_dirlist(paths, xdev):
                     yield (path, pst)
                     continue
             except OSError, e:
-                add_error(e)
+                add_error('recursive_dirlist: %s' % e)
                 continue
             try:
                 pfile = OsFile(path)

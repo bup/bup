@@ -152,7 +152,7 @@ if opt.check:
 paths = index.reduce_paths(extra)
 
 if opt.update:
-    if not paths:
+    if not extra:
         o.fatal('update (-u) requested but no paths given')
     for (rp,path) in paths:
         update_index(rp)
