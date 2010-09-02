@@ -7,6 +7,11 @@ PAGE_SIZE=4096
 SHA_PER_PAGE=PAGE_SIZE/20.
 
 
+def _group(l, count):
+    for i in xrange(0, len(l), count):
+        yield l[i:i+count]
+
+
 def merge(idxlist, bits, table):
     count = 0
     for e in git.idxmerge(idxlist):
@@ -81,6 +86,7 @@ bup midx [options...] <idxnames...>
 o,output=  output midx filename (default: auto-generated)
 a,auto     automatically create .midx from any unindexed .idx files
 f,force    automatically create .midx from *all* .idx files
+max-files= maximum number of idx files to open at once [500]
 """
 o = options.Options('bup midx', optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
@@ -98,7 +104,9 @@ elif opt.auto or opt.force:
     for path in paths:
         log('midx: scanning %s\n' % path)
         if opt.force:
-            do_midx(path, opt.output, glob.glob('%s/*.idx' % path))
+            idxs = glob.glob('%s/*.idx' % path)
+            for sublist in _group(idxs, opt.max_files):
+                do_midx(path, opt.output, sublist)
         elif opt.auto:
             m = git.PackIdxList(path)
             needed = {}
