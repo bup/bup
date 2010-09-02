@@ -7,6 +7,8 @@ import heapq
 from bup.helpers import *
 from bup import _helpers
 
+MIDX_VERSION = 2
+
 verbose = 0
 ignore_midx = 0
 home_repodir = os.path.expanduser('~/.bup')
@@ -203,24 +205,39 @@ class PackMidx:
     """
     def __init__(self, filename):
         self.name = filename
+        self.force_keep = False
         assert(filename.endswith('.midx'))
         self.map = mmap_read(open(filename))
-        if str(self.map[0:8]) == 'MIDX\0\0\0\1':
-            log('Warning: ignoring old-style midx %r\n' % filename)
-            self.bits = 0
-            self.entries = 1
-            self.fanout = buffer('\0\0\0\0')
-            self.shalist = buffer('\0'*20)
-            self.idxnames = []
-        else:
-            assert(str(self.map[0:8]) == 'MIDX\0\0\0\2')
-            self.bits = _helpers.firstword(self.map[8:12])
-            self.entries = 2**self.bits
-            self.fanout = buffer(self.map, 12, self.entries*4)
-            shaofs = 12 + self.entries*4
-            nsha = self._fanget(self.entries-1)
-            self.shalist = buffer(self.map, shaofs, nsha*20)
-            self.idxnames = str(self.map[shaofs + 20*nsha:]).split('\0')
+        if str(self.map[0:4]) != 'MIDX':
+            log('Warning: skipping: invalid MIDX header in %r\n' % filename)
+            self.force_keep = True
+            return self._init_failed()
+        ver = struct.unpack('!I', self.map[4:8])[0]
+        if ver < MIDX_VERSION:
+            log('Warning: ignoring old-style (v%d) midx %r\n' 
+                % (ver, filename))
+            self.force_keep = False  # old stuff is boring  
+            return self._init_failed()
+        if ver > MIDX_VERSION:
+            log('Warning: ignoring too-new (v%d) midx %r\n'
+                % (ver, filename))
+            self.force_keep = True  # new stuff is exciting
+            return self._init_failed()
+
+        self.bits = _helpers.firstword(self.map[8:12])
+        self.entries = 2**self.bits
+        self.fanout = buffer(self.map, 12, self.entries*4)
+        shaofs = 12 + self.entries*4
+        nsha = self._fanget(self.entries-1)
+        self.shalist = buffer(self.map, shaofs, nsha*20)
+        self.idxnames = str(self.map[shaofs + 20*nsha:]).split('\0')
+
+    def _init_failed(self):
+        self.bits = 0
+        self.entries = 1
+        self.fanout = buffer('\0\0\0\0')
+        self.shalist = buffer('\0'*20)
+        self.idxnames = []
 
     def _fanget(self, i):
         start = i*4
@@ -356,7 +373,7 @@ class PackIdxList:
                                 d[os.path.join(self.dir, name)] = ix
                             any += 1
                             break
-                    if not any:
+                    if not any and not ix.force_keep:
                         log('midx: removing redundant: %s\n'
                             % os.path.basename(ix.name))
                         unlink(ix.name)
