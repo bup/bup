@@ -5,6 +5,7 @@ interact with the Git data structures.
 import os, zlib, time, subprocess, struct, stat, re, tempfile
 import heapq
 from bup.helpers import *
+from bup import _helpers
 
 verbose = 0
 ignore_midx = 0
@@ -191,12 +192,7 @@ class PackIdx:
         return int(self.fanout[255])
 
 
-def extract_bits(buf, nbits):
-    """Take the first 'nbits' bits from 'buf' and return them as an integer."""
-    mask = (1<<nbits) - 1
-    v = struct.unpack('!I', buf[0:4])[0]
-    v = (v >> (32-nbits)) & mask
-    return v
+extract_bits = _helpers.extract_bits
 
 
 class PackMidx:
@@ -218,7 +214,7 @@ class PackMidx:
             self.idxnames = []
         else:
             assert(str(self.map[0:8]) == 'MIDX\0\0\0\2')
-            self.bits = struct.unpack('!I', self.map[8:12])[0]
+            self.bits = _helpers.firstword(self.map[8:12])
             self.entries = 2**self.bits
             self.fanout = buffer(self.map, 12, self.entries*4)
             shaofs = 12 + self.entries*4
@@ -229,7 +225,10 @@ class PackMidx:
     def _fanget(self, i):
         start = i*4
         s = self.fanout[start:start+4]
-        return struct.unpack('!I', s)[0]
+        return _helpers.firstword(s)
+
+    def _get(self, i):
+        return str(self.shalist[i*20:(i+1)*20])
 
     def exists(self, hash):
         """Return nonempty if the object exists in the index files."""
@@ -239,18 +238,28 @@ class PackMidx:
         el = extract_bits(want, self.bits)
         if el:
             start = self._fanget(el-1)
+            startv = el << (32-self.bits)
         else:
             start = 0
+            startv = 0
         end = self._fanget(el)
+        endv = (el+1) << (32-self.bits)
         _total_steps += 1   # lookup table is a step
+        hashv = _helpers.firstword(hash)
+        #print '(%08x) %08x %08x %08x' % (extract_bits(want, 32), startv, hashv, endv)
         while start < end:
             _total_steps += 1
-            mid = start + (end-start)/2
-            v = str(self.shalist[mid*20:(mid+1)*20])
+            #print '! %08x %08x %08x   %d - %d' % (startv, hashv, endv, start, end)
+            mid = start + (hashv-startv)*(end-start-1)/(endv-startv)
+            #print '  %08x %08x %08x   %d %d %d' % (startv, hashv, endv, start, mid, end)
+            v = self._get(mid)
+            #print '    %08x' % self._num(v)
             if v < want:
                 start = mid+1
+                startv = _helpers.firstword(v)
             elif v > want:
                 end = mid
+                endv = _helpers.firstword(v)
             else: # got it!
                 return True
         return None

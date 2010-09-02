@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <stdint.h>
 #include <fcntl.h>
+#include <arpa/inet.h>
 
 static PyObject *selftest(PyObject *self, PyObject *args)
 {
@@ -56,6 +57,42 @@ static PyObject *bitmatch(PyObject *self, PyObject *args)
     }
     
     return Py_BuildValue("i", byte*8 + bit);
+}
+
+
+static PyObject *firstword(PyObject *self, PyObject *args)
+{
+    unsigned char *buf = NULL;
+    int len = 0;
+    uint32_t v;
+
+    if (!PyArg_ParseTuple(args, "t#", &buf, &len))
+	return NULL;
+    
+    if (len < 4)
+	return NULL;
+    
+    v = ntohl(*(uint32_t *)buf);
+    return Py_BuildValue("I", v);
+}
+
+
+static PyObject *extract_bits(PyObject *self, PyObject *args)
+{
+    unsigned char *buf = NULL;
+    int len = 0, nbits = 0;
+    uint32_t v, mask;
+
+    if (!PyArg_ParseTuple(args, "t#i", &buf, &len, &nbits))
+	return NULL;
+    
+    if (len < 4)
+	return NULL;
+    
+    mask = (1<<nbits) - 1;
+    v = ntohl(*(uint32_t *)buf);
+    v = (v >> (32-nbits)) & mask;
+    return Py_BuildValue("I", v);
 }
 
 
@@ -165,6 +202,10 @@ static PyMethodDef faster_methods[] = {
 	"Split a list of strings based on a rolling checksum." },
     { "bitmatch", bitmatch, METH_VARARGS,
 	"Count the number of matching prefix bits between two strings." },
+    { "firstword", firstword, METH_VARARGS,
+        "Return an int corresponding to the first 32 bits of buf." },
+    { "extract_bits", extract_bits, METH_VARARGS,
+	"Take the first 'nbits' bits from 'buf' and return them as an int." },
     { "write_random", write_random, METH_VARARGS,
 	"Write random bytes to the given file descriptor" },
     { "open_noatime", open_noatime, METH_VARARGS,
