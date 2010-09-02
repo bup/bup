@@ -133,6 +133,7 @@ class PackIdx:
     """Object representation of a Git pack index file."""
     def __init__(self, filename):
         self.name = filename
+        self.idxnames = [self.name]
         self.map = mmap_read(open(filename))
         assert(str(self.map[0:8]) == '\377tOc\0\0\0\2')
         self.fanout = list(struct.unpack('!256I',
@@ -409,6 +410,15 @@ def _shalist_sort_key(ent):
         return name + '/'
     else:
         return name
+
+
+def open_idx(filename):
+    if filename.endswith('.idx'):
+        return PackIdx(filename)
+    elif filename.endswith('.midx'):
+        return PackMidx(filename)
+    else:
+        raise GitError('idx filenames must end with .idx or .midx')
 
 
 def idxmerge(idxlist):
