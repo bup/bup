@@ -48,7 +48,10 @@ install: all
 		$(wildcard cmd/bup-*) \
 		$(LIBDIR)/cmd
 	$(INSTALL) -m 0644 \
-		$(wildcard lib/bup/*.so lib/bup/*.py) \
+		$(wildcard lib/bup/*.py) \
+		$(LIBDIR)/bup
+	$(INSTALL) -m 0755 \
+		$(wildcard lib/bup/*$(SOEXT)) \
 		$(LIBDIR)/bup
 	$(INSTALL) -m 0644 \
 		$(wildcard lib/tornado/*.py) \
