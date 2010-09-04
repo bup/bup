@@ -37,27 +37,27 @@ install: all
 		$(LIBDIR)/web
 	[ ! -e Documentation/.docs-available ] || \
 	  $(INSTALL) -m 0644 \
-		$(wildcard Documentation/*.1) \
+		Documentation/*.1 \
 		$(MANDIR)/man1
 	[ ! -e Documentation/.docs-available ] || \
 	  $(INSTALL) -m 0644 \
-		$(wildcard Documentation/*.html) \
+		Documentation/*.html \
 		$(DOCDIR)
 	$(INSTALL) -m 0755 bup $(BINDIR)
 	$(INSTALL) -m 0755 \
-		$(wildcard cmd/bup-*) \
+		cmd/bup-* \
 		$(LIBDIR)/cmd
 	$(INSTALL) -m 0644 \
-		$(wildcard lib/bup/*.py) \
+		lib/bup/*.py \
 		$(LIBDIR)/bup
 	$(INSTALL) -m 0755 \
-		$(wildcard lib/bup/*$(SOEXT)) \
+		lib/bup/*$(SOEXT) \
 		$(LIBDIR)/bup
 	$(INSTALL) -m 0644 \
-		$(wildcard lib/tornado/*.py) \
+		lib/tornado/*.py \
 		$(LIBDIR)/tornado
 	$(INSTALL) -m 0644 \
-		$(wildcard lib/web/*) \
+		lib/web/* \
 		$(LIBDIR)/web
 %/all:
 	$(MAKE) -C $* all
