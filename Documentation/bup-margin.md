@@ -54,8 +54,16 @@ close to 160 bits.
 # EXAMPLE
 
     $ bup margin
-    Reading indexes: 100.00% (11188299/11188299), done.
-    45
+    Reading indexes: 100.00% (1612581/1612581), done.
+    40
+    40 matching prefix bits
+    1.94 bits per doubling
+    120 bits (61.86 doublings) remaining
+    4.19338e+18 times larger is possible
+    
+    Everyone on earth could have 625878182 data sets
+    like yours, all in one repository, and we would
+    expect 1 object collision.
     
     $ bup margin --predict
     PackIdxList: using 1 index.

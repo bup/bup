@@ -1,8 +1,9 @@
 #!/usr/bin/env python
-import sys, struct
+import sys, struct, math
 from bup import options, git, _helpers
 from bup.helpers import *
 
+POPULATION_OF_EARTH=6.7e9  # as of September, 2010
 
 optspec = """
 bup margin
@@ -51,3 +52,16 @@ else:
         longmatch = max(longmatch, pm)
         last = i
     print longmatch
+    log('%d matching prefix bits\n' % longmatch)
+    doublings = math.log(len(mi), 2)
+    bpd = longmatch / doublings
+    log('%.2f bits per doubling\n' % bpd)
+    remain = 160 - longmatch
+    rdoublings = remain / bpd
+    log('%d bits (%.2f doublings) remaining\n' % (remain, rdoublings))
+    larger = 2**rdoublings
+    log('%g times larger is possible\n' % larger)
+    perperson = larger/POPULATION_OF_EARTH
+    log('\nEveryone on earth could have %d data sets like yours, all in one\n'
+        'repository, and we would expect 1 object collision.\n'
+        % int(perperson))
