@@ -59,7 +59,16 @@ for `bup-index`(1).
     files, which can usually be backed up quickly, and skip
     over large ones (like virtual machine images) which
     take longer.  Then you can back up the large files
-    less frequently.
+    less frequently.  Use a suffix like k, M, or G to
+    specify multiples of 1024, 1024*1024, 1024*1024*1024
+    respectively.
+    
+--bwlimit=*bytes/sec*
+:   don't transmit more than *bytes/sec* bytes per second
+    to the server.  This is good for making your backups
+    not suck up all your network bandwidth.  Use a suffix
+    like k, M, or G to specify multiples of 1024,
+    1024*1024, 1024*1024*1024 respectively.
     
 
 # EXAMPLE
@@ -67,7 +76,7 @@ for `bup-index`(1).
     $ bup index -ux /etc
     Indexing: 1981, done.
     
-    $ bup save -r myserver: -n my-pc-backup /etc
+    $ bup save -r myserver: -n my-pc-backup --bwlimit=50k /etc
     Reading index: 1981, done.
     Saving: 100.00% (998/998k, 1981/1981 files), done.    
     

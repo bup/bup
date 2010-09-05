@@ -27,8 +27,10 @@ lot of typing.
 
 The following commands are available inside `bup ftp`:
 
-ls
-:   print the contents of the current working directory
+ls [-a]
+:   print the contents of the current working directory. 
+    If -a is given, also include hidden files (files which
+    start with a `.` character).
 
 cd *dirname*
 :   change to a different working directory
@@ -61,18 +63,16 @@ quit
 
     $ bup ftp
     bup> ls
-    mybackup/
-    yourbackup/
+    mybackup/    yourbackup/
+
     bup> cd mybackup/
     bup> ls
-    .2fe288dedbfab372c84b0502ee2bc1504270f3b3/
-    .ae760aa4cfc13b689b46e3d2ce5ae50e92299c72/
-    2010-02-05-185507@
-    2010-02-05-185508@
-    latest@
+    2010-02-05-185507@   2010-02-05-185508@    latest@
+
     bup> cd latest/
     bup> ls
       (...etc...)
+
     bup> get myfile
     Saving 'myfile'
     bup> quit

@@ -66,11 +66,21 @@ To get the data back, use `bup-join`(1).
     the same name, and later view the history of that
     dataset to see how it has changed over time.)
     
+-q, --quiet
+:   disable progress messages.
+
 -v, --verbose
 :   increase verbosity (can be used more than once).
 
--q, --quiet
-:   disable progress messages.
+--noop
+:   read the data and split it into blocks based on the "bupsplit"
+    rolling checksum algorithm, but don't do anything with
+    the blocks.  This is mostly useful for benchmarking.
+
+--copy
+:   like --noop, but also write the data to stdout.  This
+    can be useful for benchmarking the speed of read+bupsplit+write
+    for large amounts of data.
 
 --bench
 :   print benchmark timings to stderr.
@@ -90,6 +100,14 @@ To get the data back, use `bup-join`(1).
     this number of git blobs in a single git tree.  Instead,
     generate a new tree and link to that.  Default is
     4096 objects per tree.
+
+--bwlimit=*bytes/sec*
+:   don't transmit more than *bytes/sec* bytes per second
+    to the server.  This is good for making your backups
+    not suck up all your network bandwidth.  Use a suffix
+    like k, M, or G to specify multiples of 1024,
+    1024*1024, 1024*1024*1024 respectively.
+
 
 # EXAMPLE
     

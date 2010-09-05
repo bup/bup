@@ -42,6 +42,18 @@ what causes an increase in the VmRSS column.
 :   ignore any `.midx` files created by `bup midx`.  This
     allows you to compare memory performance with and
     without using midx.
+    
+--existing
+:   search for existing objects instead of searching for
+    random nonexistent ones.  This can greatly affect
+    memory usage and performance.  Note that most of the
+    time, `bup save` spends most of its time searching for
+    nonexistent objects, since existing ones are probably
+    in unmodified files that we won't be trying to back up
+    anyway.  So the default behaviour reflects real bup
+    performance more accurately.  But you might want this
+    option anyway just to make sure you haven't made
+    searching for existing objects much worse than before.
 
 
 # EXAMPLE

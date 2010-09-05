@@ -35,6 +35,14 @@ requiring too much RAM.
     already exist.  This will result in the fastest backup
     performance, but may take a long time to run.
 
+--max-files
+:   maximum number of .idx files to open at a time.  You
+    can use this if you have an especially small number of file
+    descriptors available, so that midx can complete
+    (though possibly non-optimally) even if it can't open
+    all your .idx files at once.  The default value of this
+    option should be fine for most people.
+
 
 # EXAMPLE
 

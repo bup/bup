@@ -8,7 +8,7 @@ bup-margin - figure out your deduplication safety margin
 
 # SYNOPSIS
 
-bup margin
+bup margin [options...]
 
 # DESCRIPTION
 
@@ -37,11 +37,30 @@ collisions, you can monitor your repository by running `bup
 margin` occasionally to see if you're getting dangerously
 close to 160 bits.
 
+# OPTIONS
+
+--predict
+:   Guess the offset into each index file where a
+    particular object will appear, and report the maximum
+    deviation of the correct answer from the guess.  This
+    is potentially useful for tuning an interpolation
+    search algorithm.
+    
+--ignore-midx
+:   don't use .midx files, use only .idx files.  This is
+    only really useful when used with `--predict`.
+
+    
 # EXAMPLE
 
     $ bup margin
     Reading indexes: 100.00% (11188299/11188299), done.
     45
+    
+    $ bup margin --predict
+    PackIdxList: using 1 index.
+    Reading indexes: 100.00% (1612581/1612581), done.
+    915 of 1612581 (0.057%) 
     
 
 # SEE ALSO

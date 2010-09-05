@@ -20,7 +20,7 @@ This is currently equivalent to typing `man bup-<command>`.
     
     $ bup help help
     (Imagine that this man page was pasted below,
-     recursively.  Because that would cause an endless
+     recursively.  Since that would cause an endless loop
      we include this silly remark instead.  Chicken.)
     
 # BUP

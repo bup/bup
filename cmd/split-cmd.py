@@ -12,9 +12,9 @@ b,blobs    output a series of blob ids
 t,tree     output a tree id
 c,commit   output a commit id
 n,name=    name of backup set to update (if any)
-N,noop     don't actually save the data anywhere
 q,quiet    don't print progress messages
 v,verbose  increase log output (can be used more than once)
+noop       don't actually save the data anywhere
 copy       just copy input to output, hashsplitting along the way
 bench      print benchmark timings to stderr
 max-pack-size=  maximum bytes in a single pack

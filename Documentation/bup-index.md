@@ -76,7 +76,7 @@ need the same information).
     
 -l, --long
 :   print more information about each file, in a similar
-    format to the `-l` option to `ls`(1).  (INCOMPLETE)
+    format to the `-l` option to `ls`(1).
 
 -x, --xdev, --one-file-system
 :   don't cross filesystem boundaries when recursing
