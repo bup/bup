@@ -14,14 +14,14 @@ default: all
 
 all: man html
 
-man: $(patsubst %.md,%,$(wildcard *.md))
+man: $(patsubst %.md,%.1,$(wildcard *.md))
 
-html: $(patsubst %.1.md,%.html,$(wildcard *.md))
+html: $(patsubst %.md,%.html,$(wildcard *.md))
 
-%: %.md.tmp Makefile
+%.1: %.md.tmp Makefile
 	$(PANDOC) -s -r markdown -w man -o $@ $<
 	
-%.html: %.1.md.tmp Makefile
+%.html: %.md.tmp Makefile
 	$(PANDOC) -s -r markdown -w html -o $@ $<
 	
 .PRECIOUS: %.md.tmp
