@@ -226,6 +226,17 @@ fi
 # settle-up.  The current use of stat is crude, and this does not test
 # devices, varying users/groups, acls, attrs, etc.
 WVSTART "meta"
+
+genstat()
+{
+    find . |
+      sort |
+      xargs stat |
+      sed -e 's/Inode: [0-9]\+//' \
+      	  -e '/^ \+Size: /d' \
+      	  -e '/^Change: /d'
+}
+
 # Create a test tree and collect its info via stat(1).
 (
   set -e
@@ -235,43 +246,24 @@ WVSTART "meta"
   mkdir "${TOP}/bupmeta.tmp/src/misc"
   cp -a cmd/bup-* "${TOP}/bupmeta.tmp/src/misc/"
   cd "${TOP}/bupmeta.tmp/src"
-  find . | sort | xargs stat \
-    | sed 's/Inode: [0-9]\+//' \
-    | sed '/^ \+Size: /d' \
-    | sed '/^Change: /d' \
-    > ../src-stat
-) || exit 1
+  WVPASS genstat >../src-stat
+) || WVFAIL
+
 # Use the test tree to check bup meta.
 (
-  cd "${TOP}/bupmeta.tmp" || exit 1
+  WVPASS cd "${TOP}/bupmeta.tmp"
   WVPASS bup meta --create --recurse --file src.meta src
-  mkdir src-restore || exit 1
-  cd src-restore || exit 1
+  WVPASS mkdir src-restore
+  WVPASS cd src-restore
   WVPASS bup meta --extract --file ../src.meta
   WVPASS test -d src
-  (
-    set -e
-    cd src
-    find . | sort | xargs stat \
-      | sed 's/Inode: [0-9]\+//' \
-      | sed '/^ \+Size: /d' \
-      | sed '/^Change: /d' \
-      > ../../src-restore-stat
-  ) || exit 1
+  (cd src && genstat >../../src-restore-stat) || WVFAIL
   WVPASS diff -u ../src-stat ../src-restore-stat
-  rm -rf src
+  WVPASS rm -rf src
   WVPASS bup meta --start-extract --file ../src.meta
   WVPASS test -d src
   WVPASS bup meta --finish-extract --file ../src.meta
-  (
-    set -e
-    cd src
-    find . | sort | xargs stat \
-      | sed 's/Inode: [0-9]\+//' \
-      | sed '/^ \+Size: /d' \
-      | sed '/^Change: /d' \
-      > ../../src-restore-stat
-  ) || exit 1
+  (cd src && genstat >../../src-restore-stat) || WVFAIL
   WVPASS diff -u ../src-stat ../src-restore-stat
 )
 
