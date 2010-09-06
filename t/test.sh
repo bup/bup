@@ -232,7 +232,7 @@ genstat()
     find . |
       sort |
       xargs stat |
-      sed -e 's/Inode: [0-9]\+//' \
+      sed -e 's/Inode: [0-9]\+ *//' \
       	  -e '/^ \+Size: /d' \
       	  -e '/^Change: /d' \
       	  -e '/^Access: [0-9]/d'
