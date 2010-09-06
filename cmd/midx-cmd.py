@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import sys, math, struct, glob
+import sys, math, struct, glob, resource
 from bup import options, git
 from bup.helpers import *
 
@@ -10,6 +10,15 @@ SHA_PER_PAGE=PAGE_SIZE/20.
 def _group(l, count):
     for i in xrange(0, len(l), count):
         yield l[i:i+count]
+        
+        
+def max_files():
+    mf = min(resource.getrlimit(resource.RLIMIT_NOFILE))
+    if mf > 32:
+        mf -= 20  # just a safety margin
+    else:
+        mf -= 6   # minimum safety margin
+    return mf
 
 
 def merge(idxlist, bits, table):
@@ -86,7 +95,7 @@ bup midx [options...] <idxnames...>
 o,output=  output midx filename (default: auto-generated)
 a,auto     automatically create .midx from any unindexed .idx files
 f,force    automatically create .midx from *all* .idx files
-max-files= maximum number of idx files to open at once [500]
+max-files= maximum number of idx files to open at once [-1]
 """
 o = options.Options('bup midx', optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
@@ -95,6 +104,10 @@ if extra and (opt.auto or opt.force):
     o.fatal("you can't use -f/-a and also provide filenames")
 
 git.check_repo_or_die()
+
+if opt.max_files < 0:
+    opt.max_files = max_files()
+assert(opt.max_files >= 5)
 
 if extra:
     do_midx(git.repo('objects/pack'), opt.output, extra)
