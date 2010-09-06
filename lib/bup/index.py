@@ -77,11 +77,15 @@ class Entry:
                    self.flags, self.children_ofs, self.children_n))
 
     def packed(self):
-        return struct.pack(INDEX_SIG,
+        try:
+            return struct.pack(INDEX_SIG,
                            self.dev, self.ctime, self.mtime, 
                            self.uid, self.gid, self.size, self.mode,
                            self.gitmode, self.sha, self.flags,
                            self.children_ofs, self.children_n)
+        except DeprecationWarning, e:
+            log('pack error: %s (%r)\n' % (e, self))
+            raise
 
     def from_stat(self, st, tstart):
         old = (self.dev, self.ctime, self.mtime,
@@ -99,6 +103,15 @@ class Entry:
         if int(st.st_ctime) >= tstart or old != new \
               or self.sha == EMPTY_SHA or not self.gitmode:
             self.invalidate()
+        self._fixup()
+        
+    def _fixup(self):
+        if self.uid < 0:
+            self.uid += 0x100000000
+        if self.gid < 0:
+            self.gid += 0x100000000
+        assert(self.uid >= 0)
+        assert(self.gid >= 0)
 
     def is_valid(self):
         f = IX_HASHVALID|IX_EXISTS
@@ -151,6 +164,7 @@ class NewEntry(Entry):
          self.flags, self.children_ofs, self.children_n
          ) = (dev, int(ctime), int(mtime), uid, gid,
               size, mode, gitmode, sha, flags, children_ofs, children_n)
+        self._fixup()
 
 
 class BlankNewEntry(NewEntry):
@@ -404,11 +418,14 @@ def reduce_paths(paths):
     xpaths = []
     for p in paths:
         rp = realpath(p)
-        st = os.lstat(rp)
-        if stat.S_ISDIR(st.st_mode):
-            rp = slashappend(rp)
-            p = slashappend(p)
-        xpaths.append((rp, p))
+        try:
+            st = os.lstat(rp)
+            if stat.S_ISDIR(st.st_mode):
+                rp = slashappend(rp)
+                p = slashappend(p)
+            xpaths.append((rp, p))
+        except OSError, e:
+            add_error('reduce_paths: %s' % e)
     xpaths.sort()
 
     paths = []

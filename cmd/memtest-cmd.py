@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import sys, re, struct, mmap, time
+import sys, re, struct, mmap, time, resource
 from bup import git, options
 from bup.helpers import *
 
@@ -10,24 +10,50 @@ def s_from_bytes(bytes):
     return ''.join(clist)
 
 
-last = start = 0
-def report(count):
-    global last, start
-    fields = ['VmSize', 'VmRSS', 'VmData', 'VmStk', 'ms']
+_linux_warned = 0
+def linux_memstat():
+    global _linux_warned
+    #fields = ['VmSize', 'VmRSS', 'VmData', 'VmStk', 'ms']
     d = {}
-    for line in open('/proc/self/status').readlines():
-        l = re.split(r':\s*', line.strip(), 1)
-        d[l[0]] = l[1]
+    try:
+        f = open('/proc/self/status')
+    except IOError, e:
+        if not _linux_warned:
+            log('Warning: %s\n' % e)
+            _linux_warned = 1
+        return {}
+    for line in f:
+        k,v = re.split(r':\s*', line.strip(), 1)
+        d[k] = v
+    return d
+
+
+last = last_u = last_s = start = 0
+def report(count):
+    global last, last_u, last_s, start
+    headers = ['RSS', 'MajFlt', 'user', 'sys', 'ms']
+    ru = resource.getrusage(resource.RUSAGE_SELF)
     now = time.time()
-    d['ms'] = int((now - last) * 1000)
+    rss = int(ru.ru_maxrss/1024)
+    if not rss:
+        rss = linux_memstat().get('VmRSS', '??')
+    fields = [rss,
+              ru.ru_majflt,
+              int((ru.ru_utime - last_u) * 1000),
+              int((ru.ru_stime - last_s) * 1000),
+              int((now - last) * 1000)]
+    fmt = '%9s  ' + ('%10s ' * len(fields))
     if count >= 0:
-        e1 = count
-        fields = [d[k] for k in fields]
+        print fmt % tuple([count] + fields)
     else:
-        e1 = ''
         start = now
-    print ('%9s  ' + ('%10s ' * len(fields))) % tuple([e1] + fields)
+        print fmt % tuple([''] + headers)
     sys.stdout.flush()
+    
+    # don't include time to run report() in usage counts
+    ru = resource.getrusage(resource.RUSAGE_SELF)
+    last_u = ru.ru_utime
+    last_s = ru.ru_stime
     last = time.time()
 
 
