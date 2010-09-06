@@ -36,6 +36,7 @@ pages.
     environment variable or using the default `~/.bup`
     location.
 
+
 # COMMONLY USED SUBCOMMANDS
 
 `bup-fsck`(1)
@@ -50,10 +51,13 @@ pages.
 :   Create or display the index of files to back up
 `bup-midx`(1)
 :   Index objects to speed up future backups
+`bup-on`(1)
+:   Backup a remote machine to the local one
 `bup-save`(1)
 :   Save files into a backup set (note: run "bup index" first)
 `bup-web`(1)
 :   Launch a web server to examine backup sets
+
 
 # RARELY USED SUBCOMMANDS
 
@@ -83,6 +87,7 @@ pages.
 :   Wait for up to one second.
 `bup-version`(1)
 :   Report the version number of your copy of bup.
+
 
 # SEE ALSO
 

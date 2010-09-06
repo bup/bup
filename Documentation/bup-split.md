@@ -121,7 +121,7 @@ To get the data back, use `bup-join`(1).
 
 # SEE ALSO
 
-`bup-join`(1), `bup-index`(1), `bup-save`(1)
+`bup-join`(1), `bup-index`(1), `bup-save`(1), `bup-on`(1)
 
 # BUP
 

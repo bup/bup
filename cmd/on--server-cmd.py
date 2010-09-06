@@ -3,11 +3,11 @@ import sys, os, struct
 from bup import options, helpers
 
 optspec = """
-bup rbackup-server
+bup on--server
 --
-    This command is not intended to be run manually.
+    This command is run automatically by 'bup on'
 """
-o = options.Options('bup rbackup-server', optspec)
+o = options.Options('bup server-reverse', optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
 if extra:
     o.fatal('no arguments expected')

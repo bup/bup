@@ -110,7 +110,7 @@ need the same information).
 
 # SEE ALSO
 
-`bup-save`(1), `bup-drecurse`(1)
+`bup-save`(1), `bup-drecurse`(1), `bup-on`(1)
 
 # BUP
 

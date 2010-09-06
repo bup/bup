@@ -4,11 +4,11 @@ from bup import options, ssh
 from bup.helpers import *
 
 optspec = """
-bup rbackup <hostname> index ...
-bup rbackup <hostname> save ...
-bup rbackup <hostname> split ...
+bup on <hostname> index ...
+bup on <hostname> save ...
+bup on <hostname> split ...
 """
-o = options.Options('bup rbackup', optspec, optfunc=getopt.getopt)
+o = options.Options('bup on', optspec, optfunc=getopt.getopt)
 (opt, flags, extra) = o.parse(sys.argv[1:])
 if len(extra) < 2:
     o.fatal('arguments expected')
@@ -30,7 +30,7 @@ ret = 99
 try:
     hostname = extra[0]
     argv = extra[1:]
-    p = ssh.connect(hostname, 'rbackup-server')
+    p = ssh.connect(hostname, 'on--server')
 
     argvs = '\0'.join(['bup'] + argv)
     p.stdin.write(struct.pack('!I', len(argvs)) + argvs)
@@ -51,7 +51,7 @@ finally:
             sp.wait()
             break
         except SigException, e:
-            log('\nbup rbackup: %s\n' % e)
+            log('\nbup on: %s\n' % e)
             os.kill(p.pid, e.signum)
             ret = 84
 sys.exit(ret)
