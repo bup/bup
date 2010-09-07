@@ -49,8 +49,6 @@ pages.
 :   Print detailed help for the given command
 `bup-index`(1)
 :   Create or display the index of files to back up
-`bup-midx`(1)
-:   Index objects to speed up future backups
 `bup-on`(1)
 :   Backup a remote machine to the local one
 `bup-save`(1)
@@ -75,6 +73,8 @@ pages.
 :   Determine how close your bup repository is to armageddon
 `bup-memtest`(1)
 :   Test bup memory usage statistics
+`bup-midx`(1)
+:   Index objects to speed up future backups
 `bup-newliner`(1)
 :   Make sure progress messages don't overlap with output
 `bup-random`(1)

@@ -15,13 +15,13 @@ bup midx [-o *outfile*] <-a|-f|*idxnames*...>
 `bup midx` creates a multi-index (.midx) file from one or more
 git pack index (.idx) files.
 
-You should run this command
-occasionally to ensure your backups run quickly and without
-requiring too much RAM.
+Note: you should no longer need to run this command by hand. 
+It gets run automatically by `bup-save`(1) and similar
+commands.
 
 # OPTIONS
 
--o, --output
+-o, --output=*filename.midx*
 :   use the given output filename for the .midx file. 
     Default is auto-generated.
     
@@ -34,6 +34,11 @@ requiring too much RAM.
     *all* your .idx files, even if other .midx files
     already exist.  This will result in the fastest backup
     performance, but may take a long time to run.
+
+--dir=*packdir*
+:   specify the directory containing the .idx/.midx files
+    to work with.  The default is $BUP_DIR/objects/pack and
+    $BUP_DIR/indexcache/*.
 
 --max-files
 :   maximum number of .idx files to open at a time.  You
@@ -85,10 +90,6 @@ files to ensure that it does not exist.  (Searching for
 objects that *do* exist can be optimized; for example,
 consecutive objects are often stored in the same pack, so
 we can search that one first using an MRU algorithm.)
-
-With large repositories, you should be sure to run
-`bup midx -a` or `bup midx -f` every now and then so that
-creating backups will remain efficient.
 
 
 # SEE ALSO

@@ -39,6 +39,14 @@ def repo(sub = ''):
     return os.path.join(repodir, sub)
 
 
+def auto_midx(objdir):
+    main_exe = os.environ.get('BUP_MAIN_EXE') or sys.argv[0]
+    args = [main_exe, 'midx', '--auto', '--dir', objdir]
+    rv = subprocess.call(args, stdout=open('/dev/null', 'w'))
+    if rv:
+        add_error('%r: returned %d' % (args, rv))
+
+
 def mangle_name(name, mode, gitmode):
     """Mangle a file name to present an abstract name for segmented files.
     Mangled file names will have the ".bup" extension added to them. If a
@@ -599,6 +607,8 @@ class PackWriter:
             os.unlink(self.filename + '.map')
         os.rename(self.filename + '.pack', nameprefix + '.pack')
         os.rename(self.filename + '.idx', nameprefix + '.idx')
+
+        auto_midx(repo('objects/pack'))
         return nameprefix
 
     def close(self):

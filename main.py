@@ -35,12 +35,8 @@ def usage():
         fuse = 'Mount your backup sets as a filesystem',
         help = 'Print detailed help for the given command',
         index = 'Create or display the index of files to back up',
-        join = 'Retrieve a file backed up using "bup split"',
-        ls = 'Browse the files in your backup sets',
-        midx = 'Index objects to speed up future backups',
         on = 'Backup a remote machine to the local one',
         save = 'Save files into a backup set (note: run "bup index" first)',
-        split = 'Split a single file into its own backup set',
         web = 'Launch a web server to examine backup sets',
     )
 

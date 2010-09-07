@@ -156,6 +156,7 @@ class Client:
         self.check_ok()
         f.close()
         os.rename(fn + '.tmp', fn)
+        git.auto_midx(self.cachedir)
 
     def _make_objcache(self):
         ob = self._busy

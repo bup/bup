@@ -13,6 +13,7 @@ o,output=  output midx filename (default: auto-generated)
 a,auto     automatically create .midx from any unindexed .idx files
 f,force    automatically create .midx from *all* .idx files
 max-files= maximum number of idx files to open at once [-1]
+dir=       directory containing idx/midx files
 """
 
 def _group(l, count):
@@ -149,9 +150,9 @@ def do_midx_dir(path):
     DESIRED_HWM = opt.force and 1 or 5
     DESIRED_LWM = opt.force and 1 or 2
     existed = dict((name,1) for sz,name in all)
-    log('%d indexes; want no more than %d.\n' % (len(all), DESIRED_HWM))
+    log('midx: %d indexes; want no more than %d.\n' % (len(all), DESIRED_HWM))
     if len(all) <= DESIRED_HWM:
-        log('Nothing to do.\n')
+        log('midx: nothing to do.\n')
     while len(all) > DESIRED_HWM:
         all.sort()
         part1 = [name for sz,name in all[:len(all)-DESIRED_LWM+1]]
@@ -189,8 +190,11 @@ assert(opt.max_files >= 5)
 if extra:
     do_midx(git.repo('objects/pack'), opt.output, extra)
 elif opt.auto or opt.force:
-    paths = [git.repo('objects/pack')]
-    paths += glob.glob(git.repo('index-cache/*/.'))
+    if opt.dir:
+        paths = [opt.dir]
+    else:
+        paths = [git.repo('objects/pack')]
+        paths += glob.glob(git.repo('index-cache/*/.'))
     for path in paths:
         log('midx: scanning %s\n' % path)
         do_midx_dir(path)
