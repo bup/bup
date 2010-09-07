@@ -3,6 +3,17 @@ import sys, os, pwd, subprocess, errno, socket, select, mmap, stat, re
 from bup import _version
 
 
+def atoi(s):
+    """Convert the string 's' to an integer. Return 0 if s is not a number."""
+    try:
+        return int(s or '0')
+    except ValueError:
+        return 0
+
+
+buglvl = atoi(os.environ.get('BUP_DEBUG', 0))
+
+
 # Write (blockingly) to sockets that may or may not be in blocking mode.
 # We need this because our stderr is sometimes eaten by subprocesses
 # (probably ssh) that sometimes make it nonblocking, if only temporarily,
@@ -24,6 +35,16 @@ def log(s):
     """Print a log message to stderr."""
     sys.stdout.flush()
     _hard_write(sys.stderr.fileno(), s)
+
+
+def debug1(s):
+    if buglvl >= 1:
+        log(s)
+
+
+def debug2(s):
+    if buglvl >= 2:
+        log(s)
 
 
 def mkdirp(d, mode=None):
@@ -303,14 +324,6 @@ def parse_num(s):
 def count(l):
     """Count the number of elements in an iterator. (consumes the iterator)"""
     return reduce(lambda x,y: x+1, l)
-
-
-def atoi(s):
-    """Convert the string 's' to an integer. Return 0 if s is not a number."""
-    try:
-        return int(s or '0')
-    except ValueError:
-        return 0
 
 
 saved_errors = []

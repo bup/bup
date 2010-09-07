@@ -12,6 +12,7 @@ bup midx [options...] <idxnames...>
 o,output=  output midx filename (default: auto-generated)
 a,auto     automatically create .midx from any unindexed .idx files
 f,force    automatically create .midx from *all* .idx files
+p,print    print names of generated midx files
 max-files= maximum number of idx files to open at once [-1]
 dir=       directory containing idx/midx files
 """
@@ -32,14 +33,14 @@ def max_files():
 
 def merge(idxlist, bits, table):
     count = 0
-    for e in git.idxmerge(idxlist):
+    for e in git.idxmerge(idxlist, final_progress=False):
         count += 1
         prefix = git.extract_bits(e, bits)
         table[prefix] = count
         yield e
 
 
-def _do_midx(outdir, outfilename, infilenames):
+def _do_midx(outdir, outfilename, infilenames, prefixstr):
     if not outfilename:
         assert(outdir)
         sum = Sha1('\0'.join(infilenames)).hexdigest()
@@ -55,17 +56,18 @@ def _do_midx(outdir, outfilename, infilenames):
         inp.append(ix)
         total += len(ix)
 
-    log('Merging %d indexes (%d objects).\n' % (len(infilenames), total))
+    log('midx: %smerging %d indexes (%d objects).\n'
+        % (prefixstr, len(infilenames), total))
     if (not opt.force and (total < 1024 and len(infilenames) < 3)) \
        or len(infilenames) < 2 \
        or (opt.force and not total):
-        log('midx: nothing to do.\n')
+        debug1('midx: nothing to do.\n')
         return
 
     pages = int(total/SHA_PER_PAGE) or 1
     bits = int(math.ceil(math.log(pages, 2)))
     entries = 2**bits
-    log('Table size: %d (%d bits)\n' % (entries*4, bits))
+    debug1('midx: table size: %d (%d bits)\n' % (entries*4, bits))
     
     table = [0]*entries
 
@@ -103,9 +105,9 @@ def _do_midx(outdir, outfilename, infilenames):
     return total,outfilename
 
 
-def do_midx(outdir, outfilename, infilenames):
-    rv = _do_midx(outdir, outfilename, infilenames)
-    if rv:
+def do_midx(outdir, outfilename, infilenames, prefixstr):
+    rv = _do_midx(outdir, outfilename, infilenames, prefixstr)
+    if rv and opt['print']:
         print rv[1]
 
 
@@ -133,7 +135,7 @@ def do_midx_dir(path):
                     already[iname] = 1
                     any = 1
             if not any:
-                log('%r is redundant\n' % mname)
+                debug1('%r is redundant\n' % mname)
                 unlink(mname)
                 already[mname] = 1
 
@@ -150,30 +152,37 @@ def do_midx_dir(path):
     DESIRED_HWM = opt.force and 1 or 5
     DESIRED_LWM = opt.force and 1 or 2
     existed = dict((name,1) for sz,name in all)
-    log('midx: %d indexes; want no more than %d.\n' % (len(all), DESIRED_HWM))
+    debug1('midx: %d indexes; want no more than %d.\n' 
+           % (len(all), DESIRED_HWM))
     if len(all) <= DESIRED_HWM:
-        log('midx: nothing to do.\n')
+        debug1('midx: nothing to do.\n')
     while len(all) > DESIRED_HWM:
         all.sort()
         part1 = [name for sz,name in all[:len(all)-DESIRED_LWM+1]]
         part2 = all[len(all)-DESIRED_LWM+1:]
         all = list(do_midx_group(path, part1)) + part2
         if len(all) > DESIRED_HWM:
-            log('\nStill too many indexes (%d > %d).  Merging again.\n'
-                % (len(all), DESIRED_HWM))
+            debug1('\nStill too many indexes (%d > %d).  Merging again.\n'
+                   % (len(all), DESIRED_HWM))
 
-    for sz,name in all:
-        if not existed.get(name):
-            print name
+    if opt['print']:
+        for sz,name in all:
+            if not existed.get(name):
+                print name
 
 
 def do_midx_group(outdir, infiles):
-    for sublist in _group(infiles, opt.max_files):
-        rv = _do_midx(path, None, sublist)
+    groups = list(_group(infiles, opt.max_files))
+    gprefix = ''
+    for n,sublist in enumerate(groups):
+        if len(groups) != 1:
+            gprefix = 'Group %d: ' % (n+1)
+        rv = _do_midx(path, None, sublist, gprefix)
         if rv:
             yield rv
 
 
+handle_ctrl_c()
 
 o = options.Options('bup midx', optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
@@ -188,7 +197,7 @@ if opt.max_files < 0:
 assert(opt.max_files >= 5)
 
 if extra:
-    do_midx(git.repo('objects/pack'), opt.output, extra)
+    do_midx(git.repo('objects/pack'), opt.output, extra, '')
 elif opt.auto or opt.force:
     if opt.dir:
         paths = [opt.dir]
@@ -196,8 +205,8 @@ elif opt.auto or opt.force:
         paths = [git.repo('objects/pack')]
         paths += glob.glob(git.repo('index-cache/*/.'))
     for path in paths:
-        log('midx: scanning %s\n' % path)
+        debug1('midx: scanning %s\n' % path)
         do_midx_dir(path)
-        log('\n')
+        debug1('\n')
 else:
     o.fatal("you must use -f or -a or provide input filenames")

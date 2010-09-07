@@ -134,11 +134,11 @@ class Client:
         mkdirp(self.cachedir)
         for f in os.listdir(self.cachedir):
             if f.endswith('.idx') and not f in all:
-                log('pruning old index: %r\n' % f)
+                debug1('client: pruning old index: %r\n' % f)
                 os.unlink(os.path.join(self.cachedir, f))
 
     def sync_index(self, name):
-        #log('requesting %r\n' % name)
+        #debug1('requesting %r\n' % name)
         self.check_busy()
         mkdirp(self.cachedir)
         self.conn.write('send-index %s\n' % name)
@@ -147,12 +147,12 @@ class Client:
         fn = os.path.join(self.cachedir, name)
         f = open(fn + '.tmp', 'w')
         count = 0
-        progress('Receiving index: %d/%d\r' % (count, n))
+        progress('Receiving index from server: %d/%d\r' % (count, n))
         for b in chunkyreader(self.conn, n):
             f.write(b)
             count += len(b)
-            progress('Receiving index: %d/%d\r' % (count, n))
-        progress('Receiving index: %d/%d, done.\n' % (count, n))
+            progress('Receiving index from server: %d/%d\r' % (count, n))
+        progress('Receiving index from server: %d/%d, done.\n' % (count, n))
         self.check_ok()
         f.close()
         os.rename(fn + '.tmp', fn)
@@ -166,7 +166,7 @@ class Client:
         return git.PackIdxList(self.cachedir)
 
     def _suggest_pack(self, indexname):
-        log('received index suggestion: %s\n' % indexname)
+        debug1('client: received index suggestion: %s\n' % indexname)
         ob = self._busy
         if ob:
             assert(ob == 'receive-objects')

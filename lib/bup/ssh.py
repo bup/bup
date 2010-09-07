@@ -28,10 +28,11 @@ def connect(rhost, subcmd):
         # allow shellquoting.  So we end up having to double-shellquote
         # stuff here.
         escapedir = re.sub(r'([^\w/])', r'\\\\\\\1', nicedir)
+        buglvl = helpers.atoi(os.environ.get('BUP_DEBUG'))
         force_tty = helpers.atoi(os.environ.get('BUP_FORCE_TTY'))
         cmd = r"""
-                   sh -c PATH=%s:'$PATH BUP_FORCE_TTY=%s bup %s'
-               """ % (escapedir, force_tty, subcmd)
+                   sh -c PATH=%s:'$PATH BUP_DEBUG=%s BUP_FORCE_TTY=%s bup %s'
+               """ % (escapedir, buglvl, force_tty, subcmd)
         argv = ['ssh', rhost, '--', cmd.strip()]
         #helpers.log('argv is: %r\n' % argv)
     def setup():

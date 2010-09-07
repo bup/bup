@@ -8,13 +8,13 @@ suspended_w = None
 
 def init_dir(conn, arg):
     git.init_repo(arg)
-    log('bup server: bupdir initialized: %r\n' % git.repodir)
+    debug1('bup server: bupdir initialized: %r\n' % git.repodir)
     conn.ok()
 
 
 def set_dir(conn, arg):
     git.check_repo_or_die(arg)
-    log('bup server: bupdir is %r\n' % git.repodir)
+    debug1('bup server: bupdir is %r\n' % git.repodir)
     conn.ok()
 
     
@@ -51,9 +51,9 @@ def receive_objects(conn, junk):
             w.abort()
             raise Exception('object read: expected length header, got EOF\n')
         n = struct.unpack('!I', ns)[0]
-        #log('expecting %d bytes\n' % n)
+        #debug2('expecting %d bytes\n' % n)
         if not n:
-            log('bup server: received %d object%s.\n' 
+            debug1('bup server: received %d object%s.\n' 
                 % (w.count, w.count!=1 and "s" or ''))
             fullpath = w.close()
             if fullpath:
@@ -62,13 +62,13 @@ def receive_objects(conn, junk):
             conn.ok()
             return
         elif n == 0xffffffff:
-            log('bup server: receive-objects suspended.\n')
+            debug2('bup server: receive-objects suspended.\n')
             suspended_w = w
             conn.ok()
             return
             
         buf = conn.read(n)  # object sizes in bup are reasonably small
-        #log('read %d bytes\n' % n)
+        #debug2('read %d bytes\n' % n)
         if len(buf) < n:
             w.abort()
             raise Exception('object read: expected %d bytes, got %d\n'
@@ -90,7 +90,7 @@ def receive_objects(conn, junk):
             # efficient.
             w.objcache.refresh(skip_midx = True)
             oldpack = w.objcache.exists(sha)
-            log('new suggestion: %r\n' % oldpack)
+            debug2('new suggestion: %r\n' % oldpack)
             assert(oldpack)
             assert(oldpack != True)
             assert(not oldpack.endswith('.midx'))
@@ -99,7 +99,7 @@ def receive_objects(conn, junk):
             assert(oldpack.endswith('.idx'))
             (dir,name) = os.path.split(oldpack)
             if not (name in suggested):
-                log("bup server: suggesting index %s\n" % name)
+                debug1("bup server: suggesting index %s\n" % name)
                 conn.write('index %s\n' % name)
                 suggested[name] = 1
         else:
@@ -150,7 +150,7 @@ o = options.Options('bup server', optspec)
 if extra:
     o.fatal('no arguments expected')
 
-log('bup server: reading from stdin.\n')
+debug2('bup server: reading from stdin.\n')
 
 commands = {
     'init-dir': init_dir,
@@ -171,7 +171,7 @@ for _line in lr:
     line = _line.strip()
     if not line:
         continue
-    log('bup server: command: %r\n' % line)
+    debug1('bup server: command: %r\n' % line)
     words = line.split(' ', 1)
     cmd = words[0]
     rest = len(words)>1 and words[1] or ''
@@ -184,4 +184,4 @@ for _line in lr:
         else:
             raise Exception('unknown server command: %r\n' % line)
 
-log('bup server: done\n')
+debug1('bup server: done\n')

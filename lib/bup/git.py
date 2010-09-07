@@ -383,8 +383,8 @@ class PackIdxList:
                             any += 1
                             break
                     if not any and not ix.force_keep:
-                        log('midx: removing redundant: %s\n'
-                            % os.path.basename(ix.name))
+                        debug1('midx: removing redundant: %s\n'
+                               % os.path.basename(ix.name))
                         unlink(ix.name)
             for f in os.listdir(self.dir):
                 full = os.path.join(self.dir, f)
@@ -392,7 +392,7 @@ class PackIdxList:
                     ix = PackIdx(full)
                     d[full] = ix
             self.packs = list(set(d.values()))
-        log('PackIdxList: using %d index%s.\n'
+        debug1('PackIdxList: using %d index%s.\n'
             % (len(self.packs), len(self.packs)!=1 and 'es' or ''))
 
     def add(self, hash):
@@ -429,7 +429,7 @@ def open_idx(filename):
         raise GitError('idx filenames must end with .idx or .midx')
 
 
-def idxmerge(idxlist):
+def idxmerge(idxlist, final_progress=True):
     """Generate a list of all the objects reachable in a PackIdxList."""
     total = sum(len(i) for i in idxlist)
     iters = (iter(i) for i in idxlist)
@@ -451,7 +451,8 @@ def idxmerge(idxlist):
             heapq.heapreplace(heap, (e, it))
         else:
             heapq.heappop(heap)
-    log('Reading indexes: %.2f%% (%d/%d), done.\n' % (100, total, total))
+    if final_progress:
+        log('Reading indexes: %.2f%% (%d/%d), done.\n' % (100, total, total))
 
 
 class PackWriter:

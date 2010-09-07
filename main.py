@@ -23,12 +23,13 @@ os.environ['PYTHONPATH'] = libpath + ':' + os.environ.get('PYTHONPATH', '')
 os.environ['BUP_MAIN_EXE'] = os.path.abspath(exe)
 os.environ['BUP_RESOURCE_PATH'] = resourcepath
 
+from bup import helpers
 from bup.helpers import *
 
 
 def usage():
-    log('Usage: bup [-?|--help] [-d=BUP_DIR|--bup-dir=BUP_DIR] COMMAND [ARGS]'
-        + '\n\n')
+    log('Usage: bup [-?|--help] [-d BUP_DIR] [--debug] '
+        '<command> [options...]\n\n')
     common = dict(
         ftp = 'Browse backup sets using an ftp-like client',
         fsck = 'Check backup sets for damage and add redundancy information',
@@ -65,8 +66,8 @@ if len(argv) < 2:
 
 # Handle global options.
 try:
-    global_args, subcmd = getopt.getopt(argv[1:], '?Vd:',
-                                        ['help', 'version', 'bup-dir='])
+    global_args, subcmd = getopt.getopt(argv[1:], '?VDd:',
+                                    ['help', 'version', 'debug', 'bup-dir='])
 except getopt.GetoptError, ex:
     log('error: ' + ex.msg + '\n')
     usage()
@@ -75,11 +76,14 @@ help_requested = None
 dest_dir = None
 
 for opt in global_args:
-    if opt[0] == '-?' or opt[0] == '--help':
+    if opt[0] in ['-?', '--help']:
         help_requested = True
-    if opt[0] == '-V' or opt[0] == '--version':
+    elif opt[0] in ['-V', '--version']:
         subcmd = ['version']
-    elif opt[0] == '-d' or opt[0] == '--bup-dir':
+    elif opt[0] in ['-D', '--debug']:
+        helpers.buglvl += 1
+        os.environ['BUP_DEBUG'] = str(helpers.buglvl)
+    elif opt[0] in ['-d', '--bup-dir']:
         dest_dir = opt[1]
     else:
         log('error: unexpected option "%s"\n' % opt[0])

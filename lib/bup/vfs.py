@@ -120,7 +120,7 @@ class _ChunkReader(object):
                 self.blob = self.blob[want:]
             if not self.it:
                 break
-        log('next(%d) returned %d\n' % (size, len(out)))
+        debug2('next(%d) returned %d\n' % (size, len(out)))
         self.ofs += len(out)
         return out
 
@@ -220,7 +220,7 @@ class Node(object):
             return self
 
     def _lresolve(self, parts):
-        #log('_lresolve %r in %r\n' % (parts, self.name))
+        #debug2('_lresolve %r in %r\n' % (parts, self.name))
         if not parts:
             return self
         (first, rest) = (parts[0], parts[1:])
@@ -253,7 +253,7 @@ class Node(object):
         parts = re.split(r'/+', path or '.')
         if not parts[-1]:
             parts[-1] = '.'
-        #log('parts: %r %r\n' % (path, parts))
+        #debug2('parts: %r %r\n' % (path, parts))
         return start._lresolve(parts)
 
     def resolve(self, path = ''):
@@ -310,12 +310,12 @@ class File(Node):
     def size(self):
         """Get this file's size."""
         if self._cached_size == None:
-            log('<<<<File.size() is calculating...\n')
+            debug1('<<<<File.size() is calculating...\n')
             if self.bupmode == git.BUP_CHUNKED:
                 self._cached_size = _total_size(self.hash)
             else:
                 self._cached_size = _chunk_len(self.hash)
-            log('<<<<File.size() done.\n')
+            debug1('<<<<File.size() done.\n')
         return self._cached_size
 
 
