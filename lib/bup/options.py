@@ -11,9 +11,14 @@ class OptDict:
         self._opts = {}
 
     def __setitem__(self, k, v):
+        if k.startswith('no-') or k.startswith('no_'):
+            k = k[3:]
+            v = not v
         self._opts[k] = v
 
     def __getitem__(self, k):
+        if k.startswith('no-') or k.startswith('no_'):
+            return not self._opts[k[3:]]
         return self._opts[k]
 
     def __getattr__(self, k):
@@ -32,6 +37,15 @@ def _intify(v):
     except ValueError:
         pass
     return v
+
+
+def _remove_negative_kv(k, v):
+    if k.startswith('no-') or k.startswith('no_'):
+        return k[3:], not v
+    return k,v
+
+def _remove_negative_k(k):
+    return _remove_negative_kv(k, None)[0]
 
 
 class Options:
@@ -91,16 +105,16 @@ class Options:
                 flagl = flags.split(',')
                 flagl_nice = []
                 for f in flagl:
-                    self._aliases[f] = flagl[0]
+                    f,dvi = _remove_negative_kv(f, _intify(defval))
+                    self._aliases[f] = _remove_negative_k(flagl[0])
                     self._hasparms[f] = has_parm
-                    self._defaults[f] = _intify(defval)
+                    self._defaults[f] = dvi
                     if len(f) == 1:
                         self._shortopts += f + (has_parm and ':' or '')
                         flagl_nice.append('-' + f)
                     else:
                         f_nice = re.sub(r'\W', '_', f)
-                        self._aliases[f_nice] = flagl[0]
-                        assert(not f.startswith('no-')) # supported implicitly
+                        self._aliases[f_nice] = _remove_negative_k(flagl[0])
                         self._longopts.append(f + (has_parm and '=' or ''))
                         self._longopts.append('no-' + f)
                         flagl_nice.append('--' + f)

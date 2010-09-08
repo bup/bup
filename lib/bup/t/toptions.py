@@ -8,9 +8,12 @@ def test_optdict():
     d['x'] = 5
     d['y'] = 4
     d['z'] = 99
+    d['no_other_thing'] = 5
     WVPASSEQ(d.x, 5)
     WVPASSEQ(d.y, 4)
     WVPASSEQ(d.z, 99)
+    WVPASSEQ(d.no_z, False)
+    WVPASSEQ(d.no_other_thing, True)
     try:
         print d.p
     except:
@@ -29,6 +32,7 @@ l,longoption=   long option with parameters and a really really long description
 p= short option with parameters
 onlylong  long option with no short
 neveropt never called options
+no-stupid  disable stupidity
 """
 
 @wvtest
@@ -45,5 +49,6 @@ def test_options():
     WVPASSEQ(extra, ['hanky'])
     WVPASSEQ((opt.t, opt.q, opt.p, opt.l, opt.onlylong,
               opt.neveropt), (3,1,7,19,1,None))
+    WVPASSEQ((opt.stupid, opt.no_stupid), (True, False))
     (opt,flags,extra) = o.parse(['--onlylong', '-t', '--no-onlylong'])
     WVPASSEQ((opt.t, opt.q, opt.onlylong), (1, None, 0))
