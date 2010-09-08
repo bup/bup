@@ -230,23 +230,11 @@ Things that are stupid for now but which we'll fix later
 Help with any of these problems, or others, is very welcome.  Join the
 mailing list (see below) if you'd like to help.
 
- - 'bup save' doesn't know about file metadata.
+ - 'bup save' and 'bup restore' don't know about file metadata.
  
     That means we aren't saving file attributes, mtimes, ownership, hard
     links, MacOS resource forks, etc.  Clearly this needs to be improved.
 
- - There's no 'bup restore' yet.
- 
-    'bup save' saves files in the standard git 'tree of blobs' format, so you
-    could then "restore" the files using something like 'git checkout'.  But
-    that's a git command, not a bup command, so it's hard to explain and
-    doesn't support retrieving objects from a remote bup server without first
-    fetching and packing an entire (possibly huge) pack, which could be very
-    slow.  Also, like 'bup save', you would need extra features in order to
-    properly restore file metadata.  And files that bup has split into
-    chunks will need to be recombined.  Although there's no restore tool,
-    'bup fuse' does accomplish some of this already.
-    
  - 'bup index' is slower than it should be.
  
     It's still rather fast: it can iterate through all the filenames on my

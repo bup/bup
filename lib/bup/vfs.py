@@ -172,15 +172,17 @@ class Node(object):
         self._subs = None
 
     def __cmp__(a, b):
-        return cmp(a.name or None, b.name or None)
+        return cmp(a and a.name or None, b and b.name or None)
 
     def __iter__(self):
         return iter(self.subs())
 
-    def fullname(self):
+    def fullname(self, stop_at=None):
         """Get this file's full path."""
-        if self.parent:
-            return os.path.join(self.parent.fullname(), self.name)
+        assert(self != stop_at)  # would be the empty string; too weird
+        if self.parent and self.parent != stop_at:
+            return os.path.join(self.parent.fullname(stop_at=stop_at),
+                                self.name)
         else:
             return self.name
 

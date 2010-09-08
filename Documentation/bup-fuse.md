@@ -50,7 +50,8 @@ should unmount it with `umount`(8).
 
 # SEE ALSO
 
-`fuse`(7), `fusermount`(1), `bup-ls`(1), `bup-ftp`(1)
+`fuse`(7), `fusermount`(1), `bup-ls`(1), `bup-ftp`(1),
+`bup-restore`(1), `bup-web`(1)
 
 # BUP
 

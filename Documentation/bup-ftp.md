@@ -80,7 +80,7 @@ quit
 
 # SEE ALSO
 
-`bup-join`(1), `bup-fuse`(1), `bup-ls`(1), `bup-save`(1), `git-show`(1)
+`bup-fuse`(1), `bup-ls`(1), `bup-save`(1), `bup-restore`(1)
 
 
 # BUP

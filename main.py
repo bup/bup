@@ -39,6 +39,7 @@ def usage():
         help = 'Print detailed help for the given command',
         index = 'Create or display the index of files to back up',
         on = 'Backup a remote machine to the local one',
+        restore = 'Extract files from a backup set',
         save = 'Save files into a backup set (note: run "bup index" first)',
         web = 'Launch a web server to examine backup sets',
     )

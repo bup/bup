@@ -83,7 +83,8 @@ for `bup-index`(1).
 
 # SEE ALSO
 
-`bup-index`(1), `bup-split`(1), `bup-on`(1)
+`bup-index`(1), `bup-split`(1), `bup-on`(1),
+`bup-restore`(1)
 
 # BUP
 

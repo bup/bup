@@ -166,6 +166,15 @@ WVSTART "save/git-fsck"
     WVPASS [ "$n" -eq 0 ]
 ) || exit 1
 
+WVSTART "restore"
+rm -rf buprestore.tmp
+WVFAIL bup restore boink
+WVPASS bup restore -C buprestore.tmp "/master/latest/$TOP/$D"
+WVPASSEQ "$(ls buprestore.tmp)" "bupdata.tmp"
+rm -rf buprestore.tmp
+WVPASS bup restore -C buprestore.tmp "/master/latest/$TOP/$D/"
+WVPASS diff -ur $D/ buprestore.tmp/
+
 WVSTART "ftp"
 WVPASS bup ftp "cat /master/latest/$TOP/$D/b" >$D/b.new
 WVPASS bup ftp "cat /master/latest/$TOP/$D/f" >$D/f.new

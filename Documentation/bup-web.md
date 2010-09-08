@@ -34,7 +34,7 @@ can omit the bind address to bind to all available interfaces: `:8080`.
 
 # SEE ALSO
 
-`bup-fuse`(1), `bup-ls`(1), `bup-ftp`(1)
+`bup-fuse`(1), `bup-ls`(1), `bup-ftp`(1), `bup-restore`(1)
 
 
 # BUP

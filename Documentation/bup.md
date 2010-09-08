@@ -51,6 +51,8 @@ pages.
 :   Create or display the index of files to back up
 `bup-on`(1)
 :   Backup a remote machine to the local one
+`bup-restore`(1)
+:   Extract files from a backup set
 `bup-save`(1)
 :   Save files into a backup set (note: run "bup index" first)
 `bup-web`(1)
