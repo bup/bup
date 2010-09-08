@@ -554,12 +554,11 @@ class PackWriter:
         l.append(msg)
         return self.maybe_write('commit', '\n'.join(l))
 
-    def new_commit(self, parent, tree, msg):
+    def new_commit(self, parent, tree, date, msg):
         """Create a commit object in the pack."""
-        now = time.time()
         userline = '%s <%s@%s>' % (userfullname(), username(), hostname())
         commit = self._new_commit(tree, parent,
-                                  userline, now, userline, now,
+                                  userline, date, userline, date,
                                   msg)
         return commit
 

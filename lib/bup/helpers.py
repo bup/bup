@@ -16,6 +16,14 @@ def atoi(s):
         return 0
 
 
+def atof(s):
+    """Convert the string 's' to a float. Return 0 if s is not a number."""
+    try:
+        return float(s or '0')
+    except ValueError:
+        return 0
+
+
 buglvl = atoi(os.environ.get('BUP_DEBUG', 0))
 
 
@@ -387,6 +395,16 @@ def columnate(l, prefix):
     for row in zip(*cols):
         out += prefix + ''.join(('%-*s' % (clen+2, s)) for s in row) + '\n'
     return out
+
+def parse_date_or_fatal(str, fatal):
+    """Parses the given date or calls Option.fatal().
+    For now we expect a string that contains a float."""
+    try:
+        date = atof(str)
+    except ValueError, e:
+        raise fatal('invalid date format (should be a float): %r' % e)
+    else:
+        return date
 
 
 # hashlib is only available in python 2.5 or higher, but the 'sha' module
