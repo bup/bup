@@ -115,6 +115,12 @@ def progress_report(n):
         lastprint = now
 
 
+def vlog(s):
+    global lastprint
+    lastprint = 0
+    log(s)
+
+
 r = index.Reader(git.repo('bupindex'))
 
 def already_saved(ent):
@@ -162,10 +168,10 @@ for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse_during):
         else:
             status = ' '
         if opt.verbose >= 2:
-            log('%s %-70s\n' % (status, ent.name))
+            vlog('%s %-70s\n' % (status, ent.name))
         elif not stat.S_ISDIR(ent.mode) and lastdir != dir:
             if not lastdir.startswith(dir):
-                log('%s %-70s\n' % (status, os.path.join(dir, '')))
+                vlog('%s %-70s\n' % (status, os.path.join(dir, '')))
             lastdir = dir
 
     if opt.progress:
