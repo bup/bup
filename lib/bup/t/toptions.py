@@ -32,6 +32,11 @@ l,longoption=   long option with parameters and a really really long description
 p= short option with parameters
 onlylong  long option with no short
 neveropt never called options
+deftest1=  a default option with default [1]
+deftest2=  a default option with [1] default [2]
+deftest3=  a default option with [3] no actual default
+deftest4=  a default option with [[square]]
+deftest5=  a default option with "correct" [[square]
 no-stupid  disable stupidity
 """
 
@@ -49,6 +54,8 @@ def test_options():
     WVPASSEQ(extra, ['hanky'])
     WVPASSEQ((opt.t, opt.q, opt.p, opt.l, opt.onlylong,
               opt.neveropt), (3,1,7,19,1,None))
+    WVPASSEQ((opt.deftest1, opt.deftest2, opt.deftest3, opt.deftest4,
+              opt.deftest5), (1,2,None,None,'[square'))
     WVPASSEQ((opt.stupid, opt.no_stupid), (True, False))
     (opt,flags,extra) = o.parse(['--onlylong', '-t', '--no-onlylong'])
     WVPASSEQ((opt.t, opt.q, opt.onlylong), (1, None, 0))

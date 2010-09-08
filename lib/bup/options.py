@@ -97,7 +97,7 @@ class Options:
                     has_parm = 1
                 else:
                     has_parm = 0
-                g = re.search(r'\[([^\]]*)\]', extra)
+                g = re.search(r'\[([^\]]*)\]$', extra)
                 if g:
                     defval = g.group(1)
                 else:
