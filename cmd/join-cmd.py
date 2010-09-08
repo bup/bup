@@ -20,7 +20,12 @@ if not extra:
 ret = 0
 
 if opt.remote:
-    cli = client.Client(opt.remote)
+    if opt.remote and opt.remote.find(":") == -1:
+        o.fatal("--remote argument must contain a colon")
+    try:
+        cli = client.Client(opt.remote)
+    except client.ClientError:
+        o.fatal("server exited unexpectedly; see errors above")
     cat = cli.cat
 else:
     cp = git.CatPipe()

@@ -16,3 +16,4 @@ out2[tc]
 *.tmp
 /build
 *.swp
+nbproject

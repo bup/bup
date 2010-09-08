@@ -116,6 +116,10 @@ WVPASSEQ "$tree1" "$tree2"
 WVPASSEQ "$(bup index -s / | grep ^D)" ""
 tree3=$(bup save -t /)
 WVPASSEQ "$tree1" "$tree3"
+WVFAIL bup save -r localhost -n r-test $D
+WVPASS bup save -r :$BUP_DIR -n r-test $D
+WVFAIL bup save -r :$BUP_DIR/fake/path -n r-test $D
+WVFAIL bup save -r :$BUP_DIR -n r-test $D/fake/path
 
 WVSTART "split"
 WVPASS bup split --bench -b <t/testfile1 >tags1.tmp
@@ -125,9 +129,10 @@ WVPASS bup midx -f
 WVPASS bup margin
 WVPASS bup split -t t/testfile2 >tags2t.tmp
 WVPASS bup split -t t/testfile2 --fanout 3 >tags2tf.tmp
-WVPASS bup split -r "$BUP_DIR" -c t/testfile2 >tags2c.tmp
+WVFAIL bup split -r $BUP_DIR -c t/testfile2 >tags2c.tmp
+WVPASS bup split -r :$BUP_DIR -c t/testfile2 >tags2c.tmp
 WVPASS ls -lR \
-   | WVPASS bup split -r "$BUP_DIR" -c --fanout 3 --max-pack-objects 3 -n lslr
+   | WVPASS bup split -r :$BUP_DIR -c --fanout 3 --max-pack-objects 3 -n lslr
 WVPASS bup ls
 WVFAIL bup ls /does-not-exist
 WVPASS bup ls /lslr
@@ -146,7 +151,8 @@ WVSTART "join"
 WVPASS bup join $(cat tags1.tmp) >out1.tmp
 WVPASS bup join <tags2.tmp >out2.tmp
 WVPASS bup join <tags2t.tmp >out2t.tmp
-WVPASS bup join -r "$BUP_DIR" <tags2c.tmp >out2c.tmp
+WVFAIL bup join -r "$BUP_DIR" <tags2c.tmp >out2c.tmp
+WVPASS bup join -r ":$BUP_DIR" <tags2c.tmp >out2c.tmp
 WVPASS diff -u t/testfile1 out1.tmp
 WVPASS diff -u t/testfile2 out2.tmp
 WVPASS diff -u t/testfile2 out2t.tmp

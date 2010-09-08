@@ -57,7 +57,12 @@ refname = opt.name and 'refs/heads/%s' % opt.name or None
 if opt.noop or opt.copy:
     cli = pack_writer = oldref = None
 elif opt.remote or is_reverse:
-    cli = client.Client(opt.remote)
+    if opt.remote and opt.remote.find(":") == -1:
+        o.fatal("--remote argument must contain a colon")
+    try:
+        cli = client.Client(opt.remote)
+    except client.ClientError:
+        o.fatal("server exited unexpectedly; see errors above")
     oldref = refname and cli.read_ref(refname) or None
     pack_writer = cli.new_packwriter()
 else:

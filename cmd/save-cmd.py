@@ -7,7 +7,7 @@ from bup.helpers import *
 optspec = """
 bup save [-tc] [-n name] <filenames...>
 --
-r,remote=  remote repository path
+r,remote=  hostname:/path/to/repo of remote repository
 t,tree     output a tree id
 c,commit   output a commit id
 n,name=    name of backup set to update (if any)
@@ -36,7 +36,12 @@ if is_reverse and opt.remote:
 
 refname = opt.name and 'refs/heads/%s' % opt.name or None
 if opt.remote or is_reverse:
-    cli = client.Client(opt.remote)
+    if opt.remote and opt.remote.find(":") == -1:
+        o.fatal("--remote argument must contain a colon")
+    try:
+        cli = client.Client(opt.remote)
+    except client.ClientError:
+        o.fatal("server exited unexpectedly; see errors above")
     oldref = refname and cli.read_ref(refname) or None
     w = cli.new_packwriter()
 else:
