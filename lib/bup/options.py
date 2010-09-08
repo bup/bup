@@ -85,10 +85,13 @@ class Options:
             out.append('%s: %s\n' % (first_syn and 'usage' or '   or', l))
             first_syn = False
         out.append('\n')
+        last_was_option = False
         while lines:
             l = lines.pop()
             if l.startswith(' '):
-                out.append('\n%s\n' % l.lstrip())
+                out.append('%s%s\n' % (last_was_option and '\n' or '',
+                                       l.lstrip()))
+                last_was_option = False
             elif l:
                 (flags, extra) = l.split(' ', 1)
                 extra = extra.strip()
@@ -126,8 +129,10 @@ class Options:
                                                 initial_indent=prefix,
                                                 subsequent_indent=' '*28))
                 out.append(argtext + '\n')
+                last_was_option = True
             else:
                 out.append('\n')
+                last_was_option = False
         return ''.join(out).rstrip() + '\n'
 
     def usage(self, msg=""):
