@@ -2,6 +2,11 @@
 import sys, os, pwd, subprocess, errno, socket, select, mmap, stat, re
 from bup import _version
 
+# This function should really be in helpers, not in bup.options.  But we
+# want options.py to be standalone so people can include it in other projects.
+from bup.options import _tty_width
+tty_width = _tty_width
+
 
 def atoi(s):
     """Convert the string 's' to an integer. Return 0 if s is not a number."""
@@ -368,7 +373,7 @@ def columnate(l, prefix):
         return ""
     l = l[:]
     clen = max(len(s) for s in l)
-    ncols = (78 - len(prefix)) / (clen + 2)
+    ncols = (tty_width() - len(prefix)) / (clen + 2)
     if ncols <= 1:
         ncols = 1
         clen = 0

@@ -26,6 +26,8 @@ os.environ['BUP_RESOURCE_PATH'] = resourcepath
 from bup import helpers
 from bup.helpers import *
 
+# after running 'bup newliner', the tty_width() ioctl won't work anymore
+os.environ['WIDTH'] = str(tty_width())
 
 def usage():
     log('Usage: bup [-?|--help] [-d BUP_DIR] [--debug] '

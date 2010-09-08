@@ -1,10 +1,7 @@
 """Command-line options parser.
 With the help of an options spec string, easily parse command-line options.
 """
-import sys
-import textwrap
-import getopt
-import re
+import sys, os, textwrap, getopt, re, struct
 
 class OptDict:
     def __init__(self):
@@ -39,6 +36,13 @@ def _intify(v):
     return v
 
 
+def _atoi(v):
+    try:
+        return int(v or 0)
+    except ValueError:
+        return 0
+
+
 def _remove_negative_kv(k, v):
     if k.startswith('no-') or k.startswith('no_'):
         return k[3:], not v
@@ -46,6 +50,17 @@ def _remove_negative_kv(k, v):
 
 def _remove_negative_k(k):
     return _remove_negative_kv(k, None)[0]
+
+
+def _tty_width():
+    s = struct.pack("HHHH", 0, 0, 0, 0)
+    try:
+        import fcntl, termios
+        s = fcntl.ioctl(sys.stderr.fileno(), termios.TIOCGWINSZ, s)
+    except (IOError, ImportError):
+        return _atoi(os.environ.get('WIDTH')) or 70
+    (ysize,xsize,ypix,xpix) = struct.unpack('HHHH', s)
+    return xsize
 
 
 class Options:
@@ -125,7 +140,7 @@ class Options:
                 if has_parm:
                     flags_nice += ' ...'
                 prefix = '    %-20s  ' % flags_nice
-                argtext = '\n'.join(textwrap.wrap(extra, width=70,
+                argtext = '\n'.join(textwrap.wrap(extra, width=_tty_width(),
                                                 initial_indent=prefix,
                                                 subsequent_indent=' '*28))
                 out.append(argtext + '\n')
