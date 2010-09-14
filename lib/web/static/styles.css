@@ -2,6 +2,27 @@ body {
     font-family: sans-serif
 }
 
+#wrapper {
+    width: 960px;
+    margin: auto;
+}
+
 #breadcrumb {
     margin: 10px 0;
+}
+
+table {
+    width: 100%;
+}
+
+th {
+    text-align: left;
+}
+
+.dir-name {
+    width:80%;
+}
+
+.dir-size {
+    width:20%;
 }

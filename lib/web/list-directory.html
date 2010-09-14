@@ -6,32 +6,34 @@
         <link rel="stylesheet" href="/static/styles.css" />
     </head>
     <body>
-        <div id="breadcrumb">
-            {% for (display, part_path) in breadcrumbs[:-1] %}
-            <a href="{{ part_path }}">{{ display }}</a> /
+        <div id="wrapper">
+            <div id="breadcrumb">
+                {% for (display, part_path) in breadcrumbs[:-1] %}
+                <a href="{{ part_path }}">{{ display }}</a> /
+                {% end %}
+                <strong>{{ breadcrumbs[-1][0] }}</strong>
+            </div>
+            {% if files_hidden %}
+            <div id="message">
+                {% if hidden_shown %}
+                    <a href=".">Hide hidden files</a>
+                {% else %}
+                    <a href="?hidden=1">Show hidden files</a>
+                {% end %}
+            </div>
             {% end %}
-            <strong>{{ breadcrumbs[-1][0] }}</strong>
+            <table>
+                <tr>
+                    <th class="dir-name">Name</th>
+                    <th class="dir-size">Size</th>
+                </tr>
+                {% for (display, link, size) in dir_contents %}
+                <tr>
+                    <td class="dir-name"><a href="{{ link }}">{{ display }}</a></td>
+                    <td class="dir-size">{% if size != None %}{{ size }}{% else %}&nbsp;{% end %}</td>
+                </tr>
+                {% end %}
+            </table>
         </div>
-        {% if files_hidden %}
-        <div id="message">
-            {% if hidden_shown %}
-                <a href=".">Hide hidden files</a>
-            {% else %}
-                <a href="?hidden=1">Show hidden files</a>
-            {% end %}
-        </div>
-        {% end %}
-        <table>
-            <tr>
-                <th class="dir-name">Name</th>
-                <th class="dir-size">Size</th>
-            </tr>
-            {% for (display, link, size) in dir_contents %}
-            <tr>
-                <td class="dir-name"><a href="{{ link }}">{{ display }}</a></td>
-                <td class="dir-size">{% if size != None %}{{ size }}{% else %}&nbsp;{% end %}</td>
-            </tr>
-            {% end %}
-        </table>
     </body>
 </html>
