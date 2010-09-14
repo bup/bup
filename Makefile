@@ -34,7 +34,7 @@ LIBDIR=$(DESTDIR)/usr/lib/bup
 install: all
 	$(INSTALL) -d $(MANDIR)/man1 $(DOCDIR) $(BINDIR) \
 		$(LIBDIR)/bup $(LIBDIR)/cmd $(LIBDIR)/tornado \
-		$(LIBDIR)/web
+		$(LIBDIR)/web $(LIBDIR)/web/static
 	[ ! -e Documentation/.docs-available ] || \
 	  $(INSTALL) -m 0644 \
 		Documentation/*.1 \
@@ -57,8 +57,11 @@ install: all
 		lib/tornado/*.py \
 		$(LIBDIR)/tornado
 	$(INSTALL) -m 0644 \
-		lib/web/* \
-		$(LIBDIR)/web
+		lib/web/static/* \
+		$(LIBDIR)/web/static/
+	$(INSTALL) -m 0644 \
+		lib/web/*.html \
+		$(LIBDIR)/web/
 %/all:
 	$(MAKE) -C $* all
 
