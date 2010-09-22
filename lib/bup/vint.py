@@ -42,6 +42,55 @@ def read_vuint(port):
     return result
 
 
+def write_vint(port, x):
+    # Sign is handled with the second bit of the first byte.  All else
+    # matches vuint.
+    if x == 0:
+        port.write('\0')
+    else:
+        if x < 0:
+            x = -x
+            sign_and_six_bits = (x & 0x3f) | 0x40
+        else:
+            sign_and_six_bits = x & 0x3f
+        x >>= 6
+        if x:
+            port.write(chr(0x80 | sign_and_six_bits))
+            write_vuint(port, x)
+        else:
+            port.write(chr(sign_and_six_bits))
+
+
+def read_vint(port):
+    c = port.read(1)
+    if c == '':
+        raise EOFError('encountered EOF while reading vint');
+    negative = False
+    result = 0
+    offset = 0
+    # Handle first byte with sign bit specially.
+    if c:
+        b = ord(c)
+        if b & 0x40:
+            negative = True
+        result |= (b & 0x3f)
+        if b & 0x80:
+            offset += 6
+            c = port.read(1)
+        else:
+            return -result if negative else result
+    while c:
+        b = ord(c)
+        if b & 0x80:
+            result |= ((b & 0x7f) << offset)
+            offset += 7
+            c = port.read(1)
+        else:
+            result |= (b << offset)
+            break
+    return -result if negative else result
+
+
 def write_bvec(port, x):
     write_vuint(port, len(x))
     port.write(x)
@@ -63,6 +112,8 @@ def pack(types, *args):
     for (type, value) in zip(types, args):
         if type == 'V':
             write_vuint(port, value)
+        elif type == 'v':
+            write_vint(port, value)
         elif type == 's':
             write_bvec(port, value)
         else:
@@ -76,6 +127,8 @@ def unpack(types, data):
     for type in types:
         if type == 'V':
             result.append(read_vuint(port))
+        elif type == 'v':
+            result.append(read_vint(port))
         elif type == 's':
             result.append(read_bvec(port))
         else:
