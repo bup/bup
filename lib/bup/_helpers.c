@@ -200,11 +200,6 @@ static PyObject *fadvise_done(PyObject *self, PyObject *args)
 }
 
 
-static int set_linux_file_attr(const char *path, unsigned long attr)
-{
-}
-
-
 static PyObject *py_get_linux_file_attr(PyObject *self, PyObject *args)
 {
     int rc;
@@ -254,7 +249,7 @@ static PyObject *py_set_linux_file_attr(PyObject *self, PyObject *args)
     }
 
     close(fd);
-    return Py_True;
+    Py_RETURN_TRUE;
 }
 
 
@@ -305,7 +300,7 @@ static PyObject *py_lutimes(PyObject *self, PyObject *args)
     if(rc != 0)
         return PyErr_SetFromErrnoWithFilename(PyExc_IOError, filename);
 
-    return Py_True;
+    Py_RETURN_TRUE;
 }
 
 
