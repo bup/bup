@@ -103,9 +103,9 @@ access permissions, etc.) for a set of filesystem paths.
 
     # Restore /etc completely.
     $ mkdir tmp && cd tmp
-    $ bup meta -bf ../etc.meta
+    $ bup meta \-\-start-extract -f ../etc.meta
     ...fill in all regular file contents using some other tool...
-    $ bup meta -sf ../etc.meta
+    $ bup meta \-\-finish-extract -f ../etc.meta
 
 # BUGS
 
