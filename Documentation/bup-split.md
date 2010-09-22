@@ -10,7 +10,8 @@ bup-split - save individual files to bup backup sets
 
 bup split [-r *host*:*path*] <-b|-t|-c|-n *name*> [-v] [-q]
   [--bench] [--max-pack-size=*bytes*]
-  [--max-pack-objects=*n*] [--fanout=*count] [filenames...]
+  [--max-pack-objects=*n*] [--fanout=*count]
+  [--keep-boundaries] [filenames...]
 
 # DESCRIPTION
 
@@ -71,6 +72,18 @@ To get the data back, use `bup-join`(1).
 
 -v, --verbose
 :   increase verbosity (can be used more than once).
+
+--keep-boundaries
+:   if multiple filenames are given on the command line,
+    they are normally concatenated together as if the
+    content all came from a single file.  That is, the
+    set of blobs/trees produced is identical to what it
+    would have been if there had been a single input file. 
+    However, if you use `--keep-boundaries`, each file is
+    split separately.  You still only get a single tree or
+    commit or series of blobs, but each blob comes from
+    only one of the files; the end of one of the input
+    files always ends a blob.
 
 --noop
 :   read the data and split it into blocks based on the "bupsplit"

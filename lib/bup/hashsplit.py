@@ -72,7 +72,7 @@ def drainbuf(buf, finalize):
         yield (buf.get(buf.used()), 0)
 
 
-def hashsplit_iter(files):
+def _hashsplit_iter(files):
     assert(BLOB_HWM > BLOB_MAX)
     buf = Buf()
     fi = blobiter(files)
@@ -89,10 +89,23 @@ def hashsplit_iter(files):
             buf.put(bnew)
 
 
+def _hashsplit_iter_keep_boundaries(files):
+    for f in files:
+        for i in _hashsplit_iter([f]):
+            yield i
+
+
+def hashsplit_iter(files, keep_boundaries):
+    if keep_boundaries:
+        return _hashsplit_iter_keep_boundaries(files)
+    else:
+        return _hashsplit_iter(files)
+
+
 total_split = 0
-def _split_to_blobs(w, files):
+def _split_to_blobs(w, files, keep_boundaries):
     global total_split
-    for (blob, bits) in hashsplit_iter(files):
+    for (blob, bits) in hashsplit_iter(files, keep_boundaries):
         sha = w.new_blob(blob)
         total_split += len(blob)
         if w.outbytes >= max_pack_size or w.count >= max_pack_objects:
@@ -127,8 +140,8 @@ def _squish(w, stacks, n):
         i += 1
 
 
-def split_to_shalist(w, files):
-    sl = _split_to_blobs(w, files)
+def split_to_shalist(w, files, keep_boundaries):
+    sl = _split_to_blobs(w, files, keep_boundaries)
     if not fanout:
         shal = []
         for (sha,size,bits) in sl:
@@ -152,8 +165,8 @@ def split_to_shalist(w, files):
         return _make_shalist(stacks[-1])[0]
 
 
-def split_to_blob_or_tree(w, files):
-    shalist = list(split_to_shalist(w, files))
+def split_to_blob_or_tree(w, files, keep_boundaries):
+    shalist = list(split_to_shalist(w, files, keep_boundaries))
     if len(shalist) == 1:
         return (shalist[0][0], shalist[0][2])
     elif len(shalist) == 0:

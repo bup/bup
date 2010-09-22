@@ -122,6 +122,10 @@ WVFAIL bup save -r :$BUP_DIR/fake/path -n r-test $D
 WVFAIL bup save -r :$BUP_DIR -n r-test $D/fake/path
 
 WVSTART "split"
+echo a >a.tmp
+echo b >b.tmp
+WVPASSEQ $(bup split -b a.tmp b.tmp | wc -l) 1
+WVPASSEQ $(bup split -b --keep-boundaries a.tmp b.tmp | wc -l) 2
 WVPASS bup split --bench -b <t/testfile1 >tags1.tmp
 WVPASS bup split -vvvv -b t/testfile2 >tags2.tmp
 WVPASS bup margin

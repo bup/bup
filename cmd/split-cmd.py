@@ -15,6 +15,7 @@ n,name=    name of backup set to update (if any)
 d,date=    date for the commit (seconds since the epoch)
 q,quiet    don't print progress messages
 v,verbose  increase log output (can be used more than once)
+keep-boundaries  don't let one chunk span two input files
 noop       don't actually save the data anywhere
 copy       just copy input to output, hashsplitting along the way
 bench      print benchmark timings to stderr
@@ -78,11 +79,13 @@ else:
 
 files = extra and (open(fn) for fn in extra) or [sys.stdin]
 if pack_writer:
-    shalist = hashsplit.split_to_shalist(pack_writer, files)
+    shalist = hashsplit.split_to_shalist(pack_writer, files,
+                                         keep_boundaries=opt.keep_boundaries)
     tree = pack_writer.new_tree(shalist)
 else:
     last = 0
-    for (blob, bits) in hashsplit.hashsplit_iter(files):
+    for (blob, bits) in hashsplit.hashsplit_iter(files,
+                                    keep_boundaries=opt.keep_boundaries):
         hashsplit.total_split += len(blob)
         if opt.copy:
             sys.stdout.write(str(blob))

@@ -239,7 +239,7 @@ for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse_during):
                 add_error(e)
                 lastskip_name = ent.name
             else:
-                (mode, id) = hashsplit.split_to_blob_or_tree(w, [f])
+                (mode, id) = hashsplit.split_to_blob_or_tree(w, [f], False)
         else:
             if stat.S_ISDIR(ent.mode):
                 assert(0)  # handled above
