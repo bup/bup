@@ -137,8 +137,71 @@ def _decode_packobj(buf):
     return (type, zlib.decompress(buf[i+1:]))
 
 
-class PackIdxV2:
-    """Object representation of a Git pack index file."""
+class PackIdx:
+    def __init__(self):
+        assert(0)
+    
+    def find_offset(self, hash):
+        """Get the offset of an object inside the index file."""
+        idx = self._idx_from_hash(hash)
+        if idx != None:
+            return self._ofs_from_idx(idx)
+        return None
+
+    def exists(self, hash):
+        """Return nonempty if the object exists in this index."""
+        return hash and (self._idx_from_hash(hash) != None) and True or None
+
+    def __len__(self):
+        return int(self.fanout[255])
+
+    def _idx_from_hash(self, hash):
+        global _total_searches, _total_steps
+        _total_searches += 1
+        assert(len(hash) == 20)
+        b1 = ord(hash[0])
+        start = self.fanout[b1-1] # range -1..254
+        end = self.fanout[b1] # range 0..255
+        want = str(hash)
+        _total_steps += 1  # lookup table is a step
+        while start < end:
+            _total_steps += 1
+            mid = start + (end-start)/2
+            v = self._idx_to_hash(mid)
+            if v < want:
+                start = mid+1
+            elif v > want:
+                end = mid
+            else: # got it!
+                return mid
+        return None
+
+
+class PackIdxV1(PackIdx):
+    """Object representation of a Git pack index (version 1) file."""
+    def __init__(self, filename, f):
+        self.name = filename
+        self.idxnames = [self.name]
+        self.map = mmap_read(f)
+        self.fanout = list(struct.unpack('!256I',
+                                         str(buffer(self.map, 0, 256*4))))
+        self.fanout.append(0)  # entry "-1"
+        nsha = self.fanout[255]
+        self.shatable = buffer(self.map, 256*4, nsha*24)
+
+    def _ofs_from_idx(self, idx):
+        return struct.unpack('!I', str(self.shatable[idx*24 : idx*24+4]))[0]
+
+    def _idx_to_hash(self, idx):
+        return str(self.shatable[idx*24+4 : idx*24+24])
+
+    def __iter__(self):
+        for i in xrange(self.fanout[255]):
+            yield buffer(self.map, 256*4 + 24*i + 4, 20)
+
+
+class PackIdxV2(PackIdx):
+    """Object representation of a Git pack index (version 2) file."""
     def __init__(self, filename, f):
         self.name = filename
         self.idxnames = [self.name]
@@ -148,6 +211,7 @@ class PackIdxV2:
                                          str(buffer(self.map, 8, 256*4))))
         self.fanout.append(0)  # entry "-1"
         nsha = self.fanout[255]
+        self.shatable = buffer(self.map, 8 + 256*4, nsha*20)
         self.ofstable = buffer(self.map,
                                8 + 256*4 + nsha*20 + nsha*4,
                                nsha*4)
@@ -162,45 +226,12 @@ class PackIdxV2:
                                 str(buffer(self.ofs64table, idx64*8, 8)))[0]
         return ofs
 
-    def _idx_from_hash(self, hash):
-        global _total_searches, _total_steps
-        _total_searches += 1
-        assert(len(hash) == 20)
-        b1 = ord(hash[0])
-        start = self.fanout[b1-1] # range -1..254
-        end = self.fanout[b1] # range 0..255
-        buf = buffer(self.map, 8 + 256*4, end*20)
-        want = str(hash)
-        _total_steps += 1  # lookup table is a step
-        while start < end:
-            _total_steps += 1
-            mid = start + (end-start)/2
-            v = str(buf[mid*20:(mid+1)*20])
-            if v < want:
-                start = mid+1
-            elif v > want:
-                end = mid
-            else: # got it!
-                return mid
-        return None
-
-    def find_offset(self, hash):
-        """Get the offset of an object inside the index file."""
-        idx = self._idx_from_hash(hash)
-        if idx != None:
-            return self._ofs_from_idx(idx)
-        return None
-
-    def exists(self, hash):
-        """Return nonempty if the object exists in this index."""
-        return hash and (self._idx_from_hash(hash) != None) and True or None
+    def _idx_to_hash(self, idx):
+        return str(self.shatable[idx*20:(idx+1)*20])
 
     def __iter__(self):
         for i in xrange(self.fanout[255]):
             yield buffer(self.map, 8 + 256*4 + 20*i, 20)
-
-    def __len__(self):
-        return int(self.fanout[255])
 
 
 extract_bits = _helpers.extract_bits
@@ -389,7 +420,7 @@ class PackIdxList:
             for f in os.listdir(self.dir):
                 full = os.path.join(self.dir, f)
                 if f.endswith('.idx') and not d.get(full):
-                    ix = PackIdx(full)
+                    ix = open_idx(full)
                     d[full] = ix
             self.packs = list(set(d.values()))
         debug1('PackIdxList: using %d index%s.\n'
@@ -432,7 +463,7 @@ def open_idx(filename):
                 raise GitError('%s: expected idx file version 2, got %d'
                                % (filename, version))
         else:
-            raise GitError('version 1 idx files not supported')
+            return PackIdxV1(filename, f)
     elif filename.endswith('.midx'):
         return PackMidx(filename)
     else:

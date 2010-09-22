@@ -30,7 +30,7 @@ def send_index(conn, name):
     git.check_repo_or_die()
     assert(name.find('/') < 0)
     assert(name.endswith('.idx'))
-    idx = git.PackIdx(git.repo('objects/pack/%s' % name))
+    idx = git.open_idx(git.repo('objects/pack/%s' % name))
     conn.write(struct.pack('!I', len(idx.map)))
     conn.write(idx.map)
     conn.ok()

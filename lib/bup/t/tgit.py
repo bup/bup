@@ -70,7 +70,7 @@ def testpacks():
     WVPASS(os.path.exists(nameprefix + '.pack'))
     WVPASS(os.path.exists(nameprefix + '.idx'))
 
-    r = git.PackIdx(nameprefix + '.idx')
+    r = git.open_idx(nameprefix + '.idx')
     print repr(r.fanout)
 
     for i in range(nobj):
