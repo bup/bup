@@ -137,12 +137,12 @@ def _decode_packobj(buf):
     return (type, zlib.decompress(buf[i+1:]))
 
 
-class PackIdx:
+class PackIdxV2:
     """Object representation of a Git pack index file."""
-    def __init__(self, filename):
+    def __init__(self, filename, f):
         self.name = filename
         self.idxnames = [self.name]
-        self.map = mmap_read(open(filename))
+        self.map = mmap_read(f)
         assert(str(self.map[0:8]) == '\377tOc\0\0\0\2')
         self.fanout = list(struct.unpack('!256I',
                                          str(buffer(self.map, 8, 256*4))))
@@ -422,7 +422,17 @@ def _shalist_sort_key(ent):
 
 def open_idx(filename):
     if filename.endswith('.idx'):
-        return PackIdx(filename)
+        f = open(filename, 'rb')
+        header = f.read(8)
+        if header[0:4] == '\377tOc':
+            version = struct.unpack('!I', header[4:8])[0]
+            if version == 2:
+                return PackIdxV2(filename, f)
+            else:
+                raise GitError('%s: expected idx file version 2, got %d'
+                               % (filename, version))
+        else:
+            raise GitError('version 1 idx files not supported')
     elif filename.endswith('.midx'):
         return PackMidx(filename)
     else:
