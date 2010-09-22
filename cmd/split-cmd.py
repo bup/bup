@@ -58,6 +58,21 @@ else:
     date = time.time()
 
 
+last_prog = total_bytes = 0
+def prog(filenum, nbytes):
+    global last_prog, total_bytes
+    total_bytes += nbytes
+    now = time.time()
+    if now - last_prog < 0.2:
+        return
+    if filenum > 0:
+        progress('Splitting: file #%d, %d kbytes\r'
+                 % (filenum+1, total_bytes/1024))
+    else:
+        progress('Splitting: %d kbytes\r' % (total_bytes/1024))
+    last_prog = now
+
+
 is_reverse = os.environ.get('BUP_SERVER_REVERSE')
 if is_reverse and opt.remote:
     o.fatal("don't use -r in reverse mode; it's automatic")
@@ -117,12 +132,14 @@ else:
 
 if pack_writer:
     shalist = hashsplit.split_to_shalist(pack_writer, files,
-                                         keep_boundaries=opt.keep_boundaries)
+                                         keep_boundaries=opt.keep_boundaries,
+                                         progress=prog)
     tree = pack_writer.new_tree(shalist)
 else:
     last = 0
     for (blob, bits) in hashsplit.hashsplit_iter(files,
-                                    keep_boundaries=opt.keep_boundaries):
+                                    keep_boundaries=opt.keep_boundaries,
+                                    progress=prog):
         hashsplit.total_split += len(blob)
         if opt.copy:
             sys.stdout.write(str(blob))

@@ -105,11 +105,11 @@ static PyObject *extract_bits(PyObject *self, PyObject *args)
 static PyObject *write_random(PyObject *self, PyObject *args)
 {
     uint32_t buf[1024/4];
-    int fd = -1, seed = 0;
+    int fd = -1, seed = 0, verbose = 0;
     ssize_t ret;
     long long len = 0, kbytes = 0, written = 0;
 
-    if (!PyArg_ParseTuple(args, "iLi", &fd, &len, &seed))
+    if (!PyArg_ParseTuple(args, "iLii", &fd, &len, &seed, &verbose))
 	return NULL;
     
     srandom(seed);
@@ -125,7 +125,7 @@ static PyObject *write_random(PyObject *self, PyObject *args)
 	written += ret;
 	if (ret < (int)sizeof(buf))
 	    break;
-	if (kbytes/1024 > 0 && !(kbytes%1024))
+	if (verbose && kbytes/1024 > 0 && !(kbytes%1024))
 	    fprintf(stderr, "Random: %lld Mbytes\r", kbytes/1024);
     }
     

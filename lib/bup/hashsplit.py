@@ -45,10 +45,13 @@ def splitbuf(buf):
     return (None, 0)
 
 
-def blobiter(files):
-    for f in files:
+def blobiter(files, progress=None):
+    for filenum,f in enumerate(files):
         ofs = 0
+        b = ''
         while 1:
+            if progress:
+                progress(filenum, len(b))
             fadvise_done(f, max(0, ofs - 1024*1024))
             b = f.read(BLOB_HWM)
             ofs += len(b)
@@ -72,10 +75,10 @@ def drainbuf(buf, finalize):
         yield (buf.get(buf.used()), 0)
 
 
-def _hashsplit_iter(files):
+def _hashsplit_iter(files, progress):
     assert(BLOB_HWM > BLOB_MAX)
     buf = Buf()
-    fi = blobiter(files)
+    fi = blobiter(files, progress)
     while 1:
         for i in drainbuf(buf, finalize=False):
             yield i
@@ -89,23 +92,30 @@ def _hashsplit_iter(files):
             buf.put(bnew)
 
 
-def _hashsplit_iter_keep_boundaries(files):
-    for f in files:
-        for i in _hashsplit_iter([f]):
+def _hashsplit_iter_keep_boundaries(files, progress):
+    for real_filenum,f in enumerate(files):
+        if progress:
+            def prog(filenum, nbytes):
+                # the inner _hashsplit_iter doesn't know the real file count,
+                # so we'll replace it here.
+                return progress(real_filenum, nbytes)
+        else:
+            prog = None
+        for i in _hashsplit_iter([f], progress=prog):
             yield i
 
 
-def hashsplit_iter(files, keep_boundaries):
+def hashsplit_iter(files, keep_boundaries, progress):
     if keep_boundaries:
-        return _hashsplit_iter_keep_boundaries(files)
+        return _hashsplit_iter_keep_boundaries(files, progress)
     else:
-        return _hashsplit_iter(files)
+        return _hashsplit_iter(files, progress)
 
 
 total_split = 0
-def _split_to_blobs(w, files, keep_boundaries):
+def _split_to_blobs(w, files, keep_boundaries, progress):
     global total_split
-    for (blob, bits) in hashsplit_iter(files, keep_boundaries):
+    for (blob, bits) in hashsplit_iter(files, keep_boundaries, progress):
         sha = w.new_blob(blob)
         total_split += len(blob)
         if w.outbytes >= max_pack_size or w.count >= max_pack_objects:
@@ -140,8 +150,8 @@ def _squish(w, stacks, n):
         i += 1
 
 
-def split_to_shalist(w, files, keep_boundaries):
-    sl = _split_to_blobs(w, files, keep_boundaries)
+def split_to_shalist(w, files, keep_boundaries, progress=None):
+    sl = _split_to_blobs(w, files, keep_boundaries, progress)
     if not fanout:
         shal = []
         for (sha,size,bits) in sl:
