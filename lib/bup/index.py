@@ -4,7 +4,12 @@ from bup.helpers import *
 EMPTY_SHA = '\0'*20
 FAKE_SHA = '\x01'*20
 INDEX_HDR = 'BUPI\0\0\0\2'
+
+# FIXME: guess I should have used 64-bit integers to store the mtime/ctime.
+# NTFS mtime=0 corresponds to the year 1600, which can't be stored in a 32-bit
+# time_t.  Next time we update the bupindex format, keep that in mind.
 INDEX_SIG = '!IIIIIQII20sHII'
+
 ENTLEN = struct.calcsize(INDEX_SIG)
 FOOTER_SIG = '!Q'
 FOOTLEN = struct.calcsize(FOOTER_SIG)
@@ -112,6 +117,14 @@ class Entry:
             self.gid += 0x100000000
         assert(self.uid >= 0)
         assert(self.gid >= 0)
+        if self.mtime < -0x80000000:  # can happen in NTFS on 64-bit linux
+            self.mtime = 0
+        if self.ctime < -0x80000000:
+            self.ctime = 0
+        if self.mtime > 0x7fffffff:
+            self.mtime = 0x7fffffff
+        if self.ctime > 0x7fffffff:
+            self.ctime = 0x7fffffff
 
     def is_valid(self):
         f = IX_HASHVALID|IX_EXISTS
