@@ -133,7 +133,7 @@ def _clean_up_extract_path(p):
 # must be unique, and must *never* be changed.
 _rec_tag_end = 0
 _rec_tag_path = 1
-_rec_tag_common = 2           # times, user, group, type, perms, etc.
+_rec_tag_common = 2           # times, owner, group, type, perms, etc.
 _rec_tag_symlink_target = 3
 _rec_tag_posix1e_acl = 4      # getfacl(1), setfacl(1), etc.
 _rec_tag_nfsv4_acl = 5        # intended to supplant posix1e acls?
@@ -156,14 +156,14 @@ class Metadata:
         self.mtime = st.st_mtime
         self.ctime = st.st_ctime
         self.rdev = st.st_rdev
-        self.user = pwd.getpwuid(st.st_uid)[0]
+        self.owner = pwd.getpwuid(st.st_uid)[0]
         self.group = grp.getgrgid(st.st_gid)[0]
 
     def _encode_common(self):
         result = vint.pack('VVsVsVVVVVVV',
                            self.mode,
                            self.uid,
-                           self.user,
+                           self.owner,
                            self.gid,
                            self.group,
                            int(self.atime),
@@ -179,7 +179,7 @@ class Metadata:
         data = vint.read_bvec(port)
         (self.mode,
          self.uid,
-         self.user,
+         self.owner,
          self.gid,
          self.group,
          atime_s,
@@ -231,7 +231,7 @@ class Metadata:
             uid = self.uid
             gid = self.gid
             if not restore_numeric_ids:
-                uid = pwd.getpwnam(self.user)[2]
+                uid = pwd.getpwnam(self.owner)[2]
                 gid = grp.getgrnam(self.group)[2]
             os.lchown(path, uid, gid)
 
