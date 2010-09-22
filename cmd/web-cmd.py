@@ -9,15 +9,18 @@ from bup.helpers import *
 handle_ctrl_c()
 
 
-def _compute_breadcrumbs(path):
+def _compute_breadcrumbs(path, show_hidden=False):
     """Returns a list of breadcrumb objects for a path."""
     breadcrumbs = []
     breadcrumbs.append(('[root]', '/'))
     path_parts = path.split('/')[1:-1]
     full_path = '/'
     for part in path_parts:
-        full_path += part + '/'
-        breadcrumbs.append((part, full_path))
+        full_path += part + "/"
+        url_append = ""
+        if show_hidden:
+            url_append = '?hidden=1'
+        breadcrumbs.append((part, full_path+url_append))
     return breadcrumbs
 
 
@@ -36,13 +39,17 @@ def _compute_dir_contents(n, show_hidden=False):
     for sub in n:
         display = link = sub.name
 
-        if not show_hidden and len(display)>1 and display.startswith('.'):
-            continue
-
         # link should be based on fully resolved type to avoid extra
         # HTTP redirect.
         if stat.S_ISDIR(sub.try_resolve().mode):
             link = sub.name + "/"
+
+        if not show_hidden and len(display)>1 and display.startswith('.'):
+            continue
+
+        url_append = ""
+        if show_hidden:
+            url_append = "?hidden=1"
 
         size = None
         if stat.S_ISDIR(sub.mode):
@@ -52,7 +59,7 @@ def _compute_dir_contents(n, show_hidden=False):
         else:
             size = sub.size()
 
-        yield (display, link, size)
+        yield (display, link + url_append, size)
 
 
 class BupRequestHandler(tornado.web.RequestHandler):
@@ -94,12 +101,10 @@ class BupRequestHandler(tornado.web.RequestHandler):
         self.render(
             'list-directory.html',
             path=path,
-            breadcrumbs=_compute_breadcrumbs(path),
+            breadcrumbs=_compute_breadcrumbs(path, show_hidden),
             files_hidden=_contains_hidden_files(n),
             hidden_shown=show_hidden,
-            dir_contents=_compute_dir_contents(n, show_hidden),
-            # We need the standard url_escape so we don't escape /
-            url_escape=urllib.quote)
+            dir_contents=_compute_dir_contents(n, show_hidden))
 
     def _get_file(self, path, n):
         """Process a request on a file.
@@ -178,6 +183,7 @@ top = vfs.RefList(None)
 settings = dict(
     debug = 1,
     template_path = resource_path('web'),
+    static_path = resource_path('web/static')
 )
 
 # Disable buffering on stdout, for debug messages
