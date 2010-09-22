@@ -527,9 +527,9 @@ class _ArchiveIterator:
 def display_archive(file):
     for meta in _ArchiveIterator(file):
         if verbose:
-            print >> sys.stderr, meta.path # FIXME
+            print meta.path # FIXME
         else:
-            print >> sys.stderr, meta.path
+            print meta.path
 
 
 def start_extract(file, create_symlinks=True):
