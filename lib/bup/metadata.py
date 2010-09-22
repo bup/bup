@@ -230,7 +230,7 @@ class Metadata:
 
             uid = self.uid
             gid = self.gid
-            if(restore_numeric_ids):
+            if not restore_numeric_ids:
                 uid = pwd.getpwnam(self.user)[2]
                 gid = grp.getgrnam(self.group)[2]
             os.lchown(path, uid, gid)
