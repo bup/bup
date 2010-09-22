@@ -189,5 +189,5 @@ def open_noatime(name):
 
 def fadvise_done(f, ofs):
     assert(ofs >= 0)
-    if ofs > 0:
+    if ofs > 0 and hasattr(f, 'fileno'):
         _helpers.fadvise_done(f.fileno(), ofs)

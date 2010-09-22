@@ -11,7 +11,7 @@ bup-split - save individual files to bup backup sets
 bup split [-r *host*:*path*] <-b|-t|-c|-n *name*> [-v] [-q]
   [--bench] [--max-pack-size=*bytes*]
   [--max-pack-objects=*n*] [--fanout=*count]
-  [--keep-boundaries] [filenames...]
+  [--git-ids] [--keep-boundaries] [filenames...]
 
 # DESCRIPTION
 
@@ -72,6 +72,15 @@ To get the data back, use `bup-join`(1).
 
 -v, --verbose
 :   increase verbosity (can be used more than once).
+
+--git-ids
+:   stdin is a list of git object ids instead of raw data.
+    `bup split` will read the contents of each named git
+    object (if it exists in the bup repository) and split
+    it.  This might be useful for converting a git
+    repository with large binary files to use bup-style
+    hashsplitting instead.  This option is probably most
+    useful when combined with `--keep-boundaries`.
 
 --keep-boundaries
 :   if multiple filenames are given on the command line,

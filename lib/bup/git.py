@@ -870,11 +870,12 @@ class CatPipe:
         assert(not self.inprogress)
         assert(id.find('\n') < 0)
         assert(id.find('\r') < 0)
-        assert(id[0] != '-')
+        assert(not id.startswith('-'))
         self.inprogress = id
         self.p.stdin.write('%s\n' % id)
         hdr = self.p.stdout.readline()
         if hdr.endswith(' missing\n'):
+            self.inprogress = None
             raise KeyError('blob %r is missing' % id)
         spl = hdr.split(' ')
         if len(spl) != 3 or len(spl[0]) != 40:
