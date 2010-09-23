@@ -3,7 +3,7 @@ body {
 }
 
 #wrapper {
-    width: 960px;
+    width: 90%;
     margin: auto;
 }
 
@@ -12,17 +12,13 @@ body {
 }
 
 table {
-    width: 100%;
+    width: auto;
 }
 
 th {
     text-align: left;
 }
 
-.dir-name {
-    width:80%;
-}
-
 .dir-size {
-    width:20%;
+    padding-left:15px;
 }
