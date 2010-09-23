@@ -34,8 +34,14 @@ def _contains_hidden_files(n):
     return False
 
 
-def _compute_dir_contents(n, show_hidden=False):
+def _compute_dir_contents(n, path, show_hidden=False):
     """Given a vfs node, returns an iterator for display info of all subs."""
+    url_append = ""
+    if show_hidden:
+        url_append = "?hidden=1"
+
+    if path != "/":
+        yield('..', '../' + url_append, '')
     for sub in n:
         display = link = sub.name
 
@@ -46,10 +52,6 @@ def _compute_dir_contents(n, show_hidden=False):
 
         if not show_hidden and len(display)>1 and display.startswith('.'):
             continue
-
-        url_append = ""
-        if show_hidden:
-            url_append = "?hidden=1"
 
         size = None
         if stat.S_ISDIR(sub.mode):
@@ -105,7 +107,7 @@ class BupRequestHandler(tornado.web.RequestHandler):
             breadcrumbs=_compute_breadcrumbs(path, show_hidden),
             files_hidden=_contains_hidden_files(n),
             hidden_shown=show_hidden,
-            dir_contents=_compute_dir_contents(n, show_hidden))
+            dir_contents=_compute_dir_contents(n, path, show_hidden))
 
     def _get_file(self, path, n):
         """Process a request on a file.
