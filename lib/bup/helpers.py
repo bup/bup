@@ -1,6 +1,7 @@
 """Helper functions and classes for bup."""
 import sys, os, pwd, subprocess, errno, socket, select, mmap, stat, re
 from bup import _version
+import bup._helpers as _helpers
 
 # This function should really be in helpers, not in bup.options.  But we
 # want options.py to be standalone so people can include it in other projects.
@@ -405,6 +406,65 @@ def parse_date_or_fatal(str, fatal):
         raise fatal('invalid date format (should be a float): %r' % e)
     else:
         return date
+
+
+def lutime(path, times):
+    if _helpers.utimensat:
+        atime = times[0]
+        mtime = times[1]
+        return _helpers.utimensat(_helpers.AT_FDCWD, path, (atime, mtime),
+                                  _helpers.AT_SYMLINK_NOFOLLOW)
+    else:
+        return None
+
+
+def utime(path, times):
+    atime = times[0]
+    mtime = times[1]
+    if _helpers.utimensat:
+        return _helpers.utimensat(_helpers.AT_FDCWD, path, (atime, mtime),
+                                  0)
+    else:
+        os.utime(path, (atime[0] + atime[1] / 10e9,
+                        mtime[0] + mtime[1] / 10e9))
+
+
+class stat_result():
+    pass
+
+
+def lstat(path):
+    result = stat_result()
+    if _helpers.lstat:
+        st = _helpers.lstat(path)
+        (result.st_mode,
+         result.st_ino,
+         result.st_dev,
+         result.st_nlink,
+         result.st_uid,
+         result.st_gid,
+         result.st_rdev,
+         result.st_size,
+         result.st_atime,
+         result.st_mtime,
+         result.st_ctime) = st
+    else:
+        st = os.lstat(path)
+        result.st_mode = st.st_mode
+        result.st_ino = st.st_ino
+        result.st_dev = st.st_dev
+        result.st_nlink = st.st_nlink
+        result.st_uid = st.st_uid
+        result.st_gid = st.st_gid
+        result.st_rdev = st.st_rdev
+        result.st_size = st.st_size
+        result.st_atime = (math.trunc(st.st_atime),
+                           math.trunc(math.fmod(st.st_atime, 1) * 10**9))
+        result.st_mtime = (math.trunc(st.st_mtime),
+                           math.trunc(math.fmod(st.st_mtime, 1) * 10**9))
+        result.st_ctime = (math.trunc(st.st_ctime),
+                           math.trunc(math.fmod(st.st_ctime, 1) * 10**9))
+    return result
 
 
 # hashlib is only available in python 2.5 or higher, but the 'sha' module

@@ -9,8 +9,8 @@ import errno, os, sys, stat, pwd, grp, struct, xattr, posix1e, re
 
 from cStringIO import StringIO
 from bup import vint
-from bup.helpers import mkdirp, log
-from bup._helpers import get_linux_file_attr, set_linux_file_attr, lutimes
+from bup.helpers import mkdirp, log, utime, lutime, lstat
+from bup._helpers import get_linux_file_attr, set_linux_file_attr
 
 # WARNING: the metadata encoding is *not* stable yet.  Caveat emptor!
 
@@ -152,27 +152,27 @@ class Metadata:
         self.mode = st.st_mode
         self.uid = st.st_uid
         self.gid = st.st_gid
+        self.rdev = st.st_rdev
         self.atime = st.st_atime
         self.mtime = st.st_mtime
         self.ctime = st.st_ctime
-        self.rdev = st.st_rdev
         self.owner = pwd.getpwuid(st.st_uid)[0]
         self.group = grp.getgrgid(st.st_gid)[0]
 
     def _encode_common(self):
-        result = vint.pack('VVsVsVVVVVVV',
+        result = vint.pack('VVsVsVvvvvvv',
                            self.mode,
                            self.uid,
                            self.owner,
                            self.gid,
                            self.group,
-                           int(self.atime),
-                           int(self.mtime),
-                           int(self.ctime),
-                           int(self.atime * 1e9) % 1000000000,
-                           int(self.mtime * 1e9) % 1000000000,
-                           int(self.ctime * 1e9) % 1000000000,
-                           self.rdev)
+                           self.rdev,
+                           self.atime[0],
+                           self.atime[1],
+                           self.mtime[0],
+                           self.mtime[1],
+                           self.ctime[0],
+                           self.ctime[1])
         return result
 
     def _load_common_rec(self, port):
@@ -182,16 +182,16 @@ class Metadata:
          self.owner,
          self.gid,
          self.group,
-         atime_s,
-         mtime_s,
-         ctime_s,
+         self.rdev,
+         self.atime,
          atime_ns,
+         self.mtime,
          mtime_ns,
-         ctime_ns,
-         self.rdev) = vint.unpack('VVsVsVVVVVVV', data)
-        self.atime = atime_s + (atime_ns / 1e9)
-        self.mtime = mtime_s + (mtime_ns / 1e9)
-        self.ctime = ctime_s + (ctime_ns / 1e9)
+         self.ctime,
+         ctime_ns) = vint.unpack('VVsVsVvvvvvv', data)
+        self.atime = (self.atime, atime_ns)
+        self.mtime = (self.mtime, mtime_ns)
+        self.ctime = (self.ctime, ctime_ns)
 
     def _create_via_common_rec(self, path, create_symlinks=True):
         if stat.S_ISREG(self.mode):
@@ -213,9 +213,9 @@ class Metadata:
     def _apply_common_rec(self, path, restore_numeric_ids=False):
         # FIXME: S_ISDOOR, S_IFMPB, S_IFCMP, S_IFNWK, ... see stat(2).
         if stat.S_ISLNK(self.mode):
-            lutimes(path, (self.atime, self.mtime))
+            lutime(path, (self.atime, self.mtime))
         else:
-            os.utime(path, (self.atime, self.mtime))
+            utime(path, (self.atime, self.mtime))
         if stat.S_ISREG(self.mode) \
                 | stat.S_ISDIR(self.mode) \
                 | stat.S_ISCHR(self.mode) \
@@ -457,7 +457,7 @@ class Metadata:
 def from_path(path, archive_path=None, save_symlinks=True):
     result = Metadata()
     result.path = archive_path
-    st = os.lstat(path)
+    st = lstat(path)
     result._add_common(path, st)
     if(save_symlinks):
         result._add_symlink_target(path, st)
