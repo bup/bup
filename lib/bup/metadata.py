@@ -129,6 +129,18 @@ def _clean_up_extract_path(p):
         return result
 
 
+def _normalize_ts(stamp):
+    # For the purposes of normalization, t = s + ns.
+    s = stamp[0]
+    ns = stamp[1]
+    if ns < 0 or ns >= 10**9:
+        t = (s * 10**9) + ns
+        if t == 0:
+            return (0, 0)
+        return ((t / 10**9), t % 10**9)
+    return stamp
+
+
 # These tags are currently conceptually private to Metadata, and they
 # must be unique, and must *never* be changed.
 _rec_tag_end = 0
@@ -148,6 +160,9 @@ class Metadata:
 
     ## Common records
 
+    # Timestamps are (sec, ns), relative to 1970-01-01 00:00:00, ns
+    # must be non-negative and < 10**9.
+
     def _add_common(self, path, st):
         self.mode = st.st_mode
         self.uid = st.st_uid
@@ -160,19 +175,22 @@ class Metadata:
         self.group = grp.getgrgid(st.st_gid)[0]
 
     def _encode_common(self):
-        result = vint.pack('VVsVsVvvvvvv',
+        atime = _normalize_ts(self.atime)
+        mtime = _normalize_ts(self.mtime)
+        ctime = _normalize_ts(self.ctime)
+        result = vint.pack('VVsVsVvVvVvV',
                            self.mode,
                            self.uid,
                            self.owner,
                            self.gid,
                            self.group,
                            self.rdev,
-                           self.atime[0],
-                           self.atime[1],
-                           self.mtime[0],
-                           self.mtime[1],
-                           self.ctime[0],
-                           self.ctime[1])
+                           atime[0],
+                           atime[1],
+                           mtime[0],
+                           mtime[1],
+                           ctime[0],
+                           ctime[1])
         return result
 
     def _load_common_rec(self, port):
@@ -188,10 +206,22 @@ class Metadata:
          self.mtime,
          mtime_ns,
          self.ctime,
-         ctime_ns) = vint.unpack('VVsVsVvvvvvv', data)
+         ctime_ns) = vint.unpack('VVsVsVvVvVvV', data)
         self.atime = (self.atime, atime_ns)
         self.mtime = (self.mtime, mtime_ns)
         self.ctime = (self.ctime, ctime_ns)
+        if self.atime[1] >= 10**9:
+            path = ' for ' + self.path if self.path else ''
+            log('bup: warning - normalizing bad atime%s\n' % (path))
+            self.atime = _normalize_ts(self.atime)
+        if self.mtime[1] >= 10**9:
+            path = ' for ' + self.path if self.path else ''
+            log('bup: warning - normalizing bad mtime%s\n' % (path))
+            self.mtime = _normalize_ts(self.mtime)
+        if self.ctime[1] >= 10**9:
+            path = ' for ' + self.path if self.path else ''
+            log('bup: warning - normalizing bad ctime%s\n' % (path))
+            self.ctime = _normalize_ts(self.ctime)
 
     def _create_via_common_rec(self, path, create_symlinks=True):
         if stat.S_ISREG(self.mode):
