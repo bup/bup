@@ -79,7 +79,9 @@ def _pop(force_tree):
     shalist = shalists.pop()
     tree = force_tree or w.new_tree(shalist)
     if shalists:
-        shalists[-1].append(('40000', part, tree))
+        shalists[-1].append(('40000',
+                             git.mangle_name(part, 040000, 40000),
+                             tree))
     else:  # this was the toplevel, so put it back for sanity
         shalists.append(shalist)
     return tree

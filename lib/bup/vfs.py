@@ -312,7 +312,7 @@ class File(Node):
     def size(self):
         """Get this file's size."""
         if self._cached_size == None:
-            debug1('<<<<File.size() is calculating...\n')
+            debug1('<<<<File.size() is calculating (for %r)...\n' % self.name)
             if self.bupmode == git.BUP_CHUNKED:
                 self._cached_size = _total_size(self.hash)
             else:
