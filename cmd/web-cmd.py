@@ -68,7 +68,8 @@ class BupRequestHandler(tornado.web.RequestHandler):
 
     def head(self, path):
         return self._process_request(path)
-
+    
+    @tornado.web.asynchronous
     def _process_request(self, path):
         path = urllib.unquote(path)
         print 'Handling request for %s' % path
@@ -118,12 +119,23 @@ class BupRequestHandler(tornado.web.RequestHandler):
         self.set_header("Content-Type", ctype)
         size = n.size()
         self.set_header("Content-Length", str(size))
+        assert(len(n.hash) == 20)
+        self.set_header("Etag", n.hash.encode('hex'))
 
         if self.request.method != 'HEAD':
+            self.flush()
             f = n.open()
-            for blob in chunkyreader(f):
-                self.write(blob)
-            f.close()
+            it = chunkyreader(f)
+            def write_more(me):
+                try:
+                    blob = it.next()
+                except StopIteration:
+                    f.close()
+                    self.finish()
+                    return
+                self.request.connection.stream.write(blob,
+                                                     callback=lambda: me(me))
+            write_more(write_more)
 
     def _guess_type(self, path):
         """Guess the type of a file.
