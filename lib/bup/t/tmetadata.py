@@ -123,3 +123,26 @@ def test_apply_to_path_error():
         subprocess.call(['chmod', '700', tmpdir])
     finally:
         subprocess.call(['rm', '-rf', tmpdir])
+
+
+@wvtest
+def test_restore_restricted_user_group():
+    if os.geteuid == 0 or detect_fakeroot():
+        return
+    tmpdir = tempfile.mkdtemp(prefix='bup-tmetadata-')
+    try:
+        path = tmpdir + '/foo'
+        subprocess.call(['mkdir', path])
+        m = metadata.from_path(path, archive_path=path, save_symlinks=True)
+        WVPASSEQ(m.path, path)
+        WVPASSEQ(m.apply_to_path(path), None)
+        orig_uid = m.uid
+        m.uid = 0;
+        WVEXCEPT(metadata.MetadataApplicationError,
+                 m.apply_to_path, path, restore_numeric_ids=True)
+        m.uid = orig_uid
+        m.gid = 0;
+        WVEXCEPT(metadata.MetadataApplicationError,
+                 m.apply_to_path, path, restore_numeric_ids=True)
+    finally:
+        subprocess.call(['rm', '-rf', tmpdir])
