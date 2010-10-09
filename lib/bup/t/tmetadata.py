@@ -1,6 +1,7 @@
 import tempfile
 import subprocess
 from bup import metadata
+from bup.helpers import detect_fakeroot
 from wvtest import *
 
 
@@ -88,6 +89,8 @@ def test_clean_up_extract_path():
 
 @wvtest
 def test_from_path_error():
+    if os.geteuid == 0 or detect_fakeroot():
+        return
     tmpdir = tempfile.mkdtemp(prefix='bup-tmetadata-')
     try:
         path = tmpdir + '/foo'
@@ -106,6 +109,8 @@ def test_from_path_error():
 
 @wvtest
 def test_apply_to_path_error():
+    if os.geteuid == 0 or detect_fakeroot():
+        return
     tmpdir = tempfile.mkdtemp(prefix='bup-tmetadata-')
     try:
         path = tmpdir + '/foo'

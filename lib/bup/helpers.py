@@ -129,6 +129,11 @@ def realpath(p):
     return out
 
 
+def detect_fakeroot():
+    "Return True if we appear to be running under fakeroot."
+    return os.getenv("FAKEROOTKEY") != None
+
+
 _username = None
 def username():
     """Get the user's login name."""
