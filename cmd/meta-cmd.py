@@ -11,7 +11,7 @@
 import sys
 from bup import metadata
 from bup import options
-from bup.helpers import handle_ctrl_c, saved_errors
+from bup.helpers import handle_ctrl_c, log, saved_errors
 
 optspec = """
 bup meta --create [OPTION ...] <PATH ...>

@@ -9,7 +9,7 @@ import errno, os, sys, stat, pwd, grp, struct, xattr, posix1e, re
 
 from cStringIO import StringIO
 from bup import vint
-from bup.helpers import mkdirp, log, utime, lutime, lstat
+from bup.helpers import add_error, mkdirp, log, utime, lutime, lstat
 from bup._helpers import get_linux_file_attr, set_linux_file_attr
 
 # WARNING: the metadata encoding is *not* stable yet.  Caveat emptor!
@@ -151,6 +151,16 @@ _rec_tag_posix1e_acl = 4      # getfacl(1), setfacl(1), etc.
 _rec_tag_nfsv4_acl = 5        # intended to supplant posix1e acls?
 _rec_tag_linux_attr = 6       # lsattr(1) chattr(1)
 _rec_tag_linux_xattr = 7      # getfattr(1) setfattr(1)
+
+
+class MetadataAcquisitionError(Exception):
+    # Thrown when unable to extract any given bit of metadata from a path.
+    pass
+
+
+class MetadataApplicationError(Exception):
+    # Thrown when unable to apply any given bit of metadata to a path.
+    pass
 
 
 class Metadata:
@@ -478,22 +488,28 @@ class Metadata:
         if not path:
             raise Exception('Metadata.apply_to_path() called with no path');
         num_ids = restore_numeric_ids
-        self._apply_common_rec(path, restore_numeric_ids=num_ids)
-        self._apply_posix1e_acl_rec(path, restore_numeric_ids=num_ids)
-        self._apply_linux_attr_rec(path, restore_numeric_ids=num_ids)
-        self._apply_linux_xattr_rec(path, restore_numeric_ids=num_ids)
+        try: # Later we may want to push this down and make it finer grained.
+            self._apply_common_rec(path, restore_numeric_ids=num_ids)
+            self._apply_posix1e_acl_rec(path, restore_numeric_ids=num_ids)
+            self._apply_linux_attr_rec(path, restore_numeric_ids=num_ids)
+            self._apply_linux_xattr_rec(path, restore_numeric_ids=num_ids)
+        except Exception, e:
+            raise MetadataApplicationError(str(e))
 
 
 def from_path(path, archive_path=None, save_symlinks=True):
     result = Metadata()
     result.path = archive_path
     st = lstat(path)
-    result._add_common(path, st)
-    if(save_symlinks):
-        result._add_symlink_target(path, st)
-    result._add_posix1e_acl(path, st)
-    result._add_linux_attr(path, st)
-    result._add_linux_xattr(path, st)
+    try: # Later we may want to push this down and make it finer grained.
+        result._add_common(path, st)
+        if(save_symlinks):
+            result._add_symlink_target(path, st)
+        result._add_posix1e_acl(path, st)
+        result._add_linux_attr(path, st)
+        result._add_linux_xattr(path, st)
+    except Exception, e:
+        raise MetadataAcquisitionError(str(e))
     return result
 
 
@@ -507,22 +523,28 @@ def save_tree(output_file, paths,
             log('bup: archiving "%s" as "%s"\n' % (p, safe_path))
 
         # Handle path itself.
-        m = from_path(p, archive_path=safe_path, save_symlinks=save_symlinks)
+        try:
+            m = from_path(p, archive_path=safe_path,
+                          save_symlinks=save_symlinks)
+        except MetadataAcquisitionError, e:
+            add_error(e)
+
         if verbose:
             print >> sys.stderr, m.path
         m.write(output_file, include_path=write_paths)
 
         if recurse and os.path.isdir(p):
-            def raise_error(x):
-                raise x
-            for root, dirs, files in os.walk(p, onerror=raise_error):
+            for root, dirs, files in os.walk(p, onerror=add_error):
                 items = files + dirs
                 for sub_path in items:
                     full_path = os.path.join(root, sub_path)
                     safe_path = _clean_up_path_for_archive(full_path)
-                    m = from_path(full_path,
-                                  archive_path=safe_path,
-                                  save_symlinks=save_symlinks)
+                    try:
+                        m = from_path(full_path,
+                                      archive_path=safe_path,
+                                      save_symlinks=save_symlinks)
+                    except MetadataAcquisitionError, e:
+                        add_error(e)
                     if verbose:
                         print >> sys.stderr, m.path
                     m.write(output_file, include_path=write_paths)
@@ -586,8 +608,11 @@ def finish_extract(file, restore_numeric_ids=False):
             else:
                 if verbose:
                     print >> sys.stderr, meta.path
-                meta.apply_to_path(path=xpath,
-                                   restore_numeric_ids=restore_numeric_ids)
+                try:
+                    meta.apply_to_path(path=xpath,
+                                       restore_numeric_ids=restore_numeric_ids)
+                except MetadataApplicationError, e:
+                    add_error(e)
 
     all_dirs.sort(key = lambda x : len(x.path), reverse=True)
     for dir in all_dirs:
@@ -595,8 +620,11 @@ def finish_extract(file, restore_numeric_ids=False):
         xpath = _clean_up_extract_path(dir.path)
         if verbose:
             print >> sys.stderr, dir.path
-        dir.apply_to_path(path=xpath,
-                          restore_numeric_ids=restore_numeric_ids)
+        try:
+            dir.apply_to_path(path=xpath,
+                              restore_numeric_ids=restore_numeric_ids)
+        except MetadataApplicationError, e:
+            add_error(e)
 
 
 def extract(file, restore_numeric_ids=False, create_symlinks=True):
@@ -617,7 +645,10 @@ def extract(file, restore_numeric_ids=False, create_symlinks=True):
             else:
                 if verbose:
                     print >> sys.stderr, '=', meta.path
-                meta.apply_to_path(restore_numeric_ids=restore_numeric_ids)
+                try:
+                    meta.apply_to_path(restore_numeric_ids=restore_numeric_ids)
+                except MetadataApplicationError, e:
+                    add_error(e)
     all_dirs.sort(key = lambda x : len(x.path), reverse=True)
     for dir in all_dirs:
         # Don't need to check xpath -- won't be in all_dirs if not OK.
@@ -625,5 +656,8 @@ def extract(file, restore_numeric_ids=False, create_symlinks=True):
         if verbose:
             print >> sys.stderr, '=', meta.path
         # Shouldn't have to check for risky paths here (omitted above).
-        dir.apply_to_path(path=dir.path,
-                          restore_numeric_ids=restore_numeric_ids)
+        try:
+            dir.apply_to_path(path=dir.path,
+                              restore_numeric_ids=restore_numeric_ids)
+        except MetadataApplicationError, e:
+            add_error(e)

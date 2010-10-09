@@ -1,3 +1,5 @@
+import tempfile
+import subprocess
 from bup import metadata
 from wvtest import *
 
@@ -82,3 +84,37 @@ def test_clean_up_extract_path():
     WVPASSEQ(cleanup('./'), './')
     WVPASSEQ(cleanup('///foo/bar'), 'foo/bar')
     WVPASSEQ(cleanup('///foo/bar'), 'foo/bar')
+
+
+@wvtest
+def test_from_path_error():
+    tmpdir = tempfile.mkdtemp(prefix='bup-tmetadata-')
+    try:
+        path = tmpdir + '/foo'
+        subprocess.call(['mkdir', path])
+        m = metadata.from_path(path, archive_path=path, save_symlinks=True)
+        WVPASSEQ(m.path, path)
+        subprocess.call(['chmod', '000', path])
+        WVEXCEPT(metadata.MetadataAcquisitionError,
+                 metadata.from_path,
+                 path,
+                 archive_path=path,
+                 save_symlinks=True)
+    finally:
+        subprocess.call(['rm', '-rf', tmpdir])
+
+
+@wvtest
+def test_apply_to_path_error():
+    tmpdir = tempfile.mkdtemp(prefix='bup-tmetadata-')
+    try:
+        path = tmpdir + '/foo'
+        subprocess.call(['mkdir', path])
+        m = metadata.from_path(path, archive_path=path, save_symlinks=True)
+        WVPASSEQ(m.path, path)
+        subprocess.call(['chmod', '000', tmpdir])
+        WVEXCEPT(metadata.MetadataApplicationError,
+                 m.apply_to_path, path)
+        subprocess.call(['chmod', '700', tmpdir])
+    finally:
+        subprocess.call(['rm', '-rf', tmpdir])
