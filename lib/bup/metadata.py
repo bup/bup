@@ -268,11 +268,27 @@ class Metadata:
             elif not stat.S_ISLNK(self.mode):
                 os.chmod(path, 0)
 
+            # Don't try to restore owner unless we're root, and even
+            # if asked, don't try to restore the owner or group if
+            # it doesn't exist in the system db.
             uid = self.uid
             gid = self.gid
             if not restore_numeric_ids:
-                uid = pwd.getpwnam(self.owner)[2]
-                gid = grp.getgrnam(self.group)[2]
+                if os.geteuid() == 0:
+                    try:
+                        uid = pwd.getpwnam(self.owner)[2]
+                    except KeyError:
+                        uid = -1
+                        log('bup: ignoring unknown owner %s for "%s"\n'
+                            % (self.owner, path))
+                else:
+                    uid = -1 # Not root; assume we can't change owner.
+                try:
+                    gid = grp.getgrnam(self.group)[2]
+                except KeyError:
+                    gid = -1
+                    log('bup: ignoring unknown group %s for "%s"\n'
+                        % (self.group, path))
             os.lchown(path, uid, gid)
 
             if _have_lchmod:

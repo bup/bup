@@ -1,5 +1,7 @@
-import tempfile
+import grp
+import pwd
 import subprocess
+import tempfile
 from bup import metadata
 from bup.helpers import detect_fakeroot
 from wvtest import *
@@ -144,5 +146,21 @@ def test_restore_restricted_user_group():
         m.gid = 0;
         WVEXCEPT(metadata.MetadataApplicationError,
                  m.apply_to_path, path, restore_numeric_ids=True)
+    finally:
+        subprocess.call(['rm', '-rf', tmpdir])
+
+
+@wvtest
+def test_restore_nonexistent_user_group():
+    tmpdir = tempfile.mkdtemp(prefix='bup-tmetadata-')
+    try:
+        path = tmpdir + '/foo'
+        subprocess.call(['mkdir', path])
+        m = metadata.from_path(path, archive_path=path, save_symlinks=True)
+        WVPASSEQ(m.path, path)
+        m.owner = max([x.pw_name for x in pwd.getpwall()], key=len) + 'x'
+        m.group = max([x.gr_name for x in grp.getgrall()], key=len) + 'x'
+        WVPASSEQ(m.apply_to_path(path, restore_numeric_ids=True), None)
+        WVPASSEQ(m.apply_to_path(path, restore_numeric_ids=False), None)
     finally:
         subprocess.call(['rm', '-rf', tmpdir])
