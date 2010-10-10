@@ -6,11 +6,15 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <arpa/inet.h>
-#include <linux/fs.h>
 #include <stdint.h>
+
+#ifdef linux
+#include <linux/fs.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <sys/time.h>
+#endif
+
 
 static PyObject *selftest(PyObject *self, PyObject *args)
 {
@@ -200,6 +204,7 @@ static PyObject *fadvise_done(PyObject *self, PyObject *args)
 }
 
 
+#ifdef linux
 static PyObject *bup_get_linux_file_attr(PyObject *self, PyObject *args)
 {
     int rc;
@@ -251,6 +256,7 @@ static PyObject *bup_set_linux_file_attr(PyObject *self, PyObject *args)
     close(fd);
     Py_RETURN_TRUE;
 }
+#endif /* def linux */
 
 
 #if _XOPEN_SOURCE >= 700 || _POSIX_C_SOURCE >= 200809L
@@ -386,10 +392,12 @@ static PyMethodDef helper_methods[] = {
 	"open() the given filename for read with O_NOATIME if possible" },
     { "fadvise_done", fadvise_done, METH_VARARGS,
 	"Inform the kernel that we're finished with earlier parts of a file" },
+#ifdef linux
     { "get_linux_file_attr", bup_get_linux_file_attr, METH_VARARGS,
       "Return the Linux attributes for the given file." },
     { "set_linux_file_attr", bup_set_linux_file_attr, METH_VARARGS,
       "Set the Linux attributes for the given file." },
+#endif
 #ifdef HAVE_BUP_UTIMENSAT
     { "utimensat", bup_utimensat, METH_VARARGS,
       "Change file timestamps with nanosecond precision." },

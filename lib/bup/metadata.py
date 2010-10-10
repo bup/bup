@@ -10,7 +10,10 @@ import errno, os, sys, stat, pwd, grp, struct, xattr, posix1e, re
 from cStringIO import StringIO
 from bup import vint
 from bup.helpers import add_error, mkdirp, log, utime, lutime, lstat
-from bup._helpers import get_linux_file_attr, set_linux_file_attr
+import bup._helpers as _helpers
+
+if _helpers.get_linux_file_attr:
+    from bup._helpers import get_linux_file_attr, set_linux_file_attr
 
 # WARNING: the metadata encoding is *not* stable yet.  Caveat emptor!
 
