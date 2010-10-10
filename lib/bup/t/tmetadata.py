@@ -161,6 +161,10 @@ def test_restore_nonexistent_user_group():
         m.owner = max([x.pw_name for x in pwd.getpwall()], key=len) + 'x'
         m.group = max([x.gr_name for x in grp.getgrall()], key=len) + 'x'
         WVPASSEQ(m.apply_to_path(path, restore_numeric_ids=True), None)
+        WVPASSEQ(os.stat(path).st_uid, m.uid)
+        WVPASSEQ(os.stat(path).st_gid, m.gid)
         WVPASSEQ(m.apply_to_path(path, restore_numeric_ids=False), None)
+        WVPASSEQ(os.stat(path).st_uid, os.geteuid())
+        WVPASSEQ(os.stat(path).st_uid, os.getgid())
     finally:
         subprocess.call(['rm', '-rf', tmpdir])
