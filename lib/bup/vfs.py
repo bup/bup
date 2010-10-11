@@ -96,7 +96,7 @@ def _chunkiter(hash, startofs):
             yield ''.join(cp().join(sha.encode('hex')))[skipmore:]
 
 
-class _ChunkReader(object):
+class _ChunkReader:
     def __init__(self, hash, isdir, startofs):
         if isdir:
             self.it = _chunkiter(hash, startofs)
@@ -161,7 +161,7 @@ class _FileReader(object):
         pass
 
 
-class Node(object):
+class Node:
     """Base class for file representation."""
     def __init__(self, parent, name, mode, hash):
         self.parent = parent
