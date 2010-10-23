@@ -237,6 +237,26 @@ class Metadata:
             self.ctime = _normalize_ts(self.ctime)
 
     def _create_via_common_rec(self, path, create_symlinks=True):
+        # If the path already exists and is a dir, try rmdir.
+        # If the path already exists and is anything else, try unlink.
+        st = None
+        try:
+            st = lstat(path)
+        except IOError, e:
+            if e.errno != errno.ENOENT:
+                raise
+        if st:
+            if stat.S_ISDIR(st.st_mode):
+                try:
+                    os.rmdir(path)
+                except OSError, e:
+                    if e.errno == errno.ENOTEMPTY:
+                        msg = 'refusing to overwrite non-empty dir' + path
+                        raise Exception(msg)
+                    raise
+            else:
+                os.unlink(path)
+
         if stat.S_ISREG(self.mode):
             os.mknod(path, 0600 | stat.S_IFREG)
         elif stat.S_ISDIR(self.mode):

@@ -1,5 +1,6 @@
 import grp
 import pwd
+import stat
 import subprocess
 import tempfile
 from bup import metadata
@@ -166,5 +167,40 @@ def test_restore_nonexistent_user_group():
         WVPASSEQ(m.apply_to_path(path, restore_numeric_ids=False), None)
         WVPASSEQ(os.stat(path).st_uid, os.geteuid())
         WVPASSEQ(os.stat(path).st_uid, os.getgid())
+    finally:
+        subprocess.call(['rm', '-rf', tmpdir])
+
+
+@wvtest
+def test_restore_over_existing_target():
+    tmpdir = tempfile.mkdtemp(prefix='bup-tmetadata-')
+    try:
+        path = tmpdir + '/foo'
+        os.mkdir(path)
+        dir_m = metadata.from_path(path, archive_path=path, save_symlinks=True)
+        os.rmdir(path)
+        open(path, 'w').close()
+        file_m = metadata.from_path(path, archive_path=path, save_symlinks=True)
+        # Restore dir over file.
+        WVPASSEQ(dir_m.create_path(path, create_symlinks=True), None)
+        WVPASS(stat.S_ISDIR(os.stat(path).st_mode))
+        # Restore dir over dir.
+        WVPASSEQ(dir_m.create_path(path, create_symlinks=True), None)
+        WVPASS(stat.S_ISDIR(os.stat(path).st_mode))
+        # Restore file over dir.
+        WVPASSEQ(file_m.create_path(path, create_symlinks=True), None)
+        WVPASS(stat.S_ISREG(os.stat(path).st_mode))
+        # Restore file over file.
+        WVPASSEQ(file_m.create_path(path, create_symlinks=True), None)
+        WVPASS(stat.S_ISREG(os.stat(path).st_mode))
+        # Restore file over non-empty dir.
+        os.remove(path)
+        os.mkdir(path)
+        open(path + '/bar', 'w').close()
+        WVEXCEPT(Exception, file_m.create_path, path, create_symlinks=True)
+        # Restore dir over non-empty dir.
+        os.remove(path + '/bar')
+        os.mkdir(path + '/bar')
+        WVEXCEPT(Exception, dir_m.create_path, path, create_symlinks=True)
     finally:
         subprocess.call(['rm', '-rf', tmpdir])
