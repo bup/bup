@@ -9,7 +9,8 @@ import errno, os, sys, stat, pwd, grp, struct, xattr, posix1e, re
 
 from cStringIO import StringIO
 from bup import vint
-from bup.helpers import add_error, mkdirp, log, utime, lutime, lstat, FSTime
+from bup.helpers import add_error, mkdirp, log
+from bup.xstat import utime, lutime, lstat, FSTime
 import bup._helpers as _helpers
 
 if _helpers.get_linux_file_attr:

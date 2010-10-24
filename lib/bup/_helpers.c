@@ -336,6 +336,41 @@ static PyObject *bup_utimensat(PyObject *self, PyObject *args)
 
 #ifdef linux /* and likely others */
 
+#define HAVE_BUP_STAT 1
+static PyObject *bup_stat(PyObject *self, PyObject *args)
+{
+    int rc;
+    char *filename;
+
+    if (!PyArg_ParseTuple(args, "s", &filename))
+        return NULL;
+
+    struct stat st;
+    rc = stat(filename, &st);
+    if (rc != 0)
+        return PyErr_SetFromErrnoWithFilename(PyExc_IOError, filename);
+
+    return Py_BuildValue("kkkkkkkk"
+                         "(ll)"
+                         "(ll)"
+                         "(ll)",
+                         (unsigned long) st.st_mode,
+                         (unsigned long) st.st_ino,
+                         (unsigned long) st.st_dev,
+                         (unsigned long) st.st_nlink,
+                         (unsigned long) st.st_uid,
+                         (unsigned long) st.st_gid,
+                         (unsigned long) st.st_rdev,
+                         (unsigned long) st.st_size,
+                         (long) st.st_atime,
+                         (long) st.st_atim.tv_nsec,
+                         (long) st.st_mtime,
+                         (long) st.st_mtim.tv_nsec,
+                         (long) st.st_ctime,
+                         (long) st.st_ctim.tv_nsec);
+}
+
+
 #define HAVE_BUP_LSTAT 1
 static PyObject *bup_lstat(PyObject *self, PyObject *args)
 {
@@ -369,6 +404,7 @@ static PyObject *bup_lstat(PyObject *self, PyObject *args)
                          (long) st.st_ctime,
                          (long) st.st_ctim.tv_nsec);
 }
+
 
 #define HAVE_BUP_FSTAT 1
 static PyObject *bup_fstat(PyObject *self, PyObject *args)
@@ -435,6 +471,10 @@ static PyMethodDef helper_methods[] = {
     { "utimensat", bup_utimensat, METH_VARARGS,
       "Change file timestamps with nanosecond precision." },
 #endif
+#ifdef HAVE_BUP_STAT
+    { "stat", bup_stat, METH_VARARGS,
+      "Extended version of stat." },
+#endif
 #ifdef HAVE_BUP_LSTAT
     { "lstat", bup_lstat, METH_VARARGS,
       "Extended version of lstat." },
@@ -457,7 +497,7 @@ PyMODINIT_FUNC init_helpers(void)
     PyModule_AddObject(m, "AT_SYMLINK_NOFOLLOW",
                        Py_BuildValue("i", AT_SYMLINK_NOFOLLOW));
 #endif
-#ifdef HAVE_BUP_LSTAT
+#ifdef HAVE_BUP_STAT
     PyModule_AddObject(m, "_have_ns_fs_timestamps", Py_BuildValue("i", 1));
 #endif
 }
