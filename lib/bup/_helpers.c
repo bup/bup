@@ -335,8 +335,8 @@ static PyObject *bup_utimensat(PyObject *self, PyObject *args)
 
 
 #ifdef linux /* and likely others */
-#define HAVE_BUP_LSTAT 1
 
+#define HAVE_BUP_LSTAT 1
 static PyObject *bup_lstat(PyObject *self, PyObject *args)
 {
     int rc;
@@ -349,6 +349,39 @@ static PyObject *bup_lstat(PyObject *self, PyObject *args)
     rc = lstat(filename, &st);
     if (rc != 0)
         return PyErr_SetFromErrnoWithFilename(PyExc_IOError, filename);
+
+    return Py_BuildValue("kkkkkkkk"
+                         "(ll)"
+                         "(ll)"
+                         "(ll)",
+                         (unsigned long) st.st_mode,
+                         (unsigned long) st.st_ino,
+                         (unsigned long) st.st_dev,
+                         (unsigned long) st.st_nlink,
+                         (unsigned long) st.st_uid,
+                         (unsigned long) st.st_gid,
+                         (unsigned long) st.st_rdev,
+                         (unsigned long) st.st_size,
+                         (long) st.st_atime,
+                         (long) st.st_atim.tv_nsec,
+                         (long) st.st_mtime,
+                         (long) st.st_mtim.tv_nsec,
+                         (long) st.st_ctime,
+                         (long) st.st_ctim.tv_nsec);
+}
+
+#define HAVE_BUP_FSTAT 1
+static PyObject *bup_fstat(PyObject *self, PyObject *args)
+{
+    int rc, fd;
+
+    if (!PyArg_ParseTuple(args, "i", &fd))
+        return NULL;
+
+    struct stat st;
+    rc = fstat(fd, &st);
+    if (rc != 0)
+        return PyErr_SetFromErrno(PyExc_IOError);
 
     return Py_BuildValue("kkkkkkkk"
                          "(ll)"
@@ -406,6 +439,10 @@ static PyMethodDef helper_methods[] = {
     { "lstat", bup_lstat, METH_VARARGS,
       "Extended version of lstat." },
 #endif
+#ifdef HAVE_BUP_FSTAT
+    { "fstat", bup_fstat, METH_VARARGS,
+      "Extended version of fstat." },
+#endif
     { NULL, NULL, 0, NULL },  // sentinel
 };
 
@@ -419,5 +456,8 @@ PyMODINIT_FUNC init_helpers(void)
     PyModule_AddObject(m, "AT_FDCWD", Py_BuildValue("i", AT_FDCWD));
     PyModule_AddObject(m, "AT_SYMLINK_NOFOLLOW",
                        Py_BuildValue("i", AT_SYMLINK_NOFOLLOW));
+#endif
+#ifdef HAVE_BUP_LSTAT
+    PyModule_AddObject(m, "_have_ns_fs_timestamps", Py_BuildValue("i", 1));
 #endif
 }

@@ -509,41 +509,54 @@ def utime(path, times):
 
 
 class stat_result():
-    pass
+
+    @staticmethod
+    def from_stat_rep(st):
+        result = stat_result()
+        if _helpers._have_ns_fs_timestamps:
+            (result.st_mode,
+             result.st_ino,
+             result.st_dev,
+             result.st_nlink,
+             result.st_uid,
+             result.st_gid,
+             result.st_rdev,
+             result.st_size,
+             atime,
+             mtime,
+             ctime) = st
+        else:
+            result.st_mode = st.st_mode
+            result.st_ino = st.st_ino
+            result.st_dev = st.st_dev
+            result.st_nlink = st.st_nlink
+            result.st_uid = st.st_uid
+            result.st_gid = st.st_gid
+            result.st_rdev = st.st_rdev
+            result.st_size = st.st_size
+            atime = FSTime.from_stat_time(st.st_atime)
+            mtime = FSTime.from_stat_time(st.st_mtime)
+            ctime = FSTime.from_stat_time(st.st_ctime)
+        result.st_atime = FSTime.from_stat_time(atime)
+        result.st_mtime = FSTime.from_stat_time(mtime)
+        result.st_ctime = FSTime.from_stat_time(ctime)
+        return result
+
+
+def fstat(path):
+    if _helpers.fstat:
+        st = _helpers.fstat(path)
+    else:
+        st = os.fstat(path)
+    return stat_result.from_stat_rep(st)
 
 
 def lstat(path):
-    result = stat_result()
     if _helpers.lstat:
         st = _helpers.lstat(path)
-        (result.st_mode,
-         result.st_ino,
-         result.st_dev,
-         result.st_nlink,
-         result.st_uid,
-         result.st_gid,
-         result.st_rdev,
-         result.st_size,
-         atime,
-         mtime,
-         ctime) = st
     else:
         st = os.lstat(path)
-        result.st_mode = st.st_mode
-        result.st_ino = st.st_ino
-        result.st_dev = st.st_dev
-        result.st_nlink = st.st_nlink
-        result.st_uid = st.st_uid
-        result.st_gid = st.st_gid
-        result.st_rdev = st.st_rdev
-        result.st_size = st.st_size
-        atime = FSTime.from_stat_time(st.st_atime)
-        mtime = FSTime.from_stat_time(st.st_mtime)
-        ctime = FSTime.from_stat_time(st.st_ctime)
-    result.st_atime = FSTime.from_stat_time(atime)
-    result.st_mtime = FSTime.from_stat_time(mtime)
-    result.st_ctime = FSTime.from_stat_time(ctime)
-    return result
+    return stat_result.from_stat_rep(st)
 
 
 # hashlib is only available in python 2.5 or higher, but the 'sha' module

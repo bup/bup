@@ -67,10 +67,10 @@ def _test_fstime():
 @wvtest
 def test_fstime():
     _test_fstime();
-    if _helpers.lstat: # Also test native python timestamp rep since we can.
-        orig_lstat = _helpers.lstat
+    if _helpers._have_ns_fs_timestamps: # Test native python timestamp rep too.
+        orig = _helpers._have_ns_fs_timestamps
         try:
-            _helpers.lstat = None
+            _helpers._have_ns_fs_timestamps = None
             _test_fstime();
         finally:
-            _helpers.lstat = orig_lstat
+            _helpers._have_ns_fs_timestamps = orig
