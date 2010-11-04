@@ -26,6 +26,7 @@ start-extract  build tree matching metadata provided on standard input (or --fil
 finish-extract finish applying standard input (or --file) metadata to filesystem
 f,file=        specify source or destination file
 R,recurse      recurse into subdirectories
+xdev,one-file-system  don't cross filesystem boundaries
 numeric-ids    apply numeric IDs (user, group, etc.), not names, during restore
 symlinks       handle symbolic links (default is true)
 paths          include paths in metadata (default is true)
@@ -39,6 +40,7 @@ should_recurse = False
 restore_numeric_ids = False
 include_paths = True
 handle_symlinks = True
+xdev = False
 
 handle_ctrl_c()
 
@@ -62,6 +64,10 @@ for flag, value in flags:
         should_recurse = True
     elif flag == '--no-recurse':
         should_recurse = False
+    elif flag in frozenset(['--xdev', '--one-file-system']):
+        xdev = True
+    elif flag in frozenset(['--no-xdev', '--no-one-file-system']):
+        xdev = False
     elif flag == '--numeric-ids':
         restore_numeric_ids = True
     elif flag == '--no-numeric-ids':
@@ -93,7 +99,8 @@ if action == 'create':
                        remainder,
                        recurse=should_recurse,
                        write_paths=include_paths,
-                       save_symlinks=handle_symlinks)
+                       save_symlinks=handle_symlinks,
+                       xdev=xdev)
 
 elif action == 'list':
     if len(remainder) > 0:

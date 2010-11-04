@@ -9,6 +9,7 @@ import errno, os, sys, stat, pwd, grp, struct, xattr, posix1e, re
 
 from cStringIO import StringIO
 from bup import vint
+from bup.drecurse import recursive_dirlist
 from bup.helpers import add_error, mkdirp, log
 from bup.xstat import utime, lutime, lstat, FSTime
 import bup._helpers as _helpers
@@ -532,38 +533,33 @@ def from_path(path, archive_path=None, save_symlinks=True):
 def save_tree(output_file, paths,
               recurse=False,
               write_paths=True,
-              save_symlinks=True):
-    for p in paths:
-        safe_path = _clean_up_path_for_archive(p)
-        if(safe_path != p):
-            log('bup: archiving "%s" as "%s"\n' % (p, safe_path))
+              save_symlinks=True,
+              xdev=False):
 
-        # Handle path itself.
-        try:
-            m = from_path(p, archive_path=safe_path,
-                          save_symlinks=save_symlinks)
-        except MetadataAcquisitionError, e:
-            add_error(e)
+    # Issue top-level rewrite warnings.
+    for path in paths:
+        safe_path = _clean_up_path_for_archive(path)
+        if(safe_path != path):
+            log('bup: archiving "%s" as "%s"\n' % (path, safe_path))
 
-        if verbose:
-            print >> sys.stderr, m.path
-        m.write(output_file, include_path=write_paths)
+    start_dir = os.getcwd()
+    try:
+        for (p, st) in recursive_dirlist(paths, xdev=xdev):
+            dirlist_dir = os.getcwd()
+            os.chdir(start_dir)
+            safe_path = _clean_up_path_for_archive(p)
+            try:
+                m = from_path(p, archive_path=safe_path,
+                              save_symlinks=save_symlinks)
+            except MetadataAcquisitionError, e:
+                add_error(e)
 
-        if recurse and os.path.isdir(p):
-            for root, dirs, files in os.walk(p, onerror=add_error):
-                items = files + dirs
-                for sub_path in items:
-                    full_path = os.path.join(root, sub_path)
-                    safe_path = _clean_up_path_for_archive(full_path)
-                    try:
-                        m = from_path(full_path,
-                                      archive_path=safe_path,
-                                      save_symlinks=save_symlinks)
-                    except MetadataAcquisitionError, e:
-                        add_error(e)
-                    if verbose:
-                        print >> sys.stderr, m.path
-                    m.write(output_file, include_path=write_paths)
+            if verbose:
+                print >> sys.stderr, m.path
+            m.write(output_file, include_path=write_paths)
+            os.chdir(dirlist_dir)
+    finally:
+        os.chdir(start_dir)
 
 
 def _set_up_path(meta, create_symlinks=True):
