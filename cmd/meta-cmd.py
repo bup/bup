@@ -48,7 +48,7 @@ o = options.Options('bup meta', optspec)
 for flag, value in flags:
     if flag == '--create' or flag == '-c':
         action = 'create'
-    if flag == '--list' or flag == '-t':
+    elif flag == '--list' or flag == '-t':
         action = 'list'
     elif flag == '--extract' or flag == '-x':
         action = 'extract'
