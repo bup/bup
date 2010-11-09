@@ -1,0 +1,99 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"
+><head
+  ><title
+    >bup-fuse(1) Bup 0.19-34-g3694c19</title
+    ><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"
+     /><meta name="generator" content="pandoc"
+     /><meta name="author" content="Avery Pennarun &lt;apenwarr@gmail.com&gt;"
+     /><meta name="date" content="2010-11-03"
+     /></head
+  ><body
+  ><h1 class="title"
+    >bup-fuse(1) Bup 0.19-34-g3694c19</h1
+    ><h1 id="name"
+    >NAME</h1
+    ><p
+    >bup-fuse - mount a bup repository as a filesystem</p
+    ><h1 id="synopsis"
+    >SYNOPSIS</h1
+    ><p
+    >bup fuse [-d] [-f] [-o] &lt;mountpoint&gt;</p
+    ><h1 id="description"
+    >DESCRIPTION</h1
+    ><p
+    ><code
+      >bup fuse</code
+      > opens a bup repository and exports it as a <code
+      >fuse</code
+      >(7) userspace filesystem.</p
+    ><p
+    >This feature is only available on systems (such as Linux) which support FUSE.</p
+    ><p
+    ><strong
+      >WARNING</strong
+      >: bup fuse is still experimental and does not enforce any file permissions! All files will be readable by all users.</p
+    ><p
+    >When you're done accessing the mounted fuse filesystem, you should unmount it with <code
+      >umount</code
+      >(8).</p
+    ><h1 id="options"
+    >OPTIONS</h1
+    ><dl
+    ><dt
+      >-d, --debug</dt
+      ><dd
+      ><p
+	>run in the foreground and print FUSE debug information for each request.</p
+	></dd
+      ><dt
+      >-f, --foreground</dt
+      ><dd
+      ><p
+	>run in the foreground and exit only when the filesystem is unmounted.</p
+	></dd
+      ><dt
+      >-o, --allow-other</dt
+      ><dd
+      ><p
+	>permit other users to access the filesystem. Necessary for exporting the filesystem via Samba, for example.</p
+	></dd
+      ></dl
+    ><h1 id="example"
+    >EXAMPLE</h1
+    ><pre
+    ><code
+      >rm -rf /tmp/buptest
+mkdir /tmp/buptest
+sudo bup fuse -d /tmp/buptest
+ls /tmp/buptest/*/latest
+...
+umount /tmp/buptest
+</code
+      ></pre
+    ><h1 id="see-also"
+    >SEE ALSO</h1
+    ><p
+    ><code
+      >fuse</code
+      >(7), <code
+      >fusermount</code
+      >(1), <code
+      >bup-ls</code
+      >(1), <code
+      >bup-ftp</code
+      >(1), <code
+      >bup-restore</code
+      >(1), <code
+      >bup-web</code
+      >(1)</p
+    ><h1 id="bup"
+    >BUP</h1
+    ><p
+    >Part of the <code
+      >bup</code
+      >(1) suite.</p
+    ></body
+  ></html
+>
+

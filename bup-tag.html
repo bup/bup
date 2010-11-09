@@ -1,0 +1,66 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"
+><head
+  ><title
+    >bup-tag(1) Bup 0.19-23-g7e16daf</title
+    ><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"
+     /><meta name="generator" content="pandoc"
+     /><meta name="author" content="Gabriel Filion &lt;lelutin@gmail.com&gt;"
+     /><meta name="date" content="2010-11-08"
+     /></head
+  ><body
+  ><h1 class="title"
+    >bup-tag(1) Bup 0.19-23-g7e16daf</h1
+    ><h1 id="name"
+    >NAME</h1
+    ><p
+    >bup-tag - tag a commit in the bup repository</p
+    ><h1 id="synopsis"
+    >SYNOPSIS</h1
+    >bup tag bup tag<tag name> <committish>bup tag -d<tag name>
+<h1 id="description"
+    >DESCRIPTION</h1
+    ><p
+    ><code
+      >bup tag</code
+      > lists, creates or deletes a tag in the bup repository.</p
+    ><p
+    >A tag is an easy way to retreive a specific commit. It can be used to mark a specific backup for easier retrieval later, or to make one specific commit avoid automatic cleanup.</p
+    ><h1 id="options"
+    >OPTIONS</h1
+    ><dl
+    ><dt
+      >-d, --delete</dt
+      ><dd
+      >delete a tag</dd
+      ></dl
+    ><h1 id="example"
+    >EXAMPLE</h1
+    ><pre
+    ><code
+      >$ bup tag new-puppet-version hostx-backup
+
+$ bup tag
+new-puppet-version
+
+$ bup tag -d new-puppet-version
+</code
+      ></pre
+    ><h1 id="see-also"
+    >SEE ALSO</h1
+    ><p
+    ><code
+      >bup-save</code
+      >(1), <code
+      >bup-split</code
+      >(1)</p
+    ><h1 id="bup"
+    >BUP</h1
+    ><p
+    >Part of the <code
+      >bup</code
+      >(1) suite.</p
+    ></body
+  ></html
+>
+

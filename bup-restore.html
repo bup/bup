@@ -1,0 +1,177 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"
+><head
+  ><title
+    >bup-restore(1) Bup 0.19-34-g3694c19</title
+    ><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"
+     /><meta name="generator" content="pandoc"
+     /><meta name="author" content="Avery Pennarun &lt;apenwarr@gmail.com&gt;"
+     /><meta name="date" content="2010-11-03"
+     /></head
+  ><body
+  ><h1 class="title"
+    >bup-restore(1) Bup 0.19-34-g3694c19</h1
+    ><h1 id="name"
+    >NAME</h1
+    ><p
+    >bup-restore - extract files from a backup set</p
+    ><h1 id="synopsis"
+    >SYNOPSIS</h1
+    ><p
+    >bup restore [--outdir=<em
+      >outdir</em
+      >] [-v] [-q] &lt;paths...&gt;</p
+    ><h1 id="description"
+    >DESCRIPTION</h1
+    ><p
+    ><code
+      >bup restore</code
+      > extracts files from a backup set (created with <code
+      >bup-save</code
+      >(1)) to the local filesystem.</p
+    ><p
+    >The specified <em
+      >paths</em
+      > are of the form /<em
+      >branch</em
+      >/<em
+      >revision</em
+      >/<em
+      >path/to/file</em
+      >. The components of the path are as follows:</p
+    ><dl
+    ><dt
+      >branch</dt
+      ><dd
+      ><p
+	>the name of the backup set to restore from; this corresponds to the --name (-n) option to <code
+	  >bup save</code
+	  >.</p
+	></dd
+      ><dt
+      >revision</dt
+      ><dd
+      ><p
+	>the revision of the backup set to restore. The revision <em
+	  >latest</em
+	  > is always the most recent backup on the given branch. You can discover other revisions using <code
+	  >bup ls /branch</code
+	  >.</p
+	></dd
+      ><dt
+      >/path/to/file</dt
+      ><dd
+      ><p
+	>the original absolute filesystem path to the file you want to restore. For example, <code
+	  >/etc/passwd</code
+	  >.</p
+	></dd
+      ></dl
+    ><p
+    >Note: if the /path/to/file is a directory, <code
+      >bup restore</code
+      > will restore that directory as well as recursively restoring all its contents.</p
+    ><p
+    >If /path/to/file is a directory ending in a slash (ie. /path/to/dir/), <code
+      >bup restore</code
+      > will restore the children of that directory directly to the current directory (or the <code
+      >--outdir</code
+      >). If the directory does <em
+      >not</em
+      > end in a slash, the children will be restored to a subdirectory of the current directory. See the EXAMPLES section to see how this works.</p
+    ><h1 id="options"
+    >OPTIONS</h1
+    ><dl
+    ><dt
+      >-C, --outdir=<em
+	>outdir</em
+	></dt
+      ><dd
+      ><p
+	>create and change to directory <em
+	  >outdir</em
+	  > before extracting the files.</p
+	></dd
+      ><dt
+      >-v, --verbose</dt
+      ><dd
+      ><p
+	>increase log output. Given once, prints every directory as it is restored; given twice, prints every file and directory.</p
+	></dd
+      ><dt
+      >-q, --quiet</dt
+      ><dd
+      ><p
+	>don't show the progress meter. Normally, is stderr is a tty, a progress display is printed that shows the total number of files restored.</p
+	></dd
+      ></dl
+    ><h1 id="example"
+    >EXAMPLE</h1
+    ><p
+    >Create a simple test backup set:</p
+    ><pre
+    ><code
+      >$ bup index -u /etc
+$ bup save -n mybackup /etc/passwd /etc/profile
+</code
+      ></pre
+    ><p
+    >Restore just one file:</p
+    ><pre
+    ><code
+      >$ bup restore /mybackup/latest/etc/passwd
+Restoring: 1, done.
+
+$ ls -l passwd
+-rw-r--r-- 1 apenwarr apenwarr 1478 2010-09-08 03:06 passwd
+</code
+      ></pre
+    ><p
+    >Restore the whole directory (no trailing slash):</p
+    ><pre
+    ><code
+      >$ bup restore -C test1 /mybackup/latest/etc
+Restoring: 3, done.
+
+$ find test1
+test1
+test1/etc
+test1/etc/passwd
+test1/etc/profile
+</code
+      ></pre
+    ><p
+    >Restore the whole directory (trailing slash):</p
+    ><pre
+    ><code
+      >$ bup restore -C test2 /mybackup/latest/etc/
+Restoring: 2, done.
+
+$ find test2
+test2
+test2/passwd
+test2/profile
+</code
+      ></pre
+    ><h1 id="see-also"
+    >SEE ALSO</h1
+    ><p
+    ><code
+      >bup-save</code
+      >(1), <code
+      >bup-ftp</code
+      >(1), <code
+      >bup-fuse</code
+      >(1), <code
+      >bup-web</code
+      >(1)</p
+    ><h1 id="bup"
+    >BUP</h1
+    ><p
+    >Part of the <code
+      >bup</code
+      >(1) suite.</p
+    ></body
+  ></html
+>
+
