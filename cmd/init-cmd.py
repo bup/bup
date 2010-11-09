@@ -15,14 +15,9 @@ if extra:
 
 
 if opt.remote:
-    if opt.remote and opt.remote.find(":") == -1:
-        o.fatal("--remote argument must contain a colon")
     git.init_repo()  # local repo
     git.check_repo_or_die()
-    try:
-        cli = client.Client(opt.remote, create=True)
-    except client.ClientError:
-        o.fatal("server exited unexpectedly; see errors above")
+    cli = client.Client(opt.remote, create=True)
     cli.close()
 else:
     git.init_repo()
