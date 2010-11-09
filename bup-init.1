@@ -1,0 +1,36 @@
+.TH bup-init 1 "2010-11-03" "Bup 0\.19-34-g3694c19"
+.SH NAME
+.PP
+bup-init - initialize a bup repository
+.SH SYNOPSIS
+.PP
+[BUP_DIR=\f[I]localpath\f[]] bup init [-r
+\f[I]host\f[]:\f[I]path\f[]]
+.SH DESCRIPTION
+.PP
+\f[B]bup\ init\f[] initializes your local bup repository\. You
+usually don\[aq]t need to run it unless you have set BUP_DIR
+explicitly\. By default, BUP_DIR is \f[B]~/\.bup\f[] and will be
+initialized automatically whenever you run any bup command\.
+.SH OPTIONS
+.TP
+.B -r, --remote=\f[I]host\f[]:\f[I]path\f[]
+Initialize not only the local repository, but also the remote
+repository given by the \f[I]host\f[] and \f[I]path\f[]\. This is
+not necessary if you intend to back up to the default location on
+the server (ie\. a blank \f[I]path\f[])\.
+.RS
+.RE
+.SH EXAMPLE
+.PP
+\f[CR]
+      bup\ init
+\f[]
+.SH SEE ALSO
+.PP
+\f[B]bup-fsck\f[](1)
+.SH BUP
+.PP
+Part of the \f[B]bup\f[](1) suite\.
+.SH AUTHOR
+Avery Pennarun <apenwarr@gmail.com>

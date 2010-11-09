@@ -1,0 +1,41 @@
+.TH bup-ls 1 "2010-11-03" "Bup 0\.19-34-g3694c19"
+.SH NAME
+.PP
+bup-ls - list the contents of a bup repository
+.SH SYNOPSIS
+.PP
+bup ls [-s] <paths\.\.\.>
+.SH DESCRIPTION
+.PP
+\f[B]bup\ ls\f[] lists files and directories in your bup repository
+using the same directory hierarchy as they would have with
+\f[B]bup-fuse\f[](1)\.
+.PP
+The top level directory is the branch (corresponding to the
+\f[B]-n\f[] option in \f[B]bup\ save\f[]), the next level is the
+date of the backup, and subsequent levels correspond to files in
+the backup\.
+.PP
+Once you have identified the file you want using \f[B]bup\ ls\f[],
+you can view its contents using \f[B]bup\ join\f[] or
+\f[B]git\ show\f[]\.
+.SH OPTIONS
+.TP
+.B -s, --hash
+show hash for each file/directory\.
+.RS
+.RE
+.SH EXAMPLE
+.PP
+\f[CR]
+      bup\ ls\ /myserver/latest/etc/profile
+\f[]
+.SH SEE ALSO
+.PP
+\f[B]bup-join\f[](1), \f[B]bup-fuse\f[](1), \f[B]bup-ftp\f[](1),
+\f[B]bup-save\f[](1), \f[B]git-show\f[](1)
+.SH BUP
+.PP
+Part of the \f[B]bup\f[](1) suite\.
+.SH AUTHOR
+Avery Pennarun <apenwarr@gmail.com>

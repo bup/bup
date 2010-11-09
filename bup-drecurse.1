@@ -1,0 +1,53 @@
+.TH bup-drecurse 1 "2010-11-03" "Bup 0\.19-34-g3694c19"
+.SH NAME
+.PP
+bup-drecurse - recursively list files in your filesystem
+.SH SYNOPSIS
+.PP
+bup drecurse [-x] [-q] [--profile] <path>
+.SH DESCRIPTION
+.PP
+\f[B]bup\ drecurse\f[] traverses files in the filesystem in a way
+similar to \f[B]find\f[](1)\. In most cases, you should use
+\f[B]find\f[](1) instead\.
+.PP
+This program is useful mainly for testing the file traversal
+algorithm used in \f[B]bup-index\f[](1)\.
+.PP
+Note that filenames are returned in reverse alphabetical order, as
+in \f[B]bup-index\f[](1)\. This is important because you can\[aq]t
+generate the hash of a parent directory until you have generated
+the hashes of all its children\. When listing files in reverse
+order, the parent directory will come after its children, making
+this easy\.
+.SH OPTIONS
+.TP
+.B -x, --xdev, --one-file-system
+don\[aq]t cross filesystem boundaries\.
+.RS
+.RE
+.TP
+.B -q, --quiet
+don\[aq]t print filenames as they are encountered\. Useful when
+testing performance of the traversal algorithms\.
+.RS
+.RE
+.TP
+.B --profile
+print profiling information upon completion\. Useful when testing
+performance of the traversal algorithms\.
+.RS
+.RE
+.SH EXAMPLE
+.PP
+\f[CR]
+      bup\ drecurse\ -x\ /
+\f[]
+.SH SEE ALSO
+.PP
+\f[B]bup-index\f[](1)
+.SH BUP
+.PP
+Part of the \f[B]bup\f[](1) suite\.
+.SH AUTHOR
+Avery Pennarun <apenwarr@gmail.com>

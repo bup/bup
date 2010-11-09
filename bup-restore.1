@@ -1,0 +1,119 @@
+.TH bup-restore 1 "2010-11-03" "Bup 0\.19-34-g3694c19"
+.SH NAME
+.PP
+bup-restore - extract files from a backup set
+.SH SYNOPSIS
+.PP
+bup restore [--outdir=\f[I]outdir\f[]] [-v] [-q] <paths\.\.\.>
+.SH DESCRIPTION
+.PP
+\f[B]bup\ restore\f[] extracts files from a backup set (created
+with \f[B]bup-save\f[](1)) to the local filesystem\.
+.PP
+The specified \f[I]paths\f[] are of the form
+/\f[I]branch\f[]/\f[I]revision\f[]/\f[I]path/to/file\f[]\. The
+components of the path are as follows:
+.TP
+.B branch
+the name of the backup set to restore from; this corresponds to the
+--name (-n) option to \f[B]bup\ save\f[]\.
+.RS
+.RE
+.TP
+.B revision
+the revision of the backup set to restore\. The revision
+\f[I]latest\f[] is always the most recent backup on the given
+branch\. You can discover other revisions using
+\f[B]bup\ ls\ /branch\f[]\.
+.RS
+.RE
+.TP
+.B /path/to/file
+the original absolute filesystem path to the file you want to
+restore\. For example, \f[B]/etc/passwd\f[]\.
+.RS
+.RE
+.PP
+Note: if the /path/to/file is a directory, \f[B]bup\ restore\f[]
+will restore that directory as well as recursively restoring all
+its contents\.
+.PP
+If /path/to/file is a directory ending in a slash (ie\.
+/path/to/dir/), \f[B]bup\ restore\f[] will restore the children of
+that directory directly to the current directory (or the
+\f[B]--outdir\f[])\. If the directory does \f[I]not\f[] end in a
+slash, the children will be restored to a subdirectory of the
+current directory\. See the EXAMPLES section to see how this
+works\.
+.SH OPTIONS
+.TP
+.B -C, --outdir=\f[I]outdir\f[]
+create and change to directory \f[I]outdir\f[] before extracting
+the files\.
+.RS
+.RE
+.TP
+.B -v, --verbose
+increase log output\. Given once, prints every directory as it is
+restored; given twice, prints every file and directory\.
+.RS
+.RE
+.TP
+.B -q, --quiet
+don\[aq]t show the progress meter\. Normally, is stderr is a tty, a
+progress display is printed that shows the total number of files
+restored\.
+.RS
+.RE
+.SH EXAMPLE
+.PP
+Create a simple test backup set:
+.PP
+\f[CR]
+      $\ bup\ index\ -u\ /etc
+      $\ bup\ save\ -n\ mybackup\ /etc/passwd\ /etc/profile
+\f[]
+.PP
+Restore just one file:
+.PP
+\f[CR]
+      $\ bup\ restore\ /mybackup/latest/etc/passwd
+      Restoring:\ 1,\ done\.
+      
+      $\ ls\ -l\ passwd
+      -rw-r--r--\ 1\ apenwarr\ apenwarr\ 1478\ 2010-09-08\ 03:06\ passwd
+\f[]
+.PP
+Restore the whole directory (no trailing slash):
+.PP
+\f[CR]
+      $\ bup\ restore\ -C\ test1\ /mybackup/latest/etc
+      Restoring:\ 3,\ done\.
+      
+      $\ find\ test1
+      test1
+      test1/etc
+      test1/etc/passwd
+      test1/etc/profile
+\f[]
+.PP
+Restore the whole directory (trailing slash):
+.PP
+\f[CR]
+      $\ bup\ restore\ -C\ test2\ /mybackup/latest/etc/
+      Restoring:\ 2,\ done\.
+      
+      $\ find\ test2
+      test2
+      test2/passwd
+      test2/profile
+\f[]
+.SH SEE ALSO
+.PP
+\f[B]bup-save\f[](1), \f[B]bup-ftp\f[](1), \f[B]bup-fuse\f[](1),
+\f[B]bup-web\f[](1)
+.SH BUP
+.PP
+Part of the \f[B]bup\f[](1) suite\.
+.SH AUTHOR
+Avery Pennarun <apenwarr@gmail.com>

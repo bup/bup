@@ -1,0 +1,59 @@
+.TH bup-fuse 1 "2010-11-03" "Bup 0\.19-34-g3694c19"
+.SH NAME
+.PP
+bup-fuse - mount a bup repository as a filesystem
+.SH SYNOPSIS
+.PP
+bup fuse [-d] [-f] [-o] <mountpoint>
+.SH DESCRIPTION
+.PP
+\f[B]bup\ fuse\f[] opens a bup repository and exports it as a
+\f[B]fuse\f[](7) userspace filesystem\.
+.PP
+This feature is only available on systems (such as Linux) which
+support FUSE\.
+.PP
+\f[B]WARNING\f[]: bup fuse is still experimental and does not
+enforce any file permissions! All files will be readable by all
+users\.
+.PP
+When you\[aq]re done accessing the mounted fuse filesystem, you
+should unmount it with \f[B]umount\f[](8)\.
+.SH OPTIONS
+.TP
+.B -d, --debug
+run in the foreground and print FUSE debug information for each
+request\.
+.RS
+.RE
+.TP
+.B -f, --foreground
+run in the foreground and exit only when the filesystem is
+unmounted\.
+.RS
+.RE
+.TP
+.B -o, --allow-other
+permit other users to access the filesystem\. Necessary for
+exporting the filesystem via Samba, for example\.
+.RS
+.RE
+.SH EXAMPLE
+.PP
+\f[CR]
+      rm\ -rf\ /tmp/buptest
+      mkdir\ /tmp/buptest
+      sudo\ bup\ fuse\ -d\ /tmp/buptest
+      ls\ /tmp/buptest/*/latest
+      \.\.\.
+      umount\ /tmp/buptest
+\f[]
+.SH SEE ALSO
+.PP
+\f[B]fuse\f[](7), \f[B]fusermount\f[](1), \f[B]bup-ls\f[](1),
+\f[B]bup-ftp\f[](1), \f[B]bup-restore\f[](1), \f[B]bup-web\f[](1)
+.SH BUP
+.PP
+Part of the \f[B]bup\f[](1) suite\.
+.SH AUTHOR
+Avery Pennarun <apenwarr@gmail.com>
