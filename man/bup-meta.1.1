@@ -1,0 +1,137 @@
+.TH bup-meta 1 "2010-11-03" "Bup 0\.19-34-g3694c19"
+.SH NAME
+.PP
+bup-meta - create or extract a metadata archive
+.SH SYNOPSIS
+.PP
+bup meta --create ~ [-R] [-v] [-q] [--no-symlinks] [--no-paths] [-f
+\f[I]file\f[]] <\f[I]paths\f[]\.\.\.>
+.PP
+bup meta --list ~ [-v] [-q] [-f \f[I]file\f[]]
+.PP
+bup meta --extract ~ [-v] [-q] [--numeric-ids] [--no-symlinks] [-f
+\f[I]file\f[]]
+.PP
+bup meta --start-extract ~ [-v] [-q] [--numeric-ids]
+[--no-symlinks] [-f \f[I]file\f[]]
+.PP
+bup meta --finish-extract ~ [-v] [-q] [--numeric-ids] [-f
+\f[I]file\f[]]
+.SH DESCRIPTION
+.PP
+\f[B]bup\ meta\f[] either creates or extracts a metadata archive\.
+A metadata archive contains the metadata information (timestamps,
+ownership, access permissions, etc\.) for a set of filesystem
+paths\.
+.SH OPTIONS
+.TP
+.B -c, --create
+Create a metadata archive for the specified \f[I]path\f[]s\. Write
+the archive to standard output unless \f[B]--file\f[] is
+specified\.
+.RS
+.RE
+.TP
+.B -t, --list
+Display information about the metadata in an archive\. Read the
+archive from standard output unless \f[B]--file\f[] is specified\.
+.RS
+.RE
+.TP
+.B -x, --extract
+Extract a metadata archive\. Conceptually, perform
+\f[B]--start-extract\f[] followed by \f[B]--finish-extract\f[]\.
+Read the archive from standard input unless \f[B]--file\f[] is
+specified\.
+.RS
+.RE
+.TP
+.B --start-extract
+Build a filesystem tree matching the paths stored in a metadata
+archive\. By itself, this command does not produce a full
+restoration of the metadata\. For a full restoration, this command
+must be followed by a call to \f[B]--finish-extract\f[]\. Once this
+command has finished, all of the normal files described by the
+metadata will exist and be empty\. Restoring the data in those
+files, and then calling \f[B]--finish-extract\f[] should restore
+the original tree\. The archive will be read from standard input
+unless \f[B]--file\f[] is specified\.
+.RS
+.RE
+.TP
+.B --finish-extract
+Finish applying the metadata stored in an archive to the
+filesystem\. Normally, this command should follow a call to
+\f[B]--start-extract\f[]\. The archive will be read from standard
+input unless \f[B]--file\f[] is specified\.
+.RS
+.RE
+.TP
+.B -f, --file=\f[I]filename\f[]
+Read the metadata archive from \f[I]filename\f[] or write it to
+\f[I]filename\f[] as appropriate\. If \f[I]filename\f[] is \"-\",
+then read from standard input or write to standard output\.
+.RS
+.RE
+.TP
+.B -R, --recurse
+Recursively descend into subdirectories during \f[B]--create\f[]\.
+.RS
+.RE
+.TP
+.B --numeric-ids
+Apply numeric user and group IDs (rather than text IDs) during
+\f[B]--extract\f[] or \f[B]--finish-extract\f[]\.
+.RS
+.RE
+.TP
+.B --symlinks
+Record symbolic link targets when creating an archive, or restore
+symbolic links when extracting an archive (during
+\f[B]--extract\f[] or \f[B]--start-extract\f[])\. This option is
+enabled by default\. Specify \f[B]--no-symlinks\f[] to disable it\.
+.RS
+.RE
+.TP
+.B --paths
+Record pathnames when creating an archive\. This option is enabled
+by default\. Specify \f[B]--no-paths\f[] to disable it\.
+.RS
+.RE
+.TP
+.B -v, --verbose
+Be more verbose (can be used more than once)\.
+.RS
+.RE
+.TP
+.B -q, --quiet
+Be quiet\.
+.RS
+.RE
+.SH EXAMPLES
+.PP
+\f[CR]
+      #\ Create\ a\ metadata\ archive\ for\ /etc\.
+      $\ bup\ meta\ -cRf\ etc\.meta\ /etc
+      bup:\ removing\ leading\ \"/\"\ from\ \"/etc\"
+      
+      #\ Extract\ the\ etc\.meta\ archive\ (files\ will\ be\ empty)\.
+      $\ mkdir\ tmp\ &&\ cd\ tmp
+      $\ bup\ meta\ -xf\ \.\./etc\.meta
+      $\ ls
+      etc
+      
+      #\ Restore\ /etc\ completely\.
+      $\ mkdir\ tmp\ &&\ cd\ tmp
+      $\ bup\ meta\ \\-\\-start-extract\ -f\ \.\./etc\.meta
+      \.\.\.fill\ in\ all\ regular\ file\ contents\ using\ some\ other\ tool\.\.\.
+      $\ bup\ meta\ \\-\\-finish-extract\ -f\ \.\./etc\.meta
+\f[]
+.SH BUGS
+.PP
+Hard links are not handled yet\.
+.SH BUP
+.PP
+Part of the \f[B]bup\f[](1) suite\.
+.SH AUTHOR
+Rob Browning <rlb@defaultvalue.org>

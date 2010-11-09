@@ -1,0 +1,23 @@
+.TH bup-server 1 "2010-11-03" "Bup 0\.19-34-g3694c19"
+.SH NAME
+.PP
+bup-server - the server side of the bup client-server relationship
+.SH SYNOPSIS
+.PP
+bup server
+.SH DESCRIPTION
+.PP
+\f[B]bup\ server\f[] is the server side of a remote bup session\.
+If you use \f[B]bup-split\f[](1) or \f[B]bup-save\f[](1) with the
+\f[B]-r\f[] option, they will ssh to the remote server and run
+\f[B]bup\ server\f[] to receive the transmitted objects\.
+.PP
+There is normally no reason to run \f[B]bup\ server\f[] yourself\.
+.SH SEE ALSO
+.PP
+\f[B]bup-save\f[](1), \f[B]bup-split\f[](1)
+.SH BUP
+.PP
+Part of the \f[B]bup\f[](1) suite\.
+.SH AUTHOR
+Avery Pennarun <apenwarr@gmail.com>

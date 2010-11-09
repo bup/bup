@@ -1,0 +1,42 @@
+.TH bup-tag 1 "2010-11-08" "Bup 0\.19-23-g7e16daf"
+.SH NAME
+.PP
+bup-tag - tag a commit in the bup repository
+.SH SYNOPSIS
+bup tag bup tag
+<tag name> <committish>
+bup tag -d
+<tag name>
+
+.SH DESCRIPTION
+.PP
+\f[B]bup\ tag\f[] lists, creates or deletes a tag in the bup
+repository\.
+.PP
+A tag is an easy way to retreive a specific commit\. It can be used
+to mark a specific backup for easier retrieval later, or to make
+one specific commit avoid automatic cleanup\.
+.SH OPTIONS
+.TP
+.B -d, --delete
+delete a tag
+.RS
+.RE
+.SH EXAMPLE
+.PP
+\f[CR]
+      $\ bup\ tag\ new-puppet-version\ hostx-backup
+      
+      $\ bup\ tag
+      new-puppet-version
+      
+      $\ bup\ tag\ -d\ new-puppet-version
+\f[]
+.SH SEE ALSO
+.PP
+\f[B]bup-save\f[](1), \f[B]bup-split\f[](1)
+.SH BUP
+.PP
+Part of the \f[B]bup\f[](1) suite\.
+.SH AUTHOR
+Gabriel Filion <lelutin@gmail.com>

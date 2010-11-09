@@ -1,0 +1,98 @@
+.TH bup-save 1 "2010-11-08" "Bup 0\.19-21-g864a45a"
+.SH NAME
+.PP
+bup-save - create a new bup backup set
+.SH SYNOPSIS
+.PP
+bup save [-r \f[I]host\f[]:\f[I]path\f[]] <-t|-c|-n \f[I]name\f[]>
+[-v] [-q] [--smaller=\f[I]maxsize\f[]] <paths\.\.\.>
+.SH DESCRIPTION
+.PP
+\f[B]bup\ save\f[] saves the contents of the given files or paths
+into a new backup set and optionally names that backup set\.
+.PP
+Before trying to save files using \f[B]bup\ save\f[], you should
+first update the index using \f[B]bup\ index\f[]\. The reasons for
+separating the two steps are described in the man page for
+\f[B]bup-index\f[](1)\.
+.SH OPTIONS
+.TP
+.B -r, --remote=\f[I]host\f[]:\f[I]path\f[]
+save the backup set to the given remote server\. If \f[I]path\f[]
+is omitted, uses the default path on the remote server (you still
+need to include the \[aq]:\[aq])
+.RS
+.RE
+.TP
+.B -t, --tree
+after creating the backup set, print out the git tree id of the
+resulting backup\.
+.RS
+.RE
+.TP
+.B -c, --commit
+after creating the backup set, print out the git commit id of the
+resulting backup\.
+.RS
+.RE
+.TP
+.B -n, --name=\f[I]name\f[]
+after creating the backup set, create a git branch named
+\f[I]name\f[] so that the backup can be accessed using that name\.
+If \f[I]name\f[] already exists, the new backup will be considered
+a descendant of the old \f[I]name\f[]\. (Thus, you can continually
+create new backup sets with the same name, and later view the
+history of that backup set to see how files have changed over
+time\.)
+.RS
+.RE
+.TP
+.B -v, --verbose
+increase verbosity (can be used more than once)\. With one -v,
+prints every directory name as it gets backed up\. With two -v,
+also prints every filename\.
+.RS
+.RE
+.TP
+.B -q, --quiet
+disable progress messages\.
+.RS
+.RE
+.TP
+.B --smaller=\f[I]maxsize\f[]
+don\[aq]t back up files >= \f[I]maxsize\f[] bytes\. You can use
+this to run frequent incremental backups of your small files, which
+can usually be backed up quickly, and skip over large ones (like
+virtual machine images) which take longer\. Then you can back up
+the large files less frequently\. Use a suffix like k, M, or G to
+specify multiples of 1024, 1024\f[I]1024, 1024\f[]1024*1024
+respectively\.
+.RS
+.RE
+.TP
+.B --bwlimit=\f[I]bytes/sec\f[]
+don\[aq]t transmit more than \f[I]bytes/sec\f[] bytes per second to
+the server\. This is good for making your backups not suck up all
+your network bandwidth\. Use a suffix like k, M, or G to specify
+multiples of 1024, 1024\f[I]1024, 1024\f[]1024*1024 respectively\.
+.RS
+.RE
+.SH EXAMPLE
+.PP
+\f[CR]
+      $\ bup\ index\ -ux\ /etc
+      Indexing:\ 1981,\ done\.
+      
+      $\ bup\ save\ -r\ myserver:\ -n\ my-pc-backup\ --bwlimit=50k\ /etc
+      Reading\ index:\ 1981,\ done\.
+      Saving:\ 100\.00%\ (998/998k,\ 1981/1981\ files),\ done\.\ \ \ \ 
+\f[]
+.SH SEE ALSO
+.PP
+\f[B]bup-index\f[](1), \f[B]bup-split\f[](1), \f[B]bup-on\f[](1),
+\f[B]bup-restore\f[](1)
+.SH BUP
+.PP
+Part of the \f[B]bup\f[](1) suite\.
+.SH AUTHOR
+Avery Pennarun <apenwarr@gmail.com>

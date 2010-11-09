@@ -1,0 +1,140 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"
+><head
+  ><title
+    >bup-memtest(1) Bup 0.19-34-g3694c19</title
+    ><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"
+     /><meta name="generator" content="pandoc"
+     /><meta name="author" content="Avery Pennarun &lt;apenwarr@gmail.com&gt;"
+     /><meta name="date" content="2010-11-03"
+     /></head
+  ><body
+  ><h1 class="title"
+    >bup-memtest(1) Bup 0.19-34-g3694c19</h1
+    ><h1 id="name"
+    >NAME</h1
+    ><p
+    >bup-memtest - test bup memory usage statistics</p
+    ><h1 id="synopsis"
+    >SYNOPSIS</h1
+    ><p
+    >bup memtest [options...]</p
+    ><h1 id="description"
+    >DESCRIPTION</h1
+    ><p
+    ><code
+      >bup memtest</code
+      > opens the list of pack indexes in your bup repository, then searches the list for a series of nonexistent objects, printing memory usage statistics after each cycle.</p
+    ><p
+    >Because of the way Unix systems work, the output will usually show a large (and unchanging) value in the VmSize column, because mapping the index files in the first place takes a certain amount of virtual address space. However, this virtual memory usage is entirely virtual; it doesn't take any of your RAM. Over time, bup uses <em
+      >parts</em
+      > of the indexes, which need to be loaded from disk, and this is what causes an increase in the VmRSS column.</p
+    ><h1 id="options"
+    >OPTIONS</h1
+    ><dl
+    ><dt
+      >-n, --number=<em
+	>number</em
+	></dt
+      ><dd
+      ><p
+	>set the number of objects to search for during each cycle (ie. before printing a line of output)</p
+	></dd
+      ><dt
+      >-c, --cycles=<em
+	>cycles</em
+	></dt
+      ><dd
+      ><p
+	>set the number of cycles (ie. the number of lines of output after the first). The first line of output is always 0 (ie. the baseline before searching for any objects).</p
+	></dd
+      ><dt
+      >--ignore-midx</dt
+      ><dd
+      ><p
+	>ignore any <code
+	  >.midx</code
+	  > files created by <code
+	  >bup midx</code
+	  >. This allows you to compare memory performance with and without using midx.</p
+	></dd
+      ><dt
+      >--existing</dt
+      ><dd
+      ><p
+	>search for existing objects instead of searching for random nonexistent ones. This can greatly affect memory usage and performance. Note that most of the time, <code
+	  >bup save</code
+	  > spends most of its time searching for nonexistent objects, since existing ones are probably in unmodified files that we won't be trying to back up anyway. So the default behaviour reflects real bup performance more accurately. But you might want this option anyway just to make sure you haven't made searching for existing objects much worse than before.</p
+	></dd
+      ></dl
+    ><h1 id="example"
+    >EXAMPLE</h1
+    ><pre
+    ><code
+      >$ bup memtest -n300 -c5
+PackIdxList: using 1 index.
+               VmSize      VmRSS     VmData      VmStk 
+        0    20824 kB    4528 kB    1980 kB      84 kB 
+      300    20828 kB    5828 kB    1984 kB      84 kB 
+      600    20828 kB    6844 kB    1984 kB      84 kB 
+      900    20828 kB    7836 kB    1984 kB      84 kB 
+     1200    20828 kB    8736 kB    1984 kB      84 kB 
+     1500    20828 kB    9452 kB    1984 kB      84 kB 
+
+$ bup memtest -n300 -c5 --ignore-midx
+PackIdxList: using 361 indexes.
+               VmSize      VmRSS     VmData      VmStk 
+        0    27444 kB    6552 kB    2516 kB      84 kB 
+      300    27448 kB   15832 kB    2520 kB      84 kB 
+      600    27448 kB   17220 kB    2520 kB      84 kB 
+      900    27448 kB   18012 kB    2520 kB      84 kB 
+     1200    27448 kB   18388 kB    2520 kB      84 kB 
+     1500    27448 kB   18556 kB    2520 kB      84 kB 
+</code
+      ></pre
+    ><h1 id="discussion"
+    >DISCUSSION</h1
+    ><p
+    >When optimizing bup indexing, the first goal is to keep the VmRSS reasonably low. However, it might eventually be necessary to swap in all the indexes, simply because you're searching for a lot of objects, and this will cause your RSS to grow as large as VmSize eventually.</p
+    ><p
+    >The key word here is <em
+      >eventually</em
+      >. As long as VmRSS grows reasonably slowly, the amount of disk activity caused by accessing pack indexes is reasonably small. If it grows quickly, bup will probably spend most of its time swapping index data from disk instead of actually running your backup, so backups will run very slowly.</p
+    ><p
+    >The purpose of <code
+      >bup memtest</code
+      > is to give you an idea of how fast your memory usage is growing, and to help in optimizing bup for better memory use. If you have memory problems you might be asked to send the output of <code
+      >bup memtest</code
+      > to help diagnose the problems.</p
+    ><p
+    >Tip: try using <code
+      >bup midx -a</code
+      > or <code
+      >bup midx -f</code
+      > to see if it helps reduce your memory usage.</p
+    ><p
+    >Trivia: index memory usage in bup (or git) is only really a problem when adding a large number of previously unseen objects. This is because for each object, we need to absolutely confirm that it isn't already in the database, which requires us to search through <em
+      >all</em
+      > the existing pack indexes to ensure that none of them contain the object in question. In the more obvious case of searching for objects that <em
+      >do</em
+      > exist, the objects being searched for are typically related in some way, which means they probably all exist in a small number of packfiles, so memory usage will be constrained to just those packfile indexes.</p
+    ><p
+    >Since git users typically don't add a lot of files in a single run, git doesn't really need a program like <code
+      >bup midx</code
+      >. bup, on the other hand, spends most of its time backing up files it hasn't seen before, so its memory usage patterns are different.</p
+    ><h1 id="see-also"
+    >SEE ALSO</h1
+    ><p
+    ><code
+      >bup-midx</code
+      >(1)</p
+    ><h1 id="bup"
+    >BUP</h1
+    ><p
+    >Part of the <code
+      >bup</code
+      >(1) suite.</p
+    ></body
+  ></html
+>
+

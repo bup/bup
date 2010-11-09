@@ -1,0 +1,223 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"
+><head
+  ><title
+    >bup-split(1) Bup 0.19-21-g864a45a</title
+    ><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"
+     /><meta name="generator" content="pandoc"
+     /><meta name="author" content="Avery Pennarun &lt;apenwarr@gmail.com&gt;"
+     /><meta name="date" content="2010-11-08"
+     /></head
+  ><body
+  ><h1 class="title"
+    >bup-split(1) Bup 0.19-21-g864a45a</h1
+    ><h1 id="name"
+    >NAME</h1
+    ><p
+    >bup-split - save individual files to bup backup sets</p
+    ><h1 id="synopsis"
+    >SYNOPSIS</h1
+    ><p
+    >bup split [-r <em
+      >host</em
+      >:<em
+      >path</em
+      >] &lt;-b|-t|-c|-n <em
+      >name</em
+      >&gt; [-v] [-q] [--bench] [--max-pack-size=<em
+      >bytes</em
+      >] [--max-pack-objects=<em
+      >n</em
+      >] [--fanout=*count] [--git-ids] [--keep-boundaries] [filenames...]</p
+    ><h1 id="description"
+    >DESCRIPTION</h1
+    ><p
+    ><code
+      >bup split</code
+      > concatenates the contents of the given files (or if no filenames are given, reads from stdin), splits the content into chunks of around 8k using a rolling checksum algorithm, and saves the chunks into a bup repository. Chunks which have previously been stored are not stored again (ie. they are &quot;deduplicated&quot;).</p
+    ><p
+    >Because of the way the rolling checksum works, chunks tend to be very stable across changes to a given file, including adding, deleting, and changing bytes.</p
+    ><p
+    >For example, if you use <code
+      >bup split</code
+      > to back up an XML dump of a database, and the XML file changes slightly from one run to the next, nearly all the data will still be deduplicated and the size of each backup after the first will typically be quite small.</p
+    ><p
+    >Another technique is to pipe the output of the <code
+      >tar</code
+      >(1) or <code
+      >cpio</code
+      >(1) programs to <code
+      >bup split</code
+      >. When individual files in the tarball change slightly or are added or removed, bup still processes the remainder of the tarball efficiently. (Note that <code
+      >bup save</code
+      > is usually a more efficient way to accomplish this, however.)</p
+    ><p
+    >To get the data back, use <code
+      >bup-join</code
+      >(1).</p
+    ><h1 id="options"
+    >OPTIONS</h1
+    ><dl
+    ><dt
+      >-r, --remote=<em
+	>host</em
+	>:<em
+	>path</em
+	></dt
+      ><dd
+      ><p
+	>save the backup set to the given remote server. If <em
+	  >path</em
+	  > is omitted, uses the default path on the remote server (you still need to include the ':')</p
+	></dd
+      ><dt
+      >-b, --blobs</dt
+      ><dd
+      ><p
+	>output a series of git blob ids that correspond to the chunks in the dataset.</p
+	></dd
+      ><dt
+      >-t, --tree</dt
+      ><dd
+      ><p
+	>output the git tree id of the resulting dataset.</p
+	></dd
+      ><dt
+      >-c, --commit</dt
+      ><dd
+      ><p
+	>output the git commit id of the resulting dataset.</p
+	></dd
+      ><dt
+      >-n, --name=<em
+	>name</em
+	></dt
+      ><dd
+      ><p
+	>after creating the dataset, create a git branch named <em
+	  >name</em
+	  > so that it can be accessed using that name. If <em
+	  >name</em
+	  > already exists, the new dataset will be considered a descendant of the old <em
+	  >name</em
+	  >. (Thus, you can continually create new datasets with the same name, and later view the history of that dataset to see how it has changed over time.)</p
+	></dd
+      ><dt
+      >-q, --quiet</dt
+      ><dd
+      ><p
+	>disable progress messages.</p
+	></dd
+      ><dt
+      >-v, --verbose</dt
+      ><dd
+      ><p
+	>increase verbosity (can be used more than once).</p
+	></dd
+      ><dt
+      >--git-ids</dt
+      ><dd
+      ><p
+	>stdin is a list of git object ids instead of raw data. <code
+	  >bup split</code
+	  > will read the contents of each named git object (if it exists in the bup repository) and split it. This might be useful for converting a git repository with large binary files to use bup-style hashsplitting instead. This option is probably most useful when combined with <code
+	  >--keep-boundaries</code
+	  >.</p
+	></dd
+      ><dt
+      >--keep-boundaries</dt
+      ><dd
+      ><p
+	>if multiple filenames are given on the command line, they are normally concatenated together as if the content all came from a single file. That is, the set of blobs/trees produced is identical to what it would have been if there had been a single input file. However, if you use <code
+	  >--keep-boundaries</code
+	  >, each file is split separately. You still only get a single tree or commit or series of blobs, but each blob comes from only one of the files; the end of one of the input files always ends a blob.</p
+	></dd
+      ><dt
+      >--noop</dt
+      ><dd
+      ><p
+	>read the data and split it into blocks based on the &quot;bupsplit&quot; rolling checksum algorithm, but don't do anything with the blocks. This is mostly useful for benchmarking.</p
+	></dd
+      ><dt
+      >--copy</dt
+      ><dd
+      ><p
+	>like --noop, but also write the data to stdout. This can be useful for benchmarking the speed of read+bupsplit+write for large amounts of data.</p
+	></dd
+      ><dt
+      >--bench</dt
+      ><dd
+      ><p
+	>print benchmark timings to stderr.</p
+	></dd
+      ><dt
+      >--max-pack-size=<em
+	>bytes</em
+	></dt
+      ><dd
+      ><p
+	>never create git packfiles larger than the given number of bytes. Default is 1 billion bytes. Usually there is no reason to change this.</p
+	></dd
+      ><dt
+      >--max-pack-objects=<em
+	>numobjs</em
+	></dt
+      ><dd
+      ><p
+	>never create git packfiles with more than the given number of objects. Default is 200 thousand objects. Usually there is no reason to change this.</p
+	></dd
+      ><dt
+      >--fanout=<em
+	>numobjs</em
+	></dt
+      ><dd
+      ><p
+	>when splitting very large files, never put more than this number of git blobs in a single git tree. Instead, generate a new tree and link to that. Default is 4096 objects per tree.</p
+	></dd
+      ><dt
+      >--bwlimit=<em
+	>bytes/sec</em
+	></dt
+      ><dd
+      ><p
+	>don't transmit more than <em
+	  >bytes/sec</em
+	  > bytes per second to the server. This is good for making your backups not suck up all your network bandwidth. Use a suffix like k, M, or G to specify multiples of 1024, 1024<em
+	  >1024, 1024</em
+	  >1024*1024 respectively.</p
+	></dd
+      ></dl
+    ><h1 id="example"
+    >EXAMPLE</h1
+    ><pre
+    ><code
+      >$ tar -cf - /etc | bup split -r myserver: -n mybackup-tar
+tar: Removing leading /' from member names
+Indexing objects: 100% (196/196), done.
+
+$ bup join -r myserver: mybackup-tar | tar -tf - | wc -l
+1961
+</code
+      ></pre
+    ><h1 id="see-also"
+    >SEE ALSO</h1
+    ><p
+    ><code
+      >bup-join</code
+      >(1), <code
+      >bup-index</code
+      >(1), <code
+      >bup-save</code
+      >(1), <code
+      >bup-on</code
+      >(1)</p
+    ><h1 id="bup"
+    >BUP</h1
+    ><p
+    >Part of the <code
+      >bup</code
+      >(1) suite.</p
+    ></body
+  ></html
+>
+
