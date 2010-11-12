@@ -498,6 +498,10 @@ PyMODINIT_FUNC init_helpers(void)
                        Py_BuildValue("i", AT_SYMLINK_NOFOLLOW));
 #endif
 #ifdef HAVE_BUP_STAT
-    PyModule_AddObject(m, "_have_ns_fs_timestamps", Py_BuildValue("i", 1));
+    Py_INCREF(Py_True);
+    PyModule_AddObject(m, "_have_ns_fs_timestamps", Py_True);
+#else
+    Py_INCREF(Py_False);
+    PyModule_AddObject(m, "_have_ns_fs_timestamps", Py_False);
 #endif
 }
