@@ -2,6 +2,13 @@
 import os
 import bup._helpers as _helpers
 
+
+try:
+    _have_utimensat = _helpers.utimensat
+except AttributeError, e:
+    _have_utimensat = False
+
+
 class FSTime():
     # Class to represent filesystem timestamps.  Use integer
     # nanoseconds on platforms where we have the higher resolution
@@ -19,7 +26,7 @@ class FSTime():
             return s_ns
         return (s_ns[0] - 1, 10**9 + s_ns[1]) # ns is negative
 
-    if _helpers.lstat: # Use integer nanoseconds.
+    if _helpers._have_ns_fs_timestamps: # Use integer nanoseconds.
 
         @staticmethod
         def from_secs(secs):
@@ -76,22 +83,24 @@ class FSTime():
             return (x[1], x[0] * 10**9)
 
 
-def lutime(path, times):
-    if _helpers.utimensat:
+if _have_utimensat:
+
+    def lutime(path, times):
         atime = times[0].to_timespec()
         mtime = times[1].to_timespec()
         return _helpers.utimensat(_helpers.AT_FDCWD, path, (atime, mtime),
                                   _helpers.AT_SYMLINK_NOFOLLOW)
-    else:
-        return None
-
-
-def utime(path, times):
-    if _helpers.utimensat:
+    def utime(path, times):
         atime = times[0].to_timespec()
         mtime = times[1].to_timespec()
         return _helpers.utimensat(_helpers.AT_FDCWD, path, (atime, mtime), 0)
-    else:
+
+else:
+
+    def lutime(path, times):
+        return None
+
+    def utime(path, times):
         atime = times[0].approx_secs()
         mtime = times[1].approx_secs()
         os.utime(path, (atime, mtime))
@@ -132,25 +141,28 @@ class stat_result():
         return result
 
 
-def stat(path):
-    if _helpers.stat:
-        st = _helpers.stat(path)
-    else:
-        st = os.stat(path)
-    return stat_result.from_stat_rep(st)
+try:
+    _stat = _helpers.stat
+except AttributeError, e:
+    _stat = os.stat
 
+def stat(path):
+    return stat_result.from_stat_rep(_stat(path))
+
+
+try:
+    _fstat = _helpers.fstat
+except AttributeError, e:
+    _fstat = os.fstat
 
 def fstat(path):
-    if _helpers.fstat:
-        st = _helpers.fstat(path)
-    else:
-        st = os.fstat(path)
-    return stat_result.from_stat_rep(st)
+    return stat_result.from_stat_rep(_fstat(path))
 
+
+try:
+    _lstat = _helpers.lstat
+except AttributeError, e:
+    _lstat = os.lstat
 
 def lstat(path):
-    if _helpers.lstat:
-        st = _helpers.lstat(path)
-    else:
-        st = os.lstat(path)
-    return stat_result.from_stat_rep(st)
+    return stat_result.from_stat_rep(_lstat(path))
