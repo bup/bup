@@ -417,8 +417,8 @@ class Metadata:
 
     def _encode_linux_xattr(self):
         if self.linux_xattr:
-            result = vint.pack('V', len(items))
-            for name, value in self.attrs:
+            result = vint.pack('V', len(self.linux_xattr))
+            for name, value in self.linux_xattr:
                 result += vint.pack('ss', name, value)
             return result
         else:
