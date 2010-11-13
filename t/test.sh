@@ -2,7 +2,7 @@
 . wvtest.sh
 #set -e
 
-TOP="$(pwd)"
+TOP="$(/bin/pwd)"
 export BUP_DIR="$TOP/buptest.tmp"
 
 bup()
