@@ -146,12 +146,16 @@ _rec_tag_linux_attr = 6       # lsattr(1) chattr(1)
 _rec_tag_linux_xattr = 7      # getfattr(1) setfattr(1)
 
 
-class MetadataAcquisitionError(Exception):
+class MetadataError(Exception):
+    pass
+
+
+class MetadataAcquireError(MetadataError):
     # Thrown when unable to extract any given bit of metadata from a path.
     pass
 
 
-class MetadataApplicationError(Exception):
+class MetadataApplyError(MetadataError):
     # Thrown when unable to apply any given bit of metadata to a path.
     pass
 
@@ -511,7 +515,7 @@ class Metadata:
             self._apply_linux_attr_rec(path, restore_numeric_ids=num_ids)
             self._apply_linux_xattr_rec(path, restore_numeric_ids=num_ids)
         except Exception, e:
-            raise MetadataApplicationError(e)
+            raise MetadataApplyError(e)
 
 
 def from_path(path, archive_path=None, save_symlinks=True):
@@ -526,7 +530,7 @@ def from_path(path, archive_path=None, save_symlinks=True):
         result._add_linux_attr(path, st)
         result._add_linux_xattr(path, st)
     except Exception, e:
-        raise MetadataAcquisitionError(e)
+        raise MetadataAcquireError(e)
     return result
 
 
@@ -551,7 +555,7 @@ def save_tree(output_file, paths,
             try:
                 m = from_path(p, archive_path=safe_path,
                               save_symlinks=save_symlinks)
-            except MetadataAcquisitionError, e:
+            except MetadataAcquireError, e:
                 add_error(e)
 
             if verbose:
@@ -623,7 +627,7 @@ def finish_extract(file, restore_numeric_ids=False):
                 try:
                     meta.apply_to_path(path=xpath,
                                        restore_numeric_ids=restore_numeric_ids)
-                except MetadataApplicationError, e:
+                except MetadataApplyError, e:
                     add_error(e)
 
     all_dirs.sort(key = lambda x : len(x.path), reverse=True)
@@ -635,7 +639,7 @@ def finish_extract(file, restore_numeric_ids=False):
         try:
             dir.apply_to_path(path=xpath,
                               restore_numeric_ids=restore_numeric_ids)
-        except MetadataApplicationError, e:
+        except MetadataApplyError, e:
             add_error(e)
 
 
@@ -659,7 +663,7 @@ def extract(file, restore_numeric_ids=False, create_symlinks=True):
                     print >> sys.stderr, '=', meta.path
                 try:
                     meta.apply_to_path(restore_numeric_ids=restore_numeric_ids)
-                except MetadataApplicationError, e:
+                except MetadataApplyError, e:
                     add_error(e)
     all_dirs.sort(key = lambda x : len(x.path), reverse=True)
     for dir in all_dirs:
@@ -671,5 +675,5 @@ def extract(file, restore_numeric_ids=False, create_symlinks=True):
         try:
             dir.apply_to_path(path=dir.path,
                               restore_numeric_ids=restore_numeric_ids)
-        except MetadataApplicationError, e:
+        except MetadataApplyError, e:
             add_error(e)

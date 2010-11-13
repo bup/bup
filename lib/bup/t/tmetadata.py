@@ -85,7 +85,7 @@ def test_from_path_error():
         m = metadata.from_path(path, archive_path=path, save_symlinks=True)
         WVPASSEQ(m.path, path)
         subprocess.call(['chmod', '000', path])
-        WVEXCEPT(metadata.MetadataAcquisitionError,
+        WVEXCEPT(metadata.MetadataAcquireError,
                  metadata.from_path,
                  path,
                  archive_path=path,
@@ -105,7 +105,7 @@ def test_apply_to_path_error():
         m = metadata.from_path(path, archive_path=path, save_symlinks=True)
         WVPASSEQ(m.path, path)
         subprocess.call(['chmod', '000', tmpdir])
-        WVEXCEPT(metadata.MetadataApplicationError,
+        WVEXCEPT(metadata.MetadataApplyError,
                  m.apply_to_path, path)
         subprocess.call(['chmod', '700', tmpdir])
     finally:
@@ -125,11 +125,11 @@ def test_restore_restricted_user_group():
         WVPASSEQ(m.apply_to_path(path), None)
         orig_uid = m.uid
         m.uid = 0;
-        WVEXCEPT(metadata.MetadataApplicationError,
+        WVEXCEPT(metadata.MetadataApplyError,
                  m.apply_to_path, path, restore_numeric_ids=True)
         m.uid = orig_uid
         m.gid = 0;
-        WVEXCEPT(metadata.MetadataApplicationError,
+        WVEXCEPT(metadata.MetadataApplyError,
                  m.apply_to_path, path, restore_numeric_ids=True)
     finally:
         subprocess.call(['rm', '-rf', tmpdir])
