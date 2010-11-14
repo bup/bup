@@ -26,61 +26,42 @@ class FSTime():
             return s_ns
         return (s_ns[0] - 1, 10**9 + s_ns[1]) # ns is negative
 
+    @staticmethod
+    def from_secs(secs):
+        ts = FSTime()
+        ts._value = int(secs * 10**9)
+        return ts
+
+    @staticmethod
+    def from_timespec(timespec):
+        ts = FSTime()
+        ts._value = timespec[0] * 10**9 + timespec[1]
+        return ts
+
+    def approx_secs(self):
+        return self._value / 10e8;
+
+    def secs_nsecs(self):
+        "Return a (s, ns) pair: -1.5s -> (-1, -10**9 / 2)."
+        if self._value >= 0:
+            return (self._value / 10**9, self._value % 10**9)
+        abs_val = -self._value
+        return (- (abs_val / 10**9), - (abs_val % 10**9))
+
     if _helpers._have_ns_fs_timestamps: # Use integer nanoseconds.
-
-        @staticmethod
-        def from_secs(secs):
-            ts = FSTime()
-            ts._value = int(secs * 10**9)
-            return ts
-
-        @staticmethod
-        def from_timespec(timespec):
-            ts = FSTime()
-            ts._value = timespec[0] * 10**9 + timespec[1]
-            return ts
 
         @staticmethod
         def from_stat_time(stat_time):
             return FSTime.from_timespec(stat_time)
 
-        def approx_secs(self):
-            return self._value / 10e8;
-
-        def secs_nsecs(self):
-            "Return a (s, ns) pair: -1.5s -> (-1, -10**9 / 2)."
-            if self._value >= 0:
-                return (self._value / 10**9, self._value % 10**9)
-            abs_val = -self._value
-            return (- (abs_val / 10**9), - (abs_val % 10**9))
-
     else: # Use python default floating-point seconds.
-
-        @staticmethod
-        def from_secs(secs):
-            ts = FSTime()
-            ts._value = secs
-            return ts
-
-        @staticmethod
-        def from_timespec(timespec):
-            ts = FSTime()
-            ts._value = timespec[0] + (timespec[1] / 10e8)
-            return ts
 
         @staticmethod
         def from_stat_time(stat_time):
             ts = FSTime()
-            ts._value = stat_time
+            x = math.modf(stat_time)
+            ts._value = int(x[1]) + int(x[0] * 10**9)
             return ts
-
-        def approx_secs(self):
-            return self._value
-
-        def secs_nsecs(self):
-            "Return a (s, ns) pair: -1.5s -> (-1, -5**9)."
-            x = math.modf(self._value)
-            return (x[1], x[0] * 10**9)
 
 
 if _have_utimensat:
