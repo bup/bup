@@ -1,4 +1,4 @@
-import stat
+import stat, os
 from bup.helpers import *
 
 try:
@@ -45,24 +45,29 @@ def _dirlist():
     return l
 
 
-def _recursive_dirlist(prepend, xdev):
+def _recursive_dirlist(prepend, xdev, bup_dir=None):
     for (name,pst) in _dirlist():
         if name.endswith('/'):
             if xdev != None and pst.st_dev != xdev:
                 log('Skipping %r: different filesystem.\n' % (prepend+name))
                 continue
+            if bup_dir != None:
+                if os.path.normpath(prepend+name) == bup_dir:
+                    log('Skipping BUP_DIR.\n')
+                    continue
             try:
                 OsFile(name).fchdir()
             except OSError, e:
                 add_error('%s: %s' % (prepend, e))
             else:
-                for i in _recursive_dirlist(prepend=prepend+name, xdev=xdev):
+                for i in _recursive_dirlist(prepend=prepend+name, xdev=xdev,
+                                            bup_dir=bup_dir):
                     yield i
                 os.chdir('..')
         yield (prepend + name, pst)
 
 
-def recursive_dirlist(paths, xdev):
+def recursive_dirlist(paths, xdev, bup_dir=None):
     startdir = OsFile('.')
     try:
         assert(type(paths) != type(''))
@@ -88,7 +93,8 @@ def recursive_dirlist(paths, xdev):
             if stat.S_ISDIR(pst.st_mode):
                 pfile.fchdir()
                 prepend = os.path.join(path, '')
-                for i in _recursive_dirlist(prepend=prepend, xdev=xdev):
+                for i in _recursive_dirlist(prepend=prepend, xdev=xdev,
+                                            bup_dir=bup_dir):
                     yield i
                 startdir.fchdir()
             else:

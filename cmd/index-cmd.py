@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import sys, stat, time
+import sys, stat, time, os
 from bup import options, git, index, drecurse
 from bup.helpers import *
 
@@ -66,7 +66,9 @@ def update_index(top):
             return (0100644, index.FAKE_SHA)
 
     total = 0
-    for (path,pst) in drecurse.recursive_dirlist([top], xdev=opt.xdev):
+    bup_dir = os.path.abspath(git.repo())
+    for (path,pst) in drecurse.recursive_dirlist([top], xdev=opt.xdev,
+                                                 bup_dir=bup_dir):
         if opt.verbose>=2 or (opt.verbose==1 and stat.S_ISDIR(pst.st_mode)):
             sys.stdout.write('%s\n' % path)
             sys.stdout.flush()
