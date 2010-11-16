@@ -180,9 +180,9 @@ WVSTART "save/git-fsck"
     #git prune
     (cd "$TOP/t/sampledata" && WVPASS bup save -vvn master /) || WVFAIL
     n=$(git fsck --full --strict 2>&1 | 
-	  egrep -v 'dangling (commit|tree)' |
-	  tee -a /dev/stderr | 
-	  wc -l)
+      egrep -v 'dangling (commit|tree)' |
+      tee -a /dev/stderr | 
+      wc -l)
     WVPASS [ "$n" -eq 0 ]
 ) || exit 1
 
@@ -233,3 +233,20 @@ if bup fsck --par2-ok; then
 else
     WVFAIL bup fsck --quick -r # still fails because par2 was missing
 fi
+
+WVSTART "exclude-bupdir"
+D=exclude.tmp
+rm -rf $D
+mkdir $D
+export BUP_DIR="$D/.bup"
+WVPASS bup init
+touch $D/a
+WVPASS bup random 128k >$D/b
+mkdir $D/d $D/d/e
+WVPASS bup random 512 >$D/f
+WVPASS bup index -ux $D
+bup save -n exclude $D
+WVPASSEQ "$(bup ls exclude/latest/$TOP/$D/)" "a
+b
+d/
+f"
