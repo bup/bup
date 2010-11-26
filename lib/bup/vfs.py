@@ -447,6 +447,24 @@ class CommitList(Node):
             self._subs[name] = n1
 
 
+class TagDir(Node):
+    """A directory that contains all tags in the repository."""
+    def __init__(self, parent, name):
+        Node.__init__(self, parent, name, 040000, EMPTY_SHA)
+
+    def _mksubs(self):
+        self._subs = {}
+        for (name, sha) in git.list_refs():
+            if name.startswith('refs/tags/'):
+                name = name[10:]
+                date = git.rev_get_date(sha.encode('hex'))
+                commithex = sha.encode('hex')
+                target = '../.commit/%s/%s' % (commithex[:2], commithex[2:])
+                tag1 = FakeSymlink(self, name, target)
+                tag1.ctime = tag1.mtime = date
+                self._subs[name] = tag1
+
+
 class BranchList(Node):
     """A list of links to commits reachable by a branch in bup's repository.
 
@@ -458,6 +476,16 @@ class BranchList(Node):
 
     def _mksubs(self):
         self._subs = {}
+
+        tags = {}
+        for (n,c) in git.list_refs():
+            if n.startswith('refs/tags/'):
+                name = n[10:]
+                if not c in tags:
+                    tags[c] = []
+
+                tags[c].append(name)
+
         revs = list(git.rev_list(self.hash.encode('hex')))
         for (date, commit) in revs:
             l = time.localtime(date)
@@ -467,6 +495,11 @@ class BranchList(Node):
             n1 = FakeSymlink(self, ls, target)
             n1.ctime = n1.mtime = date
             self._subs[ls] = n1
+
+            for tag in tags.get(commit, []):
+                t1 = FakeSymlink(self, tag, target)
+                t1.ctime = t1.mtime = date
+                self._subs[tag] = t1
 
         latest = max(revs)
         if latest:
@@ -495,6 +528,9 @@ class RefList(Node):
 
         commit_dir = CommitDir(self, '.commit')
         self._subs['.commit'] = commit_dir
+
+        tag_dir = TagDir(self, '.tag')
+        self._subs['.tag'] = tag_dir
 
         for (name,sha) in git.list_refs():
             if name.startswith('refs/heads/'):
