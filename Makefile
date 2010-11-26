@@ -87,6 +87,7 @@ runtests-python:
 
 runtests-cmdline: all
 	t/test.sh
+	t/test-meta.sh
 
 stupid:
 	PATH=/bin:/usr/bin $(MAKE) test
