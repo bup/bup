@@ -259,7 +259,8 @@ static PyObject *bup_set_linux_file_attr(PyObject *self, PyObject *args)
 #endif /* def linux */
 
 
-#if _XOPEN_SOURCE >= 700 || _POSIX_C_SOURCE >= 200809L
+#if defined(_ATFILE_SOURCE) \
+  || _XOPEN_SOURCE >= 700 || _POSIX_C_SOURCE >= 200809L
 #define HAVE_BUP_UTIMENSAT 1
 
 static PyObject *bup_utimensat(PyObject *self, PyObject *args)
@@ -331,7 +332,8 @@ static PyObject *bup_utimensat(PyObject *self, PyObject *args)
     Py_RETURN_TRUE;
 }
 
-#endif /* _XOPEN_SOURCE >= 700 || _POSIX_C_SOURCE >= 200809L */
+#endif /* defined(_ATFILE_SOURCE)
+          || _XOPEN_SOURCE >= 700 || _POSIX_C_SOURCE >= 200809L */
 
 
 #ifdef linux /* and likely others */
