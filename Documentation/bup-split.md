@@ -20,7 +20,7 @@ bup split [-r *host*:*path*] <-b|-t|-c|-n *name*> [-v] [-q]
 the content into chunks of around 8k using a rolling
 checksum algorithm, and saves the chunks into a bup
 repository.  Chunks which have previously been stored are
-not stored again (ie. they are "deduplicated").
+not stored again (ie. they are 'deduplicated').
 
 Because of the way the rolling checksum works, chunks
 tend to be very stable across changes to a given file,
