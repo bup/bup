@@ -288,6 +288,14 @@ mailing list (see below) if you'd like to help.
     Actually, that's not stupid, but you might consider it a limitation. 
     There are a bunch of Linux GUI backup programs; someday I expect someone
     will adapt one of them to use bup.
+    
+    
+More Documentation
+------------------
+
+bup has an extensive set of man pages.  Try using 'bup help' to get
+started, or use 'bup help SUBCOMMAND' for any bup subcommand (like split,
+join, index, save, etc.) to get details on that command.
 
 
 How you can help
