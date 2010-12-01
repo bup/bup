@@ -399,7 +399,10 @@ class PackIdxList:
                                 log(('warning: index %s missing\n' +
                                     '  used by %s\n') % (n, mxf))
                                 broken += 1
-                        if not broken:
+                        if broken:
+                            del mx
+                            unlink(full)
+                        else:
                             midxl.append(mx)
                 midxl.sort(lambda x,y: -cmp(len(x),len(y)))
                 for ix in midxl:
