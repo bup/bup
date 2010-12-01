@@ -5,11 +5,6 @@ from bup.helpers import *
 
 handle_ctrl_c()
 
-def s_from_bytes(bytes):
-    clist = [chr(b) for b in bytes]
-    return ''.join(clist)
-
-
 _linux_warned = 0
 def linux_memstat():
     global _linux_warned
