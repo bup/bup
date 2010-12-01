@@ -129,7 +129,7 @@ x,xdev,one-file-system  don't cross filesystem boundaries
 fake-valid mark all index entries as up-to-date even if they aren't
 fake-invalid mark all index entries as invalid
 check      carefully check index file integrity
-f,indexfile=  the name of the index file (default 'index')
+f,indexfile=  the name of the index file (normally BUP_DIR/bupindex)
 v,verbose  increase log output (can be used more than once)
 """
 o = options.Options('bup index', optspec)
