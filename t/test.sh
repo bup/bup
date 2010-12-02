@@ -282,9 +282,9 @@ WVPASSEQ "$(bup ls exclude/latest/$TOP/$D/)" "a
 b
 f"
 
-WVSTART "exclude-file"
-D=exclude-filedir.tmp
-EXCLUDE_FILE=exclude-file.tmp
+WVSTART "exclude-from"
+D=exclude-fromdir.tmp
+EXCLUDE_FILE=exclude-from.tmp
 echo "$D/d 
  $TOP/$D/g
 $D/h" > $EXCLUDE_FILE
@@ -297,8 +297,9 @@ WVPASS bup random 128k >$D/b
 mkdir $D/d $D/d/e
 WVPASS bup random 512 >$D/f
 mkdir $D/g $D/h
-WVPASS bup index -ux --exclude-file $EXCLUDE_FILE $D
-bup save -n exclude-file $D
-WVPASSEQ "$(bup ls exclude-file/latest/$TOP/$D/)" "a
+WVPASS bup index -ux --exclude-from $EXCLUDE_FILE $D
+bup save -n exclude-from $D
+WVPASSEQ "$(bup ls exclude-from/latest/$TOP/$D/)" "a
 b
 f"
+rm $EXCLUDE_FILE

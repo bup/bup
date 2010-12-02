@@ -9,7 +9,8 @@ bup-index - print and/or update the bup filesystem index
 # SYNOPSIS
 
 bup index <-p|-m|-u> [-s] [-H] [-l] [-x] [--fake-valid]
-[--check] [-f *indexfile*] [--exclude *path*] [--exclude-file *filename*] [-v] <filenames...>
+[--check] [-f *indexfile*] [--exclude *path*]
+[--exclude-from *filename*] [-v] <filenames...>
 
 # DESCRIPTION
 
@@ -101,8 +102,9 @@ need the same information).
 :   a path to exclude from the backup (can be used more
     than once)
 
---exclude-file=*filename*
-:   a file that contains exclude paths
+--exclude-from=*filename*
+:   a file that contains exclude paths (can be used more
+    than once)
 
 -v, --verbose
 :   increase log output during update (can be used more
