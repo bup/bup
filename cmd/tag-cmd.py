@@ -58,6 +58,9 @@ if tag_name in tags:
     log("bup: error: tag '%s' already exists" % tag_name)
     sys.exit(1)
 
+if tag_name.startswith('.'):
+    o.fatal("'%s' is not a valid tag name." % tag_name)
+
 try:
     hash = git.rev_parse(commit)
 except git.GitError, e:
