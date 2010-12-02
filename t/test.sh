@@ -208,9 +208,9 @@ WVPASSEQ "$(sha1sum <$D/a)" "$(sha1sum <$D/a.new)"
 WVSTART "tag"
 WVFAIL bup tag -d v0.n 2>/dev/null
 WVFAIL bup tag v0.n non-existant 2>/dev/null
-WVPASSEQ "$(bup tag 2>&1)" ""
+WVPASSEQ "$(bup tag)" ""
 WVPASS bup tag v0.1 master
-WVPASSEQ "$(bup tag 2>&1)" "v0.1"
+WVPASSEQ "$(bup tag)" "v0.1"
 WVPASS bup tag -d v0.1
 
 # This section destroys data in the bup repository, so it is done last.

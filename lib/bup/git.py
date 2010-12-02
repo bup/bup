@@ -140,7 +140,7 @@ def _decode_packobj(buf):
 class PackIdx:
     def __init__(self):
         assert(0)
-    
+
     def find_offset(self, hash):
         """Get the offset of an object inside the index file."""
         idx = self._idx_from_hash(hash)
@@ -1031,3 +1031,16 @@ class CatPipe:
                 yield d
         except StopIteration:
             log('booger!\n')
+
+def tags():
+    """Return a dictionary of all tags in the form {hash: [tag_names, ...]}."""
+    tags = {}
+    for (n,c) in list_refs():
+        if n.startswith('refs/tags/'):
+            name = n[10:]
+            if not c in tags:
+                tags[c] = []
+
+            tags[c].append(name)  # more than one tag can point at 'c'
+
+    return tags

@@ -35,33 +35,35 @@ if opt.delete:
     try:
         os.unlink(tag_file)
     except OSError, e:
-        log("bup: error: unable to delete tag: %s" % e)
+        log("bup: error: unable to delete tag '%s': %s" % (opt.delete, e))
         sys.exit(1)
 
     sys.exit(0)
 
-tags = []
-for (t, dummy) in git.list_refs():
-    if t.startswith('refs/tags/'):
-        tags.append(t[10:])
+tags = [t for sublist in git.tags().values() for t in sublist]
 
 if not extra:
     for t in tags:
-        log("%s\n" % t)
+        print t
     sys.exit(0)
-elif len(extra) != 2:
-    log('bup: error: no ref or hash given.')
-    sys.exit(1)
+elif len(extra) < 2:
+    o.fatal('no commit ref or hash given.')
 
-tag_name = extra[0]
-commit = extra[1]
-debug1("from args: tag name = %s; commit = %s\n" % (tag_name, commit))
+(tag_name, commit) = extra[:2]
+if not tag_name:
+    o.fatal("tag name must not be empty.")
+debug1("args: tag name = %s; commit = %s\n" % (tag_name, commit))
 
 if tag_name in tags:
     log("bup: error: tag '%s' already exists" % tag_name)
     sys.exit(1)
 
-hash = git.rev_parse(commit)
+try:
+    hash = git.rev_parse(commit)
+except git.GitError, e:
+    log("bup: error: %s" % e)
+    sys.exit(2)
+
 if not hash:
     log("bup: error: commit %s not found." % commit)
     sys.exit(2)
@@ -75,7 +77,7 @@ tag_file = git.repo('refs/tags/%s' % tag_name)
 try:
     tag = file(tag_file, 'w')
 except OSError, e:
-    log('bup: error: could not create tag %s: %s' % (tag_name, e))
+    log("bup: error: could not create tag '%s': %s" % (tag_name, e))
     sys.exit(3)
 
 tag.write(hash.encode('hex'))
