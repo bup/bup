@@ -54,7 +54,7 @@ def check_index(reader):
     log('check: passed.\n')
 
 
-def update_index(top):
+def update_index(top, excluded_paths):
     ri = index.Reader(indexfile)
     wi = index.Writer(indexfile)
     rig = IterHelper(ri.iter(name=top))
@@ -68,7 +68,8 @@ def update_index(top):
     total = 0
     bup_dir = os.path.abspath(git.repo())
     for (path,pst) in drecurse.recursive_dirlist([top], xdev=opt.xdev,
-                                                 bup_dir=bup_dir):
+                                                 bup_dir=bup_dir,
+                                                 excluded_paths=excluded_paths):
         if opt.verbose>=2 or (opt.verbose==1 and stat.S_ISDIR(pst.st_mode)):
             sys.stdout.write('%s\n' % path)
             sys.stdout.flush()
@@ -130,6 +131,7 @@ fake-valid mark all index entries as up-to-date even if they aren't
 fake-invalid mark all index entries as invalid
 check      carefully check index file integrity
 f,indexfile=  the name of the index file (normally BUP_DIR/bupindex)
+exclude=   a path to exclude from the backup (can be used ore than once)
 v,verbose  increase log output (can be used more than once)
 """
 o = options.Options('bup index', optspec)
@@ -151,13 +153,22 @@ if opt.check:
     log('check: starting initial check.\n')
     check_index(index.Reader(indexfile))
 
+if opt.exclude:
+    excluded_paths = []
+    for flag in flags:
+        (option, parameter) = flag
+        if option == '--exclude':
+            excluded_paths.append(realpath(parameter))
+else:
+    excluded_paths = None
+
 paths = index.reduce_paths(extra)
 
 if opt.update:
     if not extra:
         o.fatal('update (-u) requested but no paths given')
     for (rp,path) in paths:
-        update_index(rp)
+        update_index(rp, excluded_paths)
 
 if opt['print'] or opt.status or opt.modified:
     for (name, ent) in index.Reader(indexfile).filter(extra or ['']):

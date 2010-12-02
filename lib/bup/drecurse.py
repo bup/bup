@@ -45,7 +45,7 @@ def _dirlist():
     return l
 
 
-def _recursive_dirlist(prepend, xdev, bup_dir=None):
+def _recursive_dirlist(prepend, xdev, bup_dir=None, excluded_paths=None):
     for (name,pst) in _dirlist():
         if name.endswith('/'):
             if xdev != None and pst.st_dev != xdev:
@@ -55,19 +55,24 @@ def _recursive_dirlist(prepend, xdev, bup_dir=None):
                 if os.path.normpath(prepend+name) == bup_dir:
                     log('Skipping BUP_DIR.\n')
                     continue
+            if excluded_paths:
+                if os.path.normpath(prepend+name) in excluded_paths:
+                    log('Skipping %r: excluded.\n' % (prepend+name))
+                    continue
             try:
                 OsFile(name).fchdir()
             except OSError, e:
                 add_error('%s: %s' % (prepend, e))
             else:
                 for i in _recursive_dirlist(prepend=prepend+name, xdev=xdev,
-                                            bup_dir=bup_dir):
+                                            bup_dir=bup_dir,
+                                            excluded_paths=excluded_paths):
                     yield i
                 os.chdir('..')
         yield (prepend + name, pst)
 
 
-def recursive_dirlist(paths, xdev, bup_dir=None):
+def recursive_dirlist(paths, xdev, bup_dir=None, excluded_paths=None):
     startdir = OsFile('.')
     try:
         assert(type(paths) != type(''))
@@ -94,7 +99,8 @@ def recursive_dirlist(paths, xdev, bup_dir=None):
                 pfile.fchdir()
                 prepend = os.path.join(path, '')
                 for i in _recursive_dirlist(prepend=prepend, xdev=xdev,
-                                            bup_dir=bup_dir):
+                                            bup_dir=bup_dir,
+                                            excluded_paths=excluded_paths):
                     yield i
                 startdir.fchdir()
             else:
