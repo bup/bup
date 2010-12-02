@@ -131,7 +131,8 @@ fake-valid mark all index entries as up-to-date even if they aren't
 fake-invalid mark all index entries as invalid
 check      carefully check index file integrity
 f,indexfile=  the name of the index file (normally BUP_DIR/bupindex)
-exclude=   a path to exclude from the backup (can be used ore than once)
+exclude=   a path to exclude from the backup (can be used more than once)
+exclude-file= a file that contains exclude paths
 v,verbose  increase log output (can be used more than once)
 """
 o = options.Options('bup index', optspec)
@@ -153,14 +154,24 @@ if opt.check:
     log('check: starting initial check.\n')
     check_index(index.Reader(indexfile))
 
+excluded_paths = []
+
 if opt.exclude:
-    excluded_paths = []
     for flag in flags:
         (option, parameter) = flag
         if option == '--exclude':
             excluded_paths.append(realpath(parameter))
-else:
-    excluded_paths = None
+
+if opt.exclude_file:
+    try:
+        f = open(realpath(opt.exclude_file))
+        for exclude_path in f.readlines():
+            excluded_paths.append(realpath(exclude_path.strip()))
+    except Error, e:
+        log("index: warning: couldn't read %s" % opt.exclude_file)
+    finally:
+        f.close()
+
 
 paths = index.reduce_paths(extra)
 
