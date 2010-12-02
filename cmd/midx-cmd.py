@@ -56,7 +56,7 @@ def _do_midx(outdir, outfilename, infilenames, prefixstr):
         inp.append(ix)
         total += len(ix)
 
-    log('midx: %smerging %d indexes (%d objects).\n'
+    log('midx: %screating from %d files (%d objects).\n'
         % (prefixstr, len(infilenames), total))
     if (not opt.force and (total < 1024 and len(infilenames) < 3)) \
        or len(infilenames) < 2 \
