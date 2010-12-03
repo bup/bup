@@ -73,7 +73,7 @@ static PyObject *firstword(PyObject *self, PyObject *args)
 	return NULL;
     
     v = ntohl(*(uint32_t *)buf);
-    return Py_BuildValue("I", v);
+    return PyLong_FromUnsignedLong(v);
 }
 
 
@@ -92,7 +92,7 @@ static PyObject *extract_bits(PyObject *self, PyObject *args)
     mask = (1<<nbits) - 1;
     v = ntohl(*(uint32_t *)buf);
     v = (v >> (32-nbits)) & mask;
-    return Py_BuildValue("I", v);
+    return PyLong_FromUnsignedLong(v);
 }
 
 
