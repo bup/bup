@@ -147,6 +147,27 @@ static PyObject *write_random(PyObject *self, PyObject *args)
 }
 
 
+static PyObject *random_partial_sha(PyObject *self, PyObject *args)
+{
+    static int seeded = 0;
+    uint32_t shabuf[20/4];
+    
+    if (!seeded)
+    {
+	assert(sizeof(shabuf) == 20);
+	srandom(time(NULL));
+	seeded = 1;
+    }
+    
+    if (!PyArg_ParseTuple(args, ""))
+	return NULL;
+    
+    memset(shabuf, 0, sizeof(shabuf));
+    shabuf[0] = random();
+    return Py_BuildValue("s#", shabuf, 20);
+}
+
+
 static PyObject *open_noatime(PyObject *self, PyObject *args)
 {
     char *filename = NULL;
@@ -208,6 +229,8 @@ static PyMethodDef faster_methods[] = {
 	"Take the first 'nbits' bits from 'buf' and return them as an int." },
     { "write_random", write_random, METH_VARARGS,
 	"Write random bytes to the given file descriptor" },
+    { "random_partial_sha", random_partial_sha, METH_VARARGS,
+        "Return a 20-byte string with the first few bytes randomized" },
     { "open_noatime", open_noatime, METH_VARARGS,
 	"open() the given filename for read with O_NOATIME if possible" },
     { "fadvise_done", fadvise_done, METH_VARARGS,
