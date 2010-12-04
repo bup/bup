@@ -123,11 +123,12 @@ def parse_excludes(flags):
 
         if option == '--exclude-from':
             try:
-                f = open(realpath(parameter))
-                for exclude_path in f.readlines():
-                    excluded_paths.append(realpath(exclude_path.strip()))
-            except Error, e:
-                log("warning: couldn't read %s" % parameter)
+                try:
+                    f = open(realpath(parameter))
+                    for exclude_path in f.readlines():
+                        excluded_paths.append(realpath(exclude_path.strip()))
+                except Error, e:
+                    log("warning: couldn't read %s" % parameter)
             finally:
                 f.close()
 
