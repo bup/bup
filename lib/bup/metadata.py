@@ -515,7 +515,7 @@ class Metadata:
             self._apply_linux_attr_rec(path, restore_numeric_ids=num_ids)
             self._apply_linux_xattr_rec(path, restore_numeric_ids=num_ids)
         except Exception, e:
-            raise MetadataApplyError(e)
+            raise MetadataApplyError(e), None, sys.exc_info()[2]
 
 
 def from_path(path, archive_path=None, save_symlinks=True):
@@ -530,7 +530,7 @@ def from_path(path, archive_path=None, save_symlinks=True):
         result._add_linux_attr(path, st)
         result._add_linux_xattr(path, st)
     except Exception, e:
-        raise MetadataAcquireError(e)
+        raise MetadataAcquireError(e), None, sys.exc_info()[2]
     return result
 
 
