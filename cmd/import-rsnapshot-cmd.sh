@@ -10,9 +10,22 @@ usage() {
     exit -1
 }
 
-if [ "$1" == "-n" ] || [ "$1" == "--dry-run" ]; then
-    bup () { echo "bup $@"; }
+if [ "$1" = "-n" -o "$1" = "--dry-run" ]; then
+    bup()
+    {
+        echo bup "$@" >&2
+    }
     shift 1
+elif [ -n "$BUP_MAIN_EXE" ]; then
+    bup()
+    {
+        "$BUP_MAIN_EXE" "$@"
+    }
+else
+    bup()
+    {
+        bup "$@"
+    }
 fi
 
 [ "$#" -eq 1 ] || [ "$#" -eq 2 ] || usage
