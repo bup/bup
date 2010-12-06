@@ -303,3 +303,37 @@ WVPASSEQ "$(bup ls exclude-from/latest/$TOP/$D/)" "a
 b
 f"
 rm $EXCLUDE_FILE
+
+WVSTART "strip"
+D=strip.tmp
+rm -rf $D
+mkdir $D
+export BUP_DIR="$D/.bup"
+WVPASS bup init
+touch $D/a
+WVPASS bup random 128k >$D/b
+mkdir $D/d $D/d/e
+WVPASS bup random 512 >$D/f
+WVPASS bup index -ux $D
+bup save --strip -n strip $D
+WVPASSEQ "$(bup ls strip/latest/)" "a
+b
+d/
+f"
+
+WVSTART "strip-path"
+D=strip-path.tmp
+rm -rf $D
+mkdir $D
+export BUP_DIR="$D/.bup"
+WVPASS bup init
+touch $D/a
+WVPASS bup random 128k >$D/b
+mkdir $D/d $D/d/e
+WVPASS bup random 512 >$D/f
+WVPASS bup index -ux $D
+bup save --strip-path $TOP -n strip-path $D
+WVPASSEQ "$(bup ls strip-path/latest/$D/)" "a
+b
+d/
+f"
