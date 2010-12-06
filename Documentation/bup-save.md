@@ -70,6 +70,21 @@ for `bup-index`(1).
     like k, M, or G to specify multiples of 1024,
     1024*1024, 1024*1024*1024 respectively.
     
+--strip
+:   strips the path that is given from all files and directories.
+    
+    A directory */root/chroot/etc* saved with
+    "bup save -n chroot --strip /root/chroot" would be saved
+    as */etc*.
+    
+--strip-prefix=*path-prefix*
+:   strips the given path-prefix *path-prefix* from all
+    files and directories.
+    
+    A directory */root/chroots/webserver* saved with
+    "bup save -n webserver --strip-path=/root/chroots" would
+    be saved as */webserver/etc*
+    
 
 # EXAMPLE
     
