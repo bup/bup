@@ -16,6 +16,7 @@ v,verbose  increase log output (can be used more than once)
 q,quiet    don't show progress meter
 smaller=   only back up files smaller than n bytes
 bwlimit=   maximum bytes/sec to transmit to server
+f,indexfile=  the name of the index file (normally BUP_DIR/bupindex)
 strip      strips the path to every filename given
 strip-path= path-prefix to be stripped when saving
 """
@@ -134,7 +135,9 @@ def vlog(s):
     log(s)
 
 
-r = index.Reader(git.repo('bupindex'))
+indexfile = opt.indexfile or git.repo('bupindex')
+print indexfile
+r = index.Reader(indexfile)
 
 def already_saved(ent):
     return ent.is_valid() and w.exists(ent.sha) and ent.sha
