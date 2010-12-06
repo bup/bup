@@ -39,10 +39,12 @@ for SNAPSHOT in "$ABSPATH/"*; do
 
                 if [ "$TARGET" == "" ] || [ "$TARGET" == "$BRANCH" ]; then
                     bup index -ux \
+                        -f $TMPIDX \
                         $BRANCH_PATH/
                     bup save \
                         --strip \
                         --date=$DATE \
+                        -f $TMPIDX \
                         -n $BRANCH \
                         $BRANCH_PATH/
 
