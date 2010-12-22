@@ -77,7 +77,7 @@ def receive_objects(conn, junk):
         sha = git.calc_hash(type, content)
         oldpack = w.exists(sha)
         # FIXME: we only suggest a single index per cycle, because the client
-        # is currently dumb to download more than one per cycle anyway.
+        # is currently too dumb to download more than one per cycle anyway.
         # Actually we should fix the client, but this is a minor optimization
         # on the server side.
         if not suggested and \
@@ -88,13 +88,12 @@ def receive_objects(conn, junk):
             # fix that deficiency of midx files eventually, although it'll
             # make the files bigger.  This method is certainly not very
             # efficient.
-            w.objcache.refresh(skip_midx = True)
-            oldpack = w.objcache.exists(sha)
+            oldpack = w.objcache.packname_containing(sha)
             debug2('new suggestion: %r\n' % oldpack)
             assert(oldpack)
             assert(oldpack != True)
             assert(not oldpack.endswith('.midx'))
-            w.objcache.refresh(skip_midx = False)
+            w.objcache.refresh()
         if not suggested and oldpack:
             assert(oldpack.endswith('.idx'))
             (dir,name) = os.path.split(oldpack)

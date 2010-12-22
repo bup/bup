@@ -429,6 +429,18 @@ class PackIdxList:
         debug1('PackIdxList: using %d index%s.\n'
             % (len(self.packs), len(self.packs)!=1 and 'es' or ''))
 
+    def packname_containing(self, hash):
+        # figure out which pack contains a given hash.
+        # FIXME: if the midx file format would just *store* this information,
+        # we could calculate it a lot more efficiently.  But it's not needed
+        # often, so let's do it like this.
+        for f in os.listdir(self.dir):
+            if f.endswith('.idx'):
+                full = os.path.join(self.dir, f)
+                ix = open_idx(full)
+                if ix.exists(hash):
+                    return full
+
     def add(self, hash):
         """Insert an additional object in the list."""
         self.also[hash] = 1
