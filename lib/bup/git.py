@@ -423,7 +423,11 @@ class PackIdxList:
             for f in os.listdir(self.dir):
                 full = os.path.join(self.dir, f)
                 if f.endswith('.idx') and not d.get(full):
-                    ix = open_idx(full)
+                    try:
+                        ix = open_idx(full)
+                    except GitError, e:
+                        add_error(e)
+                        continue
                     d[full] = ix
             self.packs = list(set(d.values()))
         debug1('PackIdxList: using %d index%s.\n'
@@ -437,7 +441,11 @@ class PackIdxList:
         for f in os.listdir(self.dir):
             if f.endswith('.idx'):
                 full = os.path.join(self.dir, f)
-                ix = open_idx(full)
+                try:
+                    ix = open_idx(full)
+                except GitError, e:
+                    add_error(e)
+                    continue
                 if ix.exists(hash):
                     return full
 
@@ -477,8 +485,10 @@ def open_idx(filename):
             else:
                 raise GitError('%s: expected idx file version 2, got %d'
                                % (filename, version))
-        else:
+        elif len(header) == 8 and header[0:4] < '\377tOc':
             return PackIdxV1(filename, f)
+        else:
+            raise GitError('%s: unrecognized idx file header' % filename)
     elif filename.endswith('.midx'):
         return PackMidx(filename)
     else:
