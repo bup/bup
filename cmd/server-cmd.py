@@ -67,14 +67,14 @@ def receive_objects(conn, junk):
             conn.ok()
             return
             
+        sha = conn.read(20)
+        n -= 20
         buf = conn.read(n)  # object sizes in bup are reasonably small
         #debug2('read %d bytes\n' % n)
         if len(buf) < n:
             w.abort()
             raise Exception('object read: expected %d bytes, got %d\n'
                             % (n, len(buf)))
-        (type, content) = git._decode_packobj(buf)
-        sha = git.calc_hash(type, content)
         oldpack = w.exists(sha)
         # FIXME: we only suggest a single index per cycle, because the client
         # is currently too dumb to download more than one per cycle anyway.
