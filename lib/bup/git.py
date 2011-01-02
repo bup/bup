@@ -651,12 +651,9 @@ class PackWriter:
         # calculate the pack sha1sum
         f.seek(0)
         sum = Sha1()
-        while 1:
-            b = f.read(65536)
+        for b in chunkyreader(f):
             sum.update(b)
-            if not b: break
         f.write(sum.digest())
-
         f.close()
 
         p = subprocess.Popen(['git', 'index-pack', '-v',
