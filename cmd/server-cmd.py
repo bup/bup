@@ -36,7 +36,7 @@ def send_index(conn, name):
     conn.ok()
 
 
-def receive_objects(conn, junk):
+def receive_objects_v2(conn, junk):
     global suspended_w
     git.check_repo_or_die()
     suggested = {}
@@ -165,7 +165,7 @@ commands = {
     'set-dir': set_dir,
     'list-indexes': list_indexes,
     'send-index': send_index,
-    'receive-objects': receive_objects,
+    'receive-objects-v2': receive_objects_v2,
     'read-ref': read_ref,
     'update-ref': update_ref,
     'cat': cat,

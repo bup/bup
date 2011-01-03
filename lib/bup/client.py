@@ -169,20 +169,20 @@ class Client:
         debug1('client: received index suggestion: %s\n' % indexname)
         ob = self._busy
         if ob:
-            assert(ob == 'receive-objects')
+            assert(ob == 'receive-objects-v2')
             self.conn.write('\xff\xff\xff\xff')  # suspend receive-objects
             self._busy = None
             self.conn.drain_and_check_ok()
         self.sync_index(indexname)
         if ob:
             self._busy = ob
-            self.conn.write('receive-objects\n')
+            self.conn.write('receive-objects-v2\n')
 
     def new_packwriter(self):
         self.check_busy()
         def _set_busy():
-            self._busy = 'receive-objects'
-            self.conn.write('receive-objects\n')
+            self._busy = 'receive-objects-v2'
+            self.conn.write('receive-objects-v2\n')
         return PackWriter_Remote(self.conn,
                                  objcache_maker = self._make_objcache,
                                  suggest_pack = self._suggest_pack,
