@@ -50,7 +50,7 @@ for SNAPSHOT in "$ABSPATH/"*; do
                 BRANCH=`basename "$BRANCH_PATH"`
                 TMPIDX="/tmp/$BRANCH"
 
-                if [ "$TARGET" == "" ] || [ "$TARGET" == "$BRANCH" ]; then
+                if [ "$TARGET" = "" ] || [ "$TARGET" = "$BRANCH" ]; then
                     bup index -ux \
                         -f $TMPIDX \
                         $BRANCH_PATH/
