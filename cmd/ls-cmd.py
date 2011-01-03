@@ -19,6 +19,7 @@ optspec = """
 bup ls <dirs...>
 --
 s,hash   show hash for each file
+a,all    show hidden files
 """
 o = options.Options('bup ls', optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
@@ -35,9 +36,11 @@ for d in extra:
         n = top.lresolve(d)
         if stat.S_ISDIR(n.mode):
             for sub in n:
-                print_node(sub.name, sub)
+                if opt.all or not sub.name.startswith('.'):
+                    print_node(sub.name, sub)
         else:
-            print_node(d, n)
+            if opt.all or not sub.name.startswith('.'):
+                print_node(d, n)
     except vfs.NodeError, e:
         log('error: %s\n' % e)
         ret = 1

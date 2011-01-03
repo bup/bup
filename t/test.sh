@@ -208,9 +208,9 @@ WVPASSEQ "$(sha1sum <$D/a)" "$(sha1sum <$D/a.new)"
 WVSTART "tag"
 WVFAIL bup tag -d v0.n 2>/dev/null
 WVFAIL bup tag v0.n non-existant 2>/dev/null
-WVPASSEQ "$(bup tag 2>&1)" ""
+WVPASSEQ "$(bup tag)" ""
 WVPASS bup tag v0.1 master
-WVPASSEQ "$(bup tag 2>&1)" "v0.1"
+WVPASSEQ "$(bup tag)" "v0.1"
 WVPASS bup tag -d v0.1
 
 # This section destroys data in the bup repository, so it is done last.
@@ -303,3 +303,78 @@ WVPASSEQ "$(bup ls exclude-from/latest/$TOP/$D/)" "a
 b
 f"
 rm $EXCLUDE_FILE
+
+WVSTART "strip"
+D=strip.tmp
+rm -rf $D
+mkdir $D
+export BUP_DIR="$D/.bup"
+WVPASS bup init
+touch $D/a
+WVPASS bup random 128k >$D/b
+mkdir $D/d $D/d/e
+WVPASS bup random 512 >$D/f
+WVPASS bup index -ux $D
+bup save --strip -n strip $D
+WVPASSEQ "$(bup ls strip/latest/)" "a
+b
+d/
+f"
+
+WVSTART "strip-path"
+D=strip-path.tmp
+rm -rf $D
+mkdir $D
+export BUP_DIR="$D/.bup"
+WVPASS bup init
+touch $D/a
+WVPASS bup random 128k >$D/b
+mkdir $D/d $D/d/e
+WVPASS bup random 512 >$D/f
+WVPASS bup index -ux $D
+bup save --strip-path $TOP -n strip-path $D
+WVPASSEQ "$(bup ls strip-path/latest/$D/)" "a
+b
+d/
+f"
+
+WVSTART "indexfile"
+D=indexfile.tmp
+INDEXFILE=tmpindexfile.tmp
+rm -f $INDEXFILE
+rm -rf $D
+mkdir $D
+export BUP_DIR="$D/.bup"
+WVPASS bup init
+touch $D/a
+touch $D/b
+mkdir $D/c
+WVPASS bup index -ux $D
+bup save --strip -n bupdir $D
+WVPASSEQ "$(bup ls bupdir/latest/)" "a
+b
+c/"
+WVPASS bup index -f $INDEXFILE --exclude=$D/c -ux $D
+bup save --strip -n indexfile -f $INDEXFILE $D
+WVPASSEQ "$(bup ls indexfile/latest/)" "a
+b"
+
+WVSTART "import-rsnapshot"
+
+#set -x
+rm -rf "$BUP_DIR"
+WVPASS bup init
+
+D=bupdata.tmp
+rm -rf $D
+mkdir $D
+
+mkdir -p $D/hourly.0/buptest/a
+touch $D/hourly.0/buptest/a/b
+mkdir -p $D/hourly.0/buptest/c/d
+touch $D/hourly.0/buptest/c/d/e
+
+bup import-rsnapshot $D/
+
+WVPASSEQ "$(bup ls buptest/latest/)" "a/
+c/"

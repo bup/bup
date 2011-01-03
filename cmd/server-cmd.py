@@ -36,7 +36,7 @@ def send_index(conn, name):
     conn.ok()
 
 
-def receive_objects(conn, junk):
+def receive_objects_v2(conn, junk):
     global suspended_w
     git.check_repo_or_die()
     suggested = {}
@@ -67,15 +67,16 @@ def receive_objects(conn, junk):
             conn.ok()
             return
             
+        shar = conn.read(20)
+        crcr = struct.unpack('!I', conn.read(4))[0]
+        n -= 20 + 4
         buf = conn.read(n)  # object sizes in bup are reasonably small
         #debug2('read %d bytes\n' % n)
         if len(buf) < n:
             w.abort()
             raise Exception('object read: expected %d bytes, got %d\n'
                             % (n, len(buf)))
-        (type, content) = git._decode_packobj(buf)
-        sha = git.calc_hash(type, content)
-        oldpack = w.exists(sha)
+        oldpack = w.exists(shar)
         # FIXME: we only suggest a single index per cycle, because the client
         # is currently too dumb to download more than one per cycle anyway.
         # Actually we should fix the client, but this is a minor optimization
@@ -88,7 +89,7 @@ def receive_objects(conn, junk):
             # fix that deficiency of midx files eventually, although it'll
             # make the files bigger.  This method is certainly not very
             # efficient.
-            oldpack = w.objcache.packname_containing(sha)
+            oldpack = w.objcache.packname_containing(shar)
             debug2('new suggestion: %r\n' % oldpack)
             assert(oldpack)
             assert(oldpack != True)
@@ -102,8 +103,16 @@ def receive_objects(conn, junk):
                 conn.write('index %s\n' % name)
                 suggested[name] = 1
         else:
-            w._raw_write([buf])
+            nw, crc = w._raw_write([buf], sha=shar)
+            _check(w, crcr, crc, 'object read: expected crc %d, got %d\n')
+            _check(w, n, nw, 'object read: expected %d bytes, got %d\n')
     # NOTREACHED
+    
+
+def _check(w, expected, actual, msg):
+    if expected != actual:
+        w.abort()
+        raise Exception(msg % (expected, actual))
 
 
 def read_ref(conn, refname):
@@ -156,7 +165,7 @@ commands = {
     'set-dir': set_dir,
     'list-indexes': list_indexes,
     'send-index': send_index,
-    'receive-objects': receive_objects,
+    'receive-objects-v2': receive_objects_v2,
     'read-ref': read_ref,
     'update-ref': update_ref,
     'cat': cat,

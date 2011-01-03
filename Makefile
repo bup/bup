@@ -103,7 +103,9 @@ bup: main.py
 	rm -f $@
 	ln -s $< $@
 
-cmds: $(patsubst cmd/%-cmd.py,cmd/bup-%,$(wildcard cmd/*-cmd.py))
+cmds: \
+    $(patsubst cmd/%-cmd.py,cmd/bup-%,$(wildcard cmd/*-cmd.py)) \
+    $(patsubst cmd/%-cmd.sh,cmd/bup-%,$(wildcard cmd/*-cmd.sh))
 
 cmd/bup-%: cmd/%-cmd.py
 	rm -f $@
@@ -116,6 +118,10 @@ cmd/bup-%: cmd/%-cmd.py
 bup-%: cmd-%.sh
 	rm -f $@
 	ln -s $< $@
+
+cmd/bup-%: cmd/%-cmd.sh
+	rm -f $@
+	ln -s $*-cmd.sh $@
 
 %.o: %.c
 	gcc -c -o $@ $< $(CPPFLAGS) $(CFLAGS)

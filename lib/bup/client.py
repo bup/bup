@@ -1,4 +1,4 @@
-import re, struct, errno, time
+import re, struct, errno, time, zlib
 from bup import git, ssh
 from bup.helpers import *
 
@@ -169,20 +169,20 @@ class Client:
         debug1('client: received index suggestion: %s\n' % indexname)
         ob = self._busy
         if ob:
-            assert(ob == 'receive-objects')
+            assert(ob == 'receive-objects-v2')
             self.conn.write('\xff\xff\xff\xff')  # suspend receive-objects
             self._busy = None
             self.conn.drain_and_check_ok()
         self.sync_index(indexname)
         if ob:
             self._busy = ob
-            self.conn.write('receive-objects\n')
+            self.conn.write('receive-objects-v2\n')
 
     def new_packwriter(self):
         self.check_busy()
         def _set_busy():
-            self._busy = 'receive-objects'
-            self.conn.write('receive-objects\n')
+            self._busy = 'receive-objects-v2'
+            self.conn.write('receive-objects-v2\n')
         return PackWriter_Remote(self.conn,
                                  objcache_maker = self._make_objcache,
                                  suggest_pack = self._suggest_pack,
@@ -271,18 +271,23 @@ class PackWriter_Remote(git.PackWriter):
     def abort(self):
         raise GitError("don't know how to abort remote pack writing")
 
-    def _raw_write(self, datalist):
+    def _raw_write(self, datalist, sha):
         assert(self.file)
         if not self._packopen:
             self._open()
         if self.ensure_busy:
             self.ensure_busy()
         data = ''.join(datalist)
-        assert(len(data))
-        outbuf = struct.pack('!I', len(data)) + data
+        assert(data)
+        assert(sha)
+        crc = zlib.crc32(data) & 0xffffffff
+        outbuf = ''.join((struct.pack('!I', len(data) + 20 + 4),
+                          sha,
+                          struct.pack('!I', crc),
+                          data))
         (self._bwcount, self._bwtime) = \
             _raw_write_bwlimit(self.file, outbuf, self._bwcount, self._bwtime)
-        self.outbytes += len(data)
+        self.outbytes += len(data) - 20 - 4 # Don't count sha1+crc
         self.count += 1
 
         if self.file.has_input():
@@ -292,3 +297,5 @@ class PackWriter_Remote(git.PackWriter):
             if self.suggest_pack:
                 self.suggest_pack(idxname)
                 self.objcache.refresh()
+
+        return sha, crc

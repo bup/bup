@@ -2,8 +2,7 @@
 bup repositories are in Git format. This library allows us to
 interact with the Git data structures.
 """
-import os, zlib, time, subprocess, struct, stat, re, tempfile
-import heapq
+import os, zlib, time, subprocess, struct, stat, re, tempfile, heapq
 from bup.helpers import *
 from bup import _helpers
 
@@ -140,7 +139,7 @@ def _decode_packobj(buf):
 class PackIdx:
     def __init__(self):
         assert(0)
-    
+
     def find_offset(self, hash):
         """Get the offset of an object inside the index file."""
         idx = self._idx_from_hash(hash)
@@ -222,7 +221,7 @@ class PackIdxV2(PackIdx):
         ofs = struct.unpack('!I', str(buffer(self.ofstable, idx*4, 4)))[0]
         if ofs & 0x80000000:
             idx64 = ofs & 0x7fffffff
-            ofs = struct.unpack('!I',
+            ofs = struct.unpack('!Q',
                                 str(buffer(self.ofs64table, idx64*8, 8)))[0]
         return ofs
 
@@ -528,6 +527,7 @@ class PackWriter:
         self.outbytes = 0
         self.filename = None
         self.file = None
+        self.idx = None
         self.objcache_maker = objcache_maker
         self.objcache = None
 
@@ -549,8 +549,11 @@ class PackWriter:
             assert(name.endswith('.pack'))
             self.filename = name[:-5]
             self.file.write('PACK\0\0\0\2\0\0\0\0')
+            self.idx = list(list() for i in xrange(256))
 
-    def _raw_write(self, datalist):
+    # the 'sha' parameter is used in client.py's _raw_write(), but not needed
+    # in this basic version.
+    def _raw_write(self, datalist, sha):
         self._open()
         f = self.file
         # in case we get interrupted (eg. KeyboardInterrupt), it's best if
@@ -560,14 +563,25 @@ class PackWriter:
         # but that's okay because we'll flush it in _end().
         oneblob = ''.join(datalist)
         f.write(oneblob)
-        self.outbytes += len(oneblob)
+        nw = len(oneblob)
+        crc = zlib.crc32(oneblob) & 0xffffffff
+        self._update_idx(sha, crc, nw)
+        self.outbytes += nw
         self.count += 1
+        return nw, crc
 
-    def _write(self, bin, type, content):
+    def _update_idx(self, sha, crc, size):
+        assert(sha)
+        if self.idx:
+            self.idx[ord(sha[0])].append((sha, crc, self.file.tell() - size))
+
+    def _write(self, sha, type, content):
         if verbose:
             log('>')
-        self._raw_write(_encode_packobj(type, content))
-        return bin
+        if not sha:
+            sha = calc_hash(type, content)
+        size, crc = self._raw_write(_encode_packobj(type, content), sha=sha)
+        return sha
 
     def breakpoint(self):
         """Clear byte and object counts and return the last processed id."""
@@ -587,11 +601,11 @@ class PackWriter:
 
     def maybe_write(self, type, content):
         """Write an object to the pack file if not present and return its id."""
-        bin = calc_hash(type, content)
-        if not self.exists(bin):
-            self._write(bin, type, content)
-            self.objcache.add(bin)
-        return bin
+        sha = calc_hash(type, content)
+        if not self.exists(sha):
+            self._write(sha, type, content)
+            self.objcache.add(sha)
+        return sha
 
     def new_blob(self, blob):
         """Create a blob object in the pack with the supplied content."""
@@ -632,6 +646,7 @@ class PackWriter:
         """Remove the pack file from disk."""
         f = self.file
         if f:
+            self.idx = None
             self.file = None
             f.close()
             os.unlink(self.filename + '.pack')
@@ -641,6 +656,8 @@ class PackWriter:
         if not f: return None
         self.file = None
         self.objcache = None
+        idx = self.idx
+        self.idx = None
 
         # update object count
         f.seek(8)
@@ -651,24 +668,17 @@ class PackWriter:
         # calculate the pack sha1sum
         f.seek(0)
         sum = Sha1()
-        while 1:
-            b = f.read(65536)
+        for b in chunkyreader(f):
             sum.update(b)
-            if not b: break
-        f.write(sum.digest())
-
+        packbin = sum.digest()
+        f.write(packbin)
         f.close()
 
-        p = subprocess.Popen(['git', 'index-pack', '-v',
-                              '--index-version=2',
-                              self.filename + '.pack'],
-                             preexec_fn = _gitenv,
-                             stdout = subprocess.PIPE)
-        out = p.stdout.read().strip()
-        _git_wait('git index-pack', p)
-        if not out:
-            raise GitError('git index-pack produced no output')
-        nameprefix = repo('objects/pack/%s' % out)
+        idx_f = open(self.filename + '.idx', 'wb')
+        obj_list_sha = self._write_pack_idx_v2(idx_f, idx, packbin)
+        idx_f.close()
+
+        nameprefix = repo('objects/pack/pack-%s' % obj_list_sha)
         if os.path.exists(self.filename + '.map'):
             os.unlink(self.filename + '.map')
         os.rename(self.filename + '.pack', nameprefix + '.pack')
@@ -680,6 +690,44 @@ class PackWriter:
     def close(self):
         """Close the pack file and move it to its definitive path."""
         return self._end()
+
+    def _write_pack_idx_v2(self, file, idx, packbin):
+        sum = Sha1()
+
+        def write(data):
+            file.write(data)
+            sum.update(data)
+
+        write('\377tOc\0\0\0\2')
+
+        n = 0
+        for part in idx:
+            n += len(part)
+            write(struct.pack('!i', n))
+            part.sort(key=lambda x: x[0])
+
+        obj_list_sum = Sha1()
+        for part in idx:
+            for entry in part:
+                write(entry[0])
+                obj_list_sum.update(entry[0])
+        for part in idx:
+            for entry in part:
+                write(struct.pack('!I', entry[1]))
+        ofs64_list = []
+        for part in idx:
+            for entry in part:
+                if entry[2] & 0x80000000:
+                    write(struct.pack('!I', 0x80000000 | len(ofs64_list)))
+                    ofs64_list.append(struct.pack('!Q', entry[2]))
+                else:
+                    write(struct.pack('!i', entry[2]))
+        for ofs64 in ofs64_list:
+            write(ofs64)
+
+        write(packbin)
+        file.write(sum.digest())
+        return obj_list_sum.hexdigest()
 
 
 def _git_date(date):
@@ -1031,3 +1079,16 @@ class CatPipe:
                 yield d
         except StopIteration:
             log('booger!\n')
+
+def tags():
+    """Return a dictionary of all tags in the form {hash: [tag_names, ...]}."""
+    tags = {}
+    for (n,c) in list_refs():
+        if n.startswith('refs/tags/'):
+            name = n[10:]
+            if not c in tags:
+                tags[c] = []
+
+            tags[c].append(name)  # more than one tag can point at 'c'
+
+    return tags

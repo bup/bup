@@ -78,6 +78,8 @@ if is_reverse and opt.remote:
     o.fatal("don't use -r in reverse mode; it's automatic")
 start_time = time.time()
 
+if opt.name and opt.name.startswith('.'):
+    o.fatal("'%s' is not a valid branch name." % opt.name)
 refname = opt.name and 'refs/heads/%s' % opt.name or None
 if opt.noop or opt.copy:
     cli = pack_writer = oldref = None

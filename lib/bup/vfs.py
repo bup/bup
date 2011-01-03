@@ -477,14 +477,7 @@ class BranchList(Node):
     def _mksubs(self):
         self._subs = {}
 
-        tags = {}
-        for (n,c) in git.list_refs():
-            if n.startswith('refs/tags/'):
-                name = n[10:]
-                if not c in tags:
-                    tags[c] = []
-
-                tags[c].append(name)
+        tags = git.tags()
 
         revs = list(git.rev_list(self.hash.encode('hex')))
         for (date, commit) in revs:
