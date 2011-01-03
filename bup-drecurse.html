@@ -2,15 +2,15 @@
 <html xmlns="http://www.w3.org/1999/xhtml"
 ><head
   ><title
-    >bup-drecurse(1) Bup 0.19-34-g3694c19</title
+    >bup-drecurse(1) Bup 0.20-32-g6eedafc</title
     ><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"
      /><meta name="generator" content="pandoc"
      /><meta name="author" content="Avery Pennarun &lt;apenwarr@gmail.com&gt;"
-     /><meta name="date" content="2010-11-03"
+     /><meta name="date" content="2011-01-02"
      /></head
   ><body
   ><h1 class="title"
-    >bup-drecurse(1) Bup 0.19-34-g3694c19</h1
+    >bup-drecurse(1) Bup 0.20-32-g6eedafc</h1
     ><h1 id="name"
     >NAME</h1
     ><p
@@ -18,7 +18,11 @@
     ><h1 id="synopsis"
     >SYNOPSIS</h1
     ><p
-    >bup drecurse [-x] [-q] [--profile] &lt;path&gt;</p
+    >bup drecurse [-x] [-q] [--exclude <em
+      >path</em
+      >] [--exclude-from <em
+      >filename</em
+      >] [--profile] &lt;path&gt;</p
     ><h1 id="description"
     >DESCRIPTION</h1
     ><p
@@ -51,6 +55,22 @@
       ><dd
       ><p
 	>don't print filenames as they are encountered. Useful when testing performance of the traversal algorithms.</p
+	></dd
+      ><dt
+      >--exclude=<em
+	>path</em
+	></dt
+      ><dd
+      ><p
+	>a path to exclude from the backup (can be used more than once)</p
+	></dd
+      ><dt
+      >--exclude-from=<em
+	>filename</em
+	></dt
+      ><dd
+      ><p
+	>a file that contains exclude paths (can be used more than once)</p
 	></dd
       ><dt
       >--profile</dt
