@@ -1,0 +1,56 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"
+><head
+  ><title
+    >bup-import-rsnapshot(1) Bup 0.20-39-g2c955a0</title
+    ><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"
+     /><meta name="generator" content="pandoc"
+     /><meta name="author" content="Zoran Zaric &lt;zz@zoranzaric.de&gt;"
+     /><meta name="date" content="2011-01-02"
+     /></head
+  ><body
+  ><h1 class="title"
+    >bup-import-rsnapshot(1) Bup 0.20-39-g2c955a0</h1
+    ><h1 id="name"
+    >NAME</h1
+    ><p
+    >bup-import-rsnapshot - import a rsnapshot archive</p
+    ><h1 id="synopsis"
+    >SYNOPSIS</h1
+    >bup import-rsnapshot [-n]<path to snapshot_root> [<backuptarget><p
+    >]</p
+    ><h1 id="synopsis-1"
+    >SYNOPSIS</h1
+    ><p
+    ><code
+      >bup import-rsnapshot</code
+      > imports a rsnapshot archive. The timestamps for the backups are preserved and the path to the rsnapshot archive is stripped from the paths.</p
+    ><p
+    ><code
+      >bup import-rsnapshot</code
+      > either imports the whole archive or only imports all backups for a given backuptarget.</p
+    ><h1 id="options"
+    >OPTIONS</h1
+    ><dl
+    ><dt
+      >-n,--dry-rung</dt
+      ><dd
+      >don't do anything just print out what would be done</dd
+      ></dl
+    ><h1 id="example"
+    >EXAMPLE</h1
+    ><pre
+    ><code
+      >$ bup import-rsnapshot /.snapshots
+</code
+      ></pre
+    ><h1 id="bup"
+    >BUP</h1
+    ><p
+    >Part of the <code
+      >bup</code
+      >(1) suite.</p
+    ></body
+  ></html
+>
+

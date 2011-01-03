@@ -1,4 +1,4 @@
-.TH bup-split 1 "2010-11-08" "Bup 0\.19-21-g864a45a"
+.TH bup-split 1 "2011-01-02" "Bup 0\.20-32-g6eedafc"
 .SH NAME
 .PP
 bup-split - save individual files to bup backup sets
@@ -15,7 +15,7 @@ bup split [-r \f[I]host\f[]:\f[I]path\f[]] <-b|-t|-c|-n
 content into chunks of around 8k using a rolling checksum
 algorithm, and saves the chunks into a bup repository\. Chunks
 which have previously been stored are not stored again (ie\. they
-are \"deduplicated\")\.
+are \[aq]deduplicated\[aq])\.
 .PP
 Because of the way the rolling checksum works, chunks tend to be
 very stable across changes to a given file, including adding,

@@ -1,0 +1,35 @@
+.TH bup-import-rsnapshot 1 "2011-01-02" "Bup 0\.20-39-g2c955a0"
+.SH NAME
+.PP
+bup-import-rsnapshot - import a rsnapshot archive
+.SH SYNOPSIS
+bup import-rsnapshot [-n]
+<path to snapshot_root> 
+[
+<backuptarget>
+.PP
+]
+.SH SYNOPSIS
+.PP
+\f[B]bup\ import-rsnapshot\f[] imports a rsnapshot archive\. The
+timestamps for the backups are preserved and the path to the
+rsnapshot archive is stripped from the paths\.
+.PP
+\f[B]bup\ import-rsnapshot\f[] either imports the whole archive or
+only imports all backups for a given backuptarget\.
+.SH OPTIONS
+.TP
+.B -n,--dry-rung
+don\[aq]t do anything just print out what would be done
+.RS
+.RE
+.SH EXAMPLE
+.PP
+\f[CR]
+      $\ bup\ import-rsnapshot\ /\.snapshots
+\f[]
+.SH BUP
+.PP
+Part of the \f[B]bup\f[](1) suite\.
+.SH AUTHOR
+Zoran Zaric <zz@zoranzaric.de>

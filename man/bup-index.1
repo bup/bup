@@ -1,11 +1,12 @@
-.TH bup-index 1 "2010-11-03" "Bup 0\.19-34-g3694c19"
+.TH bup-index 1 "2011-01-02" "Bup 0\.20-32-g6eedafc"
 .SH NAME
 .PP
 bup-index - print and/or update the bup filesystem index
 .SH SYNOPSIS
 .PP
 bup index <-p|-m|-u> [-s] [-H] [-l] [-x] [--fake-valid] [--check]
-[-f \f[I]indexfile\f[]] [-v] <filenames\.\.\.>
+[-f \f[I]indexfile\f[]] [--exclude \f[I]path\f[]] [--exclude-from
+\f[I]filename\f[]] [-v] <filenames\.\.\.>
 .SH DESCRIPTION
 .PP
 \f[B]bup\ index\f[] prints and/or updates the bup filesystem index,
@@ -100,6 +101,16 @@ Mostly useful for automated tests\.
 .B -f, --indexfile=\f[I]indexfile\f[]
 use a different index filename instead of
 \f[B]~/\.bup/bupindex\f[]\.
+.RS
+.RE
+.TP
+.B --exclude=\f[I]path\f[]
+a path to exclude from the backup (can be used more than once)
+.RS
+.RE
+.TP
+.B --exclude-from=\f[I]filename\f[]
+a file that contains exclude paths (can be used more than once)
 .RS
 .RE
 .TP

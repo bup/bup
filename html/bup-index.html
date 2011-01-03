@@ -2,11 +2,11 @@
 <html xmlns="http://www.w3.org/1999/xhtml"
 ><head
   ><title
-    >bup-index(1) Bup 0.19-34-g3694c19</title
+    >bup-index(1) Bup 0.20-32-g6eedafc</title
     ><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"
      /><meta name="generator" content="pandoc"
      /><meta name="author" content="Avery Pennarun &lt;apenwarr@gmail.com&gt;"
-     /><meta name="date" content="2010-11-03"
+     /><meta name="date" content="2011-01-02"
      /><style type="text/css"
     >
 ol.decimal { list-style-type: decimal; }
@@ -14,7 +14,7 @@ ol.decimal { list-style-type: decimal; }
     ></head
   ><body
   ><h1 class="title"
-    >bup-index(1) Bup 0.19-34-g3694c19</h1
+    >bup-index(1) Bup 0.20-32-g6eedafc</h1
     ><h1 id="name"
     >NAME</h1
     ><p
@@ -24,6 +24,10 @@ ol.decimal { list-style-type: decimal; }
     ><p
     >bup index &lt;-p|-m|-u&gt; [-s] [-H] [-l] [-x] [--fake-valid] [--check] [-f <em
       >indexfile</em
+      >] [--exclude <em
+      >path</em
+      >] [--exclude-from <em
+      >filename</em
       >] [-v] &lt;filenames...&gt;</p
     ><h1 id="description"
     >DESCRIPTION</h1
@@ -139,6 +143,22 @@ ol.decimal { list-style-type: decimal; }
 	>use a different index filename instead of <code
 	  >~/.bup/bupindex</code
 	  >.</p
+	></dd
+      ><dt
+      >--exclude=<em
+	>path</em
+	></dt
+      ><dd
+      ><p
+	>a path to exclude from the backup (can be used more than once)</p
+	></dd
+      ><dt
+      >--exclude-from=<em
+	>filename</em
+	></dt
+      ><dd
+      ><p
+	>a file that contains exclude paths (can be used more than once)</p
 	></dd
       ><dt
       >-v, --verbose</dt
