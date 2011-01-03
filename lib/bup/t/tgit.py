@@ -1,4 +1,4 @@
-import time
+import struct, os, tempfile, time
 from bup import git
 from bup.helpers import *
 from wvtest import *
@@ -88,3 +88,29 @@ def testpacks():
     WVPASS(r.exists(hashes[5]))
     WVPASS(r.exists(hashes[6]))
     WVFAIL(r.exists('\0'*20))
+
+@wvtest
+def test_long_index():
+    w = git.PackWriter()
+    obj_bin = struct.pack('!IIIII',
+            0x00112233, 0x44556677, 0x88990011, 0x22334455, 0x66778899)
+    obj2_bin = struct.pack('!IIIII',
+            0x11223344, 0x55667788, 0x99001122, 0x33445566, 0x77889900)
+    obj3_bin = struct.pack('!IIIII',
+            0x22334455, 0x66778899, 0x00112233, 0x44556677, 0x88990011)
+    pack_bin = struct.pack('!IIIII',
+            0x99887766, 0x55443322, 0x11009988, 0x77665544, 0x33221100)
+    idx = list(list() for i in xrange(256))
+    idx[0].append((obj_bin, 1, 0xfffffffff))
+    idx[0x11].append((obj2_bin, 2, 0xffffffffff))
+    idx[0x22].append((obj3_bin, 3, 0xff))
+    (fd,name) = tempfile.mkstemp(suffix='.idx', dir=git.repo('objects'))
+    f = os.fdopen(fd, 'w+b')
+    r = w._write_pack_idx_v2(f, idx, pack_bin)
+    f.seek(0)
+    i = git.PackIdxV2(name, f)
+    WVPASS(i.find_offset(obj_bin)==0xfffffffff)
+    WVPASS(i.find_offset(obj2_bin)==0xffffffffff)
+    WVPASS(i.find_offset(obj3_bin)==0xff)
+    f.close()
+    os.remove(name)

@@ -1,4 +1,4 @@
-import re, struct, errno, time
+import re, struct, errno, time, zlib
 from bup import git, ssh
 from bup.helpers import *
 
@@ -271,18 +271,23 @@ class PackWriter_Remote(git.PackWriter):
     def abort(self):
         raise GitError("don't know how to abort remote pack writing")
 
-    def _raw_write(self, datalist, sha=''):
+    def _raw_write(self, datalist, sha):
         assert(self.file)
         if not self._packopen:
             self._open()
         if self.ensure_busy:
             self.ensure_busy()
         data = ''.join(datalist)
-        assert(len(data))
-        outbuf = ''.join((struct.pack('!I', len(data)+len(sha)), sha, data))
+        assert(data)
+        assert(sha)
+        crc = zlib.crc32(data) & 0xffffffff
+        outbuf = ''.join((struct.pack('!I', len(data) + 20 + 4),
+                          sha,
+                          struct.pack('!I', crc),
+                          data))
         (self._bwcount, self._bwtime) = \
             _raw_write_bwlimit(self.file, outbuf, self._bwcount, self._bwtime)
-        self.outbytes += len(data)
+        self.outbytes += len(data) - 20 - 4 # Don't count sha1+crc
         self.count += 1
 
         if self.file.has_input():
@@ -293,10 +298,4 @@ class PackWriter_Remote(git.PackWriter):
                 self.suggest_pack(idxname)
                 self.objcache.refresh()
 
-    def _write(self, bin, type, content):
-        if git.verbose:
-            log('>')
-        sha = git.calc_hash(type, content)
-        enc = git._encode_packobj(type, content)
-        self._raw_write(enc, sha=sha)
-        return bin
+        return sha, crc
