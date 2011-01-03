@@ -1,10 +1,11 @@
-.TH bup-drecurse 1 "2010-11-03" "Bup 0\.19-34-g3694c19"
+.TH bup-drecurse 1 "2011-01-02" "Bup 0\.20-32-g6eedafc"
 .SH NAME
 .PP
 bup-drecurse - recursively list files in your filesystem
 .SH SYNOPSIS
 .PP
-bup drecurse [-x] [-q] [--profile] <path>
+bup drecurse [-x] [-q] [--exclude \f[I]path\f[]] [--exclude-from
+\f[I]filename\f[]] [--profile] <path>
 .SH DESCRIPTION
 .PP
 \f[B]bup\ drecurse\f[] traverses files in the filesystem in a way
@@ -30,6 +31,16 @@ don\[aq]t cross filesystem boundaries\.
 .B -q, --quiet
 don\[aq]t print filenames as they are encountered\. Useful when
 testing performance of the traversal algorithms\.
+.RS
+.RE
+.TP
+.B --exclude=\f[I]path\f[]
+a path to exclude from the backup (can be used more than once)
+.RS
+.RE
+.TP
+.B --exclude-from=\f[I]filename\f[]
+a file that contains exclude paths (can be used more than once)
 .RS
 .RE
 .TP

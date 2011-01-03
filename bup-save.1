@@ -1,11 +1,12 @@
-.TH bup-save 1 "2010-11-08" "Bup 0\.19-21-g864a45a"
+.TH bup-save 1 "2011-01-02" "Bup 0\.20-39-g2c955a0"
 .SH NAME
 .PP
 bup-save - create a new bup backup set
 .SH SYNOPSIS
 .PP
 bup save [-r \f[I]host\f[]:\f[I]path\f[]] <-t|-c|-n \f[I]name\f[]>
-[-v] [-q] [--smaller=\f[I]maxsize\f[]] <paths\.\.\.>
+[-f \f[I]indexfile\f[]] [-v] [-q] [--smaller=\f[I]maxsize\f[]]
+<paths\.\.\.>
 .SH DESCRIPTION
 .PP
 \f[B]bup\ save\f[] saves the contents of the given files or paths
@@ -47,6 +48,12 @@ time\.)
 .RS
 .RE
 .TP
+.B -f, --indexfile=\f[I]indexfile\f[]
+use a different index filename instead of
+\f[B]~/\.bup/bupindex\f[]\.
+.RS
+.RE
+.TP
 .B -v, --verbose
 increase verbosity (can be used more than once)\. With one -v,
 prints every directory name as it gets backed up\. With two -v,
@@ -77,6 +84,29 @@ your network bandwidth\. Use a suffix like k, M, or G to specify
 multiples of 1024, 1024\f[I]1024, 1024\f[]1024*1024 respectively\.
 .RS
 .RE
+.TP
+.B --strip
+strips the path that is given from all files and directories\.
+.RS
+.RE
+.PP
+\f[CR]
+      A\ directory\ */root/chroot/etc*\ saved\ with
+      \"bup\ save\ -n\ chroot\ --strip\ /root/chroot\"\ would\ be\ saved
+      as\ */etc*\.
+\f[]
+.TP
+.B --strip-prefix=\f[I]path-prefix\f[]
+strips the given path-prefix \f[I]path-prefix\f[] from all files
+and directories\.
+.RS
+.RE
+.PP
+\f[CR]
+      A\ directory\ */root/chroots/webserver*\ saved\ with
+      \"bup\ save\ -n\ webserver\ --strip-path=/root/chroots\"\ would
+      be\ saved\ as\ */webserver/etc*
+\f[]
 .SH EXAMPLE
 .PP
 \f[CR]
