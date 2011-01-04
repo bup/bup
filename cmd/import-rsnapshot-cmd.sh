@@ -30,31 +30,28 @@ if [ ! -e "$SNAPSHOT_ROOT/." ]; then
 fi
 
 
-ABSPATH=$(readlink -f "$SNAPSHOT_ROOT")
+cd "$SNAPSHOT_ROOT" || exit 2
 
-for SNAPSHOT in "$ABSPATH/"*; do
-    if [ -e "$SNAPSHOT/." ]; then
-        for BRANCH_PATH in "$SNAPSHOT/"*; do
-            if [ -e "$BRANCH_PATH/." ]; then
-                # Get the snapshot's ctime
-                DATE=$(stat -c %Z "$BRANCH_PATH")
-                BRANCH=$(basename "$BRANCH_PATH")
-                TMPIDX=/tmp/$BRANCH
+for SNAPSHOT in *; do
+    [ -e "$SNAPSHOT/." ] || continue
+    echo "snapshot='$SNAPSHOT'" >&2
+    for BRANCH_PATH in "$SNAPSHOT/"*; do
+        BRANCH=$(basename "$BRANCH_PATH")
+        [ -e "$BRANCH_PATH/." ] || continue
+        [ -z "$TARGET" -o "$TARGET" = "$BRANCH" ] || continue
+        
+        echo "snapshot='$SNAPSHOT' branch='$BRANCH'" >&2
 
-                if [ -z "$TARGET" -o "$TARGET" = "$BRANCH" ]; then
-                    bup index -ux \
-                        -f "$TMPIDX" \
-                        "$BRANCH_PATH/"
-                    bup save \
-                        --strip \
-                        --date=$DATE \
-                        -f "$TMPIDX" \
-                        -n $BRANCH \
-                        "$BRANCH_PATH/"
+        # Get the snapshot's ctime
+        DATE=$(perl -e '@a=stat($ARGV[0]) or die "$ARGV[0]: $!";
+                        print $a[10];' "$BRANCH_PATH")
+	[ -n "$DATE" ] || exit 3
 
-                    rm -f "$TMPIDX"
-                fi
-            fi
-        done
-    fi
+        TMPIDX=bupindex.$BRANCH.tmp
+        bup index -ux -f "$TMPIDX" "$BRANCH_PATH/"
+        bup save --strip --date="$DATE" \
+                -f "$TMPIDX" -n "$BRANCH" \
+                "$BRANCH_PATH/"
+        rm -f "$TMPIDX"
+    done
 done
