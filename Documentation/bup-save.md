@@ -98,14 +98,49 @@ for `bup-index`(1).
     would be saved as */chroots/a/etc*
 
 # EXAMPLE
-    
+
     $ bup index -ux /etc
     Indexing: 1981, done.
-    
+
     $ bup save -r myserver: -n my-pc-backup --bwlimit=50k /etc
     Reading index: 1981, done.
-    Saving: 100.00% (998/998k, 1981/1981 files), done.    
-    
+    Saving: 100.00% (998/998k, 1981/1981 files), done.
+
+
+
+    $ ls /home/joe/chroots/httpd
+    bin var
+
+    $ bup index -ux /home/joe/chroots/httpd
+    Indexing: 1337, done.
+
+    $ bup save --strip -n joes-httpd-chroot /home/joe/chroots/httpd
+    Reading index: 1337, done.
+    Saving: 100.00% (998/998k, 1337/1337 files), done.
+
+    $ bup ls joes-httpd-chroot/latest/
+    bin/
+    var/
+
+
+    $ bup save --strip-prefix=/home/joe/chroots -n joes-chroots \
+         /home/joe/chroots/httpd
+    Reading index: 1337, done.
+    Saving: 100.00% (998/998k, 1337/1337 files), done.
+
+    $ bup ls joes-chroots/latest/
+    httpd/
+
+
+    $ bup save --graft /home/joe/chroots/httpd=/http-chroot \
+         -n joe
+         /home/joe/chroots/httpd
+    Reading index: 1337, done.
+    Saving: 100.00% (998/998k, 1337/1337 files), done.
+
+    $ bup ls joe/latest/
+    http-chroot/
+
 
 # SEE ALSO
 
