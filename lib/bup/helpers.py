@@ -422,9 +422,9 @@ def strip_path(prefix, path):
         raise Exception('no path given')
 
     normalized_prefix = realpath(prefix)
-    print "normalized_prefix: " + normalized_prefix
+    debug2("normalized_prefix: %s\n" % normalized_prefix)
     normalized_path = realpath(path)
-    print "normalized_path: " + normalized_path
+    debug2("normalized_path: %s\n" % normalized_path)
     if normalized_path.startswith(normalized_prefix):
         return normalized_path[len(normalized_prefix):]
     else:

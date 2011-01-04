@@ -138,7 +138,6 @@ def vlog(s):
 
 
 indexfile = opt.indexfile or git.repo('bupindex')
-print indexfile
 r = index.Reader(indexfile)
 
 def already_saved(ent):
