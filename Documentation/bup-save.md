@@ -89,6 +89,13 @@ for `bup-index`(1).
     "bup save -n webserver --strip-path=/root/chroots" would
     be saved as */webserver/etc*
     
+--graft=*old_path*=*new_path*
+:   a graft point *old_path*=*new_path* (can be used more than
+    once).
+
+    A directory */root/chroot/a/etc* saved with
+    "bup save -n chroots --graft /root/chroot/a/etc=/chroots/a"
+    would be saved as */chroots/a/etc*
 
 # EXAMPLE
     

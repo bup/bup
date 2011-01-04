@@ -19,6 +19,7 @@ bwlimit=   maximum bytes/sec to transmit to server
 f,indexfile=  the name of the index file (normally BUP_DIR/bupindex)
 strip      strips the path to every filename given
 strip-path= path-prefix to be stripped when saving
+graft=     a graft point *old_path*=*new_path* (can be used morethan once)
 """
 o = options.Options('bup save', optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
@@ -41,6 +42,22 @@ else:
 
 if opt.strip and opt.strip_path:
     o.fatal("--strip is incompatible with --strip-path")
+
+graft_points = []
+if opt.graft:
+    if opt.strip:
+        o.fatal("--strip is incompatible with --graft")
+
+    if opt.strip_path:
+        o.fatal("--strip-path is incompatible with --graft")
+
+    for (option, parameter) in flags:
+        if option == "--graft":
+            splitted_parameter = parameter.split('=')
+            if len(splitted_parameter) != 2:
+                o.fatal("a graft point must be of the form old_path=new_path")
+            graft_points.append((realpath(splitted_parameter[0]),
+                                 realpath(splitted_parameter[1])))
 
 is_reverse = os.environ.get('BUP_SERVER_REVERSE')
 if is_reverse and opt.remote:
@@ -209,6 +226,9 @@ for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse_during):
         dirp = stripped_base_path.split('/')
     elif opt.strip_path:
         dirp = strip_path(opt.strip_path, dir).split('/')
+    elif graft_points:
+        grafted = graft_path(graft_points, dir)
+        dirp = grafted.split('/')
     else:
         dirp = dir.split('/')
     while parts > dirp:

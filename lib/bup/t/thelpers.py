@@ -28,3 +28,26 @@ def test_strip_base_path():
     path = "/var/backup/daily.0/localhost/etc/"
     base_paths = ["/var", "/var/backup", "/var/backup/daily.0/localhost"]
     WVPASSEQ(strip_base_path(path, base_paths), '/etc')
+
+@wvtest
+def test_graft_path():
+    middle_matching_old_path = "/user"
+    non_matching_old_path = "/usr"
+    matching_old_path = "/home"
+    matching_full_path = "/home/user"
+    new_path = "/opt"
+
+    all_graft_points = [(middle_matching_old_path, new_path),
+                        (non_matching_old_path, new_path),
+                        (matching_old_path, new_path)]
+
+    path = "/home/user/"
+
+    WVPASSEQ(graft_path([(middle_matching_old_path, new_path)], path),
+                        "/home/user")
+    WVPASSEQ(graft_path([(non_matching_old_path, new_path)], path),
+                        "/home/user")
+    WVPASSEQ(graft_path([(matching_old_path, new_path)], path), "/opt/user")
+    WVPASSEQ(graft_path(all_graft_points, path), "/opt/user")
+    WVPASSEQ(graft_path([(matching_full_path, new_path)], path),
+                        "/opt")
