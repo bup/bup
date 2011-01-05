@@ -73,3 +73,23 @@ def test_midx_refreshing():
     WVPASSEQ(len(pi.packs), 2)
     pi.refresh(skip_midx=False)
     WVPASSEQ(len(pi.packs), 1)
+
+@wvtest
+def test_remote_parsing():
+    tests = (
+        (':/bup', ('file', None, None, '/bup')),
+        ('file:///bup', ('file', None, None, '/bup')),
+        ('192.168.1.1:/bup', ('ssh', '192.168.1.1', None, '/bup')),
+        ('ssh://192.168.1.1:2222/bup', ('ssh', '192.168.1.1', '2222', '/bup')),
+        ('ssh://[ff:fe::1]:2222/bup', ('ssh', 'ff:fe::1', '2222', '/bup')),
+        ('bup://foo.com:1950', ('bup', 'foo.com', '1950', None)),
+        ('bup://foo.com:1950/bup', ('bup', 'foo.com', '1950', '/bup')),
+        ('bup://[ff:fe::1]/bup', ('bup', 'ff:fe::1', None, '/bup')),
+    )
+    for remote, values in tests:
+        WVPASSEQ(client.parse_remote(remote), values)
+    try:
+        client.parse_remote('http://asdf.com/bup')
+        WVFAIL()
+    except AssertionError:
+        WVPASS()
