@@ -178,8 +178,15 @@ class Metadata:
         self.atime = st.st_atime
         self.mtime = st.st_mtime
         self.ctime = st.st_ctime
-        self.owner = pwd.getpwuid(st.st_uid)[0]
-        self.group = grp.getgrgid(st.st_gid)[0]
+        self.owner = self.group = ''
+        try:
+            self.owner = pwd.getpwuid(st.st_uid)[0]
+        except KeyError, e:
+            add_error(e)
+        try:
+            self.group = grp.getgrgid(st.st_gid)[0]
+        except KeyError, e:
+            add_error(e)
 
     def _encode_common(self):
         atime = self.atime.to_timespec()
@@ -279,21 +286,29 @@ class Metadata:
             uid = self.uid
             gid = self.gid
             if not restore_numeric_ids:
-                if os.geteuid() == 0:
-                    try:
-                        uid = pwd.getpwnam(self.owner)[2]
-                    except KeyError:
-                        uid = -1
-                        log('bup: ignoring unknown owner %s for "%s"\n'
-                            % (self.owner, path))
+                if not self.owner:
+                    uid = -1
+                    add_error('bup: ignoring missing owner for "%s"\n' % path)
                 else:
-                    uid = -1 # Not root; assume we can't change owner.
-                try:
-                    gid = grp.getgrnam(self.group)[2]
-                except KeyError:
+                    if os.geteuid() != 0:
+                        uid = -1 # Not root; assume we can't change owner.
+                    else:
+                        try:
+                            uid = pwd.getpwnam(self.owner)[2]
+                        except KeyError:
+                            uid = -1
+                            fmt = 'bup: ignoring unknown owner %s for "%s"\n'
+                            add_error(fmt % (self.owner, path))
+                if not self.group:
                     gid = -1
-                    log('bup: ignoring unknown group %s for "%s"\n'
-                        % (self.group, path))
+                    add_error('bup: ignoring missing group for "%s"\n' % path)
+                else:
+                    try:
+                        gid = grp.getgrnam(self.group)[2]
+                    except KeyError:
+                        gid = -1
+                        add_error('bup: ignoring unknown group %s for "%s"\n'
+                                  % (self.group, path))
             os.lchown(path, uid, gid)
 
             if _have_lchmod:
