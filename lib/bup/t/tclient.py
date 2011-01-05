@@ -30,6 +30,28 @@ def test_server_split_with_indexes():
     
 
 @wvtest
+def test_dumb_client_server():
+    os.environ['BUP_MAIN_EXE'] = '../../../bup'
+    os.environ['BUP_DIR'] = bupdir = 'buptest_tclient.tmp'
+    subprocess.call(['rm', '-rf', bupdir])
+    git.init_repo(bupdir)
+    os.mknod(git.repo('bup-dumb-server'))
+
+    lw = git.PackWriter()
+    lw.new_blob(s1)
+    lw.close()
+
+    c = client.Client(bupdir, create=True)
+    rw = c.new_packwriter()
+    WVPASSEQ(len(os.listdir(c.cachedir)), 1)
+    rw.new_blob(s1)
+    WVPASSEQ(len(os.listdir(c.cachedir)), 1)
+    rw.new_blob(s2)
+    rw.close()
+    WVPASSEQ(len(os.listdir(c.cachedir)), 2)
+
+
+@wvtest
 def test_midx_refreshing():
     os.environ['BUP_MAIN_EXE'] = bupmain = '../../../bup'
     os.environ['BUP_DIR'] = bupdir = 'buptest_tmidx.tmp'

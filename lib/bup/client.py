@@ -66,7 +66,7 @@ class Client:
             else:
                 self.conn.write('set-dir %s\n' % dir)
             self.check_ok()
-        self.sync_indexes_del()
+        self.sync_indexes()
 
     def __del__(self):
         try:
@@ -115,27 +115,38 @@ class Client:
     def _not_busy(self):
         self._busy = None
 
-    def sync_indexes_del(self):
+    def sync_indexes(self):
         self.check_busy()
         conn = self.conn
+        mkdirp(self.cachedir)
+        # All cached idxs are extra until proven otherwise
+        extra = set()
+        for f in os.listdir(self.cachedir):
+            debug1('%s\n' % f)
+            if f.endswith('.idx'):
+                extra.add(f)
+        needed = set()
         conn.write('list-indexes\n')
-        packdir = git.repo('objects/pack')
-        all = {}
-        needed = {}
         for line in linereader(conn):
             if not line:
                 break
-            all[line] = 1
             assert(line.find('/') < 0)
-            if not os.path.exists(os.path.join(self.cachedir, line)):
-                needed[line] = 1
-        self.check_ok()
+            parts = line.split(' ')
+            idx = parts[0]
+            if len(parts) == 2 and parts[1] == 'load' and idx not in extra:
+                # If the server requests that we load an idx and we don't
+                # already have a copy of it, it is needed
+                needed.add(idx)
+            # Any idx that the server has heard of is proven not extra
+            extra.discard(idx)
 
-        mkdirp(self.cachedir)
-        for f in os.listdir(self.cachedir):
-            if f.endswith('.idx') and not f in all:
-                debug1('client: pruning old index: %r\n' % f)
-                os.unlink(os.path.join(self.cachedir, f))
+        self.check_ok()
+        debug1('client: removing extra indexes: %s\n' % extra)
+        for idx in extra:
+            os.unlink(os.path.join(self.cachedir, idx))
+        debug1('client: server requested load of: %s\n' % needed)
+        for idx in needed:
+            self.sync_index(idx)
 
     def sync_index(self, name):
         #debug1('requesting %r\n' % name)

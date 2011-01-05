@@ -1,28 +1,43 @@
 #!/usr/bin/env python
-import sys, struct
+import os, sys, struct
 from bup import options, git
 from bup.helpers import *
 
 suspended_w = None
+server_mode = 'smart'
+
+def _set_mode():
+    global server_mode
+    if os.path.exists(git.repo('bup-dumb-server')):
+        server_mode = 'dumb'
+    else:
+        server_mode = 'smart'
+    debug1('bup server: serving in %s mode\n' % server_mode)
 
 
 def init_dir(conn, arg):
     git.init_repo(arg)
     debug1('bup server: bupdir initialized: %r\n' % git.repodir)
+    _set_mode()
     conn.ok()
 
 
 def set_dir(conn, arg):
     git.check_repo_or_die(arg)
     debug1('bup server: bupdir is %r\n' % git.repodir)
+    _set_mode()
     conn.ok()
 
     
 def list_indexes(conn, junk):
+    global server_mode
     git.check_repo_or_die()
+    suffix = ''
+    if server_mode == 'dumb':
+        suffix = ' load'
     for f in os.listdir(git.repo('objects/pack')):
         if f.endswith('.idx'):
-            conn.write('%s\n' % f)
+            conn.write('%s%s\n' % (f, suffix))
     conn.ok()
 
 
@@ -76,7 +91,10 @@ def receive_objects_v2(conn, junk):
             w.abort()
             raise Exception('object read: expected %d bytes, got %d\n'
                             % (n, len(buf)))
-        oldpack = w.exists(shar)
+        if server_mode == 'smart':
+            oldpack = w.exists(shar)
+        else:
+            oldpack = None
         # FIXME: we only suggest a single index per cycle, because the client
         # is currently too dumb to download more than one per cycle anyway.
         # Actually we should fix the client, but this is a minor optimization
