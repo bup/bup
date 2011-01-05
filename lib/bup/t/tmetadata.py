@@ -4,7 +4,7 @@ import stat
 import subprocess
 import tempfile
 from bup import metadata
-from bup.helpers import detect_fakeroot
+from bup.helpers import detect_fakeroot, saved_errors
 from wvtest import *
 
 
@@ -85,11 +85,9 @@ def test_from_path_error():
         m = metadata.from_path(path, archive_path=path, save_symlinks=True)
         WVPASSEQ(m.path, path)
         subprocess.call(['chmod', '000', path])
-        WVEXCEPT(metadata.MetadataAcquireError,
-                 metadata.from_path,
-                 path,
-                 archive_path=path,
-                 save_symlinks=True)
+        metadata.from_path(path, archive_path=path, save_symlinks=True)
+        WVPASS(saved_errors
+               and saved_errors[0].startswith('bup: unable to read Linux attr'))
     finally:
         subprocess.call(['rm', '-rf', tmpdir])
 

@@ -150,11 +150,6 @@ class MetadataError(Exception):
     pass
 
 
-class MetadataAcquireError(MetadataError):
-    # Thrown when unable to extract any given bit of metadata from a path.
-    pass
-
-
 class MetadataApplyError(MetadataError):
     # Thrown when unable to apply any given bit of metadata to a path.
     pass
@@ -332,8 +327,11 @@ class Metadata:
     ## Symlink targets
 
     def _add_symlink_target(self, path, st):
-        if(stat.S_ISLNK(st.st_mode)):
-            self.symlink_target = os.readlink(path)
+        try:
+            if(stat.S_ISLNK(st.st_mode)):
+                self.symlink_target = os.readlink(path)
+        except OSError, e:
+            add_error(e)
 
     def _encode_symlink_target(self):
         return self.symlink_target
@@ -406,9 +404,15 @@ class Metadata:
 
     def _add_linux_attr(self, path, st):
         if stat.S_ISREG(st.st_mode) or stat.S_ISDIR(st.st_mode):
-            attr = get_linux_file_attr(path)
-            if(attr != 0):
-                self.linux_attr = get_linux_file_attr(path)
+            try:
+                attr = get_linux_file_attr(path)
+                if(attr != 0):
+                    self.linux_attr = get_linux_file_attr(path)
+            except EnvironmentError, e:
+                if e.errno == errno.EACCES:
+                    add_error('bup: unable to read Linux attr for "%s"' % path)
+                else:
+                    raise
 
     def _encode_linux_attr(self):
         if self.linux_attr:
@@ -537,15 +541,12 @@ def from_path(path, archive_path=None, save_symlinks=True):
     result = Metadata()
     result.path = archive_path
     st = lstat(path)
-    try: # Later we may want to push this down and make it finer grained.
-        result._add_common(path, st)
-        if(save_symlinks):
-            result._add_symlink_target(path, st)
-        result._add_posix1e_acl(path, st)
-        result._add_linux_attr(path, st)
-        result._add_linux_xattr(path, st)
-    except Exception, e:
-        raise MetadataAcquireError(e), None, sys.exc_info()[2]
+    result._add_common(path, st)
+    if(save_symlinks):
+        result._add_symlink_target(path, st)
+    result._add_posix1e_acl(path, st)
+    result._add_linux_attr(path, st)
+    result._add_linux_xattr(path, st)
     return result
 
 
@@ -567,12 +568,8 @@ def save_tree(output_file, paths,
             dirlist_dir = os.getcwd()
             os.chdir(start_dir)
             safe_path = _clean_up_path_for_archive(p)
-            try:
-                m = from_path(p, archive_path=safe_path,
-                              save_symlinks=save_symlinks)
-            except MetadataAcquireError, e:
-                add_error(e)
-
+            m = from_path(p, archive_path=safe_path,
+                          save_symlinks=save_symlinks)
             if verbose:
                 print >> sys.stderr, m.path
             m.write(output_file, include_path=write_paths)
