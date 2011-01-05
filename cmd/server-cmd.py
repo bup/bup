@@ -52,7 +52,7 @@ def send_index(conn, name):
 
 
 def receive_objects_v2(conn, junk):
-    global suspended_w
+    global suspended_w, server_mode
     git.check_repo_or_die()
     suggested = {}
     if suspended_w:
@@ -70,7 +70,7 @@ def receive_objects_v2(conn, junk):
         if not n:
             debug1('bup server: received %d object%s.\n' 
                 % (w.count, w.count!=1 and "s" or ''))
-            fullpath = w.close()
+            fullpath = w.close(run_midx=(server_mode=='smart'))
             if fullpath:
                 (dir, name) = os.path.split(fullpath)
                 conn.write('%s.idx\n' % name)
