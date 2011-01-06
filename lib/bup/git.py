@@ -998,6 +998,7 @@ class CatPipe:
                                   stdin=subprocess.PIPE,
                                   stdout=subprocess.PIPE,
                                   close_fds = True,
+                                  bufsize = 4096,
                                   preexec_fn = _gitenv)
 
     def _fast_get(self, id):
@@ -1014,6 +1015,7 @@ class CatPipe:
         assert(not id.startswith('-'))
         self.inprogress = id
         self.p.stdin.write('%s\n' % id)
+        self.p.stdin.flush()
         hdr = self.p.stdout.readline()
         if hdr.endswith(' missing\n'):
             self.inprogress = None
