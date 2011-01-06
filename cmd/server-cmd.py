@@ -4,15 +4,13 @@ from bup import options, git
 from bup.helpers import *
 
 suspended_w = None
-server_mode = 'smart'
+dumb_server_mode = False
 
 def _set_mode():
-    global server_mode
-    if os.path.exists(git.repo('bup-dumb-server')):
-        server_mode = 'dumb'
-    else:
-        server_mode = 'smart'
-    debug1('bup server: serving in %s mode\n' % server_mode)
+    global dumb_server_mode
+    dumb_server_mode = os.path.exists(git.repo('bup-dumb-server'))
+    debug1('bup server: serving in %s mode\n' 
+           % (dumb_server_mode and 'dumb' or 'smart'))
 
 
 def init_dir(conn, arg):
@@ -30,10 +28,9 @@ def set_dir(conn, arg):
 
     
 def list_indexes(conn, junk):
-    global server_mode
     git.check_repo_or_die()
     suffix = ''
-    if server_mode == 'dumb':
+    if dumb_server_mode:
         suffix = ' load'
     for f in os.listdir(git.repo('objects/pack')):
         if f.endswith('.idx'):
@@ -52,7 +49,7 @@ def send_index(conn, name):
 
 
 def receive_objects_v2(conn, junk):
-    global suspended_w, server_mode
+    global suspended_w
     git.check_repo_or_die()
     suggested = {}
     if suspended_w:
@@ -70,7 +67,7 @@ def receive_objects_v2(conn, junk):
         if not n:
             debug1('bup server: received %d object%s.\n' 
                 % (w.count, w.count!=1 and "s" or ''))
-            fullpath = w.close(run_midx=(server_mode=='smart'))
+            fullpath = w.close(run_midx=not dumb_server_mode)
             if fullpath:
                 (dir, name) = os.path.split(fullpath)
                 conn.write('%s.idx\n' % name)
@@ -91,10 +88,10 @@ def receive_objects_v2(conn, junk):
             w.abort()
             raise Exception('object read: expected %d bytes, got %d\n'
                             % (n, len(buf)))
-        if server_mode == 'smart':
-            oldpack = w.exists(shar)
-        else:
+        if dumb_server_mode:
             oldpack = None
+        else:
+            oldpack = w.exists(shar)
         # FIXME: we only suggest a single index per cycle, because the client
         # is currently too dumb to download more than one per cycle anyway.
         # Actually we should fix the client, but this is a minor optimization
