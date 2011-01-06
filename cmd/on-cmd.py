@@ -28,9 +28,14 @@ p = None
 ret = 99
 
 try:
-    hostname = extra[0]
+    hp = extra[0].split(':')
+    if len(hp) == 1:
+        (hostname, port) = (hp[0], None)
+    else:
+        (hostname, port) = hp
+
     argv = extra[1:]
-    p = ssh.connect(hostname, 'on--server')
+    p = ssh.connect(hostname, port, 'on--server')
 
     argvs = '\0'.join(['bup'] + argv)
     p.stdin.write(struct.pack('!I', len(argvs)) + argvs)

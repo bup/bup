@@ -30,43 +30,64 @@ def _raw_write_bwlimit(f, buf, bwcount, bwtime):
             bwcount = len(sub)  # might be less than 4096
             bwtime = next
         return (bwcount, bwtime)
-                       
+
+
+def parse_remote(remote):
+    protocol = r'([a-z]+)://'
+    host = r'(?P<sb>\[)?((?(sb)[0-9a-f:]+|[^:/]+))(?(sb)\])'
+    port = r'(?::(\d+))?'
+    path = r'(/.*)?'
+    url_match = re.match(
+            '%s(?:%s%s)?%s' % (protocol, host, port, path), remote, re.I)
+    if url_match:
+        assert(url_match.group(1) in ('ssh', 'bup', 'file'))
+        return url_match.group(1,3,4,5)
+    else:
+        rs = remote.split(':', 1)
+        if len(rs) == 1 or rs[0] in ('', '-'):
+            return 'file', None, None, rs[-1]
+        else:
+            return 'ssh', rs[0], None, rs[1]
+
 
 class Client:
     def __init__(self, remote, create=False):
-        self._busy = self.conn = self.p = self.pout = self.pin = None
+        self._busy = self.conn = None
+        self.sock = self.p = self.pout = self.pin = None
         is_reverse = os.environ.get('BUP_SERVER_REVERSE')
         if is_reverse:
             assert(not remote)
             remote = '%s:' % is_reverse
-        rs = remote.split(':', 1)
-        if len(rs) == 1:
-            (host, dir) = (None, remote)
-        else:
-            (host, dir) = rs
-        (self.host, self.dir) = (host, dir)
+        (self.protocol, self.host, self.port, self.dir) = parse_remote(remote)
         self.cachedir = git.repo('index-cache/%s'
                                  % re.sub(r'[^@\w]', '_', 
-                                          "%s:%s" % (host, dir)))
+                                          "%s:%s" % (self.host, self.dir)))
         if is_reverse:
             self.pout = os.fdopen(3, 'rb')
             self.pin = os.fdopen(4, 'wb')
         else:
-            try:
-                self.p = ssh.connect(host, 'server')
-                self.pout = self.p.stdout
-                self.pin = self.p.stdin
-            except OSError, e:
-                raise ClientError, 'connect: %s' % e, sys.exc_info()[2]
+            if self.protocol in ('ssh', 'file'):
+                try:
+                    # FIXME: ssh and file shouldn't use the same module
+                    self.p = ssh.connect(self.host, self.port, 'server')
+                    self.pout = self.p.stdout
+                    self.pin = self.p.stdin
+                except OSError, e:
+                    raise ClientError, 'connect: %s' % e, sys.exc_info()[2]
+            elif self.protocol == 'bup':
+                self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                self.sock.connect((self.host, self.port or 1982))
+                self.pout = self.sock.makefile('rb')
+                self.pin = self.sock.makefile('wb')
         self.conn = Conn(self.pout, self.pin)
-        if dir:
-            dir = re.sub(r'[\r\n]', ' ', dir)
+        if self.dir:
+            self.dir = re.sub(r'[\r\n]', ' ', self.dir)
             if create:
-                self.conn.write('init-dir %s\n' % dir)
+                self.conn.write('init-dir %s\n' % self.dir)
             else:
-                self.conn.write('set-dir %s\n' % dir)
+                self.conn.write('set-dir %s\n' % self.dir)
             self.check_ok()
-        self.sync_indexes_del()
+        self.sync_indexes()
 
     def __del__(self):
         try:
@@ -85,13 +106,15 @@ class Client:
             while self.pout.read(65536):
                 pass
             self.pout.close()
+        if self.sock:
+            self.sock.close()
         if self.p:
             self.p.wait()
             rv = self.p.wait()
             if rv:
                 raise ClientError('server tunnel returned exit code %d' % rv)
         self.conn = None
-        self.p = self.pin = self.pout = None
+        self.sock = self.p = self.pin = self.pout = None
 
     def check_ok(self):
         if self.p:
@@ -115,27 +138,38 @@ class Client:
     def _not_busy(self):
         self._busy = None
 
-    def sync_indexes_del(self):
+    def sync_indexes(self):
         self.check_busy()
         conn = self.conn
+        mkdirp(self.cachedir)
+        # All cached idxs are extra until proven otherwise
+        extra = set()
+        for f in os.listdir(self.cachedir):
+            debug1('%s\n' % f)
+            if f.endswith('.idx'):
+                extra.add(f)
+        needed = set()
         conn.write('list-indexes\n')
-        packdir = git.repo('objects/pack')
-        all = {}
-        needed = {}
         for line in linereader(conn):
             if not line:
                 break
-            all[line] = 1
             assert(line.find('/') < 0)
-            if not os.path.exists(os.path.join(self.cachedir, line)):
-                needed[line] = 1
-        self.check_ok()
+            parts = line.split(' ')
+            idx = parts[0]
+            if len(parts) == 2 and parts[1] == 'load' and idx not in extra:
+                # If the server requests that we load an idx and we don't
+                # already have a copy of it, it is needed
+                needed.add(idx)
+            # Any idx that the server has heard of is proven not extra
+            extra.discard(idx)
 
-        mkdirp(self.cachedir)
-        for f in os.listdir(self.cachedir):
-            if f.endswith('.idx') and not f in all:
-                debug1('client: pruning old index: %r\n' % f)
-                os.unlink(os.path.join(self.cachedir, f))
+        self.check_ok()
+        debug1('client: removing extra indexes: %s\n' % extra)
+        for idx in extra:
+            os.unlink(os.path.join(self.cachedir, idx))
+        debug1('client: server requested load of: %s\n' % needed)
+        for idx in needed:
+            self.sync_index(idx)
 
     def sync_index(self, name):
         #debug1('requesting %r\n' % name)
