@@ -170,6 +170,8 @@ class Client:
         debug1('client: server requested load of: %s\n' % needed)
         for idx in needed:
             self.sync_index(idx)
+        git.auto_midx(self.cachedir)
+
 
     def sync_index(self, name):
         #debug1('requesting %r\n' % name)
@@ -190,7 +192,6 @@ class Client:
         self.check_ok()
         f.close()
         os.rename(fn + '.tmp', fn)
-        git.auto_midx(self.cachedir)
 
     def _make_objcache(self):
         return git.PackIdxList(self.cachedir)
@@ -218,6 +219,7 @@ class Client:
             self._busy = None
         for idx in suggested:
             self.sync_index(idx)
+        git.auto_midx(self.cachedir)
         if ob:
             self._busy = ob
             self.conn.write('%s\n' % ob)
