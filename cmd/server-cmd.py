@@ -56,7 +56,10 @@ def receive_objects_v2(conn, junk):
         w = suspended_w
         suspended_w = None
     else:
-        w = git.PackWriter()
+        if dumb_server_mode:
+            w = git.PackWriter(objcache_maker=None)
+        else:
+            w = git.PackWriter()
     while 1:
         ns = conn.read(4)
         if not ns:
@@ -88,39 +91,37 @@ def receive_objects_v2(conn, junk):
             w.abort()
             raise Exception('object read: expected %d bytes, got %d\n'
                             % (n, len(buf)))
-        if dumb_server_mode:
-            oldpack = None
-        else:
+        if not dumb_server_mode:
             oldpack = w.exists(shar)
-        # FIXME: we only suggest a single index per cycle, because the client
-        # is currently too dumb to download more than one per cycle anyway.
-        # Actually we should fix the client, but this is a minor optimization
-        # on the server side.
-        if not suggested and \
-          oldpack and (oldpack == True or oldpack.endswith('.midx')):
-            # FIXME: we shouldn't really have to know about midx files
-            # at this layer.  But exists() on a midx doesn't return the
-            # packname (since it doesn't know)... probably we should just
-            # fix that deficiency of midx files eventually, although it'll
-            # make the files bigger.  This method is certainly not very
-            # efficient.
-            oldpack = w.objcache.packname_containing(shar)
-            debug2('new suggestion: %r\n' % oldpack)
-            assert(oldpack)
-            assert(oldpack != True)
-            assert(not oldpack.endswith('.midx'))
-            w.objcache.refresh()
-        if not suggested and oldpack:
-            assert(oldpack.endswith('.idx'))
-            (dir,name) = os.path.split(oldpack)
-            if not (name in suggested):
-                debug1("bup server: suggesting index %s\n" % name)
-                conn.write('index %s\n' % name)
-                suggested[name] = 1
-        else:
-            nw, crc = w._raw_write([buf], sha=shar)
-            _check(w, crcr, crc, 'object read: expected crc %d, got %d\n')
-            _check(w, n, nw, 'object read: expected %d bytes, got %d\n')
+            # FIXME: we only suggest a single index per cycle, because the client
+            # is currently too dumb to download more than one per cycle anyway.
+            # Actually we should fix the client, but this is a minor optimization
+            # on the server side.
+            if not suggested and \
+              oldpack and (oldpack == True or oldpack.endswith('.midx')):
+                # FIXME: we shouldn't really have to know about midx files
+                # at this layer.  But exists() on a midx doesn't return the
+                # packname (since it doesn't know)... probably we should just
+                # fix that deficiency of midx files eventually, although it'll
+                # make the files bigger.  This method is certainly not very
+                # efficient.
+                oldpack = w.objcache.packname_containing(shar)
+                debug2('new suggestion: %r\n' % oldpack)
+                assert(oldpack)
+                assert(oldpack != True)
+                assert(not oldpack.endswith('.midx'))
+                w.objcache.refresh()
+            if not suggested and oldpack:
+                assert(oldpack.endswith('.idx'))
+                (dir,name) = os.path.split(oldpack)
+                if not (name in suggested):
+                    debug1("bup server: suggesting index %s\n" % name)
+                    conn.write('index %s\n' % name)
+                    suggested[name] = 1
+                continue
+        nw, crc = w._raw_write([buf], sha=shar)
+        _check(w, crcr, crc, 'object read: expected crc %d, got %d\n')
+        _check(w, n, nw, 'object read: expected %d bytes, got %d\n')
     # NOTREACHED
     
 

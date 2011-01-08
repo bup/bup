@@ -520,9 +520,12 @@ def idxmerge(idxlist, final_progress=True):
         log('Reading indexes: %.2f%% (%d/%d), done.\n' % (100, total, total))
 
 
+def _make_objcache():
+    return PackIdxList(repo('objects/pack'))
+
 class PackWriter:
     """Writes Git objects insid a pack file."""
-    def __init__(self, objcache_maker=None):
+    def __init__(self, objcache_maker=_make_objcache):
         self.count = 0
         self.outbytes = 0
         self.filename = None
@@ -534,16 +537,8 @@ class PackWriter:
     def __del__(self):
         self.close()
 
-    def _make_objcache(self):
-        if self.objcache == None:
-            if self.objcache_maker:
-                self.objcache = self.objcache_maker()
-            else:
-                self.objcache = PackIdxList(repo('objects/pack'))
-
     def _open(self):
         if not self.file:
-            self._make_objcache()
             (fd,name) = tempfile.mkstemp(suffix='.pack', dir=repo('objects'))
             self.file = os.fdopen(fd, 'w+b')
             assert(name.endswith('.pack'))
@@ -593,14 +588,21 @@ class PackWriter:
         """Write an object in this pack file."""
         return self._write(calc_hash(type, content), type, content)
 
+    def _require_objcache(self):
+        if self.objcache is None and self.objcache_maker:
+            self.objcache = self.objcache_maker()
+        if self.objcache is None:
+            raise GitError(
+                    "PackWriter not opened or can't check exists w/o objcache")
+
     def exists(self, id):
         """Return non-empty if an object is found in the object cache."""
-        if not self.objcache:
-            self._make_objcache()
+        self._require_objcache()
         return self.objcache.exists(id)
 
     def maybe_write(self, type, content):
         """Write an object to the pack file if not present and return its id."""
+        self._require_objcache()
         sha = calc_hash(type, content)
         if not self.exists(sha):
             self._write(sha, type, content)

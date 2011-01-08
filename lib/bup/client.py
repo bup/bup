@@ -193,10 +193,6 @@ class Client:
         git.auto_midx(self.cachedir)
 
     def _make_objcache(self):
-        ob = self._busy
-        self._busy = None
-        #self.sync_indexes()
-        self._busy = ob
         return git.PackIdxList(self.cachedir)
 
     def _suggest_pack(self, indexname):
@@ -273,7 +269,6 @@ class PackWriter_Remote(git.PackWriter):
 
     def _open(self):
         if not self._packopen:
-            self._make_objcache()
             if self.onopen:
                 self.onopen()
             self._packopen = True
