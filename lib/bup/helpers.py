@@ -1,4 +1,5 @@
 """Helper functions and classes for bup."""
+
 import sys, os, pwd, subprocess, errno, socket, select, mmap, stat, re
 from bup import _version
 
@@ -433,6 +434,7 @@ def strip_path(prefix, path):
 def strip_base_path(path, base_paths):
     """Strips the base path from a given path.
 
+
     Determines the base path for the given string and the strips it
     using strip_path().
     Iterates over all base_paths from long to short, to prevent that
@@ -444,6 +446,14 @@ def strip_base_path(path, base_paths):
         if normalized_path.startswith(os.path.realpath(bp)):
             return strip_path(bp, normalized_path)
     return path
+
+def graft_path(graft_points, path):
+    normalized_path = os.path.realpath(path)
+    for graft_point in graft_points:
+        old_prefix, new_prefix = graft_point
+        if normalized_path.startswith(old_prefix):
+            return re.sub(r'^' + old_prefix, new_prefix, normalized_path)
+    return normalized_path
 
 
 # hashlib is only available in python 2.5 or higher, but the 'sha' module

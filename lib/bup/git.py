@@ -651,7 +651,7 @@ class PackWriter:
             f.close()
             os.unlink(self.filename + '.pack')
 
-    def _end(self):
+    def _end(self, run_midx=True):
         f = self.file
         if not f: return None
         self.file = None
@@ -684,12 +684,13 @@ class PackWriter:
         os.rename(self.filename + '.pack', nameprefix + '.pack')
         os.rename(self.filename + '.idx', nameprefix + '.idx')
 
-        auto_midx(repo('objects/pack'))
+        if run_midx:
+            auto_midx(repo('objects/pack'))
         return nameprefix
 
-    def close(self):
+    def close(self, run_midx=True):
         """Close the pack file and move it to its definitive path."""
-        return self._end()
+        return self._end(run_midx=run_midx)
 
     def _write_pack_idx_v2(self, file, idx, packbin):
         sum = Sha1()
@@ -998,6 +999,7 @@ class CatPipe:
                                   stdin=subprocess.PIPE,
                                   stdout=subprocess.PIPE,
                                   close_fds = True,
+                                  bufsize = 4096,
                                   preexec_fn = _gitenv)
 
     def _fast_get(self, id):
@@ -1014,6 +1016,7 @@ class CatPipe:
         assert(not id.startswith('-'))
         self.inprogress = id
         self.p.stdin.write('%s\n' % id)
+        self.p.stdin.flush()
         hdr = self.p.stdout.readline()
         if hdr.endswith(' missing\n'):
             self.inprogress = None
