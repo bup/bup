@@ -195,18 +195,33 @@ class Client:
     def _make_objcache(self):
         return git.PackIdxList(self.cachedir)
 
-    def _suggest_pack(self, indexname):
-        debug1('client: received index suggestion: %s\n' % indexname)
+    def _suggest_packs(self):
         ob = self._busy
         if ob:
             assert(ob == 'receive-objects-v2')
-            self.conn.write('\xff\xff\xff\xff')  # suspend receive-objects
+            self.conn.write('\xff\xff\xff\xff')  # suspend receive-objects-v2
+        suggested = []
+        for line in linereader(self.conn):
+            if not line:
+                break
+            debug2('%s\n' % line)
+            if line.startswith('index '):
+                idx = line[6:]
+                debug1('client: received index suggestion: %s\n' % idx)
+                suggested.append(idx)
+            else:
+                assert(line.endswith('.idx'))
+                debug1('client: completed writing pack, idx: %s\n' % line)
+                suggested.append(line)
+        self.check_ok()
+        if ob:
             self._busy = None
-            self.conn.drain_and_check_ok()
-        self.sync_index(indexname)
+        for idx in suggested:
+            self.sync_index(idx)
         if ob:
             self._busy = ob
-            self.conn.write('receive-objects-v2\n')
+            self.conn.write('%s\n' % ob)
+        return idx
 
     def new_packwriter(self):
         self.check_busy()
@@ -215,7 +230,7 @@ class Client:
             self.conn.write('receive-objects-v2\n')
         return PackWriter_Remote(self.conn,
                                  objcache_maker = self._make_objcache,
-                                 suggest_pack = self._suggest_pack,
+                                 suggest_packs = self._suggest_packs,
                                  onopen = _set_busy,
                                  onclose = self._not_busy,
                                  ensure_busy = self.ensure_busy)
@@ -253,13 +268,13 @@ class Client:
 
 
 class PackWriter_Remote(git.PackWriter):
-    def __init__(self, conn, objcache_maker, suggest_pack,
+    def __init__(self, conn, objcache_maker, suggest_packs,
                  onopen, onclose,
                  ensure_busy):
         git.PackWriter.__init__(self, objcache_maker)
         self.file = conn
         self.filename = 'remote socket'
-        self.suggest_pack = suggest_pack
+        self.suggest_packs = suggest_packs
         self.onopen = onopen
         self.onclose = onclose
         self.ensure_busy = ensure_busy
@@ -269,28 +284,16 @@ class PackWriter_Remote(git.PackWriter):
 
     def _open(self):
         if not self._packopen:
-            if self.onopen:
-                self.onopen()
+            self.onopen()
             self._packopen = True
 
     def _end(self):
         if self._packopen and self.file:
             self.file.write('\0\0\0\0')
             self._packopen = False
-            while True:
-                line = self.file.readline().strip()
-                if line.startswith('index '):
-                    pass
-                else:
-                    break
-            id = line
-            self.file.check_ok()
+            self.onclose() # Unbusy
             self.objcache = None
-            if self.onclose:
-                self.onclose()
-            if id and self.suggest_pack:
-                self.suggest_pack(id)
-            return id
+            return self.suggest_packs() # Returns last idx received
 
     def close(self):
         id = self._end()
@@ -304,8 +307,7 @@ class PackWriter_Remote(git.PackWriter):
         assert(self.file)
         if not self._packopen:
             self._open()
-        if self.ensure_busy:
-            self.ensure_busy()
+        self.ensure_busy()
         data = ''.join(datalist)
         assert(data)
         assert(sha)
@@ -320,11 +322,7 @@ class PackWriter_Remote(git.PackWriter):
         self.count += 1
 
         if self.file.has_input():
-            line = self.file.readline().strip()
-            assert(line.startswith('index '))
-            idxname = line[6:]
-            if self.suggest_pack:
-                self.suggest_pack(idxname)
-                self.objcache.refresh()
+            self.suggest_packs()
+            self.objcache.refresh()
 
         return sha, crc

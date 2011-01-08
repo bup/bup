@@ -10,6 +10,7 @@ def randbytes(sz):
 
 s1 = randbytes(10000)
 s2 = randbytes(10000)
+s3 = randbytes(10000)
     
 @wvtest
 def test_server_split_with_indexes():
@@ -28,6 +29,32 @@ def test_server_split_with_indexes():
     rw.breakpoint()
     rw.new_blob(s1)
     
+
+@wvtest
+def test_multiple_suggestions():
+    os.environ['BUP_MAIN_EXE'] = '../../../bup'
+    os.environ['BUP_DIR'] = bupdir = 'buptest_tclient.tmp'
+    subprocess.call(['rm', '-rf', bupdir])
+    git.init_repo(bupdir)
+
+    lw = git.PackWriter()
+    lw.new_blob(s1)
+    lw.close()
+    lw = git.PackWriter()
+    lw.new_blob(s2)
+    lw.close()
+    WVPASSEQ(len(os.listdir(git.repo('objects/pack'))), 4)
+
+    c = client.Client(bupdir, create=True)
+    WVPASSEQ(len(os.listdir(c.cachedir)), 0)
+    rw = c.new_packwriter()
+    rw.new_blob(s1)
+    rw.new_blob(s2)
+    rw.new_blob(s3)
+    WVPASSEQ(len(os.listdir(c.cachedir)), 2)
+    rw.close()
+    WVPASSEQ(len(os.listdir(c.cachedir)), 3)
+
 
 @wvtest
 def test_dumb_client_server():
