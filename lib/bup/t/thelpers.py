@@ -1,3 +1,4 @@
+import os
 from bup.helpers import *
 from wvtest import *
 
@@ -28,3 +29,25 @@ def test_strip_base_path():
     path = "/var/backup/daily.0/localhost/etc/"
     base_paths = ["/var", "/var/backup", "/var/backup/daily.0/localhost"]
     WVPASSEQ(strip_base_path(path, base_paths), '/etc')
+
+@wvtest
+def test_strip_symlinked_base_path():
+    tmpdir = os.path.join(os.getcwd(),"test_strip_symlinked_base_path.tmp")
+    symlink_src = os.path.join(tmpdir, "private", "var")
+    symlink_dst = os.path.join(tmpdir, "var")
+    path = os.path.join(symlink_dst, "a")
+
+    os.mkdir(tmpdir)
+    os.mkdir(os.path.join(tmpdir, "private"))
+    os.mkdir(symlink_src)
+    os.symlink(symlink_src, symlink_dst)
+
+    result = strip_base_path(path, [symlink_dst])
+
+    os.remove(symlink_dst)
+    os.rmdir(symlink_src)
+    os.rmdir(os.path.join(tmpdir, "private"))
+    os.rmdir(tmpdir)
+
+    WVPASSEQ(result, "/a")
+

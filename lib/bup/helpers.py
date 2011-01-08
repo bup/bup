@@ -421,9 +421,9 @@ def strip_path(prefix, path):
     if prefix == None:
         raise Exception('no path given')
 
-    normalized_prefix = realpath(prefix)
+    normalized_prefix = os.path.realpath(prefix)
     debug2("normalized_prefix: %s\n" % normalized_prefix)
-    normalized_path = realpath(path)
+    normalized_path = os.path.realpath(path)
     debug2("normalized_path: %s\n" % normalized_path)
     if normalized_path.startswith(normalized_prefix):
         return normalized_path[len(normalized_prefix):]
@@ -438,10 +438,11 @@ def strip_base_path(path, base_paths):
     Iterates over all base_paths from long to short, to prevent that
     a too short base_path is removed.
     """
+    normalized_path = os.path.realpath(path)
     sorted_base_paths = sorted(base_paths, key=len, reverse=True)
     for bp in sorted_base_paths:
-        if path.startswith(realpath(bp)):
-            return strip_path(bp, path)
+        if normalized_path.startswith(os.path.realpath(bp)):
+            return strip_path(bp, normalized_path)
     return path
 
 
