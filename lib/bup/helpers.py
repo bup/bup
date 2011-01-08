@@ -435,7 +435,7 @@ def strip_base_path(path, base_paths):
     """Strips the base path from a given path.
 
 
-    Determines the base path for the given string and the strips it
+    Determines the base path for the given string and then strips it
     using strip_path().
     Iterates over all base_paths from long to short, to prevent that
     a too short base_path is removed.
