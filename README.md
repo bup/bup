@@ -168,6 +168,27 @@ Getting started
 That's all there is to it!
 
 
+Notes on FreeBSD
+================
+
+- FreeBSD's default 'make' command doesn't like bup's Makefile. In order to
+  compile the code, run tests and install bup, you need to install GNU Make
+  from the port named 'gmake' and use its executable instead in the commands
+  seen above. (i.e. 'gmake test' runs bup's test suite)
+
+- Python's development headers are automatically installed with the 'python'
+  port so there's no need to install them separately.
+
+- To use the 'bup fuse' command, you need to install the fuse kernel module
+  from the 'fusefs-kmod' port in the 'sysutils' section and the libraries from
+  the port named 'py-fusefs' in the 'devel' section.
+
+- The 'par2' command can be found in the port named 'par2cmdline'.
+
+- In order to compile the documentation, you need pandoc which can be found in
+  the port named 'hs-pandoc' in the 'textproc' section.
+
+
 How it works
 ------------
 
