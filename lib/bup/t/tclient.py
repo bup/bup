@@ -1,4 +1,4 @@
-import sys, os, time, random, subprocess
+import sys, os, stat, time, random, subprocess
 from bup import client, git
 from wvtest import *
 
@@ -62,7 +62,7 @@ def test_dumb_client_server():
     os.environ['BUP_DIR'] = bupdir = 'buptest_tclient.tmp'
     subprocess.call(['rm', '-rf', bupdir])
     git.init_repo(bupdir)
-    os.mknod(git.repo('bup-dumb-server'))
+    open(os.path.abspath(git.repo('bup-dumb-server')), 'w').close()
 
     lw = git.PackWriter()
     lw.new_blob(s1)
