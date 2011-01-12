@@ -2,7 +2,7 @@
 bup repositories are in Git format. This library allows us to
 interact with the Git data structures.
 """
-import os, zlib, time, subprocess, struct, stat, re, tempfile, heapq
+import os, sys, zlib, time, subprocess, struct, stat, re, tempfile, heapq
 from bup.helpers import *
 from bup import _helpers
 
@@ -557,7 +557,10 @@ class PackWriter:
         # to our hashsplit algorithm.)  f.write() does its own buffering,
         # but that's okay because we'll flush it in _end().
         oneblob = ''.join(datalist)
-        f.write(oneblob)
+        try:
+            f.write(oneblob)
+        except IOError, e:
+            raise GitError, e, sys.exc_info()[2]
         nw = len(oneblob)
         crc = zlib.crc32(oneblob) & 0xffffffff
         self._update_idx(sha, crc, nw)

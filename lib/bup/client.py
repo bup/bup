@@ -318,8 +318,11 @@ class PackWriter_Remote(git.PackWriter):
                           sha,
                           struct.pack('!I', crc),
                           data))
-        (self._bwcount, self._bwtime) = \
-            _raw_write_bwlimit(self.file, outbuf, self._bwcount, self._bwtime)
+        try:
+            (self._bwcount, self._bwtime) = _raw_write_bwlimit(
+                    self.file, outbuf, self._bwcount, self._bwtime)
+        except IOError, e:
+            raise ClientError, e, sys.exc_info()[2]
         self.outbytes += len(data) - 20 - 4 # Don't count sha1+crc
         self.count += 1
 
