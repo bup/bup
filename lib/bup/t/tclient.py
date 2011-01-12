@@ -50,6 +50,8 @@ def test_multiple_suggestions():
     rw = c.new_packwriter()
     rw.new_blob(s1)
     rw.new_blob(s2)
+    # This is a little hacky, but ensures that we test the code under test
+    while len(os.listdir(c.cachedir)) < 2 and not c.conn.has_input(): pass
     rw.new_blob(s3)
     WVPASSEQ(len(os.listdir(c.cachedir)), 2)
     rw.close()
