@@ -7,7 +7,7 @@ bup on--server
 --
     This command is run automatically by 'bup on'
 """
-o = options.Options('bup server-reverse', optspec)
+o = options.Options(optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
 if extra:
     o.fatal('no arguments expected')

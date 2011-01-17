@@ -11,7 +11,7 @@ exclude-from= a file that contains exclude paths (can be used more than once)
 q,quiet  don't actually print filenames
 profile  run under the python profiler
 """
-o = options.Options('bup drecurse', optspec)
+o = options.Options(optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
 
 if len(extra) != 1:

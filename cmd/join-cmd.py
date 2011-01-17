@@ -9,7 +9,7 @@ bup join [-r host:path] [refs or hashes...]
 --
 r,remote=  remote repository path
 """
-o = options.Options('bup join', optspec)
+o = options.Options(optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
 
 git.check_repo_or_die()

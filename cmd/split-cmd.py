@@ -25,7 +25,7 @@ max-pack-objects=  maximum number of objects in a single pack
 fanout=    maximum number of blobs in a single tree
 bwlimit=   maximum bytes/sec to transmit to server
 """
-o = options.Options('bup split', optspec)
+o = options.Options(optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
 
 handle_ctrl_c()

@@ -60,7 +60,7 @@ c,cycles=  number of cycles to run [100]
 ignore-midx  ignore .midx files, use only .idx files
 existing   test with existing objects instead of fake ones
 """
-o = options.Options('bup memtest', optspec)
+o = options.Options(optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
 
 if extra:

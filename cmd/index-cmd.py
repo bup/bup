@@ -135,7 +135,7 @@ exclude=   a path to exclude from the backup (can be used more than once)
 exclude-from= a file that contains exclude paths (can be used more than once)
 v,verbose  increase log output (can be used more than once)
 """
-o = options.Options('bup index', optspec)
+o = options.Options(optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
 
 if not (opt.modified or opt['print'] or opt.status or opt.update or opt.check):

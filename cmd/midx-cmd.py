@@ -184,7 +184,7 @@ def do_midx_group(outdir, infiles):
 
 handle_ctrl_c()
 
-o = options.Options('bup midx', optspec)
+o = options.Options(optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
 
 if extra and (opt.auto or opt.force):

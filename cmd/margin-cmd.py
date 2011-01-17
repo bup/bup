@@ -11,7 +11,7 @@ bup margin
 predict    Guess object offsets and report the maximum deviation
 ignore-midx  Don't use midx files; use only plain pack idx files.
 """
-o = options.Options('bup margin', optspec)
+o = options.Options(optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
 
 if extra:

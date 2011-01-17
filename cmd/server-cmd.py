@@ -156,7 +156,7 @@ def cat(conn, id):
 optspec = """
 bup server
 """
-o = options.Options('bup server', optspec)
+o = options.Options(optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
 
 if extra:

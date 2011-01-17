@@ -42,7 +42,7 @@ no-stupid  disable stupidity
 
 @wvtest
 def test_options():
-    o = options.Options('exename', optspec)
+    o = options.Options(optspec)
     (opt,flags,extra) = o.parse(['-tttqp', 7, '--longoption', '19',
                                  'hanky', '--onlylong'])
     WVPASSEQ(flags[0], ('-t', ''))

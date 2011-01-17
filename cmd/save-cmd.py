@@ -21,7 +21,7 @@ strip      strips the path to every filename given
 strip-path= path-prefix to be stripped when saving
 graft=     a graft point *old_path*=*new_path* (can be used morethan once)
 """
-o = options.Options('bup save', optspec)
+o = options.Options(optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
 
 git.check_repo_or_die()

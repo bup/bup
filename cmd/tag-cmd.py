@@ -20,7 +20,7 @@ bup tag -d <tag name>
 d,delete=   Delete a tag
 """
 
-o = options.Options('bup tag', optspec)
+o = options.Options(optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
 
 git.check_repo_or_die()

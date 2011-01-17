@@ -5,7 +5,7 @@ from bup import options
 optspec = """
 bup help <command>
 """
-o = options.Options('bup help', optspec)
+o = options.Options(optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
 
 if len(extra) == 0:

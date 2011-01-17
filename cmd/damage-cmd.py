@@ -21,7 +21,7 @@ percent= maximum size of each damaged block (as a percent of entire file)
 equal    spread damage evenly throughout the file
 S,seed=  random number seed (for repeatable tests)
 """
-o = options.Options('bup damage', optspec)
+o = options.Options(optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
 
 if not extra:

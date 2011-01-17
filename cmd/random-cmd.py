@@ -10,7 +10,7 @@ S,seed=   optional random number seed [1]
 f,force   print random data to stdout even if it's a tty
 v,verbose print byte counter to stderr
 """
-o = options.Options('bup random', optspec)
+o = options.Options(optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
 
 if len(extra) != 1:

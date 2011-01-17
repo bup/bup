@@ -179,7 +179,7 @@ optspec = """
 bup web [[hostname]:port]
 --
 """
-o = options.Options('bup web', optspec)
+o = options.Options(optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
 
 if len(extra) > 1:

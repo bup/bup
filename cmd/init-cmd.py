@@ -10,7 +10,7 @@ optspec = """
 --
 r,remote=  remote repository path
 """
-o = options.Options('bup init', optspec)
+o = options.Options(optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
 
 if extra:

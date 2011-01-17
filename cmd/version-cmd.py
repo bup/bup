@@ -10,7 +10,7 @@ date    display the date this version of bup was created
 commit  display the git commit id of this version of bup
 tag     display the tag name of this version.  If no tag is available, display the commit id
 """
-o = options.Options('bup version', optspec)
+o = options.Options(optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
 
 

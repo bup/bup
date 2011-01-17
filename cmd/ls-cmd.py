@@ -21,7 +21,7 @@ bup ls <dirs...>
 s,hash   show hash for each file
 a,all    show hidden files
 """
-o = options.Options('bup ls', optspec)
+o = options.Options(optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
 
 git.check_repo_or_die()

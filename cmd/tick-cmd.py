@@ -5,7 +5,7 @@ from bup import options
 optspec = """
 bup tick
 """
-o = options.Options('bup tick', optspec)
+o = options.Options(optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
 
 if extra:
