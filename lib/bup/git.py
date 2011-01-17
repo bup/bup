@@ -862,7 +862,10 @@ def guess_repo(path=None):
 def init_repo(path=None):
     """Create the Git bare repository for bup in a given path."""
     guess_repo(path)
-    d = repo()
+    d = repo()  # appends a / to the path
+    parent = os.path.dirname(os.path.dirname(d))
+    if parent and not os.path.exists(parent):
+        raise GitError('parent directory "%s" does not exist\n' % parent)
     if os.path.exists(d) and not os.path.isdir(os.path.join(d, '.')):
         raise GitError('"%d" exists but is not a directory\n' % d)
     p = subprocess.Popen(['git', '--bare', 'init'], stdout=sys.stderr,
