@@ -273,18 +273,6 @@ class Metadata:
                 else:
                     raise
 
-        if stat.S_ISREG(self.mode) \
-                | stat.S_ISDIR(self.mode) \
-                | stat.S_ISCHR(self.mode) \
-                | stat.S_ISBLK(self.mode) \
-                | stat.S_ISLNK(self.mode) \
-                | stat.S_ISFIFO(self.mode):
-            # Be safe.
-            if _have_lchmod:
-                os.lchmod(path, 0)
-            elif not stat.S_ISLNK(self.mode):
-                os.chmod(path, 0)
-
             # Don't try to restore owner unless we're root, and even
             # if asked, don't try to restore the owner or group if
             # it doesn't exist in the system db.
