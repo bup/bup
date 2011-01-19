@@ -13,6 +13,15 @@ from bup import options
 from bup import xstat
 from bup.helpers import handle_ctrl_c, saved_errors
 
+
+def fstimestr(fstime):
+    (s, ns) = fstime.secs_nsecs()
+    if ns == 0:
+        return '%d' % s
+    else:
+        return '%d.%09d' % (s, ns)
+
+
 optspec = """
 bup pathinfo [OPTION ...] <PATH ...>
 --
@@ -87,11 +96,11 @@ for path in remainder:
     if 'group' in active_fields:
         print 'group:', m.group
     if 'atime' in active_fields:
-        print 'atime: ' + '%d.%09d' % m.atime.secs_nsecs()
+        print 'atime: ' + fstimestr(m.atime)
     if 'mtime' in active_fields:
-        print 'mtime: ' + '%d.%09d' % m.mtime.secs_nsecs()
+        print 'mtime: ' + fstimestr(m.mtime)
     if 'ctime' in active_fields:
-        print 'ctime: ' + '%d.%09d' % m.ctime.secs_nsecs()
+        print 'ctime: ' + fstimestr(m.ctime)
     if 'linux-attr' in active_fields and m.linux_attr:
         print 'linux-attr:', hex(m.linux_attr)
     if 'linux-xattr' in active_fields and m.linux_xattr:
