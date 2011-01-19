@@ -413,8 +413,10 @@ class Metadata:
                 attr = get_linux_file_attr(path)
                 if(attr != 0):
                     self.linux_attr = get_linux_file_attr(path)
-            except EnvironmentError, e:
+            except IOError, e:
                 if e.errno == errno.EACCES:
+                    add_error('read Linux attr: %s' % e)
+                elif e.errno == errno.ENOTTY: # Inappropriate ioctl for device.
                     add_error('read Linux attr: %s' % e)
                 else:
                     raise
