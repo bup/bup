@@ -355,6 +355,12 @@ def add_error(e):
     saved_errors.append(e)
     log('%-70s\n' % e)
 
+
+def clear_errors():
+    global saved_errors
+    saved_errors = []
+
+
 istty = os.isatty(2) or atoi(os.environ.get('BUP_FORCE_TTY'))
 def progress(s):
     """Calls log(s) if stderr is a TTY.  Does nothing otherwise."""

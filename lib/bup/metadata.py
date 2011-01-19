@@ -146,11 +146,7 @@ _rec_tag_linux_attr = 6       # lsattr(1) chattr(1)
 _rec_tag_linux_xattr = 7      # getfattr(1) setfattr(1)
 
 
-class MetadataError(Exception):
-    pass
-
-
-class MetadataApplyError(MetadataError):
+class ApplyError(Exception):
     # Thrown when unable to apply any given bit of metadata to a path.
     pass
 
@@ -259,10 +255,24 @@ class Metadata:
 
     def _apply_common_rec(self, path, restore_numeric_ids=False):
         # FIXME: S_ISDOOR, S_IFMPB, S_IFCMP, S_IFNWK, ... see stat(2).
+        # EACCES errors at this stage are fatal for the current path.
         if stat.S_ISLNK(self.mode):
-            lutime(path, (self.atime, self.mtime))
+            try:
+                lutime(path, (self.atime, self.mtime))
+            except IOError, e:
+                if e.errno == errno.EACCES:
+                    raise ApplyError('lutime: %s' % e)
+                else:
+                    raise
         else:
-            utime(path, (self.atime, self.mtime))
+            try:
+                utime(path, (self.atime, self.mtime))
+            except IOError, e:
+                if e.errno == errno.EACCES:
+                    raise ApplyError('utime: %s' % e)
+                else:
+                    raise
+
         if stat.S_ISREG(self.mode) \
                 | stat.S_ISDIR(self.mode) \
                 | stat.S_ISCHR(self.mode) \
@@ -304,7 +314,14 @@ class Metadata:
                         gid = -1
                         add_error('bup: ignoring unknown group %s for "%s"\n'
                                   % (self.group, path))
-            os.lchown(path, uid, gid)
+
+            try:
+                os.lchown(path, uid, gid)
+            except OSError, e:
+                if e.errno == errno.EPERM:
+                    add_error('lchown: %s' %  e)
+                else:
+                    raise
 
             if _have_lchmod:
                 os.lchmod(path, stat.S_IMODE(self.mode))
@@ -528,13 +545,13 @@ class Metadata:
         if not path:
             raise Exception('Metadata.apply_to_path() called with no path');
         num_ids = restore_numeric_ids
-        try: # Later we may want to push this down and make it finer grained.
+        try:
             self._apply_common_rec(path, restore_numeric_ids=num_ids)
             self._apply_posix1e_acl_rec(path, restore_numeric_ids=num_ids)
             self._apply_linux_attr_rec(path, restore_numeric_ids=num_ids)
             self._apply_linux_xattr_rec(path, restore_numeric_ids=num_ids)
-        except Exception, e:
-            raise MetadataApplyError(e), None, sys.exc_info()[2]
+        except ApplyError, e:
+            add_error(e)
 
 
 def from_path(path, archive_path=None, save_symlinks=True):
@@ -636,23 +653,15 @@ def finish_extract(file, restore_numeric_ids=False):
             else:
                 if verbose:
                     print >> sys.stderr, meta.path
-                try:
-                    meta.apply_to_path(path=xpath,
-                                       restore_numeric_ids=restore_numeric_ids)
-                except MetadataApplyError, e:
-                    add_error(e)
-
+                meta.apply_to_path(path=xpath,
+                                   restore_numeric_ids=restore_numeric_ids)
     all_dirs.sort(key = lambda x : len(x.path), reverse=True)
     for dir in all_dirs:
         # Don't need to check xpath -- won't be in all_dirs if not OK.
         xpath = _clean_up_extract_path(dir.path)
         if verbose:
             print >> sys.stderr, dir.path
-        try:
-            dir.apply_to_path(path=xpath,
-                              restore_numeric_ids=restore_numeric_ids)
-        except MetadataApplyError, e:
-            add_error(e)
+        dir.apply_to_path(path=xpath, restore_numeric_ids=restore_numeric_ids)
 
 
 def extract(file, restore_numeric_ids=False, create_symlinks=True):
@@ -673,10 +682,7 @@ def extract(file, restore_numeric_ids=False, create_symlinks=True):
             else:
                 if verbose:
                     print >> sys.stderr, '=', meta.path
-                try:
-                    meta.apply_to_path(restore_numeric_ids=restore_numeric_ids)
-                except MetadataApplyError, e:
-                    add_error(e)
+                meta.apply_to_path(restore_numeric_ids=restore_numeric_ids)
     all_dirs.sort(key = lambda x : len(x.path), reverse=True)
     for dir in all_dirs:
         # Don't need to check xpath -- won't be in all_dirs if not OK.
@@ -684,8 +690,5 @@ def extract(file, restore_numeric_ids=False, create_symlinks=True):
         if verbose:
             print >> sys.stderr, '=', meta.path
         # Shouldn't have to check for risky paths here (omitted above).
-        try:
-            dir.apply_to_path(path=dir.path,
-                              restore_numeric_ids=restore_numeric_ids)
-        except MetadataApplyError, e:
-            add_error(e)
+        dir.apply_to_path(path=dir.path,
+                          restore_numeric_ids=restore_numeric_ids)

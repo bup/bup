@@ -3,8 +3,9 @@ import pwd
 import stat
 import subprocess
 import tempfile
+import bup.helpers as helpers
 from bup import metadata
-from bup.helpers import detect_fakeroot, saved_errors
+from bup.helpers import clear_errors, detect_fakeroot
 from wvtest import *
 
 
@@ -86,26 +87,29 @@ def test_from_path_error():
         WVPASSEQ(m.path, path)
         subprocess.call(['chmod', '000', path])
         metadata.from_path(path, archive_path=path, save_symlinks=True)
-        WVPASS(saved_errors
-               and saved_errors[0].startswith('bup: unable to read Linux attr'))
+        errmsg = helpers.saved_errors[0] if helpers.saved_errors else ''
+        WVPASS(errmsg.startswith('bup: unable to read Linux attr'))
+        clear_errors()
     finally:
         subprocess.call(['rm', '-rf', tmpdir])
 
 
 @wvtest
-def test_apply_to_path_error():
+def test_apply_to_path_restricted_access():
     if os.geteuid == 0 or detect_fakeroot():
         return
     tmpdir = tempfile.mkdtemp(prefix='bup-tmetadata-')
     try:
         path = tmpdir + '/foo'
         subprocess.call(['mkdir', path])
+        clear_errors()
         m = metadata.from_path(path, archive_path=path, save_symlinks=True)
         WVPASSEQ(m.path, path)
         subprocess.call(['chmod', '000', tmpdir])
-        WVEXCEPT(metadata.MetadataApplyError,
-                 m.apply_to_path, path)
-        subprocess.call(['chmod', '700', tmpdir])
+        m.apply_to_path(path)
+        errmsg = str(helpers.saved_errors[0]) if helpers.saved_errors else ''
+        WVPASS(errmsg.startswith('utime: '))
+        clear_errors()
     finally:
         subprocess.call(['rm', '-rf', tmpdir])
 
@@ -123,12 +127,16 @@ def test_restore_restricted_user_group():
         WVPASSEQ(m.apply_to_path(path), None)
         orig_uid = m.uid
         m.uid = 0;
-        WVEXCEPT(metadata.MetadataApplyError,
-                 m.apply_to_path, path, restore_numeric_ids=True)
+        m.apply_to_path(path, restore_numeric_ids=True)
+        errmsg = str(helpers.saved_errors[0]) if helpers.saved_errors else ''
+        WVPASS(errmsg.startswith('lchown: '))
+        clear_errors()
         m.uid = orig_uid
         m.gid = 0;
-        WVEXCEPT(metadata.MetadataApplyError,
-                 m.apply_to_path, path, restore_numeric_ids=True)
+        m.apply_to_path(path, restore_numeric_ids=True)
+        errmsg = str(helpers.saved_errors[0]) if helpers.saved_errors else ''
+        WVPASS(errmsg.startswith('lchown: '))
+        clear_errors()
     finally:
         subprocess.call(['rm', '-rf', tmpdir])
 
