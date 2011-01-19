@@ -281,7 +281,7 @@ class Metadata:
             if not restore_numeric_ids:
                 if not self.owner:
                     uid = -1
-                    add_error('bup: ignoring missing owner for "%s"\n' % path)
+                    add_error('ignoring missing owner for "%s"\n' % path)
                 else:
                     if os.geteuid() != 0:
                         uid = -1 # Not root; assume we can't change owner.
@@ -290,17 +290,17 @@ class Metadata:
                             uid = pwd.getpwnam(self.owner)[2]
                         except KeyError:
                             uid = -1
-                            fmt = 'bup: ignoring unknown owner %s for "%s"\n'
+                            fmt = 'ignoring unknown owner %s for "%s"\n'
                             add_error(fmt % (self.owner, path))
                 if not self.group:
                     gid = -1
-                    add_error('bup: ignoring missing group for "%s"\n' % path)
+                    add_error('ignoring missing group for "%s"\n' % path)
                 else:
                     try:
                         gid = grp.getgrnam(self.group)[2]
                     except KeyError:
                         gid = -1
-                        add_error('bup: ignoring unknown group %s for "%s"\n'
+                        add_error('ignoring unknown group %s for "%s"\n'
                                   % (self.group, path))
 
             try:
@@ -415,7 +415,7 @@ class Metadata:
                     self.linux_attr = get_linux_file_attr(path)
             except EnvironmentError, e:
                 if e.errno == errno.EACCES:
-                    add_error('bup: unable to read Linux attr for "%s"' % path)
+                    add_error('unable to read Linux attr for "%s"' % path)
                 else:
                     raise
 
@@ -565,7 +565,7 @@ def save_tree(output_file, paths,
     for path in paths:
         safe_path = _clean_up_path_for_archive(path)
         if(safe_path != path):
-            log('bup: archiving "%s" as "%s"\n' % (path, safe_path))
+            log('archiving "%s" as "%s"\n' % (path, safe_path))
 
     start_dir = os.getcwd()
     try:
