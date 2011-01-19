@@ -412,7 +412,7 @@ class Metadata:
             try:
                 attr = get_linux_file_attr(path)
                 if(attr != 0):
-                    self.linux_attr = get_linux_file_attr(path)
+                    self.linux_attr = attr
             except IOError, e:
                 if e.errno == errno.EACCES:
                     add_error('read Linux attr: %s' % e)
