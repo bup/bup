@@ -173,11 +173,11 @@ class Metadata:
         try:
             self.owner = pwd.getpwuid(st.st_uid)[0]
         except KeyError, e:
-            add_error(e)
+            add_error("no user name for id %s '%s'" % (st.st_gid, path))
         try:
             self.group = grp.getgrgid(st.st_gid)[0]
         except KeyError, e:
-            add_error(e)
+            add_error("no group name for id %s '%s'" % (st.st_gid, path))
 
     def _encode_common(self):
         atime = self.atime.to_timespec()
@@ -336,7 +336,7 @@ class Metadata:
             if(stat.S_ISLNK(st.st_mode)):
                 self.symlink_target = os.readlink(path)
         except OSError, e:
-            add_error(e)
+            add_error('readlink: %s', e)
 
     def _encode_symlink_target(self):
         return self.symlink_target
@@ -415,7 +415,7 @@ class Metadata:
                     self.linux_attr = get_linux_file_attr(path)
             except EnvironmentError, e:
                 if e.errno == errno.EACCES:
-                    add_error('unable to read Linux attr for "%s"' % path)
+                    add_error('read Linux attr: %s' % e)
                 else:
                     raise
 
