@@ -77,7 +77,7 @@ def test_clean_up_extract_path():
 
 @wvtest
 def test_from_path_error():
-    if os.geteuid == 0 or detect_fakeroot():
+    if os.geteuid() == 0 or detect_fakeroot():
         return
     tmpdir = tempfile.mkdtemp(prefix='bup-tmetadata-')
     try:
@@ -96,7 +96,7 @@ def test_from_path_error():
 
 @wvtest
 def test_apply_to_path_restricted_access():
-    if os.geteuid == 0 or detect_fakeroot():
+    if os.geteuid() == 0 or detect_fakeroot():
         return
     tmpdir = tempfile.mkdtemp(prefix='bup-tmetadata-')
     try:
@@ -116,7 +116,7 @@ def test_apply_to_path_restricted_access():
 
 @wvtest
 def test_restore_restricted_user_group():
-    if os.geteuid == 0 or detect_fakeroot():
+    if os.geteuid() == 0 or detect_fakeroot():
         return
     tmpdir = tempfile.mkdtemp(prefix='bup-tmetadata-')
     try:
