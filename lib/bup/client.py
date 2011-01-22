@@ -323,7 +323,7 @@ class PackWriter_Remote(git.PackWriter):
                     self.file, outbuf, self._bwcount, self._bwtime)
         except IOError, e:
             raise ClientError, e, sys.exc_info()[2]
-        self.outbytes += len(data) - 20 - 4 # Don't count sha1+crc
+        self.outbytes += len(data)
         self.count += 1
 
         if self.file.has_input():
