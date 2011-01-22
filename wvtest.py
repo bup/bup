@@ -125,8 +125,7 @@ else:  # we're the main program
             print
             print traceback.format_exc()
             tb = sys.exc_info()[2]
-            wvtest._result(e, traceback.extract_tb(tb)[1],
-                           'EXCEPTION')
+            wvtest._result(e, traceback.extract_tb(tb)[1], 'EXCEPTION')
 
     # main code
     for modname in sys.argv[1:]:
@@ -140,11 +139,10 @@ else:  # we're the main program
         oldwd = os.getcwd()
         oldpath = sys.path
         try:
-            modpath = os.path.abspath(modname).split('/')[:-1]
-            os.chdir('/'.join(modpath))
-            sys.path += ['/'.join(modpath),
-                         '/'.join(modpath[:-1])]
-            mod = __import__(modname.replace('/', '.'), None, None, [])
+            path, mod = os.path.split(os.path.abspath(modname))
+            os.chdir(path)
+            sys.path += [path, os.path.split(path)[0]]
+            mod = __import__(modname.replace(os.path.sep, '.'), None, None, [])
             for t in wvtest._registered:
                 _runtest(modname, t.func_name, t)
                 print
