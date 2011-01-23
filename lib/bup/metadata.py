@@ -273,48 +273,48 @@ class Metadata:
                 else:
                     raise
 
-            # Don't try to restore owner unless we're root, and even
-            # if asked, don't try to restore the owner or group if
-            # it doesn't exist in the system db.
-            uid = self.uid
-            gid = self.gid
-            if not restore_numeric_ids:
-                if not self.owner:
-                    uid = -1
-                    add_error('ignoring missing owner for "%s"\n' % path)
-                else:
-                    if os.geteuid() != 0:
-                        uid = -1 # Not root; assume we can't change owner.
-                    else:
-                        try:
-                            uid = pwd.getpwnam(self.owner)[2]
-                        except KeyError:
-                            uid = -1
-                            fmt = 'ignoring unknown owner %s for "%s"\n'
-                            add_error(fmt % (self.owner, path))
-                if not self.group:
-                    gid = -1
-                    add_error('ignoring missing group for "%s"\n' % path)
+        # Don't try to restore owner unless we're root, and even
+        # if asked, don't try to restore the owner or group if
+        # it doesn't exist in the system db.
+        uid = self.uid
+        gid = self.gid
+        if not restore_numeric_ids:
+            if not self.owner:
+                uid = -1
+                add_error('ignoring missing owner for "%s"\n' % path)
+            else:
+                if os.geteuid() != 0:
+                    uid = -1 # Not root; assume we can't change owner.
                 else:
                     try:
-                        gid = grp.getgrnam(self.group)[2]
+                        uid = pwd.getpwnam(self.owner)[2]
                     except KeyError:
-                        gid = -1
-                        add_error('ignoring unknown group %s for "%s"\n'
-                                  % (self.group, path))
+                        uid = -1
+                        fmt = 'ignoring unknown owner %s for "%s"\n'
+                        add_error(fmt % (self.owner, path))
+            if not self.group:
+                gid = -1
+                add_error('ignoring missing group for "%s"\n' % path)
+            else:
+                try:
+                    gid = grp.getgrnam(self.group)[2]
+                except KeyError:
+                    gid = -1
+                    add_error('ignoring unknown group %s for "%s"\n'
+                              % (self.group, path))
 
-            try:
-                os.lchown(path, uid, gid)
-            except OSError, e:
-                if e.errno == errno.EPERM:
-                    add_error('lchown: %s' %  e)
-                else:
-                    raise
+        try:
+            os.lchown(path, uid, gid)
+        except OSError, e:
+            if e.errno == errno.EPERM:
+                add_error('lchown: %s' %  e)
+            else:
+                raise
 
-            if _have_lchmod:
-                os.lchmod(path, stat.S_IMODE(self.mode))
-            elif not stat.S_ISLNK(self.mode):
-                os.chmod(path, stat.S_IMODE(self.mode))
+        if _have_lchmod:
+            os.lchmod(path, stat.S_IMODE(self.mode))
+        elif not stat.S_ISLNK(self.mode):
+            os.chmod(path, stat.S_IMODE(self.mode))
 
 
     ## Path records
