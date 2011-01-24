@@ -676,9 +676,9 @@ def extract(file, restore_numeric_ids=False, create_symlinks=True):
     all_dirs.sort(key = lambda x : len(x.path), reverse=True)
     for dir in all_dirs:
         # Don't need to check xpath -- won't be in all_dirs if not OK.
-        xpath = _clean_up_extract_path(meta.path)
+        xpath = _clean_up_extract_path(dir.path)
         if verbose:
-            print >> sys.stderr, '=', meta.path
+            print >> sys.stderr, '=', xpath
         # Shouldn't have to check for risky paths here (omitted above).
         dir.apply_to_path(path=dir.path,
                           restore_numeric_ids=restore_numeric_ids)
