@@ -589,11 +589,11 @@ def _set_up_path(meta, create_symlinks=True):
     # Allow directories to exist as a special case -- might have
     # been created by an earlier longer path.
     if meta.isdir():
-        mkdirp(meta.path, 0700)
+        mkdirp(meta.path)
     else:
         parent = os.path.dirname(meta.path)
         if parent:
-            mkdirp(parent, 0700)
+            mkdirp(parent)
             meta.create_path(meta.path, create_symlinks=create_symlinks)
 
 
