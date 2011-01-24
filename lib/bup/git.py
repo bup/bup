@@ -2,7 +2,7 @@
 bup repositories are in Git format. This library allows us to
 interact with the Git data structures.
 """
-import os, sys, zlib, time, subprocess, struct, stat, re, tempfile, heapq
+import os, sys, zlib, time, subprocess, struct, stat, re, tempfile
 from bup.helpers import *
 from bup import _helpers, path
 
@@ -500,28 +500,13 @@ def open_idx(filename):
 
 def idxmerge(idxlist, final_progress=True):
     """Generate a list of all the objects reachable in a PackIdxList."""
-    total = sum(len(i) for i in idxlist)
-    iters = (iter(i) for i in idxlist)
-    heap = [(next(it), it) for it in iters]
-    heapq.heapify(heap)
-    count = 0
-    last = None
-    while heap:
-        if (count % 10024) == 0:
-            progress('Reading indexes: %.2f%% (%d/%d)\r'
-                     % (count*100.0/total, count, total))
-        (e, it) = heap[0]
-        if e != last:
-            yield e
-            last = e
-        count += 1
-        e = next(it)
-        if e:
-            heapq.heapreplace(heap, (e, it))
-        else:
-            heapq.heappop(heap)
-    if final_progress:
-        log('Reading indexes: %.2f%% (%d/%d), done.\n' % (100, total, total))
+    def pfunc(count, total):
+        progress('Reading indexes: %.2f%% (%d/%d)\r'
+                 % (count*100.0/total, count, total))
+    def pfinal(count, total):
+        if final_progress:
+            log('Reading indexes: %.2f%% (%d/%d), done.\n' % (100, total, total))
+    return merge_iter(idxlist, 10024, pfunc, pfinal)
 
 
 def _make_objcache():

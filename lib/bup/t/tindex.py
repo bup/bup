@@ -84,8 +84,7 @@ def index_dirty():
     r3all = [e.name for e in r3]
     WVPASSEQ(r3all,
              ['/a/c/n/3', '/a/c/n/', '/a/c/', '/a/', '/'])
-    m = index.MergeIter([r2,r1,r3])
-    all = [e.name for e in m]
+    all = [e.name for e in index.merge(r2, r1, r3)]
     WVPASSEQ(all,
              ['/a/c/n/3', '/a/c/n/', '/a/c/',
               '/a/b/x', '/a/b/n/2', '/a/b/n/', '/a/b/c',
@@ -96,27 +95,27 @@ def index_dirty():
     print [hex(e.flags) for e in r1]
     WVPASSEQ([e.name for e in r1 if e.is_valid()], r1all)
     WVPASSEQ([e.name for e in r1 if not e.is_valid()], [])
-    WVPASSEQ([e.name for e in m if not e.is_valid()],
+    WVPASSEQ([e.name for e in index.merge(r2, r1, r3) if not e.is_valid()],
              ['/a/c/n/3', '/a/c/n/', '/a/c/',
               '/a/b/n/2', '/a/b/n/', '/a/b/', '/a/', '/'])
 
     expect_invalid = ['/'] + r2all + r3all
     expect_real = (set(r1all) - set(r2all) - set(r3all)) \
                     | set(['/a/b/n/2', '/a/c/n/3'])
-    dump(m)
-    for e in m:
+    dump(index.merge(r2, r1, r3))
+    for e in index.merge(r2, r1, r3):
         print e.name, hex(e.flags), e.ctime
         eiv = e.name in expect_invalid
         er  = e.name in expect_real
         WVPASSEQ(eiv, not e.is_valid())
         WVPASSEQ(er, e.is_real())
     fake_validate(r2, r3)
-    dump(m)
-    WVPASSEQ([e.name for e in m if not e.is_valid()], [])
+    dump(index.merge(r2, r1, r3))
+    WVPASSEQ([e.name for e in index.merge(r2, r1, r3) if not e.is_valid()], [])
     
-    e = eget(m, '/a/b/c')
+    e = eget(index.merge(r2, r1, r3), '/a/b/c')
     e.invalidate()
     e.repack()
-    dump(m)
-    WVPASSEQ([e.name for e in m if not e.is_valid()],
+    dump(index.merge(r2, r1, r3))
+    WVPASSEQ([e.name for e in index.merge(r2, r1, r3) if not e.is_valid()],
              ['/a/b/c', '/a/b/', '/a/', '/'])
