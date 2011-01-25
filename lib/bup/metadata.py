@@ -389,7 +389,7 @@ class Metadata:
         acl_reps = vint.unpack('ssss', data)
         if(acl_reps[2] == ''):
             acl_reps = acl_reps[:2]
-        self.posix1e_acl = [posix1e.ACL(x) for x in acl_reps]
+        self.posix1e_acl = [posix1e.ACL(text=x) for x in acl_reps]
 
     def _apply_posix1e_acl_rec(self, path, restore_numeric_ids=False):
         if(self.posix1e_acl):
@@ -507,7 +507,7 @@ class Metadata:
                 elif tag == _rec_tag_symlink_target:
                     result._load_symlink_target_rec(port)
                 elif tag == _rec_tag_posix1e_acl:
-                    result._load_posix1e_acl(port)
+                    result._load_posix1e_acl_rec(port)
                 elif tag ==_rec_tag_nfsv4_acl:
                     result._load_nfsv4_acl_rec(port)
                 elif tag == _rec_tag_linux_attr:

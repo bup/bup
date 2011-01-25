@@ -136,6 +136,17 @@ then
       attr -s foo -V bar testfs/src/bar
       (cd testfs && test-src-create-extract)
     )
+
+    # Test POSIX.1e ACLs.
+    force-delete testfs/src
+    mkdir testfs/src
+    (
+      touch testfs/src/foo
+      mkdir testfs/src/bar
+      setfacl -m u:root:r testfs/src/foo
+      setfacl -m u:root:r testfs/src/bar
+      (cd testfs && test-src-create-extract)
+    )
   )
 fi
 
