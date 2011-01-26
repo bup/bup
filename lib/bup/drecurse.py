@@ -5,6 +5,10 @@ try:
     O_LARGEFILE = os.O_LARGEFILE
 except AttributeError:
     O_LARGEFILE = 0
+try:
+    O_NOFOLLOW = os.O_NOFOLLOW
+except AttributeError:
+    O_NOFOLLOW = 0
 
 
 # the use of fchdir() and lstat() is for two reasons:
@@ -13,8 +17,7 @@ except AttributeError:
 class OsFile:
     def __init__(self, path):
         self.fd = None
-        self.fd = os.open(path, 
-                          os.O_RDONLY|O_LARGEFILE|os.O_NOFOLLOW|os.O_NDELAY)
+        self.fd = os.open(path, os.O_RDONLY|O_LARGEFILE|O_NOFOLLOW|os.O_NDELAY)
         
     def __del__(self):
         if self.fd:
