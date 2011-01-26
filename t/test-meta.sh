@@ -15,7 +15,6 @@ bup()
 # (according to coreutils stat) via create, extract, start-extract,
 # and finish-extract.  The current tests are crude, and this does not
 # test devices, varying users/groups, acls, attrs, etc.
-WVSTART "meta"
 
 genstat()
 {
@@ -85,6 +84,7 @@ force-delete "${TOP}/bupmeta.tmp"
 ) || WVFAIL
 
 # Use the test tree to check bup meta.
+WVSTART 'meta - general'
 (
   cd "${TOP}/bupmeta.tmp"
   test-src-create-extract
@@ -102,6 +102,7 @@ then
 
     trap cleanup_at_exit EXIT
 
+    WVSTART 'meta - general (as root)'
     WVPASS cd "${TOP}/bupmeta.tmp"
     umount testfs || true
     dd if=/dev/zero of=test-fs.img bs=1M count=32
@@ -115,7 +116,7 @@ then
     cp -a src testfs/src
     (cd testfs && test-src-create-extract)
 
-    # Test Linux attr.
+    WVSTART 'meta - Linux attr (as root)'
     force-delete testfs/src
     mkdir testfs/src
     (
@@ -126,7 +127,7 @@ then
       (cd testfs && test-src-create-extract)
     )
 
-    # Test Linux xattr.
+    WVSTART 'meta - Linux xattr (as root)'
     force-delete testfs/src
     mkdir testfs/src
     (
@@ -137,7 +138,7 @@ then
       (cd testfs && test-src-create-extract)
     )
 
-    # Test POSIX.1e ACLs.
+    WVSTART 'meta - POSIX.1e ACLs (as root)'
     force-delete testfs/src
     mkdir testfs/src
     (
