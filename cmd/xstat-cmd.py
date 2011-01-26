@@ -5,13 +5,14 @@
 # This code is covered under the terms of the GNU Library General
 # Public License as described in the bup LICENSE file.
 
+import errno
 import posix1e
 import stat
 import sys
 from bup import metadata
 from bup import options
 from bup import xstat
-from bup.helpers import handle_ctrl_c, saved_errors
+from bup.helpers import handle_ctrl_c, saved_errors, add_error, log
 
 
 def fstimestr(fstime):
@@ -78,7 +79,14 @@ for flag, value in flags:
             active_fields = active_fields | include_fields
 
 for path in remainder:
-    m = metadata.from_path(path, archive_path = path)
+    try:
+        m = metadata.from_path(path, archive_path = path)
+    except IOError, e:
+        if e.errno == errno.ENOENT:
+            add_error(e)
+            continue
+        else:
+            raise
     if 'path' in active_fields:
         print 'path:', m.path
     if 'mode' in active_fields:
