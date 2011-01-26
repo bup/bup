@@ -41,7 +41,12 @@ def repo(sub = ''):
 def auto_midx(objdir):
     main_exe = os.environ.get('BUP_MAIN_EXE') or sys.argv[0]
     args = [main_exe, 'midx', '--auto', '--dir', objdir]
-    rv = subprocess.call(args, stdout=open('/dev/null', 'w'))
+    try:
+        rv = subprocess.call(args, stdout=open('/dev/null', 'w'))
+    except OSError, e:
+        # make sure 'args' gets printed to help with debugging
+        add_error('%r: exception: %s' % (args, e))
+        raise
     if rv:
         add_error('%r: returned %d' % (args, rv))
 
