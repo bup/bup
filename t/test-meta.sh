@@ -116,6 +116,36 @@ then
     cp -a src testfs/src
     (cd testfs && test-src-create-extract)
 
+    WVSTART 'meta - atime'
+    force-delete testfs/src
+    mkdir testfs/src
+    (
+      mkdir testfs/src/foo
+      touch testfs/src/bar
+      PYTHONPATH="${TOP}/lib" \
+        python -c "from bup.xstat import lutime, FSTime; \
+                   x = FSTime.from_secs(42);\
+                   lutime('testfs/src/foo', (x, x));\
+                   lutime('testfs/src/bar', (x, x));"
+      cd testfs
+      WVPASS bup meta -v --create --recurse --file src.meta src
+      bup meta -tvf src.meta
+      # Test extract.
+      force-delete src-restore
+      mkdir src-restore
+      cd src-restore
+      WVPASS bup meta --extract --file ../src.meta
+      WVPASSEQ "$(bup xstat --include-fields=atime src/foo)" "atime: 42"
+      WVPASSEQ "$(bup xstat --include-fields=atime src/bar)" "atime: 42"
+      # Test start/finish extract.
+      force-delete src
+      WVPASS bup meta --start-extract --file ../src.meta
+      WVPASS test -d src
+      WVPASS bup meta --finish-extract --file ../src.meta
+      WVPASSEQ "$(bup xstat --include-fields=atime src/foo)" "atime: 42"
+      WVPASSEQ "$(bup xstat --include-fields=atime src/bar)" "atime: 42"
+    )
+
     WVSTART 'meta - Linux attr (as root)'
     force-delete testfs/src
     mkdir testfs/src

@@ -544,10 +544,10 @@ class Metadata:
             add_error(e)
 
 
-def from_path(path, archive_path=None, save_symlinks=True):
+def from_path(path, statinfo=None, archive_path=None, save_symlinks=True):
     result = Metadata()
     result.path = archive_path
-    st = lstat(path)
+    st = statinfo if statinfo else lstat(path)
     result._add_common(path, st)
     if(save_symlinks):
         result._add_symlink_target(path, st)
@@ -575,7 +575,7 @@ def save_tree(output_file, paths,
             dirlist_dir = os.getcwd()
             os.chdir(start_dir)
             safe_path = _clean_up_path_for_archive(p)
-            m = from_path(p, archive_path=safe_path,
+            m = from_path(p, statinfo=st, archive_path=safe_path,
                           save_symlinks=save_symlinks)
             if verbose:
                 print >> sys.stderr, m.path
