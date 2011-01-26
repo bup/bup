@@ -4,7 +4,7 @@ interact with the Git data structures.
 """
 import os, sys, zlib, time, subprocess, struct, stat, re, tempfile, heapq
 from bup.helpers import *
-from bup import _helpers
+from bup import _helpers, path
 
 MIDX_VERSION = 2
 
@@ -39,8 +39,7 @@ def repo(sub = ''):
 
 
 def auto_midx(objdir):
-    main_exe = os.environ.get('BUP_MAIN_EXE') or sys.argv[0]
-    args = [main_exe, 'midx', '--auto', '--dir', objdir]
+    args = [path.exe(), 'midx', '--auto', '--dir', objdir]
     try:
         rv = subprocess.call(args, stdout=open('/dev/null', 'w'))
     except OSError, e:
