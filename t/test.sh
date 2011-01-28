@@ -154,7 +154,7 @@ WVPASS bup ls /lslr
 WVFAIL diff -u tags1.tmp tags2.tmp
 
 # fanout must be different from non-fanout
-WVFAIL diff -q tags2t.tmp tags2tf.tmp
+WVFAIL diff tags2t.tmp tags2tf.tmp
 wc -c t/testfile1 t/testfile2
 wc -l tags1.tmp tags2.tmp
 
