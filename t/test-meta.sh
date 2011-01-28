@@ -25,9 +25,14 @@ genstat()
   )
 }
 
+actually-root()
+{
+  test "$(whoami)" == root -a -z "${FAKEROOTKEY}"
+}
+
 force-delete()
 {
-  if test "$(whoami)" != root
+  if ! actually-root
   then
     rm -rf "$@"
   else
@@ -67,7 +72,7 @@ test-src-create-extract()
   )
 }
 
-if test "$(whoami)" == root
+if actually-root
 then
   umount "${TOP}/bupmeta.tmp/testfs" || true
 fi
@@ -91,7 +96,7 @@ WVSTART 'meta - general'
 )
 
 # Root-only tests: ACLs, Linux attr, Linux xattr, etc.
-if test "$(whoami)" == root
+if actually-root
 then
   (
     cleanup_at_exit()
@@ -116,7 +121,7 @@ then
     cp -a src testfs/src
     (cd testfs && test-src-create-extract)
 
-    WVSTART 'meta - atime'
+    WVSTART 'meta - atime (as root)'
     force-delete testfs/src
     mkdir testfs/src
     (
