@@ -83,7 +83,7 @@ lib/bup/_version.py:
 runtests: all runtests-python runtests-cmdline
 
 runtests-python:
-	$(PYTHON) wvtest.py $(wildcard t/t*.py lib/*/t/t*.py)
+	$(PYTHON) wvtest.py t/t*.py lib/*/t/t*.py
 
 runtests-cmdline: all
 	t/test.sh
