@@ -1,20 +1,26 @@
-.TH bup-ls 1 "2011-01-02" "Bup 0\.20-32-g6eedafc"
+.TH bup-ls 1 "2011-01-25" "Bup 0\.21-25-g8e3764b"
 .SH NAME
 .PP
 bup-ls - list the contents of a bup repository
 .SH SYNOPSIS
 .PP
-bup ls [-s] <paths\.\.\.>
+bup ls [-s] [-a] <paths\.\.\.>
 .SH DESCRIPTION
 .PP
 \f[B]bup\ ls\f[] lists files and directories in your bup repository
 using the same directory hierarchy as they would have with
 \f[B]bup-fuse\f[](1)\.
 .PP
-The top level directory is the branch (corresponding to the
+The top level directory contains the branch (corresponding to the
 \f[B]-n\f[] option in \f[B]bup\ save\f[]), the next level is the
 date of the backup, and subsequent levels correspond to files in
 the backup\.
+.PP
+Note that \f[B]bup\ ls\f[] doesn\[aq]t show hidden files by default
+and one needs to use the \f[B]-a\f[] option to show them\. Files
+are hidden when their name begins with a dot\. For example, on the
+topmost level, the special directories named \f[B]\.commit\f[] and
+\f[B]\.tag\f[] are hidden directories\.
 .PP
 Once you have identified the file you want using \f[B]bup\ ls\f[],
 you can view its contents using \f[B]bup\ join\f[] or
@@ -25,10 +31,17 @@ you can view its contents using \f[B]bup\ join\f[] or
 show hash for each file/directory\.
 .RS
 .RE
+.TP
+.B -a, --all
+show hidden files\.
+.RS
+.RE
 .SH EXAMPLE
 .PP
 \f[CR]
       bup\ ls\ /myserver/latest/etc/profile
+      
+      bup\ ls\ -a\ /
 \f[]
 .SH SEE ALSO
 .PP
