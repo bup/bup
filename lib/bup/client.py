@@ -78,7 +78,7 @@ class Client:
                     raise ClientError, 'connect: %s' % e, sys.exc_info()[2]
             elif self.protocol == 'bup':
                 self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                self.sock.connect((self.host, self.port or 1982))
+                self.sock.connect((self.host, atoi(self.port) or 1982))
                 self.sockw = self.sock.makefile('wb')
                 self.conn = DemuxConn(self.sock.fileno(), self.sockw)
         if self.dir:
