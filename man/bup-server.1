@@ -1,4 +1,4 @@
-.TH bup-server 1 "2011-01-02" "Bup 0\.20-32-g6eedafc"
+.TH bup-server 1 "2011-01-25" "Bup 0\.21-25-g8e3764b"
 .SH NAME
 .PP
 bup-server - the server side of the bup client-server relationship
@@ -13,6 +13,30 @@ If you use \f[B]bup-split\f[](1) or \f[B]bup-save\f[](1) with the
 \f[B]bup\ server\f[] to receive the transmitted objects\.
 .PP
 There is normally no reason to run \f[B]bup\ server\f[] yourself\.
+.SH MODES
+.TP
+.B smart
+In this mode, the server checks each incoming object against the
+idx files in its repository\. If any object already exists, it
+tells the client about the idx file it was found in, allowing the
+client to download that idx and avoid sending duplicate data\.
+.RS
+.RE
+.TP
+.B dumb
+In this mode, the server will not check its local index before
+writing an object\. To avoid writing duplicate objects, the server
+will tell the client to download all of its \.idx files at the
+start of the session\. This mode is useful on low powered server
+hardware (ie router/slow NAS)\.
+.RS
+.RE
+.SH FILES
+.TP
+.B $BUP_DIR/bup-dumb-server
+Activate dumb server mode, as discussed above\.
+.RS
+.RE
 .SH SEE ALSO
 .PP
 \f[B]bup-save\f[](1), \f[B]bup-split\f[](1)

@@ -2,15 +2,15 @@
 <html xmlns="http://www.w3.org/1999/xhtml"
 ><head
   ><title
-    >bup-ls(1) Bup 0.20-32-g6eedafc</title
+    >bup-ls(1) Bup 0.21-25-g8e3764b</title
     ><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"
      /><meta name="generator" content="pandoc"
      /><meta name="author" content="Avery Pennarun &lt;apenwarr@gmail.com&gt;"
-     /><meta name="date" content="2011-01-02"
+     /><meta name="date" content="2011-01-25"
      /></head
   ><body
   ><h1 class="title"
-    >bup-ls(1) Bup 0.20-32-g6eedafc</h1
+    >bup-ls(1) Bup 0.21-25-g8e3764b</h1
     ><h1 id="name"
     >NAME</h1
     ><p
@@ -18,7 +18,7 @@
     ><h1 id="synopsis"
     >SYNOPSIS</h1
     ><p
-    >bup ls [-s] &lt;paths...&gt;</p
+    >bup ls [-s] [-a] &lt;paths...&gt;</p
     ><h1 id="description"
     >DESCRIPTION</h1
     ><p
@@ -28,11 +28,21 @@
       >bup-fuse</code
       >(1).</p
     ><p
-    >The top level directory is the branch (corresponding to the <code
+    >The top level directory contains the branch (corresponding to the <code
       >-n</code
       > option in <code
       >bup save</code
       >), the next level is the date of the backup, and subsequent levels correspond to files in the backup.</p
+    ><p
+    >Note that <code
+      >bup ls</code
+      > doesn't show hidden files by default and one needs to use the <code
+      >-a</code
+      > option to show them. Files are hidden when their name begins with a dot. For example, on the topmost level, the special directories named <code
+      >.commit</code
+      > and <code
+      >.tag</code
+      > are hidden directories.</p
     ><p
     >Once you have identified the file you want using <code
       >bup ls</code
@@ -47,13 +57,23 @@
     ><dt
       >-s, --hash</dt
       ><dd
-      >show hash for each file/directory.</dd
+      ><p
+	>show hash for each file/directory.</p
+	></dd
+      ><dt
+      >-a, --all</dt
+      ><dd
+      ><p
+	>show hidden files.</p
+	></dd
       ></dl
     ><h1 id="example"
     >EXAMPLE</h1
     ><pre
     ><code
       >bup ls /myserver/latest/etc/profile
+
+bup ls -a /
 </code
       ></pre
     ><h1 id="see-also"
