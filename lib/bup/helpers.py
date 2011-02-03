@@ -328,7 +328,10 @@ class DemuxConn(BaseConn):
         # multiplexed and can be assumed to be debug/log before mux init.
         tail = ''
         while tail != 'BUPMUX':
-            tail += os.read(infd, 1024)
+            b = os.read(infd, 1024)
+            if not b:
+                raise IOError('demux: unexpected EOF during initialization')
+            tail += b
             buf = tail[:-6]
             tail = tail[-6:]
             sys.stderr.write(buf)
