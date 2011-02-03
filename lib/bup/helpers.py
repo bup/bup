@@ -202,8 +202,10 @@ def resource_path(subdir=''):
         _resource_path = os.environ.get('BUP_RESOURCE_PATH') or '.'
     return os.path.join(_resource_path, subdir)
 
+
 class NotOk(Exception):
     pass
+
 
 class BaseConn:
     def __init__(self, outp):
@@ -268,6 +270,7 @@ class BaseConn:
             raise Exception('expected "ok", got %r' % rl)
         return self._check_ok(onempty)
 
+
 class Conn(BaseConn):
     def __init__(self, inp, outp):
         BaseConn.__init__(self, outp)
@@ -287,6 +290,7 @@ class Conn(BaseConn):
         else:
             return None
 
+
 def checked_reader(fd, n):
     while n > 0:
         rl, _, _ = select.select([fd], [], [])
@@ -295,6 +299,7 @@ def checked_reader(fd, n):
         if not buf: raise Exception("Unexpected EOF reading %d more bytes" % n)
         yield buf
         n -= len(buf)
+
 
 MAX_PACKET = 128 * 1024
 def mux(p, outfd, outr, errr):
@@ -313,6 +318,7 @@ def mux(p, outfd, outr, errr):
                     os.write(outfd, struct.pack('!IB', len(buf), 2) + buf)
     finally:
         os.write(outfd, struct.pack('!IB', 0, 3))
+
 
 class DemuxConn(BaseConn):
     """A helper class for bup's client-server protocol."""
@@ -401,6 +407,7 @@ class DemuxConn(BaseConn):
 
     def has_input(self):
         return self._load_buf(0)
+
 
 def linereader(f):
     """Generate a list of input lines from 'f' without terminating newlines."""
@@ -515,6 +522,7 @@ def add_error(e):
     saved_errors.append(e)
     log('%-70s\n' % e)
 
+
 istty = os.isatty(2) or atoi(os.environ.get('BUP_FORCE_TTY'))
 def progress(s):
     """Calls log(s) if stderr is a TTY.  Does nothing otherwise."""
@@ -562,6 +570,7 @@ def columnate(l, prefix):
         out += prefix + ''.join(('%-*s' % (clen+2, s)) for s in row) + '\n'
     return out
 
+
 def parse_date_or_fatal(str, fatal):
     """Parses the given date or calls Option.fatal().
     For now we expect a string that contains a float."""
@@ -571,6 +580,7 @@ def parse_date_or_fatal(str, fatal):
         raise fatal('invalid date format (should be a float): %r' % e)
     else:
         return date
+
 
 def strip_path(prefix, path):
     """Strips a given prefix from a path.
@@ -591,6 +601,7 @@ def strip_path(prefix, path):
     else:
         return path
 
+
 def strip_base_path(path, base_paths):
     """Strips the base path from a given path.
 
@@ -606,6 +617,7 @@ def strip_base_path(path, base_paths):
         if normalized_path.startswith(os.path.realpath(bp)):
             return strip_path(bp, normalized_path)
     return path
+
 
 def graft_path(graft_points, path):
     normalized_path = os.path.realpath(path)
@@ -633,9 +645,11 @@ def version_date():
     """Format bup's version date string for output."""
     return _version.DATE.split(' ')[0]
 
+
 def version_commit():
     """Get the commit hash of bup's current version."""
     return _version.COMMIT
+
 
 def version_tag():
     """Format bup's version tag (the official version number).
