@@ -4,7 +4,7 @@ from bup import options, path
 from bup.helpers import *
 
 optspec = """
-bup daemon [-l address] [-p port]
+bup daemon [options...]
 --
 l,listen  ip address to listen on, defaults to *
 p,port    port to listen on, defaults to 1982
