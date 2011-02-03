@@ -222,6 +222,7 @@ class Client:
         self.check_ok()
         if ob:
             self._busy = None
+        idx = None
         for idx in suggested:
             self.sync_index(idx)
         git.auto_midx(self.cachedir)
