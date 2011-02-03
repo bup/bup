@@ -328,13 +328,12 @@ class DemuxConn(BaseConn):
         # multiplexed and can be assumed to be debug/log before mux init.
         tail = ''
         while tail != 'BUPMUX':
-            b = os.read(infd, 1024)
+            b = os.read(infd, (len(tail) < 6) and (6-len(tail)) or 1)
             if not b:
                 raise IOError('demux: unexpected EOF during initialization')
             tail += b
-            buf = tail[:-6]
+            sys.stderr.write(tail[:-6])  # pre-mux log messages
             tail = tail[-6:]
-            sys.stderr.write(buf)
         self.infd = infd
         self.reader = None
         self.buf = None
@@ -351,7 +350,7 @@ class DemuxConn(BaseConn):
         assert(rl[0] == self.infd)
         ns = ''.join(checked_reader(self.infd, 5))
         n, fdw = struct.unpack('!IB', ns)
-        assert(n<=MAX_PACKET)
+        assert(n <= MAX_PACKET)
         if fdw == 1:
             self.reader = checked_reader(self.infd, n)
         elif fdw == 2:
