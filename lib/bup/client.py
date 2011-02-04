@@ -309,7 +309,7 @@ class PackWriter_Remote(git.PackWriter):
         return id
 
     def abort(self):
-        raise GitError("don't know how to abort remote pack writing")
+        raise ClientError("don't know how to abort remote pack writing")
 
     def _raw_write(self, datalist, sha):
         assert(self.file)
