@@ -30,9 +30,9 @@ for res in socket.getaddrinfo(host, port, socket.AF_UNSPEC,
         continue
     try:
         if af == socket.AF_INET6:
-            debug1("bup daemon: listening on [%s]:%s\n" % sa[:2])
+            log("bup daemon: listening on [%s]:%s\n" % sa[:2])
         else:
-            debug1("bup daemon: listening on %s:%s\n" % sa[:2])
+            log("bup daemon: listening on %s:%s\n" % sa[:2])
         s.bind(sa)
         s.listen(1)
     except socket.error, msg:
