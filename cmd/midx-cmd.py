@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import sys, math, struct, glob, resource
+import tempfile, shutil
 from bup import options, git
 from bup.helpers import *
 
@@ -31,13 +32,20 @@ def max_files():
     return mf
 
 
-def merge(idxlist, bits, table):
-    count = 0
-    for e in git.idxmerge(idxlist, final_progress=False):
-        count += 1
-        prefix = git.extract_bits(e, bits)
-        table[prefix] = count
-        yield e
+def merge_into(tf_sha, tf_nmap, idxlist, bits, entries, total):
+    prefix = 0
+    it = git.idxmerge(idxlist, final_progress=False, total=total)
+    for i, (e, idx) in enumerate(it):
+        new_prefix = git.extract_bits(e, bits)
+        if new_prefix != prefix:
+            for p in xrange(prefix, new_prefix):
+                yield i
+            prefix = new_prefix
+        tf_sha.write(e)
+        tf_nmap.write(struct.pack('!I', idx))
+    i += 1
+    for p in xrange(prefix, entries):
+        yield i
 
 
 def _do_midx(outdir, outfilename, infilenames, prefixstr):
@@ -48,12 +56,12 @@ def _do_midx(outdir, outfilename, infilenames, prefixstr):
     
     inp = []
     total = 0
-    allfilenames = {}
+    allfilenames = []
     for name in infilenames:
         ix = git.open_idx(name)
+        inp.append(ix.iter_with_idx_i(len(allfilenames)))
         for n in ix.idxnames:
-            allfilenames[n] = 1
-        inp.append(ix)
+            allfilenames.append(os.path.basename(n))
         total += len(ix)
 
     log('midx: %screating from %d files (%d objects).\n'
@@ -69,25 +77,32 @@ def _do_midx(outdir, outfilename, infilenames, prefixstr):
     entries = 2**bits
     debug1('midx: table size: %d (%d bits)\n' % (entries*4, bits))
     
-    table = [0]*entries
-
     try:
         os.unlink(outfilename)
     except OSError:
         pass
     f = open(outfilename + '.tmp', 'w+')
-    f.write('MIDX\0\0\0\2')
-    f.write(struct.pack('!I', bits))
+    f.write('MIDX')
+    f.write(struct.pack('!II', git.MIDX_VERSION, bits))
     assert(f.tell() == 12)
-    f.write('\0'*4*entries)
-    
-    for e in merge(inp, bits, table):
-        f.write(e)
-        
-    f.write('\0'.join(os.path.basename(p) for p in allfilenames.keys()))
 
-    f.seek(12)
-    f.write(struct.pack('!%dI' % entries, *table))
+    tf_sha = tempfile.TemporaryFile(dir=outdir)
+    tf_nmap = tempfile.TemporaryFile(dir=outdir)
+    for t in merge_into(tf_sha, tf_nmap, inp, bits, entries, total):
+        f.write(struct.pack('!I', t))
+    assert(f.tell() == 12 + 4*entries)
+
+    tf_sha.seek(0)
+    shutil.copyfileobj(tf_sha, f)
+    tf_sha.close()
+    assert(f.tell() == 12 + 4*entries + 20*t) # t may be < total due to dupes
+
+    tf_nmap.seek(0)
+    shutil.copyfileobj(tf_nmap, f)
+    tf_nmap.close()
+    assert(f.tell() == 12 + 4*entries + 24*t) # t may be < total due to dupes
+
+    f.write('\0'.join(allfilenames))
     f.close()
     os.rename(outfilename + '.tmp', outfilename)
 
@@ -97,12 +112,11 @@ def _do_midx(outdir, outfilename, infilenames, prefixstr):
         assert(len(p.idxnames) == len(infilenames))
         print p.idxnames
         assert(len(p) == total)
-        pi = iter(p)
-        for i in merge(inp, total, bits, table):
+        for pe, e in p, git.idxmerge(inp, final_progress=False):
             assert(i == pi.next())
             assert(p.exists(i))
 
-    return total,outfilename
+    return total, outfilename
 
 
 def do_midx(outdir, outfilename, infilenames, prefixstr):

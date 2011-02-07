@@ -89,18 +89,9 @@ def receive_objects_v2(conn, junk):
         #debug2('read %d bytes\n' % n)
         _check(w, n, len(buf), 'object read: expected %d bytes, got %d\n')
         if not dumb_server_mode:
-            oldpack = w.exists(shar)
+            oldpack = w.exists(shar, want_source=True)
             if oldpack:
-                if oldpack == True or oldpack.endswith('.midx'):
-                    # FIXME: we shouldn't really have to know about midx files
-                    # at this layer.  But exists() on a midx doesn't return the
-                    # packname (since it doesn't know)... probably we should
-                    # just fix that deficiency of midx files eventually,
-                    # although it'll make the files bigger.  This method is
-                    # certainly not very efficient.
-                    oldpack = w.objcache.packname_containing(shar)
-                    debug2('new suggestion: %r\n' % oldpack)
-                    w.objcache.refresh()
+                assert(not oldpack == True)
                 assert(oldpack.endswith('.idx'))
                 (dir,name) = os.path.split(oldpack)
                 if not (name in suggested):

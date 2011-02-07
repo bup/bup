@@ -6,7 +6,7 @@ import os, sys, zlib, time, subprocess, struct, stat, re, tempfile, math, glob
 from bup.helpers import *
 from bup import _helpers, path
 
-MIDX_VERSION = 2
+MIDX_VERSION = 4
 
 """Discussion of bloom constants for bup:
 
@@ -247,9 +247,11 @@ class PackIdx:
             return self._ofs_from_idx(idx)
         return None
 
-    def exists(self, hash):
+    def exists(self, hash, want_source=False):
         """Return nonempty if the object exists in this index."""
-        return hash and (self._idx_from_hash(hash) != None) and True or None
+        if hash and (self._idx_from_hash(hash) != None):
+            return want_source and self.name or True
+        return None
 
     def __len__(self):
         return int(self.fanout[255])
@@ -274,6 +276,10 @@ class PackIdx:
             else: # got it!
                 return mid
         return None
+
+    def iter_with_idx_i(self, idx_i):
+        for e in self:
+            yield e, idx_i
 
 
 class PackIdxV1(PackIdx):
@@ -475,9 +481,10 @@ class PackMidx:
         self.entries = 2**self.bits
         self.fanout = buffer(self.map, 12, self.entries*4)
         shaofs = 12 + self.entries*4
-        nsha = self._fanget(self.entries-1)
+        self.nsha = nsha = self._fanget(self.entries-1)
         self.shatable = buffer(self.map, shaofs, nsha*20)
-        self.idxnames = str(self.map[shaofs + 20*nsha:]).split('\0')
+        self.whichlist = buffer(self.map, shaofs + nsha*20, nsha*4)
+        self.idxnames = str(self.map[shaofs + 24*nsha:]).split('\0')
 
     def _init_failed(self):
         self.bits = 0
@@ -494,7 +501,13 @@ class PackMidx:
     def _get(self, i):
         return str(self.shatable[i*20:(i+1)*20])
 
-    def exists(self, hash):
+    def _get_idx_i(self, i):
+        return struct.unpack('!I', self.whichlist[i*4:(i+1)*4])[0]
+
+    def _get_idxname(self, i):
+        return self.idxnames[self._get_idx_i(i)]
+
+    def exists(self, hash, want_source=False):
         """Return nonempty if the object exists in the index files."""
         global _total_searches, _total_steps
         _total_searches += 1
@@ -525,8 +538,12 @@ class PackMidx:
                 end = mid
                 endv = _helpers.firstword(v)
             else: # got it!
-                return True
+                return want_source and self._get_idxname(mid) or True
         return None
+
+    def iter_with_idx_i(self, ofs):
+        for i in xrange(self._fanget(self.entries-1)):
+            yield buffer(self.shatable, i*20, 20), ofs+self._get_idx_i(i)
 
     def __iter__(self):
         for i in xrange(self._fanget(self.entries-1)):
@@ -560,7 +577,7 @@ class PackIdxList:
     def __len__(self):
         return sum(len(pack) for pack in self.packs)
 
-    def exists(self, hash):
+    def exists(self, hash, want_source=False):
         """Return nonempty if the object exists in the index files."""
         global _total_searches
         _total_searches += 1
@@ -575,10 +592,11 @@ class PackIdxList:
         for i in xrange(len(self.packs)):
             p = self.packs[i]
             _total_searches -= 1  # will be incremented by sub-pack
-            if p.exists(hash):
+            ix = p.exists(hash, want_source=want_source)
+            if ix:
                 # reorder so most recently used packs are searched first
                 self.packs = [p] + self.packs[:i] + self.packs[i+1:]
-                return p.name
+                return ix
         self.do_bloom = True
         return None
 
@@ -658,21 +676,6 @@ class PackIdxList:
         debug1('PackIdxList: using %d index%s.\n'
             % (len(self.packs), len(self.packs)!=1 and 'es' or ''))
 
-    def packname_containing(self, hash):
-        # figure out which pack contains a given hash.
-        # FIXME: if the midx file format would just *store* this information,
-        # we could calculate it a lot more efficiently.  But it's not needed
-        # often, so let's do it like this.
-        for f in glob.glob(os.path.join(self.dir,'*.idx')):
-            full = os.path.join(self.dir, f)
-            try:
-                ix = open_idx(full)
-            except GitError, e:
-                add_error(e)
-                continue
-            if ix.exists(hash):
-                return full
-
     def add(self, hash):
         """Insert an additional object in the list."""
         self.also.add(hash)
@@ -715,7 +718,7 @@ def open_idx(filename):
         raise GitError('idx filenames must end with .idx or .midx')
 
 
-def idxmerge(idxlist, final_progress=True):
+def idxmerge(idxlist, final_progress=True, total=None):
     """Generate a list of all the objects reachable in a PackIdxList."""
     def pfunc(count, total):
         progress('Reading indexes: %.2f%% (%d/%d)\r'
@@ -723,7 +726,7 @@ def idxmerge(idxlist, final_progress=True):
     def pfinal(count, total):
         if final_progress:
             log('Reading indexes: %.2f%% (%d/%d), done.\n' % (100, total, total))
-    return merge_iter(idxlist, 10024, pfunc, pfinal)
+    return merge_iter(idxlist, 10024, pfunc, pfinal, total=total)
 
 
 def _make_objcache():
@@ -800,10 +803,10 @@ class PackWriter:
             raise GitError(
                     "PackWriter not opened or can't check exists w/o objcache")
 
-    def exists(self, id):
+    def exists(self, id, want_source=False):
         """Return non-empty if an object is found in the object cache."""
         self._require_objcache()
-        return self.objcache.exists(id)
+        return self.objcache.exists(id, want_source=want_source)
 
     def maybe_write(self, type, content):
         """Write an object to the pack file if not present and return its id."""
