@@ -144,7 +144,6 @@ def test_bloom():
     b = git.ShaBloom.create('bup.bloom', f=tf, readwrite=True, expected=100)
     WVPASSEQ(b.rwfile, tf)
     WVPASSEQ(b.k, 5)
-# FIXME: commented out because it writes a gigabyte of zeros to disk.
-#    tf = tempfile.TemporaryFile()
-#    b = git.ShaBloom.create('bup.bloom', f=tf, readwrite=True, expected=2**28)
-#    WVPASSEQ(b.k, 4)
+    tf = tempfile.TemporaryFile()
+    b = git.ShaBloom.create('bup.bloom', f=tf, readwrite=True, expected=2**28)
+    WVPASSEQ(b.k, 4)

@@ -345,9 +345,6 @@ bloom_add = _helpers.bloom_add
 
 class ShaBloom:
     """Wrapper which contains data from multiple index files.
-    Multiple index (.midx) files constitute a wrapper around index (.idx) files
-    and make it possible for bup to expand Git's indexing capabilities to vast
-    amounts of files.
     """
     def __init__(self, filename, f=None, readwrite=False):
         self.name = filename
@@ -442,7 +439,9 @@ class ShaBloom:
         f.write('BLOM')
         f.write(struct.pack('!IHHI', BLOOM_VERSION, bits, k, 0))
         assert(f.tell() == 16)
-        f.write('\0'*2**bits)
+        # NOTE: On some systems this will not extend+zerofill, but it does on
+        # darwin, linux, bsd and solaris.
+        f.truncate(16+2**bits)
         f.seek(0)
         return cls(name, f=f, readwrite=readwrite)
 
