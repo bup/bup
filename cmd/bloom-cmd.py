@@ -62,10 +62,10 @@ def do_bloom(path, outfilename):
 
     tempname = None
     if b is None:
-        tf = tempfile.NamedTemporaryFile(
-                dir=path, suffix='bup.bloom', delete=False)
+        tfd,tfname = tempfile.mkstemp(dir=path, suffix='bup.bloom')
+        tf = os.fdopen(tfd, 'w+')
         b = git.ShaBloom.create(
-                tf.name, f=tf, readwrite=True, expected=add_count, k=opt.k)
+                tfname, f=tf, readwrite=True, expected=add_count, k=opt.k)
     count = 0
     for ix in add:
         progress('Writing bloom: %d/%d\r' % (count, len(add)))
