@@ -77,73 +77,131 @@ static PyObject *firstword(PyObject *self, PyObject *args)
 }
 
 
-static void to_bloom_address_bitmask(unsigned const char *buf, const int nbits,
-				     uint32_t *v, unsigned char *bitmask)
+typedef struct {
+    uint32_t high;
+    unsigned char low;
+} bits40_t;
+
+
+static void to_bloom_address_bitmask4(const bits40_t *buf,
+	const int nbits, uint64_t *v, unsigned char *bitmask)
+{
+    int bit;
+    uint64_t raw, mask;
+
+    mask = (1<<nbits) - 1;
+    raw = (((uint64_t)ntohl(buf->high)) << 8) | buf->low;
+    bit = (raw >> (37-nbits)) & 0x7;
+    *v = (raw >> (40-nbits)) & mask;
+    *bitmask = 1 << bit;
+}
+
+static void to_bloom_address_bitmask5(const uint32_t *buf,
+	const int nbits, uint32_t *v, unsigned char *bitmask)
 {
     int bit;
     uint32_t raw, mask;
 
     mask = (1<<nbits) - 1;
-    raw = ntohl(*(uint32_t *)buf);
+    raw = ntohl(*buf);
     bit = (raw >> (29-nbits)) & 0x7;
     *v = (raw >> (32-nbits)) & mask;
     *bitmask = 1 << bit;
 }
 
-static void bloom_add_entry(
-	unsigned char *bloom, int ofs, unsigned char *sha, int nbits)
-{
-    unsigned char bitmask, *end;
-    uint32_t v;
 
-    for (end = sha + 20; sha < end; sha += 4)
-    {
-	to_bloom_address_bitmask(sha, nbits, &v, &bitmask);
-	bloom[ofs+v] |= bitmask;
-    }
+#define BLOOM_SET_BIT(name, address, itype, otype) \
+static void name(unsigned char *bloom, const void *buf, const int nbits)\
+{\
+    unsigned char bitmask;\
+    otype v;\
+    address((itype *)buf, nbits, &v, &bitmask);\
+    bloom[16+v] |= bitmask;\
 }
+BLOOM_SET_BIT(bloom_set_bit4, to_bloom_address_bitmask4, bits40_t, uint64_t)
+BLOOM_SET_BIT(bloom_set_bit5, to_bloom_address_bitmask5, uint32_t, uint32_t)
+
+
+#define BLOOM_GET_BIT(name, address, itype, otype) \
+static int name(const unsigned char *bloom, const void *buf, const int nbits)\
+{\
+    unsigned char bitmask;\
+    otype v;\
+    address((itype *)buf, nbits, &v, &bitmask);\
+    return bloom[16+v] & bitmask;\
+}
+BLOOM_GET_BIT(bloom_get_bit4, to_bloom_address_bitmask4, bits40_t, uint64_t)
+BLOOM_GET_BIT(bloom_get_bit5, to_bloom_address_bitmask5, uint32_t, uint32_t)
+
 
 static PyObject *bloom_add(PyObject *self, PyObject *args)
 {
+    void (*bloom_set_bit)(unsigned char *, const void *, const int);
     unsigned char *sha = NULL, *bloom = NULL;
-    int ofs = 0, len = 0, blen = 0, nbits = 0;
-    int i;
+    unsigned char *end;
+    int len = 0, blen = 0, nbits = 0, k = 0;
 
-    if (!PyArg_ParseTuple(args, "w#is#i",
-                          &bloom, &blen, &ofs, &sha, &len, &nbits))
+    if (!PyArg_ParseTuple(args, "w#s#ii", &bloom, &blen, &sha, &len, &nbits, &k))
 	return NULL;
 
-    if (blen < 16+(1<<nbits) || len % 20 != 0 || nbits > 29)
+    if (k == 5)
+    {
+	if (nbits > 29)
+	    return NULL;
+	bloom_set_bit = &bloom_set_bit5;
+    }
+    else if (k == 4)
+    {
+	if (nbits > 37)
+	    return NULL;
+	bloom_set_bit = &bloom_set_bit4;
+    }
+    else
 	return NULL;
 
-    for (i = 0; i < len; i += 20)
-	bloom_add_entry(bloom, ofs, &sha[i], nbits);
+    if (blen < 16+(1<<nbits) || len % 20 != 0)
+	return NULL;
 
-    return Py_BuildValue("i", i/20);
+    for (end = sha + len; sha < end; sha += 20/k)
+	(*bloom_set_bit)(bloom, sha, nbits);
+
+    return Py_BuildValue("i", len/20);
 }
 
 static PyObject *bloom_contains(PyObject *self, PyObject *args)
 {
+    int (*bloom_get_bit)(const unsigned char *, const void *, const int);
     unsigned char *sha = NULL, *bloom = NULL;
-    int ofs = 0, len = 0, blen = 0, nbits = 0;
-    unsigned char bitmask, *end;
-    uint32_t v;
+    int len = 0, blen = 0, nbits = 0, k = 0;
+    unsigned char *end;
     int steps;
 
-    if (!PyArg_ParseTuple(args, "t#is#i",
-                          &bloom, &blen, &ofs, &sha, &len, &nbits))
+    if (!PyArg_ParseTuple(args, "t#s#ii", &bloom, &blen, &sha, &len, &nbits, &k))
 	return NULL;
 
-    if (len != 20 || nbits > 29)
+    if (len != 20)
 	return NULL;
 
-    for (steps = 1, end = sha + 20; sha < end; sha += 4, steps++)
+    if (k == 5)
     {
-	to_bloom_address_bitmask(sha, nbits, &v, &bitmask);
-	if (!(bloom[ofs+v] & bitmask))
-	    return Py_BuildValue("Oi", Py_None, steps);
+	if (nbits > 29)
+	    return NULL;
+	bloom_get_bit = &bloom_get_bit5;
     }
-    return Py_BuildValue("Oi", Py_True, 5);
+    else if (k == 4)
+    {
+	if (nbits > 37)
+	    return NULL;
+	bloom_get_bit = &bloom_get_bit4;
+    }
+    else
+	return NULL;
+
+    for (steps = 1, end = sha + 20; sha < end; sha += 20/k, steps++)
+	if (!bloom_get_bit(bloom, sha, nbits))
+	    return Py_BuildValue("Oi", Py_None, steps);
+
+    return Py_BuildValue("Oi", Py_True, k);
 }
 
 

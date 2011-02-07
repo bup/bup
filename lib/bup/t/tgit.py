@@ -118,23 +118,33 @@ def test_long_index():
 @wvtest
 def test_bloom():
     hashes = [os.urandom(20) for i in range(100)]
-    b = git.ShaBloom.create('pybuptest.bloom', readwrite=True, expected=100)
     class Idx:
         pass
     ix = Idx()
     ix.name='dummy.idx'
     ix.shatable = ''.join(hashes)
-    b.add_idx(ix)
-    WVPASSLT(b.pfalse_positive(), .1)
-    b.close()
-    b = git.ShaBloom('pybuptest.bloom')
-    all_present = True
-    for h in hashes:
-        all_present &= b.exists(h)
-    WVPASS(all_present)
-    false_positives = 0
-    for h in [os.urandom(20) for i in range(1000)]:
-        if b.exists(h):
-            false_positives += 1
-    WVPASSLT(false_positives, 5)
-    os.unlink('pybuptest.bloom')
+    for k in (4, 5):
+        b = git.ShaBloom.create('pybuptest.bloom', readwrite=True, expected=100, k=k)
+        b.add_idx(ix)
+        WVPASSLT(b.pfalse_positive(), .1)
+        b.close()
+        b = git.ShaBloom('pybuptest.bloom')
+        all_present = True
+        for h in hashes:
+            all_present &= b.exists(h)
+        WVPASS(all_present)
+        false_positives = 0
+        for h in [os.urandom(20) for i in range(1000)]:
+            if b.exists(h):
+                false_positives += 1
+        WVPASSLT(false_positives, 5)
+        os.unlink('pybuptest.bloom')
+
+    tf = tempfile.TemporaryFile()
+    b = git.ShaBloom.create('bup.bloom', f=tf, readwrite=True, expected=100)
+    WVPASSEQ(b.rwfile, tf)
+    WVPASSEQ(b.k, 5)
+# FIXME: commented out because it writes a gigabyte of zeros to disk.
+#    tf = tempfile.TemporaryFile()
+#    b = git.ShaBloom.create('bup.bloom', f=tf, readwrite=True, expected=2**28)
+#    WVPASSEQ(b.k, 4)

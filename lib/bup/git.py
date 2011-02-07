@@ -8,8 +8,7 @@ from bup import _helpers, path
 
 MIDX_VERSION = 2
 
-"""Bloom constants:
-These bloom constants were chosen as a combination of convenience and quality.
+"""Discussion of bloom constants for bup:
 
 There are four basic things to consider when building a bloom filter:
 The size, in bits, of the filter
@@ -17,12 +16,11 @@ The capacity, in entries, of the filter
 The probability of a false positive that is tolerable
 The number of bits readily available to use for addresing filter bits
 
-Based on those four considerations, there are two basic filter tunables:
+There is one major tunable that is not directly related to the above:
 k: the number of bits set in the filter per entry
-pfmax: the maximum pfalse_positive before growing the filter.
 
-Here's a wall of numbers showing the relationship between these two and the
-ratio between the size of the filter in bits and the entries in the filter:
+Here's a wall of numbers showing the relationship between k; the ratio between
+the filter size in bits and the entries in the filter; and pfalse_positive:
 
 mn|k=3    |k=4    |k=5    |k=6    |k=7    |k=8    |k=9    |k=10   |k=11
  8|3.05794|2.39687|2.16792|2.15771|2.29297|2.54917|2.92244|3.41909|4.05091
@@ -63,7 +61,7 @@ pfalse|obj k=4     |cap k=4    |obj k=5  |cap k=5    |obj k=6 |cap k=6
 This eliminates pretty neatly any k>6 as long as we use the raw SHA for
 addressing.
 
-filter size scales linearly with reposize for a given k and pfalse.
+filter size scales linearly with repository size for a given k and pfalse.
 
 Here's a table of filter sizes for a 1 TiB repository:
 
@@ -81,19 +79,20 @@ faulting on the midx doesn't overcome the benefit of the bloom filter.
 * We want to be able to have a single bloom address entire repositories of
 reasonable size.
 
-Based on those parameters, k=4 or k=5 seem to be the most reasonable options.
-k=5 is a bit limited on repository size, but not terrible.  k=4 gives "plenty"
-of repository space, but has 3 times the pfalse positive when the filter is
-relatively empty.  k=5 is trivial to code, so I did that.  It should be pretty
-easy to make the bloom filter adapt when the repository requires more address
-bits than k=5 allows and switch down to k=4.
+Based on these parameters, a combination of k=4 and k=5 provides the behavior
+that bup needs.  As such, I've implemented bloom addressing, adding and
+checking functions in C for these two values.  Because k=5 requires less space
+and gives better overall pfalse_positive perofrmance, it is preferred if a
+table with k=5 can represent the repository.
+
+None of this tells us what max_pfalse_positive to choose.
+
 Brandon Low <lostlogic@lostlogicx.com> 04-02-2011
 """
-BLOOM_VERSION = 1
-MAX_BITS_EACH = 32
-BLOOM_HASHES = 5
-MAX_BLOOM_BITS = 29
-MAX_PFALSE_POSITIVE = 1.
+BLOOM_VERSION = 2
+MAX_BITS_EACH = 32 # Kinda arbitrary, but 4 bytes per entry is pretty big
+MAX_BLOOM_BITS = {4: 37, 5: 29} # 160/k-log2(8)
+MAX_PFALSE_POSITIVE = 1. # Totally arbitrary, needs benchmarking
 
 verbose = 0
 ignore_midx = 0
@@ -346,15 +345,15 @@ class ShaBloom:
     and make it possible for bup to expand Git's indexing capabilities to vast
     amounts of files.
     """
-    def __init__(self, filename, readwrite=False):
+    def __init__(self, filename, f=None, readwrite=False):
         self.name = filename
         assert(filename.endswith('.bloom'))
         if readwrite:
-            self.rwfile = open(filename, 'r+b')
+            self.rwfile = f or open(filename, 'r+b')
             self.map = mmap_readwrite(self.rwfile, close=False)
         else:
             self.rwfile = None
-            self.map = mmap_read(open(filename, 'rb'))
+            self.map = mmap_read(f or open(filename, 'rb'))
         if str(self.map[0:4]) != 'BLOM':
             log('Warning: skipping: invalid BLOM header in %r\n' % filename)
             return self._init_failed()
@@ -368,7 +367,7 @@ class ShaBloom:
                 % (ver, filename))
             return self._init_failed()
 
-        self.bits, self.entries = struct.unpack('!II', self.map[8:16])
+        self.bits, self.k, self.entries = struct.unpack('!HHI', self.map[8:16])
         idxnamestr = str(self.map[16 + 2**self.bits:])
         if idxnamestr:
             self.idxnames = idxnamestr.split('\0')
@@ -406,13 +405,13 @@ class ShaBloom:
     def pfalse_positive(self, additional=0):
         n = self.entries + additional
         m = 8*2**self.bits
-        k = BLOOM_HASHES
+        k = self.k
         return 100*(1-math.exp(-k*float(n)/m))**k
 
     def add_idx(self, ix):
         """Add the object to the filter, return current pfalse_positive."""
         if not self.map: raise Exception, "Cannot add to closed bloom"
-        self.entries += bloom_add(self.map, 16, ix.shatable, self.bits)
+        self.entries += bloom_add(self.map, ix.shatable, self.bits, self.k)
         self.idxnames.append(os.path.basename(ix.name))
 
     def exists(self, sha):
@@ -420,25 +419,26 @@ class ShaBloom:
         global _total_searches, _total_steps
         _total_searches += 1
         if not self.map: return None
-        found, steps = bloom_contains(self.map, 16, str(sha), self.bits)
+        found, steps = bloom_contains(self.map, str(sha), self.bits, self.k)
         _total_steps += steps
         return found
 
     @classmethod
-    def create(cls, name, readwrite=False, expected=100000):
+    def create(cls, name, f=None, readwrite=False, expected=100000, k=None):
         """Create and return a bloom filter for `expected` entries."""
         bits = int(math.floor(math.log(expected*MAX_BITS_EACH/8,2)))
-        if bits > MAX_BLOOM_BITS:
+        k = k or ((bits <= MAX_BLOOM_BITS[5]) and 5 or 4)
+        if bits > MAX_BLOOM_BITS[k]:
             log('bloom: warning, max bits exceeded, non-optimal\n')
-            bits = MAX_BLOOM_BITS
-        debug1('bloom: using 2^%d bytes for bloom filter\n' % bits)
-        f = open(name, 'wb')
+            bits = MAX_BLOOM_BITS[k]
+        debug1('bloom: using 2^%d bytes and %d hash functions\n' % (bits, k))
+        f = f or open(name, 'w+b')
         f.write('BLOM')
-        f.write(struct.pack('!III', BLOOM_VERSION, bits, 0))
+        f.write(struct.pack('!IHHI', BLOOM_VERSION, bits, k, 0))
         assert(f.tell() == 16)
         f.write('\0'*2**bits)
-        f.close()
-        return cls(name, readwrite=readwrite)
+        f.seek(0)
+        return cls(name, f=f, readwrite=readwrite)
 
     def __len__(self):
         return self.entries

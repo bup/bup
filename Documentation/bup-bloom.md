@@ -8,7 +8,7 @@ bup-bloom - generates, regenerates, updates bloom filters
 
 # SYNOPSIS
 
-bup daemon [-d dir] [-o outfile]
+bup daemon [-d dir] [-o outfile] [-k hashes]
 
 # DESCRIPTION
 
@@ -23,8 +23,13 @@ it if needed.
     defaults to $BUP_DIR/objects/pack
 
 -o, --outfile=*outfile*
-:   the file to write the bloom filter to.
-    defaults to $dir/bup.bloom
+:   the file to write the bloom filter to.  defaults to
+    $dir/bup.bloom
+
+-k, --hashes=*hashes*
+:   number of hash functions to use only 4 and 5 are valid.
+    defaults to 5 for repositories < 2TiB and 4 otherwise.
+    see comments in git.py for more on this value.
 
 # BUP
 

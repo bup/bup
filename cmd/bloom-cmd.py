@@ -8,6 +8,7 @@ bup bloom [options...]
 --
 o,output=  output bloom filename (default: auto-generated)
 d,dir=     input directory to look for idx files (default: auto-generated)
+k,hashes=  number of hash functions to use (4 or 5) (default: auto-generated)
 """
 
 def do_bloom(path, outfilename):
@@ -63,9 +64,8 @@ def do_bloom(path, outfilename):
     if b is None:
         tf = tempfile.NamedTemporaryFile(
                 dir=path, suffix='bup.bloom', delete=False)
-        tempname = tf.name
-        tf.close()
-        b = git.ShaBloom.create(tempname, readwrite=True, expected=add_count)
+        b = git.ShaBloom.create(
+                tf.name, f=tf, readwrite=True, expected=add_count, k=opt.k)
     count = 0
     for ix in add:
         progress('Writing bloom: %d/%d\r' % (count, len(add)))
@@ -84,6 +84,9 @@ o = options.Options(optspec)
 
 if extra:
     o.fatal('no positional parameters expected')
+
+if opt.k and opt.k not in (4,5):
+    o.fatal('only k values of 4 and 5 are supported')
 
 git.check_repo_or_die()
 
