@@ -205,11 +205,19 @@ static PyObject *bloom_contains(PyObject *self, PyObject *args)
 }
 
 
+static uint32_t _extract_bits(unsigned char *buf, int nbits)
+{
+    uint32_t v, mask;
+
+    mask = (1<<nbits) - 1;
+    v = ntohl(*(uint32_t *)buf);
+    v = (v >> (32-nbits)) & mask;
+    return v;
+}
 static PyObject *extract_bits(PyObject *self, PyObject *args)
 {
     unsigned char *buf = NULL;
     int len = 0, nbits = 0;
-    uint32_t v, mask;
 
     if (!PyArg_ParseTuple(args, "t#i", &buf, &len, &nbits))
 	return NULL;
@@ -217,10 +225,147 @@ static PyObject *extract_bits(PyObject *self, PyObject *args)
     if (len < 4)
 	return NULL;
     
-    mask = (1<<nbits) - 1;
-    v = ntohl(*(uint32_t *)buf);
-    v = (v >> (32-nbits)) & mask;
-    return PyLong_FromUnsignedLong(v);
+    return PyLong_FromUnsignedLong(_extract_bits(buf, nbits));
+}
+
+
+struct sha {
+    unsigned char bytes[20];
+};
+struct idx {
+    unsigned char *map;
+    struct sha *cur;
+    struct sha *end;
+    uint32_t *cur_name;
+    Py_ssize_t bytes;
+    long name_base;
+};
+
+
+static int _cmp_sha(const struct sha *sha1, const struct sha *sha2)
+{
+    int i;
+    for (i = 0; i < 20; i++)
+	if (sha1->bytes[i] != sha2->bytes[i])
+	    return sha1->bytes[i] - sha2->bytes[i];
+    return 0;
+}
+
+
+static void _fix_idx_order(struct idx **idxs, long *last_i)
+{
+    struct idx *idx;
+    int low, mid, high, c = 0;
+
+    idx = idxs[*last_i];
+    if (idxs[*last_i]->cur >= idxs[*last_i]->end)
+    {
+	idxs[*last_i] = NULL;
+	PyMem_Free(idx);
+	--*last_i;
+	return;
+    }
+    if (*last_i == 0)
+	return;
+
+    low = *last_i-1;
+    mid = *last_i;
+    high = 0;
+    while (low >= high)
+    {
+	mid = (low + high) / 2;
+	c = _cmp_sha(idx->cur, idxs[mid]->cur);
+	if (c < 0)
+	    high = mid + 1;
+	else if (c > 0)
+	    low = mid - 1;
+	else
+	    break;
+    }
+    if (c < 0)
+	++mid;
+    if (mid == *last_i)
+	return;
+    memmove(&idxs[mid+1], &idxs[mid], (*last_i-mid)*sizeof(struct idx *));
+    idxs[mid] = idx;
+}
+
+
+static uint32_t _get_idx_i(struct idx *idx)
+{
+    if (idx->cur_name == NULL)
+	return idx->name_base;
+    return ntohl(*idx->cur_name) + idx->name_base;
+}
+
+
+static PyObject *merge_into(PyObject *self, PyObject *args)
+{
+    PyObject *ilist = NULL;
+    unsigned char *fmap = NULL;
+    struct sha *sha_ptr, *last = NULL;
+    uint32_t *table_ptr, *name_ptr;
+    struct idx **idxs = NULL;
+    int flen = 0, bits = 0, i;
+    uint32_t total, count, prefix;
+    Py_ssize_t num_i;
+    long last_i;
+
+    if (!PyArg_ParseTuple(args, "w#iIO", &fmap, &flen, &bits, &total, &ilist))
+	return NULL;
+
+    num_i = PyList_Size(ilist);
+    idxs = (struct idx **)PyMem_Malloc(num_i * sizeof(struct idx *));
+
+    for (i = 0; i < num_i; i++)
+    {
+	long len, sha_ofs, name_map_ofs;
+	idxs[i] = (struct idx *)PyMem_Malloc(sizeof(struct idx));
+	PyObject *itup = PyList_GetItem(ilist, i);
+	PyObject_AsReadBuffer(PyTuple_GetItem(itup, 0),
+		(const void **)&idxs[i]->map, &idxs[i]->bytes);
+	len = PyInt_AsLong(PyTuple_GetItem(itup, 1));
+	sha_ofs = PyInt_AsLong(PyTuple_GetItem(itup, 2));
+	name_map_ofs = PyInt_AsLong(PyTuple_GetItem(itup, 3));
+	idxs[i]->cur = (struct sha *)&idxs[i]->map[sha_ofs];
+	idxs[i]->end = &idxs[i]->cur[len];
+	idxs[i]->cur_name = (uint32_t *)&idxs[i]->map[name_map_ofs];
+	idxs[i]->name_base = PyInt_AsLong(PyTuple_GetItem(itup, 4));
+    }
+    table_ptr = (uint32_t *)&fmap[12];
+    sha_ptr = (struct sha *)&table_ptr[1<<bits];
+    name_ptr = (uint32_t *)&sha_ptr[total];
+
+    last_i = num_i-1;
+    count = 0;
+    prefix = 0;
+    while (last_i >= 0)
+    {
+	struct idx *idx;
+	uint32_t new_prefix;
+	if (count % 102424 == 0)
+	    PySys_WriteStderr("midx: writing %.2f%% (%d/%d)\r",
+		    count*100.0/total, count, total);
+	idx = idxs[last_i];
+	new_prefix = _extract_bits((unsigned char *)idx->cur, bits);
+	while (prefix < new_prefix)
+	    table_ptr[prefix++] = htonl(count);
+	if (last == NULL || _cmp_sha(last, idx->cur) != 0)
+	{
+	    memcpy(sha_ptr++, idx->cur, 20);
+	    *name_ptr++ = htonl(_get_idx_i(idx));
+	    last = idx->cur;
+	}
+	++idx->cur;
+	if (idx->cur_name != NULL)
+	    ++idx->cur_name;
+	_fix_idx_order(idxs, &last_i);
+	++count;
+    }
+    table_ptr[prefix] = htonl(count);
+
+    PyMem_Free(idxs);
+    return PyLong_FromUnsignedLong(count);
 }
 
 
@@ -361,6 +506,8 @@ static PyMethodDef faster_methods[] = {
 	"Add an object to a bloom filter of 2^nbits bytes" },
     { "extract_bits", extract_bits, METH_VARARGS,
 	"Take the first 'nbits' bits from 'buf' and return them as an int." },
+    { "merge_into", merge_into, METH_VARARGS,
+	"Merges a bunch of idx and midx files into a single midx." },
     { "write_random", write_random, METH_VARARGS,
 	"Write random bytes to the given file descriptor" },
     { "random_sha", random_sha, METH_VARARGS,

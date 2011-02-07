@@ -277,10 +277,6 @@ class PackIdx:
                 return mid
         return None
 
-    def iter_with_idx_i(self, idx_i):
-        for e in self:
-            yield e, idx_i
-
 
 class PackIdxV1(PackIdx):
     """Object representation of a Git pack index (version 1) file."""
@@ -292,7 +288,8 @@ class PackIdxV1(PackIdx):
                                          str(buffer(self.map, 0, 256*4))))
         self.fanout.append(0)  # entry "-1"
         nsha = self.fanout[255]
-        self.shatable = buffer(self.map, 256*4, nsha*24)
+        self.sha_ofs = 256*4
+        self.shatable = buffer(self.map, self.sha_ofs, nsha*24)
 
     def _ofs_from_idx(self, idx):
         return struct.unpack('!I', str(self.shatable[idx*24 : idx*24+4]))[0]
@@ -316,9 +313,10 @@ class PackIdxV2(PackIdx):
                                          str(buffer(self.map, 8, 256*4))))
         self.fanout.append(0)  # entry "-1"
         nsha = self.fanout[255]
-        self.shatable = buffer(self.map, 8 + 256*4, nsha*20)
+        self.sha_ofs = 8 + 256*4
+        self.shatable = buffer(self.map, self.sha_ofs, nsha*20)
         self.ofstable = buffer(self.map,
-                               8 + 256*4 + nsha*20 + nsha*4,
+                               self.sha_ofs + nsha*20 + nsha*4,
                                nsha*4)
         self.ofs64table = buffer(self.map,
                                  8 + 256*4 + nsha*20 + nsha*4 + nsha*4)
@@ -480,11 +478,12 @@ class PackMidx:
         self.bits = _helpers.firstword(self.map[8:12])
         self.entries = 2**self.bits
         self.fanout = buffer(self.map, 12, self.entries*4)
-        shaofs = 12 + self.entries*4
+        self.sha_ofs = 12 + self.entries*4
         self.nsha = nsha = self._fanget(self.entries-1)
-        self.shatable = buffer(self.map, shaofs, nsha*20)
-        self.whichlist = buffer(self.map, shaofs + nsha*20, nsha*4)
-        self.idxnames = str(self.map[shaofs + 24*nsha:]).split('\0')
+        self.shatable = buffer(self.map, self.sha_ofs, nsha*20)
+        self.whichlist = buffer(self.map, self.sha_ofs + nsha*20, nsha*4)
+        self.idxname_ofs = self.sha_ofs + 24*nsha
+        self.idxnames = str(self.map[self.idxname_ofs:]).split('\0')
 
     def _init_failed(self):
         self.bits = 0
@@ -540,10 +539,6 @@ class PackMidx:
             else: # got it!
                 return want_source and self._get_idxname(mid) or True
         return None
-
-    def iter_with_idx_i(self, ofs):
-        for i in xrange(self._fanget(self.entries-1)):
-            yield buffer(self.shatable, i*20, 20), ofs+self._get_idx_i(i)
 
     def __iter__(self):
         for i in xrange(self._fanget(self.entries-1)):
@@ -718,7 +713,7 @@ def open_idx(filename):
         raise GitError('idx filenames must end with .idx or .midx')
 
 
-def idxmerge(idxlist, final_progress=True, total=None):
+def idxmerge(idxlist, final_progress=True):
     """Generate a list of all the objects reachable in a PackIdxList."""
     def pfunc(count, total):
         progress('Reading indexes: %.2f%% (%d/%d)\r'
@@ -726,7 +721,7 @@ def idxmerge(idxlist, final_progress=True, total=None):
     def pfinal(count, total):
         if final_progress:
             log('Reading indexes: %.2f%% (%d/%d), done.\n' % (100, total, total))
-    return merge_iter(idxlist, 10024, pfunc, pfinal, total=total)
+    return merge_iter(idxlist, 10024, pfunc, pfinal)
 
 
 def _make_objcache():

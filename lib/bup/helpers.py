@@ -88,13 +88,13 @@ def next(it):
         return None
 
 
-def merge_iter(iters, pfreq, pfunc, pfinal, key=None, total=None):
+def merge_iter(iters, pfreq, pfunc, pfinal, key=None):
     if key:
         samekey = lambda e, pe: getattr(e, key) == getattr(pe, key, None)
     else:
         samekey = operator.eq
     count = 0
-    total = total or sum(len(it) for it in iters)
+    total = sum(len(it) for it in iters)
     iters = (iter(it) for it in iters)
     heap = ((next(it),it) for it in iters)
     heap = [(e,it) for e,it in heap if e]

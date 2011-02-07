@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import sys, math, struct, glob, resource
-import tempfile, shutil
-from bup import options, git
+import tempfile
+from bup import options, git, _helpers
 from bup.helpers import *
 
 PAGE_SIZE=4096
@@ -31,22 +31,7 @@ def max_files():
         mf -= 6   # minimum safety margin
     return mf
 
-
-def merge_into(tf_sha, tf_nmap, idxlist, bits, entries, total):
-    prefix = 0
-    it = git.idxmerge(idxlist, final_progress=False, total=total)
-    for i, (e, idx) in enumerate(it):
-        new_prefix = git.extract_bits(e, bits)
-        if new_prefix != prefix:
-            for p in xrange(prefix, new_prefix):
-                yield i
-            prefix = new_prefix
-        tf_sha.write(e)
-        tf_nmap.write(struct.pack('!I', idx))
-    i += 1
-    for p in xrange(prefix, entries):
-        yield i
-
+merge_into = _helpers.merge_into
 
 def _do_midx(outdir, outfilename, infilenames, prefixstr):
     if not outfilename:
@@ -59,10 +44,17 @@ def _do_midx(outdir, outfilename, infilenames, prefixstr):
     allfilenames = []
     for name in infilenames:
         ix = git.open_idx(name)
-        inp.append(ix.iter_with_idx_i(len(allfilenames)))
+        inp.append((
+            ix.map,
+            len(ix),
+            ix.sha_ofs,
+            isinstance(ix, git.PackMidx) and ix.idxname_ofs or 0,
+            len(allfilenames),
+        ))
         for n in ix.idxnames:
             allfilenames.append(os.path.basename(n))
         total += len(ix)
+    inp.sort(lambda x,y: cmp(str(y[0][y[2]:y[2]+20]),str(x[0][x[2]:x[2]+20])))
 
     log('midx: %screating from %d files (%d objects).\n'
         % (prefixstr, len(infilenames), total))
@@ -81,27 +73,20 @@ def _do_midx(outdir, outfilename, infilenames, prefixstr):
         os.unlink(outfilename)
     except OSError:
         pass
-    f = open(outfilename + '.tmp', 'w+')
+    f = open(outfilename + '.tmp', 'w+b')
     f.write('MIDX')
     f.write(struct.pack('!II', git.MIDX_VERSION, bits))
     assert(f.tell() == 12)
 
-    tf_sha = tempfile.TemporaryFile(dir=outdir)
-    tf_nmap = tempfile.TemporaryFile(dir=outdir)
-    for t in merge_into(tf_sha, tf_nmap, inp, bits, entries, total):
-        f.write(struct.pack('!I', t))
-    assert(f.tell() == 12 + 4*entries)
+    f.truncate(12 + 4*entries + 20*total + 4*total)
 
-    tf_sha.seek(0)
-    shutil.copyfileobj(tf_sha, f)
-    tf_sha.close()
-    assert(f.tell() == 12 + 4*entries + 20*t) # t may be < total due to dupes
+    fmap = mmap_readwrite(f, close=False)
 
-    tf_nmap.seek(0)
-    shutil.copyfileobj(tf_nmap, f)
-    tf_nmap.close()
-    assert(f.tell() == 12 + 4*entries + 24*t) # t may be < total due to dupes
+    count = merge_into(fmap, bits, total, inp)
+    fmap.flush()
+    fmap.close()
 
+    f.seek(0, os.SEEK_END)
     f.write('\0'.join(allfilenames))
     f.close()
     os.rename(outfilename + '.tmp', outfilename)
