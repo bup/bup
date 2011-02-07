@@ -78,7 +78,7 @@ git.check_repo_or_die()
 m = git.PackIdxList(git.repo('objects/pack'))
 
 report(-1)
-_helpers.random_partial_sha()
+_helpers.random_sha()
 report(0)
 
 if opt.existing:
@@ -94,7 +94,7 @@ for c in xrange(opt.cycles):
             bin = objit.next()
             assert(m.exists(bin))
         else:
-            bin = _helpers.random_partial_sha()
+            bin = _helpers.random_sha()
 
             # technically, a randomly generated object id might exist.
             # but the likelihood of that is the likelihood of finding

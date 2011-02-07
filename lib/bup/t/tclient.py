@@ -1,4 +1,4 @@
-import sys, os, stat, time, random, subprocess
+import sys, os, stat, time, random, subprocess, glob
 from bup import client, git
 from wvtest import *
 
@@ -11,6 +11,8 @@ def randbytes(sz):
 s1 = randbytes(10000)
 s2 = randbytes(10000)
 s3 = randbytes(10000)
+
+IDX_PAT = '/*.idx'
     
 @wvtest
 def test_server_split_with_indexes():
@@ -43,19 +45,19 @@ def test_multiple_suggestions():
     lw = git.PackWriter()
     lw.new_blob(s2)
     lw.close()
-    WVPASSEQ(len(os.listdir(git.repo('objects/pack'))), 4)
+    WVPASSEQ(len(glob.glob(git.repo('objects/pack'+IDX_PAT))), 2)
 
     c = client.Client(bupdir, create=True)
-    WVPASSEQ(len(os.listdir(c.cachedir)), 0)
+    WVPASSEQ(len(glob.glob(c.cachedir+IDX_PAT)), 0)
     rw = c.new_packwriter()
     rw.new_blob(s1)
     rw.new_blob(s2)
     # This is a little hacky, but ensures that we test the code under test
-    while len(os.listdir(c.cachedir)) < 2 and not c.conn.has_input(): pass
+    while len(glob.glob(c.cachedir+IDX_PAT)) < 2 and not c.conn.has_input(): pass
     rw.new_blob(s3)
-    WVPASSEQ(len(os.listdir(c.cachedir)), 2)
+    WVPASSEQ(len(glob.glob(c.cachedir+IDX_PAT)), 2)
     rw.close()
-    WVPASSEQ(len(os.listdir(c.cachedir)), 3)
+    WVPASSEQ(len(glob.glob(c.cachedir+IDX_PAT)), 3)
 
 
 @wvtest
@@ -72,12 +74,12 @@ def test_dumb_client_server():
 
     c = client.Client(bupdir, create=True)
     rw = c.new_packwriter()
-    WVPASSEQ(len(os.listdir(c.cachedir)), 1)
+    WVPASSEQ(len(glob.glob(c.cachedir+IDX_PAT)), 1)
     rw.new_blob(s1)
-    WVPASSEQ(len(os.listdir(c.cachedir)), 1)
+    WVPASSEQ(len(glob.glob(c.cachedir+IDX_PAT)), 1)
     rw.new_blob(s2)
     rw.close()
-    WVPASSEQ(len(os.listdir(c.cachedir)), 2)
+    WVPASSEQ(len(glob.glob(c.cachedir+IDX_PAT)), 2)
 
 
 @wvtest

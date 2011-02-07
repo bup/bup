@@ -77,6 +77,76 @@ static PyObject *firstword(PyObject *self, PyObject *args)
 }
 
 
+static void to_bloom_address_bitmask(unsigned const char *buf, const int nbits,
+				     uint32_t *v, unsigned char *bitmask)
+{
+    int bit;
+    uint32_t raw, mask;
+
+    mask = (1<<nbits) - 1;
+    raw = ntohl(*(uint32_t *)buf);
+    bit = (raw >> (29-nbits)) & 0x7;
+    *v = (raw >> (32-nbits)) & mask;
+    *bitmask = 1 << bit;
+}
+
+static void bloom_add_entry(
+	unsigned char *bloom, int ofs, unsigned char *sha, int nbits)
+{
+    unsigned char bitmask, *end;
+    uint32_t v;
+
+    for (end = sha + 20; sha < end; sha += 4)
+    {
+	to_bloom_address_bitmask(sha, nbits, &v, &bitmask);
+	bloom[ofs+v] |= bitmask;
+    }
+}
+
+static PyObject *bloom_add(PyObject *self, PyObject *args)
+{
+    unsigned char *sha = NULL, *bloom = NULL;
+    int ofs = 0, len = 0, blen = 0, nbits = 0;
+    int i;
+
+    if (!PyArg_ParseTuple(args, "w#is#i",
+                          &bloom, &blen, &ofs, &sha, &len, &nbits))
+	return NULL;
+
+    if (blen < 16+(1<<nbits) || len % 20 != 0 || nbits > 29)
+	return NULL;
+
+    for (i = 0; i < len; i += 20)
+	bloom_add_entry(bloom, ofs, &sha[i], nbits);
+
+    return Py_BuildValue("i", i/20);
+}
+
+static PyObject *bloom_contains(PyObject *self, PyObject *args)
+{
+    unsigned char *sha = NULL, *bloom = NULL;
+    int ofs = 0, len = 0, blen = 0, nbits = 0;
+    unsigned char bitmask, *end;
+    uint32_t v;
+    int steps;
+
+    if (!PyArg_ParseTuple(args, "t#is#i",
+                          &bloom, &blen, &ofs, &sha, &len, &nbits))
+	return NULL;
+
+    if (len != 20 || nbits > 29)
+	return NULL;
+
+    for (steps = 1, end = sha + 20; sha < end; sha += 4, steps++)
+    {
+	to_bloom_address_bitmask(sha, nbits, &v, &bitmask);
+	if (!(bloom[ofs+v] & bitmask))
+	    return Py_BuildValue("Oi", Py_None, steps);
+    }
+    return Py_BuildValue("Oi", Py_True, 5);
+}
+
+
 static PyObject *extract_bits(PyObject *self, PyObject *args)
 {
     unsigned char *buf = NULL;
@@ -147,10 +217,11 @@ static PyObject *write_random(PyObject *self, PyObject *args)
 }
 
 
-static PyObject *random_partial_sha(PyObject *self, PyObject *args)
+static PyObject *random_sha(PyObject *self, PyObject *args)
 {
     static int seeded = 0;
     uint32_t shabuf[20/4];
+    int i;
     
     if (!seeded)
     {
@@ -163,7 +234,8 @@ static PyObject *random_partial_sha(PyObject *self, PyObject *args)
 	return NULL;
     
     memset(shabuf, 0, sizeof(shabuf));
-    shabuf[0] = random();
+    for (i=0; i < 20/4; i++)
+	shabuf[i] = random();
     return Py_BuildValue("s#", shabuf, 20);
 }
 
@@ -225,12 +297,16 @@ static PyMethodDef faster_methods[] = {
 	"Count the number of matching prefix bits between two strings." },
     { "firstword", firstword, METH_VARARGS,
         "Return an int corresponding to the first 32 bits of buf." },
+    { "bloom_contains", bloom_contains, METH_VARARGS,
+	"Check if a bloom filter of 2^nbits bytes contains an object" },
+    { "bloom_add", bloom_add, METH_VARARGS,
+	"Add an object to a bloom filter of 2^nbits bytes" },
     { "extract_bits", extract_bits, METH_VARARGS,
 	"Take the first 'nbits' bits from 'buf' and return them as an int." },
     { "write_random", write_random, METH_VARARGS,
 	"Write random bytes to the given file descriptor" },
-    { "random_partial_sha", random_partial_sha, METH_VARARGS,
-        "Return a 20-byte string with the first few bytes randomized" },
+    { "random_sha", random_sha, METH_VARARGS,
+        "Return a random 20-byte string" },
     { "open_noatime", open_noatime, METH_VARARGS,
 	"open() the given filename for read with O_NOATIME if possible" },
     { "fadvise_done", fadvise_done, METH_VARARGS,

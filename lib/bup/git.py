@@ -2,11 +2,98 @@
 bup repositories are in Git format. This library allows us to
 interact with the Git data structures.
 """
-import os, sys, zlib, time, subprocess, struct, stat, re, tempfile
+import os, sys, zlib, time, subprocess, struct, stat, re, tempfile, math, glob
 from bup.helpers import *
 from bup import _helpers, path
 
 MIDX_VERSION = 2
+
+"""Bloom constants:
+These bloom constants were chosen as a combination of convenience and quality.
+
+There are four basic things to consider when building a bloom filter:
+The size, in bits, of the filter
+The capacity, in entries, of the filter
+The probability of a false positive that is tolerable
+The number of bits readily available to use for addresing filter bits
+
+Based on those four considerations, there are two basic filter tunables:
+k: the number of bits set in the filter per entry
+pfmax: the maximum pfalse_positive before growing the filter.
+
+Here's a wall of numbers showing the relationship between these two and the
+ratio between the size of the filter in bits and the entries in the filter:
+
+mn|k=3    |k=4    |k=5    |k=6    |k=7    |k=8    |k=9    |k=10   |k=11
+ 8|3.05794|2.39687|2.16792|2.15771|2.29297|2.54917|2.92244|3.41909|4.05091
+ 9|2.27780|1.65770|1.40703|1.32721|1.34892|1.44631|1.61138|1.84491|2.15259
+10|1.74106|1.18133|0.94309|0.84362|0.81937|0.84555|0.91270|1.01859|1.16495
+11|1.36005|0.86373|0.65018|0.55222|0.51259|0.50864|0.53098|0.57616|0.64387
+12|1.08231|0.64568|0.45945|0.37108|0.32939|0.31424|0.31695|0.33387|0.36380
+13|0.87517|0.49210|0.33183|0.25527|0.21689|0.19897|0.19384|0.19804|0.21013
+14|0.71759|0.38147|0.24433|0.17934|0.14601|0.12887|0.12127|0.12012|0.12399
+15|0.59562|0.30019|0.18303|0.12840|0.10028|0.08523|0.07749|0.07440|0.07468
+16|0.49977|0.23941|0.13925|0.09351|0.07015|0.05745|0.05049|0.04700|0.04587
+17|0.42340|0.19323|0.10742|0.06916|0.04990|0.03941|0.03350|0.03024|0.02870
+18|0.36181|0.15765|0.08392|0.05188|0.03604|0.02748|0.02260|0.01980|0.01827
+19|0.31160|0.12989|0.06632|0.03942|0.02640|0.01945|0.01549|0.01317|0.01182
+20|0.27026|0.10797|0.05296|0.03031|0.01959|0.01396|0.01077|0.00889|0.00777
+21|0.23591|0.09048|0.04269|0.02356|0.01471|0.01014|0.00759|0.00609|0.00518
+22|0.20714|0.07639|0.03473|0.01850|0.01117|0.00746|0.00542|0.00423|0.00350
+23|0.18287|0.06493|0.02847|0.01466|0.00856|0.00555|0.00392|0.00297|0.00240
+24|0.16224|0.05554|0.02352|0.01171|0.00663|0.00417|0.00286|0.00211|0.00166
+25|0.14459|0.04779|0.01957|0.00944|0.00518|0.00316|0.00211|0.00152|0.00116
+26|0.12942|0.04135|0.01639|0.00766|0.00408|0.00242|0.00157|0.00110|0.00082
+27|0.11629|0.03595|0.01381|0.00626|0.00324|0.00187|0.00118|0.00081|0.00059
+28|0.10489|0.03141|0.01170|0.00515|0.00259|0.00146|0.00090|0.00060|0.00043
+29|0.09492|0.02756|0.00996|0.00426|0.00209|0.00114|0.00069|0.00045|0.00031
+30|0.08618|0.02428|0.00853|0.00355|0.00169|0.00090|0.00053|0.00034|0.00023
+31|0.07848|0.02147|0.00733|0.00297|0.00138|0.00072|0.00041|0.00025|0.00017
+32|0.07167|0.01906|0.00633|0.00250|0.00113|0.00057|0.00032|0.00019|0.00013
+
+Here's a table showing available repository size for a given pfalse_positive
+and three values of k (assuming we only use the 160 bit SHA1 for addressing the
+filter and 8192bytes per object):
+
+pfalse|obj k=4     |cap k=4    |obj k=5  |cap k=5    |obj k=6 |cap k=6
+2.500%|139333497228|1038.11 TiB|558711157|4262.63 GiB|13815755|105.41 GiB
+1.000%|104489450934| 778.50 TiB|436090254|3327.10 GiB|11077519| 84.51 GiB
+0.125%| 57254889824| 426.58 TiB|261732190|1996.86 GiB| 7063017| 55.89 GiB
+
+This eliminates pretty neatly any k>6 as long as we use the raw SHA for
+addressing.
+
+filter size scales linearly with reposize for a given k and pfalse.
+
+Here's a table of filter sizes for a 1 TiB repository:
+
+pfalse| k=3        | k=4        | k=5        | k=6
+2.500%| 138.78 MiB | 126.26 MiB | 123.00 MiB | 123.37 MiB
+1.000%| 197.83 MiB | 168.36 MiB | 157.58 MiB | 153.87 MiB
+0.125%| 421.14 MiB | 307.26 MiB | 262.56 MiB | 241.32 MiB
+
+For bup:
+* We want the bloom filter to fit in memory; if it doesn't, the k pagefaults
+per lookup will be worse than the two required for midx.
+* We want the pfalse_positive to be low enough that the cost of sometimes
+faulting on the midx doesn't overcome the benefit of the bloom filter.
+* We have readily available 160 bits for addressing the filter.
+* We want to be able to have a single bloom address entire repositories of
+reasonable size.
+
+Based on those parameters, k=4 or k=5 seem to be the most reasonable options.
+k=5 is a bit limited on repository size, but not terrible.  k=4 gives "plenty"
+of repository space, but has 3 times the pfalse positive when the filter is
+relatively empty.  k=5 is trivial to code, so I did that.  It should be pretty
+easy to make the bloom filter adapt when the repository requires more address
+bits than k=5 allows and switch down to k=4.
+Brandon Low <lostlogic@lostlogicx.com> 04-02-2011
+"""
+BLOOM_VERSION = 1
+MAX_BITS_EACH = 32
+BLOOM_HASHES = 5
+MAX_BLOOM_BITS = 29
+MAX_PFALSE_POSITIVE = 1.
 
 verbose = 0
 ignore_midx = 0
@@ -40,6 +127,16 @@ def repo(sub = ''):
 
 def auto_midx(objdir):
     args = [path.exe(), 'midx', '--auto', '--dir', objdir]
+    try:
+        rv = subprocess.call(args, stdout=open('/dev/null', 'w'))
+    except OSError, e:
+        # make sure 'args' gets printed to help with debugging
+        add_error('%r: exception: %s' % (args, e))
+        raise
+    if rv:
+        add_error('%r: returned %d' % (args, rv))
+
+    args = [path.exe(), 'bloom', '--dir', objdir]
     try:
         rv = subprocess.call(args, stdout=open('/dev/null', 'w'))
     except OSError, e:
@@ -239,6 +336,113 @@ class PackIdxV2(PackIdx):
 
 extract_bits = _helpers.extract_bits
 
+bloom_contains = _helpers.bloom_contains
+bloom_add = _helpers.bloom_add
+
+
+class ShaBloom:
+    """Wrapper which contains data from multiple index files.
+    Multiple index (.midx) files constitute a wrapper around index (.idx) files
+    and make it possible for bup to expand Git's indexing capabilities to vast
+    amounts of files.
+    """
+    def __init__(self, filename, readwrite=False):
+        self.name = filename
+        assert(filename.endswith('.bloom'))
+        if readwrite:
+            self.rwfile = open(filename, 'r+b')
+            self.map = mmap_readwrite(self.rwfile, close=False)
+        else:
+            self.rwfile = None
+            self.map = mmap_read(open(filename, 'rb'))
+        if str(self.map[0:4]) != 'BLOM':
+            log('Warning: skipping: invalid BLOM header in %r\n' % filename)
+            return self._init_failed()
+        ver = struct.unpack('!I', self.map[4:8])[0]
+        if ver < BLOOM_VERSION:
+            log('Warning: ignoring old-style (v%d) bloom %r\n' 
+                % (ver, filename))
+            return self._init_failed()
+        if ver > BLOOM_VERSION:
+            log('Warning: ignoring too-new (v%d) bloom %r\n'
+                % (ver, filename))
+            return self._init_failed()
+
+        self.bits, self.entries = struct.unpack('!II', self.map[8:16])
+        idxnamestr = str(self.map[16 + 2**self.bits:])
+        if idxnamestr:
+            self.idxnames = idxnamestr.split('\0')
+        else:
+            self.idxnames = []
+
+    def _init_failed(self):
+        if self.map:
+            self.map.close()
+            self.map = None
+        if self.rwfile:
+            self.rwfile.close()
+            self.rwfile = None
+        self.idxnames = []
+        self.bits = self.entries = 0
+
+    def valid(self):
+        return self.map and self.bits
+
+    def __del__(self):
+        self.close()
+
+    def close(self):
+        if self.map:
+            if self.rwfile:
+                debug2("bloom: closing with %d entries\n" % self.entries)
+                self.map[12:16] = struct.pack('!I', self.entries)
+                self.map.flush()
+        if self.rwfile:
+            self.rwfile.seek(16 + 2**self.bits)
+            if self.idxnames:
+                self.rwfile.write('\0'.join(self.idxnames))
+        self._init_failed()
+
+    def pfalse_positive(self, additional=0):
+        n = self.entries + additional
+        m = 8*2**self.bits
+        k = BLOOM_HASHES
+        return 100*(1-math.exp(-k*float(n)/m))**k
+
+    def add_idx(self, ix):
+        """Add the object to the filter, return current pfalse_positive."""
+        if not self.map: raise Exception, "Cannot add to closed bloom"
+        self.entries += bloom_add(self.map, 16, ix.shatable, self.bits)
+        self.idxnames.append(os.path.basename(ix.name))
+
+    def exists(self, sha):
+        """Return nonempty if the object probably exists in the bloom filter."""
+        global _total_searches, _total_steps
+        _total_searches += 1
+        if not self.map: return None
+        found, steps = bloom_contains(self.map, 16, str(sha), self.bits)
+        _total_steps += steps
+        return found
+
+    @classmethod
+    def create(cls, name, readwrite=False, expected=100000):
+        """Create and return a bloom filter for `expected` entries."""
+        bits = int(math.floor(math.log(expected*MAX_BITS_EACH/8,2)))
+        if bits > MAX_BLOOM_BITS:
+            log('bloom: warning, max bits exceeded, non-optimal\n')
+            bits = MAX_BLOOM_BITS
+        debug1('bloom: using 2^%d bytes for bloom filter\n' % bits)
+        f = open(name, 'wb')
+        f.write('BLOM')
+        f.write(struct.pack('!III', BLOOM_VERSION, bits, 0))
+        assert(f.tell() == 16)
+        f.write('\0'*2**bits)
+        f.close()
+        return cls(name, readwrite=readwrite)
+
+    def __len__(self):
+        return self.entries
+
 
 class PackMidx:
     """Wrapper which contains data from multiple index files.
@@ -272,14 +476,14 @@ class PackMidx:
         self.fanout = buffer(self.map, 12, self.entries*4)
         shaofs = 12 + self.entries*4
         nsha = self._fanget(self.entries-1)
-        self.shalist = buffer(self.map, shaofs, nsha*20)
+        self.shatable = buffer(self.map, shaofs, nsha*20)
         self.idxnames = str(self.map[shaofs + 20*nsha:]).split('\0')
 
     def _init_failed(self):
         self.bits = 0
         self.entries = 1
         self.fanout = buffer('\0\0\0\0')
-        self.shalist = buffer('\0'*20)
+        self.shatable = buffer('\0'*20)
         self.idxnames = []
 
     def _fanget(self, i):
@@ -288,7 +492,7 @@ class PackMidx:
         return _helpers.firstword(s)
 
     def _get(self, i):
-        return str(self.shalist[i*20:(i+1)*20])
+        return str(self.shatable[i*20:(i+1)*20])
 
     def exists(self, hash):
         """Return nonempty if the object exists in the index files."""
@@ -326,7 +530,7 @@ class PackMidx:
 
     def __iter__(self):
         for i in xrange(self._fanget(self.entries-1)):
-            yield buffer(self.shalist, i*20, 20)
+            yield buffer(self.shatable, i*20, 20)
 
     def __len__(self):
         return int(self._fanget(self.entries-1))
@@ -339,8 +543,10 @@ class PackIdxList:
         assert(_mpi_count == 0) # these things suck tons of VM; don't waste it
         _mpi_count += 1
         self.dir = dir
-        self.also = {}
+        self.also = set()
         self.packs = []
+        self.do_bloom = False
+        self.bloom = None
         self.refresh()
 
     def __del__(self):
@@ -360,13 +566,20 @@ class PackIdxList:
         _total_searches += 1
         if hash in self.also:
             return True
-        for i in range(len(self.packs)):
+        if self.do_bloom and self.bloom is not None:
+            _total_searches -= 1  # will be incremented by bloom
+            if self.bloom.exists(hash):
+                self.do_bloom = False
+            else:
+                return None
+        for i in xrange(len(self.packs)):
             p = self.packs[i]
             _total_searches -= 1  # will be incremented by sub-pack
             if p.exists(hash):
                 # reorder so most recently used packs are searched first
                 self.packs = [p] + self.packs[:i] + self.packs[i+1:]
                 return p.name
+        self.do_bloom = True
         return None
 
     def refresh(self, skip_midx = False):
@@ -381,6 +594,8 @@ class PackIdxList:
         The module-global variable 'ignore_midx' can force this function to
         always act as if skip_midx was True.
         """
+        self.bloom = None # Always reopen the bloom as it may have been relaced
+        self.do_bloom = False
         skip_midx = skip_midx or ignore_midx
         d = dict((p.name, p) for p in self.packs
                  if not skip_midx or not isinstance(p, PackMidx))
@@ -391,17 +606,16 @@ class PackIdxList:
                     if isinstance(ix, PackMidx):
                         for name in ix.idxnames:
                             d[os.path.join(self.dir, name)] = ix
-                for f in os.listdir(self.dir):
-                    full = os.path.join(self.dir, f)
-                    if f.endswith('.midx') and not d.get(full):
+                for full in glob.glob(os.path.join(self.dir,'*.midx')):
+                    if not d.get(full):
                         mx = PackMidx(full)
                         (mxd, mxf) = os.path.split(mx.name)
-                        broken = 0
+                        broken = False
                         for n in mx.idxnames:
                             if not os.path.exists(os.path.join(mxd, n)):
                                 log(('warning: index %s missing\n' +
                                     '  used by %s\n') % (n, mxf))
-                                broken += 1
+                                broken = True
                         if broken:
                             del mx
                             unlink(full)
@@ -409,30 +623,38 @@ class PackIdxList:
                             midxl.append(mx)
                 midxl.sort(lambda x,y: -cmp(len(x),len(y)))
                 for ix in midxl:
-                    any = 0
+                    any_needed = False
                     for sub in ix.idxnames:
                         found = d.get(os.path.join(self.dir, sub))
                         if not found or isinstance(found, PackIdx):
                             # doesn't exist, or exists but not in a midx
-                            d[ix.name] = ix
-                            for name in ix.idxnames:
-                                d[os.path.join(self.dir, name)] = ix
-                            any += 1
+                            any_needed = True
                             break
-                    if not any and not ix.force_keep:
+                    if any_needed:
+                        d[ix.name] = ix
+                        for name in ix.idxnames:
+                            d[os.path.join(self.dir, name)] = ix
+                    elif not ix.force_keep:
                         debug1('midx: removing redundant: %s\n'
                                % os.path.basename(ix.name))
                         unlink(ix.name)
-            for f in os.listdir(self.dir):
-                full = os.path.join(self.dir, f)
-                if f.endswith('.idx') and not d.get(full):
+            for full in glob.glob(os.path.join(self.dir,'*.idx')):
+                if not d.get(full):
                     try:
                         ix = open_idx(full)
                     except GitError, e:
                         add_error(e)
                         continue
                     d[full] = ix
+            bfull = os.path.join(self.dir, 'bup.bloom')
+            if self.bloom is None and os.path.exists(bfull):
+                self.bloom = ShaBloom(bfull)
             self.packs = list(set(d.values()))
+            self.packs.sort(lambda x,y: -cmp(len(x),len(y)))
+            if self.bloom and self.bloom.valid() and len(self.bloom) >= len(self):
+                self.do_bloom = True
+            else:
+                self.bloom = None
         debug1('PackIdxList: using %d index%s.\n'
             % (len(self.packs), len(self.packs)!=1 and 'es' or ''))
 
@@ -441,24 +663,19 @@ class PackIdxList:
         # FIXME: if the midx file format would just *store* this information,
         # we could calculate it a lot more efficiently.  But it's not needed
         # often, so let's do it like this.
-        for f in os.listdir(self.dir):
-            if f.endswith('.idx'):
-                full = os.path.join(self.dir, f)
-                try:
-                    ix = open_idx(full)
-                except GitError, e:
-                    add_error(e)
-                    continue
-                if ix.exists(hash):
-                    return full
+        for f in glob.glob(os.path.join(self.dir,'*.idx')):
+            full = os.path.join(self.dir, f)
+            try:
+                ix = open_idx(full)
+            except GitError, e:
+                add_error(e)
+                continue
+            if ix.exists(hash):
+                return full
 
     def add(self, hash):
         """Insert an additional object in the list."""
-        self.also[hash] = 1
-
-    def zap_also(self):
-        """Remove all additional objects from the list."""
-        self.also = {}
+        self.also.add(hash)
 
 
 def calc_hash(type, content):
@@ -575,10 +792,6 @@ class PackWriter:
         id = self._end()
         self.outbytes = self.count = 0
         return id
-
-    def write(self, type, content):
-        """Write an object in this pack file."""
-        return self._write(calc_hash(type, content), type, content)
 
     def _require_objcache(self):
         if self.objcache is None and self.objcache_maker:
