@@ -62,8 +62,8 @@ def do_bloom(path, outfilename):
 
     tempname = None
     if b is None:
-        tfd,tfname = tempfile.mkstemp(dir=path, suffix='bup.bloom')
-        tf = os.fdopen(tfd, 'w+')
+        tfname = os.path.join(path, 'bup.tmp.bloom')
+        tf = open(tfname, 'w+')
         b = git.ShaBloom.create(
                 tfname, f=tf, readwrite=True, expected=add_count, k=opt.k)
     count = 0
