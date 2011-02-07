@@ -136,7 +136,6 @@ BLOOM_GET_BIT(bloom_get_bit5, to_bloom_address_bitmask5, uint32_t, uint32_t)
 
 static PyObject *bloom_add(PyObject *self, PyObject *args)
 {
-    void (*bloom_set_bit)(unsigned char *, const void *, const int);
     unsigned char *sha = NULL, *bloom = NULL;
     unsigned char *end;
     int len = 0, blen = 0, nbits = 0, k = 0;
@@ -144,33 +143,32 @@ static PyObject *bloom_add(PyObject *self, PyObject *args)
     if (!PyArg_ParseTuple(args, "w#s#ii", &bloom, &blen, &sha, &len, &nbits, &k))
 	return NULL;
 
+    if (blen < 16+(1<<nbits) || len % 20 != 0)
+	return NULL;
+
     if (k == 5)
     {
 	if (nbits > 29)
 	    return NULL;
-	bloom_set_bit = &bloom_set_bit5;
+	for (end = sha + len; sha < end; sha += 20/k)
+	    bloom_set_bit5(bloom, sha, nbits);
     }
     else if (k == 4)
     {
 	if (nbits > 37)
 	    return NULL;
-	bloom_set_bit = &bloom_set_bit4;
+	for (end = sha + len; sha < end; sha += 20/k)
+	    bloom_set_bit4(bloom, sha, nbits);
     }
     else
 	return NULL;
 
-    if (blen < 16+(1<<nbits) || len % 20 != 0)
-	return NULL;
-
-    for (end = sha + len; sha < end; sha += 20/k)
-	(*bloom_set_bit)(bloom, sha, nbits);
 
     return Py_BuildValue("i", len/20);
 }
 
 static PyObject *bloom_contains(PyObject *self, PyObject *args)
 {
-    int (*bloom_get_bit)(const unsigned char *, const void *, const int);
     unsigned char *sha = NULL, *bloom = NULL;
     int len = 0, blen = 0, nbits = 0, k = 0;
     unsigned char *end;
@@ -186,20 +184,20 @@ static PyObject *bloom_contains(PyObject *self, PyObject *args)
     {
 	if (nbits > 29)
 	    return NULL;
-	bloom_get_bit = &bloom_get_bit5;
+	for (steps = 1, end = sha + 20; sha < end; sha += 20/k, steps++)
+	    if (!bloom_get_bit5(bloom, sha, nbits))
+		return Py_BuildValue("Oi", Py_None, steps);
     }
     else if (k == 4)
     {
 	if (nbits > 37)
 	    return NULL;
-	bloom_get_bit = &bloom_get_bit4;
+	for (steps = 1, end = sha + 20; sha < end; sha += 20/k, steps++)
+	    if (!bloom_get_bit4(bloom, sha, nbits))
+		return Py_BuildValue("Oi", Py_None, steps);
     }
     else
 	return NULL;
-
-    for (steps = 1, end = sha + 20; sha < end; sha += 20/k, steps++)
-	if (!bloom_get_bit(bloom, sha, nbits))
-	    return Py_BuildValue("Oi", Py_None, steps);
 
     return Py_BuildValue("Oi", Py_True, k);
 }
