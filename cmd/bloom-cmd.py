@@ -20,6 +20,7 @@ def do_bloom(path, outfilename):
     if os.path.exists(outfilename):
         b = git.ShaBloom(outfilename, readwrite=True)
         if not b.valid():
+            debug1("bloom: Existing invalid bloom found, regenerating.\n")
             b = None
 
     add = []
@@ -60,7 +61,7 @@ def do_bloom(path, outfilename):
     msg = b is None and 'creating from' or 'adding'
     log('bloom: %s %d files (%d objects).\n' % (msg, len(add), add_count))
 
-    tempname = None
+    tfname = None
     if b is None:
         tfname = os.path.join(path, 'bup.tmp.bloom')
         tf = open(tfname, 'w+')
@@ -73,8 +74,8 @@ def do_bloom(path, outfilename):
         count += 1
     log('Writing bloom: %d/%d, done.\n' % (count, len(add)))
 
-    if tempname:
-        os.rename(tempname, outfilename)
+    if tfname:
+        os.rename(tfname, outfilename)
 
 
 handle_ctrl_c()
