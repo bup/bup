@@ -351,6 +351,8 @@ class ShaBloom:
     """
     def __init__(self, filename, f=None, readwrite=False):
         self.name = filename
+        self.rwfile = None
+        self.map = None
         assert(filename.endswith('.bloom'))
         if readwrite:
             self.rwfile = f or open(filename, 'r+b')
