@@ -250,7 +250,7 @@ class PackIdx:
     def exists(self, hash, want_source=False):
         """Return nonempty if the object exists in this index."""
         if hash and (self._idx_from_hash(hash) != None):
-            return want_source and self.name or True
+            return want_source and os.path.basename(self.name) or True
         return None
 
     def __len__(self):

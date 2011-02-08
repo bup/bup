@@ -89,6 +89,50 @@ def testpacks():
     WVPASS(r.exists(hashes[6]))
     WVFAIL(r.exists('\0'*20))
 
+
+@wvtest
+def test_pack_name_lookup():
+    os.environ['BUP_MAIN_EXE'] = bupmain = '../../../bup'
+    os.environ['BUP_DIR'] = bupdir = 'pybuptest.tmp'
+    subprocess.call(['rm','-rf', bupdir])
+    git.init_repo(bupdir)
+    git.verbose = 1
+
+    idxnames = []
+
+    w = git.PackWriter()
+    hashes = []
+    for i in range(2):
+        hashes.append(w.new_blob(str(i)))
+    log('\n')
+    idxnames.append(w.close() + '.idx')
+
+    w = git.PackWriter()
+    for i in range(2,4):
+        hashes.append(w.new_blob(str(i)))
+    log('\n')
+    idxnames.append(w.close() + '.idx')
+
+    idxnames = [os.path.basename(ix) for ix in idxnames]
+
+    def verify(r):
+	for i in range(2):
+	    WVPASSEQ(r.exists(hashes[i], want_source=True), idxnames[0])
+	for i in range(2,4):
+	    WVPASSEQ(r.exists(hashes[i], want_source=True), idxnames[1])
+
+    r = git.PackIdxList('pybuptest.tmp/objects/pack')
+    WVPASSEQ(len(r.packs), 2)
+    verify(r)
+    del r
+
+    subprocess.call([bupmain, 'midx', '-f'])
+
+    r = git.PackIdxList('pybuptest.tmp/objects/pack')
+    WVPASSEQ(len(r.packs), 1)
+    verify(r)
+
+
 @wvtest
 def test_long_index():
     w = git.PackWriter()

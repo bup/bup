@@ -330,7 +330,10 @@ static PyObject *merge_into(PyObject *self, PyObject *args)
 	    return NULL;
 	idxs[i]->cur = (struct sha *)&idxs[i]->map[sha_ofs];
 	idxs[i]->end = &idxs[i]->cur[len];
-	idxs[i]->cur_name = (uint32_t *)&idxs[i]->map[name_map_ofs];
+	if (name_map_ofs)
+	    idxs[i]->cur_name = (uint32_t *)&idxs[i]->map[name_map_ofs];
+	else
+	    idxs[i]->cur_name = NULL;
     }
     table_ptr = (uint32_t *)&fmap[12];
     sha_ptr = (struct sha *)&table_ptr[1<<bits];
