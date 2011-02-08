@@ -782,8 +782,6 @@ class PackWriter:
             self.file.write('PACK\0\0\0\2\0\0\0\0')
             self.idx = list(list() for i in xrange(256))
 
-    # the 'sha' parameter is used in client.py's _raw_write(), but not needed
-    # in this basic version.
     def _raw_write(self, datalist, sha):
         self._open()
         f = self.file
