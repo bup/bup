@@ -18,7 +18,7 @@ def do_bloom(path, outfilename):
 
     b = None
     if os.path.exists(outfilename):
-        b = git.ShaBloom(outfilename, readwrite=True)
+        b = git.ShaBloom(outfilename)
         if not b.valid():
             debug1("bloom: Existing invalid bloom found, regenerating.\n")
             b = None
@@ -42,17 +42,19 @@ def do_bloom(path, outfilename):
         log("bloom: Nothing to do\n")
         return
 
-    if b is not None:
+    if b:
         if len(b) != rest_count:
             log("bloom: size %d != idx total %d, regenerating\n"
                     % (len(b), rest_count))
             b = None
-        elif b.bits < git.MAX_BLOOM_BITS and \
-             b.pfalse_positive(add_count) > git.MAX_PFALSE_POSITIVE:
+        elif (b.bits < git.MAX_BLOOM_BITS and
+              b.pfalse_positive(add_count) > git.MAX_PFALSE_POSITIVE):
             log("bloom: %d more entries => %.2f false positive, regenerating\n"
                     % (add_count, b.pfalse_positive(add_count)))
             b = None
-    if b is None: # Need all idxs to build from scratch
+        else:
+            b = git.ShaBloom(outfilename, readwrite=True, expected=add_count)
+    if not b: # Need all idxs to build from scratch
         add += rest
         add_count += rest_count
     del rest
@@ -65,8 +67,7 @@ def do_bloom(path, outfilename):
     if b is None:
         tfname = os.path.join(path, 'bup.tmp.bloom')
         tf = open(tfname, 'w+')
-        b = git.ShaBloom.create(
-                tfname, f=tf, readwrite=True, expected=add_count, k=opt.k)
+        b = git.ShaBloom.create(tfname, f=tf, expected=add_count, k=opt.k)
     count = 0
     for name in add:
         ix = git.open_idx(name)

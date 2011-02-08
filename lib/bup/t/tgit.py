@@ -124,7 +124,7 @@ def test_bloom():
     ix.name='dummy.idx'
     ix.shatable = ''.join(hashes)
     for k in (4, 5):
-        b = git.ShaBloom.create('pybuptest.bloom', readwrite=True, expected=100, k=k)
+        b = git.ShaBloom.create('pybuptest.bloom', expected=100, k=k)
         b.add_idx(ix)
         WVPASSLT(b.pfalse_positive(), .1)
         b.close()
@@ -141,9 +141,10 @@ def test_bloom():
         os.unlink('pybuptest.bloom')
 
     tf = tempfile.TemporaryFile()
-    b = git.ShaBloom.create('bup.bloom', f=tf, readwrite=True, expected=100)
+    b = git.ShaBloom.create('bup.bloom', f=tf, expected=100)
     WVPASSEQ(b.rwfile, tf)
     WVPASSEQ(b.k, 5)
     tf = tempfile.TemporaryFile()
-    b = git.ShaBloom.create('bup.bloom', f=tf, readwrite=True, expected=2**28)
+    b = git.ShaBloom.create('bup.bloom', f=tf, expected=2**28,
+                            delaywrite=False)
     WVPASSEQ(b.k, 4)

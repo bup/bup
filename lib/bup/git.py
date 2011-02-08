@@ -346,19 +346,46 @@ bloom_add = _helpers.bloom_add
 class ShaBloom:
     """Wrapper which contains data from multiple index files.
     """
-    def __init__(self, filename, f=None, readwrite=False):
+    def __init__(self, filename, f=None, readwrite=False, expected=-1):
         self.name = filename
         self.rwfile = None
         self.map = None
         assert(filename.endswith('.bloom'))
         if readwrite:
-            self.rwfile = f or open(filename, 'r+b')
-            self.map = mmap_readwrite(self.rwfile, close=False)
+            assert(expected > 0)
+            self.rwfile = f = f or open(filename, 'r+b')
+            f.seek(0)
+
+            # Decide if we want to mmap() the pages as writable ('immediate'
+            # write) or else map them privately for later writing back to
+            # the file ('delayed' write).  A bloom table's write access
+            # pattern is such that we dirty almost all the pages after adding
+            # very few entries.  But the table is so big that dirtying
+            # *all* the pages often exceeds Linux's default
+            # /proc/sys/vm/dirty_ratio or /proc/sys/vm/dirty_background_ratio,
+            # thus causing it to start flushing the table before we're
+            # finished... even though there's more than enough space to
+            # store the bloom table in RAM.
+            #
+            # To work around that behaviour, if we calculate that we'll
+            # probably end up touching the whole table anyway (at least
+            # one bit flipped per memory page), let's use a "private" mmap,
+            # which defeats Linux's ability to flush it to disk.  Then we'll
+            # flush it as one big lump during close().
+            pages = os.fstat(f.fileno()).st_size / 4096 * 5 # assume k=5
+            self.delaywrite = expected > pages
+            debug1('bloom: delaywrite=%r\n' % self.delaywrite)
+            if self.delaywrite:
+                self.map = mmap_readwrite_private(self.rwfile, close=False)
+            else:
+                self.map = mmap_readwrite(self.rwfile, close=False)
         else:
             self.rwfile = None
-            self.map = mmap_read(f or open(filename, 'rb'))
-        if str(self.map[0:4]) != 'BLOM':
-            log('Warning: skipping: invalid BLOM header in %r\n' % filename)
+            f = f or open(filename, 'rb')
+            self.map = mmap_read(f)
+        got = str(self.map[0:4])
+        if got != 'BLOM':
+            log('Warning: invalid BLOM header (%r) in %r\n' % (got, filename))
             return self._init_failed()
         ver = struct.unpack('!I', self.map[4:8])[0]
         if ver < BLOOM_VERSION:
@@ -379,7 +406,6 @@ class ShaBloom:
 
     def _init_failed(self):
         if self.map:
-            self.map.close()
             self.map = None
         if self.rwfile:
             self.rwfile.close()
@@ -394,12 +420,14 @@ class ShaBloom:
         self.close()
 
     def close(self):
-        if self.map:
-            if self.rwfile:
-                debug2("bloom: closing with %d entries\n" % self.entries)
-                self.map[12:16] = struct.pack('!I', self.entries)
+        if self.map and self.rwfile:
+            debug2("bloom: closing with %d entries\n" % self.entries)
+            self.map[12:16] = struct.pack('!I', self.entries)
+            if self.delaywrite:
+                self.rwfile.seek(0)
+                self.rwfile.write(self.map)
+            else:
                 self.map.flush()
-        if self.rwfile:
             self.rwfile.seek(16 + 2**self.bits)
             if self.idxnames:
                 self.rwfile.write('\0'.join(self.idxnames))
@@ -427,7 +455,7 @@ class ShaBloom:
         return found
 
     @classmethod
-    def create(cls, name, f=None, readwrite=False, expected=100000, k=None):
+    def create(cls, name, expected, delaywrite=None, f=None, k=None):
         """Create and return a bloom filter for `expected` entries."""
         bits = int(math.floor(math.log(expected*MAX_BITS_EACH/8,2)))
         k = k or ((bits <= MAX_BLOOM_BITS[5]) and 5 or 4)
@@ -443,7 +471,10 @@ class ShaBloom:
         # darwin, linux, bsd and solaris.
         f.truncate(16+2**bits)
         f.seek(0)
-        return cls(name, f=f, readwrite=readwrite)
+        if delaywrite != None and not delaywrite:
+            # tell it to expect very few objects, forcing a direct mmap
+            expected = 1
+        return cls(name, f=f, readwrite=True, expected=expected)
 
     def __len__(self):
         return self.entries
