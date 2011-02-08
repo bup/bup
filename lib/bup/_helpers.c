@@ -235,8 +235,8 @@ struct idx {
     struct sha *cur;
     struct sha *end;
     uint32_t *cur_name;
-    Py_ssize_t bytes;
-    long name_base;
+    long bytes;
+    int name_base;
 };
 
 
@@ -250,7 +250,7 @@ static int _cmp_sha(const struct sha *sha1, const struct sha *sha2)
 }
 
 
-static void _fix_idx_order(struct idx **idxs, long *last_i)
+static void _fix_idx_order(struct idx **idxs, int *last_i)
 {
     struct idx *idx;
     int low, mid, high, c = 0;
@@ -306,8 +306,8 @@ static PyObject *merge_into(PyObject *self, PyObject *args)
     struct idx **idxs = NULL;
     int flen = 0, bits = 0, i;
     uint32_t total, count, prefix;
-    Py_ssize_t num_i;
-    long last_i;
+    int num_i;
+    int last_i;
 
     if (!PyArg_ParseTuple(args, "w#iIO", &fmap, &flen, &bits, &total, &ilist))
 	return NULL;
@@ -320,15 +320,12 @@ static PyObject *merge_into(PyObject *self, PyObject *args)
 	long len, sha_ofs, name_map_ofs;
 	idxs[i] = (struct idx *)PyMem_Malloc(sizeof(struct idx));
 	PyObject *itup = PyList_GetItem(ilist, i);
-	PyObject_AsReadBuffer(PyTuple_GetItem(itup, 0),
-		(const void **)&idxs[i]->map, &idxs[i]->bytes);
-	len = PyInt_AsLong(PyTuple_GetItem(itup, 1));
-	sha_ofs = PyInt_AsLong(PyTuple_GetItem(itup, 2));
-	name_map_ofs = PyInt_AsLong(PyTuple_GetItem(itup, 3));
+	if (!PyArg_ParseTuple(itup, "t#llli", &idxs[i]->map, &idxs[i]->bytes,
+		    &len, &sha_ofs, &name_map_ofs, &idxs[i]->name_base))
+	    return NULL;
 	idxs[i]->cur = (struct sha *)&idxs[i]->map[sha_ofs];
 	idxs[i]->end = &idxs[i]->cur[len];
 	idxs[i]->cur_name = (uint32_t *)&idxs[i]->map[name_map_ofs];
-	idxs[i]->name_base = PyInt_AsLong(PyTuple_GetItem(itup, 4));
     }
     table_ptr = (uint32_t *)&fmap[12];
     sha_ptr = (struct sha *)&table_ptr[1<<bits];
