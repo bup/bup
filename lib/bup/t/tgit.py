@@ -50,20 +50,20 @@ def testencode():
 
 @wvtest
 def testpacks():
+    subprocess.call(['rm','-rf', 'pybuptest.tmp'])
     git.init_repo('pybuptest.tmp')
     git.verbose = 1
 
-    now = str(time.time())  # hopefully not in any packs yet
     w = git.PackWriter()
-    w.write('blob', now)
-    w.write('blob', now)
+    w.new_blob(os.urandom(100))
+    w.new_blob(os.urandom(100))
     w.abort()
     
     w = git.PackWriter()
     hashes = []
     nobj = 1000
     for i in range(nobj):
-        hashes.append(w.write('blob', str(i)))
+        hashes.append(w.new_blob(str(i)))
     log('\n')
     nameprefix = w.close()
     print repr(nameprefix)
@@ -114,3 +114,37 @@ def test_long_index():
     WVPASSEQ(i.find_offset(obj3_bin), 0xff)
     f.close()
     os.remove(name)
+
+@wvtest
+def test_bloom():
+    hashes = [os.urandom(20) for i in range(100)]
+    class Idx:
+        pass
+    ix = Idx()
+    ix.name='dummy.idx'
+    ix.shatable = ''.join(hashes)
+    for k in (4, 5):
+        b = git.ShaBloom.create('pybuptest.bloom', expected=100, k=k)
+        b.add_idx(ix)
+        WVPASSLT(b.pfalse_positive(), .1)
+        b.close()
+        b = git.ShaBloom('pybuptest.bloom')
+        all_present = True
+        for h in hashes:
+            all_present &= b.exists(h)
+        WVPASS(all_present)
+        false_positives = 0
+        for h in [os.urandom(20) for i in range(1000)]:
+            if b.exists(h):
+                false_positives += 1
+        WVPASSLT(false_positives, 5)
+        os.unlink('pybuptest.bloom')
+
+    tf = tempfile.TemporaryFile()
+    b = git.ShaBloom.create('bup.bloom', f=tf, expected=100)
+    WVPASSEQ(b.rwfile, tf)
+    WVPASSEQ(b.k, 5)
+    tf = tempfile.TemporaryFile()
+    b = git.ShaBloom.create('bup.bloom', f=tf, expected=2**28,
+                            delaywrite=False)
+    WVPASSEQ(b.k, 4)

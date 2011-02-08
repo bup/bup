@@ -450,7 +450,7 @@ def slashappend(s):
         return s
 
 
-def _mmap_do(f, sz, flags, prot):
+def _mmap_do(f, sz, flags, prot, close):
     if not sz:
         st = os.fstat(f.fileno())
         sz = st.st_size
@@ -460,24 +460,34 @@ def _mmap_do(f, sz, flags, prot):
         # no elements :)
         return ''
     map = mmap.mmap(f.fileno(), sz, flags, prot)
-    f.close()  # map will persist beyond file close
+    if close:
+        f.close()  # map will persist beyond file close
     return map
 
 
-def mmap_read(f, sz = 0):
+def mmap_read(f, sz = 0, close=True):
     """Create a read-only memory mapped region on file 'f'.
-
     If sz is 0, the region will cover the entire file.
     """
-    return _mmap_do(f, sz, mmap.MAP_PRIVATE, mmap.PROT_READ)
+    return _mmap_do(f, sz, mmap.MAP_PRIVATE, mmap.PROT_READ, close)
 
 
-def mmap_readwrite(f, sz = 0):
+def mmap_readwrite(f, sz = 0, close=True):
     """Create a read-write memory mapped region on file 'f'.
-
     If sz is 0, the region will cover the entire file.
     """
-    return _mmap_do(f, sz, mmap.MAP_SHARED, mmap.PROT_READ|mmap.PROT_WRITE)
+    return _mmap_do(f, sz, mmap.MAP_SHARED, mmap.PROT_READ|mmap.PROT_WRITE,
+                    close)
+
+
+def mmap_readwrite_private(f, sz = 0, close=True):
+    """Create a read-write memory mapped region on file 'f'.
+    If sz is 0, the region will cover the entire file.
+    The map is private, which means the changes are never flushed back to the
+    file.
+    """
+    return _mmap_do(f, sz, mmap.MAP_PRIVATE, mmap.PROT_READ|mmap.PROT_WRITE,
+                    close)
 
 
 def parse_num(s):
