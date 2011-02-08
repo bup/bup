@@ -4,6 +4,11 @@
 #include <stdint.h>
 #include <fcntl.h>
 #include <arpa/inet.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <stdio.h>
+
+static int istty = 0;
 
 static PyObject *selftest(PyObject *self, PyObject *args)
 {
@@ -338,8 +343,8 @@ static PyObject *merge_into(PyObject *self, PyObject *args)
     {
 	struct idx *idx;
 	uint32_t new_prefix;
-	if (count % 102424 == 0)
-	    PySys_WriteStderr("midx: writing %.2f%% (%d/%d)\r",
+	if (count % 102424 == 0 && istty)
+	    fprintf(stderr, "midx: writing %.2f%% (%d/%d)\r",
 		    count*100.0/total, count, total);
 	idx = idxs[last_i];
 	new_prefix = _extract_bits((unsigned char *)idx->cur, bits);
@@ -517,4 +522,5 @@ static PyMethodDef faster_methods[] = {
 PyMODINIT_FUNC init_helpers(void)
 {
     Py_InitModule("_helpers", faster_methods);
+    istty = isatty(2) || getenv("BUP_FORCE_TTY");
 }
