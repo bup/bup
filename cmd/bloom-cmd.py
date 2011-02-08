@@ -30,11 +30,11 @@ def do_bloom(path, outfilename):
     for name in glob.glob('%s/*.idx' % path):
         ix = git.open_idx(name)
         ixbase = os.path.basename(name)
-        if b is not None and ixbase in b.idxnames:
-            rest.append(ix)
+        if b and (ixbase in b.idxnames):
+            rest.append(name)
             rest_count += len(ix)
         else:
-            add.append(ix)
+            add.append(name)
             add_count += len(ix)
     total = add_count + rest_count
 
@@ -68,7 +68,8 @@ def do_bloom(path, outfilename):
         b = git.ShaBloom.create(
                 tfname, f=tf, readwrite=True, expected=add_count, k=opt.k)
     count = 0
-    for ix in add:
+    for name in add:
+        ix = git.open_idx(name)
         progress('Writing bloom: %d/%d\r' % (count, len(add)))
         b.add_idx(ix)
         count += 1
