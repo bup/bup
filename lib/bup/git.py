@@ -477,7 +477,7 @@ class ShaBloom:
         return cls(name, f=f, readwrite=True, expected=expected)
 
     def __len__(self):
-        return self.entries
+        return int(self.entries)
 
 
 class PackMidx:

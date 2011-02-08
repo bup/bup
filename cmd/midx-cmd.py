@@ -6,6 +6,7 @@ from bup.helpers import *
 
 PAGE_SIZE=4096
 SHA_PER_PAGE=PAGE_SIZE/20.
+SEEK_END=2  # os.SEEK_END is not defined in python 2.4
 
 optspec = """
 bup midx [options...] <idxnames...>
@@ -86,7 +87,7 @@ def _do_midx(outdir, outfilename, infilenames, prefixstr):
     fmap.flush()
     fmap.close()
 
-    f.seek(0, os.SEEK_END)
+    f.seek(0, SEEK_END)
     f.write('\0'.join(allfilenames))
     f.close()
     os.rename(outfilename + '.tmp', outfilename)
