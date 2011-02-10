@@ -1,14 +1,9 @@
 #!/usr/bin/env python
-import sys, re, struct, mmap, time, resource
-from bup import git, options
+import sys, re, struct, time, resource
+from bup import git, options, _helpers
 from bup.helpers import *
 
 handle_ctrl_c()
-
-def s_from_bytes(bytes):
-    clist = [chr(b) for b in bytes]
-    return ''.join(clist)
-
 
 _linux_warned = 0
 def linux_memstat():
@@ -23,8 +18,14 @@ def linux_memstat():
             _linux_warned = 1
         return {}
     for line in f:
-        k,v = re.split(r':\s*', line.strip(), 1)
-        d[k] = v
+        # Note that on Solaris, this file exists but is binary.  If that
+        # happens, this split() might not return two elements.  We don't
+        # really need to care about the binary format since this output
+        # isn't used for much and report() can deal with missing entries.
+        t = re.split(r':\s*', line.strip(), 1)
+        if len(t) == 2:
+            k,v = t
+            d[k] = v
     return d
 
 
@@ -65,7 +66,7 @@ c,cycles=  number of cycles to run [100]
 ignore-midx  ignore .midx files, use only .idx files
 existing   test with existing objects instead of fake ones
 """
-o = options.Options('bup memtest', optspec)
+o = options.Options(optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
 
 if extra:
@@ -77,8 +78,7 @@ git.check_repo_or_die()
 m = git.PackIdxList(git.repo('objects/pack'))
 
 report(-1)
-f = open('/dev/urandom')
-a = mmap.mmap(-1, 20)
+_helpers.random_sha()
 report(0)
 
 if opt.existing:
@@ -94,10 +94,7 @@ for c in xrange(opt.cycles):
             bin = objit.next()
             assert(m.exists(bin))
         else:
-            b = f.read(3)
-            a[0:2] = b[0:2]
-            a[2] = chr(ord(b[2]) & 0xf0)
-            bin = str(a[0:20])
+            bin = _helpers.random_sha()
 
             # technically, a randomly generated object id might exist.
             # but the likelihood of that is the likelihood of finding

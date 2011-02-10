@@ -129,7 +129,7 @@ j,jobs=     run 'n' jobs in parallel
 par2-ok     immediately return 0 if par2 is ok, 1 if not
 disable-par2  ignore par2 even if it is available
 """
-o = options.Options('bup fsck', optspec)
+o = options.Options(optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
 
 par2_setup()

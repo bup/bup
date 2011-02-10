@@ -96,7 +96,7 @@ def _chunkiter(hash, startofs):
             yield ''.join(cp().join(sha.encode('hex')))[skipmore:]
 
 
-class _ChunkReader(object):
+class _ChunkReader:
     def __init__(self, hash, isdir, startofs):
         if isdir:
             self.it = _chunkiter(hash, startofs)
@@ -161,7 +161,7 @@ class _FileReader(object):
         pass
 
 
-class Node(object):
+class Node:
     """Base class for file representation."""
     def __init__(self, parent, name, mode, hash):
         self.parent = parent
@@ -312,7 +312,7 @@ class File(Node):
     def size(self):
         """Get this file's size."""
         if self._cached_size == None:
-            debug1('<<<<File.size() is calculating...\n')
+            debug1('<<<<File.size() is calculating (for %r)...\n' % self.name)
             if self.bupmode == git.BUP_CHUNKED:
                 self._cached_size = _total_size(self.hash)
             else:
@@ -397,35 +397,111 @@ class Dir(Node):
                 self._subs[name] = File(self, name, mode, sha, bupmode)
 
 
-class CommitList(Node):
-    """A reverse-chronological list of commits on a branch in bup's repository.
+class CommitDir(Node):
+    """A directory that contains all commits that are reachable by a ref.
 
-    Represents each commit as a directory and a symlink that points to the
-    directory. The symlink is named after the date. Prepends a dot to each hash
-    to make commits look like hidden directories.
+    Contains a set of subdirectories named after the commits' first byte in
+    hexadecimal. Each of those directories contain all commits with hashes that
+    start the same as the directory name. The name used for those
+    subdirectories is the hash of the commit without the first byte. This
+    separation helps us avoid having too much directories on the same level as
+    the number of commits grows big.
+    """
+    def __init__(self, parent, name):
+        Node.__init__(self, parent, name, 040000, EMPTY_SHA)
+
+    def _mksubs(self):
+        self._subs = {}
+        refs = git.list_refs()
+        for ref in refs:
+            #debug2('ref name: %s\n' % ref[0])
+            revs = git.rev_list(ref[1].encode('hex'))
+            for (date, commit) in revs:
+                #debug2('commit: %s  date: %s\n' % (commit.encode('hex'), date))
+                commithex = commit.encode('hex')
+                containername = commithex[:2]
+                dirname = commithex[2:]
+                n1 = self._subs.get(containername)
+                if not n1:
+                    n1 = CommitList(self, containername)
+                    self._subs[containername] = n1
+
+                if n1.commits.get(dirname):
+                    # Stop work for this ref, the rest should already be present
+                    break
+
+                n1.commits[dirname] = (commit, date)
+
+
+class CommitList(Node):
+    """A list of commits with hashes that start with the current node's name."""
+    def __init__(self, parent, name):
+        Node.__init__(self, parent, name, 040000, EMPTY_SHA)
+        self.commits = {}
+
+    def _mksubs(self):
+        self._subs = {}
+        for (name, (hash, date)) in self.commits.items():
+            n1 = Dir(self, name, 040000, hash)
+            n1.ctime = n1.mtime = date
+            self._subs[name] = n1
+
+
+class TagDir(Node):
+    """A directory that contains all tags in the repository."""
+    def __init__(self, parent, name):
+        Node.__init__(self, parent, name, 040000, EMPTY_SHA)
+
+    def _mksubs(self):
+        self._subs = {}
+        for (name, sha) in git.list_refs():
+            if name.startswith('refs/tags/'):
+                name = name[10:]
+                date = git.rev_get_date(sha.encode('hex'))
+                commithex = sha.encode('hex')
+                target = '../.commit/%s/%s' % (commithex[:2], commithex[2:])
+                tag1 = FakeSymlink(self, name, target)
+                tag1.ctime = tag1.mtime = date
+                self._subs[name] = tag1
+
+
+class BranchList(Node):
+    """A list of links to commits reachable by a branch in bup's repository.
+
+    Represents each commit as a symlink that points to the commit directory in
+    /.commit/??/ . The symlink is named after the commit date.
     """
     def __init__(self, parent, name, hash):
         Node.__init__(self, parent, name, 040000, hash)
 
     def _mksubs(self):
         self._subs = {}
+
+        tags = git.tags()
+
         revs = list(git.rev_list(self.hash.encode('hex')))
         for (date, commit) in revs:
             l = time.localtime(date)
             ls = time.strftime('%Y-%m-%d-%H%M%S', l)
-            commithex = '.' + commit.encode('hex')
-            n1 = Dir(self, commithex, 040000, commit)
-            n2 = FakeSymlink(self, ls, commithex)
-            n1.ctime = n1.mtime = n2.ctime = n2.mtime = date
-            self._subs[commithex] = n1
-            self._subs[ls] = n2
-            latest = max(revs)
+            commithex = commit.encode('hex')
+            target = '../.commit/%s/%s' % (commithex[:2], commithex[2:])
+            n1 = FakeSymlink(self, ls, target)
+            n1.ctime = n1.mtime = date
+            self._subs[ls] = n1
+
+            for tag in tags.get(commit, []):
+                t1 = FakeSymlink(self, tag, target)
+                t1.ctime = t1.mtime = date
+                self._subs[tag] = t1
+
+        latest = max(revs)
         if latest:
             (date, commit) = latest
-            commithex = '.' + commit.encode('hex')
-            n2 = FakeSymlink(self, 'latest', commithex)
-            n2.ctime = n2.mtime = date
-            self._subs['latest'] = n2
+            commithex = commit.encode('hex')
+            target = '../.commit/%s/%s' % (commithex[:2], commithex[2:])
+            n1 = FakeSymlink(self, 'latest', target)
+            n1.ctime = n1.mtime = date
+            self._subs['latest'] = n1
 
 
 class RefList(Node):
@@ -433,18 +509,26 @@ class RefList(Node):
 
     The sub-nodes of the ref list are a series of CommitList for each commit
     hash pointed to by a branch.
+
+    Also, a special sub-node named '.commit' contains all commit directories
+    that are reachable via a ref (e.g. a branch).  See CommitDir for details.
     """
     def __init__(self, parent):
         Node.__init__(self, parent, '/', 040000, EMPTY_SHA)
 
     def _mksubs(self):
         self._subs = {}
+
+        commit_dir = CommitDir(self, '.commit')
+        self._subs['.commit'] = commit_dir
+
+        tag_dir = TagDir(self, '.tag')
+        self._subs['.tag'] = tag_dir
+
         for (name,sha) in git.list_refs():
             if name.startswith('refs/heads/'):
                 name = name[11:]
                 date = git.rev_get_date(sha.encode('hex'))
-                n1 = CommitList(self, name, sha)
+                n1 = BranchList(self, name, sha)
                 n1.ctime = n1.mtime = date
                 self._subs[name] = n1
-
-

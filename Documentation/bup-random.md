@@ -8,7 +8,7 @@ bup-random - generate a stream of random output
 
 # SYNOPSIS
 
-bup random [-S seed] [-f] <numbytes>
+bup random [-S seed] [-fv] <numbytes>
 
 # DESCRIPTION
 
@@ -47,6 +47,10 @@ can be helpful when running microbenchmarks.
 :   generate output even if stdout is a tty.  (Generating
     random data to a tty is generally considered
     ill-advised, but you can do if you really want.)
+    
+-v, --verbose
+:   print a progress message showing the number of bytes that
+    has been output so far.
 
 # EXAMPLES
     

@@ -6,16 +6,20 @@ optspec = """
 bup drecurse <path>
 --
 x,xdev,one-file-system   don't cross filesystem boundaries
+exclude= a path to exclude from the backup (can be used more than once)
+exclude-from= a file that contains exclude paths (can be used more than once)
 q,quiet  don't actually print filenames
 profile  run under the python profiler
 """
-o = options.Options('bup drecurse', optspec)
+o = options.Options(optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
 
 if len(extra) != 1:
     o.fatal("exactly one filename expected")
 
-it = drecurse.recursive_dirlist(extra, opt.xdev)
+excluded_paths = drecurse.parse_excludes(flags)
+
+it = drecurse.recursive_dirlist(extra, opt.xdev, excluded_paths)
 if opt.profile:
     import cProfile
     def do_it():

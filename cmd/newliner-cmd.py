@@ -5,7 +5,7 @@ from bup import options
 optspec = """
 bup newliner
 """
-o = options.Options('bup newliner', optspec)
+o = options.Options(optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
 
 if extra:

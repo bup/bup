@@ -1,4 +1,4 @@
-import stat
+import stat, os
 from bup.helpers import *
 import bup.xstat as xstat
 
@@ -6,6 +6,10 @@ try:
     O_LARGEFILE = os.O_LARGEFILE
 except AttributeError:
     O_LARGEFILE = 0
+try:
+    O_NOFOLLOW = os.O_NOFOLLOW
+except AttributeError:
+    O_NOFOLLOW = 0
 
 
 # the use of fchdir() and lstat() is for two reasons:
@@ -14,8 +18,7 @@ except AttributeError:
 class OsFile:
     def __init__(self, path):
         self.fd = None
-        self.fd = os.open(path, 
-                          os.O_RDONLY|O_LARGEFILE|os.O_NOFOLLOW|os.O_NDELAY)
+        self.fd = os.open(path, os.O_RDONLY|O_LARGEFILE|O_NOFOLLOW|os.O_NDELAY)
         
     def __del__(self):
         if self.fd:
@@ -46,24 +49,34 @@ def _dirlist():
     return l
 
 
-def _recursive_dirlist(prepend, xdev):
+def _recursive_dirlist(prepend, xdev, bup_dir=None, excluded_paths=None):
     for (name,pst) in _dirlist():
         if name.endswith('/'):
             if xdev != None and pst.st_dev != xdev:
                 log('Skipping %r: different filesystem.\n' % (prepend+name))
                 continue
+            if bup_dir != None:
+                if os.path.normpath(prepend+name) == bup_dir:
+                    log('Skipping BUP_DIR.\n')
+                    continue
+            if excluded_paths:
+                if os.path.normpath(prepend+name) in excluded_paths:
+                    log('Skipping %r: excluded.\n' % (prepend+name))
+                    continue
             try:
                 OsFile(name).fchdir()
             except OSError, e:
                 add_error('%s: %s' % (prepend, e))
             else:
-                for i in _recursive_dirlist(prepend=prepend+name, xdev=xdev):
+                for i in _recursive_dirlist(prepend=prepend+name, xdev=xdev,
+                                            bup_dir=bup_dir,
+                                            excluded_paths=excluded_paths):
                     yield i
                 os.chdir('..')
         yield (prepend + name, pst)
 
 
-def recursive_dirlist(paths, xdev):
+def recursive_dirlist(paths, xdev, bup_dir=None, excluded_paths=None):
     startdir = OsFile('.')
     try:
         assert(type(paths) != type(''))
@@ -89,7 +102,9 @@ def recursive_dirlist(paths, xdev):
             if stat.S_ISDIR(pst.st_mode):
                 pfile.fchdir()
                 prepend = os.path.join(path, '')
-                for i in _recursive_dirlist(prepend=prepend, xdev=xdev):
+                for i in _recursive_dirlist(prepend=prepend, xdev=xdev,
+                                            bup_dir=bup_dir,
+                                            excluded_paths=excluded_paths):
                     yield i
                 startdir.fchdir()
             else:
@@ -101,3 +116,25 @@ def recursive_dirlist(paths, xdev):
         except:
             pass
         raise
+
+def parse_excludes(flags):
+    excluded_paths = []
+
+    for flag in flags:
+        (option, parameter) = flag
+        if option == '--exclude':
+            excluded_paths.append(realpath(parameter))
+
+        if option == '--exclude-from':
+            try:
+                try:
+                    f = open(realpath(parameter))
+                    for exclude_path in f.readlines():
+                        excluded_paths.append(realpath(exclude_path.strip()))
+                except Error, e:
+                    log("warning: couldn't read %s" % parameter)
+            finally:
+                f.close()
+
+    return excluded_paths
+

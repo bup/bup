@@ -116,7 +116,7 @@ d,debug   increase debug level
 f,foreground  run in foreground
 o,allow-other allow other users to access the filesystem
 """
-o = options.Options('bup fuse', optspec)
+o = options.Options(optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
 
 if len(extra) != 1:

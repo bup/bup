@@ -44,7 +44,7 @@ xdev = False
 
 handle_ctrl_c()
 
-o = options.Options('bup meta', optspec)
+o = options.Options(optspec)
 (opt, flags, remainder) = o.parse(sys.argv[1:])
 
 for flag, value in flags:

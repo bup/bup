@@ -1,4 +1,4 @@
-import time
+import struct, os, tempfile, time
 from bup import git
 from bup.helpers import *
 from wvtest import *
@@ -50,27 +50,27 @@ def testencode():
 
 @wvtest
 def testpacks():
+    subprocess.call(['rm','-rf', 'pybuptest.tmp'])
     git.init_repo('pybuptest.tmp')
     git.verbose = 1
 
-    now = str(time.time())  # hopefully not in any packs yet
     w = git.PackWriter()
-    w.write('blob', now)
-    w.write('blob', now)
+    w.new_blob(os.urandom(100))
+    w.new_blob(os.urandom(100))
     w.abort()
     
     w = git.PackWriter()
     hashes = []
     nobj = 1000
     for i in range(nobj):
-        hashes.append(w.write('blob', str(i)))
+        hashes.append(w.new_blob(str(i)))
     log('\n')
     nameprefix = w.close()
     print repr(nameprefix)
     WVPASS(os.path.exists(nameprefix + '.pack'))
     WVPASS(os.path.exists(nameprefix + '.idx'))
 
-    r = git.PackIdx(nameprefix + '.idx')
+    r = git.open_idx(nameprefix + '.idx')
     print repr(r.fanout)
 
     for i in range(nobj):
@@ -88,3 +88,107 @@ def testpacks():
     WVPASS(r.exists(hashes[5]))
     WVPASS(r.exists(hashes[6]))
     WVFAIL(r.exists('\0'*20))
+
+
+@wvtest
+def test_pack_name_lookup():
+    os.environ['BUP_MAIN_EXE'] = bupmain = '../../../bup'
+    os.environ['BUP_DIR'] = bupdir = 'pybuptest.tmp'
+    subprocess.call(['rm','-rf', bupdir])
+    git.init_repo(bupdir)
+    git.verbose = 1
+
+    idxnames = []
+
+    w = git.PackWriter()
+    hashes = []
+    for i in range(2):
+        hashes.append(w.new_blob(str(i)))
+    log('\n')
+    idxnames.append(w.close() + '.idx')
+
+    w = git.PackWriter()
+    for i in range(2,4):
+        hashes.append(w.new_blob(str(i)))
+    log('\n')
+    idxnames.append(w.close() + '.idx')
+
+    idxnames = [os.path.basename(ix) for ix in idxnames]
+
+    def verify(r):
+	for i in range(2):
+	    WVPASSEQ(r.exists(hashes[i], want_source=True), idxnames[0])
+	for i in range(2,4):
+	    WVPASSEQ(r.exists(hashes[i], want_source=True), idxnames[1])
+
+    r = git.PackIdxList('pybuptest.tmp/objects/pack')
+    WVPASSEQ(len(r.packs), 2)
+    verify(r)
+    del r
+
+    subprocess.call([bupmain, 'midx', '-f'])
+
+    r = git.PackIdxList('pybuptest.tmp/objects/pack')
+    WVPASSEQ(len(r.packs), 1)
+    verify(r)
+
+
+@wvtest
+def test_long_index():
+    w = git.PackWriter()
+    obj_bin = struct.pack('!IIIII',
+            0x00112233, 0x44556677, 0x88990011, 0x22334455, 0x66778899)
+    obj2_bin = struct.pack('!IIIII',
+            0x11223344, 0x55667788, 0x99001122, 0x33445566, 0x77889900)
+    obj3_bin = struct.pack('!IIIII',
+            0x22334455, 0x66778899, 0x00112233, 0x44556677, 0x88990011)
+    pack_bin = struct.pack('!IIIII',
+            0x99887766, 0x55443322, 0x11009988, 0x77665544, 0x33221100)
+    idx = list(list() for i in xrange(256))
+    idx[0].append((obj_bin, 1, 0xfffffffff))
+    idx[0x11].append((obj2_bin, 2, 0xffffffffff))
+    idx[0x22].append((obj3_bin, 3, 0xff))
+    (fd,name) = tempfile.mkstemp(suffix='.idx', dir=git.repo('objects'))
+    f = os.fdopen(fd, 'w+b')
+    r = w._write_pack_idx_v2(f, idx, pack_bin)
+    f.seek(0)
+    i = git.PackIdxV2(name, f)
+    WVPASSEQ(i.find_offset(obj_bin), 0xfffffffff)
+    WVPASSEQ(i.find_offset(obj2_bin), 0xffffffffff)
+    WVPASSEQ(i.find_offset(obj3_bin), 0xff)
+    f.close()
+    os.remove(name)
+
+@wvtest
+def test_bloom():
+    hashes = [os.urandom(20) for i in range(100)]
+    class Idx:
+        pass
+    ix = Idx()
+    ix.name='dummy.idx'
+    ix.shatable = ''.join(hashes)
+    for k in (4, 5):
+        b = git.ShaBloom.create('pybuptest.bloom', expected=100, k=k)
+        b.add_idx(ix)
+        WVPASSLT(b.pfalse_positive(), .1)
+        b.close()
+        b = git.ShaBloom('pybuptest.bloom')
+        all_present = True
+        for h in hashes:
+            all_present &= b.exists(h)
+        WVPASS(all_present)
+        false_positives = 0
+        for h in [os.urandom(20) for i in range(1000)]:
+            if b.exists(h):
+                false_positives += 1
+        WVPASSLT(false_positives, 5)
+        os.unlink('pybuptest.bloom')
+
+    tf = tempfile.TemporaryFile()
+    b = git.ShaBloom.create('bup.bloom', f=tf, expected=100)
+    WVPASSEQ(b.rwfile, tf)
+    WVPASSEQ(b.k, 5)
+    tf = tempfile.TemporaryFile()
+    b = git.ShaBloom.create('bup.bloom', f=tf, expected=2**28,
+                            delaywrite=False)
+    WVPASSEQ(b.k, 4)

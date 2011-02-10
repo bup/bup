@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 import sys, os, glob
-from bup import options
+from bup import options, path
 
 optspec = """
 bup help <command>
 """
-o = options.Options('bup help', optspec)
+o = options.Options(optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
 
 if len(extra) == 0:
@@ -13,9 +13,8 @@ if len(extra) == 0:
     os.execvp(os.environ['BUP_MAIN_EXE'], ['bup'])
 elif len(extra) == 1:
     docname = (extra[0]=='bup' and 'bup' or ('bup-%s' % extra[0]))
-    exe = sys.argv[0]
-    (exepath, exefile) = os.path.split(exe)
-    manpath = os.path.join(exepath, '../Documentation/' + docname + '.[1-9]')
+    manpath = os.path.join(path.exedir(),
+                           'Documentation/' + docname + '.[1-9]')
     g = glob.glob(manpath)
     if g:
         os.execvp('man', ['man', '-l', g[0]])

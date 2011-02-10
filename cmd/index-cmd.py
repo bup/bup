@@ -1,13 +1,7 @@
 #!/usr/bin/env python
-import sys, stat, time
+import sys, stat, time, os
 from bup import options, git, index, drecurse
 from bup.helpers import *
-
-
-def merge_indexes(out, r1, r2):
-    for e in index.MergeIter([r1, r2]):
-        # FIXME: shouldn't we remove deleted entries eventually?  When?
-        out.add_ixentry(e)
 
 
 class IterHelper:
@@ -54,7 +48,7 @@ def check_index(reader):
     log('check: passed.\n')
 
 
-def update_index(top):
+def update_index(top, excluded_paths):
     ri = index.Reader(indexfile)
     wi = index.Writer(indexfile)
     rig = IterHelper(ri.iter(name=top))
@@ -66,7 +60,10 @@ def update_index(top):
             return (0100644, index.FAKE_SHA)
 
     total = 0
-    for (path,pst) in drecurse.recursive_dirlist([top], xdev=opt.xdev):
+    bup_dir = os.path.abspath(git.repo())
+    for (path,pst) in drecurse.recursive_dirlist([top], xdev=opt.xdev,
+                                                 bup_dir=bup_dir,
+                                                 excluded_paths=excluded_paths):
         if opt.verbose>=2 or (opt.verbose==1 and stat.S_ISDIR(pst.st_mode)):
             sys.stdout.write('%s\n' % path)
             sys.stdout.flush()
@@ -105,7 +102,11 @@ def update_index(top):
                 log('check: before merging: newfile\n')
                 check_index(wr)
             mi = index.Writer(indexfile)
-            merge_indexes(mi, ri, wr)
+
+            for e in index.merge(ri, wr):
+                # FIXME: shouldn't we remove deleted entries eventually?  When?
+                mi.add_ixentry(e)
+
             ri.close()
             mi.close()
             wr.close()
@@ -127,10 +128,12 @@ x,xdev,one-file-system  don't cross filesystem boundaries
 fake-valid mark all index entries as up-to-date even if they aren't
 fake-invalid mark all index entries as invalid
 check      carefully check index file integrity
-f,indexfile=  the name of the index file (default 'index')
+f,indexfile=  the name of the index file (normally BUP_DIR/bupindex)
+exclude=   a path to exclude from the backup (can be used more than once)
+exclude-from= a file that contains exclude paths (can be used more than once)
 v,verbose  increase log output (can be used more than once)
 """
-o = options.Options('bup index', optspec)
+o = options.Options(optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
 
 if not (opt.modified or opt['print'] or opt.status or opt.update or opt.check):
@@ -149,13 +152,15 @@ if opt.check:
     log('check: starting initial check.\n')
     check_index(index.Reader(indexfile))
 
+excluded_paths = drecurse.parse_excludes(flags)
+
 paths = index.reduce_paths(extra)
 
 if opt.update:
     if not extra:
         o.fatal('update (-u) requested but no paths given')
     for (rp,path) in paths:
-        update_index(rp)
+        update_index(rp, excluded_paths)
 
 if opt['print'] or opt.status or opt.modified:
     for (name, ent) in index.Reader(indexfile).filter(extra or ['']):

@@ -75,8 +75,9 @@ Reasons you might want to avoid bup
  - It requires python >= 2.4, a C compiler, and an installed git version >=
    1.5.3.1.
  
- - It currently only works on Linux, MacOS X >= 10.4, or Windows (with
-   Cygwin).  Patches to support other platforms are welcome.
+ - It currently only works on Linux, MacOS X >= 10.4,
+   Solaris, or Windows (with Cygwin).  Patches to support
+   other platforms are welcome.
    
    
 Getting started
@@ -91,6 +92,10 @@ Getting started
         apt-get install python2.6-dev python-fuse
         
     Substitute python2.5-dev or python2.4-dev if you have an older system.
+    
+    Or on newer Debian/Ubuntu versions, you can try this:
+    
+        apt-get build-dep bup
    	
  - Build the python module and symlinks:
  
@@ -162,6 +167,27 @@ Getting started
      so you don't need -r there.)
  	
 That's all there is to it!
+
+
+Notes on FreeBSD
+================
+
+- FreeBSD's default 'make' command doesn't like bup's Makefile. In order to
+  compile the code, run tests and install bup, you need to install GNU Make
+  from the port named 'gmake' and use its executable instead in the commands
+  seen above. (i.e. 'gmake test' runs bup's test suite)
+
+- Python's development headers are automatically installed with the 'python'
+  port so there's no need to install them separately.
+
+- To use the 'bup fuse' command, you need to install the fuse kernel module
+  from the 'fusefs-kmod' port in the 'sysutils' section and the libraries from
+  the port named 'py-fusefs' in the 'devel' section.
+
+- The 'par2' command can be found in the port named 'par2cmdline'.
+
+- In order to compile the documentation, you need pandoc which can be found in
+  the port named 'hs-pandoc' in the 'textproc' section.
 
 
 How it works
@@ -288,6 +314,14 @@ mailing list (see below) if you'd like to help.
     Actually, that's not stupid, but you might consider it a limitation. 
     There are a bunch of Linux GUI backup programs; someday I expect someone
     will adapt one of them to use bup.
+    
+    
+More Documentation
+------------------
+
+bup has an extensive set of man pages.  Try using 'bup help' to get
+started, or use 'bup help SUBCOMMAND' for any bup subcommand (like split,
+join, index, save, etc.) to get details on that command.
 
 
 How you can help

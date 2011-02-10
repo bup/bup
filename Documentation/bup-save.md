@@ -8,8 +8,8 @@ bup-save - create a new bup backup set
 
 # SYNOPSIS
 
-bup save [-r *host*:*path*] <-t|-c|-n *name*> [-v] [-q]
-  [--smaller=*maxsize*] <paths...>
+bup save [-r *host*:*path*] <-t|-c|-n *name*> [-f *indexfile*]
+[-v] [-q] [--smaller=*maxsize*] <paths...>
 
 # DESCRIPTION
 
@@ -45,6 +45,10 @@ for `bup-index`(1).
     the same name, and later view the history of that
     backup set to see how files have changed over time.)
     
+-f, --indexfile=*indexfile*
+:   use a different index filename instead of
+    `~/.bup/bupindex`.
+
 -v, --verbose
 :   increase verbosity (can be used more than once).  With
     one -v, prints every directory name as it gets backed up.  With
@@ -70,16 +74,73 @@ for `bup-index`(1).
     like k, M, or G to specify multiples of 1024,
     1024*1024, 1024*1024*1024 respectively.
     
+--strip
+:   strips the path that is given from all files and directories.
+    
+    A directory */root/chroot/etc* saved with
+    "bup save -n chroot --strip /root/chroot" would be saved
+    as */etc*.
+    
+--strip-prefix=*path-prefix*
+:   strips the given path-prefix *path-prefix* from all
+    files and directories.
+    
+    A directory */root/chroots/webserver* saved with
+    "bup save -n webserver --strip-path=/root/chroots" would
+    be saved as */webserver/etc*
+    
+--graft=*old_path*=*new_path*
+:   a graft point *old_path*=*new_path* (can be used more than
+    once).
+
+    A directory */root/chroot/a/etc* saved with
+    "bup save -n chroots --graft /root/chroot/a/etc=/chroots/a"
+    would be saved as */chroots/a/etc*
 
 # EXAMPLE
-    
+
     $ bup index -ux /etc
     Indexing: 1981, done.
-    
+
     $ bup save -r myserver: -n my-pc-backup --bwlimit=50k /etc
     Reading index: 1981, done.
-    Saving: 100.00% (998/998k, 1981/1981 files), done.    
-    
+    Saving: 100.00% (998/998k, 1981/1981 files), done.
+
+
+
+    $ ls /home/joe/chroots/httpd
+    bin var
+
+    $ bup index -ux /home/joe/chroots/httpd
+    Indexing: 1337, done.
+
+    $ bup save --strip -n joes-httpd-chroot /home/joe/chroots/httpd
+    Reading index: 1337, done.
+    Saving: 100.00% (998/998k, 1337/1337 files), done.
+
+    $ bup ls joes-httpd-chroot/latest/
+    bin/
+    var/
+
+
+    $ bup save --strip-prefix=/home/joe/chroots -n joes-chroots \
+         /home/joe/chroots/httpd
+    Reading index: 1337, done.
+    Saving: 100.00% (998/998k, 1337/1337 files), done.
+
+    $ bup ls joes-chroots/latest/
+    httpd/
+
+
+    $ bup save --graft /home/joe/chroots/httpd=/http-chroot \
+         -n joe
+         /home/joe/chroots/httpd
+    Reading index: 1337, done.
+    Saving: 100.00% (998/998k, 1337/1337 files), done.
+
+    $ bup ls joe/latest/
+    http-chroot/
+
 
 # SEE ALSO
 

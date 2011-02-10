@@ -8,7 +8,7 @@ bup-ls - list the contents of a bup repository
 
 # SYNOPSIS
 
-bup ls [-s] <paths...>
+bup ls [-s] [-a] <paths...>
 
 # DESCRIPTION
 
@@ -16,10 +16,15 @@ bup ls [-s] <paths...>
 using the same directory hierarchy as they would have with
 `bup-fuse`(1).
 
-The top level directory is the branch (corresponding to
+The top level directory contains the branch (corresponding to
 the `-n` option in `bup save`), the next level is the date
 of the backup, and subsequent levels correspond to files in
 the backup.
+
+Note that `bup ls` doesn't show hidden files by default and one needs to use
+the `-a` option to show them. Files are hidden when their name begins with a
+dot. For example, on the topmost level, the special directories named `.commit`
+and `.tag` are hidden directories.
 
 Once you have identified the file you want using `bup ls`,
 you can view its contents using `bup join` or `git show`.
@@ -29,10 +34,14 @@ you can view its contents using `bup join` or `git show`.
 -s, --hash
 :   show hash for each file/directory.
 
+-a, --all
+:   show hidden files.
 
 # EXAMPLE
 
     bup ls /myserver/latest/etc/profile
+
+    bup ls -a /
 
 # SEE ALSO
 

@@ -51,7 +51,7 @@ active_fields = all_fields
 
 handle_ctrl_c()
 
-o = options.Options('bup pathinfo', optspec)
+o = options.Options(optspec)
 (opt, flags, remainder) = o.parse(sys.argv[1:])
 
 treat_include_fields_as_definitive = True

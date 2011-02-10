@@ -30,7 +30,7 @@ from bup.helpers import *
 os.environ['WIDTH'] = str(tty_width())
 
 def usage():
-    log('Usage: bup [-?|--help] [-d BUP_DIR] [--debug] '
+    log('Usage: bup [-?|--help] [-d BUP_DIR] [--debug] [--profile]'
         '<command> [options...]\n\n')
     common = dict(
         ftp = 'Browse backup sets using an ftp-like client',
@@ -41,6 +41,7 @@ def usage():
         on = 'Backup a remote machine to the local one',
         restore = 'Extract files from a backup set',
         save = 'Save files into a backup set (note: run "bup index" first)',
+        tag = 'Tag commits for easier access',
         web = 'Launch a web server to examine backup sets',
     )
 
@@ -69,14 +70,15 @@ if len(argv) < 2:
 
 # Handle global options.
 try:
-    global_args, subcmd = getopt.getopt(argv[1:], '?VDd:',
-                                    ['help', 'version', 'debug', 'bup-dir='])
+    optspec = ['help', 'version', 'debug', 'profile', 'bup-dir=']
+    global_args, subcmd = getopt.getopt(argv[1:], '?VDd:', optspec)
 except getopt.GetoptError, ex:
     log('error: ' + ex.msg + '\n')
     usage()
 
 help_requested = None
 dest_dir = None
+do_profile = False
 
 for opt in global_args:
     if opt[0] in ['-?', '--help']:
@@ -86,6 +88,8 @@ for opt in global_args:
     elif opt[0] in ['-D', '--debug']:
         helpers.buglvl += 1
         os.environ['BUP_DEBUG'] = str(helpers.buglvl)
+    elif opt[0] in ['--profile']:
+        do_profile = True
     elif opt[0] in ['-d', '--bup-dir']:
         dest_dir = opt[1]
     else:
@@ -118,12 +122,13 @@ def subpath(s):
         sp = os.path.join(cmdpath, 'bup-%s' % s)
     return sp
 
-if not os.path.exists(subpath(subcmd_name)):
+subcmd[0] = subpath(subcmd_name)
+if not os.path.exists(subcmd[0]):
     log('error: unknown command "%s"\n' % subcmd_name)
     usage()
 
 already_fixed = atoi(os.environ.get('BUP_FORCE_TTY'))
-if subcmd_name in ['ftp', 'help']:
+if subcmd_name in ['mux', 'ftp', 'help']:
     already_fixed = True
 fix_stdout = not already_fixed and os.isatty(1)
 fix_stderr = not already_fixed and os.isatty(2)
@@ -163,8 +168,8 @@ ret = 95
 p = None
 try:
     try:
-        p = subprocess.Popen([subpath(subcmd_name)] + subcmd[1:],
-                             stdout=outf, stderr=errf, preexec_fn=force_tty)
+        c = (do_profile and [sys.executable, '-m', 'cProfile'] or []) + subcmd
+        p = subprocess.Popen(c, stdout=outf, stderr=errf, preexec_fn=force_tty)
         while 1:
             # if we get a signal while waiting, we have to keep waiting, just
             # in case our child doesn't die.
@@ -176,7 +181,7 @@ try:
                 os.kill(p.pid, e.signum)
                 ret = 94
     except OSError, e:
-        log('%s: %s\n' % (subpath(subcmd_name), e))
+        log('%s: %s\n' % (subcmd[0], e))
         ret = 98
 finally:
     if p and p.poll() == None:

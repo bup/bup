@@ -64,7 +64,7 @@ def do_node(top, n):
         
 handle_ctrl_c()
 
-o = options.Options('bup restore', optspec)
+o = options.Options(optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
 
 git.check_repo_or_die()

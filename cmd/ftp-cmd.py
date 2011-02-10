@@ -24,7 +24,7 @@ ls [-a] [path...]
 --
 a,all   include hidden files in the listing
 """
-ls_opt = options.Options('ls', ls_optspec, onabort=OptionError)
+ls_opt = options.Options(ls_optspec, onabort=OptionError)
 
 def do_ls(cmd_args):
     try:
@@ -151,7 +151,7 @@ def completer(text, state):
 optspec = """
 bup ftp [commands...]
 """
-o = options.Options('bup ftp', optspec)
+o = options.Options(optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
 
 git.check_repo_or_die()

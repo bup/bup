@@ -55,15 +55,9 @@ Essentially, copying data from the filesystem to your repository is called
 a backup using the 'bup save' command, but that's getting ahead of
 ourselves.
 
-As most backup experts know, backing stuff up is normally about 100x more
-common than restoring stuff, ie.  copying from the repository to your
-filesystem.  For that reason, and also because bup is so new, there is no
-actual 'bup restore' command that does the obvious inverse operation to 'bup
-save'.  There are 'bup ftp' and 'bup fuse', which let you access your
-backed-up data, but they aren't as efficient as a fully optimized restore
-tool intended for high-volume restores.  There's nothing stopping us from
-writing one; we just haven't written it yet.  Feel free to pester us about
-it on the bup mailing list (see the README to find out about the list).
+For the inverse operation, ie. copying from the repository to your
+filesystem, you have several choices; the main ones are 'bup restore', 'bup
+ftp', 'bup fuse', and 'bup web'.
 
 Now, those are the basics of backups.  In other words, we just spent about
 half a page telling you that bup backs up and restores data.  Are we having
@@ -568,8 +562,9 @@ compare the files in the index against the ones in the backup set, and
 update only the ones that have changed.  (Even more interesting things
 happen if people are using the files on the restored system and you haven't
 updated the index yet; the net result would be an automated merge of all
-non-conflicting files.)  This would be a poor man's distributed filesystem. 
-The only catch is that nobody has written 'bup restore' yet.  Someday!
+non-conflicting files.) This would be a poor man's distributed filesystem. 
+The only catch is that nobody has written this feature for 'bup restore'
+yet.  Someday!
 
 
 How 'bup save' works (cmd/save)

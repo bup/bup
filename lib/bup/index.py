@@ -162,9 +162,9 @@ class Entry:
         return not self.ctime
 
     def __cmp__(a, b):
-        return (cmp(a.name, b.name)
-                or -cmp(a.is_valid(), b.is_valid())
-                or -cmp(a.is_fake(), b.is_fake()))
+        return (cmp(b.name, a.name)
+                or cmp(a.is_valid(), b.is_valid())
+                or cmp(a.is_fake(), b.is_fake()))
 
     def write(self, f):
         f.write(self.basename + '\0' + self.packed())
@@ -456,36 +456,9 @@ def reduce_paths(paths):
     paths.sort(reverse=True)
     return paths
 
-
-class MergeIter:
-    def __init__(self, iters):
-        self.iters = iters
-
-    def __len__(self):
-        # FIXME: doesn't remove duplicated entries between iters.
-        # That only happens for parent directories, but will mean the
-        # actual iteration returns fewer entries than this function counts.
-        return sum(len(it) for it in self.iters)
-
-    def __iter__(self):
-        total = len(self)
-        l = [iter(it) for it in self.iters]
-        l = [(next(it),it) for it in l]
-        l = filter(lambda x: x[0], l)
-        count = 0
-        lastname = None
-        while l:
-            if not (count % 1024):
-                progress('bup: merging indexes (%d/%d)\r' % (count, total))
-            l.sort()
-            (e,it) = l.pop()
-            if not e:
-                continue
-            if e.name != lastname:
-                yield e
-                lastname = e.name
-            n = next(it)
-            if n:
-                l.append((n,it))
-            count += 1
+def merge(*iters):
+    def pfunc(count, total):
+        progress('bup: merging indexes (%d/%d)\r' % (count, total))
+    def pfinal(count, total):
         log('bup: merging indexes (%d/%d), done.\n' % (count, total))
+    return merge_iter(iters, 1024, pfunc, pfinal, key='name')

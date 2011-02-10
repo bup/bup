@@ -2,7 +2,7 @@
 . wvtest.sh
 #set -e
 
-TOP="$(pwd)"
+TOP="$(/bin/pwd)"
 export BUP_DIR="$TOP/buptest.tmp"
 
 bup()
@@ -116,12 +116,26 @@ WVPASSEQ "$tree1" "$tree2"
 WVPASSEQ "$(bup index -s / | grep ^D)" ""
 tree3=$(bup save -t /)
 WVPASSEQ "$tree1" "$tree3"
-WVFAIL bup save -r localhost -n r-test $D
 WVPASS bup save -r :$BUP_DIR -n r-test $D
 WVFAIL bup save -r :$BUP_DIR/fake/path -n r-test $D
 WVFAIL bup save -r :$BUP_DIR -n r-test $D/fake/path
 
 WVSTART "split"
+echo a >a.tmp
+echo b >b.tmp
+WVPASS bup split -b a.tmp >taga.tmp
+WVPASS bup split -b b.tmp >tagb.tmp
+cat a.tmp b.tmp | WVPASS bup split -b >tagab.tmp
+WVPASSEQ $(cat taga.tmp | wc -l) 1
+WVPASSEQ $(cat tagb.tmp | wc -l) 1
+WVPASSEQ $(cat tagab.tmp | wc -l) 1
+WVPASSEQ $(cat tag[ab].tmp | wc -l) 2
+WVPASSEQ "$(bup split -b a.tmp b.tmp)" "$(cat tagab.tmp)"
+WVPASSEQ "$(bup split -b --keep-boundaries a.tmp b.tmp)" "$(cat tag[ab].tmp)"
+WVPASSEQ "$(cat tag[ab].tmp | bup split -b --keep-boundaries --git-ids)" \
+         "$(cat tag[ab].tmp)"
+WVPASSEQ "$(cat tag[ab].tmp | bup split -b --git-ids)" \
+         "$(cat tagab.tmp)"
 WVPASS bup split --bench -b <t/testfile1 >tags1.tmp
 WVPASS bup split -vvvv -b t/testfile2 >tags2.tmp
 WVPASS bup margin
@@ -129,7 +143,7 @@ WVPASS bup midx -f
 WVPASS bup margin
 WVPASS bup split -t t/testfile2 >tags2t.tmp
 WVPASS bup split -t t/testfile2 --fanout 3 >tags2tf.tmp
-WVFAIL bup split -r $BUP_DIR -c t/testfile2 >tags2c.tmp
+WVPASS bup split -r "$BUP_DIR" -c t/testfile2 >tags2c.tmp
 WVPASS bup split -r :$BUP_DIR -c t/testfile2 >tags2c.tmp
 WVPASS ls -lR \
    | WVPASS bup split -r :$BUP_DIR -c --fanout 3 --max-pack-objects 3 -n lslr
@@ -140,7 +154,7 @@ WVPASS bup ls /lslr
 WVFAIL diff -u tags1.tmp tags2.tmp
 
 # fanout must be different from non-fanout
-WVFAIL diff -q tags2t.tmp tags2tf.tmp
+WVFAIL diff tags2t.tmp tags2tf.tmp
 wc -c t/testfile1 t/testfile2
 wc -l tags1.tmp tags2.tmp
 
@@ -151,7 +165,7 @@ WVSTART "join"
 WVPASS bup join $(cat tags1.tmp) >out1.tmp
 WVPASS bup join <tags2.tmp >out2.tmp
 WVPASS bup join <tags2t.tmp >out2t.tmp
-WVFAIL bup join -r "$BUP_DIR" <tags2c.tmp >out2c.tmp
+WVPASS bup join -r "$BUP_DIR" <tags2c.tmp >out2c.tmp
 WVPASS bup join -r ":$BUP_DIR" <tags2c.tmp >out2c.tmp
 WVPASS diff -u t/testfile1 out1.tmp
 WVPASS diff -u t/testfile2 out2.tmp
@@ -166,9 +180,9 @@ WVSTART "save/git-fsck"
     #git prune
     (cd "$TOP/t/sampledata" && WVPASS bup save -vvn master /) || WVFAIL
     n=$(git fsck --full --strict 2>&1 | 
-	  egrep -v 'dangling (commit|tree)' |
-	  tee -a /dev/stderr | 
-	  wc -l)
+      egrep -v 'dangling (commit|tree)' |
+      tee -a /dev/stderr | 
+      wc -l)
     WVPASS [ "$n" -eq 0 ]
 ) || exit 1
 
@@ -191,6 +205,15 @@ WVPASSEQ "$(sha1sum <$D/f)" "$(sha1sum <$D/f.new)"
 WVPASSEQ "$(cat $D/f.new{,} | sha1sum)" "$(sha1sum <$D/f2.new)"
 WVPASSEQ "$(sha1sum <$D/a)" "$(sha1sum <$D/a.new)"
 
+WVSTART "tag"
+WVFAIL bup tag -d v0.n 2>/dev/null
+WVFAIL bup tag v0.n non-existant 2>/dev/null
+WVPASSEQ "$(bup tag)" ""
+WVPASS bup tag v0.1 master
+WVPASSEQ "$(bup tag)" "v0.1"
+WVPASS bup tag -d v0.1
+
+# This section destroys data in the bup repository, so it is done last.
 WVSTART "fsck"
 WVPASS bup fsck
 WVPASS bup fsck --quick
@@ -220,4 +243,156 @@ else
     WVFAIL bup fsck --quick -r # still fails because par2 was missing
 fi
 
-exit 0
+WVSTART "exclude-bupdir"
+D=exclude-bupdir.tmp
+rm -rf $D
+mkdir $D
+export BUP_DIR="$D/.bup"
+WVPASS bup init
+touch $D/a
+WVPASS bup random 128k >$D/b
+mkdir $D/d $D/d/e
+WVPASS bup random 512 >$D/f
+WVPASS bup index -ux $D
+bup save -n exclude-bupdir $D
+WVPASSEQ "$(bup ls exclude-bupdir/latest/$TOP/$D/)" "a
+b
+d/
+f"
+
+WVSTART "exclude"
+D=exclude.tmp
+rm -rf $D
+mkdir $D
+export BUP_DIR="$D/.bup"
+WVPASS bup init
+touch $D/a
+WVPASS bup random 128k >$D/b
+mkdir $D/d $D/d/e
+WVPASS bup random 512 >$D/f
+WVPASS bup index -ux --exclude $D/d $D
+bup save -n exclude $D
+WVPASSEQ "$(bup ls exclude/latest/$TOP/$D/)" "a
+b
+f"
+mkdir $D/g $D/h
+WVPASS bup index -ux --exclude $D/d --exclude $TOP/$D/g --exclude $D/h $D
+bup save -n exclude $D
+WVPASSEQ "$(bup ls exclude/latest/$TOP/$D/)" "a
+b
+f"
+
+WVSTART "exclude-from"
+D=exclude-fromdir.tmp
+EXCLUDE_FILE=exclude-from.tmp
+echo "$D/d 
+ $TOP/$D/g
+$D/h" > $EXCLUDE_FILE
+rm -rf $D
+mkdir $D
+export BUP_DIR="$D/.bup"
+WVPASS bup init
+touch $D/a
+WVPASS bup random 128k >$D/b
+mkdir $D/d $D/d/e
+WVPASS bup random 512 >$D/f
+mkdir $D/g $D/h
+WVPASS bup index -ux --exclude-from $EXCLUDE_FILE $D
+bup save -n exclude-from $D
+WVPASSEQ "$(bup ls exclude-from/latest/$TOP/$D/)" "a
+b
+f"
+rm $EXCLUDE_FILE
+
+WVSTART "strip"
+D=strip.tmp
+rm -rf $D
+mkdir $D
+export BUP_DIR="$D/.bup"
+WVPASS bup init
+touch $D/a
+WVPASS bup random 128k >$D/b
+mkdir $D/d $D/d/e
+WVPASS bup random 512 >$D/f
+WVPASS bup index -ux $D
+bup save --strip -n strip $D
+WVPASSEQ "$(bup ls strip/latest/)" "a
+b
+d/
+f"
+
+WVSTART "strip-path"
+D=strip-path.tmp
+rm -rf $D
+mkdir $D
+export BUP_DIR="$D/.bup"
+WVPASS bup init
+touch $D/a
+WVPASS bup random 128k >$D/b
+mkdir $D/d $D/d/e
+WVPASS bup random 512 >$D/f
+WVPASS bup index -ux $D
+bup save --strip-path $TOP -n strip-path $D
+WVPASSEQ "$(bup ls strip-path/latest/$D/)" "a
+b
+d/
+f"
+
+WVSTART "graft_points"
+D=graft-points.tmp
+rm -rf $D
+mkdir $D
+export BUP_DIR="$D/.bup"
+WVPASS bup init
+touch $D/a
+WVPASS bup random 128k >$D/b
+mkdir $D/d $D/d/e
+WVPASS bup random 512 >$D/f
+WVPASS bup index -ux $D
+bup save --graft $TOP/$D=/grafted -n graft-point-absolute $D
+WVPASSEQ "$(bup ls graft-point-absolute/latest/grafted/)" "a
+b
+d/
+f"
+bup save --graft $D=grafted -n graft-point-relative $D
+WVPASSEQ "$(bup ls graft-point-relative/latest/$TOP/grafted/)" "a
+b
+d/
+f"
+
+WVSTART "indexfile"
+D=indexfile.tmp
+INDEXFILE=tmpindexfile.tmp
+rm -f $INDEXFILE
+rm -rf $D
+mkdir $D
+export BUP_DIR="$D/.bup"
+WVPASS bup init
+touch $D/a
+touch $D/b
+mkdir $D/c
+WVPASS bup index -ux $D
+bup save --strip -n bupdir $D
+WVPASSEQ "$(bup ls bupdir/latest/)" "a
+b
+c/"
+WVPASS bup index -f $INDEXFILE --exclude=$D/c -ux $D
+bup save --strip -n indexfile -f $INDEXFILE $D
+WVPASSEQ "$(bup ls indexfile/latest/)" "a
+b"
+
+
+WVSTART "import-rsnapshot"
+D=rsnapshot.tmp
+export BUP_DIR="$TOP/$D/.bup"
+rm -rf $D
+mkdir $D
+WVPASS bup init
+mkdir -p $D/hourly.0/buptest/a
+touch $D/hourly.0/buptest/a/b
+mkdir -p $D/hourly.0/buptest/c/d
+touch $D/hourly.0/buptest/c/d/e
+WVPASS true
+WVPASS bup import-rsnapshot $D/
+WVPASSEQ "$(bup ls buptest/latest/)" "a/
+c/"

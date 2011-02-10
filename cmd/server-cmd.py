@@ -1,28 +1,40 @@
 #!/usr/bin/env python
-import sys, struct
+import os, sys, struct
 from bup import options, git
 from bup.helpers import *
 
 suspended_w = None
+dumb_server_mode = False
+
+def _set_mode():
+    global dumb_server_mode
+    dumb_server_mode = os.path.exists(git.repo('bup-dumb-server'))
+    debug1('bup server: serving in %s mode\n' 
+           % (dumb_server_mode and 'dumb' or 'smart'))
 
 
 def init_dir(conn, arg):
     git.init_repo(arg)
     debug1('bup server: bupdir initialized: %r\n' % git.repodir)
+    _set_mode()
     conn.ok()
 
 
 def set_dir(conn, arg):
     git.check_repo_or_die(arg)
     debug1('bup server: bupdir is %r\n' % git.repodir)
+    _set_mode()
     conn.ok()
 
     
 def list_indexes(conn, junk):
     git.check_repo_or_die()
+    suffix = ''
+    if dumb_server_mode:
+        suffix = ' load'
     for f in os.listdir(git.repo('objects/pack')):
         if f.endswith('.idx'):
-            conn.write('%s\n' % f)
+            conn.write('%s%s\n' % (f, suffix))
     conn.ok()
 
 
@@ -30,21 +42,24 @@ def send_index(conn, name):
     git.check_repo_or_die()
     assert(name.find('/') < 0)
     assert(name.endswith('.idx'))
-    idx = git.PackIdx(git.repo('objects/pack/%s' % name))
+    idx = git.open_idx(git.repo('objects/pack/%s' % name))
     conn.write(struct.pack('!I', len(idx.map)))
     conn.write(idx.map)
     conn.ok()
 
 
-def receive_objects(conn, junk):
+def receive_objects_v2(conn, junk):
     global suspended_w
     git.check_repo_or_die()
-    suggested = {}
+    suggested = set()
     if suspended_w:
         w = suspended_w
         suspended_w = None
     else:
-        w = git.PackWriter()
+        if dumb_server_mode:
+            w = git.PackWriter(objcache_maker=None)
+        else:
+            w = git.PackWriter()
     while 1:
         ns = conn.read(4)
         if not ns:
@@ -55,7 +70,7 @@ def receive_objects(conn, junk):
         if not n:
             debug1('bup server: received %d object%s.\n' 
                 % (w.count, w.count!=1 and "s" or ''))
-            fullpath = w.close()
+            fullpath = w.close(run_midx=not dumb_server_mode)
             if fullpath:
                 (dir, name) = os.path.split(fullpath)
                 conn.write('%s.idx\n' % name)
@@ -67,44 +82,32 @@ def receive_objects(conn, junk):
             conn.ok()
             return
             
+        shar = conn.read(20)
+        crcr = struct.unpack('!I', conn.read(4))[0]
+        n -= 20 + 4
         buf = conn.read(n)  # object sizes in bup are reasonably small
         #debug2('read %d bytes\n' % n)
-        if len(buf) < n:
-            w.abort()
-            raise Exception('object read: expected %d bytes, got %d\n'
-                            % (n, len(buf)))
-        (type, content) = git._decode_packobj(buf)
-        sha = git.calc_hash(type, content)
-        oldpack = w.exists(sha)
-        # FIXME: we only suggest a single index per cycle, because the client
-        # is currently dumb to download more than one per cycle anyway.
-        # Actually we should fix the client, but this is a minor optimization
-        # on the server side.
-        if not suggested and \
-          oldpack and (oldpack == True or oldpack.endswith('.midx')):
-            # FIXME: we shouldn't really have to know about midx files
-            # at this layer.  But exists() on a midx doesn't return the
-            # packname (since it doesn't know)... probably we should just
-            # fix that deficiency of midx files eventually, although it'll
-            # make the files bigger.  This method is certainly not very
-            # efficient.
-            w.objcache.refresh(skip_midx = True)
-            oldpack = w.objcache.exists(sha)
-            debug2('new suggestion: %r\n' % oldpack)
-            assert(oldpack)
-            assert(oldpack != True)
-            assert(not oldpack.endswith('.midx'))
-            w.objcache.refresh(skip_midx = False)
-        if not suggested and oldpack:
-            assert(oldpack.endswith('.idx'))
-            (dir,name) = os.path.split(oldpack)
-            if not (name in suggested):
-                debug1("bup server: suggesting index %s\n" % name)
-                conn.write('index %s\n' % name)
-                suggested[name] = 1
-        else:
-            w._raw_write([buf])
+        _check(w, n, len(buf), 'object read: expected %d bytes, got %d\n')
+        if not dumb_server_mode:
+            oldpack = w.exists(shar, want_source=True)
+            if oldpack:
+                assert(not oldpack == True)
+                assert(oldpack.endswith('.idx'))
+                (dir,name) = os.path.split(oldpack)
+                if not (name in suggested):
+                    debug1("bup server: suggesting index %s\n" % name)
+                    conn.write('index %s\n' % name)
+                    suggested.add(name)
+                continue
+        nw, crc = w._raw_write((buf,), sha=shar)
+        _check(w, crcr, crc, 'object read: expected crc %d, got %d\n')
     # NOTREACHED
+    
+
+def _check(w, expected, actual, msg):
+    if expected != actual:
+        w.abort()
+        raise Exception(msg % (expected, actual))
 
 
 def read_ref(conn, refname):
@@ -144,7 +147,7 @@ def cat(conn, id):
 optspec = """
 bup server
 """
-o = options.Options('bup server', optspec)
+o = options.Options(optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
 
 if extra:
@@ -157,7 +160,7 @@ commands = {
     'set-dir': set_dir,
     'list-indexes': list_indexes,
     'send-index': send_index,
-    'receive-objects': receive_objects,
+    'receive-objects-v2': receive_objects_v2,
     'read-ref': read_ref,
     'update-ref': update_ref,
     'cat': cat,

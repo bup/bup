@@ -8,7 +8,8 @@ bup-drecurse - recursively list files in your filesystem
 
 # SYNOPSIS
 
-bup drecurse [-x] [-q] [--profile] \<path\>
+bup drecurse [-x] [-q] [--exclude *path*]
+[--exclude-from *filename*] [--profile] \<path\>
 
 # DESCRIPTION
 
@@ -34,6 +35,14 @@ come after its children, making this easy.
 -q, --quiet
 :   don't print filenames as they are encountered.  Useful
     when testing performance of the traversal algorithms.
+
+--exclude=*path*
+:   a path to exclude from the backup (can be used more
+    than once)
+
+--exclude-from=*filename*
+:   a file that contains exclude paths (can be used more
+    than once)
     
 --profile
 :   print profiling information upon completion.  Useful

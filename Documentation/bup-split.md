@@ -10,7 +10,8 @@ bup-split - save individual files to bup backup sets
 
 bup split [-r *host*:*path*] <-b|-t|-c|-n *name*> [-v] [-q]
   [--bench] [--max-pack-size=*bytes*]
-  [--max-pack-objects=*n*] [--fanout=*count] [filenames...]
+  [--max-pack-objects=*n*] [--fanout=*count]
+  [--git-ids] [--keep-boundaries] [filenames...]
 
 # DESCRIPTION
 
@@ -19,7 +20,7 @@ bup split [-r *host*:*path*] <-b|-t|-c|-n *name*> [-v] [-q]
 the content into chunks of around 8k using a rolling
 checksum algorithm, and saves the chunks into a bup
 repository.  Chunks which have previously been stored are
-not stored again (ie. they are "deduplicated").
+not stored again (ie. they are 'deduplicated').
 
 Because of the way the rolling checksum works, chunks
 tend to be very stable across changes to a given file,
@@ -71,6 +72,27 @@ To get the data back, use `bup-join`(1).
 
 -v, --verbose
 :   increase verbosity (can be used more than once).
+
+--git-ids
+:   stdin is a list of git object ids instead of raw data.
+    `bup split` will read the contents of each named git
+    object (if it exists in the bup repository) and split
+    it.  This might be useful for converting a git
+    repository with large binary files to use bup-style
+    hashsplitting instead.  This option is probably most
+    useful when combined with `--keep-boundaries`.
+
+--keep-boundaries
+:   if multiple filenames are given on the command line,
+    they are normally concatenated together as if the
+    content all came from a single file.  That is, the
+    set of blobs/trees produced is identical to what it
+    would have been if there had been a single input file. 
+    However, if you use `--keep-boundaries`, each file is
+    split separately.  You still only get a single tree or
+    commit or series of blobs, but each blob comes from
+    only one of the files; the end of one of the input
+    files always ends a blob.
 
 --noop
 :   read the data and split it into blocks based on the "bupsplit"

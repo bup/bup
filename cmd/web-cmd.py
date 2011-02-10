@@ -34,8 +34,14 @@ def _contains_hidden_files(n):
     return False
 
 
-def _compute_dir_contents(n, show_hidden=False):
+def _compute_dir_contents(n, path, show_hidden=False):
     """Given a vfs node, returns an iterator for display info of all subs."""
+    url_append = ""
+    if show_hidden:
+        url_append = "?hidden=1"
+
+    if path != "/":
+        yield('..', '../' + url_append, '')
     for sub in n:
         display = link = sub.name
 
@@ -46,10 +52,6 @@ def _compute_dir_contents(n, show_hidden=False):
 
         if not show_hidden and len(display)>1 and display.startswith('.'):
             continue
-
-        url_append = ""
-        if show_hidden:
-            url_append = "?hidden=1"
 
         size = None
         if stat.S_ISDIR(sub.mode):
@@ -68,7 +70,8 @@ class BupRequestHandler(tornado.web.RequestHandler):
 
     def head(self, path):
         return self._process_request(path)
-
+    
+    @tornado.web.asynchronous
     def _process_request(self, path):
         path = urllib.unquote(path)
         print 'Handling request for %s' % path
@@ -104,7 +107,7 @@ class BupRequestHandler(tornado.web.RequestHandler):
             breadcrumbs=_compute_breadcrumbs(path, show_hidden),
             files_hidden=_contains_hidden_files(n),
             hidden_shown=show_hidden,
-            dir_contents=_compute_dir_contents(n, show_hidden))
+            dir_contents=_compute_dir_contents(n, path, show_hidden))
 
     def _get_file(self, path, n):
         """Process a request on a file.
@@ -118,12 +121,23 @@ class BupRequestHandler(tornado.web.RequestHandler):
         self.set_header("Content-Type", ctype)
         size = n.size()
         self.set_header("Content-Length", str(size))
+        assert(len(n.hash) == 20)
+        self.set_header("Etag", n.hash.encode('hex'))
 
         if self.request.method != 'HEAD':
+            self.flush()
             f = n.open()
-            for blob in chunkyreader(f):
-                self.write(blob)
-            f.close()
+            it = chunkyreader(f)
+            def write_more(me):
+                try:
+                    blob = it.next()
+                except StopIteration:
+                    f.close()
+                    self.finish()
+                    return
+                self.request.connection.stream.write(blob,
+                                                     callback=lambda: me(me))
+            write_more(write_more)
 
     def _guess_type(self, path):
         """Guess the type of a file.
@@ -165,7 +179,7 @@ optspec = """
 bup web [[hostname]:port]
 --
 """
-o = options.Options('bup web', optspec)
+o = options.Options(optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
 
 if len(extra) > 1:
