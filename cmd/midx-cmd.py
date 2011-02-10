@@ -49,7 +49,7 @@ def _do_midx(outdir, outfilename, infilenames, prefixstr):
             ix.map,
             len(ix),
             ix.sha_ofs,
-            isinstance(ix, git.PackMidx) and ix.idxname_ofs or 0,
+            isinstance(ix, git.PackMidx) and ix.which_ofs or 0,
             len(allfilenames),
         ))
         for n in ix.idxnames:

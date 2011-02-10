@@ -513,9 +513,9 @@ class PackMidx:
         self.sha_ofs = 12 + self.entries*4
         self.nsha = nsha = self._fanget(self.entries-1)
         self.shatable = buffer(self.map, self.sha_ofs, nsha*20)
-        self.whichlist = buffer(self.map, self.sha_ofs + nsha*20, nsha*4)
-        self.idxname_ofs = self.sha_ofs + 24*nsha
-        self.idxnames = str(self.map[self.idxname_ofs:]).split('\0')
+        self.which_ofs = self.sha_ofs + 20*nsha
+        self.whichlist = buffer(self.map, self.which_ofs, nsha*4)
+        self.idxnames = str(self.map[self.which_ofs + 4*nsha:]).split('\0')
 
     def _init_failed(self):
         self.bits = 0
