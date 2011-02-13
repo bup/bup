@@ -150,6 +150,8 @@ WVPASS ls -lR \
 WVPASS bup ls
 WVFAIL bup ls /does-not-exist
 WVPASS bup ls /lslr
+WVPASS bup ls /lslr/latest
+WVPASS bup ls /lslr/latest/
 #WVPASS bup ls /lslr/1971-01-01   # all dates always exist
 WVFAIL diff -u tags1.tmp tags2.tmp
 

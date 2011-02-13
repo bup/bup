@@ -39,7 +39,7 @@ for d in extra:
                 if opt.all or not sub.name.startswith('.'):
                     print_node(sub.name, sub)
         else:
-            if opt.all or not sub.name.startswith('.'):
+            if opt.all or not n.name.startswith('.'):
                 print_node(d, n)
     except vfs.NodeError, e:
         log('error: %s\n' % e)
