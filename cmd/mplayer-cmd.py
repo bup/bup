@@ -27,6 +27,17 @@ else:
 args = [opt.mplayer] + flags + ['-idle', '-slave', '-quiet',
                                 '-cache', '8192']
 
+class SigException(Exception):
+    def __init__(self, signum):
+        self.signum = signum
+        Exception.__init__(self, 'signal %d received' % signum)
+def handler(signum, frame):
+    raise SigException(signum)
+
+signal.signal(signal.SIGTERM, handler)
+signal.signal(signal.SIGINT, handler)
+
+
 def kill(p):
     if p:
         if p.poll() != None:
@@ -63,7 +74,8 @@ class QItem:
             debug2('QItem.starting(%r)\n' % self)
             self.p = subprocess.Popen([path.exe(), 'join',
                                        '-o', self.name,
-                                       '--', self.hash])
+                                       '--', self.hash],
+                                      stdin=open('/dev/null'))
         return self.p.poll() != None
 
     def kill(self):
