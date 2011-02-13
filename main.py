@@ -30,7 +30,7 @@ from bup.helpers import *
 os.environ['WIDTH'] = str(tty_width())
 
 def usage():
-    log('Usage: bup [-?|--help] [-d BUP_DIR] [--debug] [--profile]'
+    log('Usage: bup [-?|--help] [-d BUP_DIR] [--debug] [--profile] '
         '<command> [options...]\n\n')
     common = dict(
         ftp = 'Browse backup sets using an ftp-like client',
