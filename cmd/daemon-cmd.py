@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import sys, getopt, socket, subprocess
+import sys, getopt, socket, subprocess, fcntl
 from bup import options, path
 from bup.helpers import *
 
@@ -35,6 +35,7 @@ for res in socket.getaddrinfo(host, port, socket.AF_UNSPEC,
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         s.bind(sa)
         s.listen(1)
+        fcntl.fcntl(s.fileno(), fcntl.F_SETFD, fcntl.FD_CLOEXEC)
     except socket.error, e:
         s.close()
         continue
@@ -53,10 +54,10 @@ try:
                 log("Socket accepted connection from %s\n" % (src,))
                 fd1 = os.dup(s.fileno())
                 fd2 = os.dup(s.fileno())
+                s.close()
                 sp = subprocess.Popen([path.exe(), 'mux', '--', 'server']
                                       + extra, stdin=fd1, stdout=fd2)
             finally:
-                s.close()
                 os.close(fd1)
                 os.close(fd2)
 finally:
