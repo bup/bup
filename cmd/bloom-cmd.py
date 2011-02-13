@@ -61,7 +61,10 @@ def do_bloom(path, outfilename):
     del rest_count
 
     msg = b is None and 'creating from' or 'adding'
-    log('bloom: %s %d files (%d objects).\n' % (msg, len(add), add_count))
+    log('bloom: %s %d file%s (%d object%s).\n' % (msg, len(add),
+                                                  len(add)!=1 and 's' or '',
+                                                  add_count,
+                                                  add_count!=1 and 's' or ''))
 
     tfname = None
     if b is None:
