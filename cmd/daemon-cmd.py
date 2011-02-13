@@ -49,10 +49,16 @@ try:
         [rl,wl,xl] = select.select(socks, [], [], 60)
         for l in rl:
             s, src = l.accept()
-            log("Socket accepted connection from %s\n" % (src,))
-            sp = subprocess.Popen([path.exe(), 'mux', '--', 'server'] + extra,
-                                  stdin=os.dup(s.fileno()), stdout=os.dup(s.fileno()))
-            s.close()
+            try:
+                log("Socket accepted connection from %s\n" % (src,))
+                fd1 = os.dup(s.fileno())
+                fd2 = os.dup(s.fileno())
+                sp = subprocess.Popen([path.exe(), 'mux', '--', 'server']
+                                      + extra, stdin=fd1, stdout=fd2)
+            finally:
+                s.close()
+                os.close(fd1)
+                os.close(fd2)
 finally:
     for l in socks:
         l.shutdown(socket.SHUT_RDWR)
