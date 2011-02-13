@@ -27,7 +27,6 @@ else:
 args = [opt.mplayer] + flags + ['-idle', '-slave', '-quiet',
                                 '-cache', '1024']
 
-
 def kill(p):
     if p:
         if p.poll() != None:
@@ -106,7 +105,7 @@ try:
     paused = False
     p = None
 
-    while not eof:
+    while not eof or 1:
         qi = None
         for qi in queue[0:2]:
             if qi.check():

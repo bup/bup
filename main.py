@@ -128,7 +128,7 @@ if not os.path.exists(subcmd[0]):
     usage()
 
 already_fixed = atoi(os.environ.get('BUP_FORCE_TTY'))
-if subcmd_name in ['mux', 'ftp', 'help']:
+if subcmd_name in ['mux', 'ftp', 'server', 'help']:
     already_fixed = True
 fix_stdout = not already_fixed and os.isatty(1)
 fix_stderr = not already_fixed and os.isatty(2)

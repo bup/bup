@@ -1,6 +1,6 @@
 #!/usr/bin/env python
-import os, sys, struct
-from bup import options, git
+import os, sys, struct, subprocess, signal, errno
+from bup import options, git, path
 from bup.helpers import *
 
 suspended_w = None
@@ -150,8 +150,74 @@ def cat(conn, id):
         conn.ok()
 
 
+def _start_jukebox(fn):
+    args = [path.exe(), 'mplayer']
+    if opt.mplayer:
+        args += ['--mplayer', opt.mplayer]
+    if opt.mplayer_flags:
+        args += ['--mplayer-flags', opt.mplayer_flags]
+    fd = os.open(fn, os.O_RDWR)
+    outf = open(fn + '.out', 'ab')
+    fd1 = os.dup(outf.fileno())
+    fd2 = os.dup(outf.fileno())
+    try:
+        subprocess.Popen(args, stdin=fd, stdout=fd1, stderr=fd2)
+    finally:
+        os.close(fd)
+        os.close(fd1)
+        os.close(fd2)
+        outf.close()
+
+
+def _write_jukebox(s):
+    debug1('write_jukebox(%r)\n' % s)
+    assert(s.endswith('\n'))
+    git.check_repo_or_die()
+    fn = git.repo('jukebox')
+    if not os.path.exists(fn):
+        debug2('jukebox: making fifo %r\n' % fn)
+        os.mkfifo(fn)
+    try:
+        fd = os.open(fn, os.O_WRONLY|os.O_NONBLOCK)
+    except OSError, e:
+        if e.errno == errno.ENXIO:
+            _start_jukebox(fn)
+            fd = os.open(fn, os.O_WRONLY|os.O_NONBLOCK)
+        else:
+            raise
+    try:
+        os.write(fd, s)
+    finally:
+        os.close(fd)
+
+
+def jukebox_stop(conn, junk):
+    _write_jukebox('clear\n')
+    conn.ok()
+
+
+def jukebox_add(conn, hash):
+    bin = hash.decode('hex')
+    assert(len(bin) == 20)
+    _write_jukebox("%s\n" % bin.encode('hex'))
+    conn.ok()
+
+
+def jukebox_play(conn, junk):
+    _write_jukebox('go\n')
+    conn.ok()
+
+
+def jukebox_pause(conn, junk):
+    _write_jukebox('pause\n')
+    conn.ok()
+
+
 optspec = """
 bup server
+--
+mplayer=         path to the mplayer program [mplayer]
+X,mplayer-flags= extra flags to pass to the mplayer binary
 """
 o = options.Options(optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
@@ -172,6 +238,10 @@ commands = {
     'read-ref': read_ref,
     'update-ref': update_ref,
     'cat': cat,
+    'jkstop': jukebox_stop,
+    'jkadd': jukebox_add,
+    'jkplay': jukebox_play,
+    'jkpause': jukebox_pause,
 }
 
 # FIXME: this protocol is totally lame and not at all future-proof.
