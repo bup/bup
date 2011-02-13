@@ -142,10 +142,14 @@ try:
                 assert(len(line) == 40)
                 qi = QItem(line.strip())
                 queue.append(qi)
+                if len(queue) == 1:
+                    # it's first in the queue, get it started quickly
+                    qi.check()
                 debug1('enqueued=%r qlen=%d\n' % (qi.name, len(queue)))
                 qf = qi.name.replace('"', '_')
                 p.stdin.write('loadfile "%s" 1\n' % qf)
                 paused = False
+                time.sleep(1) # stupid mplayer can't handle multiple commands
 finally:
     qi = None
     if p:
