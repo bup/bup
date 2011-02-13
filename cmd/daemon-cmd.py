@@ -21,12 +21,13 @@ import socket
 import sys
 
 socks = []
+e = None
 for res in socket.getaddrinfo(host, port, socket.AF_UNSPEC,
                               socket.SOCK_STREAM, 0, socket.AI_PASSIVE):
     af, socktype, proto, canonname, sa = res
     try:
         s = socket.socket(af, socktype, proto)
-    except socket.error, msg:
+    except socket.error, e:
         continue
     try:
         if af == socket.AF_INET6:
@@ -35,13 +36,13 @@ for res in socket.getaddrinfo(host, port, socket.AF_UNSPEC,
             log("bup daemon: listening on %s:%s\n" % sa[:2])
         s.bind(sa)
         s.listen(1)
-    except socket.error, msg:
+    except socket.error, e:
         s.close()
         continue
     socks.append(s)
 
 if not socks:
-    log('bup daemon: could not open socket\n')
+    log('bup daemon: listen socket: %s\n' % e.args[1])
     sys.exit(1)
 
 try:
