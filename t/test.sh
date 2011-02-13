@@ -166,7 +166,7 @@ WVPASS bup memtest -c1 -n100 --existing
 WVSTART "join"
 WVPASS bup join $(cat tags1.tmp) >out1.tmp
 WVPASS bup join <tags2.tmp >out2.tmp
-WVPASS bup join <tags2t.tmp >out2t.tmp
+WVPASS bup join <tags2t.tmp -o out2t.tmp
 WVPASS bup join -r "$BUP_DIR" <tags2c.tmp >out2c.tmp
 WVPASS bup join -r ":$BUP_DIR" <tags2c.tmp >out2c.tmp
 WVPASS diff -u t/testfile1 out1.tmp
