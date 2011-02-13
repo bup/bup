@@ -25,7 +25,7 @@ if opt.mplayer_flags:
 else:
     flags = []
 args = [opt.mplayer] + flags + ['-idle', '-slave', '-quiet',
-                                '-cache', '1024']
+                                '-cache', '8192']
 
 def kill(p):
     if p:
