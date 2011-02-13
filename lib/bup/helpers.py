@@ -2,7 +2,7 @@
 
 import sys, os, pwd, subprocess, errno, socket, select, mmap, stat, re, struct
 import heapq, operator
-from bup import _version
+from bup import _version, _helpers
 
 # This function should really be in helpers, not in bup.options.  But we
 # want options.py to be standalone so people can include it in other projects.

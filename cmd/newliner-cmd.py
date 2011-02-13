@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import sys, os, re
 from bup import options
+from bup import _helpers   # fixes up sys.argv on import
 
 optspec = """
 bup newliner

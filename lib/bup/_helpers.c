@@ -10,6 +10,47 @@
 
 static int istty = 0;
 
+// For some reason this isn't declared in Python.h
+extern void Py_GetArgcArgv(int *argc, char ***argv);
+
+static void unpythonize_argv(void)
+{
+    int argc, i;
+    char **argv, *arge;
+    
+    Py_GetArgcArgv(&argc, &argv);
+    
+    for (i = 0; i < argc-1; i++)
+    {
+	if (argv[i] + strlen(argv[i]) + 1 != argv[i+1])
+	{
+	    // The argv block doesn't work the way we expected; it's unsafe
+	    // to mess with it.
+	    return;
+	}
+    }
+    
+    arge = argv[argc-1] + strlen(argv[argc-1]) + 1;
+    
+    if (strstr(argv[0], "python") && argv[1] == argv[0] + strlen(argv[0]) + 1)
+    {
+	char *p;
+	size_t len, diff;
+	p = strrchr(argv[1], '/');
+	if (p)
+	{
+	    p++;
+	    diff = p - argv[0];
+	    len = arge - p;
+	    memmove(argv[0], p, len);
+	    memset(arge - diff, 0, diff);
+	    for (i = 0; i < argc; i++)
+		argv[i] = argv[i+1] ? argv[i+1]-diff : NULL;
+	}
+    }
+}
+
+
 static PyObject *selftest(PyObject *self, PyObject *args)
 {
     if (!PyArg_ParseTuple(args, ""))
@@ -526,4 +567,5 @@ PyMODINIT_FUNC init_helpers(void)
 {
     Py_InitModule("_helpers", faster_methods);
     istty = isatty(2) || getenv("BUP_FORCE_TTY");
+    unpythonize_argv();
 }
