@@ -169,7 +169,12 @@ p = None
 try:
     try:
         c = (do_profile and [sys.executable, '-m', 'cProfile'] or []) + subcmd
-        p = subprocess.Popen(c, stdout=outf, stderr=errf, preexec_fn=force_tty)
+        if not n and not outf and not errf:
+            # shortcut when no bup-newliner stuff is needed
+            os.execvp(c[0], c)
+        else:
+            p = subprocess.Popen(c, stdout=outf, stderr=errf,
+                                 preexec_fn=force_tty)
         while 1:
             # if we get a signal while waiting, we have to keep waiting, just
             # in case our child doesn't die.
