@@ -132,14 +132,13 @@ def test_long_index():
     idx[0x11].append((obj2_bin, 2, 0xffffffffff))
     idx[0x22].append((obj3_bin, 3, 0xff))
     (fd,name) = tempfile.mkstemp(suffix='.idx', dir=git.repo('objects'))
-    f = os.fdopen(fd, 'w+b')
-    r = w._write_pack_idx_v2(f, idx, pack_bin)
-    f.seek(0)
-    i = git.PackIdxV2(name, f)
+    os.close(fd)
+    w.count = 3
+    r = w._write_pack_idx_v2(name, idx, pack_bin)
+    i = git.PackIdxV2(name, open(name, 'rb'))
     WVPASSEQ(i.find_offset(obj_bin), 0xfffffffff)
     WVPASSEQ(i.find_offset(obj2_bin), 0xffffffffff)
     WVPASSEQ(i.find_offset(obj3_bin), 0xff)
-    f.close()
     os.remove(name)
 
 @wvtest

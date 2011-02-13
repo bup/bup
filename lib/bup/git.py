@@ -7,6 +7,7 @@ from bup.helpers import *
 from bup import _helpers, path
 
 MIDX_VERSION = 4
+SEEK_END=2  # os.SEEK_END is not defined in python 2.4
 
 """Discussion of bloom constants for bup:
 
@@ -909,9 +910,7 @@ class PackWriter:
         f.write(packbin)
         f.close()
 
-        idx_f = open(self.filename + '.idx', 'wb')
-        obj_list_sha = self._write_pack_idx_v2(idx_f, idx, packbin)
-        idx_f.close()
+        obj_list_sha = self._write_pack_idx_v2(self.filename + '.idx', idx, packbin)
 
         nameprefix = repo('objects/pack/pack-%s' % obj_list_sha)
         if os.path.exists(self.filename + '.map'):
@@ -927,43 +926,37 @@ class PackWriter:
         """Close the pack file and move it to its definitive path."""
         return self._end(run_midx=run_midx)
 
-    def _write_pack_idx_v2(self, file, idx, packbin):
-        sum = Sha1()
+    def _write_pack_idx_v2(self, filename, idx, packbin):
+        idx_f = open(filename, 'w+b')
+        idx_f.write('\377tOc\0\0\0\2')
 
-        def write(data):
-            file.write(data)
-            sum.update(data)
+        ofs64_ofs = 8 + 4*256 + 28*self.count
+        idx_f.truncate(ofs64_ofs)
+        idx_f.seek(0)
+        idx_map = mmap_readwrite(idx_f, close=False)
+        idx_f.seek(0, SEEK_END)
+        count = _helpers.write_idx(idx_f, idx_map, idx, self.count)
+        assert(count == self.count)
+        idx_map.close()
+        idx_f.write(packbin)
 
-        write('\377tOc\0\0\0\2')
-
-        n = 0
-        for part in idx:
-            n += len(part)
-            write(struct.pack('!i', n))
-            part.sort(key=lambda x: x[0])
+        idx_f.seek(0)
+        idx_sum = Sha1()
+        b = idx_f.read(8 + 4*256)
+        idx_sum.update(b)
 
         obj_list_sum = Sha1()
-        for part in idx:
-            for entry in part:
-                write(entry[0])
-                obj_list_sum.update(entry[0])
-        for part in idx:
-            for entry in part:
-                write(struct.pack('!I', entry[1]))
-        ofs64_list = []
-        for part in idx:
-            for entry in part:
-                if entry[2] & 0x80000000:
-                    write(struct.pack('!I', 0x80000000 | len(ofs64_list)))
-                    ofs64_list.append(struct.pack('!Q', entry[2]))
-                else:
-                    write(struct.pack('!i', entry[2]))
-        for ofs64 in ofs64_list:
-            write(ofs64)
+        for b in chunkyreader(idx_f, 20*self.count):
+            idx_sum.update(b)
+            obj_list_sum.update(b)
+        namebase = obj_list_sum.hexdigest()
 
-        write(packbin)
-        file.write(sum.digest())
-        return obj_list_sum.hexdigest()
+        for b in chunkyreader(idx_f):
+            idx_sum.update(b)
+        idx_f.write(idx_sum.digest())
+        idx_f.close()
+
+        return namebase
 
 
 def _git_date(date):
