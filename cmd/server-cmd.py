@@ -6,6 +6,12 @@ from bup.helpers import *
 suspended_w = None
 dumb_server_mode = False
 
+
+def do_help(conn, junk):
+    conn.write('Commands:\n    %s\n' % '\n    '.join(sorted(commands)))
+    conn.ok()
+
+
 def _set_mode():
     global dumb_server_mode
     dumb_server_mode = os.path.exists(git.repo('bup-dumb-server'))
@@ -156,6 +162,8 @@ if extra:
 debug2('bup server: reading from stdin.\n')
 
 commands = {
+    'quit': None,
+    'help': do_help,
     'init-dir': init_dir,
     'set-dir': set_dir,
     'list-indexes': list_indexes,
