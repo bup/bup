@@ -4,15 +4,13 @@ from bup import options, path
 from bup.helpers import *
 
 optspec = """
-bup daemon [options...]
+bup daemon [options...] -- [bup-server options...]
 --
 l,listen  ip address to listen on, defaults to *
 p,port    port to listen on, defaults to 1982
 """
 o = options.Options(optspec, optfunc=getopt.getopt)
 (opt, flags, extra) = o.parse(sys.argv[1:])
-if extra:
-    o.fatal('no arguments expected')
 
 host = opt.listen
 port = opt.port and int(opt.port) or 1982
@@ -51,7 +49,7 @@ try:
         for l in rl:
             s, src = l.accept()
             log("Socket accepted connection from %s\n" % (src,))
-            sp = subprocess.Popen([path.exe(), 'mux', 'server'],
+            sp = subprocess.Popen([path.exe(), 'mux', '--', 'server'] + extra,
                                   stdin=os.dup(s.fileno()), stdout=os.dup(s.fileno()))
             s.close()
 finally:
