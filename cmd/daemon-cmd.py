@@ -32,6 +32,7 @@ for res in socket.getaddrinfo(host, port, socket.AF_UNSPEC,
             log("bup daemon: listening on [%s]:%s\n" % sa[:2])
         else:
             log("bup daemon: listening on %s:%s\n" % sa[:2])
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         s.bind(sa)
         s.listen(1)
     except socket.error, e:
