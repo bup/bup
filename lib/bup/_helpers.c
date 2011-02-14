@@ -472,7 +472,8 @@ static PyObject *write_idx(PyObject *self, PyObject *args)
 	    if (ofs > 0x7fffffff)
 	    {
 		uint64_t nofs = htonll(ofs);
-		fwrite(&nofs, 8, 1, f);
+		if (fwrite(&nofs, 8, 1, f) != 1)
+		    return PyErr_SetFromErrno(PyExc_OSError);
 		ofs = 0x80000000 | ofs64_count++;
 	    }
 	    *ofs_ptr++ = htonl((uint32_t)ofs);
