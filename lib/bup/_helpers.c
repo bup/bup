@@ -10,6 +10,13 @@
 
 static int istty = 0;
 
+#ifdef __WIN32__
+
+// There's no 'ps' on win32 anyway, and Py_GetArgcArgv() isn't available.
+static void unpythonize_argv(void) { }
+
+#else // not __WIN32__
+
 // For some reason this isn't declared in Python.h
 extern void Py_GetArgcArgv(int *argc, char ***argv);
 
@@ -49,6 +56,8 @@ static void unpythonize_argv(void)
 	}
     }
 }
+
+#endif // not __WIN32__
 
 
 static PyObject *selftest(PyObject *self, PyObject *args)
