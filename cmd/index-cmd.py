@@ -116,28 +116,30 @@ def update_index(top, excluded_paths):
 
 
 optspec = """
-bup index <-p|m|u> [options...] <filenames...>
+bup index <-p|m|s|u> [options...] <filenames...>
 --
+ Modes:
 p,print    print the index entries for the given names (also works with -u)
 m,modified print only added/deleted/modified files (implies -p)
 s,status   print each filename with a status char (A/M/D) (implies -p)
-H,hash     print the hash for each object next to its name (implies -p)
+u,update   recursively update the index entries for the given file/dir names (default if no mode is specified)
+check      carefully check index file integrity
+ Options:
+H,hash     print the hash for each object next to its name
 l,long     print more information about each file
-u,update   (recursively) update the index entries for the given filenames
-x,xdev,one-file-system  don't cross filesystem boundaries
 fake-valid mark all index entries as up-to-date even if they aren't
 fake-invalid mark all index entries as invalid
-check      carefully check index file integrity
 f,indexfile=  the name of the index file (normally BUP_DIR/bupindex)
 exclude=   a path to exclude from the backup (can be used more than once)
 exclude-from= a file that contains exclude paths (can be used more than once)
 v,verbose  increase log output (can be used more than once)
+x,xdev,one-file-system  don't cross filesystem boundaries
 """
 o = options.Options(optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
 
 if not (opt.modified or opt['print'] or opt.status or opt.update or opt.check):
-    o.fatal('supply one or more of -p, -s, -m, -u, or --check')
+    opt.update = 1
 if (opt.fake_valid or opt.fake_invalid) and not opt.update:
     o.fatal('--fake-{in,}valid are meaningless without -u')
 if opt.fake_valid and opt.fake_invalid:
@@ -158,7 +160,7 @@ paths = index.reduce_paths(extra)
 
 if opt.update:
     if not extra:
-        o.fatal('update (-u) requested but no paths given')
+        o.fatal('update mode (-u) requested but no paths given')
     for (rp,path) in paths:
         update_index(rp, excluded_paths)
 

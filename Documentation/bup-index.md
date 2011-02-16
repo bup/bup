@@ -8,8 +8,8 @@ bup-index - print and/or update the bup filesystem index
 
 # SYNOPSIS
 
-bup index <-p|-m|-u> [-s] [-H] [-l] [-x] [--fake-valid]
-[--check] [-f *indexfile*] [--exclude *path*]
+bup index <-p|-m|-s|-u> [-H] [-l] [-x] [--fake-valid]
+[--fake-invalid] [--check] [-f *indexfile*] [--exclude *path*]
 [--exclude-from *filename*] [-v] <filenames...>
 
 # DESCRIPTION
@@ -40,12 +40,13 @@ other purposes (such as speeding up other programs that
 need the same information).
 
 
-# OPTIONS
+# MODES
 
 -u, --update
-:   (recursively) update the index for the given filenames and
+:   recursively update the index for the given filenames and
     their descendants.  One or more filenames must be
-    given.
+    given.  If no mode option is given, this is the
+    default.
 
 -p, --print
 :   print the contents of the index.  If filenames are
@@ -64,6 +65,9 @@ need the same information).
     that a file is marked in the index as added, modified,
     deleted, or unchanged since the last backup.
     
+
+# OPTIONS
+
 -H, --hash
 :   for each file printed, prepend the most recently
     recorded hash code.  The hash code is normally
@@ -89,6 +93,10 @@ need the same information).
     aren't.  This can be useful for testing, or to avoid
     unnecessarily backing up files that you know are
     boring.
+    
+--fake-invalid
+:   mark specified filenames as not up-to-date, forcing the
+    next "bup save" run to re-check their contents.
     
 --check
 :   carefully check index file integrity before and after
