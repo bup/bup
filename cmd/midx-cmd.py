@@ -198,14 +198,9 @@ assert(opt.max_files >= 5)
 if extra:
     do_midx(git.repo('objects/pack'), opt.output, extra, '')
 elif opt.auto or opt.force:
-    if opt.dir:
-        paths = [opt.dir]
-    else:
-        paths = [git.repo('objects/pack')]
-        paths += glob.glob(git.repo('index-cache/*/.'))
+    paths = opt.dir and [opt.dir] or git.all_packdirs()
     for path in paths:
         debug1('midx: scanning %s\n' % path)
         do_midx_dir(path)
-        debug1('\n')
 else:
     o.fatal("you must use -f or -a or provide input filenames")

@@ -6,9 +6,9 @@ from bup.helpers import *
 optspec = """
 bup bloom [options...]
 --
-o,output=  output bloom filename (default: auto-generated)
-d,dir=     input directory to look for idx files (default: auto-generated)
-k,hashes=  number of hash functions to use (4 or 5) (default: auto-generated)
+o,output=  output bloom filename (default: auto)
+d,dir=     input directory to look for idx files (default: auto)
+k,hashes=  number of hash functions to use (4 or 5) (default: auto)
 """
 
 def do_bloom(path, outfilename):
@@ -96,4 +96,6 @@ if opt.k and opt.k not in (4,5):
 
 git.check_repo_or_die()
 
-do_bloom(opt.dir or git.repo('objects/pack'), opt.output)
+paths = opt.dir and [opt.dir] or git.all_packdirs()
+for path in paths:
+    do_bloom(path, opt.output)

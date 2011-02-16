@@ -125,6 +125,12 @@ def repo(sub = ''):
     return os.path.join(repodir, sub)
 
 
+def all_packdirs():
+    paths = [repo('objects/pack')]
+    paths += glob.glob(repo('index-cache/*/.'))
+    return paths
+
+
 def auto_midx(objdir):
     args = [path.exe(), 'midx', '--auto', '--dir', objdir]
     try:
