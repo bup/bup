@@ -32,7 +32,6 @@ while 1:
     else:
         assert(len(l) == 3)
         (line, splitchar, all) = l
-        #splitchar = '\n'
         sys.stdout.write('%-*s%s' % (lastlen, line, splitchar))
         if splitchar == '\r':
             lastlen = len(line)
@@ -40,5 +39,7 @@ while 1:
             lastlen = 0
         sys.stdout.flush()
 
-if lastlen or all:
-    sys.stdout.write('%-*s\n' % (lastlen, all))
+if lastlen:
+    sys.stdout.write('%-*s\r' % (lastlen, ''))
+if all:
+    sys.stdout.write('%s\n' % all)
