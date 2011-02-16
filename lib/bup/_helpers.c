@@ -10,7 +10,8 @@
 
 static int istty = 0;
 
-#ifdef __WIN32__
+// Probably we should use autoconf or something and set HAVE_PY_GETARGCARGV...
+#if __WIN32__ || __CYGWIN__
 
 // There's no 'ps' on win32 anyway, and Py_GetArgcArgv() isn't available.
 static void unpythonize_argv(void) { }
@@ -57,7 +58,7 @@ static void unpythonize_argv(void)
     }
 }
 
-#endif // not __WIN32__
+#endif // not __WIN32__ or __CYGWIN__
 
 
 static PyObject *selftest(PyObject *self, PyObject *args)
