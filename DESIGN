@@ -281,7 +281,7 @@ they're written.
 But that leads us to our next problem.
 
 
-Huge numbers of huge packfiles (git.PackMidx, cmd/midx)
+Huge numbers of huge packfiles (midx.py, cmd/midx)
 ------------------------------
 
 Git isn't actually designed to handle super-huge repositories.  Most git

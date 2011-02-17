@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import sys, re, struct, time, resource
-from bup import git, bloom, options, _helpers
+from bup import git, bloom, midx, options, _helpers
 from bup.helpers import *
 
 handle_ctrl_c()
@@ -107,6 +107,10 @@ if bloom._total_searches:
     print ('bloom: %d objects searched in %d steps: avg %.3f steps/object' 
            % (bloom._total_searches, bloom._total_steps,
               bloom._total_steps*1.0/bloom._total_searches))
+if midx._total_searches:
+    print ('midx: %d objects searched in %d steps: avg %.3f steps/object' 
+           % (midx._total_searches, midx._total_steps,
+              midx._total_steps*1.0/midx._total_searches))
 if git._total_searches:
     print ('idx: %d objects searched in %d steps: avg %.3f steps/object' 
            % (git._total_searches, git._total_steps,

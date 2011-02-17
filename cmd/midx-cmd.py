@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import sys, math, struct, glob, resource
 import tempfile
-from bup import options, git, _helpers
+from bup import options, git, midx, _helpers
 from bup.helpers import *
 
 PAGE_SIZE=4096
@@ -50,7 +50,7 @@ def _do_midx(outdir, outfilename, infilenames, prefixstr):
             ix.map,
             len(ix),
             ix.sha_ofs,
-            isinstance(ix, git.PackMidx) and ix.which_ofs or 0,
+            isinstance(ix, midx.PackMidx) and ix.which_ofs or 0,
             len(allfilenames),
         ))
         for n in ix.idxnames:
@@ -79,7 +79,7 @@ def _do_midx(outdir, outfilename, infilenames, prefixstr):
         pass
     f = open(outfilename + '.tmp', 'w+b')
     f.write('MIDX')
-    f.write(struct.pack('!II', git.MIDX_VERSION, bits))
+    f.write(struct.pack('!II', midx.MIDX_VERSION, bits))
     assert(f.tell() == 12)
 
     f.truncate(12 + 4*entries + 20*total + 4*total)
@@ -97,7 +97,7 @@ def _do_midx(outdir, outfilename, infilenames, prefixstr):
 
     # this is just for testing
     if 0:
-        p = git.PackMidx(outfilename)
+        p = midx.PackMidx(outfilename)
         assert(len(p.idxnames) == len(infilenames))
         print p.idxnames
         assert(len(p) == total)
