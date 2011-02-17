@@ -2,15 +2,17 @@ import math
 from bup import _helpers
 from bup.helpers import *
 
-BLOB_LWM = 8192*2
-BLOB_MAX = BLOB_LWM*2
-BLOB_HWM = 1024*1024
+BLOB_MAX = 8192*2   # 8192 is the "typical" blob size for bupsplit
+BLOB_READ_SIZE = 1024*1024
 MAX_PER_TREE = 256
 progress_callback = None
 max_pack_size = 1000*1000*1000  # larger packs will slow down pruning
 max_pack_objects = 200*1000  # cache memory usage is about 83 bytes per object
 fanout = 16
 
+# The purpose of this type of buffer is to avoid copying on peek(), get(),
+# and eat().  We do copy the buffer contents on put(), but that should
+# be ok if we always only put() large amounts of data at a time.
 class Buf:
     def __init__(self):
         self.data = ''
@@ -36,16 +38,7 @@ class Buf:
         return len(self.data) - self.start
 
 
-def splitbuf(buf):
-    b = buf.peek(buf.used())
-    (ofs, bits) = _helpers.splitbuf(b)
-    if ofs:
-        buf.eat(ofs)
-        return (buffer(b, 0, ofs), bits)
-    return (None, 0)
-
-
-def blobiter(files, progress=None):
+def readfile_iter(files, progress=None):
     for filenum,f in enumerate(files):
         ofs = 0
         b = ''
@@ -53,7 +46,7 @@ def blobiter(files, progress=None):
             if progress:
                 progress(filenum, len(b))
             fadvise_done(f, max(0, ofs - 1024*1024))
-            b = f.read(BLOB_HWM)
+            b = f.read(BLOB_READ_SIZE)
             ofs += len(b)
             if not b:
                 fadvise_done(f, ofs)
@@ -61,35 +54,29 @@ def blobiter(files, progress=None):
             yield b
 
 
-def drainbuf(buf, finalize):
+def _splitbuf(buf):
     while 1:
-        (blob, bits) = splitbuf(buf)
-        if blob:
-            yield (blob, bits)
+        b = buf.peek(buf.used())
+        (ofs, bits) = _helpers.splitbuf(b)
+        if ofs:
+            buf.eat(ofs)
+            yield buffer(b, 0, ofs), bits
         else:
             break
     if buf.used() > BLOB_MAX:
         # limit max blob size
-        yield (buf.get(buf.used()), 0)
-    elif finalize and buf.used():
-        yield (buf.get(buf.used()), 0)
+        yield buf.get(BLOB_MAX), 0
 
 
 def _hashsplit_iter(files, progress):
-    assert(BLOB_HWM > BLOB_MAX)
+    assert(BLOB_READ_SIZE > BLOB_MAX)
     buf = Buf()
-    fi = blobiter(files, progress)
-    while 1:
-        for i in drainbuf(buf, finalize=False):
-            yield i
-        while buf.used() < BLOB_HWM:
-            bnew = next(fi)
-            if not bnew:
-                # eof
-                for i in drainbuf(buf, finalize=True):
-                    yield i
-                return
-            buf.put(bnew)
+    for inblock in readfile_iter(files, progress):
+        buf.put(inblock)
+        for buf_and_bits in _splitbuf(buf):
+            yield buf_and_bits
+    if buf.used():
+        yield buf.get(buf.used()), 0
 
 
 def _hashsplit_iter_keep_boundaries(files, progress):
@@ -101,8 +88,8 @@ def _hashsplit_iter_keep_boundaries(files, progress):
                 return progress(real_filenum, nbytes)
         else:
             prog = None
-        for i in _hashsplit_iter([f], progress=prog):
-            yield i
+        for buf_and_bits in _hashsplit_iter([f], progress=prog):
+            yield buf_and_bits
 
 
 def hashsplit_iter(files, keep_boundaries, progress):
