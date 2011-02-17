@@ -6,8 +6,6 @@ BLOB_MAX = 8192*4   # 8192 is the "typical" blob size for bupsplit
 BLOB_READ_SIZE = 1024*1024
 MAX_PER_TREE = 256
 progress_callback = None
-max_pack_size = 1000*1000*1000  # larger packs will slow down pruning
-max_pack_objects = 200*1000  # cache memory usage is about 83 bytes per object
 fanout = 16
 
 # The purpose of this type of buffer is to avoid copying on peek(), get(),
@@ -105,13 +103,11 @@ def hashsplit_iter(files, keep_boundaries, progress):
 
 
 total_split = 0
-def split_to_blobs(w, files, keep_boundaries, progress):
+def split_to_blobs(makeblob, files, keep_boundaries, progress):
     global total_split
     for (blob, level) in hashsplit_iter(files, keep_boundaries, progress):
-        sha = w.new_blob(blob)
+        sha = makeblob(blob)
         total_split += len(blob)
-        if w.outbytes >= max_pack_size or w.count >= max_pack_objects:
-            w.breakpoint()
         if progress_callback:
             progress_callback(len(blob))
         yield (sha, len(blob), level)
@@ -127,7 +123,7 @@ def _make_shalist(l):
     return (shalist, total)
 
 
-def _squish(w, stacks, n):
+def _squish(maketree, stacks, n):
     i = 0
     while i<n or len(stacks[i]) > MAX_PER_TREE:
         while len(stacks) <= i+1:
@@ -136,14 +132,15 @@ def _squish(w, stacks, n):
             stacks[i+1] += stacks[i]
         elif stacks[i]:
             (shalist, size) = _make_shalist(stacks[i])
-            tree = w.new_tree(shalist)
+            tree = maketree(shalist)
             stacks[i+1].append(('40000', tree, size))
         stacks[i] = []
         i += 1
 
 
-def split_to_shalist(w, files, keep_boundaries, progress=None):
-    sl = split_to_blobs(w, files, keep_boundaries, progress)
+def split_to_shalist(makeblob, maketree, files,
+                     keep_boundaries, progress=None):
+    sl = split_to_blobs(makeblob, files, keep_boundaries, progress)
     assert(fanout != 0)
     if not fanout:
         shal = []
@@ -155,21 +152,22 @@ def split_to_shalist(w, files, keep_boundaries, progress=None):
         for (sha,size,level) in sl:
             stacks[0].append(('100644', sha, size))
             if level:
-                _squish(w, stacks, level)
+                _squish(maketree, stacks, level)
         #log('stacks: %r\n' % [len(i) for i in stacks])
-        _squish(w, stacks, len(stacks)-1)
+        _squish(maketree, stacks, len(stacks)-1)
         #log('stacks: %r\n' % [len(i) for i in stacks])
         return _make_shalist(stacks[-1])[0]
 
 
-def split_to_blob_or_tree(w, files, keep_boundaries):
-    shalist = list(split_to_shalist(w, files, keep_boundaries))
+def split_to_blob_or_tree(makeblob, maketree, files, keep_boundaries):
+    shalist = list(split_to_shalist(makeblob, maketree,
+                                    files, keep_boundaries))
     if len(shalist) == 1:
         return (shalist[0][0], shalist[0][2])
     elif len(shalist) == 0:
-        return ('100644', w.new_blob(''))
+        return ('100644', makeblob(''))
     else:
-        return ('40000', w.new_tree(shalist))
+        return ('40000', maketree(shalist))
 
 
 def open_noatime(name):

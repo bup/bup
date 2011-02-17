@@ -263,7 +263,8 @@ for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse_during):
                 lastskip_name = ent.name
             else:
                 try:
-                    (mode, id) = hashsplit.split_to_blob_or_tree(w, [f],
+                    (mode, id) = hashsplit.split_to_blob_or_tree(
+                                            w.new_blob, w.new_tree, [f],
                                             keep_boundaries=False)
                 except IOError, e:
                     add_error('%s: %s' % (ent.name, e))

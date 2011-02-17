@@ -6,6 +6,8 @@ import os, sys, zlib, time, subprocess, struct, stat, re, tempfile, glob
 from bup.helpers import *
 from bup import _helpers, path, midx, bloom
 
+max_pack_size = 1000*1000*1000  # larger packs will slow down pruning
+max_pack_objects = 200*1000  # cache memory usage is about 83 bytes per object
 SEEK_END=2  # os.SEEK_END is not defined in python 2.4
 
 verbose = 0
@@ -509,6 +511,8 @@ class PackWriter:
         if not sha:
             sha = calc_hash(type, content)
         size, crc = self._raw_write(_encode_packobj(type, content), sha=sha)
+        if self.outbytes >= max_pack_size or self.count >= max_pack_objects:
+            self.breakpoint()
         return sha
 
     def breakpoint(self):
@@ -531,10 +535,10 @@ class PackWriter:
 
     def maybe_write(self, type, content):
         """Write an object to the pack file if not present and return its id."""
-        self._require_objcache()
         sha = calc_hash(type, content)
         if not self.exists(sha):
             self._write(sha, type, content)
+            self._require_objcache()
             self.objcache.add(sha)
         return sha
 

@@ -47,9 +47,9 @@ if opt.verbose >= 2:
     git.verbose = opt.verbose - 1
     opt.bench = 1
 if opt.max_pack_size:
-    hashsplit.max_pack_size = parse_num(opt.max_pack_size)
+    git.max_pack_size = parse_num(opt.max_pack_size)
 if opt.max_pack_objects:
-    hashsplit.max_pack_objects = parse_num(opt.max_pack_objects)
+    git.max_pack_objects = parse_num(opt.max_pack_objects)
 if opt.fanout:
     hashsplit.fanout = parse_num(opt.fanout)
 if opt.blobs:
@@ -128,14 +128,16 @@ else:
     files = extra and (open(fn) for fn in extra) or [sys.stdin]
 
 if pack_writer and opt.blobs:
-    shalist = hashsplit.split_to_blobs(pack_writer, files,
+    shalist = hashsplit.split_to_blobs(pack_writer.new_blob, files,
                                        keep_boundaries=opt.keep_boundaries,
                                        progress=prog)
     for (sha, size, level) in shalist:
         print sha.encode('hex')
         reprogress()
 elif pack_writer:  # tree or commit or name
-    shalist = hashsplit.split_to_shalist(pack_writer, files,
+    shalist = hashsplit.split_to_shalist(pack_writer.new_blob,
+                                         pack_writer.new_tree,
+                                         files,
                                          keep_boundaries=opt.keep_boundaries,
                                          progress=prog)
     tree = pack_writer.new_tree(shalist)
