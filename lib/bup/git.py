@@ -767,11 +767,12 @@ def open_idx(filename):
 def idxmerge(idxlist, final_progress=True):
     """Generate a list of all the objects reachable in a PackIdxList."""
     def pfunc(count, total):
-        progress('Reading indexes: %.2f%% (%d/%d)\r'
-                 % (count*100.0/total, count, total))
+        qprogress('Reading indexes: %.2f%% (%d/%d)\r'
+                  % (count*100.0/total, count, total))
     def pfinal(count, total):
         if final_progress:
-            log('Reading indexes: %.2f%% (%d/%d), done.\n' % (100, total, total))
+            progress('Reading indexes: %.2f%% (%d/%d), done.\n'
+                     % (100, total, total))
     return merge_iter(idxlist, 10024, pfunc, pfinal)
 
 

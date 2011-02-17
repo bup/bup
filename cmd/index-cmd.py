@@ -67,9 +67,9 @@ def update_index(top, excluded_paths):
         if opt.verbose>=2 or (opt.verbose==1 and stat.S_ISDIR(pst.st_mode)):
             sys.stdout.write('%s\n' % path)
             sys.stdout.flush()
-            progress('Indexing: %d\r' % total)
+            qprogress('Indexing: %d\r' % total)
         elif not (total % 128):
-            progress('Indexing: %d\r' % total)
+            qprogress('Indexing: %d\r' % total)
         total += 1
         while rig.cur and rig.cur.name > path:  # deleted paths
             if rig.cur.exists():

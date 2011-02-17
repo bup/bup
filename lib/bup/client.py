@@ -192,7 +192,7 @@ class Client:
         for b in chunkyreader(self.conn, n):
             f.write(b)
             count += len(b)
-            progress('Receiving index from server: %d/%d\r' % (count, n))
+            qprogress('Receiving index from server: %d/%d\r' % (count, n))
         progress('Receiving index from server: %d/%d, done.\n' % (count, n))
         self.check_ok()
         f.close()

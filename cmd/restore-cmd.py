@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import sys, stat, time
+import sys, stat
 from bup import options, git, vfs
 from bup.helpers import *
 
@@ -11,31 +11,23 @@ v,verbose  increase log output (can be used more than once)
 q,quiet    don't show progress meter
 """
 
-total_restored = last_progress = 0
+total_restored = 0
 
 
 def verbose1(s):
-    global last_progress
     if opt.verbose >= 1:
         print s
-        last_progress = 0
 
 
 def verbose2(s):
-    global last_progress
     if opt.verbose >= 2:
         print s
-        last_progress = 0
 
 
 def plog(s):
-    global last_progress
     if opt.quiet:
         return
-    now = time.time()
-    if now - last_progress > 0.2:
-        progress(s)
-        last_progress = now
+    qprogress(s)
 
 
 def do_node(top, n):
@@ -98,7 +90,7 @@ for d in extra:
         do_node(n.parent, n)
 
 if not opt.quiet:
-    log('Restoring: %d, done.\n' % total_restored)
+    progress('Restoring: %d, done.\n' % total_restored)
 
 if saved_errors:
     log('WARNING: %d errors encountered while restoring.\n' % len(saved_errors))
