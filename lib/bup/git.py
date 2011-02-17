@@ -125,6 +125,18 @@ def repo(sub = ''):
     return os.path.join(repodir, sub)
 
 
+def repo_rel(path):
+    full = os.path.abspath(path)
+    fullrepo = os.path.abspath(repo(''))
+    if not fullrepo.endswith('/'):
+        fullrepo += '/'
+    if full.startswith(fullrepo):
+        path = full[len(fullrepo):]
+    if path.startswith('index-cache/'):
+        path = path[len('index-cache/'):]
+    return path
+
+
 def all_packdirs():
     paths = [repo('objects/pack')]
     paths += glob.glob(repo('index-cache/*/.'))

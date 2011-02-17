@@ -33,7 +33,9 @@ def max_files():
 
 merge_into = _helpers.merge_into
 
+_first = None
 def _do_midx(outdir, outfilename, infilenames, prefixstr):
+    global _first
     if not outfilename:
         assert(outdir)
         sum = Sha1('\0'.join(infilenames)).hexdigest()
@@ -56,8 +58,10 @@ def _do_midx(outdir, outfilename, infilenames, prefixstr):
         total += len(ix)
     inp.sort(lambda x,y: cmp(str(y[0][y[2]:y[2]+20]),str(x[0][x[2]:x[2]+20])))
 
-    log('midx: %screating from %d files (%d objects).\n'
-        % (prefixstr, len(infilenames), total))
+    if not _first: _first = outdir
+    dirprefix = (_first != outdir) and git.repo_rel(outdir)+': ' or ''
+    log('midx: %s%screating from %d files (%d objects).\n'
+        % (dirprefix, prefixstr, len(infilenames), total))
     if (not opt.force and (total < 1024 and len(infilenames) < 3)) \
        or len(infilenames) < 2 \
        or (opt.force and not total):

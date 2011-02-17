@@ -11,7 +11,9 @@ d,dir=     input directory to look for idx files (default: auto)
 k,hashes=  number of hash functions to use (4 or 5) (default: auto)
 """
 
+_first = None
 def do_bloom(path, outfilename):
+    global _first
     if not outfilename:
         assert(path)
         outfilename = os.path.join(path, 'bup.bloom')
@@ -27,7 +29,8 @@ def do_bloom(path, outfilename):
     rest = []
     add_count = 0
     rest_count = 0
-    for name in glob.glob('%s/*.idx' % path):
+    for i,name in enumerate(glob.glob('%s/*.idx' % path)):
+        progress('bloom: counting: %d\r' % i)
         ix = git.open_idx(name)
         ixbase = os.path.basename(name)
         if b and (ixbase in b.idxnames):
@@ -39,7 +42,7 @@ def do_bloom(path, outfilename):
     total = add_count + rest_count
 
     if not add:
-        log("bloom: Nothing to do\n")
+        debug1("bloom: nothing to do.\n")
         return
 
     if b:
@@ -49,7 +52,8 @@ def do_bloom(path, outfilename):
             b = None
         elif (b.bits < git.MAX_BLOOM_BITS and
               b.pfalse_positive(add_count) > git.MAX_PFALSE_POSITIVE):
-            log("bloom: %d more entries => %.2f false positive, regenerating\n"
+            log("bloom: regenerating: adding %d entries gives "
+                "%.2f%% false positives.\n"
                     % (add_count, b.pfalse_positive(add_count)))
             b = None
         else:
@@ -61,10 +65,12 @@ def do_bloom(path, outfilename):
     del rest_count
 
     msg = b is None and 'creating from' or 'adding'
-    log('bloom: %s %d file%s (%d object%s).\n' % (msg, len(add),
-                                                  len(add)!=1 and 's' or '',
-                                                  add_count,
-                                                  add_count!=1 and 's' or ''))
+    if not _first: _first = path
+    dirprefix = (_first != path) and git.repo_rel(path)+': ' or ''
+    log('bloom: %s%s %d file%s (%d object%s).\n'
+        % (dirprefix, msg,
+           len(add), len(add)!=1 and 's' or '',
+           add_count, add_count!=1 and 's' or ''))
 
     tfname = None
     if b is None:
@@ -72,12 +78,14 @@ def do_bloom(path, outfilename):
         tf = open(tfname, 'w+')
         b = git.ShaBloom.create(tfname, f=tf, expected=add_count, k=opt.k)
     count = 0
+    icount = 0
     for name in add:
         ix = git.open_idx(name)
-        progress('Writing bloom: %d/%d\r' % (count, len(add)))
+        qprogress('bloom: writing %.2f%% (%d/%d objects)\r' 
+                  % (icount*100.0/add_count, icount, add_count))
         b.add_idx(ix)
         count += 1
-    log('Writing bloom: %d/%d, done.\n' % (count, len(add)))
+        icount += len(ix)
 
     if tfname:
         os.rename(tfname, outfilename)
@@ -98,4 +106,5 @@ git.check_repo_or_die()
 
 paths = opt.dir and [opt.dir] or git.all_packdirs()
 for path in paths:
+    debug1('bloom: scanning %s\n' % path)
     do_bloom(path, opt.output)
