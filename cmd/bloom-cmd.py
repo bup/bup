@@ -10,15 +10,36 @@ f,force    ignore existing bloom file and regenerate it from scratch
 o,output=  output bloom filename (default: auto)
 d,dir=     input directory to look for idx files (default: auto)
 k,hashes=  number of hash functions to use (4 or 5) (default: auto)
+c,check=   check the given .idx file against the bloom filter
 """
+
+def check_bloom(path, bloomfilename, idx):
+    rbloomfilename = git.repo_rel(bloomfilename)
+    ridx = git.repo_rel(idx)
+    if not os.path.exists(bloomfilename):
+        log("bloom: %s: does not exist.\n" % rbloomfilename)
+        return
+    b = bloom.ShaBloom(bloomfilename)
+    if not b.valid():
+        add_error("bloom: %r is invalid.\n" % rbloomfilename)
+        return
+    base = os.path.basename(idx)
+    if base not in b.idxnames:
+        log("bloom: %s does not contain the idx.\n" % rbloomfilename)
+        return
+    if base == idx:
+        idx = os.path.join(path, idx)
+    log("bloom: bloom file: %s\n" % rbloomfilename)
+    log("bloom:   checking %s\n" % ridx)
+    for objsha in git.open_idx(idx):
+        if not b.exists(objsha):
+            add_error("bloom: ERROR: object %s missing" 
+                      % str(objsha).encode('hex'))
+
 
 _first = None
 def do_bloom(path, outfilename):
     global _first
-    if not outfilename:
-        assert(path)
-        outfilename = os.path.join(path, 'bup.bloom')
-
     b = None
     if os.path.exists(outfilename) and not opt.force:
         b = bloom.ShaBloom(outfilename)
@@ -100,12 +121,22 @@ o = options.Options(optspec)
 if extra:
     o.fatal('no positional parameters expected')
 
-if opt.k and opt.k not in (4,5):
-    o.fatal('only k values of 4 and 5 are supported')
-
 git.check_repo_or_die()
+
+if not opt.check and opt.k and opt.k not in (4,5):
+    o.fatal('only k values of 4 and 5 are supported')
 
 paths = opt.dir and [opt.dir] or git.all_packdirs()
 for path in paths:
     debug1('bloom: scanning %s\n' % path)
-    do_bloom(path, opt.output)
+    outfilename = opt.output or os.path.join(path, 'bup.bloom')
+    if opt.check:
+        check_bloom(path, outfilename, opt.check)
+    else:
+        do_bloom(path, outfilename)
+
+if saved_errors:
+    log('WARNING: %d errors encountered during bloom.\n' % len(saved_errors))
+    sys.exit(1)
+elif opt.check:
+    log('all tests passed.\n')

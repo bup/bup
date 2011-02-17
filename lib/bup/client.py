@@ -182,10 +182,13 @@ class Client:
         #debug1('requesting %r\n' % name)
         self.check_busy()
         mkdirp(self.cachedir)
+        fn = os.path.join(self.cachedir, name)
+        if os.path.exists(fn):
+            msg = "won't request existing .idx, try `bup bloom --check %s`" % fn
+            raise ClientError(msg)
         self.conn.write('send-index %s\n' % name)
         n = struct.unpack('!I', self.conn.read(4))[0]
         assert(n)
-        fn = os.path.join(self.cachedir, name)
         f = open(fn + '.tmp', 'w')
         count = 0
         progress('Receiving index from server: %d/%d\r' % (count, n))

@@ -8,7 +8,7 @@ bup-bloom - generates, regenerates, updates bloom filters
 
 # SYNOPSIS
 
-bup daemon [-d dir] [-o outfile] [-k hashes]
+bup bloom [-d dir] [-o outfile] [-k hashes] [-c idxfile]
 
 # DESCRIPTION
 
@@ -34,6 +34,14 @@ updates or regenerates it as needed.
 :   number of hash functions to use only 4 and 5 are valid.
     defaults to 5 for repositories < 2 TiB, or 4 otherwise.
     See comments in git.py for more on this value.
+
+-c, --check=*idxfile*
+:   checks the bloom file (counterintuitively outfile)
+    against the specified .idx file, first checks that the
+    bloom filter is claiming to contain the .idx, then
+    checks that it does actually contain all of the objects
+    in the .idx.  Does not write anything and ignores the
+    `-k` option.
 
 # BUP
 

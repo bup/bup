@@ -299,7 +299,7 @@ struct idx {
 static int _cmp_sha(const struct sha *sha1, const struct sha *sha2)
 {
     int i;
-    for (i = 0; i < 20; i++)
+    for (i = 0; i < sizeof(struct sha); i++)
 	if (sha1->bytes[i] != sha2->bytes[i])
 	    return sha1->bytes[i] - sha2->bytes[i];
     return 0;
@@ -352,6 +352,7 @@ static uint32_t _get_idx_i(struct idx *idx)
     return ntohl(*idx->cur_name) + idx->name_base;
 }
 
+#define MIDX4_HEADERLEN 12
 
 static PyObject *merge_into(PyObject *self, PyObject *args)
 {
@@ -386,7 +387,7 @@ static PyObject *merge_into(PyObject *self, PyObject *args)
 	else
 	    idxs[i]->cur_name = NULL;
     }
-    table_ptr = (uint32_t *)&fmap[12];
+    table_ptr = (uint32_t *)&fmap[MIDX4_HEADERLEN];
     sha_ptr = (struct sha *)&table_ptr[1<<bits];
     name_ptr = (uint32_t *)&sha_ptr[total];
 
@@ -406,7 +407,7 @@ static PyObject *merge_into(PyObject *self, PyObject *args)
 	    table_ptr[prefix++] = htonl(count);
 	if (last == NULL || _cmp_sha(last, idx->cur) != 0)
 	{
-	    memcpy(sha_ptr++, idx->cur, 20);
+	    memcpy(sha_ptr++, idx->cur, sizeof(struct sha));
 	    *name_ptr++ = htonl(_get_idx_i(idx));
 	    last = idx->cur;
 	}
@@ -434,6 +435,9 @@ static uint64_t htonll(uint64_t value)
     return value; // already in network byte order MSB-LSB
 }
 
+#define PACK_IDX_V2_HEADERLEN 8
+#define FAN_ENTRIES 256
+
 static PyObject *write_idx(PyObject *self, PyObject *args)
 {
     PyObject *pf = NULL, *idx = NULL;
@@ -450,15 +454,15 @@ static PyObject *write_idx(PyObject *self, PyObject *args)
     if (!PyArg_ParseTuple(args, "Ow#OI", &pf, &fmap, &flen, &idx, &total))
 	return NULL;
 
-    fan_ptr = (uint32_t *)&fmap[8];
-    sha_ptr = (struct sha *)&fan_ptr[256];
+    fan_ptr = (uint32_t *)&fmap[PACK_IDX_V2_HEADERLEN];
+    sha_ptr = (struct sha *)&fan_ptr[FAN_ENTRIES];
     crc_ptr = (uint32_t *)&sha_ptr[total];
     ofs_ptr = (uint32_t *)&crc_ptr[total];
     f = PyFile_AsFile(pf);
 
     count = 0;
     ofs64_count = 0;
-    for (i = 0; i < 256; ++i)
+    for (i = 0; i < FAN_ENTRIES; ++i)
     {
 	int plen;
 	part = PyList_GET_ITEM(idx, i);
@@ -475,14 +479,14 @@ static PyObject *write_idx(PyObject *self, PyObject *args)
 	    if (!PyArg_ParseTuple(PyList_GET_ITEM(part, j), "t#IK",
 				  &sha, &sha_len, &crc, &ofs))
 		return NULL;
-	    if (sha_len != 20)
+	    if (sha_len != sizeof(struct sha))
 		return NULL;
-	    memcpy(sha_ptr++, sha, 20);
+	    memcpy(sha_ptr++, sha, sizeof(struct sha));
 	    *crc_ptr++ = htonl(crc);
 	    if (ofs > 0x7fffffff)
 	    {
 		uint64_t nofs = htonll(ofs);
-		if (fwrite(&nofs, 8, 1, f) != 1)
+		if (fwrite(&nofs, sizeof(uint64_t), 1, f) != 1)
 		    return PyErr_SetFromErrno(PyExc_OSError);
 		ofs = 0x80000000 | ofs64_count++;
 	    }
