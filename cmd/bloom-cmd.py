@@ -6,6 +6,7 @@ from bup.helpers import *
 optspec = """
 bup bloom [options...]
 --
+f,force    ignore existing bloom file and regenerate it from scratch
 o,output=  output bloom filename (default: auto)
 d,dir=     input directory to look for idx files (default: auto)
 k,hashes=  number of hash functions to use (4 or 5) (default: auto)
@@ -19,7 +20,7 @@ def do_bloom(path, outfilename):
         outfilename = os.path.join(path, 'bup.bloom')
 
     b = None
-    if os.path.exists(outfilename):
+    if os.path.exists(outfilename) and not opt.force:
         b = git.ShaBloom(outfilename)
         if not b.valid():
             debug1("bloom: Existing invalid bloom found, regenerating.\n")

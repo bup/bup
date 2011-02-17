@@ -11,8 +11,8 @@ optspec = """
 bup midx [options...] <idxnames...>
 --
 o,output=  output midx filename (default: auto-generated)
-a,auto     automatically create .midx from any unindexed .idx files
-f,force    automatically create .midx from *all* .idx files
+a,auto     automatically use all existing .midx/.idx files as input
+f,force    merge produce exactly one .midx containing all objects
 p,print    print names of generated midx files
 max-files= maximum number of idx files to open at once [-1]
 dir=       directory containing idx/midx files
