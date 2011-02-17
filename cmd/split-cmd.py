@@ -5,20 +5,22 @@ from bup.helpers import *
 
 
 optspec = """
-bup split [-tcb] [-n name] [--bench] [filenames...]
+bup split <-t|-c|-b|-n name|--copy|--noop> [--bench] [filenames...]
 --
-r,remote=  remote repository path
+ Modes:
 b,blobs    output a series of blob ids
 t,tree     output a tree id
 c,commit   output a commit id
-n,name=    name of backup set to update (if any)
+n,name=    save the result under the given name
+noop       split the input, but throw away the result
+copy       split the input, copy it to stdout, don't save to repo
+ Options:
+r,remote=  remote repository path
 d,date=    date for the commit (seconds since the epoch)
 q,quiet    don't print progress messages
 v,verbose  increase log output (can be used more than once)
 git-ids    read a list of git object ids from stdin and split their contents
 keep-boundaries  don't let one chunk span two input files
-noop       don't actually save the data anywhere
-copy       just copy input to output, hashsplitting along the way
 bench      print benchmark timings to stderr
 max-pack-size=  maximum bytes in a single pack
 max-pack-objects=  maximum number of objects in a single pack
@@ -36,6 +38,8 @@ if not (opt.blobs or opt.tree or opt.commit or opt.name or
 if (opt.noop or opt.copy) and (opt.blobs or opt.tree or 
                                opt.commit or opt.name):
     o.fatal('-N and --copy are incompatible with -b, -t, -c, -n')
+if opt.blobs and (opt.tree or opt.commit or opt.name):
+    o.fatal('-b is incompatible with -t, -c, -n')
 if extra and opt.git_ids:
     o.fatal("don't provide filenames when using --git-ids")
 
@@ -123,7 +127,14 @@ else:
     # the input either comes from a series of files or from stdin.
     files = extra and (open(fn) for fn in extra) or [sys.stdin]
 
-if pack_writer:
+if pack_writer and opt.blobs:
+    shalist = hashsplit.split_to_blobs(pack_writer, files,
+                                       keep_boundaries=opt.keep_boundaries,
+                                       progress=prog)
+    for (sha, size, level) in shalist:
+        print sha.encode('hex')
+        reprogress()
+elif pack_writer:  # tree or commit or name
     shalist = hashsplit.split_to_shalist(pack_writer, files,
                                          keep_boundaries=opt.keep_boundaries,
                                          progress=prog)
@@ -139,15 +150,10 @@ else:
             sys.stdout.write(str(blob))
         megs = hashsplit.total_split/1024/1024
         if not opt.quiet and last != megs:
-            progress('%d Mbytes read\r' % megs)
             last = megs
-    progress('%d Mbytes read, done.\n' % megs)
 
 if opt.verbose:
     log('\n')
-if opt.blobs:
-    for (mode,name,bin) in shalist:
-        print bin.encode('hex')
 if opt.tree:
     print tree.encode('hex')
 if opt.commit or opt.name:
@@ -172,7 +178,7 @@ if cli:
 secs = time.time() - start_time
 size = hashsplit.total_split
 if opt.bench:
-    log('\nbup: %.2fkbytes in %.2f secs = %.2f kbytes/sec\n'
+    log('bup: %.2fkbytes in %.2f secs = %.2f kbytes/sec\n'
         % (size/1024., secs, size/1024./secs))
 
 if saved_errors:

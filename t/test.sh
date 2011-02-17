@@ -208,7 +208,7 @@ WVSTART "save/git-fsck"
     #git prune
     (cd "$TOP/t/sampledata" && WVPASS bup save -vvn master /) || WVFAIL
     n=$(git fsck --full --strict 2>&1 | 
-      egrep -v 'dangling (commit|tree)' |
+      egrep -v 'dangling (commit|tree|blob)' |
       tee -a /dev/stderr | 
       wc -l)
     WVPASS [ "$n" -eq 0 ]

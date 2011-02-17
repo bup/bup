@@ -105,7 +105,7 @@ def hashsplit_iter(files, keep_boundaries, progress):
 
 
 total_split = 0
-def _split_to_blobs(w, files, keep_boundaries, progress):
+def split_to_blobs(w, files, keep_boundaries, progress):
     global total_split
     for (blob, level) in hashsplit_iter(files, keep_boundaries, progress):
         sha = w.new_blob(blob)
@@ -143,7 +143,8 @@ def _squish(w, stacks, n):
 
 
 def split_to_shalist(w, files, keep_boundaries, progress=None):
-    sl = _split_to_blobs(w, files, keep_boundaries, progress)
+    sl = split_to_blobs(w, files, keep_boundaries, progress)
+    assert(fanout != 0)
     if not fanout:
         shal = []
         for (sha,size,level) in sl:
