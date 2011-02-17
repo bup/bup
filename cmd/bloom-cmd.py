@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import sys, glob, tempfile
-from bup import options, git
+from bup import options, git, bloom
 from bup.helpers import *
 
 optspec = """
@@ -21,7 +21,7 @@ def do_bloom(path, outfilename):
 
     b = None
     if os.path.exists(outfilename) and not opt.force:
-        b = git.ShaBloom(outfilename)
+        b = bloom.ShaBloom(outfilename)
         if not b.valid():
             debug1("bloom: Existing invalid bloom found, regenerating.\n")
             b = None
@@ -51,14 +51,14 @@ def do_bloom(path, outfilename):
             log("bloom: size %d != idx total %d, regenerating\n"
                     % (len(b), rest_count))
             b = None
-        elif (b.bits < git.MAX_BLOOM_BITS and
-              b.pfalse_positive(add_count) > git.MAX_PFALSE_POSITIVE):
+        elif (b.bits < bloom.MAX_BLOOM_BITS and
+              b.pfalse_positive(add_count) > bloom.MAX_PFALSE_POSITIVE):
             log("bloom: regenerating: adding %d entries gives "
                 "%.2f%% false positives.\n"
                     % (add_count, b.pfalse_positive(add_count)))
             b = None
         else:
-            b = git.ShaBloom(outfilename, readwrite=True, expected=add_count)
+            b = bloom.ShaBloom(outfilename, readwrite=True, expected=add_count)
     if not b: # Need all idxs to build from scratch
         add += rest
         add_count += rest_count
@@ -77,7 +77,7 @@ def do_bloom(path, outfilename):
     if b is None:
         tfname = os.path.join(path, 'bup.tmp.bloom')
         tf = open(tfname, 'w+')
-        b = git.ShaBloom.create(tfname, f=tf, expected=add_count, k=opt.k)
+        b = bloom.ShaBloom.create(tfname, f=tf, expected=add_count, k=opt.k)
     count = 0
     icount = 0
     for name in add:
