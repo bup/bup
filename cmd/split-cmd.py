@@ -130,9 +130,10 @@ if pack_writer:
     tree = pack_writer.new_tree(shalist)
 else:
     last = 0
-    for (blob, bits) in hashsplit.hashsplit_iter(files,
-                                    keep_boundaries=opt.keep_boundaries,
-                                    progress=prog):
+    it = hashsplit.hashsplit_iter(files,
+                                  keep_boundaries=opt.keep_boundaries,
+                                  progress=prog)
+    for (blob, level) in it:
         hashsplit.total_split += len(blob)
         if opt.copy:
             sys.stdout.write(str(blob))

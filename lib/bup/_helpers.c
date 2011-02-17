@@ -87,6 +87,7 @@ static PyObject *splitbuf(PyObject *self, PyObject *args)
     if (!PyArg_ParseTuple(args, "t#", &buf, &len))
 	return NULL;
     out = bupsplit_find_ofs(buf, len, &bits);
+    if (out) assert(bits >= BUP_BLOBBITS);
     return Py_BuildValue("ii", out, bits);
 }
 

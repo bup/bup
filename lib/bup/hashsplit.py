@@ -54,7 +54,7 @@ def readfile_iter(files, progress=None):
             yield b
 
 
-def _splitbuf(buf):
+def _splitbuf(buf, basebits, fanbits):
     while 1:
         b = buf.peek(buf.used())
         (ofs, bits) = _helpers.splitbuf(b)
@@ -62,7 +62,8 @@ def _splitbuf(buf):
             ofs = BLOB_MAX
         if ofs:
             buf.eat(ofs)
-            yield buffer(b, 0, ofs), bits
+            level = (bits-basebits)//fanbits  # integer division
+            yield buffer(b, 0, ofs), level
         else:
             break
     while buf.used() >= BLOB_MAX:
@@ -72,11 +73,13 @@ def _splitbuf(buf):
 
 def _hashsplit_iter(files, progress):
     assert(BLOB_READ_SIZE > BLOB_MAX)
+    basebits = _helpers.blobbits()
+    fanbits = int(math.log(fanout or 128, 2))
     buf = Buf()
     for inblock in readfile_iter(files, progress):
         buf.put(inblock)
-        for buf_and_bits in _splitbuf(buf):
-            yield buf_and_bits
+        for buf_and_level in _splitbuf(buf, basebits, fanbits):
+            yield buf_and_level
     if buf.used():
         yield buf.get(buf.used()), 0
 
@@ -90,8 +93,8 @@ def _hashsplit_iter_keep_boundaries(files, progress):
                 return progress(real_filenum, nbytes)
         else:
             prog = None
-        for buf_and_bits in _hashsplit_iter([f], progress=prog):
-            yield buf_and_bits
+        for buf_and_level in _hashsplit_iter([f], progress=prog):
+            yield buf_and_level
 
 
 def hashsplit_iter(files, keep_boundaries, progress):
@@ -104,14 +107,14 @@ def hashsplit_iter(files, keep_boundaries, progress):
 total_split = 0
 def _split_to_blobs(w, files, keep_boundaries, progress):
     global total_split
-    for (blob, bits) in hashsplit_iter(files, keep_boundaries, progress):
+    for (blob, level) in hashsplit_iter(files, keep_boundaries, progress):
         sha = w.new_blob(blob)
         total_split += len(blob)
         if w.outbytes >= max_pack_size or w.count >= max_pack_objects:
             w.breakpoint()
         if progress_callback:
             progress_callback(len(blob))
-        yield (sha, len(blob), bits)
+        yield (sha, len(blob), level)
 
 
 def _make_shalist(l):
@@ -143,21 +146,15 @@ def split_to_shalist(w, files, keep_boundaries, progress=None):
     sl = _split_to_blobs(w, files, keep_boundaries, progress)
     if not fanout:
         shal = []
-        for (sha,size,bits) in sl:
+        for (sha,size,level) in sl:
             shal.append(('100644', sha, size))
         return _make_shalist(shal)[0]
     else:
-        base_bits = _helpers.blobbits()
-        fanout_bits = int(math.log(fanout, 2))
-        def bits_to_idx(n):
-            assert(n >= base_bits)
-            return (n - base_bits)/fanout_bits
         stacks = [[]]
-        for (sha,size,bits) in sl:
-            assert(bits <= 32)
+        for (sha,size,level) in sl:
             stacks[0].append(('100644', sha, size))
-            if bits > base_bits:
-                _squish(w, stacks, bits_to_idx(bits))
+            if level:
+                _squish(w, stacks, level)
         #log('stacks: %r\n' % [len(i) for i in stacks])
         _squish(w, stacks, len(stacks)-1)
         #log('stacks: %r\n' % [len(i) for i in stacks])
