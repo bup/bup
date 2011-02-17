@@ -9,13 +9,31 @@ bup bloom [options...]
 o,output=  output bloom filename (default: auto-generated)
 d,dir=     input directory to look for idx files (default: auto-generated)
 k,hashes=  number of hash functions to use (4 or 5) (default: auto-generated)
+c,check=   an idx file to check against an existing bloom filter
 """
 
-def do_bloom(path, outfilename):
-    if not outfilename:
-        assert(path)
-        outfilename = os.path.join(path, 'bup.bloom')
+def check_bloom(path, bloomfilename, idx):
+    if not os.path.exists(bloomfilename):
+        log("bloom: %s not found to check\n" % bloomfilename)
+        return
+    b = git.ShaBloom(bloomfilename)
+    if not b.valid():
+        log("bloom: %s could not be opened to check\n" % bloomfilename)
+        return
+    base = os.path.basename(idx)
+    if base not in b.idxnames:
+        log("bloom: filter does not contain %s, nothing to check\n" % idx)
+        return
+    if base == idx:
+        idx = os.path.join(path, idx)
+    log("bloom: checking %s" % idx)
+    for objsha in git.open_idx(idx):
+        if not b.exists(objsha):
+            add_error("bloom: ERROR: %s missing from bloom" 
+                      % str(objsha).encode('hex'))
 
+
+def do_bloom(path, outfilename):
     b = None
     if os.path.exists(outfilename):
         b = git.ShaBloom(outfilename)
@@ -91,9 +109,22 @@ o = options.Options(optspec)
 if extra:
     o.fatal('no positional parameters expected')
 
-if opt.k and opt.k not in (4,5):
-    o.fatal('only k values of 4 and 5 are supported')
-
 git.check_repo_or_die()
+bloompath = opt.dir or git.repo('objects/pack')
 
-do_bloom(opt.dir or git.repo('objects/pack'), opt.output)
+if not opt.output:
+    assert(bloompath)
+outfilename = opt.output or os.path.join(bloompath, 'bup.bloom')
+
+if opt.check:
+    check_bloom(bloompath, outfilename, opt.check)
+else:
+    if opt.k and opt.k not in (4,5):
+        o.fatal('only k values of 4 and 5 are supported')
+
+    do_bloom(bloompath, outfilename)
+
+if saved_errors:
+    log('WARNING: %d errors encountered during bloom.\n' % len(saved_errors))
+    sys.exit(1)
+    
