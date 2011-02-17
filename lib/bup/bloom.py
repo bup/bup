@@ -96,8 +96,7 @@ bloom_add = _helpers.bloom_add
 
 
 class ShaBloom:
-    """Wrapper which contains data from multiple index files.
-    """
+    """Wrapper which contains data from multiple index files. """
     def __init__(self, filename, f=None, readwrite=False, expected=-1):
         self.name = filename
         self.rwfile = None
@@ -193,42 +192,48 @@ class ShaBloom:
 
     def add_idx(self, ix):
         """Add the object to the filter, return current pfalse_positive."""
-        if not self.map: raise Exception, "Cannot add to closed bloom"
+        if not self.map:
+            raise Exception("Cannot add to closed bloom")
         self.entries += bloom_add(self.map, ix.shatable, self.bits, self.k)
         self.idxnames.append(os.path.basename(ix.name))
 
     def exists(self, sha):
-        """Return nonempty if the object probably exists in the bloom filter."""
+        """Return nonempty if the object probably exists in the bloom filter.
+
+        If this function returns false, the object definitely does not exist.
+        If it returns true, there is a small probability that it exists
+        anyway, so you'll have to check it some other way.
+        """
         global _total_searches, _total_steps
         _total_searches += 1
-        if not self.map: return None
+        if not self.map:
+            return None
         found, steps = bloom_contains(self.map, str(sha), self.bits, self.k)
         _total_steps += steps
         return found
 
-    @classmethod
-    def create(cls, name, expected, delaywrite=None, f=None, k=None):
-        """Create and return a bloom filter for `expected` entries."""
-        bits = int(math.floor(math.log(expected*MAX_BITS_EACH/8,2)))
-        k = k or ((bits <= MAX_BLOOM_BITS[5]) and 5 or 4)
-        if bits > MAX_BLOOM_BITS[k]:
-            log('bloom: warning, max bits exceeded, non-optimal\n')
-            bits = MAX_BLOOM_BITS[k]
-        debug1('bloom: using 2^%d bytes and %d hash functions\n' % (bits, k))
-        f = f or open(name, 'w+b')
-        f.write('BLOM')
-        f.write(struct.pack('!IHHI', BLOOM_VERSION, bits, k, 0))
-        assert(f.tell() == 16)
-        # NOTE: On some systems this will not extend+zerofill, but it does on
-        # darwin, linux, bsd and solaris.
-        f.truncate(16+2**bits)
-        f.seek(0)
-        if delaywrite != None and not delaywrite:
-            # tell it to expect very few objects, forcing a direct mmap
-            expected = 1
-        return cls(name, f=f, readwrite=True, expected=expected)
-
     def __len__(self):
         return int(self.entries)
 
+
+def create(name, expected, delaywrite=None, f=None, k=None):
+    """Create and return a bloom filter for `expected` entries."""
+    bits = int(math.floor(math.log(expected*MAX_BITS_EACH/8,2)))
+    k = k or ((bits <= MAX_BLOOM_BITS[5]) and 5 or 4)
+    if bits > MAX_BLOOM_BITS[k]:
+        log('bloom: warning, max bits exceeded, non-optimal\n')
+        bits = MAX_BLOOM_BITS[k]
+    debug1('bloom: using 2^%d bytes and %d hash functions\n' % (bits, k))
+    f = f or open(name, 'w+b')
+    f.write('BLOM')
+    f.write(struct.pack('!IHHI', BLOOM_VERSION, bits, k, 0))
+    assert(f.tell() == 16)
+    # NOTE: On some systems this will not extend+zerofill, but it does on
+    # darwin, linux, bsd and solaris.
+    f.truncate(16+2**bits)
+    f.seek(0)
+    if delaywrite != None and not delaywrite:
+        # tell it to expect very few objects, forcing a direct mmap
+        expected = 1
+    return ShaBloom(name, f=f, readwrite=True, expected=expected)
 

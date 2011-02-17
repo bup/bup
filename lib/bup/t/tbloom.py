@@ -12,7 +12,7 @@ def test_bloom():
     ix.name='dummy.idx'
     ix.shatable = ''.join(hashes)
     for k in (4, 5):
-        b = bloom.ShaBloom.create('pybuptest.bloom', expected=100, k=k)
+        b = bloom.create('pybuptest.bloom', expected=100, k=k)
         b.add_idx(ix)
         WVPASSLT(b.pfalse_positive(), .1)
         b.close()
@@ -29,10 +29,9 @@ def test_bloom():
         os.unlink('pybuptest.bloom')
 
     tf = tempfile.TemporaryFile()
-    b = bloom.ShaBloom.create('bup.bloom', f=tf, expected=100)
+    b = bloom.create('bup.bloom', f=tf, expected=100)
     WVPASSEQ(b.rwfile, tf)
     WVPASSEQ(b.k, 5)
     tf = tempfile.TemporaryFile()
-    b = bloom.ShaBloom.create('bup.bloom', f=tf, expected=2**28,
-                              delaywrite=False)
+    b = bloom.create('bup.bloom', f=tf, expected=2**28, delaywrite=False)
     WVPASSEQ(b.k, 4)
