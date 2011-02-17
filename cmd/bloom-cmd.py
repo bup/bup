@@ -6,12 +6,24 @@ from bup.helpers import *
 optspec = """
 bup bloom [options...]
 --
+ruin       ruin the specified bloom file (clearing the bitfield)
 f,force    ignore existing bloom file and regenerate it from scratch
 o,output=  output bloom filename (default: auto)
 d,dir=     input directory to look for idx files (default: auto)
 k,hashes=  number of hash functions to use (4 or 5) (default: auto)
 c,check=   check the given .idx file against the bloom filter
 """
+
+
+def ruin_bloom(bloomfilename):
+    rbloomfilename = git.repo_rel(bloomfilename)
+    if not os.path.exists(bloomfilename):
+        log("%s\n" % bloomfilename)
+        add_error("bloom: %s not found to ruin\n" % rbloomfilename)
+        return
+    b = bloom.ShaBloom(bloomfilename, readwrite=True, expected=1)
+    b.map[16:16+2**b.bits] = '\0' * 2**b.bits
+
 
 def check_bloom(path, bloomfilename, idx):
     rbloomfilename = git.repo_rel(bloomfilename)
@@ -132,6 +144,8 @@ for path in paths:
     outfilename = opt.output or os.path.join(path, 'bup.bloom')
     if opt.check:
         check_bloom(path, outfilename, opt.check)
+    elif opt.ruin:
+        ruin_bloom(outfilename)
     else:
         do_bloom(path, outfilename)
 

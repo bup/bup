@@ -8,7 +8,7 @@ bup-bloom - generates, regenerates, updates bloom filters
 
 # SYNOPSIS
 
-bup bloom [-d dir] [-o outfile] [-k hashes] [-c idxfile]
+bup bloom [-d dir] [-o outfile] [-k hashes] [-c idxfile] [-f] [--ruin]
 
 # DESCRIPTION
 
@@ -17,6 +17,12 @@ repository. If one already exists, it checks the filter and
 updates or regenerates it as needed.
 
 # OPTIONS
+
+--ruin
+:   destroy bloom filters by setting the whole bitmask to
+    zeros.  you really want to know what you are doing if
+    run this and you want to delete the resulting bloom
+    when you are done with it.
 
 -f, --force
 :   don't update the existing bloom file; generate a new
