@@ -140,6 +140,14 @@ WVPASS bup split --bench -b <t/testfile1 >tags1.tmp
 WVPASS bup split -vvvv -b t/testfile2 >tags2.tmp
 WVPASS bup margin
 WVPASS bup midx -f
+WVPASS bup midx --check -a
+WVPASS bup midx -o $BUP_DIR/objects/pack/test1.midx \
+	$BUP_DIR/objects/pack/*.idx
+WVPASS bup midx --check -a
+WVPASS bup midx -o $BUP_DIR/objects/pack/test1.midx \
+	$BUP_DIR/objects/pack/*.idx \
+	$BUP_DIR/objects/pack/*.idx
+WVPASS bup midx --check -a
 WVPASS bup margin
 WVPASS bup split -t t/testfile2 >tags2t.tmp
 WVPASS bup split -t t/testfile2 --fanout 3 >tags2tf.tmp
