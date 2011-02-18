@@ -360,7 +360,8 @@ class PackIdxList:
                             unlink(full)
                         else:
                             midxl.append(mx)
-                midxl.sort(lambda x,y: -cmp(len(x),len(y)))
+                midxl.sort(key=lambda ix:
+                           (-len(ix), -os.stat(ix.name).st_mtime))
                 for ix in midxl:
                     any_needed = False
                     for sub in ix.idxnames:

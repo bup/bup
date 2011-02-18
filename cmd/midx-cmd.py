@@ -160,9 +160,9 @@ def do_midx_dir(path):
             contents[mname] = [('%s/%s' % (path,i)) for i in m.idxnames]
             sizes[mname] = len(m)
                     
-        # sort the biggest midxes first, so that we can eliminate smaller
-        # redundant ones that come later in the list
-        midxs.sort(lambda x,y: -cmp(sizes[x], sizes[y]))
+        # sort the biggest+newest midxes first, so that we can eliminate
+        # smaller (or older) redundant ones that come later in the list
+        midxs.sort(key=lambda ix: (-sizes[ix], -os.stat(ix).st_mtime))
         
         for mname in midxs:
             any = 0

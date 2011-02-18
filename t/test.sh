@@ -148,6 +148,13 @@ WVPASS bup midx -o $BUP_DIR/objects/pack/test1.midx \
 	$BUP_DIR/objects/pack/*.idx \
 	$BUP_DIR/objects/pack/*.idx
 WVPASS bup midx --check -a
+all=$(echo $BUP_DIR/objects/pack/*.idx $BUP_DIR/objects/pack/*.midx)
+WVPASS bup midx -o $BUP_DIR/objects/pack/zzz.midx $all
+bup tick
+WVPASS bup midx -o $BUP_DIR/objects/pack/yyy.midx $all
+WVPASS bup midx -a
+WVPASSEQ "$(echo $BUP_DIR/objects/pack/*.midx)" \
+	"$BUP_DIR/objects/pack/yyy.midx"
 WVPASS bup margin
 WVPASS bup split -t t/testfile2 >tags2t.tmp
 WVPASS bup split -t t/testfile2 --fanout 3 >tags2tf.tmp
