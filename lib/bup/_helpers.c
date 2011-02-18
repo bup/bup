@@ -1,3 +1,4 @@
+#undef NDEBUG
 #include "bupsplit.h"
 #include <Python.h>
 #include <assert.h>
@@ -358,8 +359,8 @@ static PyObject *merge_into(PyObject *self, PyObject *args)
 {
     PyObject *ilist = NULL;
     unsigned char *fmap = NULL;
-    struct sha *sha_ptr, *last = NULL;
-    uint32_t *table_ptr, *name_ptr;
+    struct sha *sha_ptr, *sha_start, *last = NULL;
+    uint32_t *table_ptr, *name_ptr, *name_start;
     struct idx **idxs = NULL;
     int flen = 0, bits = 0, i;
     uint32_t total, count, prefix;
@@ -388,8 +389,8 @@ static PyObject *merge_into(PyObject *self, PyObject *args)
 	    idxs[i]->cur_name = NULL;
     }
     table_ptr = (uint32_t *)&fmap[MIDX4_HEADERLEN];
-    sha_ptr = (struct sha *)&table_ptr[1<<bits];
-    name_ptr = (uint32_t *)&sha_ptr[total];
+    sha_start = sha_ptr = (struct sha *)&table_ptr[1<<bits];
+    name_start = name_ptr = (uint32_t *)&sha_ptr[total];
 
     last_i = num_i-1;
     count = 0;
@@ -405,25 +406,27 @@ static PyObject *merge_into(PyObject *self, PyObject *args)
 	new_prefix = _extract_bits((unsigned char *)idx->cur, bits);
 	while (prefix < new_prefix)
 	    table_ptr[prefix++] = htonl(count);
-	if (last == NULL || _cmp_sha(last, idx->cur) != 0)
-	{
-	    memcpy(sha_ptr++, idx->cur, sizeof(struct sha));
-	    *name_ptr++ = htonl(_get_idx_i(idx));
-	    last = idx->cur;
-	}
+	memcpy(sha_ptr++, idx->cur, sizeof(struct sha));
+	*name_ptr++ = htonl(_get_idx_i(idx));
+	last = idx->cur;
 	++idx->cur;
 	if (idx->cur_name != NULL)
 	    ++idx->cur_name;
 	_fix_idx_order(idxs, &last_i);
 	++count;
     }
-    table_ptr[prefix] = htonl(count);
+    while (prefix < (1<<bits))
+	table_ptr[prefix++] = htonl(count);
+    assert(count == total);
+    assert(prefix == (1<<bits));
+    assert(sha_ptr == sha_start+count);
+    assert(name_ptr == name_start+count);
 
     PyMem_Free(idxs);
     return PyLong_FromUnsignedLong(count);
 }
 
-// This function should techniclly be macro'd out if it's going to be used
+// This function should technically be macro'd out if it's going to be used
 // more than ocasionally.  As of this writing, it'll actually never be called
 // in real world bup scenarios (because our packs are < MAX_INT bytes).
 static uint64_t htonll(uint64_t value)
