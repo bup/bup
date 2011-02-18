@@ -47,6 +47,11 @@ commands.
     (though possibly non-optimally) even if it can't open
     all your .idx files at once.  The default value of this
     option should be fine for most people.
+    
+--check
+:   validate a .midx file by ensuring that all objects in
+    its contained .idx files exist inside the .midx.  May
+    be useful for debugging.
 
 
 # EXAMPLE

@@ -153,4 +153,4 @@ if saved_errors:
     log('WARNING: %d errors encountered during bloom.\n' % len(saved_errors))
     sys.exit(1)
 elif opt.check:
-    log('all tests passed.\n')
+    log('All tests passed.\n')
