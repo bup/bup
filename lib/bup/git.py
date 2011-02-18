@@ -38,6 +38,11 @@ def repo(sub = ''):
     return os.path.join(repodir, sub)
 
 
+def shorten_hash(s):
+    return re.sub(r'([^0-9a-z]|\b)([0-9a-z]{7})[0-9a-z]{33}([^0-9a-z]|\b)',
+                  r'\1\2*\3', s)
+
+
 def repo_rel(path):
     full = os.path.abspath(path)
     fullrepo = os.path.abspath(repo(''))
@@ -47,7 +52,7 @@ def repo_rel(path):
         path = full[len(fullrepo):]
     if path.startswith('index-cache/'):
         path = path[len('index-cache/'):]
-    return path
+    return shorten_hash(path)
 
 
 def all_packdirs():

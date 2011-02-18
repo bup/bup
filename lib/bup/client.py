@@ -216,11 +216,13 @@ class Client:
             debug2('%s\n' % line)
             if line.startswith('index '):
                 idx = line[6:]
-                debug1('client: received index suggestion: %s\n' % idx)
+                debug1('client: received index suggestion: %s\n'
+                       % git.shorten_hash(idx))
                 suggested.append(idx)
             else:
                 assert(line.endswith('.idx'))
-                debug1('client: completed writing pack, idx: %s\n' % line)
+                debug1('client: completed writing pack, idx: %s\n'
+                       % git.shorten_hash(line))
                 suggested.append(line)
         self.check_ok()
         if ob:

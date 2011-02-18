@@ -101,7 +101,8 @@ def receive_objects_v2(conn, junk):
                 assert(oldpack.endswith('.idx'))
                 (dir,name) = os.path.split(oldpack)
                 if not (name in suggested):
-                    debug1("bup server: suggesting index %s\n" % name)
+                    debug1("bup server: suggesting index %s\n"
+                           % git.shorten_hash(name))
                     debug1("bup server:   because of object %s\n"
                            % shar.encode('hex'))
                     conn.write('index %s\n' % name)
