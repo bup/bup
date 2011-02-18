@@ -50,10 +50,16 @@ def test_multiple_suggestions():
     c = client.Client(bupdir, create=True)
     WVPASSEQ(len(glob.glob(c.cachedir+IDX_PAT)), 0)
     rw = c.new_packwriter()
-    rw.new_blob(s1)
-    rw.new_blob(s2)
+    s1sha = rw.new_blob(s1)
+    WVPASS(rw.exists(s1sha))
+    s2sha = rw.new_blob(s2)
     # This is a little hacky, but ensures that we test the code under test
-    while len(glob.glob(c.cachedir+IDX_PAT)) < 2 and not c.conn.has_input(): pass
+    while (len(glob.glob(c.cachedir+IDX_PAT)) < 2 and
+           not c.conn.has_input()):
+        pass
+    rw.new_blob(s2)
+    WVPASS(rw.objcache.exists(s1sha))
+    WVPASS(rw.objcache.exists(s2sha))
     rw.new_blob(s3)
     WVPASSEQ(len(glob.glob(c.cachedir+IDX_PAT)), 2)
     rw.close()
@@ -88,15 +94,30 @@ def test_midx_refreshing():
     os.environ['BUP_DIR'] = bupdir = 'buptest_tmidx.tmp'
     subprocess.call(['rm', '-rf', bupdir])
     git.init_repo(bupdir)
-    lw = git.PackWriter()
-    lw.new_blob(s1)
-    lw.breakpoint()
-    lw.new_blob(s2)
-    del lw
+    c = client.Client(bupdir, create=True)
+    rw = c.new_packwriter()
+    rw.new_blob(s1)
+    p1base = rw.breakpoint()
+    p1name = os.path.join(c.cachedir, p1base)
+    s1sha = rw.new_blob(s1)  # should not be written; it's already in p1
+    s2sha = rw.new_blob(s2)
+    p2base = rw.close()
+    p2name = os.path.join(c.cachedir, p2base)
+    del rw
+    
     pi = git.PackIdxList(bupdir + '/objects/pack')
     WVPASSEQ(len(pi.packs), 2)
     pi.refresh()
     WVPASSEQ(len(pi.packs), 2)
+    WVPASSEQ(sorted([os.path.basename(i.name) for i in pi.packs]),
+             sorted([p1base, p2base]))
+    
+    p1 = git.open_idx(p1name)
+    WVPASS(p1.exists(s1sha))
+    p2 = git.open_idx(p2name)
+    WVFAIL(p2.exists(s1sha))
+    WVPASS(p2.exists(s2sha))
+    
     subprocess.call([bupmain, 'midx', '-f'])
     pi.refresh()
     WVPASSEQ(len(pi.packs), 1)
@@ -104,6 +125,7 @@ def test_midx_refreshing():
     WVPASSEQ(len(pi.packs), 2)
     pi.refresh(skip_midx=False)
     WVPASSEQ(len(pi.packs), 1)
+
 
 @wvtest
 def test_remote_parsing():

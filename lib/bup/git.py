@@ -450,7 +450,7 @@ def _make_objcache():
     return PackIdxList(repo('objects/pack'))
 
 class PackWriter:
-    """Writes Git objects insid a pack file."""
+    """Writes Git objects inside a pack file."""
     def __init__(self, objcache_maker=_make_objcache):
         self.count = 0
         self.outbytes = 0
