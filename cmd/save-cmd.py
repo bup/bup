@@ -107,9 +107,8 @@ def _pop(force_tree):
     return tree
 
 lastremain = None
-lastprint = 0
 def progress_report(n):
-    global count, subcount, lastremain, lastprint
+    global count, subcount, lastremain
     subcount += n
     cc = count + subcount
     pct = total and (cc*100.0/total) or 0
@@ -141,17 +140,9 @@ def progress_report(n):
             remainstr = '%dm%d' % (mins, secs)
         else:
             remainstr = '%ds' % secs
-    if now - lastprint > 0.1:
-        progress('Saving: %.2f%% (%d/%dk, %d/%d files) %s %s\r'
-                 % (pct, cc/1024, total/1024, fcount, ftotal,
-                    remainstr, kpsstr))
-        lastprint = now
-
-
-def vlog(s):
-    global lastprint
-    lastprint = 0
-    log(s)
+    qprogress('Saving: %.2f%% (%d/%dk, %d/%d files) %s %s\r'
+              % (pct, cc/1024, total/1024, fcount, ftotal,
+                 remainstr, kpsstr))
 
 
 indexfile = opt.indexfile or git.repo('bupindex')
@@ -170,7 +161,7 @@ total = ftotal = 0
 if opt.progress:
     for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse_pre):
         if not (ftotal % 10024):
-            progress('Reading index: %d\r' % ftotal)
+            qprogress('Reading index: %d\r' % ftotal)
         exists = ent.exists()
         hashvalid = already_saved(ent)
         ent.set_sha_missing(not hashvalid)
@@ -202,10 +193,10 @@ for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse_during):
         else:
             status = ' '
         if opt.verbose >= 2:
-            vlog('%s %-70s\n' % (status, ent.name))
+            log('%s %-70s\n' % (status, ent.name))
         elif not stat.S_ISDIR(ent.mode) and lastdir != dir:
             if not lastdir.startswith(dir):
-                vlog('%s %-70s\n' % (status, os.path.join(dir, '')))
+                log('%s %-70s\n' % (status, os.path.join(dir, '')))
             lastdir = dir
 
     if opt.progress:

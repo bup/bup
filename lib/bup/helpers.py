@@ -1,8 +1,8 @@
 """Helper functions and classes for bup."""
 
 import sys, os, pwd, subprocess, errno, socket, select, mmap, stat, re, struct
-import heapq, operator
-from bup import _version
+import heapq, operator, time
+from bup import _version, _helpers
 import bup._helpers as _helpers
 
 # This function should really be in helpers, not in bup.options.  But we
@@ -47,10 +47,14 @@ def _hard_write(fd, buf):
         assert(sz >= 0)
         buf = buf[sz:]
 
+
+_last_prog = 0
 def log(s):
     """Print a log message to stderr."""
+    global _last_prog
     sys.stdout.flush()
     _hard_write(sys.stderr.fileno(), s)
+    _last_prog = 0
 
 
 def debug1(s):
@@ -61,6 +65,24 @@ def debug1(s):
 def debug2(s):
     if buglvl >= 2:
         log(s)
+
+
+istty = os.isatty(2) or atoi(os.environ.get('BUP_FORCE_TTY'))
+def progress(s):
+    """Calls log() if stderr is a TTY.  Does nothing otherwise."""
+    if istty:
+        log(s)
+
+
+def qprogress(s):
+    """Calls progress() only if we haven't printed progress in a while.
+    
+    This avoids overloading the stderr buffer with excess junk."""
+    global _last_prog
+    now = time.time()
+    if now - _last_prog > 0.1:
+        progress(s)
+        _last_prog = now
 
 
 def mkdirp(d, mode=None):
@@ -544,13 +566,6 @@ def add_error(e):
 def clear_errors():
     global saved_errors
     saved_errors = []
-
-
-istty = os.isatty(2) or atoi(os.environ.get('BUP_FORCE_TTY'))
-def progress(s):
-    """Calls log(s) if stderr is a TTY.  Does nothing otherwise."""
-    if istty:
-        log(s)
 
 
 def handle_ctrl_c():

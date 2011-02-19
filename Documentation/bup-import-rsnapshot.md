@@ -12,21 +12,23 @@ bup import-rsnapshot [-n] <path to snapshot_root> [<backuptarget>]
 
 # SYNOPSIS
 
-`bup import-rsnapshot` imports a rsnapshot archive. The
+`bup import-rsnapshot` imports an rsnapshot archive. The
 timestamps for the backups are preserved and the path to
 the rsnapshot archive is stripped from the paths.
 
 `bup import-rsnapshot` either imports the whole archive
-or only imports all backups for a given backuptarget.
+or imports all backups only for a given backuptarget.
 
 # OPTIONS
 
--n,--dry-rung
+-n,--dry-run
 :   don't do anything just print out what would be done
 
-# EXAMPLE
+# EXAMPLES
 
     $ bup import-rsnapshot /.snapshots
+
+    $ bup import-rsnapshot /.snapshots host1
 
 # BUP
 

@@ -1,19 +1,8 @@
 OS:=$(shell uname | sed 's/[-_].*//')
-CFLAGS=-Wall -g -O2 -Werror $(PYINCLUDE) -g
-ifneq ($(OS),CYGWIN)
-  CFLAGS += -fPIC
-endif
-SHARED=-shared
+CFLAGS:=-Wall -O2 -Werror $(PYINCLUDE)
 SOEXT:=.so
 
-ifeq (${OS},Darwin)
-  MACHINE:=$(shell arch)
-  CFLAGS += -arch $(MACHINE)
-  SHARED = -dynamiclib
-endif
 ifeq ($(OS),CYGWIN)
-  LDFLAGS += -L/usr/bin
-  EXT:=.exe
   SOEXT:=.dll
 endif
 
@@ -71,7 +60,7 @@ install: all
 lib/bup/_helpers$(SOEXT): \
 		lib/bup/bupsplit.c lib/bup/_helpers.c lib/bup/csetup.py
 	@rm -f $@
-	cd lib/bup && $(PYTHON) csetup.py build
+	cd lib/bup && LDFLAGS="$(LDFLAGS)" CFLAGS="$(CFLAGS)" $(PYTHON) csetup.py build
 	cp lib/bup/build/*/_helpers$(SOEXT) lib/bup/
 
 .PHONY: lib/bup/_version.py
@@ -97,9 +86,6 @@ test: all
 
 check: test
 
-%: %.o
-	$(CC) $(CFLAGS) (LDFLAGS) -o $@ $^ $(LIBS)
-
 bup: main.py
 	rm -f $@
 	ln -s $< $@
@@ -124,9 +110,6 @@ cmd/bup-%: cmd/%-cmd.sh
 	rm -f $@
 	ln -s $*-cmd.sh $@
 
-%.o: %.c
-	gcc -c -o $@ $< $(CPPFLAGS) $(CFLAGS)
-	
 # update the local 'man' and 'html' branches with pregenerated output files, for
 # people who don't have pandoc (and maybe to aid in google searches or something)
 export-docs: Documentation/all

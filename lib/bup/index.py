@@ -458,7 +458,7 @@ def reduce_paths(paths):
 
 def merge(*iters):
     def pfunc(count, total):
-        progress('bup: merging indexes (%d/%d)\r' % (count, total))
+        qprogress('bup: merging indexes (%d/%d)\r' % (count, total))
     def pfinal(count, total):
-        log('bup: merging indexes (%d/%d), done.\n' % (count, total))
+        progress('bup: merging indexes (%d/%d), done.\n' % (count, total))
     return merge_iter(iters, 1024, pfunc, pfinal, key='name')

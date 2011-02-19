@@ -1,5 +1,4 @@
 #include "bupsplit.h"
-#include <assert.h>
 #include <stdint.h>
 #include <memory.h>
 #include <stdlib.h>

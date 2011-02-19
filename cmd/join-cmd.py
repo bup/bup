@@ -8,6 +8,7 @@ optspec = """
 bup join [-r host:path] [refs or hashes...]
 --
 r,remote=  remote repository path
+o=         output filename
 """
 o = options.Options(optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
@@ -26,12 +27,17 @@ else:
     cp = git.CatPipe()
     cat = cp.join
 
+if opt.o:
+    outfile = open(opt.o, 'wb')
+else:
+    outfile = sys.stdout
+
 for id in extra:
     try:
         for blob in cat(id):
-            sys.stdout.write(blob)
+            outfile.write(blob)
     except KeyError, e:
-        sys.stdout.flush()
+        outfile.flush()
         log('error: %s\n' % e)
         ret = 1
 

@@ -1,23 +1,26 @@
 #!/usr/bin/env python
 import sys, math, struct, glob, resource
 import tempfile
-from bup import options, git, _helpers
+from bup import options, git, midx, _helpers
 from bup.helpers import *
 
 PAGE_SIZE=4096
 SHA_PER_PAGE=PAGE_SIZE/20.
-SEEK_END=2  # os.SEEK_END is not defined in python 2.4
 
 optspec = """
 bup midx [options...] <idxnames...>
 --
 o,output=  output midx filename (default: auto-generated)
-a,auto     automatically create .midx from any unindexed .idx files
-f,force    automatically create .midx from *all* .idx files
+a,auto     automatically use all existing .midx/.idx files as input
+f,force    merge produce exactly one .midx containing all objects
 p,print    print names of generated midx files
+check      validate contents of the given midx files (with -a, all midx files)
 max-files= maximum number of idx files to open at once [-1]
-dir=       directory containing idx/midx files
+d,dir=     directory containing idx/midx files
 """
+
+merge_into = _helpers.merge_into
+
 
 def _group(l, count):
     for i in xrange(0, len(l), count):
@@ -32,9 +35,44 @@ def max_files():
         mf -= 6   # minimum safety margin
     return mf
 
-merge_into = _helpers.merge_into
 
+def check_midx(name):
+    nicename = git.repo_rel(name)
+    log('Checking %s.\n' % nicename)
+    try:
+        ix = git.open_idx(name)
+    except git.GitError, e:
+        add_error('%s: %s' % (name, e))
+        return
+    for count,subname in enumerate(ix.idxnames):
+        sub = git.open_idx(os.path.join(os.path.dirname(name), subname))
+        for ecount,e in enumerate(sub):
+            if not (ecount % 1234):
+                qprogress('  %d/%d: %s %d/%d\r' 
+                          % (count, len(ix.idxnames),
+                             git.shorten_hash(subname), ecount, len(sub)))
+            if not sub.exists(e):
+                add_error("%s: %s: %s missing from idx"
+                          % (nicename, git.shorten_hash(subname),
+                             str(e).encode('hex')))
+            if not ix.exists(e):
+                add_error("%s: %s: %s missing from midx"
+                          % (nicename, git.shorten_hash(subname),
+                             str(e).encode('hex')))
+    prev = None
+    for ecount,e in enumerate(ix):
+        if not (ecount % 1234):
+            qprogress('  Ordering: %d/%d\r' % (ecount, len(ix)))
+        if not e >= prev:
+            add_error('%s: ordering error: %s < %s'
+                      % (nicename,
+                         str(e).encode('hex'), str(prev).encode('hex')))
+        prev = e
+
+
+_first = None
 def _do_midx(outdir, outfilename, infilenames, prefixstr):
+    global _first
     if not outfilename:
         assert(outdir)
         sum = Sha1('\0'.join(infilenames)).hexdigest()
@@ -49,7 +87,7 @@ def _do_midx(outdir, outfilename, infilenames, prefixstr):
             ix.map,
             len(ix),
             ix.sha_ofs,
-            isinstance(ix, git.PackMidx) and ix.idxname_ofs or 0,
+            isinstance(ix, midx.PackMidx) and ix.which_ofs or 0,
             len(allfilenames),
         ))
         for n in ix.idxnames:
@@ -57,10 +95,12 @@ def _do_midx(outdir, outfilename, infilenames, prefixstr):
         total += len(ix)
     inp.sort(lambda x,y: cmp(str(y[0][y[2]:y[2]+20]),str(x[0][x[2]:x[2]+20])))
 
-    log('midx: %screating from %d files (%d objects).\n'
-        % (prefixstr, len(infilenames), total))
-    if (not opt.force and (total < 1024 and len(infilenames) < 3)) \
-       or len(infilenames) < 2 \
+    if not _first: _first = outdir
+    dirprefix = (_first != outdir) and git.repo_rel(outdir)+': ' or ''
+    log('midx: %s%screating from %d files (%d objects).\n'
+        % (dirprefix, prefixstr, len(infilenames), total))
+    if (opt.auto and (total < 1024 and len(infilenames) < 3)) \
+       or ((opt.auto or opt.force) and len(infilenames) < 2) \
        or (opt.force and not total):
         debug1('midx: nothing to do.\n')
         return
@@ -69,14 +109,11 @@ def _do_midx(outdir, outfilename, infilenames, prefixstr):
     bits = int(math.ceil(math.log(pages, 2)))
     entries = 2**bits
     debug1('midx: table size: %d (%d bits)\n' % (entries*4, bits))
-    
-    try:
-        os.unlink(outfilename)
-    except OSError:
-        pass
+
+    unlink(outfilename)
     f = open(outfilename + '.tmp', 'w+b')
     f.write('MIDX')
-    f.write(struct.pack('!II', git.MIDX_VERSION, bits))
+    f.write(struct.pack('!II', midx.MIDX_VERSION, bits))
     assert(f.tell() == 12)
 
     f.truncate(12 + 4*entries + 20*total + 4*total)
@@ -84,17 +121,16 @@ def _do_midx(outdir, outfilename, infilenames, prefixstr):
     fmap = mmap_readwrite(f, close=False)
 
     count = merge_into(fmap, bits, total, inp)
-    fmap.flush()
-    fmap.close()
+    del fmap
 
-    f.seek(0, SEEK_END)
+    f.seek(0, git.SEEK_END)
     f.write('\0'.join(allfilenames))
     f.close()
     os.rename(outfilename + '.tmp', outfilename)
 
     # this is just for testing
     if 0:
-        p = git.PackMidx(outfilename)
+        p = midx.PackMidx(outfilename)
         assert(len(p.idxnames) == len(infilenames))
         print p.idxnames
         assert(len(p) == total)
@@ -124,9 +160,9 @@ def do_midx_dir(path):
             contents[mname] = [('%s/%s' % (path,i)) for i in m.idxnames]
             sizes[mname] = len(m)
                     
-        # sort the biggest midxes first, so that we can eliminate smaller
-        # redundant ones that come later in the list
-        midxs.sort(lambda x,y: -cmp(sizes[x], sizes[y]))
+        # sort the biggest+newest midxes first, so that we can eliminate
+        # smaller (or older) redundant ones that come later in the list
+        midxs.sort(key=lambda ix: (-sizes[ix], -os.stat(ix).st_mtime))
         
         for mname in midxs:
             any = 0
@@ -189,6 +225,8 @@ o = options.Options(optspec)
 
 if extra and (opt.auto or opt.force):
     o.fatal("you can't use -f/-a and also provide filenames")
+if opt.check and (not extra and not opt.auto):
+    o.fatal("if using --check, you must provide filenames or -a")
 
 git.check_repo_or_die()
 
@@ -196,17 +234,31 @@ if opt.max_files < 0:
     opt.max_files = max_files()
 assert(opt.max_files >= 5)
 
-if extra:
-    do_midx(git.repo('objects/pack'), opt.output, extra, '')
-elif opt.auto or opt.force:
-    if opt.dir:
-        paths = [opt.dir]
+if opt.check:
+    # check existing midx files
+    if extra:
+        midxes = extra
     else:
-        paths = [git.repo('objects/pack')]
-        paths += glob.glob(git.repo('index-cache/*/.'))
-    for path in paths:
-        debug1('midx: scanning %s\n' % path)
-        do_midx_dir(path)
-        debug1('\n')
+        midxes = []
+        paths = opt.dir and [opt.dir] or git.all_packdirs()
+        for path in paths:
+            debug1('midx: scanning %s\n' % path)
+            midxes += glob.glob(os.path.join(path, '*.midx'))
+    for name in midxes:
+        check_midx(name)
+    if not saved_errors:
+        log('All tests passed.\n')
 else:
-    o.fatal("you must use -f or -a or provide input filenames")
+    if extra:
+        do_midx(git.repo('objects/pack'), opt.output, extra, '')
+    elif opt.auto or opt.force:
+        paths = opt.dir and [opt.dir] or git.all_packdirs()
+        for path in paths:
+            debug1('midx: scanning %s\n' % path)
+            do_midx_dir(path)
+    else:
+        o.fatal("you must use -f or -a or provide input filenames")
+
+if saved_errors:
+    log('WARNING: %d errors encountered.\n' % len(saved_errors))
+    sys.exit(1)

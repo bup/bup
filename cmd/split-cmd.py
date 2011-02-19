@@ -58,19 +58,15 @@ else:
     date = time.time()
 
 
-last_prog = total_bytes = 0
+total_bytes = 0
 def prog(filenum, nbytes):
-    global last_prog, total_bytes
+    global total_bytes
     total_bytes += nbytes
-    now = time.time()
-    if now - last_prog < 0.2:
-        return
     if filenum > 0:
-        progress('Splitting: file #%d, %d kbytes\r'
-                 % (filenum+1, total_bytes/1024))
+        qprogress('Splitting: file #%d, %d kbytes\r'
+                  % (filenum+1, total_bytes/1024))
     else:
-        progress('Splitting: %d kbytes\r' % (total_bytes/1024))
-    last_prog = now
+        qprogress('Splitting: %d kbytes\r' % (total_bytes/1024))
 
 
 is_reverse = os.environ.get('BUP_SERVER_REVERSE')

@@ -182,17 +182,20 @@ class Client:
         #debug1('requesting %r\n' % name)
         self.check_busy()
         mkdirp(self.cachedir)
+        fn = os.path.join(self.cachedir, name)
+        if os.path.exists(fn):
+            msg = "won't request existing .idx, try `bup bloom --check %s`" % fn
+            raise ClientError(msg)
         self.conn.write('send-index %s\n' % name)
         n = struct.unpack('!I', self.conn.read(4))[0]
         assert(n)
-        fn = os.path.join(self.cachedir, name)
         f = open(fn + '.tmp', 'w')
         count = 0
         progress('Receiving index from server: %d/%d\r' % (count, n))
         for b in chunkyreader(self.conn, n):
             f.write(b)
             count += len(b)
-            progress('Receiving index from server: %d/%d\r' % (count, n))
+            qprogress('Receiving index from server: %d/%d\r' % (count, n))
         progress('Receiving index from server: %d/%d, done.\n' % (count, n))
         self.check_ok()
         f.close()
@@ -213,11 +216,13 @@ class Client:
             debug2('%s\n' % line)
             if line.startswith('index '):
                 idx = line[6:]
-                debug1('client: received index suggestion: %s\n' % idx)
+                debug1('client: received index suggestion: %s\n'
+                       % git.shorten_hash(idx))
                 suggested.append(idx)
             else:
                 assert(line.endswith('.idx'))
-                debug1('client: completed writing pack, idx: %s\n' % line)
+                debug1('client: completed writing pack, idx: %s\n'
+                       % git.shorten_hash(line))
                 suggested.append(line)
         self.check_ok()
         if ob:
