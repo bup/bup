@@ -42,7 +42,7 @@ def _treeget(hash):
     it = cp().get(hash.encode('hex'))
     type = it.next()
     assert(type == 'tree')
-    return git.treeparse(''.join(it))
+    return git.tree_decode(''.join(it))
 
 
 def _tree_decode(hash):
@@ -383,7 +383,7 @@ class Dir(Node):
             it = cp().get(self.hash.encode('hex') + ':')
             type = it.next()
         assert(type == 'tree')
-        for (mode,mangled_name,sha) in git.treeparse(''.join(it)):
+        for (mode,mangled_name,sha) in git.tree_decode(''.join(it)):
             mode = int(mode, 8)
             name = mangled_name
             (name,bupmode) = git.demangle_name(mangled_name)

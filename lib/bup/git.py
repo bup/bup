@@ -119,6 +119,49 @@ def demangle_name(name):
         return (name, BUP_NORMAL)
 
 
+def calc_hash(type, content):
+    """Calculate some content's hash in the Git fashion."""
+    header = '%s %d\0' % (type, len(content))
+    sum = Sha1(header)
+    sum.update(content)
+    return sum.digest()
+
+
+def _shalist_sort_key(ent):
+    (mode, name, id) = ent
+    if stat.S_ISDIR(int(mode, 8)):
+        return name + '/'
+    else:
+        return name
+
+
+def tree_encode(shalist):
+    """Generate a git tree object from (mode,name,hash) tuples."""
+    shalist = sorted(shalist, key = _shalist_sort_key)
+    l = []
+    for (mode,name,bin) in shalist:
+        assert(mode)
+        assert(mode != '0')
+        assert(mode[0] != '0')
+        assert(name)
+        assert(len(bin) == 20)
+        l.append('%s %s\0%s' % (mode,name,bin))
+    return ''.join(l)
+
+
+def tree_decode(buf):
+    """Generate a list of (mode,name,hash) from the git tree object in buf."""
+    ofs = 0
+    while ofs < len(buf):
+        z = buf[ofs:].find('\0')
+        assert(z > 0)
+        spl = buf[ofs:ofs+z].split(' ', 1)
+        assert(len(spl) == 2)
+        sha = buf[ofs+z+1:ofs+z+1+20]
+        ofs += z+1+20
+        yield (spl[0], spl[1], sha)
+
+
 def _encode_packobj(type, content):
     szout = ''
     sz = len(content)
@@ -405,22 +448,6 @@ class PackIdxList:
         self.also.add(hash)
 
 
-def calc_hash(type, content):
-    """Calculate some content's hash in the Git fashion."""
-    header = '%s %d\0' % (type, len(content))
-    sum = Sha1(header)
-    sum.update(content)
-    return sum.digest()
-
-
-def _shalist_sort_key(ent):
-    (mode, name, id) = ent
-    if stat.S_ISDIR(int(mode, 8)):
-        return name + '/'
-    else:
-        return name
-
-
 def open_idx(filename):
     if filename.endswith('.idx'):
         f = open(filename, 'rb')
@@ -548,16 +575,8 @@ class PackWriter:
 
     def new_tree(self, shalist):
         """Create a tree object in the pack."""
-        shalist = sorted(shalist, key = _shalist_sort_key)
-        l = []
-        for (mode,name,bin) in shalist:
-            assert(mode)
-            assert(mode != '0')
-            assert(mode[0] != '0')
-            assert(name)
-            assert(len(bin) == 20)
-            l.append('%s %s\0%s' % (mode,name,bin))
-        return self.maybe_write('tree', ''.join(l))
+        content = tree_encode(shalist)
+        return self.maybe_write('tree', content)
 
     def _new_commit(self, tree, parent, author, adate, committer, cdate, msg):
         l = []
@@ -817,19 +836,6 @@ def check_repo_or_die(path=None):
             sys.exit(15)
 
 
-def treeparse(buf):
-    """Generate a list of (mode, name, hash) tuples of objects from 'buf'."""
-    ofs = 0
-    while ofs < len(buf):
-        z = buf[ofs:].find('\0')
-        assert(z > 0)
-        spl = buf[ofs:ofs+z].split(' ', 1)
-        assert(len(spl) == 2)
-        sha = buf[ofs+z+1:ofs+z+1+20]
-        ofs += z+1+20
-        yield (spl[0], spl[1], sha)
-
-
 _ver = None
 def ver():
     """Get Git's version and ensure a usable version is installed.
@@ -989,7 +995,7 @@ class CatPipe:
                 yield blob
         elif type == 'tree':
             treefile = ''.join(it)
-            for (mode, name, sha) in treeparse(treefile):
+            for (mode, name, sha) in tree_decode(treefile):
                 for blob in self.join(sha.encode('hex')):
                     yield blob
         elif type == 'commit':
