@@ -66,12 +66,13 @@ def debug2(s):
         log(s)
 
 
-istty = os.isatty(2) or atoi(os.environ.get('BUP_FORCE_TTY'))
+istty1 = os.isatty(1) or (atoi(os.environ.get('BUP_FORCE_TTY')) & 1)
+istty2 = os.isatty(2) or (atoi(os.environ.get('BUP_FORCE_TTY')) & 2)
 _last_progress = ''
 def progress(s):
     """Calls log() if stderr is a TTY.  Does nothing otherwise."""
     global _last_progress
-    if istty:
+    if istty2:
         log(s)
         _last_progress = s
 

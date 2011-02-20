@@ -36,7 +36,7 @@ def par2_setup():
 
 def parv(lvl):
     if opt.verbose >= lvl:
-        if istty:
+        if istty2:
             return []
         else:
             return ['-q']
@@ -203,6 +203,6 @@ while len(outstanding):
     if not opt.verbose:
         progress('fsck (%d/%d)\r' % (count, len(extra)))
 
-if not opt.verbose and istty:
+if not opt.verbose and istty2:
     log('fsck done.           \n')
 sys.exit(code)

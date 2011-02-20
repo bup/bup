@@ -31,7 +31,7 @@ if not (opt.tree or opt.commit or opt.name):
 if not extra:
     o.fatal("no filenames given")
 
-opt.progress = (istty and not opt.quiet)
+opt.progress = (istty2 and not opt.quiet)
 opt.smaller = parse_num(opt.smaller or 0)
 if opt.bwlimit:
     client.bwlimit = parse_num(opt.bwlimit)
