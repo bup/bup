@@ -119,11 +119,14 @@ def split_to_blobs(makeblob, files, keep_boundaries, progress):
 
 def _make_shalist(l):
     ofs = 0
+    l = list(l)
+    total = sum(size for mode,sha,size, in l)
+    vlen = len('%x' % total)
     shalist = []
     for (mode, sha, size) in l:
-        shalist.append((mode, '%016x' % ofs, sha))
+        shalist.append((mode, '%0*x' % (vlen,ofs), sha))
         ofs += size
-    total = ofs
+    assert(ofs == total)
     return (shalist, total)
 
 
