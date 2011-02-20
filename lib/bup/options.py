@@ -115,7 +115,7 @@ class Options:
         self.optfunc = optfunc
         self._aliases = {}
         self._shortopts = 'h?'
-        self._longopts = ['help']
+        self._longopts = ['help', 'usage']
         self._hasparms = {}
         self._defaults = {}
         self._usagestr = self._gen_usage()
@@ -214,7 +214,7 @@ class Options:
 
         for (k,v) in flags:
             k = k.lstrip('-')
-            if k in ('h', '?', 'help'):
+            if k in ('h', '?', 'help', 'usage'):
                 self.usage()
             if k.startswith('no-'):
                 k = self._aliases[k[3:]]
