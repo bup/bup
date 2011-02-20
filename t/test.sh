@@ -105,6 +105,10 @@ d/
 a
 ./"
 WVPASS bup save -t $D/d
+WVPASS bup index --fake-invalid $D/d/z
+WVPASS bup save -t $D/d/z
+WVPASS bup save -t $D/d/z  # test regenerating trees when no files are changed
+WVPASS bup save -t $D/d
 WVPASSEQ "$(cd $D && bup index -m)" \
 "f
 a

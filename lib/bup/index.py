@@ -136,6 +136,7 @@ class Entry:
     def validate(self, gitmode, sha):
         assert(sha)
         assert(gitmode)
+        assert(gitmode+0 == gitmode)
         self.gitmode = gitmode
         self.sha = sha
         self.flags |= IX_HASHVALID|IX_EXISTS

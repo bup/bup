@@ -129,7 +129,8 @@ def calc_hash(type, content):
 
 def _shalist_sort_key(ent):
     (mode, name, id) = ent
-    if stat.S_ISDIR(int(mode, 8)):
+    assert(mode+0 == mode)
+    if stat.S_ISDIR(mode):
         return name + '/'
     else:
         return name
@@ -141,11 +142,12 @@ def tree_encode(shalist):
     l = []
     for (mode,name,bin) in shalist:
         assert(mode)
-        assert(mode != '0')
-        assert(mode[0] != '0')
+        assert(mode+0 == mode)
         assert(name)
         assert(len(bin) == 20)
-        l.append('%s %s\0%s' % (mode,name,bin))
+        s = '%o %s\0%s' % (mode,name,bin)
+        assert(s[0] != '0')  # 0-padded octal is not acceptable in a git tree
+        l.append(s)
     return ''.join(l)
 
 
@@ -157,9 +159,10 @@ def tree_decode(buf):
         assert(z > 0)
         spl = buf[ofs:ofs+z].split(' ', 1)
         assert(len(spl) == 2)
+        mode,name = spl
         sha = buf[ofs+z+1:ofs+z+1+20]
         ofs += z+1+20
-        yield (spl[0], spl[1], sha)
+        yield (int(mode, 8), name, sha)
 
 
 def _encode_packobj(type, content):

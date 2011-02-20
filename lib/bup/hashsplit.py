@@ -8,6 +8,10 @@ MAX_PER_TREE = 256
 progress_callback = None
 fanout = 16
 
+GIT_MODE_FILE = 0100644
+GIT_MODE_TREE = 040000
+assert(GIT_MODE_TREE != 40000)  # 0xxx should be treated as octal
+
 # The purpose of this type of buffer is to avoid copying on peek(), get(),
 # and eat().  We do copy the buffer contents on put(), but that should
 # be ok if we always only put() large amounts of data at a time.
@@ -133,7 +137,7 @@ def _squish(maketree, stacks, n):
         elif stacks[i]:
             (shalist, size) = _make_shalist(stacks[i])
             tree = maketree(shalist)
-            stacks[i+1].append(('40000', tree, size))
+            stacks[i+1].append((GIT_MODE_TREE, tree, size))
         stacks[i] = []
         i += 1
 
@@ -145,12 +149,12 @@ def split_to_shalist(makeblob, maketree, files,
     if not fanout:
         shal = []
         for (sha,size,level) in sl:
-            shal.append(('100644', sha, size))
+            shal.append((GIT_MODE_FILE, sha, size))
         return _make_shalist(shal)[0]
     else:
         stacks = [[]]
         for (sha,size,level) in sl:
-            stacks[0].append(('100644', sha, size))
+            stacks[0].append((GIT_MODE_FILE, sha, size))
             if level:
                 _squish(maketree, stacks, level)
         #log('stacks: %r\n' % [len(i) for i in stacks])
@@ -165,9 +169,9 @@ def split_to_blob_or_tree(makeblob, maketree, files, keep_boundaries):
     if len(shalist) == 1:
         return (shalist[0][0], shalist[0][2])
     elif len(shalist) == 0:
-        return ('100644', makeblob(''))
+        return (GIT_MODE_FILE, makeblob(''))
     else:
-        return ('40000', maketree(shalist))
+        return (GIT_MODE_TREE, maketree(shalist))
 
 
 def open_noatime(name):
