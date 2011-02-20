@@ -2,7 +2,7 @@ import math
 from bup import _helpers
 from bup.helpers import *
 
-BLOB_MAX = 8192*2   # 8192 is the "typical" blob size for bupsplit
+BLOB_MAX = 8192*4   # 8192 is the "typical" blob size for bupsplit
 BLOB_READ_SIZE = 1024*1024
 MAX_PER_TREE = 256
 progress_callback = None
@@ -58,12 +58,14 @@ def _splitbuf(buf):
     while 1:
         b = buf.peek(buf.used())
         (ofs, bits) = _helpers.splitbuf(b)
+        if ofs > BLOB_MAX:
+            ofs = BLOB_MAX
         if ofs:
             buf.eat(ofs)
             yield buffer(b, 0, ofs), bits
         else:
             break
-    if buf.used() > BLOB_MAX:
+    while buf.used() >= BLOB_MAX:
         # limit max blob size
         yield buf.get(BLOB_MAX), 0
 
