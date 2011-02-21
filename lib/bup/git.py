@@ -831,12 +831,18 @@ def check_repo_or_die(path=None):
     initializes the default repository automatically.
     """
     guess_repo(path)
-    if not os.path.isdir(repo('objects/pack/.')):
-        if repodir == home_repodir:
-            init_repo()
+    try:
+        os.stat(repo('objects/pack/.'))
+    except OSError, e:
+        if e.errno == errno.ENOENT:
+            if repodir != home_repodir:
+                log('error: %r is not a bup/git repository\n' % repo())
+                sys.exit(15)
         else:
-            log('error: %r is not a bup/git repository\n' % repo())
-            sys.exit(15)
+            log('error: %s\n' % e)
+            sys.exit(14)
+
+    init_repo()
 
 
 _ver = None

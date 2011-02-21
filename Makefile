@@ -139,6 +139,8 @@ import-docs: Documentation/clean
 	git archive origin/html | (cd Documentation; tar -xvf -)
 	git archive origin/man | (cd Documentation; tar -xvf -)
 
+# tgit.py plays with permissions on lib/bup/t/pybuptest.tmp, so we should
+# ensure that we can delete the directory before doing it.
 clean: Documentation/clean
 	rm -f *.o lib/*/*.o *.so lib/*/*.so *.dll *.exe \
 		.*~ *~ */*~ lib/*/*~ lib/*/*/*~ \
@@ -146,6 +148,7 @@ clean: Documentation/clean
 		bup bup-* cmd/bup-* lib/bup/_version.py randomgen memtest \
 		out[12] out2[tc] tags[12] tags2[tc] \
 		testfs.img lib/bup/t/testfs.img
+	chmod u+rwx lib/bup/t/pybuptest.tmp
 	rm -rf *.tmp t/*.tmp lib/*/*/*.tmp build lib/bup/build
 	if test -e testfs; then rmdir testfs; fi
 	if test -e lib/bup/t/testfs; then rmdir lib/bup/t/testfs; fi

@@ -141,3 +141,25 @@ def test_long_index():
     WVPASSEQ(i.find_offset(obj3_bin), 0xff)
     os.remove(name)
 
+
+@wvtest
+def test_check_repo_or_die():
+    git.check_repo_or_die()
+    WVPASS('check_repo_or_die')  # if we reach this point the call above passed
+
+    mode = os.stat('pybuptest.tmp').st_mode
+    os.chmod('pybuptest.tmp', 0000)
+    try:
+        git.check_repo_or_die()
+    except SystemExit, e:
+        WVPASSEQ(e.code, 14)
+    else:
+        WVFAIL()
+    os.chmod('pybuptest.tmp', mode)
+
+    try:
+        git.check_repo_or_die('nonexistantbup.tmp')
+    except SystemExit, e:
+        WVPASSEQ(e.code, 15)
+    else:
+        WVFAIL()
