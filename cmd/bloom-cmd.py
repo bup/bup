@@ -81,14 +81,14 @@ def do_bloom(path, outfilename):
 
     if b:
         if len(b) != rest_count:
-            log("bloom: size %d != idx total %d, regenerating\n"
-                    % (len(b), rest_count))
+            debug1("bloom: size %d != idx total %d, regenerating\n"
+                   % (len(b), rest_count))
             b = None
         elif (b.bits < bloom.MAX_BLOOM_BITS and
               b.pfalse_positive(add_count) > bloom.MAX_PFALSE_POSITIVE):
-            log("bloom: regenerating: adding %d entries gives "
-                "%.2f%% false positives.\n"
-                    % (add_count, b.pfalse_positive(add_count)))
+            debug1("bloom: regenerating: adding %d entries gives "
+                   "%.2f%% false positives.\n"
+                   % (add_count, b.pfalse_positive(add_count)))
             b = None
         else:
             b = bloom.ShaBloom(outfilename, readwrite=True, expected=add_count)
@@ -101,7 +101,7 @@ def do_bloom(path, outfilename):
     msg = b is None and 'creating from' or 'adding'
     if not _first: _first = path
     dirprefix = (_first != path) and git.repo_rel(path)+': ' or ''
-    log('bloom: %s%s %d file%s (%d object%s).\n'
+    progress('bloom: %s%s %d file%s (%d object%s).\n'
         % (dirprefix, msg,
            len(add), len(add)!=1 and 's' or '',
            add_count, add_count!=1 and 's' or ''))

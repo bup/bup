@@ -97,8 +97,8 @@ def _do_midx(outdir, outfilename, infilenames, prefixstr):
 
     if not _first: _first = outdir
     dirprefix = (_first != outdir) and git.repo_rel(outdir)+': ' or ''
-    log('midx: %s%screating from %d files (%d objects).\n'
-        % (dirprefix, prefixstr, len(infilenames), total))
+    debug1('midx: %s%screating from %d files (%d objects).\n'
+           % (dirprefix, prefixstr, len(infilenames), total))
     if (opt.auto and (total < 1024 and len(infilenames) < 3)) \
        or ((opt.auto or opt.force) and len(infilenames) < 2) \
        or (opt.force and not total):
