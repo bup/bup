@@ -29,7 +29,7 @@ from bup.helpers import *
 # after running 'bup newliner', the tty_width() ioctl won't work anymore
 os.environ['WIDTH'] = str(tty_width())
 
-def usage():
+def usage(msg=""):
     log('Usage: bup [-?|--help] [-d BUP_DIR] [--debug] [--profile] '
         '<command> [options...]\n\n')
     common = dict(
@@ -62,6 +62,8 @@ def usage():
     
     log("See 'bup help COMMAND' for more information on " +
         "a specific command.\n")
+    if msg:
+        log("\n%s\n" % msg)
     sys.exit(99)
 
 
@@ -73,8 +75,7 @@ try:
     optspec = ['help', 'version', 'debug', 'profile', 'bup-dir=']
     global_args, subcmd = getopt.getopt(argv[1:], '?VDd:', optspec)
 except getopt.GetoptError, ex:
-    log('error: ' + ex.msg + '\n')
-    usage()
+    usage('error: %s' % ex.msg)
 
 help_requested = None
 dest_dir = None
@@ -93,8 +94,7 @@ for opt in global_args:
     elif opt[0] in ['-d', '--bup-dir']:
         dest_dir = opt[1]
     else:
-        log('error: unexpected option "%s"\n' % opt[0])
-        usage()
+        usage('error: unexpected option "%s"' % opt[0])
 
 if len(subcmd) == 0:
     if help_requested:
@@ -124,8 +124,7 @@ def subpath(s):
 
 subcmd[0] = subpath(subcmd_name)
 if not os.path.exists(subcmd[0]):
-    log('error: unknown command "%s"\n' % subcmd_name)
-    usage()
+    usage('error: unknown command "%s"' % subcmd_name)
 
 already_fixed = atoi(os.environ.get('BUP_FORCE_TTY'))
 if subcmd_name in ['mux', 'ftp', 'help']:

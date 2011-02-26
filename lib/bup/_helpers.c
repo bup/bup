@@ -9,7 +9,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-static int istty = 0;
+static int istty2 = 0;
 
 // Probably we should use autoconf or something and set HAVE_PY_GETARGCARGV...
 #if __WIN32__ || __CYGWIN__
@@ -87,6 +87,7 @@ static PyObject *splitbuf(PyObject *self, PyObject *args)
     if (!PyArg_ParseTuple(args, "t#", &buf, &len))
 	return NULL;
     out = bupsplit_find_ofs(buf, len, &bits);
+    if (out) assert(bits >= BUP_BLOBBITS);
     return Py_BuildValue("ii", out, bits);
 }
 
@@ -399,7 +400,7 @@ static PyObject *merge_into(PyObject *self, PyObject *args)
     {
 	struct idx *idx;
 	uint32_t new_prefix;
-	if (count % 102424 == 0 && istty)
+	if (count % 102424 == 0 && istty2)
 	    fprintf(stderr, "midx: writing %.2f%% (%d/%d)\r",
 		    count*100.0/total, count, total);
 	idx = idxs[last_i];
@@ -654,7 +655,8 @@ static PyMethodDef faster_methods[] = {
 
 PyMODINIT_FUNC init_helpers(void)
 {
+    char *e = getenv("BUP_FORCE_TTY");
     Py_InitModule("_helpers", faster_methods);
-    istty = isatty(2) || getenv("BUP_FORCE_TTY");
+    istty2 = isatty(2) || (atoi(e ? e : "0") & 2);
     unpythonize_argv();
 }

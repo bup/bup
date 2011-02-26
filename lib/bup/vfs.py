@@ -6,6 +6,7 @@ and abstracts internal name mangling and storage from the exposition layer.
 import os, re, stat, time
 from bup import git
 from helpers import *
+from bup.hashsplit import GIT_MODE_TREE, GIT_MODE_FILE
 
 EMPTY_SHA='\0'*20
 
@@ -42,11 +43,11 @@ def _treeget(hash):
     it = cp().get(hash.encode('hex'))
     type = it.next()
     assert(type == 'tree')
-    return git.treeparse(''.join(it))
+    return git.tree_decode(''.join(it))
 
 
 def _tree_decode(hash):
-    tree = [(int(name,16),stat.S_ISDIR(int(mode,8)),sha)
+    tree = [(int(name,16),stat.S_ISDIR(mode),sha)
             for (mode,name,sha)
             in _treeget(hash)]
     assert(tree == list(sorted(tree)))
@@ -383,12 +384,11 @@ class Dir(Node):
             it = cp().get(self.hash.encode('hex') + ':')
             type = it.next()
         assert(type == 'tree')
-        for (mode,mangled_name,sha) in git.treeparse(''.join(it)):
-            mode = int(mode, 8)
+        for (mode,mangled_name,sha) in git.tree_decode(''.join(it)):
             name = mangled_name
             (name,bupmode) = git.demangle_name(mangled_name)
             if bupmode == git.BUP_CHUNKED:
-                mode = 0100644
+                mode = GIT_MODE_FILE
             if stat.S_ISDIR(mode):
                 self._subs[name] = Dir(self, name, mode, sha)
             elif stat.S_ISLNK(mode):
@@ -408,7 +408,7 @@ class CommitDir(Node):
     the number of commits grows big.
     """
     def __init__(self, parent, name):
-        Node.__init__(self, parent, name, 040000, EMPTY_SHA)
+        Node.__init__(self, parent, name, GIT_MODE_TREE, EMPTY_SHA)
 
     def _mksubs(self):
         self._subs = {}
@@ -436,13 +436,13 @@ class CommitDir(Node):
 class CommitList(Node):
     """A list of commits with hashes that start with the current node's name."""
     def __init__(self, parent, name):
-        Node.__init__(self, parent, name, 040000, EMPTY_SHA)
+        Node.__init__(self, parent, name, GIT_MODE_TREE, EMPTY_SHA)
         self.commits = {}
 
     def _mksubs(self):
         self._subs = {}
         for (name, (hash, date)) in self.commits.items():
-            n1 = Dir(self, name, 040000, hash)
+            n1 = Dir(self, name, GIT_MODE_TREE, hash)
             n1.ctime = n1.mtime = date
             self._subs[name] = n1
 
@@ -450,7 +450,7 @@ class CommitList(Node):
 class TagDir(Node):
     """A directory that contains all tags in the repository."""
     def __init__(self, parent, name):
-        Node.__init__(self, parent, name, 040000, EMPTY_SHA)
+        Node.__init__(self, parent, name, GIT_MODE_TREE, EMPTY_SHA)
 
     def _mksubs(self):
         self._subs = {}
@@ -472,7 +472,7 @@ class BranchList(Node):
     /.commit/??/ . The symlink is named after the commit date.
     """
     def __init__(self, parent, name, hash):
-        Node.__init__(self, parent, name, 040000, hash)
+        Node.__init__(self, parent, name, GIT_MODE_TREE, hash)
 
     def _mksubs(self):
         self._subs = {}
@@ -514,7 +514,7 @@ class RefList(Node):
     that are reachable via a ref (e.g. a branch).  See CommitDir for details.
     """
     def __init__(self, parent):
-        Node.__init__(self, parent, '/', 040000, EMPTY_SHA)
+        Node.__init__(self, parent, '/', GIT_MODE_TREE, EMPTY_SHA)
 
     def _mksubs(self):
         self._subs = {}

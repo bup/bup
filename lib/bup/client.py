@@ -177,7 +177,6 @@ class Client:
             self.sync_index(idx)
         git.auto_midx(self.cachedir)
 
-
     def sync_index(self, name):
         #debug1('requesting %r\n' % name)
         self.check_busy()

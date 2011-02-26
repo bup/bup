@@ -115,7 +115,7 @@ class Options:
         self.optfunc = optfunc
         self._aliases = {}
         self._shortopts = 'h?'
-        self._longopts = ['help']
+        self._longopts = ['help', 'usage']
         self._hasparms = {}
         self._defaults = {}
         self._usagestr = self._gen_usage()
@@ -184,14 +184,15 @@ class Options:
     def usage(self, msg=""):
         """Print usage string to stderr and abort."""
         sys.stderr.write(self._usagestr)
+        if msg:
+            sys.stderr.write(msg)
         e = self._onabort and self._onabort(msg) or None
         if e:
             raise e
 
-    def fatal(self, s):
+    def fatal(self, msg):
         """Print an error message to stderr and abort with usage string."""
-        msg = 'error: %s\n' % s
-        sys.stderr.write(msg)
+        msg = '\nerror: %s\n' % msg
         return self.usage(msg)
 
     def parse(self, args):
@@ -214,7 +215,7 @@ class Options:
 
         for (k,v) in flags:
             k = k.lstrip('-')
-            if k in ('h', '?', 'help'):
+            if k in ('h', '?', 'help', 'usage'):
                 self.usage()
             if k.startswith('no-'):
                 k = self._aliases[k[3:]]

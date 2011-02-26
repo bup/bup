@@ -105,6 +105,10 @@ d/
 a
 ./"
 WVPASS bup save -t $D/d
+WVPASS bup index --fake-invalid $D/d/z
+WVPASS bup save -t $D/d/z
+WVPASS bup save -t $D/d/z  # test regenerating trees when no files are changed
+WVPASS bup save -t $D/d
 WVPASSEQ "$(cd $D && bup index -m)" \
 "f
 a
@@ -208,7 +212,7 @@ WVSTART "save/git-fsck"
     #git prune
     (cd "$TOP/t/sampledata" && WVPASS bup save -vvn master /) || WVFAIL
     n=$(git fsck --full --strict 2>&1 | 
-      egrep -v 'dangling (commit|tree)' |
+      egrep -v 'dangling (commit|tree|blob)' |
       tee -a /dev/stderr | 
       wc -l)
     WVPASS [ "$n" -eq 0 ]
