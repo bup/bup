@@ -145,6 +145,7 @@ clean: Documentation/clean
 		*.pyc */*.pyc lib/*/*.pyc lib/*/*/*.pyc \
 		bup bup-* cmd/bup-* lib/bup/_version.py randomgen memtest \
 		out[12] out2[tc] tags[12] tags2[tc] \
-		testfs.img
+		testfs.img lib/bup/t/testfs.img
 	rm -rf *.tmp t/*.tmp lib/*/*/*.tmp build lib/bup/build
 	if test -e testfs; then rmdir testfs; fi
+	if test -e lib/bup/t/testfs; then rmdir lib/bup/t/testfs; fi

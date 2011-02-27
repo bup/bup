@@ -3,10 +3,48 @@ import pwd
 import stat
 import subprocess
 import tempfile
+import xattr
 import bup.helpers as helpers
 from bup import metadata
 from bup.helpers import clear_errors, detect_fakeroot
 from wvtest import *
+
+
+top_dir = os.getcwd()
+
+
+def ex(*cmd):
+    try:
+        cmd_str = ' '.join(cmd)
+        print >> sys.stderr, cmd_str
+        rc = subprocess.call(cmd)
+        if rc < 0:
+            print >> sys.stderr, 'terminated by signal', - rc
+            sys.exit(1)
+        elif rc > 0:
+            print >> sys.stderr, 'returned exit status', rc
+            sys.exit(1)
+    except OSError, e:
+        print >> sys.stderr, 'subprocess call failed:', e
+        sys.exit(1)
+
+
+def setup_testfs():
+    # Set up testfs with user_xattr, etc.
+    subprocess.call(['umount', 'testfs'])
+    ex('dd', 'if=/dev/zero', 'of=testfs.img', 'bs=1M', 'count=32')
+    ex('mke2fs', '-F', '-j', '-m', '0', 'testfs.img')
+    ex('rm', '-rf', 'testfs')
+    os.mkdir('testfs')
+    ex('mount', '-o', 'loop,acl,user_xattr', 'testfs.img', 'testfs')
+    # Hide, so that tests can't create risks.
+    ex('chown', 'root:root', 'testfs')
+    os.chmod('testfs', 0700)
+
+
+def cleanup_testfs():
+    subprocess.call(['umount', 'testfs'])
+    subprocess.call(['rm', '-f', 'testfs.img'])
 
 
 @wvtest
@@ -194,3 +232,29 @@ def test_restore_over_existing_target():
         WVEXCEPT(Exception, dir_m.create_path, path, create_symlinks=True)
     finally:
         subprocess.call(['rm', '-rf', tmpdir])
+
+
+@wvtest
+def test_handling_of_incorrect_existing_linux_xattrs():
+    if os.geteuid() != 0 or detect_fakeroot():
+        return
+    setup_testfs()
+    subprocess.check_call('rm -rf testfs/*', shell=True)
+    path = 'testfs/foo'
+    open(path, 'w').close()
+    xattr.set(path, 'foo', 'bar', namespace=xattr.NS_USER)
+    m = metadata.from_path(path, archive_path=path, save_symlinks=True)
+    xattr.set(path, 'baz', 'bax', namespace=xattr.NS_USER)
+    m.apply_to_path(path, restore_numeric_ids=False)
+    WVPASSEQ(xattr.list(path), ['user.foo'])
+    WVPASSEQ(xattr.get(path, 'user.foo'), 'bar')
+    xattr.set(path, 'foo', 'baz', namespace=xattr.NS_USER)
+    m.apply_to_path(path, restore_numeric_ids=False)
+    WVPASSEQ(xattr.list(path), ['user.foo'])
+    WVPASSEQ(xattr.get(path, 'user.foo'), 'bar')
+    xattr.remove(path, 'foo', namespace=xattr.NS_USER)
+    m.apply_to_path(path, restore_numeric_ids=False)
+    WVPASSEQ(xattr.list(path), ['user.foo'])
+    WVPASSEQ(xattr.get(path, 'user.foo'), 'bar')
+    os.chdir(top_dir)
+    cleanup_testfs()

@@ -465,9 +465,27 @@ class Metadata:
         self.linux_xattr = result
 
     def _apply_linux_xattr_rec(self, path, restore_numeric_ids=False):
+        existing_xattrs = set(xattr.list(path, nofollow=True))
         if(self.linux_xattr):
             for k, v in self.linux_xattr:
-                xattr.set(path, k, v, nofollow=True)
+                if k not in existing_xattrs \
+                        or v != xattr.get(path, k, nofollow=True):
+                    try:
+                        xattr.set(path, k, v, nofollow=True)
+                    except IOError, e:
+                        if e.errno == errno.EPERM:
+                            raise ApplyError('xattr.set: %s' % e)
+                        else:
+                            raise
+                existing_xattrs -= frozenset([k])
+            for k in existing_xattrs:
+                try:
+                    xattr.remove(path, k, nofollow=True)
+                except IOError, e:
+                    if e.errno == errno.EPERM:
+                        raise ApplyError('xattr.remove: %s' % e)
+                    else:
+                        raise
 
     def __init__(self):
         # optional members
