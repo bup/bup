@@ -110,10 +110,10 @@ then
     WVSTART 'meta - general (as root)'
     WVPASS cd "${TOP}/bupmeta.tmp"
     umount testfs || true
-    dd if=/dev/zero of=test-fs.img bs=1M count=32
-    mke2fs -F -j -m 0 test-fs.img
+    dd if=/dev/zero of=testfs.img bs=1M count=32
+    mke2fs -F -j -m 0 testfs.img
     mkdir testfs
-    mount -o loop,acl,user_xattr test-fs.img testfs
+    mount -o loop,acl,user_xattr testfs.img testfs
     # Hide, so that tests can't create risks.
     chown root:root testfs
     chmod 0700 testfs
