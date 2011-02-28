@@ -1,1 +1,2 @@
-redo-ifchange fidx-cmd
+redo-ifchange fidx
+
