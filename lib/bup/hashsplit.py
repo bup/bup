@@ -61,16 +61,15 @@ def _splitbuf(buf, basebits, fanbits):
         b = buf.peek(buf.used())
         (ofs, bits) = _helpers.splitbuf(b)
         if ofs > BLOB_MAX:
-            ofs = BLOB_MAX
-        if ofs:
+            buf.eat(BLOB_MAX)
+            level = 0
+            yield buffer(b, 0, BLOB_MAX), level
+        elif ofs:
             buf.eat(ofs)
             level = (bits-basebits)//fanbits  # integer division
             yield buffer(b, 0, ofs), level
         else:
             break
-    while buf.used() >= BLOB_MAX:
-        # limit max blob size
-        yield buf.get(BLOB_MAX), 0
 
 
 def _hashsplit_iter(files, progress):
