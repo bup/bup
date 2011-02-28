@@ -1,4 +1,5 @@
 #include "bupsplit.h"
+#include "sha1.h"
 #include <stdio.h>
 #include <stdarg.h>
 #include <assert.h>
@@ -88,25 +89,78 @@ char *cat2(char *a, char *b)
 
 void blob_sha(byte sha[20], byte *buf, int len)
 {
-    memset(sha, 0, sizeof(sha));
+    char tmp[1024];
+    sprintf(tmp, "blob %d", len);
+    blk_SHA_CTX s;
+    blk_SHA1_Init(&s);
+    blk_SHA1_Update(&s, tmp, strlen(tmp)+1);
+    blk_SHA1_Update(&s, buf, len);
+    blk_SHA1_Final(sha, &s);
 }
 
 
-struct SillySha {};
-
-int fwrite_and_sum(void *buf, size_t len, FILE *outf, struct SillySha *s)
+int fwrite_and_sum(void *buf, size_t len, FILE *outf, blk_SHA_CTX *filesha)
 {
-    // FIXME update sha
+    blk_SHA1_Update(filesha, buf, len);
     return fwrite(buf, 1, len, outf);
+}
+
+
+int _do_block(byte buf[BLOB_READ_SIZE], size_t used, FILE *outf,
+	      blk_SHA_CTX *filesha, bool finish)
+{
+    int ofs, bits = 0, level;
+    struct FidxEntry e;
+    
+    ofs = bupsplit_find_ofs(buf, used, &bits);
+    if (ofs <= 0)
+    {
+	if (finish)
+	{
+	    ofs = used;
+	    level = 0;
+	}
+	else
+	    return 0;
+    }
+    else
+    {
+	assert(bits >= BUP_BLOBBITS);
+	level = (bits-BUP_BLOBBITS) / FANOUT_BITS;
+    }
+    
+    if (ofs > BLOB_MAX)
+    {
+	ofs = BLOB_MAX;
+	level = 0;
+    }
+    
+    if (ofs)
+    {
+	blob_sha(e.sha, buf, ofs);
+	//printf("%d %d\n", level, ofs);
+	e.size = htons(ofs);
+	e.level = htons(level);
+	if (fwrite_and_sum(&e, sizeof(e), outf, filesha) != sizeof(e))
+	{
+	    xperror("fwrite");
+	    return -1;
+	}
+    }
+    
+    return ofs;
 }
 
 
 bool write_fidx(FILE *outf, FILE *inf)
 {
     byte buf[BLOB_READ_SIZE];
-    size_t used = 0, got;
+    size_t used, ofs, got;
+    int rv;
     struct FidxHdr h;
-    struct SillySha filesha;
+    blk_SHA_CTX filesha;
+    
+    blk_SHA1_Init(&filesha);
     
     memcpy(h.marker, "FIDX", 4);
     h.ver = htonl(FIDX_VERSION);
@@ -116,35 +170,26 @@ bool write_fidx(FILE *outf, FILE *inf)
 	return FALSE;
     }
     
-    // FIXME this is inefficient: don't memmove() so often, and drain the
-    // buffer before the next fread().  And factor out the bupsplit stuff
-    // so it can be reused elsewhere.
-    while ((got = fread(buf, 1, sizeof(buf)-used, inf)) > 0)
+    ofs = used = 0;
+    while ((got = fread(buf+used, 1, sizeof(buf)-used, inf)) > 0)
     {
-	int ofs, bits = 0;
-	struct FidxEntry e;
-	msg("got=%d\n", got);
 	used += got;
-	
-	ofs = bupsplit_find_ofs(buf, used, &bits);
-	if (ofs <= 0)
-	    ofs = used;
-	else
-	    assert(bits >= BUP_BLOBBITS);
-	
-	blob_sha(e.sha, buf, ofs);
-	e.size = htons(ofs);
-	e.level = htons((bits-BUP_BLOBBITS) / FANOUT_BITS);
-	if (fwrite_and_sum(&e, sizeof(e), outf, &filesha) != sizeof(e))
-	{
-	    xperror("fwrite");
-	    return FALSE;
-	}
-	
+	do {
+	    rv = _do_block(buf+ofs, used-ofs, outf, &filesha, FALSE);
+	    if (rv < 0)
+		return FALSE;
+	    ofs += rv;
+	} while (rv > 0);
 	used -= ofs;
 	memmove(buf, buf+ofs, used);
+	ofs = 0;
     }
-    msg("got=%d\n", got);
+    do {
+	rv = _do_block(buf+ofs, used-ofs, outf, &filesha, TRUE);
+	if (rv < 0)
+	    return FALSE;
+	ofs += rv;
+    } while (rv > 0);
     
     if (got < 0)
     {
@@ -152,8 +197,15 @@ bool write_fidx(FILE *outf, FILE *inf)
 	return FALSE;
     }
     
-    // FIXME write filesha here
-    
+    {
+	byte sha[20];
+	blk_SHA1_Final(sha, &filesha);
+	if (fwrite(sha, 1, sizeof(sha), outf) != sizeof(sha))
+	{
+	    xperror("fwrite");
+	    return FALSE;
+	}
+    }
     return TRUE;
 }
 
