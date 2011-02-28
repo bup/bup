@@ -61,14 +61,14 @@ test-src-create-extract()
     WVPASS bup meta --extract --file ../src.meta
     WVPASS test -d src
     (cd src && genstat >../../src-restore-stat) || WVFAIL
-    WVPASS diff -u5 ../src-stat ../src-restore-stat
+    WVPASS diff -U5 ../src-stat ../src-restore-stat
     # Test start/finish extract.
     force-delete src
     WVPASS bup meta --start-extract --file ../src.meta
     WVPASS test -d src
     WVPASS bup meta --finish-extract --file ../src.meta
     (cd src && genstat >../../src-restore-stat) || WVFAIL
-    WVPASS diff -u5 ../src-stat ../src-restore-stat
+    WVPASS diff -U5 ../src-stat ../src-restore-stat
   )
 }
 
