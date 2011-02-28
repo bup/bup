@@ -1,0 +1,6 @@
+These files were taken from the git source code.
+
+Note: I'm not sure about the licensing of these files.  It might be GPL, and
+bup is LGPL, so we might have to remove them and switch to some other
+implementation later to fix up the license.
+
