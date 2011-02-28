@@ -1,5 +1,6 @@
 import stat, os
 from bup.helpers import *
+import bup.xstat as xstat
 
 try:
     O_LARGEFILE = os.O_LARGEFILE
@@ -29,7 +30,7 @@ class OsFile:
         os.fchdir(self.fd)
 
     def stat(self):
-        return os.fstat(self.fd)
+        return xstat.fstat(self.fd)
 
 
 _IFMT = stat.S_IFMT(0xffffffff)  # avoid function call in inner loop
@@ -37,7 +38,7 @@ def _dirlist():
     l = []
     for n in os.listdir('.'):
         try:
-            st = os.lstat(n)
+            st = xstat.lstat(n)
         except OSError, e:
             add_error(Exception('%s: %s' % (realpath(n), str(e))))
             continue
@@ -81,7 +82,7 @@ def recursive_dirlist(paths, xdev, bup_dir=None, excluded_paths=None):
         assert(type(paths) != type(''))
         for path in paths:
             try:
-                pst = os.lstat(path)
+                pst = xstat.lstat(path)
                 if stat.S_ISLNK(pst.st_mode):
                     yield (path, pst)
                     continue

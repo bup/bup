@@ -1,13 +1,22 @@
+#define _LARGEFILE64_SOURCE 1
 #undef NDEBUG
 #include "bupsplit.h"
 #include <Python.h>
 #include <assert.h>
-#include <stdint.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <arpa/inet.h>
+#include <stdint.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
+
+#ifdef linux
+#include <linux/fs.h>
+#include <sys/ioctl.h>
+#include <sys/stat.h>
+#include <sys/time.h>
+#endif
 
 static int istty2 = 0;
 
@@ -621,7 +630,247 @@ static PyObject *fadvise_done(PyObject *self, PyObject *args)
 }
 
 
-static PyMethodDef faster_methods[] = {
+#ifdef linux
+static PyObject *bup_get_linux_file_attr(PyObject *self, PyObject *args)
+{
+    int rc;
+    unsigned long attr;
+    char *path;
+    int fd;
+
+    if (!PyArg_ParseTuple(args, "s", &path))
+        return NULL;
+
+    fd = open(path, O_RDONLY | O_NONBLOCK | O_LARGEFILE | O_NOFOLLOW);
+    if (fd == -1)
+        return PyErr_SetFromErrnoWithFilename(PyExc_IOError, path);
+
+    attr = 0;
+    rc = ioctl(fd, FS_IOC_GETFLAGS, &attr);
+    if (rc == -1)
+    {
+        close(fd);
+        return PyErr_SetFromErrnoWithFilename(PyExc_IOError, path);
+    }
+
+    close(fd);
+    return Py_BuildValue("k", attr);
+}
+
+
+static PyObject *bup_set_linux_file_attr(PyObject *self, PyObject *args)
+{
+    int rc;
+    unsigned long attr;
+    char *path;
+    int fd;
+
+    if (!PyArg_ParseTuple(args, "sk", &path, &attr))
+        return NULL;
+
+    fd = open(path, O_RDONLY | O_NONBLOCK | O_LARGEFILE | O_NOFOLLOW);
+    if(fd == -1)
+        return PyErr_SetFromErrnoWithFilename(PyExc_IOError, path);
+
+    rc = ioctl(fd, FS_IOC_SETFLAGS, &attr);
+    if (rc == -1)
+    {
+        close(fd);
+        return PyErr_SetFromErrnoWithFilename(PyExc_IOError, path);
+    }
+
+    close(fd);
+    Py_RETURN_TRUE;
+}
+#endif /* def linux */
+
+
+#if defined(_ATFILE_SOURCE) \
+  || _XOPEN_SOURCE >= 700 || _POSIX_C_SOURCE >= 200809L
+#define HAVE_BUP_UTIMENSAT 1
+
+static PyObject *bup_utimensat(PyObject *self, PyObject *args)
+{
+    int rc, dirfd, flags;
+    char *path;
+    long access, access_ns, modification, modification_ns;
+    struct timespec ts[2];
+
+    if (!PyArg_ParseTuple(args, "is((ll)(ll))i",
+                          &dirfd,
+                          &path,
+                          &access, &access_ns,
+                          &modification, &modification_ns,
+                          &flags))
+        return NULL;
+
+    if (isnan(access))
+    {
+        PyErr_SetString(PyExc_ValueError, "access time is NaN");
+        return NULL;
+    }
+    else if (isinf(access))
+    {
+        PyErr_SetString(PyExc_ValueError, "access time is infinite");
+        return NULL;
+    }
+    else if (isnan(modification))
+    {
+        PyErr_SetString(PyExc_ValueError, "modification time is NaN");
+        return NULL;
+    }
+    else if (isinf(modification))
+    {
+        PyErr_SetString(PyExc_ValueError, "modification time is infinite");
+        return NULL;
+    }
+
+    if (isnan(access_ns))
+    {
+        PyErr_SetString(PyExc_ValueError, "access time ns is NaN");
+        return NULL;
+    }
+    else if (isinf(access_ns))
+    {
+        PyErr_SetString(PyExc_ValueError, "access time ns is infinite");
+        return NULL;
+    }
+    else if (isnan(modification_ns))
+    {
+        PyErr_SetString(PyExc_ValueError, "modification time ns is NaN");
+        return NULL;
+    }
+    else if (isinf(modification_ns))
+    {
+        PyErr_SetString(PyExc_ValueError, "modification time ns is infinite");
+        return NULL;
+    }
+
+    ts[0].tv_sec = access;
+    ts[0].tv_nsec = access_ns;
+    ts[1].tv_sec = modification;
+    ts[1].tv_nsec = modification_ns;
+
+    rc = utimensat(dirfd, path, ts, flags);
+    if (rc != 0)
+        return PyErr_SetFromErrnoWithFilename(PyExc_IOError, path);
+
+    Py_RETURN_TRUE;
+}
+
+#endif /* defined(_ATFILE_SOURCE)
+          || _XOPEN_SOURCE >= 700 || _POSIX_C_SOURCE >= 200809L */
+
+
+#ifdef linux /* and likely others */
+
+#define HAVE_BUP_STAT 1
+static PyObject *bup_stat(PyObject *self, PyObject *args)
+{
+    int rc;
+    char *filename;
+
+    if (!PyArg_ParseTuple(args, "s", &filename))
+        return NULL;
+
+    struct stat st;
+    rc = stat(filename, &st);
+    if (rc != 0)
+        return PyErr_SetFromErrnoWithFilename(PyExc_IOError, filename);
+
+    return Py_BuildValue("kkkkkkkk"
+                         "(ll)"
+                         "(ll)"
+                         "(ll)",
+                         (unsigned long) st.st_mode,
+                         (unsigned long) st.st_ino,
+                         (unsigned long) st.st_dev,
+                         (unsigned long) st.st_nlink,
+                         (unsigned long) st.st_uid,
+                         (unsigned long) st.st_gid,
+                         (unsigned long) st.st_rdev,
+                         (unsigned long) st.st_size,
+                         (long) st.st_atime,
+                         (long) st.st_atim.tv_nsec,
+                         (long) st.st_mtime,
+                         (long) st.st_mtim.tv_nsec,
+                         (long) st.st_ctime,
+                         (long) st.st_ctim.tv_nsec);
+}
+
+
+#define HAVE_BUP_LSTAT 1
+static PyObject *bup_lstat(PyObject *self, PyObject *args)
+{
+    int rc;
+    char *filename;
+
+    if (!PyArg_ParseTuple(args, "s", &filename))
+        return NULL;
+
+    struct stat st;
+    rc = lstat(filename, &st);
+    if (rc != 0)
+        return PyErr_SetFromErrnoWithFilename(PyExc_IOError, filename);
+
+    return Py_BuildValue("kkkkkkkk"
+                         "(ll)"
+                         "(ll)"
+                         "(ll)",
+                         (unsigned long) st.st_mode,
+                         (unsigned long) st.st_ino,
+                         (unsigned long) st.st_dev,
+                         (unsigned long) st.st_nlink,
+                         (unsigned long) st.st_uid,
+                         (unsigned long) st.st_gid,
+                         (unsigned long) st.st_rdev,
+                         (unsigned long) st.st_size,
+                         (long) st.st_atime,
+                         (long) st.st_atim.tv_nsec,
+                         (long) st.st_mtime,
+                         (long) st.st_mtim.tv_nsec,
+                         (long) st.st_ctime,
+                         (long) st.st_ctim.tv_nsec);
+}
+
+
+#define HAVE_BUP_FSTAT 1
+static PyObject *bup_fstat(PyObject *self, PyObject *args)
+{
+    int rc, fd;
+
+    if (!PyArg_ParseTuple(args, "i", &fd))
+        return NULL;
+
+    struct stat st;
+    rc = fstat(fd, &st);
+    if (rc != 0)
+        return PyErr_SetFromErrno(PyExc_IOError);
+
+    return Py_BuildValue("kkkkkkkk"
+                         "(ll)"
+                         "(ll)"
+                         "(ll)",
+                         (unsigned long) st.st_mode,
+                         (unsigned long) st.st_ino,
+                         (unsigned long) st.st_dev,
+                         (unsigned long) st.st_nlink,
+                         (unsigned long) st.st_uid,
+                         (unsigned long) st.st_gid,
+                         (unsigned long) st.st_rdev,
+                         (unsigned long) st.st_size,
+                         (long) st.st_atime,
+                         (long) st.st_atim.tv_nsec,
+                         (long) st.st_mtime,
+                         (long) st.st_mtim.tv_nsec,
+                         (long) st.st_ctime,
+                         (long) st.st_ctim.tv_nsec);
+}
+
+#endif /* def linux */
+
+
+static PyMethodDef helper_methods[] = {
     { "selftest", selftest, METH_VARARGS,
 	"Check that the rolling checksum rolls correctly (for unit tests)." },
     { "blobbits", blobbits, METH_VARARGS,
@@ -650,13 +899,51 @@ static PyMethodDef faster_methods[] = {
 	"open() the given filename for read with O_NOATIME if possible" },
     { "fadvise_done", fadvise_done, METH_VARARGS,
 	"Inform the kernel that we're finished with earlier parts of a file" },
+#ifdef linux
+    { "get_linux_file_attr", bup_get_linux_file_attr, METH_VARARGS,
+      "Return the Linux attributes for the given file." },
+    { "set_linux_file_attr", bup_set_linux_file_attr, METH_VARARGS,
+      "Set the Linux attributes for the given file." },
+#endif
+#ifdef HAVE_BUP_UTIMENSAT
+    { "utimensat", bup_utimensat, METH_VARARGS,
+      "Change file timestamps with nanosecond precision." },
+#endif
+#ifdef HAVE_BUP_STAT
+    { "stat", bup_stat, METH_VARARGS,
+      "Extended version of stat." },
+#endif
+#ifdef HAVE_BUP_LSTAT
+    { "lstat", bup_lstat, METH_VARARGS,
+      "Extended version of lstat." },
+#endif
+#ifdef HAVE_BUP_FSTAT
+    { "fstat", bup_fstat, METH_VARARGS,
+      "Extended version of fstat." },
+#endif
     { NULL, NULL, 0, NULL },  // sentinel
 };
 
+
 PyMODINIT_FUNC init_helpers(void)
 {
-    char *e = getenv("BUP_FORCE_TTY");
-    Py_InitModule("_helpers", faster_methods);
+    char *e;
+    PyObject *m = Py_InitModule("_helpers", helper_methods);
+    if (m == NULL)
+        return;
+#ifdef HAVE_BUP_UTIMENSAT
+    PyModule_AddObject(m, "AT_FDCWD", Py_BuildValue("i", AT_FDCWD));
+    PyModule_AddObject(m, "AT_SYMLINK_NOFOLLOW",
+                       Py_BuildValue("i", AT_SYMLINK_NOFOLLOW));
+#endif
+#ifdef HAVE_BUP_STAT
+    Py_INCREF(Py_True);
+    PyModule_AddObject(m, "_have_ns_fs_timestamps", Py_True);
+#else
+    Py_INCREF(Py_False);
+    PyModule_AddObject(m, "_have_ns_fs_timestamps", Py_False);
+#endif
+    e = getenv("BUP_FORCE_TTY");
     istty2 = isatty(2) || (atoi(e ? e : "0") & 2);
     unpythonize_argv();
 }

@@ -3,6 +3,7 @@
 import sys, os, pwd, subprocess, errno, socket, select, mmap, stat, re, struct
 import heapq, operator, time
 from bup import _version, _helpers
+import bup._helpers as _helpers
 
 # This function should really be in helpers, not in bup.options.  But we
 # want options.py to be standalone so people can include it in other projects.
@@ -195,6 +196,11 @@ def realpath(p):
         out = os.path.realpath(p)
     #log('realpathing:%r,%r\n' % (p, out))
     return out
+
+
+def detect_fakeroot():
+    "Return True if we appear to be running under fakeroot."
+    return os.getenv("FAKEROOTKEY") != None
 
 
 _username = None
@@ -570,6 +576,11 @@ def add_error(e):
     """
     saved_errors.append(e)
     log('%-70s\n' % e)
+
+
+def clear_errors():
+    global saved_errors
+    saved_errors = []
 
 
 def handle_ctrl_c():

@@ -1,6 +1,7 @@
 import os
 from bup import index
 from bup.helpers import *
+import bup.xstat as xstat
 from wvtest import *
 
 @wvtest
@@ -17,8 +18,8 @@ def index_basic():
 @wvtest
 def index_writer():
     unlink('index.tmp')
-    ds = os.stat('.')
-    fs = os.stat('tindex.py')
+    ds = xstat.stat('.')
+    fs = xstat.stat('tindex.py')
     w = index.Writer('index.tmp')
     w.add('/var/tmp/sporky', fs)
     w.add('/etc/passwd', fs)
@@ -49,8 +50,8 @@ def eget(l, ename):
 def index_dirty():
     unlink('index.tmp')
     unlink('index2.tmp')
-    ds = os.stat('.')
-    fs = os.stat('tindex.py')
+    ds = xstat.stat('.')
+    fs = xstat.stat('tindex.py')
     
     w1 = index.Writer('index.tmp')
     w1.add('/a/b/x', fs)

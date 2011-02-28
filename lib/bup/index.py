@@ -95,17 +95,19 @@ class Entry:
     def from_stat(self, st, tstart):
         old = (self.dev, self.ctime, self.mtime,
                self.uid, self.gid, self.size, self.flags & IX_EXISTS)
-        new = (st.st_dev, int(st.st_ctime), int(st.st_mtime),
+        new = (st.st_dev,
+               int(st.st_ctime.approx_secs()),
+               int(st.st_mtime.approx_secs()),
                st.st_uid, st.st_gid, st.st_size, IX_EXISTS)
         self.dev = st.st_dev
-        self.ctime = int(st.st_ctime)
-        self.mtime = int(st.st_mtime)
+        self.ctime = int(st.st_ctime.approx_secs())
+        self.mtime = int(st.st_mtime.approx_secs())
         self.uid = st.st_uid
         self.gid = st.st_gid
         self.size = st.st_size
         self.mode = st.st_mode
         self.flags |= IX_EXISTS
-        if int(st.st_ctime) >= tstart or old != new \
+        if int(st.st_ctime.approx_secs()) >= tstart or old != new \
               or self.sha == EMPTY_SHA or not self.gitmode:
             self.invalidate()
         self._fixup()
@@ -407,8 +409,10 @@ class Writer:
         if st:
             isdir = stat.S_ISDIR(st.st_mode)
             assert(isdir == endswith)
-            e = NewEntry(basename, name, st.st_dev, int(st.st_ctime),
-                         int(st.st_mtime), st.st_uid, st.st_gid,
+            e = NewEntry(basename, name, st.st_dev,
+                         int(st.st_ctime.approx_secs()),
+                         int(st.st_mtime.approx_secs()),
+                         st.st_uid, st.st_gid,
                          st.st_size, st.st_mode, gitmode, sha, flags,
                          0, 0)
         else:
