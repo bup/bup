@@ -1,0 +1,4 @@
+TARGET=$1
+shift
+redo-ifchange "$@"
+gcc -o $TARGET -Wall -g "$@"
