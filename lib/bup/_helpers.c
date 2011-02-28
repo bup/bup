@@ -18,7 +18,7 @@
 #include <sys/time.h>
 #endif
 
-static int istty = 0;
+static int istty2 = 0;
 
 // Probably we should use autoconf or something and set HAVE_PY_GETARGCARGV...
 #if __WIN32__ || __CYGWIN__
@@ -96,6 +96,7 @@ static PyObject *splitbuf(PyObject *self, PyObject *args)
     if (!PyArg_ParseTuple(args, "t#", &buf, &len))
 	return NULL;
     out = bupsplit_find_ofs(buf, len, &bits);
+    if (out) assert(bits >= BUP_BLOBBITS);
     return Py_BuildValue("ii", out, bits);
 }
 
@@ -408,7 +409,7 @@ static PyObject *merge_into(PyObject *self, PyObject *args)
     {
 	struct idx *idx;
 	uint32_t new_prefix;
-	if (count % 102424 == 0 && istty)
+	if (count % 102424 == 0 && istty2)
 	    fprintf(stderr, "midx: writing %.2f%% (%d/%d)\r",
 		    count*100.0/total, count, total);
 	idx = idxs[last_i];
@@ -869,7 +870,7 @@ static PyObject *bup_fstat(PyObject *self, PyObject *args)
 #endif /* def linux */
 
 
-static PyMethodDef faster_methods[] = {
+static PyMethodDef helper_methods[] = {
     { "selftest", selftest, METH_VARARGS,
 	"Check that the rolling checksum rolls correctly (for unit tests)." },
     { "blobbits", blobbits, METH_VARARGS,
@@ -926,7 +927,8 @@ static PyMethodDef faster_methods[] = {
 
 PyMODINIT_FUNC init_helpers(void)
 {
-    PyObject *m = Py_InitModule("_helpers", faster_methods);
+    char *e;
+    PyObject *m = Py_InitModule("_helpers", helper_methods);
     if (m == NULL)
         return;
 #ifdef HAVE_BUP_UTIMENSAT
@@ -941,6 +943,7 @@ PyMODINIT_FUNC init_helpers(void)
     Py_INCREF(Py_False);
     PyModule_AddObject(m, "_have_ns_fs_timestamps", Py_False);
 #endif
-    istty = isatty(2) || getenv("BUP_FORCE_TTY");
+    e = getenv("BUP_FORCE_TTY");
+    istty2 = isatty(2) || (atoi(e ? e : "0") & 2);
     unpythonize_argv();
 }

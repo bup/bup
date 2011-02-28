@@ -67,22 +67,37 @@ def debug2(s):
         log(s)
 
 
-istty = os.isatty(2) or atoi(os.environ.get('BUP_FORCE_TTY'))
+istty1 = os.isatty(1) or (atoi(os.environ.get('BUP_FORCE_TTY')) & 1)
+istty2 = os.isatty(2) or (atoi(os.environ.get('BUP_FORCE_TTY')) & 2)
+_last_progress = ''
 def progress(s):
     """Calls log() if stderr is a TTY.  Does nothing otherwise."""
-    if istty:
+    global _last_progress
+    if istty2:
         log(s)
+        _last_progress = s
 
 
 def qprogress(s):
     """Calls progress() only if we haven't printed progress in a while.
     
-    This avoids overloading the stderr buffer with excess junk."""
+    This avoids overloading the stderr buffer with excess junk.
+    """
     global _last_prog
     now = time.time()
     if now - _last_prog > 0.1:
         progress(s)
         _last_prog = now
+
+
+def reprogress():
+    """Calls progress() to redisplay the most recent progress message.
+
+    Useful after you've printed some other message that wipes out the
+    progress line.
+    """
+    if _last_progress and _last_progress.endswith('\r'):
+        progress(_last_progress)
 
 
 def mkdirp(d, mode=None):

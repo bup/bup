@@ -15,6 +15,7 @@ if extra:
 r = re.compile(r'([\r\n])')
 lastlen = 0
 all = ''
+width = options._tty_width() or 78
 while 1:
     l = r.split(all, 1)
     if len(l) <= 1:
@@ -32,6 +33,8 @@ while 1:
     else:
         assert(len(l) == 3)
         (line, splitchar, all) = l
+        if splitchar == '\r':
+            line = line[:width]
         sys.stdout.write('%-*s%s' % (lastlen, line, splitchar))
         if splitchar == '\r':
             lastlen = len(line)

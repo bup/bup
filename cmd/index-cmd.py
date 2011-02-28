@@ -2,7 +2,7 @@
 import sys, stat, time, os
 from bup import options, git, index, drecurse
 from bup.helpers import *
-
+from bup.hashsplit import GIT_MODE_TREE, GIT_MODE_FILE
 
 class IterHelper:
     def __init__(self, l):
@@ -57,7 +57,7 @@ def update_index(top, excluded_paths):
     hashgen = None
     if opt.fake_valid:
         def hashgen(name):
-            return (0100644, index.FAKE_SHA)
+            return (GIT_MODE_FILE, index.FAKE_SHA)
 
     total = 0
     bup_dir = os.path.abspath(git.repo())

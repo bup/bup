@@ -2,6 +2,7 @@
 import sys, stat, time, math
 from bup import hashsplit, git, options, index, client
 from bup.helpers import *
+from bup.hashsplit import GIT_MODE_TREE, GIT_MODE_FILE
 
 
 optspec = """
@@ -30,7 +31,7 @@ if not (opt.tree or opt.commit or opt.name):
 if not extra:
     o.fatal("no filenames given")
 
-opt.progress = (istty and not opt.quiet)
+opt.progress = (istty2 and not opt.quiet)
 opt.smaller = parse_num(opt.smaller or 0)
 if opt.bwlimit:
     client.bwlimit = parse_num(opt.bwlimit)
@@ -99,8 +100,9 @@ def _pop(force_tree):
     shalist = shalists.pop()
     tree = force_tree or w.new_tree(shalist)
     if shalists:
-        shalists[-1].append(('40000',
-                             git.mangle_name(part, 040000, 40000),
+        shalists[-1].append((GIT_MODE_TREE,
+                             git.mangle_name(part,
+                                             GIT_MODE_TREE, GIT_MODE_TREE),
                              tree))
     else:  # this was the toplevel, so put it back for sanity
         shalists.append(shalist)
@@ -237,7 +239,7 @@ for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse_during):
             if lastskip_name and lastskip_name.startswith(ent.name):
                 ent.invalidate()
             else:
-                ent.validate(040000, newtree)
+                ent.validate(GIT_MODE_TREE, newtree)
             ent.repack()
         if exists and wasmissing:
             count += oldsize
@@ -246,9 +248,8 @@ for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse_during):
     # it's not a directory
     id = None
     if hashvalid:
-        mode = '%o' % ent.gitmode
         id = ent.sha
-        shalists[-1].append((mode, 
+        shalists[-1].append((ent.gitmode, 
                              git.mangle_name(file, ent.mode, ent.gitmode),
                              id))
     else:
@@ -263,7 +264,8 @@ for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse_during):
                 lastskip_name = ent.name
             else:
                 try:
-                    (mode, id) = hashsplit.split_to_blob_or_tree(w, [f],
+                    (mode, id) = hashsplit.split_to_blob_or_tree(
+                                            w.new_blob, w.new_tree, [f],
                                             keep_boundaries=False)
                 except IOError, e:
                     add_error('%s: %s' % (ent.name, e))
@@ -286,7 +288,7 @@ for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse_during):
                 add_error(Exception('skipping special file "%s"' % ent.name))
                 lastskip_name = ent.name
         if id:
-            ent.validate(int(mode, 8), id)
+            ent.validate(mode, id)
             ent.repack()
             shalists[-1].append((mode,
                                  git.mangle_name(file, ent.mode, ent.gitmode),
