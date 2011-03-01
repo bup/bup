@@ -1,3 +1,4 @@
+#include "fidx.h"
 #include "bupsplit.h"
 #include "sha1.h"
 #include <stdio.h>
@@ -8,41 +9,6 @@
 #include <errno.h>
 #include <unistd.h>
 #include <stdint.h>
-#ifdef __WIN32__
-#include <winsock.h>
-#else
-#include <arpa/inet.h>
-#endif
-
-#define FIDX_VERSION 1
-
-// FIXME duplicated with content in hashsplit.py
-#define BLOB_MAX (8192*4)
-#define BLOB_READ_SIZE (1024*1024)
-#define FANOUT_BITS 4
-
-#define msg(fmt, args...) fprintf(stderr, fmt, ##args)
-#define xperror(s) do { perror(s); errcount++; } while (0)
-
-typedef int bool;
-typedef unsigned char  byte;
-#define TRUE 1
-#define FALSE 0
-
-int errcount = 0;
-
-struct FidxHdr
-{
-    byte marker[4];
-    uint32_t ver;
-};
-
-struct FidxEntry
-{
-    byte sha[20];
-    uint16_t size;
-    uint16_t level;
-};
 
 
 // FIXME: this does dynamic allocation, but we caller never frees it
@@ -141,7 +107,7 @@ int _do_block(byte buf[BLOB_READ_SIZE], size_t used, FILE *outf,
     
     if (ofs)
     {
-	blob_sha(e.sha, buf, ofs);
+	blob_sha(e.sha.sha, buf, ofs);
 	//printf("%d %d\n", level, ofs);
 	e.size = htons(ofs);
 	e.level = htons(level);

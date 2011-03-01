@@ -1,3 +1,4 @@
+#include "fidx.h"
 #include "wvcom.h"
 #include "wvcomstatus.h"
 #include "wvbuf.h"
@@ -218,7 +219,7 @@ void targets_from_file(WvStringList &l, WvStringParm s)
 }
 
 
-WvString readfile(WvStringParm filename)
+WvString readfile_str(WvStringParm filename)
 {
     byte buf[65536];
     WvDynBuf b;
@@ -231,6 +232,78 @@ WvString readfile(WvStringParm filename)
     fclose(f);
     return b.getstr();
 }
+
+
+bool exists(WvStringParm filename)
+{
+    struct stat st;
+    return stat(filename, &st) == 0;
+}
+
+
+class Fidx;
+
+
+struct FidxMapping
+{
+    Fidx *fidx;
+    byte sha[20];
+    size_t ofs, size, level;
+};
+
+
+class Fidx
+{
+public:
+    WvString name;
+    WvDynBuf buf;
+    WvError err;
+    Sha filesha;
+    
+    Fidx(WvStringParm _name) : name(_name)
+    {
+	WvComStatusIgnorer ig; // FIXME shouldn't be needed, but is
+	err.set(_file_get(buf, name, 0, -1));
+	if (buf.used() < sizeof(FidxHdr))
+	{
+	    err.set(".fidx length < len(FidxHdr)"); 
+	    return;
+	}
+	FidxHdr *h = (FidxHdr *)buf.get(sizeof(FidxHdr));
+	assert(h);
+	if (memcmp(h->marker, "FIDX", 4) != 0)
+	{
+	    err.set(".fidx has invalid FIDX header");
+	    return;
+	}
+	uint32_t ver = ntohl(h->ver);
+	if (ver != FIDX_VERSION)
+	{
+	    err.set(".fidx: got version %s, wanted %s", ver, FIDX_VERSION);
+	    return;
+	}
+	
+	const byte *rest = buf.peek(0, buf.used());
+	assert(rest);
+	
+	// FIXME verify checksum before removing from buffer
+	
+	filesha = *(Sha *)(rest + buf.used() - 20);
+	buf.unalloc(20);
+    }
+    
+    int len() const
+    {
+	return buf.used() / sizeof(FidxEntry);
+    }
+    
+    FidxEntry *get(int elem)
+    {
+	assert(elem > 0);
+	assert(elem < len());
+	return (FidxEntry *)(buf.peek(0,buf.used()) + elem*sizeof(FidxEntry));
+    }
+};
 
 
 int main(int argc, char **argv)
@@ -285,7 +358,7 @@ int main(int argc, char **argv)
 	{
 	    // an index file
 	    print("it's a file\n");
-	    targets_from_file(targets, readfile(baseurl));
+	    targets_from_file(targets, readfile_str(baseurl));
 	}
 	baseurl = WvString("file://%s", baseurl);
     }
@@ -328,18 +401,18 @@ int main(int argc, char **argv)
 	WvString outname = fidxname;
 	outname.edit()[outname.len()-5] = 0;  // remove .fidx
 	http_get_to_file(tmpname, WvString("%s/%s", baseurl, fidxname));
-    }
-#if 0
-    for (int i = 0; i < 10; i++)
-    {
-	WvDynBuf buf;
-	WvError e = http_get(buf, baseurl, i, 10*i);
-	if (!e.isok())
-	    print("  ERROR: %s\n", e.str());
+	
+	Fidx fidx(tmpname), oldfidx(fidxname);
+
+	if (oldfidx.err.isok() && fidx.err.isok() 
+	    && fidx.filesha == oldfidx.filesha)
+	{
+	    print("  already up to date.\n");
+	    continue;
+	}
 	else
-	    print("  got %s bytes\n", buf.used());
+	    print("  changed!\n");
     }
-#endif
     
     if (!err.isok())
 	print("error was: %s\n", err.str());
