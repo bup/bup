@@ -1,4 +1,5 @@
-redo-ifchange fidx fidx.exe http-curl http-win.exe
+redo-ifchange fidx fidx.exe bupdate bupdate.exe
+
 
 
 

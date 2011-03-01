@@ -14,7 +14,7 @@
 #include <ctype.h>
 #include "wvstring.h"
 #include "wvstringlist.h"
-#ifndef _WIN32
+#ifdef HAVE_REGEX
 #include "wvregex.h"
 #endif
 
@@ -378,7 +378,7 @@ void strcoll_splitstrict(StringCollection &coll, WvStringParm _s,
 }
 
 
-#ifndef _WIN32 // don't have regex on win32
+#ifdef HAVE_REGEX
 /**
  * Splits a string and adds each substring to a collection.
  *   coll       : the collection of strings to add to

@@ -1,4 +1,6 @@
-. ./link.exe.od "$3" $1.w.o \
+. ./link.exe.od "$3" \
+	$1.w.o \
+	http-win.w.o \
 	../lib/bup/bupsplit.w.o \
 	block-sha1/sha1.w.o \
 	wvcom/wvstring.w.o \

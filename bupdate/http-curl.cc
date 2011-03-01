@@ -1,10 +1,17 @@
+#include "httpget.h"
 #include <curl/curl.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/time.h>
 #include <unistd.h>
 
-int main(int argc, char **argv)
+WvError _http_get(WvBuf &buf, WvStringParm url, int startbyte, int bytelen)
+{
+    return WvError().set("http not supported on unix yet");
+}
+
+
+int xmain(int argc, char **argv)
 {
     CURLM *multi_handle;
     CURL *url1, *url2;
