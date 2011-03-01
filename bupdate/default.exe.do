@@ -9,5 +9,6 @@
 	wvcom/wvcomstatus.w.o \
 	wvcom/wvstringlist.w.o \
 	wvcom/wvlinklist.w.o \
-	wvbuffer.w.o \
-	wvbufferstore.w.o \
+	wvcom/wvbuffer.w.o \
+	wvcom/wvbufferstore.w.o \
+	wvcom/wvstrutils.w.o \
