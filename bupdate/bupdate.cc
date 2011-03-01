@@ -1,3 +1,4 @@
+#include "bupdate.h"
 #include "httpget.h"
 #include "fidx.h"
 #include "wvcomstatus.h"
@@ -12,20 +13,14 @@
 typedef void progfunc_t(const char *s);
 typedef unsigned char  byte;
 
-static void simple_print(const char *s)
-{
-    printf("%s", s);
-    fflush(stdout);
-}
-
-
 // reassign this to change progress message printing function
-progfunc_t *progfunc = simple_print;
+progfunc_t *progfunc = NULL;
 
 
 void print(WvStringParm s)
 {
-    simple_print(s);
+    assert(progfunc);
+    progfunc(s);
 }
 
 
@@ -342,16 +337,12 @@ public:
 };
 
 
-int main(int argc, char **argv)
+int bupdate(const char *_baseurl, bupdate_progress_t *myprog)
 {
-    if (argc != 2)
-    {
-	fprintf(stderr, "usage: %s <url>\n", argv[0]);
-	return 1;
-    }
+    progfunc = myprog;
     
     WvComStatus err;
-    WvString baseurl(argv[1]);
+    WvString baseurl(_baseurl);
     for (char *cptr = baseurl.edit(); cptr && *cptr; cptr++)
 	if (*cptr == '\\')
 	    *cptr = '/';
@@ -540,3 +531,5 @@ int main(int argc, char **argv)
     }
     return 0;
 }
+
+

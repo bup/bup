@@ -1,5 +1,6 @@
+[ -e "${1}_main.c" ] && MAIN=${1}_main.c || MAIN=
 . ./link.exe.od "$3" \
-	$1.w.o \
+	$1.w.o $MAIN \
 	http-win.w.o \
 	../lib/bup/bupsplit.w.o \
 	block-sha1/sha1.w.o \
