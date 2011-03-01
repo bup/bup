@@ -1,5 +1,6 @@
 TARGET=$1
 shift
 redo-ifchange "$@"
-i586-mingw32msvc-gcc -o $TARGET -Wall -g "$@" -lwsock32
+i586-mingw32msvc-g++ -o $TARGET -Wall -g "$@" \
+	-lwsock32 -loleaut32 -lole32 -luuid
 
