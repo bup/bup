@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include <errno.h>
 
+#define MAX_QUEUE_SIZE (1*1024*1024)
 
 typedef void progfunc_t(const char *s);
 typedef unsigned char  byte;
@@ -337,6 +338,27 @@ public:
 };
 
 
+struct DlQueue
+{
+    size_t ofs, size;
+};
+
+
+static void flushq(FILE *outf, DlQueue &q, WvStringParm url,
+		   size_t &got, size_t missing)
+{
+    if (q.size)
+    {
+	WvComStatus err;
+	WvDynBuf b;
+	err.set(http_get(b, url, q.ofs, q.size));
+	got += q.size;
+	q.ofs = q.size = 0;
+	print("    %s/%s                  \r", got, missing);
+    }
+}
+
+
 int bupdate(const char *_baseurl, bupdate_progress_t *myprog)
 {
     progfunc = myprog;
@@ -482,6 +504,8 @@ int bupdate(const char *_baseurl, bupdate_progress_t *myprog)
 	    continue;
 	}
 	size_t rofs = 0, got = 0;
+	DlQueue queue = {0,0};
+	WvString url("%s/%s", baseurl, outname);
 	for (int e = 0; e < len; e++)
 	{
 	    // FIXME handle errors in here
@@ -492,25 +516,25 @@ int bupdate(const char *_baseurl, bupdate_progress_t *myprog)
 	    WvDynBuf b;
 	    if (m)
 	    {
+		flushq(outf, queue, url, got, missing);
 		assert(m->size == esz);
 		errx.set(_file_get(b, m->fidx->name, m->ofs, m->size));
 	    }
 	    else
 	    {
-		errx.set(http_get(b, WvString("%s/%s", baseurl, outname),
-				  rofs, esz));
-		got += esz;
-		print("    %s/%s                  \r", got, missing);
+		if (queue.size && (queue.ofs+queue.size != rofs
+				   || queue.size > MAX_QUEUE_SIZE))
+		    flushq(outf, queue, url, got, missing);
+		if (!queue.size)
+		    queue.ofs = rofs;
+		queue.size += esz;
 	    }
-	    if (b.used() == esz)
-		fwrite(b.get(esz), 1, esz, outf);
-	    else
-	    {
-		errx.set("problems reading data");
-		break;
-	    }
+	    size_t amt = b.used();
+	    if (amt)
+		fwrite(b.get(amt), 1, amt, outf);
 	    rofs += esz;
 	}
+	flushq(outf, queue, url, got, missing);
 	print("                                              \r");
 	fclose(outf);
 	
