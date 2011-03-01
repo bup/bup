@@ -12,3 +12,5 @@
 	wvcom/wvbuffer.w.o \
 	wvcom/wvbufferstore.w.o \
 	wvcom/wvstrutils.w.o \
+	wvcom/wvdiriter.w.o \
+	
