@@ -1,4 +1,5 @@
 """Enhanced stat operations for bup."""
+import math
 import os
 import bup._helpers as _helpers
 
