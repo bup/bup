@@ -19,6 +19,8 @@ void print(WVSTRING_FORMAT_DECL)
 // FIXME: support multiple ranges in a single request?
 WvError http_get(WvBuf &buf, WvStringParm url, int startbyte, int bytelen)
 {
+    print("Getting: %s\n", url);
+    
     WvComStatus err("http");
     if (startbyte < 0)
 	return err.set_both(EINVAL, "startbyte must be >= 0");
@@ -26,7 +28,6 @@ WvError http_get(WvBuf &buf, WvStringParm url, int startbyte, int bytelen)
 	return err.set_both(EINVAL, "bytelen must be -1 or positive, not 0");
 
     bool wantrange = (startbyte > 0 || bytelen > 0);
-    print("Getting: %s\n", url);
     
     WvCom req("Microsoft.XMLHTTP");
     if (!err.isok())
@@ -47,16 +48,26 @@ WvError http_get(WvBuf &buf, WvStringParm url, int startbyte, int bytelen)
     
     if (!err.isok())
 	return err;
-    else if ((wantrange && status != 206) || (!wantrange && status != 200))
+    
+    int expected = wantrange ? 206 : 200;
+    if (status != expected)
     {
-	if (!status) status = -1;
-	return WvError().set_both(status, "HTTP Status code: %s", status);
+	int nstatus = status ? status : -1;
+	return err.set_both(nstatus,
+			    "status code: %s (expected %s)",
+			    status, expected);
     }
 
     unsigned char *b = NULL;
     size_t len = 0;
     WvVariant v = req.get("responseBody");
     v.blob(&b, &len);
+    
+    if (wantrange && (int)len != bytelen)
+    {
+	delete[] b;
+	return err.set("server sent %s bytes (expected %s)", len, bytelen);
+    }
     buf.put(b, len);
     delete[] b;
     
@@ -66,15 +77,16 @@ WvError http_get(WvBuf &buf, WvStringParm url, int startbyte, int bytelen)
 
 int main()
 {
-    WvComStatus err;
-    
     for (int i = 0; i < 10; i++)
     {
 	WvDynBuf buf;
 	WvError e = http_get(buf,
 		       "http://afterlife/~apenwarr/music/01 Volcanic Jig.m4a",
 			     i, 10*i);
-	print("Got %s bytes; status=%s\n", buf.used(), e.str());
+	if (!e.isok())
+	    print("  ERROR: %s\n", e.str());
+	else
+	    print("  got %s bytes\n", buf.used());
     }
     return 0;
 }
