@@ -1,4 +1,5 @@
-redo-ifchange fidx
+redo-ifchange fidx fidx.exe
+
 
 
 

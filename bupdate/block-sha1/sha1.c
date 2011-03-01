@@ -7,7 +7,12 @@
  */
 
 #include <memory.h>
+#include <stdint.h>
+#ifdef __WIN32__
+#include <winsock.h>
+#else
 #include <arpa/inet.h>
+#endif
 
 #include "sha1.h"
 

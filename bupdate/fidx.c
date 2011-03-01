@@ -8,7 +8,11 @@
 #include <errno.h>
 #include <unistd.h>
 #include <stdint.h>
+#ifdef __WIN32__
+#include <winsock.h>
+#else
 #include <arpa/inet.h>
+#endif
 
 #define FIDX_VERSION 1
 

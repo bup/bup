@@ -96,9 +96,9 @@ int bupsplit_selftest()
     uint32_t sum1a, sum1b, sum2a, sum2b, sum3a, sum3b;
     unsigned count;
     
-    srandom(1);
+    srand(1);
     for (count = 0; count < sizeof(buf); count++)
-	buf[count] = random();
+	buf[count] = rand();
     
     sum1a = rollsum_sum(buf, 0, sizeof(buf));
     sum1b = rollsum_sum(buf, 1, sizeof(buf));

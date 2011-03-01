@@ -1,0 +1,5 @@
+TARGET=$1
+shift
+redo-ifchange "$@"
+i586-mingw32msvc-gcc -o $TARGET -Wall -g "$@" -lwsock32
+
