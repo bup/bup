@@ -34,7 +34,7 @@ void print(WVSTRING_FORMAT_DECL)
 
 
 // FIXME: support multiple ranges in a single request?
-WvError http_get(WvBuf &buf, WvStringParm url, int startbyte, int bytelen)
+WvError _http_get(WvBuf &buf, WvStringParm url, int startbyte, int bytelen)
 {
     print("Getting: %s\n", url);
     
@@ -92,6 +92,53 @@ WvError http_get(WvBuf &buf, WvStringParm url, int startbyte, int bytelen)
 }
 
 
+WvError _file_get(WvBuf &buf, WvStringParm filename,
+		  int startbyte, int bytelen)
+{
+    WvComStatus err;
+    
+    FILE *f = fopen(filename, "rb");
+    if (!f)
+	return err.set(errno);
+    
+    fseek(f, 0, SEEK_END);
+    ssize_t filesize = ftell(f);
+    
+    if (startbyte < 0)
+	return err.set("startbyte must be >= 0");
+    if (startbyte >= filesize)
+	return err.set("startbyte(%s) must be <= filesize(%s)",
+		       startbyte, filesize);
+    if (!(bytelen == -1 || bytelen > 0))
+	return err.set("bytelen(%s) must be -1 or >0", bytelen);
+    if (bytelen>0 && startbyte+bytelen > filesize)
+	return err.set("startbyte+bytelen (%s) >= filesize(%s)",
+		       startbyte+bytelen, filesize);
+    
+    fseek(f, startbyte, SEEK_SET);
+    if (bytelen < 0)
+	bytelen = filesize - startbyte;
+    byte *p = buf.alloc(bytelen);
+    ssize_t len = fread(p, 1, bytelen, f);
+    if (len != bytelen)
+    {
+	buf.unalloc(bytelen);
+	err.set("read: expected %s bytes, got %s", bytelen, len);
+    }
+    fclose(f);
+    return err;
+}
+
+
+WvError http_get(WvBuf &buf, WvStringParm url, int startbyte, int bytelen)
+{
+    if (url.startswith("file://"))
+	return _file_get(buf, url+7, startbyte, bytelen);
+    else
+	return _http_get(buf, url, startbyte, bytelen);
+}
+
+
 WvString http_get_str(WvStringParm url)
 {
     WvComStatus err;
@@ -101,6 +148,31 @@ WvString http_get_str(WvStringParm url)
 	return b.getstr();
     else
 	return WvString::null;
+}
+
+
+void http_get_to_file(WvStringParm filename, WvStringParm url)
+{
+    WvDynBuf b;
+    WvComStatus err;
+    err.set(http_get(b, url, 0, -1));
+    if (!err.isok())
+	return;
+    size_t len = b.used();
+    
+    print("Writing to: %s (%s bytes)\n", filename, b.used());
+    FILE *f = fopen(filename, "wb");
+    if (!f)
+    {
+	err.set(errno);
+	return;
+    }
+    if (fwrite(b.get(len), 1, len, f) != len)
+    {
+	err.set(errno);
+	return;
+    }
+    fclose(f);
 }
 
 
@@ -181,6 +253,7 @@ int main(int argc, char **argv)
 	// the baseurl is a particular fidx, not a file list, so just use
 	// a file list of one.
 	targets.append(getfilename(baseurl));
+	baseurl = WvString("file://%s", baseurl);
     }
     else if (is_url(baseurl))
     {
@@ -216,12 +289,11 @@ int main(int argc, char **argv)
 	}
 	baseurl = WvString("file://%s", baseurl);
     }
+    
     if (!baseurl.endswith("/"))
-    {
 	baseurl = getdirname(baseurl);
-	if (!baseurl.endswith("/"))
-	    baseurl.append("/");
-    }
+    while (baseurl.endswith("/"))
+	*strrchr(baseurl.edit(), '/') = 0;
     
     {
 	WvStringList::Iter i(targets);
@@ -236,10 +308,28 @@ int main(int argc, char **argv)
     print("baseurl is: '%s'\n"
 	  "Targets (%s):\n",
 	  baseurl, targets.count());
+    {
+	WvStringList::Iter i(targets);
+	for (i.rewind(); i.next(); )
+	    print("  '%s'\n", *i);
+    }
+    
+    if (targets.isempty())
+	err.set("no target names found in baseurl");
+    
     WvStringList::Iter i(targets);
     for (i.rewind(); i.next(); )
-	print("  '%s'\n", *i);
-#if 0    
+    {
+	print("Download fidx: %s\n", *i);
+	assert(!strchr(*i, '/'));
+	assert(i->endswith(".fidx"));
+	WvString fidxname = *i;
+	WvString tmpname("%s.tmp", fidxname);
+	WvString outname = fidxname;
+	outname.edit()[outname.len()-5] = 0;  // remove .fidx
+	http_get_to_file(tmpname, WvString("%s/%s", baseurl, fidxname));
+    }
+#if 0
     for (int i = 0; i < 10; i++)
     {
 	WvDynBuf buf;
