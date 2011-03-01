@@ -2,3 +2,5 @@
 /.redo
 /bupdate
 /*.exe
+/*.a
+/*.map

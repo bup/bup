@@ -1,0 +1,11 @@
+BASE=$1
+TARGET=$2
+shift 2
+redo-ifchange dll.od $BASE.def "$@"
+i586-mingw32msvc-g++ -o $TARGET \
+	-shared -Wall -g -s \
+	"$@" \
+	-Wl,--out-implib,$BASE.a \
+	-Wl,-Map,$BASE.map \
+	-Wl,--enable-stdcall-fixup \
+	-lwsock32 -loleaut32 -lole32 -luuid
