@@ -9,12 +9,12 @@ else
 	exit 1
 fi
 $CC -o $3 -Wall -g -O2 \
-	-MD -MF "$1.wd" \
+	-MD -MF "$1.d" \
 	-Ilib/bup \
 	-Ibupdate/block-sha1 \
 	-Ibupdate/wvcom \
 	-c "$SRC"
-read DEPS <$1.wd
-rm -f "$1.wd"
+read DEPS <$1.d
+rm -f "$1.d"
 DEPS=${DEPS#*:}
 redo-ifchange "$SRC" $DEPS

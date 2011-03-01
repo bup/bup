@@ -55,8 +55,8 @@ WvError _file_get(WvBuf &buf, WvStringParm filename,
     if (!(bytelen == -1 || bytelen > 0))
 	return err.set("bytelen(%s) must be -1 or >0", bytelen);
     if (bytelen>0 && startbyte+bytelen > filesize)
-	return err.set("startbyte+bytelen (%s) >= filesize(%s)",
-		       startbyte+bytelen, filesize);
+	return err.set("startbyte(%s)+bytelen(%s) >= filesize(%s)",
+		       startbyte, bytelen, filesize);
     
     fseek(f, startbyte, SEEK_SET);
     if (bytelen < 0)
@@ -75,6 +75,7 @@ WvError _file_get(WvBuf &buf, WvStringParm filename,
 
 WvError http_get(WvBuf &buf, WvStringParm url, int startbyte, int bytelen)
 {
+    //print("    getting %s (%s,%s)\n", url, startbyte, bytelen);
     if (url.startswith("file://"))
 	return _file_get(buf, url+7, startbyte, bytelen);
     else
@@ -103,7 +104,7 @@ void http_get_to_file(WvStringParm filename, WvStringParm url)
 	return;
     size_t len = b.used();
     
-    print("Writing to: %s (%s bytes)\n", filename, b.used());
+    //print("Writing to: %s (%s bytes)\n", filename, b.used());
     FILE *f = fopen(filename, "wb");
     if (!f)
     {
@@ -189,9 +190,19 @@ class Fidx;
 struct FidxMapping
 {
     Fidx *fidx;
-    byte sha[20];
-    size_t ofs, size, level;
+    Sha sha;
+    size_t ofs, size;
 };
+
+
+void eatsuffix(WvString &s, WvStringParm suffix)
+{
+    if (s.endswith(suffix))
+    {
+	char *cptr = s.edit();
+	cptr[s.len() - suffix.len()] = 0;
+    }
+}
 
 
 class Fidx
@@ -199,13 +210,22 @@ class Fidx
 public:
     WvString name;
     WvDynBuf buf;
+    const byte *bytes;
     WvError err;
     Sha filesha;
+    size_t filesize;
     
     Fidx(WvStringParm _name) : name(_name)
     {
 	WvComStatusIgnorer ig; // FIXME shouldn't be needed, but is
 	err.set(_file_get(buf, name, 0, -1));
+	bytes = NULL;
+	eatsuffix(name, ".fidx");
+	if (!exists(name))
+	{
+	    err.set_both(ENOENT, "%s does not exist", name);
+	    return;
+	}
 	if (buf.used() < sizeof(FidxHdr))
 	{
 	    err.set(".fidx length < len(FidxHdr)"); 
@@ -225,13 +245,17 @@ public:
 	    return;
 	}
 	
-	const byte *rest = buf.peek(0, buf.used());
-	assert(rest);
+	bytes = buf.peek(0, buf.used());
+	assert(bytes);
 	
 	// FIXME verify checksum before removing from buffer
-	
-	filesha = *(Sha *)(rest + buf.used() - 20);
+	filesha = *(Sha *)(bytes + buf.used() - 20);
 	buf.unalloc(20);
+	
+	int ln = len();
+	filesize = 0;
+	for (int e = 0; e < ln; e++)
+	    filesize += ntohs(get(e)->size);
     }
     
     int len() const
@@ -239,11 +263,81 @@ public:
 	return buf.used() / sizeof(FidxEntry);
     }
     
-    FidxEntry *get(int elem)
+    FidxEntry *get(int elem) const
     {
-	assert(elem > 0);
+	assert(elem >= 0);
 	assert(elem < len());
-	return (FidxEntry *)(buf.peek(0,buf.used()) + elem*sizeof(FidxEntry));
+	return (FidxEntry *)(bytes + elem*sizeof(FidxEntry));
+    }
+};
+
+DeclareWvList(Fidx);
+
+
+static int _fidx_mapping_compare(const void *_a, const void *_b)
+{
+    FidxMapping *a = (FidxMapping *)_a;
+    FidxMapping *b = (FidxMapping *)_b;
+    return memcmp(&a->sha, &b->sha, sizeof(a->sha));
+}
+
+
+static int _fidx_mapping_search(const void *_key, const void *_member)
+{
+    Sha *key = (Sha *)_key;
+    FidxMapping *member = (FidxMapping *)_member;
+    return memcmp(key, &member->sha, sizeof(member->sha));
+}
+
+
+class FidxMappings
+{
+public:
+    FidxMapping *list;
+    int count;
+    
+    FidxMappings(FidxList &l)
+    {
+	count = 0;
+	FidxList::Iter i(l);
+	for (i.rewind(); i.next(); )
+	    count += i->len();
+	
+	list = new FidxMapping[count];
+	
+	int o = 0;
+	for (i.rewind(); i.next(); )
+	{
+	    int len = i->len();
+	    size_t ofs = 0;
+	    for (int e = 0; e < len; e++)
+	    {
+		FidxEntry *ent = i->get(e);
+		FidxMapping *m = list + (o++);
+		memset(m, 0, sizeof(*m));
+		m->fidx = i.ptr();
+		m->sha = ent->sha;
+		m->ofs = ofs;
+		m->size = ntohs(ent->size);
+		assert(m->ofs <= i->filesize);
+		assert(m->ofs + ntohs(ent->size) <= i->filesize);
+		ofs += ntohs(ent->size);
+	    }
+	}
+	
+	print("Mappings: %s total objects loaded.\n", count);
+	qsort(list, count, sizeof(FidxMapping), _fidx_mapping_compare);
+    };
+    
+    ~FidxMappings()
+    {
+	delete[] list;
+    }
+    
+    FidxMapping *find(Sha &sha)
+    {
+	return (FidxMapping *)bsearch(&sha, list, count, sizeof(FidxMapping),
+				      _fidx_mapping_search);
     }
 };
 
@@ -332,16 +426,30 @@ int main(int argc, char **argv)
     if (targets.isempty())
 	err.set("no target names found in baseurl");
     
+    // load existing fidxes
+    FidxList fidxes;
     WvStringList::Iter i(targets);
     for (i.rewind(); i.next(); )
     {
-	print("Download fidx: %s\n", *i);
+	Fidx *f = new Fidx(*i);
+	if (f->err.isok())
+	    fidxes.append(f, true);
+	else
+	    delete f;
+    }
+    FidxMappings mappings(fidxes);
+    
+    for (i.rewind(); i.next(); )
+    {
+	print("\n%s\n", *i);
 	assert(!strchr(*i, '/'));
 	assert(i->endswith(".fidx"));
 	WvString fidxname = *i;
 	WvString tmpname("%s.tmp", fidxname);
 	WvString outname = fidxname;
 	outname.edit()[outname.len()-5] = 0;  // remove .fidx
+	WvString outtmpname("%s.tmp", outname);
+	
 	http_get_to_file(tmpname, WvString("%s/%s", baseurl, fidxname));
 	
 	Fidx fidx(tmpname), oldfidx(fidxname);
@@ -349,14 +457,86 @@ int main(int argc, char **argv)
 	if (oldfidx.err.isok() && fidx.err.isok() 
 	    && fidx.filesha == oldfidx.filesha)
 	{
-	    print("  already up to date.\n");
+	    print("    already up to date.\n");
+	    unlink(tmpname);
+	    unlink(outtmpname);
 	    continue;
 	}
-	else
-	    print("  changed!\n");
+
+	print("    changed! (old=%s, new=%s)\n",
+	      oldfidx.err.isok(), fidx.err.isok());
+	
+	// predict the download
+	int len = fidx.len();
+	size_t missing = 0, chunks = 0;
+	for (int e = 0; e < len; e++)
+	{
+	    FidxEntry *ent = fidx.get(e);
+	    FidxMapping *m = mappings.find(ent->sha);
+	    if (!m)
+	    {
+		missing += ntohs(ent->size);
+		chunks++;
+	    }
+	}
+	print("    need to download %s/%s bytes in %s chunks.\n",
+	      missing, fidx.filesize, chunks);
+	
+	// do the download
+	WvComStatus errx(fidx.name);
+	FILE *outf = fopen(outtmpname, "wb");
+	if (!outf)
+	{
+	    errx.set(errno);
+	    continue;
+	}
+	size_t rofs = 0, got = 0;
+	for (int e = 0; e < len; e++)
+	{
+	    // FIXME handle errors in here
+	    // FIXME merge consecutive chunks together when possible
+	    FidxEntry *ent = fidx.get(e);
+	    size_t esz = ntohs(ent->size);
+	    FidxMapping *m = mappings.find(ent->sha);
+	    WvDynBuf b;
+	    if (m)
+	    {
+		assert(m->size == esz);
+		errx.set(_file_get(b, m->fidx->name, m->ofs, m->size));
+	    }
+	    else
+	    {
+		errx.set(http_get(b, WvString("%s/%s", baseurl, outname),
+				  rofs, esz));
+		got += esz;
+		print("    %s/%s                  \r", got, missing);
+	    }
+	    if (b.used() == esz)
+		fwrite(b.get(esz), 1, esz, outf);
+	    else
+	    {
+		errx.set("problems reading data");
+		break;
+	    }
+	    rofs += esz;
+	}
+	print("                                              \r");
+	fclose(outf);
+	
+	// FIXME validate the final file checksum here for a sanity check
+	if (errx.isok())
+	{
+	    unlink(fidxname);
+	    unlink(outname);
+	    rename(outtmpname, outname);
+	    rename(tmpname, fidxname);
+	}
     }
     
     if (!err.isok())
+    {
 	print("error was: %s\n", err.str());
+	return 1;
+    }
     return 0;
 }

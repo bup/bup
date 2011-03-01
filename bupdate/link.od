@@ -1,4 +1,4 @@
 TARGET=$1
 shift
-redo-ifchange "$@"
+redo-ifchange link.od "$@"
 g++ -o $TARGET -Wall -g "$@" -lcurl

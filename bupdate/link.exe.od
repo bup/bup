@@ -1,6 +1,6 @@
 TARGET=$1
 shift
-redo-ifchange "$@"
+redo-ifchange link.exe.od "$@"
 i586-mingw32msvc-g++ -o $TARGET -Wall -g "$@" \
 	-lwsock32 -loleaut32 -lole32 -luuid
 
