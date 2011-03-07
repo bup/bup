@@ -2,7 +2,7 @@
 import sys, stat, time, math
 from bup import hashsplit, git, options, index, client
 from bup.helpers import *
-from bup.hashsplit import GIT_MODE_TREE, GIT_MODE_FILE
+from bup.hashsplit import GIT_MODE_TREE, GIT_MODE_FILE, GIT_MODE_SYMLINK
 
 
 optspec = """
@@ -283,7 +283,7 @@ for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse_during):
                     add_error(e)
                     lastskip_name = ent.name
                 else:
-                    (mode, id) = ('120000', w.new_blob(rl))
+                    (mode, id) = (GIT_MODE_SYMLINK, w.new_blob(rl))
             else:
                 add_error(Exception('skipping special file "%s"' % ent.name))
                 lastskip_name = ent.name

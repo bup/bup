@@ -10,6 +10,7 @@ fanout = 16
 
 GIT_MODE_FILE = 0100644
 GIT_MODE_TREE = 040000
+GIT_MODE_SYMLINK = 0120000
 assert(GIT_MODE_TREE != 40000)  # 0xxx should be treated as octal
 
 # The purpose of this type of buffer is to avoid copying on peek(), get(),
