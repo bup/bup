@@ -838,11 +838,11 @@ def check_repo_or_die(path=None):
             if repodir != home_repodir:
                 log('error: %r is not a bup/git repository\n' % repo())
                 sys.exit(15)
+            else:
+                init_repo()
         else:
             log('error: %s\n' % e)
             sys.exit(14)
-
-    init_repo()
 
 
 _ver = None
