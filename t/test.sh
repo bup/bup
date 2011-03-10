@@ -30,6 +30,7 @@ touch $D/a
 WVPASS bup random 128k >$D/b
 mkdir $D/d $D/d/e
 WVPASS bup random 512 >$D/f
+WVPASS ln -s non-existent-file $D/g
 WVPASSEQ "$(bup index -s $D/)" "A $D/"
 WVPASSEQ "$(bup index -s $D/b)" ""
 WVPASSEQ "$(bup index --check -us $D/b)" "A $D/b"
@@ -40,7 +41,8 @@ A $D/b"
 touch $D/d/z
 bup tick
 WVPASSEQ "$(bup index --check -usx $D)" \
-"A $D/f
+"A $D/g
+A $D/f
 A $D/d/z
 A $D/d/e/
 A $D/d/
@@ -58,7 +60,8 @@ WVPASSEQ "$(bup index --check -us $D/d --fake-valid)" \
 touch $D/d/z
 WVPASS bup index -u $D/d/z  # becomes modified
 WVPASSEQ "$(bup index -s $D/a $D $D/b)" \
-"A $D/f
+"A $D/g
+A $D/f
 M $D/d/z
   $D/d/e/
 M $D/d/
@@ -68,14 +71,16 @@ A $D/"
 
 WVPASS bup index -u $D/d/e $D/a --fake-invalid
 WVPASSEQ "$(cd $D && bup index -m .)" \
-"./f
+"./g
+./f
 ./d/z
 ./d/e/
 ./d/
 ./a
 ./"
 WVPASSEQ "$(cd $D && bup index -m)" \
-"f
+"g
+f
 d/z
 d/e/
 d/
@@ -99,7 +104,8 @@ mv $BUP_DIR/bi.old $BUP_DIR/bupindex
 WVPASS bup index -u $D/d/e
 WVPASS bup save -t $D/d/e
 WVPASSEQ "$(cd $D && bup index -m)" \
-"f
+"g
+f
 d/z
 d/
 a
@@ -110,15 +116,16 @@ WVPASS bup save -t $D/d/z
 WVPASS bup save -t $D/d/z  # test regenerating trees when no files are changed
 WVPASS bup save -t $D/d
 WVPASSEQ "$(cd $D && bup index -m)" \
-"f
+"g
+f
 a
 ./"
-tree1=$(bup save -t $D)
+tree1=$(bup save -t $D) || WVFAIL
 WVPASSEQ "$(cd $D && bup index -m)" ""
-tree2=$(bup save -t $D)
+tree2=$(bup save -t $D) || WVFAIL
 WVPASSEQ "$tree1" "$tree2"
 WVPASSEQ "$(bup index -s / | grep ^D)" ""
-tree3=$(bup save -t /)
+tree3=$(bup save -t /) || WVFAIL
 WVPASSEQ "$tree1" "$tree3"
 WVPASS bup save -r :$BUP_DIR -n r-test $D
 WVFAIL bup save -r :$BUP_DIR/fake/path -n r-test $D
@@ -225,6 +232,7 @@ WVPASS bup restore -C buprestore.tmp "/master/latest/$TOP/$D"
 WVPASSEQ "$(ls buprestore.tmp)" "bupdata.tmp"
 rm -rf buprestore.tmp
 WVPASS bup restore -C buprestore.tmp "/master/latest/$TOP/$D/"
+touch $D/non-existent-file buprestore.tmp/non-existent-file # else diff fails
 WVPASS diff -ur $D/ buprestore.tmp/
 
 WVSTART "ftp"
