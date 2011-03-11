@@ -680,7 +680,7 @@ static PyObject *bup_set_linux_file_attr(PyObject *self, PyObject *args)
     }
 
     close(fd);
-    Py_RETURN_TRUE;
+    return Py_BuildValue("i", 1);
 }
 #endif /* def linux */
 
@@ -755,7 +755,7 @@ static PyObject *bup_utimensat(PyObject *self, PyObject *args)
     if (rc != 0)
         return PyErr_SetFromErrnoWithFilename(PyExc_IOError, path);
 
-    Py_RETURN_TRUE;
+    return Py_BuildValue("i", 1);
 }
 
 #endif /* defined(_ATFILE_SOURCE)
@@ -937,11 +937,9 @@ PyMODINIT_FUNC init_helpers(void)
                        Py_BuildValue("i", AT_SYMLINK_NOFOLLOW));
 #endif
 #ifdef HAVE_BUP_STAT
-    Py_INCREF(Py_True);
-    PyModule_AddObject(m, "_have_ns_fs_timestamps", Py_True);
+    PyModule_AddIntConstant(m, "_have_ns_fs_timestamps", 1);
 #else
-    Py_INCREF(Py_False);
-    PyModule_AddObject(m, "_have_ns_fs_timestamps", Py_False);
+    PyModule_AddIntConstant(m, "_have_ns_fs_timestamps", 0);
 #endif
     e = getenv("BUP_FORCE_TTY");
     istty2 = isatty(2) || (atoi(e ? e : "0") & 2);
