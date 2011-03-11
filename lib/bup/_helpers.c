@@ -266,7 +266,7 @@ static PyObject *bloom_contains(PyObject *self, PyObject *args)
     else
 	return NULL;
 
-    return Py_BuildValue("Oi", Py_True, k);
+    return Py_BuildValue("ii", 1, k);
 }
 
 
