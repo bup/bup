@@ -146,5 +146,5 @@ clean: Documentation/clean
 		*.pyc */*.pyc lib/*/*.pyc lib/*/*/*.pyc \
 		bup bup-* cmd/bup-* lib/bup/_version.py randomgen memtest \
 		out[12] out2[tc] tags[12] tags2[tc]
-	chmod u+rwx lib/bup/t/pybuptest.tmp
+	[ -d lib/bup/t/pybuptest.tmp ] && chmod u+rwx lib/bup/t/pybuptest.tmp || true
 	rm -rf *.tmp t/*.tmp lib/*/*/*.tmp build lib/bup/build
