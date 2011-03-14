@@ -114,9 +114,9 @@ class stat_result():
             result.st_gid = st.st_gid
             result.st_rdev = st.st_rdev
             result.st_size = st.st_size
-            atime = FSTime.from_stat_time(st.st_atime)
-            mtime = FSTime.from_stat_time(st.st_mtime)
-            ctime = FSTime.from_stat_time(st.st_ctime)
+            atime = st.st_atime
+            mtime = st.st_mtime
+            ctime = st.st_ctime
         result.st_atime = FSTime.from_stat_time(atime)
         result.st_mtime = FSTime.from_stat_time(mtime)
         result.st_ctime = FSTime.from_stat_time(ctime)
