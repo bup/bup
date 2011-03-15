@@ -27,8 +27,6 @@ typedef unsigned char  byte;
 #define TRUE 1
 #define FALSE 0
 
-int errcount = 0;
-
 struct Sha
 {
     byte sha[20];

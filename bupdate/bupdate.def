@@ -2,3 +2,4 @@ LIBRARY bupdate
 EXPORTS
 
 bupdate
+nsis

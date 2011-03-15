@@ -2,6 +2,7 @@ exec >&2
 TARGET=${1%.dll}
 . ./dll.od "$TARGET" "$3" \
 	$TARGET.w.o \
+	nsis.w.o \
 	http-win.w.o \
 	../lib/bup/bupsplit.w.o \
 	block-sha1/sha1.w.o \

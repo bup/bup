@@ -1,11 +1,13 @@
 BASE=$1
 TARGET=$2
 shift 2
-redo-ifchange dll.od $BASE.def "$@"
-i586-mingw32msvc-g++ -o $TARGET \
+redo-ifchange ${DLL_OD:=dll.od} $BASE.def "$@"
+rm -f $BASE.dll
+i586-mingw32msvc-g++ -o $BASE.dll \
 	-shared -Wall -g -s \
 	"$@" \
-	-Wl,--out-implib,$BASE.a \
+	-Wl,--out-implib,$BASE.dll.a \
 	-Wl,-Map,$BASE.map \
 	-Wl,--enable-stdcall-fixup \
 	-lwsock32 -loleaut32 -lole32 -luuid
+mv $BASE.dll $TARGET

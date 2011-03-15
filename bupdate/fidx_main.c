@@ -10,6 +10,7 @@
 #include <unistd.h>
 #include <stdint.h>
 
+static int errcount = 0;
 
 // FIXME: this does dynamic allocation, but we caller never frees it
 // because we're lazy right now.
