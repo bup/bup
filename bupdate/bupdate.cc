@@ -34,7 +34,7 @@ void print(WVSTRING_FORMAT_DECL)
 WvError _file_get(WvBuf &buf, WvStringParm filename,
 		  int startbyte, int bytelen)
 {
-    WvComStatus err;
+    WvComStatus err(filename);
     
     FILE *f = fopen(filename, "rb");
     if (!f)
@@ -81,7 +81,7 @@ WvError http_get(WvBuf &buf, WvStringParm url, int startbyte, int bytelen)
 
 WvString http_get_str(WvStringParm url)
 {
-    WvComStatus err;
+    WvComStatus err(WvString("http(%s)", url));
     WvDynBuf b;
     err.set(http_get(b, url, 0, -1));
     if (err.isok())
@@ -94,7 +94,7 @@ WvString http_get_str(WvStringParm url)
 void http_get_to_file(WvStringParm filename, WvStringParm url)
 {
     WvDynBuf b;
-    WvComStatus err;
+    WvComStatus err(WvString("http(%s)(%s)", filename, url));
     err.set(http_get(b, url, 0, -1));
     if (!err.isok())
 	return;
@@ -213,8 +213,8 @@ public:
     
     Fidx(WvStringParm _name) : name(_name)
     {
-	WvComStatusIgnorer ig; // FIXME shouldn't be needed, but is
-	err.set(_file_get(buf, name, 0, -1));
+	WvComStatusIgnorer ig; // FIXME shouldn't be needed, but is. why?
+	err.set("fidx", _file_get(buf, name, 0, -1));
 	bytes = NULL;
 	eatsuffix(name, ".fidx");
 	if (!exists(name))
@@ -349,7 +349,7 @@ static void flushq(FILE *outf, DlQueue &q, WvStringParm url,
 {
     if (q.size)
     {
-	WvComStatus err;
+	WvComStatus err("flushq");
 	WvDynBuf b;
 	err.set(http_get(b, url, q.ofs, q.size));
 	got += q.size;
@@ -363,7 +363,7 @@ int bupdate(const char *_baseurl, bupdate_progress_t *myprog)
 {
     progfunc = myprog;
     
-    WvComStatus err;
+    WvComStatus err("bupdate");
     WvString baseurl(_baseurl);
     for (char *cptr = baseurl.edit(); cptr && *cptr; cptr++)
 	if (*cptr == '\\')
@@ -392,7 +392,7 @@ int bupdate(const char *_baseurl, bupdate_progress_t *myprog)
 	while (baseurl.endswith("/"))
 	    *strrchr(baseurl.edit(), '/') = 0;
 	if (stat(baseurl, &st) != 0)
-	    err.set(errno);
+	    err.set("stat", errno);
 	else if (S_ISDIR(st.st_mode))
 	{
 	    // a directory
@@ -550,7 +550,7 @@ int bupdate(const char *_baseurl, bupdate_progress_t *myprog)
     
     if (!err.isok())
     {
-	print("error was: %s\n", err.str());
+	print("\nerror was:\n%s\n", err.str());
 	return 1;
     }
     return 0;
