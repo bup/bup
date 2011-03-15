@@ -146,7 +146,8 @@ bool write_fidx(FILE *outf, FILE *inf)
     {
 	used += got;
 	do {
-	    rv = _do_block(buf+ofs, used-ofs, outf, &filesha, FALSE);
+	    rv = _do_block(buf+ofs, used-ofs, outf, &filesha,
+			   FALSE || sizeof(buf)==used);
 	    if (rv < 0)
 		return FALSE;
 	    ofs += rv;
