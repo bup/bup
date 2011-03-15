@@ -1,4 +1,4 @@
-redo-ifchange fidx fidx.exe bupdate bupdate.exe bupdate.dll
+redo-ifchange fidx fidx.exe bupdate bupdate.exe bupd.exe bupdate.dll
 
 
 
