@@ -35,14 +35,15 @@ void print(WVSTRING_FORMAT_DECL)
 WvError _file_get(WvBuf &buf, WvStringParm filename,
 	       int startbyte, int bytelen)
 {
-    WvComStatus err(filename);
+    WvComStatus errb;
     
     BigFile f(filename, "rb");
-    if (!err.isok()) return err;
+    if (!errb.isok()) return errb;
     
     f.seek(0, SEEK_END);
     off64_t filesize = f.tell();
     
+    WvComStatus err(filename);
     if (startbyte < 0)
 	return err.set("startbyte must be >= 0");
     if (startbyte >= filesize)
@@ -93,7 +94,7 @@ WvString http_get_str(WvStringParm url)
 void http_get_to_file(WvStringParm filename, WvStringParm url)
 {
     WvDynBuf b;
-    WvComStatus err(WvString("http(%s)(%s)", filename, url));
+    WvComStatus err;
     err.set(http_get(b, url, 0, -1));
     if (!err.isok())
 	return;
@@ -432,6 +433,7 @@ int bupdate(const char *_baseurl, bupdate_progress_t *myprog)
 	err.set("no target names found in baseurl");
     
     // load existing fidxes
+    print("Reading existing fidx files.\n");
     FidxList fidxes;
     WvStringList::Iter i(targets);
     for (i.rewind(); i.next(); )
@@ -454,8 +456,14 @@ int bupdate(const char *_baseurl, bupdate_progress_t *myprog)
 	WvString outname = fidxname;
 	outname.edit()[outname.len()-5] = 0;  // remove .fidx
 	WvString outtmpname("%s.tmp", outname);
+	WvComStatus errx(outname);
 	
 	http_get_to_file(tmpname, WvString("%s/%s", baseurl, fidxname));
+	if (!errx.isok())
+	{
+	    print("    error: %s\n", errx.str());
+	    continue;
+	}
 	
 	Fidx fidx(tmpname), oldfidx(fidxname);
 
@@ -467,9 +475,15 @@ int bupdate(const char *_baseurl, bupdate_progress_t *myprog)
 	    unlink(outtmpname);
 	    continue;
 	}
-
+	
 	print("    changed! (old=%s, new=%s)\n",
 	      oldfidx.err.isok(), fidx.err.isok());
+	
+	if (!fidx.err.isok())
+	{
+	    print("    skipping: %s\n", fidx.err.str());
+	    continue;
+	}
 	
 	// predict the download
 	int len = fidx.len();
@@ -488,7 +502,6 @@ int bupdate(const char *_baseurl, bupdate_progress_t *myprog)
 	      missing, fidx.filesize, chunks);
 	
 	// do the download
-	WvComStatus errx(fidx.name);
 	BigFile outf(outtmpname, "wb");
 	if (!errx.isok())
 	    continue;
