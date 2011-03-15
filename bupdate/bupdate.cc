@@ -436,17 +436,25 @@ int bupdate(const char *_baseurl, bupdate_progress_t *myprog)
     // load existing fidxes
     print("Reading existing fidx files.\n");
     FidxList fidxes;
-    WvStringList::Iter i(targets);
-    for (i.rewind(); i.next(); )
     {
-	Fidx *f = new Fidx(*i);
-	if (f->err.isok())
-	    fidxes.append(f, true);
-	else
-	    delete f;
+	WvDirIter di(".", true);
+	for (di.rewind(); di.next(); )
+	{
+	    if (!di->name.endswith(".fidx"))
+		continue;
+	    Fidx *f = new Fidx(di->name);
+	    if (f->err.isok())
+	    {
+		print("    %s\n", di->name);
+		fidxes.append(f, true);
+	    }
+	    else
+		delete f;
+	}
     }
     FidxMappings mappings(fidxes);
     
+    WvStringList::Iter i(targets);
     for (i.rewind(); i.next(); )
     {
 	print("\n%s\n", *i);
