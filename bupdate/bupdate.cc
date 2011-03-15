@@ -1,3 +1,4 @@
+#include "bigfile.h"
 #include "bupdate.h"
 #include "httpget.h"
 #include "fidx.h"
@@ -32,16 +33,15 @@ void print(WVSTRING_FORMAT_DECL)
 
 
 WvError _file_get(WvBuf &buf, WvStringParm filename,
-		  int startbyte, int bytelen)
+	       int startbyte, int bytelen)
 {
     WvComStatus err(filename);
     
-    FILE *f = fopen(filename, "rb");
-    if (!f)
-	return err.set(errno);
+    BigFile f(filename, "rb");
+    if (!err.isok()) return err;
     
-    fseek(f, 0, SEEK_END);
-    ssize_t filesize = ftell(f);
+    f.seek(0, SEEK_END);
+    off64_t filesize = f.tell();
     
     if (startbyte < 0)
 	return err.set("startbyte must be >= 0");
@@ -54,17 +54,16 @@ WvError _file_get(WvBuf &buf, WvStringParm filename,
 	return err.set("startbyte(%s)+bytelen(%s) >= filesize(%s)",
 		       startbyte, bytelen, filesize);
     
-    fseek(f, startbyte, SEEK_SET);
+    f.seek(startbyte, SEEK_SET);
     if (bytelen < 0)
 	bytelen = filesize - startbyte;
     byte *p = buf.alloc(bytelen);
-    ssize_t len = fread(p, 1, bytelen, f);
+    ssize_t len = f.read(p, bytelen);
     if (len != bytelen)
     {
 	buf.unalloc(bytelen);
 	err.set("read: expected %s bytes, got %s", bytelen, len);
     }
-    fclose(f);
     return err;
 }
 
@@ -101,18 +100,9 @@ void http_get_to_file(WvStringParm filename, WvStringParm url)
     size_t len = b.used();
     
     //print("Writing to: %s (%s bytes)\n", filename, b.used());
-    FILE *f = fopen(filename, "wb");
-    if (!f)
-    {
-	err.set(errno);
-	return;
-    }
-    if (fwrite(b.get(len), 1, len, f) != len)
-    {
-	err.set(errno);
-	return;
-    }
-    fclose(f);
+    BigFile f(filename, "wb");
+    if (!err.isok()) return;
+    f.write(b.get(len), len);
 }
 
 
@@ -162,13 +152,13 @@ WvString readfile_str(WvStringParm filename)
 {
     byte buf[65536];
     WvDynBuf b;
-    FILE *f = fopen(filename, "rb");
-    if (!f)
-	return WvString::null;
+    WvComStatus err;
+    
+    BigFile f(filename, "rb");
+    if (!err.isok()) return WvString::null;
     size_t len;
-    while ((len = fread(buf, 1, sizeof(buf), f)) >= 1)
+    while ((len = f.read(buf, sizeof(buf))) >= 1)
 	b.put(buf, len);
-    fclose(f);
     return b.getstr();
 }
 
@@ -344,7 +334,7 @@ struct DlQueue
 };
 
 
-static void flushq(FILE *outf, DlQueue &q, WvStringParm url,
+static void flushq(BigFile &outf, DlQueue &q, WvStringParm url,
 		   size_t &got, size_t missing)
 {
     if (q.size)
@@ -353,6 +343,8 @@ static void flushq(FILE *outf, DlQueue &q, WvStringParm url,
 	WvDynBuf b;
 	err.set(http_get(b, url, q.ofs, q.size));
 	got += q.size;
+	if (b.used() == q.size)
+	    outf.write(b.get(q.size), q.size);
 	q.ofs = q.size = 0;
 	print("    %s/%s                  \r", got, missing);
     }
@@ -497,12 +489,9 @@ int bupdate(const char *_baseurl, bupdate_progress_t *myprog)
 	
 	// do the download
 	WvComStatus errx(fidx.name);
-	FILE *outf = fopen(outtmpname, "wb");
-	if (!outf)
-	{
-	    errx.set(errno);
+	BigFile outf(outtmpname, "wb");
+	if (!errx.isok())
 	    continue;
-	}
 	size_t rofs = 0, got = 0;
 	DlQueue queue = {0,0};
 	WvString url("%s/%s", baseurl, outname);
@@ -531,12 +520,12 @@ int bupdate(const char *_baseurl, bupdate_progress_t *myprog)
 	    }
 	    size_t amt = b.used();
 	    if (amt)
-		fwrite(b.get(amt), 1, amt, outf);
+		outf.write(b.get(amt), amt);
 	    rofs += esz;
 	}
 	flushq(outf, queue, url, got, missing);
 	print("                                              \r");
-	fclose(outf);
+	outf.close();
 	
 	// FIXME validate the final file checksum here for a sanity check
 	if (errx.isok())

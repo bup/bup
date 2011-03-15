@@ -151,6 +151,8 @@ public:
 			    WvString("%s: %s", prefix, e.errstr())); 
 	    return *this;
 	}
+    const WvError &set(WvStringParm prefix, int _errnum)
+        { return set(prefix, WvError().set(_errnum)); }
     const WvError &set_both(int _errnum, WvStringParm specialerr)
         { seterr_both(_errnum, specialerr); return *this; }
     const WvError &set_both(int _errnum, WVSTRING_FORMAT_DECL)
