@@ -1,4 +1,4 @@
-[ -e "${1}_main.c" ] && MAIN=${1}_main.c || MAIN=
+[ -e "${1}_main.c" ] && MAIN=${1}_main.w.o || MAIN=
 . ./link.exe.od "$3" \
 	$1.w.o $MAIN \
 	http-win.w.o \

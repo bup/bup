@@ -12,23 +12,37 @@
 
 #define MAX_QUEUE_SIZE (1*1024*1024)
 
-typedef void progfunc_t(const char *s);
 typedef unsigned char  byte;
 
-// reassign this to change progress message printing function
-progfunc_t *progfunc = NULL;
+// reassign this to change progress message printing functions
+static struct bupdate_callbacks *callbacks;
 
 
 void print(WvStringParm s)
 {
-    assert(progfunc);
-    progfunc(s);
+    if (callbacks && callbacks->log)
+	callbacks->log(s);
 }
 
 
 void print(WVSTRING_FORMAT_DECL)
 {
     print(WvString(WVSTRING_FORMAT_CALL));
+}
+
+
+void progress(long long bytes, long long total_bytes,
+	      WvStringParm status)
+{
+    if (callbacks && callbacks->progress)
+	callbacks->progress(bytes, total_bytes, status);
+}
+
+
+void progress_done()
+{
+    if (callbacks && callbacks->progress_done)
+	callbacks->progress_done();
 }
 
 
@@ -347,14 +361,14 @@ static void flushq(BigFile &outf, DlQueue &q, WvStringParm url,
 	if (b.used() == q.size)
 	    outf.write(b.get(q.size), q.size);
 	q.ofs = q.size = 0;
-	print("    %s/%s                  \r", got, missing);
+	progress(got, missing, "Downloading...");
     }
 }
 
 
-int bupdate(const char *_baseurl, bupdate_progress_t *myprog)
+int bupdate(const char *_baseurl, bupdate_callbacks *_callbacks)
 {
-    progfunc = myprog;
+    callbacks = _callbacks;
     
     WvComStatus err("bupdate");
     WvString baseurl(_baseurl);
@@ -427,7 +441,7 @@ int bupdate(const char *_baseurl, bupdate_progress_t *myprog)
     {
 	WvStringList::Iter i(targets);
 	for (i.rewind(); i.next(); )
-	    print("  '%s'\n", *i);
+	    print("    '%s'\n", *i);
     }
     
     if (targets.isempty())
@@ -520,7 +534,6 @@ int bupdate(const char *_baseurl, bupdate_progress_t *myprog)
 	for (int e = 0; e < len; e++)
 	{
 	    // FIXME handle errors in here
-	    // FIXME merge consecutive chunks together when possible
 	    FidxEntry *ent = fidx.get(e);
 	    size_t esz = ntohs(ent->size);
 	    FidxMapping *m = mappings.find(ent->sha);
@@ -546,8 +559,8 @@ int bupdate(const char *_baseurl, bupdate_progress_t *myprog)
 	    rofs += esz;
 	}
 	flushq(outf, queue, url, got, missing);
-	print("                                              \r");
 	outf.close();
+	progress_done();
 	
 	// FIXME validate the final file checksum here for a sanity check
 	if (errx.isok())

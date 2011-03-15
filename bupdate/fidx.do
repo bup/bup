@@ -1,4 +1,4 @@
-[ -e "${1}_main.c" ] && MAIN=${1}_main.c || MAIN=
+[ -e "${1}_main.c" ] && MAIN=${1}_main.o || MAIN=
 . ./link.od "$3" \
 	$1.o $MAIN \
 	http-curl.o \
