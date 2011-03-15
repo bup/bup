@@ -368,7 +368,6 @@ int bupdate(const char *_baseurl, bupdate_progress_t *myprog)
 	// the baseurl is a particular fidx, not a file list, so just use
 	// a file list of one.
 	targets.append(getfilename(baseurl));
-	baseurl = WvString("file://%s", baseurl);
     }
     else if (is_url(baseurl))
     {
@@ -390,7 +389,7 @@ int bupdate(const char *_baseurl, bupdate_progress_t *myprog)
 	{
 	    // a directory
 	    print("it's a dir\n");
-	    WvDirIter di(baseurl);
+	    WvDirIter di(baseurl, false);
 	    for (di.rewind(); di.next(); )
 		targets.append(di->name);
 	    if (!baseurl.endswith("/"))
@@ -409,6 +408,8 @@ int bupdate(const char *_baseurl, bupdate_progress_t *myprog)
 	baseurl = getdirname(baseurl);
     while (baseurl.endswith("/"))
 	*strrchr(baseurl.edit(), '/') = 0;
+    if (!is_url(baseurl))
+	baseurl = WvString("file://%s", baseurl);
     
     {
 	WvStringList::Iter i(targets);
