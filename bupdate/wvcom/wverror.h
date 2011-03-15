@@ -52,6 +52,8 @@ public:
      */
     virtual bool isok() const
         { return errnum == 0; }
+    virtual bool is_custom_str() const
+        { return !!errstring; }
 
     /**
      * If isok() is false, return the system error number corresponding to

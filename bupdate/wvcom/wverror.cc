@@ -144,7 +144,7 @@ void WvErrorBase::seterr(int _errnum)
 {
     if (!errnum)
     {
-        assert((_errnum != -1 || !!errstring)
+        assert(!(_errnum == -1 && !errstring)
 	    && "attempt to set errnum to -1 without also setting errstring");
 #ifdef _WIN32
 	if (_errnum == WSAECONNABORTED)
@@ -171,7 +171,8 @@ void WvErrorBase::seterr(const WvErrorBase &err)
 	// careful! we only want to copy err.errstr() if it's the non-default
 	// string.  errstr() always returns a valid string even if errstring
 	// isn't set.  We want the true value of errstring, not errstr().
-	if (!!err.errstring) errstring = err.errstr();
+	if (err.is_custom_str())
+	    errstring = err.errstr();
 	seterr(err.geterr());
     }
 }

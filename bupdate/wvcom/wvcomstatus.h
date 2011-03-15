@@ -40,6 +40,8 @@ public:
     ~WvComStatus();
 
     virtual WvString errstr() const;
+    virtual bool is_custom_str() const
+        { return WvError::is_custom_str() || !!prefix; }
 };
 
 
