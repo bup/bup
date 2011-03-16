@@ -501,17 +501,18 @@ int bupdate(const char *_baseurl, bupdate_callbacks *_callbacks)
 	WvDirIter di(".", true);
 	for (di.rewind(); di.next(); )
 	{
-	    if (!di->name.endswith(".fidx"))
+	    if (di->name.endswith(".fidx"))
 		continue;
-	    Fidx *f = new Fidx(di->name, true);
+	    WvString fidxname("%s.fidx", di->relname);
+	    Fidx *f = new Fidx(fidxname, true);
 	    if (!f->err.isok())
 	    {
-		print("    %s: %s\n", di->name, f->err.str());
+		print("    %s: %s\n", fidxname, f->err.str());
 		f->regen();
 	    }
 	    if (f->err.isok())
 	    {
-		print("    %s\n", di->name);
+		print("    %s\n", fidxname);
 		fidxes.append(f, true);
 	    }
 	    else
