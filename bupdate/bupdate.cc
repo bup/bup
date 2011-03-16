@@ -9,6 +9,8 @@
 #include "wvdiriter.h"
 #include <unistd.h>
 #include <errno.h>
+#include <sys/types.h>
+#include <utime.h>
 
 #define MAX_QUEUE_SIZE (1*1024*1024)
 
@@ -209,29 +211,54 @@ void eatsuffix(WvString &s, WvStringParm suffix)
 class Fidx
 {
 public:
-    WvString name;
+    WvString filename, fidxname;
     WvDynBuf buf;
     const byte *bytes;
     WvError err;
     Sha filesha;
     size_t filesize;
     
-    Fidx(WvStringParm _name) : name(_name)
+    Fidx(WvStringParm _name) : filename(_name), fidxname(_name)
     {
+	eatsuffix(filename, ".fidx");
+	refresh();
+    }
+    
+    void refresh()
+    {
+	buf.zap();
+	err.noerr();
+	
 	WvComStatusIgnorer ig; // any errors in here don't propagate out
-	err.set("fidx", _file_get(buf, name, 0, -1));
+	err.set("fidx", _file_get(buf, fidxname, 0, -1));
 	bytes = NULL;
-	eatsuffix(name, ".fidx");
-	if (!exists(name))
+	filesize = 0;
+	if (!exists(filename))
 	{
-	    err.set_both(ENOENT, "%s does not exist", name);
+	    err.set_both(ENOENT, "%s does not exist", filename);
 	    return;
 	}
-	if (buf.used() < sizeof(FidxHdr))
+	
+	{
+	    struct stat st1, st2;
+	    if (stat(filename, &st1) != 0)
+		err.set(filename, errno);
+	    if (stat(fidxname, &st2) != 0)
+		err.set(fidxname, errno);
+	    if (err.isok() && st1.st_mtime != st2.st_mtime)
+		err.set("file mtime doesn't match its fidx");
+	    if (!err.isok())
+		return;
+	}
+	
+	if (buf.used() < sizeof(FidxHdr)+20)
 	{
 	    err.set(".fidx length < len(FidxHdr)"); 
 	    return;
 	}
+	
+	quick_sha(filesha.sha, buf.peek(0, buf.used()), buf.used()-20);
+	
 	FidxHdr *h = (FidxHdr *)buf.get(sizeof(FidxHdr));
 	assert(h);
 	if (memcmp(h->marker, "FIDX", 4) != 0)
@@ -249,14 +276,28 @@ public:
 	bytes = buf.peek(0, buf.used());
 	assert(bytes);
 	
-	// FIXME verify checksum before removing from buffer
-	filesha = *(Sha *)(bytes + buf.used() - 20);
+	Sha filesha_expect = *(Sha *)(bytes + buf.used() - 20);
 	buf.unalloc(20);
+	if (filesha_expect != filesha)
+	{
+	    err.set(".fidx: fidx sha1 does not match stored sha1");
+	    return;
+	}
 	
 	int ln = len();
-	filesize = 0;
 	for (int e = 0; e < ln; e++)
 	    filesize += ntohs(get(e)->size);
+    }
+    
+    void regen()
+    {
+	err.noerr();
+	print("    Regenerating index for %s.\n", filename);
+	int rv = fidx(filename);
+	if (rv != 0)
+	    err.set("fidx regeneration for %s failed", filename);
+	else
+	    refresh();
     }
     
     int len() const
@@ -328,6 +369,7 @@ public:
 	
 	print("Mappings: %s total objects loaded.\n", count);
 	qsort(list, count, sizeof(FidxMapping), _fidx_mapping_compare);
+	print("Mappings sorted.\n", count);
     };
     
     ~FidxMappings()
@@ -457,6 +499,11 @@ int bupdate(const char *_baseurl, bupdate_callbacks *_callbacks)
 	    if (!di->name.endswith(".fidx"))
 		continue;
 	    Fidx *f = new Fidx(di->name);
+	    if (!f->err.isok())
+	    {
+		print("    %s: %s\n", di->name, f->err.str());
+		f->regen();
+	    }
 	    if (f->err.isok())
 	    {
 		print("    %s\n", di->name);
@@ -490,6 +537,9 @@ int bupdate(const char *_baseurl, bupdate_callbacks *_callbacks)
 	
 	Fidx fidx(tmpname), oldfidx(fidxname);
 
+	if (!oldfidx.err.isok() && oldfidx.err.get() != ENOENT)
+	    print("    old fidx: %s\n", oldfidx.err.str());
+	
 	if (oldfidx.err.isok() && fidx.err.isok() 
 	    && fidx.filesha == oldfidx.filesha)
 	{
@@ -510,16 +560,18 @@ int bupdate(const char *_baseurl, bupdate_callbacks *_callbacks)
 	
 	// predict the download
 	int len = fidx.len();
-	size_t missing = 0, chunks = 0;
+	size_t missing = 0, chunks = 0, ofs = 0;
 	for (int e = 0; e < len; e++)
 	{
 	    FidxEntry *ent = fidx.get(e);
 	    FidxMapping *m = mappings.find(ent->sha);
 	    if (!m)
 	    {
+		//print("        %-10s %s\n", ofs, ntohs(ent->size));
 		missing += ntohs(ent->size);
 		chunks++;
 	    }
+	    ofs += ntohs(ent->size);
 	}
 	print("    need to download %s/%s bytes in %s chunks.\n",
 	      missing, fidx.filesize, chunks);
@@ -542,7 +594,7 @@ int bupdate(const char *_baseurl, bupdate_callbacks *_callbacks)
 	    {
 		flushq(outf, queue, url, got, missing);
 		assert(m->size == esz);
-		errx.set(_file_get(b, m->fidx->name, m->ofs, m->size));
+		errx.set(_file_get(b, m->fidx->filename, m->ofs, m->size));
 	    }
 	    else
 	    {
@@ -562,13 +614,18 @@ int bupdate(const char *_baseurl, bupdate_callbacks *_callbacks)
 	outf.close();
 	progress_done();
 	
-	// FIXME validate the final file checksum here for a sanity check
 	if (errx.isok())
 	{
 	    unlink(fidxname);
 	    unlink(outname);
-	    rename_overwrite(outtmpname, outname);
-	    rename_overwrite(tmpname, fidxname);
+	    if (rename_overwrite(outtmpname, outname) == 0 &&
+		rename_overwrite(tmpname, fidxname) == 0)
+	    {
+		time_t now = time(NULL);
+		struct utimbuf tb = { now, now };
+		utime(outname, &tb);
+		utime(fidxname, &tb);
+	    }
 	}
     }
     

@@ -35,6 +35,8 @@ struct Sha
     #ifdef __cplusplus
     bool operator== (Sha &s) const
         { return memcmp(this, &s, sizeof(this)) == 0; }
+    bool operator!= (Sha &s) const
+        { return memcmp(this, &s, sizeof(this)) != 0; }
     #endif
 };
 

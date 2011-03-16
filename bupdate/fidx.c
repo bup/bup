@@ -5,6 +5,9 @@
 #include <assert.h>
 #include <stdarg.h>
 #include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <utime.h>
 
 static int errcount = 0;
 
@@ -202,10 +205,19 @@ int rename_overwrite(const char *oldname, const char *newname)
 
 int fidx(const char *filename)
 {
+    char *fidxtmp = cat2(filename, ".fidx.tmp");
+    char *fidxname = cat2(filename, ".fidx");
     FILE *inf, *outf;
+    struct stat st;
     int ok;
     
     errcount = 0;
+    
+    if (stat(filename, &st) != 0)
+    {
+	xperror("stat");
+	return errcount;
+    }
     
     inf = fopen(filename, "rb");
     if (!inf)
@@ -213,8 +225,8 @@ int fidx(const char *filename)
 	xperror(filename);
 	return errcount;
     }
-    outf = fopen(cat2(filename, ".fidx.tmp"), "wb");
-    printf("file: %s\n", filename);
+    outf = fopen(fidxtmp, "wb");
+    printf("fidx: %s\n", filename);
     
     ok = fwrite_fidx(outf, inf);
     
@@ -228,8 +240,15 @@ int fidx(const char *filename)
     }
     else
     {
-	if (unlink(cat2(filename, ".fidx.tmp")))
+	if (unlink(fidxtmp))
 	    xperror("unlink");
+    }
+    
+    {
+	// set the fidx mtime to match the input file mtime, so if the
+	// input file ever changes, the fidx will be invalidated
+	struct utimbuf tb = { st.st_mtime, st.st_mtime };
+	utime(fidxname, &tb);
     }
     
     return errcount;
