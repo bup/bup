@@ -80,8 +80,8 @@ static void progress(long long bytes, long long total_bytes,
 
 static void progress_done()
 {
-    status("Done.");
-    _progress(1, 1);
+    status("");
+    _progress(1024*1024, 1024*1024);
 }
 
 

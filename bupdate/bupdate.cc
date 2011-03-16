@@ -501,7 +501,7 @@ int bupdate(const char *_baseurl, bupdate_callbacks *_callbacks)
 	WvDirIter di(".", true);
 	for (di.rewind(); di.next(); )
 	{
-	    if (di->name.endswith(".fidx"))
+	    if (di->name.endswith(".fidx") || di->name.endswith(".tmp"))
 		continue;
 	    WvString fidxname("%s.fidx", di->relname);
 	    Fidx *f = new Fidx(fidxname, true);
