@@ -567,8 +567,8 @@ int bupdate(const char *_baseurl, bupdate_callbacks *_callbacks)
 	{
 	    unlink(fidxname);
 	    unlink(outname);
-	    rename(outtmpname, outname);
-	    rename(tmpname, fidxname);
+	    rename_overwrite(outtmpname, outname);
+	    rename_overwrite(tmpname, fidxname);
 	}
     }
     

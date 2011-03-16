@@ -54,6 +54,8 @@ struct FidxEntry
 #ifdef __cplusplus
 extern "C" {
 #endif
+    
+int rename_overwrite(const char *oldname, const char *newname);
 
 void quick_sha(byte sha[20], const byte *buf, int len);
 void blob_sha(byte sha[20], const byte *buf, int len);

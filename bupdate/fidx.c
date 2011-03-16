@@ -189,6 +189,17 @@ static char *cat2(const char *a, const char *b)
 }
 
 
+int rename_overwrite(const char *oldname, const char *newname)
+{
+#ifdef __WIN32__
+    // on Windows, we can't atomically overwrite a file using rename; we'll
+    // get a "file exists" error.  So delete the target first.
+    unlink(newname);
+#endif
+    return rename(oldname, newname);
+}
+
+
 int fidx(const char *filename)
 {
     FILE *inf, *outf;
@@ -212,7 +223,7 @@ int fidx(const char *filename)
     
     if (ok)
     {
-	if (rename(cat2(filename, ".fidx.tmp"), cat2(filename, ".fidx")))
+	if (rename_overwrite(fidxtmp, fidxname))
 	    xperror("rename");
     }
     else
