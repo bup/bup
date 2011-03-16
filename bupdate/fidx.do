@@ -2,6 +2,7 @@
 . ./link.od "$3" \
 	$MAIN \
 	bupdate.o \
+	fidx.o \
 	http-curl.o \
 	../lib/bup/bupsplit.o \
 	block-sha1/sha1.o \

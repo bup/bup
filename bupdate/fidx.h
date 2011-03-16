@@ -2,6 +2,7 @@
 #define __FIDX_H
 
 #include <stdint.h>
+#include <stdio.h>
 
 #ifdef __WIN32__
 #include <winsock.h>
@@ -50,5 +51,18 @@ struct FidxEntry
     uint16_t level;
 };
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+void quick_sha(byte sha[20], const byte *buf, int len);
+void blob_sha(byte sha[20], const byte *buf, int len);
+
+bool fwrite_fidx(FILE *outf, FILE *inf);
+int fidx(const char *filename);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // __FIDX_H

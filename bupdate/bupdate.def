@@ -1,5 +1,6 @@
 LIBRARY bupdate
 EXPORTS
 
+fidx
 bupdate
 nsis

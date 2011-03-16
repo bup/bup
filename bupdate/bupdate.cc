@@ -218,7 +218,7 @@ public:
     
     Fidx(WvStringParm _name) : name(_name)
     {
-	WvComStatusIgnorer ig; // FIXME shouldn't be needed, but is. why?
+	WvComStatusIgnorer ig; // any errors in here don't propagate out
 	err.set("fidx", _file_get(buf, name, 0, -1));
 	bytes = NULL;
 	eatsuffix(name, ".fidx");
