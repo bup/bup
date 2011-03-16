@@ -57,13 +57,15 @@ struct FidxEntry
 extern "C" {
 #endif
     
+struct bupdate_callbacks;
+    
 int rename_overwrite(const char *oldname, const char *newname);
 
 void quick_sha(byte sha[20], const byte *buf, int len);
 void blob_sha(byte sha[20], const byte *buf, int len);
 
 bool fwrite_fidx(FILE *outf, FILE *inf);
-int fidx(const char *filename);
+int fidx(const char *filename, struct bupdate_callbacks *callbacks);
 
 #ifdef __cplusplus
 }

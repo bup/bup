@@ -10,7 +10,7 @@ else
 fi
 $CC -o $3 -Wall -g -O2 \
 	-MD -MF "$1.d" \
-	-D_FILE_OFFSET_BITS=64 \
+	-D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE \
 	-Ilib/bup \
 	-Ibupdate/block-sha1 \
 	-Ibupdate/wvcom \

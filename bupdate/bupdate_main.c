@@ -1,4 +1,5 @@
 #include "bupdate.h"
+#include "progress.h"
 #include <stdio.h>
 
 
@@ -26,7 +27,7 @@ static void simple_progress_done()
 }
 
 
-struct bupdate_callbacks callbacks = {
+static struct bupdate_callbacks callbacks = {
     simple_print,
     simple_progress,
     simple_progress_done,

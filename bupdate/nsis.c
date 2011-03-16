@@ -1,3 +1,4 @@
+#include "progress.h"
 #include "bupdate.h"
 #include <stdio.h>
 #include <windows.h>

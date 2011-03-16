@@ -1,3 +1,4 @@
+#include "progress.h"
 #include "bigfile.h"
 #include "bupdate.h"
 #include "httpget.h"
@@ -293,7 +294,7 @@ public:
     {
 	err.noerr();
 	print("    Regenerating index for %s.\n", filename);
-	int rv = fidx(filename);
+	int rv = fidx(filename, callbacks);
 	if (rv != 0)
 	    err.set("fidx regeneration for %s failed", filename);
 	else
@@ -403,7 +404,7 @@ static void flushq(BigFile &outf, DlQueue &q, WvStringParm url,
 	if (b.used() == q.size)
 	    outf.write(b.get(q.size), q.size);
 	q.ofs = q.size = 0;
-	progress(got, missing, "Downloading...");
+	//progress(got, missing, "Downloading...");
     }
 }
 
@@ -609,6 +610,9 @@ int bupdate(const char *_baseurl, bupdate_callbacks *_callbacks)
 	    if (amt)
 		outf.write(b.get(amt), amt);
 	    rofs += esz;
+	    if ((e % 64) == 0)
+		progress(outf.tell(), fidx.filesize,
+			 "Downloading components...");
 	}
 	flushq(outf, queue, url, got, missing);
 	outf.close();

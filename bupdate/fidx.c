@@ -1,4 +1,5 @@
 #include "fidx.h"
+#include "progress.h"
 #include "bupsplit.h"
 #include "sha1.h"
 #include <string.h>
@@ -10,6 +11,15 @@
 #include <utime.h>
 
 static int errcount = 0;
+struct bupdate_callbacks *callbacks;
+
+
+static void progress(long long bytes, long long total_bytes,
+		     const char *status)
+{
+    if (callbacks && callbacks->progress)
+	callbacks->progress(bytes, total_bytes, status);
+}
 
 
 void quick_sha(byte sha[20], const byte *buf, int len)
@@ -91,11 +101,16 @@ bool fwrite_fidx(FILE *outf, FILE *inf)
 {
     byte buf[BLOB_READ_SIZE];
     size_t used, ofs, got;
+    long long pos, total;
     int rv;
     struct FidxHdr h;
     blk_SHA_CTX filesha;
     
     blk_SHA1_Init(&filesha);
+    pos = ftello64(inf);
+    fseeko64(inf, 0, SEEK_END);
+    total = ftello64(inf);
+    fseeko64(inf, pos, SEEK_SET);
     
     memcpy(h.marker, "FIDX", 4);
     h.ver = htonl(FIDX_VERSION);
@@ -108,6 +123,7 @@ bool fwrite_fidx(FILE *outf, FILE *inf)
     ofs = used = 0;
     while ((got = fread(buf+used, 1, sizeof(buf)-used, inf)) > 0)
     {
+	progress(ftello64(inf), total, "Indexing...");
 	used += got;
 	do {
 	    rv = _do_block(buf+ofs, used-ofs, outf, &filesha,
@@ -203,7 +219,7 @@ int rename_overwrite(const char *oldname, const char *newname)
 }
 
 
-int fidx(const char *filename)
+int fidx(const char *filename, struct bupdate_callbacks *_callbacks)
 {
     char *fidxtmp = cat2(filename, ".fidx.tmp");
     char *fidxname = cat2(filename, ".fidx");
@@ -211,6 +227,7 @@ int fidx(const char *filename)
     struct stat st;
     int ok;
     
+    callbacks = _callbacks;
     errcount = 0;
     
     if (stat(filename, &st) != 0)
@@ -229,6 +246,8 @@ int fidx(const char *filename)
     printf("fidx: %s\n", filename);
     
     ok = fwrite_fidx(outf, inf);
+    if (callbacks && callbacks->progress_done)
+	callbacks->progress_done();
     
     fclose(outf);
     fclose(inf);
