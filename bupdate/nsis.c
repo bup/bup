@@ -134,7 +134,14 @@ void nsis(HWND hwnd, int string_size, char *variables,
 	prog_count = 0;
     
     if (is_test)
+    {
 	_do_test(url);
+	pushstring("0");
+    }
     else
-	bupdate(url, &callbacks);
+    {
+	char buf[100];
+	sprintf(buf, "%d", bupdate(url, &callbacks));
+	pushstring(buf);
+    }
 }
