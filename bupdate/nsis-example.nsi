@@ -6,6 +6,16 @@ InstallDir "$PROGRAMFILES\Bupdate Example"
 
 !addplugindir "."
 
+; When someone presses cancel, add a confirmation dialog just in case.
+!define MUI_ABORTWARNING
+!define MUI_ABORTWARNING_TEXT "Cancel program installation?"
+
+; Enable the Cancel button, which is normally disabled during installation.
+Function EnableCancelButton
+    GetDlgItem $0 $HWNDPARENT 2
+    EnableWindow $0 1
+FunctionEnd
+
 ; Set up MUI (the "Modern" user interface pages)
 !include "MUI.nsh"
 !insertmacro MUI_PAGE_DIRECTORY
@@ -27,6 +37,8 @@ SectionEnd
 
 ; Installer for the downloaded sections
 Section "Downloaded Bits"
+    call EnableCancelButton
+
     ; Use this to let nsis ensure there's enough disk space available before
     ; starting the installation process at all.
     AddSize 6000000 ; kbytes
@@ -38,6 +50,19 @@ Section "Downloaded Bits"
 ;    bupdate::nsis http://afterlife/~apenwarr/tmp/userful/debian.img.fidx 50 75
 ;    bupdate::nsis http://afterlife/~apenwarr/tmp/userful/debian.old.fidx 75 100
 ;    bupdate::nsis http://afterlife/~apenwarr/music/ 50 100
+
+    DetailPrint "Doing stuff..."
+    Sleep 500
+    Sleep 500
+    Sleep 500
+    Sleep 500
+    Sleep 500
+    Sleep 500
+    Sleep 500
+    Sleep 500
+    Sleep 500
+    Sleep 500
+    Sleep 500
 SectionEnd
 
 ; Uninstaller for the main program
