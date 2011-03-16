@@ -11,7 +11,7 @@
 #include <utime.h>
 
 static int errcount = 0;
-struct bupdate_callbacks *callbacks;
+static struct bupdate_callbacks *callbacks;
 
 
 static void progress(long long bytes, long long total_bytes,
