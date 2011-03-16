@@ -218,9 +218,12 @@ public:
     WvError err;
     Sha filesha;
     size_t filesize;
+    bool mismatch_ok;
     
-    Fidx(WvStringParm _name) : filename(_name), fidxname(_name)
+    Fidx(WvStringParm _name, bool _mismatch_ok) 
+	: filename(_name), fidxname(_name)
     {
+	mismatch_ok = _mismatch_ok;
 	eatsuffix(filename, ".fidx");
 	refresh();
     }
@@ -234,13 +237,14 @@ public:
 	err.set("fidx", _file_get(buf, fidxname, 0, -1));
 	bytes = NULL;
 	filesize = 0;
-	if (!exists(filename))
+	if (!mismatch_ok)
 	{
-	    err.set_both(ENOENT, "%s does not exist", filename);
-	    return;
-	}
+	    if (!exists(filename))
+	    {
+		err.set_both(ENOENT, "%s does not exist", filename);
+		return;
+	    }
 	
-	{
 	    struct stat st1, st2;
 	    if (stat(filename, &st1) != 0)
 		err.set(filename, errno);
@@ -499,7 +503,7 @@ int bupdate(const char *_baseurl, bupdate_callbacks *_callbacks)
 	{
 	    if (!di->name.endswith(".fidx"))
 		continue;
-	    Fidx *f = new Fidx(di->name);
+	    Fidx *f = new Fidx(di->name, true);
 	    if (!f->err.isok())
 	    {
 		print("    %s: %s\n", di->name, f->err.str());
@@ -536,13 +540,13 @@ int bupdate(const char *_baseurl, bupdate_callbacks *_callbacks)
 	    continue;
 	}
 	
-	Fidx fidx(tmpname), oldfidx(fidxname);
+	Fidx fidx(tmpname, true), oldfidx(fidxname, true);
 
 	if (!oldfidx.err.isok() && oldfidx.err.get() != ENOENT)
 	    print("    old fidx: %s\n", oldfidx.err.str());
 	
-	if (oldfidx.err.isok() && fidx.err.isok() 
-	    && fidx.filesha == oldfidx.filesha)
+	if (oldfidx.err.isok() && fidx.err.isok() &&
+	    fidx.filesha == oldfidx.filesha)
 	{
 	    print("    already up to date.\n");
 	    unlink(tmpname);
@@ -584,20 +588,39 @@ int bupdate(const char *_baseurl, bupdate_callbacks *_callbacks)
 	size_t rofs = 0, got = 0;
 	DlQueue queue = {0,0};
 	WvString url("%s/%s", baseurl, outname);
-	for (int e = 0; e < len; e++)
+	WvDynBuf b;
+	for (int e = 0; e < len && errx.isok(); e++)
 	{
-	    // FIXME handle errors in here
 	    FidxEntry *ent = fidx.get(e);
 	    size_t esz = ntohs(ent->size);
 	    FidxMapping *m = mappings.find(ent->sha);
-	    WvDynBuf b;
 	    if (m)
 	    {
 		flushq(outf, queue, url, got, missing);
 		assert(m->size == esz);
-		errx.set(_file_get(b, m->fidx->filename, m->ofs, m->size));
+		{
+		    WvComStatusIgnorer ig;
+		    _file_get(b, m->fidx->filename, m->ofs, m->size);
+		}
+		size_t amt = b.used();
+		if (amt)
+		{
+		    const byte *buf = b.get(amt);
+		    Sha sha;
+		    blob_sha(sha.sha, buf, amt);
+		    if (sha == ent->sha)
+			outf.write(buf, amt);
+		    else
+		    {
+			print("    checksum mismatch @%s (%s)              \n",
+			      m->ofs, m->size);
+			m = NULL;
+		    }
+		}
+		else
+		    m = NULL;
 	    }
-	    else
+	    if (!m)
 	    {
 		if (queue.size && (queue.ofs+queue.size != rofs
 				   || queue.size > MAX_QUEUE_SIZE))
@@ -606,9 +629,6 @@ int bupdate(const char *_baseurl, bupdate_callbacks *_callbacks)
 		    queue.ofs = rofs;
 		queue.size += esz;
 	    }
-	    size_t amt = b.used();
-	    if (amt)
-		outf.write(b.get(amt), amt);
 	    rofs += esz;
 	    if ((e % 64) == 0)
 		progress(outf.tell(), fidx.filesize,
