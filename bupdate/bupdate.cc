@@ -488,7 +488,20 @@ int bupdate(const char *_baseurl, bupdate_callbacks *_callbacks)
     {
 	WvStringList::Iter i(targets);
 	for (i.rewind(); i.next(); )
+	{
 	    print("    '%s'\n", *i);
+	    
+	    // move previous partial downloads out of the way so we can
+	    // write a new partial download without having to redownload
+	    // the parts we already have.
+	    WvString fidxname = *i;
+	    WvString basename = fidxname;
+	    assert(basename.endswith(".fidx"));
+	    eatsuffix(basename, ".fidx");
+	    WvString tmpname("%s.tmp", basename);
+	    if (exists(tmpname))
+		rename_overwrite(tmpname, WvString("%s.partial", basename));
+	}
     }
     
     if (targets.isempty())
@@ -648,6 +661,8 @@ int bupdate(const char *_baseurl, bupdate_callbacks *_callbacks)
 		struct utimbuf tb = { now, now };
 		utime(outname, &tb);
 		utime(fidxname, &tb);
+		
+		unlink(WvString("%s.partial", outname));
 	    }
 	}
     }
