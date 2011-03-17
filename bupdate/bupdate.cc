@@ -408,7 +408,7 @@ static void flushq(BigFile &outf, DlQueue &q, WvStringParm url,
 	if (b.used() == q.size)
 	    outf.write(b.get(q.size), q.size);
 	q.ofs = q.size = 0;
-	//progress(got, missing, "Downloading...");
+	progress(got, missing, "Downloading...");
     }
 }
 
@@ -615,6 +615,7 @@ int bupdate(const char *_baseurl, bupdate_callbacks *_callbacks)
 		    {
 			print("    checksum mismatch @%s (%s)              \n",
 			      m->ofs, m->size);
+			missing += m->size;
 			m = NULL;
 		    }
 		}
@@ -631,9 +632,6 @@ int bupdate(const char *_baseurl, bupdate_callbacks *_callbacks)
 		queue.size += esz;
 	    }
 	    rofs += esz;
-	    if ((e % 64) == 0)
-		progress(outf.tell(), fidx.filesize,
-			 "Downloading components...");
 	}
 	flushq(outf, queue, url, got, missing);
 	outf.close();
