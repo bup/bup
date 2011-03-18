@@ -173,7 +173,7 @@ def test_restore_restricted_user_group():
         m.gid = 0;
         m.apply_to_path(path, restore_numeric_ids=True)
         errmsg = str(helpers.saved_errors[0]) if helpers.saved_errors else ''
-        WVPASS(errmsg.startswith('lchown: '))
+        WVPASS(errmsg.startswith('lchown: ') or os.stat(path).st_gid == m.gid)
         clear_errors()
     finally:
         subprocess.call(['rm', '-rf', tmpdir])
