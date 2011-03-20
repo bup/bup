@@ -17,6 +17,13 @@ try:
 except ImportError:
     log('Warning: Linux xattr support missing; install python-pyxattr.\n')
     xattr = None
+if xattr:
+    try:
+        xattr.get_all
+    except AttributeError:
+        log('Warning: python-xattr module is too old; '
+            'install python-pyxattr instead.\n')
+        xattr = None
 try:
     import posix1e
 except ImportError:
