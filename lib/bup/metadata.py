@@ -271,7 +271,14 @@ class Metadata:
             os.mknod(path, 0600 | stat.S_IFIFO)
         elif stat.S_ISLNK(self.mode):
             if self.symlink_target and create_symlinks:
-                os.symlink(self.symlink_target, path)
+                # on MacOS, symlink() permissions depend on umask, and there's no
+                # way to chown a symlink after creating it, so we have to
+                # be careful here!
+                oldumask = os.umask((self.mode & 0777) ^ 0777)
+                try:
+                    os.symlink(self.symlink_target, path)
+                finally:
+                    os.umask(oldumask)
         # FIXME: S_ISDOOR, S_IFMPB, S_IFCMP, S_IFNWK, ... see stat(2).
         # Otherwise, do nothing.
 
