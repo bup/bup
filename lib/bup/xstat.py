@@ -1,7 +1,6 @@
 """Enhanced stat operations for bup."""
-import math
-import os
-import bup._helpers as _helpers
+import os, math
+from bup import _helpers
 
 
 try:
@@ -50,13 +49,10 @@ class FSTime():
         return (- (abs_val / 10**9), - (abs_val % 10**9))
 
     if _helpers._have_ns_fs_timestamps: # Use integer nanoseconds.
-
         @staticmethod
         def from_stat_time(stat_time):
             return FSTime.from_timespec(stat_time)
-
     else: # Use python default floating-point seconds.
-
         @staticmethod
         def from_stat_time(stat_time):
             ts = FSTime()
@@ -66,7 +62,6 @@ class FSTime():
 
 
 if _have_utimensat:
-
     def lutime(path, times):
         atime = times[0].to_timespec()
         mtime = times[1].to_timespec()
@@ -76,9 +71,7 @@ if _have_utimensat:
         atime = times[0].to_timespec()
         mtime = times[1].to_timespec()
         return _helpers.utimensat(_helpers.AT_FDCWD, path, (atime, mtime), 0)
-
 else:
-
     def lutime(path, times):
         return None
 
@@ -89,7 +82,6 @@ else:
 
 
 class stat_result():
-
     @staticmethod
     def from_stat_rep(st):
         result = stat_result()

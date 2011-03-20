@@ -76,7 +76,7 @@ def _clean_up_path_for_archive(p):
 
     # Take everything after any '/../'.
     pos = result.rfind('/../')
-    if(pos != -1):
+    if pos != -1:
         result = result[result.rfind('/../') + 4:]
 
     # Take everything after any remaining '../'.
@@ -248,7 +248,7 @@ class Metadata:
         elif stat.S_ISFIFO(self.mode):
             os.mknod(path, 0600 | stat.S_IFIFO)
         elif stat.S_ISLNK(self.mode):
-            if(self.symlink_target and create_symlinks):
+            if self.symlink_target and create_symlinks:
                 os.symlink(self.symlink_target, path)
         # FIXME: S_ISDOOR, S_IFMPB, S_IFCMP, S_IFNWK, ... see stat(2).
         # Otherwise, do nothing.
@@ -333,7 +333,7 @@ class Metadata:
 
     def _add_symlink_target(self, path, st):
         try:
-            if(stat.S_ISLNK(st.st_mode)):
+            if stat.S_ISLNK(st.st_mode):
                 self.symlink_target = os.readlink(path)
         except OSError, e:
             add_error('readlink: %s', e)
@@ -374,7 +374,7 @@ class Metadata:
             num_flags = posix1e.TEXT_ABBREVIATE | posix1e.TEXT_NUMERIC_IDS
             acl_reps = [acls[0].to_any_text('', '\n', txt_flags),
                         acls[1].to_any_text('', '\n', num_flags)]
-            if(len(acls) < 3):
+            if len(acls) < 3:
                 acl_reps += ['', '']
             else:
                 acl_reps.append(acls[2].to_any_text('', '\n', txt_flags))
@@ -387,14 +387,14 @@ class Metadata:
     def _load_posix1e_acl_rec(self, port):
         data = vint.read_bvec(port)
         acl_reps = vint.unpack('ssss', data)
-        if(acl_reps[2] == ''):
+        if acl_reps[2] == '':
             acl_reps = acl_reps[:2]
         self.posix1e_acl = [posix1e.ACL(text=x) for x in acl_reps]
 
     def _apply_posix1e_acl_rec(self, path, restore_numeric_ids=False):
-        if(self.posix1e_acl):
+        if self.posix1e_acl:
             acls = self.posix1e_acl
-            if(len(acls) > 2):
+            if len(acls) > 2:
                 if restore_numeric_ids:
                     acls[3].applyto(path, posix1e.ACL_TYPE_DEFAULT)
                 else:
@@ -411,7 +411,7 @@ class Metadata:
         if stat.S_ISREG(st.st_mode) or stat.S_ISDIR(st.st_mode):
             try:
                 attr = get_linux_file_attr(path)
-                if(attr != 0):
+                if attr != 0:
                     self.linux_attr = attr
             except IOError, e:
                 if e.errno == errno.EACCES:
@@ -432,7 +432,7 @@ class Metadata:
         self.linux_attr = vint.unpack('V', data)[0]
 
     def _apply_linux_attr_rec(self, path, restore_numeric_ids=False):
-        if(self.linux_attr):
+        if self.linux_attr:
             set_linux_file_attr(path, self.linux_attr)
 
 
@@ -466,7 +466,7 @@ class Metadata:
 
     def _apply_linux_xattr_rec(self, path, restore_numeric_ids=False):
         existing_xattrs = set(xattr.list(path, nofollow=True))
-        if(self.linux_xattr):
+        if self.linux_xattr:
             for k, v in self.linux_xattr:
                 if k not in existing_xattrs \
                         or v != xattr.get(path, k, nofollow=True):
@@ -517,7 +517,7 @@ class Metadata:
         tag = vint.read_vuint(port)
         try: # From here on, EOF is an error.
             result = Metadata()
-            while(True): # only exit is error (exception) or _rec_tag_end
+            while True: # only exit is error (exception) or _rec_tag_end
                 if tag == _rec_tag_path:
                     result._load_path_rec(port)
                 elif tag == _rec_tag_common:
@@ -567,7 +567,7 @@ def from_path(path, statinfo=None, archive_path=None, save_symlinks=True):
     result.path = archive_path
     st = statinfo if statinfo else lstat(path)
     result._add_common(path, st)
-    if(save_symlinks):
+    if save_symlinks:
         result._add_symlink_target(path, st)
     result._add_posix1e_acl(path, st)
     result._add_linux_attr(path, st)
@@ -584,7 +584,7 @@ def save_tree(output_file, paths,
     # Issue top-level rewrite warnings.
     for path in paths:
         safe_path = _clean_up_path_for_archive(path)
-        if(safe_path != path):
+        if safe_path != path:
             log('archiving "%s" as "%s"\n' % (path, safe_path))
 
     start_dir = os.getcwd()

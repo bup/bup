@@ -669,7 +669,7 @@ static PyObject *bup_set_linux_file_attr(PyObject *self, PyObject *args)
         return NULL;
 
     fd = open(path, O_RDONLY | O_NONBLOCK | O_LARGEFILE | O_NOFOLLOW);
-    if(fd == -1)
+    if (fd == -1)
         return PyErr_SetFromErrnoWithFilename(PyExc_IOError, path);
 
     rc = ioctl(fd, FS_IOC_SETFLAGS, &attr);

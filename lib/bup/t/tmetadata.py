@@ -1,9 +1,4 @@
-import grp
-import pwd
-import stat
-import subprocess
-import tempfile
-import xattr
+import glob, grp, pwd, stat, tempfile, subprocess, xattr
 import bup.helpers as helpers
 from bup import metadata
 from bup.helpers import clear_errors, detect_fakeroot

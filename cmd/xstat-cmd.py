@@ -1,17 +1,10 @@
 #!/usr/bin/env python
-
 # Copyright (C) 2010 Rob Browning
 #
 # This code is covered under the terms of the GNU Library General
 # Public License as described in the bup LICENSE file.
-
-import errno
-import posix1e
-import stat
-import sys
-from bup import metadata
-from bup import options
-from bup import xstat
+import sys, stat, errno
+from bup import metadata, options, xstat
 from bup.helpers import handle_ctrl_c, saved_errors, add_error, log
 
 
