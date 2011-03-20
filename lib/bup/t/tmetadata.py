@@ -108,6 +108,12 @@ def test_clean_up_extract_path():
     WVPASSEQ(cleanup('///foo/bar'), 'foo/bar')
 
 
+def _first_err():
+    if helpers.saved_errors:
+        return str(helpers.saved_errors[0])
+    return ''
+
+
 @wvtest
 def test_from_path_error():
     if os.geteuid() == 0 or detect_fakeroot():
@@ -121,7 +127,7 @@ def test_from_path_error():
         os.chmod(path, 000)
         metadata.from_path(path, archive_path=path, save_symlinks=True)
         if metadata.get_linux_file_attr:
-            errmsg = helpers.saved_errors[0] if helpers.saved_errors else ''
+            errmsg = _first_err()
             WVPASS(errmsg.startswith('read Linux attr'))
             clear_errors()
     finally:
@@ -141,7 +147,7 @@ def test_apply_to_path_restricted_access():
         WVPASSEQ(m.path, path)
         os.chmod(tmpdir, 000)
         m.apply_to_path(path)
-        errmsg = str(helpers.saved_errors[0]) if helpers.saved_errors else ''
+        errmsg = _first_err()
         WVPASS(errmsg.startswith('utime: '))
         clear_errors()
     finally:
@@ -162,13 +168,13 @@ def test_restore_restricted_user_group():
         orig_uid = m.uid
         m.uid = 0;
         m.apply_to_path(path, restore_numeric_ids=True)
-        errmsg = str(helpers.saved_errors[0]) if helpers.saved_errors else ''
+        errmsg = _first_err()
         WVPASS(errmsg.startswith('lchown: '))
         clear_errors()
         m.uid = orig_uid
         m.gid = 0;
         m.apply_to_path(path, restore_numeric_ids=True)
-        errmsg = str(helpers.saved_errors[0]) if helpers.saved_errors else ''
+        errmsg = _first_err()
         WVPASS(errmsg.startswith('lchown: ') or os.stat(path).st_gid == m.gid)
         clear_errors()
     finally:
@@ -183,8 +189,10 @@ def test_restore_nonexistent_user_group():
         os.mkdir(path)
         m = metadata.from_path(path, archive_path=path, save_symlinks=True)
         WVPASSEQ(m.path, path)
-        m.owner = max([x.pw_name for x in pwd.getpwall()], key=len) + 'x'
-        m.group = max([x.gr_name for x in grp.getgrall()], key=len) + 'x'
+        junk,m.owner = max([(len(x.pw_name), x.pw_name + 'x')
+        		    for x in pwd.getpwall()])
+        junk,m.group = max([(len(x.gr_name), x.gr_name + 'x')
+                            for x in grp.getgrall()])
         WVPASSEQ(m.apply_to_path(path, restore_numeric_ids=True), None)
         WVPASSEQ(os.stat(path).st_uid, m.uid)
         WVPASSEQ(os.stat(path).st_gid, m.gid)

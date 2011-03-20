@@ -9,7 +9,7 @@ except AttributeError, e:
     _have_utimensat = False
 
 
-class FSTime():
+class FSTime:
     # Class to represent filesystem timestamps.  Use integer
     # nanoseconds on platforms where we have the higher resolution
     # lstat.  Use the native python stat representation (floating
@@ -81,7 +81,7 @@ else:
         os.utime(path, (atime, mtime))
 
 
-class stat_result():
+class stat_result:
     @staticmethod
     def from_stat_rep(st):
         result = stat_result()

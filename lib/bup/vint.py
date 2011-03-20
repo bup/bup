@@ -77,8 +77,10 @@ def read_vint(port):
         if b & 0x80:
             offset += 6
             c = port.read(1)
+        elif negative:
+            return -result
         else:
-            return -result if negative else result
+            return result
     while c:
         b = ord(c)
         if b & 0x80:
@@ -88,7 +90,10 @@ def read_vint(port):
         else:
             result |= (b << offset)
             break
-    return -result if negative else result
+    if negative:
+        return -result
+    else:
+        return result
 
 
 def write_bvec(port, x):

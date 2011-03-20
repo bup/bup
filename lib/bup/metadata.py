@@ -536,7 +536,7 @@ class Metadata:
         self.posix1e_acl_default = None
 
     def write(self, port, include_path=True):
-        records = [(_rec_tag_path, self._encode_path())] if include_path else []
+        records = include_path and [(_rec_tag_path, self._encode_path())] or []
         records.extend([(_rec_tag_common, self._encode_common()),
                         (_rec_tag_symlink_target, self._encode_symlink_target()),
                         (_rec_tag_posix1e_acl, self._encode_posix1e_acl()),
@@ -604,7 +604,7 @@ class Metadata:
 def from_path(path, statinfo=None, archive_path=None, save_symlinks=True):
     result = Metadata()
     result.path = archive_path
-    st = statinfo if statinfo else lstat(path)
+    st = statinfo or lstat(path)
     result._add_common(path, st)
     if save_symlinks:
         result._add_symlink_target(path, st)
