@@ -120,9 +120,10 @@ def test_from_path_error():
         WVPASSEQ(m.path, path)
         subprocess.call(['chmod', '000', path])
         metadata.from_path(path, archive_path=path, save_symlinks=True)
-        errmsg = helpers.saved_errors[0] if helpers.saved_errors else ''
-        WVPASS(errmsg.startswith('read Linux attr'))
-        clear_errors()
+        if metadata.get_linux_file_attr:
+            errmsg = helpers.saved_errors[0] if helpers.saved_errors else ''
+            WVPASS(errmsg.startswith('read Linux attr'))
+            clear_errors()
     finally:
         subprocess.call(['rm', '-rf', tmpdir])
 

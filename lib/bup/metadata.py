@@ -29,8 +29,14 @@ try:
 except ImportError:
     log('Warning: POSIX ACL support missing; install python-pylibacl.\n')
     posix1e = None
-if _helpers.get_linux_file_attr:
+try:
     from bup._helpers import get_linux_file_attr, set_linux_file_attr
+except ImportError:
+    # No need for a warning here; the only reason they won't exist is that we're
+    # not on Linux, in which case files don't have any linux attrs anyway, so
+    # lacking the functions isn't a problem.
+    get_linux_file_attr = set_linux_file_attr = None
+    
 
 # WARNING: the metadata encoding is *not* stable yet.  Caveat emptor!
 
@@ -429,6 +435,7 @@ class Metadata:
     ## Linux attributes (lsattr(1), chattr(1))
 
     def _add_linux_attr(self, path, st):
+        if not get_linux_file_attr: return
         if stat.S_ISREG(st.st_mode) or stat.S_ISDIR(st.st_mode):
             try:
                 attr = get_linux_file_attr(path)
@@ -454,6 +461,10 @@ class Metadata:
 
     def _apply_linux_attr_rec(self, path, restore_numeric_ids=False):
         if self.linux_attr:
+            if not set_linux_file_attr:
+                add_error("%s: can't restore linuxattrs: "
+                          "linuxattr support missing.\n" % path)
+                return
             set_linux_file_attr(path, self.linux_attr)
 
 
