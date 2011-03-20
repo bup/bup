@@ -612,7 +612,7 @@ static PyObject *open_noatime(PyObject *self, PyObject *args)
 	fd = open(filename, attrs);
     }
     if (fd < 0)
-	return PyErr_SetFromErrnoWithFilename(PyExc_IOError, filename);
+	return PyErr_SetFromErrnoWithFilename(PyExc_OSError, filename);
     return Py_BuildValue("i", fd);
 }
 
@@ -643,14 +643,14 @@ static PyObject *bup_get_linux_file_attr(PyObject *self, PyObject *args)
 
     fd = open(path, O_RDONLY | O_NONBLOCK | O_LARGEFILE | O_NOFOLLOW);
     if (fd == -1)
-        return PyErr_SetFromErrnoWithFilename(PyExc_IOError, path);
+        return PyErr_SetFromErrnoWithFilename(PyExc_OSError, path);
 
     attr = 0;
     rc = ioctl(fd, FS_IOC_GETFLAGS, &attr);
     if (rc == -1)
     {
         close(fd);
-        return PyErr_SetFromErrnoWithFilename(PyExc_IOError, path);
+        return PyErr_SetFromErrnoWithFilename(PyExc_OSError, path);
     }
 
     close(fd);
@@ -670,13 +670,13 @@ static PyObject *bup_set_linux_file_attr(PyObject *self, PyObject *args)
 
     fd = open(path, O_RDONLY | O_NONBLOCK | O_LARGEFILE | O_NOFOLLOW);
     if (fd == -1)
-        return PyErr_SetFromErrnoWithFilename(PyExc_IOError, path);
+        return PyErr_SetFromErrnoWithFilename(PyExc_OSError, path);
 
     rc = ioctl(fd, FS_IOC_SETFLAGS, &attr);
     if (rc == -1)
     {
         close(fd);
-        return PyErr_SetFromErrnoWithFilename(PyExc_IOError, path);
+        return PyErr_SetFromErrnoWithFilename(PyExc_OSError, path);
     }
 
     close(fd);
@@ -753,7 +753,7 @@ static PyObject *bup_utimensat(PyObject *self, PyObject *args)
 
     rc = utimensat(dirfd, path, ts, flags);
     if (rc != 0)
-        return PyErr_SetFromErrnoWithFilename(PyExc_IOError, path);
+        return PyErr_SetFromErrnoWithFilename(PyExc_OSError, path);
 
     return Py_BuildValue("i", 1);
 }
@@ -776,7 +776,7 @@ static PyObject *bup_stat(PyObject *self, PyObject *args)
     struct stat st;
     rc = stat(filename, &st);
     if (rc != 0)
-        return PyErr_SetFromErrnoWithFilename(PyExc_IOError, filename);
+        return PyErr_SetFromErrnoWithFilename(PyExc_OSError, filename);
 
     return Py_BuildValue("kkkkkkkk"
                          "(ll)"
@@ -811,7 +811,7 @@ static PyObject *bup_lstat(PyObject *self, PyObject *args)
     struct stat st;
     rc = lstat(filename, &st);
     if (rc != 0)
-        return PyErr_SetFromErrnoWithFilename(PyExc_IOError, filename);
+        return PyErr_SetFromErrnoWithFilename(PyExc_OSError, filename);
 
     return Py_BuildValue("kkkkkkkk"
                          "(ll)"
@@ -845,7 +845,7 @@ static PyObject *bup_fstat(PyObject *self, PyObject *args)
     struct stat st;
     rc = fstat(fd, &st);
     if (rc != 0)
-        return PyErr_SetFromErrno(PyExc_IOError);
+        return PyErr_SetFromErrno(PyExc_OSError);
 
     return Py_BuildValue("kkkkkkkk"
                          "(ll)"

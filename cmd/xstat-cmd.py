@@ -74,7 +74,7 @@ for flag, value in flags:
 for path in remainder:
     try:
         m = metadata.from_path(path, archive_path = path)
-    except IOError, e:
+    except (OSError,IOError), e:
         if e.errno == errno.ENOENT:
             add_error(e)
             continue

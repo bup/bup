@@ -243,7 +243,7 @@ class Metadata:
         st = None
         try:
             st = lstat(path)
-        except IOError, e:
+        except OSError, e:
             if e.errno != errno.ENOENT:
                 raise
         if st:
@@ -280,7 +280,7 @@ class Metadata:
         if stat.S_ISLNK(self.mode):
             try:
                 lutime(path, (self.atime, self.mtime))
-            except IOError, e:
+            except OSError, e:
                 if e.errno == errno.EACCES:
                     raise ApplyError('lutime: %s' % e)
                 else:
@@ -288,7 +288,7 @@ class Metadata:
         else:
             try:
                 utime(path, (self.atime, self.mtime))
-            except IOError, e:
+            except OSError, e:
                 if e.errno == errno.EACCES:
                     raise ApplyError('utime: %s' % e)
                 else:
@@ -441,7 +441,7 @@ class Metadata:
                 attr = get_linux_file_attr(path)
                 if attr != 0:
                     self.linux_attr = attr
-            except IOError, e:
+            except OSError, e:
                 if e.errno == errno.EACCES:
                     add_error('read Linux attr: %s' % e)
                 elif e.errno == errno.ENOTTY: # Inappropriate ioctl for device.

@@ -256,10 +256,7 @@ for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse_during):
         if stat.S_ISREG(ent.mode):
             try:
                 f = hashsplit.open_noatime(ent.name)
-            except IOError, e:
-                add_error(e)
-                lastskip_name = ent.name
-            except OSError, e:
+            except (IOError, OSError), e:
                 add_error(e)
                 lastskip_name = ent.name
             else:
@@ -267,7 +264,7 @@ for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse_during):
                     (mode, id) = hashsplit.split_to_blob_or_tree(
                                             w.new_blob, w.new_tree, [f],
                                             keep_boundaries=False)
-                except IOError, e:
+                except (IOError, OSError), e:
                     add_error('%s: %s' % (ent.name, e))
                     lastskip_name = ent.name
         else:
@@ -276,10 +273,7 @@ for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse_during):
             elif stat.S_ISLNK(ent.mode):
                 try:
                     rl = os.readlink(ent.name)
-                except OSError, e:
-                    add_error(e)
-                    lastskip_name = ent.name
-                except IOError, e:
+                except (OSError, IOError), e:
                     add_error(e)
                     lastskip_name = ent.name
                 else:
