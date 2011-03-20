@@ -33,13 +33,13 @@ def setup_testfs():
     os.mkdir('testfs')
     ex('mount', '-o', 'loop,acl,user_xattr', 'testfs.img', 'testfs')
     # Hide, so that tests can't create risks.
-    ex('chown', 'root:root', 'testfs')
+    os.chown('testfs', 0, 0)
     os.chmod('testfs', 0700)
 
 
 def cleanup_testfs():
     subprocess.call(['umount', 'testfs'])
-    subprocess.call(['rm', '-f', 'testfs.img'])
+    unlink('testfs.img')
 
 
 @wvtest
@@ -115,10 +115,10 @@ def test_from_path_error():
     tmpdir = tempfile.mkdtemp(prefix='bup-tmetadata-')
     try:
         path = tmpdir + '/foo'
-        subprocess.call(['mkdir', path])
+        os.mkdir(path)
         m = metadata.from_path(path, archive_path=path, save_symlinks=True)
         WVPASSEQ(m.path, path)
-        subprocess.call(['chmod', '000', path])
+        os.chmod(path, 000)
         metadata.from_path(path, archive_path=path, save_symlinks=True)
         if metadata.get_linux_file_attr:
             errmsg = helpers.saved_errors[0] if helpers.saved_errors else ''
@@ -135,11 +135,11 @@ def test_apply_to_path_restricted_access():
     tmpdir = tempfile.mkdtemp(prefix='bup-tmetadata-')
     try:
         path = tmpdir + '/foo'
-        subprocess.call(['mkdir', path])
+        os.mkdir(path)
         clear_errors()
         m = metadata.from_path(path, archive_path=path, save_symlinks=True)
         WVPASSEQ(m.path, path)
-        subprocess.call(['chmod', '000', tmpdir])
+        os.chmod(tmpdir, 000)
         m.apply_to_path(path)
         errmsg = str(helpers.saved_errors[0]) if helpers.saved_errors else ''
         WVPASS(errmsg.startswith('utime: '))
@@ -155,7 +155,7 @@ def test_restore_restricted_user_group():
     tmpdir = tempfile.mkdtemp(prefix='bup-tmetadata-')
     try:
         path = tmpdir + '/foo'
-        subprocess.call(['mkdir', path])
+        os.mkdir(path)
         m = metadata.from_path(path, archive_path=path, save_symlinks=True)
         WVPASSEQ(m.path, path)
         WVPASSEQ(m.apply_to_path(path), None)
@@ -180,7 +180,7 @@ def test_restore_nonexistent_user_group():
     tmpdir = tempfile.mkdtemp(prefix='bup-tmetadata-')
     try:
         path = tmpdir + '/foo'
-        subprocess.call(['mkdir', path])
+        os.mkdir(path)
         m = metadata.from_path(path, archive_path=path, save_symlinks=True)
         WVPASSEQ(m.path, path)
         m.owner = max([x.pw_name for x in pwd.getpwall()], key=len) + 'x'
@@ -248,7 +248,8 @@ else:
         if os.geteuid() != 0 or detect_fakeroot():
             return
         setup_testfs()
-        subprocess.check_call('rm -rf testfs/*', shell=True)
+        for f in glob.glob('testfs/*'):
+            ex('rm', '-rf', f)
         path = 'testfs/foo'
         open(path, 'w').close()
         xattr.set(path, 'foo', 'bar', namespace=xattr.NS_USER)
