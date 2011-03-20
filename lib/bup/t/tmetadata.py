@@ -189,8 +189,8 @@ def test_restore_nonexistent_user_group():
         WVPASSEQ(os.stat(path).st_uid, m.uid)
         WVPASSEQ(os.stat(path).st_gid, m.gid)
         WVPASSEQ(m.apply_to_path(path, restore_numeric_ids=False), None)
-        WVPASSEQ(os.stat(path).st_uid, os.geteuid())
-        WVPASSEQ(os.stat(path).st_gid, os.getgid())
+        WVPASSEQ(os.stat(path).st_uid, m.uid)
+        WVPASSEQ(os.stat(path).st_gid, m.gid)
     finally:
         subprocess.call(['rm', '-rf', tmpdir])
 
