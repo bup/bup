@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 . wvtest.sh
-set -e -o pipefail
 
 TOP="$(pwd)"
 export BUP_DIR="$TOP/buptest.tmp"
@@ -185,8 +184,5 @@ then
     )
   )
 fi
-
-force-delete "${BUP_DIR}"
-force-delete "$TOP/bupmeta.tmp"
 
 exit 0
