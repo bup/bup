@@ -1,5 +1,5 @@
 """Enhanced stat operations for bup."""
-import os, math
+import os
 from bup import _helpers
 
 
@@ -17,7 +17,10 @@ class FSTime():
 
     def __cmp__(self, x):
         return self._value.__cmp__(x._value)
-
+        
+    def __repr__(self):
+        return 'FSTime(%d)' % self._value
+        
     def to_timespec(self):
         """Return (s, ns) where ns is always non-negative
         and t = s + ns / 10e8""" # metadata record rep (and libc rep)
@@ -29,7 +32,7 @@ class FSTime():
     @staticmethod
     def from_secs(secs):
         ts = FSTime()
-        ts._value = int(secs * 10**9)
+        ts._value = int(round(secs * 10**9))
         return ts
 
     @staticmethod
@@ -55,10 +58,7 @@ class FSTime():
     else: # Use python default floating-point seconds.
         @staticmethod
         def from_stat_time(stat_time):
-            ts = FSTime()
-            x = math.modf(stat_time)
-            ts._value = int(x[1]) + int(x[0] * 10**9)
-            return ts
+            return FSTime.from_secs(stat_time)
 
 
 if _have_utimensat:
