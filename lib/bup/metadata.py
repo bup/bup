@@ -259,7 +259,8 @@ class Metadata:
                 os.unlink(path)
 
         if stat.S_ISREG(self.mode):
-            os.mknod(path, 0600 | stat.S_IFREG)
+            fd = os.open(path, os.O_CREAT|os.O_WRONLY|os.O_EXCL, 0600)
+            os.close(fd)
         elif stat.S_ISDIR(self.mode):
             os.mkdir(path, 0700)
         elif stat.S_ISCHR(self.mode):
