@@ -6,6 +6,7 @@
 import sys, stat, errno
 from bup import metadata, options, xstat
 from bup.helpers import handle_ctrl_c, saved_errors, add_error, log
+from bup import _helpers
 
 
 def fstimestr(fstime):
@@ -97,9 +98,20 @@ for path in remainder:
     if 'group' in active_fields:
         print 'group:', m.group
     if 'atime' in active_fields:
-        print 'atime: ' + fstimestr(m.atime)
+        # if we don't have_ns_fs_timestamps, that means we have to use
+        # utime(), and utime() has no way to set the mtime/atime of a
+        # symlink.  Thus, the mtime/atime of a symlink is meaningless, so
+        # let's not report it.  (That way scripts comparing before/after
+        # won't trigger.)
+        if _helpers._have_ns_fs_timestamps or not stat.S_ISLNK(m.mode):
+            print 'atime: ' + fstimestr(m.atime)
+        else:
+            print 'atime: 0'
     if 'mtime' in active_fields:
-        print 'mtime: ' + fstimestr(m.mtime)
+        if _helpers._have_ns_fs_timestamps or not stat.S_ISLNK(m.mode):
+            print 'mtime: ' + fstimestr(m.mtime)
+        else:
+            print 'mtime: 0'
     if 'ctime' in active_fields:
         print 'ctime: ' + fstimestr(m.ctime)
     if 'linux-attr' in active_fields and m.linux_attr:
