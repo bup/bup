@@ -4,9 +4,7 @@
 #
 # This code is covered under the terms of the GNU Library General
 # Public License as described in the bup LICENSE file.
-
-import errno, os, sys, stat, pwd, grp, struct, xattr, posix1e, re
-
+import errno, os, sys, stat, pwd, grp, struct, re
 from cStringIO import StringIO
 from bup import vint
 from bup.drecurse import recursive_dirlist
@@ -14,6 +12,16 @@ from bup.helpers import add_error, mkdirp, log
 from bup.xstat import utime, lutime, lstat, FSTime
 import bup._helpers as _helpers
 
+try:
+    import xattr
+except ImportError:
+    log('Warning: Linux xattr support missing; install python-pyxattr.\n')
+    xattr = None
+try:
+    import posix1e
+except ImportError:
+    log('Warning: POSIX ACL support missing; install python-pylibacl.\n')
+    posix1e = None
 if _helpers.get_linux_file_attr:
     from bup._helpers import get_linux_file_attr, set_linux_file_attr
 
@@ -354,6 +362,7 @@ class Metadata:
     # The numeric/text distinction only matters when reading/restoring
     # a stored record.
     def _add_posix1e_acl(self, path, st):
+        if not posix1e: return
         if not stat.S_ISLNK(st.st_mode):
             try:
                 if posix1e.has_extended(path):
@@ -392,6 +401,11 @@ class Metadata:
         self.posix1e_acl = [posix1e.ACL(text=x) for x in acl_reps]
 
     def _apply_posix1e_acl_rec(self, path, restore_numeric_ids=False):
+        if not posix1e:
+            if self.posix1e_acl:
+                add_error("%s: can't restore ACLs; posix1e support missing.\n"
+                          % path)
+            return
         if self.posix1e_acl:
             acls = self.posix1e_acl
             if len(acls) > 2:
@@ -439,6 +453,7 @@ class Metadata:
     ## Linux extended attributes (getfattr(1), setfattr(1))
 
     def _add_linux_xattr(self, path, st):
+        if not xattr: return
         try:
             self.linux_xattr = xattr.get_all(path, nofollow=True)
         except EnvironmentError, e:
@@ -465,6 +480,11 @@ class Metadata:
         self.linux_xattr = result
 
     def _apply_linux_xattr_rec(self, path, restore_numeric_ids=False):
+        if not xattr:
+            if self.linux_xattr:
+                add_error("%s: can't restore xattr; xattr support missing.\n"
+                          % path)
+            return
         existing_xattrs = set(xattr.list(path, nofollow=True))
         if self.linux_xattr:
             for k, v in self.linux_xattr:

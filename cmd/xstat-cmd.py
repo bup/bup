@@ -107,8 +107,8 @@ for path in remainder:
     if 'linux-xattr' in active_fields and m.linux_xattr:
         for name, value in m.linux_xattr:
             print 'linux-xattr: %s -> %s' % (name, repr(value))
-    if 'posix1e-acl' in active_fields and m.posix1e_acl:
-        flags = posix1e.TEXT_ABBREVIATE
+    if 'posix1e-acl' in active_fields and m.posix1e_acl and metadata.posix1e:
+        flags = metadata.posix1e.TEXT_ABBREVIATE
         if stat.S_ISDIR(m.mode):
             acl = m.posix1e_acl[0]
             default_acl = m.posix1e_acl[2]

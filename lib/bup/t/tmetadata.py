@@ -1,4 +1,4 @@
-import glob, grp, pwd, stat, tempfile, subprocess, xattr
+import glob, grp, pwd, stat, tempfile, subprocess
 import bup.helpers as helpers
 from bup import metadata
 from bup.helpers import clear_errors, detect_fakeroot
@@ -229,27 +229,40 @@ def test_restore_over_existing_target():
         subprocess.call(['rm', '-rf', tmpdir])
 
 
-@wvtest
-def test_handling_of_incorrect_existing_linux_xattrs():
-    if os.geteuid() != 0 or detect_fakeroot():
-        return
-    setup_testfs()
-    subprocess.check_call('rm -rf testfs/*', shell=True)
-    path = 'testfs/foo'
-    open(path, 'w').close()
-    xattr.set(path, 'foo', 'bar', namespace=xattr.NS_USER)
-    m = metadata.from_path(path, archive_path=path, save_symlinks=True)
-    xattr.set(path, 'baz', 'bax', namespace=xattr.NS_USER)
-    m.apply_to_path(path, restore_numeric_ids=False)
-    WVPASSEQ(xattr.list(path), ['user.foo'])
-    WVPASSEQ(xattr.get(path, 'user.foo'), 'bar')
-    xattr.set(path, 'foo', 'baz', namespace=xattr.NS_USER)
-    m.apply_to_path(path, restore_numeric_ids=False)
-    WVPASSEQ(xattr.list(path), ['user.foo'])
-    WVPASSEQ(xattr.get(path, 'user.foo'), 'bar')
-    xattr.remove(path, 'foo', namespace=xattr.NS_USER)
-    m.apply_to_path(path, restore_numeric_ids=False)
-    WVPASSEQ(xattr.list(path), ['user.foo'])
-    WVPASSEQ(xattr.get(path, 'user.foo'), 'bar')
-    os.chdir(top_dir)
-    cleanup_testfs()
+from bup.metadata import posix1e
+if not posix1e:
+    @wvtest
+    def POSIX1E_ACL_SUPPORT_IS_MISSING():
+        pass
+
+
+from bup.metadata import xattr
+if not xattr:
+    @wvtest
+    def LINUX_XATTR_SUPPORT_IS_MISSING():
+        pass
+else:
+    @wvtest
+    def test_handling_of_incorrect_existing_linux_xattrs():
+        if os.geteuid() != 0 or detect_fakeroot():
+            return
+        setup_testfs()
+        subprocess.check_call('rm -rf testfs/*', shell=True)
+        path = 'testfs/foo'
+        open(path, 'w').close()
+        xattr.set(path, 'foo', 'bar', namespace=xattr.NS_USER)
+        m = metadata.from_path(path, archive_path=path, save_symlinks=True)
+        xattr.set(path, 'baz', 'bax', namespace=xattr.NS_USER)
+        m.apply_to_path(path, restore_numeric_ids=False)
+        WVPASSEQ(xattr.list(path), ['user.foo'])
+        WVPASSEQ(xattr.get(path, 'user.foo'), 'bar')
+        xattr.set(path, 'foo', 'baz', namespace=xattr.NS_USER)
+        m.apply_to_path(path, restore_numeric_ids=False)
+        WVPASSEQ(xattr.list(path), ['user.foo'])
+        WVPASSEQ(xattr.get(path, 'user.foo'), 'bar')
+        xattr.remove(path, 'foo', namespace=xattr.NS_USER)
+        m.apply_to_path(path, restore_numeric_ids=False)
+        WVPASSEQ(xattr.list(path), ['user.foo'])
+        WVPASSEQ(xattr.get(path, 'user.foo'), 'bar')
+        os.chdir(top_dir)
+        cleanup_testfs()
