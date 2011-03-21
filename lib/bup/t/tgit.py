@@ -147,15 +147,16 @@ def test_check_repo_or_die():
     git.check_repo_or_die()
     WVPASS('check_repo_or_die')  # if we reach this point the call above passed
 
-    mode = os.stat('pybuptest.tmp').st_mode
-    os.chmod('pybuptest.tmp', 0000)
+    os.rename('pybuptest.tmp/objects/pack', 'pybuptest.tmp/objects/pack.tmp')
+    open('pybuptest.tmp/objects/pack', 'w').close()
     try:
         git.check_repo_or_die()
     except SystemExit, e:
         WVPASSEQ(e.code, 14)
     else:
         WVFAIL()
-    os.chmod('pybuptest.tmp', mode)
+    os.unlink('pybuptest.tmp/objects/pack')
+    os.rename('pybuptest.tmp/objects/pack.tmp', 'pybuptest.tmp/objects/pack')
 
     try:
         git.check_repo_or_die('nonexistantbup.tmp')
