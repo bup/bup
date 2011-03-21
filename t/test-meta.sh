@@ -9,11 +9,11 @@ bup()
     "$TOP/bup" "$@"
 }
 
-# Very simple metadata tests -- "make install" to a temp directory,
-# then check that bup meta can reproduce the metadata correctly
-# (according to coreutils stat) via create, extract, start-extract,
-# and finish-extract.  The current tests are crude, and this does not
-# test devices, varying users/groups, acls, attrs, etc.
+# Very simple metadata tests -- create a test tree then check that bup
+# meta can reproduce the metadata correctly (according to bup xstat)
+# via create, extract, start-extract, and finish-extract.  The current
+# tests are crude, and this does not fully test devices, varying
+# users/groups, acls, attrs, etc.
 
 genstat()
 {
@@ -78,10 +78,9 @@ force-delete "$TOP/bupmeta.tmp"
 
 # Create a test tree.
 (
-    mkdir -p "$TOP/bupmeta.tmp"
-    make DESTDIR="$TOP/bupmeta.tmp/src" install
-    mkdir "$TOP/bupmeta.tmp/src/misc"
-    cp -a cmd/bup-* "$TOP/bupmeta.tmp/src/misc/"
+    rm -rf "$TOP/bupmeta.tmp/src"
+    mkdir -p "$TOP/bupmeta.tmp/src"
+    cp -a Documentation cmd lib t "$TOP/bupmeta.tmp"/src
 ) || WVFAIL
 
 # Use the test tree to check bup meta.
