@@ -39,7 +39,7 @@ def setup_testfs():
 
 def cleanup_testfs():
     subprocess.call(['umount', 'testfs'])
-    unlink('testfs.img')
+    helpers.unlink('testfs.img')
 
 
 @wvtest
