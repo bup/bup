@@ -18,7 +18,7 @@ bup()
 genstat()
 {
   (
-    export PATH="${TOP}:${PATH}" # pick up bup
+    export PATH="$TOP:$PATH" # pick up bup
     # Skip atime (test elsewhere) to avoid the observer effect.
     find . | sort | xargs bup xstat --exclude-fields ctime,atime
   )
@@ -26,7 +26,7 @@ genstat()
 
 actually-root()
 {
-  test "$(whoami)" == root -a -z "${FAKEROOTKEY}"
+  test "$(whoami)" == root -a -z "$FAKEROOTKEY"
 }
 
 force-delete()
@@ -73,24 +73,24 @@ test-src-create-extract()
 
 if actually-root
 then
-  umount "${TOP}/bupmeta.tmp/testfs" || true
+  umount "$TOP/bupmeta.tmp/testfs" || true
 fi
 
-force-delete "${BUP_DIR}"
-force-delete "${TOP}/bupmeta.tmp"
+force-delete "$BUP_DIR"
+force-delete "$TOP/bupmeta.tmp"
 
 # Create a test tree.
 (
-  mkdir -p "${TOP}/bupmeta.tmp"
-  make DESTDIR="${TOP}/bupmeta.tmp/src" install
-  mkdir "${TOP}/bupmeta.tmp/src/misc"
-  cp -a cmd/bup-* "${TOP}/bupmeta.tmp/src/misc/"
+  mkdir -p "$TOP/bupmeta.tmp"
+  make DESTDIR="$TOP/bupmeta.tmp/src" install
+  mkdir "$TOP/bupmeta.tmp/src/misc"
+  cp -a cmd/bup-* "$TOP/bupmeta.tmp/src/misc/"
 ) || WVFAIL
 
 # Use the test tree to check bup meta.
 WVSTART 'meta - general'
 (
-  cd "${TOP}/bupmeta.tmp"
+  cd "$TOP/bupmeta.tmp"
   test-src-create-extract
 )
 
@@ -100,14 +100,14 @@ then
   (
     cleanup_at_exit()
     {
-      cd "${TOP}"
-      umount "${TOP}/bupmeta.tmp/testfs" || true
+      cd "$TOP"
+      umount "$TOP/bupmeta.tmp/testfs" || true
     }
 
     trap cleanup_at_exit EXIT
 
     WVSTART 'meta - general (as root)'
-    WVPASS cd "${TOP}/bupmeta.tmp"
+    WVPASS cd "$TOP/bupmeta.tmp"
     umount testfs || true
     dd if=/dev/zero of=testfs.img bs=1M count=32
     mke2fs -F -j -m 0 testfs.img
@@ -126,7 +126,7 @@ then
     (
       mkdir testfs/src/foo
       touch testfs/src/bar
-      PYTHONPATH="${TOP}/lib" \
+      PYTHONPATH="$TOP/lib" \
         python -c "from bup.xstat import lutime, FSTime; \
                    x = FSTime.from_secs(42);\
                    lutime('testfs/src/foo', (x, x));\
