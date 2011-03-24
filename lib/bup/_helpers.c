@@ -630,7 +630,7 @@ static PyObject *fadvise_done(PyObject *self, PyObject *args)
 }
 
 
-#ifdef linux
+#if defined(linux) && defined(FS_IOC_GETFLAGS)
 static PyObject *bup_get_linux_file_attr(PyObject *self, PyObject *args)
 {
     int rc;
@@ -899,7 +899,7 @@ static PyMethodDef helper_methods[] = {
 	"open() the given filename for read with O_NOATIME if possible" },
     { "fadvise_done", fadvise_done, METH_VARARGS,
 	"Inform the kernel that we're finished with earlier parts of a file" },
-#ifdef linux
+#if defined(linux) && defined(FS_IOC_GETFLAGS)
     { "get_linux_file_attr", bup_get_linux_file_attr, METH_VARARGS,
       "Return the Linux attributes for the given file." },
     { "set_linux_file_attr", bup_set_linux_file_attr, METH_VARARGS,
