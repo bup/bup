@@ -51,11 +51,7 @@ o = options.Options(optspec)
 
 treat_include_fields_as_definitive = True
 for flag, value in flags:
-    if flag == '--verbose' or flag == '-v':
-        metadata.verbose += 1
-    elif flag == '--quiet' or flag == '-q':
-        metadata.verbose = 0
-    elif flag == '--exclude-fields':
+    if flag == '--exclude-fields':
         exclude_fields = frozenset(value.split(','))
         for f in exclude_fields:
             if not f in all_fields:
@@ -72,6 +68,10 @@ for flag, value in flags:
             treat_include_fields_as_definitive = False
         else:
             active_fields = active_fields | include_fields
+
+opt.verbose = opt.verbose or 0
+opt.quiet = opt.quiet or 0
+metadata.verbose = opt.verbose - opt.quiet
 
 for path in remainder:
     try:
