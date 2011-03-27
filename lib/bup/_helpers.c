@@ -7,6 +7,8 @@
 #include <fcntl.h>
 #include <arpa/inet.h>
 #include <stdint.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -14,8 +16,6 @@
 #ifdef linux
 #include <linux/fs.h>
 #include <sys/ioctl.h>
-#include <sys/stat.h>
-#include <sys/time.h>
 #endif
 
 static int istty2 = 0;
@@ -761,9 +761,43 @@ static PyObject *bup_utimensat(PyObject *self, PyObject *args)
           || _XOPEN_SOURCE >= 700 || _POSIX_C_SOURCE >= 200809L */
 
 
-#ifdef linux /* and likely others */
+static PyObject *stat_struct_to_py(const struct stat *st)
+{
+    /* Enforce the current timespec nanosecond range expectations. */
+    if (st->st_atim.tv_nsec < 0 || st->st_atim.tv_nsec > 999999999)
+    {
+        PyErr_SetString(PyExc_ValueError, "invalid atime timespec nanoseconds");
+        return NULL;
+    }
+    if (st->st_mtim.tv_nsec < 0 || st->st_mtim.tv_nsec > 999999999)
+    {
+        PyErr_SetString(PyExc_ValueError, "invalid mtime timespec nanoseconds");
+        return NULL;
+    }
+    if (st->st_ctim.tv_nsec < 0 || st->st_ctim.tv_nsec > 999999999)
+    {
+        PyErr_SetString(PyExc_ValueError, "invalid ctime timespec nanoseconds");
+        return NULL;
+    }
 
-#define HAVE_BUP_STAT 1
+    return Py_BuildValue("kkkkkkkk(Ll)(Ll)(Ll)",
+                         (unsigned long) st->st_mode,
+                         (unsigned long) st->st_ino,
+                         (unsigned long) st->st_dev,
+                         (unsigned long) st->st_nlink,
+                         (unsigned long) st->st_uid,
+                         (unsigned long) st->st_gid,
+                         (unsigned long) st->st_rdev,
+                         (unsigned long) st->st_size,
+                         (long long) st->st_atime,
+                         (long) st->st_atim.tv_nsec,
+                         (long long) st->st_mtime,
+                         (long) st->st_mtim.tv_nsec,
+                         (long long) st->st_ctime,
+                         (long) st->st_ctim.tv_nsec);
+}
+
+
 static PyObject *bup_stat(PyObject *self, PyObject *args)
 {
     int rc;
@@ -776,29 +810,10 @@ static PyObject *bup_stat(PyObject *self, PyObject *args)
     rc = stat(filename, &st);
     if (rc != 0)
         return PyErr_SetFromErrnoWithFilename(PyExc_OSError, filename);
-
-    return Py_BuildValue("kkkkkkkk"
-                         "(ll)"
-                         "(ll)"
-                         "(ll)",
-                         (unsigned long) st.st_mode,
-                         (unsigned long) st.st_ino,
-                         (unsigned long) st.st_dev,
-                         (unsigned long) st.st_nlink,
-                         (unsigned long) st.st_uid,
-                         (unsigned long) st.st_gid,
-                         (unsigned long) st.st_rdev,
-                         (unsigned long) st.st_size,
-                         (long) st.st_atime,
-                         (long) st.st_atim.tv_nsec,
-                         (long) st.st_mtime,
-                         (long) st.st_mtim.tv_nsec,
-                         (long) st.st_ctime,
-                         (long) st.st_ctim.tv_nsec);
+    return stat_struct_to_py(&st);
 }
 
 
-#define HAVE_BUP_LSTAT 1
 static PyObject *bup_lstat(PyObject *self, PyObject *args)
 {
     int rc;
@@ -811,29 +826,10 @@ static PyObject *bup_lstat(PyObject *self, PyObject *args)
     rc = lstat(filename, &st);
     if (rc != 0)
         return PyErr_SetFromErrnoWithFilename(PyExc_OSError, filename);
-
-    return Py_BuildValue("kkkkkkkk"
-                         "(ll)"
-                         "(ll)"
-                         "(ll)",
-                         (unsigned long) st.st_mode,
-                         (unsigned long) st.st_ino,
-                         (unsigned long) st.st_dev,
-                         (unsigned long) st.st_nlink,
-                         (unsigned long) st.st_uid,
-                         (unsigned long) st.st_gid,
-                         (unsigned long) st.st_rdev,
-                         (unsigned long) st.st_size,
-                         (long) st.st_atime,
-                         (long) st.st_atim.tv_nsec,
-                         (long) st.st_mtime,
-                         (long) st.st_mtim.tv_nsec,
-                         (long) st.st_ctime,
-                         (long) st.st_ctim.tv_nsec);
+    return stat_struct_to_py(&st);
 }
 
 
-#define HAVE_BUP_FSTAT 1
 static PyObject *bup_fstat(PyObject *self, PyObject *args)
 {
     int rc, fd;
@@ -845,28 +841,8 @@ static PyObject *bup_fstat(PyObject *self, PyObject *args)
     rc = fstat(fd, &st);
     if (rc != 0)
         return PyErr_SetFromErrno(PyExc_OSError);
-
-    return Py_BuildValue("kkkkkkkk"
-                         "(ll)"
-                         "(ll)"
-                         "(ll)",
-                         (unsigned long) st.st_mode,
-                         (unsigned long) st.st_ino,
-                         (unsigned long) st.st_dev,
-                         (unsigned long) st.st_nlink,
-                         (unsigned long) st.st_uid,
-                         (unsigned long) st.st_gid,
-                         (unsigned long) st.st_rdev,
-                         (unsigned long) st.st_size,
-                         (long) st.st_atime,
-                         (long) st.st_atim.tv_nsec,
-                         (long) st.st_mtime,
-                         (long) st.st_mtim.tv_nsec,
-                         (long) st.st_ctime,
-                         (long) st.st_ctim.tv_nsec);
+    return stat_struct_to_py(&st);
 }
-
-#endif /* def linux */
 
 
 static PyMethodDef helper_methods[] = {
@@ -908,18 +884,12 @@ static PyMethodDef helper_methods[] = {
     { "utimensat", bup_utimensat, METH_VARARGS,
       "Change file timestamps with nanosecond precision." },
 #endif
-#ifdef HAVE_BUP_STAT
     { "stat", bup_stat, METH_VARARGS,
       "Extended version of stat." },
-#endif
-#ifdef HAVE_BUP_LSTAT
     { "lstat", bup_lstat, METH_VARARGS,
       "Extended version of lstat." },
-#endif
-#ifdef HAVE_BUP_FSTAT
     { "fstat", bup_fstat, METH_VARARGS,
       "Extended version of fstat." },
-#endif
     { NULL, NULL, 0, NULL },  // sentinel
 };
 
@@ -934,11 +904,6 @@ PyMODINIT_FUNC init_helpers(void)
     PyModule_AddObject(m, "AT_FDCWD", Py_BuildValue("i", AT_FDCWD));
     PyModule_AddObject(m, "AT_SYMLINK_NOFOLLOW",
                        Py_BuildValue("i", AT_SYMLINK_NOFOLLOW));
-#endif
-#ifdef HAVE_BUP_STAT
-    PyModule_AddIntConstant(m, "_have_ns_fs_timestamps", 1);
-#else
-    PyModule_AddIntConstant(m, "_have_ns_fs_timestamps", 0);
 #endif
     e = getenv("BUP_FORCE_TTY");
     istty2 = isatty(2) || (atoi(e ? e : "0") & 2);

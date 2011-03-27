@@ -3,7 +3,8 @@ from wvtest import *
 import bup._helpers as _helpers
 from bup.xstat import FSTime
 
-def _test_fstime():
+@wvtest
+def test_fstime():
     def approx_eq(x, y):
         return math.fabs(x - y) < 1 / 10e8
     def ts_eq_ish(x, y):
@@ -43,14 +44,3 @@ def _test_fstime():
     WVPASS(s_ns_eq_ish(from_secs(-0.5), 0, - 10**9 / 2))
     WVPASS(s_ns_eq_ish(from_secs(-1.5), -1, - 10**9 / 2))
     WVPASS(s_ns_eq_ish(from_secs(-1 / 10e8), 0, -1))
-
-@wvtest
-def test_fstime():
-    _test_fstime();
-    if _helpers._have_ns_fs_timestamps: # Test native python timestamp rep too.
-        orig = _helpers._have_ns_fs_timestamps
-        try:
-            _helpers._have_ns_fs_timestamps = None
-            _test_fstime();
-        finally:
-            _helpers._have_ns_fs_timestamps = orig

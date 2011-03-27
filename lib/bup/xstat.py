@@ -51,15 +51,6 @@ class FSTime:
         abs_val = -self._value
         return (- (abs_val / 10**9), - (abs_val % 10**9))
 
-    if _helpers._have_ns_fs_timestamps: # Use integer nanoseconds.
-        @staticmethod
-        def from_stat_time(stat_time):
-            return FSTime.from_timespec(stat_time)
-    else: # Use python default floating-point seconds.
-        @staticmethod
-        def from_stat_time(stat_time):
-            return FSTime.from_secs(stat_time)
-
 
 if _have_utimensat:
     def lutime(path, times):
@@ -85,58 +76,30 @@ class stat_result:
     @staticmethod
     def from_stat_rep(st):
         result = stat_result()
-        if _helpers._have_ns_fs_timestamps:
-            (result.st_mode,
-             result.st_ino,
-             result.st_dev,
-             result.st_nlink,
-             result.st_uid,
-             result.st_gid,
-             result.st_rdev,
-             result.st_size,
-             atime,
-             mtime,
-             ctime) = st
-        else:
-            result.st_mode = st.st_mode
-            result.st_ino = st.st_ino
-            result.st_dev = st.st_dev
-            result.st_nlink = st.st_nlink
-            result.st_uid = st.st_uid
-            result.st_gid = st.st_gid
-            result.st_rdev = st.st_rdev
-            result.st_size = st.st_size
-            atime = st.st_atime
-            mtime = st.st_mtime
-            ctime = st.st_ctime
-        result.st_atime = FSTime.from_stat_time(atime)
-        result.st_mtime = FSTime.from_stat_time(mtime)
-        result.st_ctime = FSTime.from_stat_time(ctime)
+        (result.st_mode,
+         result.st_ino,
+         result.st_dev,
+         result.st_nlink,
+         result.st_uid,
+         result.st_gid,
+         result.st_rdev,
+         result.st_size,
+         result.st_atime,
+         result.st_mtime,
+         result.st_ctime) = st
+        result.st_atime = FSTime.from_timespec(result.st_atime)
+        result.st_mtime = FSTime.from_timespec(result.st_mtime)
+        result.st_ctime = FSTime.from_timespec(result.st_ctime)
         return result
 
 
-try:
-    _stat = _helpers.stat
-except AttributeError, e:
-    _stat = os.stat
-
 def stat(path):
-    return stat_result.from_stat_rep(_stat(path))
+    return stat_result.from_stat_rep(_helpers.stat(path))
 
-
-try:
-    _fstat = _helpers.fstat
-except AttributeError, e:
-    _fstat = os.fstat
 
 def fstat(path):
-    return stat_result.from_stat_rep(_fstat(path))
+    return stat_result.from_stat_rep(_helpers.fstat(path))
 
-
-try:
-    _lstat = _helpers.lstat
-except AttributeError, e:
-    _lstat = os.lstat
 
 def lstat(path):
-    return stat_result.from_stat_rep(_lstat(path))
+    return stat_result.from_stat_rep(_helpers.lstat(path))
