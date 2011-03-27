@@ -36,12 +36,12 @@ if _have_utimensat:
     def lutime(path, times):
         atime = nsecs_to_timespec(times[0])
         mtime = nsecs_to_timespec(times[1])
-        return _helpers.utimensat(_helpers.AT_FDCWD, path, (atime, mtime),
-                                  _helpers.AT_SYMLINK_NOFOLLOW)
+        _helpers.utimensat(_helpers.AT_FDCWD, path, (atime, mtime),
+                           _helpers.AT_SYMLINK_NOFOLLOW)
     def utime(path, times):
         atime = nsecs_to_timespec(times[0])
         mtime = nsecs_to_timespec(times[1])
-        return _helpers.utimensat(_helpers.AT_FDCWD, path, (atime, mtime), 0)
+        _helpers.utimensat(_helpers.AT_FDCWD, path, (atime, mtime), 0)
 else:
     def lutime(path, times):
         return None

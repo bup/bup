@@ -679,7 +679,7 @@ static PyObject *bup_set_linux_file_attr(PyObject *self, PyObject *args)
     }
 
     close(fd);
-    return Py_BuildValue("i", 1);
+    return Py_BuildValue("O", Py_None);
 }
 #endif /* def linux */
 
@@ -754,7 +754,7 @@ static PyObject *bup_utimensat(PyObject *self, PyObject *args)
     if (rc != 0)
         return PyErr_SetFromErrnoWithFilename(PyExc_OSError, path);
 
-    return Py_BuildValue("i", 1);
+    return Py_BuildValue("O", Py_None);
 }
 
 #endif /* defined(_ATFILE_SOURCE)
