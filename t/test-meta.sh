@@ -122,10 +122,10 @@ if actually-root; then
             mkdir testfs/src/foo
             touch testfs/src/bar
             PYTHONPATH="$TOP/lib" \
-                python -c "from bup.xstat import lutime, FSTime; \
-                x = FSTime.from_secs(42);\
-                   lutime('testfs/src/foo', (x, x));\
-                   lutime('testfs/src/bar', (x, x));"
+                python -c "from bup import xstat; \
+                x = xstat.timespec_to_nsecs((42, 0));\
+                   xstat.lutime('testfs/src/foo', (x, x));\
+                   xstat.lutime('testfs/src/bar', (x, x));"
             cd testfs
             WVPASS bup meta -v --create --recurse --file src.meta src
             bup meta -tvf src.meta

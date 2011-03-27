@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import sys, math, struct, glob, resource
 import tempfile
-from bup import options, git, midx, _helpers
+from bup import options, git, midx, _helpers, xstat
 from bup.helpers import *
 
 PAGE_SIZE=4096
@@ -162,7 +162,7 @@ def do_midx_dir(path):
                     
         # sort the biggest+newest midxes first, so that we can eliminate
         # smaller (or older) redundant ones that come later in the list
-        midxs.sort(key=lambda ix: (-sizes[ix], -os.stat(ix).st_mtime))
+        midxs.sort(key=lambda ix: (-sizes[ix], -xstat.stat(ix).st_mtime))
         
         for mname in midxs:
             any = 0

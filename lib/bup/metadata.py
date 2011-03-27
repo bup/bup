@@ -6,10 +6,10 @@
 # Public License as described in the bup LICENSE file.
 import errno, os, sys, stat, pwd, grp, struct, re
 from cStringIO import StringIO
-from bup import vint
+from bup import vint, xstat
 from bup.drecurse import recursive_dirlist
 from bup.helpers import add_error, mkdirp, log
-from bup.xstat import utime, lutime, lstat, FSTime
+from bup.xstat import utime, lutime
 import bup._helpers as _helpers
 
 try:
@@ -201,9 +201,9 @@ class Metadata:
             add_error("no group name for id %s '%s'" % (st.st_gid, path))
 
     def _encode_common(self):
-        atime = self.atime.to_timespec()
-        mtime = self.mtime.to_timespec()
-        ctime = self.ctime.to_timespec()
+        atime = xstat.nsecs_to_timespec(self.atime)
+        mtime = xstat.nsecs_to_timespec(self.mtime)
+        ctime = xstat.nsecs_to_timespec(self.ctime)
         result = vint.pack('VVsVsVvVvVvV',
                            self.mode,
                            self.uid,
@@ -233,16 +233,16 @@ class Metadata:
          mtime_ns,
          self.ctime,
          ctime_ns) = vint.unpack('VVsVsVvVvVvV', data)
-        self.atime = FSTime.from_timespec((self.atime, atime_ns))
-        self.mtime = FSTime.from_timespec((self.mtime, mtime_ns))
-        self.ctime = FSTime.from_timespec((self.ctime, ctime_ns))
+        self.atime = xstat.timespec_to_nsecs((self.atime, atime_ns))
+        self.mtime = xstat.timespec_to_nsecs((self.mtime, mtime_ns))
+        self.ctime = xstat.timespec_to_nsecs((self.ctime, ctime_ns))
 
     def _create_via_common_rec(self, path, create_symlinks=True):
         # If the path already exists and is a dir, try rmdir.
         # If the path already exists and is anything else, try unlink.
         st = None
         try:
-            st = lstat(path)
+            st = xstat.lstat(path)
         except OSError, e:
             if e.errno != errno.ENOENT:
                 raise
@@ -611,7 +611,7 @@ class Metadata:
 def from_path(path, statinfo=None, archive_path=None, save_symlinks=True):
     result = Metadata()
     result.path = archive_path
-    st = statinfo or lstat(path)
+    st = statinfo or xstat.lstat(path)
     result._add_common(path, st)
     if save_symlinks:
         result._add_symlink_target(path, st)

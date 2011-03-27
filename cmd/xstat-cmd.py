@@ -9,7 +9,9 @@ from bup.helpers import handle_ctrl_c, saved_errors, add_error, log
 
 
 def fstimestr(fstime):
-    (s, ns) = fstime.secs_nsecs()
+    (s, ns) = xstat.fstime_to_timespec(fstime)
+    if(s < 0):
+        s += 1
     if ns == 0:
         return '%d' % s
     else:
