@@ -1,4 +1,4 @@
-import math
+import math, tempfile, subprocess
 from wvtest import *
 import bup._helpers as _helpers
 from bup import xstat
@@ -37,3 +37,31 @@ def test_fstime():
     WVPASSEQ(xstat.fstime_floor_secs(-10**9), -1)
     WVPASSEQ(type(xstat.fstime_floor_secs(10**9 / 2)), type(0))
     WVPASSEQ(type(xstat.fstime_floor_secs(-10**9 / 2)), type(0))
+
+
+@wvtest
+def test_timespec_behavior():
+    tmpdir = tempfile.mkdtemp(prefix='bup-tmetadata-')
+    try:
+        path = tmpdir + '/foo'
+        open(path, 'w').close()
+        frac_ts = (0, 10**9 / 2)
+        _helpers.utimensat(_helpers.AT_FDCWD, path, (frac_ts, frac_ts), 0)
+        st = _helpers.stat(path)
+        atime_ts = st[8]
+        mtime_ts = st[9]
+        WVPASSEQ(atime_ts[0], 0)
+        WVPASS(atime_ts[1] == 0 or atime_ts[1] == frac_ts[1])
+        WVPASSEQ(mtime_ts[0], 0)
+        WVPASS(mtime_ts[1] == 0 or mtime_ts[1] == frac_ts[1])
+        if(mtime_ts[1] == frac_ts[1]):
+            # Sub-second resolution -- check behavior of negative timespecs.
+            neg_ts = (-43, 10**9 / 2)
+            _helpers.utimensat(_helpers.AT_FDCWD, path, (neg_ts, neg_ts), 0)
+            st = _helpers.stat(path)
+            atime_ts = st[8]
+            mtime_ts = st[9]
+            WVPASSEQ(atime_ts, neg_ts)
+            WVPASSEQ(mtime_ts, neg_ts)
+    finally:
+        subprocess.call(['rm', '-rf', tmpdir])
