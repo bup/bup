@@ -1,15 +1,26 @@
-.TH bup-daemon 1 "2011-02-01" "Bup 0\.22"
+.TH bup-daemon 1 "2011-03-01" "Bup 0\.24-83-gdfa9d85"
 .SH NAME
 .PP
 bup-daemon - listens for connections and runs \f[B]bup\ server\f[]
 .SH SYNOPSIS
 .PP
-bup daemon
+bup daemon [-l address] [-p port]
 .SH DESCRIPTION
 .PP
 \f[B]bup\ daemon\f[] is a simple bup server which listens on a
 socket and forks connections to \f[B]bup\ mux\ server\f[]
 children\.
+.SH OPTIONS
+.TP
+.B -l, --listen=\f[I]address\f[]
+the address or hostname to listen on
+.RS
+.RE
+.TP
+.B -p, --port=\f[I]port\f[]
+the port to listen on
+.RS
+.RE
 .SH BUP
 .PP
 Part of the \f[B]bup\f[](1) suite\.

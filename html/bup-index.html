@@ -2,11 +2,11 @@
 <html xmlns="http://www.w3.org/1999/xhtml"
 ><head
   ><title
-    >bup-index(1) Bup 0.22</title
+    >bup-index(1) Bup 0.24-83-gdfa9d85</title
     ><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"
      /><meta name="generator" content="pandoc"
      /><meta name="author" content="Avery Pennarun &lt;apenwarr@gmail.com&gt;"
-     /><meta name="date" content="2011-02-01"
+     /><meta name="date" content="2011-03-01"
      /><style type="text/css"
     >
 ol.decimal { list-style-type: decimal; }
@@ -14,7 +14,7 @@ ol.decimal { list-style-type: decimal; }
     ></head
   ><body
   ><h1 class="title"
-    >bup-index(1) Bup 0.22</h1
+    >bup-index(1) Bup 0.24-83-gdfa9d85</h1
     ><h1 id="name"
     >NAME</h1
     ><p
@@ -22,7 +22,7 @@ ol.decimal { list-style-type: decimal; }
     ><h1 id="synopsis"
     >SYNOPSIS</h1
     ><p
-    >bup index &lt;-p|-m|-u&gt; [-s] [-H] [-l] [-x] [--fake-valid] [--check] [-f <em
+    >bup index &lt;-p|-m|-s|-u&gt; [-H] [-l] [-x] [--fake-valid] [--fake-invalid] [--check] [-f <em
       >indexfile</em
       >] [--exclude <em
       >path</em
@@ -63,14 +63,14 @@ ol.decimal { list-style-type: decimal; }
 	>You may want to use the data tracked by bup index for other purposes (such as speeding up other programs that need the same information).</p
 	></li
       ></ol
-    ><h1 id="options"
-    >OPTIONS</h1
+    ><h1 id="modes"
+    >MODES</h1
     ><dl
     ><dt
       >-u, --update</dt
       ><dd
       ><p
-	>(recursively) update the index for the given filenames and their descendants. One or more filenames must be given.</p
+	>recursively update the index for the given filenames and their descendants. One or more filenames must be given. If no mode option is given, this is the default.</p
 	></dd
       ><dt
       >-p, --print</dt
@@ -94,7 +94,11 @@ ol.decimal { list-style-type: decimal; }
 	  >-p</code
 	  >. The codes mean, respectively, that a file is marked in the index as added, modified, deleted, or unchanged since the last backup.</p
 	></dd
-      ><dt
+      ></dl
+    ><h1 id="options"
+    >OPTIONS</h1
+    ><dl
+    ><dt
       >-H, --hash</dt
       ><dd
       ><p
@@ -127,6 +131,12 @@ ol.decimal { list-style-type: decimal; }
       ><dd
       ><p
 	>mark specified filenames as up-to-date even if they aren't. This can be useful for testing, or to avoid unnecessarily backing up files that you know are boring.</p
+	></dd
+      ><dt
+      >--fake-invalid</dt
+      ><dd
+      ><p
+	>mark specified filenames as not up-to-date, forcing the next &quot;bup save&quot; run to re-check their contents.</p
 	></dd
       ><dt
       >--check</dt

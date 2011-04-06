@@ -1,4 +1,4 @@
-.TH bup-midx 1 "2011-02-01" "Bup 0\.22"
+.TH bup-midx 1 "2011-03-01" "Bup 0\.24-83-gdfa9d85"
 .SH NAME
 .PP
 bup-midx - create a multi-index (\.midx) file from several \.idx
@@ -50,6 +50,13 @@ available, so that midx can complete (though possibly
 non-optimally) even if it can\[aq]t open all your \.idx files at
 once\. The default value of this option should be fine for most
 people\.
+.RS
+.RE
+.TP
+.B --check
+validate a \.midx file by ensuring that all objects in its
+contained \.idx files exist inside the \.midx\. May be useful for
+debugging\.
 .RS
 .RE
 .SH EXAMPLE

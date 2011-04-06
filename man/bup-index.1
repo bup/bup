@@ -1,12 +1,13 @@
-.TH bup-index 1 "2011-02-01" "Bup 0\.22"
+.TH bup-index 1 "2011-03-01" "Bup 0\.24-83-gdfa9d85"
 .SH NAME
 .PP
 bup-index - print and/or update the bup filesystem index
 .SH SYNOPSIS
 .PP
-bup index <-p|-m|-u> [-s] [-H] [-l] [-x] [--fake-valid] [--check]
-[-f \f[I]indexfile\f[]] [--exclude \f[I]path\f[]] [--exclude-from
-\f[I]filename\f[]] [-v] <filenames\.\.\.>
+bup index <-p|-m|-s|-u> [-H] [-l] [-x] [--fake-valid]
+[--fake-invalid] [--check] [-f \f[I]indexfile\f[]] [--exclude
+\f[I]path\f[]] [--exclude-from \f[I]filename\f[]] [-v]
+<filenames\.\.\.>
 .SH DESCRIPTION
 .PP
 \f[B]bup\ index\f[] prints and/or updates the bup filesystem index,
@@ -32,11 +33,12 @@ re-generating the list of files for each backup set\.
 You may want to use the data tracked by bup index for other
 purposes (such as speeding up other programs that need the same
 information)\.
-.SH OPTIONS
+.SH MODES
 .TP
 .B -u, --update
-(recursively) update the index for the given filenames and their
-descendants\. One or more filenames must be given\.
+recursively update the index for the given filenames and their
+descendants\. One or more filenames must be given\. If no mode
+option is given, this is the default\.
 .RS
 .RE
 .TP
@@ -60,6 +62,7 @@ marked in the index as added, modified, deleted, or unchanged since
 the last backup\.
 .RS
 .RE
+.SH OPTIONS
 .TP
 .B -H, --hash
 for each file printed, prepend the most recently recorded hash
@@ -89,6 +92,12 @@ filesystem\. Only applicable if you\[aq]re using \f[B]-u\f[]\.
 mark specified filenames as up-to-date even if they aren\[aq]t\.
 This can be useful for testing, or to avoid unnecessarily backing
 up files that you know are boring\.
+.RS
+.RE
+.TP
+.B --fake-invalid
+mark specified filenames as not up-to-date, forcing the next \"bup
+save\" run to re-check their contents\.
 .RS
 .RE
 .TP

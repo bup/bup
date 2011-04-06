@@ -2,15 +2,15 @@
 <html xmlns="http://www.w3.org/1999/xhtml"
 ><head
   ><title
-    >bup-midx(1) Bup 0.22</title
+    >bup-midx(1) Bup 0.24-83-gdfa9d85</title
     ><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"
      /><meta name="generator" content="pandoc"
      /><meta name="author" content="Avery Pennarun &lt;apenwarr@gmail.com&gt;"
-     /><meta name="date" content="2011-02-01"
+     /><meta name="date" content="2011-03-01"
      /></head
   ><body
   ><h1 class="title"
-    >bup-midx(1) Bup 0.22</h1
+    >bup-midx(1) Bup 0.24-83-gdfa9d85</h1
     ><h1 id="name"
     >NAME</h1
     ><p
@@ -71,6 +71,12 @@
       ><dd
       ><p
 	>maximum number of .idx files to open at a time. You can use this if you have an especially small number of file descriptors available, so that midx can complete (though possibly non-optimally) even if it can't open all your .idx files at once. The default value of this option should be fine for most people.</p
+	></dd
+      ><dt
+      >--check</dt
+      ><dd
+      ><p
+	>validate a .midx file by ensuring that all objects in its contained .idx files exist inside the .midx. May be useful for debugging.</p
 	></dd
       ></dl
     ><h1 id="example"
