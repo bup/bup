@@ -1,0 +1,87 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"
+><head
+  ><title
+    >bup-bloom(1) Bup 0.24-83-gdfa9d85</title
+    ><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"
+     /><meta name="generator" content="pandoc"
+     /><meta name="author" content="Brandon Low &lt;lostlogic@lostlogicx.com&gt;"
+     /><meta name="date" content="2011-03-01"
+     /></head
+  ><body
+  ><h1 class="title"
+    >bup-bloom(1) Bup 0.24-83-gdfa9d85</h1
+    ><h1 id="name"
+    >NAME</h1
+    ><p
+    >bup-bloom - generates, regenerates, updates bloom filters</p
+    ><h1 id="synopsis"
+    >SYNOPSIS</h1
+    ><p
+    >bup bloom [-d dir] [-o outfile] [-k hashes] [-c idxfile] [-f] [--ruin]</p
+    ><h1 id="description"
+    >DESCRIPTION</h1
+    ><p
+    ><code
+      >bup bloom</code
+      > builds a bloom filter file for a bup repository. If one already exists, it checks the filter and updates or regenerates it as needed.</p
+    ><h1 id="options"
+    >OPTIONS</h1
+    ><dl
+    ><dt
+      >--ruin</dt
+      ><dd
+      ><p
+	>destroy bloom filters by setting the whole bitmask to zeros. you really want to know what you are doing if run this and you want to delete the resulting bloom when you are done with it.</p
+	></dd
+      ><dt
+      >-f, --force</dt
+      ><dd
+      ><p
+	>don't update the existing bloom file; generate a new one from scratch.</p
+	></dd
+      ><dt
+      >-d, --dir=<em
+	>directory</em
+	></dt
+      ><dd
+      ><p
+	>the directory, containing .idx files, to process. Defaults to $BUP_DIR/objects/pack</p
+	></dd
+      ><dt
+      >-o, --outfile=<em
+	>outfile</em
+	></dt
+      ><dd
+      ><p
+	>the file to write the bloom filter to. defaults to $dir/bup.bloom</p
+	></dd
+      ><dt
+      >-k, --hashes=<em
+	>hashes</em
+	></dt
+      ><dd
+      ><p
+	>number of hash functions to use only 4 and 5 are valid. defaults to 5 for repositories &lt; 2 TiB, or 4 otherwise. See comments in git.py for more on this value.</p
+	></dd
+      ><dt
+      >-c, --check=<em
+	>idxfile</em
+	></dt
+      ><dd
+      ><p
+	>checks the bloom file (counterintuitively outfile) against the specified .idx file, first checks that the bloom filter is claiming to contain the .idx, then checks that it does actually contain all of the objects in the .idx. Does not write anything and ignores the <code
+	  >-k</code
+	  > option.</p
+	></dd
+      ></dl
+    ><h1 id="bup"
+    >BUP</h1
+    ><p
+    >Part of the <code
+      >bup</code
+      >(1) suite.</p
+    ></body
+  ></html
+>
+

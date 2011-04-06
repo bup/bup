@@ -1,0 +1,202 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"
+><head
+  ><title
+    >bup-meta(1) Bup 0.24b-75-gb4ae447</title
+    ><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"
+     /><meta name="generator" content="pandoc"
+     /><meta name="author" content="Rob Browning &lt;rlb@defaultvalue.org&gt;"
+     /><meta name="date" content="2011-03-20"
+     /></head
+  ><body
+  ><h1 class="title"
+    >bup-meta(1) Bup 0.24b-75-gb4ae447</h1
+    ><h1 id="name"
+    >NAME</h1
+    ><p
+    >bup-meta - create or extract a metadata archive</p
+    ><h1 id="synopsis"
+    >SYNOPSIS</h1
+    ><p
+    >bup meta --create ~ [-R] [-v] [-q] [--no-symlinks] [--no-paths] [-f <em
+      >file</em
+      >] &lt;<em
+      >paths</em
+      >...&gt;</p
+    ><p
+    >bup meta --list ~ [-v] [-q] [-f <em
+      >file</em
+      >]</p
+    ><p
+    >bup meta --extract ~ [-v] [-q] [--numeric-ids] [--no-symlinks] [-f <em
+      >file</em
+      >]</p
+    ><p
+    >bup meta --start-extract ~ [-v] [-q] [--numeric-ids] [--no-symlinks] [-f <em
+      >file</em
+      >]</p
+    ><p
+    >bup meta --finish-extract ~ [-v] [-q] [--numeric-ids] [-f <em
+      >file</em
+      >]</p
+    ><h1 id="description"
+    >DESCRIPTION</h1
+    ><p
+    ><code
+      >bup meta</code
+      > either creates or extracts a metadata archive. A metadata archive contains the metadata information (timestamps, ownership, access permissions, etc.) for a set of filesystem paths.</p
+    ><h1 id="options"
+    >OPTIONS</h1
+    ><dl
+    ><dt
+      >-c, --create</dt
+      ><dd
+      ><p
+	>Create a metadata archive for the specified <em
+	  >path</em
+	  >s. Write the archive to standard output unless <strong
+	  >--file</strong
+	  > is specified.</p
+	></dd
+      ><dt
+      >-t, --list</dt
+      ><dd
+      ><p
+	>Display information about the metadata in an archive. Read the archive from standard output unless <strong
+	  >--file</strong
+	  > is specified.</p
+	></dd
+      ><dt
+      >-x, --extract</dt
+      ><dd
+      ><p
+	>Extract a metadata archive. Conceptually, perform <strong
+	  >--start-extract</strong
+	  > followed by <strong
+	  >--finish-extract</strong
+	  >. Read the archive from standard input unless <strong
+	  >--file</strong
+	  > is specified.</p
+	></dd
+      ><dt
+      >--start-extract</dt
+      ><dd
+      ><p
+	>Build a filesystem tree matching the paths stored in a metadata archive. By itself, this command does not produce a full restoration of the metadata. For a full restoration, this command must be followed by a call to <strong
+	  >--finish-extract</strong
+	  >. Once this command has finished, all of the normal files described by the metadata will exist and be empty. Restoring the data in those files, and then calling <strong
+	  >--finish-extract</strong
+	  > should restore the original tree. The archive will be read from standard input unless <strong
+	  >--file</strong
+	  > is specified.</p
+	></dd
+      ><dt
+      >--finish-extract</dt
+      ><dd
+      ><p
+	>Finish applying the metadata stored in an archive to the filesystem. Normally, this command should follow a call to <strong
+	  >--start-extract</strong
+	  >. The archive will be read from standard input unless <strong
+	  >--file</strong
+	  > is specified.</p
+	></dd
+      ><dt
+      >-f, --file=<em
+	>filename</em
+	></dt
+      ><dd
+      ><p
+	>Read the metadata archive from <em
+	  >filename</em
+	  > or write it to <em
+	  >filename</em
+	  > as appropriate. If <em
+	  >filename</em
+	  > is &quot;-&quot;, then read from standard input or write to standard output.</p
+	></dd
+      ><dt
+      >-R, --recurse</dt
+      ><dd
+      ><p
+	>Recursively descend into subdirectories during <strong
+	  >--create</strong
+	  >.</p
+	></dd
+      ><dt
+      >--numeric-ids</dt
+      ><dd
+      ><p
+	>Apply numeric user and group IDs (rather than text IDs) during <strong
+	  >--extract</strong
+	  > or <strong
+	  >--finish-extract</strong
+	  >.</p
+	></dd
+      ><dt
+      >--symlinks</dt
+      ><dd
+      ><p
+	>Record symbolic link targets when creating an archive, or restore symbolic links when extracting an archive (during <strong
+	  >--extract</strong
+	  > or <strong
+	  >--start-extract</strong
+	  >). This option is enabled by default. Specify <strong
+	  >--no-symlinks</strong
+	  > to disable it.</p
+	></dd
+      ><dt
+      >--paths</dt
+      ><dd
+      ><p
+	>Record pathnames when creating an archive. This option is enabled by default. Specify <strong
+	  >--no-paths</strong
+	  > to disable it.</p
+	></dd
+      ><dt
+      >-v, --verbose</dt
+      ><dd
+      ><p
+	>Be more verbose (can be used more than once).</p
+	></dd
+      ><dt
+      >-q, --quiet</dt
+      ><dd
+      ><p
+	>Be quiet.</p
+	></dd
+      ></dl
+    ><h1 id="examples"
+    >EXAMPLES</h1
+    ><pre
+    ><code
+      ># Create a metadata archive for /etc.
+$ bup meta -cRf etc.meta /etc
+bup: removing leading &quot;/&quot; from &quot;/etc&quot;
+
+# Extract the etc.meta archive (files will be empty).
+$ mkdir tmp &amp;&amp; cd tmp
+$ bup meta -xf ../etc.meta
+$ ls
+etc
+
+# Restore /etc completely.
+$ mkdir tmp &amp;&amp; cd tmp
+$ bup meta \-\-start-extract -f ../etc.meta
+...fill in all regular file contents using some other tool...
+$ bup meta \-\-finish-extract -f ../etc.meta
+</code
+      ></pre
+    ><h1 id="bugs"
+    >BUGS</h1
+    ><p
+    >Hard links are not handled yet.</p
+    ><h1 id="bup"
+    >BUP</h1
+    ><p
+    >Part of the <code
+      >bup</code
+      >(1) suite.</p
+    ></body
+  ></html
+>
+

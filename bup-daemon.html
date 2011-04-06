@@ -2,15 +2,15 @@
 <html xmlns="http://www.w3.org/1999/xhtml"
 ><head
   ><title
-    >bup-daemon(1) Bup 0.22</title
+    >bup-daemon(1) Bup 0.24-83-gdfa9d85</title
     ><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"
      /><meta name="generator" content="pandoc"
      /><meta name="author" content="Brandon Low &lt;lostlogic@lostlogicx.com&gt;"
-     /><meta name="date" content="2011-02-01"
+     /><meta name="date" content="2011-03-01"
      /></head
   ><body
   ><h1 class="title"
-    >bup-daemon(1) Bup 0.22</h1
+    >bup-daemon(1) Bup 0.24-83-gdfa9d85</h1
     ><h1 id="name"
     >NAME</h1
     ><p
@@ -20,7 +20,7 @@
     ><h1 id="synopsis"
     >SYNOPSIS</h1
     ><p
-    >bup daemon</p
+    >bup daemon [-l address] [-p port]</p
     ><h1 id="description"
     >DESCRIPTION</h1
     ><p
@@ -29,6 +29,26 @@
       > is a simple bup server which listens on a socket and forks connections to <code
       >bup mux server</code
       > children.</p
+    ><h1 id="options"
+    >OPTIONS</h1
+    ><dl
+    ><dt
+      >-l, --listen=<em
+	>address</em
+	></dt
+      ><dd
+      ><p
+	>the address or hostname to listen on</p
+	></dd
+      ><dt
+      >-p, --port=<em
+	>port</em
+	></dt
+      ><dd
+      ><p
+	>the port to listen on</p
+	></dd
+      ></dl
     ><h1 id="bup"
     >BUP</h1
     ><p
