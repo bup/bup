@@ -20,7 +20,7 @@ bwlimit=   maximum bytes/sec to transmit to server
 f,indexfile=  the name of the index file (normally BUP_DIR/bupindex)
 strip      strips the path to every filename given
 strip-path= path-prefix to be stripped when saving
-graft=     a graft point *old_path*=*new_path* (can be used morethan once)
+graft=     a graft point *old_path*=*new_path* (can be used more than once)
 """
 o = options.Options(optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
