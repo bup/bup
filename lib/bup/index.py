@@ -88,7 +88,7 @@ class Entry:
                            self.uid, self.gid, self.size, self.mode,
                            self.gitmode, self.sha, self.flags,
                            self.children_ofs, self.children_n)
-        except DeprecationWarning, e:
+        except (DeprecationWarning, struct.error), e:
             log('pack error: %s (%r)\n' % (e, self))
             raise
 
