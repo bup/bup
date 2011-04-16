@@ -1,4 +1,5 @@
 import os
+import time
 from bup import index
 from bup.helpers import *
 import bup.xstat as xstat
@@ -44,6 +45,26 @@ def eget(l, ename):
     for e in l:
         if e.name == ename:
             return e
+
+@wvtest
+def index_negative_timestamps():
+    # Makes 'foo' exist
+    f = file('foo', 'wb')
+    f.close()
+
+    # Dec 31, 1969
+    os.utime("foo", (-86400, -86400))
+    e = index.BlankNewEntry("foo")
+    e.from_stat(xstat.stat("foo"), time.time())
+    assert len(e.packed())
+    WVPASS()
+
+    # Jun 10, 1893
+    os.utime("foo", (-0x90000000, -0x90000000))
+    e = index.BlankNewEntry("foo")
+    e.from_stat(xstat.stat("foo"), time.time())
+    assert len(e.packed())
+    WVPASS()
 
 
 @wvtest

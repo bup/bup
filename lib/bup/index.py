@@ -8,7 +8,7 @@ INDEX_HDR = 'BUPI\0\0\0\2'
 # FIXME: guess I should have used 64-bit integers to store the mtime/ctime.
 # NTFS mtime=0 corresponds to the year 1600, which can't be stored in a 32-bit
 # time_t.  Next time we update the bupindex format, keep that in mind.
-INDEX_SIG = '!IIIIIQII20sHII'
+INDEX_SIG = '!IiiIIQII20sHII'
 
 ENTLEN = struct.calcsize(INDEX_SIG)
 FOOTER_SIG = '!Q'
