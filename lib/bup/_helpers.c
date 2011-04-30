@@ -369,7 +369,7 @@ static PyObject *merge_into(PyObject *self, PyObject *args)
 {
     PyObject *ilist = NULL;
     unsigned char *fmap = NULL;
-    struct sha *sha_ptr, *sha_start, *last = NULL;
+    struct sha *sha_ptr, *sha_start = NULL;
     uint32_t *table_ptr, *name_ptr, *name_start;
     struct idx **idxs = NULL;
     int flen = 0, bits = 0, i;
@@ -418,7 +418,6 @@ static PyObject *merge_into(PyObject *self, PyObject *args)
 	    table_ptr[prefix++] = htonl(count);
 	memcpy(sha_ptr++, idx->cur, sizeof(struct sha));
 	*name_ptr++ = htonl(_get_idx_i(idx));
-	last = idx->cur;
 	++idx->cur;
 	if (idx->cur_name != NULL)
 	    ++idx->cur_name;
