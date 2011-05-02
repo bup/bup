@@ -26,7 +26,10 @@ for `bup-index`(1).
 -r, --remote=*host*:*path*
 :   save the backup set to the given remote server.  If
     *path* is omitted, uses the default path on the remote
-    server (you still need to include the ':')
+    server (you still need to include the ':').  The connection to the
+    remote server is made with SSH.  If you'd like to specify which port, user
+    or private key to use for the SSH connection, we recommend you use the
+    `~/.ssh/config` file.
 
 -t, --tree
 :   after creating the backup set, print out the git tree
@@ -145,7 +148,7 @@ for `bup-index`(1).
 # SEE ALSO
 
 `bup-index`(1), `bup-split`(1), `bup-on`(1),
-`bup-restore`(1)
+`bup-restore`(1), `ssh_config`(5)
 
 # BUP
 

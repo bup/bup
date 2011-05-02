@@ -26,7 +26,8 @@ smart
     against the idx files in its repository.  If any object
     already exists, it tells the client about the idx file
     it was found in, allowing the client to download that
-    idx and avoid sending duplicate data.
+    idx and avoid sending duplicate data.  This is
+    `bup-server`'s default mode.
 
 dumb
 :   In this mode, the server will not check its local index
@@ -39,7 +40,8 @@ dumb
 # FILES
 
 $BUP_DIR/bup-dumb-server
-:   Activate dumb server mode, as discussed above.
+:   Activate dumb server mode, as discussed above.  This file is not created by
+    default in new repositories.
 
 # SEE ALSO
 

@@ -23,7 +23,10 @@ initialized automatically whenever you run any bup command.
 :   Initialize not only the local repository, but also the
     remote repository given by the *host* and *path*.  This is
     not necessary if you intend to back up to the default
-    location on the server (ie. a blank *path*).
+    location on the server (ie. a blank *path*).  The connection to the
+    remote server is made with SSH.  If you'd like to specify which port, user
+    or private key to use for the SSH connection, we recommend you use the
+    `~/.ssh/config` file.
 
 
 # EXAMPLE
@@ -33,7 +36,7 @@ initialized automatically whenever you run any bup command.
 
 # SEE ALSO
 
-`bup-fsck`(1)
+`bup-fsck`(1), `ssh_config`(5)
 
 # BUP
 
