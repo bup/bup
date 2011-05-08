@@ -66,6 +66,8 @@ def index_negative_timestamps():
     assert len(e.packed())
     WVPASS()
 
+    unlink('foo')
+
 
 @wvtest
 def index_dirty():
