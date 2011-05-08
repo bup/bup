@@ -23,10 +23,10 @@ def test_detect_fakeroot():
 
 @wvtest
 def test_strip_path():
-    prefix = "/var/backup/daily.0/localhost"
+    prefix = "/NOT_EXISTING/var/backup/daily.0/localhost"
     empty_prefix = ""
     non_matching_prefix = "/home"
-    path = "/var/backup/daily.0/localhost/etc/"
+    path = "/NOT_EXISTING/var/backup/daily.0/localhost/etc/"
 
     WVPASSEQ(strip_path(prefix, path), '/etc')
     WVPASSEQ(strip_path(empty_prefix, path), path)
@@ -35,8 +35,11 @@ def test_strip_path():
 
 @wvtest
 def test_strip_base_path():
-    path = "/var/backup/daily.0/localhost/etc/"
-    base_paths = ["/var", "/var/backup", "/var/backup/daily.0/localhost"]
+    path = "/NOT_EXISTING/var/backup/daily.0/localhost/etc/"
+    base_paths = ["/NOT_EXISTING/var",
+                  "/NOT_EXISTING/var/backup",
+                  "/NOT_EXISTING/var/backup/daily.0/localhost"
+                 ]
     WVPASSEQ(strip_base_path(path, base_paths), '/etc')
 
 @wvtest
@@ -62,22 +65,22 @@ def test_strip_symlinked_base_path():
 
 @wvtest
 def test_graft_path():
-    middle_matching_old_path = "/user"
-    non_matching_old_path = "/usr"
-    matching_old_path = "/home"
-    matching_full_path = "/home/user"
+    middle_matching_old_path = "/NOT_EXISTING/user"
+    non_matching_old_path = "/NOT_EXISTING/usr"
+    matching_old_path = "/NOT_EXISTING/home"
+    matching_full_path = "/NOT_EXISTING/home/user"
     new_path = "/opt"
 
     all_graft_points = [(middle_matching_old_path, new_path),
                         (non_matching_old_path, new_path),
                         (matching_old_path, new_path)]
 
-    path = "/home/user/"
+    path = "/NOT_EXISTING/home/user/"
 
     WVPASSEQ(graft_path([(middle_matching_old_path, new_path)], path),
-                        "/home/user")
+                        "/NOT_EXISTING/home/user")
     WVPASSEQ(graft_path([(non_matching_old_path, new_path)], path),
-                        "/home/user")
+                        "/NOT_EXISTING/home/user")
     WVPASSEQ(graft_path([(matching_old_path, new_path)], path), "/opt/user")
     WVPASSEQ(graft_path(all_graft_points, path), "/opt/user")
     WVPASSEQ(graft_path([(matching_full_path, new_path)], path),
