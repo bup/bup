@@ -281,7 +281,7 @@ they're written.
 But that leads us to our next problem.
 
 
-Huge numbers of huge packfiles (midx.py, cmd/midx)
+Huge numbers of huge packfiles (midx.py, bloom.py, cmd/midx, cmd/bloom)
 ------------------------------
 
 Git isn't actually designed to handle super-huge repositories.  Most git
@@ -354,9 +354,13 @@ You generate midx files with 'bup midx'.  The downside of midx files is that
 generating one takes a while, and you have to regenerate it every time you
 add a few packs.
 
-(Computer Sciency observers will note that there are some interesting data
-structures out there that could help make things even better.  A very
-promising sounding one is called a "bloom filter." Look it up in Wikipedia.)
+UPDATE: Brandon Low contributed an implementation of "bloom filters", which
+have even better characteristics than midx for certain uses.  Look it up in
+Wikipedia.  He also massively sped up both midx and bloom by rewriting the
+key parts in C.  The nicest thing about bloom filters is we can update them
+incrementally every time we get a new idx, without regenerating from
+scratch.  That makes the update phase much faster, and means we can also get
+away with generating midxes less often.
 
 midx files are a bup-specific optimization and git doesn't know what to do
 with them.  However, since they're stored as separate files, they don't
