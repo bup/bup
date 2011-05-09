@@ -80,7 +80,8 @@ force-delete "$TOP/bupmeta.tmp"
 (
     rm -rf "$TOP/bupmeta.tmp/src"
     mkdir -p "$TOP/bupmeta.tmp/src"
-    cp -a Documentation cmd lib t "$TOP/bupmeta.tmp"/src
+    #cp -a Documentation cmd lib t "$TOP/bupmeta.tmp"/src
+    cp -pPR Documentation cmd lib t "$TOP/bupmeta.tmp"/src
 ) || WVFAIL
 
 # Use the test tree to check bup meta.
@@ -112,7 +113,8 @@ if actually-root; then
         chown root:root testfs
         chmod 0700 testfs
 
-        cp -a src testfs/src
+        #cp -a src testfs/src
+        cp -pPR src testfs/src
         (cd testfs && test-src-create-extract)
 
         WVSTART 'meta - atime (as root)'
