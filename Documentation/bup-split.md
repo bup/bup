@@ -9,7 +9,7 @@ bup-split - save individual files to bup backup sets
 # SYNOPSIS
 
 bup split [-r *host*:*path*] <-b|-t|-c|-n *name*> [-v] [-q]
-  [--bench] [--max-pack-size=*bytes*]
+  [--bench] [--max-pack-size=*bytes*] [-0|-9]
   [--max-pack-objects=*n*] [--fanout=*count]
   [--git-ids] [--keep-boundaries] [filenames...]
 
@@ -132,6 +132,14 @@ To get the data back, use `bup-join`(1).
     not suck up all your network bandwidth.  Use a suffix
     like k, M, or G to specify multiples of 1024,
     1024*1024, 1024*1024*1024 respectively.
+
+-0
+:   set the compression level to 0 (no compression)
+
+    If no compression level is set it defaults to 1.
+
+-9
+:   set the compression level to 9 (highest compression, slowest)
 
 
 # EXAMPLE
