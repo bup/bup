@@ -21,6 +21,8 @@ f,indexfile=  the name of the index file (normally BUP_DIR/bupindex)
 strip      strips the path to every filename given
 strip-path= path-prefix to be stripped when saving
 graft=     a graft point *old_path*=*new_path* (can be used more than once)
+0          set compression-level to 0
+9          set compression-level to 9
 """
 o = options.Options(optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
@@ -30,6 +32,13 @@ if not (opt.tree or opt.commit or opt.name):
     o.fatal("use one or more of -t, -c, -n")
 if not extra:
     o.fatal("no filenames given")
+
+if opt['0']:
+    compression_level = 0
+elif opt['9']:
+    compression_level = 9
+else:
+    compression_level = 1
 
 opt.progress = (istty2 and not opt.quiet)
 opt.smaller = parse_num(opt.smaller or 0)
@@ -74,7 +83,7 @@ if opt.remote or is_reverse:
 else:
     cli = None
     oldref = refname and git.read_ref(refname) or None
-    w = git.PackWriter()
+    w = git.PackWriter(compression_level=compression_level)
 
 handle_ctrl_c()
 
