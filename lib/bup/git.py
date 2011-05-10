@@ -165,7 +165,7 @@ def tree_decode(buf):
         yield (int(mode, 8), name, sha)
 
 
-def _encode_packobj(type, content):
+def _encode_packobj(type, content, compression_level=1):
     szout = ''
     sz = len(content)
     szbits = (sz & 0x0f) | (_typemap[type]<<4)
@@ -177,14 +177,14 @@ def _encode_packobj(type, content):
             break
         szbits = sz & 0x7f
         sz >>= 7
-    z = zlib.compressobj(1)
+    z = zlib.compressobj(compression_level)
     yield szout
     yield z.compress(content)
     yield z.flush()
 
 
-def _encode_looseobj(type, content):
-    z = zlib.compressobj(1)
+def _encode_looseobj(type, content, compression_level=1):
+    z = zlib.compressobj(compression_level)
     yield z.compress('%s %d\0' % (type, len(content)))
     yield z.compress(content)
     yield z.flush()
@@ -489,7 +489,7 @@ def _make_objcache():
 
 class PackWriter:
     """Writes Git objects inside a pack file."""
-    def __init__(self, objcache_maker=_make_objcache):
+    def __init__(self, objcache_maker=_make_objcache, compression_level=1):
         self.count = 0
         self.outbytes = 0
         self.filename = None
@@ -497,6 +497,7 @@ class PackWriter:
         self.idx = None
         self.objcache_maker = objcache_maker
         self.objcache = None
+        self.compression_level = compression_level
 
     def __del__(self):
         self.close()
@@ -540,7 +541,9 @@ class PackWriter:
             log('>')
         if not sha:
             sha = calc_hash(type, content)
-        size, crc = self._raw_write(_encode_packobj(type, content), sha=sha)
+        size, crc = self._raw_write(_encode_packobj(type, content,
+                                                    self.compression_level),
+                                    sha=sha)
         if self.outbytes >= max_pack_size or self.count >= max_pack_objects:
             self.breakpoint()
         return sha
