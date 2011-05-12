@@ -151,3 +151,4 @@ clean: Documentation/clean
 	rm -rf *.tmp t/*.tmp lib/*/*/*.tmp build lib/bup/build
 	if test -e testfs; then rmdir testfs; fi
 	if test -e lib/bup/t/testfs; then rmdir lib/bup/t/testfs; fi
+	rm -f @CONFIGURE_FILES@ @GENERATED_FILES@
