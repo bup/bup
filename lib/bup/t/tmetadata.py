@@ -1,7 +1,7 @@
 import glob, grp, pwd, stat, tempfile, subprocess
 import bup.helpers as helpers
 from bup import metadata
-from bup.helpers import clear_errors, detect_fakeroot
+from bup.helpers import clear_errors, detect_fakeroot, is_superuser
 from wvtest import *
 
 
@@ -116,7 +116,7 @@ def _first_err():
 
 @wvtest
 def test_from_path_error():
-    if os.geteuid() == 0 or detect_fakeroot():
+    if is_superuser() or detect_fakeroot():
         return
     tmpdir = tempfile.mkdtemp(prefix='bup-tmetadata-')
     try:
@@ -136,7 +136,7 @@ def test_from_path_error():
 
 @wvtest
 def test_apply_to_path_restricted_access():
-    if os.geteuid() == 0 or detect_fakeroot():
+    if is_superuser() or detect_fakeroot():
         return
     tmpdir = tempfile.mkdtemp(prefix='bup-tmetadata-')
     try:
@@ -156,7 +156,7 @@ def test_apply_to_path_restricted_access():
 
 @wvtest
 def test_restore_restricted_user_group():
-    if os.geteuid() == 0 or detect_fakeroot():
+    if is_superuser() or detect_fakeroot():
         return
     tmpdir = tempfile.mkdtemp(prefix='bup-tmetadata-')
     try:
@@ -253,7 +253,7 @@ if not xattr:
 else:
     @wvtest
     def test_handling_of_incorrect_existing_linux_xattrs():
-        if os.geteuid() != 0 or detect_fakeroot():
+        if not is_superuser():
             return
         setup_testfs()
         for f in glob.glob('testfs/*'):
