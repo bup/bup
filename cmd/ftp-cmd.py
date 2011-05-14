@@ -58,6 +58,7 @@ def inputiter():
             try:
                 yield raw_input('bup> ')
             except EOFError:
+                print ''  # Clear the line for the terminal's next prompt
                 break
     else:
         for line in sys.stdin:
