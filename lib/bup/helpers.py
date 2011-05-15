@@ -1,7 +1,7 @@
 """Helper functions and classes for bup."""
 
 import sys, os, pwd, subprocess, errno, socket, select, mmap, stat, re, struct
-import heapq, operator, time
+import heapq, operator, time, platform
 from bup import _version, _helpers
 import bup._helpers as _helpers
 
@@ -201,6 +201,14 @@ def realpath(p):
 def detect_fakeroot():
     "Return True if we appear to be running under fakeroot."
     return os.getenv("FAKEROOTKEY") != None
+
+
+def is_superuser():
+    if platform.system().startswith('CYGWIN'):
+        import ctypes
+        return ctypes.cdll.shell32.IsUserAnAdmin()
+    else:
+        return os.geteuid() == 0
 
 
 _username = None

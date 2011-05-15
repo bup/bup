@@ -38,13 +38,14 @@ deftest3=  a default option with [3] no actual default
 deftest4=  a default option with [[square]]
 deftest5=  a default option with "correct" [[square]
 no-stupid  disable stupidity
+#,compress=  set compression level [5]
 """
 
 @wvtest
 def test_options():
     o = options.Options(optspec)
     (opt,flags,extra) = o.parse(['-tttqp', 7, '--longoption', '19',
-                                 'hanky', '--onlylong'])
+                                 'hanky', '--onlylong', '-7'])
     WVPASSEQ(flags[0], ('-t', ''))
     WVPASSEQ(flags[1], ('-t', ''))
     WVPASSEQ(flags[2], ('-t', ''))
@@ -57,5 +58,8 @@ def test_options():
     WVPASSEQ((opt.deftest1, opt.deftest2, opt.deftest3, opt.deftest4,
               opt.deftest5), (1,2,None,None,'[square'))
     WVPASSEQ((opt.stupid, opt.no_stupid), (True, False))
+    WVPASSEQ(opt['#'], 7)
+    WVPASSEQ(opt.compress, 7)
+
     (opt,flags,extra) = o.parse(['--onlylong', '-t', '--no-onlylong'])
     WVPASSEQ((opt.t, opt.q, opt.onlylong), (1, None, 0))

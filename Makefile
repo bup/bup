@@ -16,10 +16,11 @@ Documentation/all: bup
 
 INSTALL=install
 PYTHON=python
-MANDIR=$(DESTDIR)/usr/share/man
-DOCDIR=$(DESTDIR)/usr/share/doc/bup
-BINDIR=$(DESTDIR)/usr/bin
-LIBDIR=$(DESTDIR)/usr/lib/bup
+PREFIX=/usr
+MANDIR=$(DESTDIR)$(PREFIX)/share/man
+DOCDIR=$(DESTDIR)$(PREFIX)/share/doc/bup
+BINDIR=$(DESTDIR)$(PREFIX)/bin
+LIBDIR=$(DESTDIR)$(PREFIX)/lib/bup
 install: all
 	$(INSTALL) -d $(MANDIR)/man1 $(DOCDIR) $(BINDIR) \
 		$(LIBDIR)/bup $(LIBDIR)/cmd $(LIBDIR)/tornado \

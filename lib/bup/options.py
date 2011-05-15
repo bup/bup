@@ -158,7 +158,10 @@ class Options:
                     self._aliases[f] = _remove_negative_k(flagl[0])
                     self._hasparms[f] = has_parm
                     self._defaults[f] = dvi
-                    if len(f) == 1:
+                    if f == '#':
+                        self._shortopts += '0123456789'
+                        flagl_nice.append('-#')
+                    elif len(f) == 1:
                         self._shortopts += f + (has_parm and ':' or '')
                         flagl_nice.append('-' + f)
                     else:
@@ -220,6 +223,11 @@ class Options:
             if k.startswith('no-'):
                 k = self._aliases[k[3:]]
                 v = 0
+            elif (self._aliases.get('#') and
+                  k in ('0','1','2','3','4','5','6','7','8','9')):
+                v = int(k)  # guaranteed to be exactly one digit
+                k = self._aliases['#']
+                opt['#'] = v
             else:
                 k = self._aliases[k]
                 if not self._hasparms[k]:
