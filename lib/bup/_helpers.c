@@ -1,6 +1,6 @@
 #define _LARGEFILE64_SOURCE 1
 #undef NDEBUG
-#include "../../config.h"
+#include "../../config/config.h"
 #include "bupsplit.h"
 #include <Python.h>
 #include <assert.h>

@@ -17,13 +17,3 @@ out2[tc]
 /build
 *.swp
 nbproject
-
-# ignores from configure.sh
-Makefile
-config.cmd
-config.h
-config.log
-config.mak
-config.md
-config.sub
-

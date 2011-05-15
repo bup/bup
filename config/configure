@@ -54,4 +54,4 @@ AC_CHECK_HEADERS sys/stat.h
 AC_CHECK_FUNCS utimensat 
 AC_CHECK_FUNCS utime
 
-AC_OUTPUT Makefile
+AC_OUTPUT config.vars

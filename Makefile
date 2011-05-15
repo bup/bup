@@ -56,11 +56,17 @@ install: all
 
 %/clean:
 	$(MAKE) -C $* clean
+	
+config/config.h: config/Makefile config/configure config/configure.inc \
+		$(wildcard config/*.in)
+	cd config && make config.h
 
 lib/bup/_helpers$(SOEXT): \
+		config/config.h \
 		lib/bup/bupsplit.c lib/bup/_helpers.c lib/bup/csetup.py
 	@rm -f $@
-	cd lib/bup && LDFLAGS="$(LDFLAGS)" CFLAGS="$(CFLAGS)" $(PYTHON) csetup.py build
+	cd lib/bup && \
+	LDFLAGS="$(LDFLAGS)" CFLAGS="$(CFLAGS)" $(PYTHON) csetup.py build
 	cp lib/bup/build/*/_helpers$(SOEXT) lib/bup/
 
 .PHONY: lib/bup/_version.py
@@ -151,4 +157,3 @@ clean: Documentation/clean
 	rm -rf *.tmp t/*.tmp lib/*/*/*.tmp build lib/bup/build
 	if test -e testfs; then rmdir testfs; fi
 	if test -e lib/bup/t/testfs; then rmdir lib/bup/t/testfs; fi
-	rm -f @CONFIGURE_FILES@ @GENERATED_FILES@
