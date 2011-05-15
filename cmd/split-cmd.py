@@ -26,8 +26,7 @@ max-pack-size=  maximum bytes in a single pack
 max-pack-objects=  maximum number of objects in a single pack
 fanout=    maximum number of blobs in a single tree
 bwlimit=   maximum bytes/sec to transmit to server
-0          set compression-level to 0
-9          set compression-level to 9
+#,compress=  set compression level to # (0-9, 9 is highest) [1]
 """
 o = options.Options(optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
@@ -63,15 +62,6 @@ if opt.date:
 else:
     date = time.time()
 
-if opt['0']:
-    compression_level = 0
-elif opt['9']:
-    compression_level = 9
-else:
-    compression_level = 1
-
-
-
 total_bytes = 0
 def prog(filenum, nbytes):
     global total_bytes
@@ -94,13 +84,13 @@ refname = opt.name and 'refs/heads/%s' % opt.name or None
 if opt.noop or opt.copy:
     cli = pack_writer = oldref = None
 elif opt.remote or is_reverse:
-    cli = client.Client(opt.remote, compression_level = compression_level)
+    cli = client.Client(opt.remote, compression_level=opt.compress)
     oldref = refname and cli.read_ref(refname) or None
     pack_writer = cli.new_packwriter()
 else:
     cli = None
     oldref = refname and git.read_ref(refname) or None
-    pack_writer = git.PackWriter(compression_level = compression_level)
+    pack_writer = git.PackWriter(compression_level=opt.compress)
 
 if opt.git_ids:
     # the input is actually a series of git object ids that we should retrieve

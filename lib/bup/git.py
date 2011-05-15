@@ -177,6 +177,10 @@ def _encode_packobj(type, content, compression_level=1):
             break
         szbits = sz & 0x7f
         sz >>= 7
+    if compression_level > 9:
+        compression_level = 9
+    elif compression_level < 0:
+        compression_level = 0
     z = zlib.compressobj(compression_level)
     yield szout
     yield z.compress(content)

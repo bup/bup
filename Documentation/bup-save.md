@@ -8,7 +8,7 @@ bup-save - create a new bup backup set
 
 # SYNOPSIS
 
-bup save [-r *host*:*path*] <-t|-c|-n *name*> [-0|-9] [-f *indexfile*]
+bup save [-r *host*:*path*] <-t|-c|-n *name*> [-#] [-f *indexfile*]
 [-v] [-q] [--smaller=*maxsize*] <paths...>
 
 # DESCRIPTION
@@ -100,15 +100,11 @@ for `bup-index`(1).
     "bup save -n chroots --graft /root/chroot/a/etc=/chroots/a"
     would be saved as */chroots/a/etc*
 
--0
-:   set the compression level to 0 (no compression)
+-*#*, --compress=*#*
+:   set the compression level to # (a value from 0-9, where
+    9 is the highest and 0 is no compression).  The default
+    is 1 (fast, loose compression)
 
-    If no compression level is set it defaults to 1.
-
--9
-:   set the compression level to 9 (highest compression, slowest)
-
-    If no compression level is set it defaults to 1.
 
 # EXAMPLE
 
