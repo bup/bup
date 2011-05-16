@@ -83,6 +83,10 @@ Reasons you might want to avoid bup
 Getting started
 ===============
 
+
+From source
+-----------
+
  - Check out the bup source code using git:
  
         git clone git://github.com/apenwarr/bup
@@ -108,7 +112,23 @@ Getting started
  	
     (The tests should pass.  If they don't pass for you, stop here and send
     me an email.)
-   
+
+
+From binary packages
+--------------------
+
+Binary packages of bup are known to be built for the following OSes:
+
+ - Debian:
+    http://packages.debian.org/search?searchon=names&keywords=bup
+ - Ubuntu:
+    http://packages.ubuntu.com/search?searchon=names&keywords=bup
+ - NetBSD
+
+
+Using bup
+---------
+
  - Try making a local backup as a tar file:
  
         tar -cvf - /etc | bup split -n local-etc -vv
