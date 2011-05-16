@@ -6,13 +6,16 @@ from bup.helpers import *
 handle_ctrl_c()
 
 
-def node_name(text, n):
+def node_name(opt, text, n):
+    prefix = ''
+    if opt.hash:
+        prefix += "%s " % n.hash.encode('hex')
     if stat.S_ISDIR(n.mode):
-        return '%s/' % text
+        return '%s%s/' % (prefix, text)
     elif stat.S_ISLNK(n.mode):
-        return '%s@' % text
+        return '%s%s@' % (prefix, text)
     else:
-        return '%s' % text
+        return '%s%s' % (prefix, text)
 
 
 class OptionError(Exception):
@@ -22,6 +25,7 @@ class OptionError(Exception):
 ls_optspec = """
 ls [-a] [path...]
 --
+s,hash   show hash for each file
 a,all   include hidden files in the listing
 """
 ls_opt = options.Options(ls_optspec, onabort=OptionError)
@@ -42,14 +46,14 @@ def do_ls(cmd_args):
                 name = sub.name
                 if opt.all or not len(name)>1 or not name.startswith('.'):
                     if istty1:
-                        L.append(node_name(name, sub))
+                        L.append(node_name(opt, name, sub))
                     else:
-                        print node_name(name, sub)
+                        print node_name(opt, name, sub)
         else:
             if istty1:
-                L.append(node_name(path, n))
+                L.append(node_name(opt, path, n))
             else:
-                print node_name(path, n)
+                print node_name(opt, path, n)
         sys.stdout.write(columnate(L, ''))
 
 
