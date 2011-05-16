@@ -27,10 +27,13 @@ lot of typing.
 
 The following commands are available inside `bup ftp`:
 
-ls [-a]
-:   print the contents of the current working directory. 
+ls [-s] [-a] [*path*]
+:   print the contents of a directory. If no path argument
+    is given, the current directory's contents are listed.
     If -a is given, also include hidden files (files which
-    start with a `.` character).
+    start with a `.` character). If -s is given, each file
+    is displayed with its hash from the bup archive to its
+    left.
 
 cd *dirname*
 :   change to a different working directory
