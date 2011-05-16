@@ -41,9 +41,15 @@ def do_ls(cmd_args):
             for sub in n:
                 name = sub.name
                 if opt.all or not len(name)>1 or not name.startswith('.'):
-                    L.append(node_name(name, sub))
+                    if istty1:
+                        L.append(node_name(name, sub))
+                    else:
+                        print node_name(name, sub)
         else:
-            L.append(node_name(path, n))
+            if istty1:
+                L.append(node_name(path, n))
+            else:
+                print node_name(path, n)
         sys.stdout.write(columnate(L, ''))
 
 

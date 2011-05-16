@@ -3,16 +3,16 @@ import sys, stat
 from bup import options, git, vfs
 from bup.helpers import *
 
-def print_node(text, n):
+def node_name(text, n):
     prefix = ''
     if opt.hash:
         prefix += "%s " % n.hash.encode('hex')
     if stat.S_ISDIR(n.mode):
-        print '%s%s/' % (prefix, text)
+        return '%s%s/' % (prefix, text)
     elif stat.S_ISLNK(n.mode):
-        print '%s%s@' % (prefix, text)
+        return '%s%s@' % (prefix, text)
     else:
-        print '%s%s' % (prefix, text)
+        return '%s%s' % (prefix, text)
 
 
 optspec = """
@@ -32,17 +32,27 @@ if not extra:
 
 ret = 0
 for d in extra:
+    L = []
     try:
         n = top.lresolve(d)
         if stat.S_ISDIR(n.mode):
             for sub in n:
                 if opt.all or not sub.name.startswith('.'):
-                    print_node(sub.name, sub)
+                    if istty1:
+                        L.append(node_name(sub.name, sub))
+                    else:
+                        print node_name(sub.name, sub)
         else:
             if opt.all or not n.name.startswith('.'):
-                print_node(d, n)
+                if istty1:
+                    L.append(node_name(d, n))
+                else:
+                    print node_name(d, n)
     except vfs.NodeError, e:
         log('error: %s\n' % e)
         ret = 1
+
+if istty1:
+    sys.stdout.write(columnate(L, ''))
 
 sys.exit(ret)
