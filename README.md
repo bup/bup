@@ -81,7 +81,7 @@ Reasons you might want to avoid bup
    
    
 Getting started
----------------
+===============
 
  - Check out the bup source code using git:
  
@@ -171,7 +171,7 @@ That's all there is to it!
 
 
 Notes on FreeBSD
-================
+----------------
 
 - FreeBSD's default 'make' command doesn't like bup's Makefile. In order to
   compile the code, run tests and install bup, you need to install GNU Make
@@ -192,7 +192,7 @@ Notes on FreeBSD
 
 
 How it works
-------------
+============
 
 Basic storage:
 
@@ -326,7 +326,7 @@ join, index, save, etc.) to get details on that command.
 
 
 How you can help
-----------------
+================
 
 bup is a work in progress and there are many ways it can still be improved.
 If you'd like to contribute patches, ideas, or bug reports, please join the
