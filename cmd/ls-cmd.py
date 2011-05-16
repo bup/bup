@@ -43,11 +43,10 @@ for d in extra:
                     else:
                         print node_name(sub.name, sub)
         else:
-            if opt.all or not n.name.startswith('.'):
-                if istty1:
-                    L.append(node_name(d, n))
-                else:
-                    print node_name(d, n)
+            if istty1:
+                L.append(node_name(d, n))
+            else:
+                print node_name(d, n)
     except vfs.NodeError, e:
         log('error: %s\n' % e)
         ret = 1
