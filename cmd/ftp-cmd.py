@@ -44,7 +44,7 @@ def do_ls(cmd_args):
                     L.append(node_name(name, sub))
         else:
             L.append(node_name(path, n))
-        print columnate(L, '')
+        sys.stdout.write(columnate(L, ''))
 
 
 def write_to_file(inf, outf):
