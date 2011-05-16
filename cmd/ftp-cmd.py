@@ -1,60 +1,21 @@
 #!/usr/bin/env python
 import sys, os, stat, fnmatch
-from bup import options, git, shquote, vfs
+from bup import options, git, shquote, vfs, ls
 from bup.helpers import *
 
 handle_ctrl_c()
-
-
-def node_name(opt, text, n):
-    prefix = ''
-    if opt.hash:
-        prefix += "%s " % n.hash.encode('hex')
-    if stat.S_ISDIR(n.mode):
-        return '%s%s/' % (prefix, text)
-    elif stat.S_ISLNK(n.mode):
-        return '%s%s@' % (prefix, text)
-    else:
-        return '%s%s' % (prefix, text)
 
 
 class OptionError(Exception):
     pass
 
 
-ls_optspec = """
-ls [-a] [path...]
---
-s,hash   show hash for each file
-a,all   include hidden files in the listing
-"""
-ls_opt = options.Options(ls_optspec, onabort=OptionError)
-
+# Check out lib/bup/ls.py for the opt spec
 def do_ls(cmd_args):
     try:
-        (opt, flags, extra) = ls_opt.parse(cmd_args)
+        ls.do_ls(cmd_args, pwd, onabort=OptionError)
     except OptionError, e:
         return
-
-    L = []
-
-    for path in (extra or ['.']):
-        n = pwd.try_resolve(path)
-
-        if stat.S_ISDIR(n.mode):
-            for sub in n:
-                name = sub.name
-                if opt.all or not len(name)>1 or not name.startswith('.'):
-                    if istty1:
-                        L.append(node_name(opt, name, sub))
-                    else:
-                        print node_name(opt, name, sub)
-        else:
-            if istty1:
-                L.append(node_name(opt, path, n))
-            else:
-                print node_name(opt, path, n)
-        sys.stdout.write(columnate(L, ''))
 
 
 def write_to_file(inf, outf):
