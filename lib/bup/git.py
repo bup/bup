@@ -843,7 +843,8 @@ def check_repo_or_die(path=None):
     except OSError, e:
         if e.errno == errno.ENOENT:
             if repodir != home_repodir:
-                log('error: %r is not a bup/git repository\n' % repo())
+                log('error: %r is not a bup repository; run "bup init"\n'
+                    % repo())
                 sys.exit(15)
             else:
                 init_repo()
