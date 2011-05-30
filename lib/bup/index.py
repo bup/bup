@@ -4,12 +4,10 @@ from bup.helpers import *
 
 EMPTY_SHA = '\0'*20
 FAKE_SHA = '\x01'*20
-INDEX_HDR = 'BUPI\0\0\0\2'
+INDEX_HDR = 'BUPI\0\0\0\3'
 
-# FIXME: guess I should have used 64-bit integers to store the mtime/ctime.
-# NTFS mtime=0 corresponds to the year 1600, which can't be stored in a 32-bit
-# time_t.  Next time we update the bupindex format, keep that in mind.
-INDEX_SIG = '!IiiIIQII20sHII'
+# Use 64-bit integers for mtime/ctime to handle NTFS zero (Y1600) and Y2038.
+INDEX_SIG = '!QQQqqIIQII20sHII'
 
 ENTLEN = struct.calcsize(INDEX_SIG)
 FOOTER_SIG = '!Q'
@@ -78,7 +76,7 @@ class Entry:
 
     def __repr__(self):
         return ("(%s,0x%04x,%d,%d,%d,%d,%d,%s/%s,0x%04x,0x%08x/%d)" 
-                % (self.name, self.dev,
+                % (self.name, self.dev, self.ino, self.nlink,
                    self.ctime, self.mtime, self.uid, self.gid,
                    self.size, oct(self.mode), oct(self.gitmode),
                    self.flags, self.children_ofs, self.children_n))
@@ -86,7 +84,8 @@ class Entry:
     def packed(self):
         try:
             return struct.pack(INDEX_SIG,
-                           self.dev, self.ctime, self.mtime, 
+                           self.dev, self.ino, self.nlink,
+                           self.ctime, self.mtime, 
                            self.uid, self.gid, self.size, self.mode,
                            self.gitmode, self.sha, self.flags,
                            self.children_ofs, self.children_n)
@@ -95,13 +94,15 @@ class Entry:
             raise
 
     def from_stat(self, st, tstart):
-        old = (self.dev, self.ctime, self.mtime,
+        old = (self.dev, self.ino, self.nlink, self.ctime, self.mtime,
                self.uid, self.gid, self.size, self.flags & IX_EXISTS)
-        new = (st.st_dev,
+        new = (st.st_dev, st.st_ino, st.st_nlink,
                xstat.fstime_floor_secs(st.st_ctime),
                xstat.fstime_floor_secs(st.st_mtime),
                st.st_uid, st.st_gid, st.st_size, IX_EXISTS)
         self.dev = st.st_dev
+        self.ino = st.st_ino
+        self.nlink = st.st_nlink
         self.ctime = xstat.fstime_floor_secs(st.st_ctime)
         self.mtime = xstat.fstime_floor_secs(st.st_mtime)
         self.uid = st.st_uid
@@ -125,9 +126,7 @@ class Entry:
         self.ctime = self._fixup_time(self.ctime)
 
     def _fixup_time(self, t):
-        if t < -0x80000000:  # can happen in NTFS on 64-bit linux
-            return 0
-        elif self.tmax != None and t > self.tmax:
+        if self.tmax != None and t > self.tmax:
             return self.tmax
         else:
             return t
@@ -176,13 +175,14 @@ class Entry:
 
 
 class NewEntry(Entry):
-    def __init__(self, basename, name, tmax, dev, ctime, mtime, uid, gid,
-                 size, mode, gitmode, sha, flags, children_ofs, children_n):
+    def __init__(self, basename, name, tmax, dev, ino, nlink, ctime, mtime,
+                 uid, gid, size, mode, gitmode, sha, flags,
+                 children_ofs, children_n):
         Entry.__init__(self, basename, name, tmax)
-        (self.dev, self.ctime, self.mtime, self.uid, self.gid,
-         self.size, self.mode, self.gitmode, self.sha,
+        (self.dev, self.ino, self.nlink, self.ctime, self.mtime,
+         self.uid, self.gid, self.size, self.mode, self.gitmode, self.sha,
          self.flags, self.children_ofs, self.children_n
-         ) = (dev, int(ctime), int(mtime), uid, gid,
+         ) = (dev, ino, nlink, int(ctime), int(mtime), uid, gid,
               size, mode, gitmode, sha, flags, children_ofs, children_n)
         self._fixup()
 
@@ -190,7 +190,7 @@ class NewEntry(Entry):
 class BlankNewEntry(NewEntry):
     def __init__(self, basename, tmax):
         NewEntry.__init__(self, basename, basename, tmax,
-                          0, 0, 0, 0, 0, 0, 0,
+                          0, 0, 0, 0, 0, 0, 0, 0, 0,
                           0, EMPTY_SHA, 0, 0, 0)
 
 
@@ -200,8 +200,8 @@ class ExistingEntry(Entry):
         self.parent = parent
         self._m = m
         self._ofs = ofs
-        (self.dev, self.ctime, self.mtime, self.uid, self.gid,
-         self.size, self.mode, self.gitmode, self.sha,
+        (self.dev, self.ino, self.nlink, self.ctime, self.mtime,
+         self.uid, self.gid, self.size, self.mode, self.gitmode, self.sha,
          self.flags, self.children_ofs, self.children_n
          ) = struct.unpack(INDEX_SIG, str(buffer(m, ofs, ENTLEN)))
 
@@ -414,7 +414,8 @@ class Writer:
         if st:
             isdir = stat.S_ISDIR(st.st_mode)
             assert(isdir == endswith)
-            e = NewEntry(basename, name, self.tmax, st.st_dev,
+            e = NewEntry(basename, name, self.tmax,
+                         st.st_dev, st.st_ino, st.st_nlink,
                          xstat.fstime_floor_secs(st.st_ctime),
                          xstat.fstime_floor_secs(st.st_mtime),
                          st.st_uid, st.st_gid,
