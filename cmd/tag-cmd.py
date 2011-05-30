@@ -29,7 +29,7 @@ if opt.delete:
     tag_file = git.repo('refs/tags/%s' % opt.delete)
     debug1("tag file: %s\n" % tag_file)
     if not os.path.exists(tag_file):
-        log("bup: error: tag '%s' not found." % opt.delete)
+        log("bup: error: tag '%s' not found.\n" % opt.delete)
         sys.exit(1)
 
     try:
@@ -55,7 +55,7 @@ if not tag_name:
 debug1("args: tag name = %s; commit = %s\n" % (tag_name, commit))
 
 if tag_name in tags:
-    log("bup: error: tag '%s' already exists" % tag_name)
+    log("bup: error: tag '%s' already exists\n" % tag_name)
     sys.exit(1)
 
 if tag_name.startswith('.'):
@@ -68,12 +68,12 @@ except git.GitError, e:
     sys.exit(2)
 
 if not hash:
-    log("bup: error: commit %s not found." % commit)
+    log("bup: error: commit %s not found.\n" % commit)
     sys.exit(2)
 
 pL = git.PackIdxList(git.repo('objects/pack'))
 if not pL.exists(hash):
-    log("bup: error: commit %s not found." % commit)
+    log("bup: error: commit %s not found.\n" % commit)
     sys.exit(2)
 
 tag_file = git.repo('refs/tags/%s' % tag_name)

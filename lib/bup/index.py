@@ -271,7 +271,7 @@ class Reader:
         if f:
             b = f.read(len(INDEX_HDR))
             if b != INDEX_HDR:
-                log('warning: %s: header: expected %r, got %r'
+                log('warning: %s: header: expected %r, got %r\n'
                                  % (filename, INDEX_HDR, b))
             else:
                 st = os.fstat(f.fileno())
