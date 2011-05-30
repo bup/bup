@@ -49,8 +49,9 @@ def check_index(reader):
 
 
 def update_index(top, excluded_paths):
+    tmax = time.time() - 1
     ri = index.Reader(indexfile)
-    wi = index.Writer(indexfile)
+    wi = index.Writer(indexfile, tmax)
     rig = IterHelper(ri.iter(name=top))
     tstart = int(time.time())
 
@@ -101,7 +102,7 @@ def update_index(top, excluded_paths):
                 check_index(ri)
                 log('check: before merging: newfile\n')
                 check_index(wr)
-            mi = index.Writer(indexfile)
+            mi = index.Writer(indexfile, tmax)
 
             for e in index.merge(ri, wr):
                 # FIXME: shouldn't we remove deleted entries eventually?  When?
