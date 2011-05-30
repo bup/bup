@@ -8,8 +8,8 @@ import errno, os, sys, stat, pwd, grp, struct, re
 from cStringIO import StringIO
 from bup import vint, xstat
 from bup.drecurse import recursive_dirlist
-from bup.helpers import add_error, mkdirp, log
-from bup.xstat import utime, lutime
+from bup.helpers import add_error, mkdirp, log, is_superuser
+from bup.xstat import utime, lutime, lstat
 import bup._helpers as _helpers
 
 try:
@@ -312,7 +312,7 @@ class Metadata:
                 uid = -1
                 add_error('ignoring missing owner for "%s"\n' % path)
             else:
-                if os.geteuid() != 0:
+                if not is_superuser():
                     uid = -1 # Not root; assume we can't change owner.
                 else:
                     try:

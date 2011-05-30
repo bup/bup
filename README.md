@@ -81,7 +81,11 @@ Reasons you might want to avoid bup
    
    
 Getting started
----------------
+===============
+
+
+From source
+-----------
 
  - Check out the bup source code using git:
  
@@ -108,7 +112,23 @@ Getting started
  	
     (The tests should pass.  If they don't pass for you, stop here and send
     me an email.)
-   
+
+
+From binary packages
+--------------------
+
+Binary packages of bup are known to be built for the following OSes:
+
+ - Debian:
+    http://packages.debian.org/search?searchon=names&keywords=bup
+ - Ubuntu:
+    http://packages.ubuntu.com/search?searchon=names&keywords=bup
+ - NetBSD
+
+
+Using bup
+---------
+
  - Try making a local backup as a tar file:
  
         tar -cvf - /etc | bup split -n local-etc -vv
@@ -171,7 +191,7 @@ That's all there is to it!
 
 
 Notes on FreeBSD
-================
+----------------
 
 - FreeBSD's default 'make' command doesn't like bup's Makefile. In order to
   compile the code, run tests and install bup, you need to install GNU Make
@@ -192,7 +212,7 @@ Notes on FreeBSD
 
 
 How it works
-------------
+============
 
 Basic storage:
 
@@ -326,7 +346,7 @@ join, index, save, etc.) to get details on that command.
 
 
 How you can help
-----------------
+================
 
 bup is a work in progress and there are many ways it can still be improved.
 If you'd like to contribute patches, ideas, or bug reports, please join the

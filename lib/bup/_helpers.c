@@ -1,5 +1,6 @@
 #define _LARGEFILE64_SOURCE 1
 #undef NDEBUG
+#include "../../config/config.h"
 #include "bupsplit.h"
 #include <Python.h>
 #include <assert.h>
@@ -683,7 +684,7 @@ static PyObject *bup_set_linux_file_attr(PyObject *self, PyObject *args)
 }
 #endif /* def linux */
 
-
+#ifdef HAVE_UTIMENSAT
 #if defined(_ATFILE_SOURCE) \
   || _XOPEN_SOURCE >= 700 || _POSIX_C_SOURCE >= 200809L
 #define HAVE_BUP_UTIMENSAT 1
@@ -759,7 +760,7 @@ static PyObject *bup_utimensat(PyObject *self, PyObject *args)
 
 #endif /* defined(_ATFILE_SOURCE)
           || _XOPEN_SOURCE >= 700 || _POSIX_C_SOURCE >= 200809L */
-
+#endif /* HAVE_UTIMENSAT */
 
 static PyObject *stat_struct_to_py(const struct stat *st)
 {

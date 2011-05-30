@@ -60,11 +60,13 @@ def index_negative_timestamps():
     WVPASS()
 
     # Jun 10, 1893
-    os.utime("foo", (-0x90000000, -0x90000000))
+    os.utime("foo", (-0x80000000, -0x80000000))
     e = index.BlankNewEntry("foo")
     e.from_stat(xstat.stat("foo"), time.time())
     assert len(e.packed())
     WVPASS()
+
+    unlink('foo')
 
 
 @wvtest

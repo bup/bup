@@ -1,50 +1,21 @@
 #!/usr/bin/env python
 import sys, os, stat, fnmatch
-from bup import options, git, shquote, vfs
+from bup import options, git, shquote, vfs, ls
 from bup.helpers import *
 
 handle_ctrl_c()
-
-
-def node_name(text, n):
-    if stat.S_ISDIR(n.mode):
-        return '%s/' % text
-    elif stat.S_ISLNK(n.mode):
-        return '%s@' % text
-    else:
-        return '%s' % text
 
 
 class OptionError(Exception):
     pass
 
 
-ls_optspec = """
-ls [-a] [path...]
---
-a,all   include hidden files in the listing
-"""
-ls_opt = options.Options(ls_optspec, onabort=OptionError)
-
+# Check out lib/bup/ls.py for the opt spec
 def do_ls(cmd_args):
     try:
-        (opt, flags, extra) = ls_opt.parse(cmd_args)
+        ls.do_ls(cmd_args, pwd, onabort=OptionError)
     except OptionError, e:
         return
-
-    L = []
-
-    for path in (extra or ['.']):
-        n = pwd.try_resolve(path)
-
-        if stat.S_ISDIR(n.mode):
-            for sub in n:
-                name = sub.name
-                if opt.all or not len(name)>1 or not name.startswith('.'):
-                    L.append(node_name(name, sub))
-        else:
-            L.append(node_name(path, n))
-        print columnate(L, '')
 
 
 def write_to_file(inf, outf):
@@ -58,6 +29,7 @@ def inputiter():
             try:
                 yield raw_input('bup> ')
             except EOFError:
+                print ''  # Clear the line for the terminal's next prompt
                 break
     else:
         for line in sys.stdin:
