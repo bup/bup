@@ -120,14 +120,16 @@ class Entry:
             self.gid += 0x100000000
         assert(self.uid >= 0)
         assert(self.gid >= 0)
-        if self.mtime < -0x80000000:  # can happen in NTFS on 64-bit linux
-            self.mtime = 0
-        if self.ctime < -0x80000000:
-            self.ctime = 0
-        if self.mtime > 0x7fffffff:
-            self.mtime = 0x7fffffff
-        if self.ctime > 0x7fffffff:
-            self.ctime = 0x7fffffff
+        self.mtime = self._fixup_time(self.mtime)
+        self.ctime = self._fixup_time(self.ctime)
+
+    def _fixup_time(self, t):
+        if t < -0x80000000:  # can happen in NTFS on 64-bit linux
+            return 0
+        elif t > 0x7fffffff:
+            return 0x7fffffff
+        else:
+            return t
 
     def is_valid(self):
         f = IX_HASHVALID|IX_EXISTS
