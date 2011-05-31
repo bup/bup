@@ -821,7 +821,7 @@ def init_repo(path=None):
     if parent and not os.path.exists(parent):
         raise GitError('parent directory "%s" does not exist\n' % parent)
     if os.path.exists(d) and not os.path.isdir(os.path.join(d, '.')):
-        raise GitError('"%d" exists but is not a directory\n' % d)
+        raise GitError('"%s" exists but is not a directory\n' % d)
     p = subprocess.Popen(['git', '--bare', 'init'], stdout=sys.stderr,
                          preexec_fn = _gitenv)
     _git_wait('git init', p)
@@ -961,7 +961,7 @@ class CatPipe:
         assert(self.p)
         assert(self.p.poll() == None)
         if self.inprogress:
-            log('_fast_get: opening %r while %r is open'
+            log('_fast_get: opening %r while %r is open\n'
                 % (id, self.inprogress))
         assert(not self.inprogress)
         assert(id.find('\n') < 0)
