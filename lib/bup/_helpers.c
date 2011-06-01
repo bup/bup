@@ -14,8 +14,10 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#ifdef linux
+#ifdef HAVE_LINUX_FS_H
 #include <linux/fs.h>
+#endif
+#ifdef HAVE_SYS_IOCTL_H
 #include <sys/ioctl.h>
 #endif
 
@@ -630,7 +632,7 @@ static PyObject *fadvise_done(PyObject *self, PyObject *args)
 }
 
 
-#if defined(linux) && defined(FS_IOC_GETFLAGS)
+#ifdef FS_IOC_GETFLAGS
 static PyObject *bup_get_linux_file_attr(PyObject *self, PyObject *args)
 {
     int rc;
@@ -656,8 +658,10 @@ static PyObject *bup_get_linux_file_attr(PyObject *self, PyObject *args)
     close(fd);
     return Py_BuildValue("k", attr);
 }
+#endif /* def FS_IOC_GETFLAGS */
 
 
+#ifdef FS_IOC_SETFLAGS
 static PyObject *bup_set_linux_file_attr(PyObject *self, PyObject *args)
 {
     int rc;
@@ -682,7 +686,8 @@ static PyObject *bup_set_linux_file_attr(PyObject *self, PyObject *args)
     close(fd);
     return Py_BuildValue("O", Py_None);
 }
-#endif /* def linux */
+#endif /* def FS_IOC_SETFLAGS */
+
 
 #ifdef HAVE_UTIMENSAT
 #if defined(_ATFILE_SOURCE) \
@@ -875,9 +880,11 @@ static PyMethodDef helper_methods[] = {
 	"open() the given filename for read with O_NOATIME if possible" },
     { "fadvise_done", fadvise_done, METH_VARARGS,
 	"Inform the kernel that we're finished with earlier parts of a file" },
-#if defined(linux) && defined(FS_IOC_GETFLAGS)
+#ifdef FS_IOC_GETFLAGS
     { "get_linux_file_attr", bup_get_linux_file_attr, METH_VARARGS,
       "Return the Linux attributes for the given file." },
+#endif
+#ifdef FS_IOC_SETFLAGS
     { "set_linux_file_attr", bup_set_linux_file_attr, METH_VARARGS,
       "Set the Linux attributes for the given file." },
 #endif
