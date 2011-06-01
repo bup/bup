@@ -1,3 +1,5 @@
+# -*-shell-script-*-
+
 #   @(#) configure.inc 1.40@(#)
 #   Copyright (c) 1999-2007 David Parsons. All rights reserved.
 #   
