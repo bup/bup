@@ -1,0 +1,6 @@
+#!/usr/bin/env python
+
+import socket, sys
+
+s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM, 0)
+s.bind(sys.argv[1])

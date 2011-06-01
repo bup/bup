@@ -243,6 +243,7 @@ class Metadata:
             or stat.S_ISCHR(self.mode) \
             or stat.S_ISBLK(self.mode) \
             or stat.S_ISFIFO(self.mode) \
+            or stat.S_ISSOCK(self.mode) \
             or stat.S_ISLNK(self.mode)
 
     def _create_via_common_rec(self, path, create_symlinks=True):
@@ -282,6 +283,8 @@ class Metadata:
         elif stat.S_ISFIFO(self.mode):
             assert(self._recognized_file_type())
             os.mknod(path, 0600 | stat.S_IFIFO)
+        elif stat.S_ISSOCK(self.mode):
+            os.mknod(path, 0600 | stat.S_IFSOCK)
         elif stat.S_ISLNK(self.mode):
             assert(self._recognized_file_type())
             if self.symlink_target and create_symlinks:

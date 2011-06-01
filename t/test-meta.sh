@@ -78,10 +78,12 @@ force-delete "$TOP/bupmeta.tmp"
 
 # Create a test tree.
 (
+    set -e
     rm -rf "$TOP/bupmeta.tmp/src"
     mkdir -p "$TOP/bupmeta.tmp/src"
     #cp -a Documentation cmd lib t "$TOP/bupmeta.tmp"/src
     cp -pPR Documentation cmd lib t "$TOP/bupmeta.tmp"/src
+    t/mksock "$TOP/bupmeta.tmp/src/test-socket" || true
 ) || WVFAIL
 
 # Use the test tree to check bup meta.
