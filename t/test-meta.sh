@@ -128,8 +128,8 @@ if actually-root; then
             PYTHONPATH="$TOP/lib" \
                 python -c "from bup import xstat; \
                 x = xstat.timespec_to_nsecs((42, 0));\
-                   xstat.lutime('testfs/src/foo', (x, x));\
-                   xstat.lutime('testfs/src/bar', (x, x));"
+                   xstat.utime('testfs/src/foo', (x, x));\
+                   xstat.utime('testfs/src/bar', (x, x));"
             cd testfs
             WVPASS bup meta -v --create --recurse --file src.meta src
             bup meta -tvf src.meta
