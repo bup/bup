@@ -50,7 +50,10 @@ MF_PATH_INCLUDE GIT git
 MF_PATH_INCLUDE TAR tar gtar
 MF_PATH_INCLUDE PYTHON python
 
-AC_CHECK_HEADERS sys/stat.h 
+# For stat.
+AC_CHECK_HEADERS sys/stat.h
+AC_CHECK_HEADERS sys/types.h
+AC_CHECK_HEADERS unistd.h
 
 # For FS_IOC_GETFLAGS and FS_IOC_SETFLAGS.
 AC_CHECK_HEADERS linux/fs.h
@@ -58,5 +61,13 @@ AC_CHECK_HEADERS sys/ioctl.h
 
 AC_CHECK_FUNCS utimensat 
 AC_CHECK_FUNCS utime
+
+AC_CHECK_FIELD stat st_atim sys/types.h sys/stat.h unistd.h
+AC_CHECK_FIELD stat st_mtim sys/types.h sys/stat.h unistd.h
+AC_CHECK_FIELD stat st_ctim sys/types.h sys/stat.h unistd.h
+
+AC_CHECK_FIELD stat st_atimensec sys/types.h sys/stat.h unistd.h
+AC_CHECK_FIELD stat st_mtimensec sys/types.h sys/stat.h unistd.h
+AC_CHECK_FIELD stat st_ctimensec sys/types.h sys/stat.h unistd.h
 
 AC_OUTPUT config.vars

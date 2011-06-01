@@ -8,11 +8,18 @@
 #include <fcntl.h>
 #include <arpa/inet.h>
 #include <stdint.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
+
+#ifdef HAVE_SYS_TYPES_H
+#include <sys/types.h>
+#endif
+#ifdef HAVE_SYS_STAT_H
+#include <sys/stat.h>
+#endif
+#ifdef HAVE_UNISTD_H
+#include <unistd.h>
+#endif
 
 #ifdef HAVE_LINUX_FS_H
 #include <linux/fs.h>
@@ -767,20 +774,40 @@ static PyObject *bup_utimensat(PyObject *self, PyObject *args)
           || _XOPEN_SOURCE >= 700 || _POSIX_C_SOURCE >= 200809L */
 #endif /* HAVE_UTIMENSAT */
 
+
+#ifdef HAVE_STAT_ST_ATIM
+# define BUP_STAT_ATIME_NS(st) (st)->st_atim.tv_nsec
+# define BUP_STAT_MTIME_NS(st) (st)->st_mtim.tv_nsec
+# define BUP_STAT_CTIME_NS(st) (st)->st_ctim.tv_nsec
+#elif defined HAVE_STAT_ST_ATIMENSEC
+# define BUP_STAT_ATIME_NS(st) (st)->st_atimespec.tv_nsec
+# define BUP_STAT_MTIME_NS(st) (st)->st_mtimespec.tv_nsec
+# define BUP_STAT_CTIME_NS(st) (st)->st_ctimespec.tv_nsec
+#else
+# define BUP_STAT_ATIME_NS(st) 0
+# define BUP_STAT_MTIME_NS(st) 0
+# define BUP_STAT_CTIME_NS(st) 0
+#endif
+
+
 static PyObject *stat_struct_to_py(const struct stat *st)
 {
+    long atime_ns = BUP_STAT_ATIME_NS(st);
+    long mtime_ns = BUP_STAT_MTIME_NS(st);
+    long ctime_ns = BUP_STAT_CTIME_NS(st);
+
     /* Enforce the current timespec nanosecond range expectations. */
-    if (st->st_atim.tv_nsec < 0 || st->st_atim.tv_nsec > 999999999)
+    if (atime_ns < 0 || atime_ns > 999999999)
     {
         PyErr_SetString(PyExc_ValueError, "invalid atime timespec nanoseconds");
         return NULL;
     }
-    if (st->st_mtim.tv_nsec < 0 || st->st_mtim.tv_nsec > 999999999)
+    if (mtime_ns < 0 || mtime_ns > 999999999)
     {
         PyErr_SetString(PyExc_ValueError, "invalid mtime timespec nanoseconds");
         return NULL;
     }
-    if (st->st_ctim.tv_nsec < 0 || st->st_ctim.tv_nsec > 999999999)
+    if (ctime_ns < 0 || ctime_ns > 999999999)
     {
         PyErr_SetString(PyExc_ValueError, "invalid ctime timespec nanoseconds");
         return NULL;
@@ -796,11 +823,11 @@ static PyObject *stat_struct_to_py(const struct stat *st)
                          (unsigned long) st->st_rdev,
                          (unsigned long) st->st_size,
                          (long long) st->st_atime,
-                         (long) st->st_atim.tv_nsec,
+                         (long) atime_ns,
                          (long long) st->st_mtime,
-                         (long) st->st_mtim.tv_nsec,
+                         (long) mtime_ns,
                          (long long) st->st_ctime,
-                         (long) st->st_ctim.tv_nsec);
+                         (long) ctime_ns);
 }
 
 
