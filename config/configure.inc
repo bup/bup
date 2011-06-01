@@ -651,7 +651,7 @@ EOF
     AC_PROG_CPP
     AC_PROG_INSTALL
 
-    ac_os=`uname -s`
+    ac_os=`uname -s | sed 's/[-_].*//'`
     _os=`echo $ac_os | tr '[a-z]' '[A-Z]'`
     AC_DEFINE OS_$_os	1
     eval OS_${_os}=1
