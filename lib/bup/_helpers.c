@@ -697,81 +697,109 @@ static PyObject *bup_set_linux_file_attr(PyObject *self, PyObject *args)
 
 
 #ifdef HAVE_UTIMENSAT
-#if defined(_ATFILE_SOURCE) \
-  || _XOPEN_SOURCE >= 700 || _POSIX_C_SOURCE >= 200809L
-#define HAVE_BUP_UTIMENSAT 1
 
-static PyObject *bup_utimensat(PyObject *self, PyObject *args)
+static int bup_parse_xutime_args(char **path,
+                                 long *access,
+                                 long *access_ns,
+                                 long *modification,
+                                 long *modification_ns,
+                                 PyObject *self, PyObject *args)
 {
-    int rc, dirfd, flags;
+    if (!PyArg_ParseTuple(args, "s((ll)(ll))",
+                          path,
+                          access, access_ns,
+                          modification, modification_ns))
+        return 0;
+
+    if (isnan(*access))
+    {
+        PyErr_SetString(PyExc_ValueError, "access time is NaN");
+        return 0;
+    }
+    else if (isinf(*access))
+    {
+        PyErr_SetString(PyExc_ValueError, "access time is infinite");
+        return 0;
+    }
+    else if (isnan(*modification))
+    {
+        PyErr_SetString(PyExc_ValueError, "modification time is NaN");
+        return 0;
+    }
+    else if (isinf(*modification))
+    {
+        PyErr_SetString(PyExc_ValueError, "modification time is infinite");
+        return 0;
+    }
+
+    if (isnan(*access_ns))
+    {
+        PyErr_SetString(PyExc_ValueError, "access time ns is NaN");
+        return 0;
+    }
+    else if (isinf(*access_ns))
+    {
+        PyErr_SetString(PyExc_ValueError, "access time ns is infinite");
+        return 0;
+    }
+    else if (isnan(*modification_ns))
+    {
+        PyErr_SetString(PyExc_ValueError, "modification time ns is NaN");
+        return 0;
+    }
+    else if (isinf(*modification_ns))
+    {
+        PyErr_SetString(PyExc_ValueError, "modification time ns is infinite");
+        return 0;
+    }
+
+    return 1;
+}
+
+#endif /* def HAVE_UTIMENSAT */
+
+
+#ifdef HAVE_UTIMENSAT
+
+static PyObject *bup_xutime_ns(PyObject *self, PyObject *args,
+                               int follow_symlinks)
+{
+    int rc;
     char *path;
     long access, access_ns, modification, modification_ns;
     struct timespec ts[2];
 
-    if (!PyArg_ParseTuple(args, "is((ll)(ll))i",
-                          &dirfd,
-                          &path,
-                          &access, &access_ns,
-                          &modification, &modification_ns,
-                          &flags))
-        return NULL;
-
-    if (isnan(access))
-    {
-        PyErr_SetString(PyExc_ValueError, "access time is NaN");
-        return NULL;
-    }
-    else if (isinf(access))
-    {
-        PyErr_SetString(PyExc_ValueError, "access time is infinite");
-        return NULL;
-    }
-    else if (isnan(modification))
-    {
-        PyErr_SetString(PyExc_ValueError, "modification time is NaN");
-        return NULL;
-    }
-    else if (isinf(modification))
-    {
-        PyErr_SetString(PyExc_ValueError, "modification time is infinite");
-        return NULL;
-    }
-
-    if (isnan(access_ns))
-    {
-        PyErr_SetString(PyExc_ValueError, "access time ns is NaN");
-        return NULL;
-    }
-    else if (isinf(access_ns))
-    {
-        PyErr_SetString(PyExc_ValueError, "access time ns is infinite");
-        return NULL;
-    }
-    else if (isnan(modification_ns))
-    {
-        PyErr_SetString(PyExc_ValueError, "modification time ns is NaN");
-        return NULL;
-    }
-    else if (isinf(modification_ns))
-    {
-        PyErr_SetString(PyExc_ValueError, "modification time ns is infinite");
-        return NULL;
-    }
+    if (!bup_parse_xutime_args(&path, &access, &access_ns,
+                               &modification, &modification_ns,
+                               self, args))
+       return NULL;
 
     ts[0].tv_sec = access;
     ts[0].tv_nsec = access_ns;
     ts[1].tv_sec = modification;
     ts[1].tv_nsec = modification_ns;
-
-    rc = utimensat(dirfd, path, ts, flags);
+    rc = utimensat(AT_FDCWD, path, ts,
+                   follow_symlinks ? 0 : AT_SYMLINK_NOFOLLOW);
     if (rc != 0)
         return PyErr_SetFromErrnoWithFilename(PyExc_OSError, path);
 
     return Py_BuildValue("O", Py_None);
 }
 
-#endif /* defined(_ATFILE_SOURCE)
-          || _XOPEN_SOURCE >= 700 || _POSIX_C_SOURCE >= 200809L */
+
+#define BUP_HAVE_BUP_UTIME_NS 1
+static PyObject *bup_utime_ns(PyObject *self, PyObject *args)
+{
+    return bup_xutime_ns(self, args, 1);
+}
+
+
+#define BUP_HAVE_BUP_LUTIME_NS 1
+static PyObject *bup_lutime_ns(PyObject *self, PyObject *args)
+{
+    return bup_xutime_ns(self, args, 0);
+}
+
 #endif /* HAVE_UTIMENSAT */
 
 
@@ -915,9 +943,14 @@ static PyMethodDef helper_methods[] = {
     { "set_linux_file_attr", bup_set_linux_file_attr, METH_VARARGS,
       "Set the Linux attributes for the given file." },
 #endif
-#ifdef HAVE_BUP_UTIMENSAT
-    { "utimensat", bup_utimensat, METH_VARARGS,
-      "Change file timestamps with nanosecond precision." },
+#ifdef BUP_HAVE_BUP_UTIME_NS
+    { "bup_utime_ns", bup_utime_ns, METH_VARARGS,
+      "Change path timestamps with up to nanosecond precision." },
+#endif
+#ifdef BUP_HAVE_BUP_LUTIME_NS
+    { "bup_lutime_ns", bup_lutime_ns, METH_VARARGS,
+      "Change path timestamps with up to nanosecond precision;"
+      " don't follow symlinks." },
 #endif
     { "stat", bup_stat, METH_VARARGS,
       "Extended version of stat." },
@@ -935,11 +968,6 @@ PyMODINIT_FUNC init_helpers(void)
     PyObject *m = Py_InitModule("_helpers", helper_methods);
     if (m == NULL)
         return;
-#ifdef HAVE_BUP_UTIMENSAT
-    PyModule_AddObject(m, "AT_FDCWD", Py_BuildValue("i", AT_FDCWD));
-    PyModule_AddObject(m, "AT_SYMLINK_NOFOLLOW",
-                       Py_BuildValue("i", AT_SYMLINK_NOFOLLOW));
-#endif
     e = getenv("BUP_FORCE_TTY");
     istty2 = isatty(2) || (atoi(e ? e : "0") & 2);
     unpythonize_argv();

@@ -305,7 +305,7 @@ class Metadata:
     def _apply_common_rec(self, path, restore_numeric_ids=False):
         # FIXME: S_ISDOOR, S_IFMPB, S_IFCMP, S_IFNWK, ... see stat(2).
         # EACCES errors at this stage are fatal for the current path.
-        if stat.S_ISLNK(self.mode):
+        if lutime and stat.S_ISLNK(self.mode):
             try:
                 lutime(path, (self.atime, self.mtime))
             except OSError, e:

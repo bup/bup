@@ -39,14 +39,21 @@ def test_fstime():
     WVPASSEQ(type(xstat.fstime_floor_secs(-10**9 / 2)), type(0))
 
 
+try:
+    _have_bup_utime_ns = _helpers.bup_utime_ns
+except AttributeError, e:
+    _have_bup_utime_ns = False
+
 @wvtest
 def test_timespec_behavior():
+    if not _have_bup_utime_ns:
+        return
     tmpdir = tempfile.mkdtemp(prefix='bup-tmetadata-')
     try:
         path = tmpdir + '/foo'
         open(path, 'w').close()
         frac_ts = (0, 10**9 / 2)
-        _helpers.utimensat(_helpers.AT_FDCWD, path, (frac_ts, frac_ts), 0)
+        _helpers.bup_utime_ns(path, (frac_ts, frac_ts))
         st = _helpers.stat(path)
         atime_ts = st[8]
         mtime_ts = st[9]
@@ -57,7 +64,7 @@ def test_timespec_behavior():
         if(mtime_ts[1] == frac_ts[1]):
             # Sub-second resolution -- check behavior of negative timespecs.
             neg_ts = (-43, 10**9 / 2)
-            _helpers.utimensat(_helpers.AT_FDCWD, path, (neg_ts, neg_ts), 0)
+            _helpers.bup_utime_ns(path, (neg_ts, neg_ts))
             st = _helpers.stat(path)
             atime_ts = st[8]
             mtime_ts = st[9]

@@ -104,12 +104,12 @@ for path in remainder:
         # symlink.  Thus, the mtime/atime of a symlink is meaningless,
         # so let's not report it.  (That way scripts comparing
         # before/after won't trigger.)
-        if xstat._have_utimensat or not stat.S_ISLNK(m.mode):
+        if xstat.lutime or not stat.S_ISLNK(m.mode):
             print 'atime: ' + fstimestr(m.atime)
         else:
             print 'atime: 0'
     if 'mtime' in active_fields:
-        if xstat._have_utimensat or not stat.S_ISLNK(m.mode):
+        if xstat.lutime or not stat.S_ISLNK(m.mode):
             print 'mtime: ' + fstimestr(m.mtime)
         else:
             print 'mtime: 0'
