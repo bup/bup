@@ -237,6 +237,14 @@ class Metadata:
         self.mtime = xstat.timespec_to_nsecs((self.mtime, mtime_ns))
         self.ctime = xstat.timespec_to_nsecs((self.ctime, ctime_ns))
 
+    def _recognized_file_type(self):
+        return stat.S_ISREG(self.mode) \
+            or stat.S_ISDIR(self.mode) \
+            or stat.S_ISCHR(self.mode) \
+            or stat.S_ISBLK(self.mode) \
+            or stat.S_ISFIFO(self.mode) \
+            or stat.S_ISLNK(self.mode)
+
     def _create_via_common_rec(self, path, create_symlinks=True):
         # If the path already exists and is a dir, try rmdir.
         # If the path already exists and is anything else, try unlink.
@@ -259,20 +267,26 @@ class Metadata:
                 os.unlink(path)
 
         if stat.S_ISREG(self.mode):
+            assert(self._recognized_file_type())
             fd = os.open(path, os.O_CREAT|os.O_WRONLY|os.O_EXCL, 0600)
             os.close(fd)
         elif stat.S_ISDIR(self.mode):
+            assert(self._recognized_file_type())
             os.mkdir(path, 0700)
         elif stat.S_ISCHR(self.mode):
+            assert(self._recognized_file_type())
             os.mknod(path, 0600 | stat.S_IFCHR, self.rdev)
         elif stat.S_ISBLK(self.mode):
+            assert(self._recognized_file_type())
             os.mknod(path, 0600 | stat.S_IFBLK, self.rdev)
         elif stat.S_ISFIFO(self.mode):
+            assert(self._recognized_file_type())
             os.mknod(path, 0600 | stat.S_IFIFO)
         elif stat.S_ISLNK(self.mode):
+            assert(self._recognized_file_type())
             if self.symlink_target and create_symlinks:
-                # on MacOS, symlink() permissions depend on umask, and there's no
-                # way to chown a symlink after creating it, so we have to
+                # on MacOS, symlink() permissions depend on umask, and there's
+                # no way to chown a symlink after creating it, so we have to
                 # be careful here!
                 oldumask = os.umask((self.mode & 0777) ^ 0777)
                 try:
@@ -280,7 +294,10 @@ class Metadata:
                 finally:
                     os.umask(oldumask)
         # FIXME: S_ISDOOR, S_IFMPB, S_IFCMP, S_IFNWK, ... see stat(2).
-        # Otherwise, do nothing.
+        else:
+            assert(not self._recognized_file_type())
+            add_error('not creating "%s" with unrecognized mode "0x%x"\n'
+                      % (path, self.mode))
 
     def _apply_common_rec(self, path, restore_numeric_ids=False):
         # FIXME: S_ISDOOR, S_IFMPB, S_IFCMP, S_IFNWK, ... see stat(2).
@@ -598,6 +615,10 @@ class Metadata:
             path = self.path
         if not path:
             raise Exception('Metadata.apply_to_path() called with no path');
+        if not self._recognized_file_type():
+            add_error('not applying metadata to "%s"' % path
+                      + ' with unrecognized mode "0x%x"\n' % self.mode)
+            return
         num_ids = restore_numeric_ids
         try:
             self._apply_common_rec(path, restore_numeric_ids=num_ids)
