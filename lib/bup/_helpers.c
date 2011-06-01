@@ -696,7 +696,7 @@ static PyObject *bup_set_linux_file_attr(PyObject *self, PyObject *args)
 #endif /* def FS_IOC_SETFLAGS */
 
 
-#ifdef HAVE_UTIMENSAT
+#if defined(HAVE_UTIMENSAT) || defined(HAVE_FUTIMES) || defined(HAVE_LUTIMES)
 
 static int bup_parse_xutime_args(char **path,
                                  long *access,
@@ -756,7 +756,8 @@ static int bup_parse_xutime_args(char **path,
     return 1;
 }
 
-#endif /* def HAVE_UTIMENSAT */
+#endif /* defined(HAVE_UTIMENSAT) || defined(HAVE_FUTIMES)
+          || defined(HAVE_LUTIMES) */
 
 
 #ifdef HAVE_UTIMENSAT
@@ -800,7 +801,65 @@ static PyObject *bup_lutime_ns(PyObject *self, PyObject *args)
     return bup_xutime_ns(self, args, 0);
 }
 
-#endif /* HAVE_UTIMENSAT */
+
+#else /* not defined(HAVE_UTIMENSAT) */
+
+
+#ifdef HAVE_UTIMES
+#define BUP_HAVE_BUP_UTIME_NS 1
+static PyObject *bup_utime_ns(PyObject *self, PyObject *args)
+{
+    int rc;
+    char *path;
+    long access, access_ns, modification, modification_ns;
+    struct timeval tv[2];
+
+    if (!bup_parse_xutime_args(&path, &access, &access_ns,
+                               &modification, &modification_ns,
+                               self, args))
+       return NULL;
+
+    tv[0].tv_sec = access;
+    tv[0].tv_usec = access_ns / 1000;
+    tv[1].tv_sec = modification;
+    tv[1].tv_usec = modification_ns / 1000;
+    rc = utimes(path, tv);
+    if (rc != 0)
+        return PyErr_SetFromErrnoWithFilename(PyExc_OSError, path);
+
+    return Py_BuildValue("O", Py_None);
+}
+#endif /* def HAVE_UTIMES */
+
+
+#ifdef HAVE_LUTIMES
+#define BUP_HAVE_BUP_LUTIME_NS 1
+static PyObject *bup_lutime_ns(PyObject *self, PyObject *args)
+{
+    int rc;
+    char *path;
+    long access, access_ns, modification, modification_ns;
+    struct timeval tv[2];
+
+    if (!bup_parse_xutime_args(&path, &access, &access_ns,
+                               &modification, &modification_ns,
+                               self, args))
+       return NULL;
+
+    tv[0].tv_sec = access;
+    tv[0].tv_usec = access_ns / 1000;
+    tv[1].tv_sec = modification;
+    tv[1].tv_usec = modification_ns / 1000;
+    rc = lutimes(path, tv);
+    if (rc != 0)
+        return PyErr_SetFromErrnoWithFilename(PyExc_OSError, path);
+
+    return Py_BuildValue("O", Py_None);
+}
+#endif /* def HAVE_LUTIMES */
+
+
+#endif /* not defined(HAVE_UTIMENSAT) */
 
 
 #ifdef HAVE_STAT_ST_ATIM

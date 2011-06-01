@@ -60,7 +60,8 @@ AC_CHECK_HEADERS linux/fs.h
 AC_CHECK_HEADERS sys/ioctl.h
 
 AC_CHECK_FUNCS utimensat 
-AC_CHECK_FUNCS utime
+AC_CHECK_FUNCS utimes
+AC_CHECK_FUNCS lutimes
 
 AC_CHECK_FIELD stat st_atim sys/types.h sys/stat.h unistd.h
 AC_CHECK_FIELD stat st_mtim sys/types.h sys/stat.h unistd.h
