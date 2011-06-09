@@ -4,139 +4,91 @@ from bup import _helpers
 
 
 try:
-    _have_utimensat = _helpers.utimensat
+    _have_bup_utime_ns = _helpers.bup_utime_ns
 except AttributeError, e:
-    _have_utimensat = False
+    _have_bup_utime_ns = False
+
+try:
+    _have_bup_lutime_ns = _helpers.bup_lutime_ns
+except AttributeError, e:
+    _have_bup_lutime_ns = False
 
 
-class FSTime:
-    # Class to represent filesystem timestamps.  Use integer
-    # nanoseconds on platforms where we have the higher resolution
-    # lstat.  Use the native python stat representation (floating
-    # point seconds) otherwise.
-
-    def __cmp__(self, x):
-        return self._value.__cmp__(x._value)
-        
-    def __repr__(self):
-        return 'FSTime(%d)' % self._value
-        
-    def to_timespec(self):
-        """Return (s, ns) where ns is always non-negative
-        and t = s + ns / 10e8""" # metadata record rep (and libc rep)
-        s_ns = self.secs_nsecs()
-        if s_ns[0] > 0 or s_ns[1] >= 0:
-            return s_ns
-        return (s_ns[0] - 1, 10**9 + s_ns[1]) # ns is negative
-
-    @staticmethod
-    def from_secs(secs):
-        ts = FSTime()
-        ts._value = int(round(secs * 10**9))
-        return ts
-
-    @staticmethod
-    def from_timespec(timespec):
-        ts = FSTime()
-        ts._value = timespec[0] * 10**9 + timespec[1]
-        return ts
-
-    def approx_secs(self):
-        return self._value / 10e8;
-
-    def secs_nsecs(self):
-        "Return a (s, ns) pair: -1.5s -> (-1, -10**9 / 2)."
-        if self._value >= 0:
-            return (self._value / 10**9, self._value % 10**9)
-        abs_val = -self._value
-        return (- (abs_val / 10**9), - (abs_val % 10**9))
-
-    if _helpers._have_ns_fs_timestamps: # Use integer nanoseconds.
-        @staticmethod
-        def from_stat_time(stat_time):
-            return FSTime.from_timespec(stat_time)
-    else: # Use python default floating-point seconds.
-        @staticmethod
-        def from_stat_time(stat_time):
-            return FSTime.from_secs(stat_time)
+def timespec_to_nsecs((ts_s, ts_ns)):
+    # c.f. _helpers.c: timespec_vals_to_py_ns()
+    if ts_ns < 0 or ts_ns > 999999999:
+        raise Exception('invalid timespec nsec value')
+    return ts_s * 10**9 + ts_ns
 
 
-if _have_utimensat:
-    def lutime(path, times):
-        atime = times[0].to_timespec()
-        mtime = times[1].to_timespec()
-        return _helpers.utimensat(_helpers.AT_FDCWD, path, (atime, mtime),
-                                  _helpers.AT_SYMLINK_NOFOLLOW)
+def nsecs_to_timespec(ns):
+    """Return (s, ns) where ns is always non-negative
+    and t = s + ns / 10e8""" # metadata record rep (and libc rep)
+    ns = int(ns)
+    return (ns / 10**9, ns % 10**9)
+
+
+def fstime_floor_secs(ns):
+    """Return largest integer not greater than ns / 10e8."""
+    return int(ns) / 10**9;
+
+
+def fstime_to_timespec(ns):
+    return nsecs_to_timespec(ns)
+
+
+if _have_bup_utime_ns:
     def utime(path, times):
-        atime = times[0].to_timespec()
-        mtime = times[1].to_timespec()
-        return _helpers.utimensat(_helpers.AT_FDCWD, path, (atime, mtime), 0)
+        """Times must be provided as (atime_ns, mtime_ns)."""
+        atime = nsecs_to_timespec(times[0])
+        mtime = nsecs_to_timespec(times[1])
+        _helpers.bup_utime_ns(path, (atime, mtime))
 else:
-    def lutime(path, times):
-        return None
-
     def utime(path, times):
-        atime = times[0].approx_secs()
-        mtime = times[1].approx_secs()
+        """Times must be provided as (atime_ns, mtime_ns)."""
+        atime = fstime_floor_secs(times[0])
+        mtime = fstime_floor_secs(times[1])
         os.utime(path, (atime, mtime))
+
+
+if _have_bup_lutime_ns:
+    def lutime(path, times):
+        """Times must be provided as (atime_ns, mtime_ns)."""
+        atime = nsecs_to_timespec(times[0])
+        mtime = nsecs_to_timespec(times[1])
+        _helpers.bup_lutime_ns(path, (atime, mtime))
+else:
+    lutime = False
 
 
 class stat_result:
     @staticmethod
-    def from_stat_rep(st):
+    def from_xstat_rep(st):
         result = stat_result()
-        if _helpers._have_ns_fs_timestamps:
-            (result.st_mode,
-             result.st_ino,
-             result.st_dev,
-             result.st_nlink,
-             result.st_uid,
-             result.st_gid,
-             result.st_rdev,
-             result.st_size,
-             atime,
-             mtime,
-             ctime) = st
-        else:
-            result.st_mode = st.st_mode
-            result.st_ino = st.st_ino
-            result.st_dev = st.st_dev
-            result.st_nlink = st.st_nlink
-            result.st_uid = st.st_uid
-            result.st_gid = st.st_gid
-            result.st_rdev = st.st_rdev
-            result.st_size = st.st_size
-            atime = st.st_atime
-            mtime = st.st_mtime
-            ctime = st.st_ctime
-        result.st_atime = FSTime.from_stat_time(atime)
-        result.st_mtime = FSTime.from_stat_time(mtime)
-        result.st_ctime = FSTime.from_stat_time(ctime)
+        (result.st_mode,
+         result.st_ino,
+         result.st_dev,
+         result.st_nlink,
+         result.st_uid,
+         result.st_gid,
+         result.st_rdev,
+         result.st_size,
+         result.st_atime,
+         result.st_mtime,
+         result.st_ctime) = st
+        result.st_atime = timespec_to_nsecs(result.st_atime)
+        result.st_mtime = timespec_to_nsecs(result.st_mtime)
+        result.st_ctime = timespec_to_nsecs(result.st_ctime)
         return result
 
 
-try:
-    _stat = _helpers.stat
-except AttributeError, e:
-    _stat = os.stat
-
 def stat(path):
-    return stat_result.from_stat_rep(_stat(path))
+    return stat_result.from_xstat_rep(_helpers.stat(path))
 
-
-try:
-    _fstat = _helpers.fstat
-except AttributeError, e:
-    _fstat = os.fstat
 
 def fstat(path):
-    return stat_result.from_stat_rep(_fstat(path))
+    return stat_result.from_xstat_rep(_helpers.fstat(path))
 
-
-try:
-    _lstat = _helpers.lstat
-except AttributeError, e:
-    _lstat = os.lstat
 
 def lstat(path):
-    return stat_result.from_stat_rep(_lstat(path))
+    return stat_result.from_xstat_rep(_helpers.lstat(path))

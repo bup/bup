@@ -6,11 +6,12 @@
 import sys, stat, errno
 from bup import metadata, options, xstat
 from bup.helpers import handle_ctrl_c, saved_errors, add_error, log
-from bup import _helpers
 
 
 def fstimestr(fstime):
-    (s, ns) = fstime.secs_nsecs()
+    (s, ns) = xstat.fstime_to_timespec(fstime)
+    if(s < 0):
+        s += 1
     if ns == 0:
         return '%d' % s
     else:
@@ -50,11 +51,7 @@ o = options.Options(optspec)
 
 treat_include_fields_as_definitive = True
 for flag, value in flags:
-    if flag == '--verbose' or flag == '-v':
-        metadata.verbose += 1
-    elif flag == '--quiet' or flag == '-q':
-        metadata.verbose = 0
-    elif flag == '--exclude-fields':
+    if flag == '--exclude-fields':
         exclude_fields = frozenset(value.split(','))
         for f in exclude_fields:
             if not f in all_fields:
@@ -71,6 +68,10 @@ for flag, value in flags:
             treat_include_fields_as_definitive = False
         else:
             active_fields = active_fields | include_fields
+
+opt.verbose = opt.verbose or 0
+opt.quiet = opt.quiet or 0
+metadata.verbose = opt.verbose - opt.quiet
 
 for path in remainder:
     try:
@@ -98,17 +99,17 @@ for path in remainder:
     if 'group' in active_fields:
         print 'group:', m.group
     if 'atime' in active_fields:
-        # if we don't have_ns_fs_timestamps, that means we have to use
+        # If we don't have utimensat, that means we have to use
         # utime(), and utime() has no way to set the mtime/atime of a
-        # symlink.  Thus, the mtime/atime of a symlink is meaningless, so
-        # let's not report it.  (That way scripts comparing before/after
-        # won't trigger.)
-        if _helpers._have_ns_fs_timestamps or not stat.S_ISLNK(m.mode):
+        # symlink.  Thus, the mtime/atime of a symlink is meaningless,
+        # so let's not report it.  (That way scripts comparing
+        # before/after won't trigger.)
+        if xstat.lutime or not stat.S_ISLNK(m.mode):
             print 'atime: ' + fstimestr(m.atime)
         else:
             print 'atime: 0'
     if 'mtime' in active_fields:
-        if _helpers._have_ns_fs_timestamps or not stat.S_ISLNK(m.mode):
+        if xstat.lutime or not stat.S_ISLNK(m.mode):
             print 'mtime: ' + fstimestr(m.mtime)
         else:
             print 'mtime: 0'

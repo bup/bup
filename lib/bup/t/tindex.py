@@ -21,7 +21,7 @@ def index_writer():
     unlink('index.tmp')
     ds = xstat.stat('.')
     fs = xstat.stat('tindex.py')
-    w = index.Writer('index.tmp')
+    w = index.Writer('index.tmp', time.time() - 1)
     w.add('/var/tmp/sporky', fs)
     w.add('/etc/passwd', fs)
     w.add('/etc/', ds)
@@ -54,15 +54,16 @@ def index_negative_timestamps():
 
     # Dec 31, 1969
     os.utime("foo", (-86400, -86400))
-    e = index.BlankNewEntry("foo")
-    e.from_stat(xstat.stat("foo"), time.time())
+    now = time.time()
+    e = index.BlankNewEntry("foo", now - 1)
+    e.from_stat(xstat.stat("foo"), now)
     assert len(e.packed())
     WVPASS()
 
     # Jun 10, 1893
     os.utime("foo", (-0x80000000, -0x80000000))
-    e = index.BlankNewEntry("foo")
-    e.from_stat(xstat.stat("foo"), time.time())
+    e = index.BlankNewEntry("foo", now - 1)
+    e.from_stat(xstat.stat("foo"), now)
     assert len(e.packed())
     WVPASS()
 
@@ -75,8 +76,9 @@ def index_dirty():
     unlink('index2.tmp')
     ds = xstat.stat('.')
     fs = xstat.stat('tindex.py')
+    tmax = time.time() - 1
     
-    w1 = index.Writer('index.tmp')
+    w1 = index.Writer('index.tmp', tmax)
     w1.add('/a/b/x', fs)
     w1.add('/a/b/c', fs)
     w1.add('/a/b/', ds)
@@ -84,12 +86,12 @@ def index_dirty():
     #w1.close()
     WVPASS()
 
-    w2 = index.Writer('index2.tmp')
+    w2 = index.Writer('index2.tmp', tmax)
     w2.add('/a/b/n/2', fs)
     #w2.close()
     WVPASS()
 
-    w3 = index.Writer('index3.tmp')
+    w3 = index.Writer('index3.tmp', tmax)
     w3.add('/a/c/n/3', fs)
     #w3.close()
     WVPASS()

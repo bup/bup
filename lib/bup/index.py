@@ -1,14 +1,13 @@
 import os, stat, struct, tempfile
+from bup import xstat
 from bup.helpers import *
 
 EMPTY_SHA = '\0'*20
 FAKE_SHA = '\x01'*20
-INDEX_HDR = 'BUPI\0\0\0\2'
+INDEX_HDR = 'BUPI\0\0\0\3'
 
-# FIXME: guess I should have used 64-bit integers to store the mtime/ctime.
-# NTFS mtime=0 corresponds to the year 1600, which can't be stored in a 32-bit
-# time_t.  Next time we update the bupindex format, keep that in mind.
-INDEX_SIG = '!IiiIIQII20sHII'
+# Use 64-bit integers for mtime/ctime to handle NTFS zero (Y1600) and Y2038.
+INDEX_SIG = '!QQQqqIIQII20sHII'
 
 ENTLEN = struct.calcsize(INDEX_SIG)
 FOOTER_SIG = '!Q'
@@ -42,11 +41,11 @@ class Level:
         return (ofs,n)
 
 
-def _golevel(level, f, ename, newentry):
+def _golevel(level, f, ename, newentry, tmax):
     # close nodes back up the tree
     assert(level)
     while ename[:len(level.ename)] != level.ename:
-        n = BlankNewEntry(level.ename[-1])
+        n = BlankNewEntry(level.ename[-1], tmax)
         n.flags |= IX_EXISTS
         (n.children_ofs,n.children_n) = level.write(f)
         level.parent.list.append(n)
@@ -58,7 +57,7 @@ def _golevel(level, f, ename, newentry):
 
     # are we in precisely the right place?
     assert(ename == level.ename)
-    n = newentry or BlankNewEntry(ename and level.ename[-1] or None)
+    n = newentry or BlankNewEntry(ename and level.ename[-1] or None, tmax)
     (n.children_ofs,n.children_n) = level.write(f)
     if level.parent:
         level.parent.list.append(n)
@@ -68,15 +67,16 @@ def _golevel(level, f, ename, newentry):
 
 
 class Entry:
-    def __init__(self, basename, name):
+    def __init__(self, basename, name, tmax):
         self.basename = str(basename)
         self.name = str(name)
+        self.tmax = tmax
         self.children_ofs = 0
         self.children_n = 0
 
     def __repr__(self):
         return ("(%s,0x%04x,%d,%d,%d,%d,%d,%s/%s,0x%04x,0x%08x/%d)" 
-                % (self.name, self.dev,
+                % (self.name, self.dev, self.ino, self.nlink,
                    self.ctime, self.mtime, self.uid, self.gid,
                    self.size, oct(self.mode), oct(self.gitmode),
                    self.flags, self.children_ofs, self.children_n))
@@ -84,7 +84,8 @@ class Entry:
     def packed(self):
         try:
             return struct.pack(INDEX_SIG,
-                           self.dev, self.ctime, self.mtime, 
+                           self.dev, self.ino, self.nlink,
+                           self.ctime, self.mtime, 
                            self.uid, self.gid, self.size, self.mode,
                            self.gitmode, self.sha, self.flags,
                            self.children_ofs, self.children_n)
@@ -93,21 +94,23 @@ class Entry:
             raise
 
     def from_stat(self, st, tstart):
-        old = (self.dev, self.ctime, self.mtime,
+        old = (self.dev, self.ino, self.nlink, self.ctime, self.mtime,
                self.uid, self.gid, self.size, self.flags & IX_EXISTS)
-        new = (st.st_dev,
-               int(st.st_ctime.approx_secs()),
-               int(st.st_mtime.approx_secs()),
+        new = (st.st_dev, st.st_ino, st.st_nlink,
+               xstat.fstime_floor_secs(st.st_ctime),
+               xstat.fstime_floor_secs(st.st_mtime),
                st.st_uid, st.st_gid, st.st_size, IX_EXISTS)
         self.dev = st.st_dev
-        self.ctime = int(st.st_ctime.approx_secs())
-        self.mtime = int(st.st_mtime.approx_secs())
+        self.ino = st.st_ino
+        self.nlink = st.st_nlink
+        self.ctime = xstat.fstime_floor_secs(st.st_ctime)
+        self.mtime = xstat.fstime_floor_secs(st.st_mtime)
         self.uid = st.st_uid
         self.gid = st.st_gid
         self.size = st.st_size
         self.mode = st.st_mode
         self.flags |= IX_EXISTS
-        if int(st.st_ctime.approx_secs()) >= tstart or old != new \
+        if xstat.fstime_floor_secs(st.st_ctime) >= tstart or old != new \
               or self.sha == EMPTY_SHA or not self.gitmode:
             self.invalidate()
         self._fixup()
@@ -119,14 +122,14 @@ class Entry:
             self.gid += 0x100000000
         assert(self.uid >= 0)
         assert(self.gid >= 0)
-        if self.mtime < -0x80000000:  # can happen in NTFS on 64-bit linux
-            self.mtime = 0
-        if self.ctime < -0x80000000:
-            self.ctime = 0
-        if self.mtime > 0x7fffffff:
-            self.mtime = 0x7fffffff
-        if self.ctime > 0x7fffffff:
-            self.ctime = 0x7fffffff
+        self.mtime = self._fixup_time(self.mtime)
+        self.ctime = self._fixup_time(self.ctime)
+
+    def _fixup_time(self, t):
+        if self.tmax != None and t > self.tmax:
+            return self.tmax
+        else:
+            return t
 
     def is_valid(self):
         f = IX_HASHVALID|IX_EXISTS
@@ -172,32 +175,33 @@ class Entry:
 
 
 class NewEntry(Entry):
-    def __init__(self, basename, name, dev, ctime, mtime, uid, gid,
-                 size, mode, gitmode, sha, flags, children_ofs, children_n):
-        Entry.__init__(self, basename, name)
-        (self.dev, self.ctime, self.mtime, self.uid, self.gid,
-         self.size, self.mode, self.gitmode, self.sha,
+    def __init__(self, basename, name, tmax, dev, ino, nlink, ctime, mtime,
+                 uid, gid, size, mode, gitmode, sha, flags,
+                 children_ofs, children_n):
+        Entry.__init__(self, basename, name, tmax)
+        (self.dev, self.ino, self.nlink, self.ctime, self.mtime,
+         self.uid, self.gid, self.size, self.mode, self.gitmode, self.sha,
          self.flags, self.children_ofs, self.children_n
-         ) = (dev, int(ctime), int(mtime), uid, gid,
+         ) = (dev, ino, nlink, int(ctime), int(mtime), uid, gid,
               size, mode, gitmode, sha, flags, children_ofs, children_n)
         self._fixup()
 
 
 class BlankNewEntry(NewEntry):
-    def __init__(self, basename):
-        NewEntry.__init__(self, basename, basename,
-                          0, 0, 0, 0, 0, 0, 0,
+    def __init__(self, basename, tmax):
+        NewEntry.__init__(self, basename, basename, tmax,
+                          0, 0, 0, 0, 0, 0, 0, 0, 0,
                           0, EMPTY_SHA, 0, 0, 0)
 
 
 class ExistingEntry(Entry):
     def __init__(self, parent, basename, name, m, ofs):
-        Entry.__init__(self, basename, name)
+        Entry.__init__(self, basename, name, None)
         self.parent = parent
         self._m = m
         self._ofs = ofs
-        (self.dev, self.ctime, self.mtime, self.uid, self.gid,
-         self.size, self.mode, self.gitmode, self.sha,
+        (self.dev, self.ino, self.nlink, self.ctime, self.mtime,
+         self.uid, self.gid, self.size, self.mode, self.gitmode, self.sha,
          self.flags, self.children_ofs, self.children_n
          ) = struct.unpack(INDEX_SIG, str(buffer(m, ofs, ENTLEN)))
 
@@ -347,13 +351,14 @@ def pathsplit(p):
 
 
 class Writer:
-    def __init__(self, filename):
+    def __init__(self, filename, tmax):
         self.rootlevel = self.level = Level([], None)
         self.f = None
         self.count = 0
         self.lastfile = None
         self.filename = None
         self.filename = filename = realpath(filename)
+        self.tmax = tmax
         (dir,name) = os.path.split(filename)
         (ffd,self.tmpname) = tempfile.mkstemp('.tmp', filename, dir)
         self.f = os.fdopen(ffd, 'wb', 65536)
@@ -371,7 +376,7 @@ class Writer:
 
     def flush(self):
         if self.level:
-            self.level = _golevel(self.level, self.f, [], None)
+            self.level = _golevel(self.level, self.f, [], None, self.tmax)
             self.count = self.rootlevel.count
             if self.count:
                 self.count += 1
@@ -392,7 +397,7 @@ class Writer:
             raise Error('%r must come before %r' 
                              % (''.join(e.name), ''.join(self.lastfile)))
             self.lastfile = e.name
-        self.level = _golevel(self.level, self.f, ename, entry)
+        self.level = _golevel(self.level, self.f, ename, entry, self.tmax)
 
     def add(self, name, st, hashgen = None):
         endswith = name.endswith('/')
@@ -409,15 +414,16 @@ class Writer:
         if st:
             isdir = stat.S_ISDIR(st.st_mode)
             assert(isdir == endswith)
-            e = NewEntry(basename, name, st.st_dev,
-                         int(st.st_ctime.approx_secs()),
-                         int(st.st_mtime.approx_secs()),
+            e = NewEntry(basename, name, self.tmax,
+                         st.st_dev, st.st_ino, st.st_nlink,
+                         xstat.fstime_floor_secs(st.st_ctime),
+                         xstat.fstime_floor_secs(st.st_mtime),
                          st.st_uid, st.st_gid,
                          st.st_size, st.st_mode, gitmode, sha, flags,
                          0, 0)
         else:
             assert(endswith)
-            e = BlankNewEntry(basename)
+            e = BlankNewEntry(basename, tmax)
             e.gitmode = gitmode
             e.sha = sha
             e.flags = flags

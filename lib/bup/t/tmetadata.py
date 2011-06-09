@@ -127,6 +127,7 @@ def test_from_path_error():
         os.chmod(path, 000)
         metadata.from_path(path, archive_path=path, save_symlinks=True)
         if metadata.get_linux_file_attr:
+            WVPASS(len(helpers.saved_errors) == 1)
             errmsg = _first_err()
             WVPASS(errmsg.startswith('read Linux attr'))
             clear_errors()
@@ -147,6 +148,7 @@ def test_apply_to_path_restricted_access():
         WVPASSEQ(m.path, path)
         os.chmod(tmpdir, 000)
         m.apply_to_path(path)
+        WVPASS(len(helpers.saved_errors) == 1)
         errmsg = _first_err()
         WVPASS(errmsg.startswith('utime: '))
         clear_errors()
@@ -168,12 +170,14 @@ def test_restore_restricted_user_group():
         orig_uid = m.uid
         m.uid = 0;
         m.apply_to_path(path, restore_numeric_ids=True)
+        WVPASS(len(helpers.saved_errors) == 1)
         errmsg = _first_err()
         WVPASS(errmsg.startswith('lchown: '))
         clear_errors()
         m.uid = orig_uid
         m.gid = 0;
         m.apply_to_path(path, restore_numeric_ids=True)
+        WVPASS(len(helpers.saved_errors) == 1)
         errmsg = _first_err()
         WVPASS(errmsg.startswith('lchown: ') or os.stat(path).st_gid == m.gid)
         clear_errors()

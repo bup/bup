@@ -4,7 +4,7 @@ interact with the Git data structures.
 """
 import os, sys, zlib, time, subprocess, struct, stat, re, tempfile, glob
 from bup.helpers import *
-from bup import _helpers, path, midx, bloom
+from bup import _helpers, path, midx, bloom, xstat
 
 max_pack_size = 1000*1000*1000  # larger packs will slow down pruning
 max_pack_objects = 200*1000  # cache memory usage is about 83 bytes per object
@@ -413,7 +413,7 @@ class PackIdxList:
                         else:
                             midxl.append(mx)
                 midxl.sort(key=lambda ix:
-                           (-len(ix), -os.stat(ix.name).st_mtime))
+                           (-len(ix), -xstat.stat(ix.name).st_mtime))
                 for ix in midxl:
                     any_needed = False
                     for sub in ix.idxnames:
