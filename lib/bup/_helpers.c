@@ -27,6 +27,14 @@
 #ifdef HAVE_SYS_IOCTL_H
 #include <sys/ioctl.h>
 #endif
+#ifdef HAVE_EXT2FS_EXT2_FS_H
+#include <ext2fs/ext2_fs.h>
+#endif
+
+#if defined(FS_IOC_GETFLAGS) && defined(FS_IOC_SETFLAGS) \
+    && defined(HAVE_EXT2FS_EXT2_FS_H)
+#define BUP_HAVE_FILE_ATTRS 1
+#endif
 
 static int istty2 = 0;
 
@@ -639,7 +647,7 @@ static PyObject *fadvise_done(PyObject *self, PyObject *args)
 }
 
 
-#ifdef FS_IOC_GETFLAGS
+#ifdef BUP_HAVE_FILE_ATTRS
 static PyObject *bup_get_linux_file_attr(PyObject *self, PyObject *args)
 {
     int rc;
@@ -665,10 +673,10 @@ static PyObject *bup_get_linux_file_attr(PyObject *self, PyObject *args)
     close(fd);
     return Py_BuildValue("k", attr);
 }
-#endif /* def FS_IOC_GETFLAGS */
+#endif /* def BUP_HAVE_FILE_ATTRS */
 
 
-#ifdef FS_IOC_SETFLAGS
+#ifdef BUP_HAVE_FILE_ATTRS
 static PyObject *bup_set_linux_file_attr(PyObject *self, PyObject *args)
 {
     int rc;
@@ -683,6 +691,14 @@ static PyObject *bup_set_linux_file_attr(PyObject *self, PyObject *args)
     if (fd == -1)
         return PyErr_SetFromErrnoWithFilename(PyExc_OSError, path);
 
+    // Restrict attr to modifiable flags acdeijstuADST -- see
+    // chattr(1) and the e2fsprogs source.  Letter to flag mapping is
+    // in pf.c flags_array[].
+    attr &= EXT2_APPEND_FL | EXT2_COMPR_FL | EXT2_NODUMP_FL | EXT4_EXTENTS_FL
+    | EXT2_IMMUTABLE_FL | EXT3_JOURNAL_DATA_FL | EXT2_SECRM_FL | EXT2_NOTAIL_FL
+    | EXT2_UNRM_FL | EXT2_NOATIME_FL | EXT2_DIRSYNC_FL | EXT2_SYNC_FL
+    | EXT2_TOPDIR_FL;
+
     rc = ioctl(fd, FS_IOC_SETFLAGS, &attr);
     if (rc == -1)
     {
@@ -693,7 +709,7 @@ static PyObject *bup_set_linux_file_attr(PyObject *self, PyObject *args)
     close(fd);
     return Py_BuildValue("O", Py_None);
 }
-#endif /* def FS_IOC_SETFLAGS */
+#endif /* def BUP_HAVE_FILE_ATTRS */
 
 
 #if defined(HAVE_UTIMENSAT) || defined(HAVE_FUTIMES) || defined(HAVE_LUTIMES)
@@ -994,11 +1010,11 @@ static PyMethodDef helper_methods[] = {
 	"open() the given filename for read with O_NOATIME if possible" },
     { "fadvise_done", fadvise_done, METH_VARARGS,
 	"Inform the kernel that we're finished with earlier parts of a file" },
-#ifdef FS_IOC_GETFLAGS
+#ifdef BUP_HAVE_FILE_ATTRS
     { "get_linux_file_attr", bup_get_linux_file_attr, METH_VARARGS,
       "Return the Linux attributes for the given file." },
 #endif
-#ifdef FS_IOC_SETFLAGS
+#ifdef BUP_HAVE_FILE_ATTRS
     { "set_linux_file_attr", bup_set_linux_file_attr, METH_VARARGS,
       "Set the Linux attributes for the given file." },
 #endif
