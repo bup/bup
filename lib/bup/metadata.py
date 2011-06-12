@@ -472,8 +472,11 @@ class Metadata:
             except OSError, e:
                 if e.errno == errno.EACCES:
                     add_error('read Linux attr: %s' % e)
-                elif e.errno == errno.ENOTTY: # Inappropriate ioctl for device.
-                    add_error('read Linux attr: %s' % e)
+                elif e.errno == errno.ENOTTY or e.errno == errno.ENOSYS:
+                    # ENOTTY: Function not implemented.
+                    # ENOSYS: Inappropriate ioctl for device.
+                    # Assume filesystem doesn't support attrs.
+                    return
                 else:
                     raise
 
