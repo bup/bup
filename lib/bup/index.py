@@ -75,10 +75,10 @@ class Entry:
         self.children_n = 0
 
     def __repr__(self):
-        return ("(%s,0x%04x,%d,%d,%d,%d,%d,%s/%s,0x%04x,0x%08x/%d)" 
+        return ("(%s,0x%04x,%d,%d,%d,%d,%d,%d,%d,%s/%s,0x%04x,0x%08x/%d)"
                 % (self.name, self.dev, self.ino, self.nlink,
                    self.ctime, self.mtime, self.uid, self.gid,
-                   self.size, oct(self.mode), oct(self.gitmode),
+                   self.size, self.mode, self.gitmode,
                    self.flags, self.children_ofs, self.children_n))
 
     def packed(self):
