@@ -261,7 +261,7 @@ class Metadata:
                     os.rmdir(path)
                 except OSError, e:
                     if e.errno == errno.ENOTEMPTY:
-                        msg = 'refusing to overwrite non-empty dir' + path
+                        msg = 'refusing to overwrite non-empty dir ' + path
                         raise Exception(msg)
                     raise
             else:
