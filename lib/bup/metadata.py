@@ -559,6 +559,7 @@ class Metadata:
     def __init__(self):
         # optional members
         self.path = None
+        self.size = None
         self.symlink_target = None
         self.linux_attr = None
         self.linux_xattr = None
@@ -639,6 +640,7 @@ def from_path(path, statinfo=None, archive_path=None, save_symlinks=True):
     result = Metadata()
     result.path = archive_path
     st = statinfo or xstat.lstat(path)
+    result.size = st.st_size
     result._add_common(path, st)
     if save_symlinks:
         result._add_symlink_target(path, st)
