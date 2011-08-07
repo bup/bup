@@ -85,7 +85,8 @@ for path in remainder:
     if 'path' in active_fields:
         print 'path:', m.path
     if 'mode' in active_fields:
-        print 'mode:', oct(m.mode)
+        print 'mode: %s (%s)' % (oct(m.mode),
+                                 xstat.mode_str(m.mode))
     if 'link-target' in active_fields and stat.S_ISLNK(m.mode):
         print 'link-target:', m.symlink_target
     if 'rdev' in active_fields:

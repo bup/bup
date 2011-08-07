@@ -1,5 +1,6 @@
 """Enhanced stat operations for bup."""
 import os
+import stat as pystat
 from bup import _helpers
 
 
@@ -92,3 +93,32 @@ def fstat(path):
 
 def lstat(path):
     return stat_result.from_xstat_rep(_helpers.lstat(path))
+
+
+def mode_str(mode):
+    result = ''
+    if pystat.S_ISREG(mode):
+        result += '-'
+    elif pystat.S_ISDIR(mode):
+        result += 'd'
+    elif pystat.S_ISCHR(mode):
+        result += 'c'
+    elif pystat.S_ISBLK(mode):
+        result += 'b'
+    elif pystat.S_ISFIFO(mode):
+        result += 'p'
+    elif pystat.S_ISLNK(mode):
+        result += 'l'
+    else:
+        result += '?'
+
+    result += 'r' if (mode & pystat.S_IRUSR) else '-'
+    result += 'w' if (mode & pystat.S_IWUSR) else '-'
+    result += 'x' if (mode & pystat.S_IXUSR) else '-'
+    result += 'r' if (mode & pystat.S_IRGRP) else '-'
+    result += 'w' if (mode & pystat.S_IWGRP) else '-'
+    result += 'x' if (mode & pystat.S_IXGRP) else '-'
+    result += 'r' if (mode & pystat.S_IROTH) else '-'
+    result += 'w' if (mode & pystat.S_IWOTH) else '-'
+    result += 'x' if (mode & pystat.S_IXOTH) else '-'
+    return result
