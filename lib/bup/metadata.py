@@ -707,6 +707,31 @@ all_fields = frozenset(['path',
                         'posix1e-acl'])
 
 
+def summary_str(meta):
+    mode_val = xstat.mode_str(meta.mode)
+    owner_val = meta.owner
+    if not owner_val:
+        owner_val = str(meta.uid)
+    group_val = meta.group
+    if not group_val:
+        group_val = str(meta.gid)
+    size_or_dev_val = '-'
+    if stat.S_ISCHR(meta.mode) or stat.S_ISBLK(meta.mode):
+        size_or_dev_val = '%d,%d' % (os.major(meta.rdev), os.minor(meta.rdev))
+    elif meta.size:
+        size_or_dev_val = meta.size
+    mtime_secs = xstat.fstime_floor_secs(meta.mtime)
+    time_val = time.strftime('%Y-%m-%d %H:%M', time.localtime(mtime_secs))
+    path_val = meta.path or ''
+    if stat.S_ISLNK(meta.mode):
+        path_val += ' -> ' + meta.symlink_target
+    return '%-10s %-11s %11s %16s %s' % (mode_val,
+                                         owner_val + "/" + group_val,
+                                         size_or_dev_val,
+                                         time_val,
+                                         path_val)
+
+
 def detailed_str(meta, fields = None):
     # FIXME: should optional fields be omitted, or empty i.e. "rdev:
     # 0", "link-target:", etc.
@@ -794,7 +819,10 @@ def display_archive(file):
                 print
             print detailed_str(meta)
             first_item = False
-    elif verbose >= 0:
+    elif verbose > 0:
+        for meta in _ArchiveIterator(file):
+            print summary_str(meta)
+    elif verbose == 0:
         for meta in _ArchiveIterator(file):
             if not meta.path:
                 print >> sys.stderr, \
