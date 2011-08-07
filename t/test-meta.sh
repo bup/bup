@@ -20,7 +20,7 @@ genstat()
     (
         export PATH="$TOP:$PATH" # pick up bup
         # Skip atime (test elsewhere) to avoid the observer effect.
-        find . | sort | xargs bup xstat --exclude-fields ctime,atime
+        find . | sort | xargs bup xstat --exclude-fields ctime,atime,size
     )
 }
 

@@ -4,7 +4,7 @@
 #
 # This code is covered under the terms of the GNU Library General
 # Public License as described in the bup LICENSE file.
-import errno, os, sys, stat, pwd, grp, struct, re
+import errno, os, sys, stat, time, pwd, grp, struct, re
 from cStringIO import StringIO
 from bup import vint, xstat
 from bup.drecurse import recursive_dirlist
@@ -690,6 +690,88 @@ def _set_up_path(meta, create_symlinks=True):
             meta.create_path(meta.path, create_symlinks=create_symlinks)
 
 
+all_fields = frozenset(['path',
+                        'mode',
+                        'link-target',
+                        'rdev',
+                        'size',
+                        'uid',
+                        'gid',
+                        'owner',
+                        'group',
+                        'atime',
+                        'mtime',
+                        'ctime',
+                        'linux-attr',
+                        'linux-xattr',
+                        'posix1e-acl'])
+
+
+def detailed_str(meta, fields = None):
+    # FIXME: should optional fields be omitted, or empty i.e. "rdev:
+    # 0", "link-target:", etc.
+    if not fields:
+        fields = all_fields
+
+    result = []
+    if 'path' in fields:
+        result.append('path: ' + meta.path)
+    if 'mode' in fields:
+        result.append('mode: %s (%s)' % (oct(meta.mode),
+                                         xstat.mode_str(meta.mode)))
+    if 'link-target' in fields and stat.S_ISLNK(meta.mode):
+        result.append('link-target: ' + meta.symlink_target)
+    if 'rdev' in fields:
+        if meta.rdev:
+            result.append('rdev: %d,%d' % (os.major(meta.rdev),
+                                           os.minor(meta.rdev)))
+        else:
+            result.append('rdev: 0')
+    if 'size' in fields and meta.size:
+        result.append('size: ' + str(meta.size))
+    if 'uid' in fields:
+        result.append('uid: ' + str(meta.uid))
+    if 'gid' in fields:
+        result.append('gid: ' + str(meta.gid))
+    if 'owner' in fields:
+        result.append('owner: ' + meta.owner)
+    if 'group' in fields:
+        result.append('group: ' + meta.group)
+    if 'atime' in fields:
+        # If we don't have xstat.lutime, that means we have to use
+        # utime(), and utime() has no way to set the mtime/atime of a
+        # symlink.  Thus, the mtime/atime of a symlink is meaningless,
+        # so let's not report it.  (That way scripts comparing
+        # before/after won't trigger.)
+        if xstat.lutime or not stat.S_ISLNK(meta.mode):
+            result.append('atime: ' + xstat.fstime_to_sec_str(meta.atime))
+        else:
+            result.append('atime: 0')
+    if 'mtime' in fields:
+        if xstat.lutime or not stat.S_ISLNK(meta.mode):
+            result.append('mtime: ' + xstat.fstime_to_sec_str(meta.mtime))
+        else:
+            result.append('mtime: 0')
+    if 'ctime' in fields:
+        result.append('ctime: ' + xstat.fstime_to_sec_str(meta.ctime))
+    if 'linux-attr' in fields and meta.linux_attr:
+        result.append('linux-attr: ' + hex(meta.linux_attr))
+    if 'linux-xattr' in fields and meta.linux_xattr:
+        for name, value in meta.linux_xattr:
+            result.append('linux-xattr: %s -> %s' % (name, repr(value)))
+    if 'posix1e-acl' in fields and meta.posix1e_acl and posix1e:
+        flags = posix1e.TEXT_ABBREVIATE
+        if stat.S_ISDIR(meta.mode):
+            acl = meta.posix1e_acl[0]
+            default_acl = meta.posix1e_acl[2]
+            result.append(acl.to_any_text('posix1e-acl: ', '\n', flags))
+            result.append(acl.to_any_text('posix1e-acl-default: ', '\n', flags))
+        else:
+            acl = meta.posix1e_acl[0]
+            result.append(acl.to_any_text('posix1e-acl: ', '\n', flags))
+    return '\n'.join(result)
+
+
 class _ArchiveIterator:
     def next(self):
         try:
@@ -705,10 +787,19 @@ class _ArchiveIterator:
 
 
 def display_archive(file):
-    for meta in _ArchiveIterator(file):
-        if verbose:
-            print meta.path # FIXME
-        else:
+    if verbose > 1:
+        first_item = True
+        for meta in _ArchiveIterator(file):
+            if not first_item:
+                print
+            print detailed_str(meta)
+            first_item = False
+    elif verbose >= 0:
+        for meta in _ArchiveIterator(file):
+            if not meta.path:
+                print >> sys.stderr, \
+                    'bup: cannot list path for metadata without path'
+                sys.exit(1)
             print meta.path
 
 

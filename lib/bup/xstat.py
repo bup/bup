@@ -38,6 +38,16 @@ def fstime_to_timespec(ns):
     return nsecs_to_timespec(ns)
 
 
+def fstime_to_sec_str(fstime):
+    (s, ns) = fstime_to_timespec(fstime)
+    if(s < 0):
+        s += 1
+    if ns == 0:
+        return '%d' % s
+    else:
+        return '%d.%09d' % (s, ns)
+
+
 if _have_bup_utime_ns:
     def utime(path, times):
         """Times must be provided as (atime_ns, mtime_ns)."""
