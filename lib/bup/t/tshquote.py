@@ -2,7 +2,7 @@ from bup import shquote
 from wvtest import *
 
 def qst(line):
-    return [s[1] for s in shquote.quotesplit(line)]
+    return [word for offset,word in shquote.quotesplit(line)]
 
 @wvtest
 def test_shquote():
@@ -42,3 +42,6 @@ def test_shquote():
     WVPASSEQ(word, ' hammer "')
     WVPASSEQ(shquote.what_to_add(qtype, word, " hammer \"time\"", True),
              "time\\\"")
+
+    WVPASSEQ(shquote.quotify_list(['a', '', '"word"', "'third'", "'", "x y"]),
+             "a '' '\"word\"' \"'third'\" \"'\" 'x y'")
