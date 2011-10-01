@@ -21,6 +21,10 @@ first update the index using `bup index`.  The reasons
 for separating the two steps are described in the man page
 for `bup-index`(1).
 
+By default, metadata will be saved for every path.  However, if
+`--strip`, `--strip-path`, or `--graft` is specified, metadata will
+not be saved for the root directory (*/*).
+
 # OPTIONS
 
 -r, \--remote=*host*:*path*
@@ -84,25 +88,28 @@ for `bup-index`(1).
 \--strip
 :   strips the path that is given from all files and directories.
     
-    A directory */root/chroot/etc* saved with
-    "bup save -n chroot \--strip /root/chroot" would be saved
-    as */etc*.
+    A directory */root/chroot/etc* saved with "bup save -n chroot
+    \--strip /root/chroot" would be saved as */etc*.  Note that
+    currently, metadata will not be saved for the root directory (*/*)
+    when this option is specified.
     
 \--strip-path=*path-prefix*
 :   strips the given path prefix *path-prefix* from all
     files and directories.
     
-    A directory */root/chroots/webserver* saved with
-    "bup save -n webserver \--strip-path=/root/chroots" would
-    be saved as */webserver/etc*
+    A directory */root/chroots/webserver* saved with "bup save -n
+    webserver \--strip-path=/root/chroots" would be saved as
+    */webserver/etc*.  Note that currently, metadata will not be saved
+    for the root directory (*/*) when this option is specified.
     
 \--graft=*old_path*=*new_path*
 :   a graft point *old_path*=*new_path* (can be used more than
     once).
 
-    A directory */root/chroot/a/etc* saved with
-    "bup save -n chroots \--graft /root/chroot/a/etc=/chroots/a"
-    would be saved as */chroots/a/etc*
+    A directory */root/chroot/a/etc* saved with "bup save -n chroots
+    \--graft /root/chroot/a/etc=/chroots/a" would be saved as
+    */chroots/a/etc*.  Note that currently, metadata will not be saved
+    for the root directory (*/*) when this option is specified.
 
 -*#*, \--compress=*#*
 :   set the compression level to # (a value from 0-9, where

@@ -172,6 +172,11 @@ class Node:
         self.ctime = self.mtime = self.atime = 0
         self._subs = None
 
+    def __repr__(self):
+        return "<bup.vfs.Node object at X - name:%r hash:%s parent:%r>" \
+            % (self.name, self.hash.encode('hex'),
+               self.parent.name if self.parent.name else None)
+
     def __cmp__(a, b):
         if a is b:
             return 0
@@ -378,6 +383,11 @@ class FakeSymlink(Symlink):
 
 class Dir(Node):
     """A directory stored inside of bup's repository."""
+
+    def __init__(self, *args):
+        Node.__init__(self, *args)
+        self._metadata_sha = None
+
     def _mksubs(self):
         self._subs = {}
         it = cp().get(self.hash.encode('hex'))
@@ -388,6 +398,9 @@ class Dir(Node):
             type = it.next()
         assert(type == 'tree')
         for (mode,mangled_name,sha) in git.tree_decode(''.join(it)):
+            if mangled_name == '.bupm':
+                self._metadata_sha = sha
+                continue
             name = mangled_name
             (name,bupmode) = git.demangle_name(mangled_name)
             if bupmode == git.BUP_CHUNKED:

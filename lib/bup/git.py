@@ -127,7 +127,7 @@ def calc_hash(type, content):
     return sum.digest()
 
 
-def _shalist_sort_key(ent):
+def shalist_item_sort_key(ent):
     (mode, name, id) = ent
     assert(mode+0 == mode)
     if stat.S_ISDIR(mode):
@@ -138,7 +138,7 @@ def _shalist_sort_key(ent):
 
 def tree_encode(shalist):
     """Generate a git tree object from (mode,name,hash) tuples."""
-    shalist = sorted(shalist, key = _shalist_sort_key)
+    shalist = sorted(shalist, key = shalist_item_sort_key)
     l = []
     for (mode,name,bin) in shalist:
         assert(mode)

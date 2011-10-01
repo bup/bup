@@ -22,66 +22,36 @@ def test_detect_fakeroot():
         WVPASS(not detect_fakeroot())
 
 @wvtest
-def test_strip_path():
-    prefix = "/NOT_EXISTING/var/backup/daily.0/localhost"
-    empty_prefix = ""
-    non_matching_prefix = "/home"
-    path = "/NOT_EXISTING/var/backup/daily.0/localhost/etc/"
+def test_path_components():
+    WVPASSEQ(path_components('/'), [('', '/')])
+    WVPASSEQ(path_components('/foo'), [('', '/'), ('foo', '/foo')])
+    WVPASSEQ(path_components('/foo/'), [('', '/'), ('foo', '/foo')])
+    WVPASSEQ(path_components('/foo/bar'),
+             [('', '/'), ('foo', '/foo'), ('bar', '/foo/bar')])
+    WVEXCEPT(Exception, path_components, 'foo')
 
-    WVPASSEQ(strip_path(prefix, path), '/etc')
-    WVPASSEQ(strip_path(empty_prefix, path), path)
-    WVPASSEQ(strip_path(non_matching_prefix, path), path)
-    WVEXCEPT(Exception, strip_path, None, path)
 
 @wvtest
-def test_strip_base_path():
-    path = "/NOT_EXISTING/var/backup/daily.0/localhost/etc/"
-    base_paths = ["/NOT_EXISTING/var",
-                  "/NOT_EXISTING/var/backup",
-                  "/NOT_EXISTING/var/backup/daily.0/localhost"
-                 ]
-    WVPASSEQ(strip_base_path(path, base_paths), '/etc')
+def test_stripped_path_components():
+    WVPASSEQ(stripped_path_components('/', []), [('', '/')])
+    WVPASSEQ(stripped_path_components('/', ['']), [('', '/')])
+    WVPASSEQ(stripped_path_components('/', ['/']), [('', '/')])
+    WVPASSEQ(stripped_path_components('/', ['/foo']), [('', '/')])
+    WVPASSEQ(stripped_path_components('/foo', ['/bar']),
+             [('', '/'), ('foo', '/foo')])
+    WVPASSEQ(stripped_path_components('/foo', ['/foo']), [('', '/foo')])
+    WVPASSEQ(stripped_path_components('/foo/bar', ['/foo']),
+             [('', '/foo'), ('bar', '/foo/bar')])
+    WVPASSEQ(stripped_path_components('/foo/bar', ['/bar', '/foo', '/baz']),
+             [('', '/foo'), ('bar', '/foo/bar')])
+    WVPASSEQ(stripped_path_components('/foo/bar/baz', ['/foo/bar/baz']),
+             [('', '/foo/bar/baz')])
+    WVEXCEPT(Exception, stripped_path_components, 'foo', [])
 
 @wvtest
-def test_strip_symlinked_base_path():
-    tmpdir = os.path.join(os.getcwd(),"test_strip_symlinked_base_path.tmp")
-    symlink_src = os.path.join(tmpdir, "private", "var")
-    symlink_dst = os.path.join(tmpdir, "var")
-    path = os.path.join(symlink_dst, "a")
-
-    os.mkdir(tmpdir)
-    os.mkdir(os.path.join(tmpdir, "private"))
-    os.mkdir(symlink_src)
-    os.symlink(symlink_src, symlink_dst)
-
-    result = strip_base_path(path, [symlink_dst])
-
-    os.remove(symlink_dst)
-    os.rmdir(symlink_src)
-    os.rmdir(os.path.join(tmpdir, "private"))
-    os.rmdir(tmpdir)
-
-    WVPASSEQ(result, "/a")
-
-@wvtest
-def test_graft_path():
-    middle_matching_old_path = "/NOT_EXISTING/user"
-    non_matching_old_path = "/NOT_EXISTING/usr"
-    matching_old_path = "/NOT_EXISTING/home"
-    matching_full_path = "/NOT_EXISTING/home/user"
-    new_path = "/opt"
-
-    all_graft_points = [(middle_matching_old_path, new_path),
-                        (non_matching_old_path, new_path),
-                        (matching_old_path, new_path)]
-
-    path = "/NOT_EXISTING/home/user/"
-
-    WVPASSEQ(graft_path([(middle_matching_old_path, new_path)], path),
-                        "/NOT_EXISTING/home/user")
-    WVPASSEQ(graft_path([(non_matching_old_path, new_path)], path),
-                        "/NOT_EXISTING/home/user")
-    WVPASSEQ(graft_path([(matching_old_path, new_path)], path), "/opt/user")
-    WVPASSEQ(graft_path(all_graft_points, path), "/opt/user")
-    WVPASSEQ(graft_path([(matching_full_path, new_path)], path),
-                        "/opt")
+def test_grafted_path_components():
+    WVPASSEQ(grafted_path_components([('/chroot', '/')], '/foo'),
+             [('', '/'), ('foo', '/foo')])
+    WVPASSEQ(grafted_path_components([('/foo/bar', '')], '/foo/bar/baz/bax'),
+             [('', None), ('baz', None), ('bax', '/foo/bar/baz/bax')])
+    WVEXCEPT(Exception, grafted_path_components, 'foo', [])

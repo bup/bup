@@ -177,13 +177,18 @@ class Metadata:
     # record will have some subset of add, encode, load, create, and
     # apply methods, i.e. _add_foo...
 
+    # We do allow an "empty" object as a special case, i.e. no
+    # records.  One can be created by trying to write Metadata(), and
+    # for such an object, read() will return None.  This is used by
+    # "bup save", for example, as a placeholder in cases where
+    # from_path() fails.
+
     ## Common records
 
     # Timestamps are (sec, ns), relative to 1970-01-01 00:00:00, ns
     # must be non-negative and < 10**9.
 
     def _add_common(self, path, st):
-        self.mode = st.st_mode
         self.uid = st.st_uid
         self.gid = st.st_gid
         self.rdev = st.st_rdev
@@ -199,8 +204,11 @@ class Metadata:
             self.group = grp.getgrgid(st.st_gid)[0]
         except KeyError, e:
             add_error("no group name for id %s '%s'" % (st.st_gid, path))
+        self.mode = st.st_mode
 
     def _encode_common(self):
+        if not self.mode:
+            return None
         atime = xstat.nsecs_to_timespec(self.atime)
         mtime = xstat.nsecs_to_timespec(self.mtime)
         ctime = xstat.nsecs_to_timespec(self.ctime)
@@ -247,6 +255,9 @@ class Metadata:
             or stat.S_ISLNK(self.mode)
 
     def _create_via_common_rec(self, path, create_symlinks=True):
+        if not self.mode:
+            raise ApplyError('no metadata - cannot create path ' + path)
+
         # If the path already exists and is a dir, try rmdir.
         # If the path already exists and is anything else, try unlink.
         st = None
@@ -303,6 +314,9 @@ class Metadata:
                       % (path, self.mode))
 
     def _apply_common_rec(self, path, restore_numeric_ids=False):
+        if not self.mode:
+            raise ApplyError('no metadata - cannot apply to ' + path)
+
         # FIXME: S_ISDOOR, S_IFMPB, S_IFCMP, S_IFNWK, ... see stat(2).
         # EACCES errors at this stage are fatal for the current path.
         if lutime and stat.S_ISLNK(self.mode):
@@ -557,6 +571,7 @@ class Metadata:
                         raise
 
     def __init__(self):
+        self.mode = None
         # optional members
         self.path = None
         self.size = None
@@ -579,12 +594,21 @@ class Metadata:
                 vint.write_bvec(port, data)
         vint.write_vuint(port, _rec_tag_end)
 
+    def encode(self, include_path=True):
+        port = StringIO()
+        self.write(port, include_path)
+        return port.getvalue()
+
     @staticmethod
     def read(port):
-        # This method should either: return a valid Metadata object;
-        # throw EOFError if there was nothing at all to read; throw an
-        # Exception if a valid object could not be read completely.
+        # This method should either return a valid Metadata object,
+        # return None if there was no information at all (just a
+        # _rec_tag_end), throw EOFError if there was nothing at all to
+        # read, or throw an Exception if a valid object could not be
+        # read completely.
         tag = vint.read_vuint(port)
+        if tag == _rec_tag_end:
+            return None
         try: # From here on, EOF is an error.
             result = Metadata()
             while True: # only exit is error (exception) or _rec_tag_end
@@ -740,7 +764,8 @@ def detailed_str(meta, fields = None):
 
     result = []
     if 'path' in fields:
-        result.append('path: ' + meta.path)
+        path = meta.path or ''
+        result.append('path: ' + path)
     if 'mode' in fields:
         result.append('mode: %s (%s)' % (oct(meta.mode),
                                          xstat.mode_str(meta.mode)))
@@ -826,13 +851,15 @@ def display_archive(file):
         for meta in _ArchiveIterator(file):
             if not meta.path:
                 print >> sys.stderr, \
-                    'bup: cannot list path for metadata without path'
+                    'bup: no metadata path, but asked to only display path (increase verbosity?)'
                 sys.exit(1)
             print meta.path
 
 
 def start_extract(file, create_symlinks=True):
     for meta in _ArchiveIterator(file):
+        if not meta: # Hit end record.
+            break
         if verbose:
             print >> sys.stderr, meta.path
         xpath = _clean_up_extract_path(meta.path)
@@ -846,6 +873,8 @@ def start_extract(file, create_symlinks=True):
 def finish_extract(file, restore_numeric_ids=False):
     all_dirs = []
     for meta in _ArchiveIterator(file):
+        if not meta: # Hit end record.
+            break
         xpath = _clean_up_extract_path(meta.path)
         if not xpath:
             add_error(Exception('skipping risky path "%s"' % dir.path))
@@ -871,6 +900,8 @@ def extract(file, restore_numeric_ids=False, create_symlinks=True):
     # longest first.
     all_dirs = []
     for meta in _ArchiveIterator(file):
+        if not meta: # Hit end record.
+            break
         xpath = _clean_up_extract_path(meta.path)
         if not xpath:
             add_error(Exception('skipping risky path "%s"' % meta.path))

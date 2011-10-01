@@ -647,50 +647,59 @@ def parse_date_or_fatal(str, fatal):
         return date
 
 
-def strip_path(prefix, path):
-    """Strips a given prefix from a path.
-
-    First both paths are normalized.
-
-    Raises an Exception if no prefix is given.
-    """
-    if prefix == None:
-        raise Exception('no path given')
-
-    normalized_prefix = os.path.realpath(prefix)
-    debug2("normalized_prefix: %s\n" % normalized_prefix)
-    normalized_path = os.path.realpath(path)
-    debug2("normalized_path: %s\n" % normalized_path)
-    if normalized_path.startswith(normalized_prefix):
-        return normalized_path[len(normalized_prefix):]
-    else:
-        return path
+def path_components(path):
+    """Break path into a list of pairs of the form (name,
+    full_path_to_name).  Path must start with '/'.
+    Example:
+      '/home/foo' -> [('', '/'), ('home', '/home'), ('foo', '/home/foo')]"""
+    assert(path.startswith('/'))
+    # Since we assume path startswith('/'), we can skip the first element.
+    result = [('', '/')]
+    norm_path = os.path.abspath(path)
+    if norm_path == '/':
+        return result
+    full_path = ''
+    for p in norm_path.split('/')[1:]:
+        full_path += '/' + p
+        result.append((p, full_path))
+    return result
 
 
-def strip_base_path(path, base_paths):
-    """Strips the base path from a given path.
+def stripped_path_components(path, strip_prefixes):
+    """Strip any prefix in strip_prefixes from path and return a list
+    of path components where each component is (name,
+    none_or_full_fs_path_to_name).  Assume path startswith('/').
+    See thelpers.py for examples."""
+    normalized_path = os.path.abspath(path)
+    sorted_strip_prefixes = sorted(strip_prefixes, key=len, reverse=True)
+    for bp in sorted_strip_prefixes:
+        normalized_bp = os.path.abspath(bp)
+        if normalized_path.startswith(normalized_bp):
+            prefix = normalized_path[:len(normalized_bp)]
+            result = []
+            for p in normalized_path[len(normalized_bp):].split('/'):
+                if p: # not root
+                    prefix += '/'
+                prefix += p
+                result.append((p, prefix))
+            return result
+    # Nothing to strip.
+    return path_components(path)
 
 
-    Determines the base path for the given string and then strips it
-    using strip_path().
-    Iterates over all base_paths from long to short, to prevent that
-    a too short base_path is removed.
-    """
-    normalized_path = os.path.realpath(path)
-    sorted_base_paths = sorted(base_paths, key=len, reverse=True)
-    for bp in sorted_base_paths:
-        if normalized_path.startswith(os.path.realpath(bp)):
-            return strip_path(bp, normalized_path)
-    return path
-
-
-def graft_path(graft_points, path):
-    normalized_path = os.path.realpath(path)
+def grafted_path_components(graft_points, path):
+    # Find the first '/' after the graft prefix, match that to the
+    # original source base dir, then move on.
+    clean_path = os.path.abspath(path)
     for graft_point in graft_points:
         old_prefix, new_prefix = graft_point
-        if normalized_path.startswith(old_prefix):
-            return re.sub(r'^' + old_prefix, new_prefix, normalized_path)
-    return normalized_path
+        if clean_path.startswith(old_prefix):
+            grafted_path = re.sub(r'^' + old_prefix, new_prefix,
+                                  clean_path)
+            result = [(p, None) for p in grafted_path.split('/')]
+            result[-1] = (result[-1][0], clean_path)
+            return result
+    return path_components(clean_path)
 
 
 # hashlib is only available in python 2.5 or higher, but the 'sha' module

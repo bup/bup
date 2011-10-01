@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import sys, stat, time, math
-from bup import hashsplit, git, options, index, client
+from bup import hashsplit, git, options, index, client, metadata
 from bup.helpers import *
 from bup.hashsplit import GIT_MODE_TREE, GIT_MODE_FILE, GIT_MODE_SYMLINK
 
@@ -87,26 +87,47 @@ def eatslash(dir):
         return dir
 
 
+# Metadata is stored in a file named .bupm in each directory.  The
+# first metadata entry will be the metadata for the current directory.
+# The remaining entries will be for each of the other directory
+# elements, in the order they're listed in the index.
+#
+# Since the git tree elements are sorted according to
+# git.shalist_item_sort_key, the metalist items are accumulated as
+# (sort_key, metadata) tuples, and then sorted when the .bupm file is
+# created.  The sort_key must be computed using the element's real
+# name and mode rather than the git mode and (possibly mangled) name.
+
 parts = ['']
 shalists = [[]]
+metalists = [[]]
 
-def _push(part):
+def _push(part, metadata):
     assert(part)
     parts.append(part)
     shalists.append([])
+    # First entry is dir metadata, which is represented with an empty name.
+    metalists.append([('', metadata)])
 
 def _pop(force_tree):
     assert(len(parts) >= 1)
     part = parts.pop()
     shalist = shalists.pop()
+    metalist = metalists.pop()
+    if metalist:
+        sorted_metalist = sorted(metalist, key = lambda x : x[0])
+        metadata = ''.join([m[1].encode() for m in sorted_metalist])
+        shalist.append((0100644, '.bupm', w.new_blob(metadata)))
     tree = force_tree or w.new_tree(shalist)
     if shalists:
         shalists[-1].append((GIT_MODE_TREE,
                              git.mangle_name(part,
                                              GIT_MODE_TREE, GIT_MODE_TREE),
                              tree))
-    else:  # this was the toplevel, so put it back for sanity
+    else:
+        # This was the toplevel, so put it back for sanity (i.e. cd .. from /).
         shalists.append(shalist)
+        metalists.append(metalist)
     return tree
 
 lastremain = None
@@ -159,6 +180,7 @@ def wantrecurse_pre(ent):
 
 def wantrecurse_during(ent):
     return not already_saved(ent) or ent.sha_missing()
+
 
 total = ftotal = 0
 if opt.progress:
@@ -216,20 +238,25 @@ for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse_during):
 
     assert(dir.startswith('/'))
     if opt.strip:
-        stripped_base_path = strip_base_path(dir, extra)
-        dirp = stripped_base_path.split('/')
+        dirp = stripped_path_components(dir, extra)
     elif opt.strip_path:
-        dirp = strip_path(opt.strip_path, dir).split('/')
+        dirp = stripped_path_components(dir, [opt.strip_path])
     elif graft_points:
-        grafted = graft_path(graft_points, dir)
-        dirp = grafted.split('/')
+        dirp = grafted_path_components(graft_points, dir)
     else:
-        dirp = dir.split('/')
-    while parts > dirp:
+        dirp = path_components(dir)
+
+    while parts > [x[0] for x in dirp]:
         _pop(force_tree = None)
+
     if dir != '/':
-        for part in dirp[len(parts):]:
-            _push(part)
+        for path_component in dirp[len(parts):]:
+            dir_name, fs_path = path_component
+            if fs_path:
+                meta = metadata.from_path(fs_path)
+            else:
+                meta = metadata.Metadata()
+            _push(dir_name, meta)
 
     if not file:
         # no filename portion means this is a subdir.  But
@@ -250,9 +277,11 @@ for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse_during):
     id = None
     if hashvalid:
         id = ent.sha
-        shalists[-1].append((ent.gitmode, 
-                             git.mangle_name(file, ent.mode, ent.gitmode),
-                             id))
+        git_name = git.mangle_name(file, ent.mode, ent.gitmode)
+        git_info = (ent.gitmode, git_name, id)
+        shalists[-1].append(git_info)
+        sort_key = git.shalist_item_sort_key((ent.mode, file, id))
+        metalists[-1].append((sort_key, metadata.from_path(ent.name)))
     else:
         if stat.S_ISREG(ent.mode):
             try:
@@ -280,14 +309,19 @@ for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse_during):
                 else:
                     (mode, id) = (GIT_MODE_SYMLINK, w.new_blob(rl))
             else:
-                add_error(Exception('skipping special file "%s"' % ent.name))
-                lastskip_name = ent.name
+                # Everything else should be fully described by its
+                # metadata, so just record an empty blob, so the paths
+                # in the tree and .bupm will match up.
+                (mode, id) = (GIT_MODE_FILE, w.new_blob(""))
+
         if id:
             ent.validate(mode, id)
             ent.repack()
-            shalists[-1].append((mode,
-                                 git.mangle_name(file, ent.mode, ent.gitmode),
-                                 id))
+            git_name = git.mangle_name(file, ent.mode, ent.gitmode)
+            git_info = (mode, git_name, id)
+            shalists[-1].append(git_info)
+            sort_key = git.shalist_item_sort_key((ent.mode, file, id))
+            metalists[-1].append((sort_key, metadata.from_path(ent.name)))
     if exists and wasmissing:
         count += oldsize
         subcount = 0
@@ -298,10 +332,20 @@ if opt.progress:
     progress('Saving: %.2f%% (%d/%dk, %d/%d files), done.    \n'
              % (pct, count/1024, total/1024, fcount, ftotal))
 
-while len(parts) > 1:
+while len(parts) > 1: # _pop() all the parts above the indexed items.
     _pop(force_tree = None)
 assert(len(shalists) == 1)
+assert(len(metalists) == 1)
+
+if not (opt.strip or opt.strip_path or graft_points):
+    # For now, only save metadata for the root directory when there
+    # isn't any path grafting or stripping that might create multiple
+    # roots.
+    shalist = shalists[-1]
+    metadata = ''.join([metadata.from_path('/').encode()])
+    shalist.append((0100644, '.bupm', w.new_blob(metadata)))
 tree = w.new_tree(shalists[-1])
+
 if opt.tree:
     print tree.encode('hex')
 if opt.commit or opt.name:

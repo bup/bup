@@ -81,8 +81,15 @@ force-delete "$TOP/bupmeta.tmp"
     set -e
     rm -rf "$TOP/bupmeta.tmp/src"
     mkdir -p "$TOP/bupmeta.tmp/src"
-    #cp -a Documentation cmd lib t "$TOP/bupmeta.tmp"/src
     cp -pPR Documentation cmd lib t "$TOP/bupmeta.tmp"/src
+
+    # Regression test for metadata sort order.  Previously, these two
+    # entries would sort in the wrong order because the metadata
+    # entries were being sorted by mangled name, but the index isn't.
+    dd if=/dev/zero of="$TOP/bupmeta.tmp"/src/foo bs=1k count=33
+    touch -d 2011-11-11 "$TOP/bupmeta.tmp"/src/foo
+    touch -d 2011-12-12 "$TOP/bupmeta.tmp"/src/foo-bar
+
     t/mksock "$TOP/bupmeta.tmp/src/test-socket" || true
 ) || WVFAIL
 

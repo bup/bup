@@ -94,8 +94,8 @@ mv $BUP_DIR/bupindex $BUP_DIR/bi.old
 WVFAIL bup save -t $D/d/e/fifotest
 mkfifo $D/d/e/fifotest
 WVPASS bup index -u $D/d/e/fifotest
-WVFAIL bup save -t $D/d/e/fifotest
-WVFAIL bup save -t $D/d/e
+WVPASS bup save -t $D/d/e/fifotest
+WVPASS bup save -t $D/d/e
 rm -f $D/d/e/fifotest
 WVPASS bup index -u $D/d/e
 WVFAIL bup save -t $D/d/e/fifotest
@@ -484,3 +484,32 @@ WVPASSEQ "$(bup ls compression/latest/ | sort)" "$(ls $TOP/Documentation | sort)
 COMPRESSION_9_SIZE=$(du -s $D | cut -f1)
 
 WVPASS [ "$COMPRESSION_9_SIZE" -lt "$COMPRESSION_0_SIZE" ]
+
+
+WVSTART "save disjoint top-level directories"
+(
+    set -e
+    top_dir="$(echo $(pwd) | awk -F "/" '{print $2}')"
+    if [ "$top_dir" == tmp ]; then
+        echo "(running from within /tmp; skipping test)"
+        exit 0
+    fi
+    D=bupdata.tmp
+    rm -rf $D
+    mkdir -p $D/x
+    date > $D/x/1
+    tmpdir="$(mktemp --tmpdir=/tmp -d bup-test-XXXXXXX)"
+    cleanup() { set -x; rm -rf "${tmpdir}"; set +x; }
+    trap cleanup EXIT
+    date > "$tmpdir/2"
+
+    export BUP_DIR="$TOP/buptest.tmp"
+    rm -rf "$BUP_DIR"
+
+    WVPASS bup init
+    WVPASS bup index -vu $(pwd)/$D/x "$tmpdir"
+    WVPASS bup save -t -n src $(pwd)/$D/x "$tmpdir"
+    WVPASSEQ "$(bup ls src/latest)" \
+"$top_dir/
+tmp/"
+) || WVFAIL
