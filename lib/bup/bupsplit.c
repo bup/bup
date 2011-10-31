@@ -118,22 +118,23 @@ int bupsplit_find_ofs(const unsigned char *buf, int len, int *bits)
 
 
 #ifndef BUP_NO_SELFTEST
+#define BUP_SELFTEST_SIZE 100000
 
 int bupsplit_selftest()
 {
-    uint8_t buf[100000];
+    uint8_t *buf = malloc(BUP_SELFTEST_SIZE);
     uint32_t sum1a, sum1b, sum2a, sum2b, sum3a, sum3b;
     unsigned count;
     
     srandom(1);
-    for (count = 0; count < sizeof(buf); count++)
+    for (count = 0; count < BUP_SELFTEST_SIZE; count++)
 	buf[count] = random();
     
-    sum1a = rollsum_sum(buf, 0, sizeof(buf));
-    sum1b = rollsum_sum(buf, 1, sizeof(buf));
-    sum2a = rollsum_sum(buf, sizeof(buf) - BUP_WINDOWSIZE*5/2,
-			sizeof(buf) - BUP_WINDOWSIZE);
-    sum2b = rollsum_sum(buf, 0, sizeof(buf) - BUP_WINDOWSIZE);
+    sum1a = rollsum_sum(buf, 0, BUP_SELFTEST_SIZE);
+    sum1b = rollsum_sum(buf, 1, BUP_SELFTEST_SIZE);
+    sum2a = rollsum_sum(buf, BUP_SELFTEST_SIZE - BUP_WINDOWSIZE*5/2,
+			BUP_SELFTEST_SIZE - BUP_WINDOWSIZE);
+    sum2b = rollsum_sum(buf, 0, BUP_SELFTEST_SIZE - BUP_WINDOWSIZE);
     sum3a = rollsum_sum(buf, 0, BUP_WINDOWSIZE+3);
     sum3b = rollsum_sum(buf, 3, BUP_WINDOWSIZE+3);
     
@@ -144,6 +145,7 @@ int bupsplit_selftest()
     fprintf(stderr, "sum3a = 0x%08x\n", sum3a);
     fprintf(stderr, "sum3b = 0x%08x\n", sum3b);
     
+    free(buf);
     return sum1a!=sum1b || sum2a!=sum2b || sum3a!=sum3b;
 }
 
