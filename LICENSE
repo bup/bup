@@ -1,6 +1,8 @@
 
 The files in this project may all be distributed under the terms of the
-following license.  In addition, bupsplit.c and bupsplit.h may be
+following license. (The LGPL version 2.)
+
+In addition, bupsplit.c, bupsplit.h, and options.py may be
 redistributed according to the separate license (a BSD-style license)
 written inside those files.
 
