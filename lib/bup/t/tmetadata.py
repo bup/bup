@@ -157,57 +157,6 @@ def test_apply_to_path_restricted_access():
 
 
 @wvtest
-def test_restore_restricted_user_group():
-    if is_superuser() or detect_fakeroot():
-        return
-    tmpdir = tempfile.mkdtemp(prefix='bup-tmetadata-')
-    try:
-        path = tmpdir + '/foo'
-        os.mkdir(path)
-        m = metadata.from_path(path, archive_path=path, save_symlinks=True)
-        WVPASSEQ(m.path, path)
-        WVPASSEQ(m.apply_to_path(path), None)
-        orig_uid = m.uid
-        m.uid = 0;
-        m.apply_to_path(path, restore_numeric_ids=True)
-        WVPASS(len(helpers.saved_errors) == 1)
-        errmsg = _first_err()
-        WVPASS(errmsg.startswith('lchown: '))
-        clear_errors()
-        m.uid = orig_uid
-        m.gid = 0;
-        m.apply_to_path(path, restore_numeric_ids=True)
-        WVPASS(len(helpers.saved_errors) == 1)
-        errmsg = _first_err()
-        WVPASS(errmsg.startswith('lchown: ') or os.stat(path).st_gid == m.gid)
-        clear_errors()
-    finally:
-        subprocess.call(['rm', '-rf', tmpdir])
-
-
-@wvtest
-def test_restore_nonexistent_user_group():
-    tmpdir = tempfile.mkdtemp(prefix='bup-tmetadata-')
-    try:
-        path = tmpdir + '/foo'
-        os.mkdir(path)
-        m = metadata.from_path(path, archive_path=path, save_symlinks=True)
-        WVPASSEQ(m.path, path)
-        junk,m.user = max([(len(x.pw_name), x.pw_name + 'x')
-                           for x in pwd.getpwall()])
-        junk,m.group = max([(len(x.gr_name), x.gr_name + 'x')
-                            for x in grp.getgrall()])
-        WVPASSEQ(m.apply_to_path(path, restore_numeric_ids=True), None)
-        WVPASSEQ(os.stat(path).st_uid, m.uid)
-        WVPASSEQ(os.stat(path).st_gid, m.gid)
-        WVPASSEQ(m.apply_to_path(path, restore_numeric_ids=False), None)
-        WVPASSEQ(os.stat(path).st_uid, m.uid)
-        WVPASSEQ(os.stat(path).st_gid, m.gid)
-    finally:
-        subprocess.call(['rm', '-rf', tmpdir])
-
-
-@wvtest
 def test_restore_over_existing_target():
     tmpdir = tempfile.mkdtemp(prefix='bup-tmetadata-')
     try:

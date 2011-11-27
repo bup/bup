@@ -196,14 +196,16 @@ class Metadata:
         self.mtime = st.st_mtime
         self.ctime = st.st_ctime
         self.user = self.group = ''
+        # FIXME: should we be caching id -> user/group name mappings?
+        # IIRC, tar uses some trick -- possibly caching the last pair.
         try:
             self.user = pwd.getpwuid(st.st_uid)[0]
         except KeyError, e:
-            add_error("no user name for id %s '%s'" % (st.st_gid, path))
+            pass
         try:
             self.group = grp.getgrgid(st.st_gid)[0]
         except KeyError, e:
-            add_error("no group name for id %s '%s'" % (st.st_gid, path))
+            pass
         self.mode = st.st_mode
 
     def _encode_common(self):
@@ -336,43 +338,44 @@ class Metadata:
                 else:
                     raise
 
-        # Don't try to restore user unless we're root, and even
-        # if asked, don't try to restore the user or group if
-        # it doesn't exist in the system db.
-        uid = self.uid
-        gid = self.gid
-        if not restore_numeric_ids:
-            if not self.user:
-                uid = -1
-                add_error('ignoring missing user for "%s"\n' % path)
-            else:
-                if not is_superuser():
-                    uid = -1 # Not root; assume we can't change user.
-                else:
+        # Implement tar/rsync-like semantics; see bup-restore(1).
+        # FIXME: should we consider caching user/group name <-> id
+        # mappings, getgroups(), etc.?
+        uid = gid = -1 # By default, do nothing.
+        if is_superuser():
+            uid = self.uid
+            gid = self.gid
+            if not restore_numeric_ids:
+                if self.uid != 0 and self.user:
                     try:
                         uid = pwd.getpwnam(self.user)[2]
                     except KeyError:
-                        uid = -1
-                        fmt = 'ignoring unknown user %s for "%s"\n'
-                        add_error(fmt % (self.user, path))
-            if not self.group:
-                gid = -1
-                add_error('ignoring missing group for "%s"\n' % path)
-            else:
+                        pass # Fall back to self.uid.
+                if self.gid != 0 and self.group:
+                    try:
+                        gid = grp.getgrnam(self.group)[2]
+                    except KeyError:
+                        pass # Fall back to self.gid.
+        else: # not superuser - only consider changing the group/gid
+            user_gids = os.getgroups()
+            if self.gid in user_gids:
+                gid = self.gid
+            if not restore_numeric_ids and \
+                    self.gid != 0 and \
+                    self.group in [grp.getgrgid(x)[0] for x in user_gids]:
                 try:
                     gid = grp.getgrnam(self.group)[2]
                 except KeyError:
-                    gid = -1
-                    add_error('ignoring unknown group %s for "%s"\n'
-                              % (self.group, path))
+                    pass # Fall back to gid.
 
-        try:
-            os.lchown(path, uid, gid)
-        except OSError, e:
-            if e.errno == errno.EPERM:
-                add_error('lchown: %s' %  e)
-            else:
-                raise
+        if uid != -1 or gid != -1:
+            try:
+                os.lchown(path, uid, gid)
+            except OSError, e:
+                if e.errno == errno.EPERM:
+                    add_error('lchown: %s' %  e)
+                else:
+                    raise
 
         if _have_lchmod:
             os.lchmod(path, stat.S_IMODE(self.mode))

@@ -23,7 +23,8 @@ for `bup-index`(1).
 
 By default, metadata will be saved for every path.  However, if
 `--strip`, `--strip-path`, or `--graft` is specified, metadata will
-not be saved for the root directory (*/*).
+not be saved for the root directory (*/*).  See `bup-restore`(1) for
+more information about the handling of metadata.
 
 # OPTIONS
 

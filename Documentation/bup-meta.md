@@ -23,11 +23,18 @@ bup meta \--start-extract
 bup meta \--finish-extract
   ~ [-v] [-q] [\--numeric-ids] [-f *file*]
 
+bup meta \--edit
+  ~ [\--set-uid *uid* | \--set-gid *gid* | \--set-user *user* | \--set-group *group* | ...] \<*paths*...\>
+
 # DESCRIPTION
 
-`bup meta` either creates or extracts a metadata archive.  A metadata
-archive contains the metadata information (timestamps, ownership,
-access permissions, etc.) for a set of filesystem paths.
+`bup meta` creates, extracts, or otherwise manipulates metadata
+archives.  A metadata archive contains the metadata information
+(timestamps, ownership, access permissions, etc.) for a set of
+filesystem paths.
+
+See `bup-restore`(1) for a description of the way ownership metadata
+is restored.
 
 # OPTIONS
 
@@ -61,6 +68,10 @@ access permissions, etc.) for a set of filesystem paths.
     `--start-extract`.  The archive will be read from standard input
     unless `--file` is specified.
 
+\--edit
+:   Edit metadata archives.  The result will be written to standard
+    output unless `--file` is specified.
+
 -f, \--file=*filename*
 :   Read the metadata archive from *filename* or write it to
     *filename* as appropriate.  If *filename* is "-", then read from
@@ -70,7 +81,7 @@ access permissions, etc.) for a set of filesystem paths.
 :   Recursively descend into subdirectories during `--create`.
 
 \--numeric-ids
-:   Apply numeric user and group IDs (rather than text IDs) during
+:   Apply numeric IDs (user, group, etc.) rather than names during
     `--extract` or `--finish-extract`.
 
 \--symlinks
@@ -82,6 +93,24 @@ access permissions, etc.) for a set of filesystem paths.
 \--paths
 :   Record pathnames when creating an archive.  This option is enabled
     by default.  Specify `--no-paths` to disable it.
+
+\--set-uid=*uid*
+:   Set the metadata uid to the integer *uid* during `--edit`.
+
+\--set-gid=*gid*
+:   Set the metadata gid to the integer *gid* during `--edit`.
+
+\--set-user=*user*
+:   Set the metadata user to *user* during `--edit`.
+
+\--unset-user
+:   Remove the metadata user during `--edit`.
+
+\--set-group=*group*
+:   Set the metadata user to *group* during `--edit`.
+
+\--unset-group
+:   Remove the metadata group during `--edit`.
 
 -v, \--verbose
 :   Be more verbose (can be used more than once).
@@ -106,6 +135,10 @@ access permissions, etc.) for a set of filesystem paths.
     $ bup meta --start-extract -f ../etc.meta
     ...fill in all regular file contents using some other tool...
     $ bup meta --finish-extract -f ../etc.meta
+
+    # Change user/uid to root.
+    $ bup meta --edit --set-uid 0 --set-user root \
+        src.meta > dest.meta
 
 # BUGS
 

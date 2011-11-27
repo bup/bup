@@ -45,12 +45,30 @@ the children will be restored to a subdirectory of the
 current directory.  See the EXAMPLES section to see how
 this works.
 
+Whenever path metadata is available, `bup restore` will attempt to
+restore it.  When restoring ownership, bup implements tar/rsync-like
+semantics.  It will not try to restore the user unless running as
+root, and it will fall back to the numeric uid or gid whenever the
+metadata contains a user or group name that doesn't exist on the
+current system.  The use of user and group names can be disabled via
+`--numeric-ids` (which can be important when restoring a chroot, for
+example), and as a special case, a uid or gid of 0 will never be
+remapped by name.
+
+Note that during the restoration process, access to data within the
+restore tree may be more permissive than it was in the original
+source.  Unless security is irrelevant, you must restore to a private
+subdirectory, and then move the resulting tree to its final position.
+See the EXAMPLES section for a demonstration.
 
 # OPTIONS
 
 -C, \--outdir=*outdir*
 :   create and change to directory *outdir* before
     extracting the files.
+
+\--numeric-ids
+:   restore numeric IDs (user, group, etc.) rather than names.
 
 -v, \--verbose
 :   increase log output.  Given once, prints every
@@ -97,6 +115,17 @@ Restore the whole directory (trailing slash):
     test2
     test2/passwd
     test2/profile
+
+Restore a tree without risk of unauthorized access:
+
+    # mkdir --mode 0700 restore-tmp
+
+    # bup restore -C restore-tmp /somebackup/latest/foo
+    Restoring: 42, done.
+
+    # mv restore-tmp/foo somewhere
+
+    # rmdir restore-tmp
     
 
 # SEE ALSO

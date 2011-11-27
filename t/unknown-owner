@@ -1,0 +1,22 @@
+#!/usr/bin/env python
+
+import grp
+import pwd
+import sys
+
+def usage():
+    print >> sys.stderr, "Usage: unknown-owners (--user | --group)"
+
+if len(sys.argv) != 2:
+    usage()
+    sys.exit(1)
+
+if sys.argv[1] == '--user':
+    max_name_len = max([len(x.pw_name) for x in pwd.getpwall()])
+elif sys.argv[1] == '--group':
+    max_name_len = max([len(x.gr_name) for x in grp.getgrall()])
+else:
+    usage()
+    sys.exit(1)
+
+print 'x' * (max_name_len + 1)

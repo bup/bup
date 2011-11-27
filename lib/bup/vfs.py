@@ -386,7 +386,7 @@ class Dir(Node):
 
     def __init__(self, *args):
         Node.__init__(self, *args)
-        self._metadata_sha = None
+        self._metadata = None
 
     def _mksubs(self):
         self._subs = {}
@@ -399,7 +399,8 @@ class Dir(Node):
         assert(type == 'tree')
         for (mode,mangled_name,sha) in git.tree_decode(''.join(it)):
             if mangled_name == '.bupm':
-                self._metadata_sha = sha
+                self._metadata = \
+                    File(self, mangled_name, mode, sha, git.BUP_NORMAL)
                 continue
             name = mangled_name
             (name,bupmode) = git.demangle_name(mangled_name)
@@ -411,6 +412,11 @@ class Dir(Node):
                 self._subs[name] = Symlink(self, name, sha, bupmode)
             else:
                 self._subs[name] = File(self, name, mode, sha, bupmode)
+
+    def metadata_file(self):
+        if self._subs == None:
+            self._mksubs()
+        return self._metadata
 
 
 class CommitDir(Node):
