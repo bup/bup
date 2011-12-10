@@ -680,7 +680,7 @@ static PyObject *bup_get_linux_file_attr(PyObject *self, PyObject *args)
 static PyObject *bup_set_linux_file_attr(PyObject *self, PyObject *args)
 {
     int rc;
-    unsigned long attr;
+    unsigned long orig_attr, attr;
     char *path;
     int fd;
 
@@ -698,6 +698,15 @@ static PyObject *bup_set_linux_file_attr(PyObject *self, PyObject *args)
     | EXT2_IMMUTABLE_FL | EXT3_JOURNAL_DATA_FL | EXT2_SECRM_FL | EXT2_NOTAIL_FL
     | EXT2_UNRM_FL | EXT2_NOATIME_FL | EXT2_DIRSYNC_FL | EXT2_SYNC_FL
     | EXT2_TOPDIR_FL;
+
+    // The extents flag can't be removed, so don't (see chattr(1) and chattr.c).
+    rc = ioctl(fd, EXT2_IOC_GETFLAGS, &orig_attr);
+    if (rc == -1)
+    {
+        close(fd);
+        return PyErr_SetFromErrnoWithFilename(PyExc_OSError, path);
+    }
+    attr |= (orig_attr & EXT4_EXTENTS_FL);
 
     rc = ioctl(fd, FS_IOC_SETFLAGS, &attr);
     if (rc == -1)
