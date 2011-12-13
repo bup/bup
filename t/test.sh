@@ -228,6 +228,9 @@ WVSTART "save/git-fsck"
 WVSTART "restore"
 rm -rf buprestore.tmp
 WVFAIL bup restore boink
+touch $TOP/$D/$D
+bup index -u $TOP/$D
+bup save -n master /
 WVPASS bup restore -C buprestore.tmp "/master/latest/$TOP/$D"
 WVPASSEQ "$(ls buprestore.tmp)" "bupdata.tmp"
 rm -rf buprestore.tmp
