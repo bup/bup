@@ -173,7 +173,10 @@ class Node:
         self._subs = None
 
     def __cmp__(a, b):
-        return cmp(a and a.name or None, b and b.name or None)
+        if a is b:
+            return 0
+        return (cmp(a and a.parent, b and b.parent) or
+                cmp(a and a.name, b and b.name))
 
     def __iter__(self):
         return iter(self.subs())
