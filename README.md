@@ -76,7 +76,7 @@ Reasons you might want to avoid bup
    1.5.3.1.
  
  - It currently only works on Linux, MacOS X >= 10.4,
-   Solaris, or Windows (with Cygwin).  Patches to support
+   NetBSD, Solaris, or Windows (with Cygwin).  Patches to support
    other platforms are welcome.
    
    
@@ -123,7 +123,9 @@ Binary packages of bup are known to be built for the following OSes:
     http://packages.debian.org/search?searchon=names&keywords=bup
  - Ubuntu:
     http://packages.ubuntu.com/search?searchon=names&keywords=bup
- - NetBSD
+ - pkgsrc (NetBSD, Dragonfly, and others)
+    http://pkgsrc.se/sysutils/bup
+    http://cvsweb.netbsd.org/bsdweb.cgi/pkgsrc/sysutils/bup/
 
 
 Using bup
@@ -209,6 +211,27 @@ Notes on FreeBSD
 
 - In order to compile the documentation, you need pandoc which can be found in
   the port named 'hs-pandoc' in the 'textproc' section.
+
+
+Notes on NetBSD/pkgsrc
+----------------------
+
+ - See pkgsrc/sysutils/bup, which should be the most recent stable
+   release and includes man pages.  It also has a reasonable set of
+   dependencies (git, par2, py-fuse-bindings).
+
+ - The "fuse-python" package referred to is hard to locate, and is a
+   separate tarball for the python language binding distributed by the
+   fuse project on sourceforge.  It is available as
+   pkgsrc/filesystems/py-fuse-bindings and on NetBSD 5, "bup fuse"
+   works with it.
+
+ - "bup fuse" presents every directory/file as inode 0.  The directory
+   traversal code ("fts") in NetBSD's libc will interpret this as a
+   cycle and error out, so "ls -R" and "find" will not work.
+
+ - It is not clear if extended attribute and POSIX acl support does
+   anything useful.
 
 
 How it works
