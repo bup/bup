@@ -159,7 +159,7 @@ def _clean_up_extract_path(p):
 # must be unique, and must *never* be changed.
 _rec_tag_end = 0
 _rec_tag_path = 1
-_rec_tag_common = 2           # times, owner, group, type, perms, etc.
+_rec_tag_common = 2           # times, user, group, type, perms, etc.
 _rec_tag_symlink_target = 3
 _rec_tag_posix1e_acl = 4      # getfacl(1), setfacl(1), etc.
 _rec_tag_nfsv4_acl = 5        # intended to supplant posix1e acls?
@@ -190,9 +190,9 @@ class Metadata:
         self.atime = st.st_atime
         self.mtime = st.st_mtime
         self.ctime = st.st_ctime
-        self.owner = self.group = ''
+        self.user = self.group = ''
         try:
-            self.owner = pwd.getpwuid(st.st_uid)[0]
+            self.user = pwd.getpwuid(st.st_uid)[0]
         except KeyError, e:
             add_error("no user name for id %s '%s'" % (st.st_gid, path))
         try:
@@ -207,7 +207,7 @@ class Metadata:
         result = vint.pack('VVsVsVvVvVvV',
                            self.mode,
                            self.uid,
-                           self.owner,
+                           self.user,
                            self.gid,
                            self.group,
                            self.rdev,
@@ -223,7 +223,7 @@ class Metadata:
         data = vint.read_bvec(port)
         (self.mode,
          self.uid,
-         self.owner,
+         self.user,
          self.gid,
          self.group,
          self.rdev,
@@ -322,25 +322,25 @@ class Metadata:
                 else:
                     raise
 
-        # Don't try to restore owner unless we're root, and even
-        # if asked, don't try to restore the owner or group if
+        # Don't try to restore user unless we're root, and even
+        # if asked, don't try to restore the user or group if
         # it doesn't exist in the system db.
         uid = self.uid
         gid = self.gid
         if not restore_numeric_ids:
-            if not self.owner:
+            if not self.user:
                 uid = -1
-                add_error('ignoring missing owner for "%s"\n' % path)
+                add_error('ignoring missing user for "%s"\n' % path)
             else:
                 if not is_superuser():
-                    uid = -1 # Not root; assume we can't change owner.
+                    uid = -1 # Not root; assume we can't change user.
                 else:
                     try:
-                        uid = pwd.getpwnam(self.owner)[2]
+                        uid = pwd.getpwnam(self.user)[2]
                     except KeyError:
                         uid = -1
-                        fmt = 'ignoring unknown owner %s for "%s"\n'
-                        add_error(fmt % (self.owner, path))
+                        fmt = 'ignoring unknown user %s for "%s"\n'
+                        add_error(fmt % (self.user, path))
             if not self.group:
                 gid = -1
                 add_error('ignoring missing group for "%s"\n' % path)
@@ -697,7 +697,7 @@ all_fields = frozenset(['path',
                         'size',
                         'uid',
                         'gid',
-                        'owner',
+                        'user',
                         'group',
                         'atime',
                         'mtime',
@@ -709,9 +709,9 @@ all_fields = frozenset(['path',
 
 def summary_str(meta):
     mode_val = xstat.mode_str(meta.mode)
-    owner_val = meta.owner
-    if not owner_val:
-        owner_val = str(meta.uid)
+    user_val = meta.user
+    if not user_val:
+        user_val = str(meta.uid)
     group_val = meta.group
     if not group_val:
         group_val = str(meta.gid)
@@ -726,7 +726,7 @@ def summary_str(meta):
     if stat.S_ISLNK(meta.mode):
         path_val += ' -> ' + meta.symlink_target
     return '%-10s %-11s %11s %16s %s' % (mode_val,
-                                         owner_val + "/" + group_val,
+                                         user_val + "/" + group_val,
                                          size_or_dev_val,
                                          time_val,
                                          path_val)
@@ -758,8 +758,8 @@ def detailed_str(meta, fields = None):
         result.append('uid: ' + str(meta.uid))
     if 'gid' in fields:
         result.append('gid: ' + str(meta.gid))
-    if 'owner' in fields:
-        result.append('owner: ' + meta.owner)
+    if 'user' in fields:
+        result.append('user: ' + meta.user)
     if 'group' in fields:
         result.append('group: ' + meta.group)
     if 'atime' in fields:
