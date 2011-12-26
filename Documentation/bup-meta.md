@@ -37,7 +37,7 @@ access permissions, etc.) for a set of filesystem paths.
 
 -t, \--list
 :   Display information about the metadata in an archive.  Read the
-    archive from standard output unless `--file` is specified.
+    archive from standard input unless `--file` is specified.
 
 -x, \--extract
 :   Extract a metadata archive.  Conceptually, perform `--start-extract`

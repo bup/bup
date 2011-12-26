@@ -15,10 +15,15 @@ from bup.helpers import handle_ctrl_c, log, saved_errors
 
 
 def open_input(name):
-    if name != '-':
-        return open(name, 'r')
-    else:
+    if not name or name == '-':
         return sys.stdin
+    return open(name, 'r')
+
+
+def open_output(name):
+    if not name or name == '-':
+        return sys.stdout
+    return open(name, 'w')
 
 
 optspec = """
@@ -61,10 +66,7 @@ if action_count == 0:
 if opt.create:
     if len(remainder) < 1:
         o.fatal("no paths specified for create")
-    if opt.file != '-':
-        output_file = open(opt.file, 'w')
-    else:
-        output_file = sys.stdout
+    output_file = open_output(opt.file)
     metadata.save_tree(output_file,
                        remainder,
                        recurse=opt.recurse,
