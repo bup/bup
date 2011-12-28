@@ -45,10 +45,11 @@ longer one, but the short one can be omitted.
 Long option flags are used as the option's key for the OptDict produced when
 parsing options.
 
-When the flag definition is ended with an equal sign, the option takes one
-string as an argument. Otherwise, the option does not take an argument and
-corresponds to a boolean flag that is true when the option is given on the
-command line.
+When the flag definition is ended with an equal sign, the option takes
+one string as an argument, and that string will be converted to an
+integer when possible. Otherwise, the option does not take an argument
+and corresponds to a boolean flag that is true when the option is
+given on the command line.
 
 The option's description is found at the right of its flags definition, after
 one or more spaces. The description ends at the end of the line. If the
