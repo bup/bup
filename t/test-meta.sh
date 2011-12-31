@@ -91,6 +91,13 @@ WVSTART 'meta - general'
 (
     cd "$TOP/bupmeta.tmp"
     test-src-create-extract
+
+    # Test a top-level file (not dir).
+    touch src-file
+    WVPASS bup meta -cf src-file.meta src-file
+    mkdir dest
+    cd dest
+    WVPASS bup meta -xf ../src-file.meta
 )
 
 # Root-only tests: ACLs, Linux attr, Linux xattr, etc.

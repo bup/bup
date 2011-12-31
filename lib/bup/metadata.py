@@ -687,7 +687,7 @@ def _set_up_path(meta, create_symlinks=True):
         parent = os.path.dirname(meta.path)
         if parent:
             mkdirp(parent)
-            meta.create_path(meta.path, create_symlinks=create_symlinks)
+        meta.create_path(meta.path, create_symlinks=create_symlinks)
 
 
 all_fields = frozenset(['path',
