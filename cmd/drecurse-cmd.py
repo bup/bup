@@ -19,7 +19,7 @@ if len(extra) != 1:
 
 excluded_paths = drecurse.parse_excludes(flags)
 
-it = drecurse.recursive_dirlist(extra, opt.xdev, excluded_paths)
+it = drecurse.recursive_dirlist(extra, opt.xdev, excluded_paths=excluded_paths)
 if opt.profile:
     import cProfile
     def do_it():
