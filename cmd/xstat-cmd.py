@@ -19,7 +19,7 @@ def fstimestr(fstime):
 
 
 optspec = """
-bup pathinfo [OPTION ...] <PATH ...>
+bup xstat pathinfo [OPTION ...] <PATH ...>
 --
 v,verbose       increase log output (can be used more than once)
 q,quiet         don't show progress meter
