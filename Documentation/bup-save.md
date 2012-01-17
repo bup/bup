@@ -88,8 +88,8 @@ for `bup-index`(1).
     "bup save -n chroot --strip /root/chroot" would be saved
     as */etc*.
     
---strip-prefix=*path-prefix*
-:   strips the given path-prefix *path-prefix* from all
+--strip-path=*path-prefix*
+:   strips the given path prefix *path-prefix* from all
     files and directories.
     
     A directory */root/chroots/webserver* saved with
