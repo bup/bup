@@ -144,7 +144,8 @@ else:
     if readline:
         readline.set_completer_delims(' \t\n\r/')
         readline.set_completer(completer)
-        readline.parse_and_bind("tab: complete")
+        readline.parse_and_bind('bind ^I rl_complete')
+        readline.parse_and_bind('tab: complete')
         init_readline_vars()
     lines = inputiter()
 
