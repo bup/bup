@@ -47,7 +47,11 @@ for `bup-index`(1).
     (Thus, you can continually create new backup sets with
     the same name, and later view the history of that
     backup set to see how files have changed over time.)
-    
+
+-d, --date=*date*
+:   specify the date of the backup, in seconds since the epoch, instead
+    of the current time.
+
 -f, --indexfile=*indexfile*
 :   use a different index filename instead of
     `~/.bup/bupindex`.
