@@ -4,7 +4,18 @@ from wvtest import *
 
 @wvtest
 def test_optdict():
-    d = options.OptDict()
+    d = options.OptDict({
+        'x': ('x', False),
+        'y': ('y', False),
+        'z': ('z', False),
+        'other_thing': ('other_thing', False),
+        'no_other_thing': ('other_thing', True),
+        'no_z': ('z', True),
+        'no_smart': ('smart', True),
+        'smart': ('smart', False),
+        'stupid': ('smart', True),
+        'no_smart': ('smart', False),
+    })
     WVPASS('foo')
     d['x'] = 5
     d['y'] = 4
@@ -15,12 +26,7 @@ def test_optdict():
     WVPASSEQ(d.z, 99)
     WVPASSEQ(d.no_z, False)
     WVPASSEQ(d.no_other_thing, True)
-    try:
-        print d.p
-    except:
-        WVPASS("invalid args don't match")
-    else:
-        WVFAIL("exception expected")
+    WVEXCEPT(KeyError, lambda: d.p)
 
 
 invalid_optspec0 = """
@@ -60,7 +66,8 @@ deftest2=  a default option with [1] default [2]
 deftest3=  a default option with [3] no actual default
 deftest4=  a default option with [[square]]
 deftest5=  a default option with "correct" [[square]
-no-stupid  disable stupidity
+s,smart,no-stupid  disable stupidity
+x,extended,no-simple   extended mode [2]
 #,compress=  set compression level [5]
 """
 
@@ -80,9 +87,17 @@ def test_options():
               opt.neveropt), (3,1,7,19,1,None))
     WVPASSEQ((opt.deftest1, opt.deftest2, opt.deftest3, opt.deftest4,
               opt.deftest5), (1,2,None,None,'[square'))
-    WVPASSEQ((opt.stupid, opt.no_stupid), (True, False))
+    WVPASSEQ((opt.stupid, opt.no_stupid), (True, None))
+    WVPASSEQ((opt.smart, opt.no_smart), (None, True))
+    WVPASSEQ((opt.x, opt.extended, opt.no_simple), (2,2,2))
+    WVPASSEQ((opt.no_x, opt.no_extended, opt.simple), (False,False,False))
     WVPASSEQ(opt['#'], 7)
     WVPASSEQ(opt.compress, 7)
 
-    (opt,flags,extra) = o.parse(['--onlylong', '-t', '--no-onlylong'])
+    (opt,flags,extra) = o.parse(['--onlylong', '-t', '--no-onlylong',
+                                 '--smart', '--simple'])
     WVPASSEQ((opt.t, opt.q, opt.onlylong), (1, None, 0))
+    WVPASSEQ((opt.stupid, opt.no_stupid), (False, True))
+    WVPASSEQ((opt.smart, opt.no_smart), (True, False))
+    WVPASSEQ((opt.x, opt.extended, opt.no_simple), (0,0,0))
+    WVPASSEQ((opt.no_x, opt.no_extended, opt.simple), (True,True,True))

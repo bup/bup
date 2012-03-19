@@ -61,25 +61,41 @@ space. The text on that line will be output after an empty line.
 """
 import sys, os, textwrap, getopt, re, struct
 
-class OptDict:
+
+def _invert(v, invert):
+    if invert:
+        return not v
+    return v
+
+
+def _remove_negative_kv(k, v):
+    if k.startswith('no-') or k.startswith('no_'):
+        return k[3:], not v
+    return k,v
+
+
+class OptDict(object):
     """Dictionary that exposes keys as attributes.
 
-    Keys can bet set or accessed with a "no-" or "no_" prefix to negate the
+    Keys can be set or accessed with a "no-" or "no_" prefix to negate the
     value.
     """
-    def __init__(self):
+    def __init__(self, aliases):
         self._opts = {}
+        self._aliases = aliases
+
+    def _unalias(self, k):
+        k, reinvert = _remove_negative_kv(k, False)
+        k, invert = self._aliases[k]
+        return k, invert ^ reinvert
 
     def __setitem__(self, k, v):
-        if k.startswith('no-') or k.startswith('no_'):
-            k = k[3:]
-            v = not v
-        self._opts[k] = v
+        k, invert = self._unalias(k)
+        self._opts[k] = _invert(v, invert)
 
     def __getitem__(self, k):
-        if k.startswith('no-') or k.startswith('no_'):
-            return not self._opts[k[3:]]
-        return self._opts[k]
+        k, invert = self._unalias(k)
+        return _invert(self._opts[k], invert)
 
     def __getattr__(self, k):
         return self[k]
@@ -104,15 +120,6 @@ def _atoi(v):
         return int(v or 0)
     except ValueError:
         return 0
-
-
-def _remove_negative_kv(k, v):
-    if k.startswith('no-') or k.startswith('no_'):
-        return k[3:], not v
-    return k,v
-
-def _remove_negative_k(k):
-    return _remove_negative_kv(k, None)[0]
 
 
 def _tty_width():
@@ -148,7 +155,7 @@ class Options:
         self._longopts = ['help', 'usage']
         self._hasparms = {}
         self._defaults = {}
-        self._usagestr = self._gen_usage()
+        self._usagestr = self._gen_usage()  # this also parses the optspec
 
     def _gen_usage(self):
         out = []
@@ -178,16 +185,17 @@ class Options:
                     has_parm = 0
                 g = re.search(r'\[([^\]]*)\]$', extra)
                 if g:
-                    defval = g.group(1)
+                    defval = _intify(g.group(1))
                 else:
                     defval = None
                 flagl = flags.split(',')
                 flagl_nice = []
+                flag_main, invert_main = _remove_negative_kv(flagl[0], False)
+                self._defaults[flag_main] = _invert(defval, invert_main)
                 for _f in flagl:
-                    f,dvi = _remove_negative_kv(_f, _intify(defval))
-                    self._aliases[f] = _remove_negative_k(flagl[0])
+                    f,invert = _remove_negative_kv(_f, 0)
+                    self._aliases[f] = (flag_main, invert_main ^ invert)
                     self._hasparms[f] = has_parm
-                    self._defaults[f] = dvi
                     if f == '#':
                         self._shortopts += '0123456789'
                         flagl_nice.append('-#')
@@ -196,7 +204,8 @@ class Options:
                         flagl_nice.append('-' + f)
                     else:
                         f_nice = re.sub(r'\W', '_', f)
-                        self._aliases[f_nice] = _remove_negative_k(flagl[0])
+                        self._aliases[f_nice] = (flag_main,
+                                                 invert_main ^ invert)
                         self._longopts.append(f + (has_parm and '=' or ''))
                         self._longopts.append('no-' + f)
                         flagl_nice.append('--' + _f)
@@ -240,32 +249,26 @@ class Options:
         except getopt.GetoptError, e:
             self.fatal(e)
 
-        opt = OptDict()
+        opt = OptDict(aliases=self._aliases)
 
         for k,v in self._defaults.iteritems():
-            k = self._aliases[k]
             opt[k] = v
 
         for (k,v) in flags:
             k = k.lstrip('-')
             if k in ('h', '?', 'help', 'usage'):
                 self.usage()
-            if k.startswith('no-'):
-                k = self._aliases[k[3:]]
-                v = 0
-            elif (self._aliases.get('#') and
+            if (self._aliases.get('#') and
                   k in ('0','1','2','3','4','5','6','7','8','9')):
                 v = int(k)  # guaranteed to be exactly one digit
-                k = self._aliases['#']
+                k, invert = self._aliases['#']
                 opt['#'] = v
             else:
-                k = self._aliases[k]
+                k, invert = opt._unalias(k)
                 if not self._hasparms[k]:
                     assert(v == '')
                     v = (opt._opts.get(k) or 0) + 1
                 else:
                     v = _intify(v)
-            opt[k] = v
-        for (f1,f2) in self._aliases.iteritems():
-            opt[f1] = opt._opts.get(f2)
+            opt[k] = _invert(v, invert)
         return (opt,flags,extra)
