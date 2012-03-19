@@ -1,4 +1,4 @@
-# Copyright 2011 Avery Pennarun and options.py contributors.
+# Copyright 2010-2012 Avery Pennarun and options.py contributors.
 # All rights reserved.
 #
 # (This license applies to this file but not necessarily the other files in
@@ -169,7 +169,7 @@ class Options:
                                        l.lstrip()))
                 last_was_option = False
             elif l:
-                (flags, extra) = l.split(' ', 1)
+                (flags,extra) = (l + ' ').split(' ', 1)
                 extra = extra.strip()
                 if flags.endswith('='):
                     flags = flags[:-1]

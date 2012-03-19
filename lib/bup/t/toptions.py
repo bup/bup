@@ -1,6 +1,7 @@
 from bup import options
 from wvtest import *
 
+
 @wvtest
 def test_optdict():
     d = options.OptDict()
@@ -20,6 +21,28 @@ def test_optdict():
         WVPASS("invalid args don't match")
     else:
         WVFAIL("exception expected")
+
+
+invalid_optspec0 = """
+"""
+
+
+invalid_optspec1 = """
+prog <whatever>
+"""
+
+
+invalid_optspec2 = """
+--
+x,y
+"""
+
+
+@wvtest
+def test_invalid_optspec():
+    WVPASS(options.Options(invalid_optspec0).parse([]))
+    WVPASS(options.Options(invalid_optspec1).parse([]))
+    WVPASS(options.Options(invalid_optspec2).parse([]))
 
 
 optspec = """
