@@ -146,6 +146,13 @@ if (opt.fake_valid or opt.fake_invalid) and not opt.update:
 if opt.fake_valid and opt.fake_invalid:
     o.fatal('--fake-valid is incompatible with --fake-invalid')
 
+# FIXME: remove this once we account for timestamp races, i.e. index;
+# touch new-file; index.  It's possible for this to happen quickly
+# enough that new-file ends up with the same timestamp as the first
+# index, and then bup will ignore it.
+tick_start = time.time()
+time.sleep(1 - (tick_start - int(tick_start)))
+
 git.check_repo_or_die()
 indexfile = opt.indexfile or git.repo('bupindex')
 
