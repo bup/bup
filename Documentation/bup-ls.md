@@ -8,7 +8,7 @@ bup-ls - list the contents of a bup repository
 
 # SYNOPSIS
 
-bup ls [-s] [-a] <paths...>
+bup ls [-s] [-a] \<paths...\>
 
 # DESCRIPTION
 
@@ -38,10 +38,10 @@ you can view its contents using `bup join` or `git show`.
 
 # OPTIONS
 
--s, --hash
+-s, \--hash
 :   show hash for each file/directory.
 
--a, --all
+-a, \--all
 :   show hidden files.
 
 # EXAMPLE

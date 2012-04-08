@@ -8,10 +8,10 @@ bup-split - save individual files to bup backup sets
 
 # SYNOPSIS
 
-bup split [-r *host*:*path*] <-b|-t|-c|-n *name*> [-v] [-q]
-  [--bench] [--max-pack-size=*bytes*] [-#]
-  [--max-pack-objects=*n*] [--fanout=*count]
-  [--git-ids] [--keep-boundaries] [filenames...]
+bup split [-r *host*:*path*] \<-b|-t|-c|-n *name*\> [-v] [-q]
+  [\--bench] [\--max-pack-size=*bytes*] [-#]
+  [\--max-pack-objects=*n*] [\--fanout=*count]
+  [\--git-ids] [\--keep-boundaries] [filenames...]
 
 # DESCRIPTION
 
@@ -43,7 +43,7 @@ To get the data back, use `bup-join`(1).
 
 # OPTIONS
 
--r, --remote=*host*:*path*
+-r, \--remote=*host*:*path*
 :   save the backup set to the given remote server.  If
     *path* is omitted, uses the default path on the remote
     server (you still need to include the ':').  The connection to the
@@ -51,17 +51,17 @@ To get the data back, use `bup-join`(1).
     or private key to use for the SSH connection, we recommend you use the
     `~/.ssh/config` file.
 
--b, --blobs
+-b, \--blobs
 :   output a series of git blob ids that correspond to the
     chunks in the dataset.
 
--t, --tree
+-t, \--tree
 :   output the git tree id of the resulting dataset.
     
--c, --commit
+-c, \--commit
 :   output the git commit id of the resulting dataset.
 
--n, --name=*name*
+-n, \--name=*name*
 :   after creating the dataset, create a git branch
     named *name* so that it can be accessed using
     that name.  If *name* already exists, the new dataset
@@ -70,13 +70,13 @@ To get the data back, use `bup-join`(1).
     the same name, and later view the history of that
     dataset to see how it has changed over time.)
     
--q, --quiet
+-q, \--quiet
 :   disable progress messages.
 
--v, --verbose
+-v, \--verbose
 :   increase verbosity (can be used more than once).
 
---git-ids
+\--git-ids
 :   stdin is a list of git object ids instead of raw data.
     `bup split` will read the contents of each named git
     object (if it exists in the bup repository) and split
@@ -85,7 +85,7 @@ To get the data back, use `bup-join`(1).
     hashsplitting instead.  This option is probably most
     useful when combined with `--keep-boundaries`.
 
---keep-boundaries
+\--keep-boundaries
 :   if multiple filenames are given on the command line,
     they are normally concatenated together as if the
     content all came from a single file.  That is, the
@@ -97,43 +97,43 @@ To get the data back, use `bup-join`(1).
     only one of the files; the end of one of the input
     files always ends a blob.
 
---noop
+\--noop
 :   read the data and split it into blocks based on the "bupsplit"
     rolling checksum algorithm, but don't do anything with
     the blocks.  This is mostly useful for benchmarking.
 
---copy
-:   like --noop, but also write the data to stdout.  This
+\--copy
+:   like `--noop`, but also write the data to stdout.  This
     can be useful for benchmarking the speed of read+bupsplit+write
     for large amounts of data.
 
---bench
+\--bench
 :   print benchmark timings to stderr.
 
---max-pack-size=*bytes*
+\--max-pack-size=*bytes*
 :   never create git packfiles larger than the given number
     of bytes.  Default is 1 billion bytes.  Usually there
     is no reason to change this.
 
---max-pack-objects=*numobjs*
+\--max-pack-objects=*numobjs*
 :   never create git packfiles with more than the given
     number of objects.  Default is 200 thousand objects. 
     Usually there is no reason to change this.
     
---fanout=*numobjs*
+\--fanout=*numobjs*
 :   when splitting very large files, never put more than
     this number of git blobs in a single git tree.  Instead,
     generate a new tree and link to that.  Default is
     4096 objects per tree.
 
---bwlimit=*bytes/sec*
+\--bwlimit=*bytes/sec*
 :   don't transmit more than *bytes/sec* bytes per second
     to the server.  This is good for making your backups
     not suck up all your network bandwidth.  Use a suffix
     like k, M, or G to specify multiples of 1024,
     1024*1024, 1024*1024*1024 respectively.
 
--*#*, --compress=*#*
+-*#*, \--compress=*#*
 :   set the compression level to # (a value from 0-9, where
     9 is the highest and 0 is no compression).  The default
     is 1 (fast, loose compression)

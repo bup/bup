@@ -8,7 +8,7 @@ bup-random - generate a stream of random output
 
 # SYNOPSIS
 
-bup random [-S seed] [-fv] <numbytes>
+bup random [-S seed] [-fv] \<numbytes\>
 
 # DESCRIPTION
 
@@ -31,24 +31,24 @@ can be helpful when running microbenchmarks.
 
 # OPTIONS
 
-<numbytes>
+\<numbytes\>
 :   the number of bytes of data to generate.  Can be used
     with the suffices `k`, `M`, or `G` to indicate
     kilobytes, megabytes, or gigabytes, respectively.
     
--S, --seed=*seed*
+-S, \--seed=*seed*
 :   use the given value to seed the pseudorandom number
     generator.  The generated output stream will be
     identical for every stream seeded with the same value. 
     The default seed is 1.  A seed value of 0 is equivalent
     to 1.
 
--f, --force
+-f, \--force
 :   generate output even if stdout is a tty.  (Generating
     random data to a tty is generally considered
     ill-advised, but you can do if you really want.)
     
--v, --verbose
+-v, \--verbose
 :   print a progress message showing the number of bytes that
     has been output so far.
 

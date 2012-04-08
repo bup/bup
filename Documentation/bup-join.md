@@ -25,7 +25,7 @@ join` reads them from stdin instead.
 
 # OPTIONS
 
--r, --remote=*host*:*path*
+-r, \--remote=*host*:*path*
 :   Retrieves objects from the given remote repository
     instead of the local one. *path* may be blank, in which
     case the default remote repository is used.  The connection to the

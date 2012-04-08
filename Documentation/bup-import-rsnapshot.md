@@ -8,7 +8,7 @@ bup-import-rsnapshot - import a rsnapshot archive
 
 # SYNOPSIS
 
-bup import-rsnapshot [-n] <path to snapshot_root> [<backuptarget>]
+bup import-rsnapshot [-n] \<path to snapshot_root\> [\<backuptarget\>]
 
 # SYNOPSIS
 
@@ -21,7 +21,7 @@ or imports all backups only for a given backuptarget.
 
 # OPTIONS
 
--n,--dry-run
+-n, \--dry-run
 :   don't do anything just print out what would be done
 
 # EXAMPLES

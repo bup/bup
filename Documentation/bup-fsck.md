@@ -8,8 +8,8 @@ bup-fsck - verify or repair a bup repository
 
 # SYNOPSIS
 
-bup fsck [-r] [-g] [-v] [--quick] [-j *jobs*] [--par2-ok]
-[--disable-par2] [filenames...]
+bup fsck [-r] [-g] [-v] [\--quick] [-j *jobs*] [\--par2-ok]
+[\--disable-par2] [filenames...]
 
 # DESCRIPTION
 
@@ -44,18 +44,18 @@ site redundancy).
 
 # OPTIONS
 
--r, --repair
+-r, \--repair
 :   attempt to repair any damaged packs using
     existing recovery blocks.  (Requires `par2`(1).)
     
--g, --generate
+-g, \--generate
 :   generate recovery blocks for any packs that don't
     already have them.  (Requires `par2`(1).)
 
--v, --verbose
+-v, \--verbose
 :   increase verbosity (can be used more than once).
 
---quick
+\--quick
 :   don't run a full `git verify-pack` on each pack file;
     instead just check the final checksum.  This can cause
     a significant speedup with no obvious decrease in
@@ -63,7 +63,7 @@ site redundancy).
     option if you're paranoid.  Has no effect on packs that
     already have recovery information.
     
--j, --jobs=*numjobs*
+-j, \--jobs=*numjobs*
 :   maximum number of pack verifications to run at a time. 
     The optimal value for this option depends how fast your
     CPU can verify packs vs. your disk throughput.  If you
@@ -73,12 +73,12 @@ site redundancy).
     the number of CPU cores on your system.  You can
     experiment with this option to find the optimal value.
     
---par2-ok
+\--par2-ok
 :   immediately return 0 if `par2`(1) is installed and
     working, or 1 otherwise.  Do not actually check
     anything.
     
---disable-par2
+\--disable-par2
 :   pretend that `par2`(1) is not installed, and ignore all
     recovery blocks.
 

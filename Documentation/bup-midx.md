@@ -8,7 +8,7 @@ bup-midx - create a multi-index (.midx) file from several .idx files
 
 # SYNOPSIS
 
-bup midx [-o *outfile*] <-a|-f|*idxnames*...>
+bup midx [-o *outfile*] \<-a|-f|*idxnames*...\>
 
 # DESCRIPTION
 
@@ -21,26 +21,26 @@ commands.
 
 # OPTIONS
 
--o, --output=*filename.midx*
+-o, \--output=*filename.midx*
 :   use the given output filename for the .midx file. 
     Default is auto-generated.
     
--a, --auto
+-a, \--auto
 :   automatically generate new .midx files for any .idx
     files where it would be appropriate.
     
--f, --force
+-f, \--force
 :   force generation of a single new .midx file containing
     *all* your .idx files, even if other .midx files
     already exist.  This will result in the fastest backup
     performance, but may take a long time to run.
 
---dir=*packdir*
+\--dir=*packdir*
 :   specify the directory containing the .idx/.midx files
     to work with.  The default is $BUP_DIR/objects/pack and
     $BUP_DIR/indexcache/*.
 
---max-files
+\--max-files
 :   maximum number of .idx files to open at a time.  You
     can use this if you have an especially small number of file
     descriptors available, so that midx can complete
@@ -48,7 +48,7 @@ commands.
     all your .idx files at once.  The default value of this
     option should be fine for most people.
     
---check
+\--check
 :   validate a .midx file by ensuring that all objects in
     its contained .idx files exist inside the .midx.  May
     be useful for debugging.

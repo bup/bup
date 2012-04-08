@@ -27,15 +27,15 @@ should unmount it with `umount`(8).
 
 # OPTIONS
 
--d, --debug
+-d, \--debug
 :   run in the foreground and print FUSE debug information
     for each request.
 
--f, --foreground
+-f, \--foreground
 :   run in the foreground and exit only when the filesystem
     is unmounted.
 
--o, --allow-other
+-o, \--allow-other
 :   permit other users to access the filesystem. Necessary for
     exporting the filesystem via Samba, for example.
 

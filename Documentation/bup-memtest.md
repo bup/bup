@@ -28,22 +28,22 @@ what causes an increase in the VmRSS column.
 
 # OPTIONS
 
--n, --number=*number*
+-n, \--number=*number*
 :   set the number of objects to search for during each
     cycle (ie. before printing a line of output)
     
--c, --cycles=*cycles*
+-c, \--cycles=*cycles*
 :   set the number of cycles (ie. the number of lines of
     output after the first).  The first line of output is
     always 0 (ie. the baseline before searching for any
     objects).
     
---ignore-midx
+\--ignore-midx
 :   ignore any `.midx` files created by `bup midx`.  This
     allows you to compare memory performance with and
     without using midx.
     
---existing
+\--existing
 :   search for existing objects instead of searching for
     random nonexistent ones.  This can greatly affect
     memory usage and performance.  Note that most of the

@@ -40,7 +40,7 @@ through /.tag/important as long as the tag is not deleted.
 
 # OPTIONS
 
--d, --delete
+-d, \--delete
 :   delete a tag
 
 # EXAMPLE

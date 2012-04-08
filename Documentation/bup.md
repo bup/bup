@@ -26,11 +26,11 @@ pages.
 
 # GLOBAL OPTIONS
 
---version
+\--version
 :   print bup's version number.  Equivalent to
     `bup-version`(1)
 
--d, --bup-dir=*BUP_DIR*
+-d, \--bup-dir=*BUP_DIR*
 :   use the given BUP_DIR parameter as the bup repository
     location, instead of reading it from the $BUP_DIR
     environment variable or using the default `~/.bup`

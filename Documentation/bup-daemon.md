@@ -17,10 +17,10 @@ socket and forks connections to `bup mux server` children.
 
 # OPTIONS
 
--l, --listen=*address*
+-l, \--listen=*address*
 :   the address or hostname to listen on
 
--p, --port=*port*
+-p, \--port=*port*
 :   the port to listen on
 
 # BUP

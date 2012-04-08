@@ -8,8 +8,8 @@ bup-save - create a new bup backup set
 
 # SYNOPSIS
 
-bup save [-r *host*:*path*] <-t|-c|-n *name*> [-#] [-f *indexfile*]
-[-v] [-q] [--smaller=*maxsize*] <paths...>
+bup save [-r *host*:*path*] \<-t|-c|-n *name*\> [-#] [-f *indexfile*]
+[-v] [-q] [\--smaller=*maxsize*] \<paths...\>;
 
 # DESCRIPTION
 
@@ -23,7 +23,7 @@ for `bup-index`(1).
 
 # OPTIONS
 
--r, --remote=*host*:*path*
+-r, \--remote=*host*:*path*
 :   save the backup set to the given remote server.  If
     *path* is omitted, uses the default path on the remote
     server (you still need to include the ':').  The connection to the
@@ -31,15 +31,15 @@ for `bup-index`(1).
     or private key to use for the SSH connection, we recommend you use the
     `~/.ssh/config` file.
 
--t, --tree
+-t, \--tree
 :   after creating the backup set, print out the git tree
     id of the resulting backup.
     
--c, --commit
+-c, \--commit
 :   after creating the backup set, print out the git commit
     id of the resulting backup.
 
--n, --name=*name*
+-n, \--name=*name*
 :   after creating the backup set, create a git branch
     named *name* so that the backup can be accessed using
     that name.  If *name* already exists, the new backup
@@ -48,23 +48,23 @@ for `bup-index`(1).
     the same name, and later view the history of that
     backup set to see how files have changed over time.)
 
--d, --date=*date*
+-d, \--date=*date*
 :   specify the date of the backup, in seconds since the epoch, instead
     of the current time.
 
--f, --indexfile=*indexfile*
+-f, \--indexfile=*indexfile*
 :   use a different index filename instead of
     `~/.bup/bupindex`.
 
--v, --verbose
+-v, \--verbose
 :   increase verbosity (can be used more than once).  With
     one -v, prints every directory name as it gets backed up.  With
     two -v, also prints every filename.
 
--q, --quiet
+-q, \--quiet
 :   disable progress messages.
 
---smaller=*maxsize*
+\--smaller=*maxsize*
 :   don't back up files >= *maxsize* bytes.  You can use
     this to run frequent incremental backups of your small
     files, which can usually be backed up quickly, and skip
@@ -74,37 +74,37 @@ for `bup-index`(1).
     specify multiples of 1024, 1024*1024, 1024*1024*1024
     respectively.
     
---bwlimit=*bytes/sec*
+\--bwlimit=*bytes/sec*
 :   don't transmit more than *bytes/sec* bytes per second
     to the server.  This is good for making your backups
     not suck up all your network bandwidth.  Use a suffix
     like k, M, or G to specify multiples of 1024,
     1024*1024, 1024*1024*1024 respectively.
     
---strip
+\--strip
 :   strips the path that is given from all files and directories.
     
     A directory */root/chroot/etc* saved with
-    "bup save -n chroot --strip /root/chroot" would be saved
+    "bup save -n chroot \--strip /root/chroot" would be saved
     as */etc*.
     
---strip-path=*path-prefix*
+\--strip-path=*path-prefix*
 :   strips the given path prefix *path-prefix* from all
     files and directories.
     
     A directory */root/chroots/webserver* saved with
-    "bup save -n webserver --strip-path=/root/chroots" would
+    "bup save -n webserver \--strip-path=/root/chroots" would
     be saved as */webserver/etc*
     
---graft=*old_path*=*new_path*
+\--graft=*old_path*=*new_path*
 :   a graft point *old_path*=*new_path* (can be used more than
     once).
 
     A directory */root/chroot/a/etc* saved with
-    "bup save -n chroots --graft /root/chroot/a/etc=/chroots/a"
+    "bup save -n chroots \--graft /root/chroot/a/etc=/chroots/a"
     would be saved as */chroots/a/etc*
 
--*#*, --compress=*#*
+-*#*, \--compress=*#*
 :   set the compression level to # (a value from 0-9, where
     9 is the highest and 0 is no compression).  The default
     is 1 (fast, loose compression)

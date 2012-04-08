@@ -8,7 +8,7 @@ bup-bloom - generates, regenerates, updates bloom filters
 
 # SYNOPSIS
 
-bup bloom [-d dir] [-o outfile] [-k hashes] [-c idxfile] [-f] [--ruin]
+bup bloom [-d dir] [-o outfile] [-k hashes] [-c idxfile] [-f] [\--ruin]
 
 # DESCRIPTION
 
@@ -18,30 +18,30 @@ updates or regenerates it as needed.
 
 # OPTIONS
 
---ruin
+\--ruin
 :   destroy bloom filters by setting the whole bitmask to
     zeros.  you really want to know what you are doing if
     run this and you want to delete the resulting bloom
     when you are done with it.
 
--f, --force
+-f, \--force
 :   don't update the existing bloom file; generate a new
     one from scratch.
 
--d, --dir=*directory*
+-d, \--dir=*directory*
 :   the directory, containing .idx files, to process.
     Defaults to $BUP_DIR/objects/pack
 
--o, --outfile=*outfile*
+-o, \--outfile=*outfile*
 :   the file to write the bloom filter to.  defaults to
     $dir/bup.bloom
 
--k, --hashes=*hashes*
+-k, \--hashes=*hashes*
 :   number of hash functions to use only 4 and 5 are valid.
     defaults to 5 for repositories < 2 TiB, or 4 otherwise.
     See comments in git.py for more on this value.
 
--c, --check=*idxfile*
+-c, \--check=*idxfile*
 :   checks the bloom file (counterintuitively outfile)
     against the specified .idx file, first checks that the
     bloom filter is claiming to contain the .idx, then

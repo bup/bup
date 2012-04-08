@@ -8,8 +8,8 @@ bup-damage - randomly destroy blocks of a file
 
 # SYNOPSIS
 
-bup damage [-n count] [-s maxsize] [--percent pct] [-S seed] 
-[--equal] <filenames...>
+bup damage [-n count] [-s maxsize] [\--percent pct] [-S seed]
+[\--equal] \<filenames...\>
 
 # DESCRIPTION
 
@@ -26,7 +26,7 @@ actually work.
 
 # OPTIONS
 
--n, --num=*numblocks*
+-n, \--num=*numblocks*
 :   the number of separate blocks to damage in each file
     (default 10).
     Note that it's possible for more than one damaged
@@ -34,7 +34,7 @@ actually work.
     so you might not damage as many recovery blocks as you
     expect.  If this is a problem, use `--equal`.
 
--s, --size=*maxblocksize*
+-s, \--size=*maxblocksize*
 :   the maximum size, in bytes, of each damaged block
     (default 1 unless `--percent` is specified).  Note that
     because of the way `bup-fsck`(1) works, a multi-byte
@@ -45,7 +45,7 @@ actually work.
     might be a problem, you should use the default damage
     size of one byte.
     
---percent=*maxblockpercent*
+\--percent=*maxblockpercent*
 :   the maximum size, in percent of the original file, of
     each damaged block.  If both `--size` and `--percent`
     are given, the maximum block size is the minimum of the
@@ -53,7 +53,7 @@ actually work.
     given block will never damage more than one or two
     `git-fsck`(1) recovery blocks.
     
--S, --seed=*randomseed*
+-S, \--seed=*randomseed*
 :   seed the random number generator with the given value. 
     If you use this option, your tests will be repeatable,
     since the damaged block offsets, sizes, and contents
@@ -62,7 +62,7 @@ actually work.
     in a loop and repeatedly test with different
     damage each time).
     
---equal
+\--equal
 :   instead of choosing random offsets for each damaged
     block, space the blocks equally throughout the file,
     starting at offset 0.  If you also choose a correct

@@ -8,7 +8,7 @@ bup-restore - extract files from a backup set
 
 # SYNOPSIS
 
-bup restore [--outdir=*outdir*] [-v] [-q] <paths...>
+bup restore [\--outdir=*outdir*] [-v] [-q] \<paths...\>;
 
 # DESCRIPTION
 
@@ -21,7 +21,7 @@ path are as follows:
 
 branch
 :   the name of the backup set to restore from; this
-    corresponds to the --name (-n) option to `bup save`.
+    corresponds to the `--name` (`-n`) option to `bup save`.
 
 revision
 :   the revision of the backup set to restore.  The
@@ -48,16 +48,16 @@ this works.
 
 # OPTIONS
 
--C, --outdir=*outdir*
+-C, \--outdir=*outdir*
 :   create and change to directory *outdir* before
     extracting the files.
 
--v, --verbose
+-v, \--verbose
 :   increase log output.  Given once, prints every
     directory as it is restored; given twice, prints every
     file and directory.
 
--q, --quiet
+-q, \--quiet
 :   don't show the progress meter.  Normally, is stderr is
     a tty, a progress display is printed that shows the
     total number of files restored.

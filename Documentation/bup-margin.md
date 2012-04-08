@@ -39,14 +39,14 @@ close to 160 bits.
 
 # OPTIONS
 
---predict
+\--predict
 :   Guess the offset into each index file where a
     particular object will appear, and report the maximum
     deviation of the correct answer from the guess.  This
     is potentially useful for tuning an interpolation
     search algorithm.
     
---ignore-midx
+\--ignore-midx
 :   don't use .midx files, use only .idx files.  This is
     only really useful when used with `--predict`.
 

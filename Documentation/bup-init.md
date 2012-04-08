@@ -19,7 +19,7 @@ initialized automatically whenever you run any bup command.
 
 # OPTIONS
 
--r, --remote=*host*:*path*
+-r, \--remote=*host*:*path*
 :   Initialize not only the local repository, but also the
     remote repository given by the *host* and *path*.  This is
     not necessary if you intend to back up to the default
