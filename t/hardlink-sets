@@ -1,0 +1,48 @@
+#!/usr/bin/env python
+
+import os, stat, sys
+
+# Print the full paths of all the files in each hardlink set
+# underneath one of the paths.  Separate sets with a blank line, sort
+# the paths within each set, and sort the sets by their first path.
+
+def usage():
+    print >> sys.stderr, "Usage: hardlink-sets <paths ...>"
+
+if len(sys.argv) < 2:
+    usage()
+    sys.exit(1)
+
+def on_walk_error(e):
+    raise e
+
+hardlink_set = {}
+
+for p in sys.argv[1:]:
+  for root, dirs, files in os.walk(p, onerror = on_walk_error):
+      for filename in files:
+          full_path = os.path.join(root, filename)
+          st = os.lstat(full_path)
+          if not stat.S_ISDIR(st.st_mode):
+              node = '%s:%s' % (st.st_dev, st.st_ino)
+              link_paths = hardlink_set.get(node)
+              if link_paths:
+                  link_paths.append(full_path)
+              else:
+                  hardlink_set[node] = [full_path]
+
+# Sort the link sets.
+for node, link_paths in hardlink_set.items():
+    link_paths.sort()
+
+first_set = True
+for link_paths in sorted(hardlink_set.values(), key = lambda x : x[0]):
+    if len(link_paths) > 1:
+        if first_set:
+            first_set = False
+        else:
+            print
+        for p in sorted(link_paths):
+            print p
+
+sys.exit(0)

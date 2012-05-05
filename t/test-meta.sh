@@ -9,6 +9,11 @@ bup()
     "$TOP/bup" "$@"
 }
 
+hardlink-sets()
+{
+    "$TOP/t/hardlink-sets" "$@"
+}
+
 # Very simple metadata tests -- create a test tree then check that bup
 # meta can reproduce the metadata correctly (according to bup xstat)
 # via create, extract, start-extract, and finish-extract.  The current
@@ -129,6 +134,15 @@ setup-test-tree()
     mkdir -p "$TOP/bupmeta.tmp/src"
     cp -pPR Documentation cmd lib t "$TOP/bupmeta.tmp"/src
 
+    # Add some hard links for the general tests.
+    (
+        cd "$TOP/bupmeta.tmp"/src
+        touch hardlink-target
+        ln hardlink-target hardlink-1
+        ln hardlink-target hardlink-2
+        ln hardlink-target hardlink-3
+    )
+
     # Regression test for metadata sort order.  Previously, these two
     # entries would sort in the wrong order because the metadata
     # entries were being sorted by mangled name, but the index isn't.
@@ -160,6 +174,125 @@ WVSTART 'metadata save/restore (general)'
     setup-test-tree
     cd "$TOP/bupmeta.tmp"
     test-src-save-restore
+)
+
+setup-hardlink-test()
+{
+    (
+        cd "$TOP/bupmeta.tmp"
+        rm -rf src src.bup
+        mkdir src src.bup
+        WVPASS bup init
+    )
+}
+
+hardlink-test-run-restore()
+{
+    force-delete src-restore
+    mkdir src-restore
+    WVPASS bup restore -C src-restore "/src/latest$(pwd)/"
+    WVPASS test -d src-restore/src
+}
+
+# Test hardlinks more carefully.
+WVSTART 'metadata save/restore (hardlinks)'
+(
+    set -e
+    set -x
+    export BUP_DIR="$TOP/bupmeta.tmp/src.bup"
+    force-delete "$TOP/bupmeta.tmp"
+    mkdir -p "$TOP/bupmeta.tmp"
+
+    cd "$TOP/bupmeta.tmp"
+
+    # Test trivial case - single hardlink.
+    setup-hardlink-test
+    (
+        cd "$TOP/bupmeta.tmp"/src
+        touch hardlink-target
+        ln hardlink-target hardlink-1
+    )
+    WVPASS bup index src
+    WVPASS bup save -t -n src src
+    hardlink-test-run-restore
+    WVPASS compare-trees src/ src-restore/src/
+
+    # Test hardlink changes between index runs.
+    #
+    setup-hardlink-test
+    cd "$TOP/bupmeta.tmp"/src
+    touch hardlink-target-a
+    touch hardlink-target-b
+    ln hardlink-target-a hardlink-b-1
+    ln hardlink-target-a hardlink-a-1
+    cd ..
+    WVPASS bup index -vv src
+    rm src/hardlink-b-1
+    ln src/hardlink-target-b src/hardlink-b-1
+    WVPASS bup index -vv src
+    WVPASS bup save -t -n src src
+    hardlink-test-run-restore
+    echo ./src/hardlink-a-1 > hardlink-sets.expected
+    echo ./src/hardlink-target-a >> hardlink-sets.expected
+    echo >> hardlink-sets.expected
+    echo ./src/hardlink-b-1 >> hardlink-sets.expected
+    echo ./src/hardlink-target-b >> hardlink-sets.expected
+    (cd src-restore && hardlink-sets .) > hardlink-sets.restored
+    WVPASS diff -u hardlink-sets.expected hardlink-sets.restored
+
+    # Test hardlink changes between index and save -- hardlink set [a
+    # b c d] changes to [a b] [c d].  At least right now bup should
+    # notice and recreate the latter.
+    setup-hardlink-test
+    cd "$TOP/bupmeta.tmp"/src
+    touch a
+    ln a b
+    ln a c
+    ln a d
+    cd ..
+    WVPASS bup index -vv src
+    rm src/c src/d
+    touch src/c
+    ln src/c src/d
+    WVPASS bup save -t -n src src
+    hardlink-test-run-restore
+    echo ./src/a > hardlink-sets.expected
+    echo ./src/b >> hardlink-sets.expected
+    echo >> hardlink-sets.expected
+    echo ./src/c >> hardlink-sets.expected
+    echo ./src/d >> hardlink-sets.expected
+    (cd src-restore && hardlink-sets .) > hardlink-sets.restored
+    WVPASS diff -u hardlink-sets.expected hardlink-sets.restored
+
+    # Test that we don't link outside restore tree.
+    setup-hardlink-test
+    cd "$TOP/bupmeta.tmp"
+    mkdir src/a src/b
+    touch src/a/1
+    ln src/a/1 src/b/1
+    WVPASS bup index -vv src
+    WVPASS bup save -t -n src src
+    force-delete src-restore
+    mkdir src-restore
+    WVPASS bup restore -C src-restore "/src/latest$(pwd)/src/a/"
+    WVPASS test -e src-restore/1
+    echo -n > hardlink-sets.expected
+    (cd src-restore && hardlink-sets .) > hardlink-sets.restored
+    WVPASS diff -u hardlink-sets.expected hardlink-sets.restored
+
+    # Test that we do link within separate sub-trees.
+    setup-hardlink-test
+    cd "$TOP/bupmeta.tmp"
+    mkdir src/a src/b
+    touch src/a/1
+    ln src/a/1 src/b/1
+    WVPASS bup index -vv src/a src/b
+    WVPASS bup save -t -n src src/a src/b
+    hardlink-test-run-restore
+    echo ./src/a/1 > hardlink-sets.expected
+    echo ./src/b/1 >> hardlink-sets.expected
+    (cd src-restore && hardlink-sets .) > hardlink-sets.restored
+    WVPASS diff -u hardlink-sets.expected hardlink-sets.restored
 )
 
 WVSTART 'meta --edit'

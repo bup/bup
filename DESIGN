@@ -387,7 +387,8 @@ Each .bupm entry contains a variable length sequence of records
 containing the metadata for the corresponding path.  Each record
 records one type of metadata.  Current types include a common record
 type (containing the normal stat information), a symlink target type,
-a POSIX1e ACL type, etc.  See metadata.py for the complete list.
+a hardlink target type, a POSIX1e ACL type, etc.  See metadata.py for
+the complete list.
 
 The .bupm file is optional, and when it's missing, bup will behave as
 it did before the addition of metadata, and restore files using the
@@ -396,6 +397,20 @@ tree information.
 The nice thing about this design is that you can walk through each
 file in a tree just by opening the tree and the .bupmeta contents, and
 iterating through both at the same time.
+
+Bup supports recording and restoring hardlinks, and it does so by
+tracking sets of paths that correspond to the same dev/inode pair when
+indexing.  This information is stored in an optional file with the
+same name as the index, but ending with ".hlink".
+
+If there are multiple index runs, and the hardlinks change, bup will
+notice this (within whatever subtree it is asked to reindex) and
+update the .hlink information accordingly.
+
+The current hardlink implementation will refuse to link to any file
+that resides outside the restore tree, and if the restore tree spans a
+different set of filesystems than the save tree, complete sets of
+hardlinks may not be restored.
 
 
 Filesystem Interaction

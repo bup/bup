@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import sys, stat, time, math
-from bup import hashsplit, git, options, index, client, metadata
+from bup import hashsplit, git, options, index, client, metadata, hlinkdb
 from bup.helpers import *
 from bup.hashsplit import GIT_MODE_TREE, GIT_MODE_FILE, GIT_MODE_SYMLINK
 
@@ -173,6 +173,7 @@ def progress_report(n):
 
 indexfile = opt.indexfile or git.repo('bupindex')
 r = index.Reader(indexfile)
+hlink_db = hlinkdb.HLinkDB(indexfile + '.hlink')
 
 def already_saved(ent):
     return ent.is_valid() and w.exists(ent.sha) and ent.sha
@@ -183,6 +184,11 @@ def wantrecurse_pre(ent):
 def wantrecurse_during(ent):
     return not already_saved(ent) or ent.sha_missing()
 
+def find_hardlink_target(hlink_db, ent):
+    if hlink_db and not stat.S_ISDIR(ent.mode) and ent.nlink > 1:
+        link_paths = hlink_db.node_paths(ent.dev, ent.ino)
+        if link_paths:
+            return link_paths[0]
 
 total = ftotal = 0
 if opt.progress:
@@ -283,7 +289,10 @@ for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse_during):
         git_info = (ent.gitmode, git_name, id)
         shalists[-1].append(git_info)
         sort_key = git.shalist_item_sort_key((ent.mode, file, id))
-        metalists[-1].append((sort_key, metadata.from_path(ent.name)))
+        hlink = find_hardlink_target(hlink_db, ent)
+        metalists[-1].append((sort_key,
+                              metadata.from_path(ent.name,
+                                                 hardlink_target=hlink)))
     else:
         if stat.S_ISREG(ent.mode):
             try:
@@ -323,7 +332,10 @@ for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse_during):
             git_info = (mode, git_name, id)
             shalists[-1].append(git_info)
             sort_key = git.shalist_item_sort_key((ent.mode, file, id))
-            metalists[-1].append((sort_key, metadata.from_path(ent.name)))
+            hlink = find_hardlink_target(hlink_db, ent)
+            metalists[-1].append((sort_key,
+                                  metadata.from_path(ent.name,
+                                                     hardlink_target=hlink)))
     if exists and wasmissing:
         count += oldsize
         subcount = 0

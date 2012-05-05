@@ -55,6 +55,17 @@ current system.  The use of user and group names can be disabled via
 example), and as a special case, a uid or gid of 0 will never be
 remapped by name.
 
+Hardlinks will also be restored when possible, but at least currently,
+no links will be made to targets outside the restore tree, and if the
+restore tree spans a different arrangement of filesystems from the
+save tree, some hardlink sets may not be completely restored.
+
+Also note that changing hardlink sets on disk between index and save
+may produce unexpected results.  With the current implementation, bup
+will attempt to recreate any given hardlink set as it existed at index
+time, even if all of the files in the set weren't still hardlinked
+(but were otherwise identical) at save time.
+
 Note that during the restoration process, access to data within the
 restore tree may be more permissive than it was in the original
 source.  Unless security is irrelevant, you must restore to a private

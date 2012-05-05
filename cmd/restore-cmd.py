@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import sys, stat
+import errno, sys, stat
 from bup import options, git, metadata, vfs
 from bup.helpers import *
 
@@ -54,6 +54,67 @@ def create_path(n, fullname, meta):
         elif stat.S_ISLNK(n.mode):
             os.symlink(n.readlink(), fullname)
 
+# Track a list of (restore_path, vfs_path, meta) triples for each path
+# we've written for a given hardlink_target.  This allows us to handle
+# the case where we restore a set of hardlinks out of order (with
+# respect to the original save call(s)) -- i.e. when we don't restore
+# the hardlink_target path first.  This data also allows us to attempt
+# to handle other situations like hardlink sets that change on disk
+# during a save, or between index and save.
+targets_written = {}
+
+def hardlink_compatible(target_path, target_vfs_path, target_meta,
+                        src_node, src_meta):
+    global top
+    if not os.path.exists(target_path):
+        return False
+    target_node = top.lresolve(target_vfs_path)
+    if src_node.mode != target_node.mode \
+            or src_node.atime != target_node.atime \
+            or src_node.mtime != target_node.mtime \
+            or src_node.ctime != target_node.ctime \
+            or src_node.hash != target_node.hash:
+        return False
+    if not src_meta.same_file(target_meta):
+        return False
+    return True
+
+
+def hardlink_if_possible(fullname, node, meta):
+    """Find a suitable hardlink target, link to it, and return true,
+    otherwise return false."""
+    # Expect the caller to handle restoring the metadata if
+    # hardlinking isn't possible.
+    global targets_written
+    target = meta.hardlink_target
+    target_versions = targets_written.get(target)
+    if target_versions:
+        # Check every path in the set that we've written so far for a match.
+        for (target_path, target_vfs_path, target_meta) in target_versions:
+            if hardlink_compatible(target_path, target_vfs_path, target_meta,
+                                   node, meta):
+                try:
+                    os.link(target_path, fullname)
+                    return True
+                except OSError, e:
+                    if e.errno != errno.EXDEV:
+                        raise
+    else:
+        target_versions = []
+        targets_written[target] = target_versions
+    full_vfs_path = node.fullname()
+    target_versions.append((fullname, full_vfs_path, meta))
+    return False
+
+
+def write_file_content(fullname, n):
+    outf = open(fullname, 'wb')
+    try:
+        for b in chunkyreader(n.open()):
+            outf.write(b)
+    finally:
+        outf.close()
+
 
 def do_node(top, n, meta=None):
     # meta will be None for dirs, and when there is no .bupm (i.e. no metadata)
@@ -69,22 +130,18 @@ def do_node(top, n, meta=None):
                 meta_stream = mfile.open()
                 meta = metadata.Metadata.read(meta_stream)
         print_info(n, fullname)
-        create_path(n, fullname, meta)
 
-        # Write content if appropriate (only regular files have content).
-        plain_file = False
-        if meta:
-            plain_file = stat.S_ISREG(meta.mode)
-        else:
-            plain_file = stat.S_ISREG(n.mode)
+        created_hardlink = False
+        if meta and meta.hardlink_target:
+            created_hardlink = hardlink_if_possible(fullname, n, meta)
 
-        if plain_file:
-            outf = open(fullname, 'wb')
-            try:
-                for b in chunkyreader(n.open()):
-                    outf.write(b)
-            finally:
-                outf.close()
+        if not created_hardlink:
+            create_path(n, fullname, meta)
+            if meta:
+                if stat.S_ISREG(meta.mode):
+                    write_file_content(fullname, n)
+            elif stat.S_ISREG(n.mode):
+                write_file_content(fullname, n)
 
         total_restored += 1
         plog('Restoring: %d\r' % total_restored)
@@ -94,7 +151,7 @@ def do_node(top, n, meta=None):
             if meta_stream and not stat.S_ISDIR(sub.mode):
                 m = metadata.Metadata.read(meta_stream)
             do_node(top, sub, m)
-        if meta:
+        if meta and not created_hardlink:
             meta.apply_to_path(fullname,
                                restore_numeric_ids=opt.numeric_ids)
     finally:

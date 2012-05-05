@@ -4,13 +4,12 @@
 #
 # This code is covered under the terms of the GNU Library General
 # Public License as described in the bup LICENSE file.
-import errno, os, sys, stat, time, pwd, grp, struct, re
+import errno, os, sys, stat, time, pwd, grp
 from cStringIO import StringIO
 from bup import vint, xstat
 from bup.drecurse import recursive_dirlist
 from bup.helpers import add_error, mkdirp, log, is_superuser
-from bup.xstat import utime, lutime, lstat
-import bup._helpers as _helpers
+from bup.xstat import utime, lutime
 
 try:
     import xattr
@@ -165,6 +164,7 @@ _rec_tag_posix1e_acl = 4      # getfacl(1), setfacl(1), etc.
 _rec_tag_nfsv4_acl = 5        # intended to supplant posix1e acls?
 _rec_tag_linux_attr = 6       # lsattr(1) chattr(1)
 _rec_tag_linux_xattr = 7      # getfattr(1) setfattr(1)
+_rec_tag_hardlink_target = 8 # hard link target path
 
 
 class ApplyError(Exception):
@@ -182,6 +182,9 @@ class Metadata:
     # for such an object, read() will return None.  This is used by
     # "bup save", for example, as a placeholder in cases where
     # from_path() fails.
+
+    # NOTE: if any relevant fields are added or removed, be sure to
+    # update same_file() below.
 
     ## Common records
 
@@ -207,6 +210,17 @@ class Metadata:
         except KeyError, e:
             pass
         self.mode = st.st_mode
+
+    def _same_common(self, other):
+        """Return true or false to indicate similarity in the hardlink sense."""
+        return self.uid == other.uid \
+            and self.gid == other.gid \
+            and self.rdev == other.rdev \
+            and self.atime == other.atime \
+            and self.mtime == other.mtime \
+            and self.ctime == other.ctime \
+            and self.user == other.user \
+            and self.group == other.group
 
     def _encode_common(self):
         if not self.mode:
@@ -411,6 +425,22 @@ class Metadata:
         self.symlink_target = vint.read_bvec(port)
 
 
+    ## Hardlink targets
+
+    def _add_hardlink_target(self, target):
+        self.hardlink_target = target
+
+    def _same_hardlink_target(self, other):
+        """Return true or false to indicate similarity in the hardlink sense."""
+        return self.hardlink_target == other.hardlink_target
+
+    def _encode_hardlink_target(self):
+        return self.hardlink_target
+
+    def _load_hardlink_target_rec(self, port):
+        self.hardlink_target = vint.read_bvec(port)
+
+
     ## POSIX1e ACL records
 
     # Recorded as a list:
@@ -432,6 +462,10 @@ class Metadata:
             except EnvironmentError, e:
                 if e.errno != errno.EOPNOTSUPP:
                     raise
+
+    def _same_posix1e_acl(self, other):
+        """Return true or false to indicate similarity in the hardlink sense."""
+        return self.posix1e_acl == other.posix1e_acl
 
     def _encode_posix1e_acl(self):
         # Encode as two strings (w/default ACL string possibly empty).
@@ -506,6 +540,10 @@ class Metadata:
                 else:
                     raise
 
+    def _same_linux_attr(self, other):
+        """Return true or false to indicate similarity in the hardlink sense."""
+        return self.linux_attr == other.linux_attr
+
     def _encode_linux_attr(self):
         if self.linux_attr:
             return vint.pack('V', self.linux_attr)
@@ -540,6 +578,10 @@ class Metadata:
         except EnvironmentError, e:
             if e.errno != errno.EOPNOTSUPP:
                 raise
+
+    def _same_linux_xattr(self, other):
+        """Return true or false to indicate similarity in the hardlink sense."""
+        return self.linux_xattr == other.linux_xattr
 
     def _encode_linux_xattr(self):
         if self.linux_xattr:
@@ -595,6 +637,7 @@ class Metadata:
         self.path = None
         self.size = None
         self.symlink_target = None
+        self.hardlink_target = None
         self.linux_attr = None
         self.linux_xattr = None
         self.posix1e_acl = None
@@ -603,7 +646,10 @@ class Metadata:
     def write(self, port, include_path=True):
         records = include_path and [(_rec_tag_path, self._encode_path())] or []
         records.extend([(_rec_tag_common, self._encode_common()),
-                        (_rec_tag_symlink_target, self._encode_symlink_target()),
+                        (_rec_tag_symlink_target,
+                         self._encode_symlink_target()),
+                        (_rec_tag_hardlink_target,
+                         self._encode_hardlink_target()),
                         (_rec_tag_posix1e_acl, self._encode_posix1e_acl()),
                         (_rec_tag_linux_attr, self._encode_linux_attr()),
                         (_rec_tag_linux_xattr, self._encode_linux_xattr())])
@@ -637,6 +683,8 @@ class Metadata:
                     result._load_common_rec(port)
                 elif tag == _rec_tag_symlink_target:
                     result._load_symlink_target_rec(port)
+                elif tag == _rec_tag_hardlink_target:
+                    result._load_hardlink_target_rec(port)
                 elif tag == _rec_tag_posix1e_acl:
                     result._load_posix1e_acl_rec(port)
                 elif tag ==_rec_tag_nfsv4_acl:
@@ -664,7 +712,7 @@ class Metadata:
         if not path:
             path = self.path
         if not path:
-            raise Exception('Metadata.apply_to_path() called with no path');
+            raise Exception('Metadata.apply_to_path() called with no path')
         if not self._recognized_file_type():
             add_error('not applying metadata to "%s"' % path
                       + ' with unrecognized mode "0x%x"\n' % self.mode)
@@ -678,8 +726,20 @@ class Metadata:
         except ApplyError, e:
             add_error(e)
 
+    def same_file(self, other):
+        """Compare this to other for equivalency.  Return true if
+        their information implies they could represent the same file
+        on disk, in the hardlink sense.  Assume they're both regular
+        files."""
+        return self._same_common(other) \
+            and self._same_hardlink_target(other) \
+            and self._same_posix1e_acl(other) \
+            and self._same_linux_attr(other) \
+            and self._same_linux_xattr(other)
 
-def from_path(path, statinfo=None, archive_path=None, save_symlinks=True):
+
+def from_path(path, statinfo=None, archive_path=None,
+              save_symlinks=True, hardlink_target=None):
     result = Metadata()
     result.path = archive_path
     st = statinfo or xstat.lstat(path)
@@ -687,6 +747,7 @@ def from_path(path, statinfo=None, archive_path=None, save_symlinks=True):
     result._add_common(path, st)
     if save_symlinks:
         result._add_symlink_target(path, st)
+    result._add_hardlink_target(hardlink_target)
     result._add_posix1e_acl(path, st)
     result._add_linux_attr(path, st)
     result._add_linux_xattr(path, st)
@@ -870,7 +931,8 @@ def display_archive(file):
         for meta in _ArchiveIterator(file):
             if not meta.path:
                 print >> sys.stderr, \
-                    'bup: no metadata path, but asked to only display path (increase verbosity?)'
+                    'bup: no metadata path, but asked to only display path', \
+                    '(increase verbosity?)'
                 sys.exit(1)
             print meta.path
 
