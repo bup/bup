@@ -2,7 +2,7 @@
 import sys, os, subprocess, signal, getopt
 
 argv = sys.argv
-exe = argv[0]
+exe = os.path.realpath(argv[0])
 exepath = os.path.split(exe)[0] or '.'
 exeprefix = os.path.split(os.path.abspath(exepath))[0]
 
