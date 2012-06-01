@@ -117,7 +117,8 @@ def update_index(top, excluded_paths):
             # in from_stat().
             meta.ctime = meta.mtime = meta.atime = 0
             meta_ofs = msw.store(meta)
-            rig.cur.from_stat(pst, meta_ofs, tstart)
+            rig.cur.from_stat(pst, meta_ofs, tstart,
+                              check_device=opt.check_device)
             if not (rig.cur.flags & index.IX_HASHVALID):
                 if hashgen:
                     (rig.cur.gitmode, rig.cur.sha) = hashgen(path)
@@ -179,6 +180,7 @@ clear      clear the index
  Options:
 H,hash     print the hash for each object next to its name
 l,long     print more information about each file
+no-check-device don't invalidate an entry if the containing device changes
 fake-valid mark all index entries as up-to-date even if they aren't
 fake-invalid mark all index entries as invalid
 f,indexfile=  the name of the index file (normally BUP_DIR/bupindex)

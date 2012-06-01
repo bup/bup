@@ -174,10 +174,12 @@ class Entry:
             log('pack error: %s (%r)\n' % (e, self))
             raise
 
-    def from_stat(self, st, meta_ofs, tstart):
-        old = (self.dev, self.ino, self.nlink, self.ctime, self.mtime,
+    def from_stat(self, st, meta_ofs, tstart, check_device=True):
+        old = (self.dev if check_device else 0,
+               self.ino, self.nlink, self.ctime, self.mtime,
                self.uid, self.gid, self.size, self.flags & IX_EXISTS)
-        new = (st.st_dev, st.st_ino, st.st_nlink, st.st_ctime, st.st_mtime,
+        new = (st.st_dev if check_device else 0,
+               st.st_ino, st.st_nlink, st.st_ctime, st.st_mtime,
                st.st_uid, st.st_gid, st.st_size, IX_EXISTS)
         self.dev = st.st_dev
         self.ino = st.st_ino
