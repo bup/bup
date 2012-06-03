@@ -82,12 +82,11 @@ runtests-python:
 	$(PYTHON) wvtest.py \
 		$(wildcard t/t*.py) \
 		$(filter-out lib/bup/t/tmetadata.py,$(wildcard lib/*/t/t*.py))
-	[ -z "$(TEST_META)" ] || \
 	$(PYTHON) wvtest.py lib/bup/t/tmetadata.py
 
 runtests-cmdline: all
 	t/test.sh
-	[ -z "$(TEST_META)" ] || t/test-meta.sh
+	t/test-meta.sh
 
 stupid:
 	PATH=/bin:/usr/bin $(MAKE) test

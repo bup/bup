@@ -103,6 +103,10 @@ WVSTART 'meta - general'
 # Root-only tests: ACLs, Linux attr, Linux xattr, etc.
 if actually-root; then
     (
+        # These tests are only likely to work under Linux for now
+        # (patches welcome).
+        [[ $(uname) =~ Linux ]] || exit 0
+
         cleanup_at_exit()
         {
             cd "$TOP"
