@@ -459,6 +459,15 @@ class Metadata:
         self.posix1e_acl = [posix1e.ACL(text=x) for x in acl_reps]
 
     def _apply_posix1e_acl_rec(self, path, restore_numeric_ids=False):
+        def apply_acl(acl, kind):
+            try:
+                acl.applyto(path, kind)
+            except IOError, e:
+                if e.errno == errno.EPERM or e.errno == errno.EOPNOTSUPP:
+                    raise ApplyError('POSIX1e ACL applyto: %s' % e)
+                else:
+                    raise
+
         if not posix1e:
             if self.posix1e_acl:
                 add_error("%s: can't restore ACLs; posix1e support missing.\n"
@@ -468,13 +477,13 @@ class Metadata:
             acls = self.posix1e_acl
             if len(acls) > 2:
                 if restore_numeric_ids:
-                    acls[3].applyto(path, posix1e.ACL_TYPE_DEFAULT)
+                    apply_acl(acls[3], posix1e.ACL_TYPE_DEFAULT)
                 else:
-                    acls[2].applyto(path, posix1e.ACL_TYPE_DEFAULT)
+                    apply_acl(acls[2], posix1e.ACL_TYPE_DEFAULT)
             if restore_numeric_ids:
-                acls[1].applyto(path, posix1e.ACL_TYPE_ACCESS)
+                apply_acl(acls[1], posix1e.ACL_TYPE_ACCESS)
             else:
-                acls[0].applyto(path, posix1e.ACL_TYPE_ACCESS)
+                apply_acl(acls[0], posix1e.ACL_TYPE_ACCESS)
 
 
     ## Linux attributes (lsattr(1), chattr(1))
@@ -513,7 +522,13 @@ class Metadata:
                 add_error("%s: can't restore linuxattrs: "
                           "linuxattr support missing.\n" % path)
                 return
-            set_linux_file_attr(path, self.linux_attr)
+            try:
+                set_linux_file_attr(path, self.linux_attr)
+            except OSError, e:
+                if e.errno == errno.ENOTTY:
+                    raise ApplyError('Linux chattr: %s' % e)
+                else:
+                    raise
 
 
     ## Linux extended attributes (getfattr(1), setfattr(1))
@@ -559,7 +574,8 @@ class Metadata:
                     try:
                         xattr.set(path, k, v, nofollow=True)
                     except IOError, e:
-                        if e.errno == errno.EPERM:
+                        if e.errno == errno.EPERM \
+                                or e.errno == errno.EOPNOTSUPP:
                             raise ApplyError('xattr.set: %s' % e)
                         else:
                             raise

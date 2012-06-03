@@ -110,9 +110,16 @@ test-src-save-restore()
     )
 }
 
-if actually-root; then
+universal-cleanup()
+{
+    if ! actually-root; then return 0; fi
+    cd "$TOP"
     umount "$TOP/bupmeta.tmp/testfs" || true
-fi
+    umount "$TOP/bupmeta.tmp/testfs-limited" || true
+}
+
+universal-cleanup
+trap universal-cleanup EXIT
 
 setup-test-tree()
 (
@@ -355,17 +362,11 @@ WVSTART 'meta --edit'
 # Linux attr, Linux xattr, etc.
 if actually-root; then
     (
+        set -e
+        # Some cleanup handled in universal-cleanup() above.
         # These tests are only likely to work under Linux for now
         # (patches welcome).
         [[ $(uname) =~ Linux ]] || exit 0
-
-        cleanup_at_exit()
-        {
-            cd "$TOP"
-            umount "$TOP/bupmeta.tmp/testfs" || true
-        }
-
-        trap cleanup_at_exit EXIT
 
         WVSTART 'meta - general (as root)'
         setup-test-tree
@@ -379,6 +380,13 @@ if actually-root; then
         # Hide, so that tests can't create risks.
         chown root:root testfs
         chmod 0700 testfs
+
+        umount testfs-limited || true
+        dd if=/dev/zero of=testfs-limited.img bs=1M count=32
+        mkfs -t vfat testfs-limited.img
+        mkdir testfs-limited
+        mount -o loop,uid=root,gid=root,umask=0077 \
+            testfs-limited.img testfs-limited
 
         #cp -a src testfs/src
         cp -pPR src testfs/src
@@ -423,6 +431,18 @@ if actually-root; then
             chattr +acdeijstuADST testfs/src/foo
             chattr +acdeijstuADST testfs/src/bar
             (cd testfs && test-src-create-extract)
+            # Test restoration to a limited filesystem (vfat).
+            (
+                WVPASS bup meta --create --recurse --file testfs/src.meta \
+                    testfs/src
+                force-delete testfs-limited/src-restore
+                mkdir testfs-limited/src-restore
+                cd testfs-limited/src-restore
+                WVFAIL bup meta --extract --file ../../testfs/src.meta 2>&1 \
+                    | WVPASS grep -e '^Linux chattr:' \
+                    | WVPASS python -c \
+                      'import sys; exit(not len(sys.stdin.readlines()) == 2)'
+            )
         )
 
         WVSTART 'meta - Linux xattr (as root)'
@@ -434,6 +454,19 @@ if actually-root; then
             attr -s foo -V bar testfs/src/foo
             attr -s foo -V bar testfs/src/bar
             (cd testfs && test-src-create-extract)
+
+            # Test restoration to a limited filesystem (vfat).
+            (
+                WVPASS bup meta --create --recurse --file testfs/src.meta \
+                    testfs/src
+                force-delete testfs-limited/src-restore
+                mkdir testfs-limited/src-restore
+                cd testfs-limited/src-restore
+                WVFAIL bup meta --extract --file ../../testfs/src.meta 2>&1 \
+                    | WVPASS grep -e '^xattr\.set:' \
+                    | WVPASS python -c \
+                      'import sys; exit(not len(sys.stdin.readlines()) == 2)'
+            )
         )
 
         WVSTART 'meta - POSIX.1e ACLs (as root)'
@@ -445,6 +478,19 @@ if actually-root; then
             setfacl -m u:root:r testfs/src/foo
             setfacl -m u:root:r testfs/src/bar
             (cd testfs && test-src-create-extract)
+
+            # Test restoration to a limited filesystem (vfat).
+            (
+                WVPASS bup meta --create --recurse --file testfs/src.meta \
+                    testfs/src
+                force-delete testfs-limited/src-restore
+                mkdir testfs-limited/src-restore
+                cd testfs-limited/src-restore
+                WVFAIL bup meta --extract --file ../../testfs/src.meta 2>&1 \
+                    | WVPASS grep -e '^POSIX1e ACL applyto:' \
+                    | WVPASS python -c \
+                      'import sys; exit(not len(sys.stdin.readlines()) == 2)'
+            )
         )
     )
 fi
