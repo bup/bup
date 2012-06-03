@@ -156,6 +156,8 @@ clean: Documentation/clean
 		bup bup-* cmd/bup-* lib/bup/_version.py randomgen memtest \
 		out[12] out2[tc] tags[12] tags2[tc] \
 		testfs.img lib/bup/t/testfs.img
-	rm -rf *.tmp t/*.tmp lib/*/*/*.tmp build lib/bup/build
-	if test -e testfs; then rmdir testfs; fi
-	if test -e lib/bup/t/testfs; then rmdir lib/bup/t/testfs; fi
+	if test -e bupmeta.tmp/testfs; \
+	  then umount bupmeta.tmp/testfs || true; fi
+	if test -e lib/bup/t/testfs; \
+	  then umount lib/bup/t/testfs || true; fi
+	rm -rf *.tmp t/*.tmp lib/*/*/*.tmp build lib/bup/build lib/bup/t/testfs
