@@ -231,9 +231,13 @@ def userfullname():
     if not _userfullname:
         uid = os.getuid()
         try:
-            _userfullname = pwd.getpwuid(uid)[4].split(',')[0]
+            entry = pwd.getpwuid(uid)
+            _userfullname = entry[4].split(',')[0] or entry[0]
         except KeyError:
-            _userfullname = 'user%d' % uid
+            pass
+        finally:
+            if not _userfullname:
+              _userfullname = 'user %d' % uid
     return _userfullname
 
 
