@@ -728,6 +728,28 @@ def parse_excludes(options, fatal):
     return excluded_paths
 
 
+def parse_rx_excludes(options, fatal):
+    """Traverse the options and extract all rx excludes, or call
+    Option.fatal()."""
+    rxs = [v for f, v in options if f == '--exclude-rx']
+    for i in range(len(rxs)):
+        try:
+            rxs[i] = re.compile(rxs[i])
+        except re.error, ex:
+            o.fatal('invalid --exclude-rx pattern (%s):' % (ex, rxs[i]))
+    return rxs
+
+
+def should_rx_exclude_path(path, exclude_rxs):
+    """Return True if path matches a regular expression in exclude_rxs."""
+    for rx in exclude_rxs:
+        if rx.search(path):
+            debug1('Skipping %r: excluded by rx pattern %r.\n'
+                   % (path, rx.pattern))
+            return True
+    return False
+
+
 # FIXME: Carefully consider the use of functions (os.path.*, etc.)
 # that resolve against the current filesystem in the strip/graft
 # functions for example, but elsewhere as well.  I suspect bup's not

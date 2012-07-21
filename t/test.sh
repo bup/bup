@@ -691,7 +691,6 @@ WVSTART "save disjoint top-level directories"
     WVPASSEQ "$(bup ls -a src/latest)" "$(echo -e "$top_dir/\ntmp/" | sort)"
 ) || WVFAIL
 
-
 WVSTART "clear-index"
 D=clear-index.tmp
 export BUP_DIR="$TOP/$D/.bup"
@@ -711,3 +710,88 @@ bup index -u $TOP/$D
 WVPASSEQ "$(bup index -p)" "$D/bar
 $D/
 ./"
+
+# bup index --exclude-rx ...
+(
+    set -e
+    export BUP_DIR="$TOP/buptest.tmp"
+    D=bupdata.tmp
+
+    WVSTART "index --exclude-rx '^/foo' (root anchor)"
+    rm -rf "$D" "$BUP_DIR" buprestore.tmp
+    WVPASS bup init
+    mkdir $D
+    touch $D/a
+    touch $D/b
+    mkdir $D/sub1
+    mkdir $D/sub2
+    touch $D/sub1/a
+    touch $D/sub2/b
+    WVPASS bup index -u $D --exclude-rx "^$(pwd)/$D/sub1/"
+    bup save --strip -n bupdir $D
+    bup restore -C buprestore.tmp /bupdir/latest/
+    WVPASSEQ "$(cd buprestore.tmp && find . | sort)" ".
+./a
+./b
+./sub2
+./sub2/b"
+
+    WVSTART "index --exclude-rx '/foo$' (non-dir, tail anchor)"
+    rm -rf "$D" "$BUP_DIR" buprestore.tmp
+    WVPASS bup init
+    mkdir $D
+    touch $D/a
+    touch $D/b
+    touch $D/foo
+    mkdir $D/sub
+    mkdir $D/sub/foo
+    touch $D/sub/foo/a
+    WVPASS bup index -u $D --exclude-rx '/foo$'
+    bup save --strip -n bupdir $D
+    bup restore -C buprestore.tmp /bupdir/latest/
+    WVPASSEQ "$(cd buprestore.tmp && find . | sort)" ".
+./a
+./b
+./sub
+./sub/foo
+./sub/foo/a"
+
+    WVSTART "index --exclude-rx '/foo/$' (dir, tail anchor)"
+    rm -rf "$D" "$BUP_DIR" buprestore.tmp
+    WVPASS bup init
+    mkdir $D
+    touch $D/a
+    touch $D/b
+    touch $D/foo
+    mkdir $D/sub
+    mkdir $D/sub/foo
+    touch $D/sub/foo/a
+    WVPASS bup index -u $D --exclude-rx '/foo/$'
+    bup save --strip -n bupdir $D
+    bup restore -C buprestore.tmp /bupdir/latest/
+    WVPASSEQ "$(cd buprestore.tmp && find . | sort)" ".
+./a
+./b
+./foo
+./sub"
+
+    WVSTART "index --exclude-rx '/foo/.' (dir content)"
+    rm -rf "$D" "$BUP_DIR" buprestore.tmp
+    WVPASS bup init
+    mkdir $D
+    touch $D/a
+    touch $D/b
+    touch $D/foo
+    mkdir $D/sub
+    mkdir $D/sub/foo
+    touch $D/sub/foo/a
+    WVPASS bup index -u $D --exclude-rx '/foo/.'
+    bup save --strip -n bupdir $D
+    bup restore -C buprestore.tmp /bupdir/latest/
+    WVPASSEQ "$(cd buprestore.tmp && find . | sort)" ".
+./a
+./b
+./foo
+./sub
+./sub/foo"
+) || WVFAIL
