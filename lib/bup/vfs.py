@@ -4,7 +4,7 @@ The vfs.py library makes it possible to expose contents from bup's repository
 and abstracts internal name mangling and storage from the exposition layer.
 """
 import os, re, stat, time
-from bup import git
+from bup import git, metadata
 from helpers import *
 from bup.hashsplit import GIT_MODE_TREE, GIT_MODE_FILE
 
@@ -171,6 +171,7 @@ class Node:
         self.hash = hash
         self.ctime = self.mtime = self.atime = 0
         self._subs = None
+        self._metadata = None
 
     def __repr__(self):
         return "<bup.vfs.Node object at X - name:%r hash:%s parent:%r>" \
@@ -297,6 +298,16 @@ class Node:
         """Open the current node. It is an error to open a non-file node."""
         raise NotFile('%s is not a regular file' % self.name)
 
+    def _populate_metadata(self):
+        # Only Dirs contain .bupm files, so by default, do nothing.
+        pass
+
+    def metadata(self):
+        """Return this Node's Metadata() object, if any."""
+        if self.parent:
+            self.parent._populate_metadata()
+        return self._metadata
+
 
 class File(Node):
     """A normal file from bup's repository."""
@@ -386,7 +397,18 @@ class Dir(Node):
 
     def __init__(self, *args):
         Node.__init__(self, *args)
-        self._metadata = None
+        self._bupm = None
+
+    def _populate_metadata(self):
+        if not self._subs:
+            self._mksubs()
+        if not self._bupm:
+            return
+        meta_stream = self._bupm.open()
+        self._metadata = metadata.Metadata.read(meta_stream)
+        for sub in self:
+            if not stat.S_ISDIR(sub.mode):
+                sub._metadata = metadata.Metadata.read(meta_stream)
 
     def _mksubs(self):
         self._subs = {}
@@ -399,8 +421,7 @@ class Dir(Node):
         assert(type == 'tree')
         for (mode,mangled_name,sha) in git.tree_decode(''.join(it)):
             if mangled_name == '.bupm':
-                self._metadata = \
-                    File(self, mangled_name, mode, sha, git.BUP_NORMAL)
+                self._bupm = File(self, mangled_name, mode, sha, git.BUP_NORMAL)
                 continue
             name = mangled_name
             (name,bupmode) = git.demangle_name(mangled_name)
@@ -413,10 +434,15 @@ class Dir(Node):
             else:
                 self._subs[name] = File(self, name, mode, sha, bupmode)
 
-    def metadata_file(self):
-        if self._subs == None:
-            self._mksubs()
+    def metadata(self):
+        """Return this Dir's Metadata() object, if any."""
+        self._populate_metadata()
         return self._metadata
+
+    def metadata_file(self):
+        """Return this Dir's .bupm File, if any."""
+        self._populate_metadata()
+        return self._bupm
 
 
 class CommitDir(Node):

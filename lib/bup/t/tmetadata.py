@@ -1,11 +1,14 @@
 import glob, grp, pwd, stat, tempfile, subprocess
 import bup.helpers as helpers
-from bup import metadata
+from bup import git, metadata, vfs
 from bup.helpers import clear_errors, detect_fakeroot, is_superuser
 from wvtest import *
+from bup.xstat import utime, lutime
 
 
-top_dir = os.getcwd()
+top_dir = '../../..'
+bup_path = top_dir + '/bup'
+start_dir = os.getcwd()
 
 
 def ex(*cmd):
@@ -106,6 +109,42 @@ def test_clean_up_extract_path():
     WVPASSEQ(cleanup('./'), './')
     WVPASSEQ(cleanup('///foo/bar'), 'foo/bar')
     WVPASSEQ(cleanup('///foo/bar'), 'foo/bar')
+
+
+@wvtest
+def test_metadata_method():
+    tmpdir = tempfile.mkdtemp(prefix='bup-tmetadata-')
+    try:
+        bup_dir = tmpdir + '/bup'
+        data_path = tmpdir + '/foo'
+        os.mkdir(data_path)
+        ex('touch', data_path + '/file')
+        ex('ln', '-s', 'file', data_path + '/symlink')
+        test_time1 = 13 * 1000000000
+        test_time2 = 42 * 1000000000
+        utime(data_path + '/file', (0, test_time1))
+        lutime(data_path + '/symlink', (0, 0))
+        utime(data_path, (0, test_time2))
+        ex(bup_path, '-d', bup_dir, 'init')
+        ex(bup_path, '-d', bup_dir, 'index', '-v', data_path)
+        ex(bup_path, '-d', bup_dir, 'save', '-tvvn', 'test', data_path)
+        git.check_repo_or_die(bup_dir)
+        top = vfs.RefList(None)
+        n = top.lresolve('/test/latest' + data_path)
+        m = n.metadata()
+        WVPASS(m.mtime == test_time2)
+        WVPASS(len(n.subs()) == 2)
+        WVPASS(n.name == 'foo')
+        WVPASS(set([x.name for x in n.subs()]) == set(['file', 'symlink']))
+        for sub in n:
+            if sub.name == 'file':
+                m = sub.metadata()
+                WVPASS(m.mtime == test_time1)
+            elif sub.name == 'symlink':
+                m = sub.metadata()
+                WVPASS(m.mtime == 0)
+    finally:
+        subprocess.call(['rm', '-rf', tmpdir])
 
 
 def _first_err():
@@ -227,5 +266,5 @@ else:
         m.apply_to_path(path, restore_numeric_ids=False)
         WVPASSEQ(xattr.list(path), ['user.foo'])
         WVPASSEQ(xattr.get(path, 'user.foo'), 'bar')
-        os.chdir(top_dir)
+        os.chdir(start_dir)
         cleanup_testfs()
