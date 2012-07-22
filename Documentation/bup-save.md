@@ -136,7 +136,7 @@ for `bup-index`(1).
     var/
 
 
-    $ bup save --strip-prefix=/home/joe/chroots -n joes-chroots \
+    $ bup save --strip-path=/home/joe/chroots -n joes-chroots \
          /home/joe/chroots/httpd
     Reading index: 1337, done.
     Saving: 100.00% (998/998k, 1337/1337 files), done.
