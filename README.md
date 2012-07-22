@@ -367,6 +367,8 @@ bup has an extensive set of man pages.  Try using 'bup help' to get
 started, or use 'bup help SUBCOMMAND' for any bup subcommand (like split,
 join, index, save, etc.) to get details on that command.
 
+For further technical details, please see ./DESIGN.
+
 
 How you can help
 ================
