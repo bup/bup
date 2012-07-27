@@ -273,6 +273,7 @@ WVSTART 'meta --edit'
     mkdir "$TOP/bupmeta.tmp"
     cd "$TOP/bupmeta.tmp"
     touch src
+    chown 0:0 src # In case the parent dir is sgid, etc.
     WVPASS bup meta -cf src.meta src
 
     mkdir dest
