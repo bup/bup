@@ -371,32 +371,31 @@ Detailed Metadata
 -----------------
 
 So that's the basic structure of a bup repository, which is also a git
-repository.  There's one more thing we have to deal with in bup: filesystem
-metadata.  git repositories are really only intended to store file contents
-with a small bit of extra information, like symlink support and
-differentiating between executable and non-executable files.  For the rest,
-we'll have to store it some other way.
+repository.  There's just one more thing we have to deal with:
+filesystem metadata.  Git repositories are really only intended to
+store file contents with a small bit of extra information, like
+symlink targets and and executable bits, so we have to store the rest
+some other way.
 
-As of this writing, bup's support for metadata is... pretty much
-nonexistent.  People are working on it.  But the plan goes like this:
+Bup stores more complete metadata in the VFS in a file named .bupm in
+each tree.  This file contains one entry for each file in the tree
+object, sorted in the same order as the tree.  The first .bupm entry
+is for the directory itself, i.e. ".", and its name is the empty
+string, "".
 
- - Each git tree will contain a file called .bupmeta.
- 
- - .bupmeta contains an entry for every entry in the tree object, sorted in
-   the same order as in the tree.
- 
- - the .bupmeta entry lists information like modification times, attributes,
-   file ownership, and so on for each file in the tree.
-   
- - for backward compatibility with pre-metadata versions of bup (and git,
-   for that matter) the .bupmeta file for each tree is optional, and if it's
-   missing, files will be assumed to have default permissions.
-   
- The nice thing about this design is that you can walk through each file in
- a tree just by opening the tree and the .bupmeta contents, and iterating
- through both at the same time.
- 
- Trust us, it'll be awesome.  
+Each .bupm entry contains a variable length sequence of records
+containing the metadata for the corresponding path.  Each record
+records one type of metadata.  Current types include a common record
+type (containing the normal stat information), a symlink target type,
+a POSIX1e ACL type, etc.  See metadata.py for the complete list.
+
+The .bupm file is optional, and when it's missing, bup will behave as
+it did before the addition of metadata, and restore files using the
+tree information.
+
+The nice thing about this design is that you can walk through each
+file in a tree just by opening the tree and the .bupmeta contents, and
+iterating through both at the same time.
 
 
 Filesystem Interaction
@@ -605,3 +604,7 @@ things to note:
 We hope you'll enjoy bup.  Looking forward to your patches!
 
 -- apenwarr and the rest of the bup team
+
+Local Variables:
+mode: text
+End:

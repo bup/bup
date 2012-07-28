@@ -300,10 +300,16 @@ Things that are stupid for now but which we'll fix later
 Help with any of these problems, or others, is very welcome.  Join the
 mailing list (see below) if you'd like to help.
 
- - 'bup save' and 'bup restore' don't know about file metadata.
+ - 'bup save' and 'bup restore' have immature metadata support.
  
-    That means we aren't saving file attributes, mtimes, ownership, hard
-    links, MacOS resource forks, etc.  Clearly this needs to be improved.
+    On the plus side, they actually do have support now, but it's new,
+    and not remotely as well tested as tar/rsync/whatever's.  If you'd
+    like to help test, please do; something like 'rsync -niaHAX src/
+    restore/' may be useful on that front.
+
+    In addition, at the moment, if any strip or graft-style options
+    are specified to 'bup save', then no metadata will be written for
+    the root directory.  That's obviously less than ideal.
 
  - 'bup index' is slower than it should be.
  
