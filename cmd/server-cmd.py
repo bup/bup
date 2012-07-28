@@ -28,6 +28,9 @@ def init_dir(conn, arg):
 
 def set_dir(conn, arg):
     git.check_repo_or_die(arg)
+    # OK. we now know the path is a proper repository. Record this path in the
+    # environment so that subprocesses inherit it and know where to operate.
+    os.environ['BUP_DIR'] = arg
     debug1('bup server: bupdir is %r\n' % git.repodir)
     _set_mode()
     conn.ok()
