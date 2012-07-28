@@ -78,7 +78,6 @@ except getopt.GetoptError, ex:
     usage('error: %s' % ex.msg)
 
 help_requested = None
-dest_dir = None
 do_profile = False
 
 for opt in global_args:
@@ -92,7 +91,7 @@ for opt in global_args:
     elif opt[0] in ['--profile']:
         do_profile = True
     elif opt[0] in ['-d', '--bup-dir']:
-        dest_dir = opt[1]
+        os.environ['BUP_DIR'] = opt[1]
     else:
         usage('error: unexpected option "%s"' % opt[0])
 
@@ -111,10 +110,6 @@ if len(subcmd) > 1 and subcmd[1] == '--help' and subcmd[0] != 'help':
 subcmd_name = subcmd[0]
 if not subcmd_name:
     usage()
-
-subcmd_env = os.environ
-if dest_dir:
-    subcmd_env.update({"BUP_DIR" : dest_dir})
 
 def subpath(s):
     sp = os.path.join(exepath, 'bup-%s' % s)
