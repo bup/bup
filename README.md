@@ -327,8 +327,8 @@ mailing list (see below) if you'd like to help.
  
     On the plus side, they actually do have support now, but it's new,
     and not remotely as well tested as tar/rsync/whatever's.  If you'd
-    like to help test, please do; something like 'rsync -niaHAX src/
-    restore/' may be useful on that front.
+    like to help test, please do (see t/compare-trees for one
+    comparison method).
 
     In addition, at the moment, if any strip or graft-style options
     are specified to 'bup save', then no metadata will be written for

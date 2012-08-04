@@ -49,22 +49,6 @@ force-delete()
     fi
 }
 
-compare-trees()
-{
-    (
-        set -e
-        set -o pipefail
-        tmpfile="$(mktemp)"
-        trap "rm -rf '${tmpfile}'" EXIT
-        rsync -ni -aHAX "$1" "$2" > "${tmpfile}"
-        if test $(wc -l < "${tmpfile}") != 0; then
-            echo "ERROR: detected differences between $1 and $2"
-            cat "${tmpfile}"
-            false
-        fi
-    )
-}
-
 test-src-create-extract()
 {
     # Test bup meta create/extract for ./src -> ./src-restore.
@@ -109,7 +93,7 @@ test-src-save-restore()
         mkdir src-restore
         WVPASS bup restore -C src-restore "/src/latest$(pwd)/"
         WVPASS test -d src-restore/src
-        WVPASS compare-trees src/ src-restore/src/
+        WVPASS "$TOP/t/compare-trees" -c src/ src-restore/src/
         rm -rf src.bup
         set +x
     )
@@ -215,7 +199,7 @@ WVSTART 'metadata save/restore (hardlinks)'
     WVPASS bup index src
     WVPASS bup save -t -n src src
     hardlink-test-run-restore
-    WVPASS compare-trees src/ src-restore/src/
+    WVPASS "$TOP/t/compare-trees" -c src/ src-restore/src/
 
     # Test hardlink changes between index runs.
     #

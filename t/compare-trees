@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+
+# Test that src and dest trees are as identical as bup is capable of
+# making them.  For now, use rsync -niaHAX ...
+
+set -e
+set -o pipefail
+
+usage() {
+cat <<EOF
+Usage: compare-trees [-h] [-c] [-x] SOURCE DEST
+OPTIONS:
+  -h
+    Display help
+  -c
+    Check file content (default)
+  -x
+    Don't check file content (rely on size/timestamps, etc.)
+EOF
+}
+
+verify_content=" --checksum"
+
+while getopts "hc" OPTION
+do
+    case "$OPTION" in
+        h) usage; exit 0;;
+        c) verify_content=" --checksum";;
+        x) verify_content="";;
+        ?) usage 1>&2; exit 1;;
+    esac
+done
+
+shift $(($OPTIND - 1))
+
+if ! test $# -eq 2
+then
+    usage 1>&2
+    exit 1
+fi
+
+src="$1"
+dest="$2"
+
+tmpfile="$(mktemp)"
+trap "rm -rf '${tmpfile}'" EXIT
+
+rsync -niaHAX$verify_content --delete "$src" "$dest" > "${tmpfile}"
+if test $(wc -l < "${tmpfile}") != 0; then
+    echo "Differences between $src and $dest"
+    cat "${tmpfile}"
+    exit 1
+fi
+
+exit 0
