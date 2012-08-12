@@ -392,6 +392,8 @@ WVPASS bup random 128k >$D/b
 mkdir $D/d $D/d/e
 WVPASS bup random 512 >$D/f
 WVPASS bup index -ux $D
+WVFAIL bup save --graft =/grafted -n graft-point-absolute $D
+WVFAIL bup save --graft $TOP/$D= -n graft-point-absolute $D
 bup save --graft $TOP/$D=/grafted -n graft-point-absolute $D
 WVPASSEQ "$(bup ls graft-point-absolute/latest/grafted/)" "a
 b
