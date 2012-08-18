@@ -795,3 +795,89 @@ $D/
 ./sub
 ./sub/foo"
 ) || WVFAIL
+
+
+# bup restore --exclude-rx ...
+(
+    set -e
+    export BUP_DIR="$TOP/buptest.tmp"
+    D=bupdata.tmp
+
+    WVSTART "restore --exclude-rx '^/foo' (root anchor)"
+    rm -rf "$D" "$BUP_DIR" buprestore.tmp
+    WVPASS bup init
+    mkdir $D
+    touch $D/a
+    touch $D/b
+    mkdir $D/sub1
+    mkdir $D/sub2
+    touch $D/sub1/a
+    touch $D/sub2/b
+    WVPASS bup index -u $D
+    bup save --strip -n bupdir $D
+    bup restore -C buprestore.tmp --exclude-rx "^/sub1/" /bupdir/latest/
+    WVPASSEQ "$(cd buprestore.tmp && find . | sort)" ".
+./a
+./b
+./sub2
+./sub2/b"
+
+    WVSTART "restore --exclude-rx '/foo$' (non-dir, tail anchor)"
+    rm -rf "$D" "$BUP_DIR" buprestore.tmp
+    WVPASS bup init
+    mkdir $D
+    touch $D/a
+    touch $D/b
+    touch $D/foo
+    mkdir $D/sub
+    mkdir $D/sub/foo
+    touch $D/sub/foo/a
+    WVPASS bup index -u $D
+    bup save --strip -n bupdir $D
+    bup restore -C buprestore.tmp --exclude-rx '/foo$' /bupdir/latest/
+    WVPASSEQ "$(cd buprestore.tmp && find . | sort)" ".
+./a
+./b
+./sub
+./sub/foo
+./sub/foo/a"
+
+    WVSTART "restore --exclude-rx '/foo/$' (dir, tail anchor)"
+    rm -rf "$D" "$BUP_DIR" buprestore.tmp
+    WVPASS bup init
+    mkdir $D
+    touch $D/a
+    touch $D/b
+    touch $D/foo
+    mkdir $D/sub
+    mkdir $D/sub/foo
+    touch $D/sub/foo/a
+    WVPASS bup index -u $D
+    bup save --strip -n bupdir $D
+    bup restore -C buprestore.tmp --exclude-rx '/foo/$' /bupdir/latest/
+    WVPASSEQ "$(cd buprestore.tmp && find . | sort)" ".
+./a
+./b
+./foo
+./sub"
+
+    WVSTART "restore --exclude-rx '/foo/.' (dir content)"
+    rm -rf "$D" "$BUP_DIR" buprestore.tmp
+    WVPASS bup init
+    mkdir $D
+    touch $D/a
+    touch $D/b
+    touch $D/foo
+    mkdir $D/sub
+    mkdir $D/sub/foo
+    touch $D/sub/foo/a
+    WVPASS bup index -u $D
+    bup save --strip -n bupdir $D
+    bup restore -C buprestore.tmp --exclude-rx '/foo/.' /bupdir/latest/
+    WVPASSEQ "$(cd buprestore.tmp && find . | sort)" ".
+./a
+./b
+./foo
+./sub
+./sub/foo"
+) || WVFAIL

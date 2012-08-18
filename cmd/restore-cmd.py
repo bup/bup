@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import errno, sys, stat
+import errno, sys, stat, re
 from bup import options, git, metadata, vfs
 from bup.helpers import *
 
@@ -8,6 +8,7 @@ bup restore [-C outdir] </branch/revision/path/to/dir ...>
 --
 C,outdir=   change to given outdir before extracting files
 numeric-ids restore numeric IDs (user, group, etc.) rather than names
+exclude-rx= skip paths that match the unanchored regular expression
 v,verbose   increase log output (can be used more than once)
 q,quiet     don't show progress meter
 """
@@ -187,6 +188,12 @@ def do_node(top, n, meta=None):
     meta_stream = None
     try:
         fullname = n.fullname(stop_at=top)
+        # Match behavior of index --exclude-rx with respect to paths.
+        exclude_candidate = '/' + fullname
+        if(stat.S_ISDIR(n.mode)):
+            exclude_candidate += '/'
+        if should_rx_exclude_path(exclude_candidate, exclude_rxs):
+            return
         # If this is a directory, its metadata is the first entry in
         # any .bupm file inside the directory.  Get it.
         if(stat.S_ISDIR(n.mode)):
@@ -222,6 +229,7 @@ def do_node(top, n, meta=None):
         if meta_stream:
             meta_stream.close()
 
+
 handle_ctrl_c()
 
 o = options.Options(optspec)
@@ -233,6 +241,8 @@ top = vfs.RefList(None)
 if not extra:
     o.fatal('must specify at least one filename to restore')
     
+exclude_rxs = parse_rx_excludes(flags, o.fatal)
+
 if opt.outdir:
     mkdirp(opt.outdir)
     os.chdir(opt.outdir)

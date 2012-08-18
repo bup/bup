@@ -8,7 +8,8 @@ bup-restore - extract files from a backup set
 
 # SYNOPSIS
 
-bup restore [\--outdir=*outdir*] [-v] [-q] \<paths...\>;
+bup restore [\--outdir=*outdir*] [\--exclude-rx *pattern*] [-v] [-q]
+\<paths...\>
 
 # DESCRIPTION
 
@@ -82,6 +83,28 @@ See the EXAMPLES section for a demonstration.
 
 \--numeric-ids
 :   restore numeric IDs (user, group, etc.) rather than names.
+
+\--exclude-rx=*pattern*
+:   exclude any path matching *pattern*, which must be a Python
+    regular expression (http://docs.python.org/library/re.html).  The
+    pattern will be compared against the full path rooted at the top
+    of the restore tree, without anchoring, so "x/y" will match
+    "ox/yard" or "box/yards".  To exclude the contents of /tmp, but
+    not the directory itself, use "^/tmp/.". (can be specified more
+    than once)
+
+    Note that the root of the restore tree (which matches '^/') is the
+    top of the archive tree being restored, and has nothing to do with
+    the filesystem destination.  Given "restore ... /foo/latest/etc/",
+    the pattern '^/passwd$' would match if a file named passwd had
+    been saved as '/foo/latest/etc/passwd'.
+
+    Examples:
+
+      * '/foo$' - exclude any file named foo
+      * '/foo/$' - exclude any directory named foo
+      * '/foo/.' - exclude the content of any directory named foo
+      * '^/tmp/.' - exclude root-level /tmp's content, but not /tmp itself
 
 -v, \--verbose
 :   increase log output.  Given once, prints every
