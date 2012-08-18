@@ -647,6 +647,14 @@ def parse_date_or_fatal(str, fatal):
         return date
 
 
+# FIXME: Carefully consider the use of functions (os.path.*, etc.)
+# that resolve against the current filesystem in the strip/graft
+# functions for example, but elsewhere as well.  I suspect bup's not
+# always being careful about that.  For some cases, the contents of
+# the current filesystem should be irrelevant, and consulting it might
+# produce the wrong result, perhaps via unintended symlink resolution,
+# for example.
+
 def path_components(path):
     """Break path into a list of pairs of the form (name,
     full_path_to_name).  Path must start with '/'.
@@ -688,19 +696,46 @@ def stripped_path_components(path, strip_prefixes):
 
 
 def grafted_path_components(graft_points, path):
-    # Find the first '/' after the graft prefix, match that to the
-    # original source base dir, then move on.
+    # Create a result that consists of some number of faked graft
+    # directories before the graft point, followed by all of the real
+    # directories from path that are after the graft point.  Arrange
+    # for the directory at the graft point in the result to correspond
+    # to the "orig" directory in --graft orig=new.  See t/thelpers.py
+    # for some examples.
+
+    # Note that given --graft orig=new, orig and new have *nothing* to
+    # do with each other, even if some of their component names
+    # match. i.e. --graft /foo/bar/baz=/foo/bar/bax is semantically
+    # equivalent to --graft /foo/bar/baz=/x/y/z, or even
+    # /foo/bar/baz=/x.
+
+    # FIXME: This can't be the best solution...
     clean_path = os.path.abspath(path)
     for graft_point in graft_points:
         old_prefix, new_prefix = graft_point
+        # Expand prefixes iff not absolute paths.
+        old_prefix = os.path.normpath(old_prefix)
+        new_prefix = os.path.normpath(new_prefix)
         if clean_path.startswith(old_prefix):
-            grafted_path = re.sub(r'^' + old_prefix, new_prefix,
-                                  clean_path)
-            result = [(p, None) for p in grafted_path.split('/')]
-            result[-1] = (result[-1][0], clean_path)
+            escaped_prefix = re.escape(old_prefix)
+            grafted_path = re.sub(r'^' + escaped_prefix, new_prefix, clean_path)
+            # Handle /foo=/ (at least) -- which produces //whatever.
+            grafted_path = '/' + grafted_path.lstrip('/')
+            clean_path_components = path_components(clean_path)
+            # Count the components that were stripped.
+            strip_count = 0 if old_prefix == '/' else old_prefix.count('/')
+            new_prefix_parts = new_prefix.split('/')
+            result_prefix = grafted_path.split('/')[:new_prefix.count('/')]
+            result = [(p, None) for p in result_prefix] \
+                + clean_path_components[strip_count:]
+            # Now set the graft point name to match the end of new_prefix.
+            graft_point = len(result_prefix)
+            result[graft_point] = \
+                (new_prefix_parts[-1], clean_path_components[strip_count][1])
+            if new_prefix == '/': # --graft ...=/ is a special case.
+                return result[1:]
             return result
     return path_components(clean_path)
-
 
 # hashlib is only available in python 2.5 or higher, but the 'sha' module
 # produces a DeprecationWarning in python 2.6 or higher.  We want to support

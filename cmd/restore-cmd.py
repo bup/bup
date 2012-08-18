@@ -116,8 +116,41 @@ def write_file_content(fullname, n):
         outf.close()
 
 
+def do_root(n):
+    # Very similar to do_node(), except that this function doesn't
+    # create a path for n's destination directory (and so ignores
+    # n.fullname).  It assumes the destination is '.', and restores
+    # n's metadata and content there.
+    global total_restored, opt
+    meta_stream = None
+    try:
+        # Directory metadata is the first entry in any .bupm file in
+        # the directory.  Get it.
+        mfile = n.metadata_file() # VFS file -- cannot close().
+        if mfile:
+            meta_stream = mfile.open()
+            meta = metadata.Metadata.read(meta_stream)
+        print_info(n, '.')
+        total_restored += 1
+        plog('Restoring: %d\r' % total_restored)
+        for sub in n:
+            m = None
+            # Don't get metadata if this is a dir -- handled in sub do_node().
+            if meta_stream and not stat.S_ISDIR(sub.mode):
+                m = metadata.Metadata.read(meta_stream)
+            do_node(n, sub, m)
+        if meta:
+            meta.apply_to_path('.', restore_numeric_ids = opt.numeric_ids)
+    finally:
+        if meta_stream:
+            meta_stream.close()
+
+
 def do_node(top, n, meta=None):
-    # meta will be None for dirs, and when there is no .bupm (i.e. no metadata)
+    # Create n.fullname(), relative to the current directory, and
+    # restore all of its metadata, when available.  The meta argument
+    # will be None for dirs, or when there is no .bupm (i.e. no
+    # metadata).
     global total_restored, opt
     meta_stream = None
     try:
@@ -152,8 +185,7 @@ def do_node(top, n, meta=None):
                 m = metadata.Metadata.read(meta_stream)
             do_node(top, sub, m)
         if meta and not created_hardlink:
-            meta.apply_to_path(fullname,
-                               restore_numeric_ids=opt.numeric_ids)
+            meta.apply_to_path(fullname, restore_numeric_ids = opt.numeric_ids)
     finally:
         if meta_stream:
             meta_stream.close()
@@ -183,15 +215,31 @@ for d in extra:
         continue
     isdir = stat.S_ISDIR(n.mode)
     if not name or name == '.':
-        # trailing slash: extract children to cwd
+        # Source is /foo/what/ever/ or /foo/what/ever/. -- extract
+        # what/ever/* to the current directory, and if name == '.'
+        # (i.e. /foo/what/ever/.), then also restore what/ever's
+        # metadata to the current directory.
         if not isdir:
             add_error('%r: not a directory' % d)
         else:
-            for sub in n:
-                do_node(n, sub)
+            if name == '.':
+                do_root(n)
+            else:
+                for sub in n:
+                    do_node(n, sub)
     else:
-        # no trailing slash: extract node and its children to cwd
-        do_node(n.parent, n)
+        # Source is /foo/what/ever -- extract ./ever to cwd.
+        if isinstance(n, vfs.FakeSymlink):
+            # Source is actually /foo/what, i.e. a top-level commit
+            # like /foo/latest, which is a symlink to ../.commit/SHA.
+            # So dereference it, and restore ../.commit/SHA/. to
+            # "./what/.".
+            target = n.dereference()
+            mkdirp(n.name)
+            os.chdir(n.name)
+            do_root(target)
+        else:
+            do_node(n.parent, n)
 
 if not opt.quiet:
     progress('Restoring: %d, done.\n' % total_restored)

@@ -100,23 +100,33 @@ def eatslash(dir):
 # created.  The sort_key must be computed using the element's real
 # name and mode rather than the git mode and (possibly mangled) name.
 
-parts = ['']
-shalists = [[]]
-metalists = [[]]
+# Maintain a stack of information representing the current location in
+# the archive being constructed.  The current path is recorded in
+# parts, which will be something like ['', 'home', 'someuser'], and
+# the accumulated content and metadata for of the dirs in parts is
+# stored in parallel stacks in shalists and metalists.
+
+parts = [] # Current archive position (stack of dir names).
+shalists = [] # Hashes for each dir in paths.
+metalists = [] # Metadata for each dir in paths.
+
 
 def _push(part, metadata):
-    assert(part)
+    # Enter a new archive directory -- make it the current directory.
     parts.append(part)
     shalists.append([])
-    # First entry is dir metadata, which is represented with an empty name.
-    metalists.append([('', metadata)])
+    metalists.append([('', metadata)]) # This dir's metadata (no name).
 
-def _pop(force_tree):
+
+def _pop(force_tree, dir_metadata=None):
+    # Leave the current archive directory and add its tree to its parent.
     assert(len(parts) >= 1)
     part = parts.pop()
     shalist = shalists.pop()
     metalist = metalists.pop()
     if metalist:
+        if dir_metadata: # Override the original metadata pushed for this dir.
+            metalist = [('', dir_metadata)] + metalist[1:]
         sorted_metalist = sorted(metalist, key = lambda x : x[0])
         metadata = ''.join([m[1].encode() for m in sorted_metalist])
         shalist.append((0100644, '.bupm', w.new_blob(metadata)))
@@ -126,11 +136,8 @@ def _pop(force_tree):
                              git.mangle_name(part,
                                              GIT_MODE_TREE, GIT_MODE_TREE),
                              tree))
-    else:
-        # This was the toplevel, so put it back for sanity (i.e. cd .. from /).
-        shalists.append(shalist)
-        metalists.append(metalist)
     return tree
+
 
 lastremain = None
 def progress_report(n):
@@ -205,6 +212,19 @@ if opt.progress:
     progress('Reading index: %d, done.\n' % ftotal)
     hashsplit.progress_callback = progress_report
 
+# Root collisions occur when strip or graft options map more than one
+# path to the same directory (paths which originally had separate
+# parents).  When that situation is detected, use empty metadata for
+# the parent.  Otherwise, use the metadata for the common parent.
+# Collision example: "bup save ... --strip /foo /foo/bar /bar".
+
+# FIXME: Add collision tests, or handle collisions some other way.
+
+# FIXME: Detect/handle strip/graft name collisions (other than root),
+# i.e. if '/foo/bar' and '/bar' both map to '/'.
+
+first_root = None
+root_collision = None
 tstart = time.time()
 count = subcount = fcount = 0
 lastskip_name = None
@@ -254,21 +274,42 @@ for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse_during):
     else:
         dirp = path_components(dir)
 
+    # At this point, dirp contains a representation of the archive
+    # path that looks like [(archive_dir_name, real_fs_path), ...].
+    # So given "bup save ... --strip /foo/bar /foo/bar/baz", dirp
+    # might look like this at some point:
+    #   [('', '/foo/bar'), ('baz', '/foo/bar/baz'), ...].
+
+    # This dual representation supports stripping/grafting, where the
+    # archive path may not have a direct correspondence with the
+    # filesystem.  The root directory is represented by an initial
+    # component named '', and any component that doesn't have a
+    # corresponding filesystem directory (due to grafting, for
+    # example) will have a real_fs_path of None, i.e. [('', None),
+    # ...].
+
+    if first_root == None:
+        dir_name, fs_path = dirp[0]
+        first_root = dirp[0]
+        meta = metadata.from_path(fs_path) if fs_path else metadata.Metadata()
+        _push(dir_name, meta)
+    elif first_root != dirp[0]:
+        root_collision = True
+
+    # If switching to a new sub-tree, finish the current sub-tree.
     while parts > [x[0] for x in dirp]:
         _pop(force_tree = None)
 
-    if dir != '/':
-        for path_component in dirp[len(parts):]:
-            dir_name, fs_path = path_component
-            if fs_path:
-                meta = metadata.from_path(fs_path)
-            else:
-                meta = metadata.Metadata()
-            _push(dir_name, meta)
+    # If switching to a new sub-tree, start a new sub-tree.
+    for path_component in dirp[len(parts):]:
+        dir_name, fs_path = path_component
+        meta = metadata.from_path(fs_path) if fs_path else metadata.Metadata()
+        _push(dir_name, meta)
 
     if not file:
-        # no filename portion means this is a subdir.  But
-        # sub/parentdirectories already handled in the pop/push() part above.
+        if len(parts) == 1:
+            continue # We're at the top level -- keep the current root dir
+        # Since there's no filename, this is a subdir -- finish it.
         oldtree = already_saved(ent) # may be None
         newtree = _pop(force_tree = oldtree)
         if not oldtree:
@@ -346,19 +387,14 @@ if opt.progress:
     progress('Saving: %.2f%% (%d/%dk, %d/%d files), done.    \n'
              % (pct, count/1024, total/1024, fcount, ftotal))
 
-while len(parts) > 1: # _pop() all the parts above the indexed items.
+while len(parts) > 1: # _pop() all the parts above the root
     _pop(force_tree = None)
 assert(len(shalists) == 1)
 assert(len(metalists) == 1)
 
-if not (opt.strip or opt.strip_path or graft_points):
-    # For now, only save metadata for the root directory when there
-    # isn't any path grafting or stripping that might create multiple
-    # roots.
-    shalist = shalists[-1]
-    metadata = ''.join([metadata.from_path('/').encode()])
-    shalist.append((0100644, '.bupm', w.new_blob(metadata)))
-tree = w.new_tree(shalists[-1])
+# Finish the root directory.
+tree = _pop(force_tree = None,
+            dir_metadata = metadata.Metadata() if root_collision else None)
 
 if opt.tree:
     print tree.encode('hex')

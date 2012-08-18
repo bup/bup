@@ -48,10 +48,32 @@ def test_stripped_path_components():
              [('', '/foo/bar/baz')])
     WVEXCEPT(Exception, stripped_path_components, 'foo', [])
 
+
 @wvtest
 def test_grafted_path_components():
     WVPASSEQ(grafted_path_components([('/chroot', '/')], '/foo'),
              [('', '/'), ('foo', '/foo')])
-    WVPASSEQ(grafted_path_components([('/foo/bar', '')], '/foo/bar/baz/bax'),
-             [('', None), ('baz', None), ('bax', '/foo/bar/baz/bax')])
+    WVPASSEQ(grafted_path_components([('/foo/bar', '/')], '/foo/bar/baz/bax'),
+             [('', '/foo/bar'),
+              ('baz', '/foo/bar/baz'),
+              ('bax', '/foo/bar/baz/bax')])
+    WVPASSEQ(grafted_path_components([('/foo/bar/baz', '/bax')],
+                                     '/foo/bar/baz/1/2'),
+             [('', None),
+              ('bax', '/foo/bar/baz'),
+              ('1', '/foo/bar/baz/1'),
+              ('2', '/foo/bar/baz/1/2')])
+    WVPASSEQ(grafted_path_components([('/foo', '/bar/baz/bax')],
+                                     '/foo/bar'),
+             [('', None),
+              ('bar', None),
+              ('baz', None),
+              ('bax', '/foo'),
+              ('bar', '/foo/bar')])
+    WVPASSEQ(grafted_path_components([('/foo/bar/baz', '/a/b/c')],
+                                     '/foo/bar/baz'),
+             [('', None), ('a', None), ('b', None), ('c', '/foo/bar/baz')])
+    WVPASSEQ(grafted_path_components([('/', '/a/b/c/')], '/foo/bar'),
+             [('', None), ('a', None), ('b', None), ('c', '/'),
+              ('foo', '/foo'), ('bar', '/foo/bar')])
     WVEXCEPT(Exception, grafted_path_components, 'foo', [])

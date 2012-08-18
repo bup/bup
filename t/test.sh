@@ -238,6 +238,53 @@ WVPASS bup restore -C buprestore.tmp "/master/latest/$TOP/$D/"
 touch $D/non-existent-file buprestore.tmp/non-existent-file # else diff fails
 WVPASS diff -ur $D/ buprestore.tmp/
 
+(
+    tmp=testrestore.tmp
+    rm -rf $tmp
+    mkdir $tmp
+    export BUP_DIR="$(pwd)/$tmp/bup"
+    WVPASS bup init
+    mkdir -p $tmp/src/x/y/z
+    WVPASS bup random 8k > $tmp/src/x/y/random-1
+    WVPASS bup random 8k > $tmp/src/x/y/z/random-2
+    WVPASS bup index -u $tmp/src
+    WVPASS bup save --strip -n foo $tmp/src
+
+    WVSTART "restore /foo/latest"
+    WVPASS bup restore -C $tmp/restore /foo/latest
+    WVPASS t/compare-trees $tmp/src/ $tmp/restore/latest/
+
+    WVSTART "restore /foo/latest/"
+    rm -rf "$tmp/restore"
+    WVPASS bup restore -C $tmp/restore /foo/latest/
+    for x in $tmp/src/*; do
+        WVPASS t/compare-trees $x/ $tmp/restore/$(basename $x);
+    done
+
+    WVSTART "restore /foo/latest/."
+    rm -rf "$tmp/restore"
+    WVPASS bup restore -C $tmp/restore /foo/latest/.
+    WVPASS t/compare-trees $tmp/src/ $tmp/restore/
+
+    WVSTART "restore /foo/latest/x"
+    rm -rf "$tmp/restore"
+    WVPASS bup restore -C $tmp/restore /foo/latest/x
+    WVPASS t/compare-trees $tmp/src/x/ $tmp/restore/x/
+
+    WVSTART "restore /foo/latest/x/"
+    rm -rf "$tmp/restore"
+    WVPASS bup restore -C $tmp/restore /foo/latest/x/
+    for x in $tmp/src/x/*; do
+        WVPASS t/compare-trees $x/ $tmp/restore/$(basename $x);
+    done
+
+    WVSTART "restore /foo/latest/x/."
+    rm -rf "$tmp/restore"
+    WVPASS bup restore -C $tmp/restore /foo/latest/x/.
+    WVPASS t/compare-trees $tmp/src/x/ $tmp/restore/
+) || WVFAIL
+
+
 WVSTART "ftp"
 WVPASS bup ftp "cat /master/latest/$TOP/$D/b" >$D/b.new
 WVPASS bup ftp "cat /master/latest/$TOP/$D/f" >$D/f.new
@@ -347,63 +394,167 @@ b
 f"
 rm $EXCLUDE_FILE
 
-WVSTART "strip"
-D=strip.tmp
-rm -rf $D
-mkdir $D
-export BUP_DIR="$D/.bup"
-WVPASS bup init
-touch $D/a
-WVPASS bup random 128k >$D/b
-mkdir $D/d $D/d/e
-WVPASS bup random 512 >$D/f
-WVPASS bup index -ux $D
-bup save --strip -n strip $D
-WVPASSEQ "$(bup ls strip/latest/)" "a
-b
-d/
-f"
 
-WVSTART "strip-path"
-D=strip-path.tmp
-rm -rf $D
-mkdir $D
-export BUP_DIR="$D/.bup"
-WVPASS bup init
-touch $D/a
-WVPASS bup random 128k >$D/b
-mkdir $D/d $D/d/e
-WVPASS bup random 512 >$D/f
-WVPASS bup index -ux $D
-bup save --strip-path $TOP -n strip-path $D
-WVPASSEQ "$(bup ls strip-path/latest/$D/)" "a
-b
-d/
-f"
+WVSTART "save --strip"
+(
+    tmp=graft-points.tmp
+    rm -rf $tmp
+    mkdir $tmp
+    export BUP_DIR="$(pwd)/$tmp/bup"
+    WVPASS bup init
+    mkdir -p $tmp/src/x/y/z
+    WVPASS bup random 8k > $tmp/src/x/y/random-1
+    WVPASS bup random 8k > $tmp/src/x/y/z/random-2
+    WVPASS bup index -u $tmp/src
+    WVPASS bup save --strip -n foo $tmp/src/x/y
+    WVPASS bup restore -C $tmp/restore /foo/latest
+    WVPASS t/compare-trees $tmp/src/x/y/ "$tmp/restore/latest/"
+) || WVFAIL
 
-WVSTART "graft_points"
-D=graft-points.tmp
-rm -rf $D
-mkdir $D
-export BUP_DIR="$D/.bup"
-WVPASS bup init
-touch $D/a
-WVPASS bup random 128k >$D/b
-mkdir $D/d $D/d/e
-WVPASS bup random 512 >$D/f
-WVPASS bup index -ux $D
-WVFAIL bup save --graft =/grafted -n graft-point-absolute $D
-WVFAIL bup save --graft $TOP/$D= -n graft-point-absolute $D
-bup save --graft $TOP/$D=/grafted -n graft-point-absolute $D
-WVPASSEQ "$(bup ls graft-point-absolute/latest/grafted/)" "a
-b
-d/
-f"
-bup save --graft $D=grafted -n graft-point-relative $D
-WVPASSEQ "$(bup ls graft-point-relative/latest/$TOP/grafted/)" "a
-b
-d/
-f"
+WVSTART "save --strip-path (relative)"
+(
+    tmp=graft-points.tmp
+    rm -rf $tmp
+    mkdir $tmp
+    export BUP_DIR="$(pwd)/$tmp/bup"
+    WVPASS bup init
+    mkdir -p $tmp/src/x/y/z
+    WVPASS bup random 8k > $tmp/src/x/y/random-1
+    WVPASS bup random 8k > $tmp/src/x/y/z/random-2
+    WVPASS bup index -u $tmp/src
+    WVPASS bup save --strip-path $tmp/src -n foo $tmp/src/x
+    WVPASS bup restore -C $tmp/restore /foo/latest
+    WVPASS t/compare-trees $tmp/src/ "$tmp/restore/latest/"
+) || WVFAIL
+
+WVSTART "save --strip-path (absolute)"
+(
+    tmp=graft-points.tmp
+    rm -rf $tmp
+    mkdir $tmp
+    export BUP_DIR="$(pwd)/$tmp/bup"
+    WVPASS bup init
+    mkdir -p $tmp/src/x/y/z
+    WVPASS bup random 8k > $tmp/src/x/y/random-1
+    WVPASS bup random 8k > $tmp/src/x/y/z/random-2
+    WVPASS bup index -u $tmp/src
+    WVPASS bup save --strip-path "$TOP" -n foo $tmp/src
+    WVPASS bup restore -C $tmp/restore /foo/latest
+    WVPASS t/compare-trees $tmp/src/ "$tmp/restore/latest/$tmp/src/"
+) || WVFAIL
+
+WVSTART "save --strip-path (no match)"
+(
+    tmp=graft-points.tmp
+    rm -rf $tmp
+    mkdir $tmp
+    export BUP_DIR="$(pwd)/$tmp/bup"
+    WVPASS bup init
+    mkdir -p $tmp/src/x/y/z
+    WVPASS bup random 8k > $tmp/src/x/y/random-1
+    WVPASS bup random 8k > $tmp/src/x/y/z/random-2
+    WVPASS bup index -u $tmp/src
+    WVPASS bup save --strip-path $tmp/foo -n foo $tmp/src/x
+    WVPASS bup restore -C $tmp/restore /foo/latest
+    WVPASS t/compare-trees $tmp/src/ "$tmp/restore/latest/$TOP/$tmp/src/"
+) || WVFAIL
+
+WVSTART "save --graft (empty graft points disallowed)"
+(
+    tmp=graft-points.tmp
+    rm -rf $tmp
+    mkdir $tmp
+    export BUP_DIR="$(pwd)/$tmp/bup"
+    WVPASS bup init
+    WVFAIL bup save --graft =/grafted -n graft-point-absolute $tmp
+    WVFAIL bup save --graft $TOP/$tmp= -n graft-point-absolute $tmp
+) || WVFAIL
+
+WVSTART "save --graft /x/y=/a/b (relative paths)"
+(
+    tmp=graft-points.tmp
+    rm -rf $tmp
+    mkdir $tmp
+    export BUP_DIR="$(pwd)/$tmp/bup"
+    WVPASS bup init
+    mkdir -p $tmp/src/x/y/z
+    WVPASS bup random 8k > $tmp/src/x/y/random-1
+    WVPASS bup random 8k > $tmp/src/x/y/z/random-2
+    WVPASS bup index -u $tmp/src
+    WVPASS bup save --graft $tmp/src=x -n foo $tmp/src
+    WVPASS bup restore -C $tmp/restore /foo/latest
+    WVPASS t/compare-trees $tmp/src/ "$tmp/restore/latest/$TOP/x/"
+) || WVFAIL
+
+WVSTART "save --graft /x/y=/a/b (matching structure)"
+(
+    tmp=graft-points.tmp
+    rm -rf $tmp
+    mkdir $tmp
+    export BUP_DIR="$(pwd)/$tmp/bup"
+    WVPASS bup init
+    mkdir -p $tmp/src/x/y/z
+    WVPASS bup random 8k > $tmp/src/x/y/random-1
+    WVPASS bup random 8k > $tmp/src/x/y/z/random-2
+    WVPASS bup index -u $tmp/src
+    WVPASS bup save -v --graft "$TOP/$tmp/src/x/y=$TOP/$tmp/src/a/b" \
+        -n foo $tmp/src/x/y
+    WVPASS bup restore -C $tmp/restore /foo/latest
+    WVPASS t/compare-trees $tmp/src/x/y/ \
+        "$tmp/restore/latest/$TOP/$tmp/src/a/b/"
+) || WVFAIL
+
+WVSTART "save --graft /x/y=/a (shorter target)"
+(
+    tmp=graft-points.tmp
+    rm -rf $tmp
+    mkdir $tmp
+    export BUP_DIR="$(pwd)/$tmp/bup"
+    WVPASS bup init
+    mkdir -p $tmp/src/x/y/z
+    WVPASS bup random 8k > $tmp/src/x/y/random-1
+    WVPASS bup random 8k > $tmp/src/x/y/z/random-2
+    WVPASS bup index -u $tmp/src
+    WVPASS bup save -v --graft "$TOP/$tmp/src/x/y=/a" -n foo $tmp/src/x/y
+    WVPASS bup restore -C $tmp/restore /foo/latest
+    WVPASS t/compare-trees $tmp/src/x/y/ "$tmp/restore/latest/a/"
+) || WVFAIL
+
+WVSTART "save --graft /x=/a/b (longer target)"
+(
+    tmp=graft-points.tmp
+    export BUP_DIR="$(pwd)/$tmp/bup"
+    rm -rf $tmp
+    mkdir $tmp
+    WVPASS bup init
+    mkdir -p $tmp/src/x/y/z
+    WVPASS bup random 8k > $tmp/src/x/y/random-1
+    WVPASS bup random 8k > $tmp/src/x/y/z/random-2
+    WVPASS bup index -u $tmp/src
+    WVPASS bup save -v --graft "$TOP/$tmp/src=$TOP/$tmp/src/a/b/c" \
+        -n foo $tmp/src
+    WVPASS bup restore -C $tmp/restore /foo/latest
+    WVPASS t/compare-trees $tmp/src/ "$tmp/restore/latest/$TOP/$tmp/src/a/b/c/"
+) || WVFAIL
+
+WVSTART "save --graft /x=/ (root target)"
+(
+    tmp=graft-points.tmp
+    export BUP_DIR="$(pwd)/$tmp/bup"
+    rm -rf $tmp
+    mkdir $tmp
+    WVPASS bup init
+    mkdir -p $tmp/src/x/y/z
+    WVPASS bup random 8k > $tmp/src/x/y/random-1
+    WVPASS bup random 8k > $tmp/src/x/y/z/random-2
+    WVPASS bup index -u $tmp/src
+    WVPASS bup save -v --graft "$TOP/$tmp/src/x=/" -n foo $tmp/src/x
+    WVPASS bup restore -C $tmp/restore /foo/latest
+    WVPASS t/compare-trees $tmp/src/x/ "$tmp/restore/latest/"
+) || WVFAIL
+
+#WVSTART "save --graft /=/x/ (root source)"
+# FIXME: Not tested for now -- will require cleverness, or caution as root.
 
 WVSTART "indexfile"
 D=indexfile.tmp
