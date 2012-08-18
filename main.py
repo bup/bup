@@ -95,6 +95,10 @@ for opt in global_args:
     else:
         usage('error: unexpected option "%s"' % opt[0])
 
+# Make BUP_DIR absolute, so we aren't affected by chdir (i.e. save -C, etc.).
+if 'BUP_DIR' in os.environ:
+    os.environ['BUP_DIR'] = os.path.abspath(os.environ['BUP_DIR'])
+
 if len(subcmd) == 0:
     if help_requested:
         subcmd = ['help']
