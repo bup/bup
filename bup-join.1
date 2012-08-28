@@ -1,28 +1,34 @@
-.TH bup-join 1 "2011-03-01" "Bup 0\.24-83-gdfa9d85"
+.TH bup-join 1 "2011\[en]06\[en]08" "Bup 0.25-rc1"
 .SH NAME
 .PP
 bup-join - concatenate files from a bup repository
 .SH SYNOPSIS
 .PP
-bup join [-r \f[I]host\f[]:\f[I]path\f[]] [refs or hashes\.\.\.]
+bup join [-r \f[I]host\f[]:\f[I]path\f[]] [refs or hashes\&...]
 .SH DESCRIPTION
 .PP
 \f[B]bup\ join\f[] is roughly the opposite operation to
-\f[B]bup-split\f[](1)\. You can use it to retrieve the contents of
-a file from a local or remote bup repository\.
+\f[B]bup-split\f[](1).
+You can use it to retrieve the contents of a file from a local or
+remote bup repository.
 .PP
 The supplied list of refs or hashes can be in any format accepted
 by \f[B]git\f[](1), including branch names, commit ids, tree ids,
-or blob ids\.
+or blob ids.
 .PP
 If no refs or hashes are given on the command line,
-\f[B]bup\ join\f[] reads them from stdin instead\.
+\f[B]bup\ join\f[] reads them from stdin instead.
 .SH OPTIONS
 .TP
-.B -r, --remote=\f[I]host\f[]:\f[I]path\f[]
+.B -r, \[em]remote=\f[I]host\f[]:\f[I]path\f[]
 Retrieves objects from the given remote repository instead of the
-local one\. \f[I]path\f[] may be blank, in which case the default
-remote repository is used\.
+local one.
+\f[I]path\f[] may be blank, in which case the default remote
+repository is used.
+The connection to the remote server is made with SSH.
+If you'd like to specify which port, user or private key to use for
+the SSH connection, we recommend you use the \f[B]~/.ssh/config\f[]
+file.
 .RS
 .RE
 .SH EXAMPLE
@@ -32,18 +38,19 @@ remote repository is used\.
       TREE=$(tar\ -cvf\ -\ /etc\ |\ bup\ split\ -t)
       bup\ join\ $TREE\ |\ tar\ -tf\ -
       
-      #\ make\ two\ backups,\ then\ get\ the\ second-most-recent\.
+      #\ make\ two\ backups,\ then\ get\ the\ second-most-recent.
       #\ mybackup~1\ is\ git(1)\ notation\ for\ the\ second\ most
-      #\ recent\ commit\ on\ the\ branch\ named\ mybackup\.
+      #\ recent\ commit\ on\ the\ branch\ named\ mybackup.
       tar\ -cvf\ -\ /etc\ |\ bup\ split\ -n\ mybackup
       tar\ -cvf\ -\ /etc\ |\ bup\ split\ -n\ mybackup
       bup\ join\ mybackup~1\ |\ tar\ -tf\ -
 \f[]
 .SH SEE ALSO
 .PP
-\f[B]bup-split\f[](1), \f[B]bup-save\f[](1)
+\f[B]bup-split\f[](1), \f[B]bup-save\f[](1), \f[B]ssh_config\f[](5)
 .SH BUP
 .PP
-Part of the \f[B]bup\f[](1) suite\.
-.SH AUTHOR
-Avery Pennarun <apenwarr@gmail.com>
+Part of the \f[B]bup\f[](1) suite.
+.SH AUTHORS
+Avery Pennarun <apenwarr@gmail.com>.
+

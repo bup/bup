@@ -1,4 +1,4 @@
-.TH bup-tick 1 "2011-03-01" "Bup 0\.24-83-gdfa9d85"
+.TH bup-tick 1 "2011\[en]06\[en]08" "Bup 0.25-rc1"
 .SH NAME
 .PP
 bup-tick - wait for up to one second
@@ -8,13 +8,14 @@ bup tick
 .SH DESCRIPTION
 .PP
 \f[B]bup\ tick\f[] waits until \f[B]time\f[](2) returns a different
-value than it originally did\. Since time() has a granularity of
-one second, this can cause a delay of up to one second\.
+value than it originally did.
+Since time() has a granularity of one second, this can cause a
+delay of up to one second.
 .PP
 This program is useful for writing tests that need to ensure a file
-date will be seen as modified\. It is slightly better than
-\f[B]sleep\f[](1) since it sometimes waits for less than one
-second\.
+date will be seen as modified.
+It is slightly better than \f[B]sleep\f[](1) since it sometimes
+waits for less than one second.
 .SH EXAMPLE
 .PP
 \f[CR]
@@ -24,6 +25,7 @@ second\.
 \f[]
 .SH BUP
 .PP
-Part of the \f[B]bup\f[](1) suite\.
-.SH AUTHOR
-Avery Pennarun <apenwarr@gmail.com>
+Part of the \f[B]bup\f[](1) suite.
+.SH AUTHORS
+Avery Pennarun <apenwarr@gmail.com>.
+

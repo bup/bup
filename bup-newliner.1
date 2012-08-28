@@ -1,38 +1,40 @@
-.TH bup-newliner 1 "2011-03-01" "Bup 0\.24-83-gdfa9d85"
+.TH bup-newliner 1 "2011\[en]06\[en]08" "Bup 0.25-rc1"
 .SH NAME
 .PP
-bup-newliner - make sure progress messages don\[aq]t overlap with
+bup-newliner - make sure progress messages don't overlap with
 output
 .SH SYNOPSIS
 .PP
 <any command> 2>&1 | bup newliner
 .SH DESCRIPTION
 .PP
-\f[B]bup\ newliner\f[] is run automatically by bup\. You
-shouldn\[aq]t need it unless you\[aq]re using it in some other
-program\.
+\f[B]bup\ newliner\f[] is run automatically by bup.
+You shouldn't need it unless you're using it in some other program.
 .PP
 Progress messages emitted by bup (and some other tools) are of the
-form \"Message ### content\", that is, a status message containing
-a variable-length number, followed by a carriage return character
-and no newline\. If these messages are printed more than once, they
-overwrite each other, so what the user sees is a single line with a
-continually-updating number\.
+form \[lq]Message ### content\[rq], that is, a status message
+containing a variable-length number, followed by a carriage return
+character and no newline.
+If these messages are printed more than once, they overwrite each
+other, so what the user sees is a single line with a
+continually-updating number.
 .PP
-This works fine until some other message is printed\. For example,
-progress messages are usually printed to stderr, but other program
-messages might be printed to stdout\. If those messages are shorter
-than the progress message line, the screen will be left with weird
-looking artifacts as the two messages get mixed together\.
+This works fine until some other message is printed.
+For example, progress messages are usually printed to stderr, but
+other program messages might be printed to stdout.
+If those messages are shorter than the progress message line, the
+screen will be left with weird looking artifacts as the two
+messages get mixed together.
 .PP
 \f[B]bup\ newliner\f[] prints extra space characters at the right
-time to make sure that doesn\[aq]t happen\.
+time to make sure that doesn't happen.
 .PP
-If you\[aq]re running a program that has problems with these
-artifacts, you can usually fix them by piping its stdout
-\f[I]and\f[] its stderr through bup newliner\.
+If you're running a program that has problems with these artifacts,
+you can usually fix them by piping its stdout \f[I]and\f[] its
+stderr through bup newliner.
 .SH BUP
 .PP
-Part of the \f[B]bup\f[](1) suite\.
-.SH AUTHOR
-Avery Pennarun <apenwarr@gmail.com>
+Part of the \f[B]bup\f[](1) suite.
+.SH AUTHORS
+Avery Pennarun <apenwarr@gmail.com>.
+

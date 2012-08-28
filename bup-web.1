@@ -1,4 +1,4 @@
-.TH bup-ftp 1 "2011-03-01" "Bup 0\.24-83-gdfa9d85"
+.TH bup-ftp 1 "2011\[en]06\[en]08" "Bup 0.25-rc1"
 .SH NAME
 .PP
 bup-web - Start web server to browse bup repositiory
@@ -8,24 +8,25 @@ bup web [[hostname]:port]
 .SH DESCRIPTION
 .PP
 \f[B]bup\ web\f[] starts a web server that can browse bup
-repositories\. The file hierarchy is the same as that shown by
-\f[B]bup-fuse\f[](1), \f[B]bup-ls\f[](1) and \f[B]bup-ftp\f[](1)\.
+repositories.
+The file hierarchy is the same as that shown by
+\f[B]bup-fuse\f[](1), \f[B]bup-ls\f[](1) and \f[B]bup-ftp\f[](1).
 .PP
-\f[B]hostname\f[] and \f[B]port\f[] default to 127\.0\.0\.1 and
-8080, respectively, and hence \f[B]bup\ web\f[] will only offer up
-the web server to locally running clients\. If you\[aq]d like to
-expose the web server to anyone on your network (dangerous!) you
-can omit the bind address to bind to all available interfaces:
-\f[B]:8080\f[]\.
+\f[B]hostname\f[] and \f[B]port\f[] default to 127.0.0.1 and 8080,
+respectively, and hence \f[B]bup\ web\f[] will only offer up the
+web server to locally running clients.
+If you'd like to expose the web server to anyone on your network
+(dangerous!) you can omit the bind address to bind to all available
+interfaces: \f[B]:8080\f[].
 .SH EXAMPLE
 .PP
 \f[CR]
       $\ bup\ web
-      Serving\ HTTP\ on\ 127\.0\.0\.1:8080\.\.\.
+      Serving\ HTTP\ on\ 127.0.0.1:8080...
       ^C
       
       $\ bup\ web\ :8080
-      Serving\ HTTP\ on\ 0\.0\.0\.0:8080\.\.\.
+      Serving\ HTTP\ on\ 0.0.0.0:8080...
       ^C
 \f[]
 .SH SEE ALSO
@@ -34,6 +35,7 @@ can omit the bind address to bind to all available interfaces:
 \f[B]bup-restore\f[](1)
 .SH BUP
 .PP
-Part of the \f[B]bup\f[](1) suite\.
-.SH AUTHOR
-Joe Beda <jbeda@gmail.com>
+Part of the \f[B]bup\f[](1) suite.
+.SH AUTHORS
+Joe Beda <jbeda@gmail.com>.
+

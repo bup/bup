@@ -1,52 +1,52 @@
-.TH bup-drecurse 1 "2011-03-01" "Bup 0\.24-83-gdfa9d85"
+.TH bup-drecurse 1 "2011\[en]06\[en]08" "Bup 0.25-rc1"
 .SH NAME
 .PP
 bup-drecurse - recursively list files in your filesystem
 .SH SYNOPSIS
 .PP
-bup drecurse [-x] [-q] [--exclude \f[I]path\f[]] [--exclude-from
-\f[I]filename\f[]] [--profile] <path>
+bup drecurse [-x] [-q] [\[em]exclude \f[I]path\f[]]
+[\[em]exclude-from \f[I]filename\f[]] [\[em]profile] <path>
 .SH DESCRIPTION
 .PP
 \f[B]bup\ drecurse\f[] traverses files in the filesystem in a way
-similar to \f[B]find\f[](1)\. In most cases, you should use
-\f[B]find\f[](1) instead\.
+similar to \f[B]find\f[](1).
+In most cases, you should use \f[B]find\f[](1) instead.
 .PP
 This program is useful mainly for testing the file traversal
-algorithm used in \f[B]bup-index\f[](1)\.
+algorithm used in \f[B]bup-index\f[](1).
 .PP
 Note that filenames are returned in reverse alphabetical order, as
-in \f[B]bup-index\f[](1)\. This is important because you can\[aq]t
-generate the hash of a parent directory until you have generated
-the hashes of all its children\. When listing files in reverse
-order, the parent directory will come after its children, making
-this easy\.
+in \f[B]bup-index\f[](1).
+This is important because you can't generate the hash of a parent
+directory until you have generated the hashes of all its children.
+When listing files in reverse order, the parent directory will come
+after its children, making this easy.
 .SH OPTIONS
 .TP
-.B -x, --xdev, --one-file-system
-don\[aq]t cross filesystem boundaries\.
+.B -x, \[em]xdev, \[em]one-file-system
+don't cross filesystem boundaries.
 .RS
 .RE
 .TP
-.B -q, --quiet
-don\[aq]t print filenames as they are encountered\. Useful when
-testing performance of the traversal algorithms\.
+.B -q, \[em]quiet
+don't print filenames as they are encountered.
+Useful when testing performance of the traversal algorithms.
 .RS
 .RE
 .TP
-.B --exclude=\f[I]path\f[]
+.B \[em]exclude=\f[I]path\f[]
 a path to exclude from the backup (can be used more than once)
 .RS
 .RE
 .TP
-.B --exclude-from=\f[I]filename\f[]
+.B \[em]exclude-from=\f[I]filename\f[]
 a file that contains exclude paths (can be used more than once)
 .RS
 .RE
 .TP
-.B --profile
-print profiling information upon completion\. Useful when testing
-performance of the traversal algorithms\.
+.B \[em]profile
+print profiling information upon completion.
+Useful when testing performance of the traversal algorithms.
 .RS
 .RE
 .SH EXAMPLE
@@ -59,6 +59,7 @@ performance of the traversal algorithms\.
 \f[B]bup-index\f[](1)
 .SH BUP
 .PP
-Part of the \f[B]bup\f[](1) suite\.
-.SH AUTHOR
-Avery Pennarun <apenwarr@gmail.com>
+Part of the \f[B]bup\f[](1) suite.
+.SH AUTHORS
+Avery Pennarun <apenwarr@gmail.com>.
+

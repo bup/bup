@@ -1,39 +1,47 @@
-.TH bup-ls 1 "2011-03-01" "Bup 0\.24-83-gdfa9d85"
+.TH bup-ls 1 "2011\[en]06\[en]08" "Bup 0.25-rc1"
 .SH NAME
 .PP
 bup-ls - list the contents of a bup repository
 .SH SYNOPSIS
 .PP
-bup ls [-s] [-a] <paths\.\.\.>
+bup ls [-s] [-a] <paths\&...>
 .SH DESCRIPTION
 .PP
 \f[B]bup\ ls\f[] lists files and directories in your bup repository
 using the same directory hierarchy as they would have with
-\f[B]bup-fuse\f[](1)\.
+\f[B]bup-fuse\f[](1).
 .PP
 The top level directory contains the branch (corresponding to the
 \f[B]-n\f[] option in \f[B]bup\ save\f[]), the next level is the
 date of the backup, and subsequent levels correspond to files in
-the backup\.
+the backup.
 .PP
-Note that \f[B]bup\ ls\f[] doesn\[aq]t show hidden files by default
-and one needs to use the \f[B]-a\f[] option to show them\. Files
-are hidden when their name begins with a dot\. For example, on the
-topmost level, the special directories named \f[B]\.commit\f[] and
-\f[B]\.tag\f[] are hidden directories\.
+When \f[B]bup\ ls\f[] is asked to output on a tty, it formats its
+output in columns so that it can list as much as possible in as few
+lines as possible.
+However, when \f[B]bup\ ls\f[] is asked to output to something
+other than a tty (say you pipe the output to another command, or
+you redirect it to a file), it will output one file name per line.
+This makes the listing easier to parse with external tools.
+.PP
+Note that \f[B]bup\ ls\f[] doesn't show hidden files by default and
+one needs to use the \f[B]-a\f[] option to show them.
+Files are hidden when their name begins with a dot.
+For example, on the topmost level, the special directories named
+\f[B].commit\f[] and \f[B].tag\f[] are hidden directories.
 .PP
 Once you have identified the file you want using \f[B]bup\ ls\f[],
 you can view its contents using \f[B]bup\ join\f[] or
-\f[B]git\ show\f[]\.
+\f[B]git\ show\f[].
 .SH OPTIONS
 .TP
-.B -s, --hash
-show hash for each file/directory\.
+.B -s, \[em]hash
+show hash for each file/directory.
 .RS
 .RE
 .TP
-.B -a, --all
-show hidden files\.
+.B -a, \[em]all
+show hidden files.
 .RS
 .RE
 .SH EXAMPLE
@@ -49,6 +57,7 @@ show hidden files\.
 \f[B]bup-save\f[](1), \f[B]git-show\f[](1)
 .SH BUP
 .PP
-Part of the \f[B]bup\f[](1) suite\.
-.SH AUTHOR
-Avery Pennarun <apenwarr@gmail.com>
+Part of the \f[B]bup\f[](1) suite.
+.SH AUTHORS
+Avery Pennarun <apenwarr@gmail.com>.
+

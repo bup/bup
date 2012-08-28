@@ -1,33 +1,34 @@
-.TH bup 1 "2011-03-01" "Bup 0\.24-83-gdfa9d85"
+.TH bup 1 "2011\[en]06\[en]08" "Bup 0.25-rc1"
 .SH NAME
 .PP
 bup - Backup program using rolling checksums and git file formats
 .SH SYNOPSIS
 .PP
-bup [global options\.\.\.] <command> [options\.\.\.]
+bup [global options\&...] <command> [options\&...]
 .SH DESCRIPTION
 .PP
 \f[B]bup\f[] is a program for making backups of your files using
-the git file format\.
+the git file format.
 .PP
 Unlike \f[B]git\f[](1) itself, bup is optimized for handling huge
 data sets including individual very large files (such a virtual
-machine images)\. However, once a backup set is created, it can
-still be accessed using git tools\.
+machine images).
+However, once a backup set is created, it can still be accessed
+using git tools.
 .PP
-The individual bup subcommands appear in their own man pages\.
+The individual bup subcommands appear in their own man pages.
 .SH GLOBAL OPTIONS
 .TP
-.B --version
-print bup\[aq]s version number\. Equivalent to
-\f[B]bup-version\f[](1)
+.B \[em]version
+print bup's version number.
+Equivalent to \f[B]bup-version\f[](1)
 .RS
 .RE
 .TP
-.B -d, --bup-dir=\f[I]BUP_DIR\f[]
+.B -d, \[em]bup-dir=\f[I]BUP_DIR\f[]
 use the given BUP_DIR parameter as the bup repository location,
 instead of reading it from the $BUP_DIR environment variable or
-using the default \f[B]~/\.bup\f[] location\.
+using the default \f[B]~/.bup\f[] location.
 .RS
 .RE
 .SH COMMONLY USED SUBCOMMANDS
@@ -68,7 +69,7 @@ Extract files from a backup set
 .RE
 .TP
 .B \f[B]bup-save\f[](1)
-Save files into a backup set (note: run \"bup index\" first)
+Save files into a backup set (note: run \[lq]bup index\[rq] first)
 .RS
 .RE
 .TP
@@ -119,7 +120,7 @@ Index objects to speed up future backups
 .RE
 .TP
 .B \f[B]bup-newliner\f[](1)
-Make sure progress messages don\[aq]t overlap with output
+Make sure progress messages don't overlap with output
 .RS
 .RE
 .TP
@@ -139,19 +140,20 @@ Split a single file into its own backup set
 .RE
 .TP
 .B \f[B]bup-tick\f[](1)
-Wait for up to one second\.
+Wait for up to one second.
 .RS
 .RE
 .TP
 .B \f[B]bup-version\f[](1)
-Report the version number of your copy of bup\.
+Report the version number of your copy of bup.
 .RS
 .RE
 .SH SEE ALSO
 .PP
 \f[B]git\f[](1) and the \f[I]README\f[] file from the bup
-distribution\.
+distribution.
 .PP
-The home of bup is at <http://github.com/apenwarr/bup/>\.
-.SH AUTHOR
-Avery Pennarun <apenwarr@gmail.com>
+The home of bup is at <http://github.com/apenwarr/bup/>.
+.SH AUTHORS
+Avery Pennarun <apenwarr@gmail.com>.
+
