@@ -1,81 +1,98 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml"
-><head
-  ><title
-    >bup-server(1) Bup 0.24-83-gdfa9d85</title
-    ><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"
-     /><meta name="generator" content="pandoc"
-     /><meta name="author" content="Avery Pennarun &lt;apenwarr@gmail.com&gt;"
-     /><meta name="date" content="2011-03-01"
-     /></head
-  ><body
-  ><h1 class="title"
-    >bup-server(1) Bup 0.24-83-gdfa9d85</h1
-    ><h1 id="name"
-    >NAME</h1
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <title>bup-server(1) Bup 0.25-rc1</title>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="author" content="Avery Pennarun 
+                               '+''+e+''+'');
+                               // -->
+                               &#x61;&#112;&#x65;&#110;&#x77;&#x61;&#114;&#114;&#32;&#x61;&#116;&#32;&#x67;&#x6d;&#x61;&#x69;&#108;&#32;&#100;&#x6f;&#116;&#32;&#x63;&#x6f;&#x6d;" />
+  <meta name="date" content="2011-06-08" />
+</head>
+<body>
+<h1 class="title">bup-server(1) Bup 0.25-rc1</h1>
+<div id="name"
+><h1
+  >NAME</h1
+  ><p
+  >bup-server - the server side of the bup client-server relationship</p
+  ></div
+><div id="synopsis"
+><h1
+  >SYNOPSIS</h1
+  ><p
+  >bup server</p
+  ></div
+><div id="description"
+><h1
+  >DESCRIPTION</h1
+  ><p
+  ><code
+    >bup server</code
+    > is the server side of a remote bup session. If you use <code
+    >bup-split</code
+    >(1) or <code
+    >bup-save</code
+    >(1) with the <code
+    >-r</code
+    > option, they will ssh to the remote server and run <code
+    >bup server</code
+    > to receive the transmitted objects.</p
+  ><p
+  >There is normally no reason to run <code
+    >bup server</code
+    > yourself.</p
+  ></div
+><div id="modes"
+><h1
+  >MODES</h1
+  ><dl
+  ><dt
+    >smart</dt
+    ><dd
     ><p
-    >bup-server - the server side of the bup client-server relationship</p
-    ><h1 id="synopsis"
-    >SYNOPSIS</h1
-    ><p
-    >bup server</p
-    ><h1 id="description"
-    >DESCRIPTION</h1
-    ><p
-    ><code
-      >bup server</code
-      > is the server side of a remote bup session. If you use <code
-      >bup-split</code
-      >(1) or <code
-      >bup-save</code
-      >(1) with the <code
-      >-r</code
-      > option, they will ssh to the remote server and run <code
-      >bup server</code
-      > to receive the transmitted objects.</p
-    ><p
-    >There is normally no reason to run <code
-      >bup server</code
-      > yourself.</p
-    ><h1 id="modes"
-    >MODES</h1
-    ><dl
+      >In this mode, the server checks each incoming object against the idx files in its repository. If any object already exists, it tells the client about the idx file it was found in, allowing the client to download that idx and avoid sending duplicate data. This is <code
+	>bup-server</code
+	>'s default mode.</p
+      ></dd
     ><dt
-      >smart</dt
-      ><dd
-      ><p
-	>In this mode, the server checks each incoming object against the idx files in its repository. If any object already exists, it tells the client about the idx file it was found in, allowing the client to download that idx and avoid sending duplicate data.</p
-	></dd
-      ><dt
-      >dumb</dt
-      ><dd
-      ><p
-	>In this mode, the server will not check its local index before writing an object. To avoid writing duplicate objects, the server will tell the client to download all of its .idx files at the start of the session. This mode is useful on low powered server hardware (ie router/slow NAS).</p
-	></dd
-      ></dl
-    ><h1 id="files"
-    >FILES</h1
-    ><dl
-    ><dt
-      >$BUP_DIR/bup-dumb-server</dt
-      ><dd
-      >Activate dumb server mode, as discussed above.</dd
-      ></dl
-    ><h1 id="see-also"
-    >SEE ALSO</h1
+    >dumb</dt
+    ><dd
     ><p
-    ><code
-      >bup-save</code
-      >(1), <code
-      >bup-split</code
-      >(1)</p
-    ><h1 id="bup"
-    >BUP</h1
-    ><p
-    >Part of the <code
-      >bup</code
-      >(1) suite.</p
-    ></body
-  ></html
+      >In this mode, the server will not check its local index before writing an object. To avoid writing duplicate objects, the server will tell the client to download all of its .idx files at the start of the session. This mode is useful on low powered server hardware (ie router/slow NAS).</p
+      ></dd
+    ></dl
+  ></div
+><div id="files"
+><h1
+  >FILES</h1
+  ><dl
+  ><dt
+    >$BUP_DIR/bup-dumb-server</dt
+    ><dd
+    >Activate dumb server mode, as discussed above. This file is not created by default in new repositories.</dd
+    ></dl
+  ></div
+><div id="see-also"
+><h1
+  >SEE ALSO</h1
+  ><p
+  ><code
+    >bup-save</code
+    >(1), <code
+    >bup-split</code
+    >(1)</p
+  ></div
+><div id="bup"
+><h1
+  >BUP</h1
+  ><p
+  >Part of the <code
+    >bup</code
+    >(1) suite.</p
+  ></div
 >
+</body>
+</html>
 
