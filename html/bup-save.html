@@ -1,192 +1,211 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml"
-><head
-  ><title
-    >bup-save(1) Bup 0.24-83-gdfa9d85</title
-    ><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"
-     /><meta name="generator" content="pandoc"
-     /><meta name="author" content="Avery Pennarun &lt;apenwarr@gmail.com&gt;"
-     /><meta name="date" content="2011-03-01"
-     /></head
-  ><body
-  ><h1 class="title"
-    >bup-save(1) Bup 0.24-83-gdfa9d85</h1
-    ><h1 id="name"
-    >NAME</h1
-    ><p
-    >bup-save - create a new bup backup set</p
-    ><h1 id="synopsis"
-    >SYNOPSIS</h1
-    ><p
-    >bup save [-r <em
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <title>bup-save(1) Bup 0.25-rc1</title>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="author" content="Avery Pennarun 
+                               '+''+e+''+'');
+                               // -->
+                               &#x61;&#112;&#x65;&#110;&#x77;&#x61;&#114;&#114;&#32;&#x61;&#116;&#32;&#x67;&#x6d;&#x61;&#x69;&#108;&#32;&#100;&#x6f;&#116;&#32;&#x63;&#x6f;&#x6d;" />
+  <meta name="date" content="2011-06-08" />
+</head>
+<body>
+<h1 class="title">bup-save(1) Bup 0.25-rc1</h1>
+<div id="name"
+><h1
+  >NAME</h1
+  ><p
+  >bup-save - create a new bup backup set</p
+  ></div
+><div id="synopsis"
+><h1
+  >SYNOPSIS</h1
+  ><p
+  >bup save [-r <em
+    >host</em
+    >:<em
+    >path</em
+    >] &lt;-t|-c|-n <em
+    >name</em
+    >&gt; [-#] [-f <em
+    >indexfile</em
+    >] [-v] [-q] [--smaller=<em
+    >maxsize</em
+    >] &lt;paths...&gt;</p
+  ></div
+><div id="description"
+><h1
+  >DESCRIPTION</h1
+  ><p
+  ><code
+    >bup save</code
+    > saves the contents of the given files or paths into a new backup set and optionally names that backup set.</p
+  ><p
+  >Before trying to save files using <code
+    >bup save</code
+    >, you should first update the index using <code
+    >bup index</code
+    >. The reasons for separating the two steps are described in the man page for <code
+    >bup-index</code
+    >(1).</p
+  ></div
+><div id="options"
+><h1
+  >OPTIONS</h1
+  ><dl
+  ><dt
+    >-r, --remote=<em
       >host</em
       >:<em
       >path</em
-      >] &lt;-t|-c|-n <em
-      >name</em
-      >&gt; [-f <em
-      >indexfile</em
-      >] [-v] [-q] [--smaller=<em
-      >maxsize</em
-      >] &lt;paths...&gt;</p
-    ><h1 id="description"
-    >DESCRIPTION</h1
+      ></dt
+    ><dd
     ><p
-    ><code
-      >bup save</code
-      > saves the contents of the given files or paths into a new backup set and optionally names that backup set.</p
-    ><p
-    >Before trying to save files using <code
-      >bup save</code
-      >, you should first update the index using <code
-      >bup index</code
-      >. The reasons for separating the two steps are described in the man page for <code
-      >bup-index</code
-      >(1).</p
-    ><h1 id="options"
-    >OPTIONS</h1
-    ><dl
-    ><dt
-      >-r, --remote=<em
-	>host</em
-	>:<em
+      >save the backup set to the given remote server. If <em
 	>path</em
-	></dt
-      ><dd
-      ><p
-	>save the backup set to the given remote server. If <em
-	  >path</em
-	  > is omitted, uses the default path on the remote server (you still need to include the ':')</p
-	></dd
-      ><dt
-      >-t, --tree</dt
-      ><dd
-      ><p
-	>after creating the backup set, print out the git tree id of the resulting backup.</p
-	></dd
-      ><dt
-      >-c, --commit</dt
-      ><dd
-      ><p
-	>after creating the backup set, print out the git commit id of the resulting backup.</p
-	></dd
-      ><dt
-      >-n, --name=<em
-	>name</em
-	></dt
-      ><dd
-      ><p
-	>after creating the backup set, create a git branch named <em
-	  >name</em
-	  > so that the backup can be accessed using that name. If <em
-	  >name</em
-	  > already exists, the new backup will be considered a descendant of the old <em
-	  >name</em
-	  >. (Thus, you can continually create new backup sets with the same name, and later view the history of that backup set to see how files have changed over time.)</p
-	></dd
-      ><dt
-      >-f, --indexfile=<em
-	>indexfile</em
-	></dt
-      ><dd
-      ><p
-	>use a different index filename instead of <code
-	  >~/.bup/bupindex</code
-	  >.</p
-	></dd
-      ><dt
-      >-v, --verbose</dt
-      ><dd
-      ><p
-	>increase verbosity (can be used more than once). With one -v, prints every directory name as it gets backed up. With two -v, also prints every filename.</p
-	></dd
-      ><dt
-      >-q, --quiet</dt
-      ><dd
-      ><p
-	>disable progress messages.</p
-	></dd
-      ><dt
-      >--smaller=<em
-	>maxsize</em
-	></dt
-      ><dd
-      ><p
-	>don't back up files &gt;= <em
-	  >maxsize</em
-	  > bytes. You can use this to run frequent incremental backups of your small files, which can usually be backed up quickly, and skip over large ones (like virtual machine images) which take longer. Then you can back up the large files less frequently. Use a suffix like k, M, or G to specify multiples of 1024, 1024<em
-	  >1024, 1024</em
-	  >1024*1024 respectively.</p
-	></dd
-      ><dt
-      >--bwlimit=<em
-	>bytes/sec</em
-	></dt
-      ><dd
-      ><p
-	>don't transmit more than <em
-	  >bytes/sec</em
-	  > bytes per second to the server. This is good for making your backups not suck up all your network bandwidth. Use a suffix like k, M, or G to specify multiples of 1024, 1024<em
-	  >1024, 1024</em
-	  >1024*1024 respectively.</p
-	></dd
-      ><dt
-      >--strip</dt
-      ><dd
-      ><p
-	>strips the path that is given from all files and directories.</p
-	></dd
-      ></dl
-    ><pre
-    ><code
-      >A directory */root/chroot/etc* saved with
-&quot;bup save -n chroot --strip /root/chroot&quot; would be saved
-as */etc*.
-</code
-      ></pre
-    ><dl
+	> is omitted, uses the default path on the remote server (you still need to include the ':'). The connection to the remote server is made with SSH. If you'd like to specify which port, user or private key to use for the SSH connection, we recommend you use the <code
+	>~/.ssh/config</code
+	> file.</p
+      ></dd
     ><dt
-      >--strip-prefix=<em
-	>path-prefix</em
-	></dt
-      ><dd
+    >-t, --tree</dt
+    ><dd
+    ><p
+      >after creating the backup set, print out the git tree id of the resulting backup.</p
+      ></dd
+    ><dt
+    >-c, --commit</dt
+    ><dd
+    ><p
+      >after creating the backup set, print out the git commit id of the resulting backup.</p
+      ></dd
+    ><dt
+    >-n, --name=<em
+      >name</em
+      ></dt
+    ><dd
+    ><p
+      >after creating the backup set, create a git branch named <em
+	>name</em
+	> so that the backup can be accessed using that name. If <em
+	>name</em
+	> already exists, the new backup will be considered a descendant of the old <em
+	>name</em
+	>. (Thus, you can continually create new backup sets with the same name, and later view the history of that backup set to see how files have changed over time.)</p
+      ></dd
+    ><dt
+    >-f, --indexfile=<em
+      >indexfile</em
+      ></dt
+    ><dd
+    ><p
+      >use a different index filename instead of <code
+	>~/.bup/bupindex</code
+	>.</p
+      ></dd
+    ><dt
+    >-v, --verbose</dt
+    ><dd
+    ><p
+      >increase verbosity (can be used more than once). With one -v, prints every directory name as it gets backed up. With two -v, also prints every filename.</p
+      ></dd
+    ><dt
+    >-q, --quiet</dt
+    ><dd
+    ><p
+      >disable progress messages.</p
+      ></dd
+    ><dt
+    >--smaller=<em
+      >maxsize</em
+      ></dt
+    ><dd
+    ><p
+      >don't back up files &gt;= <em
+	>maxsize</em
+	> bytes. You can use this to run frequent incremental backups of your small files, which can usually be backed up quickly, and skip over large ones (like virtual machine images) which take longer. Then you can back up the large files less frequently. Use a suffix like k, M, or G to specify multiples of 1024, 1024<em
+	>1024, 1024</em
+	>1024*1024 respectively.</p
+      ></dd
+    ><dt
+    >--bwlimit=<em
+      >bytes/sec</em
+      ></dt
+    ><dd
+    ><p
+      >don't transmit more than <em
+	>bytes/sec</em
+	> bytes per second to the server. This is good for making your backups not suck up all your network bandwidth. Use a suffix like k, M, or G to specify multiples of 1024, 1024<em
+	>1024, 1024</em
+	>1024*1024 respectively.</p
+      ></dd
+    ><dt
+    >--strip</dt
+    ><dd
+    ><p
+      >strips the path that is given from all files and directories.</p
+      ><p
+      >A directory <em
+	>/root/chroot/etc</em
+	> saved with &quot;bup save -n chroot --strip /root/chroot&quot; would be saved as <em
+	>/etc</em
+	>.</p
+      ></dd
+    ><dt
+    >--strip-prefix=<em
+      >path-prefix</em
+      ></dt
+    ><dd
+    ><p
       >strips the given path-prefix <em
 	>path-prefix</em
-	> from all files and directories.</dd
-      ></dl
-    ><pre
-    ><code
-      >A directory */root/chroots/webserver* saved with
-&quot;bup save -n webserver --strip-path=/root/chroots&quot; would
-be saved as */webserver/etc*
-</code
-      ></pre
-    ><dl
+	> from all files and directories.</p
+      ><p
+      >A directory <em
+	>/root/chroots/webserver</em
+	> saved with &quot;bup save -n webserver --strip-path=/root/chroots&quot; would be saved as <em
+	>/webserver/etc</em
+	></p
+      ></dd
     ><dt
-      >--graft=<em
-	>old_path</em
-	>=<em
-	>new_path</em
-	></dt
-      ><dd
+    >--graft=<em
+      >old_path</em
+      >=<em
+      >new_path</em
+      ></dt
+    ><dd
+    ><p
       >a graft point <em
 	>old_path</em
 	>=<em
 	>new_path</em
-	> (can be used more than once).</dd
-      ></dl
-    ><pre
-    ><code
-      >A directory */root/chroot/a/etc* saved with
-&quot;bup save -n chroots --graft /root/chroot/a/etc=/chroots/a&quot;
-would be saved as */chroots/a/etc*
-</code
-      ></pre
-    ><h1 id="example"
-    >EXAMPLE</h1
-    ><pre
-    ><code
-      >$ bup index -ux /etc
+	> (can be used more than once).</p
+      ><p
+      >A directory <em
+	>/root/chroot/a/etc</em
+	> saved with &quot;bup save -n chroots --graft /root/chroot/a/etc=/chroots/a&quot; would be saved as <em
+	>/chroots/a/etc</em
+	></p
+      ></dd
+    ><dt
+    >-<em
+      >#</em
+      >, --compress=<em
+      >#</em
+      ></dt
+    ><dd
+    ><p
+      >set the compression level to # (a value from 0-9, where 9 is the highest and 0 is no compression). The default is 1 (fast, loose compression)</p
+      ></dd
+    ></dl
+  ></div
+><div id="example"
+><h1
+  >EXAMPLE</h1
+  ><pre
+  ><code
+    >$ bup index -ux /etc
 Indexing: 1981, done.
 
 $ bup save -r myserver: -n my-pc-backup --bwlimit=50k /etc
@@ -228,26 +247,33 @@ Saving: 100.00% (998/998k, 1337/1337 files), done.
 $ bup ls joe/latest/
 http-chroot/
 </code
-      ></pre
-    ><h1 id="see-also"
-    >SEE ALSO</h1
-    ><p
-    ><code
-      >bup-index</code
-      >(1), <code
-      >bup-split</code
-      >(1), <code
-      >bup-on</code
-      >(1), <code
-      >bup-restore</code
-      >(1)</p
-    ><h1 id="bup"
-    >BUP</h1
-    ><p
-    >Part of the <code
-      >bup</code
-      >(1) suite.</p
-    ></body
-  ></html
+    ></pre
+  ></div
+><div id="see-also"
+><h1
+  >SEE ALSO</h1
+  ><p
+  ><code
+    >bup-index</code
+    >(1), <code
+    >bup-split</code
+    >(1), <code
+    >bup-on</code
+    >(1), <code
+    >bup-restore</code
+    >(1), <code
+    >ssh_config</code
+    >(5)</p
+  ></div
+><div id="bup"
+><h1
+  >BUP</h1
+  ><p
+  >Part of the <code
+    >bup</code
+    >(1) suite.</p
+  ></div
 >
+</body>
+</html>
 

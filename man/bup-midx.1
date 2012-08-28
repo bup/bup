@@ -1,110 +1,112 @@
-.TH bup-midx 1 "2011-03-01" "Bup 0\.24-83-gdfa9d85"
+.TH bup-midx 1 "2011\[en]06\[en]08" "Bup 0.25-rc1"
 .SH NAME
 .PP
-bup-midx - create a multi-index (\.midx) file from several \.idx
+bup-midx - create a multi-index (.midx) file from several \&.idx
 files
 .SH SYNOPSIS
 .PP
-bup midx [-o \f[I]outfile\f[]] <-a|-f|\f[I]idxnames\f[]\.\.\.>
+bup midx [-o \f[I]outfile\f[]] <-a|-f|\f[I]idxnames\f[]\&...>
 .SH DESCRIPTION
 .PP
-\f[B]bup\ midx\f[] creates a multi-index (\.midx) file from one or
-more git pack index (\.idx) files\.
+\f[B]bup\ midx\f[] creates a multi-index (.midx) file from one or
+more git pack index (.idx) files.
 .PP
-Note: you should no longer need to run this command by hand\. It
-gets run automatically by \f[B]bup-save\f[](1) and similar
-commands\.
+Note: you should no longer need to run this command by hand.
+It gets run automatically by \f[B]bup-save\f[](1) and similar
+commands.
 .SH OPTIONS
 .TP
-.B -o, --output=\f[I]filename\.midx\f[]
-use the given output filename for the \.midx file\. Default is
-auto-generated\.
+.B -o, \[em]output=\f[I]filename.midx\f[]
+use the given output filename for the \&.midx file.
+Default is auto-generated.
 .RS
 .RE
 .TP
-.B -a, --auto
-automatically generate new \.midx files for any \.idx files where
-it would be appropriate\.
+.B -a, \[em]auto
+automatically generate new \&.midx files for any \&.idx files where
+it would be appropriate.
 .RS
 .RE
 .TP
-.B -f, --force
-force generation of a single new \.midx file containing
-\f[I]all\f[] your \.idx files, even if other \.midx files already
-exist\. This will result in the fastest backup performance, but may
-take a long time to run\.
+.B -f, \[em]force
+force generation of a single new \&.midx file containing
+\f[I]all\f[] your \&.idx files, even if other \&.midx files already
+exist.
+This will result in the fastest backup performance, but may take a
+long time to run.
 .RS
 .RE
 .TP
-.B --dir=\f[I]packdir\f[]
-specify the directory containing the \.idx/\.midx files to work
-with\. The default is $BUP_DIR/objects/pack and
-$BUP_DIR/indexcache/*\.
+.B \[em]dir=\f[I]packdir\f[]
+specify the directory containing the \&.idx/.midx files to work
+with.
+The default is $BUP_DIR/objects/pack and $BUP_DIR/indexcache/*.
 .RS
 .RE
 .TP
-.B --max-files
-maximum number of \.idx files to open at a time\. You can use this
-if you have an especially small number of file descriptors
-available, so that midx can complete (though possibly
-non-optimally) even if it can\[aq]t open all your \.idx files at
-once\. The default value of this option should be fine for most
-people\.
+.B \[em]max-files
+maximum number of \&.idx files to open at a time.
+You can use this if you have an especially small number of file
+descriptors available, so that midx can complete (though possibly
+non-optimally) even if it can't open all your \&.idx files at once.
+The default value of this option should be fine for most people.
 .RS
 .RE
 .TP
-.B --check
-validate a \.midx file by ensuring that all objects in its
-contained \.idx files exist inside the \.midx\. May be useful for
-debugging\.
+.B \[em]check
+validate a \&.midx file by ensuring that all objects in its
+contained \&.idx files exist inside the \&.midx.
+May be useful for debugging.
 .RS
 .RE
 .SH EXAMPLE
 .PP
 \f[CR]
       $\ bup\ midx\ -a
-      Merging\ 21\ indexes\ (2278559\ objects)\.
+      Merging\ 21\ indexes\ (2278559\ objects).
       Table\ size:\ 524288\ (17\ bits)
-      Reading\ indexes:\ 100\.00%\ (2278559/2278559),\ done\.
-      midx-b66d7c9afc4396187218f2936a87b865cf342672\.midx
+      Reading\ indexes:\ 100.00%\ (2278559/2278559),\ done.
+      midx-b66d7c9afc4396187218f2936a87b865cf342672.midx
 \f[]
 .SH DISCUSSION
 .PP
 By default, bup uses git-formatted pack files, which consist of a
 pack file (containing objects) and an idx file (containing a sorted
-list of object names and their offsets in the \.pack file)\.
+list of object names and their offsets in the \&.pack file).
 .PP
 Normal idx files are convenient because it means you can use
-\f[B]git\f[](1) to access your backup datasets\. However, idx files
-can get slow when you have a lot of very large packs (which git
-typically doesn\[aq]t have, but bup often does)\.
+\f[B]git\f[](1) to access your backup datasets.
+However, idx files can get slow when you have a lot of very large
+packs (which git typically doesn't have, but bup often does).
 .PP
-bup \.midx files consist of a single sorted list of all the objects
-contained in all the \.pack files it references\. This list can be
-binary searched in about log2(m) steps, where m is the total number
-of objects\.
+bup \&.midx files consist of a single sorted list of all the
+objects contained in all the \&.pack files it references.
+This list can be binary searched in about log2(m) steps, where m is
+the total number of objects.
 .PP
 To further speed up the search, midx files also have a
 variable-sized fanout table that reduces the first n steps of the
-binary search\. With the help of this fanout table, bup can narrow
-down which page of the midx file a given object id would be in (if
-it exists) with a single lookup\. Thus, typical searches will only
-need to swap in two pages: one for the fanout table, and one for
-the object id\.
+binary search.
+With the help of this fanout table, bup can narrow down which page
+of the midx file a given object id would be in (if it exists) with
+a single lookup.
+Thus, typical searches will only need to swap in two pages: one for
+the fanout table, and one for the object id.
 .PP
 midx files are most useful when creating new backups, since
 searching for a nonexistent object in the repository necessarily
 requires searching through \f[I]all\f[] the index files to ensure
-that it does not exist\. (Searching for objects that \f[I]do\f[]
-exist can be optimized; for example, consecutive objects are often
-stored in the same pack, so we can search that one first using an
-MRU algorithm\.)
+that it does not exist.
+(Searching for objects that \f[I]do\f[] exist can be optimized; for
+example, consecutive objects are often stored in the same pack, so
+we can search that one first using an MRU algorithm.)
 .SH SEE ALSO
 .PP
 \f[B]bup-save\f[](1), \f[B]bup-margin\f[](1),
 \f[B]bup-memtest\f[](1)
 .SH BUP
 .PP
-Part of the \f[B]bup\f[](1) suite\.
-.SH AUTHOR
-Avery Pennarun <apenwarr@gmail.com>
+Part of the \f[B]bup\f[](1) suite.
+.SH AUTHORS
+Avery Pennarun <apenwarr@gmail.com>.
+

@@ -1,65 +1,75 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml"
-><head
-  ><title
-    >bup-margin(1) Bup 0.24-83-gdfa9d85</title
-    ><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"
-     /><meta name="generator" content="pandoc"
-     /><meta name="author" content="Avery Pennarun &lt;apenwarr@gmail.com&gt;"
-     /><meta name="date" content="2011-03-01"
-     /></head
-  ><body
-  ><h1 class="title"
-    >bup-margin(1) Bup 0.24-83-gdfa9d85</h1
-    ><h1 id="name"
-    >NAME</h1
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <title>bup-margin(1) Bup 0.25-rc1</title>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="author" content="Avery Pennarun 
+                               '+''+e+''+'');
+                               // -->
+                               &#x61;&#112;&#x65;&#110;&#x77;&#x61;&#114;&#114;&#32;&#x61;&#116;&#32;&#x67;&#x6d;&#x61;&#x69;&#108;&#32;&#100;&#x6f;&#116;&#32;&#x63;&#x6f;&#x6d;" />
+  <meta name="date" content="2011-06-08" />
+</head>
+<body>
+<h1 class="title">bup-margin(1) Bup 0.25-rc1</h1>
+<div id="name"
+><h1
+  >NAME</h1
+  ><p
+  >bup-margin - figure out your deduplication safety margin</p
+  ></div
+><div id="synopsis"
+><h1
+  >SYNOPSIS</h1
+  ><p
+  >bup margin [options...]</p
+  ></div
+><div id="description"
+><h1
+  >DESCRIPTION</h1
+  ><p
+  ><code
+    >bup margin</code
+    > iterates through all objects in your bup repository, calculating the largest number of prefix bits shared between any two entries. This number, <code
+    >n</code
+    >, identifies the longest subset of SHA-1 you could use and still encounter a collision between your object ids.</p
+  ><p
+  >For example, one system that was tested had a collection of 11 million objects (70 GB), and <code
+    >bup margin</code
+    > returned 45. That means a 46-bit hash would be sufficient to avoid all collisions among that set of objects; each object in that repository could be uniquely identified by its first 46 bits.</p
+  ><p
+  >The number of bits needed seems to increase by about 1 or 2 for every doubling of the number of objects. Since SHA-1 hashes have 160 bits, that leaves 115 bits of margin. Of course, because SHA-1 hashes are essentially random, it's theoretically possible to use many more bits with far fewer objects.</p
+  ><p
+  >If you're paranoid about the possibility of SHA-1 collisions, you can monitor your repository by running <code
+    >bup margin</code
+    > occasionally to see if you're getting dangerously close to 160 bits.</p
+  ></div
+><div id="options"
+><h1
+  >OPTIONS</h1
+  ><dl
+  ><dt
+    >--predict</dt
+    ><dd
     ><p
-    >bup-margin - figure out your deduplication safety margin</p
-    ><h1 id="synopsis"
-    >SYNOPSIS</h1
-    ><p
-    >bup margin [options...]</p
-    ><h1 id="description"
-    >DESCRIPTION</h1
-    ><p
-    ><code
-      >bup margin</code
-      > iterates through all objects in your bup repository, calculating the largest number of prefix bits shared between any two entries. This number, <code
-      >n</code
-      >, identifies the longest subset of SHA-1 you could use and still encounter a collision between your object ids.</p
-    ><p
-    >For example, one system that was tested had a collection of 11 million objects (70 GB), and <code
-      >bup margin</code
-      > returned 45. That means a 46-bit hash would be sufficient to avoid all collisions among that set of objects; each object in that repository could be uniquely identified by its first 46 bits.</p
-    ><p
-    >The number of bits needed seems to increase by about 1 or 2 for every doubling of the number of objects. Since SHA-1 hashes have 160 bits, that leaves 115 bits of margin. Of course, because SHA-1 hashes are essentially random, it's theoretically possible to use many more bits with far fewer objects.</p
-    ><p
-    >If you're paranoid about the possibility of SHA-1 collisions, you can monitor your repository by running <code
-      >bup margin</code
-      > occasionally to see if you're getting dangerously close to 160 bits.</p
-    ><h1 id="options"
-    >OPTIONS</h1
-    ><dl
+      >Guess the offset into each index file where a particular object will appear, and report the maximum deviation of the correct answer from the guess. This is potentially useful for tuning an interpolation search algorithm.</p
+      ></dd
     ><dt
-      >--predict</dt
-      ><dd
-      ><p
-	>Guess the offset into each index file where a particular object will appear, and report the maximum deviation of the correct answer from the guess. This is potentially useful for tuning an interpolation search algorithm.</p
-	></dd
-      ><dt
-      >--ignore-midx</dt
-      ><dd
-      ><p
-	>don't use .midx files, use only .idx files. This is only really useful when used with <code
-	  >--predict</code
-	  >.</p
-	></dd
-      ></dl
-    ><h1 id="example"
-    >EXAMPLE</h1
-    ><pre
-    ><code
-      >$ bup margin
+    >--ignore-midx</dt
+    ><dd
+    ><p
+      >don't use .midx files, use only .idx files. This is only really useful when used with <code
+	>--predict</code
+	>.</p
+      ></dd
+    ></dl
+  ></div
+><div id="example"
+><h1
+  >EXAMPLE</h1
+  ><pre
+  ><code
+    >$ bup margin
 Reading indexes: 100.00% (1612581/1612581), done.
 40
 40 matching prefix bits
@@ -76,22 +86,27 @@ PackIdxList: using 1 index.
 Reading indexes: 100.00% (1612581/1612581), done.
 915 of 1612581 (0.057%) 
 </code
-      ></pre
-    ><h1 id="see-also"
-    >SEE ALSO</h1
-    ><p
-    ><code
-      >bup-midx</code
-      >(1), <code
-      >bup-save</code
-      >(1)</p
-    ><h1 id="bup"
-    >BUP</h1
-    ><p
-    >Part of the <code
-      >bup</code
-      >(1) suite.</p
-    ></body
-  ></html
+    ></pre
+  ></div
+><div id="see-also"
+><h1
+  >SEE ALSO</h1
+  ><p
+  ><code
+    >bup-midx</code
+    >(1), <code
+    >bup-save</code
+    >(1)</p
+  ></div
+><div id="bup"
+><h1
+  >BUP</h1
+  ><p
+  >Part of the <code
+    >bup</code
+    >(1) suite.</p
+  ></div
 >
+</body>
+</html>
 

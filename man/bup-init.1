@@ -1,4 +1,4 @@
-.TH bup-init 1 "2011-03-01" "Bup 0\.24-83-gdfa9d85"
+.TH bup-init 1 "2011\[en]06\[en]08" "Bup 0.25-rc1"
 .SH NAME
 .PP
 bup-init - initialize a bup repository
@@ -8,17 +8,23 @@ bup-init - initialize a bup repository
 \f[I]host\f[]:\f[I]path\f[]]
 .SH DESCRIPTION
 .PP
-\f[B]bup\ init\f[] initializes your local bup repository\. You
-usually don\[aq]t need to run it unless you have set BUP_DIR
-explicitly\. By default, BUP_DIR is \f[B]~/\.bup\f[] and will be
-initialized automatically whenever you run any bup command\.
+\f[B]bup\ init\f[] initializes your local bup repository.
+You usually don't need to run it unless you have set BUP_DIR
+explicitly.
+By default, BUP_DIR is \f[B]~/.bup\f[] and will be initialized
+automatically whenever you run any bup command.
 .SH OPTIONS
 .TP
-.B -r, --remote=\f[I]host\f[]:\f[I]path\f[]
+.B -r, \[em]remote=\f[I]host\f[]:\f[I]path\f[]
 Initialize not only the local repository, but also the remote
-repository given by the \f[I]host\f[] and \f[I]path\f[]\. This is
-not necessary if you intend to back up to the default location on
-the server (ie\. a blank \f[I]path\f[])\.
+repository given by the \f[I]host\f[] and \f[I]path\f[].
+This is not necessary if you intend to back up to the default
+location on the server (ie.
+a blank \f[I]path\f[]).
+The connection to the remote server is made with SSH.
+If you'd like to specify which port, user or private key to use for
+the SSH connection, we recommend you use the \f[B]~/.ssh/config\f[]
+file.
 .RS
 .RE
 .SH EXAMPLE
@@ -28,9 +34,10 @@ the server (ie\. a blank \f[I]path\f[])\.
 \f[]
 .SH SEE ALSO
 .PP
-\f[B]bup-fsck\f[](1)
+\f[B]bup-fsck\f[](1), \f[B]ssh_config\f[](5)
 .SH BUP
 .PP
-Part of the \f[B]bup\f[](1) suite\.
-.SH AUTHOR
-Avery Pennarun <apenwarr@gmail.com>
+Part of the \f[B]bup\f[](1) suite.
+.SH AUTHORS
+Avery Pennarun <apenwarr@gmail.com>.
+

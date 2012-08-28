@@ -1,63 +1,75 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml"
-><head
-  ><title
-    >bup-join(1) Bup 0.24-83-gdfa9d85</title
-    ><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"
-     /><meta name="generator" content="pandoc"
-     /><meta name="author" content="Avery Pennarun &lt;apenwarr@gmail.com&gt;"
-     /><meta name="date" content="2011-03-01"
-     /></head
-  ><body
-  ><h1 class="title"
-    >bup-join(1) Bup 0.24-83-gdfa9d85</h1
-    ><h1 id="name"
-    >NAME</h1
-    ><p
-    >bup-join - concatenate files from a bup repository</p
-    ><h1 id="synopsis"
-    >SYNOPSIS</h1
-    ><p
-    >bup join [-r <em
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <title>bup-join(1) Bup 0.25-rc1</title>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="author" content="Avery Pennarun 
+                               '+''+e+''+'');
+                               // -->
+                               &#x61;&#112;&#x65;&#110;&#x77;&#x61;&#114;&#114;&#32;&#x61;&#116;&#32;&#x67;&#x6d;&#x61;&#x69;&#108;&#32;&#100;&#x6f;&#116;&#32;&#x63;&#x6f;&#x6d;" />
+  <meta name="date" content="2011-06-08" />
+</head>
+<body>
+<h1 class="title">bup-join(1) Bup 0.25-rc1</h1>
+<div id="name"
+><h1
+  >NAME</h1
+  ><p
+  >bup-join - concatenate files from a bup repository</p
+  ></div
+><div id="synopsis"
+><h1
+  >SYNOPSIS</h1
+  ><p
+  >bup join [-r <em
+    >host</em
+    >:<em
+    >path</em
+    >] [refs or hashes...]</p
+  ></div
+><div id="description"
+><h1
+  >DESCRIPTION</h1
+  ><p
+  ><code
+    >bup join</code
+    > is roughly the opposite operation to <code
+    >bup-split</code
+    >(1). You can use it to retrieve the contents of a file from a local or remote bup repository.</p
+  ><p
+  >The supplied list of refs or hashes can be in any format accepted by <code
+    >git</code
+    >(1), including branch names, commit ids, tree ids, or blob ids.</p
+  ><p
+  >If no refs or hashes are given on the command line, <code
+    >bup join</code
+    > reads them from stdin instead.</p
+  ></div
+><div id="options"
+><h1
+  >OPTIONS</h1
+  ><dl
+  ><dt
+    >-r, --remote=<em
       >host</em
       >:<em
       >path</em
-      >] [refs or hashes...]</p
-    ><h1 id="description"
-    >DESCRIPTION</h1
-    ><p
-    ><code
-      >bup join</code
-      > is roughly the opposite operation to <code
-      >bup-split</code
-      >(1). You can use it to retrieve the contents of a file from a local or remote bup repository.</p
-    ><p
-    >The supplied list of refs or hashes can be in any format accepted by <code
-      >git</code
-      >(1), including branch names, commit ids, tree ids, or blob ids.</p
-    ><p
-    >If no refs or hashes are given on the command line, <code
-      >bup join</code
-      > reads them from stdin instead.</p
-    ><h1 id="options"
-    >OPTIONS</h1
-    ><dl
-    ><dt
-      >-r, --remote=<em
-	>host</em
-	>:<em
-	>path</em
-	></dt
-      ><dd
-      >Retrieves objects from the given remote repository instead of the local one. <em
-	>path</em
-	> may be blank, in which case the default remote repository is used.</dd
-      ></dl
-    ><h1 id="example"
-    >EXAMPLE</h1
-    ><pre
-    ><code
-      ># split and then rejoin a file using its tree id
+      ></dt
+    ><dd
+    >Retrieves objects from the given remote repository instead of the local one. <em
+      >path</em
+      > may be blank, in which case the default remote repository is used. The connection to the remote server is made with SSH. If you'd like to specify which port, user or private key to use for the SSH connection, we recommend you use the <code
+      >~/.ssh/config</code
+      > file.</dd
+    ></dl
+  ></div
+><div id="example"
+><h1
+  >EXAMPLE</h1
+  ><pre
+  ><code
+    ># split and then rejoin a file using its tree id
 TREE=$(tar -cvf - /etc | bup split -t)
 bup join $TREE | tar -tf -
 
@@ -68,22 +80,29 @@ tar -cvf - /etc | bup split -n mybackup
 tar -cvf - /etc | bup split -n mybackup
 bup join mybackup~1 | tar -tf -
 </code
-      ></pre
-    ><h1 id="see-also"
-    >SEE ALSO</h1
-    ><p
-    ><code
-      >bup-split</code
-      >(1), <code
-      >bup-save</code
-      >(1)</p
-    ><h1 id="bup"
-    >BUP</h1
-    ><p
-    >Part of the <code
-      >bup</code
-      >(1) suite.</p
-    ></body
-  ></html
+    ></pre
+  ></div
+><div id="see-also"
+><h1
+  >SEE ALSO</h1
+  ><p
+  ><code
+    >bup-split</code
+    >(1), <code
+    >bup-save</code
+    >(1), <code
+    >ssh_config</code
+    >(5)</p
+  ></div
+><div id="bup"
+><h1
+  >BUP</h1
+  ><p
+  >Part of the <code
+    >bup</code
+    >(1) suite.</p
+  ></div
 >
+</body>
+</html>
 

@@ -1,55 +1,63 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml"
-><head
-  ><title
-    >bup-on(1) Bup 0.24-83-gdfa9d85</title
-    ><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"
-     /><meta name="generator" content="pandoc"
-     /><meta name="author" content="Avery Pennarun &lt;apenwarr@gmail.com&gt;"
-     /><meta name="date" content="2011-03-01"
-     /></head
-  ><body
-  ><h1 class="title"
-    >bup-on(1) Bup 0.24-83-gdfa9d85</h1
-    ><h1 id="name"
-    >NAME</h1
-    ><p
-    >bup-on - run a bup server locally and client remotely</p
-    ><h1 id="synopsis"
-    >SYNOPSIS</h1
-    ><p
-    >bup on &lt;hostname&gt; index ...</p
-    ><p
-    >bup on &lt;hostname&gt; save ...</p
-    ><p
-    >bup on &lt;hostname&gt; split ...</p
-    ><h1 id="description"
-    >DESCRIPTION</h1
-    ><p
-    ><code
-      >bup on</code
-      > runs the given bup command on the given host using ssh. It runs a bup server on the local machine, so that commands like <code
-      >bup save</code
-      > on the remote machine can back up to the local machine. (You don't need to provide a <code
-      >--remote</code
-      > option to <code
-      >bup save</code
-      > in order for this to work.)</p
-    ><p
-    >See <code
-      >bup-index</code
-      >(1), <code
-      >bup-save</code
-      >(1), and so on for details of how each subcommand works.</p
-    ><p
-    >This 'reverse mode' operation is useful when the machine being backed up isn't supposed to be able to ssh into the backup server. For example, your backup server can be hidden behind a one-way firewall on a private or dynamic IP address; using an ssh key, it can be authorized to ssh into each of your important machines. After connecting to each destination machine, it initiates a backup, receiving the resulting data and storing in its local repository.</p
-    ><p
-    >For example, if you run several virtual private Linux machines on a remote hosting provider, you could back them up to a local (much less expensive) computer in your basement.</p
-    ><h1 id="examples"
-    >EXAMPLES</h1
-    ><pre
-    ><code
-      ># First index the files on the remote server
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <title>bup-on(1) Bup 0.25-rc1</title>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="author" content="Avery Pennarun 
+                               '+''+e+''+'');
+                               // -->
+                               &#x61;&#112;&#x65;&#110;&#x77;&#x61;&#114;&#114;&#32;&#x61;&#116;&#32;&#x67;&#x6d;&#x61;&#x69;&#108;&#32;&#100;&#x6f;&#116;&#32;&#x63;&#x6f;&#x6d;" />
+  <meta name="date" content="2011-06-08" />
+</head>
+<body>
+<h1 class="title">bup-on(1) Bup 0.25-rc1</h1>
+<div id="name"
+><h1
+  >NAME</h1
+  ><p
+  >bup-on - run a bup server locally and client remotely</p
+  ></div
+><div id="synopsis"
+><h1
+  >SYNOPSIS</h1
+  ><p
+  >bup on &lt;hostname&gt; index ...</p
+  ><p
+  >bup on &lt;hostname&gt; save ...</p
+  ><p
+  >bup on &lt;hostname&gt; split ...</p
+  ></div
+><div id="description"
+><h1
+  >DESCRIPTION</h1
+  ><p
+  ><code
+    >bup on</code
+    > runs the given bup command on the given host using ssh. It runs a bup server on the local machine, so that commands like <code
+    >bup save</code
+    > on the remote machine can back up to the local machine. (You don't need to provide a <code
+    >--remote</code
+    > option to <code
+    >bup save</code
+    > in order for this to work.)</p
+  ><p
+  >See <code
+    >bup-index</code
+    >(1), <code
+    >bup-save</code
+    >(1), and so on for details of how each subcommand works.</p
+  ><p
+  >This 'reverse mode' operation is useful when the machine being backed up isn't supposed to be able to ssh into the backup server. For example, your backup server can be hidden behind a one-way firewall on a private or dynamic IP address; using an ssh key, it can be authorized to ssh into each of your important machines. After connecting to each destination machine, it initiates a backup, receiving the resulting data and storing in its local repository.</p
+  ><p
+  >For example, if you run several virtual private Linux machines on a remote hosting provider, you could back them up to a local (much less expensive) computer in your basement.</p
+  ></div
+><div id="examples"
+><h1
+  >EXAMPLES</h1
+  ><pre
+  ><code
+    ># First index the files on the remote server
 
 $ bup on myserver index -vux /etc
 bup server: reading from stdin.
@@ -81,24 +89,29 @@ sys:x:3:3:sys:/dev:/bin/sh
 sync:x:4:65534:sync:/bin:/bin/sync
 ...
 </code
-      ></pre
-    ><h1 id="see-also"
-    >SEE ALSO</h1
-    ><p
-    ><code
-      >bup-index</code
-      >(1), <code
-      >bup-save</code
-      >(1), <code
-      >bup-split</code
-      >(1)</p
-    ><h1 id="bup"
-    >BUP</h1
-    ><p
-    >Part of the <code
-      >bup</code
-      >(1) suite.</p
-    ></body
-  ></html
+    ></pre
+  ></div
+><div id="see-also"
+><h1
+  >SEE ALSO</h1
+  ><p
+  ><code
+    >bup-index</code
+    >(1), <code
+    >bup-save</code
+    >(1), <code
+    >bup-split</code
+    >(1)</p
+  ></div
+><div id="bup"
+><h1
+  >BUP</h1
+  ><p
+  >Part of the <code
+    >bup</code
+    >(1) suite.</p
+  ></div
 >
+</body>
+</html>
 

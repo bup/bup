@@ -1,4 +1,4 @@
-.TH bup-ftp 1 "2011-03-01" "Bup 0\.24-83-gdfa9d85"
+.TH bup-ftp 1 "2011\[en]06\[en]08" "Bup 0.25-rc1"
 .SH NAME
 .PP
 bup-ftp - ftp-like client for navigating bup repositories
@@ -8,21 +8,27 @@ bup ftp
 .SH DESCRIPTION
 .PP
 \f[B]bup\ ftp\f[] is a command-line tool for navigating bup
-repositories\. It has commands similar to the Unix \f[B]ftp\f[](1)
-command\. The file hierarchy is the same as that shown by
-\f[B]bup-fuse\f[](1) and \f[B]bup-ls\f[](1)\.
+repositories.
+It has commands similar to the Unix \f[B]ftp\f[](1) command.
+The file hierarchy is the same as that shown by
+\f[B]bup-fuse\f[](1) and \f[B]bup-ls\f[](1).
 .PP
 Note: if your system has the python-readline library installed, you
 can use the <tab> key to complete filenames while navigating your
-backup data\. This will save you a lot of typing\.
+backup data.
+This will save you a lot of typing.
 .SH COMMANDS
 .PP
 The following commands are available inside \f[B]bup\ ftp\f[]:
 .TP
-.B ls [-a]
-print the contents of the current working directory\. If -a is
-given, also include hidden files (files which start with a
-\f[B]\.\f[] character)\.
+.B ls [-s] [-a] [\f[I]path\f[]]
+print the contents of a directory.
+If no path argument is given, the current directory's contents are
+listed.
+If -a is given, also include hidden files (files which start with a
+\f[B].\f[] character).
+If -s is given, each file is displayed with its hash from the bup
+archive to its left.
 .RS
 .RE
 .TP
@@ -36,22 +42,24 @@ print the path of the current working directory
 .RS
 .RE
 .TP
-.B cat \f[I]filenames\.\.\.\f[]
+.B cat \f[I]filenames\&...\f[]
 print the contents of one or more files to stdout
 .RS
 .RE
 .TP
 .B get \f[I]filename\f[] \f[I]localname\f[]
 download the contents of \f[I]filename\f[] and save it to disk as
-\f[I]localname\f[]\. If \f[I]localname\f[] is omitted, uses
-\f[I]filename\f[] as the local name\.
+\f[I]localname\f[].
+If \f[I]localname\f[] is omitted, uses \f[I]filename\f[] as the
+local name.
 .RS
 .RE
 .TP
-.B mget \f[I]filenames\.\.\.\f[]
+.B mget \f[I]filenames\&...\f[]
 download the contents of the given \f[I]filenames\f[] and stores
-them to disk under the same names\. The filenames may contain Unix
-filename globs (\f[B]*\f[], \f[B]?\f[], etc\.)
+them to disk under the same names.
+The filenames may contain Unix filename globs (\f[B]*\f[],
+\f[B]?\f[], etc.)
 .RS
 .RE
 .TP
@@ -77,7 +85,7 @@ exit the \f[B]bup\ ftp\f[] client
       
       bup>\ cd\ latest/
       bup>\ ls
-      \ \ (\.\.\.etc\.\.\.)
+      \ \ (...etc...)
       
       bup>\ get\ myfile
       Saving\ \[aq]myfile\[aq]
@@ -89,6 +97,7 @@ exit the \f[B]bup\ ftp\f[] client
 \f[B]bup-restore\f[](1)
 .SH BUP
 .PP
-Part of the \f[B]bup\f[](1) suite\.
-.SH AUTHOR
-Avery Pennarun <apenwarr@gmail.com>
+Part of the \f[B]bup\f[](1) suite.
+.SH AUTHORS
+Avery Pennarun <apenwarr@gmail.com>.
+

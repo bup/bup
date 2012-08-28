@@ -1,74 +1,79 @@
-.TH bup-margin 1 "2011-03-01" "Bup 0\.24-83-gdfa9d85"
+.TH bup-margin 1 "2011\[en]06\[en]08" "Bup 0.25-rc1"
 .SH NAME
 .PP
 bup-margin - figure out your deduplication safety margin
 .SH SYNOPSIS
 .PP
-bup margin [options\.\.\.]
+bup margin [options\&...]
 .SH DESCRIPTION
 .PP
 \f[B]bup\ margin\f[] iterates through all objects in your bup
 repository, calculating the largest number of prefix bits shared
-between any two entries\. This number, \f[B]n\f[], identifies the
-longest subset of SHA-1 you could use and still encounter a
-collision between your object ids\.
+between any two entries.
+This number, \f[B]n\f[], identifies the longest subset of SHA\[en]1
+you could use and still encounter a collision between your object
+ids.
 .PP
 For example, one system that was tested had a collection of 11
-million objects (70 GB), and \f[B]bup\ margin\f[] returned 45\.
+million objects (70 GB), and \f[B]bup\ margin\f[] returned 45.
 That means a 46-bit hash would be sufficient to avoid all
 collisions among that set of objects; each object in that
-repository could be uniquely identified by its first 46 bits\.
+repository could be uniquely identified by its first 46 bits.
 .PP
 The number of bits needed seems to increase by about 1 or 2 for
-every doubling of the number of objects\. Since SHA-1 hashes have
-160 bits, that leaves 115 bits of margin\. Of course, because SHA-1
-hashes are essentially random, it\[aq]s theoretically possible to
-use many more bits with far fewer objects\.
+every doubling of the number of objects.
+Since SHA\[en]1 hashes have 160 bits, that leaves 115 bits of
+margin.
+Of course, because SHA\[en]1 hashes are essentially random, it's
+theoretically possible to use many more bits with far fewer
+objects.
 .PP
-If you\[aq]re paranoid about the possibility of SHA-1 collisions,
+If you're paranoid about the possibility of SHA\[en]1 collisions,
 you can monitor your repository by running \f[B]bup\ margin\f[]
-occasionally to see if you\[aq]re getting dangerously close to 160
-bits\.
+occasionally to see if you're getting dangerously close to 160
+bits.
 .SH OPTIONS
 .TP
-.B --predict
+.B \[em]predict
 Guess the offset into each index file where a particular object
 will appear, and report the maximum deviation of the correct answer
-from the guess\. This is potentially useful for tuning an
-interpolation search algorithm\.
+from the guess.
+This is potentially useful for tuning an interpolation search
+algorithm.
 .RS
 .RE
 .TP
-.B --ignore-midx
-don\[aq]t use \.midx files, use only \.idx files\. This is only
-really useful when used with \f[B]--predict\f[]\.
+.B \[em]ignore-midx
+don't use \&.midx files, use only \&.idx files.
+This is only really useful when used with \f[B]--predict\f[].
 .RS
 .RE
 .SH EXAMPLE
 .PP
 \f[CR]
       $\ bup\ margin
-      Reading\ indexes:\ 100\.00%\ (1612581/1612581),\ done\.
+      Reading\ indexes:\ 100.00%\ (1612581/1612581),\ done.
       40
       40\ matching\ prefix\ bits
-      1\.94\ bits\ per\ doubling
-      120\ bits\ (61\.86\ doublings)\ remaining
-      4\.19338e+18\ times\ larger\ is\ possible
+      1.94\ bits\ per\ doubling
+      120\ bits\ (61.86\ doublings)\ remaining
+      4.19338e+18\ times\ larger\ is\ possible
       
       Everyone\ on\ earth\ could\ have\ 625878182\ data\ sets
       like\ yours,\ all\ in\ one\ repository,\ and\ we\ would
-      expect\ 1\ object\ collision\.
+      expect\ 1\ object\ collision.
       
       $\ bup\ margin\ --predict
-      PackIdxList:\ using\ 1\ index\.
-      Reading\ indexes:\ 100\.00%\ (1612581/1612581),\ done\.
-      915\ of\ 1612581\ (0\.057%)\ 
+      PackIdxList:\ using\ 1\ index.
+      Reading\ indexes:\ 100.00%\ (1612581/1612581),\ done.
+      915\ of\ 1612581\ (0.057%)\ 
 \f[]
 .SH SEE ALSO
 .PP
 \f[B]bup-midx\f[](1), \f[B]bup-save\f[](1)
 .SH BUP
 .PP
-Part of the \f[B]bup\f[](1) suite\.
-.SH AUTHOR
-Avery Pennarun <apenwarr@gmail.com>
+Part of the \f[B]bup\f[](1) suite.
+.SH AUTHORS
+Avery Pennarun <apenwarr@gmail.com>.
+
