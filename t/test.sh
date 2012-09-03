@@ -509,7 +509,7 @@ WVSTART "save disjoint top-level directories"
     WVPASS bup init
     WVPASS bup index -vu $(pwd)/$D/x "$tmpdir"
     WVPASS bup save -t -n src $(pwd)/$D/x "$tmpdir"
-    WVPASSEQ "$(bup ls src/latest)" \
+    WVPASSEQ "$(bup ls -a src/latest)" \
 "$top_dir/
 tmp/"
 ) || WVFAIL
