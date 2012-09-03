@@ -298,7 +298,7 @@ mkdir $D/d $D/d/e
 WVPASS bup random 512 >$D/f
 WVPASS bup index -ux $D
 bup save -n exclude-bupdir $D
-WVPASSEQ "$(bup ls exclude-bupdir/latest/$TOP/$D/)" "a
+WVPASSEQ "$(bup ls -a exclude-bupdir/latest/$TOP/$D/)" "a
 b
 d/
 f"
