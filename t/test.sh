@@ -500,7 +500,7 @@ WVSTART "save disjoint top-level directories"
     rm -rf $D
     mkdir -p $D/x
     date > $D/x/1
-    tmpdir="$(mktemp --tmpdir=/tmp -d bup-test-XXXXXXX)"
+    tmpdir="$(mktemp -d /tmp/bup-test-XXXXXXX)"
     cleanup() { set -x; rm -rf "${tmpdir}"; set +x; }
     trap cleanup EXIT
     date > "$tmpdir/2"

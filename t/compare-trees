@@ -42,7 +42,7 @@ fi
 src="$1"
 dest="$2"
 
-tmpfile="$(mktemp)"
+tmpfile="$(mktemp /tmp/bup-test-XXXXXXX)"
 trap "rm -rf '${tmpfile}'" EXIT
 
 rsync_opts="-niaH$verify_content --delete"
