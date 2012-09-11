@@ -220,8 +220,8 @@ WVSTART 'meta --edit'
     WVPASS bup xstat src | grep -qvE '^user: root'
 
     # Make sure we can restore one of the user's groups.
-    user_groups="$(groups)"
-    last_group="$(echo ${user_groups/* /})"
+    last_group="$(python -c 'import os,grp; \
+      print grp.getgrgid(os.getgroups()[0])[0]')"
     rm -rf src
     WVPASS bup meta --edit --set-group "$last_group" ../src.meta \
         | WVPASS bup meta -x
