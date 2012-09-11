@@ -45,7 +45,16 @@ dest="$2"
 tmpfile="$(mktemp)"
 trap "rm -rf '${tmpfile}'" EXIT
 
-rsync -niaHAX$verify_content --delete "$src" "$dest" > "${tmpfile}"
+rsync_opts="-niaH$verify_content --delete"
+
+if rsync --version | grep -q xattrs; then
+    rsync_opts="$rsync_opts -AX"
+else
+    echo "Not comparing xattrs/acls (unsupported by available rsync)." 1>&2
+fi
+
+rsync $rsync_opts "$src" "$dest" > "${tmpfile}"
+
 if test $(wc -l < "${tmpfile}") != 0; then
     echo "Differences between $src and $dest"
     cat "${tmpfile}"
