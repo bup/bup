@@ -19,25 +19,31 @@ def _set_mode():
            % (dumb_server_mode and 'dumb' or 'smart'))
 
 
+def _init_session(reinit_with_new_repopath=None):
+    if reinit_with_new_repopath is None and git.repodir:
+        return
+    git.check_repo_or_die(reinit_with_new_repopath)
+    # OK. we now know the path is a proper repository. Record this path in the
+    # environment so that subprocesses inherit it and know where to operate.
+    os.environ['BUP_DIR'] = git.repodir
+    debug1('bup server: bupdir is %r\n' % git.repodir)
+    _set_mode()
+
+
 def init_dir(conn, arg):
     git.init_repo(arg)
     debug1('bup server: bupdir initialized: %r\n' % git.repodir)
-    _set_mode()
+    _init_session(arg)
     conn.ok()
 
 
 def set_dir(conn, arg):
-    git.check_repo_or_die(arg)
-    # OK. we now know the path is a proper repository. Record this path in the
-    # environment so that subprocesses inherit it and know where to operate.
-    os.environ['BUP_DIR'] = arg
-    debug1('bup server: bupdir is %r\n' % git.repodir)
-    _set_mode()
+    _init_session(arg)
     conn.ok()
 
     
 def list_indexes(conn, junk):
-    git.check_repo_or_die()
+    _init_session()
     suffix = ''
     if dumb_server_mode:
         suffix = ' load'
@@ -48,7 +54,7 @@ def list_indexes(conn, junk):
 
 
 def send_index(conn, name):
-    git.check_repo_or_die()
+    _init_session()
     assert(name.find('/') < 0)
     assert(name.endswith('.idx'))
     idx = git.open_idx(git.repo('objects/pack/%s' % name))
@@ -59,7 +65,7 @@ def send_index(conn, name):
 
 def receive_objects_v2(conn, junk):
     global suspended_w
-    git.check_repo_or_die()
+    _init_session()
     suggested = set()
     if suspended_w:
         w = suspended_w
@@ -123,14 +129,14 @@ def _check(w, expected, actual, msg):
 
 
 def read_ref(conn, refname):
-    git.check_repo_or_die()
+    _init_session()
     r = git.read_ref(refname)
     conn.write('%s\n' % (r or '').encode('hex'))
     conn.ok()
 
 
 def update_ref(conn, refname):
-    git.check_repo_or_die()
+    _init_session()
     newval = conn.readline().strip()
     oldval = conn.readline().strip()
     git.update_ref(refname, newval.decode('hex'), oldval.decode('hex'))
@@ -140,7 +146,7 @@ def update_ref(conn, refname):
 cat_pipe = None
 def cat(conn, id):
     global cat_pipe
-    git.check_repo_or_die()
+    _init_session()
     if not cat_pipe:
         cat_pipe = git.CatPipe()
     try:
