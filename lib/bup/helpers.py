@@ -1,7 +1,7 @@
 """Helper functions and classes for bup."""
 
 import sys, os, pwd, subprocess, errno, socket, select, mmap, stat, re, struct
-import heapq, operator, time, platform
+import heapq, operator, time, platform, grp
 from bup import _version, _helpers
 import bup._helpers as _helpers
 
@@ -211,16 +211,82 @@ def is_superuser():
         return os.geteuid() == 0
 
 
+def _cache_key_value(get_value, key, cache):
+    """Return (value, was_cached).  If there is a value in the cache
+    for key, use that, otherwise, call get_value(key) which should
+    throw a KeyError if there is no value -- in which case the cached
+    and returned value will be None.
+    """
+    try: # Do we already have it (or know there wasn't one)?
+        value = cache[key]
+        return value, True
+    except KeyError:
+        pass
+    value = None
+    try:
+        cache[key] = value = get_value(key)
+    except KeyError:
+        cache[key] = None
+    return value, False
+
+
+_uid_to_pwd_cache = {}
+_name_to_pwd_cache = {}
+
+def pwd_from_uid(uid):
+    """Return password database entry for uid (may be a cached value).
+    Return None if no entry is found.
+    """
+    global _uid_to_pwd_cache, _name_to_pwd_cache
+    entry, cached = _cache_key_value(pwd.getpwuid, uid, _uid_to_pwd_cache)
+    if entry and not cached:
+        _name_to_pwd_cache[entry.pw_name] = entry
+    return entry
+
+
+def pwd_from_name(name):
+    """Return password database entry for name (may be a cached value).
+    Return None if no entry is found.
+    """
+    global _uid_to_pwd_cache, _name_to_pwd_cache
+    entry, cached = _cache_key_value(pwd.getpwnam, name, _name_to_pwd_cache)
+    if entry and not cached:
+        _uid_to_pwd_cache[entry.pw_uid] = entry
+    return entry
+
+
+_gid_to_grp_cache = {}
+_name_to_grp_cache = {}
+
+def grp_from_gid(gid):
+    """Return password database entry for gid (may be a cached value).
+    Return None if no entry is found.
+    """
+    global _gid_to_grp_cache, _name_to_grp_cache
+    entry, cached = _cache_key_value(grp.getgrgid, gid, _gid_to_grp_cache)
+    if entry and not cached:
+        _name_to_grp_cache[entry.gr_name] = entry
+    return entry
+
+
+def grp_from_name(name):
+    """Return password database entry for name (may be a cached value).
+    Return None if no entry is found.
+    """
+    global _gid_to_grp_cache, _name_to_grp_cache
+    entry, cached = _cache_key_value(grp.getgrnam, name, _name_to_grp_cache)
+    if entry and not cached:
+        _gid_to_grp_cache[entry.gr_gid] = entry
+    return entry
+
+
 _username = None
 def username():
     """Get the user's login name."""
     global _username
     if not _username:
         uid = os.getuid()
-        try:
-            _username = pwd.getpwuid(uid)[0]
-        except KeyError:
-            _username = 'user%d' % uid
+        _username = pwd_from_uid(uid)[0] or 'user%d' % uid
     return _username
 
 
@@ -230,14 +296,11 @@ def userfullname():
     global _userfullname
     if not _userfullname:
         uid = os.getuid()
-        try:
-            entry = pwd.getpwuid(uid)
+        entry = pwd_from_uid(uid)
+        if entry:
             _userfullname = entry[4].split(',')[0] or entry[0]
-        except KeyError:
-            pass
-        finally:
-            if not _userfullname:
-              _userfullname = 'user%d' % uid
+        if not _userfullname:
+            _userfullname = 'user%d' % uid
     return _userfullname
 
 

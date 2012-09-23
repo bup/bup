@@ -9,6 +9,7 @@ from cStringIO import StringIO
 from bup import vint, xstat
 from bup.drecurse import recursive_dirlist
 from bup.helpers import add_error, mkdirp, log, is_superuser
+from bup.helpers import pwd_from_uid, pwd_from_name, grp_from_gid, grp_from_name
 from bup.xstat import utime, lutime
 
 try:
@@ -199,16 +200,12 @@ class Metadata:
         self.mtime = st.st_mtime
         self.ctime = st.st_ctime
         self.user = self.group = ''
-        # FIXME: should we be caching id -> user/group name mappings?
-        # IIRC, tar uses some trick -- possibly caching the last pair.
-        try:
-            self.user = pwd.getpwuid(st.st_uid)[0]
-        except KeyError, e:
-            pass
-        try:
-            self.group = grp.getgrgid(st.st_gid)[0]
-        except KeyError, e:
-            pass
+        entry = pwd_from_uid(st.st_uid)
+        if entry:
+            self.user = entry.pw_name
+        entry = grp_from_gid(st.st_gid)
+        if entry:
+            self.group = entry.gr_name
         self.mode = st.st_mode
 
     def _same_common(self, other):
@@ -361,24 +358,22 @@ class Metadata:
             gid = self.gid
             if not restore_numeric_ids:
                 if self.uid != 0 and self.user:
-                    try:
-                        uid = pwd.getpwnam(self.user)[2]
-                    except KeyError:
-                        pass # Fall back to self.uid.
+                    entry = pwd_from_name(self.user)
+                    if entry:
+                        uid = entry.pw_uid
                 if self.gid != 0 and self.group:
-                    try:
-                        gid = grp.getgrnam(self.group)[2]
-                    except KeyError:
-                        pass # Fall back to self.gid.
+                    entry = grp_from_name(self.group)
+                    if entry:
+                        gid = entry.gr_gid
         else: # not superuser - only consider changing the group/gid
             user_gids = os.getgroups()
             if self.gid in user_gids:
                 gid = self.gid
             if not restore_numeric_ids and \
                     self.gid != 0 and \
-                    self.group in [grp.getgrgid(x)[0] for x in user_gids]:
+                    self.group in [grp_from_gid(x).gr_name for x in user_gids]:
                 try:
-                    gid = grp.getgrnam(self.group)[2]
+                    gid = grp_from_name(self.group).gr_gid
                 except KeyError:
                     pass # Fall back to gid.
 
