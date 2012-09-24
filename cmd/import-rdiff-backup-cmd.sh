@@ -38,16 +38,29 @@ if [ ! -e "$snapshot_root/." ]; then
 fi
 
 
-rdiff-backup --list-increments --parsable-output "$snapshot_root" |
+backups=$(rdiff-backup --list-increments --parsable-output "$snapshot_root")
+backups_count=$(echo "$backups" | wc -l)
+counter=1
+echo "$backups" |
 while read timestamp type; do
     tmpdir=$(mktemp -d)
 
-    rdiff-backup -r $timestamp "$snapshot_root" "$tmpdir"
+    echo "Importing backup from $(date --date=@$timestamp +%c) " \
+        "($counter / $backups_count)" 1>&2
+    echo 1>&2
 
-    tmpidx=$(mktemp -u)
+    echo "Restoring from rdiff-backup..." 1>&2
+    rdiff-backup -r $timestamp "$snapshot_root" "$tmpdir"
+    echo 1>&2
+
+    echo "Importing into bup..." 1>&2
+    TMPIDX=$(mktemp -u)
     bup index -ux -f "$tmpidx" "$tmpdir"
     bup save --strip --date="$timestamp" -f "$tmpidx" -n "$branch" "$tmpdir"
     rm -f "$tmpidx"
 
     rm -rf "$tmpdir"
+    counter=$((counter+1))
+    echo 1>&2
+    echo 1>&2
 done
