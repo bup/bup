@@ -112,6 +112,7 @@ cmdline_tests := \
   t/test-save-creates-no-unrefs.sh \
   t/test-save-restore-excludes.sh \
   t/test-save-strip-graft.sh \
+  t/test-import-duplicity.sh \
   t/test-import-rdiff-backup.sh \
   t/test-xdev.sh \
   t/test.sh
