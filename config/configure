@@ -12,7 +12,7 @@ if ! AC_PROG_CC; then
 fi
 
 TLOGN "checking the GNU make"
-MAKE=`acLookFor make`
+[ -n "$MAKE" ] || MAKE=`acLookFor make`
 if [ -z "$MAKE" ]; then
     AC_FAIL " Cannot find make";
 fi
@@ -45,7 +45,7 @@ TLOG " - you have some git program - ok"
 
 
 # assuming the above checks pass, get the path of everything
-MF_PATH_INCLUDE	GMAKE make gmake
+MF_PATH_INCLUDE	GMAKE gmake make
 MF_PATH_INCLUDE GIT git
 MF_PATH_INCLUDE TAR tar gtar
 MF_PATH_INCLUDE PYTHON python

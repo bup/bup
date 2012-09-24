@@ -60,7 +60,7 @@ install: all
 	
 config/config.h: config/Makefile config/configure config/configure.inc \
 		$(wildcard config/*.in)
-	cd config && make config.h
+	cd config && ${MAKE} config.h
 
 lib/bup/_helpers$(SOEXT): \
 		config/config.h \
