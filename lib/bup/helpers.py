@@ -237,7 +237,7 @@ def userfullname():
             pass
         finally:
             if not _userfullname:
-              _userfullname = 'user %d' % uid
+              _userfullname = 'user%d' % uid
     return _userfullname
 
 
