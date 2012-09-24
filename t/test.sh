@@ -441,6 +441,23 @@ WVPASSEQ "$(bup ls buptest/latest/)" "a/
 c/"
 
 
+if [ "$(which rdiff-backup)" != "" ]; then
+    WVSTART "import-rdiff-backup"
+    D=rdiff-backup.tmp
+    export BUP_DIR="$TOP/$D/.bup"
+    rm -rf $D
+    mkdir $D
+    WVPASS bup init
+    mkdir $D/rdiff-backup
+    rdiff-backup $TOP/cmd $D/rdiff-backup
+    bup tick
+    rdiff-backup $TOP/Documentation $D/rdiff-backup
+    WVPASS bup import-rdiff-backup $D/rdiff-backup import-rdiff-backup
+    WVPASSEQ "$(bup ls import-rdiff-backup/ | wc -l)" "3"
+    WVPASSEQ "$(bup ls import-rdiff-backup/latest/ | sort)" "$(ls $TOP/Documentation | sort)"
+fi
+
+
 WVSTART "compression"
 D=compression0.tmp
 export BUP_DIR="$TOP/$D/.bup"
