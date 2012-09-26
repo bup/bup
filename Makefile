@@ -57,10 +57,10 @@ install: all
 
 %/clean:
 	$(MAKE) -C $* clean
-	
+
 config/config.h: config/Makefile config/configure config/configure.inc \
 		$(wildcard config/*.in)
-	cd config && ${MAKE} config.h
+	cd config && $(MAKE) config.h
 
 lib/bup/_helpers$(SOEXT): \
 		config/config.h \
@@ -82,12 +82,12 @@ runtests-python:
 	$(PYTHON) wvtest.py \
 		$(wildcard t/t*.py) \
 		$(filter-out lib/bup/t/tmetadata.py,$(wildcard lib/*/t/t*.py))
-	[ -z "${TEST_META}" ] || \
+	[ -z "$(TEST_META)" ] || \
 	$(PYTHON) wvtest.py lib/bup/t/tmetadata.py
 
 runtests-cmdline: all
 	t/test.sh
-	[ -z "${TEST_META}" ] || t/test-meta.sh
+	[ -z "$(TEST_META)" ] || t/test-meta.sh
 
 stupid:
 	PATH=/bin:/usr/bin $(MAKE) test
