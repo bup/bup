@@ -155,13 +155,13 @@ def tree_decode(buf):
     """Generate a list of (mode,name,hash) from the git tree object in buf."""
     ofs = 0
     while ofs < len(buf):
-        z = buf[ofs:].find('\0')
-        assert(z > 0)
-        spl = buf[ofs:ofs+z].split(' ', 1)
+        z = buf.find('\0', ofs)
+        assert(z > ofs)
+        spl = buf[ofs:z].split(' ', 1)
         assert(len(spl) == 2)
         mode,name = spl
-        sha = buf[ofs+z+1:ofs+z+1+20]
-        ofs += z+1+20
+        sha = buf[z+1:z+1+20]
+        ofs = z+1+20
         yield (int(mode, 8), name, sha)
 
 
