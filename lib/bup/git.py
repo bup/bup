@@ -830,6 +830,10 @@ def init_repo(path=None):
     p = subprocess.Popen(['git', 'config', 'pack.indexVersion', '2'],
                          stdout=sys.stderr, preexec_fn = _gitenv)
     _git_wait('git config', p)
+    # Enable the reflog
+    p = subprocess.Popen(['git', 'config', 'core.logAllRefUpdates', 'true'],
+                         stdout=sys.stderr, preexec_fn = _gitenv)
+    _git_wait('git config', p)
 
 
 def check_repo_or_die(path=None):
