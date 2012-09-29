@@ -369,13 +369,13 @@ class Metadata:
             user_gids = os.getgroups()
             if self.gid in user_gids:
                 gid = self.gid
-            if not restore_numeric_ids and \
-                    self.gid != 0 and \
-                    self.group in [grp_from_gid(x).gr_name for x in user_gids]:
-                try:
-                    gid = grp_from_name(self.group).gr_gid
-                except KeyError:
-                    pass # Fall back to gid.
+            if not restore_numeric_ids and self.gid != 0:
+                # The grp might not exist on the local system.
+                grps = filter(None, [grp_from_gid(x) for x in user_gids])
+                if self.group in [x.gr_name for x in grps]:
+                    g = grp_from_name(self.group)
+                    if g:
+                        gid = g.gr_gid
 
         if uid != -1 or gid != -1:
             try:
