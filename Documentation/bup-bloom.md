@@ -29,7 +29,7 @@ updates or regenerates it as needed.
     one from scratch.
 
 -d, \--dir=*directory*
-:   the directory, containing .idx files, to process.
+:   the directory, containing `.idx` files, to process.
     Defaults to $BUP_DIR/objects/pack
 
 -o, \--outfile=*outfile*
@@ -43,10 +43,10 @@ updates or regenerates it as needed.
 
 -c, \--check=*idxfile*
 :   checks the bloom file (counterintuitively outfile)
-    against the specified .idx file, first checks that the
-    bloom filter is claiming to contain the .idx, then
+    against the specified `.idx` file, first checks that the
+    bloom filter is claiming to contain the `.idx`, then
     checks that it does actually contain all of the objects
-    in the .idx.  Does not write anything and ignores the
+    in the `.idx`.  Does not write anything and ignores the
     `-k` option.
 
 # BUP

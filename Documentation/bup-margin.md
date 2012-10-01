@@ -47,7 +47,7 @@ close to 160 bits.
     search algorithm.
     
 \--ignore-midx
-:   don't use .midx files, use only .idx files.  This is
+:   don't use `.midx` files, use only `.idx` files.  This is
     only really useful when used with `--predict`.
 
     

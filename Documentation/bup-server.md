@@ -33,7 +33,7 @@ dumb
 :   In this mode, the server will not check its local index
     before writing an object.  To avoid writing duplicate
     objects, the server will tell the client to download all
-    of its .idx files at the start of the session.  This
+    of its `.idx` files at the start of the session.  This
     mode is useful on low powered server hardware (ie
     router/slow NAS).
 
