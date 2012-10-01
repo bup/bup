@@ -1,4 +1,5 @@
 #define _LARGEFILE64_SOURCE 1
+#define PY_SSIZE_T_CLEAN 1
 #undef NDEBUG
 #include "../../config/config.h"
 #include "bupsplit.h"
@@ -110,7 +111,8 @@ static PyObject *blobbits(PyObject *self, PyObject *args)
 static PyObject *splitbuf(PyObject *self, PyObject *args)
 {
     unsigned char *buf = NULL;
-    int len = 0, out = 0, bits = -1;
+    Py_ssize_t len = 0;
+    int out = 0, bits = -1;
 
     if (!PyArg_ParseTuple(args, "t#", &buf, &len))
 	return NULL;
@@ -123,7 +125,7 @@ static PyObject *splitbuf(PyObject *self, PyObject *args)
 static PyObject *bitmatch(PyObject *self, PyObject *args)
 {
     unsigned char *buf1 = NULL, *buf2 = NULL;
-    int len1 = 0, len2 = 0;
+    Py_ssize_t len1 = 0, len2 = 0;
     int byte, bit;
 
     if (!PyArg_ParseTuple(args, "t#t#", &buf1, &len1, &buf2, &len2))
@@ -149,7 +151,7 @@ static PyObject *bitmatch(PyObject *self, PyObject *args)
 static PyObject *firstword(PyObject *self, PyObject *args)
 {
     unsigned char *buf = NULL;
-    int len = 0;
+    Py_ssize_t len = 0;
     uint32_t v;
 
     if (!PyArg_ParseTuple(args, "t#", &buf, &len))
@@ -224,7 +226,8 @@ static PyObject *bloom_add(PyObject *self, PyObject *args)
 {
     unsigned char *sha = NULL, *bloom = NULL;
     unsigned char *end;
-    int len = 0, blen = 0, nbits = 0, k = 0;
+    Py_ssize_t len = 0, blen = 0;
+    int nbits = 0, k = 0;
 
     if (!PyArg_ParseTuple(args, "w#s#ii", &bloom, &blen, &sha, &len, &nbits, &k))
 	return NULL;
@@ -256,7 +259,8 @@ static PyObject *bloom_add(PyObject *self, PyObject *args)
 static PyObject *bloom_contains(PyObject *self, PyObject *args)
 {
     unsigned char *sha = NULL, *bloom = NULL;
-    int len = 0, blen = 0, nbits = 0, k = 0;
+    Py_ssize_t len = 0, blen = 0;
+    int nbits = 0, k = 0;
     unsigned char *end;
     int steps;
 
@@ -298,10 +302,13 @@ static uint32_t _extract_bits(unsigned char *buf, int nbits)
     v = (v >> (32-nbits)) & mask;
     return v;
 }
+
+
 static PyObject *extract_bits(PyObject *self, PyObject *args)
 {
     unsigned char *buf = NULL;
-    int len = 0, nbits = 0;
+    Py_ssize_t len = 0;
+    int nbits = 0;
 
     if (!PyArg_ParseTuple(args, "t#i", &buf, &len, &nbits))
 	return NULL;
@@ -316,12 +323,14 @@ static PyObject *extract_bits(PyObject *self, PyObject *args)
 struct sha {
     unsigned char bytes[20];
 };
+
+
 struct idx {
     unsigned char *map;
     struct sha *cur;
     struct sha *end;
     uint32_t *cur_name;
-    long bytes;
+    Py_ssize_t bytes;
     int name_base;
 };
 
@@ -391,8 +400,10 @@ static PyObject *merge_into(PyObject *self, PyObject *args)
     struct sha *sha_ptr, *sha_start = NULL;
     uint32_t *table_ptr, *name_ptr, *name_start;
     struct idx **idxs = NULL;
-    int flen = 0, bits = 0, i;
-    uint32_t total, count, prefix;
+    Py_ssize_t flen = 0;
+    int bits = 0, i;
+    unsigned int total;
+    uint32_t count, prefix;
     int num_i;
     int last_i;
 
@@ -475,8 +486,8 @@ static PyObject *write_idx(PyObject *self, PyObject *args)
     PyObject *part;
     FILE *f;
     unsigned char *fmap = NULL;
-    int flen = 0;
-    uint32_t total = 0;
+    Py_ssize_t flen = 0;
+    unsigned int total = 0;
     uint32_t count;
     int i, j, ofs64_count;
     uint32_t *fan_ptr, *crc_ptr, *ofs_ptr;
@@ -504,9 +515,9 @@ static PyObject *write_idx(PyObject *self, PyObject *args)
 	for (j = 0; j < plen; ++j)
 	{
 	    unsigned char *sha = NULL;
-	    int sha_len = 0;
-	    uint32_t crc = 0;
-	    uint64_t ofs = 0;
+	    Py_ssize_t sha_len = 0;
+	    unsigned int crc = 0;       // was uint32_t but doc fir I format says unsigned int
+            unsigned long long ofs = 0; // was uint64_t but doc for K format says unsigned long long
 	    if (!PyArg_ParseTuple(PyList_GET_ITEM(part, j), "t#IK",
 				  &sha, &sha_len, &crc, &ofs))
 		return NULL;
