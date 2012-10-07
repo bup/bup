@@ -27,8 +27,8 @@ bup()
     $dry_run "${BUP_MAIN_EXE:=bup}" "$@"
 }
 
-duplicity_target_url=$1
-branch=$2
+duplicity_target_url="$1"
+branch="$2"
 
 [ -n "$duplicity_target_url" -a "$#" = 2 ] || usage
 
