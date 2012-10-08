@@ -144,6 +144,7 @@ WVPASSEQ "$(cat tag[ab].tmp | bup split -b --git-ids)" \
          "$(cat tagab.tmp)"
 WVPASS bup split --bench -b <"$top/t/testfile1" >tags1.tmp
 WVPASS bup split -vvvv -b "$top/t/testfile2" >tags2.tmp
+WVPASS echo -n "" | bup split -n split_empty_string.tmp
 WVPASS bup margin
 WVPASS bup midx -f
 WVPASS bup midx --check -a
@@ -206,6 +207,7 @@ WVPASS diff -u "$top/t/testfile1" out1.tmp
 WVPASS diff -u "$top/t/testfile2" out2.tmp
 WVPASS diff -u "$top/t/testfile2" out2t.tmp
 WVPASS diff -u "$top/t/testfile2" out2c.tmp
+WVPASSEQ "$(bup join split_empty_string.tmp)" ""
 
 WVSTART "save/git-fsck"
 (
@@ -233,6 +235,9 @@ WVPASS force-delete buprestore.tmp
 WVPASS bup restore -C buprestore.tmp "/master/latest/$tmpdir/$D/"
 WVPASS touch $D/non-existent-file buprestore.tmp/non-existent-file # else diff fails
 WVPASS diff -ur $D/ buprestore.tmp/
+rm -f split_empty_string.tmp
+WVPASS bup restore split_empty_string.tmp/latest/split_empty_string.tmp
+WVPASSEQ "$(cat split_empty_string.tmp)" ""
 
 (
     tmp=testrestore.tmp

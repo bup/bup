@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import sys, time
+import os, sys, time
 from bup import hashsplit, git, options, client
 from bup.helpers import *
 
@@ -137,11 +137,20 @@ if pack_writer and opt.blobs:
         print sha.encode('hex')
         reprogress()
 elif pack_writer:  # tree or commit or name
-    shalist = hashsplit.split_to_shalist(pack_writer.new_blob,
-                                         pack_writer.new_tree,
-                                         files,
-                                         keep_boundaries=opt.keep_boundaries,
-                                         progress=prog)
+    if opt.name: # insert dummy_name which may be used as a restore target
+        mode, sha = \
+            hashsplit.split_to_blob_or_tree(pack_writer.new_blob,
+                                            pack_writer.new_tree,
+                                            files,
+                                            keep_boundaries=opt.keep_boundaries,
+                                            progress=prog)
+        dummy_name = git.mangle_name(os.path.basename(opt.name),
+                                     hashsplit.GIT_MODE_FILE, mode)
+        shalist = [(mode, dummy_name, sha)]
+    else:
+        shalist = hashsplit.split_to_shalist(
+                      pack_writer.new_blob, pack_writer.new_tree, files,
+                      keep_boundaries=opt.keep_boundaries, progress=prog)
     tree = pack_writer.new_tree(shalist)
 else:
     last = 0
