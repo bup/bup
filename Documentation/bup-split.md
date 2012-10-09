@@ -10,7 +10,7 @@ bup-split - save individual files to bup backup sets
 
 bup split [-r *host*:*path*] \<-b|-t|-c|-n *name*\> [-v] [-q]
   [\--bench] [\--max-pack-size=*bytes*] [-#]
-  [\--max-pack-objects=*n*] [\--fanout=*count]
+  [\--max-pack-objects=*n*] [\--fanout=*count*]
   [\--git-ids] [\--keep-boundaries] [filenames...]
 
 # DESCRIPTION
@@ -121,10 +121,8 @@ To get the data back, use `bup-join`(1).
     Usually there is no reason to change this.
     
 \--fanout=*numobjs*
-:   when splitting very large files, never put more than
-    this number of git blobs in a single git tree.  Instead,
-    generate a new tree and link to that.  Default is
-    4096 objects per tree.
+:   when splitting very large files, try and keep the number
+    of elements in trees to an average of *numobjs*.
 
 \--bwlimit=*bytes/sec*
 :   don't transmit more than *bytes/sec* bytes per second

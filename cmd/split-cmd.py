@@ -8,7 +8,7 @@ optspec = """
 bup split <-t|-c|-b|-n name|--copy|--noop> [--bench] [filenames...]
 --
  Modes:
-b,blobs    output a series of blob ids
+b,blobs    output a series of blob ids.  Implies --fanout=0.
 t,tree     output a tree id
 c,commit   output a commit id
 n,name=    save the result under the given name
@@ -24,7 +24,7 @@ keep-boundaries  don't let one chunk span two input files
 bench      print benchmark timings to stderr
 max-pack-size=  maximum bytes in a single pack
 max-pack-objects=  maximum number of objects in a single pack
-fanout=    maximum number of blobs in a single tree
+fanout=    average number of blobs in a single tree
 bwlimit=   maximum bytes/sec to transmit to server
 #,compress=  set compression level to # (0-9, 9 is highest) [1]
 """
