@@ -606,13 +606,10 @@ static PyObject *random_sha(PyObject *self, PyObject *args)
 }
 
 
-static PyObject *open_noatime(PyObject *self, PyObject *args)
+static int _open_noatime(const char *filename, int attrs)
 {
-    char *filename = NULL;
-    int attrs, attrs_noatime, fd;
-    if (!PyArg_ParseTuple(args, "s", &filename))
-	return NULL;
-    attrs = O_RDONLY;
+    int attrs_noatime, fd;
+    attrs |= O_RDONLY;
 #ifdef O_NOFOLLOW
     attrs |= O_NOFOLLOW;
 #endif
@@ -633,6 +630,17 @@ static PyObject *open_noatime(PyObject *self, PyObject *args)
 	// just harmlessly ignore it, so this branch won't trigger)
 	fd = open(filename, attrs);
     }
+    return fd;
+}
+
+
+static PyObject *open_noatime(PyObject *self, PyObject *args)
+{
+    char *filename = NULL;
+    int fd;
+    if (!PyArg_ParseTuple(args, "s", &filename))
+	return NULL;
+    fd = _open_noatime(filename, 0);
     if (fd < 0)
 	return PyErr_SetFromErrnoWithFilename(PyExc_OSError, filename);
     return Py_BuildValue("i", fd);
@@ -663,7 +671,7 @@ static PyObject *bup_get_linux_file_attr(PyObject *self, PyObject *args)
     if (!PyArg_ParseTuple(args, "s", &path))
         return NULL;
 
-    fd = open(path, O_RDONLY | O_NONBLOCK | O_LARGEFILE | O_NOFOLLOW);
+    fd = _open_noatime(path, O_NONBLOCK);
     if (fd == -1)
         return PyErr_SetFromErrnoWithFilename(PyExc_OSError, path);
 
