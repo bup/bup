@@ -27,13 +27,18 @@
 #ifdef HAVE_SYS_IOCTL_H
 #include <sys/ioctl.h>
 #endif
-#ifdef HAVE_EXT2FS_EXT2_FS_H
-#include <ext2fs/ext2_fs.h>
+#ifdef HAVE_LINUX_EXT2_FS_H
+#include <linux/ext2_fs.h>
 #endif
 
 #if defined(FS_IOC_GETFLAGS) && defined(FS_IOC_SETFLAGS) \
-    && defined(HAVE_EXT2FS_EXT2_FS_H)
+    && defined(HAVE_LINUX_EXT2_FS_H)
 #define BUP_HAVE_FILE_ATTRS 1
+#endif
+
+#ifndef FS_NOCOW_FL
+// Of course, this assumes it's a bitfield value.
+#define FS_NOCOW_FL 0
 #endif
 
 static int istty2 = 0;
@@ -694,19 +699,19 @@ static PyObject *bup_set_linux_file_attr(PyObject *self, PyObject *args)
     // Restrict attr to modifiable flags acdeijstuADST -- see
     // chattr(1) and the e2fsprogs source.  Letter to flag mapping is
     // in pf.c flags_array[].
-    attr &= EXT2_APPEND_FL | EXT2_COMPR_FL | EXT2_NODUMP_FL | EXT4_EXTENTS_FL
-    | EXT2_IMMUTABLE_FL | EXT3_JOURNAL_DATA_FL | EXT2_SECRM_FL | EXT2_NOTAIL_FL
-    | EXT2_UNRM_FL | EXT2_NOATIME_FL | EXT2_DIRSYNC_FL | EXT2_SYNC_FL
-    | EXT2_TOPDIR_FL;
+    attr &= FS_APPEND_FL | FS_COMPR_FL | FS_NODUMP_FL | FS_EXTENT_FL
+    | FS_IMMUTABLE_FL | FS_JOURNAL_DATA_FL | FS_SECRM_FL | FS_NOTAIL_FL
+    | FS_UNRM_FL | FS_NOATIME_FL | FS_DIRSYNC_FL | FS_SYNC_FL
+    | FS_TOPDIR_FL | FS_NOCOW_FL;
 
     // The extents flag can't be removed, so don't (see chattr(1) and chattr.c).
-    rc = ioctl(fd, EXT2_IOC_GETFLAGS, &orig_attr);
+    rc = ioctl(fd, FS_IOC_GETFLAGS, &orig_attr);
     if (rc == -1)
     {
         close(fd);
         return PyErr_SetFromErrnoWithFilename(PyExc_OSError, path);
     }
-    attr |= (orig_attr & EXT4_EXTENTS_FL);
+    attr |= (orig_attr & FS_EXTENT_FL);
 
     rc = ioctl(fd, FS_IOC_SETFLAGS, &attr);
     if (rc == -1)
