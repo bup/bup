@@ -58,8 +58,6 @@ AC_CHECK_HEADERS unistd.h
 # For FS_IOC_GETFLAGS and FS_IOC_SETFLAGS.
 AC_CHECK_HEADERS linux/fs.h
 AC_CHECK_HEADERS sys/ioctl.h
-# For attr related flags like FS_COMPR_FL.
-AC_CHECK_HEADERS linux/ext2_fs.h
 
 AC_CHECK_FUNCS utimensat 
 AC_CHECK_FUNCS utimes

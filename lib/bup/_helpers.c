@@ -27,12 +27,8 @@
 #ifdef HAVE_SYS_IOCTL_H
 #include <sys/ioctl.h>
 #endif
-#ifdef HAVE_LINUX_EXT2_FS_H
-#include <linux/ext2_fs.h>
-#endif
 
-#if defined(FS_IOC_GETFLAGS) && defined(FS_IOC_SETFLAGS) \
-    && defined(HAVE_LINUX_EXT2_FS_H)
+#if defined(FS_IOC_GETFLAGS) && defined(FS_IOC_SETFLAGS)
 #define BUP_HAVE_FILE_ATTRS 1
 #endif
 
