@@ -149,7 +149,7 @@ import-docs: Documentation/clean
 	git archive origin/html | (cd Documentation; tar -xvf -)
 	git archive origin/man | (cd Documentation; tar -xvf -)
 
-clean: Documentation/clean
+clean: Documentation/clean config/clean
 	rm -f *.o lib/*/*.o *.so lib/*/*.so *.dll lib/*/*.dll *.exe \
 		.*~ *~ */*~ lib/*/*~ lib/*/*/*~ \
 		*.pyc */*.pyc lib/*/*.pyc lib/*/*/*.pyc \
