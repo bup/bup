@@ -4,10 +4,17 @@ from bup.helpers import *
 
 EMPTY_SHA = '\0'*20
 FAKE_SHA = '\x01'*20
-INDEX_HDR = 'BUPI\0\0\0\3'
 
-# Use 64-bit integers for mtime/ctime to handle NTFS zero (Y1600) and Y2038.
-INDEX_SIG = '!QQQqqIIQII20sHII'
+INDEX_HDR = 'BUPI\0\0\0\4'
+
+# Time values are handled as integer nanoseconds since the epoch in
+# memory, but are written as xstat/metadata timespecs.  This behavior
+# matches the existing metadata/xstat/.bupm code.
+
+# Record times (mtime, ctime, atime) as xstat/metadata timespecs, and
+# store all of the times in the index so they won't interfere with the
+# forthcoming metadata cache.
+INDEX_SIG =  '!QQQqQqQqQIIQII20sHII'
 
 ENTLEN = struct.calcsize(INDEX_SIG)
 FOOTER_SIG = '!Q'
@@ -75,20 +82,25 @@ class Entry:
         self.children_n = 0
 
     def __repr__(self):
-        return ("(%s,0x%04x,%d,%d,%d,%d,%d,%d,%d,%s/%s,0x%04x,0x%08x/%d)"
+        return ("(%s,0x%04x,%d,%d,%d,%d,%d,%d,%d,%d,%s/%s,0x%04x,0x%08x/%d)"
                 % (self.name, self.dev, self.ino, self.nlink,
-                   self.ctime, self.mtime, self.uid, self.gid,
+                   self.ctime, self.mtime, self.atime, self.uid, self.gid,
                    self.size, self.mode, self.gitmode,
                    self.flags, self.children_ofs, self.children_n))
 
     def packed(self):
         try:
+            ctime = xstat.nsecs_to_timespec(self.ctime)
+            mtime = xstat.nsecs_to_timespec(self.mtime)
+            atime = xstat.nsecs_to_timespec(self.atime)
             return struct.pack(INDEX_SIG,
-                           self.dev, self.ino, self.nlink,
-                           self.ctime, self.mtime, 
-                           self.uid, self.gid, self.size, self.mode,
-                           self.gitmode, self.sha, self.flags,
-                           self.children_ofs, self.children_n)
+                               self.dev, self.ino, self.nlink,
+                               ctime[0], ctime[1],
+                               mtime[0], mtime[1],
+                               atime[0], atime[1],
+                               self.uid, self.gid, self.size, self.mode,
+                               self.gitmode, self.sha, self.flags,
+                               self.children_ofs, self.children_n)
         except (DeprecationWarning, struct.error), e:
             log('pack error: %s (%r)\n' % (e, self))
             raise
@@ -96,21 +108,22 @@ class Entry:
     def from_stat(self, st, tstart):
         old = (self.dev, self.ino, self.nlink, self.ctime, self.mtime,
                self.uid, self.gid, self.size, self.flags & IX_EXISTS)
-        new = (st.st_dev, st.st_ino, st.st_nlink,
-               xstat.fstime_floor_secs(st.st_ctime),
-               xstat.fstime_floor_secs(st.st_mtime),
+        new = (st.st_dev, st.st_ino, st.st_nlink, st.st_ctime, st.st_mtime,
                st.st_uid, st.st_gid, st.st_size, IX_EXISTS)
         self.dev = st.st_dev
         self.ino = st.st_ino
         self.nlink = st.st_nlink
-        self.ctime = xstat.fstime_floor_secs(st.st_ctime)
-        self.mtime = xstat.fstime_floor_secs(st.st_mtime)
+        self.ctime = st.st_ctime
+        self.mtime = st.st_mtime
+        self.atime = st.st_atime
         self.uid = st.st_uid
         self.gid = st.st_gid
         self.size = st.st_size
         self.mode = st.st_mode
         self.flags |= IX_EXISTS
-        if xstat.fstime_floor_secs(st.st_ctime) >= tstart or old != new \
+        # Check that the ctime's "second" is at or after tstart's.
+        ctime_sec_in_ns = xstat.fstime_floor_secs(st.st_ctime) * 10**9
+        if ctime_sec_in_ns >= tstart or old != new \
               or self.sha == EMPTY_SHA or not self.gitmode:
             self.invalidate()
         self._fixup()
@@ -175,14 +188,15 @@ class Entry:
 
 
 class NewEntry(Entry):
-    def __init__(self, basename, name, tmax, dev, ino, nlink, ctime, mtime,
+    def __init__(self, basename, name, tmax, dev, ino, nlink,
+                 ctime, mtime, atime,
                  uid, gid, size, mode, gitmode, sha, flags,
                  children_ofs, children_n):
         Entry.__init__(self, basename, name, tmax)
-        (self.dev, self.ino, self.nlink, self.ctime, self.mtime,
+        (self.dev, self.ino, self.nlink, self.ctime, self.mtime, self.atime,
          self.uid, self.gid, self.size, self.mode, self.gitmode, self.sha,
          self.flags, self.children_ofs, self.children_n
-         ) = (dev, ino, nlink, int(ctime), int(mtime), uid, gid,
+         ) = (dev, ino, nlink, ctime, mtime, atime, uid, gid,
               size, mode, gitmode, sha, flags, children_ofs, children_n)
         self._fixup()
 
@@ -190,7 +204,7 @@ class NewEntry(Entry):
 class BlankNewEntry(NewEntry):
     def __init__(self, basename, tmax):
         NewEntry.__init__(self, basename, basename, tmax,
-                          0, 0, 0, 0, 0, 0, 0, 0, 0,
+                          0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                           0, EMPTY_SHA, 0, 0, 0)
 
 
@@ -200,10 +214,14 @@ class ExistingEntry(Entry):
         self.parent = parent
         self._m = m
         self._ofs = ofs
-        (self.dev, self.ino, self.nlink, self.ctime, self.mtime,
+        (self.dev, self.ino, self.nlink,
+         self.ctime, ctime_ns, self.mtime, mtime_ns, self.atime, atime_ns,
          self.uid, self.gid, self.size, self.mode, self.gitmode, self.sha,
          self.flags, self.children_ofs, self.children_n
          ) = struct.unpack(INDEX_SIG, str(buffer(m, ofs, ENTLEN)))
+        self.atime = xstat.timespec_to_nsecs((self.atime, atime_ns))
+        self.mtime = xstat.timespec_to_nsecs((self.mtime, mtime_ns))
+        self.ctime = xstat.timespec_to_nsecs((self.ctime, ctime_ns))
 
     # effectively, we don't bother messing with IX_SHAMISSING if
     # not IX_HASHVALID, since it's redundant, and repacking is more
@@ -416,8 +434,7 @@ class Writer:
             assert(isdir == endswith)
             e = NewEntry(basename, name, self.tmax,
                          st.st_dev, st.st_ino, st.st_nlink,
-                         xstat.fstime_floor_secs(st.st_ctime),
-                         xstat.fstime_floor_secs(st.st_mtime),
+                         st.st_ctime, st.st_mtime, st.st_atime,
                          st.st_uid, st.st_gid,
                          st.st_size, st.st_mode, gitmode, sha, flags,
                          0, 0)
