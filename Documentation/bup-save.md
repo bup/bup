@@ -21,10 +21,12 @@ first update the index using `bup index`.  The reasons
 for separating the two steps are described in the man page
 for `bup-index`(1).
 
-By default, metadata will be saved for every path.  However, if
-`--strip`, `--strip-path`, or `--graft` is specified, metadata will
-not be saved for the root directory (*/*).  See `bup-restore`(1) for
-more information about the handling of metadata.
+By default, metadata will be saved for every path, and the metadata
+for any unindexed parent directories of indexed paths will be taken
+directly from the filesystem.  However, if `--strip`, `--strip-path`,
+or `--graft` is specified, metadata will not be saved for the root
+directory (*/*).  See `bup-restore`(1) for more information about the
+handling of metadata.
 
 # OPTIONS
 

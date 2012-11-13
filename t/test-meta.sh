@@ -127,6 +127,13 @@ setup-test-tree()
         ln hardlink-target hardlink-3
     )
 
+    # Add some trivial files for the index, modify, save tests.
+    (
+        cd "$TOP/bupmeta.tmp"/src
+        mkdir volatile
+        touch volatile/{1,2,3}
+    )
+
     # Regression test for metadata sort order.  Previously, these two
     # entries would sort in the wrong order because the metadata
     # entries were being sorted by mangled name, but the index isn't.
@@ -158,6 +165,58 @@ WVSTART 'metadata save/restore (general)'
     setup-test-tree
     cd "$TOP/bupmeta.tmp"
     test-src-save-restore
+)
+
+# Test that we pull the index (not filesystem) metadata for any
+# unchanged files whenever we're saving other files in a given
+# directory.
+WVSTART 'metadata save/restore (using index metadata)'
+(
+    setup-test-tree
+    cd "$TOP/bupmeta.tmp"
+
+    # ...for now -- might be a problem with hardlink restores that was
+    # causing noise wrt this test.
+    rm -rf src/hardlink*
+
+    # Pause here to keep the filesystem changes far enough away from
+    # the first index run that bup won't cap their index timestamps
+    # (see "bup help index" for more information).  Without this
+    # sleep, the compare-trees test below "Bup should *not* pick up
+    # these metadata..." may fail.
+    sleep 1
+
+    set -x
+    rm -rf src.bup
+    mkdir src.bup
+    export BUP_DIR=$(pwd)/src.bup
+    WVPASS bup init
+    WVPASS bup index src
+    WVPASS bup save -t -n src src
+
+    force-delete src-restore-1
+    mkdir src-restore-1
+    WVPASS bup restore -C src-restore-1 "/src/latest$(pwd)/"
+    WVPASS test -d src-restore-1/src
+    WVPASS "$TOP/t/compare-trees" -c src/ src-restore-1/src/
+
+    echo "blarg" > src/volatile/1
+    cp -a src/volatile/1 src-restore-1/src/volatile/
+    WVPASS bup index src
+
+    # Bup should *not* pick up these metadata changes.
+    touch src/volatile/2
+
+    WVPASS bup save -t -n src src
+
+    force-delete src-restore-2
+    mkdir src-restore-2
+    WVPASS bup restore -C src-restore-2 "/src/latest$(pwd)/"
+    WVPASS test -d src-restore-2/src
+    WVPASS "$TOP/t/compare-trees" -c src-restore-1/src/ src-restore-2/src/
+
+    rm -rf src.bup
+    set +x
 )
 
 setup-hardlink-test()
@@ -195,6 +254,18 @@ WVSTART 'metadata save/restore (hardlinks)'
         cd "$TOP/bupmeta.tmp"/src
         touch hardlink-target
         ln hardlink-target hardlink-1
+    )
+    WVPASS bup index src
+    WVPASS bup save -t -n src src
+    hardlink-test-run-restore
+    WVPASS "$TOP/t/compare-trees" -c src/ src-restore/src/
+
+    # Test the case where the hardlink hasn't changed, but the tree
+    # needs to be saved again. i.e. the save-cmd.py "if hashvalid:"
+    # case.
+    (
+        cd "$TOP/bupmeta.tmp"/src
+        echo whatever > something-new
     )
     WVPASS bup index src
     WVPASS bup save -t -n src src

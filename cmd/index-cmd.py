@@ -1,6 +1,7 @@
 #!/usr/bin/env python
+
 import sys, stat, time, os
-from bup import options, git, index, drecurse, hlinkdb
+from bup import metadata, options, git, index, drecurse, hlinkdb
 from bup.helpers import *
 from bup.hashsplit import GIT_MODE_TREE, GIT_MODE_FILE
 
@@ -52,7 +53,8 @@ def update_index(top, excluded_paths):
     # tmax and start must be epoch nanoseconds.
     tmax = (time.time() - 1) * 10**9
     ri = index.Reader(indexfile)
-    wi = index.Writer(indexfile, tmax)
+    msw = index.MetaStoreWriter(indexfile + '.meta')
+    wi = index.Writer(indexfile, msw, tmax)
     rig = IterHelper(ri.iter(name=top))
     tstart = int(time.time()) * 10**9
 
@@ -87,7 +89,22 @@ def update_index(top, excluded_paths):
                 hlinks.del_path(rig.cur.name)
             if not stat.S_ISDIR(pst.st_mode) and pst.st_nlink > 1:
                 hlinks.add_path(path, pst.st_dev, pst.st_ino)
-            rig.cur.from_stat(pst, tstart)
+            meta = metadata.from_path(path, statinfo=pst)
+            # Clear these so they don't bloat the store -- they're
+            # already in the index (since they vary a lot and they're
+            # fixed length).  If you've noticed "tmax", you might
+            # wonder why it's OK to do this, since that code may
+            # adjust (mangle) the index mtime and ctime -- producing
+            # fake values which must not end up in a .bupm.  However,
+            # it looks like that shouldn't be possible:  (1) When
+            # "save" validates the index entry, it always reads the
+            # metadata from the filesytem. (2) Metadata is only
+            # read/used from the index if hashvalid is true. (3) index
+            # always invalidates "faked" entries, because "old != new"
+            # in from_stat().
+            meta.ctime = meta.mtime = meta.atime = 0
+            meta_ofs = msw.store(meta)
+            rig.cur.from_stat(pst, meta_ofs, tstart)
             if not (rig.cur.flags & index.IX_HASHVALID):
                 if hashgen:
                     (rig.cur.gitmode, rig.cur.sha) = hashgen(path)
@@ -97,7 +114,11 @@ def update_index(top, excluded_paths):
             rig.cur.repack()
             rig.next()
         else:  # new paths
-            wi.add(path, pst, hashgen = hashgen)
+            meta = metadata.from_path(path, statinfo=pst)
+            # See same assignment to 0, above, for rationale.
+            meta.atime = meta.mtime = meta.ctime = 0
+            meta_ofs = msw.store(meta)
+            wi.add(path, pst, meta_ofs, hashgen = hashgen)
             if not stat.S_ISDIR(pst.st_mode) and pst.st_nlink > 1:
                 hlinks.add_path(path, pst.st_dev, pst.st_ino)
 
@@ -115,7 +136,7 @@ def update_index(top, excluded_paths):
                 check_index(ri)
                 log('check: before merging: newfile\n')
                 check_index(wr)
-            mi = index.Writer(indexfile, tmax)
+            mi = index.Writer(indexfile, msw, tmax)
 
             for e in index.merge(ri, wr):
                 # FIXME: shouldn't we remove deleted entries eventually?  When?
@@ -128,6 +149,7 @@ def update_index(top, excluded_paths):
     else:
         wi.close()
 
+    msw.close()
     hlinks.commit_save()
 
 

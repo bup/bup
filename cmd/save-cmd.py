@@ -180,6 +180,7 @@ def progress_report(n):
 
 indexfile = opt.indexfile or git.repo('bupindex')
 r = index.Reader(indexfile)
+msr = index.MetaStoreReader(indexfile + '.meta')
 hlink_db = hlinkdb.HLinkDB(indexfile + '.hlink')
 
 def already_saved(ent):
@@ -291,6 +292,7 @@ for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse_during):
     if first_root == None:
         dir_name, fs_path = dirp[0]
         first_root = dirp[0]
+        # Not indexed, so just grab the FS metadata or use empty metadata.
         meta = metadata.from_path(fs_path) if fs_path else metadata.Metadata()
         _push(dir_name, meta)
     elif first_root != dirp[0]:
@@ -303,6 +305,7 @@ for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse_during):
     # If switching to a new sub-tree, start a new sub-tree.
     for path_component in dirp[len(parts):]:
         dir_name, fs_path = path_component
+        # Not indexed, so just grab the FS metadata or use empty metadata.
         meta = metadata.from_path(fs_path) if fs_path else metadata.Metadata()
         _push(dir_name, meta)
 
@@ -330,10 +333,11 @@ for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse_during):
         git_info = (ent.gitmode, git_name, id)
         shalists[-1].append(git_info)
         sort_key = git.shalist_item_sort_key((ent.mode, file, id))
-        hlink = find_hardlink_target(hlink_db, ent)
-        metalists[-1].append((sort_key,
-                              metadata.from_path(ent.name,
-                                                 hardlink_target=hlink)))
+        meta = msr.metadata_at(ent.meta_ofs)
+        meta.hardlink_target = find_hardlink_target(hlink_db, ent)
+        # Restore the times that were cleared to 0 in the metastore.
+        (meta.atime, meta.mtime, meta.ctime) = (ent.atime, ent.mtime, ent.ctime)
+        metalists[-1].append((sort_key, meta))
     else:
         if stat.S_ISREG(ent.mode):
             try:
@@ -394,6 +398,7 @@ assert(len(metalists) == 1)
 
 # Finish the root directory.
 tree = _pop(force_tree = None,
+            # When there's a collision, use empty metadata for the root.
             dir_metadata = metadata.Metadata() if root_collision else None)
 
 if opt.tree:
@@ -404,6 +409,7 @@ if opt.commit or opt.name:
     if opt.commit:
         print commit.encode('hex')
 
+msr.close()
 w.close()  # must close before we can update the ref
         
 if opt.name:

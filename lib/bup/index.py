@@ -1,11 +1,11 @@
-import os, stat, struct, tempfile
+import metadata, os, stat, struct, tempfile
 from bup import xstat
 from bup.helpers import *
 
 EMPTY_SHA = '\0'*20
 FAKE_SHA = '\x01'*20
 
-INDEX_HDR = 'BUPI\0\0\0\4'
+INDEX_HDR = 'BUPI\0\0\0\5'
 
 # Time values are handled as integer nanoseconds since the epoch in
 # memory, but are written as xstat/metadata timespecs.  This behavior
@@ -14,7 +14,7 @@ INDEX_HDR = 'BUPI\0\0\0\4'
 # Record times (mtime, ctime, atime) as xstat/metadata timespecs, and
 # store all of the times in the index so they won't interfere with the
 # forthcoming metadata cache.
-INDEX_SIG =  '!QQQqQqQqQIIQII20sHII'
+INDEX_SIG =  '!QQQqQqQqQIIQII20sHIIQ'
 
 ENTLEN = struct.calcsize(INDEX_SIG)
 FOOTER_SIG = '!Q'
@@ -26,6 +26,70 @@ IX_SHAMISSING = 0x2000    # the stored sha1 object doesn't seem to exist
 
 class Error(Exception):
     pass
+
+
+class MetaStoreReader:
+    def __init__(self, filename):
+        self._file = open(filename, 'rb')
+
+    def close(self):
+        if self._file:
+            self._file.close()
+            self._file = None
+
+    def __del__(self):
+        self.close()
+
+    def metadata_at(self, ofs):
+        self._file.seek(ofs)
+        return metadata.Metadata.read(self._file)
+
+
+class MetaStoreWriter:
+    # For now, we just append to the file, and try to handle any
+    # truncation or corruption somewhat sensibly.
+
+    def __init__(self, filename):
+        # Map metadata hashes to bupindex.meta offsets.
+        self._offsets = {}
+        self._filename = filename
+        # FIXME: see how slow this is; does it matter?
+        m_file = open(filename, 'ab+')
+        try:
+            m_file.seek(0)
+            try:
+                m = metadata.Metadata.read(m_file)
+                while m:
+                    m_encoded = m.encode()
+                    self._offsets[m_encoded] = m_file.tell() - len(m_encoded)
+                    m = metadata.Metadata.read(m_file)
+            except EOFError:
+                pass
+            except:
+                log('index metadata in %r appears to be corrupt' % filename)
+                raise
+        finally:
+            m_file.close()
+        self._file = open(filename, 'ab')
+
+    def close(self):
+        if self._file:
+            self._file.close()
+            self._file = None
+
+    def __del__(self):
+        # Be optimistic.
+        self.close()
+
+    def store(self, metadata):
+        meta_encoded = metadata.encode(include_path=False)
+        ofs = self._offsets.get(meta_encoded)
+        if ofs:
+            return ofs
+        ofs = self._file.tell()
+        self._file.write(meta_encoded)
+        self._offsets[meta_encoded] = ofs
+        return ofs
 
 
 class Level:
@@ -48,11 +112,12 @@ class Level:
         return (ofs,n)
 
 
-def _golevel(level, f, ename, newentry, tmax):
+def _golevel(level, f, ename, newentry, metastore, tmax):
     # close nodes back up the tree
     assert(level)
+    default_meta_ofs = metastore.store(metadata.Metadata())
     while ename[:len(level.ename)] != level.ename:
-        n = BlankNewEntry(level.ename[-1], tmax)
+        n = BlankNewEntry(level.ename[-1], default_meta_ofs, tmax)
         n.flags |= IX_EXISTS
         (n.children_ofs,n.children_n) = level.write(f)
         level.parent.list.append(n)
@@ -64,7 +129,8 @@ def _golevel(level, f, ename, newentry, tmax):
 
     # are we in precisely the right place?
     assert(ename == level.ename)
-    n = newentry or BlankNewEntry(ename and level.ename[-1] or None, tmax)
+    n = newentry or \
+        BlankNewEntry(ename and level.ename[-1] or None, default_meta_ofs, tmax)
     (n.children_ofs,n.children_n) = level.write(f)
     if level.parent:
         level.parent.list.append(n)
@@ -74,19 +140,21 @@ def _golevel(level, f, ename, newentry, tmax):
 
 
 class Entry:
-    def __init__(self, basename, name, tmax):
+    def __init__(self, basename, name, meta_ofs, tmax):
         self.basename = str(basename)
         self.name = str(name)
+        self.meta_ofs = meta_ofs
         self.tmax = tmax
         self.children_ofs = 0
         self.children_n = 0
 
     def __repr__(self):
-        return ("(%s,0x%04x,%d,%d,%d,%d,%d,%d,%d,%d,%s/%s,0x%04x,0x%08x/%d)"
+        return ("(%s,0x%04x,%d,%d,%d,%d,%d,%d,%d,%d,%s/%s,0x%04x,%d,0x%08x/%d)"
                 % (self.name, self.dev, self.ino, self.nlink,
                    self.ctime, self.mtime, self.atime, self.uid, self.gid,
                    self.size, self.mode, self.gitmode,
-                   self.flags, self.children_ofs, self.children_n))
+                   self.flags, self.meta_ofs,
+                   self.children_ofs, self.children_n))
 
     def packed(self):
         try:
@@ -100,12 +168,13 @@ class Entry:
                                atime[0], atime[1],
                                self.uid, self.gid, self.size, self.mode,
                                self.gitmode, self.sha, self.flags,
-                               self.children_ofs, self.children_n)
+                               self.children_ofs, self.children_n,
+                               self.meta_ofs)
         except (DeprecationWarning, struct.error), e:
             log('pack error: %s (%r)\n' % (e, self))
             raise
 
-    def from_stat(self, st, tstart):
+    def from_stat(self, st, meta_ofs, tstart):
         old = (self.dev, self.ino, self.nlink, self.ctime, self.mtime,
                self.uid, self.gid, self.size, self.flags & IX_EXISTS)
         new = (st.st_dev, st.st_ino, st.st_nlink, st.st_ctime, st.st_mtime,
@@ -121,6 +190,7 @@ class Entry:
         self.size = st.st_size
         self.mode = st.st_mode
         self.flags |= IX_EXISTS
+        self.meta_ofs = meta_ofs
         # Check that the ctime's "second" is at or after tstart's.
         ctime_sec_in_ns = xstat.fstime_floor_secs(st.st_ctime) * 10**9
         if ctime_sec_in_ns >= tstart or old != new \
@@ -190,9 +260,9 @@ class Entry:
 class NewEntry(Entry):
     def __init__(self, basename, name, tmax, dev, ino, nlink,
                  ctime, mtime, atime,
-                 uid, gid, size, mode, gitmode, sha, flags,
+                 uid, gid, size, mode, gitmode, sha, flags, meta_ofs,
                  children_ofs, children_n):
-        Entry.__init__(self, basename, name, tmax)
+        Entry.__init__(self, basename, name, meta_ofs, tmax)
         (self.dev, self.ino, self.nlink, self.ctime, self.mtime, self.atime,
          self.uid, self.gid, self.size, self.mode, self.gitmode, self.sha,
          self.flags, self.children_ofs, self.children_n
@@ -202,22 +272,22 @@ class NewEntry(Entry):
 
 
 class BlankNewEntry(NewEntry):
-    def __init__(self, basename, tmax):
+    def __init__(self, basename, meta_ofs, tmax):
         NewEntry.__init__(self, basename, basename, tmax,
                           0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                          0, EMPTY_SHA, 0, 0, 0)
+                          0, EMPTY_SHA, 0, meta_ofs, 0, 0)
 
 
 class ExistingEntry(Entry):
     def __init__(self, parent, basename, name, m, ofs):
-        Entry.__init__(self, basename, name, None)
+        Entry.__init__(self, basename, name, None, None)
         self.parent = parent
         self._m = m
         self._ofs = ofs
         (self.dev, self.ino, self.nlink,
          self.ctime, ctime_ns, self.mtime, mtime_ns, self.atime, atime_ns,
          self.uid, self.gid, self.size, self.mode, self.gitmode, self.sha,
-         self.flags, self.children_ofs, self.children_n
+         self.flags, self.children_ofs, self.children_n, self.meta_ofs
          ) = struct.unpack(INDEX_SIG, str(buffer(m, ofs, ENTLEN)))
         self.atime = xstat.timespec_to_nsecs((self.atime, atime_ns))
         self.mtime = xstat.timespec_to_nsecs((self.mtime, mtime_ns))
@@ -369,13 +439,14 @@ def pathsplit(p):
 
 
 class Writer:
-    def __init__(self, filename, tmax):
+    def __init__(self, filename, metastore, tmax):
         self.rootlevel = self.level = Level([], None)
         self.f = None
         self.count = 0
         self.lastfile = None
         self.filename = None
         self.filename = filename = realpath(filename)
+        self.metastore = metastore
         self.tmax = tmax
         (dir,name) = os.path.split(filename)
         (ffd,self.tmpname) = tempfile.mkstemp('.tmp', filename, dir)
@@ -394,7 +465,8 @@ class Writer:
 
     def flush(self):
         if self.level:
-            self.level = _golevel(self.level, self.f, [], None, self.tmax)
+            self.level = _golevel(self.level, self.f, [], None,
+                                  self.metastore, self.tmax)
             self.count = self.rootlevel.count
             if self.count:
                 self.count += 1
@@ -415,9 +487,10 @@ class Writer:
             raise Error('%r must come before %r' 
                              % (''.join(e.name), ''.join(self.lastfile)))
             self.lastfile = e.name
-        self.level = _golevel(self.level, self.f, ename, entry, self.tmax)
+        self.level = _golevel(self.level, self.f, ename, entry,
+                              self.metastore, self.tmax)
 
-    def add(self, name, st, hashgen = None):
+    def add(self, name, st, meta_ofs, hashgen = None):
         endswith = name.endswith('/')
         ename = pathsplit(name)
         basename = ename[-1]
@@ -437,10 +510,11 @@ class Writer:
                          st.st_ctime, st.st_mtime, st.st_atime,
                          st.st_uid, st.st_gid,
                          st.st_size, st.st_mode, gitmode, sha, flags,
-                         0, 0)
+                         meta_ofs, 0, 0)
         else:
             assert(endswith)
-            e = BlankNewEntry(basename, tmax)
+            meta_ofs = self.metastore.store(metadata.Metadata())
+            e = BlankNewEntry(basename, meta_ofs, tmax)
             e.gitmode = gitmode
             e.sha = sha
             e.flags = flags
