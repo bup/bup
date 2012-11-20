@@ -296,8 +296,13 @@ for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse_during):
         dir_name, fs_path = dirp[0]
         first_root = dirp[0]
         # Not indexed, so just grab the FS metadata or use empty metadata.
-        meta = metadata.from_path(fs_path) if fs_path else metadata.Metadata()
-        _push(dir_name, meta)
+        try:
+           meta = metadata.from_path(fs_path) if fs_path else metadata.Metadata()
+        except (OSError, IOError), e:
+            add_error(e)
+            lastskip_name = dir_name
+        else:
+           _push(dir_name, meta)
     elif first_root != dirp[0]:
         root_collision = True
 
@@ -309,8 +314,13 @@ for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse_during):
     for path_component in dirp[len(parts):]:
         dir_name, fs_path = path_component
         # Not indexed, so just grab the FS metadata or use empty metadata.
-        meta = metadata.from_path(fs_path) if fs_path else metadata.Metadata()
-        _push(dir_name, meta)
+        try:
+           meta = metadata.from_path(fs_path) if fs_path else metadata.Metadata()
+        except (OSError, IOError), e:
+            add_error(e)
+            lastskip_name = dir_name
+        else:
+           _push(dir_name, meta)
 
     if not file:
         if len(parts) == 1:
@@ -381,9 +391,14 @@ for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse_during):
             shalists[-1].append(git_info)
             sort_key = git.shalist_item_sort_key((ent.mode, file, id))
             hlink = find_hardlink_target(hlink_db, ent)
-            metalists[-1].append((sort_key,
-                                  metadata.from_path(ent.name,
-                                                     hardlink_target=hlink)))
+            try:
+                meta = metadata.from_path(ent.name, hardlink_target=hlink)
+            except (OSError, IOError), e:
+                add_error(e)
+                lastskip_name = ent.name
+            else:
+                metalists[-1].append((sort_key, meta))
+
     if exists and wasmissing:
         count += oldsize
         subcount = 0
