@@ -483,6 +483,7 @@ class BranchList(Node):
         tags = git.tags()
 
         revs = list(git.rev_list(self.hash.encode('hex')))
+        latest = revs[0]
         for (date, commit) in revs:
             l = time.localtime(date)
             ls = time.strftime('%Y-%m-%d-%H%M%S', l)
@@ -497,7 +498,6 @@ class BranchList(Node):
                 t1.ctime = t1.mtime = date
                 self._subs[tag] = t1
 
-        latest = max(revs)
         if latest:
             (date, commit) = latest
             commithex = commit.encode('hex')
