@@ -498,13 +498,12 @@ class BranchList(Node):
                 t1.ctime = t1.mtime = date
                 self._subs[tag] = t1
 
-        if latest:
-            (date, commit) = latest
-            commithex = commit.encode('hex')
-            target = '../.commit/%s/%s' % (commithex[:2], commithex[2:])
-            n1 = FakeSymlink(self, 'latest', target)
-            n1.ctime = n1.mtime = date
-            self._subs['latest'] = n1
+        (date, commit) = latest
+        commithex = commit.encode('hex')
+        target = '../.commit/%s/%s' % (commithex[:2], commithex[2:])
+        n1 = FakeSymlink(self, 'latest', target)
+        n1.ctime = n1.mtime = date
+        self._subs['latest'] = n1
 
 
 class RefList(Node):
