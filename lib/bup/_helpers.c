@@ -911,7 +911,25 @@ static PyObject *bup_lutime_ns(PyObject *self, PyObject *args)
 #endif
 
 
-static PyObject *stat_struct_to_py(const struct stat *st)
+static void set_invalid_timespec_ns_msg(const char *field,
+                                        long value,
+                                        const char *filename,
+                                        int fd)
+{
+    if(filename != NULL)
+        PyErr_Format(PyExc_ValueError,
+                     "invalid %s timespec nanoseconds value (%ld) for file \"%s\"",
+                     field, value, filename);
+    else
+        PyErr_Format(PyExc_ValueError,
+                     "invalid %s timespec nanoseconds value (%ld) for file descriptor %d",
+                     field, value, fd);
+}
+
+
+static PyObject *stat_struct_to_py(const struct stat *st,
+                                   const char *filename,
+                                   int fd)
 {
     long atime_ns = BUP_STAT_ATIME_NS(st);
     long mtime_ns = BUP_STAT_MTIME_NS(st);
@@ -920,17 +938,17 @@ static PyObject *stat_struct_to_py(const struct stat *st)
     /* Enforce the current timespec nanosecond range expectations. */
     if (atime_ns < 0 || atime_ns > 999999999)
     {
-        PyErr_SetString(PyExc_ValueError, "invalid atime timespec nanoseconds");
+        set_invalid_timespec_ns_msg("atime", atime_ns, filename, fd);
         return NULL;
     }
     if (mtime_ns < 0 || mtime_ns > 999999999)
     {
-        PyErr_SetString(PyExc_ValueError, "invalid mtime timespec nanoseconds");
+        set_invalid_timespec_ns_msg("mtime", mtime_ns, filename, fd);
         return NULL;
     }
     if (ctime_ns < 0 || ctime_ns > 999999999)
     {
-        PyErr_SetString(PyExc_ValueError, "invalid ctime timespec nanoseconds");
+        set_invalid_timespec_ns_msg("ctime", ctime_ns, filename, fd);
         return NULL;
     }
 
@@ -964,7 +982,7 @@ static PyObject *bup_stat(PyObject *self, PyObject *args)
     rc = stat(filename, &st);
     if (rc != 0)
         return PyErr_SetFromErrnoWithFilename(PyExc_OSError, filename);
-    return stat_struct_to_py(&st);
+    return stat_struct_to_py(&st, filename, 0);
 }
 
 
@@ -980,7 +998,7 @@ static PyObject *bup_lstat(PyObject *self, PyObject *args)
     rc = lstat(filename, &st);
     if (rc != 0)
         return PyErr_SetFromErrnoWithFilename(PyExc_OSError, filename);
-    return stat_struct_to_py(&st);
+    return stat_struct_to_py(&st, filename, 0);
 }
 
 
@@ -995,7 +1013,7 @@ static PyObject *bup_fstat(PyObject *self, PyObject *args)
     rc = fstat(fd, &st);
     if (rc != 0)
         return PyErr_SetFromErrno(PyExc_OSError);
-    return stat_struct_to_py(&st);
+    return stat_struct_to_py(&st, NULL, fd);
 }
 
 
