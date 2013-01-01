@@ -16,7 +16,7 @@ bup-newliner - make sure progress messages don't overlap with output
 need it unless you're using it in some other program.
 
 Progress messages emitted by bup (and some other tools) are
-of the form "Message ### content\r", that is, a status
+of the form "Message ### content\\r", that is, a status
 message containing a variable-length number, followed by a
 carriage return character and no newline.  If these
 messages are printed more than once, they overwrite each
