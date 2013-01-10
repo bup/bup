@@ -110,7 +110,7 @@ From source
 
             yum groupinstall "Development Tools"
             yum install python python-dev
-            yum fuse-python pyxattr pylibacl
+            yum install fuse-python pyxattr pylibacl
             yum install perl-Time-HiRes
 
  - Build the python module and symlinks:
