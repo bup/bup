@@ -585,7 +585,8 @@ MF_PATH_INCLUDE () {
 #
 AC_INIT () {
     __config_files="config.cmd config.sub config.h config.mak config.log"
-    rm -f $__config_files
+    __config_detritus="config.h.tmp"
+    rm -f $__config_files $__config_detritus
     __cwd=`pwd`
     exec 5>&1 1>$__cwd/config.log 2>&1
     AC_CONFIGURE_FOR=__AC_`echo $1 | sed -e 's/\..$//' | tr 'a-z' 'A-Z' | tr ' ' '_'`_D
@@ -610,7 +611,8 @@ AC_INIT () {
 
     LOG "Configuring for [$1]"
 
-    cat > $__cwd/config.h << EOF
+    rm -f $__cwd/config.h
+    cat > $__cwd/config.h.tmp << EOF
 /*
  * configuration for $1${2:+" ($2)"}, generated `date`
  * by ${LOGNAME:-`whoami`}@`hostname`
@@ -869,7 +871,7 @@ EOF
 	TLOG " (found)"
 	rc=0
     else
-	echo "typedef int pid_t;" >> $__cwd/config.h
+	echo "typedef int pid_t;" >> $__cwd/config.h.tmp
 	TLOG " (not found)"
 	rc=1
     fi
@@ -932,7 +934,7 @@ EOF
     rc=1
     LOGN "defining WORD & DWORD scalar types"
     if $AC_CC /tmp/pd$$.c -o /tmp/pd$$; then
-	if /tmp/pd$$  >> $__cwd/config.h; then
+	if /tmp/pd$$  >> $__cwd/config.h.tmp; then
 	    rc=0
 	fi
     fi
@@ -951,6 +953,7 @@ AC_OUTPUT () {
     cd $__cwd
     AC_SUB 'LIBS'    "$AC_LIBS"
     AC_SUB 'CONFIGURE_FILES' "$__config_files"
+    AC_SUB 'CONFIGURE_DETRITUS' "$__config_detritus"
     AC_SUB 'GENERATED_FILES' "$*"
     AC_SUB 'CFLAGS'  "$AC_CFLAGS"
     AC_SUB 'FCFLAGS' "$AC_FCFLAGS"
@@ -969,8 +972,8 @@ AC_OUTPUT () {
 	test "$AC_SED_PROG" || AC_PROG_SED
 	test "$AC_SED_PROG" || return 1
 
-	echo                                   >> config.h
-	echo "#endif/* ${AC_CONFIGURE_FOR} */" >> config.h
+	echo                                   >> config.h.tmp
+	echo "#endif/* ${AC_CONFIGURE_FOR} */" >> config.h.tmp
 
 	rm -f config.cmd
 	Q=\'
@@ -996,6 +999,7 @@ EOF
     else
 	echo 
     fi
+    cp $__cwd/config.h.tmp $__cwd/config.h
 }
 
 #
@@ -1283,13 +1287,13 @@ AC_MAK() {
 #
 # AC_DEFINE adds a #define to config.h
 AC_DEFINE() {
-    echo "#define $1 ${2:-1}" >> $__cwd/config.h
+    echo "#define $1 ${2:-1}" >> $__cwd/config.h.tmp
 }
 
 #
 # AC_INCLUDE adds a #include to config.h
 AC_INCLUDE() {
-    echo "#include \"$1\"" >> $__cwd/config.h
+    echo "#include \"$1\"" >> $__cwd/config.h.tmp
 }
 
 #
