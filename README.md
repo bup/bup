@@ -92,18 +92,29 @@ From source
         git clone git://github.com/apenwarr/bup
 
  - Install the needed python libraries (including the development
-   libraries).  On Debian or Ubuntu, this is usually:
-        apt-get install python2.6-dev python-fuse
-        apt-get install python-pyxattr python-pylibacl
-        
-    Substitute python2.5-dev or python2.4-dev if you have an older system.
+   libraries).
+
+   On Debian/Ubuntu this is usually sufficient (run as root):
+
+            apt-get install python2.6-dev python-fuse
+            apt-get install python-pyxattr python-pylibacl
+
+   Substitute python2.5-dev or python2.4-dev if you have an older
+   system.  Alternately, on newer Debian/Ubuntu versions, you can try
+   this:
     
-    Or on newer Debian/Ubuntu versions, you can try this:
-    
-        apt-get build-dep bup
-   	
+            apt-get build-dep bup
+
+   On CentOS (for CentOS 6, at least), this should be sufficient (run
+   as root):
+
+            yum groupinstall "Development Tools"
+            yum install python python-dev
+            yum fuse-python pyxattr pylibacl
+            yum install perl-Time-HiRes
+
  - Build the python module and symlinks:
- 
+
         make
  	
  - Run the tests:
