@@ -113,6 +113,9 @@ From source
             yum install fuse-python pyxattr pylibacl
             yum install perl-Time-HiRes
 
+   In addition to the default CentOS repositories, you may need to add
+   RPMForge (for fuse-python) and EPEL (for pyxattr and pylibacl).
+
  - Build the python module and symlinks:
 
         make
