@@ -78,8 +78,7 @@ def update_index(top, excluded_paths):
                 rig.cur.repack()
             rig.next()
         if rig.cur and rig.cur.name == path:    # paths that already existed
-            if pst:
-                rig.cur.from_stat(pst, tstart)
+            rig.cur.from_stat(pst, tstart)
             if not (rig.cur.flags & index.IX_HASHVALID):
                 if hashgen:
                     (rig.cur.gitmode, rig.cur.sha) = hashgen(path)
