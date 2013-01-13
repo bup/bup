@@ -127,6 +127,15 @@ From source
     (The tests should pass.  If they don't pass for you, stop here and send
     me an email.)
 
+ - You can install bup via "make install", and override the default
+   destination with DESTDIR and PREFIX.
+
+   Files are normally installed to "$DESTDIR/$PREFIX" where DESTDIR is
+   empty by default, and PREFIX is set to /usr.  So if you wanted to
+   install bup to /opt/bup, you might do something like this:
+
+        make install DESTDIR=/opt/bup PREFIX=''
+
 
 From binary packages
 --------------------
