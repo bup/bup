@@ -463,6 +463,8 @@ fi
 WVSTART "compression"
 D=compression0.tmp
 export BUP_DIR="$TOP/$D/.bup"
+# environment variables affect du output & break tests
+export -n BLOCKSIZE BLOCK_SIZE DU_BLOCK_SIZE
 rm -rf $D
 mkdir $D
 WVPASS bup init
