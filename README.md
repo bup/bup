@@ -98,6 +98,7 @@ From source
 
             apt-get install python2.6-dev python-fuse
             apt-get install python-pyxattr python-pylibacl
+            apt-get install linux-libc-dev
 
    Substitute python2.5-dev or python2.4-dev if you have an older
    system.  Alternately, on newer Debian/Ubuntu versions, you can try
