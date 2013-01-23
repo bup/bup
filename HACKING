@@ -1,0 +1,96 @@
+
+Conventions?  Are you kidding?  OK fine.
+
+Code Branching Model
+====================
+
+The master branch is what we consider the main-line of development,
+and the last, non-rc tag on master is the most recent stable release.
+
+Of course, in all fairness, it has been a *long* time since the last
+stable release, but we're working fairly hard to fix that -- no,
+seriously.
+
+Any branch with a "tmp/" prefix might be rebased (often), so keep that
+in mind when using or depending on one.
+
+
+Current Trajectory
+==================
+
+At the moment, one of the primary goals is to add support for
+filesystem metadata.  That work is being handled via tmp/pending/meta,
+and we're in the process of trying to vet those patches for master.
+Once that's been done, we're planning to produce a new stable release.
+
+If you have the time and inclination, please help review those patches
+as they're posted to the list.  (See below.)
+
+
+More specific ways to help
+==========================
+
+Testing -- yes please.  
+
+With respect to patches, bup development is handled via the mailing
+list, and all patches should be sent to the list for review (see
+"Submitting Patches" below).
+
+In most cases, we try to wait until we have at least two
+"Reviewed-by:" replies to a patch posted to the list before
+incorporating it into master, so reviews are an important way to help.
+We also love a good "Tested-by:" -- the more the merrier.
+
+
+Submitting patches
+==================
+
+As mentioned, all patches should be posted to the mailing list for
+review.
+
+You can create a "signed off" (see ./SIGNED-OFF-BY) set of patches in
+./pending, ready for submission to the list, like this:
+
+    git format-patch -s -o pending origin/master
+
+which will include all of the patches since origin/master on your
+current branch.  Then you can send them to the list like this:
+
+	git send-email --to bup-list@googlegroups.com --compose patches/*
+
+The use of --compose will cause git to ask you to edit a cover letter
+that will be sent as the first message.
+
+It's also possible to handle everything in one step:
+
+	git send-email -s --to bup-list@googlegroups.com --compose origin/master
+
+and you can add --annotate if you'd like to review or edit each patch
+before it's sent.
+
+For single patches, this might be easier:
+
+    git send-email -s --to bup-list@googlegroups.com --annotate -n1 HEAD
+
+which will send the top patch on the current branch, and will stop to
+allow you to add comments.  You can add comments to the section with
+the diffstat without affecting the commit message.
+
+Of course, unless your machine is set up to handle outgoing mail
+locally, you may need to configure git to be able to send mail.  See
+git-send-email(1) for further details.
+
+Oh, and we do have a ./CODING-STYLE, hobgoblins and all, though don't
+let that scare you off.  We're not all that fierce.
+
+
+Even More Generally
+===================
+
+It's not like we have a lot of hard and fast rules, but some of the
+ideas here aren't altogether terrible:
+
+  http://www.kernel.org/doc/Documentation/SubmittingPatches
+
+In particular, we've been paying at least some attention to the bits
+regarding Acked-by:, Reported-by:, Tested-by: and Reviewed-by:.
