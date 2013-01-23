@@ -162,4 +162,4 @@ clean: Documentation/clean config/clean
 	  then umount lib/bup/t/testfs || true; fi
 	if test -e bupmeta.tmp/testfs-limited; \
 	  then umount bupmeta.tmp/testfs-limited || true; fi
-	rm -rf *.tmp t/*.tmp lib/*/*/*.tmp build lib/bup/build lib/bup/t/testfs
+	rm -rf *.tmp *.tmp.meta t/*.tmp lib/*/*/*.tmp build lib/bup/build lib/bup/t/testfs
