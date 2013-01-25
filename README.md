@@ -415,8 +415,9 @@ and you can subscribe by sending a message to:
 
 	bup-list+subscribe@googlegroups.com
 
-Please see ./HACKING for additional information, i.e. how to submit
-patches (hint - no pull requests), how we handle branches, etc.
+Please see <a href="bup/HACKING">./HACKING</a> for additional
+information, i.e. how to submit patches (hint - no pull requests), how
+we handle branches, etc.
 
 
 Have fun,
