@@ -1,4 +1,3 @@
-
 bup: It backs things up
 =======================
 
@@ -89,7 +88,7 @@ From source
 
  - Check out the bup source code using git:
  
-        git clone git://github.com/apenwarr/bup
+        git clone git://github.com/bup/bup
 
  - Install the needed python libraries (including the development
    libraries).
