@@ -95,4 +95,4 @@ pages.
 
 `git`(1) and the *README* file from the bup distribution.
 
-The home of bup is at <http://github.com/apenwarr/bup/>.
+The home of bup is at <http://github.com/bup/bup/>.
