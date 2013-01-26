@@ -16,9 +16,13 @@ elif len(extra) == 1:
     manpath = os.path.join(path.exedir(),
                            'Documentation/' + docname + '.[1-9]')
     g = glob.glob(manpath)
-    if g:
-        os.execvp('man', ['man', '-l', g[0]])
-    else:
-        os.execvp('man', ['man', docname])
+    try:
+        if g:
+            os.execvp('man', ['man', '-l', g[0]])
+        else:
+            os.execvp('man', ['man', docname])
+    except OSError, e:
+        sys.stderr.write('Unable to run man command: %s\n' % e)
+        sys.exit(1)
 else:
     o.fatal("exactly one command name expected")
