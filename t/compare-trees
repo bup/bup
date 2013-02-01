@@ -21,7 +21,7 @@ EOF
 
 verify_content=" --checksum"
 
-while getopts "hc" OPTION
+while getopts "hcx" OPTION
 do
     case "$OPTION" in
         h) usage; exit 0;;
