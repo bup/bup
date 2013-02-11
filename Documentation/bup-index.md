@@ -39,6 +39,42 @@ backup set.
 other purposes (such as speeding up other programs that
 need the same information).
 
+# NOTES
+
+bup makes accommodations for the expected "worst-case" filesystem
+timestamp resolution -- currently one second; examples include VFAT,
+ext2, ext3, small ext4, etc.  Since bup cannot know the filesystem
+timestamp resolution, and could be traversing multiple filesystems
+during any given run, it always assumes that the resolution may be no
+better than one second.
+
+As a practical matter, this means that index updates are a bit
+imprecise, and so `bup save` may occasionally record filesystem
+changes that you didn't expect.  That's because, during an index
+update, if bup encounters a path whose actual timestamps are more
+recent than one second before the update started, bup will set the
+index timestamps for that path (mtime and ctime) to exactly one second
+before the run, -- effectively capping those values.
+
+This ensures that no subsequent changes to those paths can result in
+timestamps that are identical to those in the index.  If that were
+possible, bup could overlook the modifications.
+
+You can see the effect of this behavior in this example (assume that
+less than one second elapses between the initial file creation and
+first index run):
+
+    $ touch src/1 src/2
+    # A "sleep 1" here would avoid the unexpected save.
+    $ bup index src
+    $ bup save -n src src  # Saves 1 and 2.
+    $ date > src/1
+    $ bup index src
+    $ date > src/2         # Not indexed.
+    $ bup save -n src src  # But src/2 is saved anyway.
+
+Strictly speaking, bup should not notice the change to src/2, but it
+does, due to the accommodations described above.
 
 # MODES
 
