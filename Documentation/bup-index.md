@@ -9,7 +9,7 @@ bup-index - print and/or update the bup filesystem index
 # SYNOPSIS
 
 bup index \<-p|-m|-s|-u\> [-H] [-l] [-x] [\--fake-valid]
-[\--fake-invalid] [\--check] [-f *indexfile*] [\--exclude *path*]
+[\--fake-invalid] [\--check] [\--clear] [-f *indexfile*] [\--exclude *path*]
 [\--exclude-from *filename*] [-v] \<filenames...\>
 
 # DESCRIPTION
@@ -137,6 +137,9 @@ does, due to the accommodations described above.
 \--check
 :   carefully check index file integrity before and after
     updating.  Mostly useful for automated tests.
+
+\--clear
+:   clear the index.
 
 -f, \--indexfile=*indexfile*
 :   use a different index filename instead of

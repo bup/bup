@@ -665,3 +665,24 @@ WVSTART "save disjoint top-level directories"
     # For now, assume that "ls -a" and "sort" use the same order.
     WVPASSEQ "$(bup ls -a src/latest)" "$(echo -e "$top_dir/\ntmp/" | sort)"
 ) || WVFAIL
+
+
+WVSTART "clear-index"
+D=clear-index.tmp
+export BUP_DIR="$TOP/$D/.bup"
+rm -rf $TOP/$D
+mkdir $TOP/$D
+WVPASS bup init
+touch $TOP/$D/foo
+touch $TOP/$D/bar
+bup index -u $D
+WVPASSEQ "$(bup index -p)" "$D/foo
+$D/bar
+$D/
+./"
+rm $TOP/$D/foo
+WVPASS bup index --clear
+bup index -u $TOP/$D
+WVPASSEQ "$(bup index -p)" "$D/bar
+$D/
+./"

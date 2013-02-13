@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import sys, stat, time, os
+import sys, stat, time, os, errno
 from bup import metadata, options, git, index, drecurse, hlinkdb
 from bup.helpers import *
 from bup.hashsplit import GIT_MODE_TREE, GIT_MODE_FILE
@@ -47,6 +47,21 @@ def check_index(reader):
         log('index error! at %r\n' % e)
         raise
     log('check: passed.\n')
+
+
+def clear_index(indexfile):
+    indexfiles = [indexfile, indexfile + '.meta', indexfile + '.hlink']
+    cleared = False
+    for indexfile in indexfiles:
+        path = git.repo(indexfile)
+        try:
+            os.remove(path)
+            if opt.verbose:
+                log('clear: removed %s\n' % path)
+            cleared = True
+        except OSError, e:
+            if e.errno != errno.ENOENT:
+                raise
 
 
 def update_index(top, excluded_paths):
@@ -162,6 +177,7 @@ m,modified print only added/deleted/modified files (implies -p)
 s,status   print each filename with a status char (A/M/D) (implies -p)
 u,update   recursively update the index entries for the given file/dir names (default if no mode is specified)
 check      carefully check index file integrity
+clear      clear the index
  Options:
 H,hash     print the hash for each object next to its name
 l,long     print more information about each file
@@ -176,7 +192,12 @@ x,xdev,one-file-system  don't cross filesystem boundaries
 o = options.Options(optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
 
-if not (opt.modified or opt['print'] or opt.status or opt.update or opt.check):
+if not (opt.modified or \
+        opt['print'] or \
+        opt.status or \
+        opt.update or \
+        opt.check or \
+        opt.clear):
     opt.update = 1
 if (opt.fake_valid or opt.fake_invalid) and not opt.update:
     o.fatal('--fake-{in,}valid are meaningless without -u')
@@ -198,6 +219,10 @@ handle_ctrl_c()
 if opt.check:
     log('check: starting initial check.\n')
     check_index(index.Reader(indexfile))
+
+if opt.clear:
+    log('clear: clearing index.\n')
+    clear_index(indexfile)
 
 excluded_paths = drecurse.parse_excludes(flags)
 
