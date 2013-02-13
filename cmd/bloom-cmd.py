@@ -109,8 +109,7 @@ def do_bloom(path, outfilename):
     tfname = None
     if b is None:
         tfname = os.path.join(path, 'bup.tmp.bloom')
-        tf = open(tfname, 'w+')
-        b = bloom.create(tfname, f=tf, expected=add_count, k=opt.k)
+        b = bloom.create(tfname, expected=add_count, k=opt.k)
     count = 0
     icount = 0
     for name in add:
