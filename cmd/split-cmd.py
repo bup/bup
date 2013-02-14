@@ -16,6 +16,7 @@ noop       split the input, but throw away the result
 copy       split the input, copy it to stdout, don't save to repo
  Options:
 r,remote=  remote repository path
+e,sshcmd=  remote shell commandline
 d,date=    date for the commit (seconds since the epoch)
 q,quiet    don't print progress messages
 v,verbose  increase log output (can be used more than once)
@@ -84,7 +85,8 @@ refname = opt.name and 'refs/heads/%s' % opt.name or None
 if opt.noop or opt.copy:
     cli = pack_writer = oldref = None
 elif opt.remote or is_reverse:
-    cli = client.Client(opt.remote, compression_level=opt.compress)
+    cli = client.Client(opt.remote, compression_level=opt.compress, 
+                        sshcmd=opt.sshcmd)
     oldref = refname and cli.read_ref(refname) or None
     pack_writer = cli.new_packwriter()
 else:

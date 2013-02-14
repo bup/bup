@@ -6,9 +6,10 @@ from bup.helpers import *
 
 
 optspec = """
-[BUP_DIR=...] bup init [-r host:path]
+[BUP_DIR=...] bup init [-r host:path] [-e "remote shell commandline"]
 --
 r,remote=  remote repository path
+e,sshcmd=  remote shell commandline
 """
 o = options.Options(optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
@@ -25,5 +26,5 @@ except git.GitError, e:
 
 if opt.remote:
     git.check_repo_or_die()
-    cli = client.Client(opt.remote, create=True)
+    cli = client.Client(opt.remote, create=True, sshcmd=opt.sshcmd)
     cli.close()

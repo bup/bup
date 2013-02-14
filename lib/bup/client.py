@@ -52,7 +52,7 @@ def parse_remote(remote):
 
 
 class Client:
-    def __init__(self, remote, create=False, compression_level=1):
+    def __init__(self, remote, create=False, compression_level=1, sshcmd=None):
         self._busy = self.conn = None
         self.sock = self.p = self.pout = self.pin = None
         self.compression_level = compression_level
@@ -72,7 +72,7 @@ class Client:
             if self.protocol in ('ssh', 'file'):
                 try:
                     # FIXME: ssh and file shouldn't use the same module
-                    self.p = ssh.connect(self.host, self.port, 'server')
+                    self.p = ssh.connect(self.host, self.port, 'server', sshcmd)
                     self.pout = self.p.stdout
                     self.pin = self.p.stdin
                     self.conn = Conn(self.pout, self.pin)

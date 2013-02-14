@@ -9,6 +9,7 @@ optspec = """
 bup save [-tc] [-n name] <filenames...>
 --
 r,remote=  hostname:/path/to/repo of remote repository
+e,sshcmd=  remote shell commandline
 t,tree     output a tree id
 c,commit   output a commit id
 n,name=    name of backup set to update (if any)
@@ -71,7 +72,7 @@ if opt.name and opt.name.startswith('.'):
     o.fatal("'%s' is not a valid branch name" % opt.name)
 refname = opt.name and 'refs/heads/%s' % opt.name or None
 if opt.remote or is_reverse:
-    cli = client.Client(opt.remote)
+    cli = client.Client(opt.remote, sshcmd=opt.sshcmd)
     oldref = refname and cli.read_ref(refname) or None
     w = cli.new_packwriter()
 else:

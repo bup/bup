@@ -5,9 +5,10 @@ from bup.helpers import *
 
 
 optspec = """
-bup join [-r host:path] [refs or hashes...]
+bup join [-r host:path] [-e "remote shell commmandline"] [refs or hashes...]
 --
 r,remote=  remote repository path
+e,sshcmd=  remote shell commandline
 o=         output filename
 """
 o = options.Options(optspec)
@@ -21,7 +22,7 @@ if not extra:
 ret = 0
 
 if opt.remote:
-    cli = client.Client(opt.remote)
+    cli = client.Client(opt.remote, sshcmd=opt.sshcmd)
     cat = cli.cat
 else:
     cp = git.CatPipe()
