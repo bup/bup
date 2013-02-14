@@ -8,7 +8,7 @@ bup-init - initialize a bup repository
 
 # SYNOPSIS
 
-[BUP_DIR=*localpath*] bup init [-r *host*:*path*]
+[BUP_DIR=*localpath*] bup init [-r [*user*@]*host*:*path*]
 
 # DESCRIPTION
 
@@ -19,15 +19,17 @@ initialized automatically whenever you run any bup command.
 
 # OPTIONS
 
--r, \--remote=*host*:*path*
+-r, \--remote=[*user*@]*host*:*path*
 :   Initialize not only the local repository, but also the
-    remote repository given by the *host* and *path*.  This is
-    not necessary if you intend to back up to the default
-    location on the server (ie. a blank *path*).  The connection to the
-    remote server is made with SSH.  If you'd like to specify which port, user
-    or private key to use for the SSH connection, we recommend you use the
-    `~/.ssh/config` file.
-
+    remote repository given by *user*, *host* and *path*. *path* may be
+    omitted if you intend to backup to the default path on the remote 
+    server.
+    
+-e, \--sshcmd="remote shell commandline"
+:   allows the specification of an alternate remote shell command line for
+    connecting to a server. A common use case is to specify optional parameters
+    to the SSH command line. For example to use a custom port and key file:
+        -e 'ssh -i /path/to/keyfile -p 22056'
 
 # EXAMPLE
 

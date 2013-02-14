@@ -8,7 +8,7 @@ bup-join - concatenate files from a bup repository
 
 # SYNOPSIS
 
-bup join [-r *host*:*path*] [refs or hashes...]
+bup join [-r [*user*@]*host*:*path*] [refs or hashes...]
 
 # DESCRIPTION
 
@@ -25,14 +25,16 @@ join` reads them from stdin instead.
 
 # OPTIONS
 
--r, \--remote=*host*:*path*
+-r, \--remote=[*user*@]*host*:[*path*]
 :   Retrieves objects from the given remote repository
-    instead of the local one. *path* may be blank, in which
-    case the default remote repository is used.  The connection to the
-    remote server is made with SSH.  If you'd like to specify which port, user
-    or private key to use for the SSH connection, we recommend you use the
-    `~/.ssh/config` file.
+    instead of the local one.  If *path* is omitted, uses the default 
+    path on the remote server (you still need to include the ':').
 
+-e, \--sshcmd="remote shell commandline"
+:   allows the specification of an alternate remote shell command line for
+    connecting to a server. A common use case is to specify optional parameters
+    to the SSH command line. For example to use a custom port and key file:
+        -e 'ssh -i /path/to/keyfile -p 22056'
 
 # EXAMPLE
 
