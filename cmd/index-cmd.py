@@ -51,14 +51,12 @@ def check_index(reader):
 
 def clear_index(indexfile):
     indexfiles = [indexfile, indexfile + '.meta', indexfile + '.hlink']
-    cleared = False
     for indexfile in indexfiles:
         path = git.repo(indexfile)
         try:
             os.remove(path)
             if opt.verbose:
                 log('clear: removed %s\n' % path)
-            cleared = True
         except OSError, e:
             if e.errno != errno.ENOENT:
                 raise
