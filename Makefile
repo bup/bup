@@ -87,6 +87,7 @@ runtests-python:
 runtests-cmdline: all
 	t/test.sh
 	t/test-meta.sh
+	t/test-restore-single-file.sh
 
 stupid:
 	PATH=/bin:/usr/bin $(MAKE) test
@@ -163,3 +164,4 @@ clean: Documentation/clean config/clean
 	if test -e bupmeta.tmp/testfs-limited; \
 	  then umount bupmeta.tmp/testfs-limited || true; fi
 	rm -rf *.tmp *.tmp.meta t/*.tmp lib/*/*/*.tmp build lib/bup/build lib/bup/t/testfs
+	if test -e t/tmp; then rm -r t/tmp; fi

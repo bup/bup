@@ -116,6 +116,29 @@ def write_file_content(fullname, n):
         outf.close()
 
 
+def find_dir_item_metadata_by_name(dir, name):
+    """Find metadata in dir (a node) for an item with the given name,
+    or for the directory itself if the name is ''."""
+    meta_stream = None
+    try:
+        mfile = dir.metadata_file() # VFS file -- cannot close().
+        if mfile:
+            meta_stream = mfile.open()
+            meta = metadata.Metadata.read(meta_stream)
+            if name == '':
+                return meta
+            for sub in dir:
+                if stat.S_ISDIR(sub.mode):
+                    return find_dir_item_metadata_by_name(sub, '')
+                else:
+                    meta = metadata.Metadata.read(meta_stream)
+                if sub.name == name:
+                    return meta
+    finally:
+        if meta_stream:
+            meta_stream.close()
+
+
 def do_root(n):
     # Very similar to do_node(), except that this function doesn't
     # create a path for n's destination directory (and so ignores
@@ -238,8 +261,9 @@ for d in extra:
             mkdirp(n.name)
             os.chdir(n.name)
             do_root(target)
-        else:
-            do_node(n.parent, n)
+        else: # Not a directory or fake symlink.
+            meta = find_dir_item_metadata_by_name(n.parent, n.name)
+            do_node(n.parent, n, meta=meta)
 
 if not opt.quiet:
     progress('Restoring: %d, done.\n' % total_restored)
