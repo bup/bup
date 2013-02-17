@@ -911,19 +911,45 @@ static PyObject *bup_lutime_ns(PyObject *self, PyObject *args)
 #endif
 
 
-static void set_invalid_timespec_ns_msg(const char *field,
-                                        long value,
-                                        const char *filename,
-                                        int fd)
+static void set_invalid_timespec_msg(const char *field,
+                                     const long long sec,
+                                     const long nsec,
+                                     const char *filename,
+                                     int fd)
 {
-    if(filename != NULL)
+    if (filename != NULL)
         PyErr_Format(PyExc_ValueError,
-                     "invalid %s timespec nanoseconds value (%ld) for file \"%s\"",
-                     field, value, filename);
+                     "invalid %s timespec (%lld %ld) for file \"%s\"",
+                     field, sec, nsec, filename);
     else
         PyErr_Format(PyExc_ValueError,
-                     "invalid %s timespec nanoseconds value (%ld) for file descriptor %d",
-                     field, value, fd);
+                     "invalid %s timespec (%lld %ld) for file descriptor %d",
+                     field, sec, nsec, fd);
+}
+
+
+static int normalize_timespec_values(const char *name,
+                                     long long *sec,
+                                     long *nsec,
+                                     const char *filename,
+                                     int fd)
+{
+    if (*nsec < -999999999 || *nsec > 999999999)
+    {
+        set_invalid_timespec_msg(name, *sec, *nsec, filename, fd);
+        return 0;
+    }
+    if (*nsec < 0)
+    {
+        if (*sec == LONG_MIN)
+        {
+            set_invalid_timespec_msg(name, *sec, *nsec, filename, fd);
+            return 0;
+        }
+        *nsec += 1000000000;
+        *sec -= 1;
+    }
+    return 1;
 }
 
 
@@ -931,26 +957,19 @@ static PyObject *stat_struct_to_py(const struct stat *st,
                                    const char *filename,
                                    int fd)
 {
+    long long atime = st->st_atime;
+    long long mtime = st->st_mtime;
+    long long ctime = st->st_ctime;
     long atime_ns = BUP_STAT_ATIME_NS(st);
     long mtime_ns = BUP_STAT_MTIME_NS(st);
     long ctime_ns = BUP_STAT_CTIME_NS(st);
 
-    /* Enforce the current timespec nanosecond range expectations. */
-    if (atime_ns < 0 || atime_ns > 999999999)
-    {
-        set_invalid_timespec_ns_msg("atime", atime_ns, filename, fd);
+    if (!normalize_timespec_values("atime", &atime, &atime_ns, filename, fd))
         return NULL;
-    }
-    if (mtime_ns < 0 || mtime_ns > 999999999)
-    {
-        set_invalid_timespec_ns_msg("mtime", mtime_ns, filename, fd);
+    if (!normalize_timespec_values("mtime", &mtime, &mtime_ns, filename, fd))
         return NULL;
-    }
-    if (ctime_ns < 0 || ctime_ns > 999999999)
-    {
-        set_invalid_timespec_ns_msg("ctime", ctime_ns, filename, fd);
+    if (!normalize_timespec_values("ctime", &ctime, &ctime_ns, filename, fd))
         return NULL;
-    }
 
     return Py_BuildValue("kkkkkkkk(Ll)(Ll)(Ll)",
                          (unsigned long) st->st_mode,
@@ -961,11 +980,11 @@ static PyObject *stat_struct_to_py(const struct stat *st,
                          (unsigned long) st->st_gid,
                          (unsigned long) st->st_rdev,
                          (unsigned long) st->st_size,
-                         (long long) st->st_atime,
+                         (long long) atime,
                          (long) atime_ns,
-                         (long long) st->st_mtime,
+                         (long long) mtime,
                          (long) mtime_ns,
-                         (long long) st->st_ctime,
+                         (long long) ctime,
                          (long) ctime_ns);
 }
 
