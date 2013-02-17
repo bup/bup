@@ -9,8 +9,16 @@ _wvtop="$(pwd)"
 
 wvmktempdir ()
 (
-    local script_name="$(basename $0)"
+    script_name="$(basename $0)"
     set -e -o pipefail
     mkdir -p "$_wvtop/t/tmp"
-    echo "$(mktemp -d "$_wvtop/t/tmp/$script_name-XXXXXXX")"
+    mktemp -d "$_wvtop/t/tmp/$script_name-XXXXXXX"
+)
+
+wvmkmountpt ()
+(
+    script_name="$(basename $0)"
+    set -e -o pipefail
+    mkdir -p "$_wvtop/t/mnt"
+    mktemp -d "$_wvtop/t/mnt/$script_name-XXXXXXX"
 )

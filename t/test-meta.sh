@@ -30,11 +30,6 @@ genstat()
     )
 }
 
-actually-root()
-{
-    test "$(whoami)" == root -a -z "$FAKEROOTKEY"
-}
-
 test-src-create-extract()
 {
     # Test bup meta create/extract for ./src -> ./src-restore.

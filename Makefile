@@ -89,6 +89,7 @@ runtests-cmdline: all
 	t/test.sh
 	t/test-meta.sh
 	t/test-restore-single-file.sh
+	t/test-index-check-device.sh
 
 stupid:
 	PATH=/bin:/usr/bin $(MAKE) test
@@ -158,6 +159,9 @@ clean: Documentation/clean config/clean
 		bup bup-* cmd/bup-* lib/bup/_version.py randomgen memtest \
 		out[12] out2[tc] tags[12] tags2[tc] \
 		testfs.img lib/bup/t/testfs.img
+	umount t/mnt/* || true
+	if test -e t/mnt; then rm -r t/mnt; fi
+        # FIXME: migrate these to t/mnt/
 	if test -e bupmeta.tmp/testfs; \
 	  then umount bupmeta.tmp/testfs || true; fi
 	if test -e lib/bup/t/testfs; \

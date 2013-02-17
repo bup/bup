@@ -1,3 +1,9 @@
+# Assumes shell is Bash.
+
+actually-root()
+{
+    test "$(whoami)" == root -a -z "$FAKEROOTKEY"
+}
 
 force-delete()
 {
