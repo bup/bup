@@ -8,7 +8,7 @@ bup-index - print and/or update the bup filesystem index
 
 # SYNOPSIS
 
-bup index \<-p|-m|-s|-u\> [-H] [-l] [-x] [\--fake-valid]
+bup index \<-p|-m|-s|-u\> [-H] [-l] [-x] [\--fake-valid] [\--no-check-device]
 [\--fake-invalid] [\--check] [\--clear] [-f *indexfile*] [\--exclude *path*]
 [\--exclude-from *filename*] [-v] \<filenames...\>
 
@@ -152,6 +152,11 @@ does, due to the accommodations described above.
 \--exclude-from=*filename*
 :   a file that contains exclude paths (can be used more
     than once)
+
+\--no-check-device
+:   don't mark a an entry invalid if the device number (stat(2)
+    st_dev) changes.  This can be useful when indexing remote,
+    automounted, or (LVM) snapshot filesystems.
 
 -v, \--verbose
 :   increase log output during update (can be used more
