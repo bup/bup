@@ -71,7 +71,7 @@ Reasons you might want to avoid bup
    for you, but we don't know why.  It is also missing some
    probably-critical features.
    
- - It requires python >= 2.4, a C compiler, and an installed git version >=
+ - It requires python >= 2.5, a C compiler, and an installed git version >=
    1.5.3.1.
  
  - It currently only works on Linux, MacOS X >= 10.4,
@@ -99,9 +99,8 @@ From source
             apt-get install python-pyxattr python-pylibacl
             apt-get install linux-libc-dev
 
-   Substitute python2.5-dev or python2.4-dev if you have an older
-   system.  Alternately, on newer Debian/Ubuntu versions, you can try
-   this:
+   Substitute python2.5-dev if you have an older system.  Alternately,
+   on newer Debian/Ubuntu versions, you can try this:
     
             apt-get build-dep bup
 

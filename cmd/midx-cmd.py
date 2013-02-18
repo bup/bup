@@ -123,7 +123,7 @@ def _do_midx(outdir, outfilename, infilenames, prefixstr):
     count = merge_into(fmap, bits, total, inp)
     del fmap
 
-    f.seek(0, git.SEEK_END)
+    f.seek(0, os.SEEK_END)
     f.write('\0'.join(allfilenames))
     f.close()
     os.rename(outfilename + '.tmp', outfilename)

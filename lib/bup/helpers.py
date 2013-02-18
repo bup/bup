@@ -1,7 +1,7 @@
 """Helper functions and classes for bup."""
 
 import sys, os, pwd, subprocess, errno, socket, select, mmap, stat, re, struct
-import heapq, operator, time, platform, grp
+import hashlib, heapq, operator, time, platform, grp
 from bup import _version, _helpers
 import bup._helpers as _helpers
 
@@ -800,18 +800,7 @@ def grafted_path_components(graft_points, path):
             return result
     return path_components(clean_path)
 
-# hashlib is only available in python 2.5 or higher, but the 'sha' module
-# produces a DeprecationWarning in python 2.6 or higher.  We want to support
-# python 2.4 and above without any stupid warnings, so let's try using hashlib
-# first, and downgrade if it fails.
-try:
-    import hashlib
-except ImportError:
-    import sha
-    Sha1 = sha.sha
-else:
-    Sha1 = hashlib.sha1
-
+Sha1 = hashlib.sha1
 
 def version_date():
     """Format bup's version date string for output."""

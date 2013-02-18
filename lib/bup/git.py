@@ -8,7 +8,6 @@ from bup import _helpers, path, midx, bloom, xstat
 
 max_pack_size = 1000*1000*1000  # larger packs will slow down pruning
 max_pack_objects = 200*1000  # cache memory usage is about 83 bytes per object
-SEEK_END=2  # os.SEEK_END is not defined in python 2.4
 
 verbose = 0
 ignore_midx = 0
@@ -662,7 +661,7 @@ class PackWriter:
         idx_f.truncate(ofs64_ofs)
         idx_f.seek(0)
         idx_map = mmap_readwrite(idx_f, close=False)
-        idx_f.seek(0, SEEK_END)
+        idx_f.seek(0, os.SEEK_END)
         count = _helpers.write_idx(idx_f, idx_map, idx, self.count)
         assert(count == self.count)
         idx_map.close()
