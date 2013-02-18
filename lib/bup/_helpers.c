@@ -116,6 +116,7 @@ static PyObject *splitbuf(PyObject *self, PyObject *args)
 
     if (!PyArg_ParseTuple(args, "t#", &buf, &len))
 	return NULL;
+    assert(len <= INT_MAX);
     out = bupsplit_find_ofs(buf, len, &bits);
     if (out) assert(bits >= BUP_BLOBBITS);
     return Py_BuildValue("ii", out, bits);
@@ -126,7 +127,8 @@ static PyObject *bitmatch(PyObject *self, PyObject *args)
 {
     unsigned char *buf1 = NULL, *buf2 = NULL;
     Py_ssize_t len1 = 0, len2 = 0;
-    int byte, bit;
+    Py_ssize_t byte;
+    int bit;
 
     if (!PyArg_ParseTuple(args, "t#t#", &buf1, &len1, &buf2, &len2))
 	return NULL;
@@ -144,6 +146,7 @@ static PyObject *bitmatch(PyObject *self, PyObject *args)
 	}
     }
     
+    assert(byte <= (INT_MAX >> 3));
     return Py_BuildValue("i", byte*8 + bit);
 }
 
@@ -253,7 +256,7 @@ static PyObject *bloom_add(PyObject *self, PyObject *args)
 	return NULL;
 
 
-    return Py_BuildValue("i", len/20);
+    return Py_BuildValue("n", len/20);
 }
 
 static PyObject *bloom_contains(PyObject *self, PyObject *args)
@@ -516,18 +519,22 @@ static PyObject *write_idx(PyObject *self, PyObject *args)
 	{
 	    unsigned char *sha = NULL;
 	    Py_ssize_t sha_len = 0;
-	    unsigned int crc = 0;       // was uint32_t but doc fir I format says unsigned int
-            unsigned long long ofs = 0; // was uint64_t but doc for K format says unsigned long long
+	    unsigned int crc = 0;
+            unsigned PY_LONG_LONG ofs_py = 0;
+	    uint64_t ofs;
 	    if (!PyArg_ParseTuple(PyList_GET_ITEM(part, j), "t#IK",
-				  &sha, &sha_len, &crc, &ofs))
+				  &sha, &sha_len, &crc, &ofs_py))
 		return NULL;
+            assert(crc <= UINT32_MAX);
+            assert(ofs_py <= UINT64_MAX);
+	    ofs = ofs_py;
 	    if (sha_len != sizeof(struct sha))
 		return NULL;
 	    memcpy(sha_ptr++, sha, sizeof(struct sha));
 	    *crc_ptr++ = htonl(crc);
 	    if (ofs > 0x7fffffff)
 	    {
-		uint64_t nofs = htonll(ofs);
+		const uint64_t nofs = htonll(ofs);
 		if (fwrite(&nofs, sizeof(uint64_t), 1, f) != 1)
 		    return PyErr_SetFromErrno(PyExc_OSError);
 		ofs = 0x80000000 | ofs64_count++;
