@@ -18,13 +18,12 @@ in mind when using or depending on one.
 Current Trajectory
 ==================
 
-At the moment, one of the primary goals is to add support for
-filesystem metadata.  That work is being handled via tmp/pending/meta,
-and we're in the process of trying to vet those patches for master.
-Once that's been done, we're planning to produce a new stable release.
+At the moment, the primary goal is to test master in preparation for a
+0.25 release, which among many other things will include more complete
+support for filesystem metadata.
 
-If you have the time and inclination, please help review those patches
-as they're posted to the list.  (See below.)
+If you have the time and inclination, please help review patches
+posted to the list for inclusion in 0.25.  (See below.)
 
 
 More specific ways to help
