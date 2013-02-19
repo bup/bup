@@ -414,7 +414,7 @@ and you can subscribe by sending a message to:
 
 	bup-list+subscribe@googlegroups.com
 
-Please see <a href="bup/blob/master/HACKING">./HACKING</a> for
+Please see <a href="HACKING">./HACKING</a> for
 additional information, i.e. how to submit patches (hint - no pull
 requests), how we handle branches, etc.
 
