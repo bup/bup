@@ -23,7 +23,16 @@ At the moment, the primary goal is to test master in preparation for a
 support for filesystem metadata.
 
 If you have the time and inclination, please help review patches
-posted to the list for inclusion in 0.25.  (See below.)
+posted to the list for inclusion in 0.25.  (See "ways to help" below.)
+
+We'd like to try to release (0.25) soon, so we're limiting the scope
+of prospective changes -- definitely in-scope:
+
+  - fixes to the new metadata support
+  - fixes for regressions (portability included)
+  - fixes for "serious" bugs
+  - "simple" fixes
+  - documentation improvements
 
 
 More specific ways to help
@@ -35,7 +44,7 @@ With respect to patches, bup development is handled via the mailing
 list, and all patches should be sent to the list for review (see
 "Submitting Patches" below).
 
-In most cases, we try to wait until we have at least two
+In most cases, we try to wait until we have at least one or two
 "Reviewed-by:" replies to a patch posted to the list before
 incorporating it into master, so reviews are an important way to help.
 We also love a good "Tested-by:" -- the more the merrier.
@@ -55,14 +64,14 @@ You can create a "signed off" (see ./SIGNED-OFF-BY) set of patches in
 which will include all of the patches since origin/master on your
 current branch.  Then you can send them to the list like this:
 
-	git send-email --to bup-list@googlegroups.com --compose patches/*
+    git send-email --to bup-list@googlegroups.com --compose patches/*
 
 The use of --compose will cause git to ask you to edit a cover letter
 that will be sent as the first message.
 
 It's also possible to handle everything in one step:
 
-	git send-email -s --to bup-list@googlegroups.com --compose origin/master
+    git send-email -s --to bup-list@googlegroups.com --compose origin/master
 
 and you can add --annotate if you'd like to review or edit each patch
 before it's sent.
