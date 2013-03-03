@@ -135,7 +135,8 @@ def _do_midx(outdir, outfilename, infilenames, prefixstr):
         print p.idxnames
         assert(len(p) == total)
         for pe, e in p, git.idxmerge(inp, final_progress=False):
-            assert(i == pi.next())
+            pin = pi.next()
+            assert(i == pin)
             assert(p.exists(i))
 
     return total, outfilename

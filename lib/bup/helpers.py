@@ -741,7 +741,8 @@ def path_components(path):
     full_path_to_name).  Path must start with '/'.
     Example:
       '/home/foo' -> [('', '/'), ('home', '/home'), ('foo', '/home/foo')]"""
-    assert(path.startswith('/'))
+    if not path.startswith('/'):
+        raise Exception, 'path must start with "/": %s' % path
     # Since we assume path startswith('/'), we can skip the first element.
     result = [('', '/')]
     norm_path = os.path.abspath(path)

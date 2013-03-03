@@ -144,5 +144,5 @@ def test_remote_parsing():
     try:
         client.parse_remote('http://asdf.com/bup')
         WVFAIL()
-    except AssertionError:
+    except client.ClientError:
         WVPASS()

@@ -962,7 +962,8 @@ class CatPipe:
         if not self.p or self.p.poll() != None:
             self._restart()
         assert(self.p)
-        assert(self.p.poll() == None)
+        poll_result = self.p.poll()
+        assert(poll_result == None)
         if self.inprogress:
             log('_fast_get: opening %r while %r is open\n'
                 % (id, self.inprogress))
@@ -988,7 +989,8 @@ class CatPipe:
             yield type
             for blob in it:
                 yield blob
-            assert(self.p.stdout.readline() == '\n')
+            readline_result = self.p.stdout.readline()
+            assert(readline_result == '\n')
             self.inprogress = None
         except Exception, e:
             it.abort()

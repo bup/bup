@@ -40,7 +40,8 @@ def parse_remote(remote):
     url_match = re.match(
             '%s(?:%s%s)?%s' % (protocol, host, port, path), remote, re.I)
     if url_match:
-        assert(url_match.group(1) in ('ssh', 'bup', 'file'))
+        if not url_match.group(1) in ('ssh', 'bup', 'file'):
+            raise ClientError, 'unexpected protocol: %s' % url_match.group(1)
         return url_match.group(1,3,4,5)
     else:
         rs = remote.split(':', 1)
