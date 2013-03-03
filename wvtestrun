@@ -1,4 +1,4 @@
-#!/usr/bin/perl -w
+#!/usr/bin/env perl
 #
 # WvTest:
 #   Copyright (C)2007-2009 Versabanq Innovations Inc. and contributors.
@@ -6,6 +6,7 @@
 #       See the included file named LICENSE for license information.
 #
 use strict;
+use warnings;
 use Time::HiRes qw(time);
 
 # always flush
