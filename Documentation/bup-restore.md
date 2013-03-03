@@ -16,7 +16,7 @@ bup restore [\--outdir=*outdir*] [-v] [-q] \<paths...\>;
 with `bup-save`(1)) to the local filesystem.
 
 The specified *paths* are of the form
-/_branch_/_revision_/_path/to/file_.  The components of the
+/_branch_/_revision_/_some/where_.  The components of the
 path are as follows:
 
 branch
@@ -29,21 +29,23 @@ revision
     backup on the given branch.  You can discover other
     revisions using `bup ls /branch`.
     
-/path/to/file
-:   the original absolute filesystem path to the file you
-    want to restore.  For example, `/etc/passwd`.
+some/where
+:   the previously saved path (after any stripping/grafting) that you
+    want to restore.  For example, `etc/passwd`.
     
-Note: if the /path/to/file is a directory, `bup restore`
-will restore that directory as well as recursively
-restoring all its contents.
+If _some/where_ names a directory, `bup restore` will restore that
+directory and then recursively restore its contents.
 
-If /path/to/file is a directory ending in a slash (ie.
-/path/to/dir/), `bup restore` will restore the children of
-that directory directly to the current directory (or the
-`--outdir`).  If the directory does *not* end in a slash,
-the children will be restored to a subdirectory of the
-current directory.  See the EXAMPLES section to see how
-this works.
+If _some/where_ names a directory and ends with a slash (ie.
+path/to/dir/), `bup restore` will restore the children of that
+directory directly to the current directory (or the `--outdir`).  If
+_some/where_ does not end in a slash, the children will be restored to
+a subdirectory of the current directory.
+
+If _some/where_ names a directory and ends in '/.' (ie.
+path/to/dir/.), `bup restore` will do exactly what it would have done
+for path/to/dir, and then restore _dir_'s metadata to the current
+directory (or the `--outdir`).  See the EXAMPLES section.
 
 Whenever path metadata is available, `bup restore` will attempt to
 restore it.  When restoring ownership, bup implements tar/rsync-like
@@ -105,27 +107,39 @@ Restore just one file:
     
     $ ls -l passwd
     -rw-r--r-- 1 apenwarr apenwarr 1478 2010-09-08 03:06 passwd
+
+Restore etc to test (no trailing slash):
     
-Restore the whole directory (no trailing slash):
-    
-    $ bup restore -C test1 /mybackup/latest/etc
+    $ bup restore -C test /mybackup/latest/etc
     Restoring: 3, done.
     
-    $ find test1
-    test1
-    test1/etc
-    test1/etc/passwd
-    test1/etc/profile
+    $ find test
+    test
+    test/etc
+    test/etc/passwd
+    test/etc/profile
     
-Restore the whole directory (trailing slash):
-    
-    $ bup restore -C test2 /mybackup/latest/etc/
+Restore the contents of etc to test (trailing slash):
+
+    $ bup restore -C test /mybackup/latest/etc/
     Restoring: 2, done.
     
-    $ find test2
-    test2
-    test2/passwd
-    test2/profile
+    $ find test
+    test
+    test/passwd
+    test/profile
+
+Restore the contents of etc and etc's metadata to test (trailing
+"/."):
+
+    $ bup restore -C test /mybackup/latest/etc/.
+    Restoring: 2, done.
+    
+    # At this point test and etc's metadata will match.
+    $ find test
+    test
+    test/passwd
+    test/profile
 
 Restore a tree without risk of unauthorized access:
 
