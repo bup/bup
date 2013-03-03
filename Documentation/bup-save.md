@@ -100,8 +100,8 @@ handling of metadata.
 :   strips the given path prefix *path-prefix* from all
     files and directories.
     
-    A directory */root/chroots/webserver* saved with "bup save -n
-    webserver \--strip-path=/root/chroots" would be saved as
+    A directory */root/chroot/webserver* saved with "bup save -n
+    webserver \--strip-path=/root/chroot" would be saved as
     */webserver/etc*.  Note that currently, metadata will not be saved
     for the root directory (*/*) when this option is specified.
     
@@ -109,9 +109,9 @@ handling of metadata.
 :   a graft point *old_path*=*new_path* (can be used more than
     once).
 
-    A directory */root/chroot/a/etc* saved with "bup save -n chroots
-    \--graft /root/chroot/a/etc=/chroots/a" would be saved as
-    */chroots/a/etc*.  Note that currently, metadata will not be saved
+    A directory */root/chroot/a/etc* saved with "bup save -n chroot
+    \--graft /root/chroot/a=/chroot/a" would be saved as
+    */chroot/a/etc*.  Note that currently, metadata will not be saved
     for the root directory (*/*) when this option is specified.
 
 -*#*, \--compress=*#*
@@ -131,13 +131,13 @@ handling of metadata.
 
 
 
-    $ ls /home/joe/chroots/httpd
+    $ ls /home/joe/chroot/httpd
     bin var
 
-    $ bup index -ux /home/joe/chroots/httpd
+    $ bup index -ux /home/joe/chroot/httpd
     Indexing: 1337, done.
 
-    $ bup save --strip -n joes-httpd-chroot /home/joe/chroots/httpd
+    $ bup save --strip -n joes-httpd-chroot /home/joe/chroot/httpd
     Reading index: 1337, done.
     Saving: 100.00% (998/998k, 1337/1337 files), done.
 
@@ -146,18 +146,18 @@ handling of metadata.
     var/
 
 
-    $ bup save --strip-path=/home/joe/chroots -n joes-chroots \
-         /home/joe/chroots/httpd
+    $ bup save --strip-path=/home/joe/chroot -n joes-chroot \
+         /home/joe/chroot/httpd
     Reading index: 1337, done.
     Saving: 100.00% (998/998k, 1337/1337 files), done.
 
-    $ bup ls joes-chroots/latest/
+    $ bup ls joes-chroot/latest/
     httpd/
 
 
-    $ bup save --graft /home/joe/chroots/httpd=/http-chroot \
+    $ bup save --graft /home/joe/chroot/httpd=/http-chroot \
          -n joe
-         /home/joe/chroots/httpd
+         /home/joe/chroot/httpd
     Reading index: 1337, done.
     Saving: 100.00% (998/998k, 1337/1337 files), done.
 
