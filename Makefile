@@ -86,10 +86,11 @@ runtests-python: all
 	$(PYTHON) wvtest.py lib/bup/t/tmetadata.py
 
 runtests-cmdline: all
-	t/test.sh
+	t/test-index-check-device.sh
 	t/test-meta.sh
 	t/test-restore-single-file.sh
-	t/test-index-check-device.sh
+	t/test-rm-between-index-and-save.sh
+	t/test.sh
 
 stupid:
 	PATH=/bin:/usr/bin $(MAKE) test
