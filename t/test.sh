@@ -10,15 +10,26 @@ bup()
     "$TOP/bup" "$@"
 }
 
+force-delete()
+{
+    chmod -R u+w "$@"
+    for f in "$@"; do
+        test -e "$@" || continue
+        chattr -fR = "$@" || true
+        setfacl -Rb "$@"
+        rm -r "$@"
+    done
+}
+
 WVSTART "init"
 
 #set -x
-rm -rf "$BUP_DIR"
+force-delete "$BUP_DIR"
 WVPASS bup init
 
 WVSTART "index"
 D=bupdata.tmp
-rm -rf $D
+force-delete $D
 mkdir $D
 WVFAIL bup index --exclude-from $D/cannot-exist $D
 WVPASSEQ "$(bup index --check -p)" ""
@@ -227,21 +238,21 @@ WVSTART "save/git-fsck"
 ) || exit 1
 
 WVSTART "restore"
-rm -rf buprestore.tmp
+force-delete buprestore.tmp
 WVFAIL bup restore boink
 touch $TOP/$D/$D
 bup index -u $TOP/$D
 bup save -n master /
 WVPASS bup restore -C buprestore.tmp "/master/latest/$TOP/$D"
 WVPASSEQ "$(ls buprestore.tmp)" "bupdata.tmp"
-rm -rf buprestore.tmp
+force-delete buprestore.tmp
 WVPASS bup restore -C buprestore.tmp "/master/latest/$TOP/$D/"
 touch $D/non-existent-file buprestore.tmp/non-existent-file # else diff fails
 WVPASS diff -ur $D/ buprestore.tmp/
 
 (
     tmp=testrestore.tmp
-    rm -rf $tmp
+    force-delete $tmp
     mkdir $tmp
     export BUP_DIR="$(pwd)/$tmp/bup"
     WVPASS bup init
@@ -256,31 +267,31 @@ WVPASS diff -ur $D/ buprestore.tmp/
     WVPASS t/compare-trees $tmp/src/ $tmp/restore/latest/
 
     WVSTART "restore /foo/latest/"
-    rm -rf "$tmp/restore"
+    force-delete "$tmp/restore"
     WVPASS bup restore -C $tmp/restore /foo/latest/
     for x in $tmp/src/*; do
         WVPASS t/compare-trees $x/ $tmp/restore/$(basename $x);
     done
 
     WVSTART "restore /foo/latest/."
-    rm -rf "$tmp/restore"
+    force-delete "$tmp/restore"
     WVPASS bup restore -C $tmp/restore /foo/latest/.
     WVPASS t/compare-trees $tmp/src/ $tmp/restore/
 
     WVSTART "restore /foo/latest/x"
-    rm -rf "$tmp/restore"
+    force-delete "$tmp/restore"
     WVPASS bup restore -C $tmp/restore /foo/latest/x
     WVPASS t/compare-trees $tmp/src/x/ $tmp/restore/x/
 
     WVSTART "restore /foo/latest/x/"
-    rm -rf "$tmp/restore"
+    force-delete "$tmp/restore"
     WVPASS bup restore -C $tmp/restore /foo/latest/x/
     for x in $tmp/src/x/*; do
         WVPASS t/compare-trees $x/ $tmp/restore/$(basename $x);
     done
 
     WVSTART "restore /foo/latest/x/."
-    rm -rf "$tmp/restore"
+    force-delete "$tmp/restore"
     WVPASS bup restore -C $tmp/restore /foo/latest/x/.
     WVPASS t/compare-trees $tmp/src/x/ $tmp/restore/
 ) || WVFAIL
@@ -336,7 +347,7 @@ fi
 
 WVSTART "exclude-bupdir"
 D=exclude-bupdir.tmp
-rm -rf $D
+force-delete $D
 mkdir $D
 export BUP_DIR="$D/.bup"
 WVPASS bup init
@@ -353,7 +364,7 @@ f"
 
 WVSTART "exclude"
 D=exclude.tmp
-rm -rf $D
+force-delete $D
 mkdir $D
 export BUP_DIR="$D/.bup"
 WVPASS bup init
@@ -379,7 +390,7 @@ EXCLUDE_FILE=exclude-from.tmp
 echo "$D/d 
  $TOP/$D/g
 $D/h" > $EXCLUDE_FILE
-rm -rf $D
+force-delete $D
 mkdir $D
 export BUP_DIR="$D/.bup"
 WVPASS bup init
@@ -399,7 +410,7 @@ rm $EXCLUDE_FILE
 WVSTART "save --strip"
 (
     tmp=graft-points.tmp
-    rm -rf $tmp
+    force-delete $tmp
     mkdir $tmp
     export BUP_DIR="$(pwd)/$tmp/bup"
     WVPASS bup init
@@ -415,7 +426,7 @@ WVSTART "save --strip"
 WVSTART "save --strip-path (relative)"
 (
     tmp=graft-points.tmp
-    rm -rf $tmp
+    force-delete $tmp
     mkdir $tmp
     export BUP_DIR="$(pwd)/$tmp/bup"
     WVPASS bup init
@@ -431,7 +442,7 @@ WVSTART "save --strip-path (relative)"
 WVSTART "save --strip-path (absolute)"
 (
     tmp=graft-points.tmp
-    rm -rf $tmp
+    force-delete $tmp
     mkdir $tmp
     export BUP_DIR="$(pwd)/$tmp/bup"
     WVPASS bup init
@@ -447,7 +458,7 @@ WVSTART "save --strip-path (absolute)"
 WVSTART "save --strip-path (no match)"
 (
     tmp=graft-points.tmp
-    rm -rf $tmp
+    force-delete $tmp
     mkdir $tmp
     export BUP_DIR="$(pwd)/$tmp/bup"
     WVPASS bup init
@@ -463,7 +474,7 @@ WVSTART "save --strip-path (no match)"
 WVSTART "save --graft (empty graft points disallowed)"
 (
     tmp=graft-points.tmp
-    rm -rf $tmp
+    force-delete $tmp
     mkdir $tmp
     export BUP_DIR="$(pwd)/$tmp/bup"
     WVPASS bup init
@@ -474,7 +485,7 @@ WVSTART "save --graft (empty graft points disallowed)"
 WVSTART "save --graft /x/y=/a/b (relative paths)"
 (
     tmp=graft-points.tmp
-    rm -rf $tmp
+    force-delete $tmp
     mkdir $tmp
     export BUP_DIR="$(pwd)/$tmp/bup"
     WVPASS bup init
@@ -490,7 +501,7 @@ WVSTART "save --graft /x/y=/a/b (relative paths)"
 WVSTART "save --graft /x/y=/a/b (matching structure)"
 (
     tmp=graft-points.tmp
-    rm -rf $tmp
+    force-delete $tmp
     mkdir $tmp
     export BUP_DIR="$(pwd)/$tmp/bup"
     WVPASS bup init
@@ -508,7 +519,7 @@ WVSTART "save --graft /x/y=/a/b (matching structure)"
 WVSTART "save --graft /x/y=/a (shorter target)"
 (
     tmp=graft-points.tmp
-    rm -rf $tmp
+    force-delete $tmp
     mkdir $tmp
     export BUP_DIR="$(pwd)/$tmp/bup"
     WVPASS bup init
@@ -525,7 +536,7 @@ WVSTART "save --graft /x=/a/b (longer target)"
 (
     tmp=graft-points.tmp
     export BUP_DIR="$(pwd)/$tmp/bup"
-    rm -rf $tmp
+    force-delete $tmp
     mkdir $tmp
     WVPASS bup init
     mkdir -p $tmp/src/x/y/z
@@ -542,7 +553,7 @@ WVSTART "save --graft /x=/ (root target)"
 (
     tmp=graft-points.tmp
     export BUP_DIR="$(pwd)/$tmp/bup"
-    rm -rf $tmp
+    force-delete $tmp
     mkdir $tmp
     WVPASS bup init
     mkdir -p $tmp/src/x/y/z
@@ -561,7 +572,7 @@ WVSTART "indexfile"
 D=indexfile.tmp
 INDEXFILE=tmpindexfile.tmp
 rm -f $INDEXFILE
-rm -rf $D
+force-delete $D
 mkdir $D
 export BUP_DIR="$D/.bup"
 WVPASS bup init
@@ -582,7 +593,7 @@ b"
 WVSTART "import-rsnapshot"
 D=rsnapshot.tmp
 export BUP_DIR="$TOP/$D/.bup"
-rm -rf $D
+force-delete $D
 mkdir $D
 WVPASS bup init
 mkdir -p $D/hourly.0/buptest/a
@@ -599,7 +610,7 @@ if [ "$(which rdiff-backup)" != "" ]; then
     WVSTART "import-rdiff-backup"
     D=rdiff-backup.tmp
     export BUP_DIR="$TOP/$D/.bup"
-    rm -rf $D
+    force-delete $D
     mkdir $D
     WVPASS bup init
     mkdir $D/rdiff-backup
@@ -615,7 +626,7 @@ fi
 WVSTART "compression"
 D=compression0.tmp
 export BUP_DIR="$TOP/$D/.bup"
-rm -rf $D
+force-delete $D
 mkdir $D
 WVPASS bup init
 WVPASS bup index $TOP/Documentation
@@ -629,7 +640,7 @@ COMPRESSION_0_SIZE=$(du -k -s $D | cut -f1)
 
 D=compression9.tmp
 export BUP_DIR="$TOP/$D/.bup"
-rm -rf $D
+force-delete $D
 mkdir $D
 WVPASS bup init
 WVPASS bup index $TOP/Documentation
@@ -649,16 +660,16 @@ WVSTART "save disjoint top-level directories"
         exit 0
     fi
     D=bupdata.tmp
-    rm -rf $D
+    force-delete $D
     mkdir -p $D/x
     date > $D/x/1
     tmpdir="$(mktemp -d /tmp/bup-test-XXXXXXX)"
-    cleanup() { set -x; rm -rf "${tmpdir}"; set +x; }
+    cleanup() { set -x; force-delete "${tmpdir}"; set +x; }
     trap cleanup EXIT
     date > "$tmpdir/2"
 
     export BUP_DIR="$TOP/buptest.tmp"
-    rm -rf "$BUP_DIR"
+    force-delete "$BUP_DIR"
 
     WVPASS bup init
     WVPASS bup index -vu $(pwd)/$D/x "$tmpdir"
@@ -671,7 +682,7 @@ WVSTART "save disjoint top-level directories"
 WVSTART "clear-index"
 D=clear-index.tmp
 export BUP_DIR="$TOP/$D/.bup"
-rm -rf $TOP/$D
+force-delete $TOP/$D
 mkdir $TOP/$D
 WVPASS bup init
 touch $TOP/$D/foo
