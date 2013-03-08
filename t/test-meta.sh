@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 . wvtest.sh
+. t/lib.sh
 
 TOP="$(pwd)"
 export BUP_DIR="$TOP/buptest.tmp"
@@ -32,21 +33,6 @@ genstat()
 actually-root()
 {
     test "$(whoami)" == root -a -z "$FAKEROOTKEY"
-}
-
-force-delete()
-{
-    if ! actually-root; then
-        rm -rf "$@"
-    else
-        # Go to greater lengths to deal with any test detritus.
-        for f in "$@"; do
-            test -e "$@" || continue
-            chattr -fR = "$@" || true
-            setfacl -Rb "$@"
-            rm -r "$@"
-        done
-    fi
 }
 
 test-src-create-extract()

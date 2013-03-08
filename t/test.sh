@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 . wvtest.sh
+. t/lib.sh
+
 #set -e
 
 TOP="$(/bin/pwd)"
@@ -8,17 +10,6 @@ export BUP_DIR="$TOP/buptest.tmp"
 bup()
 {
     "$TOP/bup" "$@"
-}
-
-force-delete()
-{
-    chmod -R u+w "$@"
-    for f in "$@"; do
-        test -e "$@" || continue
-        chattr -fR = "$@" || true
-        setfacl -Rb "$@"
-        rm -r "$@"
-    done
 }
 
 WVSTART "init"
