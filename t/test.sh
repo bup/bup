@@ -24,7 +24,7 @@ force-delete()
 WVSTART "init"
 
 #set -x
-force-delete "$BUP_DIR"
+test -d "$BUP_DIR" && rm -r "$BUP_DIR"
 WVPASS bup init
 
 WVSTART "index"
@@ -664,12 +664,12 @@ WVSTART "save disjoint top-level directories"
     mkdir -p $D/x
     date > $D/x/1
     tmpdir="$(mktemp -d /tmp/bup-test-XXXXXXX)"
-    cleanup() { set -x; force-delete "${tmpdir}"; set +x; }
+    cleanup() { set -x; rm -r "${tmpdir}"; set +x; }
     trap cleanup EXIT
     date > "$tmpdir/2"
 
     export BUP_DIR="$TOP/buptest.tmp"
-    force-delete "$BUP_DIR"
+    test -d "$BUP_DIR" && rm -r "$BUP_DIR"
 
     WVPASS bup init
     WVPASS bup index -vu $(pwd)/$D/x "$tmpdir"
