@@ -180,6 +180,9 @@ def progress_report(n):
 
 indexfile = opt.indexfile or git.repo('bupindex')
 r = index.Reader(indexfile)
+if not os.access(indexfile + '.meta', os.W_OK|os.R_OK):
+    log('error: cannot access "%s"; have you run bup index?' % indexfile)
+    sys.exit(1)
 msr = index.MetaStoreReader(indexfile + '.meta')
 hlink_db = hlinkdb.HLinkDB(indexfile + '.hlink')
 
