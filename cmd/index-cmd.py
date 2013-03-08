@@ -222,8 +222,7 @@ if opt.clear:
     log('clear: clearing index.\n')
     clear_index(indexfile)
 
-excluded_paths = drecurse.parse_excludes(flags)
-
+excluded_paths = parse_excludes(flags, o.fatal)
 paths = index.reduce_paths(extra)
 
 if opt.update:

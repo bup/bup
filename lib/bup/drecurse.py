@@ -116,25 +116,3 @@ def recursive_dirlist(paths, xdev, bup_dir=None, excluded_paths=None):
         except:
             pass
         raise
-
-def parse_excludes(flags):
-    excluded_paths = []
-
-    for flag in flags:
-        (option, parameter) = flag
-        if option == '--exclude':
-            excluded_paths.append(realpath(parameter))
-
-        if option == '--exclude-from':
-            try:
-                try:
-                    f = open(realpath(parameter))
-                    for exclude_path in f.readlines():
-                        excluded_paths.append(realpath(exclude_path.strip()))
-                except Error, e:
-                    log("warning: couldn't read %s\n" % parameter)
-            finally:
-                f.close()
-
-    return excluded_paths
-

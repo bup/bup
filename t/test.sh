@@ -20,6 +20,7 @@ WVSTART "index"
 D=bupdata.tmp
 rm -rf $D
 mkdir $D
+WVFAIL bup index --exclude-from $D/cannot-exist $D
 WVPASSEQ "$(bup index --check -p)" ""
 WVPASSEQ "$(bup index --check -p $D)" ""
 WVFAIL [ -e $D.fake ]

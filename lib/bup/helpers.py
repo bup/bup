@@ -710,6 +710,24 @@ def parse_date_or_fatal(str, fatal):
         return date
 
 
+def parse_excludes(options, fatal):
+    """Traverse the options and extract all excludes, or call Option.fatal()."""
+    excluded_paths = []
+
+    for flag in options:
+        (option, parameter) = flag
+        if option == '--exclude':
+            excluded_paths.append(realpath(parameter))
+        elif option == '--exclude-from':
+            try:
+                f = open(realpath(parameter))
+            except IOError, e:
+                raise fatal("couldn't read %s" % parameter)
+            for exclude_path in f.readlines():
+                excluded_paths.append(realpath(exclude_path.strip()))
+    return excluded_paths
+
+
 # FIXME: Carefully consider the use of functions (os.path.*, etc.)
 # that resolve against the current filesystem in the strip/graft
 # functions for example, but elsewhere as well.  I suspect bup's not

@@ -17,7 +17,7 @@ o = options.Options(optspec)
 if len(extra) != 1:
     o.fatal("exactly one filename expected")
 
-excluded_paths = drecurse.parse_excludes(flags)
+excluded_paths = parse_excludes(flags, o.fatal)
 
 it = drecurse.recursive_dirlist(extra, opt.xdev, excluded_paths=excluded_paths)
 if opt.profile:
