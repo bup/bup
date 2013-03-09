@@ -9,6 +9,7 @@ endif
 default: all
 
 all: bup Documentation/all
+	t/configure-sampledata --setup
 
 bup: lib/bup/_version.py lib/bup/_helpers$(SOEXT) cmds
 
@@ -78,7 +79,7 @@ lib/bup/_version.py:
 
 runtests: all runtests-python runtests-cmdline
 
-runtests-python:
+runtests-python: all
 	$(PYTHON) wvtest.py \
 		$(wildcard t/t*.py) \
 		$(filter-out lib/bup/t/tmetadata.py,$(wildcard lib/*/t/t*.py))
@@ -165,3 +166,4 @@ clean: Documentation/clean config/clean
 	  then umount bupmeta.tmp/testfs-limited || true; fi
 	rm -rf *.tmp *.tmp.meta t/*.tmp lib/*/*/*.tmp build lib/bup/build lib/bup/t/testfs
 	if test -e t/tmp; then rm -r t/tmp; fi
+	t/configure-sampledata --clean

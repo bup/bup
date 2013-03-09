@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+
+set -e -o pipefail
+
+top=$(pwd)
+
+usage()
+{
+    echo 'Usage: t/configure-sampledata [--setup | --clean]'
+}
+
+if test "$#" -ne 1; then
+    usage 1>&2; exit 1
+fi
+
+case "$1" in
+    '--setup')
+        (
+            cd t/sampledata
+            ln -sf a b
+            ln -sf b c
+            ln -sf /etc .
+        )
+        ;;
+    '--clean')
+        (
+            cd t/sampledata
+            if test -e b; then rm b; fi
+            if test -e c; then rm c; fi
+            if test -e etc; then rm etc; fi
+        )
+        ;;
+    *)
+        usage 1>&2; exit 1
+        ;;
+esac
