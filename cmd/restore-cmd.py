@@ -124,12 +124,13 @@ def find_dir_item_metadata_by_name(dir, name):
         mfile = dir.metadata_file() # VFS file -- cannot close().
         if mfile:
             meta_stream = mfile.open()
+            # First entry is for the dir itself.
             meta = metadata.Metadata.read(meta_stream)
             if name == '':
                 return meta
             for sub in dir:
                 if stat.S_ISDIR(sub.mode):
-                    return find_dir_item_metadata_by_name(sub, '')
+                    meta = find_dir_item_metadata_by_name(sub, '')
                 else:
                     meta = metadata.Metadata.read(meta_stream)
                 if sub.name == name:
