@@ -51,6 +51,10 @@ def _dirlist():
 
 def _recursive_dirlist(prepend, xdev, bup_dir=None, excluded_paths=None):
     for (name,pst) in _dirlist():
+        if excluded_paths:
+            if os.path.normpath(prepend+name) in excluded_paths:
+                debug1('Skipping %r: excluded.\n' % (prepend+name))
+                continue
         if name.endswith('/'):
             if xdev != None and pst.st_dev != xdev:
                 debug1('Skipping %r: different filesystem.\n' % (prepend+name))
@@ -58,10 +62,6 @@ def _recursive_dirlist(prepend, xdev, bup_dir=None, excluded_paths=None):
             if bup_dir != None:
                 if os.path.normpath(prepend+name) == bup_dir:
                     debug1('Skipping BUP_DIR.\n')
-                    continue
-            if excluded_paths:
-                if os.path.normpath(prepend+name) in excluded_paths:
-                    debug1('Skipping %r: excluded.\n' % (prepend+name))
                     continue
             try:
                 OsFile(name).fchdir()

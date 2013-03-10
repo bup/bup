@@ -363,13 +363,15 @@ touch $D/a
 WVPASS bup random 128k >$D/b
 mkdir $D/d $D/d/e
 WVPASS bup random 512 >$D/f
-WVPASS bup index -ux --exclude $D/d $D
+WVPASS bup random 512 >$D/j
+WVPASS bup index -ux --exclude $D/d --exclude $D/j $D
 bup save -n exclude $D
 WVPASSEQ "$(bup ls exclude/latest/$TOP/$D/)" "a
 b
 f"
-mkdir $D/g $D/h
-WVPASS bup index -ux --exclude $D/d --exclude $TOP/$D/g --exclude $D/h $D
+WVPASS mkdir $D/g $D/h
+WVPASS bup index -ux --exclude $D/d --exclude $TOP/$D/g --exclude $D/h \
+  --exclude $TOP/$D/j $D
 bup save -n exclude $D
 WVPASSEQ "$(bup ls exclude/latest/$TOP/$D/)" "a
 b
@@ -380,7 +382,8 @@ D=exclude-fromdir.tmp
 EXCLUDE_FILE=exclude-from.tmp
 echo "$D/d 
  $TOP/$D/g
-$D/h" > $EXCLUDE_FILE
+$D/h
+$D/i" > $EXCLUDE_FILE
 force-delete $D
 mkdir $D
 export BUP_DIR="$D/.bup"
@@ -390,6 +393,7 @@ WVPASS bup random 128k >$D/b
 mkdir $D/d $D/d/e
 WVPASS bup random 512 >$D/f
 mkdir $D/g $D/h
+WVPASS bup random 128k > $D/i
 WVPASS bup index -ux --exclude-from $EXCLUDE_FILE $D
 bup save -n exclude-from $D
 WVPASSEQ "$(bup ls exclude-from/latest/$TOP/$D/)" "a
