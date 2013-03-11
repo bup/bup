@@ -398,6 +398,18 @@ f"
 rm $EXCLUDE_FILE
 
 
+WVSTART "save (no index)"
+(
+    set -e
+    tmp=save-no-index.tmp
+    force-delete $tmp
+    mkdir $tmp
+    export BUP_DIR="$(pwd)/$tmp/bup"
+    WVPASS bup init
+    WVFAIL bup save -n nothing /
+    rm -r "$tmp"
+) || WVFAIL
+
 WVSTART "save --strip"
 (
     tmp=graft-points.tmp
