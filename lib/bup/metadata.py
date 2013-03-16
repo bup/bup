@@ -4,7 +4,7 @@
 #
 # This code is covered under the terms of the GNU Library General
 # Public License as described in the bup LICENSE file.
-import errno, os, sys, stat, time, pwd, grp
+import errno, os, sys, stat, time, platform, pwd, grp
 from cStringIO import StringIO
 from bup import vint, xstat
 from bup.drecurse import recursive_dirlist
@@ -12,18 +12,20 @@ from bup.helpers import add_error, mkdirp, log, is_superuser
 from bup.helpers import pwd_from_uid, pwd_from_name, grp_from_gid, grp_from_name
 from bup.xstat import utime, lutime
 
-try:
-    import xattr
-except ImportError:
-    log('Warning: Linux xattr support missing; install python-pyxattr.\n')
-    xattr = None
-if xattr:
+if 'Linux' in platform.system():
     try:
-        xattr.get_all
-    except AttributeError:
-        log('Warning: python-xattr module is too old; '
-            'install python-pyxattr instead.\n')
+        import xattr
+    except ImportError:
+        log('Warning: Linux xattr support missing; install python-pyxattr.\n')
         xattr = None
+    if xattr:
+        try:
+            xattr.get_all
+        except AttributeError:
+            log('Warning: python-xattr module is too old; '
+                'install python-pyxattr instead.\n')
+            xattr = None
+
 try:
     import posix1e
 except ImportError:

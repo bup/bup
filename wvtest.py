@@ -73,6 +73,10 @@ if __name__ != '__main__':   # we're imported as a module
         return text
 
 
+    def WVMSG(message):
+        ''' Issues a notification. '''
+        return _result(message, traceback.extract_stack()[-3], 'ok')
+
     def WVPASS(cond = True):
         ''' Counts a test failure unless cond is true. '''
         return _check(cond, _code())

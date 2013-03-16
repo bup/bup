@@ -1,4 +1,4 @@
-import glob, grp, pwd, stat, tempfile, subprocess
+import glob, grp, platform, pwd, stat, tempfile, subprocess
 import bup.helpers as helpers
 from bup import git, metadata, vfs
 from bup.helpers import clear_errors, detect_fakeroot, is_superuser
@@ -28,6 +28,7 @@ def ex(*cmd):
 
 
 def setup_testfs():
+    assert('Linux' in platform.system())
     # Set up testfs with user_xattr, etc.
     subprocess.call(['umount', 'testfs'])
     ex('dd', 'if=/dev/zero', 'of=testfs.img', 'bs=1M', 'count=32')
@@ -238,14 +239,11 @@ if not posix1e:
 
 
 from bup.metadata import xattr
-if not xattr:
-    @wvtest
-    def LINUX_XATTR_SUPPORT_IS_MISSING():
-        pass
-else:
+if xattr:
     @wvtest
     def test_handling_of_incorrect_existing_linux_xattrs():
         if not is_superuser():
+            WVMSG('skipping test -- not superuser')
             return
         setup_testfs()
         for f in glob.glob('testfs/*'):
