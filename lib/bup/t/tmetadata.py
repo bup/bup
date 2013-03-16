@@ -179,6 +179,8 @@ def test_from_path_error():
 def test_apply_to_path_restricted_access():
     if is_superuser() or detect_fakeroot():
         return
+    if 'CYGWIN' in platform.system():
+        return # chmod 000 isn't effective.
     tmpdir = tempfile.mkdtemp(prefix='bup-tmetadata-')
     try:
         path = tmpdir + '/foo'
