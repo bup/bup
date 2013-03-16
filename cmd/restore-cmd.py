@@ -31,6 +31,14 @@ def plog(s):
     qprogress(s)
 
 
+def valid_restore_path(path):
+    path = os.path.normpath(path)
+    if path.startswith('/'):
+        path = path[1:]
+    if '/' in path:
+        return True
+
+
 def print_info(n, fullname):
     if stat.S_ISDIR(n.mode):
         verbose1('%s/' % fullname)
@@ -231,6 +239,9 @@ if opt.outdir:
 
 ret = 0
 for d in extra:
+    if not valid_restore_path(d):
+        add_error("ERROR: path %r doesn't include a branch and revision" % d)
+        continue
     path,name = os.path.split(d)
     try:
         n = top.lresolve(d)
