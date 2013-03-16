@@ -26,11 +26,13 @@ if 'Linux' in platform.system():
                 'install python-pyxattr instead.\n')
             xattr = None
 
-try:
-    import posix1e
-except ImportError:
-    log('Warning: POSIX ACL support missing; install python-pylibacl.\n')
-    posix1e = None
+posix1e = None
+if not 'CYGWIN' in platform.system():
+    try:
+        import posix1e
+    except ImportError:
+        log('Warning: POSIX ACL support missing; install python-pylibacl.\n')
+
 try:
     from bup._helpers import get_linux_file_attr, set_linux_file_attr
 except ImportError:
