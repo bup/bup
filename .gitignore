@@ -18,3 +18,5 @@ out2[tc]
 /build
 *.swp
 nbproject
+/t/sampledata/[bc]
+/t/sampledata/etc
