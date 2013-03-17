@@ -25,9 +25,10 @@ case "$1" in
     '--clean')
         (
             cd t/sampledata
-            if test -e b; then rm b; fi
-            if test -e c; then rm c; fi
-            if test -e etc; then rm etc; fi
+            # test -e is false for dangling symlinks.
+            if test -h b -o -e b; then rm b; fi
+            if test -h c -o -e c; then rm c; fi
+            if test -h etc -o -e etc; then rm etc; fi
         )
         ;;
     *)
