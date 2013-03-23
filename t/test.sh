@@ -657,7 +657,8 @@ mkdir $D
 WVPASS bup init
 WVPASS bup index $TOP/Documentation
 WVPASS bup save -n compression -9 --strip $TOP/Documentation
-WVPASSEQ "$(bup ls compression/latest/ | sort)" "$(ls $TOP/Documentation | sort)"
+WVPASSEQ "$(bup ls compression/latest/ | sort)" \
+         "$(ls $TOP/Documentation | grep -v '^\.' | sort)"
 COMPRESSION_9_SIZE=$(du -k -s $D | cut -f1)
 
 WVPASS [ "$COMPRESSION_9_SIZE" -lt "$COMPRESSION_0_SIZE" ]
