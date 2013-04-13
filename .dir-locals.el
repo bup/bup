@@ -1,6 +1,6 @@
 ((nil . ())
  (python-mode . ((indent-tabs-mode . nil)
-                 (python-indent . 4)))
+                 (python-indent-offset . 4)))
  (sh-mode . ((indent-tabs-mode . nil)
              (sh-basic-offset . 4)))
  (c-mode . ((indent-tabs-mode . nil)
