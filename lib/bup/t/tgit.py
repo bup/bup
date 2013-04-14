@@ -50,8 +50,10 @@ def testencode():
 
 @wvtest
 def testpacks():
-    subprocess.call(['rm','-rf', 'pybuptest.tmp'])
-    git.init_repo('pybuptest.tmp')
+    os.environ['BUP_MAIN_EXE'] = bupmain = '../../../bup'
+    os.environ['BUP_DIR'] = bupdir = 'pybuptest.tmp'
+    subprocess.call(['rm','-rf', bupdir])
+    git.init_repo(bupdir)
     git.verbose = 1
 
     w = git.PackWriter()
