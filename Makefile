@@ -1,5 +1,6 @@
 OS:=$(shell uname | sed 's/[-_].*//')
-CFLAGS:=-Wall -O2 -Werror $(PYINCLUDE)
+CFLAGS ?= -O2 -Werror
+CFLAGS += -Wall $(PYINCLUDE)
 SOEXT:=.so
 
 ifeq ($(OS),CYGWIN)
