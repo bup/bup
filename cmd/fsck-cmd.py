@@ -7,7 +7,7 @@ par2_ok = 0
 nullf = open('/dev/null')
 
 def debug(s):
-    if opt.verbose:
+    if opt.verbose > 1:
         log(s)
 
 def run(argv):
@@ -87,34 +87,44 @@ def do_pack(base, last):
             if opt.repair:
                 rresult = par2_repair(base)
                 if rresult != 0:
-                    print '%s par2 repair: failed (%d)' % (last, rresult)
+                    action_result = 'failed'
+                    log('%s par2 repair: failed (%d)\n' % (last, rresult))
                     code = rresult
                 else:
-                    print '%s par2 repair: succeeded (0)' % last
+                    action_result = 'repaired'
+                    log('%s par2 repair: succeeded (0)\n' % last)
                     code = 100
             else:
-                print '%s par2 verify: failed (%d)' % (last, vresult)
+                action_result = 'failed'
+                log('%s par2 verify: failed (%d)\n' % (last, vresult))
                 code = vresult
         else:
-            print '%s ok' % last
+            action_result = 'ok'
     elif not opt.generate or (par2_ok and not par2_exists):
         gresult = git_verify(base)
         if gresult != 0:
-            print '%s git verify: failed (%d)' % (last, gresult)
+            action_result = 'failed'
+            log('%s git verify: failed (%d)\n' % (last, gresult))
             code = gresult
         else:
             if par2_ok and opt.generate:
                 presult = par2_generate(base)
                 if presult != 0:
-                    print '%s par2 create: failed (%d)' % (last, presult)
+                    action_result = 'failed'
+                    log('%s par2 create: failed (%d)\n' % (last, presult))
                     code = presult
                 else:
-                    print '%s ok' % last
+                    action_result = 'generated'
             else:
-                print '%s ok' % last
+                action_result = 'ok'
     else:
         assert(opt.generate and (not par2_ok or par2_exists))
-        debug('    skipped: par2 file already generated.\n')
+        if par2_ok:
+            action_result = 'exists'
+        else:
+            action_result = 'skipped'
+    if opt.verbose:
+        print last, action_result
     return code
 
 
@@ -203,6 +213,6 @@ while len(outstanding):
     if not opt.verbose:
         progress('fsck (%d/%d)\r' % (count, len(extra)))
 
-if not opt.verbose and istty2:
-    log('fsck done.           \n')
+if istty2:
+    debug('fsck done.           \n')
 sys.exit(code)
