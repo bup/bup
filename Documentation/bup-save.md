@@ -16,6 +16,10 @@ bup save [-r *host*:*path*] \<-t|-c|-n *name*\> [-#] [-f *indexfile*]
 `bup save` saves the contents of the given files or paths
 into a new backup set and optionally names that backup set.
 
+Note that in order to refer to your backup set later (i.e. for
+restoration), you must either specify `--name` (the normal case), or
+record the tree or commit id printed by `--tree` or `--commit`.
+
 Before trying to save files using `bup save`, you should
 first update the index using `bup index`.  The reasons
 for separating the two steps are described in the man page
