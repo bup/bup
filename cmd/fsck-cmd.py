@@ -119,10 +119,7 @@ def do_pack(base, last, par2_exists):
                 action_result = 'ok'
     else:
         assert(opt.generate and (not par2_ok or par2_exists))
-        if par2_ok:
-            action_result = 'exists'
-        else:
-            action_result = 'skipped'
+        action_result = 'exists' if par2_exists else 'skipped'
     if opt.verbose:
         print last, action_result
     return code
