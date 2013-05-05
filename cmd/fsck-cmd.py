@@ -79,7 +79,7 @@ def git_verify(base):
         return run(['git', 'verify-pack', '--', base])
     
     
-def do_pack(base, last):
+def do_pack(base, last, par2_exists):
     code = 0
     if par2_ok and par2_exists and (opt.repair or not opt.generate):
         vresult = par2_verify(base)
@@ -182,7 +182,7 @@ for name in extra:
         progress('fsck (%d/%d)\r' % (count, len(extra)))
     
     if not opt.jobs:
-        nc = do_pack(base, last)
+        nc = do_pack(base, last, par2_exists)
         code = code or nc
         count += 1
     else:
@@ -198,7 +198,7 @@ for name in extra:
             outstanding[pid] = 1
         else: # child
             try:
-                sys.exit(do_pack(base, last))
+                sys.exit(do_pack(base, last, par2_exists))
             except Exception, e:
                 log('exception: %r\n' % e)
                 sys.exit(99)
