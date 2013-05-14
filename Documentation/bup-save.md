@@ -65,7 +65,7 @@ handling of metadata.
 
 -f, \--indexfile=*indexfile*
 :   use a different index filename instead of
-    `~/.bup/bupindex`.
+    `$BUP_DIR/bupindex`.
 
 -v, \--verbose
 :   increase verbosity (can be used more than once).  With

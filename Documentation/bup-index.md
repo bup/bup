@@ -18,7 +18,7 @@ bup index \<-p|-m|-s|-u\> [-H] [-l] [-x] [\--fake-valid] [\--no-check-device]
 which is a cache of the filenames, attributes, and sha-1
 hashes of each file and directory in the filesystem.  The
 bup index is similar in function to the `git`(1) index, and
-can be found in `~/.bup/bupindex`.
+can be found in `$BUP_DIR/bupindex`.
 
 Creating a backup in bup consists of two steps: updating
 the index with `bup index`, then actually backing up the
@@ -143,7 +143,7 @@ does, due to the accommodations described above.
 
 -f, \--indexfile=*indexfile*
 :   use a different index filename instead of
-    `~/.bup/bupindex`.
+    `$BUP_DIR/bupindex`.
 
 \--exclude=*path*
 :   a path to exclude from the backup (can be used more
