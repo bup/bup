@@ -1,4 +1,4 @@
-import tempfile
+import errno, platform, tempfile
 from bup import bloom
 from bup.helpers import *
 from wvtest import *
@@ -32,6 +32,21 @@ def test_bloom():
     b = bloom.create('bup.bloom', f=tf, expected=100)
     WVPASSEQ(b.rwfile, tf)
     WVPASSEQ(b.k, 5)
+
+    # Test large (~1GiB) filter.  This may fail on s390 (31-bit
+    # architecture), and anywhere else where the address space is
+    # sufficiently limited.
     tf = tempfile.TemporaryFile()
-    b = bloom.create('bup.bloom', f=tf, expected=2**28, delaywrite=False)
-    WVPASSEQ(b.k, 4)
+    skip_test = False
+    try:
+        b = bloom.create('bup.bloom', f=tf, expected=2**28, delaywrite=False)
+    except EnvironmentError, ex:
+        (ptr_width, linkage) = platform.architecture()
+        if ptr_width == '32bit' and ex.errno == errno.ENOMEM:
+            WVMSG('skipping large bloom filter test (mmap probably failed) '
+                  + str(ex))
+            skip_test = True
+        else:
+            raise
+    if not skip_test:
+        WVPASSEQ(b.k, 4)
