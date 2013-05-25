@@ -333,6 +333,25 @@ mailing list (see below) if you'd like to help.
     are specified to 'bup save', then no metadata will be written for
     the root directory.  That's obviously less than ideal.
 
+ - bup is overly optimistic about mmap.  Right now bup just assumes
+   that it can mmap as large a block as it likes, and that mmap will
+   never fail.  Yeah, right... If nothing else, this has failed on
+   32-bit architectures (and 31-bit is even worse -- looking at you,
+   s390).
+
+   To fix this, we might just implement a FakeMmap[1] class that uses
+   normal file IO and handles all of the mmap methods[2] that bup
+   actually calls.  Then we'd swap in one of those whenever mmap
+   fails.
+
+   This would also require implementing some of the methods needed to
+   support "[]" array access, probably at a minimum __getitem__,
+   __setitem__, and __setslice__ [3].
+
+     [1] http://comments.gmane.org/gmane.comp.sysutils.backup.bup/613
+     [2] http://docs.python.org/2/library/mmap.html
+     [3] http://docs.python.org/2/reference/datamodel.html#emulating-container-types
+
  - 'bup index' is slower than it should be.
  
     It's still rather fast: it can iterate through all the filenames on my
