@@ -4,7 +4,7 @@
 #
 # This code is covered under the terms of the GNU Library General
 # Public License as described in the bup LICENSE file.
-import errno, os, sys, stat, time, pwd, grp
+import errno, os, sys, stat, time, pwd, grp, socket
 from cStringIO import StringIO
 from bup import vint, xstat
 from bup.drecurse import recursive_dirlist
@@ -312,7 +312,11 @@ class Metadata:
             assert(self._recognized_file_type())
             os.mknod(path, 0600 | stat.S_IFIFO)
         elif stat.S_ISSOCK(self.mode):
-            os.mknod(path, 0600 | stat.S_IFSOCK)
+            if not sys.platform.startswith('cygwin'):
+                os.mknod(path, 0600 | stat.S_IFSOCK)
+            else:
+                s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+                s.bind(path)
         elif stat.S_ISLNK(self.mode):
             assert(self._recognized_file_type())
             if self.symlink_target and create_symlinks:
