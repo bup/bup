@@ -1,10 +1,5 @@
 # Assumes shell is Bash.
 
-actually-root()
-{
-    test "$(whoami)" == root -a -z "$FAKEROOTKEY"
-}
-
 force-delete()
 {
     # Try *hard* to delete $@.  Among other things, some systems have
