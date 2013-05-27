@@ -1,7 +1,7 @@
 """Helper functions and classes for bup."""
 
 import sys, os, pwd, subprocess, errno, socket, select, mmap, stat, re, struct
-import hashlib, heapq, operator, time, platform, grp
+import hashlib, heapq, operator, time, grp
 from bup import _version, _helpers
 import bup._helpers as _helpers
 
@@ -204,7 +204,7 @@ def detect_fakeroot():
 
 
 def is_superuser():
-    if platform.system().startswith('CYGWIN'):
+    if sys.platform.startswith('cygwin'):
         import ctypes
         return ctypes.cdll.shell32.IsUserAnAdmin()
     else:

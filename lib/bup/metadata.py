@@ -4,7 +4,7 @@
 #
 # This code is covered under the terms of the GNU Library General
 # Public License as described in the bup LICENSE file.
-import errno, os, sys, stat, time, platform, pwd, grp
+import errno, os, sys, stat, time, pwd, grp
 from cStringIO import StringIO
 from bup import vint, xstat
 from bup.drecurse import recursive_dirlist
@@ -13,7 +13,7 @@ from bup.helpers import pwd_from_uid, pwd_from_name, grp_from_gid, grp_from_name
 from bup.xstat import utime, lutime
 
 xattr = None
-if 'Linux' in platform.system():
+if sys.platform.startswith('linux'):
     try:
         import xattr
     except ImportError:
@@ -27,7 +27,7 @@ if 'Linux' in platform.system():
             xattr = None
 
 posix1e = None
-if not 'CYGWIN' in platform.system():
+if not sys.platform.startswith('cygwin'):
     try:
         import posix1e
     except ImportError:

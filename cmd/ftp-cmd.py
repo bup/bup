@@ -144,7 +144,7 @@ else:
     if readline:
         readline.set_completer_delims(' \t\n\r/')
         readline.set_completer(completer)
-        if platform.system() == 'Darwin':
+        if sys.platform.startswith('darwin'):
             # MacOS uses a slighly incompatible clone of libreadline
             readline.parse_and_bind('bind ^I rl_complete')
         readline.parse_and_bind('tab: complete')

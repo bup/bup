@@ -1,4 +1,4 @@
-import glob, grp, platform, pwd, stat, tempfile, subprocess
+import glob, grp, pwd, stat, tempfile, subprocess
 import bup.helpers as helpers
 from bup import git, metadata, vfs
 from bup.helpers import clear_errors, detect_fakeroot, is_superuser
@@ -28,7 +28,7 @@ def ex(*cmd):
 
 
 def setup_testfs():
-    assert('Linux' in platform.system())
+    assert(sys.platform.startswith('linux'))
     # Set up testfs with user_xattr, etc.
     subprocess.call(['umount', 'testfs'])
     ex('dd', 'if=/dev/zero', 'of=testfs.img', 'bs=1M', 'count=32')
@@ -179,7 +179,7 @@ def test_from_path_error():
 def test_apply_to_path_restricted_access():
     if is_superuser() or detect_fakeroot():
         return
-    if 'CYGWIN' in platform.system():
+    if sys.platform.startswith('cygwin'):
         return # chmod 000 isn't effective.
     tmpdir = tempfile.mkdtemp(prefix='bup-tmetadata-')
     try:
