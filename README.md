@@ -115,6 +115,8 @@ From source
    In addition to the default CentOS repositories, you may need to add
    RPMForge (for fuse-python) and EPEL (for pyxattr and pylibacl).
 
+   On Cygwin, install python, make, rsync, and gcc4.
+
  - Build the python module and symlinks:
 
         make
