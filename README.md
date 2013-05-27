@@ -256,6 +256,13 @@ Notes on NetBSD/pkgsrc
    anything useful.
 
 
+Notes on Cygwin
+---------------
+
+ - There is no support for ACLs.  If/when some entrprising person
+   fixes this, adjust t/compare-trees.
+
+
 How it works
 ============
 
