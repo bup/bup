@@ -27,6 +27,7 @@ def open_output(name):
 
 optspec = """
 bup meta --create [OPTION ...] <PATH ...>
+bup meta --list [OPTION ...]
 bup meta --extract [OPTION ...]
 bup meta --start-extract [OPTION ...]
 bup meta --finish-extract [OPTION ...]
