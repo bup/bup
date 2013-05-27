@@ -264,6 +264,13 @@ Notes on Cygwin
  - There is no support for ACLs.  If/when some entrprising person
    fixes this, adjust t/compare-trees.
 
+ - In t/test.sh, two tests have been disabled.  These tests check to
+   see that repeated saves produce identical trees and that an
+   intervening index doesn't change the SHA1.  Apparently Cygwin has
+   some unusual behaviors with respect to access times (that probably
+   warrant further investigation).  Possibly related:
+   http://cygwin.com/ml/cygwin/2007-06/msg00436.html
+
 
 How it works
 ============
