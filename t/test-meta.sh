@@ -82,7 +82,7 @@ test-src-save-restore()
 
 universal-cleanup()
 {
-    if t/root-status != root; then return 0; fi
+    if [ $(t/root-status) != root ]; then return 0; fi
     cd "$TOP"
     umount "$TOP/bupmeta.tmp/testfs" || true
     umount "$TOP/bupmeta.tmp/testfs-limited" || true
@@ -374,7 +374,7 @@ WVSTART 'meta --edit'
 
 # Test ownership restoration (when not root or fakeroot).
 (
-    if t/root-status != none; then
+    if [ $(t/root-status) != none ]; then
         exit 0
     fi
 
@@ -440,7 +440,7 @@ WVSTART 'meta --edit'
 
 # Test ownership restoration (when root or fakeroot).
 (
-    if t/root-status == none; then
+    if [ $(t/root-status) == none ]; then
         exit 0
     fi
 
@@ -529,7 +529,7 @@ WVSTART 'meta --edit'
 
 # Root-only tests that require an FS with all the trimmings: ACLs,
 # Linux attr, Linux xattr, etc.
-if t/root-status == root; then
+if [ $(t/root-status) == root ]; then
     (
         set -e
         # Some cleanup handled in universal-cleanup() above.
