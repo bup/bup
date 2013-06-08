@@ -664,6 +664,10 @@ class PackWriter:
         idx_f.seek(0, os.SEEK_END)
         count = _helpers.write_idx(idx_f, idx_map, idx, self.count)
         assert(count == self.count)
+        # Sync, since it doesn't look like POSIX guarantees that a
+        # matching FILE* (i.e. idx_f) will see the parallel changes if
+        # we don't.
+        idx_map.flush()
         idx_map.close()
         idx_f.write(packbin)
 
