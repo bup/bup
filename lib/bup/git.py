@@ -502,6 +502,13 @@ class PackWriter:
         self.objcache = None
         self.compression_level = compression_level
 
+        # Use the git pack.packSizeLimit setting for bup pack sizes
+        # to make it user configurable
+        p = subprocess.Popen(['git', 'config', 'pack.packSizeLimit'],
+                             stdout=subprocess.PIPE, preexec_fn=_gitenv)
+        _git_wait('git config', p)
+        self.max_pack_size = int(p.stdout.read().strip() or max_pack_size)
+
     def __del__(self):
         self.close()
 
@@ -547,7 +554,8 @@ class PackWriter:
         size, crc = self._raw_write(_encode_packobj(type, content,
                                                     self.compression_level),
                                     sha=sha)
-        if self.outbytes >= max_pack_size or self.count >= max_pack_objects:
+        if (self.outbytes >= self.max_pack_size
+            or self.count >= max_pack_objects):
             self.breakpoint()
         return sha
 
@@ -832,6 +840,13 @@ def init_repo(path=None):
     # regardless of the version of the installed Git binary.
     p = subprocess.Popen(['git', 'config', 'pack.indexVersion', '2'],
                          stdout=sys.stderr, preexec_fn = _gitenv)
+    _git_wait('git config', p)
+    # Use the git pack.packSizeLimit setting for bup pack sizes
+    # to make it user configurable
+    p = subprocess.Popen(['git', 'config', 'pack.packSizeLimit',
+                          # larger packs will slow down pruning
+                          '{}'.format(max_pack_size)],
+                         stdout=sys.stderr, preexec_fn=_gitenv)
     _git_wait('git config', p)
     # Enable the reflog
     p = subprocess.Popen(['git', 'config', 'core.logAllRefUpdates', 'true'],
