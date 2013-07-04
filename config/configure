@@ -1,5 +1,19 @@
 #!/bin/sh
 
+bup_find_prog()
+{
+    local name="$1" result="$2"
+    TLOGN "checking for $name"
+    if ! [ "$result" ]; then
+        result=`acLookFor "$name"`
+        if [ -z "$result" ]; then
+            AC_FAIL "\nERROR: unable to find $name"
+        fi
+    fi
+    TLOG " ($result)"
+    echo "$result"
+}
+
 TARGET=bup
 
 . ./configure.inc
@@ -11,44 +25,20 @@ if ! AC_PROG_CC; then
     exit 1
 fi
 
-TLOGN "checking the GNU make"
-[ -n "$MAKE" ] || MAKE=`acLookFor make`
-if [ -z "$MAKE" ]; then
-    AC_FAIL " Cannot find make";
-fi
+MAKE=`bup_find_prog make $MAKE`
 
-MAKE_GNU=`$MAKE --version | grep "GNU Make"`
-if [ -z "$MAKE_GNU" ]; then
-    AC_FAIL " $MAKE is not GNU Make"
+if ! ($MAKE --version | grep "GNU Make"); then
+    AC_FAIL "ERROR: $MAKE is not GNU Make"
 fi
 
 MAKE_VERSION=`$MAKE --version | grep "GNU Make" | awk '{print $3}'`
 if [ -z "$MAKE_VERSION" ]; then
-    AC_FAIL " $MAKE --version does not return sensible output?"
+    AC_FAIL "ERROR: $MAKE --version does not return sensible output?"
 fi
-expr "$MAKE_VERSION" '>=' '3.81' || AC_FAIL "$MAKE must be >= version 3.81"
-TLOG " ok"
+expr "$MAKE_VERSION" '>=' '3.81' || AC_FAIL "ERROR: $MAKE must be >= version 3.81"
 
-TLOGN "checking the python"
-PYTHON=`acLookFor python`
-if [ -z "$PYTHON" ]; then
-    AC_FAIL " Cannot find python";
-fi
-TLOG " - you have some python program - ok"
-
-TLOGN "checking the git"
-GIT=`acLookFor git`
-if [ -z "$GIT" ]; then
-    AC_FAIL " Cannot find git";
-fi
-TLOG " - you have some git program - ok"
-
-
-# assuming the above checks pass, get the path of everything
-MF_PATH_INCLUDE	GMAKE gmake make
-MF_PATH_INCLUDE GIT git
-MF_PATH_INCLUDE TAR tar gtar
-MF_PATH_INCLUDE PYTHON python
+bup_find_prog python ''
+bup_find_prog git ''
 
 # For stat.
 AC_CHECK_HEADERS sys/stat.h
