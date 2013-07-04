@@ -272,6 +272,13 @@ Notes on Cygwin
    http://cygwin.com/ml/cygwin/2007-06/msg00436.html
 
 
+Notes on OS X
+-------------
+
+ - There is no support for ACLs.  If/when some entrprising person
+   fixes this, adjust t/compare-trees.
+
+
 How it works
 ============
 

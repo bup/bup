@@ -48,12 +48,15 @@ trap "rm -rf '${tmpfile}'" EXIT
 rsync_opts="-niaH$verify_content --delete"
 
 if rsync --version | grep -q xattrs; then
-    if [[ $(uname) =~ CYGWIN ]]; then
-        # bup doesn't support ACLs on Cygwin yet.
-        rsync_opts="$rsync_opts -X"
-    else
-        rsync_opts="$rsync_opts -AX"
-    fi
+    case $OSTYPE in
+        cygwin|darwin)
+            # bup doesn't support ACLs here yet.
+            rsync_opts="$rsync_opts -X"
+            ;;
+        *)
+            rsync_opts="$rsync_opts -AX"
+            ;;
+    esac
 else
     echo "Not comparing xattrs/acls (unsupported by available rsync)." 1>&2
 fi
