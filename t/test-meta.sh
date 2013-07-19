@@ -62,7 +62,7 @@ test-src-save-restore()
     # restore below src/, in order to avoid having to worry about
     # operations that require root (like chown /home).
     (
-        set -x
+        #verbose:set -x
         rm -rf src.bup
         mkdir src.bup
         export BUP_DIR=$(pwd)/src.bup
@@ -76,7 +76,7 @@ test-src-save-restore()
         WVPASS test -d src-restore/src
         WVPASS "$TOP/t/compare-trees" -c src/ src-restore/src/
         rm -rf src.bup
-        set +x
+        #verbose:set +x
     )
 }
 
@@ -119,8 +119,13 @@ setup-test-tree()
     # entries would sort in the wrong order because the metadata
     # entries were being sorted by mangled name, but the index isn't.
     dd if=/dev/zero of="$TOP/bupmeta.tmp"/src/foo bs=1k count=33
-    touch -d 2011-11-11 "$TOP/bupmeta.tmp"/src/foo
-    touch -d 2011-12-12 "$TOP/bupmeta.tmp"/src/foo-bar
+    if [[ $(uname) =~ OpenBSD ]]; then
+        touch -t 201111110000 "$TOP/bupmeta.tmp"/src/foo
+        touch -t 201112120000 "$TOP/bupmeta.tmp"/src/foo-bar
+    else
+        touch -d 2011-11-11 "$TOP/bupmeta.tmp"/src/foo
+        touch -d 2011-12-12 "$TOP/bupmeta.tmp"/src/foo-bar
+    fi
 
     t/mksock "$TOP/bupmeta.tmp/src/test-socket" || true
 ) || WVFAIL
@@ -167,7 +172,7 @@ WVSTART 'metadata save/restore (using index metadata)'
     # these metadata..." may fail.
     sleep 1
 
-    set -x
+    #verbose:set -x
     rm -rf src.bup
     mkdir src.bup
     export BUP_DIR=$(pwd)/src.bup
@@ -182,7 +187,8 @@ WVSTART 'metadata save/restore (using index metadata)'
     WVPASS "$TOP/t/compare-trees" -c src/ src-restore-1/src/
 
     echo "blarg" > src/volatile/1
-    cp -a src/volatile/1 src-restore-1/src/volatile/
+    cp -pPR src/volatile/1 src-restore-1/src/volatile/
+    #cp -a  src/volatile/1 src-restore-1/src/volatile/
     WVPASS bup index src
 
     # Bup should *not* pick up these metadata changes.
@@ -197,7 +203,7 @@ WVSTART 'metadata save/restore (using index metadata)'
     WVPASS "$TOP/t/compare-trees" -c src-restore-1/src/ src-restore-2/src/
 
     rm -rf src.bup
-    set +x
+    #verbose:set +x
 )
 
 setup-hardlink-test()
@@ -222,7 +228,7 @@ hardlink-test-run-restore()
 WVSTART 'metadata save/restore (hardlinks)'
 (
     set -e
-    set -x
+    #verbose:set -x
     export BUP_DIR="$TOP/bupmeta.tmp/src.bup"
     force-delete "$TOP/bupmeta.tmp"
     mkdir -p "$TOP/bupmeta.tmp"
