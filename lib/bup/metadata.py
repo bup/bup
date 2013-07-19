@@ -27,7 +27,7 @@ if sys.platform.startswith('linux'):
             xattr = None
 
 posix1e = None
-if not (sys.platform.startswith('cygwin') or sys.platform.startswith('darwin')):
+if not (sys.platform.startswith('cygwin') or sys.platform.startswith('darwin') or sys.platform.startswith('openbsd')):
     try:
         import posix1e
     except ImportError:
@@ -312,7 +312,7 @@ class Metadata:
             assert(self._recognized_file_type())
             os.mknod(path, 0600 | stat.S_IFIFO)
         elif stat.S_ISSOCK(self.mode):
-            if not sys.platform.startswith('cygwin'):
+            if not (sys.platform.startswith('cygwin') or sys.platform.startswith('openbsd')):
                 os.mknod(path, 0600 | stat.S_IFSOCK)
             else:
                 s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
@@ -854,7 +854,7 @@ def detailed_str(meta, fields = None):
                                          xstat.mode_str(meta.mode)))
     if 'link-target' in fields and stat.S_ISLNK(meta.mode):
         result.append('link-target: ' + meta.symlink_target)
-    if 'rdev' in fields:
+    if 'rdev' in fields and (stat.S_ISCHR(meta.mode) or stat.S_ISBLK(meta.mode)):
         if meta.rdev:
             result.append('rdev: %d,%d' % (os.major(meta.rdev),
                                            os.minor(meta.rdev)))
