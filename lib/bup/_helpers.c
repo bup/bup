@@ -3,11 +3,19 @@
 #undef NDEBUG
 #include "../../config/config.h"
 #include "bupsplit.h"
-#include <Python.h>
 #include <assert.h>
+#include <Python.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <arpa/inet.h>
+#if HAVE_SYS_SOCKET_H
+# include <sys/socket.h>
+#endif
+#if HAVE_NETINET_IN_H
+# include <netinet/in.h>
+#endif
+#if HAVE_ARPA_INET_H
+# include <arpa/inet.h>
+#endif
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
