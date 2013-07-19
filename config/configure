@@ -28,7 +28,10 @@ fi
 MAKE=`bup_find_prog make $MAKE`
 
 if ! ($MAKE --version | grep "GNU Make"); then
-    AC_FAIL "ERROR: $MAKE is not GNU Make"
+    MAKE=`bup_find_prog gmake $GMAKE`
+    if ! ($MAKE --version | grep "GNU Make"); then
+        AC_FAIL "ERROR: $MAKE is not GNU Make"
+    fi
 fi
 
 MAKE_VERSION=`$MAKE --version | grep "GNU Make" | awk '{print $3}'`
