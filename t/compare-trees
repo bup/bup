@@ -47,18 +47,26 @@ trap "rm -rf '${tmpfile}'" EXIT
 
 rsync_opts="-niaH$verify_content --delete"
 
-if rsync --version | grep -q xattrs; then
+# decide whether to transfer xattrs with rsync
+if rsync --version | grep -q "[^no] xattrs"; then
+    rsync_opts="$rsync_opts -X"
+else
+    echo "Not comparing xattrs (unsupported by available rsync)." 1>&2
+fi
+
+# decide whether to transfer ACLs with rsync
+if rsync --version | grep -q "[^no] ACLs"; then
     case $OSTYPE in
         cygwin|darwin)
             # bup doesn't support ACLs here yet.
-            rsync_opts="$rsync_opts -X"
+            echo "Not comparing acls (lacking OS support)." 1>&2
             ;;
         *)
-            rsync_opts="$rsync_opts -AX"
+            rsync_opts="$rsync_opts -A"
             ;;
     esac
 else
-    echo "Not comparing xattrs/acls (unsupported by available rsync)." 1>&2
+    echo "Not comparing acls (unsupported by available rsync)." 1>&2
 fi
 
 rsync $rsync_opts "$src" "$dest" > "${tmpfile}"
