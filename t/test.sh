@@ -673,16 +673,20 @@ WVPASS [ "$COMPRESSION_9_SIZE" -lt "$COMPRESSION_0_SIZE" ]
 WVSTART "save disjoint top-level directories"
 (
     set -e
-    top_dir="$(echo $(pwd) | awk -F "/" '{print $2}')"
-    if [ "$top_dir" == tmp ]; then
-        echo "(running from within /tmp; skipping test)"
+    # Resolve any symlinks involving the top top-level dirs.
+    real_pwd="$(realpath .)"
+    real_tmp="$(realpath /tmp/.)"
+    pwd_top="$(echo $real_pwd | awk -F "/" '{print $2}')"
+    tmp_top="$(echo $real_tmp | awk -F "/" '{print $2}')"
+    if [ "$pwd_top" = "$tmp_top" ]; then
+        echo "(running from within /$tmp_top; skipping test)"
         exit 0
     fi
     D=bupdata.tmp
     force-delete $D
     mkdir -p $D/x
     date > $D/x/1
-    tmpdir="$(mktemp -d /tmp/bup-test-XXXXXXX)"
+    tmpdir="$(mktemp -d $real_tmp/bup-test-XXXXXXX)"
     cleanup() { set -x; rm -r "${tmpdir}"; set +x; }
     trap cleanup EXIT
     date > "$tmpdir/2"
@@ -693,8 +697,10 @@ WVSTART "save disjoint top-level directories"
     WVPASS bup init
     WVPASS bup index -vu $(pwd)/$D/x "$tmpdir"
     WVPASS bup save -t -n src $(pwd)/$D/x "$tmpdir"
+
     # For now, assume that "ls -a" and "sort" use the same order.
-    WVPASSEQ "$(bup ls -a src/latest)" "$(echo -e "$top_dir/\ntmp/" | sort)"
+    WVPASSEQ "$(bup ls -a src/latest)" \
+        "$(echo -e "$pwd_top/\n$tmp_top/" | sort)"
 ) || WVFAIL
 
 WVSTART "clear-index"
