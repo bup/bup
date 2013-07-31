@@ -566,7 +566,7 @@ class Metadata:
             try:
                 set_linux_file_attr(path, self.linux_attr)
             except OSError, e:
-                if e.errno == errno.ENOTTY or e.errno == errno.EOPNOTSUPP:
+                if e.errno in (errno.ENOTTY, errno.EOPNOTSUPP, errno.ENOSYS):
                     raise ApplyError('Linux chattr: %s' % e)
                 else:
                     raise
