@@ -35,10 +35,10 @@ handle_ctrl_c()
 git.check_repo_or_die()
 if not (opt.blobs or opt.tree or opt.commit or opt.name or
         opt.noop or opt.copy):
-    o.fatal("use one or more of -b, -t, -c, -n, -N, --copy")
-if (opt.noop or opt.copy) and (opt.blobs or opt.tree or 
+    o.fatal("use one or more of -b, -t, -c, -n, --noop, --copy")
+if (opt.noop or opt.copy) and (opt.blobs or opt.tree or
                                opt.commit or opt.name):
-    o.fatal('-N and --copy are incompatible with -b, -t, -c, -n')
+    o.fatal('--noop and --copy are incompatible with -b, -t, -c, -n')
 if opt.blobs and (opt.tree or opt.commit or opt.name):
     o.fatal('-b is incompatible with -t, -c, -n')
 if extra and opt.git_ids:
