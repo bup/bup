@@ -1,65 +1,42 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
-  <title>bup-tag(1) Bup 0.25-rc1</title>
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta http-equiv="Content-Style-Type" content="text/css" />
   <meta name="generator" content="pandoc" />
-  <meta name="author" content="Gabriel Filion 
-                               '+''+e+''+'');
-                               // -->
-                               &#108;&#x65;&#108;&#x75;&#116;&#x69;&#110;&#32;&#x61;&#116;&#32;&#x67;&#x6d;&#x61;&#x69;&#108;&#32;&#100;&#x6f;&#116;&#32;&#x63;&#x6f;&#x6d;" />
-  <meta name="date" content="2011-06-08" />
+  <meta name="author" content="Gabriel Filion lelutin@gmail.com" />
+  <title>bup-tag(1) Bup 0.25-rc2</title>
 </head>
 <body>
-<h1 class="title">bup-tag(1) Bup 0.25-rc1</h1>
-<div id="name"
-><h1
-  >NAME</h1
-  ><p
-  >bup-tag - tag a commit in the bup repository</p
-  ></div
-><div id="synopsis"
-><h1
-  >SYNOPSIS</h1
-  ><p
-  >bup tag</p
-  ><p
-  >bup tag &lt;tag name&gt; &lt;committish&gt;</p
-  ><p
-  >bup tag -d &lt;tag name&gt;</p
-  ></div
-><div id="description"
-><h1
-  >DESCRIPTION</h1
-  ><p
-  ><code
-    >bup tag</code
-    > lists, creates or deletes a tag in the bup repository.</p
-  ><p
-  >A tag is an easy way to retreive a specific commit. It can be used to mark a specific backup for easier retrieval later.</p
-  ><p
-  >When called without any arguments, the command lists all tags that can be found in the repository. When called with a tag name and a commit ID or ref name, it creates a new tag with the given name, if it doesn't already exist, that points to the commit given in the second argument. When called with '-d' and a tag name, it removes the given tag, if it exists.</p
-  ><p
-  >bup exposes the contents of backups with current tags, via any command that lists or shows backups. They can be found under the /.tag directory. For example, the 'ftp' command will show the tag named 'tag1' under /.tag/tag1.</p
-  ><p
-  >Tags are also exposed under the branches from which they can be reached. For example, if you create a tag named 'important' under branch 'computerX', you will also be able to retrieve the contents of the backup that was tagged under /computerX/important. This is done as a convenience, and should the branch 'computerX' be deleted, the contents of the tagged backup will be available through /.tag/important as long as the tag is not deleted.</p
-  ></div
-><div id="options"
-><h1
-  >OPTIONS</h1
-  ><dl
-  ><dt
-    >-d, --delete</dt
-    ><dd
-    >delete a tag</dd
-    ></dl
-  ></div
-><div id="example"
-><h1
-  >EXAMPLE</h1
-  ><pre
-  ><code
-    >$ bup tag new-puppet-version hostx-backup
+<div id="header">
+<h1 class="title">bup-tag(1) Bup</h1>
+<h2 class="author">Gabriel Filion <script type="text/javascript">
+                   <!--
+                   h='&#x67;&#x6d;&#x61;&#x69;&#108;&#46;&#x63;&#x6f;&#x6d;';a='&#64;';n='&#108;&#x65;&#108;&#x75;&#116;&#x69;&#110;';e=n+a+h;
+                   document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'">'+'<code>'+e+'</code>'+'<\/'+'a'+'>');
+                   // -->
+                   </script><noscript>&#108;&#x65;&#108;&#x75;&#116;&#x69;&#110;&#32;&#x61;&#116;&#32;&#x67;&#x6d;&#x61;&#x69;&#108;&#32;&#100;&#x6f;&#116;&#32;&#x63;&#x6f;&#x6d;</noscript></h2>
+</div>
+<h1 id="name">NAME</h1>
+<p>bup-tag - tag a commit in the bup repository</p>
+<h1 id="synopsis">SYNOPSIS</h1>
+<p>bup tag</p>
+<p>bup tag &lt;tag name&gt; &lt;committish&gt;</p>
+<p>bup tag -d &lt;tag name&gt;</p>
+<h1 id="description">DESCRIPTION</h1>
+<p><code>bup tag</code> lists, creates or deletes a tag in the bup repository.</p>
+<p>A tag is an easy way to retreive a specific commit. It can be used to mark a specific backup for easier retrieval later.</p>
+<p>When called without any arguments, the command lists all tags that can be found in the repository. When called with a tag name and a commit ID or ref name, it creates a new tag with the given name, if it doesn't already exist, that points to the commit given in the second argument. When called with '-d' and a tag name, it removes the given tag, if it exists.</p>
+<p>bup exposes the contents of backups with current tags, via any command that lists or shows backups. They can be found under the /.tag directory. For example, the 'ftp' command will show the tag named 'tag1' under /.tag/tag1.</p>
+<p>Tags are also exposed under the branches from which they can be reached. For example, if you create a tag named 'important' under branch 'computerX', you will also be able to retrieve the contents of the backup that was tagged under /computerX/important. This is done as a convenience, and should the branch 'computerX' be deleted, the contents of the tagged backup will be available through /.tag/important as long as the tag is not deleted.</p>
+<h1 id="options">OPTIONS</h1>
+<dl>
+<dt>-d, --delete</dt>
+<dd>delete a tag
+</dd>
+</dl>
+<h1 id="example">EXAMPLE</h1>
+<pre><code>$ bup tag new-puppet-version hostx-backup
 
 $ bup tag
 new-puppet-version
@@ -67,35 +44,10 @@ new-puppet-version
 $ bup ftp &quot;ls /.tag/new-puppet-version&quot;
 files..
 
-$ bup tag -d new-puppet-version
-</code
-    ></pre
-  ></div
-><div id="see-also"
-><h1
-  >SEE ALSO</h1
-  ><p
-  ><code
-    >bup-save</code
-    >(1), <code
-    >bup-split</code
-    >(1), <code
-    >bup-ftp</code
-    >(1), <code
-    >bup-fuse</code
-    >(1), <code
-    >bup-web</code
-    >(1)</p
-  ></div
-><div id="bup"
-><h1
-  >BUP</h1
-  ><p
-  >Part of the <code
-    >bup</code
-    >(1) suite.</p
-  ></div
->
+$ bup tag -d new-puppet-version</code></pre>
+<h1 id="see-also">SEE ALSO</h1>
+<p><code>bup-save</code>(1), <code>bup-split</code>(1), <code>bup-ftp</code>(1), <code>bup-fuse</code>(1), <code>bup-web</code>(1)</p>
+<h1 id="bup">BUP</h1>
+<p>Part of the <code>bup</code>(1) suite.</p>
 </body>
 </html>
-

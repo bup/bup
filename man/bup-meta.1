@@ -1,4 +1,4 @@
-.TH bup-meta 1 "2011\[en]06\[en]08" "Bup 0.25-rc1"
+.TH bup-meta 1 "2013\[en]07\[en]31" "Bup 0.25-rc2"
 .SH NAME
 .PP
 bup-meta - create or extract a metadata archive
@@ -6,7 +6,7 @@ bup-meta - create or extract a metadata archive
 .TP
 .B bup meta --create
 [-R] [-v] [-q] [--no-symlinks] [--no-paths] [-f \f[I]file\f[]]
-<\f[I]paths\f[]\&...>
+<\f[I]paths\f[]...>
 .RS
 .RE
 .TP
@@ -29,132 +29,182 @@ bup-meta - create or extract a metadata archive
 [-v] [-q] [--numeric-ids] [-f \f[I]file\f[]]
 .RS
 .RE
+.TP
+.B bup meta --edit
+[--set-uid \f[I]uid\f[] | --set-gid \f[I]gid\f[] | --set-user
+\f[I]user\f[] | --set-group \f[I]group\f[] | ...] <\f[I]paths\f[]...>
+.RS
+.RE
 .SH DESCRIPTION
 .PP
-\f[B]bup\ meta\f[] either creates or extracts a metadata archive.
+\f[C]bup\ meta\f[] creates, extracts, or otherwise manipulates metadata
+archives.
 A metadata archive contains the metadata information (timestamps,
 ownership, access permissions, etc.)
-for a set of filesystem paths.
+ for a set of filesystem paths.
+.PP
+See \f[C]bup-restore\f[](1) for a description of the way ownership
+metadata is restored.
 .SH OPTIONS
 .TP
 .B -c, --create
 Create a metadata archive for the specified \f[I]path\f[]s.
-Write the archive to standard output unless \f[B]--file\f[] is
+Write the archive to standard output unless \f[C]--file\f[] is
 specified.
 .RS
 .RE
 .TP
 .B -t, --list
 Display information about the metadata in an archive.
-Read the archive from standard output unless \f[B]--file\f[] is
+Read the archive from standard input unless \f[C]--file\f[] is
 specified.
 .RS
 .RE
 .TP
 .B -x, --extract
 Extract a metadata archive.
-Conceptually, perform \f[B]--start-extract\f[] followed by
-\f[B]--finish-extract\f[].
-Read the archive from standard input unless \f[B]--file\f[] is
+Conceptually, perform \f[C]--start-extract\f[] followed by
+\f[C]--finish-extract\f[].
+Read the archive from standard input unless \f[C]--file\f[] is
 specified.
 .RS
 .RE
 .TP
 .B --start-extract
-Build a filesystem tree matching the paths stored in a metadata
-archive.
+Build a filesystem tree matching the paths stored in a metadata archive.
 By itself, this command does not produce a full restoration of the
 metadata.
 For a full restoration, this command must be followed by a call to
-\f[B]--finish-extract\f[].
-Once this command has finished, all of the normal files described
-by the metadata will exist and be empty.
+\f[C]--finish-extract\f[].
+Once this command has finished, all of the normal files described by the
+metadata will exist and be empty.
 Restoring the data in those files, and then calling
-\f[B]--finish-extract\f[] should restore the original tree.
-The archive will be read from standard input unless \f[B]--file\f[]
-is specified.
+\f[C]--finish-extract\f[] should restore the original tree.
+The archive will be read from standard input unless \f[C]--file\f[] is
+specified.
 .RS
 .RE
 .TP
 .B --finish-extract
-Finish applying the metadata stored in an archive to the
-filesystem.
-Normally, this command should follow a call to
-\f[B]--start-extract\f[].
-The archive will be read from standard input unless \f[B]--file\f[]
-is specified.
+Finish applying the metadata stored in an archive to the filesystem.
+Normally, this command should follow a call to \f[C]--start-extract\f[].
+The archive will be read from standard input unless \f[C]--file\f[] is
+specified.
+.RS
+.RE
+.TP
+.B --edit
+Edit metadata archives.
+The result will be written to standard output unless \f[C]--file\f[] is
+specified.
 .RS
 .RE
 .TP
 .B -f, --file=\f[I]filename\f[]
 Read the metadata archive from \f[I]filename\f[] or write it to
 \f[I]filename\f[] as appropriate.
-If \f[I]filename\f[] is \[lq]-\[rq], then read from standard input
-or write to standard output.
+If \f[I]filename\f[] is "-", then read from standard input or write to
+standard output.
 .RS
 .RE
 .TP
 .B -R, --recurse
-Recursively descend into subdirectories during \f[B]--create\f[].
+Recursively descend into subdirectories during \f[C]--create\f[].
 .RS
 .RE
 .TP
 .B --numeric-ids
-Apply numeric user and group IDs (rather than text IDs) during
-\f[B]--extract\f[] or \f[B]--finish-extract\f[].
+Apply numeric IDs (user, group, etc.)
+ rather than names during \f[C]--extract\f[] or
+\f[C]--finish-extract\f[].
 .RS
 .RE
 .TP
 .B --symlinks
 Record symbolic link targets when creating an archive, or restore
-symbolic links when extracting an archive (during
-\f[B]--extract\f[] or \f[B]--start-extract\f[]).
+symbolic links when extracting an archive (during \f[C]--extract\f[] or
+\f[C]--start-extract\f[]).
 This option is enabled by default.
-Specify \f[B]--no-symlinks\f[] to disable it.
+Specify \f[C]--no-symlinks\f[] to disable it.
 .RS
 .RE
 .TP
 .B --paths
 Record pathnames when creating an archive.
 This option is enabled by default.
-Specify \f[B]--no-paths\f[] to disable it.
+Specify \f[C]--no-paths\f[] to disable it.
 .RS
 .RE
 .TP
-.B -v, \[em]verbose
+.B --set-uid=\f[I]uid\f[]
+Set the metadata uid to the integer \f[I]uid\f[] during \f[C]--edit\f[].
+.RS
+.RE
+.TP
+.B --set-gid=\f[I]gid\f[]
+Set the metadata gid to the integer \f[I]gid\f[] during \f[C]--edit\f[].
+.RS
+.RE
+.TP
+.B --set-user=\f[I]user\f[]
+Set the metadata user to \f[I]user\f[] during \f[C]--edit\f[].
+.RS
+.RE
+.TP
+.B --unset-user
+Remove the metadata user during \f[C]--edit\f[].
+.RS
+.RE
+.TP
+.B --set-group=\f[I]group\f[]
+Set the metadata user to \f[I]group\f[] during \f[C]--edit\f[].
+.RS
+.RE
+.TP
+.B --unset-group
+Remove the metadata group during \f[C]--edit\f[].
+.RS
+.RE
+.TP
+.B -v, --verbose
 Be more verbose (can be used more than once).
 .RS
 .RE
 .TP
-.B -q, \[em]quiet
+.B -q, --quiet
 Be quiet.
 .RS
 .RE
 .SH EXAMPLES
-.PP
-\f[CR]
-      #\ Create\ a\ metadata\ archive\ for\ /etc.
-      $\ bup\ meta\ -cRf\ etc.meta\ /etc
-      bup:\ removing\ leading\ "/"\ from\ "/etc"
-      
-      #\ Extract\ the\ etc.meta\ archive\ (files\ will\ be\ empty).
-      $\ mkdir\ tmp\ &&\ cd\ tmp
-      $\ bup\ meta\ -xf\ ../etc.meta
-      $\ ls
-      etc
-      
-      #\ Restore\ /etc\ completely.
-      $\ mkdir\ tmp\ &&\ cd\ tmp
-      $\ bup\ meta\ \\-\\-start-extract\ -f\ ../etc.meta
-      ...fill\ in\ all\ regular\ file\ contents\ using\ some\ other\ tool...
-      $\ bup\ meta\ \\-\\-finish-extract\ -f\ ../etc.meta
+.IP
+.nf
+\f[C]
+#\ Create\ a\ metadata\ archive\ for\ /etc.
+$\ bup\ meta\ -cRf\ etc.meta\ /etc
+bup:\ removing\ leading\ "/"\ from\ "/etc"
+
+#\ Extract\ the\ etc.meta\ archive\ (files\ will\ be\ empty).
+$\ mkdir\ tmp\ &&\ cd\ tmp
+$\ bup\ meta\ -xf\ ../etc.meta
+$\ ls
+etc
+
+#\ Restore\ /etc\ completely.
+$\ mkdir\ tmp\ &&\ cd\ tmp
+$\ bup\ meta\ --start-extract\ -f\ ../etc.meta
+\&...fill\ in\ all\ regular\ file\ contents\ using\ some\ other\ tool...
+$\ bup\ meta\ --finish-extract\ -f\ ../etc.meta
+
+#\ Change\ user/uid\ to\ root.
+$\ bup\ meta\ --edit\ --set-uid\ 0\ --set-user\ root\ \\
+\ \ \ \ src.meta\ >\ dest.meta
 \f[]
+.fi
 .SH BUGS
 .PP
 Hard links are not handled yet.
 .SH BUP
 .PP
-Part of the \f[B]bup\f[](1) suite.
+Part of the \f[C]bup\f[](1) suite.
 .SH AUTHORS
 Rob Browning <rlb@defaultvalue.org>.
-

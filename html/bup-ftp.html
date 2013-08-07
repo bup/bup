@@ -1,139 +1,59 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
-  <title>bup-ftp(1) Bup 0.25-rc1</title>
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta http-equiv="Content-Style-Type" content="text/css" />
   <meta name="generator" content="pandoc" />
-  <meta name="author" content="Avery Pennarun 
-                               '+''+e+''+'');
-                               // -->
-                               &#x61;&#112;&#x65;&#110;&#x77;&#x61;&#114;&#114;&#32;&#x61;&#116;&#32;&#x67;&#x6d;&#x61;&#x69;&#108;&#32;&#100;&#x6f;&#116;&#32;&#x63;&#x6f;&#x6d;" />
-  <meta name="date" content="2011-06-08" />
+  <meta name="author" content="Avery Pennarun apenwarr@gmail.com" />
+  <title>bup-ftp(1) Bup 0.25-rc2</title>
 </head>
 <body>
-<h1 class="title">bup-ftp(1) Bup 0.25-rc1</h1>
-<div id="name"
-><h1
-  >NAME</h1
-  ><p
-  >bup-ftp - ftp-like client for navigating bup repositories</p
-  ></div
-><div id="synopsis"
-><h1
-  >SYNOPSIS</h1
-  ><p
-  >bup ftp</p
-  ></div
-><div id="description"
-><h1
-  >DESCRIPTION</h1
-  ><p
-  ><code
-    >bup ftp</code
-    > is a command-line tool for navigating bup repositories. It has commands similar to the Unix <code
-    >ftp</code
-    >(1) command. The file hierarchy is the same as that shown by <code
-    >bup-fuse</code
-    >(1) and <code
-    >bup-ls</code
-    >(1).</p
-  ><p
-  >Note: if your system has the python-readline library installed, you can use the &lt;tab&gt; key to complete filenames while navigating your backup data. This will save you a lot of typing.</p
-  ></div
-><div id="commands"
-><h1
-  >COMMANDS</h1
-  ><p
-  >The following commands are available inside <code
-    >bup ftp</code
-    >:</p
-  ><dl
-  ><dt
-    >ls [-s] [-a] [<em
-      >path</em
-      >]</dt
-    ><dd
-    ><p
-      >print the contents of a directory. If no path argument is given, the current directory's contents are listed. If -a is given, also include hidden files (files which start with a <code
-	>.</code
-	> character). If -s is given, each file is displayed with its hash from the bup archive to its left.</p
-      ></dd
-    ><dt
-    >cd <em
-      >dirname</em
-      ></dt
-    ><dd
-    ><p
-      >change to a different working directory</p
-      ></dd
-    ><dt
-    >pwd</dt
-    ><dd
-    ><p
-      >print the path of the current working directory</p
-      ></dd
-    ><dt
-    >cat <em
-      >filenames...</em
-      ></dt
-    ><dd
-    ><p
-      >print the contents of one or more files to stdout</p
-      ></dd
-    ><dt
-    >get <em
-      >filename</em
-      > <em
-      >localname</em
-      ></dt
-    ><dd
-    ><p
-      >download the contents of <em
-	>filename</em
-	> and save it to disk as <em
-	>localname</em
-	>. If <em
-	>localname</em
-	> is omitted, uses <em
-	>filename</em
-	> as the local name.</p
-      ></dd
-    ><dt
-    >mget <em
-      >filenames...</em
-      ></dt
-    ><dd
-    ><p
-      >download the contents of the given <em
-	>filenames</em
-	> and stores them to disk under the same names. The filenames may contain Unix filename globs (<code
-	>*</code
-	>, <code
-	>?</code
-	>, etc.)</p
-      ></dd
-    ><dt
-    >help</dt
-    ><dd
-    ><p
-      >print a list of available commands</p
-      ></dd
-    ><dt
-    >quit</dt
-    ><dd
-    ><p
-      >exit the <code
-	>bup ftp</code
-	> client</p
-      ></dd
-    ></dl
-  ></div
-><div id="example"
-><h1
-  >EXAMPLE</h1
-  ><pre
-  ><code
-    >$ bup ftp
+<div id="header">
+<h1 class="title">bup-ftp(1) Bup</h1>
+<h2 class="author">Avery Pennarun <script type="text/javascript">
+                   <!--
+                   h='&#x67;&#x6d;&#x61;&#x69;&#108;&#46;&#x63;&#x6f;&#x6d;';a='&#64;';n='&#x61;&#112;&#x65;&#110;&#x77;&#x61;&#114;&#114;';e=n+a+h;
+                   document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'">'+'<code>'+e+'</code>'+'<\/'+'a'+'>');
+                   // -->
+                   </script><noscript>&#x61;&#112;&#x65;&#110;&#x77;&#x61;&#114;&#114;&#32;&#x61;&#116;&#32;&#x67;&#x6d;&#x61;&#x69;&#108;&#32;&#100;&#x6f;&#116;&#32;&#x63;&#x6f;&#x6d;</noscript></h2>
+</div>
+<h1 id="name">NAME</h1>
+<p>bup-ftp - ftp-like client for navigating bup repositories</p>
+<h1 id="synopsis">SYNOPSIS</h1>
+<p>bup ftp</p>
+<h1 id="description">DESCRIPTION</h1>
+<p><code>bup ftp</code> is a command-line tool for navigating bup repositories. It has commands similar to the Unix <code>ftp</code>(1) command. The file hierarchy is the same as that shown by <code>bup-fuse</code>(1) and <code>bup-ls</code>(1).</p>
+<p>Note: if your system has the python-readline library installed, you can use the &lt;tab&gt; key to complete filenames while navigating your backup data. This will save you a lot of typing.</p>
+<h1 id="commands">COMMANDS</h1>
+<p>The following commands are available inside <code>bup ftp</code>:</p>
+<dl>
+<dt>ls [-s] [-a] [<em>path</em>]</dt>
+<dd><p>print the contents of a directory. If no path argument is given, the current directory's contents are listed. If -a is given, also include hidden files (files which start with a <code>.</code> character). If -s is given, each file is displayed with its hash from the bup archive to its left.</p>
+</dd>
+<dt>cd <em>dirname</em></dt>
+<dd><p>change to a different working directory</p>
+</dd>
+<dt>pwd</dt>
+<dd><p>print the path of the current working directory</p>
+</dd>
+<dt>cat <em>filenames...</em></dt>
+<dd><p>print the contents of one or more files to stdout</p>
+</dd>
+<dt>get <em>filename</em> <em>localname</em></dt>
+<dd><p>download the contents of <em>filename</em> and save it to disk as <em>localname</em>. If <em>localname</em> is omitted, uses <em>filename</em> as the local name.</p>
+</dd>
+<dt>mget <em>filenames...</em></dt>
+<dd><p>download the contents of the given <em>filenames</em> and stores them to disk under the same names. The filenames may contain Unix filename globs (<code>*</code>, <code>?</code>, etc.)</p>
+</dd>
+<dt>help</dt>
+<dd><p>print a list of available commands</p>
+</dd>
+<dt>quit</dt>
+<dd><p>exit the <code>bup ftp</code> client</p>
+</dd>
+</dl>
+<h1 id="example">EXAMPLE</h1>
+<pre><code>$ bup ftp
 bup&gt; ls
 mybackup/    yourbackup/
 
@@ -146,34 +66,11 @@ bup&gt; ls
   (...etc...)
 
 bup&gt; get myfile
-Saving 'myfile'
-bup&gt; quit
-</code
-    ></pre
-  ></div
-><div id="see-also"
-><h1
-  >SEE ALSO</h1
-  ><p
-  ><code
-    >bup-fuse</code
-    >(1), <code
-    >bup-ls</code
-    >(1), <code
-    >bup-save</code
-    >(1), <code
-    >bup-restore</code
-    >(1)</p
-  ></div
-><div id="bup"
-><h1
-  >BUP</h1
-  ><p
-  >Part of the <code
-    >bup</code
-    >(1) suite.</p
-  ></div
->
+Saving &#39;myfile&#39;
+bup&gt; quit</code></pre>
+<h1 id="see-also">SEE ALSO</h1>
+<p><code>bup-fuse</code>(1), <code>bup-ls</code>(1), <code>bup-save</code>(1), <code>bup-restore</code>(1)</p>
+<h1 id="bup">BUP</h1>
+<p>Part of the <code>bup</code>(1) suite.</p>
 </body>
 </html>
-

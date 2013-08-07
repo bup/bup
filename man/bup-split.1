@@ -1,161 +1,154 @@
-.TH bup-split 1 "2011\[en]06\[en]08" "Bup 0.25-rc1"
+.TH bup-split 1 "2013\[en]07\[en]31" "Bup 0.25-rc2"
 .SH NAME
 .PP
 bup-split - save individual files to bup backup sets
 .SH SYNOPSIS
 .PP
-bup split [-r \f[I]host\f[]:\f[I]path\f[]] <-b|-t|-c|-n
-\f[I]name\f[]> [-v] [-q] [\[em]bench]
-[\[em]max-pack-size=\f[I]bytes\f[]] [-#]
-[\[em]max-pack-objects=\f[I]n\f[]] [\[em]fanout=*count]
-[\[em]git-ids] [\[em]keep-boundaries] [filenames\&...]
+bup split [-r \f[I]host\f[]:\f[I]path\f[]] <-b|-t|-c|-n \f[I]name\f[]>
+[-v] [-q] [--bench] [--max-pack-size=\f[I]bytes\f[]] [-#]
+[--max-pack-objects=\f[I]n\f[]] [--fanout=\f[I]count\f[]] [--git-ids]
+[--keep-boundaries] [filenames...]
 .SH DESCRIPTION
 .PP
-\f[B]bup\ split\f[] concatenates the contents of the given files
-(or if no filenames are given, reads from stdin), splits the
-content into chunks of around 8k using a rolling checksum
-algorithm, and saves the chunks into a bup repository.
+\f[C]bup\ split\f[] concatenates the contents of the given files (or if
+no filenames are given, reads from stdin), splits the content into
+chunks of around 8k using a rolling checksum algorithm, and saves the
+chunks into a bup repository.
 Chunks which have previously been stored are not stored again (ie.
-they are `deduplicated').
+they are \[aq]deduplicated\[aq]).
 .PP
-Because of the way the rolling checksum works, chunks tend to be
-very stable across changes to a given file, including adding,
-deleting, and changing bytes.
+Because of the way the rolling checksum works, chunks tend to be very
+stable across changes to a given file, including adding, deleting, and
+changing bytes.
 .PP
-For example, if you use \f[B]bup\ split\f[] to back up an XML dump
-of a database, and the XML file changes slightly from one run to
-the next, nearly all the data will still be deduplicated and the
-size of each backup after the first will typically be quite small.
+For example, if you use \f[C]bup\ split\f[] to back up an XML dump of a
+database, and the XML file changes slightly from one run to the next,
+nearly all the data will still be deduplicated and the size of each
+backup after the first will typically be quite small.
 .PP
-Another technique is to pipe the output of the \f[B]tar\f[](1) or
-\f[B]cpio\f[](1) programs to \f[B]bup\ split\f[].
-When individual files in the tarball change slightly or are added
-or removed, bup still processes the remainder of the tarball
-efficiently.
-(Note that \f[B]bup\ save\f[] is usually a more efficient way to
+Another technique is to pipe the output of the \f[C]tar\f[](1) or
+\f[C]cpio\f[](1) programs to \f[C]bup\ split\f[].
+When individual files in the tarball change slightly or are added or
+removed, bup still processes the remainder of the tarball efficiently.
+(Note that \f[C]bup\ save\f[] is usually a more efficient way to
 accomplish this, however.)
 .PP
-To get the data back, use \f[B]bup-join\f[](1).
+To get the data back, use \f[C]bup-join\f[](1).
 .SH OPTIONS
 .TP
-.B -r, \[em]remote=\f[I]host\f[]:\f[I]path\f[]
+.B -r, --remote=\f[I]host\f[]:\f[I]path\f[]
 save the backup set to the given remote server.
-If \f[I]path\f[] is omitted, uses the default path on the remote
-server (you still need to include the ':').
+If \f[I]path\f[] is omitted, uses the default path on the remote server
+(you still need to include the \[aq]:\[aq]).
 The connection to the remote server is made with SSH.
-If you'd like to specify which port, user or private key to use for
-the SSH connection, we recommend you use the \f[B]~/.ssh/config\f[]
+If you\[aq]d like to specify which port, user or private key to use for
+the SSH connection, we recommend you use the \f[C]~/.ssh/config\f[]
 file.
 .RS
 .RE
 .TP
-.B -b, \[em]blobs
-output a series of git blob ids that correspond to the chunks in
-the dataset.
+.B -b, --blobs
+output a series of git blob ids that correspond to the chunks in the
+dataset.
 .RS
 .RE
 .TP
-.B -t, \[em]tree
+.B -t, --tree
 output the git tree id of the resulting dataset.
 .RS
 .RE
 .TP
-.B -c, \[em]commit
+.B -c, --commit
 output the git commit id of the resulting dataset.
 .RS
 .RE
 .TP
-.B -n, \[em]name=\f[I]name\f[]
-after creating the dataset, create a git branch named \f[I]name\f[]
-so that it can be accessed using that name.
-If \f[I]name\f[] already exists, the new dataset will be considered
-a descendant of the old \f[I]name\f[].
-(Thus, you can continually create new datasets with the same name,
-and later view the history of that dataset to see how it has
-changed over time.)
+.B -n, --name=\f[I]name\f[]
+after creating the dataset, create a git branch named \f[I]name\f[] so
+that it can be accessed using that name.
+If \f[I]name\f[] already exists, the new dataset will be considered a
+descendant of the old \f[I]name\f[].
+(Thus, you can continually create new datasets with the same name, and
+later view the history of that dataset to see how it has changed over
+time.)
 .RS
 .RE
 .TP
-.B -q, \[em]quiet
+.B -q, --quiet
 disable progress messages.
 .RS
 .RE
 .TP
-.B -v, \[em]verbose
+.B -v, --verbose
 increase verbosity (can be used more than once).
 .RS
 .RE
 .TP
-.B \[em]git-ids
+.B --git-ids
 stdin is a list of git object ids instead of raw data.
-\f[B]bup\ split\f[] will read the contents of each named git object
-(if it exists in the bup repository) and split it.
-This might be useful for converting a git repository with large
-binary files to use bup-style hashsplitting instead.
+\f[C]bup\ split\f[] will read the contents of each named git object (if
+it exists in the bup repository) and split it.
+This might be useful for converting a git repository with large binary
+files to use bup-style hashsplitting instead.
 This option is probably most useful when combined with
-\f[B]--keep-boundaries\f[].
+\f[C]--keep-boundaries\f[].
 .RS
 .RE
 .TP
-.B \[em]keep-boundaries
-if multiple filenames are given on the command line, they are
-normally concatenated together as if the content all came from a
-single file.
-That is, the set of blobs/trees produced is identical to what it
-would have been if there had been a single input file.
-However, if you use \f[B]--keep-boundaries\f[], each file is split
+.B --keep-boundaries
+if multiple filenames are given on the command line, they are normally
+concatenated together as if the content all came from a single file.
+That is, the set of blobs/trees produced is identical to what it would
+have been if there had been a single input file.
+However, if you use \f[C]--keep-boundaries\f[], each file is split
 separately.
-You still only get a single tree or commit or series of blobs, but
-each blob comes from only one of the files; the end of one of the
-input files always ends a blob.
+You still only get a single tree or commit or series of blobs, but each
+blob comes from only one of the files; the end of one of the input files
+always ends a blob.
 .RS
 .RE
 .TP
-.B \[em]noop
-read the data and split it into blocks based on the
-\[lq]bupsplit\[rq] rolling checksum algorithm, but don't do
-anything with the blocks.
+.B --noop
+read the data and split it into blocks based on the "bupsplit" rolling
+checksum algorithm, but don\[aq]t do anything with the blocks.
 This is mostly useful for benchmarking.
 .RS
 .RE
 .TP
-.B \[em]copy
-like \[em]noop, but also write the data to stdout.
-This can be useful for benchmarking the speed of
-read+bupsplit+write for large amounts of data.
+.B --copy
+like \f[C]--noop\f[], but also write the data to stdout.
+This can be useful for benchmarking the speed of read+bupsplit+write for
+large amounts of data.
 .RS
 .RE
 .TP
-.B \[em]bench
+.B --bench
 print benchmark timings to stderr.
 .RS
 .RE
 .TP
-.B \[em]max-pack-size=\f[I]bytes\f[]
+.B --max-pack-size=\f[I]bytes\f[]
 never create git packfiles larger than the given number of bytes.
 Default is 1 billion bytes.
 Usually there is no reason to change this.
 .RS
 .RE
 .TP
-.B \[em]max-pack-objects=\f[I]numobjs\f[]
-never create git packfiles with more than the given number of
-objects.
+.B --max-pack-objects=\f[I]numobjs\f[]
+never create git packfiles with more than the given number of objects.
 Default is 200 thousand objects.
 Usually there is no reason to change this.
 .RS
 .RE
 .TP
-.B \[em]fanout=\f[I]numobjs\f[]
-when splitting very large files, never put more than this number of
-git blobs in a single git tree.
-Instead, generate a new tree and link to that.
-Default is 4096 objects per tree.
+.B --fanout=\f[I]numobjs\f[]
+when splitting very large files, try and keep the number of elements in
+trees to an average of \f[I]numobjs\f[].
 .RS
 .RE
 .TP
-.B \[em]bwlimit=\f[I]bytes/sec\f[]
-don't transmit more than \f[I]bytes/sec\f[] bytes per second to the
+.B --bwlimit=\f[I]bytes/sec\f[]
+don\[aq]t transmit more than \f[I]bytes/sec\f[] bytes per second to the
 server.
 This is good for making your backups not suck up all your network
 bandwidth.
@@ -164,29 +157,30 @@ Use a suffix like k, M, or G to specify multiples of 1024,
 .RS
 .RE
 .TP
-.B -\f[I]#\f[], \[em]compress=\f[I]#\f[]
-set the compression level to # (a value from 0\[en]9, where 9 is
-the highest and 0 is no compression).
+.B -\f[I]#\f[], --compress=\f[I]#\f[]
+set the compression level to # (a value from 0-9, where 9 is the highest
+and 0 is no compression).
 The default is 1 (fast, loose compression)
 .RS
 .RE
 .SH EXAMPLE
-.PP
-\f[CR]
-      $\ tar\ -cf\ -\ /etc\ |\ bup\ split\ -r\ myserver:\ -n\ mybackup-tar
-      tar:\ Removing\ leading\ /\[aq]\ from\ member\ names
-      Indexing\ objects:\ 100%\ (196/196),\ done.
-      
-      $\ bup\ join\ -r\ myserver:\ mybackup-tar\ |\ tar\ -tf\ -\ |\ wc\ -l
-      1961
+.IP
+.nf
+\f[C]
+$\ tar\ -cf\ -\ /etc\ |\ bup\ split\ -r\ myserver:\ -n\ mybackup-tar
+tar:\ Removing\ leading\ /\[aq]\ from\ member\ names
+Indexing\ objects:\ 100%\ (196/196),\ done.
+
+$\ bup\ join\ -r\ myserver:\ mybackup-tar\ |\ tar\ -tf\ -\ |\ wc\ -l
+1961
 \f[]
+.fi
 .SH SEE ALSO
 .PP
-\f[B]bup-join\f[](1), \f[B]bup-index\f[](1), \f[B]bup-save\f[](1),
-\f[B]bup-on\f[](1), \f[B]ssh_config\f[](5)
+\f[C]bup-join\f[](1), \f[C]bup-index\f[](1), \f[C]bup-save\f[](1),
+\f[C]bup-on\f[](1), \f[C]ssh_config\f[](5)
 .SH BUP
 .PP
-Part of the \f[B]bup\f[](1) suite.
+Part of the \f[C]bup\f[](1) suite.
 .SH AUTHORS
 Avery Pennarun <apenwarr@gmail.com>.
-

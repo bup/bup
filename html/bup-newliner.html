@@ -1,58 +1,33 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
-  <title>bup-newliner(1) Bup 0.25-rc1</title>
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta http-equiv="Content-Style-Type" content="text/css" />
   <meta name="generator" content="pandoc" />
-  <meta name="author" content="Avery Pennarun 
-                               '+''+e+''+'');
-                               // -->
-                               &#x61;&#112;&#x65;&#110;&#x77;&#x61;&#114;&#114;&#32;&#x61;&#116;&#32;&#x67;&#x6d;&#x61;&#x69;&#108;&#32;&#100;&#x6f;&#116;&#32;&#x63;&#x6f;&#x6d;" />
-  <meta name="date" content="2011-06-08" />
+  <meta name="author" content="Avery Pennarun apenwarr@gmail.com" />
+  <title>bup-newliner(1) Bup 0.25-rc2</title>
 </head>
 <body>
-<h1 class="title">bup-newliner(1) Bup 0.25-rc1</h1>
-<div id="name"
-><h1
-  >NAME</h1
-  ><p
-  >bup-newliner - make sure progress messages don't overlap with output</p
-  ></div
-><div id="synopsis"
-><h1
-  >SYNOPSIS</h1
-  ><p
-  >&lt;any command&gt; 2&gt;&amp;1 | bup newliner</p
-  ></div
-><div id="description"
-><h1
-  >DESCRIPTION</h1
-  ><p
-  ><code
-    >bup newliner</code
-    > is run automatically by bup. You shouldn't need it unless you're using it in some other program.</p
-  ><p
-  >Progress messages emitted by bup (and some other tools) are of the form &quot;Message ### content&quot;, that is, a status message containing a variable-length number, followed by a carriage return character and no newline. If these messages are printed more than once, they overwrite each other, so what the user sees is a single line with a continually-updating number.</p
-  ><p
-  >This works fine until some other message is printed. For example, progress messages are usually printed to stderr, but other program messages might be printed to stdout. If those messages are shorter than the progress message line, the screen will be left with weird looking artifacts as the two messages get mixed together.</p
-  ><p
-  ><code
-    >bup newliner</code
-    > prints extra space characters at the right time to make sure that doesn't happen.</p
-  ><p
-  >If you're running a program that has problems with these artifacts, you can usually fix them by piping its stdout <em
-    >and</em
-    > its stderr through bup newliner.</p
-  ></div
-><div id="bup"
-><h1
-  >BUP</h1
-  ><p
-  >Part of the <code
-    >bup</code
-    >(1) suite.</p
-  ></div
->
+<div id="header">
+<h1 class="title">bup-newliner(1) Bup</h1>
+<h2 class="author">Avery Pennarun <script type="text/javascript">
+                   <!--
+                   h='&#x67;&#x6d;&#x61;&#x69;&#108;&#46;&#x63;&#x6f;&#x6d;';a='&#64;';n='&#x61;&#112;&#x65;&#110;&#x77;&#x61;&#114;&#114;';e=n+a+h;
+                   document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'">'+'<code>'+e+'</code>'+'<\/'+'a'+'>');
+                   // -->
+                   </script><noscript>&#x61;&#112;&#x65;&#110;&#x77;&#x61;&#114;&#114;&#32;&#x61;&#116;&#32;&#x67;&#x6d;&#x61;&#x69;&#108;&#32;&#100;&#x6f;&#116;&#32;&#x63;&#x6f;&#x6d;</noscript></h2>
+</div>
+<h1 id="name">NAME</h1>
+<p>bup-newliner - make sure progress messages don't overlap with output</p>
+<h1 id="synopsis">SYNOPSIS</h1>
+<p>&lt;any command&gt; 2&gt;&amp;1 | bup newliner</p>
+<h1 id="description">DESCRIPTION</h1>
+<p><code>bup newliner</code> is run automatically by bup. You shouldn't need it unless you're using it in some other program.</p>
+<p>Progress messages emitted by bup (and some other tools) are of the form &quot;Message ### content\r&quot;, that is, a status message containing a variable-length number, followed by a carriage return character and no newline. If these messages are printed more than once, they overwrite each other, so what the user sees is a single line with a continually-updating number.</p>
+<p>This works fine until some other message is printed. For example, progress messages are usually printed to stderr, but other program messages might be printed to stdout. If those messages are shorter than the progress message line, the screen will be left with weird looking artifacts as the two messages get mixed together.</p>
+<p><code>bup newliner</code> prints extra space characters at the right time to make sure that doesn't happen.</p>
+<p>If you're running a program that has problems with these artifacts, you can usually fix them by piping its stdout <em>and</em> its stderr through bup newliner.</p>
+<h1 id="bup">BUP</h1>
+<p>Part of the <code>bup</code>(1) suite.</p>
 </body>
 </html>
-
