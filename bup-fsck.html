@@ -1,129 +1,58 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
-  <title>bup-fsck(1) Bup 0.25-rc1</title>
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta http-equiv="Content-Style-Type" content="text/css" />
   <meta name="generator" content="pandoc" />
-  <meta name="author" content="Avery Pennarun 
-                               '+''+e+''+'');
-                               // -->
-                               &#x61;&#112;&#x65;&#110;&#x77;&#x61;&#114;&#114;&#32;&#x61;&#116;&#32;&#x67;&#x6d;&#x61;&#x69;&#108;&#32;&#100;&#x6f;&#116;&#32;&#x63;&#x6f;&#x6d;" />
-  <meta name="date" content="2011-06-08" />
+  <meta name="author" content="Avery Pennarun apenwarr@gmail.com" />
+  <title>bup-fsck(1) Bup 0.25-rc2</title>
 </head>
 <body>
-<h1 class="title">bup-fsck(1) Bup 0.25-rc1</h1>
-<div id="name"
-><h1
-  >NAME</h1
-  ><p
-  >bup-fsck - verify or repair a bup repository</p
-  ></div
-><div id="synopsis"
-><h1
-  >SYNOPSIS</h1
-  ><p
-  >bup fsck [-r] [-g] [-v] [--quick] [-j <em
-    >jobs</em
-    >] [--par2-ok] [--disable-par2] [filenames...]</p
-  ></div
-><div id="description"
-><h1
-  >DESCRIPTION</h1
-  ><p
-  ><code
-    >bup fsck</code
-    > is a tool for validating bup repositories in the same way that <code
-    >git fsck</code
-    > validates git repositories.</p
-  ><p
-  >It can also generate and/or use &quot;recovery blocks&quot; using the <code
-    >par2</code
-    >(1) tool (if you have it installed). This allows you to recover from damaged blocks covering up to 5% of your <code
-    >.pack</code
-    > files.</p
-  ><p
-  >In a normal backup system, damaged blocks are less important, because there tends to be enough data duplicated between backup sets that a single damaged backup set is non-critical. In a deduplicating backup system like bup, however, no block is ever stored more than once, even if it is used in every single backup. If that block were to be unrecoverable, <em
-    >all</em
-    > your backup sets would be damaged at once. Thus, it's important to be able to verify the integrity of your backups and recover from disk errors if they occur.</p
-  ><p
-  ><em
-    >WARNING</em
-    >: bup fsck's recovery features are not available unless you have the free <code
-    >par2</code
-    >(1) package installed on your bup server.</p
-  ><p
-  ><em
-    >WARNING</em
-    >: bup fsck obviously cannot recover from a complete disk failure. If your backups are important, you need to carefully consider redundancy (such as using RAID for multi-disk redundancy, or making off-site backups for site redundancy).</p
-  ></div
-><div id="options"
-><h1
-  >OPTIONS</h1
-  ><dl
-  ><dt
-    >-r, --repair</dt
-    ><dd
-    ><p
-      >attempt to repair any damaged packs using existing recovery blocks. (Requires <code
-	>par2</code
-	>(1).)</p
-      ></dd
-    ><dt
-    >-g, --generate</dt
-    ><dd
-    ><p
-      >generate recovery blocks for any packs that don't already have them. (Requires <code
-	>par2</code
-	>(1).)</p
-      ></dd
-    ><dt
-    >-v, --verbose</dt
-    ><dd
-    ><p
-      >increase verbosity (can be used more than once).</p
-      ></dd
-    ><dt
-    >--quick</dt
-    ><dd
-    ><p
-      >don't run a full <code
-	>git verify-pack</code
-	> on each pack file; instead just check the final checksum. This can cause a significant speedup with no obvious decrease in reliability. However, you may want to avoid this option if you're paranoid. Has no effect on packs that already have recovery information.</p
-      ></dd
-    ><dt
-    >-j, --jobs=<em
-      >numjobs</em
-      ></dt
-    ><dd
-    ><p
-      >maximum number of pack verifications to run at a time. The optimal value for this option depends how fast your CPU can verify packs vs. your disk throughput. If you run too many jobs at once, your disk will get saturated by seeking back and forth between files and performance will actually decrease, even if <em
-	>numjobs</em
-	> is less than the number of CPU cores on your system. You can experiment with this option to find the optimal value.</p
-      ></dd
-    ><dt
-    >--par2-ok</dt
-    ><dd
-    ><p
-      >immediately return 0 if <code
-	>par2</code
-	>(1) is installed and working, or 1 otherwise. Do not actually check anything.</p
-      ></dd
-    ><dt
-    >--disable-par2</dt
-    ><dd
-    ><p
-      >pretend that <code
-	>par2</code
-	>(1) is not installed, and ignore all recovery blocks.</p
-      ></dd
-    ></dl
-  ></div
-><div id="example"
-><h1
-  >EXAMPLE</h1
-  ><pre
-  ><code
-    ># generate recovery blocks for all packs that don't
+<div id="header">
+<h1 class="title">bup-fsck(1) Bup</h1>
+<h2 class="author">Avery Pennarun <script type="text/javascript">
+                   <!--
+                   h='&#x67;&#x6d;&#x61;&#x69;&#108;&#46;&#x63;&#x6f;&#x6d;';a='&#64;';n='&#x61;&#112;&#x65;&#110;&#x77;&#x61;&#114;&#114;';e=n+a+h;
+                   document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'">'+'<code>'+e+'</code>'+'<\/'+'a'+'>');
+                   // -->
+                   </script><noscript>&#x61;&#112;&#x65;&#110;&#x77;&#x61;&#114;&#114;&#32;&#x61;&#116;&#32;&#x67;&#x6d;&#x61;&#x69;&#108;&#32;&#100;&#x6f;&#116;&#32;&#x63;&#x6f;&#x6d;</noscript></h2>
+</div>
+<h1 id="name">NAME</h1>
+<p>bup-fsck - verify or repair a bup repository</p>
+<h1 id="synopsis">SYNOPSIS</h1>
+<p>bup fsck [-r] [-g] [-v] [--quick] [-j <em>jobs</em>] [--par2-ok] [--disable-par2] [filenames...]</p>
+<h1 id="description">DESCRIPTION</h1>
+<p><code>bup fsck</code> is a tool for validating bup repositories in the same way that <code>git fsck</code> validates git repositories.</p>
+<p>It can also generate and/or use &quot;recovery blocks&quot; using the <code>par2</code>(1) tool (if you have it installed). This allows you to recover from damaged blocks covering up to 5% of your <code>.pack</code> files.</p>
+<p>In a normal backup system, damaged blocks are less important, because there tends to be enough data duplicated between backup sets that a single damaged backup set is non-critical. In a deduplicating backup system like bup, however, no block is ever stored more than once, even if it is used in every single backup. If that block were to be unrecoverable, <em>all</em> your backup sets would be damaged at once. Thus, it's important to be able to verify the integrity of your backups and recover from disk errors if they occur.</p>
+<p><em>WARNING</em>: bup fsck's recovery features are not available unless you have the free <code>par2</code>(1) package installed on your bup server.</p>
+<p><em>WARNING</em>: bup fsck obviously cannot recover from a complete disk failure. If your backups are important, you need to carefully consider redundancy (such as using RAID for multi-disk redundancy, or making off-site backups for site redundancy).</p>
+<h1 id="options">OPTIONS</h1>
+<dl>
+<dt>-r, --repair</dt>
+<dd><p>attempt to repair any damaged packs using existing recovery blocks. (Requires <code>par2</code>(1).)</p>
+</dd>
+<dt>-g, --generate</dt>
+<dd><p>generate recovery blocks for any packs that don't already have them. (Requires <code>par2</code>(1).)</p>
+</dd>
+<dt>-v, --verbose</dt>
+<dd><p>increase verbosity (can be used more than once).</p>
+</dd>
+<dt>--quick</dt>
+<dd><p>don't run a full <code>git verify-pack</code> on each pack file; instead just check the final checksum. This can cause a significant speedup with no obvious decrease in reliability. However, you may want to avoid this option if you're paranoid. Has no effect on packs that already have recovery information.</p>
+</dd>
+<dt>-j, --jobs=<em>numjobs</em></dt>
+<dd><p>maximum number of pack verifications to run at a time. The optimal value for this option depends how fast your CPU can verify packs vs. your disk throughput. If you run too many jobs at once, your disk will get saturated by seeking back and forth between files and performance will actually decrease, even if <em>numjobs</em> is less than the number of CPU cores on your system. You can experiment with this option to find the optimal value.</p>
+</dd>
+<dt>--par2-ok</dt>
+<dd><p>immediately return 0 if <code>par2</code>(1) is installed and working, or 1 otherwise. Do not actually check anything.</p>
+</dd>
+<dt>--disable-par2</dt>
+<dd><p>pretend that <code>par2</code>(1) is not installed, and ignore all recovery blocks.</p>
+</dd>
+</dl>
+<h1 id="example">EXAMPLE</h1>
+<pre><code># generate recovery blocks for all packs that don&#39;t
 # have them
 bup fsck -g
 
@@ -144,31 +73,10 @@ bup fsck -r ~/.bup/objects/pack/153a1420cb1c8*.pack
 # check if recovery blocks are available on this system
 if bup fsck --par2-ok; then
     echo &quot;par2 is ok&quot;
-fi
-</code
-    ></pre
-  ></div
-><div id="see-also"
-><h1
-  >SEE ALSO</h1
-  ><p
-  ><code
-    >bup-damage</code
-    >(1), <code
-    >fsck</code
-    >(1), <code
-    >git-fsck</code
-    >(1)</p
-  ></div
-><div id="bup"
-><h1
-  >BUP</h1
-  ><p
-  >Part of the <code
-    >bup</code
-    >(1) suite.</p
-  ></div
->
+fi</code></pre>
+<h1 id="see-also">SEE ALSO</h1>
+<p><code>bup-damage</code>(1), <code>fsck</code>(1), <code>git-fsck</code>(1)</p>
+<h1 id="bup">BUP</h1>
+<p>Part of the <code>bup</code>(1) suite.</p>
 </body>
 </html>
-

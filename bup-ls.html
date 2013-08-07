@@ -1,123 +1,48 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
-  <title>bup-ls(1) Bup 0.25-rc1</title>
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta http-equiv="Content-Style-Type" content="text/css" />
   <meta name="generator" content="pandoc" />
-  <meta name="author" content="Avery Pennarun 
-                               '+''+e+''+'');
-                               // -->
-                               &#x61;&#112;&#x65;&#110;&#x77;&#x61;&#114;&#114;&#32;&#x61;&#116;&#32;&#x67;&#x6d;&#x61;&#x69;&#108;&#32;&#100;&#x6f;&#116;&#32;&#x63;&#x6f;&#x6d;" />
-  <meta name="date" content="2011-06-08" />
+  <meta name="author" content="Avery Pennarun apenwarr@gmail.com" />
+  <title>bup-ls(1) Bup 0.25-rc2</title>
 </head>
 <body>
-<h1 class="title">bup-ls(1) Bup 0.25-rc1</h1>
-<div id="name"
-><h1
-  >NAME</h1
-  ><p
-  >bup-ls - list the contents of a bup repository</p
-  ></div
-><div id="synopsis"
-><h1
-  >SYNOPSIS</h1
-  ><p
-  >bup ls [-s] [-a] &lt;paths...&gt;</p
-  ></div
-><div id="description"
-><h1
-  >DESCRIPTION</h1
-  ><p
-  ><code
-    >bup ls</code
-    > lists files and directories in your bup repository using the same directory hierarchy as they would have with <code
-    >bup-fuse</code
-    >(1).</p
-  ><p
-  >The top level directory contains the branch (corresponding to the <code
-    >-n</code
-    > option in <code
-    >bup save</code
-    >), the next level is the date of the backup, and subsequent levels correspond to files in the backup.</p
-  ><p
-  >When <code
-    >bup ls</code
-    > is asked to output on a tty, it formats its output in columns so that it can list as much as possible in as few lines as possible. However, when <code
-    >bup ls</code
-    > is asked to output to something other than a tty (say you pipe the output to another command, or you redirect it to a file), it will output one file name per line. This makes the listing easier to parse with external tools.</p
-  ><p
-  >Note that <code
-    >bup ls</code
-    > doesn't show hidden files by default and one needs to use the <code
-    >-a</code
-    > option to show them. Files are hidden when their name begins with a dot. For example, on the topmost level, the special directories named <code
-    >.commit</code
-    > and <code
-    >.tag</code
-    > are hidden directories.</p
-  ><p
-  >Once you have identified the file you want using <code
-    >bup ls</code
-    >, you can view its contents using <code
-    >bup join</code
-    > or <code
-    >git show</code
-    >.</p
-  ></div
-><div id="options"
-><h1
-  >OPTIONS</h1
-  ><dl
-  ><dt
-    >-s, --hash</dt
-    ><dd
-    ><p
-      >show hash for each file/directory.</p
-      ></dd
-    ><dt
-    >-a, --all</dt
-    ><dd
-    ><p
-      >show hidden files.</p
-      ></dd
-    ></dl
-  ></div
-><div id="example"
-><h1
-  >EXAMPLE</h1
-  ><pre
-  ><code
-    >bup ls /myserver/latest/etc/profile
+<div id="header">
+<h1 class="title">bup-ls(1) Bup</h1>
+<h2 class="author">Avery Pennarun <script type="text/javascript">
+                   <!--
+                   h='&#x67;&#x6d;&#x61;&#x69;&#108;&#46;&#x63;&#x6f;&#x6d;';a='&#64;';n='&#x61;&#112;&#x65;&#110;&#x77;&#x61;&#114;&#114;';e=n+a+h;
+                   document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'">'+'<code>'+e+'</code>'+'<\/'+'a'+'>');
+                   // -->
+                   </script><noscript>&#x61;&#112;&#x65;&#110;&#x77;&#x61;&#114;&#114;&#32;&#x61;&#116;&#32;&#x67;&#x6d;&#x61;&#x69;&#108;&#32;&#100;&#x6f;&#116;&#32;&#x63;&#x6f;&#x6d;</noscript></h2>
+</div>
+<h1 id="name">NAME</h1>
+<p>bup-ls - list the contents of a bup repository</p>
+<h1 id="synopsis">SYNOPSIS</h1>
+<p>bup ls [-s] [-a] &lt;paths...&gt;</p>
+<h1 id="description">DESCRIPTION</h1>
+<p><code>bup ls</code> lists files and directories in your bup repository using the same directory hierarchy as they would have with <code>bup-fuse</code>(1).</p>
+<p>The top level directory contains the branch (corresponding to the <code>-n</code> option in <code>bup save</code>), the next level is the date of the backup, and subsequent levels correspond to files in the backup.</p>
+<p>When <code>bup ls</code> is asked to output on a tty, it formats its output in columns so that it can list as much as possible in as few lines as possible. However, when <code>bup ls</code> is asked to output to something other than a tty (say you pipe the output to another command, or you redirect it to a file), it will output one file name per line. This makes the listing easier to parse with external tools.</p>
+<p>Note that <code>bup ls</code> doesn't show hidden files by default and one needs to use the <code>-a</code> option to show them. Files are hidden when their name begins with a dot. For example, on the topmost level, the special directories named <code>.commit</code> and <code>.tag</code> are hidden directories.</p>
+<p>Once you have identified the file you want using <code>bup ls</code>, you can view its contents using <code>bup join</code> or <code>git show</code>.</p>
+<h1 id="options">OPTIONS</h1>
+<dl>
+<dt>-s, --hash</dt>
+<dd><p>show hash for each file/directory.</p>
+</dd>
+<dt>-a, --all</dt>
+<dd><p>show hidden files.</p>
+</dd>
+</dl>
+<h1 id="example">EXAMPLE</h1>
+<pre><code>bup ls /myserver/latest/etc/profile
 
-bup ls -a /
-</code
-    ></pre
-  ></div
-><div id="see-also"
-><h1
-  >SEE ALSO</h1
-  ><p
-  ><code
-    >bup-join</code
-    >(1), <code
-    >bup-fuse</code
-    >(1), <code
-    >bup-ftp</code
-    >(1), <code
-    >bup-save</code
-    >(1), <code
-    >git-show</code
-    >(1)</p
-  ></div
-><div id="bup"
-><h1
-  >BUP</h1
-  ><p
-  >Part of the <code
-    >bup</code
-    >(1) suite.</p
-  ></div
->
+bup ls -a /</code></pre>
+<h1 id="see-also">SEE ALSO</h1>
+<p><code>bup-join</code>(1), <code>bup-fuse</code>(1), <code>bup-ftp</code>(1), <code>bup-save</code>(1), <code>git-show</code>(1)</p>
+<h1 id="bup">BUP</h1>
+<p>Part of the <code>bup</code>(1) suite.</p>
 </body>
 </html>
-

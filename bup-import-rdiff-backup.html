@@ -5,11 +5,11 @@
   <meta http-equiv="Content-Style-Type" content="text/css" />
   <meta name="generator" content="pandoc" />
   <meta name="author" content="Zoran Zaric zz@zoranzaric.de" />
-  <title>bup-import-rsnapshot(1) Bup 0.25-rc2</title>
+  <title>bup-import-rdiff-backup(1) Bup 0.25-rc2</title>
 </head>
 <body>
 <div id="header">
-<h1 class="title">bup-import-rsnapshot(1) Bup</h1>
+<h1 class="title">bup-import-rdiff-backup(1) Bup</h1>
 <h2 class="author">Zoran Zaric <script type="text/javascript">
                    <!--
                    h='&#122;&#x6f;&#114;&#x61;&#110;&#122;&#x61;&#114;&#x69;&#x63;&#46;&#100;&#x65;';a='&#64;';n='&#122;&#122;';e=n+a+h;
@@ -18,22 +18,19 @@
                    </script><noscript>&#122;&#122;&#32;&#x61;&#116;&#32;&#122;&#x6f;&#114;&#x61;&#110;&#122;&#x61;&#114;&#x69;&#x63;&#32;&#100;&#x6f;&#116;&#32;&#100;&#x65;</noscript></h2>
 </div>
 <h1 id="name">NAME</h1>
-<p>bup-import-rsnapshot - import a rsnapshot archive</p>
+<p>bup-import-rdiff-backup - import a rdiff-backup archive</p>
 <h1 id="synopsis">SYNOPSIS</h1>
-<p>bup import-rsnapshot [-n] &lt;path to snapshot_root&gt; [&lt;backuptarget&gt;]</p>
-<h1 id="synopsis-1">SYNOPSIS</h1>
-<p><code>bup import-rsnapshot</code> imports an rsnapshot archive. The timestamps for the backups are preserved and the path to the rsnapshot archive is stripped from the paths.</p>
-<p><code>bup import-rsnapshot</code> either imports the whole archive or imports all backups only for a given backuptarget.</p>
+<p>bup import-rdiff-backup [-n] <path to rdiff-backup root> <backup name></p>
+<h1 id="description">DESCRIPTION</h1>
+<p><code>bup import-rdiff-backup</code> imports a rdiff-backup archive. The timestamps for the backups are preserved and the path to the rdiff-backup archive is stripped from the paths.</p>
 <h1 id="options">OPTIONS</h1>
 <dl>
-<dt>-n, --dry-run</dt>
+<dt>-n,--dry-run</dt>
 <dd>don't do anything just print out what would be done
 </dd>
 </dl>
 <h1 id="examples">EXAMPLES</h1>
-<pre><code>$ bup import-rsnapshot /.snapshots
-
-$ bup import-rsnapshot /.snapshots host1</code></pre>
+<pre><code>$ bup import-rdiff-backup /.snapshots legacy-rdiff-backup</code></pre>
 <h1 id="bup">BUP</h1>
 <p>Part of the <code>bup</code>(1) suite.</p>
 </body>
