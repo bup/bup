@@ -1,43 +1,83 @@
-.TH bup-index 1 "2011\[en]06\[en]08" "Bup 0.25-rc1"
+.TH bup-index 1 "2013\[en]07\[en]31" "Bup 0.25-rc2"
 .SH NAME
 .PP
 bup-index - print and/or update the bup filesystem index
 .SH SYNOPSIS
 .PP
-bup index <-p|-m|-s|-u> [-H] [-l] [-x] [\[em]fake-valid]
-[\[em]fake-invalid] [\[em]check] [-f \f[I]indexfile\f[]]
-[\[em]exclude \f[I]path\f[]] [\[em]exclude-from \f[I]filename\f[]]
-[-v] <filenames\&...>
+bup index <-p|-m|-s|-u> [-H] [-l] [-x] [--fake-valid]
+[--no-check-device] [--fake-invalid] [--check] [--clear] [-f
+\f[I]indexfile\f[]] [--exclude \f[I]path\f[]] [--exclude-from
+\f[I]filename\f[]] [--exclude-rx \f[I]pattern\f[]] [-v] <filenames...>
 .SH DESCRIPTION
 .PP
-\f[B]bup\ index\f[] prints and/or updates the bup filesystem index,
-which is a cache of the filenames, attributes, and sha\[en]1 hashes
-of each file and directory in the filesystem.
-The bup index is similar in function to the \f[B]git\f[](1) index,
-and can be found in \f[B]~/.bup/bupindex\f[].
+\f[C]bup\ index\f[] prints and/or updates the bup filesystem index,
+which is a cache of the filenames, attributes, and sha-1 hashes of each
+file and directory in the filesystem.
+The bup index is similar in function to the \f[C]git\f[](1) index, and
+can be found in \f[C]$BUP_DIR/bupindex\f[].
 .PP
-Creating a backup in bup consists of two steps: updating the index
-with \f[B]bup\ index\f[], then actually backing up the files (or a
-subset of the files) with \f[B]bup\ save\f[].
+Creating a backup in bup consists of two steps: updating the index with
+\f[C]bup\ index\f[], then actually backing up the files (or a subset of
+the files) with \f[C]bup\ save\f[].
 The separation exists for these reasons:
 .IP "1." 3
-There is more than one way to generate a list of files that need to
-be backed up.
-For example, you might want to use \f[B]inotify\f[](7) or
-\f[B]dnotify\f[](7).
+There is more than one way to generate a list of files that need to be
+backed up.
+For example, you might want to use \f[C]inotify\f[](7) or
+\f[C]dnotify\f[](7).
 .IP "2." 3
 Even if you back up files to multiple destinations (for added
-redundancy), the file names, attributes, and hashes will be the
-same each time.
-Thus, you can save the trouble of repeatedly re-generating the list
-of files for each backup set.
+redundancy), the file names, attributes, and hashes will be the same
+each time.
+Thus, you can save the trouble of repeatedly re-generating the list of
+files for each backup set.
 .IP "3." 3
-You may want to use the data tracked by bup index for other
-purposes (such as speeding up other programs that need the same
-information).
+You may want to use the data tracked by bup index for other purposes
+(such as speeding up other programs that need the same information).
+.SH NOTES
+.PP
+bup makes accommodations for the expected "worst-case" filesystem
+timestamp resolution -- currently one second; examples include VFAT,
+ext2, ext3, small ext4, etc.
+Since bup cannot know the filesystem timestamp resolution, and could be
+traversing multiple filesystems during any given run, it always assumes
+that the resolution may be no better than one second.
+.PP
+As a practical matter, this means that index updates are a bit
+imprecise, and so \f[C]bup\ save\f[] may occasionally record filesystem
+changes that you didn\[aq]t expect.
+That\[aq]s because, during an index update, if bup encounters a path
+whose actual timestamps are more recent than one second before the
+update started, bup will set the index timestamps for that path (mtime
+and ctime) to exactly one second before the run, -- effectively capping
+those values.
+.PP
+This ensures that no subsequent changes to those paths can result in
+timestamps that are identical to those in the index.
+If that were possible, bup could overlook the modifications.
+.PP
+You can see the effect of this behavior in this example (assume that
+less than one second elapses between the initial file creation and first
+index run):
+.IP
+.nf
+\f[C]
+$\ touch\ src/1\ src/2
+#\ A\ "sleep\ 1"\ here\ would\ avoid\ the\ unexpected\ save.
+$\ bup\ index\ src
+$\ bup\ save\ -n\ src\ src\ \ #\ Saves\ 1\ and\ 2.
+$\ date\ >\ src/1
+$\ bup\ index\ src
+$\ date\ >\ src/2\ \ \ \ \ \ \ \ \ #\ Not\ indexed.
+$\ bup\ save\ -n\ src\ src\ \ #\ But\ src/2\ is\ saved\ anyway.
+\f[]
+.fi
+.PP
+Strictly speaking, bup should not notice the change to src/2, but it
+does, due to the accommodations described above.
 .SH MODES
 .TP
-.B -u, \[em]update
+.B -u, --update
 recursively update the index for the given filenames and their
 descendants.
 One or more filenames must be given.
@@ -45,109 +85,143 @@ If no mode option is given, this is the default.
 .RS
 .RE
 .TP
-.B -p, \[em]print
+.B -p, --print
 print the contents of the index.
-If filenames are given, shows the given entries and their
-descendants.
-If no filenames are given, shows the entries starting at the
-current working directory (.)
+If filenames are given, shows the given entries and their descendants.
+If no filenames are given, shows the entries starting at the current
+working directory (.)
 \&.
 .RS
 .RE
 .TP
-.B -m, \[em]modified
+.B -m, --modified
 prints only files which are marked as modified (ie.
 changed since the most recent backup) in the index.
-Implies \f[B]-p\f[].
+Implies \f[C]-p\f[].
 .RS
 .RE
 .TP
-.B -s, \[em]status
+.B -s, --status
 prepend a status code (A, M, D, or space) before each filename.
-Implies \f[B]-p\f[].
+Implies \f[C]-p\f[].
 The codes mean, respectively, that a file is marked in the index as
 added, modified, deleted, or unchanged since the last backup.
 .RS
 .RE
 .SH OPTIONS
 .TP
-.B -H, \[em]hash
-for each file printed, prepend the most recently recorded hash
-code.
-The hash code is normally generated by \f[B]bup\ save\f[].
-For objects which have not yet been backed up, the hash code will
-be 0000000000000000000000000000000000000000.
+.B -H, --hash
+for each file printed, prepend the most recently recorded hash code.
+The hash code is normally generated by \f[C]bup\ save\f[].
+For objects which have not yet been backed up, the hash code will be
+0000000000000000000000000000000000000000.
 Note that the hash code is printed even if the file is known to be
 modified or deleted in the index (ie.
 the file on the filesystem no longer matches the recorded hash).
-If this is a problem for you, use \f[B]--status\f[].
+If this is a problem for you, use \f[C]--status\f[].
 .RS
 .RE
 .TP
-.B -l, \[em]long
+.B -l, --long
 print more information about each file, in a similar format to the
-\f[B]-l\f[] option to \f[B]ls\f[](1).
+\f[C]-l\f[] option to \f[C]ls\f[](1).
 .RS
 .RE
 .TP
-.B -x, \[em]xdev, \[em]one-file-system
-don't cross filesystem boundaries when recursing through the
+.B -x, --xdev, --one-file-system
+don\[aq]t cross filesystem boundaries when recursing through the
 filesystem.
-Only applicable if you're using \f[B]-u\f[].
+Only applicable if you\[aq]re using \f[C]-u\f[].
 .RS
 .RE
 .TP
-.B \[em]fake-valid
-mark specified filenames as up-to-date even if they aren't.
-This can be useful for testing, or to avoid unnecessarily backing
-up files that you know are boring.
+.B --fake-valid
+mark specified filenames as up-to-date even if they aren\[aq]t.
+This can be useful for testing, or to avoid unnecessarily backing up
+files that you know are boring.
 .RS
 .RE
 .TP
-.B \[em]fake-invalid
-mark specified filenames as not up-to-date, forcing the next
-\[lq]bup save\[rq] run to re-check their contents.
+.B --fake-invalid
+mark specified filenames as not up-to-date, forcing the next "bup save"
+run to re-check their contents.
 .RS
 .RE
 .TP
-.B \[em]check
+.B --check
 carefully check index file integrity before and after updating.
 Mostly useful for automated tests.
 .RS
 .RE
 .TP
-.B -f, \[em]indexfile=\f[I]indexfile\f[]
-use a different index filename instead of \f[B]~/.bup/bupindex\f[].
+.B --clear
+clear the index.
 .RS
 .RE
 .TP
-.B \[em]exclude=\f[I]path\f[]
+.B -f, --indexfile=\f[I]indexfile\f[]
+use a different index filename instead of \f[C]$BUP_DIR/bupindex\f[].
+.RS
+.RE
+.TP
+.B --exclude=\f[I]path\f[]
 a path to exclude from the backup (can be used more than once)
 .RS
 .RE
 .TP
-.B \[em]exclude-from=\f[I]filename\f[]
+.B --exclude-from=\f[I]filename\f[]
 a file that contains exclude paths (can be used more than once)
 .RS
 .RE
 .TP
-.B -v, \[em]verbose
+.B --exclude-rx=\f[I]pattern\f[]
+exclude any path matching \f[I]pattern\f[], which must be a Python
+regular expression (http://docs.python.org/library/re.html).
+The pattern will be compared against the full path, without anchoring,
+so "x/y" will match "ox/yard" or "box/yards".
+To exclude the contents of /tmp, but not the directory itself, use
+"^/tmp/.".
+(can be specified more than once)
+.RS
+.PP
+Examples:
+.IP \[bu] 2
+\[aq]/foo$\[aq] - exclude any file named foo
+.IP \[bu] 2
+\[aq]/foo/$\[aq] - exclude any directory named foo
+.IP \[bu] 2
+\[aq]/foo/.\[aq] - exclude the content of any directory named foo
+.IP \[bu] 2
+\[aq]^/tmp/.\[aq] - exclude root-level /tmp\[aq]s content, but not /tmp
+itself
+.RE
+.TP
+.B --no-check-device
+don\[aq]t mark a an entry invalid if the device number (stat(2) st_dev)
+changes.
+This can be useful when indexing remote, automounted, or (LVM) snapshot
+filesystems.
+.RS
+.RE
+.TP
+.B -v, --verbose
 increase log output during update (can be used more than once).
-With one \f[B]-v\f[], print each directory as it is updated; with
-two \f[B]-v\f[], print each file too.
+With one \f[C]-v\f[], print each directory as it is updated; with two
+\f[C]-v\f[], print each file too.
 .RS
 .RE
 .SH EXAMPLE
-.PP
-\f[CR]
-      bup\ index\ -vux\ /etc\ /var\ /usr
+.IP
+.nf
+\f[C]
+bup\ index\ -vux\ /etc\ /var\ /usr
 \f[]
+.fi
 .SH SEE ALSO
 .PP
-\f[B]bup-save\f[](1), \f[B]bup-drecurse\f[](1), \f[B]bup-on\f[](1)
+\f[C]bup-save\f[](1), \f[C]bup-drecurse\f[](1), \f[C]bup-on\f[](1)
 .SH BUP
 .PP
-Part of the \f[B]bup\f[](1) suite.
+Part of the \f[C]bup\f[](1) suite.
 .SH AUTHORS
 Avery Pennarun <apenwarr@gmail.com>.
-

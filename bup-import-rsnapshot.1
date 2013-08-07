@@ -1,34 +1,35 @@
-.TH bup-import-rsnapshot 1 "2011\[en]06\[en]08" "Bup 0.25-rc1"
+.TH bup-import-rsnapshot 1 "2013\[en]07\[en]31" "Bup 0.25-rc2"
 .SH NAME
 .PP
 bup-import-rsnapshot - import a rsnapshot archive
 .SH SYNOPSIS
 .PP
-bup import-rsnapshot [-n] []
+bup import-rsnapshot [-n] <path to snapshot_root> [<backuptarget>]
 .SH SYNOPSIS
 .PP
-\f[B]bup\ import-rsnapshot\f[] imports an rsnapshot archive.
+\f[C]bup\ import-rsnapshot\f[] imports an rsnapshot archive.
 The timestamps for the backups are preserved and the path to the
 rsnapshot archive is stripped from the paths.
 .PP
-\f[B]bup\ import-rsnapshot\f[] either imports the whole archive or
+\f[C]bup\ import-rsnapshot\f[] either imports the whole archive or
 imports all backups only for a given backuptarget.
 .SH OPTIONS
 .TP
-.B -n,\[em]dry-run
-don't do anything just print out what would be done
+.B -n, --dry-run
+don\[aq]t do anything just print out what would be done
 .RS
 .RE
 .SH EXAMPLES
-.PP
-\f[CR]
-      $\ bup\ import-rsnapshot\ /.snapshots
-      
-      $\ bup\ import-rsnapshot\ /.snapshots\ host1
+.IP
+.nf
+\f[C]
+$\ bup\ import-rsnapshot\ /.snapshots
+
+$\ bup\ import-rsnapshot\ /.snapshots\ host1
 \f[]
+.fi
 .SH BUP
 .PP
-Part of the \f[B]bup\f[](1) suite.
+Part of the \f[C]bup\f[](1) suite.
 .SH AUTHORS
 Zoran Zaric <zz@zoranzaric.de>.
-

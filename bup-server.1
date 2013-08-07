@@ -1,4 +1,4 @@
-.TH bup-server 1 "2011\[en]06\[en]08" "Bup 0.25-rc1"
+.TH bup-server 1 "2013\[en]07\[en]31" "Bup 0.25-rc2"
 .SH NAME
 .PP
 bup-server - the server side of the bup client-server relationship
@@ -7,31 +7,30 @@ bup-server - the server side of the bup client-server relationship
 bup server
 .SH DESCRIPTION
 .PP
-\f[B]bup\ server\f[] is the server side of a remote bup session.
-If you use \f[B]bup-split\f[](1) or \f[B]bup-save\f[](1) with the
-\f[B]-r\f[] option, they will ssh to the remote server and run
-\f[B]bup\ server\f[] to receive the transmitted objects.
+\f[C]bup\ server\f[] is the server side of a remote bup session.
+If you use \f[C]bup-split\f[](1) or \f[C]bup-save\f[](1) with the
+\f[C]-r\f[] option, they will ssh to the remote server and run
+\f[C]bup\ server\f[] to receive the transmitted objects.
 .PP
-There is normally no reason to run \f[B]bup\ server\f[] yourself.
+There is normally no reason to run \f[C]bup\ server\f[] yourself.
 .SH MODES
 .TP
 .B smart
-In this mode, the server checks each incoming object against the
-idx files in its repository.
-If any object already exists, it tells the client about the idx
-file it was found in, allowing the client to download that idx and
-avoid sending duplicate data.
-This is \f[B]bup-server\f[]'s default mode.
+In this mode, the server checks each incoming object against the idx
+files in its repository.
+If any object already exists, it tells the client about the idx file it
+was found in, allowing the client to download that idx and avoid sending
+duplicate data.
+This is \f[C]bup-server\f[]\[aq]s default mode.
 .RS
 .RE
 .TP
 .B dumb
-In this mode, the server will not check its local index before
-writing an object.
-To avoid writing duplicate objects, the server will tell the client
-to download all of its \&.idx files at the start of the session.
-This mode is useful on low powered server hardware (ie router/slow
-NAS).
+In this mode, the server will not check its local index before writing
+an object.
+To avoid writing duplicate objects, the server will tell the client to
+download all of its \f[C]\&.idx\f[] files at the start of the session.
+This mode is useful on low powered server hardware (ie router/slow NAS).
 .RS
 .RE
 .SH FILES
@@ -43,10 +42,9 @@ This file is not created by default in new repositories.
 .RE
 .SH SEE ALSO
 .PP
-\f[B]bup-save\f[](1), \f[B]bup-split\f[](1)
+\f[C]bup-save\f[](1), \f[C]bup-split\f[](1)
 .SH BUP
 .PP
-Part of the \f[B]bup\f[](1) suite.
+Part of the \f[C]bup\f[](1) suite.
 .SH AUTHORS
 Avery Pennarun <apenwarr@gmail.com>.
-

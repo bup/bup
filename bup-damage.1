@@ -1,98 +1,97 @@
-.TH bup-damage 1 "2011\[en]06\[en]08" "Bup 0.25-rc1"
+.TH bup-damage 1 "2013\[en]07\[en]31" "Bup 0.25-rc2"
 .SH NAME
 .PP
 bup-damage - randomly destroy blocks of a file
 .SH SYNOPSIS
 .PP
-bup damage [-n count] [-s maxsize] [\[em]percent pct] [-S seed]
-[\[em]equal] <filenames\&...>
+bup damage [-n count] [-s maxsize] [--percent pct] [-S seed] [--equal]
+<filenames...>
 .SH DESCRIPTION
 .PP
-Use \f[B]bup\ damage\f[] to deliberately destroy blocks in a
-\f[B].pack\f[] or \f[B].idx\f[] file (from
-\f[B].bup/objects/pack\f[]) to test the recovery features of
-\f[B]bup-fsck\f[](1) or other programs.
+Use \f[C]bup\ damage\f[] to deliberately destroy blocks in a
+\f[C]\&.pack\f[] or \f[C]\&.idx\f[] file (from
+\f[C]\&.bup/objects/pack\f[]) to test the recovery features of
+\f[C]bup-fsck\f[](1) or other programs.
 .PP
 \f[I]THIS PROGRAM IS EXTREMELY DANGEROUS AND WILL DESTROY YOUR DATA\f[]
 .PP
-\f[B]bup\ damage\f[] is primarily useful for automated or manual
-tests of data recovery tools, to reassure yourself that the tools
-actually work.
+\f[C]bup\ damage\f[] is primarily useful for automated or manual tests
+of data recovery tools, to reassure yourself that the tools actually
+work.
 .SH OPTIONS
 .TP
-.B -n, \[em]num=\f[I]numblocks\f[]
+.B -n, --num=\f[I]numblocks\f[]
 the number of separate blocks to damage in each file (default 10).
-Note that it's possible for more than one damaged segment to fall
-in the same \f[B]bup-fsck\f[](1) recovery block, so you might not
-damage as many recovery blocks as you expect.
-If this is a problem, use \f[B]--equal\f[].
+Note that it\[aq]s possible for more than one damaged segment to fall in
+the same \f[C]bup-fsck\f[](1) recovery block, so you might not damage as
+many recovery blocks as you expect.
+If this is a problem, use \f[C]--equal\f[].
 .RS
 .RE
 .TP
-.B -s, \[em]size=\f[I]maxblocksize\f[]
+.B -s, --size=\f[I]maxblocksize\f[]
 the maximum size, in bytes, of each damaged block (default 1 unless
-\f[B]--percent\f[] is specified).
-Note that because of the way \f[B]bup-fsck\f[](1) works, a
-multi-byte block could fall on the boundary between two recovery
-blocks, and thus damaging two separate recovery blocks.
-In small files, it's also possible for a damaged block to be larger
+\f[C]--percent\f[] is specified).
+Note that because of the way \f[C]bup-fsck\f[](1) works, a multi-byte
+block could fall on the boundary between two recovery blocks, and thus
+damaging two separate recovery blocks.
+In small files, it\[aq]s also possible for a damaged block to be larger
 than a recovery block.
-If these issues might be a problem, you should use the default
-damage size of one byte.
+If these issues might be a problem, you should use the default damage
+size of one byte.
 .RS
 .RE
 .TP
-.B \[em]percent=\f[I]maxblockpercent\f[]
+.B --percent=\f[I]maxblockpercent\f[]
 the maximum size, in percent of the original file, of each damaged
 block.
-If both \f[B]--size\f[] and \f[B]--percent\f[] are given, the
-maximum block size is the minimum of the two restrictions.
-You can use this to ensure that a given block will never damage
-more than one or two \f[B]git-fsck\f[](1) recovery blocks.
+If both \f[C]--size\f[] and \f[C]--percent\f[] are given, the maximum
+block size is the minimum of the two restrictions.
+You can use this to ensure that a given block will never damage more
+than one or two \f[C]git-fsck\f[](1) recovery blocks.
 .RS
 .RE
 .TP
-.B -S, \[em]seed=\f[I]randomseed\f[]
+.B -S, --seed=\f[I]randomseed\f[]
 seed the random number generator with the given value.
-If you use this option, your tests will be repeatable, since the
-damaged block offsets, sizes, and contents will be the same every
-time.
-By default, the random numbers are different every time (so you can
-run tests in a loop and repeatedly test with different damage each
-time).
+If you use this option, your tests will be repeatable, since the damaged
+block offsets, sizes, and contents will be the same every time.
+By default, the random numbers are different every time (so you can run
+tests in a loop and repeatedly test with different damage each time).
 .RS
 .RE
 .TP
-.B \[em]equal
-instead of choosing random offsets for each damaged block, space
-the blocks equally throughout the file, starting at offset 0.
-If you also choose a correct maximum block size, this can guarantee
-that any given damage block never damages more than one
-\f[B]git-fsck\f[](1) recovery block.
-(This is also guaranteed if you use \f[B]-s\ 1\f[].)
+.B --equal
+instead of choosing random offsets for each damaged block, space the
+blocks equally throughout the file, starting at offset 0.
+If you also choose a correct maximum block size, this can guarantee that
+any given damage block never damages more than one \f[C]git-fsck\f[](1)
+recovery block.
+(This is also guaranteed if you use \f[C]-s\ 1\f[].)
 .RS
 .RE
 .SH EXAMPLE
-.PP
-\f[CR]
-      #\ make\ a\ backup\ in\ case\ things\ go\ horribly\ wrong
-      cp\ -a\ ~/.bup/objects/pack\ ~/bup-packs.bak
-      
-      #\ generate\ recovery\ blocks\ for\ all\ packs
-      bup\ fsck\ -g
-      
-      #\ deliberately\ damage\ the\ packs
-      bup\ damage\ -n\ 10\ -s\ 1\ -S\ 0\ ~/.bup/objects/pack/*.{pack,idx}
-      
-      #\ recover\ from\ the\ damage
-      bup\ fsck\ -r
+.IP
+.nf
+\f[C]
+#\ make\ a\ backup\ in\ case\ things\ go\ horribly\ wrong
+cp\ -a\ ~/.bup/objects/pack\ ~/bup-packs.bak
+
+#\ generate\ recovery\ blocks\ for\ all\ packs
+bup\ fsck\ -g
+
+#\ deliberately\ damage\ the\ packs
+bup\ damage\ -n\ 10\ -s\ 1\ -S\ 0\ ~/.bup/objects/pack/*.{pack,idx}
+
+#\ recover\ from\ the\ damage
+bup\ fsck\ -r
 \f[]
+.fi
 .SH SEE ALSO
 .PP
-\f[B]bup-fsck\f[](1), \f[B]par2\f[](1)
+\f[C]bup-fsck\f[](1), \f[C]par2\f[](1)
 .SH BUP
 .PP
-Part of the \f[B]bup\f[](1) suite.
+Part of the \f[C]bup\f[](1) suite.
 .SH AUTHORS
 Avery Pennarun <apenwarr@gmail.com>.
-

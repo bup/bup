@@ -1,62 +1,59 @@
-.TH bup-bloom 1 "2011\[en]06\[en]08" "Bup 0.25-rc1"
+.TH bup-bloom 1 "2013\[en]07\[en]31" "Bup 0.25-rc2"
 .SH NAME
 .PP
 bup-bloom - generates, regenerates, updates bloom filters
 .SH SYNOPSIS
 .PP
-bup bloom [-d dir] [-o outfile] [-k hashes] [-c idxfile] [-f]
-[\[em]ruin]
+bup bloom [-d dir] [-o outfile] [-k hashes] [-c idxfile] [-f] [--ruin]
 .SH DESCRIPTION
 .PP
-\f[B]bup\ bloom\f[] builds a bloom filter file for a bup
-repository.
-If one already exists, it checks the filter and updates or
-regenerates it as needed.
+\f[C]bup\ bloom\f[] builds a bloom filter file for a bup repository.
+If one already exists, it checks the filter and updates or regenerates
+it as needed.
 .SH OPTIONS
 .TP
-.B \[em]ruin
+.B --ruin
 destroy bloom filters by setting the whole bitmask to zeros.
-you really want to know what you are doing if run this and you want
-to delete the resulting bloom when you are done with it.
+you really want to know what you are doing if run this and you want to
+delete the resulting bloom when you are done with it.
 .RS
 .RE
 .TP
-.B -f, \[em]force
-don't update the existing bloom file; generate a new one from
+.B -f, --force
+don\[aq]t update the existing bloom file; generate a new one from
 scratch.
 .RS
 .RE
 .TP
-.B -d, \[em]dir=\f[I]directory\f[]
-the directory, containing \&.idx files, to process.
+.B -d, --dir=\f[I]directory\f[]
+the directory, containing \f[C]\&.idx\f[] files, to process.
 Defaults to $BUP_DIR/objects/pack
 .RS
 .RE
 .TP
-.B -o, \[em]outfile=\f[I]outfile\f[]
+.B -o, --outfile=\f[I]outfile\f[]
 the file to write the bloom filter to.
 defaults to $dir/bup.bloom
 .RS
 .RE
 .TP
-.B -k, \[em]hashes=\f[I]hashes\f[]
+.B -k, --hashes=\f[I]hashes\f[]
 number of hash functions to use only 4 and 5 are valid.
 defaults to 5 for repositories < 2 TiB, or 4 otherwise.
 See comments in git.py for more on this value.
 .RS
 .RE
 .TP
-.B -c, \[em]check=\f[I]idxfile\f[]
-checks the bloom file (counterintuitively outfile) against the
-specified \&.idx file, first checks that the bloom filter is
-claiming to contain the \&.idx, then checks that it does actually
-contain all of the objects in the \&.idx.
-Does not write anything and ignores the \f[B]-k\f[] option.
+.B -c, --check=\f[I]idxfile\f[]
+checks the bloom file (counterintuitively outfile) against the specified
+\f[C]\&.idx\f[] file, first checks that the bloom filter is claiming to
+contain the \f[C]\&.idx\f[], then checks that it does actually contain
+all of the objects in the \f[C]\&.idx\f[].
+Does not write anything and ignores the \f[C]-k\f[] option.
 .RS
 .RE
 .SH BUP
 .PP
-Part of the \f[B]bup\f[](1) suite.
+Part of the \f[C]bup\f[](1) suite.
 .SH AUTHORS
 Brandon Low <lostlogic@lostlogicx.com>.
-

@@ -1,0 +1,30 @@
+.TH bup-import-rdiff-backup 1 "2013\[en]07\[en]31" "Bup 0.25-rc2"
+.SH NAME
+.PP
+bup-import-rdiff-backup - import a rdiff-backup archive
+.SH SYNOPSIS
+.PP
+bup import-rdiff-backup [-n]
+.SH DESCRIPTION
+.PP
+\f[C]bup\ import-rdiff-backup\f[] imports a rdiff-backup archive.
+The timestamps for the backups are preserved and the path to the
+rdiff-backup archive is stripped from the paths.
+.SH OPTIONS
+.TP
+.B -n,--dry-run
+don\[aq]t do anything just print out what would be done
+.RS
+.RE
+.SH EXAMPLES
+.IP
+.nf
+\f[C]
+$\ bup\ import-rdiff-backup\ /.snapshots\ legacy-rdiff-backup
+\f[]
+.fi
+.SH BUP
+.PP
+Part of the \f[C]bup\f[](1) suite.
+.SH AUTHORS
+Zoran Zaric <zz@zoranzaric.de>.
