@@ -49,7 +49,10 @@ AC_CHECK_HEADERS unistd.h
 AC_CHECK_HEADERS linux/fs.h
 AC_CHECK_HEADERS sys/ioctl.h
 
-AC_CHECK_FUNCS utimensat 
+# On GNU/kFreeBSD utimensat is defined in GNU libc, but won't work.
+if [ -z "$OS_GNUKFREEBSD" ]; then
+    AC_CHECK_FUNCS utimensat
+fi
 AC_CHECK_FUNCS utimes
 AC_CHECK_FUNCS lutimes
 
