@@ -244,7 +244,7 @@ from bup.metadata import xattr
 if xattr:
     @wvtest
     def test_handling_of_incorrect_existing_linux_xattrs():
-        if not is_superuser():
+        if not is_superuser() or detect_fakeroot():
             WVMSG('skipping test -- not superuser')
             return
         setup_testfs()
