@@ -18,7 +18,7 @@ bup tag -d \<tag name\>
 
 `bup tag` lists, creates or deletes a tag in the bup repository.
 
-A tag is an easy way to retreive a specific commit. It can be used to mark a
+A tag is an easy way to retrieve a specific commit. It can be used to mark a
 specific backup for easier retrieval later.
 
 When called without any arguments, the command lists all tags that can
