@@ -1,10 +1,14 @@
 #!/usr/bin/env python
 import sys, stat, urllib, mimetypes, posixpath, time
-import tornado.httpserver
-import tornado.ioloop
-import tornado.web
 from bup import options, git, vfs
 from bup.helpers import *
+try:
+    import tornado.httpserver
+    import tornado.ioloop
+    import tornado.web
+except ImportError:
+    log('error: cannot find the python "tornado" module; please install it\n')
+    sys.exit(1)
 
 handle_ctrl_c()
 
