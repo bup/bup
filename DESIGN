@@ -340,7 +340,7 @@ they index multiple packs at a time.
 
 Imagine you had a midx file for your 200 packs.  midx files are a lot like
 idx files; they have a lookup table at the beginning that narrows down the
-initial search, followed by a binary search.  The unlike idx files (which
+initial search, followed by a binary search.  Then unlike idx files (which
 have a fixed-size 256-entry lookup table) midx tables have a variably-sized
 table that makes sure the entire binary search can be contained to a single
 page of the midx file.  Basically, the lookup table tells you which page to
