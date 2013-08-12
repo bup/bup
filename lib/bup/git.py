@@ -849,12 +849,9 @@ def check_repo_or_die(path=None):
         os.stat(repo('objects/pack/.'))
     except OSError, e:
         if e.errno == errno.ENOENT:
-            if repodir != home_repodir:
-                log('error: %r is not a bup repository; run "bup init"\n'
-                    % repo())
-                sys.exit(15)
-            else:
-                init_repo()
+            log('error: %r is not a bup repository; run "bup init"\n'
+                % repo())
+            sys.exit(15)
         else:
             log('error: %s\n' % e)
             sys.exit(14)
