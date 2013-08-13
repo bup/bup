@@ -12,10 +12,8 @@ bup-init - initialize a bup repository
 
 # DESCRIPTION
 
-`bup init` initializes your local bup repository.  You
-usually don't need to run it unless you have set BUP_DIR
-explicitly.  By default, BUP_DIR is `~/.bup` and will be
-initialized automatically whenever you run any bup command.
+`bup init` initializes your local bup repository.  By default, BUP_DIR
+is `~/.bup`.
 
 # OPTIONS
 
