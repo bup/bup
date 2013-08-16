@@ -119,8 +119,8 @@ setup-test-tree()
     # entries would sort in the wrong order because the metadata
     # entries were being sorted by mangled name, but the index isn't.
     dd if=/dev/zero of="$TOP/bupmeta.tmp"/src/foo bs=1k count=33
-    touch -d 2011-11-11 "$TOP/bupmeta.tmp"/src/foo
-    touch -d 2011-12-12 "$TOP/bupmeta.tmp"/src/foo-bar
+    touch -t 201111111111 "$TOP/bupmeta.tmp"/src/foo
+    touch -t 201112121111 "$TOP/bupmeta.tmp"/src/foo-bar
 
     t/mksock "$TOP/bupmeta.tmp/src/test-socket" || true
 ) || WVFAIL
