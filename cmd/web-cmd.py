@@ -215,7 +215,12 @@ if __name__ == "__main__":
     http_server = tornado.httpserver.HTTPServer(application)
     http_server.listen(address[1], address=address[0])
 
-    print "Serving HTTP on %s:%d..." % http_server._socket.getsockname()
+    try:
+        sock = http_server._socket # tornado < 2.0
+    except AttributeError, e:
+        sock = http_server._sockets.values()[0]
+
+    print "Serving HTTP on %s:%d..." % sock.getsockname()
     loop = tornado.ioloop.IOLoop.instance()
     loop.start()
 
