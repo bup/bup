@@ -5,8 +5,7 @@ from bup.helpers import *
 try:
     import fuse
 except ImportError:
-    log('bup: error: The python "fuse" module is missing.\n' +
-        'To use bup fuse, first install the python-fuse package.\n')
+    log('error: cannot find the python "fuse" module; please install it\n')
     sys.exit(1)
 
 
