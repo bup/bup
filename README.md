@@ -155,6 +155,10 @@ Binary packages of bup are known to be built for the following OSes:
 Using bup
 ---------
 
+ - Initialize the default BUP_DIR:
+
+        bup init
+
  - Try making a local backup as a tar file:
  
         tar -cvf - /etc | bup split -n local-etc -vv
