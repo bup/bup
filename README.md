@@ -8,7 +8,7 @@ this time?  Me neither.
 Despite its unassuming name, bup is pretty cool.  To give you an idea of
 just how cool it is, I wrote you this poem:
 
-                             Bup is teh awesome
+                             Bup is the awesome
                           What rhymes with awesome?
                             I guess maybe possum
                            But that's irrelevant.
