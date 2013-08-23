@@ -667,7 +667,7 @@ def handle_ctrl_c():
     oldhook = sys.excepthook
     def newhook(exctype, value, traceback):
         if exctype == KeyboardInterrupt:
-            log('Interrupted.\n')
+            log('\nInterrupted.\n')
         else:
             return oldhook(exctype, value, traceback)
     sys.excepthook = newhook

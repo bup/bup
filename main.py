@@ -161,6 +161,8 @@ def handler(signum, frame):
 
 signal.signal(signal.SIGTERM, handler)
 signal.signal(signal.SIGINT, handler)
+signal.signal(signal.SIGTSTP, handler)
+signal.signal(signal.SIGCONT, handler)
 
 ret = 95
 p = None
@@ -180,8 +182,11 @@ try:
                 ret = p.wait()
                 break
             except SigException, e:
-                log('\nbup: %s\n' % e)
-                os.kill(p.pid, e.signum)
+                debug1('\nbup: %s\n' % e)
+                sig = e.signum
+                if sig == signal.SIGTSTP:
+                    sig = signal.SIGSTOP
+                os.kill(p.pid, sig)
                 ret = 94
     except OSError, e:
         log('%s: %s\n' % (subcmd[0], e))
