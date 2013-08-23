@@ -11,6 +11,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <sys/mman.h>
 
 #ifdef HAVE_SYS_TYPES_H
 #include <sys/types.h>
@@ -479,30 +480,37 @@ static uint64_t htonll(uint64_t value)
     return value; // already in network byte order MSB-LSB
 }
 
-#define PACK_IDX_V2_HEADERLEN 8
 #define FAN_ENTRIES 256
 
 static PyObject *write_idx(PyObject *self, PyObject *args)
 {
-    PyObject *pf = NULL, *idx = NULL;
+    const char *filename = NULL;
+    PyObject *idx = NULL;
     PyObject *part;
-    FILE *f;
     unsigned char *fmap = NULL;
     Py_ssize_t flen = 0;
     unsigned int total = 0;
     uint32_t count;
     int i, j, ofs64_count;
     uint32_t *fan_ptr, *crc_ptr, *ofs_ptr;
+    uint64_t *ofs64_ptr;
     struct sha *sha_ptr;
 
-    if (!PyArg_ParseTuple(args, "Ow#OI", &pf, &fmap, &flen, &idx, &total))
+    if (!PyArg_ParseTuple(args, "sw#OI", &filename, &fmap, &flen, &idx, &total))
 	return NULL;
 
-    fan_ptr = (uint32_t *)&fmap[PACK_IDX_V2_HEADERLEN];
+    if (PyList_Size (idx) != FAN_ENTRIES) // Check for list of the right length.
+        return PyErr_Format (PyExc_TypeError, "idx must contain %d entries",
+                             FAN_ENTRIES);
+
+    const char idx_header[] = "\377tOc\0\0\0\002";
+    memcpy (fmap, idx_header, sizeof(idx_header) - 1);
+
+    fan_ptr = (uint32_t *)&fmap[sizeof(idx_header) - 1];
     sha_ptr = (struct sha *)&fan_ptr[FAN_ENTRIES];
     crc_ptr = (uint32_t *)&sha_ptr[total];
     ofs_ptr = (uint32_t *)&crc_ptr[total];
-    f = PyFile_AsFile(pf);
+    ofs64_ptr = (uint64_t *)&ofs_ptr[total];
 
     count = 0;
     ofs64_count = 0;
@@ -533,14 +541,17 @@ static PyObject *write_idx(PyObject *self, PyObject *args)
 	    *crc_ptr++ = htonl(crc);
 	    if (ofs > 0x7fffffff)
 	    {
-		const uint64_t nofs = htonll(ofs);
-		if (fwrite(&nofs, sizeof(uint64_t), 1, f) != 1)
-		    return PyErr_SetFromErrno(PyExc_OSError);
+                *ofs64_ptr++ = htonll(ofs);
 		ofs = 0x80000000 | ofs64_count++;
 	    }
 	    *ofs_ptr++ = htonl((uint32_t)ofs);
 	}
     }
+
+    int rc = msync(fmap, flen, MS_ASYNC);
+    if (rc != 0)
+	return PyErr_SetFromErrnoWithFilename(PyExc_IOError, filename);
+
     return PyLong_FromUnsignedLong(count);
 }
 

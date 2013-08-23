@@ -654,40 +654,45 @@ class PackWriter:
         return self._end(run_midx=run_midx)
 
     def _write_pack_idx_v2(self, filename, idx, packbin):
+        ofs64_count = 0
+        for section in idx:
+            for entry in section:
+                if entry[2] >= 2**31:
+                    ofs64_count += 1
+
+        # Length: header + fan-out + shas-and-crcs + overflow-offsets
+        index_len = 8 + (4 * 256) + (28 * self.count) + (8 * ofs64_count)
+        idx_map = None
         idx_f = open(filename, 'w+b')
-        idx_f.write('\377tOc\0\0\0\2')
+        try:
+            idx_f.truncate(index_len)
+            idx_map = mmap_readwrite(idx_f, close=False)
+            count = _helpers.write_idx(filename, idx_map, idx, self.count)
+            assert(count == self.count)
+        finally:
+            if idx_map: idx_map.close()
+            idx_f.close()
 
-        ofs64_ofs = 8 + 4*256 + 28*self.count
-        idx_f.truncate(ofs64_ofs)
-        idx_f.seek(0)
-        idx_map = mmap_readwrite(idx_f, close=False)
-        idx_f.seek(0, os.SEEK_END)
-        count = _helpers.write_idx(idx_f, idx_map, idx, self.count)
-        assert(count == self.count)
-        # Sync, since it doesn't look like POSIX guarantees that a
-        # matching FILE* (i.e. idx_f) will see the parallel changes if
-        # we don't.
-        idx_map.flush()
-        idx_map.close()
-        idx_f.write(packbin)
-
-        idx_f.seek(0)
-        idx_sum = Sha1()
-        b = idx_f.read(8 + 4*256)
-        idx_sum.update(b)
-
-        obj_list_sum = Sha1()
-        for b in chunkyreader(idx_f, 20*self.count):
+        idx_f = open(filename, 'a+b')
+        try:
+            idx_f.write(packbin)
+            idx_f.seek(0)
+            idx_sum = Sha1()
+            b = idx_f.read(8 + 4*256)
             idx_sum.update(b)
-            obj_list_sum.update(b)
-        namebase = obj_list_sum.hexdigest()
 
-        for b in chunkyreader(idx_f):
-            idx_sum.update(b)
-        idx_f.write(idx_sum.digest())
-        idx_f.close()
+            obj_list_sum = Sha1()
+            for b in chunkyreader(idx_f, 20*self.count):
+                idx_sum.update(b)
+                obj_list_sum.update(b)
+            namebase = obj_list_sum.hexdigest()
 
-        return namebase
+            for b in chunkyreader(idx_f):
+                idx_sum.update(b)
+            idx_f.write(idx_sum.digest())
+            return namebase
+        finally:
+            idx_f.close()
 
 
 def _git_date(date):
