@@ -44,6 +44,12 @@ you can view its contents using `bup join` or `git show`.
 -a, \--all
 :   show hidden files.
 
+-l
+:   show file sizes.
+
+\--human-readable
+:   print human readable file sizes (i.e. 3.9K, 4.7M)
+
 # EXAMPLE
 
     bup ls /myserver/latest/etc/profile

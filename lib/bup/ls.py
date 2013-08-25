@@ -4,11 +4,19 @@ from bup import options, vfs
 from helpers import *
 
 
-def node_name(text, n, show_hash):
+def node_name(text, n, show_hash = False,
+              show_filesize = False,
+              filesize = None,
+              human_readable = False):
     """Add symbols to a node's name to differentiate file types."""
     prefix = ''
     if show_hash:
         prefix += "%s " % n.hash.encode('hex')
+    if show_filesize:
+        if human_readable:
+            prefix += "%10s " % format_filesize(filesize)
+        else:
+            prefix += "%14d " % filesize
     if stat.S_ISDIR(n.mode):
         return '%s%s/' % (prefix, text)
     elif stat.S_ISLNK(n.mode):
@@ -22,6 +30,8 @@ optspec = """
 --
 s,hash   show hash for each file
 a,all    show hidden files
+l        show file sizes
+human-readable    print human readable file sizes (i.e. 3.9K, 4.7M)
 """
 
 def do_ls(args, pwd, default='.', onabort=None, spec_prefix=''):
@@ -47,16 +57,21 @@ def do_ls(args, pwd, default='.', onabort=None, spec_prefix=''):
             if stat.S_ISDIR(n.mode):
                 for sub in n:
                     name = sub.name
+                    fsize = sub.size() if opt.l else None
+                    nname = node_name(name, sub, opt.hash, opt.l, fsize,
+                                      opt.human_readable)
                     if opt.all or not len(name)>1 or not name.startswith('.'):
                         if istty1:
-                            L.append(node_name(name, sub, opt.hash))
+                            L.append(nname)
                         else:
-                            print node_name(name, sub, opt.hash)
+                            print nname
             else:
+                nname = node_name(path, n, opt.hash, opt.l, None,
+                                  opt.human_readable)
                 if istty1:
-                    L.append(node_name(path, n, opt.hash))
+                    L.append(nname)
                 else:
-                    print node_name(path, n, opt.hash)
+                    print nname
         except vfs.NodeError, e:
             log('error: %s\n' % e)
             ret = 1
