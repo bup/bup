@@ -34,23 +34,23 @@ install: all
 	  $(INSTALL) -m 0644 \
 		Documentation/*.html \
 		$(DOCDIR)
-	$(INSTALL) -m 0755 bup $(BINDIR)
-	$(INSTALL) -m 0755 \
+	$(INSTALL) -pm 0755 bup $(BINDIR)
+	$(INSTALL) -pm 0755 \
 		cmd/bup-* \
 		$(LIBDIR)/cmd
-	$(INSTALL) -m 0644 \
+	$(INSTALL) -pm 0644 \
 		lib/bup/*.py \
 		$(LIBDIR)/bup
-	$(INSTALL) -m 0755 \
+	$(INSTALL) -pm 0755 \
 		lib/bup/*$(SOEXT) \
 		$(LIBDIR)/bup
-	$(INSTALL) -m 0644 \
+	$(INSTALL) -pm 0644 \
 		lib/tornado/*.py \
 		$(LIBDIR)/tornado
-	$(INSTALL) -m 0644 \
+	$(INSTALL) -pm 0644 \
 		lib/web/static/* \
 		$(LIBDIR)/web/static/
-	$(INSTALL) -m 0644 \
+	$(INSTALL) -pm 0644 \
 		lib/web/*.html \
 		$(LIBDIR)/web/
 %/all:
