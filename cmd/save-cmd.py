@@ -124,7 +124,7 @@ def _pop(force_tree, dir_metadata=None):
     part = parts.pop()
     shalist = shalists.pop()
     metalist = metalists.pop()
-    if metalist:
+    if metalist and not force_tree:
         if dir_metadata: # Override the original metadata pushed for this dir.
             metalist = [('', dir_metadata)] + metalist[1:]
         sorted_metalist = sorted(metalist, key = lambda x : x[0])
