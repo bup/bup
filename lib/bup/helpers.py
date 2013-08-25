@@ -4,6 +4,7 @@ import sys, os, pwd, subprocess, errno, socket, select, mmap, stat, re, struct
 import hashlib, heapq, operator, time, grp
 from bup import _version, _helpers
 import bup._helpers as _helpers
+import math
 
 # This function should really be in helpers, not in bup.options.  But we
 # want options.py to be standalone so people can include it in other projects.
@@ -319,6 +320,15 @@ def resource_path(subdir=''):
     if not _resource_path:
         _resource_path = os.environ.get('BUP_RESOURCE_PATH') or '.'
     return os.path.join(_resource_path, subdir)
+
+def format_filesize(size):
+    unit = 1024.0
+    size = float(size)
+    if size < unit:
+        return "%d" % (size)
+    exponent = int(math.log(size) / math.log(unit))
+    size_prefix = "KMGTPE"[exponent - 1]
+    return "%.1f%s" % (size / math.pow(unit, exponent), size_prefix)
 
 
 class NotOk(Exception):

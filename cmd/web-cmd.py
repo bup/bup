@@ -64,6 +64,7 @@ def _compute_dir_contents(n, path, show_hidden=False):
             display = sub.name + '@'
         else:
             size = sub.size()
+            size = (opt.human_readable and format_filesize(size)) or size
 
         yield (display, link + url_append, size)
 
@@ -182,6 +183,7 @@ class BupRequestHandler(tornado.web.RequestHandler):
 optspec = """
 bup web [[hostname]:port]
 --
+human-readable    display human readable file sizes (i.e. 3.9K, 4.7M)
 """
 o = options.Options(optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])

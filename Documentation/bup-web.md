@@ -21,6 +21,11 @@ hierarchy is the same as that shown by `bup-fuse`(1), `bup-ls`(1) and
 you'd like to expose the web server to anyone on your network (dangerous!) you
 can omit the bind address to bind to all available interfaces: `:8080`.
 
+# OPTIONS
+
+--human-readable
+:   display human readable file sizes (i.e. 3.9K, 4.7M)
+
 # EXAMPLE
 
     $ bup web
