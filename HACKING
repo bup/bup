@@ -14,6 +14,11 @@ seriously.
 Any branch with a "tmp/" prefix might be rebased (often), so keep that
 in mind when using or depending on one.
 
+Any branch with a "tmp/review/" prefix corresponds to a patchset
+submitted to the mailing list.  We try to maintain these branches to
+make the review process easier for those not as familiar with patches
+via email.
+
 
 Current Trajectory
 ==================
