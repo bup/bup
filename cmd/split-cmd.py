@@ -5,7 +5,9 @@ from bup.helpers import *
 
 
 optspec = """
-bup split <-t|-c|-b|-n name|--copy|--noop> [--bench] [filenames...]
+bup split [-t] [-c] [-n name] OPTIONS [filenames...]
+bup split -b OPTIONS [filenames...]
+bup split <--noop [--copy]|--copy>  OPTIONS [filenames...]
 --
  Modes:
 b,blobs    output a series of blob ids.  Implies --fanout=0.
