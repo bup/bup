@@ -8,10 +8,17 @@ bup-split - save individual files to bup backup sets
 
 # SYNOPSIS
 
-bup split [-r *host*:*path*] \<-b|-t|-c|-n *name*\> [-v] [-q]
-  [\--bench] [\--max-pack-size=*bytes*] [-#]
-  [\--max-pack-objects=*n*] [\--fanout=*count*]
-  [\--git-ids] [\--keep-boundaries] [filenames...]
+bup split \[-t\] \[-c\] \[-n *name*\] COMMON\_OPTIONS
+
+bup split -b COMMON\_OPTIONS
+
+bup split \<--noop \[--copy\]|--copy\> COMMON\_OPTIONS
+
+COMMON\_OPTIONS
+  ~ \[-r *host*:*path*\] \[-v\] \[-q\] \[-d *seconds-since-epoch*\] \[\--bench\]
+    \[\--max-pack-size=*bytes*\] \[-#\] \[\--bwlimit=*bytes*\]
+    \[\--max-pack-objects=*n*\] \[\--fanout=*count*\]
+    \[\--keep-boundaries\] \[--git-ids | filenames...\]
 
 # DESCRIPTION
 
@@ -41,6 +48,41 @@ accomplish this, however.)
 
 To get the data back, use `bup-join`(1).
 
+# MODES
+
+These options select the primary behavior of the command, with -n
+being the most likely choice.
+
+-n, \--name=*name*
+:   after creating the dataset, create a git branch
+    named *name* so that it can be accessed using
+    that name.  If *name* already exists, the new dataset
+    will be considered a descendant of the old *name*.
+    (Thus, you can continually create new datasets with
+    the same name, and later view the history of that
+    dataset to see how it has changed over time.)
+
+-t, \--tree
+:   output the git tree id of the resulting dataset.
+
+-c, \--commit
+:   output the git commit id of the resulting dataset.
+
+-b, \--blobs
+:   output a series of git blob ids that correspond to the chunks in
+    the dataset.  Incompatible with -n, -t, and -c.
+
+\--noop
+:   read the data and split it into blocks based on the "bupsplit"
+    rolling checksum algorithm, but don't do anything with the blocks.
+    This is mostly useful for benchmarking.  Incompatible with -n, -t,
+    -c, and -b.
+
+\--copy
+:   like `--noop`, but also write the data to stdout.  This can be
+    useful for benchmarking the speed of read+bupsplit+write for large
+    amounts of data.  Incompatible with -n, -t, -c, and -b.
+
 # OPTIONS
 
 -r, \--remote=*host*:*path*
@@ -51,25 +93,9 @@ To get the data back, use `bup-join`(1).
     or private key to use for the SSH connection, we recommend you use the
     `~/.ssh/config` file.
 
--b, \--blobs
-:   output a series of git blob ids that correspond to the
-    chunks in the dataset.
+-d, \--date=*seconds-since-epoch*
+:   specify the date inscribed in the commit (seconds since 1970-01-01).
 
--t, \--tree
-:   output the git tree id of the resulting dataset.
-    
--c, \--commit
-:   output the git commit id of the resulting dataset.
-
--n, \--name=*name*
-:   after creating the dataset, create a git branch
-    named *name* so that it can be accessed using
-    that name.  If *name* already exists, the new dataset
-    will be considered a descendant of the old *name*. 
-    (Thus, you can continually create new datasets with
-    the same name, and later view the history of that
-    dataset to see how it has changed over time.)
-    
 -q, \--quiet
 :   disable progress messages.
 
@@ -96,16 +122,6 @@ To get the data back, use `bup-join`(1).
     commit or series of blobs, but each blob comes from
     only one of the files; the end of one of the input
     files always ends a blob.
-
-\--noop
-:   read the data and split it into blocks based on the "bupsplit"
-    rolling checksum algorithm, but don't do anything with
-    the blocks.  This is mostly useful for benchmarking.
-
-\--copy
-:   like `--noop`, but also write the data to stdout.  This
-    can be useful for benchmarking the speed of read+bupsplit+write
-    for large amounts of data.
 
 \--bench
 :   print benchmark timings to stderr.
