@@ -15,6 +15,11 @@ hardlink-sets()
     "$TOP/t/hardlink-sets" "$@"
 }
 
+id-other-than()
+{
+    "$TOP/t/id-other-than" "$@"
+}
+
 # Very simple metadata tests -- create a test tree then check that bup
 # meta can reproduce the metadata correctly (according to bup xstat)
 # via create, extract, start-extract, and finish-extract.  The current
@@ -456,75 +461,96 @@ WVSTART 'meta --edit'
     chmod 700 dest # so we can't accidentally do something insecure
     cd dest
 
-    # Make sure we can restore a uid.
-    WVPASS bup meta --edit --unset-user --set-uid 42 ../src.meta \
-        | WVPASS bup meta -x
-    WVPASS bup xstat src | WVPASS grep -qE '^uid: 42'
+    other_uinfo="$(id-other-than --user "$(id -un)")"
+    other_user="${other_uinfo%%:*}"
+    other_uid="${other_uinfo##*:}"
 
-    # Make sure we can restore a gid.
-    WVPASS bup meta --edit --unset-group --set-gid 42 ../src.meta \
-        | WVPASS bup meta -x
-    WVPASS bup xstat src | WVPASS grep -qE '^gid: 42'
+    other_ginfo="$(id-other-than --group "$(id -gn)")"
+    other_group="${other_ginfo%%:*}"
+    other_gid="${other_ginfo##*:}"
 
-    some_user=$("$TOP"/t/some-owner --user)
-    some_group=$("$TOP"/t/some-owner --group)
+    # Make sure we can restore a uid (must be in /etc/passwd b/c cygwin).
+    WVPASS bup meta --edit --unset-user --set-uid "$other_uid" ../src.meta \
+        | WVPASS bup meta -x
+    WVPASS bup xstat src | WVPASS grep -qE "^uid: $other_uid"
+
+    # Make sure we can restore a gid (must be in /etc/group b/c cygwin).
+    WVPASS bup meta --edit --unset-group --set-gid "$other_gid" ../src.meta \
+        | WVPASS bup meta -x
+    WVPASS bup xstat src | WVPASS grep -qE "^gid: $other_gid"
+
+    other_uinfo2="$(id-other-than --user "$(id -un)" "$other_user")"
+    other_user2="${other_uinfo2%%:*}"
+    other_uid2="${other_uinfo2##*:}"
+
+    other_ginfo2="$(id-other-than --group "$(id -gn)" "$other_group")"
+    other_group2="${other_ginfo2%%:*}"
+    other_gid2="${other_ginfo2##*:}"
 
     # Try to restore a user (and see that user trumps uid when uid is not 0).
-    WVPASS bup meta --edit --set-uid 42 --set-user "$some_user" ../src.meta \
+    WVPASS bup meta --edit \
+        --set-uid "$other_uid2" --set-user "$some_user" ../src.meta \
         | WVPASS bup meta -x
     WVPASS bup xstat src | WVPASS grep -qE "^user: $some_user"
 
     # Try to restore a group (and see that group trumps gid when gid is not 0).
-    WVPASS bup meta --edit --set-gid 42 --set-group "$some_group" ../src.meta \
+    WVPASS bup meta --edit \
+        --set-gid "$other_gid2" --set-group "$some_group" ../src.meta \
         | WVPASS bup meta -x
     WVPASS bup xstat src | WVPASS grep -qE "^group: $some_user"
-
-    # Make sure a uid of 0 trumps a non-root user.
-    WVPASS bup meta --edit --set-user "$some_user" ../src.meta \
-        | WVPASS bup meta -x
-    WVPASS bup xstat src | WVPASS grep -qvE "^user: $some_user"
-    WVPASS bup xstat src | WVPASS grep -qE "^uid: 0"
-
-    # Make sure a gid of 0 trumps a non-root group.
-    WVPASS bup meta --edit --set-group "$some_user" ../src.meta \
-        | WVPASS bup meta -x
-    WVPASS bup xstat src | WVPASS grep -qvE "^group: $some_group"
-    WVPASS bup xstat src | WVPASS grep -qE "^gid: 0"
-
-    # Test --numeric-ids (gid).  Note the name 'root' is not handled
-    # specially, so we use that here as the test group name.  We
-    # assume that the root group's gid is never 42.
-    rm -rf src
-    WVPASS bup meta --edit --set-group root --set-gid 42 ../src.meta \
-        | WVPASS bup meta -x --numeric-ids
-    new_gidx=$(bup xstat src | grep -e '^gid:')
-    WVPASSEQ "$new_gidx" 'gid: 42'
 
     # Test --numeric-ids (uid).  Note the name 'root' is not handled
     # specially, so we use that here as the test user name.  We assume
     # that the root user's uid is never 42.
     rm -rf src
-    WVPASS bup meta --edit --set-user root --set-uid 42 ../src.meta \
+    WVPASS bup meta --edit --set-user root --set-uid "$other_uid" ../src.meta \
         | WVPASS bup meta -x --numeric-ids
     new_uidx=$(bup xstat src | grep -e '^uid:')
-    WVPASSEQ "$new_uidx" 'uid: 42'
+    WVPASSEQ "$new_uidx" "uid: $other_uid"
+
+    # Test --numeric-ids (gid).  Note the name 'root' is not handled
+    # specially, so we use that here as the test group name.  We
+    # assume that the root group's gid is never 42.
+    rm -rf src
+    WVPASS bup meta --edit --set-group root --set-gid "$other_gid" ../src.meta \
+        | WVPASS bup meta -x --numeric-ids
+    new_gidx=$(bup xstat src | grep -e '^gid:')
+    WVPASSEQ "$new_gidx" "gid: $other_gid"
 
     # Test that restoring an unknown user works.
     unknown_user=$("$TOP"/t/unknown-owners --user)
     rm -rf src
-    WVPASS bup meta --edit --set-uid 42 --set-user "$unknown_user" ../src.meta \
+    WVPASS bup meta --edit \
+        --set-uid "$other_uid" --set-user "$unknown_user" ../src.meta \
         | WVPASS bup meta -x
     new_uidx=$(bup xstat src | grep -e '^uid:')
-    WVPASSEQ "$new_uidx" 'uid: 42'
+    WVPASSEQ "$new_uidx" "uid: $other_uid"
 
     # Test that restoring an unknown group works.
     unknown_group=$("$TOP"/t/unknown-owners --group)
     rm -rf src
     WVPASS bup meta --edit \
-        --set-gid 42 --set-group "$unknown_group" ../src.meta \
+        --set-gid "$other_gid" --set-group "$unknown_group" ../src.meta \
         | WVPASS bup meta -x
     new_gidx=$(bup xstat src | grep -e '^gid:')
-    WVPASSEQ "$new_gidx" 'gid: 42'
+    WVPASSEQ "$new_gidx" "gid: $other_gid"
+
+    if ! [[ $(uname) =~ CYGWIN ]]; then
+        # For now, skip these on Cygwin because it doesn't allow
+        # restoring an unknown uid/gid.
+
+        # Make sure a uid of 0 trumps a non-root user.
+        WVPASS bup meta --edit --set-user "$some_user" ../src.meta \
+            | WVPASS bup meta -x
+        WVPASS bup xstat src | WVPASS grep -qvE "^user: $some_user"
+        WVPASS bup xstat src | WVPASS grep -qE "^uid: 0"
+
+        # Make sure a gid of 0 trumps a non-root group.
+        WVPASS bup meta --edit --set-group "$some_user" ../src.meta \
+            | WVPASS bup meta -x
+        WVPASS bup xstat src | WVPASS grep -qvE "^group: $some_group"
+        WVPASS bup xstat src | WVPASS grep -qE "^gid: 0"
+    fi
 )
 
 # Root-only tests that require an FS with all the trimmings: ACLs,

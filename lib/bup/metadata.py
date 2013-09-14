@@ -394,6 +394,10 @@ class Metadata:
             except OSError, e:
                 if e.errno == errno.EPERM:
                     add_error('lchown: %s' %  e)
+                elif sys.platform.startswith('cygwin') \
+                   and e.errno == errno.EINVAL:
+                    add_error('lchown: unknown uid/gid (%d/%d) for %s'
+                              %  (uid, gid, path))
                 else:
                     raise
 

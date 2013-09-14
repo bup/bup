@@ -56,7 +56,9 @@ metadata contains a user or group name that doesn't exist on the
 current system.  The use of user and group names can be disabled via
 `--numeric-ids` (which can be important when restoring a chroot, for
 example), and as a special case, a uid or gid of 0 will never be
-remapped by name.
+remapped by name.  Additionally, some systems don't allow setting a
+uid/gid that doesn't correspond with a known user/group.  On those
+systems, bup will log an error for each relevant path.
 
 Hardlinks will also be restored when possible, but at least currently,
 no links will be made to targets outside the restore tree, and if the
