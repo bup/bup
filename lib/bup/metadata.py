@@ -694,7 +694,7 @@ class Metadata:
                     result._load_hardlink_target_rec(port)
                 elif tag == _rec_tag_posix1e_acl:
                     result._load_posix1e_acl_rec(port)
-                elif tag ==_rec_tag_nfsv4_acl:
+                elif tag == _rec_tag_nfsv4_acl:
                     result._load_nfsv4_acl_rec(port)
                 elif tag == _rec_tag_linux_attr:
                     result._load_linux_attr_rec(port)
