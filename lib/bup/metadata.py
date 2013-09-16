@@ -312,11 +312,14 @@ class Metadata:
             assert(self._recognized_file_type())
             os.mknod(path, 0600 | stat.S_IFIFO)
         elif stat.S_ISSOCK(self.mode):
-            if not sys.platform.startswith('cygwin'):
+            try:
                 os.mknod(path, 0600 | stat.S_IFSOCK)
-            else:
-                s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-                s.bind(path)
+            except OSError, e:
+                if e.errno == errno.EINVAL:
+                    s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+                    s.bind(path)
+                else:
+                    raise
         elif stat.S_ISLNK(self.mode):
             assert(self._recognized_file_type())
             if self.symlink_target and create_symlinks:
