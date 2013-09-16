@@ -466,7 +466,7 @@ class Metadata:
                         acl = posix1e.ACL(filedef=path)
                         self.posix1e_acl.extend([acl, acl])
             except EnvironmentError, e:
-                if e.errno != errno.EOPNOTSUPP:
+                if e.errno not in (errno.EOPNOTSUPP, errno.ENOSYS):
                     raise
 
     def _same_posix1e_acl(self, other):
