@@ -489,6 +489,7 @@ class Metadata:
             return None
 
     def _load_posix1e_acl_rec(self, port):
+        if not posix1e: return
         data = vint.read_bvec(port)
         acl_reps = vint.unpack('ssss', data)
         if acl_reps[2] == '':
