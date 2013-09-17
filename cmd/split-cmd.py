@@ -5,9 +5,9 @@ from bup.helpers import *
 
 
 optspec = """
-bup split [-t] [-c] [-n name] OPTIONS [filenames...]
-bup split -b OPTIONS [filenames...]
-bup split <--noop [--copy]|--copy>  OPTIONS [filenames...]
+bup split [-t] [-c] [-n name] OPTIONS [--git-ids | filenames...]
+bup split -b OPTIONS [--git-ids | filenames...]
+bup split <--noop [--copy]|--copy>  OPTIONS [--git-ids | filenames...]
 --
  Modes:
 b,blobs    output a series of blob ids.  Implies --fanout=0.
