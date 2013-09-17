@@ -484,7 +484,7 @@ static uint64_t htonll(uint64_t value)
 
 static PyObject *write_idx(PyObject *self, PyObject *args)
 {
-    const char *filename = NULL;
+    char *filename = NULL;
     PyObject *idx = NULL;
     PyObject *part;
     unsigned char *fmap = NULL;
