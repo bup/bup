@@ -199,7 +199,6 @@ class Metadata:
     def _add_common(self, path, st):
         self.uid = st.st_uid
         self.gid = st.st_gid
-        self.rdev = st.st_rdev
         self.atime = st.st_atime
         self.mtime = st.st_mtime
         self.ctime = st.st_ctime
@@ -211,6 +210,14 @@ class Metadata:
         if entry:
             self.group = entry.gr_name
         self.mode = st.st_mode
+        # Only collect st_rdev if we might need it for a mknod()
+        # during restore.  On some platforms (i.e. kFreeBSD), it isn't
+        # stable for other file types.  For example "cp -a" will
+        # change it for a plain file.
+        if stat.S_ISCHR(st.st_mode) or stat.S_ISBLK(st.st_mode):
+            self.rdev = st.st_rdev
+        else:
+            self.rdev = 0
 
     def _same_common(self, other):
         """Return true or false to indicate similarity in the hardlink sense."""
