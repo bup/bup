@@ -166,7 +166,7 @@ _rec_tag_path = 1
 _rec_tag_common = 2           # times, user, group, type, perms, etc.
 _rec_tag_symlink_target = 3
 _rec_tag_posix1e_acl = 4      # getfacl(1), setfacl(1), etc.
-_rec_tag_nfsv4_acl = 5        # intended to supplant posix1e acls?
+_rec_tag_nfsv4_acl = 5        # intended to supplant posix1e? (unimplemented)
 _rec_tag_linux_attr = 6       # lsattr(1) chattr(1)
 _rec_tag_linux_xattr = 7      # getfattr(1) setfattr(1)
 _rec_tag_hardlink_target = 8 # hard link target path
@@ -705,8 +705,6 @@ class Metadata:
                     result._load_hardlink_target_rec(port)
                 elif tag == _rec_tag_posix1e_acl:
                     result._load_posix1e_acl_rec(port)
-                elif tag == _rec_tag_nfsv4_acl:
-                    result._load_nfsv4_acl_rec(port)
                 elif tag == _rec_tag_linux_attr:
                     result._load_linux_attr_rec(port)
                 elif tag == _rec_tag_linux_xattr:
