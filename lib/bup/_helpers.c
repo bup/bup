@@ -2,8 +2,6 @@
 #define PY_SSIZE_T_CLEAN 1
 #undef NDEBUG
 #include "../../config/config.h"
-#include "bupsplit.h"
-#include <Python.h>
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -29,6 +27,9 @@
 #ifdef HAVE_SYS_IOCTL_H
 #include <sys/ioctl.h>
 #endif
+
+#include "bupsplit.h"
+#include <Python.h>
 
 #if defined(FS_IOC_GETFLAGS) && defined(FS_IOC_SETFLAGS)
 #define BUP_HAVE_FILE_ATTRS 1
