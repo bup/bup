@@ -2,13 +2,11 @@
 
 bup_find_prog()
 {
+    # Prints prog path to stdout or nothing.
     local name="$1" result="$2"
     TLOGN "checking for $name"
     if ! [ "$result" ]; then
         result=`acLookFor "$name"`
-        if [ -z "$result" ]; then
-            AC_FAIL "\nERROR: unable to find $name"
-        fi
     fi
     TLOG " ($result)"
     echo "$result"
@@ -25,7 +23,14 @@ if ! AC_PROG_CC; then
     exit 1
 fi
 
-MAKE=`bup_find_prog make $MAKE`
+MAKE="$(bup_find_prog make $MAKE)"
+if test -z "$MAKE"; then
+    MAKE="$(bup_find_prog gmake "$GMAKE")"
+fi
+
+if test -z "$MAKE"; then
+    AC_FAIL "ERROR: unable to find make"
+fi
 
 if ! ($MAKE --version | grep "GNU Make"); then
     AC_FAIL "ERROR: $MAKE is not GNU Make"
@@ -37,8 +42,13 @@ if [ -z "$MAKE_VERSION" ]; then
 fi
 expr "$MAKE_VERSION" '>=' '3.81' || AC_FAIL "ERROR: $MAKE must be >= version 3.81"
 
-bup_find_prog python ''
-bup_find_prog git ''
+if test -z "$(bup_find_prog python '')"; then
+    AC_FAIL "ERROR: unable to find python"
+fi
+
+if test -z "$(bup_find_prog git '')"; then
+    AC_FAIL "ERROR: unable to find git"
+fi
 
 # For stat.
 AC_CHECK_HEADERS sys/stat.h
