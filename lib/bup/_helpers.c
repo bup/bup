@@ -2,6 +2,11 @@
 #define PY_SSIZE_T_CLEAN 1
 #undef NDEBUG
 #include "../../config/config.h"
+
+// According to Python, its header has to go first:
+//   http://docs.python.org/2/c-api/intro.html#include-files
+#include <Python.h>
+
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -29,7 +34,6 @@
 #endif
 
 #include "bupsplit.h"
-#include <Python.h>
 
 #if defined(FS_IOC_GETFLAGS) && defined(FS_IOC_SETFLAGS)
 #define BUP_HAVE_FILE_ATTRS 1
