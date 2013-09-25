@@ -5,22 +5,25 @@
   <meta http-equiv="Content-Style-Type" content="text/css" />
   <meta name="generator" content="pandoc" />
   <meta name="author" content="Avery Pennarun apenwarr@gmail.com" />
-  <title>bup-restore(1) Bup 0.25-rc2</title>
+  <meta name="date" content="2013-09-22" />
+  <title>bup-restore(1) Bup 0.25-rc2-36-g81ad1e6</title>
+  <style type="text/css">code{white-space: pre;}</style>
 </head>
 <body>
 <div id="header">
-<h1 class="title">bup-restore(1) Bup</h1>
+<h1 class="title">bup-restore(1) Bup 0.25-rc2-36-g81ad1e6</h1>
 <h2 class="author">Avery Pennarun <script type="text/javascript">
                    <!--
                    h='&#x67;&#x6d;&#x61;&#x69;&#108;&#46;&#x63;&#x6f;&#x6d;';a='&#64;';n='&#x61;&#112;&#x65;&#110;&#x77;&#x61;&#114;&#114;';e=n+a+h;
-                   document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'">'+'<code>'+e+'</code>'+'<\/'+'a'+'>');
+                   document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'">'+e+'<\/'+'a'+'>');
                    // -->
                    </script><noscript>&#x61;&#112;&#x65;&#110;&#x77;&#x61;&#114;&#114;&#32;&#x61;&#116;&#32;&#x67;&#x6d;&#x61;&#x69;&#108;&#32;&#100;&#x6f;&#116;&#32;&#x63;&#x6f;&#x6d;</noscript></h2>
+<h3 class="date">2013-09-22</h3>
 </div>
 <h1 id="name">NAME</h1>
 <p>bup-restore - extract files from a backup set</p>
 <h1 id="synopsis">SYNOPSIS</h1>
-<p>bup restore [--outdir=<em>outdir</em>] [--exclude-rx <em>pattern</em>] [-v] [-q] &lt;paths...&gt;</p>
+<p>bup restore [--outdir=<em>outdir</em>][\--exclude-rx *pattern*] [-v][-q] &lt;paths...&gt;</p>
 <h1 id="description">DESCRIPTION</h1>
 <p><code>bup restore</code> extracts files from a backup set (created with <code>bup-save</code>(1)) to the local filesystem.</p>
 <p>The specified <em>paths</em> are of the form /<em>branch</em>/<em>revision</em>/<em>some/where</em>. The components of the path are as follows:</p>
@@ -38,7 +41,7 @@
 <p>If <em>some/where</em> names a directory, <code>bup restore</code> will restore that directory and then recursively restore its contents.</p>
 <p>If <em>some/where</em> names a directory and ends with a slash (ie. path/to/dir/), <code>bup restore</code> will restore the children of that directory directly to the current directory (or the <code>--outdir</code>). If <em>some/where</em> does not end in a slash, the children will be restored to a subdirectory of the current directory.</p>
 <p>If <em>some/where</em> names a directory and ends in '/.' (ie. path/to/dir/.), <code>bup restore</code> will do exactly what it would have done for path/to/dir, and then restore <em>dir</em>'s metadata to the current directory (or the <code>--outdir</code>). See the EXAMPLES section.</p>
-<p>Whenever path metadata is available, <code>bup restore</code> will attempt to restore it. When restoring ownership, bup implements tar/rsync-like semantics. It will not try to restore the user unless running as root, and it will fall back to the numeric uid or gid whenever the metadata contains a user or group name that doesn't exist on the current system. The use of user and group names can be disabled via <code>--numeric-ids</code> (which can be important when restoring a chroot, for example), and as a special case, a uid or gid of 0 will never be remapped by name.</p>
+<p>Whenever path metadata is available, <code>bup restore</code> will attempt to restore it. When restoring ownership, bup implements tar/rsync-like semantics. It will not try to restore the user unless running as root, and it will fall back to the numeric uid or gid whenever the metadata contains a user or group name that doesn't exist on the current system. The use of user and group names can be disabled via <code>--numeric-ids</code> (which can be important when restoring a chroot, for example), and as a special case, a uid or gid of 0 will never be remapped by name. Additionally, some systems don't allow setting a uid/gid that doesn't correspond with a known user/group. On those systems, bup will log an error for each relevant path.</p>
 <p>Hardlinks will also be restored when possible, but at least currently, no links will be made to targets outside the restore tree, and if the restore tree spans a different arrangement of filesystems from the save tree, some hardlink sets may not be completely restored.</p>
 <p>Also note that changing hardlink sets on disk between index and save may produce unexpected results. With the current implementation, bup will attempt to recreate any given hardlink set as it existed at index time, even if all of the files in the set weren't still hardlinked (but were otherwise identical) at save time.</p>
 <p>Note that during the restoration process, access to data within the restore tree may be more permissive than it was in the original source. Unless security is irrelevant, you must restore to a private subdirectory, and then move the resulting tree to its final position. See the EXAMPLES section for a demonstration.</p>

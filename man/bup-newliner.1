@@ -1,7 +1,8 @@
-.TH bup-newliner 1 "2013\[en]07\[en]31" "Bup 0.25-rc2"
+.TH bup\-newliner 1 "2013\-09\-22" "Bup 0.25\-rc2\-36\-g81ad1e6"
 .SH NAME
 .PP
-bup-newliner - make sure progress messages don\[aq]t overlap with output
+bup\-newliner \- make sure progress messages don\[aq]t overlap with
+output
 .SH SYNOPSIS
 .PP
 <any command> 2>&1 | bup newliner
@@ -13,10 +14,10 @@ program.
 .PP
 Progress messages emitted by bup (and some other tools) are of the form
 "Message ### content\\r", that is, a status message containing a
-variable-length number, followed by a carriage return character and no
+variable\-length number, followed by a carriage return character and no
 newline.
 If these messages are printed more than once, they overwrite each other,
-so what the user sees is a single line with a continually-updating
+so what the user sees is a single line with a continually\-updating
 number.
 .PP
 This works fine until some other message is printed.

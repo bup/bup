@@ -5,22 +5,25 @@
   <meta http-equiv="Content-Style-Type" content="text/css" />
   <meta name="generator" content="pandoc" />
   <meta name="author" content="Avery Pennarun apenwarr@gmail.com" />
-  <title>bup-random(1) Bup 0.25-rc2</title>
+  <meta name="date" content="2013-09-22" />
+  <title>bup-random(1) Bup 0.25-rc2-36-g81ad1e6</title>
+  <style type="text/css">code{white-space: pre;}</style>
 </head>
 <body>
 <div id="header">
-<h1 class="title">bup-random(1) Bup</h1>
+<h1 class="title">bup-random(1) Bup 0.25-rc2-36-g81ad1e6</h1>
 <h2 class="author">Avery Pennarun <script type="text/javascript">
                    <!--
                    h='&#x67;&#x6d;&#x61;&#x69;&#108;&#46;&#x63;&#x6f;&#x6d;';a='&#64;';n='&#x61;&#112;&#x65;&#110;&#x77;&#x61;&#114;&#114;';e=n+a+h;
-                   document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'">'+'<code>'+e+'</code>'+'<\/'+'a'+'>');
+                   document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'">'+e+'<\/'+'a'+'>');
                    // -->
                    </script><noscript>&#x61;&#112;&#x65;&#110;&#x77;&#x61;&#114;&#114;&#32;&#x61;&#116;&#32;&#x67;&#x6d;&#x61;&#x69;&#108;&#32;&#100;&#x6f;&#116;&#32;&#x63;&#x6f;&#x6d;</noscript></h2>
+<h3 class="date">2013-09-22</h3>
 </div>
 <h1 id="name">NAME</h1>
 <p>bup-random - generate a stream of random output</p>
 <h1 id="synopsis">SYNOPSIS</h1>
-<p>bup random [-S seed] [-fv] &lt;numbytes&gt;</p>
+<p>bup random [-S seed][-fv] &lt;numbytes&gt;</p>
 <h1 id="description">DESCRIPTION</h1>
 <p><code>bup random</code> produces a stream of pseudorandom output bytes to stdout. Note: the bytes are <em>not</em> generated using a cryptographic algorithm and should never be used for security.</p>
 <p>Note that the stream of random bytes will be identical every time <code>bup random</code> is run, unless you provide a different <code>seed</code> value. This is intentional: the purpose of this program is to be able to run repeatable tests on large amounts of data, so we want identical data every time.</p>

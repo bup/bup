@@ -1,15 +1,15 @@
-.TH bup-server 1 "2013\[en]07\[en]31" "Bup 0.25-rc2"
+.TH bup\-server 1 "2013\-09\-22" "Bup 0.25\-rc2\-36\-g81ad1e6"
 .SH NAME
 .PP
-bup-server - the server side of the bup client-server relationship
+bup\-server \- the server side of the bup client\-server relationship
 .SH SYNOPSIS
 .PP
 bup server
 .SH DESCRIPTION
 .PP
 \f[C]bup\ server\f[] is the server side of a remote bup session.
-If you use \f[C]bup-split\f[](1) or \f[C]bup-save\f[](1) with the
-\f[C]-r\f[] option, they will ssh to the remote server and run
+If you use \f[C]bup\-split\f[](1) or \f[C]bup\-save\f[](1) with the
+\f[C]\-r\f[] option, they will ssh to the remote server and run
 \f[C]bup\ server\f[] to receive the transmitted objects.
 .PP
 There is normally no reason to run \f[C]bup\ server\f[] yourself.
@@ -21,7 +21,7 @@ files in its repository.
 If any object already exists, it tells the client about the idx file it
 was found in, allowing the client to download that idx and avoid sending
 duplicate data.
-This is \f[C]bup-server\f[]\[aq]s default mode.
+This is \f[C]bup\-server\f[]\[aq]s default mode.
 .RS
 .RE
 .TP
@@ -35,14 +35,14 @@ This mode is useful on low powered server hardware (ie router/slow NAS).
 .RE
 .SH FILES
 .TP
-.B $BUP_DIR/bup-dumb-server
+.B $BUP_DIR/bup\-dumb\-server
 Activate dumb server mode, as discussed above.
 This file is not created by default in new repositories.
 .RS
 .RE
 .SH SEE ALSO
 .PP
-\f[C]bup-save\f[](1), \f[C]bup-split\f[](1)
+\f[C]bup\-save\f[](1), \f[C]bup\-split\f[](1)
 .SH BUP
 .PP
 Part of the \f[C]bup\f[](1) suite.

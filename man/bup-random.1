@@ -1,10 +1,10 @@
-.TH bup-random 1 "2013\[en]07\[en]31" "Bup 0.25-rc2"
+.TH bup\-random 1 "2013\-09\-22" "Bup 0.25\-rc2\-36\-g81ad1e6"
 .SH NAME
 .PP
-bup-random - generate a stream of random output
+bup\-random \- generate a stream of random output
 .SH SYNOPSIS
 .PP
-bup random [-S seed] [-fv] <numbytes>
+bup random [\-S seed][\-fv] <numbytes>
 .SH DESCRIPTION
 .PP
 \f[C]bup\ random\f[] produces a stream of pseudorandom output bytes to
@@ -32,7 +32,7 @@ indicate kilobytes, megabytes, or gigabytes, respectively.
 .RS
 .RE
 .TP
-.B -S, --seed=\f[I]seed\f[]
+.B \-S, \-\-seed=\f[I]seed\f[]
 use the given value to seed the pseudorandom number generator.
 The generated output stream will be identical for every stream seeded
 with the same value.
@@ -41,14 +41,14 @@ A seed value of 0 is equivalent to 1.
 .RS
 .RE
 .TP
-.B -f, --force
+.B \-f, \-\-force
 generate output even if stdout is a tty.
-(Generating random data to a tty is generally considered ill-advised,
+(Generating random data to a tty is generally considered ill\-advised,
 but you can do if you really want.)
 .RS
 .RE
 .TP
-.B -v, --verbose
+.B \-v, \-\-verbose
 print a progress message showing the number of bytes that has been
 output so far.
 .RS
@@ -58,13 +58,13 @@ output so far.
 .nf
 \f[C]
 $\ bup\ random\ 1k\ |\ sha1sum
-2108c55d0a2687c8dacf9192677c58437a55db71\ \ -
+2108c55d0a2687c8dacf9192677c58437a55db71\ \ \-
 
-$\ bup\ random\ -S1\ 1k\ |\ sha1sum
-2108c55d0a2687c8dacf9192677c58437a55db71\ \ -
+$\ bup\ random\ \-S1\ 1k\ |\ sha1sum
+2108c55d0a2687c8dacf9192677c58437a55db71\ \ \-
 
-$\ bup\ random\ -S2\ 1k\ |\ sha1sum
-f71acb90e135d98dad7efc136e8d2cc30573e71a\ \ -
+$\ bup\ random\ \-S2\ 1k\ |\ sha1sum
+f71acb90e135d98dad7efc136e8d2cc30573e71a\ \ \-
 
 $\ time\ bup\ random\ 1G\ >/dev/null
 Random:\ 1024\ Mbytes,\ done.
@@ -73,7 +73,7 @@ real\ \ \ 0m4.261s
 user\ \ \ 0m4.048s
 sys\ \ \ \ 0m0.172s
 
-$\ bup\ random\ 1G\ |\ bup\ split\ -t\ --bench
+$\ bup\ random\ 1G\ |\ bup\ split\ \-t\ \-\-bench
 Random:\ 1024\ Mbytes,\ done.
 bup:\ 1048576.00kbytes\ in\ 18.59\ secs\ =\ 56417.78\ kbytes/sec
 1092599b9c7b2909652ef1e6edac0796bfbfc573

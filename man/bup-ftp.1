@@ -1,19 +1,19 @@
-.TH bup-ftp 1 "2013\[en]07\[en]31" "Bup 0.25-rc2"
+.TH bup\-ftp 1 "2013\-09\-22" "Bup 0.25\-rc2\-36\-g81ad1e6"
 .SH NAME
 .PP
-bup-ftp - ftp-like client for navigating bup repositories
+bup\-ftp \- ftp\-like client for navigating bup repositories
 .SH SYNOPSIS
 .PP
 bup ftp
 .SH DESCRIPTION
 .PP
-\f[C]bup\ ftp\f[] is a command-line tool for navigating bup
+\f[C]bup\ ftp\f[] is a command\-line tool for navigating bup
 repositories.
 It has commands similar to the Unix \f[C]ftp\f[](1) command.
-The file hierarchy is the same as that shown by \f[C]bup-fuse\f[](1) and
-\f[C]bup-ls\f[](1).
+The file hierarchy is the same as that shown by \f[C]bup\-fuse\f[](1)
+and \f[C]bup\-ls\f[](1).
 .PP
-Note: if your system has the python-readline library installed, you can
+Note: if your system has the python\-readline library installed, you can
 use the <tab> key to complete filenames while navigating your backup
 data.
 This will save you a lot of typing.
@@ -21,13 +21,13 @@ This will save you a lot of typing.
 .PP
 The following commands are available inside \f[C]bup\ ftp\f[]:
 .TP
-.B ls [-s] [-a] [\f[I]path\f[]]
+.B ls [\-s][\-a] [\f[I]path\f[]]
 print the contents of a directory.
 If no path argument is given, the current directory\[aq]s contents are
 listed.
-If -a is given, also include hidden files (files which start with a
+If \-a is given, also include hidden files (files which start with a
 \f[C]\&.\f[] character).
-If -s is given, each file is displayed with its hash from the bup
+If \-s is given, each file is displayed with its hash from the bup
 archive to its left.
 .RS
 .RE
@@ -82,7 +82,7 @@ mybackup/\ \ \ \ yourbackup/
 
 bup>\ cd\ mybackup/
 bup>\ ls
-2010-02-05-185507\@\ \ \ 2010-02-05-185508\@\ \ \ \ latest\@
+2010\-02\-05\-185507\@\ \ \ 2010\-02\-05\-185508\@\ \ \ \ latest\@
 
 bup>\ cd\ latest/
 bup>\ ls
@@ -95,8 +95,8 @@ bup>\ quit
 .fi
 .SH SEE ALSO
 .PP
-\f[C]bup-fuse\f[](1), \f[C]bup-ls\f[](1), \f[C]bup-save\f[](1),
-\f[C]bup-restore\f[](1)
+\f[C]bup\-fuse\f[](1), \f[C]bup\-ls\f[](1), \f[C]bup\-save\f[](1),
+\f[C]bup\-restore\f[](1)
 .SH BUP
 .PP
 Part of the \f[C]bup\f[](1) suite.

@@ -1,7 +1,7 @@
-.TH bup-on 1 "2013\[en]07\[en]31" "Bup 0.25-rc2"
+.TH bup\-on 1 "2013\-09\-22" "Bup 0.25\-rc2\-36\-g81ad1e6"
 .SH NAME
 .PP
-bup-on - run a bup server locally and client remotely
+bup\-on \- run a bup server locally and client remotely
 .SH SYNOPSIS
 .PP
 bup on <hostname> index ...
@@ -15,15 +15,15 @@ bup on <hostname> split ...
 It runs a bup server on the local machine, so that commands like
 \f[C]bup\ save\f[] on the remote machine can back up to the local
 machine.
-(You don\[aq]t need to provide a \f[C]--remote\f[] option to
+(You don\[aq]t need to provide a \f[C]\-\-remote\f[] option to
 \f[C]bup\ save\f[] in order for this to work.)
 .PP
-See \f[C]bup-index\f[](1), \f[C]bup-save\f[](1), and so on for details
+See \f[C]bup\-index\f[](1), \f[C]bup\-save\f[](1), and so on for details
 of how each subcommand works.
 .PP
 This \[aq]reverse mode\[aq] operation is useful when the machine being
 backed up isn\[aq]t supposed to be able to ssh into the backup server.
-For example, your backup server can be hidden behind a one-way firewall
+For example, your backup server can be hidden behind a one\-way firewall
 on a private or dynamic IP address; using an ssh key, it can be
 authorized to ssh into each of your important machines.
 After connecting to each destination machine, it initiates a backup,
@@ -38,7 +38,7 @@ expensive) computer in your basement.
 \f[C]
 #\ First\ index\ the\ files\ on\ the\ remote\ server
 
-$\ bup\ on\ myserver\ index\ -vux\ /etc
+$\ bup\ on\ myserver\ index\ \-vux\ /etc
 bup\ server:\ reading\ from\ stdin.
 Indexing:\ 2465,\ done.
 bup:\ merging\ indexes\ (186668/186668),\ done.
@@ -47,9 +47,9 @@ bup\ server:\ done
 #\ Now\ save\ the\ files\ from\ the\ remote\ server\ to\ the
 #\ local\ $BUP_DIR
 
-$\ bup\ on\ myserver\ save\ -n\ myserver-backup\ /etc
+$\ bup\ on\ myserver\ save\ \-n\ myserver\-backup\ /etc
 bup\ server:\ reading\ from\ stdin.
-bup\ server:\ command:\ \[aq]list-indexes\[aq]
+bup\ server:\ command:\ \[aq]list\-indexes\[aq]
 PackIdxList:\ using\ 7\ indexes.
 Saving:\ 100.00%\ (241/241k,\ 648/648\ files),\ done.\ \ \ \ 
 bup\ server:\ received\ 55\ objects.
@@ -60,7 +60,7 @@ bup\ server:\ done
 #\ Now\ we\ can\ look\ at\ the\ resulting\ repo\ on\ the\ local
 #\ machine
 
-$\ bup\ ftp\ \[aq]cat\ /myserver-backup/latest/etc/passwd\[aq]
+$\ bup\ ftp\ \[aq]cat\ /myserver\-backup/latest/etc/passwd\[aq]
 root:x:0:0:root:/root:/bin/bash
 daemon:x:1:1:daemon:/usr/sbin:/bin/sh
 bin:x:2:2:bin:/bin:/bin/sh
@@ -71,7 +71,7 @@ sync:x:4:65534:sync:/bin:/bin/sync
 .fi
 .SH SEE ALSO
 .PP
-\f[C]bup-index\f[](1), \f[C]bup-save\f[](1), \f[C]bup-split\f[](1)
+\f[C]bup\-index\f[](1), \f[C]bup\-save\f[](1), \f[C]bup\-split\f[](1)
 .SH BUP
 .PP
 Part of the \f[C]bup\f[](1) suite.

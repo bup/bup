@@ -1,21 +1,21 @@
-.TH bup-import-rsnapshot 1 "2013\[en]07\[en]31" "Bup 0.25-rc2"
+.TH bup\-import\-rsnapshot 1 "2013\-09\-22" "Bup 0.25\-rc2\-36\-g81ad1e6"
 .SH NAME
 .PP
-bup-import-rsnapshot - import a rsnapshot archive
+bup\-import\-rsnapshot \- import a rsnapshot archive
 .SH SYNOPSIS
 .PP
-bup import-rsnapshot [-n] <path to snapshot_root> [<backuptarget>]
+bup import\-rsnapshot [\-n] <path to snapshot_root> [<backuptarget>]
 .SH SYNOPSIS
 .PP
-\f[C]bup\ import-rsnapshot\f[] imports an rsnapshot archive.
+\f[C]bup\ import\-rsnapshot\f[] imports an rsnapshot archive.
 The timestamps for the backups are preserved and the path to the
 rsnapshot archive is stripped from the paths.
 .PP
-\f[C]bup\ import-rsnapshot\f[] either imports the whole archive or
+\f[C]bup\ import\-rsnapshot\f[] either imports the whole archive or
 imports all backups only for a given backuptarget.
 .SH OPTIONS
 .TP
-.B -n, --dry-run
+.B \-n, \-\-dry\-run
 don\[aq]t do anything just print out what would be done
 .RS
 .RE
@@ -23,9 +23,9 @@ don\[aq]t do anything just print out what would be done
 .IP
 .nf
 \f[C]
-$\ bup\ import-rsnapshot\ /.snapshots
+$\ bup\ import\-rsnapshot\ /.snapshots
 
-$\ bup\ import-rsnapshot\ /.snapshots\ host1
+$\ bup\ import\-rsnapshot\ /.snapshots\ host1
 \f[]
 .fi
 .SH BUP
