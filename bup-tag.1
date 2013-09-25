@@ -1,19 +1,19 @@
-.TH bup-tag 1 "2013\[en]07\[en]31" "Bup 0.25-rc2"
+.TH bup\-tag 1 "2013\-09\-22" "Bup 0.25\-rc2\-36\-g81ad1e6"
 .SH NAME
 .PP
-bup-tag - tag a commit in the bup repository
+bup\-tag \- tag a commit in the bup repository
 .SH SYNOPSIS
 .PP
 bup tag
 .PP
 bup tag <tag name> <committish>
 .PP
-bup tag -d <tag name>
+bup tag \-d <tag name>
 .SH DESCRIPTION
 .PP
 \f[C]bup\ tag\f[] lists, creates or deletes a tag in the bup repository.
 .PP
-A tag is an easy way to retreive a specific commit.
+A tag is an easy way to retrieve a specific commit.
 It can be used to mark a specific backup for easier retrieval later.
 .PP
 When called without any arguments, the command lists all tags that can
@@ -21,7 +21,7 @@ be found in the repository.
 When called with a tag name and a commit ID or ref name, it creates a
 new tag with the given name, if it doesn\[aq]t already exist, that
 points to the commit given in the second argument.
-When called with \[aq]-d\[aq] and a tag name, it removes the given tag,
+When called with \[aq]\-d\[aq] and a tag name, it removes the given tag,
 if it exists.
 .PP
 bup exposes the contents of backups with current tags, via any command
@@ -39,7 +39,7 @@ be deleted, the contents of the tagged backup will be available through
 /.tag/important as long as the tag is not deleted.
 .SH OPTIONS
 .TP
-.B -d, --delete
+.B \-d, \-\-delete
 delete a tag
 .RS
 .RE
@@ -47,21 +47,21 @@ delete a tag
 .IP
 .nf
 \f[C]
-$\ bup\ tag\ new-puppet-version\ hostx-backup
+$\ bup\ tag\ new\-puppet\-version\ hostx\-backup
 
 $\ bup\ tag
-new-puppet-version
+new\-puppet\-version
 
-$\ bup\ ftp\ "ls\ /.tag/new-puppet-version"
+$\ bup\ ftp\ "ls\ /.tag/new\-puppet\-version"
 files..
 
-$\ bup\ tag\ -d\ new-puppet-version
+$\ bup\ tag\ \-d\ new\-puppet\-version
 \f[]
 .fi
 .SH SEE ALSO
 .PP
-\f[C]bup-save\f[](1), \f[C]bup-split\f[](1), \f[C]bup-ftp\f[](1),
-\f[C]bup-fuse\f[](1), \f[C]bup-web\f[](1)
+\f[C]bup\-save\f[](1), \f[C]bup\-split\f[](1), \f[C]bup\-ftp\f[](1),
+\f[C]bup\-fuse\f[](1), \f[C]bup\-web\f[](1)
 .SH BUP
 .PP
 Part of the \f[C]bup\f[](1) suite.

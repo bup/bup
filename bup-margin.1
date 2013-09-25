@@ -1,7 +1,7 @@
-.TH bup-margin 1 "2013\[en]07\[en]31" "Bup 0.25-rc2"
+.TH bup\-margin 1 "2013\-09\-22" "Bup 0.25\-rc2\-36\-g81ad1e6"
 .SH NAME
 .PP
-bup-margin - figure out your deduplication safety margin
+bup\-margin \- figure out your deduplication safety margin
 .SH SYNOPSIS
 .PP
 bup margin [options...]
@@ -10,27 +10,27 @@ bup margin [options...]
 \f[C]bup\ margin\f[] iterates through all objects in your bup
 repository, calculating the largest number of prefix bits shared between
 any two entries.
-This number, \f[C]n\f[], identifies the longest subset of SHA-1 you
+This number, \f[C]n\f[], identifies the longest subset of SHA\-1 you
 could use and still encounter a collision between your object ids.
 .PP
 For example, one system that was tested had a collection of 11 million
 objects (70 GB), and \f[C]bup\ margin\f[] returned 45.
-That means a 46-bit hash would be sufficient to avoid all collisions
+That means a 46\-bit hash would be sufficient to avoid all collisions
 among that set of objects; each object in that repository could be
 uniquely identified by its first 46 bits.
 .PP
 The number of bits needed seems to increase by about 1 or 2 for every
 doubling of the number of objects.
-Since SHA-1 hashes have 160 bits, that leaves 115 bits of margin.
-Of course, because SHA-1 hashes are essentially random, it\[aq]s
+Since SHA\-1 hashes have 160 bits, that leaves 115 bits of margin.
+Of course, because SHA\-1 hashes are essentially random, it\[aq]s
 theoretically possible to use many more bits with far fewer objects.
 .PP
-If you\[aq]re paranoid about the possibility of SHA-1 collisions, you
+If you\[aq]re paranoid about the possibility of SHA\-1 collisions, you
 can monitor your repository by running \f[C]bup\ margin\f[] occasionally
 to see if you\[aq]re getting dangerously close to 160 bits.
 .SH OPTIONS
 .TP
-.B --predict
+.B \-\-predict
 Guess the offset into each index file where a particular object will
 appear, and report the maximum deviation of the correct answer from the
 guess.
@@ -38,9 +38,9 @@ This is potentially useful for tuning an interpolation search algorithm.
 .RS
 .RE
 .TP
-.B --ignore-midx
+.B \-\-ignore\-midx
 don\[aq]t use \f[C]\&.midx\f[] files, use only \f[C]\&.idx\f[] files.
-This is only really useful when used with \f[C]--predict\f[].
+This is only really useful when used with \f[C]\-\-predict\f[].
 .RS
 .RE
 .SH EXAMPLE
@@ -59,7 +59,7 @@ Everyone\ on\ earth\ could\ have\ 625878182\ data\ sets
 like\ yours,\ all\ in\ one\ repository,\ and\ we\ would
 expect\ 1\ object\ collision.
 
-$\ bup\ margin\ --predict
+$\ bup\ margin\ \-\-predict
 PackIdxList:\ using\ 1\ index.
 Reading\ indexes:\ 100.00%\ (1612581/1612581),\ done.
 915\ of\ 1612581\ (0.057%)\ 
@@ -67,7 +67,7 @@ Reading\ indexes:\ 100.00%\ (1612581/1612581),\ done.
 .fi
 .SH SEE ALSO
 .PP
-\f[C]bup-midx\f[](1), \f[C]bup-save\f[](1)
+\f[C]bup\-midx\f[](1), \f[C]bup\-save\f[](1)
 .SH BUP
 .PP
 Part of the \f[C]bup\f[](1) suite.

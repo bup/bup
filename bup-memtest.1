@@ -1,7 +1,7 @@
-.TH bup-memtest 1 "2013\[en]07\[en]31" "Bup 0.25-rc2"
+.TH bup\-memtest 1 "2013\-09\-22" "Bup 0.25\-rc2\-36\-g81ad1e6"
 .SH NAME
 .PP
-bup-memtest - test bup memory usage statistics
+bup\-memtest \- test bup memory usage statistics
 .SH SYNOPSIS
 .PP
 bup memtest [options...]
@@ -22,13 +22,13 @@ loaded from disk, and this is what causes an increase in the VmRSS
 column.
 .SH OPTIONS
 .TP
-.B -n, --number=\f[I]number\f[]
+.B \-n, \-\-number=\f[I]number\f[]
 set the number of objects to search for during each cycle (ie.
 before printing a line of output)
 .RS
 .RE
 .TP
-.B -c, --cycles=\f[I]cycles\f[]
+.B \-c, \-\-cycles=\f[I]cycles\f[]
 set the number of cycles (ie.
 the number of lines of output after the first).
 The first line of output is always 0 (ie.
@@ -36,14 +36,14 @@ the baseline before searching for any objects).
 .RS
 .RE
 .TP
-.B --ignore-midx
+.B \-\-ignore\-midx
 ignore any \f[C]\&.midx\f[] files created by \f[C]bup\ midx\f[].
 This allows you to compare memory performance with and without using
 midx.
 .RS
 .RE
 .TP
-.B --existing
+.B \-\-existing
 search for existing objects instead of searching for random nonexistent
 ones.
 This can greatly affect memory usage and performance.
@@ -59,7 +59,7 @@ made searching for existing objects much worse than before.
 .IP
 .nf
 \f[C]
-$\ bup\ memtest\ -n300\ -c5
+$\ bup\ memtest\ \-n300\ \-c5
 PackIdxList:\ using\ 1\ index.
 \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ VmSize\ \ \ \ \ \ VmRSS\ \ \ \ \ VmData\ \ \ \ \ \ VmStk\ 
 \ \ \ \ \ \ \ \ 0\ \ \ \ 20824\ kB\ \ \ \ 4528\ kB\ \ \ \ 1980\ kB\ \ \ \ \ \ 84\ kB\ 
@@ -69,7 +69,7 @@ PackIdxList:\ using\ 1\ index.
 \ \ \ \ \ 1200\ \ \ \ 20828\ kB\ \ \ \ 8736\ kB\ \ \ \ 1984\ kB\ \ \ \ \ \ 84\ kB\ 
 \ \ \ \ \ 1500\ \ \ \ 20828\ kB\ \ \ \ 9452\ kB\ \ \ \ 1984\ kB\ \ \ \ \ \ 84\ kB\ 
 
-$\ bup\ memtest\ -n300\ -c5\ --ignore-midx
+$\ bup\ memtest\ \-n300\ \-c5\ \-\-ignore\-midx
 PackIdxList:\ using\ 361\ indexes.
 \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ VmSize\ \ \ \ \ \ VmRSS\ \ \ \ \ VmData\ \ \ \ \ \ VmStk\ 
 \ \ \ \ \ \ \ \ 0\ \ \ \ 27444\ kB\ \ \ \ 6552\ kB\ \ \ \ 2516\ kB\ \ \ \ \ \ 84\ kB\ 
@@ -101,7 +101,7 @@ memory use.
 If you have memory problems you might be asked to send the output of
 \f[C]bup\ memtest\f[] to help diagnose the problems.
 .PP
-Tip: try using \f[C]bup\ midx\ -a\f[] or \f[C]bup\ midx\ -f\f[] to see
+Tip: try using \f[C]bup\ midx\ \-a\f[] or \f[C]bup\ midx\ \-f\f[] to see
 if it helps reduce your memory usage.
 .PP
 Trivia: index memory usage in bup (or git) is only really a problem when
@@ -121,7 +121,7 @@ bup, on the other hand, spends most of its time backing up files it
 hasn\[aq]t seen before, so its memory usage patterns are different.
 .SH SEE ALSO
 .PP
-\f[C]bup-midx\f[](1)
+\f[C]bup\-midx\f[](1)
 .SH BUP
 .PP
 Part of the \f[C]bup\f[](1) suite.

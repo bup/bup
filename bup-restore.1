@@ -1,15 +1,15 @@
-.TH bup-restore 1 "2013\[en]07\[en]31" "Bup 0.25-rc2"
+.TH bup\-restore 1 "2013\-09\-22" "Bup 0.25\-rc2\-36\-g81ad1e6"
 .SH NAME
 .PP
-bup-restore - extract files from a backup set
+bup\-restore \- extract files from a backup set
 .SH SYNOPSIS
 .PP
-bup restore [--outdir=\f[I]outdir\f[]] [--exclude-rx \f[I]pattern\f[]]
-[-v] [-q] <paths...>
+bup restore [\-\-outdir=\f[I]outdir\f[]][\\\-\-exclude\-rx *pattern*]
+[\-v][\-q] <paths...>
 .SH DESCRIPTION
 .PP
 \f[C]bup\ restore\f[] extracts files from a backup set (created with
-\f[C]bup-save\f[](1)) to the local filesystem.
+\f[C]bup\-save\f[](1)) to the local filesystem.
 .PP
 The specified \f[I]paths\f[] are of the form
 /\f[I]branch\f[]/\f[I]revision\f[]/\f[I]some/where\f[].
@@ -17,7 +17,7 @@ The components of the path are as follows:
 .TP
 .B branch
 the name of the backup set to restore from; this corresponds to the
-\f[C]--name\f[] (\f[C]-n\f[]) option to \f[C]bup\ save\f[].
+\f[C]\-\-name\f[] (\f[C]\-n\f[]) option to \f[C]bup\ save\f[].
 .RS
 .RE
 .TP
@@ -41,27 +41,30 @@ restore that directory and then recursively restore its contents.
 .PP
 If \f[I]some/where\f[] names a directory and ends with a slash (ie.
 path/to/dir/), \f[C]bup\ restore\f[] will restore the children of that
-directory directly to the current directory (or the \f[C]--outdir\f[]).
+directory directly to the current directory (or the
+\f[C]\-\-outdir\f[]).
 If \f[I]some/where\f[] does not end in a slash, the children will be
 restored to a subdirectory of the current directory.
 .PP
 If \f[I]some/where\f[] names a directory and ends in \[aq]/.\[aq] (ie.
-path/to/dir/.)
-, \f[C]bup\ restore\f[] will do exactly what it would have done for
-path/to/dir, and then restore \f[I]dir\f[]\[aq]s metadata to the current
-directory (or the \f[C]--outdir\f[]).
+path/to/dir/.), \f[C]bup\ restore\f[] will do exactly what it would have
+done for path/to/dir, and then restore \f[I]dir\f[]\[aq]s metadata to
+the current directory (or the \f[C]\-\-outdir\f[]).
 See the EXAMPLES section.
 .PP
 Whenever path metadata is available, \f[C]bup\ restore\f[] will attempt
 to restore it.
-When restoring ownership, bup implements tar/rsync-like semantics.
+When restoring ownership, bup implements tar/rsync\-like semantics.
 It will not try to restore the user unless running as root, and it will
 fall back to the numeric uid or gid whenever the metadata contains a
 user or group name that doesn\[aq]t exist on the current system.
 The use of user and group names can be disabled via
-\f[C]--numeric-ids\f[] (which can be important when restoring a chroot,
-for example), and as a special case, a uid or gid of 0 will never be
-remapped by name.
+\f[C]\-\-numeric\-ids\f[] (which can be important when restoring a
+chroot, for example), and as a special case, a uid or gid of 0 will
+never be remapped by name.
+Additionally, some systems don\[aq]t allow setting a uid/gid that
+doesn\[aq]t correspond with a known user/group.
+On those systems, bup will log an error for each relevant path.
 .PP
 Hardlinks will also be restored when possible, but at least currently,
 no links will be made to targets outside the restore tree, and if the
@@ -82,19 +85,18 @@ subdirectory, and then move the resulting tree to its final position.
 See the EXAMPLES section for a demonstration.
 .SH OPTIONS
 .TP
-.B -C, --outdir=\f[I]outdir\f[]
+.B \-C, \-\-outdir=\f[I]outdir\f[]
 create and change to directory \f[I]outdir\f[] before extracting the
 files.
 .RS
 .RE
 .TP
-.B --numeric-ids
-restore numeric IDs (user, group, etc.)
- rather than names.
+.B \-\-numeric\-ids
+restore numeric IDs (user, group, etc.) rather than names.
 .RS
 .RE
 .TP
-.B --exclude-rx=\f[I]pattern\f[]
+.B \-\-exclude\-rx=\f[I]pattern\f[]
 exclude any path matching \f[I]pattern\f[], which must be a Python
 regular expression (http://docs.python.org/library/re.html).
 The pattern will be compared against the full path rooted at the top of
@@ -114,24 +116,24 @@ named passwd had been saved as \[aq]/foo/latest/etc/passwd\[aq].
 .PP
 Examples:
 .IP \[bu] 2
-\[aq]/foo$\[aq] - exclude any file named foo
+\[aq]/foo$\[aq] \- exclude any file named foo
 .IP \[bu] 2
-\[aq]/foo/$\[aq] - exclude any directory named foo
+\[aq]/foo/$\[aq] \- exclude any directory named foo
 .IP \[bu] 2
-\[aq]/foo/.\[aq] - exclude the content of any directory named foo
+\[aq]/foo/.\[aq] \- exclude the content of any directory named foo
 .IP \[bu] 2
-\[aq]^/tmp/.\[aq] - exclude root-level /tmp\[aq]s content, but not /tmp
-itself
+\[aq]^/tmp/.\[aq] \- exclude root\-level /tmp\[aq]s content, but not
+/tmp itself
 .RE
 .TP
-.B -v, --verbose
+.B \-v, \-\-verbose
 increase log output.
 Given once, prints every directory as it is restored; given twice,
 prints every file and directory.
 .RS
 .RE
 .TP
-.B -q, --quiet
+.B \-q, \-\-quiet
 don\[aq]t show the progress meter.
 Normally, is stderr is a tty, a progress display is printed that shows
 the total number of files restored.
@@ -143,8 +145,8 @@ Create a simple test backup set:
 .IP
 .nf
 \f[C]
-$\ bup\ index\ -u\ /etc
-$\ bup\ save\ -n\ mybackup\ /etc/passwd\ /etc/profile
+$\ bup\ index\ \-u\ /etc
+$\ bup\ save\ \-n\ mybackup\ /etc/passwd\ /etc/profile
 \f[]
 .fi
 .PP
@@ -155,8 +157,8 @@ Restore just one file:
 $\ bup\ restore\ /mybackup/latest/etc/passwd
 Restoring:\ 1,\ done.
 
-$\ ls\ -l\ passwd
--rw-r--r--\ 1\ apenwarr\ apenwarr\ 1478\ 2010-09-08\ 03:06\ passwd
+$\ ls\ \-l\ passwd
+\-rw\-r\-\-r\-\-\ 1\ apenwarr\ apenwarr\ 1478\ 2010\-09\-08\ 03:06\ passwd
 \f[]
 .fi
 .PP
@@ -164,7 +166,7 @@ Restore etc to test (no trailing slash):
 .IP
 .nf
 \f[C]
-$\ bup\ restore\ -C\ test\ /mybackup/latest/etc
+$\ bup\ restore\ \-C\ test\ /mybackup/latest/etc
 Restoring:\ 3,\ done.
 
 $\ find\ test
@@ -179,7 +181,7 @@ Restore the contents of etc to test (trailing slash):
 .IP
 .nf
 \f[C]
-$\ bup\ restore\ -C\ test\ /mybackup/latest/etc/
+$\ bup\ restore\ \-C\ test\ /mybackup/latest/etc/
 Restoring:\ 2,\ done.
 
 $\ find\ test
@@ -194,7 +196,7 @@ Restore the contents of etc and etc\[aq]s metadata to test (trailing
 .IP
 .nf
 \f[C]
-$\ bup\ restore\ -C\ test\ /mybackup/latest/etc/.
+$\ bup\ restore\ \-C\ test\ /mybackup/latest/etc/.
 Restoring:\ 2,\ done.
 
 #\ At\ this\ point\ test\ and\ etc\[aq]s\ metadata\ will\ match.
@@ -209,20 +211,20 @@ Restore a tree without risk of unauthorized access:
 .IP
 .nf
 \f[C]
-#\ mkdir\ --mode\ 0700\ restore-tmp
+#\ mkdir\ \-\-mode\ 0700\ restore\-tmp
 
-#\ bup\ restore\ -C\ restore-tmp\ /somebackup/latest/foo
+#\ bup\ restore\ \-C\ restore\-tmp\ /somebackup/latest/foo
 Restoring:\ 42,\ done.
 
-#\ mv\ restore-tmp/foo\ somewhere
+#\ mv\ restore\-tmp/foo\ somewhere
 
-#\ rmdir\ restore-tmp
+#\ rmdir\ restore\-tmp
 \f[]
 .fi
 .SH SEE ALSO
 .PP
-\f[C]bup-save\f[](1), \f[C]bup-ftp\f[](1), \f[C]bup-fuse\f[](1),
-\f[C]bup-web\f[](1)
+\f[C]bup\-save\f[](1), \f[C]bup\-ftp\f[](1), \f[C]bup\-fuse\f[](1),
+\f[C]bup\-web\f[](1)
 .SH BUP
 .PP
 Part of the \f[C]bup\f[](1) suite.

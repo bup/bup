@@ -1,14 +1,14 @@
-.TH bup-join 1 "2013\[en]07\[en]31" "Bup 0.25-rc2"
+.TH bup\-join 1 "2013\-09\-22" "Bup 0.25\-rc2\-36\-g81ad1e6"
 .SH NAME
 .PP
-bup-join - concatenate files from a bup repository
+bup\-join \- concatenate files from a bup repository
 .SH SYNOPSIS
 .PP
-bup join [-r \f[I]host\f[]:\f[I]path\f[]] [refs or hashes...]
+bup join [\-r \f[I]host\f[]:\f[I]path\f[]][refs or hashes...]
 .SH DESCRIPTION
 .PP
 \f[C]bup\ join\f[] is roughly the opposite operation to
-\f[C]bup-split\f[](1).
+\f[C]bup\-split\f[](1).
 You can use it to retrieve the contents of a file from a local or remote
 bup repository.
 .PP
@@ -20,7 +20,7 @@ If no refs or hashes are given on the command line, \f[C]bup\ join\f[]
 reads them from stdin instead.
 .SH OPTIONS
 .TP
-.B -r, --remote=\f[I]host\f[]:\f[I]path\f[]
+.B \-r, \-\-remote=\f[I]host\f[]:\f[I]path\f[]
 Retrieves objects from the given remote repository instead of the local
 one.
 \f[I]path\f[] may be blank, in which case the default remote repository
@@ -36,20 +36,20 @@ file.
 .nf
 \f[C]
 #\ split\ and\ then\ rejoin\ a\ file\ using\ its\ tree\ id
-TREE=$(tar\ -cvf\ -\ /etc\ |\ bup\ split\ -t)
-bup\ join\ $TREE\ |\ tar\ -tf\ -
+TREE=$(tar\ \-cvf\ \-\ /etc\ |\ bup\ split\ \-t)
+bup\ join\ $TREE\ |\ tar\ \-tf\ \-
 
-#\ make\ two\ backups,\ then\ get\ the\ second-most-recent.
+#\ make\ two\ backups,\ then\ get\ the\ second\-most\-recent.
 #\ mybackup~1\ is\ git(1)\ notation\ for\ the\ second\ most
 #\ recent\ commit\ on\ the\ branch\ named\ mybackup.
-tar\ -cvf\ -\ /etc\ |\ bup\ split\ -n\ mybackup
-tar\ -cvf\ -\ /etc\ |\ bup\ split\ -n\ mybackup
-bup\ join\ mybackup~1\ |\ tar\ -tf\ -
+tar\ \-cvf\ \-\ /etc\ |\ bup\ split\ \-n\ mybackup
+tar\ \-cvf\ \-\ /etc\ |\ bup\ split\ \-n\ mybackup
+bup\ join\ mybackup~1\ |\ tar\ \-tf\ \-
 \f[]
 .fi
 .SH SEE ALSO
 .PP
-\f[C]bup-split\f[](1), \f[C]bup-save\f[](1), \f[C]ssh_config\f[](5)
+\f[C]bup\-split\f[](1), \f[C]bup\-save\f[](1), \f[C]ssh_config\f[](5)
 .SH BUP
 .PP
 Part of the \f[C]bup\f[](1) suite.

@@ -1,33 +1,33 @@
-.TH bup-midx 1 "2013\[en]07\[en]31" "Bup 0.25-rc2"
+.TH bup\-midx 1 "2013\-09\-22" "Bup 0.25\-rc2\-36\-g81ad1e6"
 .SH NAME
 .PP
-bup-midx - create a multi-index (\f[C]\&.midx\f[]) file from several
+bup\-midx \- create a multi\-index (\f[C]\&.midx\f[]) file from several
 \f[C]\&.idx\f[] files
 .SH SYNOPSIS
 .PP
-bup midx [-o \f[I]outfile\f[]] <-a|-f|\f[I]idxnames\f[]...>
+bup midx [\-o \f[I]outfile\f[]] <\-a|\-f|\f[I]idxnames\f[]...>
 .SH DESCRIPTION
 .PP
-\f[C]bup\ midx\f[] creates a multi-index (\f[C]\&.midx\f[]) file from
+\f[C]bup\ midx\f[] creates a multi\-index (\f[C]\&.midx\f[]) file from
 one or more git pack index (\f[C]\&.idx\f[]) files.
 .PP
 Note: you should no longer need to run this command by hand.
-It gets run automatically by \f[C]bup-save\f[](1) and similar commands.
+It gets run automatically by \f[C]bup\-save\f[](1) and similar commands.
 .SH OPTIONS
 .TP
-.B -o, --output=\f[I]filename.midx\f[]
+.B \-o, \-\-output=\f[I]filename.midx\f[]
 use the given output filename for the \f[C]\&.midx\f[] file.
-Default is auto-generated.
+Default is auto\-generated.
 .RS
 .RE
 .TP
-.B -a, --auto
+.B \-a, \-\-auto
 automatically generate new \f[C]\&.midx\f[] files for any
 \f[C]\&.idx\f[] files where it would be appropriate.
 .RS
 .RE
 .TP
-.B -f, --force
+.B \-f, \-\-force
 force generation of a single new \f[C]\&.midx\f[] file containing
 \f[I]all\f[] your \f[C]\&.idx\f[] files, even if other \f[C]\&.midx\f[]
 files already exist.
@@ -36,24 +36,25 @@ time to run.
 .RS
 .RE
 .TP
-.B --dir=\f[I]packdir\f[]
+.B \-\-dir=\f[I]packdir\f[]
 specify the directory containing the \f[C]\&.idx\f[]/\f[C]\&.midx\f[]
 files to work with.
-The default is $BUP_DIR/objects/pack and $BUP_DIR/indexcache/*.
+The default is
+\f[I]B\f[]\f[I]U\f[]\f[I]P\f[]~\f[I]D\f[]~\f[I]I\f[]\f[I]R\f[] / \f[I]o\f[]\f[I]b\f[]\f[I]j\f[]\f[I]e\f[]\f[I]c\f[]\f[I]t\f[]\f[I]s\f[] / \f[I]p\f[]\f[I]a\f[]\f[I]c\f[]\f[I]k\f[]\f[I]a\f[]\f[I]n\f[]\f[I]d\f[]BUP_DIR/indexcache/*.
 .RS
 .RE
 .TP
-.B --max-files
+.B \-\-max\-files
 maximum number of \f[C]\&.idx\f[] files to open at a time.
 You can use this if you have an especially small number of file
 descriptors available, so that midx can complete (though possibly
-non-optimally) even if it can\[aq]t open all your \f[C]\&.idx\f[] files
+non\-optimally) even if it can\[aq]t open all your \f[C]\&.idx\f[] files
 at once.
 The default value of this option should be fine for most people.
 .RS
 .RE
 .TP
-.B --check
+.B \-\-check
 validate a \f[C]\&.midx\f[] file by ensuring that all objects in its
 contained \f[C]\&.idx\f[] files exist inside the \f[C]\&.midx\f[].
 May be useful for debugging.
@@ -63,16 +64,16 @@ May be useful for debugging.
 .IP
 .nf
 \f[C]
-$\ bup\ midx\ -a
+$\ bup\ midx\ \-a
 Merging\ 21\ indexes\ (2278559\ objects).
 Table\ size:\ 524288\ (17\ bits)
 Reading\ indexes:\ 100.00%\ (2278559/2278559),\ done.
-midx-b66d7c9afc4396187218f2936a87b865cf342672.midx
+midx\-b66d7c9afc4396187218f2936a87b865cf342672.midx
 \f[]
 .fi
 .SH DISCUSSION
 .PP
-By default, bup uses git-formatted pack files, which consist of a pack
+By default, bup uses git\-formatted pack files, which consist of a pack
 file (containing objects) and an idx file (containing a sorted list of
 object names and their offsets in the .pack file).
 .PP
@@ -86,7 +87,7 @@ objects contained in all the .pack files it references.
 This list can be binary searched in about log2(m) steps, where m is the
 total number of objects.
 .PP
-To further speed up the search, midx files also have a variable-sized
+To further speed up the search, midx files also have a variable\-sized
 fanout table that reduces the first n steps of the binary search.
 With the help of this fanout table, bup can narrow down which page of
 the midx file a given object id would be in (if it exists) with a single
@@ -103,7 +104,7 @@ example, consecutive objects are often stored in the same pack, so we
 can search that one first using an MRU algorithm.)
 .SH SEE ALSO
 .PP
-\f[C]bup-save\f[](1), \f[C]bup-margin\f[](1), \f[C]bup-memtest\f[](1)
+\f[C]bup\-save\f[](1), \f[C]bup\-margin\f[](1), \f[C]bup\-memtest\f[](1)
 .SH BUP
 .PP
 Part of the \f[C]bup\f[](1) suite.
