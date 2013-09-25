@@ -5,22 +5,25 @@
   <meta http-equiv="Content-Style-Type" content="text/css" />
   <meta name="generator" content="pandoc" />
   <meta name="author" content="Brandon Low lostlogic@lostlogicx.com" />
-  <title>bup-bloom(1) Bup 0.25-rc2</title>
+  <meta name="date" content="2013-09-22" />
+  <title>bup-bloom(1) Bup 0.25-rc2-36-g81ad1e6</title>
+  <style type="text/css">code{white-space: pre;}</style>
 </head>
 <body>
 <div id="header">
-<h1 class="title">bup-bloom(1) Bup</h1>
+<h1 class="title">bup-bloom(1) Bup 0.25-rc2-36-g81ad1e6</h1>
 <h2 class="author">Brandon Low <script type="text/javascript">
                    <!--
                    h='&#108;&#x6f;&#x73;&#116;&#108;&#x6f;&#x67;&#x69;&#x63;&#120;&#46;&#x63;&#x6f;&#x6d;';a='&#64;';n='&#108;&#x6f;&#x73;&#116;&#108;&#x6f;&#x67;&#x69;&#x63;';e=n+a+h;
-                   document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'">'+'<code>'+e+'</code>'+'<\/'+'a'+'>');
+                   document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'">'+e+'<\/'+'a'+'>');
                    // -->
                    </script><noscript>&#108;&#x6f;&#x73;&#116;&#108;&#x6f;&#x67;&#x69;&#x63;&#32;&#x61;&#116;&#32;&#108;&#x6f;&#x73;&#116;&#108;&#x6f;&#x67;&#x69;&#x63;&#120;&#32;&#100;&#x6f;&#116;&#32;&#x63;&#x6f;&#x6d;</noscript></h2>
+<h3 class="date">2013-09-22</h3>
 </div>
 <h1 id="name">NAME</h1>
 <p>bup-bloom - generates, regenerates, updates bloom filters</p>
 <h1 id="synopsis">SYNOPSIS</h1>
-<p>bup bloom [-d dir] [-o outfile] [-k hashes] [-c idxfile] [-f] [--ruin]</p>
+<p>bup bloom [-d dir][-o outfile] [-k hashes][-c idxfile] [-f][\--ruin]</p>
 <h1 id="description">DESCRIPTION</h1>
 <p><code>bup bloom</code> builds a bloom filter file for a bup repository. If one already exists, it checks the filter and updates or regenerates it as needed.</p>
 <h1 id="options">OPTIONS</h1>
