@@ -12,8 +12,8 @@ while (<>) {
     s{
 	\$Format:\%d\$
     }{
-	my $tag = fix(`git describe --match="bup-*"`);
-	"(tag: $tag)"
+	my $tag = fix(`git describe --match="[0-9]*"`);
+	"(tag: bup-$tag)"
     }ex;
     
     s{ 
