@@ -123,19 +123,6 @@ WVPASSEQ "$(cd $D && bup index -m)" \
 f
 a
 ./"
-tree1=$(bup save -t $D) || WVFAIL
-WVPASSEQ "$(cd $D && bup index -m)" ""
-tree2=$(bup save -t $D) || WVFAIL
-if ! [[ $(uname) =~ CYGWIN ]]; then
-    # On Cygwin, the access time may change.
-    WVPASSEQ "$tree1" "$tree2"
-fi
-WVPASSEQ "$(bup index -s / | grep ^D)" ""
-tree3=$(bup save -t /) || WVFAIL
-if ! [[ $(uname) =~ CYGWIN ]]; then
-    # On Cygwin, the access time may change.
-    WVPASSEQ "$tree1" "$tree3"
-fi
 WVPASS bup save -r :$BUP_DIR -n r-test $D
 WVFAIL bup save -r :$BUP_DIR/fake/path -n r-test $D
 WVFAIL bup save -r :$BUP_DIR -n r-test $D/fake/path

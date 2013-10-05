@@ -91,6 +91,7 @@ runtests-cmdline: all
 	t/test-restore-single-file.sh
 	t/test-rm-between-index-and-save.sh
 	t/test-command-without-init-fails.sh
+	t/test-redundant-saves.sh
 	t/test.sh
 
 stupid:
