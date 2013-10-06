@@ -94,6 +94,9 @@ _total_steps = 0
 bloom_contains = _helpers.bloom_contains
 bloom_add = _helpers.bloom_add
 
+# FIXME: check bloom create() and ShaBloom handling/ownership of "f".
+# The ownership semantics should be clarified since the caller needs
+# to know who is responsible for closing it.
 
 class ShaBloom:
     """Wrapper which contains data from multiple index files. """

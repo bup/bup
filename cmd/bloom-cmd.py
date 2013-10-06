@@ -120,6 +120,10 @@ def do_bloom(path, outfilename):
         count += 1
         icount += len(ix)
 
+    # Currently, there's an open file object for tfname inside b.
+    # Make sure it's closed before rename.
+    b.close()
+
     if tfname:
         os.rename(tfname, outfilename)
 
