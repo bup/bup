@@ -322,7 +322,7 @@ class Metadata:
             try:
                 os.mknod(path, 0600 | stat.S_IFSOCK)
             except OSError, e:
-                if e.errno == errno.EINVAL:
+                if e.errno in (errno.EINVAL, errno.EPERM):
                     s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
                     s.bind(path)
                 else:
