@@ -163,13 +163,14 @@ def _clean_up_extract_path(p):
 # must be unique, and must *never* be changed.
 _rec_tag_end = 0
 _rec_tag_path = 1
-_rec_tag_common = 2           # times, user, group, type, perms, etc.
+_rec_tag_common = 2 # times, user, group, type, perms, etc. (legacy/broken)
 _rec_tag_symlink_target = 3
 _rec_tag_posix1e_acl = 4      # getfacl(1), setfacl(1), etc.
 _rec_tag_nfsv4_acl = 5        # intended to supplant posix1e? (unimplemented)
 _rec_tag_linux_attr = 6       # lsattr(1) chattr(1)
 _rec_tag_linux_xattr = 7      # getfattr(1) setfattr(1)
 _rec_tag_hardlink_target = 8 # hard link target path
+_rec_tag_common_v2 = 9 # times, user, group, type, perms, etc. (current)
 
 
 class ApplyError(Exception):
@@ -235,7 +236,7 @@ class Metadata:
         atime = xstat.nsecs_to_timespec(self.atime)
         mtime = xstat.nsecs_to_timespec(self.mtime)
         ctime = xstat.nsecs_to_timespec(self.ctime)
-        result = vint.pack('VVsVsVvVvVvV',
+        result = vint.pack('vvsvsvvVvVvV',
                            self.mode,
                            self.uid,
                            self.user,
@@ -250,7 +251,10 @@ class Metadata:
                            ctime[1])
         return result
 
-    def _load_common_rec(self, port):
+    def _load_common_rec(self, port, legacy_format=False):
+        unpack_fmt = 'vvsvsvvVvVvV'
+        if legacy_format:
+            unpack_fmt = 'VVsVsVvVvVvV'
         data = vint.read_bvec(port)
         (self.mode,
          self.uid,
@@ -263,7 +267,7 @@ class Metadata:
          self.mtime,
          mtime_ns,
          self.ctime,
-         ctime_ns) = vint.unpack('VVsVsVvVvVvV', data)
+         ctime_ns) = vint.unpack(unpack_fmt, data)
         self.atime = xstat.timespec_to_nsecs((self.atime, atime_ns))
         self.mtime = xstat.timespec_to_nsecs((self.mtime, mtime_ns))
         self.ctime = xstat.timespec_to_nsecs((self.ctime, ctime_ns))
@@ -680,7 +684,7 @@ class Metadata:
 
     def write(self, port, include_path=True):
         records = include_path and [(_rec_tag_path, self._encode_path())] or []
-        records.extend([(_rec_tag_common, self._encode_common()),
+        records.extend([(_rec_tag_common_v2, self._encode_common()),
                         (_rec_tag_symlink_target,
                          self._encode_symlink_target()),
                         (_rec_tag_hardlink_target,
@@ -714,7 +718,7 @@ class Metadata:
             while True: # only exit is error (exception) or _rec_tag_end
                 if tag == _rec_tag_path:
                     result._load_path_rec(port)
-                elif tag == _rec_tag_common:
+                elif tag == _rec_tag_common_v2:
                     result._load_common_rec(port)
                 elif tag == _rec_tag_symlink_target:
                     result._load_symlink_target_rec(port)
@@ -728,6 +732,8 @@ class Metadata:
                     result._load_linux_xattr_rec(port)
                 elif tag == _rec_tag_end:
                     return result
+                elif tag == _rec_tag_common: # Should be very rare.
+                    result._load_common_rec(port, legacy_format = True)
                 else: # unknown record
                     vint.skip_bvec(port)
                 tag = vint.read_vuint(port)

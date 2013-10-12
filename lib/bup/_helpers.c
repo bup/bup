@@ -986,6 +986,15 @@ static int normalize_timespec_values(const char *name,
 }
 
 
+#define CHECK_VALUE_FITS(name, value, src_type, dest_type, max_value) \
+if (sizeof(src_type) >= sizeof(dest_type) && (value) > (max_value)) \
+{ \
+    PyErr_SetString(PyExc_OverflowError, \
+                    name " cannot be converted to integer"); \
+    return NULL; \
+}
+
+
 static PyObject *stat_struct_to_py(const struct stat *st,
                                    const char *filename,
                                    int fd)
@@ -1004,20 +1013,30 @@ static PyObject *stat_struct_to_py(const struct stat *st,
     if (!normalize_timespec_values("ctime", &ctime, &ctime_ns, filename, fd))
         return NULL;
 
-    return Py_BuildValue("kkkkkkkk(Ll)(Ll)(Ll)",
-                         (unsigned long) st->st_mode,
-                         (unsigned long) st->st_ino,
-                         (unsigned long) st->st_dev,
-                         (unsigned long) st->st_nlink,
-                         (unsigned long) st->st_uid,
-                         (unsigned long) st->st_gid,
-                         (unsigned long) st->st_rdev,
-                         (unsigned long) st->st_size,
-                         (long long) atime,
+    // We can check the known (via POSIX) signed and unsigned types at
+    // compile time, but not (easily) the unspecified types.  Ideally,
+    // some of these will be optimized out at compile time.
+    CHECK_VALUE_FITS("stat st_mode", st->st_mode, mode_t, PY_LONG_LONG, PY_LLONG_MAX);
+    CHECK_VALUE_FITS("stat st_dev", st->st_dev, dev_t, PY_LONG_LONG, PY_LLONG_MAX);
+    CHECK_VALUE_FITS("stat st_uid", st->st_uid, uid_t, PY_LONG_LONG, PY_LLONG_MAX);
+    CHECK_VALUE_FITS("stat st_gid", st->st_uid, uid_t, PY_LONG_LONG, PY_LLONG_MAX);
+    CHECK_VALUE_FITS("stat st_nlink", st->st_nlink, nlink_t, PY_LONG_LONG, PY_LLONG_MAX);
+    CHECK_VALUE_FITS("stat st_rdev", st->st_rdev, dev_t, PY_LONG_LONG, PY_LLONG_MAX);
+
+    return Py_BuildValue("LKLLLLLL(Ll)(Ll)(Ll)",
+                         (PY_LONG_LONG) st->st_mode,
+                         (unsigned PY_LONG_LONG) st->st_ino,
+                         (PY_LONG_LONG) st->st_dev,
+                         (PY_LONG_LONG) st->st_nlink,
+                         (PY_LONG_LONG) st->st_uid,
+                         (PY_LONG_LONG) st->st_gid,
+                         (PY_LONG_LONG) st->st_rdev,
+                         (PY_LONG_LONG) st->st_size,
+                         (PY_LONG_LONG) atime,
                          (long) atime_ns,
-                         (long long) mtime,
+                         (PY_LONG_LONG) mtime,
                          (long) mtime_ns,
-                         (long long) ctime,
+                         (PY_LONG_LONG) ctime,
                          (long) ctime_ns);
 }
 
@@ -1127,6 +1146,16 @@ static PyMethodDef helper_methods[] = {
 
 PyMODINIT_FUNC init_helpers(void)
 {
+    // FIXME: migrate these tests to configure.  Check against the
+    // type we're going to use when passing to python.  Other stat
+    // types are tested at runtime.
+    assert(sizeof(ino_t) <= sizeof(unsigned PY_LONG_LONG));
+    assert(sizeof(off_t) <= sizeof(PY_LONG_LONG));
+    assert(sizeof(blksize_t) <= sizeof(PY_LONG_LONG));
+    assert(sizeof(blkcnt_t) <= sizeof(PY_LONG_LONG));
+    // Just be sure (relevant when passing timestamps back to Python above).
+    assert(sizeof(PY_LONG_LONG) <= sizeof(long long));
+
     char *e;
     PyObject *m = Py_InitModule("_helpers", helper_methods);
     if (m == NULL)
