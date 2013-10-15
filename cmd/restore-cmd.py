@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import errno, sys, stat, re
+import copy, errno, sys, stat, re
 from bup import options, git, metadata, vfs
 from bup.helpers import *
 
@@ -10,6 +10,10 @@ C,outdir=   change to given outdir before extracting files
 numeric-ids restore numeric IDs (user, group, etc.) rather than names
 exclude-rx= skip paths that match the unanchored regular expression
 v,verbose   increase log output (can be used more than once)
+map-user=   given OLD=NEW, restore OLD user as NEW user
+map-group=  given OLD=NEW, restore OLD group as NEW group
+map-uid=    given OLD=NEW, restore OLD uid as NEW uid
+map-gid=    given OLD=NEW, restore OLD gid as NEW gid
 q,quiet     don't show progress meter
 """
 
@@ -62,6 +66,38 @@ def create_path(n, fullname, meta):
             mkdirp(fullname)
         elif stat.S_ISLNK(n.mode):
             os.symlink(n.readlink(), fullname)
+
+
+def parse_owner_mappings(type, options, fatal):
+    """Traverse the options and parse all --map-TYPEs, or call Option.fatal()."""
+    opt_name = '--map-' + type
+    value_rx = r'^([^=]+)=([^=]*)$'
+    if type in ('uid', 'gid'):
+        value_rx = r'^(-?[0-9]+)=(-?[0-9]+)$'
+    owner_map = {}
+    for flag in options:
+        (option, parameter) = flag
+        if option != opt_name:
+            continue
+        match = re.match(value_rx, parameter)
+        if not match:
+            raise fatal("couldn't parse %s as %s mapping" % (parameter, type))
+        old_id, new_id = match.groups()
+        if type in ('uid', 'gid'):
+            old_id = int(old_id)
+            new_id = int(new_id)
+        owner_map[old_id] = new_id
+    return owner_map
+
+
+def apply_metadata(meta, name, restore_numeric_ids, owner_map):
+    m = copy.deepcopy(meta)
+    m.user = owner_map['user'].get(m.user, m.user)
+    m.group = owner_map['group'].get(m.group, m.group)
+    m.uid = owner_map['uid'].get(m.uid, m.uid)
+    m.gid = owner_map['gid'].get(m.gid, m.gid)
+    m.apply_to_path(name, restore_numeric_ids = restore_numeric_ids)
+
 
 # Track a list of (restore_path, vfs_path, meta) triples for each path
 # we've written for a given hardlink_target.  This allows us to handle
@@ -148,7 +184,7 @@ def find_dir_item_metadata_by_name(dir, name):
             meta_stream.close()
 
 
-def do_root(n, restore_root_meta=True):
+def do_root(n, owner_map, restore_root_meta = True):
     # Very similar to do_node(), except that this function doesn't
     # create a path for n's destination directory (and so ignores
     # n.fullname).  It assumes the destination is '.', and restores
@@ -170,15 +206,15 @@ def do_root(n, restore_root_meta=True):
             # Don't get metadata if this is a dir -- handled in sub do_node().
             if meta_stream and not stat.S_ISDIR(sub.mode):
                 m = metadata.Metadata.read(meta_stream)
-            do_node(n, sub, m)
+            do_node(n, sub, owner_map, meta = m)
         if root_meta and restore_root_meta:
-            root_meta.apply_to_path('.', restore_numeric_ids = opt.numeric_ids)
+            apply_metadata(root_meta, '.', opt.numeric_ids, owner_map)
     finally:
         if meta_stream:
             meta_stream.close()
 
 
-def do_node(top, n, meta=None):
+def do_node(top, n, owner_map, meta = None):
     # Create n.fullname(), relative to the current directory, and
     # restore all of its metadata, when available.  The meta argument
     # will be None for dirs, or when there is no .bupm (i.e. no
@@ -221,9 +257,9 @@ def do_node(top, n, meta=None):
             # Don't get metadata if this is a dir -- handled in sub do_node().
             if meta_stream and not stat.S_ISDIR(sub.mode):
                 m = metadata.Metadata.read(meta_stream)
-            do_node(top, sub, m)
+            do_node(top, sub, owner_map, meta = m)
         if meta and not created_hardlink:
-            meta.apply_to_path(fullname, restore_numeric_ids = opt.numeric_ids)
+            apply_metadata(meta, fullname, opt.numeric_ids, owner_map)
     finally:
         if meta_stream:
             meta_stream.close()
@@ -241,6 +277,10 @@ if not extra:
     o.fatal('must specify at least one filename to restore')
     
 exclude_rxs = parse_rx_excludes(flags, o.fatal)
+
+owner_map = {}
+for map_type in ('user', 'group', 'uid', 'gid'):
+    owner_map[map_type] = parse_owner_mappings(map_type, flags, o.fatal)
 
 if opt.outdir:
     mkdirp(opt.outdir)
@@ -266,7 +306,7 @@ for d in extra:
         if not isdir:
             add_error('%r: not a directory' % d)
         else:
-            do_root(n, restore_root_meta = (name == '.'))
+            do_root(n, owner_map, restore_root_meta = (name == '.'))
     else:
         # Source is /foo/what/ever -- extract ./ever to cwd.
         if isinstance(n, vfs.FakeSymlink):
@@ -277,10 +317,10 @@ for d in extra:
             target = n.dereference()
             mkdirp(n.name)
             os.chdir(n.name)
-            do_root(target)
+            do_root(target, owner_map)
         else: # Not a directory or fake symlink.
             meta = find_dir_item_metadata_by_name(n.parent, n.name)
-            do_node(n.parent, n, meta=meta)
+            do_node(n.parent, n, owner_map, meta = meta)
 
 if not opt.quiet:
     progress('Restoring: %d, done.\n' % total_restored)

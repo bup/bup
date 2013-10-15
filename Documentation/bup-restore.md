@@ -50,15 +50,24 @@ directory (or the `--outdir`).  See the EXAMPLES section.
 
 Whenever path metadata is available, `bup restore` will attempt to
 restore it.  When restoring ownership, bup implements tar/rsync-like
-semantics.  It will not try to restore the user unless running as
-root, and it will fall back to the numeric uid or gid whenever the
-metadata contains a user or group name that doesn't exist on the
-current system.  The use of user and group names can be disabled via
-`--numeric-ids` (which can be important when restoring a chroot, for
-example), and as a special case, a uid or gid of 0 will never be
-remapped by name.  Additionally, some systems don't allow setting a
-uid/gid that doesn't correspond with a known user/group.  On those
-systems, bup will log an error for each relevant path.
+semantics.  It will normally prefer user and group names to uids and
+gids when they're available, but it will not try to restore the user
+unless running as root, and it will fall back to the numeric uid or
+gid whenever the metadata contains a user or group name that doesn't
+exist on the current system.  The use of user and group names can be
+disabled via `--numeric-ids` (which can be important when restoring a
+chroot, for example), and as a special case, a uid or gid of 0 will
+never be remapped by name.  Additionally, some systems don't allow
+setting a uid/gid that doesn't correspond with a known user/group.  On
+those systems, bup will log an error for each relevant path.
+
+The `--map-user`, `--map-group`, `--map-uid`, `--map-gid` options may
+be used to adjust the available ownership information before any of
+the rules above are applied, but note that due to those rules,
+`--map-uid` and `--map-gid` will have no effect whenever a path has a
+valid user or group.  In those cases, either `--numeric-ids` must be
+specified, or the user or group must be cleared by a suitable
+`--map-user foo=` or `--map-group foo=`.
 
 Hardlinks will also be restored when possible, but at least currently,
 no links will be made to targets outside the restore tree, and if the
@@ -107,6 +116,20 @@ See the EXAMPLES section for a demonstration.
       * '/foo/$' - exclude any directory named foo
       * '/foo/.' - exclude the content of any directory named foo
       * '^/tmp/.' - exclude root-level /tmp's content, but not /tmp itself
+
+\--map-user *old*=*new*
+:   restore *old* user as *new* user.  Specifying "" for *new* will
+    clear the user, i.e. `--map-user foo=`.
+
+\--map-group *old*=*new*
+:   restore *old* group as *new* group.  Specifying "" for *new* will
+    clear the group, i.e. `--map-user foo=`.
+
+\--map-uid *old*=*new*
+:   restore *old* uid as *new* uid.
+
+\--map-gid *old*=*new*
+:   restore *old* gid as *new* gid.
 
 -v, \--verbose
 :   increase log output.  Given once, prints every
@@ -177,6 +200,22 @@ Restore a tree without risk of unauthorized access:
 
     # rmdir restore-tmp
     
+Restore a tree, remapping an old user and group to a new user and group:
+
+    # bup restore -C dest --map-user foo=bar --map-group baz=bax /x/latest/y
+    Restoring: 42, done.
+
+Restore a tree, remapping an old uid to a new uid.  Note that the old
+user must be erased so that bup won't prefer it over the uid:
+
+    # bup restore -C dest --map-user foo= --map-uid 1000=1042 /x/latest/y
+    Restoring: 97, done.
+
+An alternate way to do the same by quashing users/groups universally
+with `--numeric-ids`:
+
+    # bup restore -C dest --numeric-ids --map-uid 1000=1042 /x/latest/y
+    Restoring: 97, done.
 
 # SEE ALSO
 
