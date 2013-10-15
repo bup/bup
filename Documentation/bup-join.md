@@ -49,7 +49,7 @@ join` reads them from stdin instead.
 
 # SEE ALSO
 
-`bup-split`(1), `bup-save`(1), `ssh_config`(5)
+`bup-split`(1), `bup-save`(1), `bup-cat-file`, `ssh_config`(5)
 
 # BUP
 

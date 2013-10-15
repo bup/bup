@@ -86,6 +86,7 @@ runtests-python: all
 	$(PYTHON) wvtest.py lib/bup/t/tmetadata.py
 
 runtests-cmdline: all
+	t/test-cat-file.sh
 	t/test-index-check-device.sh
 	t/test-meta.sh
 	t/test-restore-single-file.sh
