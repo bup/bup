@@ -151,21 +151,29 @@ else:
     outf = None
     errf = None
 
+ret = 95
+p = None
+forward_signals = True
 
-class SigException(Exception):
-    def __init__(self, signum):
-        self.signum = signum
-        Exception.__init__(self, 'signal %d received' % signum)
 def handler(signum, frame):
-    raise SigException(signum)
+    debug1('\nbup: signal %d received\n' % signum)
+    if not p or not forward_signals:
+        return
+    if signum != signal.SIGTSTP:
+        os.kill(p.pid, signum)
+    else: # SIGTSTP: stop the child, then ourselves.
+        os.kill(p.pid, signal.SIGSTOP)
+        signal.signal(signal.SIGTSTP, signal.SIG_DFL)
+        os.kill(os.getpid(), signal.SIGTSTP)
+        # Back from suspend -- reestablish the handler.
+        signal.signal(signal.SIGTSTP, handler)
+    ret = 94
 
 signal.signal(signal.SIGTERM, handler)
 signal.signal(signal.SIGINT, handler)
 signal.signal(signal.SIGTSTP, handler)
 signal.signal(signal.SIGCONT, handler)
 
-ret = 95
-p = None
 try:
     try:
         c = (do_profile and [sys.executable, '-m', 'cProfile'] or []) + subcmd
@@ -178,16 +186,9 @@ try:
         while 1:
             # if we get a signal while waiting, we have to keep waiting, just
             # in case our child doesn't die.
-            try:
-                ret = p.wait()
-                break
-            except SigException, e:
-                debug1('\nbup: %s\n' % e)
-                sig = e.signum
-                if sig == signal.SIGTSTP:
-                    sig = signal.SIGSTOP
-                os.kill(p.pid, sig)
-                ret = 94
+            ret = p.wait()
+            forward_signals = False
+            break
     except OSError, e:
         log('%s: %s\n' % (subcmd[0], e))
         ret = 98
