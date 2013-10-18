@@ -441,7 +441,8 @@ class Dir(Node):
 
     def metadata_file(self):
         """Return this Dir's .bupm File, if any."""
-        self._populate_metadata()
+        if not self._subs:
+            self._mksubs()
         return self._bupm
 
 
