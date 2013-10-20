@@ -32,8 +32,8 @@
 
 #define BUP_BLOBBITS (13)
 #define BUP_BLOBSIZE (1<<BUP_BLOBBITS)
-#define BUP_WINDOWBITS (7)
-#define BUP_WINDOWSIZE (1<<(BUP_WINDOWBITS-1))
+#define BUP_WINDOWBITS (6)
+#define BUP_WINDOWSIZE (1<<BUP_WINDOWBITS)
 
 #ifdef __cplusplus
 extern "C" {
