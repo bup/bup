@@ -119,8 +119,8 @@ anything over a few megabytes in size, bup's compression will actually
 *work*, which is a bit advantage over xdelta.
 
 How does hashsplitting work?  It's deceptively simple.  We read through the
-file one byte at a time, calculating a rolling checksum of the last 128
-bytes.  (Why 128?  No reason.  Literally.  We picked it out of the air. 
+file one byte at a time, calculating a rolling checksum of the last 64
+bytes.  (Why 64?  No reason.  Literally.  We picked it out of the air.
 Probably some other number is better.  Feel free to join the mailing list
 and tell us which one and why.)  (The rolling checksum idea is actually
 stolen from rsync and xdelta, although we use it differently.  And they use
@@ -145,7 +145,7 @@ we need your help!  Avery's out of control!  Join our mailing list!  Please!
 Save us! ...  oh boy, I sure hope he doesn't read this)
 
 In any case, rollsum seems to do pretty well at its job. 
-You can find it in bupsplit.c.  Basically, it converts the last 128 bytes
+You can find it in bupsplit.c.  Basically, it converts the last 64 bytes
 read into a 32-bit integer.  What we then do is take the lowest 13
 bits of the rollsum, and if they're all 1's, we consider that to be the end
 of a chunk.  This happens on average once every 2^13 = 8192 bytes, so the
@@ -182,7 +182,7 @@ file, all the chunks *before* and *after* the affected chunk are absolutely
 the same.  All that matters to the hashsplitting algorithm is the 32-byte
 "separator" sequence, and a single change can only affect, at most, one
 separator sequence or the bytes between two separator sequences.  And
-because of rollsum, about one in 8192 possible 128-byte sequences is a
+because of rollsum, about one in 8192 possible 64-byte sequences is a
 separator sequence.  Like magic, the hashsplit chunking algorithm will chunk
 your file the same way every time, even without knowing how it had chunked
 it previously.
