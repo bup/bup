@@ -469,16 +469,27 @@ class Metadata:
     def _add_posix1e_acl(self, path, st):
         if not posix1e: return
         if not stat.S_ISLNK(st.st_mode):
+            acls = None
+            def_acls = None
             try:
                 if posix1e.has_extended(path):
                     acl = posix1e.ACL(file=path)
-                    self.posix1e_acl = [acl, acl] # txt and num are the same
+                    acls = [acl, acl] # txt and num are the same
                     if stat.S_ISDIR(st.st_mode):
                         acl = posix1e.ACL(filedef=path)
-                        self.posix1e_acl.extend([acl, acl])
+                        def_acls = [acl_def, acl_def]
             except EnvironmentError, e:
                 if e.errno not in (errno.EOPNOTSUPP, errno.ENOSYS):
                     raise
+            if acls:
+                txt_flags = posix1e.TEXT_ABBREVIATE
+                num_flags = posix1e.TEXT_ABBREVIATE | posix1e.TEXT_NUMERIC_IDS
+                acl_rep = [acls[0].to_any_text('', '\n', txt_flags),
+                            acls[1].to_any_text('', '\n', num_flags)]
+                if def_acls:
+                    acl_rep.append(def_acls[2].to_any_text('', '\n', txt_flags))
+                    acl_rep.append(def_acls[3].to_any_text('', '\n', num_flags))
+                self.posix1e_acl = acl_rep
 
     def _same_posix1e_acl(self, other):
         """Return true or false to indicate similarity in the hardlink sense."""
@@ -488,30 +499,31 @@ class Metadata:
         # Encode as two strings (w/default ACL string possibly empty).
         if self.posix1e_acl:
             acls = self.posix1e_acl
-            txt_flags = posix1e.TEXT_ABBREVIATE
-            num_flags = posix1e.TEXT_ABBREVIATE | posix1e.TEXT_NUMERIC_IDS
-            acl_reps = [acls[0].to_any_text('', '\n', txt_flags),
-                        acls[1].to_any_text('', '\n', num_flags)]
-            if len(acls) < 3:
-                acl_reps += ['', '']
-            else:
-                acl_reps.append(acls[2].to_any_text('', '\n', txt_flags))
-                acl_reps.append(acls[3].to_any_text('', '\n', num_flags))
-            return vint.pack('ssss',
-                             acl_reps[0], acl_reps[1], acl_reps[2], acl_reps[3])
+            if len(acls) == 2:
+                acls.extend(['', ''])
+            return vint.pack('ssss', acls[0], acls[1], acls[2], acls[3])
         else:
             return None
 
     def _load_posix1e_acl_rec(self, port):
-        if not posix1e: return
-        data = vint.read_bvec(port)
-        acl_reps = vint.unpack('ssss', data)
-        if acl_reps[2] == '':
-            acl_reps = acl_reps[:2]
-        self.posix1e_acl = [posix1e.ACL(text=x) for x in acl_reps]
+        acl_rep = vint.unpack('ssss', vint.read_bvec(port))
+        if acl_rep[2] == '':
+            acl_rep = acl_rep[:2]
+        self.posix1e_acl = acl_rep
 
     def _apply_posix1e_acl_rec(self, path, restore_numeric_ids=False):
-        def apply_acl(acl, kind):
+        def apply_acl(acl_rep, kind):
+            try:
+                acl = posix1e.ACL(text = acl_rep)
+            except IOError, e:
+                if e.errno == 0:
+                    # pylibacl appears to return an IOError with errno
+                    # set to 0 if a group referred to by the ACL rep
+                    # doesn't exist on the current system.
+                    raise ApplyError("POSIX1e ACL: can't create %r for %r"
+                                     % (acl_rep, path))
+                else:
+                    raise
             try:
                 acl.applyto(path, kind)
             except IOError, e:
@@ -657,7 +669,6 @@ class Metadata:
         self.linux_attr = None
         self.linux_xattr = None
         self.posix1e_acl = None
-        self.posix1e_acl_default = None
 
     def write(self, port, include_path=True):
         records = include_path and [(_rec_tag_path, self._encode_path())] or []
