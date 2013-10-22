@@ -151,7 +151,27 @@ WVSTART 'metadata save/restore (general)'
     setup-test-tree
     cd "$TOP/bupmeta.tmp"
     test-src-save-restore
-)
+
+    # Test a deeper subdir/ to make sure top-level non-dir metadata is
+    # restored correctly.  We need at least one dir and one non-dir at
+    # the "top-level".
+    WVPASS test -f src/lib/__init__.py
+    WVPASS test -d src/lib/bup
+    rm -rf src.bup
+    mkdir src.bup
+    export BUP_DIR=$(pwd)/src.bup
+    WVPASS bup init
+    touch -t 201111111111 src-restore # Make sure the top won't match.
+    WVPASS bup index src
+    WVPASS bup save -t -n src src
+    force-delete src-restore
+    WVPASS bup restore -C src-restore "/src/latest$(pwd)/src/lib/"
+    touch -t 201211111111 src-restore # Make sure the top won't match.
+    # Check that the only difference is the top dir.
+    $TOP/t/compare-trees -c src/lib/ src-restore/ > tmp-compare-trees
+    WVPASSEQ $(cat tmp-compare-trees | wc -l) 2
+    tail -n +2 tmp-compare-trees | WVPASS grep -qE '^\.d[^ ]+ \./$'
+) || WVFAIL
 
 # Test that we pull the index (not filesystem) metadata for any
 # unchanged files whenever we're saving other files in a given

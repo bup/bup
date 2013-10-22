@@ -149,7 +149,7 @@ def find_dir_item_metadata_by_name(dir, name):
             meta_stream.close()
 
 
-def do_root(n):
+def do_root(n, restore_root_meta=True):
     # Very similar to do_node(), except that this function doesn't
     # create a path for n's destination directory (and so ignores
     # n.fullname).  It assumes the destination is '.', and restores
@@ -162,7 +162,7 @@ def do_root(n):
         mfile = n.metadata_file() # VFS file -- cannot close().
         if mfile:
             meta_stream = mfile.open()
-            meta = metadata.Metadata.read(meta_stream)
+            root_meta = metadata.Metadata.read(meta_stream)
         print_info(n, '.')
         total_restored += 1
         plog('Restoring: %d\r' % total_restored)
@@ -172,8 +172,8 @@ def do_root(n):
             if meta_stream and not stat.S_ISDIR(sub.mode):
                 m = metadata.Metadata.read(meta_stream)
             do_node(n, sub, m)
-        if meta:
-            meta.apply_to_path('.', restore_numeric_ids = opt.numeric_ids)
+        if root_meta and restore_root_meta:
+            root_meta.apply_to_path('.', restore_numeric_ids = opt.numeric_ids)
     finally:
         if meta_stream:
             meta_stream.close()
@@ -267,11 +267,7 @@ for d in extra:
         if not isdir:
             add_error('%r: not a directory' % d)
         else:
-            if name == '.':
-                do_root(n)
-            else:
-                for sub in n:
-                    do_node(n, sub)
+            do_root(n, restore_root_meta = (name == '.'))
     else:
         # Source is /foo/what/ever -- extract ./ever to cwd.
         if isinstance(n, vfs.FakeSymlink):
