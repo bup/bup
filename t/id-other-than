@@ -5,7 +5,7 @@ import pwd
 import sys
 
 def usage():
-    print >> sys.stderr, "Usage: id-other-than ID [ID ...]"
+    print >> sys.stderr, "Usage: id-other-than <--user|--group> ID [ID ...]"
 
 if len(sys.argv) < 2:
     usage()
