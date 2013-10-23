@@ -24,7 +24,9 @@ WVPASS diff -u src/foo cat-foo
 WVSTART "cat-file --meta"
 WVPASS bup meta --create --no-paths src/foo > src-foo.meta
 WVPASS bup cat-file --meta "src/latest/$(pwd)/src/foo" > cat-foo.meta
-WVPASS cmp -b src-foo.meta cat-foo.meta
+WVPASS diff -u \
+    <(bup meta -tvvf src-foo.meta | grep -vE '^atime: ') \
+    <(bup meta -tvvf cat-foo.meta | grep -vE '^atime: ')
 
 WVSTART "cat-file --bupm"
 WVPASS bup cat-file --bupm "src/latest/$(pwd)/src/" > bup-cat-bupm
