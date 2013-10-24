@@ -64,7 +64,7 @@ review.
 You can create a "signed off" (see ./SIGNED-OFF-BY) set of patches in
 ./pending, ready for submission to the list, like this:
 
-    git format-patch -s -o pending origin/master
+    git format-patch -s -o patches origin/master
 
 which will include all of the patches since origin/master on your
 current branch.  Then you can send them to the list like this:
