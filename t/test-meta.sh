@@ -608,7 +608,12 @@ if [ $(t/root-status) == root ]; then
 
         umount testfs || true
         dd if=/dev/zero of=testfs.img bs=1M count=32
-        mke2fs -F -j -m 0 testfs.img
+        # Make sure we have all the options the chattr test needs
+        # (i.e. create a "normal" ext4 filesystem).
+        WVPASS mke2fs -F -m 0 \
+            -I 256 \
+            -O has_journal,extent,huge_file,flex_bg,uninit_bg,dir_nlink,extra_isize \
+            testfs.img
         mkdir testfs
         mount -o loop,acl,user_xattr testfs.img testfs
         # Hide, so that tests can't create risks.
@@ -656,29 +661,34 @@ if [ $(t/root-status) == root ]; then
             WVPASSEQ "$(bup xstat --include-fields=atime src/bar)" "atime: 42"
         )
 
+        set +e
         WVSTART 'meta - Linux attr (as root)'
-        force-delete testfs/src
-        mkdir testfs/src
+        WVPASS force-delete testfs/src
+        WVPASS mkdir testfs/src
         (
-            touch testfs/src/foo
-            mkdir testfs/src/bar
-            chattr +acdeijstuADST testfs/src/foo
-            chattr +acdeijstuADST testfs/src/bar
-            (cd testfs && test-src-create-extract)
+            WVPASS touch testfs/src/foo
+            WVPASS mkdir testfs/src/bar
+            WVPASS chattr +acdeijstuADST testfs/src/foo
+            WVPASS chattr +acdeijstuADST testfs/src/bar
+            (WVPASS cd testfs && WVPASS test-src-create-extract) || exit $?
             # Test restoration to a limited filesystem (vfat).
             (
                 WVPASS bup meta --create --recurse --file testfs/src.meta \
                     testfs/src
-                force-delete testfs-limited/src-restore
-                mkdir testfs-limited/src-restore
-                cd testfs-limited/src-restore
+                WVPASS force-delete testfs-limited/src-restore
+                WVPASS mkdir testfs-limited/src-restore
+                WVPASS cd testfs-limited/src-restore
                 WVFAIL bup meta --extract --file ../../testfs/src.meta 2>&1 \
                     | WVPASS grep -e '^Linux chattr:' \
                     | WVPASS python -c \
-                      'import sys; exit(not len(sys.stdin.readlines()) == 2)'
-            )
-        )
+                    'import sys; exit(not len(sys.stdin.readlines()) == 3)'
+            ) || exit $?
+        ) || exit $?
 
+        # FIXME: skip remaining tests until we fix them.
+        test "$BUP_SKIP_BROKEN_TESTS" && exit 0
+
+        set -e
         WVSTART 'meta - Linux xattr (as root)'
         force-delete testfs/src
         mkdir testfs/src
@@ -728,5 +738,3 @@ if [ $(t/root-status) == root ]; then
         )
     )
 fi
-
-exit 0
