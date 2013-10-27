@@ -678,7 +678,7 @@ if [ $(t/root-status) == root ]; then
         ) || exit $?
 
         # FIXME: skip remaining tests until we fix them.
-        test "$BUP_SKIP_BROKEN_TESTS" && exit 0
+        if ! test "$BUP_SKIP_BROKEN_TESTS"; then
 
         set -e
 
@@ -705,29 +705,29 @@ if [ $(t/root-status) == root ]; then
                       'import sys; exit(not len(sys.stdin.readlines()) == 2)'
             )
         )
+        fi
 
+        set +e
         WVSTART 'meta - POSIX.1e ACLs (as root)'
-        force-delete testfs/src
-        mkdir testfs/src
-        (
-            touch testfs/src/foo
-            mkdir testfs/src/bar
-            setfacl -m u:root:r testfs/src/foo
-            setfacl -m u:root:r testfs/src/bar
-            (cd testfs && test-src-create-extract)
+        WVPASS force-delete testfs/src
+        WVPASS mkdir testfs/src
+        WVPASS touch testfs/src/foo
+        WVPASS mkdir testfs/src/bar
+        WVPASS setfacl -m u:root:r testfs/src/foo
+        WVPASS setfacl -m u:root:r testfs/src/bar
+        (WVPASS cd testfs; WVPASS test-src-create-extract) || exit $?
 
-            # Test restoration to a limited filesystem (vfat).
-            (
-                WVPASS bup meta --create --recurse --file testfs/src.meta \
-                    testfs/src
-                force-delete testfs-limited/src-restore
-                mkdir testfs-limited/src-restore
-                cd testfs-limited/src-restore
-                WVFAIL bup meta --extract --file ../../testfs/src.meta 2>&1 \
-                    | WVPASS grep -e '^POSIX1e ACL applyto:' \
-                    | WVPASS python -c \
-                      'import sys; exit(not len(sys.stdin.readlines()) == 2)'
-            )
-        )
+        # Test restoration to a limited filesystem (vfat).
+        (
+            WVPASS bup meta --create --recurse --file testfs/src.meta \
+                testfs/src
+            WVPASS force-delete testfs-limited/src-restore
+            WVPASS mkdir testfs-limited/src-restore
+            WVPASS cd testfs-limited/src-restore
+            WVFAIL bup meta --extract --file ../../testfs/src.meta 2>&1 \
+                | WVPASS grep -e '^POSIX1e ACL applyto:' \
+                | WVPASS python -c \
+                'import sys; exit(not len(sys.stdin.readlines()) == 2)'
+        ) || exit $?
     ) || exit $?
 fi

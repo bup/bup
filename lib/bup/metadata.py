@@ -476,8 +476,8 @@ class Metadata:
                     acl = posix1e.ACL(file=path)
                     acls = [acl, acl] # txt and num are the same
                     if stat.S_ISDIR(st.st_mode):
-                        acl = posix1e.ACL(filedef=path)
-                        def_acls = [acl_def, acl_def]
+                        def_acl = posix1e.ACL(filedef=path)
+                        def_acls = [def_acl, def_acl]
             except EnvironmentError, e:
                 if e.errno not in (errno.EOPNOTSUPP, errno.ENOSYS):
                     raise
@@ -485,10 +485,10 @@ class Metadata:
                 txt_flags = posix1e.TEXT_ABBREVIATE
                 num_flags = posix1e.TEXT_ABBREVIATE | posix1e.TEXT_NUMERIC_IDS
                 acl_rep = [acls[0].to_any_text('', '\n', txt_flags),
-                            acls[1].to_any_text('', '\n', num_flags)]
+                           acls[1].to_any_text('', '\n', num_flags)]
                 if def_acls:
-                    acl_rep.append(def_acls[2].to_any_text('', '\n', txt_flags))
-                    acl_rep.append(def_acls[3].to_any_text('', '\n', num_flags))
+                    acl_rep.append(def_acls[0].to_any_text('', '\n', txt_flags))
+                    acl_rep.append(def_acls[1].to_any_text('', '\n', num_flags))
                 self.posix1e_acl = acl_rep
 
     def _same_posix1e_acl(self, other):
@@ -926,16 +926,12 @@ def detailed_str(meta, fields = None):
     if 'linux-xattr' in fields and meta.linux_xattr:
         for name, value in meta.linux_xattr:
             result.append('linux-xattr: %s -> %s' % (name, repr(value)))
-    if 'posix1e-acl' in fields and meta.posix1e_acl and posix1e:
-        flags = posix1e.TEXT_ABBREVIATE
+    if 'posix1e-acl' in fields and meta.posix1e_acl:
+        acl = meta.posix1e_acl[0]
+        result.append('posix1e-acl: ' + acl + '\n')
         if stat.S_ISDIR(meta.mode):
-            acl = meta.posix1e_acl[0]
-            default_acl = meta.posix1e_acl[2]
-            result.append(acl.to_any_text('posix1e-acl: ', '\n', flags))
-            result.append(acl.to_any_text('posix1e-acl-default: ', '\n', flags))
-        else:
-            acl = meta.posix1e_acl[0]
-            result.append(acl.to_any_text('posix1e-acl: ', '\n', flags))
+            def_acl = meta.posix1e_acl[2]
+            result.append('posix1e-acl-default: ' + def_acl + '\n')
     return '\n'.join(result)
 
 
