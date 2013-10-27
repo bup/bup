@@ -591,7 +591,8 @@ class Metadata:
             try:
                 set_linux_file_attr(path, self.linux_attr)
             except OSError, e:
-                if e.errno in (errno.ENOTTY, errno.EOPNOTSUPP, errno.ENOSYS):
+                if e.errno in (errno.ENOTTY, errno.EOPNOTSUPP, errno.ENOSYS,
+                               errno.EACCES):
                     raise ApplyError('Linux chattr: %s' % e)
                 else:
                     raise
@@ -636,7 +637,13 @@ class Metadata:
                 add_error("%s: can't restore xattr; xattr support missing.\n"
                           % path)
             return
-        existing_xattrs = set(xattr.list(path, nofollow=True))
+        try:
+            existing_xattrs = set(xattr.list(path, nofollow=True))
+        except IOError, e:
+            if e.errno == errno.EACCES:
+                raise ApplyError('xattr.set: %s' % e)
+            else:
+                raise
         if self.linux_xattr:
             for k, v in self.linux_xattr:
                 if k not in existing_xattrs \
@@ -743,13 +750,14 @@ class Metadata:
                       + ' with unrecognized mode "0x%x"\n' % self.mode)
             return
         num_ids = restore_numeric_ids
-        try:
-            self._apply_common_rec(path, restore_numeric_ids=num_ids)
-            self._apply_posix1e_acl_rec(path, restore_numeric_ids=num_ids)
-            self._apply_linux_attr_rec(path, restore_numeric_ids=num_ids)
-            self._apply_linux_xattr_rec(path, restore_numeric_ids=num_ids)
-        except ApplyError, e:
-            add_error(e)
+        for apply_metadata in (self._apply_common_rec,
+                               self._apply_posix1e_acl_rec,
+                               self._apply_linux_attr_rec,
+                               self._apply_linux_xattr_rec):
+            try:
+                apply_metadata(path, restore_numeric_ids=num_ids)
+            except ApplyError, e:
+                add_error(e)
 
     def same_file(self, other):
         """Compare this to other for equivalency.  Return true if

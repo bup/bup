@@ -190,9 +190,11 @@ def test_apply_to_path_restricted_access():
         WVPASSEQ(m.path, path)
         os.chmod(tmpdir, 000)
         m.apply_to_path(path)
-        WVPASS(len(helpers.saved_errors) == 1)
-        errmsg = _first_err()
-        WVPASS(errmsg.startswith('utime: '))
+        print >> sys.stderr, helpers.saved_errors
+        WVPASS(len(helpers.saved_errors) == 3)
+        WVPASS(str(helpers.saved_errors[0]).startswith('utime: '))
+        WVPASS(str(helpers.saved_errors[1]).startswith('Linux chattr: '))
+        WVPASS(str(helpers.saved_errors[2]).startswith('xattr.set: '))
         clear_errors()
     finally:
         subprocess.call(['rm', '-rf', tmpdir])
