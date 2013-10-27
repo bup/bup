@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-set -e -o pipefail
-
 top=$(pwd)
 
 usage()
@@ -16,19 +14,19 @@ fi
 case "$1" in
     '--setup')
         (
-            cd t/sampledata
-            ln -sf a b
-            ln -sf b c
-            ln -sf /etc .
-        )
+            cd t/sampledata || exit $?
+            ln -sf a b || exit $?
+            ln -sf b c || exit $?
+            ln -sf /etc . || exit $?
+        ) || exit $?
         ;;
     '--clean')
         (
-            cd t/sampledata
+            cd t/sampledata || exit $?
             # test -e is false for dangling symlinks.
-            if test -h b -o -e b; then rm b; fi
-            if test -h c -o -e c; then rm c; fi
-            if test -h etc -o -e etc; then rm etc; fi
+            if test -h b -o -e b; then rm b || exit $?; fi
+            if test -h c -o -e c; then rm c || exit $?; fi
+            if test -h etc -o -e etc; then rm etc || exit $?; fi
         )
         ;;
     *)

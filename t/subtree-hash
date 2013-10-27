@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-set -eo pipefail
-
 # Usage: subtree-hash ROOT_HASH [SUBDIR ...]
 
 subtree_hash()
@@ -13,7 +11,7 @@ subtree_hash()
         subdir="$2"
         subtree_info="$(git ls-tree "$root_hash" | grep -E "	$subdir\$")" || true
         if test "$(echo "$subtree_info" | wc -l)" -ne 1; then
-            echo "Found more than one matching line in subtree $root_hash" 1>&2
+            echo "Didn't find just one matching line in subtree $root_hash" 1>&2
             return 1
         fi
 
@@ -23,8 +21,8 @@ subtree_hash()
             return 1
         fi
 
-        shift 2
-        subtree_hash "$subtree_hash" "$@"
+        shift 2 || exit $?
+        subtree_hash "$subtree_hash" "$@" || exit $?
     fi
 }
 

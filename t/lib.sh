@@ -20,11 +20,11 @@ force-delete()
 }
 
 realpath()
-(
-    set -e;
-    test "$#" -eq 1
-    script_home=$(cd "$(dirname $0)" && pwd)
+{
+    test "$#" -eq 1 || return $?
+    local script_home=$(cd "$(dirname $0)" && pwd)
     echo "$1" | \
         PYTHONPATH="${script_home}/../lib" python -c \
-        "import sys, bup.helpers; print bup.helpers.realpath(sys.stdin.readline())"
-)
+        "import sys, bup.helpers; print bup.helpers.realpath(sys.stdin.readline())" \
+        || return $?
+}

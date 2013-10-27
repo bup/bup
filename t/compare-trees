@@ -3,9 +3,6 @@
 # Test that src and dest trees are as identical as bup is capable of
 # making them.  For now, use rsync -niaHAX ...
 
-set -e
-set -o pipefail
-
 usage() {
 cat <<EOF
 Usage: compare-trees [-h] [-c] [-x] SOURCE DEST
@@ -31,7 +28,7 @@ do
     esac
 done
 
-shift $(($OPTIND - 1))
+shift $(($OPTIND - 1)) || exit $?
 
 if ! test $# -eq 2
 then
@@ -42,8 +39,8 @@ fi
 src="$1"
 dest="$2"
 
-tmpfile="$(mktemp /tmp/bup-test-XXXXXXX)"
-trap "rm -rf '${tmpfile}'" EXIT
+tmpfile="$(mktemp /tmp/bup-test-XXXXXXX)" || exit $?
+trap "rm -rf '$tmpfile'" EXIT || exit $?
 
 rsync_opts="-niaH$verify_content --delete"
 
@@ -67,11 +64,11 @@ else
     rsync_opts="$rsync_opts -X"
 fi
 
-rsync $rsync_opts "$src" "$dest" > "${tmpfile}"
+rsync $rsync_opts "$src" "$dest" > "$tmpfile" || exit $?
 
-if test $(wc -l < "${tmpfile}") != 0; then
+if test $(wc -l < "$tmpfile") != 0; then
     echo "Differences between $src and $dest"
-    cat "${tmpfile}"
+    cat "$tmpfile"
     exit 1
 fi
 

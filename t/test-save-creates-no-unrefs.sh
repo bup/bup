@@ -1,24 +1,22 @@
 #!/usr/bin/env bash
 . ./wvtest-bup.sh
 
-set -eo pipefail
-
 WVSTART 'all'
 
-top="$(pwd)"
-tmpdir="$(wvmktempdir)"
+top="$(WVPASS pwd)" || exit $?
+tmpdir="$(WVPASS wvmktempdir)" || exit $?
 export BUP_DIR="$tmpdir/bup"
 export GIT_DIR="$BUP_DIR"
 
 bup() { "$top/bup" "$@"; }
 
-mkdir -p "$tmpdir/src"
-touch "$tmpdir/src/foo"
-bup init
-bup index "$tmpdir/src"
-bup save -n src "$tmpdir/src"
+WVPASS mkdir -p "$tmpdir/src"
+WVPASS touch "$tmpdir/src/foo"
+WVPASS bup init
+WVPASS bup index "$tmpdir/src"
+WVPASS bup save -n src "$tmpdir/src"
 WVPASSEQ "$(git fsck --unreachable)" ""
-bup save -n src "$tmpdir/src"
+WVPASS bup save -n src "$tmpdir/src"
 WVPASSEQ "$(git fsck --unreachable)" ""
 
-rm -rf "$tmpdir"
+WVPASS rm -rf "$tmpdir"

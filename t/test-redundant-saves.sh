@@ -11,22 +11,21 @@
 
 . ./wvtest-bup.sh
 
-set -eo pipefail
-
 WVSTART 'all'
 
 top="$(pwd)"
-tmpdir="$(wvmktempdir)"
+tmpdir="$(WVPASS wvmktempdir)" || exit $?
+
 export BUP_DIR="$tmpdir/bup"
 export GIT_DIR="$BUP_DIR"
 
 bup() { "$top/bup" "$@"; }
 
-mkdir -p "$tmpdir/src"
-mkdir -p "$tmpdir/src/d"
-mkdir -p "$tmpdir/src/d/e"
-touch "$tmpdir/src/"{f,b,a,d}
-touch "$tmpdir/src/d/z"
+WVPASS mkdir -p "$tmpdir/src"
+WVPASS mkdir -p "$tmpdir/src/d"
+WVPASS mkdir -p "$tmpdir/src/d/e"
+WVPASS touch "$tmpdir/src/"{f,b,a,d}
+WVPASS touch "$tmpdir/src/d/z"
 
 WVPASS bup init
 WVPASS bup index -u "$tmpdir/src"
@@ -37,21 +36,24 @@ indexed_top="${tmpdir##/}"
 indexed_top=(${indexed_top%%/})
 unset IFS
 
-tree1=$(bup save -t "$tmpdir/src") || WVFAIL
-indexed_tree1="$(t/subtree-hash "$tree1" "${indexed_top[@]}" src)"
+tree1=$(WVPASS bup save -t "$tmpdir/src") || exit $?
+indexed_tree1="$(WVPASS t/subtree-hash "$tree1" "${indexed_top[@]}" src)" \
+    || exit $?
 
-WVPASSEQ "$(cd "$tmpdir/src" && bup index -m)" ""
+result="$(WVPASS cd "$tmpdir/src"; WVPASS bup index -m)" || exit $?
+WVPASSEQ "$result" ""
 
-tree2=$(bup save -t "$tmpdir/src") || WVFAIL
-indexed_tree2="$(t/subtree-hash "$tree2" "${indexed_top[@]}" src)"
+tree2=$(WVPASS bup save -t "$tmpdir/src") || exit $?
+indexed_tree2="$(WVPASS t/subtree-hash "$tree2" "${indexed_top[@]}" src)" \
+    || exit $?
 
 WVPASSEQ "$indexed_tree1" "$indexed_tree2"
 
-WVPASSEQ "$(bup index -s / | grep ^D)" ""
+result="$(WVPASS bup index -s / | WVFAIL grep ^D)" || exit $?
+WVPASSEQ "$result" ""
 
-tree3=$(bup save -t /) || WVFAIL
-indexed_tree3="$(t/subtree-hash "$tree3" "${indexed_top[@]}")"
+tree3=$(WVPASS bup save -t /) || exit $?
+indexed_tree3="$(WVPASS t/subtree-hash "$tree3" "${indexed_top[@]}" src)" || exit $?
+WVPASSEQ "$indexed_tree1" "$indexed_tree3"
 
-WVPASSEQ "$indexed_tree3" "$indexed_tree3"
-
-rm -rf "$tmpdir"
+WVPASS rm -rf "$tmpdir"
