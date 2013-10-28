@@ -1,6 +1,15 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
-set -e
+must() {
+    local file=${BASH_SOURCE[0]}
+    local line=${BASH_LINENO[0]}
+    "$@"
+    local rc=$?
+    if test $rc -ne 0; then
+        echo "Failed at line $line in $file" 1>&2
+        exit $rc
+    fi
+}
 
 usage() {
     echo "Usage: bup import-rdiff-backup [-n]" \
@@ -14,7 +23,7 @@ control_c() {
     exit 128
 }
 
-trap control_c INT
+must trap control_c INT
 
 dry_run=
 while [ "$1" = "-n" -o "$1" = "--dry-run" ]; do
@@ -27,8 +36,8 @@ bup()
     $dry_run "${BUP_MAIN_EXE:=bup}" "$@"
 }
 
-snapshot_root=$1
-branch=$2
+snapshot_root="$1"
+branch="$2"
 
 [ -n "$snapshot_root" -a "$#" = 2 ] || usage
 
@@ -38,28 +47,29 @@ if [ ! -e "$snapshot_root/." ]; then
 fi
 
 
-backups=$(rdiff-backup --list-increments --parsable-output "$snapshot_root")
-backups_count=$(echo "$backups" | wc -l)
+backups=$(must rdiff-backup --list-increments --parsable-output "$snapshot_root") \
+    || exit $?
+backups_count=$(echo "$backups" | must wc -l) || exit $?
 counter=1
 echo "$backups" |
 while read timestamp type; do
-    tmpdir=$(mktemp -d)
+    tmpdir=$(must mktemp -d) || exit $?
 
     echo "Importing backup from $(date --date=@$timestamp +%c) " \
         "($counter / $backups_count)" 1>&2
     echo 1>&2
 
     echo "Restoring from rdiff-backup..." 1>&2
-    rdiff-backup -r $timestamp "$snapshot_root" "$tmpdir"
+    must rdiff-backup -r $timestamp "$snapshot_root" "$tmpdir"
     echo 1>&2
 
     echo "Importing into bup..." 1>&2
-    TMPIDX=$(mktemp -u)
-    bup index -ux -f "$tmpidx" "$tmpdir"
-    bup save --strip --date="$timestamp" -f "$tmpidx" -n "$branch" "$tmpdir"
-    rm -f "$tmpidx"
+    TMPIDX=$(must mktemp -u) || exit $?
+    must bup index -ux -f "$tmpidx" "$tmpdir"
+    must bup save --strip --date="$timestamp" -f "$tmpidx" -n "$branch" "$tmpdir"
+    must rm -f "$tmpidx"
 
-    rm -rf "$tmpdir"
+    must rm -rf "$tmpdir"
     counter=$((counter+1))
     echo 1>&2
     echo 1>&2
