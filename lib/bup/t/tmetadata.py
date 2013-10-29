@@ -1,4 +1,4 @@
-import glob, grp, pwd, stat, tempfile, subprocess
+import errno, glob, grp, pwd, stat, tempfile, subprocess
 import bup.helpers as helpers
 from bup import git, metadata, vfs
 from bup.helpers import clear_errors, detect_fakeroot, is_superuser, realpath
@@ -175,6 +175,34 @@ def test_from_path_error():
         subprocess.call(['rm', '-rf', tmpdir])
 
 
+def _linux_attr_supported(path):
+    # Expects path to denote a regular file or a directory.
+    if not metadata.get_linux_file_attr:
+        return False
+    try:
+        metadata.get_linux_file_attr(path)
+    except OSError, e:
+        if e.errno in (errno.ENOTTY, errno.ENOSYS, errno.EOPNOTSUPP):
+            return False
+        else:
+            raise
+    return True
+
+
+def _linux_xattr_supported(path):
+    # NOTE: destructive test (tries to write to path).
+    if not metadata.xattr:
+        return False
+    try:
+        xattr.set(path, 'user.bup-test-xattr-support', 'true', nofollow=True)
+    except IOError, e:
+        if e.errno == errno.EOPNOTSUPP:
+            return False
+        else:
+            raise
+    return True
+
+
 @wvtest
 def test_apply_to_path_restricted_access():
     if is_superuser() or detect_fakeroot():
@@ -183,20 +211,27 @@ def test_apply_to_path_restricted_access():
         return # chmod 000 isn't effective.
     tmpdir = tempfile.mkdtemp(prefix='bup-tmetadata-')
     try:
-        path = tmpdir + '/foo'
+        parent = tmpdir + '/foo'
+        path = parent + '/bar'
+        os.mkdir(parent)
         os.mkdir(path)
         clear_errors()
         m = metadata.from_path(path, archive_path=path, save_symlinks=True)
         WVPASSEQ(m.path, path)
-        os.chmod(tmpdir, 000)
+        os.chmod(parent, 000)
         m.apply_to_path(path)
         print >> sys.stderr, helpers.saved_errors
-        WVPASS(len(helpers.saved_errors) == 3)
-        WVPASS(str(helpers.saved_errors[0]).startswith('utime: '))
-        WVPASS(str(helpers.saved_errors[1]).startswith('Linux chattr: '))
-        WVPASS(str(helpers.saved_errors[2]).startswith('xattr.set: '))
+        expected_errors = ['utime: ']
+        if _linux_attr_supported(tmpdir):
+            expected_errors.append('Linux chattr: ')
+        if _linux_xattr_supported(tmpdir):
+            expected_errors.append('xattr.set: ')
+        WVPASS(len(helpers.saved_errors) == len(expected_errors))
+        for i in xrange(len(expected_errors)):
+            WVPASS(str(helpers.saved_errors[i]).startswith(expected_errors[i]))
         clear_errors()
     finally:
+        subprocess.call(['chmod', '-R', 'u+rwX', tmpdir])
         subprocess.call(['rm', '-rf', tmpdir])
 
 
