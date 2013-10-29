@@ -2,21 +2,28 @@
 
 force-delete()
 {
+    local rc=0
     # Try *hard* to delete $@.  Among other things, some systems have
     # r-xr-xr-x for root and other system dirs.
     rm -rf "$@" # Maybe we'll get lucky.
     for f in "$@"; do
-        test -e "$@" || continue
-        chmod -R u+w "$@"
-        if [[ $(uname) =~ Linux ]]; then
-            chattr -fR = "$@"
-            setfacl -Rb "$@"
+        test -e "$f" || continue
+        if test "$(type -p setfacl)"; then
+            setfacl -Rb "$f"
         fi
-        rm -r "$@"
-        if test -e "$@"; then
-            return 1
+        if test "$(type -p chattr)"; then
+            chattr -R -aisu "$f"
+        fi
+        chmod -R u+rwX "$f"
+        rm -r "$f"
+        if test -e "$f"; then
+            rc=1
+            find "$f" -ls
+            lsattr -aR "$f"
+            getfacl -R "$f"
         fi
     done
+    return $rc
 }
 
 realpath()
