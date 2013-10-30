@@ -297,7 +297,11 @@ WVFAIL bup tag v0.n non-existant 2>/dev/null
 WVPASSEQ "$(bup tag)" ""
 WVPASS bup tag v0.1 master
 WVPASSEQ "$(bup tag)" "v0.1"
+WVFAIL bup tag v0.1 master
+WVPASS bup tag -f v0.1 master
 WVPASS bup tag -d v0.1
+WVPASS bup tag -f -d v0.1
+WVFAIL bup tag -d v0.1
 
 # This section destroys data in the bup repository, so it is done last.
 WVSTART "fsck"
