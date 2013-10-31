@@ -397,6 +397,25 @@ WVSTART 'meta --edit'
         | WVPASS bup meta -tvvf - | grep -qE '^group: bar'
 )
 
+WVSTART 'meta --no-recurse'
+(
+    set +e
+    WVPASS force-delete "$TOP/bupmeta.tmp"
+    WVPASS mkdir "$TOP/bupmeta.tmp"
+    WVPASS cd "$TOP/bupmeta.tmp"
+    WVPASS mkdir src
+    WVPASS mkdir src/foo
+    WVPASS touch src/foo/{1,2,3}
+    WVPASS bup meta -cf src.meta src
+    WVPASSEQ "$(LC_ALL=C; bup meta -tf src.meta | sort)" "src/
+src/foo/
+src/foo/1
+src/foo/2
+src/foo/3"
+    WVPASS bup meta --no-recurse -cf src.meta src
+    WVPASSEQ "$(LC_ALL=C; bup meta -tf src.meta | sort)" "src/"
+) || exit $?
+
 # Test ownership restoration (when not root or fakeroot).
 (
     if [ $(t/root-status) != none ]; then

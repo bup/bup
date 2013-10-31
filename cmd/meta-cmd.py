@@ -58,7 +58,8 @@ q,quiet        don't show progress meter
 handle_ctrl_c()
 
 o = options.Options(optspec)
-(opt, flags, remainder) = o.parse(['--paths', '--symlinks'] + sys.argv[1:])
+(opt, flags, remainder) = o.parse(['--paths', '--symlinks', '--recurse']
+                                  + sys.argv[1:])
 
 opt.verbose = opt.verbose or 0
 opt.quiet = opt.quiet or 0
