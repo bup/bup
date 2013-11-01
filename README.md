@@ -415,7 +415,7 @@ mailing list (see below) if you'd like to help.
     
  - bup needs better documentation.
  
-    According to a recent article about git in Linux Weekly News
+    According to a recent article about bup in Linux Weekly News
     (https://lwn.net/Articles/380983/), "it's a bit short on examples and
     a user guide would be nice."  Documentation is the sort of thing that
     will never be great unless someone from outside contributes it (since
