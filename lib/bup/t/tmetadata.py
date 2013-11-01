@@ -222,7 +222,7 @@ def test_apply_to_path_restricted_access():
         m.apply_to_path(path)
         print >> sys.stderr, helpers.saved_errors
         expected_errors = ['utime: ']
-        if _linux_attr_supported(tmpdir):
+        if m.linux_attr and _linux_attr_supported(tmpdir):
             expected_errors.append('Linux chattr: ')
         if _linux_xattr_supported(tmpdir):
             expected_errors.append('xattr.set: ')
