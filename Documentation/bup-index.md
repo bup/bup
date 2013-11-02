@@ -146,12 +146,12 @@ does, due to the accommodations described above.
     `$BUP_DIR/bupindex`.
 
 \--exclude=*path*
-:   a path to exclude from the backup (can be used more
-    than once)
+:   exclude *path* from the backup; *path* is not expanded in any
+    way (can be used more than once).
 
 \--exclude-from=*filename*
-:   a file that contains exclude paths (can be used more
-    than once)
+:   read --exclude paths from *filename*, one path per-line (can be
+    used more than once).
 
 \--exclude-rx=*pattern*
 :   exclude any path matching *pattern*, which must be a Python regular
