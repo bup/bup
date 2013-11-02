@@ -2,6 +2,8 @@
 . ./wvtest-bup.sh
 . ./t/lib.sh
 
+set -o pipefail
+
 if [ $(t/root-status) != root ]; then
     echo 'Not root: skipping --check-device tests.'
     exit 0 # FIXME: add WVSKIP.

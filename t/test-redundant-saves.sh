@@ -11,6 +11,8 @@
 
 . ./wvtest-bup.sh
 
+set -o pipefail
+
 WVSTART 'all'
 
 top="$(pwd)"

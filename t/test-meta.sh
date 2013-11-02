@@ -2,7 +2,9 @@
 . wvtest.sh
 . t/lib.sh
 
-TOP="$(pwd)"
+set -o pipefail
+
+TOP="$(WVPASS pwd)" || exit $?
 export BUP_DIR="$TOP/buptest.tmp"
 
 bup()

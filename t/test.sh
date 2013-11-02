@@ -2,6 +2,8 @@
 . wvtest.sh
 . t/lib.sh
 
+set -o pipefail
+
 TOP="$(WVPASS /bin/pwd)" || exit $?
 export BUP_DIR="$TOP/buptest.tmp"
 
@@ -165,7 +167,8 @@ WVPASS bup split -t t/testfile2 --fanout 3 >tags2tf.tmp
 WVPASS bup split -r "$BUP_DIR" -c t/testfile2 >tags2c.tmp
 WVPASS bup split -r :$BUP_DIR -c t/testfile2 >tags2c.tmp
 WVPASS ls -lR \
-   | WVPASS bup split -r :$BUP_DIR -c --fanout 3 --max-pack-objects 3 -n lslr
+    | WVPASS bup split -r :$BUP_DIR -c --fanout 3 --max-pack-objects 3 -n lslr \
+    || exit $?
 WVPASS bup ls
 WVFAIL bup ls /does-not-exist
 WVPASS bup ls /lslr
@@ -212,7 +215,7 @@ WVSTART "save/git-fsck"
     (WVPASS cd "$TOP/t/sampledata" && WVPASS bup save -vvn master /) || exit $?
     result="$(git fsck --full --strict 2>&1)" || exit $?
     n=$(echo "$result" |
-        egrep -v 'dangling (commit|tree|blob)' |
+        WVFAIL egrep -v 'dangling (commit|tree|blob)' |
         WVPASS tee -a /dev/stderr |
         WVPASS wc -l) || exit $?
     WVPASS [ "$n" -eq 0 ]

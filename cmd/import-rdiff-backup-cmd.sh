@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -o pipefail
+
 must() {
     local file=${BASH_SOURCE[0]}
     local line=${BASH_LINENO[0]}

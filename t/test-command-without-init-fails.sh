@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 . ./wvtest-bup.sh
 
+set -o pipefail
+
 WVSTART 'all'
 
 top="$(WVPASS pwd)" || exit $?

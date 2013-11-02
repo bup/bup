@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 . ./wvtest-bup.sh
 
+set -o pipefail
+
 top="$(WVPASS pwd)" || exit $?
 tmpdir="$(WVPASS wvmktempdir)" || exit $?
 
