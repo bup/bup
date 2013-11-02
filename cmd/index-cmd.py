@@ -62,7 +62,7 @@ def clear_index(indexfile):
                 raise
 
 
-def update_index(top, excluded_paths):
+def update_index(top, excluded_paths, exclude_rxs):
     # tmax and start must be epoch nanoseconds.
     tmax = (time.time() - 1) * 10**9
     ri = index.Reader(indexfile)
@@ -234,7 +234,7 @@ if opt.update:
     if not extra:
         o.fatal('update mode (-u) requested but no paths given')
     for (rp,path) in paths:
-        update_index(rp, excluded_paths)
+        update_index(rp, excluded_paths, exclude_rxs)
 
 if opt['print'] or opt.status or opt.modified:
     for (name, ent) in index.Reader(indexfile).filter(extra or ['']):
