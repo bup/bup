@@ -36,7 +36,7 @@ for SNAPSHOT in *; do
     [ -e "$SNAPSHOT/." ] || continue
     echo "snapshot='$SNAPSHOT'" >&2
     for BRANCH_PATH in "$SNAPSHOT/"*; do
-        BRANCH=$(basename "$BRANCH_PATH")
+        BRANCH=$(basename "$BRANCH_PATH") || exit $?
         [ -e "$BRANCH_PATH/." ] || continue
         [ -z "$TARGET" -o "$TARGET" = "$BRANCH" ] || continue
         
@@ -48,10 +48,10 @@ for SNAPSHOT in *; do
 	[ -n "$DATE" ] || exit 3
 
         TMPIDX=bupindex.$BRANCH.tmp
-        bup index -ux -f "$TMPIDX" "$BRANCH_PATH/"
+        bup index -ux -f "$TMPIDX" "$BRANCH_PATH/" || exit $?
         bup save --strip --date="$DATE" \
-                -f "$TMPIDX" -n "$BRANCH" \
-                "$BRANCH_PATH/"
-        rm -f "$TMPIDX"
+            -f "$TMPIDX" -n "$BRANCH" \
+            "$BRANCH_PATH/" || exit $?
+        rm "$TMPIDX" || exit $?
     done
 done
