@@ -480,7 +480,7 @@ src/foo/3"
 
 # Test ownership restoration (when root or fakeroot).
 (
-    if [ $(t/root-status) == none ]; then
+    if [ $(t/root-status) = none ]; then
         exit 0
     fi
 
@@ -591,7 +591,7 @@ src/foo/3"
 
 # Root-only tests that require an FS with all the trimmings: ACLs,
 # Linux attr, Linux xattr, etc.
-if [ $(t/root-status) == root ]; then
+if [ $(t/root-status) = root ]; then
     (
         # Some cleanup handled in universal-cleanup() above.
         # These tests are only likely to work under Linux for now
