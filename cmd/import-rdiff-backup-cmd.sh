@@ -57,7 +57,7 @@ echo "$backups" |
 while read timestamp type; do
     tmpdir=$(must mktemp -d) || exit $?
 
-    echo "Importing backup from $(date --date=@$timestamp +%c) " \
+    echo "Importing backup from $(date -d @$timestamp +%c) " \
         "($counter / $backups_count)" 1>&2
     echo 1>&2
 
