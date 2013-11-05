@@ -618,7 +618,7 @@ WVPASSEQ "$(bup ls buptest/latest/)" "a/
 c/"
 
 
-if [ "$(which rdiff-backup)" != "" ]; then
+if [ "$(type -p rdiff-backup)" != "" ]; then
     WVSTART "import-rdiff-backup"
     D=rdiff-backup.tmp
     export BUP_DIR="$TOP/$D/.bup"
