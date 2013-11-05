@@ -637,6 +637,8 @@ class Metadata:
                 add_error("%s: can't restore xattr; xattr support missing.\n"
                           % path)
             return
+        if not self.linux_xattr:
+            return
         try:
             existing_xattrs = set(xattr.list(path, nofollow=True))
         except IOError, e:
@@ -644,27 +646,26 @@ class Metadata:
                 raise ApplyError('xattr.set: %s' % e)
             else:
                 raise
-        if self.linux_xattr:
-            for k, v in self.linux_xattr:
-                if k not in existing_xattrs \
-                        or v != xattr.get(path, k, nofollow=True):
-                    try:
-                        xattr.set(path, k, v, nofollow=True)
-                    except IOError, e:
-                        if e.errno == errno.EPERM \
-                                or e.errno == errno.EOPNOTSUPP:
-                            raise ApplyError('xattr.set: %s' % e)
-                        else:
-                            raise
-                existing_xattrs -= frozenset([k])
-            for k in existing_xattrs:
+        for k, v in self.linux_xattr:
+            if k not in existing_xattrs \
+                    or v != xattr.get(path, k, nofollow=True):
                 try:
-                    xattr.remove(path, k, nofollow=True)
+                    xattr.set(path, k, v, nofollow=True)
                 except IOError, e:
-                    if e.errno == errno.EPERM:
-                        raise ApplyError('xattr.remove: %s' % e)
+                    if e.errno == errno.EPERM \
+                            or e.errno == errno.EOPNOTSUPP:
+                        raise ApplyError('xattr.set: %s' % e)
                     else:
                         raise
+            existing_xattrs -= frozenset([k])
+        for k in existing_xattrs:
+            try:
+                xattr.remove(path, k, nofollow=True)
+            except IOError, e:
+                if e.errno == errno.EPERM:
+                    raise ApplyError('xattr.remove: %s' % e)
+                else:
+                    raise
 
     def __init__(self):
         self.mode = None

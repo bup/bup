@@ -189,20 +189,6 @@ def _linux_attr_supported(path):
     return True
 
 
-def _linux_xattr_supported(path):
-    # NOTE: destructive test (tries to write to path).
-    if not metadata.xattr:
-        return False
-    try:
-        xattr.set(path, 'user.bup-test-xattr-support', 'true', nofollow=True)
-    except IOError, e:
-        if e.errno == errno.EOPNOTSUPP:
-            return False
-        else:
-            raise
-    return True
-
-
 @wvtest
 def test_apply_to_path_restricted_access():
     if is_superuser() or detect_fakeroot():
@@ -224,7 +210,7 @@ def test_apply_to_path_restricted_access():
         expected_errors = ['utime: ']
         if m.linux_attr and _linux_attr_supported(tmpdir):
             expected_errors.append('Linux chattr: ')
-        if _linux_xattr_supported(tmpdir):
+        if metadata.xattr and m.linux_xattr:
             expected_errors.append('xattr.set: ')
         WVPASS(len(helpers.saved_errors) == len(expected_errors))
         for i in xrange(len(expected_errors)):
