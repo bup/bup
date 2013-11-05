@@ -1,4 +1,4 @@
-# Assumes shell is Bash.
+# Assumes shell is Bash, and pipefail is set.
 
 force-delete()
 {
@@ -35,3 +35,24 @@ realpath()
         "import sys, bup.helpers; print bup.helpers.realpath(sys.stdin.readline())" \
         || return $?
 }
+
+current-filesystem()
+{
+    df -T . | awk 'END{print $2}'
+}
+
+path-filesystems()
+(
+    # Return filesystem for each dir from $1 to /.
+    # Perhaps for /foo/bar, "ext4\next4\nbtrfs\n".
+    test "$#" -eq 1 || exit $?
+    cd "$1" || exit $?
+    current-filesystem || exit $?
+    dir="$(pwd)" || exit $?
+    while test "$dir" != /; do
+        cd .. || exit $?
+        dir="$(pwd)" || exit $?
+        current-filesystem || exit $?
+    done
+    exit 0
+)

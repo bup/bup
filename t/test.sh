@@ -459,6 +459,16 @@ WVSTART "save --strip-path (absolute)"
 
 WVSTART "save --strip-path (no match)"
 (
+    if test $(WVPASS path-filesystems . | WVPASS sort -u | WVPASS wc -l) -ne 1
+    then
+        # Skip the test because the attempt to restore parent dirs to
+        # the current filesystem may fail -- i.e. running from
+        # /foo/ext4/bar/btrfs will fail when bup tries to restore
+        # linux attrs above btrfs to the restore tree *inside* btrfs.
+        echo "(running from tree with mixed filesystems; skipping test)" 1>&2
+        exit 0
+    fi
+
     tmp=graft-points.tmp
     WVPASS force-delete $tmp
     WVPASS mkdir $tmp
