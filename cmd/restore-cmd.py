@@ -79,7 +79,6 @@ def hardlink_compatible(target_path, target_vfs_path, target_meta,
         return False
     target_node = top.lresolve(target_vfs_path)
     if src_node.mode != target_node.mode \
-            or src_node.atime != target_node.atime \
             or src_node.mtime != target_node.mtime \
             or src_node.ctime != target_node.ctime \
             or src_node.hash != target_node.hash:

@@ -224,7 +224,6 @@ class Metadata:
         return self.uid == other.uid \
             and self.gid == other.gid \
             and self.rdev == other.rdev \
-            and self.atime == other.atime \
             and self.mtime == other.mtime \
             and self.ctime == other.ctime \
             and self.user == other.user \
