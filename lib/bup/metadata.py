@@ -593,7 +593,8 @@ class Metadata:
             except OSError, e:
                 if e.errno in (errno.ENOTTY, errno.EOPNOTSUPP, errno.ENOSYS,
                                errno.EACCES):
-                    raise ApplyError('Linux chattr: %s' % e)
+                    raise ApplyError('Linux chattr: %s (0x%s)'
+                                     % (e, hex(self.linux_attr)))
                 else:
                     raise
 
