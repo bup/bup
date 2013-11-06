@@ -118,18 +118,32 @@ See the EXAMPLES section for a demonstration.
       * '^/tmp/.' - exclude root-level /tmp's content, but not /tmp itself
 
 \--map-user *old*=*new*
-:   restore *old* user as *new* user.  Specifying "" for *new* will
-    clear the user, i.e. `--map-user foo=`.
+:   for every path, restore the *old* (saved) user name as *new*.
+    Specifying "" for *new* will clear the user.  For example
+    "--map-user foo=" will allow the uid to take effect for any path
+    that originally had a user of "foo", unless countermanded by a
+    subsequent "--map-user foo=..." specification.  See DESCRIPTION
+    above for further information.
 
 \--map-group *old*=*new*
-:   restore *old* group as *new* group.  Specifying "" for *new* will
-    clear the group, i.e. `--map-user foo=`.
+:   for every path, restore the *old* (saved) group name as *new*.
+    Specifying "" for *new* will clear the group.  For example
+    "--map-group foo=" will allow the gid to take effect for any path
+    that originally had a group of "foo", unless countermanded by a
+    subsequent "--map-group foo=..." specification.  See DESCRIPTION
+    above for further information.
 
 \--map-uid *old*=*new*
-:   restore *old* uid as *new* uid.
+:   for every path, restore the *old* (saved) uid as *new*, unless
+    countermanded by a subsequent "--map-uid *old*=..." option.  Note
+    that the uid will only be relevant for paths with no user.  See
+    DESCRIPTION above for further information.
 
 \--map-gid *old*=*new*
-:   restore *old* gid as *new* gid.
+:   for every path, restore the *old* (saved) gid as *new*, unless
+    countermanded by a subsequent "--map-gid *old*=..." option.  Note
+    that the gid will only be relevant for paths with no user.  See
+    DESCRIPTION above for further information.
 
 -v, \--verbose
 :   increase log output.  Given once, prints every
@@ -202,14 +216,24 @@ Restore a tree without risk of unauthorized access:
     
 Restore a tree, remapping an old user and group to a new user and group:
 
+    # ls -l /original/y
+    -rw-r----- 1 foo baz  3610 Nov  4 11:31 y
     # bup restore -C dest --map-user foo=bar --map-group baz=bax /x/latest/y
     Restoring: 42, done.
+    # ls -l dest/y
+    -rw-r----- 1 bar bax  3610 Nov  4 11:31 y
 
 Restore a tree, remapping an old uid to a new uid.  Note that the old
 user must be erased so that bup won't prefer it over the uid:
 
+    # ls -l /original/y
+    -rw-r----- 1 foo baz  3610 Nov  4 11:31 y
+    # ls -ln /original/y
+    -rw-r----- 1 1000 1007  3610 Nov  4 11:31 y
     # bup restore -C dest --map-user foo= --map-uid 1000=1042 /x/latest/y
     Restoring: 97, done.
+    # ls -ln dest/y
+    -rw-r----- 1 1042 1007  3610 Nov  4 11:31 y
 
 An alternate way to do the same by quashing users/groups universally
 with `--numeric-ids`:
