@@ -38,7 +38,17 @@ realpath()
 
 current-filesystem()
 {
-    df -T . | awk 'END{print $2}'
+    local kernel="$(uname -s)" || return $?
+    case "$kernel" in
+        NetBSD)
+            df -G . | sed -En 's/.* ([^ ]*) fstype.*/\1/p'
+            ;;
+        SunOS)
+            df -g . | sed -En 's/.* ([^ ]*) fstype.*/\1/p'
+            ;;
+        *)
+            df -T . | awk 'END{print $2}'
+    esac
 }
 
 path-filesystems()
