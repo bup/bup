@@ -139,7 +139,7 @@ does, due to the accommodations described above.
     updating.  Mostly useful for automated tests.
 
 \--clear
-:   clear the index.
+:   clear the default index.
 
 -f, \--indexfile=*indexfile*
 :   use a different index filename instead of

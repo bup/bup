@@ -177,7 +177,7 @@ m,modified print only added/deleted/modified files (implies -p)
 s,status   print each filename with a status char (A/M/D) (implies -p)
 u,update   recursively update the index entries for the given file/dir names (default if no mode is specified)
 check      carefully check index file integrity
-clear      clear the index
+clear      clear the default index
  Options:
 H,hash     print the hash for each object next to its name
 l,long     print more information about each file
@@ -205,6 +205,8 @@ if (opt.fake_valid or opt.fake_invalid) and not opt.update:
     o.fatal('--fake-{in,}valid are meaningless without -u')
 if opt.fake_valid and opt.fake_invalid:
     o.fatal('--fake-valid is incompatible with --fake-invalid')
+if opt.clear and opt.indexfile:
+    o.fatal('cannot clear an external index (via -f)')
 
 # FIXME: remove this once we account for timestamp races, i.e. index;
 # touch new-file; index.  It's possible for this to happen quickly
