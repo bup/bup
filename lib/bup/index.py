@@ -58,10 +58,12 @@ class MetaStoreWriter:
         try:
             m_file.seek(0)
             try:
+                m_off = m_file.tell()
                 m = metadata.Metadata.read(m_file)
                 while m:
                     m_encoded = m.encode()
-                    self._offsets[m_encoded] = m_file.tell() - len(m_encoded)
+                    self._offsets[m_encoded] = m_off
+                    m_off = m_file.tell()
                     m = metadata.Metadata.read(m_file)
             except EOFError:
                 pass
