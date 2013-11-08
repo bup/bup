@@ -433,7 +433,7 @@ src/foo/3"
     WVPASS rm -rf src
     WVPASS bup meta --edit --unset-user --set-uid 0 ../src.meta \
         | WVPASS bup meta -x
-    WVPASS bup xstat src | grep -qvE '^user: root'
+    WVPASS bup xstat src | WVPASS grep -qvE '^user: root'
 
     # Make sure we can restore one of the user's groups.
     last_group="$(python -c 'import os,grp; \
