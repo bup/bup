@@ -146,7 +146,7 @@ does, due to the accommodations described above.
     `$BUP_DIR/bupindex`.
 
 \--exclude=*path*
-:   exclude *path* from the backup; *path* is not expanded in any
+:   exclude *path* from the backup; bup will not expand *path* in any
     way (can be used more than once).
 
 \--exclude-from=*filename*
