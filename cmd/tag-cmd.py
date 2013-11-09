@@ -9,6 +9,7 @@ import os
 from bup import git, options
 from bup.helpers import *
 
+# FIXME: review for safe writes.
 
 handle_ctrl_c()
 
