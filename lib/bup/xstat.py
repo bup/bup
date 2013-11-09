@@ -119,6 +119,8 @@ def mode_str(mode):
         result += 'p'
     elif pystat.S_ISLNK(mode):
         result += 'l'
+    elif pystat.S_ISSOCK(mode):
+        result += 's'
     else:
         result += '?'
 
