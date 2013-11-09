@@ -10,9 +10,9 @@ bup-tag - tag a commit in the bup repository
 
 bup tag
 
-bup tag \<tag name\> \<committish\>
+bup tag [-f] \<tag name\> \<committish\>
 
-bup tag -d \<tag name\>
+bup tag -d [-f] \<tag name\>
 
 # DESCRIPTION
 
@@ -42,6 +42,10 @@ through /.tag/important as long as the tag is not deleted.
 
 -d, \--delete
 :   delete a tag
+
+-f, \--force
+:  Overwrite the named tag even if it already exists. With -f, don't
+   report a missing tag as an error.
 
 # EXAMPLE
     

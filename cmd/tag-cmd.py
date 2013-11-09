@@ -14,10 +14,11 @@ handle_ctrl_c()
 
 optspec = """
 bup tag
-bup tag <tag name> <commit>
-bup tag -d <tag name>
+bup tag [-f] <tag name> <commit>
+bup tag -d [-f] <tag name>
 --
 d,delete=   Delete a tag
+f,force     Overwrite existing tag, or 'delete' a tag that doesn't exist
 """
 
 o = options.Options(optspec)
@@ -29,6 +30,8 @@ if opt.delete:
     tag_file = git.repo('refs/tags/%s' % opt.delete)
     debug1("tag file: %s\n" % tag_file)
     if not os.path.exists(tag_file):
+        if opt.force:
+            sys.exit(0)
         log("bup: error: tag '%s' not found.\n" % opt.delete)
         sys.exit(1)
 
@@ -54,7 +57,7 @@ if not tag_name:
     o.fatal("tag name must not be empty.")
 debug1("args: tag name = %s; commit = %s\n" % (tag_name, commit))
 
-if tag_name in tags:
+if tag_name in tags and not opt.force:
     log("bup: error: tag '%s' already exists\n" % tag_name)
     sys.exit(1)
 
