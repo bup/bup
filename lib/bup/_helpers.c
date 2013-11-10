@@ -986,13 +986,8 @@ static int normalize_timespec_values(const char *name,
 }
 
 
-#define CHECK_VALUE_FITS(name, value, src_type, dest_type, max_value) \
-if (sizeof(src_type) >= sizeof(dest_type) && (value) > (max_value)) \
-{ \
-    PyErr_SetString(PyExc_OverflowError, \
-                    name " cannot be converted to integer"); \
-    return NULL; \
-}
+#define INTEGER_TO_PY(x) \
+    (((x) >= 0) ? PyLong_FromUnsignedLongLong(x) : PyLong_FromLongLong(x))
 
 
 static PyObject *stat_struct_to_py(const struct stat *st,
@@ -1014,23 +1009,16 @@ static PyObject *stat_struct_to_py(const struct stat *st,
         return NULL;
 
     // We can check the known (via POSIX) signed and unsigned types at
-    // compile time, but not (easily) the unspecified types.  Ideally,
-    // some of these will be optimized out at compile time.
-    CHECK_VALUE_FITS("stat st_mode", st->st_mode, mode_t, PY_LONG_LONG, PY_LLONG_MAX);
-    CHECK_VALUE_FITS("stat st_dev", st->st_dev, dev_t, PY_LONG_LONG, PY_LLONG_MAX);
-    CHECK_VALUE_FITS("stat st_uid", st->st_uid, uid_t, PY_LONG_LONG, PY_LLONG_MAX);
-    CHECK_VALUE_FITS("stat st_gid", st->st_uid, uid_t, PY_LONG_LONG, PY_LLONG_MAX);
-    CHECK_VALUE_FITS("stat st_nlink", st->st_nlink, nlink_t, PY_LONG_LONG, PY_LLONG_MAX);
-    CHECK_VALUE_FITS("stat st_rdev", st->st_rdev, dev_t, PY_LONG_LONG, PY_LLONG_MAX);
-
-    return Py_BuildValue("LKLLLLLL(Ll)(Ll)(Ll)",
-                         (PY_LONG_LONG) st->st_mode,
+    // compile time, but not (easily) the unspecified types, so handle
+    // those via INTEGER_TO_PY().
+    return Py_BuildValue("OKOOOOOL(Ll)(Ll)(Ll)",
+                         INTEGER_TO_PY(st->st_mode),
                          (unsigned PY_LONG_LONG) st->st_ino,
-                         (PY_LONG_LONG) st->st_dev,
-                         (PY_LONG_LONG) st->st_nlink,
-                         (PY_LONG_LONG) st->st_uid,
-                         (PY_LONG_LONG) st->st_gid,
-                         (PY_LONG_LONG) st->st_rdev,
+                         INTEGER_TO_PY(st->st_dev),
+                         INTEGER_TO_PY(st->st_nlink),
+                         INTEGER_TO_PY(st->st_uid),
+                         INTEGER_TO_PY(st->st_gid),
+                         INTEGER_TO_PY(st->st_rdev),
                          (PY_LONG_LONG) st->st_size,
                          (PY_LONG_LONG) atime,
                          (long) atime_ns,
