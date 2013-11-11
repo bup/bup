@@ -635,7 +635,8 @@ if [ "$(type -p rdiff-backup)" != "" ]; then
     WVPASS rdiff-backup $TOP/Documentation $D/rdiff-backup
     WVPASS bup import-rdiff-backup $D/rdiff-backup import-rdiff-backup
     WVPASSEQ $(bup ls import-rdiff-backup/ | wc -l) 3
-    WVPASSEQ "$(bup ls import-rdiff-backup/latest/ | sort)" "$(ls $TOP/Documentation | sort)"
+    WVPASSEQ "$(bup ls -a import-rdiff-backup/latest/ | sort)" \
+        "$(ls -A $TOP/Documentation | sort)"
 fi
 
 
