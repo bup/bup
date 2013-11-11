@@ -108,7 +108,7 @@ From source
    as root):
 
             yum groupinstall "Development Tools"
-            yum install python python-dev
+            yum install python python-devel
             yum install fuse-python pyxattr pylibacl
             yum install perl-Time-HiRes
 
