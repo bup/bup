@@ -1,11 +1,5 @@
 OS:=$(shell uname | sed 's/[-_].*//')
-
-ifeq ($(shell $(CC) --version | grep clang),)
-	CFLAGS := -Wall -Werror -O2 $(PYINCLUDE) $(CFLAGS)
-else # clang
-	CFLAGS := -Wall -O2 $(PYINCLUDE) $(CFLAGS)
-endif
-
+CFLAGS := -Wall -O2 -Werror $(PYINCLUDE) $(CFLAGS)
 SOEXT:=.so
 
 ifeq ($(OS),CYGWIN)
