@@ -99,11 +99,16 @@ def update_index(top, excluded_paths, exclude_rxs):
                     hlinks.del_path(rig.cur.name)
             rig.next()
         if rig.cur and rig.cur.name == path:    # paths that already existed
+            try:
+                meta = metadata.from_path(path, statinfo=pst)
+            except (OSError, IOError), e:
+                add_error(e)
+                rig.next()
+                continue
             if not stat.S_ISDIR(rig.cur.mode) and rig.cur.nlink > 1:
                 hlinks.del_path(rig.cur.name)
             if not stat.S_ISDIR(pst.st_mode) and pst.st_nlink > 1:
                 hlinks.add_path(path, pst.st_dev, pst.st_ino)
-            meta = metadata.from_path(path, statinfo=pst)
             # Clear these so they don't bloat the store -- they're
             # already in the index (since they vary a lot and they're
             # fixed length).  If you've noticed "tmax", you might
@@ -129,7 +134,11 @@ def update_index(top, excluded_paths, exclude_rxs):
             rig.cur.repack()
             rig.next()
         else:  # new paths
-            meta = metadata.from_path(path, statinfo=pst)
+            try:
+                meta = metadata.from_path(path, statinfo=pst)
+            except (OSError, IOError), e:
+                add_error(e)
+                continue
             # See same assignment to 0, above, for rationale.
             meta.atime = meta.mtime = meta.ctime = 0
             meta_ofs = msw.store(meta)
