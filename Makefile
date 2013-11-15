@@ -80,10 +80,7 @@ lib/bup/_version.py:
 runtests: all runtests-python runtests-cmdline
 
 runtests-python: all
-	$(PYTHON) wvtest.py \
-		$(wildcard t/t*.py) \
-		$(filter-out lib/bup/t/tmetadata.py,$(wildcard lib/*/t/t*.py))
-	$(PYTHON) wvtest.py lib/bup/t/tmetadata.py
+	$(PYTHON) wvtest.py t/t*.py lib/*/t/t*.py
 
 runtests-cmdline: all
 	t/test-cat-file.sh
