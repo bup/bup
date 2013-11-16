@@ -27,7 +27,9 @@ if sys.platform.startswith('linux'):
             xattr = None
 
 posix1e = None
-if not (sys.platform.startswith('cygwin') or sys.platform.startswith('darwin')):
+if not (sys.platform.startswith('cygwin') \
+        or sys.platform.startswith('darwin') \
+        or sys.platform.startswith('netbsd')):
     try:
         import posix1e
     except ImportError:
