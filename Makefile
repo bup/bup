@@ -6,6 +6,12 @@ ifeq ($(OS),CYGWIN)
   SOEXT:=.dll
 endif
 
+ifdef TMPDIR
+  test_tmp := $(TMPDIR)
+else
+  test_tmp := $(CURDIR)/t/tmp
+endif
+
 default: all
 
 all: bup Documentation/all
@@ -80,18 +86,20 @@ lib/bup/_version.py:
 runtests: all runtests-python runtests-cmdline
 
 runtests-python: all
-	$(PYTHON) wvtest.py t/t*.py lib/*/t/t*.py
+	test -e t/tmp || mkdir t/tmp
+	TMPDIR="$(test_tmp)" $(PYTHON) wvtest.py t/t*.py lib/*/t/t*.py
 
 runtests-cmdline: all
-	t/test-cat-file.sh
-	t/test-index-check-device.sh
-	t/test-meta.sh
-	t/test-restore-map-owner.sh
-	t/test-restore-single-file.sh
-	t/test-rm-between-index-and-save.sh
-	t/test-command-without-init-fails.sh
-	t/test-redundant-saves.sh
-	t/test.sh
+	test -e t/tmp || mkdir t/tmp
+	TMPDIR="$(test_tmp)" t/test-cat-file.sh
+	TMPDIR="$(test_tmp)" t/test-index-check-device.sh
+	TMPDIR="$(test_tmp)" t/test-meta.sh
+	TMPDIR="$(test_tmp)" t/test-restore-map-owner.sh
+	TMPDIR="$(test_tmp)" t/test-restore-single-file.sh
+	TMPDIR="$(test_tmp)" t/test-rm-between-index-and-save.sh
+	TMPDIR="$(test_tmp)" t/test-command-without-init-fails.sh
+	TMPDIR="$(test_tmp)" t/test-redundant-saves.sh
+	TMPDIR="$(test_tmp)" t/test.sh
 
 stupid:
 	PATH=/bin:/usr/bin $(MAKE) test
