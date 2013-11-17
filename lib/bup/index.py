@@ -518,7 +518,7 @@ class Writer:
         else:
             assert(endswith)
             meta_ofs = self.metastore.store(metadata.Metadata())
-            e = BlankNewEntry(basename, meta_ofs, tmax)
+            e = BlankNewEntry(basename, meta_ofs, self.tmax)
             e.gitmode = gitmode
             e.sha = sha
             e.flags = flags
