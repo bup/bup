@@ -116,7 +116,7 @@ giant tarball each day, then send that tarball to bup, bup will be able to
 efficiently store only the changes to that tarball from one day to the next. 
 For small files, bup's compression won't be as good as xdelta's, but for
 anything over a few megabytes in size, bup's compression will actually
-*work*, which is a bit advantage over xdelta.
+*work*, which is a big advantage over xdelta.
 
 How does hashsplitting work?  It's deceptively simple.  We read through the
 file one byte at a time, calculating a rolling checksum of the last 64
