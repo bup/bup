@@ -159,8 +159,7 @@ def split_to_shalist(makeblob, maketree, files,
         stacks = [[]]
         for (sha,size,level) in sl:
             stacks[0].append((GIT_MODE_FILE, sha, size))
-            if level:
-                _squish(maketree, stacks, level)
+            _squish(maketree, stacks, level)
         #log('stacks: %r\n' % [len(i) for i in stacks])
         _squish(maketree, stacks, len(stacks)-1)
         #log('stacks: %r\n' % [len(i) for i in stacks])
