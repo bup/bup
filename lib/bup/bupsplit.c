@@ -105,7 +105,6 @@ int bupsplit_find_ofs(const unsigned char *buf, int len, int *bits)
 	    if (bits)
 	    {
 		unsigned rsum = rollsum_digest(&r);
-		*bits = BUP_BLOBBITS;
 		rsum >>= BUP_BLOBBITS;
 		for (*bits = BUP_BLOBBITS; (rsum >>= 1) & 1; (*bits)++)
 		    ;
