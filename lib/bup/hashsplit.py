@@ -61,11 +61,13 @@ def _splitbuf(buf, basebits, fanbits):
     while 1:
         b = buf.peek(buf.used())
         (ofs, bits) = _helpers.splitbuf(b)
-        if ofs > BLOB_MAX:
-            ofs = BLOB_MAX
         if ofs:
+            if ofs > BLOB_MAX:
+                ofs = BLOB_MAX
+                level = 0
+            else:
+                level = (bits-basebits)//fanbits  # integer division
             buf.eat(ofs)
-            level = (bits-basebits)//fanbits  # integer division
             yield buffer(b, 0, ofs), level
         else:
             break
