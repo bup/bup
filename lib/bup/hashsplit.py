@@ -133,7 +133,7 @@ def _make_shalist(l):
 
 def _squish(maketree, stacks, n):
     i = 0
-    while i<n or len(stacks[i]) > MAX_PER_TREE:
+    while i < n or len(stacks[i]) >= MAX_PER_TREE:
         while len(stacks) <= i+1:
             stacks.append([])
         if len(stacks[i]) == 1:
