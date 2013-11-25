@@ -258,8 +258,8 @@ Notes on NetBSD/pkgsrc
    traversal code ("fts") in NetBSD's libc will interpret this as a
    cycle and error out, so "ls -R" and "find" will not work.
 
- - It is not clear if extended attribute and POSIX acl support does
-   anything useful.
+ - There is no support for ACLs.  If/when some entrprising person
+   fixes this, adjust t/compare-trees.
 
 
 Notes on Cygwin
