@@ -693,7 +693,7 @@ static PyObject *fadvise_done(PyObject *self, PyObject *args)
 static PyObject *bup_get_linux_file_attr(PyObject *self, PyObject *args)
 {
     int rc;
-    unsigned long attr;
+    unsigned int attr;
     char *path;
     int fd;
 
@@ -713,7 +713,7 @@ static PyObject *bup_get_linux_file_attr(PyObject *self, PyObject *args)
     }
 
     close(fd);
-    return Py_BuildValue("k", attr);
+    return Py_BuildValue("I", attr);
 }
 #endif /* def BUP_HAVE_FILE_ATTRS */
 
@@ -722,11 +722,11 @@ static PyObject *bup_get_linux_file_attr(PyObject *self, PyObject *args)
 static PyObject *bup_set_linux_file_attr(PyObject *self, PyObject *args)
 {
     int rc;
-    unsigned long orig_attr, attr;
+    unsigned int orig_attr, attr;
     char *path;
     int fd;
 
-    if (!PyArg_ParseTuple(args, "sk", &path, &attr))
+    if (!PyArg_ParseTuple(args, "sI", &path, &attr))
         return NULL;
 
     fd = open(path, O_RDONLY | O_NONBLOCK | O_LARGEFILE | O_NOFOLLOW);
