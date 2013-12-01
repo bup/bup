@@ -79,7 +79,7 @@ test-src-save-restore()
         # Test extract.
         WVPASS force-delete src-restore
         WVPASS mkdir src-restore
-        WVPASS bup restore -C src-restore "/src/latest$(pwd)/"
+        WVPASS bup restore -C src-restore "/src/latest$(pwd -P)/"
         WVPASS test -d src-restore/src
         WVPASS "$TOP/t/compare-trees" -c src/ src-restore/src/
         WVPASS rm -rf src.bup
@@ -164,7 +164,7 @@ WVSTART 'metadata save/restore (general)'
     WVPASS bup index src
     WVPASS bup save -t -n src src
     WVPASS force-delete src-restore
-    WVPASS bup restore -C src-restore "/src/latest$(pwd)/src/lib/"
+    WVPASS bup restore -C src-restore "/src/latest$(pwd -P)/src/lib/"
     WVPASS touch -t 201211111111 src-restore # Make sure the top won't match.
     # Check that the only difference is the top dir.
     WVFAIL $TOP/t/compare-trees -c src/lib/ src-restore/ > tmp-compare-trees
@@ -200,7 +200,7 @@ WVSTART 'metadata save/restore (using index metadata)'
 
     WVPASS force-delete src-restore-1
     WVPASS mkdir src-restore-1
-    WVPASS bup restore -C src-restore-1 "/src/latest$(pwd)/"
+    WVPASS bup restore -C src-restore-1 "/src/latest$(pwd -P)/"
     WVPASS test -d src-restore-1/src
     WVPASS "$TOP/t/compare-trees" -c src/ src-restore-1/src/
 
@@ -215,7 +215,7 @@ WVSTART 'metadata save/restore (using index metadata)'
 
     WVPASS force-delete src-restore-2
     WVPASS mkdir src-restore-2
-    WVPASS bup restore -C src-restore-2 "/src/latest$(pwd)/"
+    WVPASS bup restore -C src-restore-2 "/src/latest$(pwd -P)/"
     WVPASS test -d src-restore-2/src
     WVPASS "$TOP/t/compare-trees" -c src-restore-1/src/ src-restore-2/src/
 
@@ -233,7 +233,7 @@ hardlink-test-run-restore()
 {
     WVPASS force-delete src-restore
     WVPASS mkdir src-restore
-    WVPASS bup restore -C src-restore "/src/latest$(pwd)/"
+    WVPASS bup restore -C src-restore "/src/latest$(pwd -P)/"
     WVPASS test -d src-restore/src
 }
 
@@ -329,7 +329,7 @@ WVSTART 'metadata save/restore (hardlinks)'
     WVPASS bup save -t -n src src
     WVPASS force-delete src-restore
     WVPASS mkdir src-restore
-    WVPASS bup restore -C src-restore "/src/latest$(pwd)/src/a/"
+    WVPASS bup restore -C src-restore "/src/latest$(pwd -P)/src/a/"
     WVPASS test -e src-restore/1
     WVPASS echo -n > hardlink-sets.expected
     (WVPASS cd src-restore; WVPASS hardlink-sets .) > hardlink-sets.restored \
