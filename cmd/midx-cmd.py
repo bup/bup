@@ -117,11 +117,13 @@ def _do_midx(outdir, outfilename, infilenames, prefixstr):
     assert(f.tell() == 12)
 
     f.truncate(12 + 4*entries + 20*total + 4*total)
+    f.flush()
+    fdatasync(f.fileno())
 
     fmap = mmap_readwrite(f, close=False)
 
     count = merge_into(fmap, bits, total, inp)
-    del fmap
+    del fmap # Assume this calls msync() now.
 
     f.seek(0, os.SEEK_END)
     f.write('\0'.join(allfilenames))

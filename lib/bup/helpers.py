@@ -31,6 +31,13 @@ def atof(s):
 buglvl = atoi(os.environ.get('BUP_DEBUG', 0))
 
 
+# If the platform doesn't have fdatasync (OS X), fall back to fsync.
+try:
+    fdatasync = os.fdatasync
+except AttributeError:
+    fdatasync = os.fsync
+
+
 # Write (blockingly) to sockets that may or may not be in blocking mode.
 # We need this because our stderr is sometimes eaten by subprocesses
 # (probably ssh) that sometimes make it nonblocking, if only temporarily,
