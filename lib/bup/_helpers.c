@@ -46,6 +46,105 @@
 
 static int istty2 = 0;
 
+
+#define INTEGER_TO_PY(x) \
+    (((x) >= 0) ? PyLong_FromUnsignedLongLong(x) : PyLong_FromLongLong(x))
+
+
+static int bup_ulong_from_pyint(unsigned long *x, PyObject *py,
+                                const char *name)
+{
+    const long tmp = PyInt_AsLong(py);
+    if (tmp == -1 && PyErr_Occurred())
+    {
+        if (PyErr_ExceptionMatches(PyExc_OverflowError))
+            PyErr_Format(PyExc_OverflowError, "%s too big for unsigned long",
+                         name);
+        return 0;
+    }
+    if (tmp < 0)
+    {
+        PyErr_Format(PyExc_OverflowError,
+                     "negative %s cannot be converted to unsigned long", name);
+        return 0;
+    }
+    *x = tmp;
+    return 1;
+}
+
+
+static int bup_ulong_from_py(unsigned long *x, PyObject *py, const char *name)
+{
+    if (PyInt_Check(py))
+        return bup_ulong_from_pyint(x, py, name);
+
+    if (!PyLong_Check(py))
+    {
+        PyErr_Format(PyExc_TypeError, "expected integer %s", name);
+        return 0;
+    }
+
+    const unsigned long tmp = PyLong_AsUnsignedLong(py);
+    if (PyErr_Occurred())
+    {
+        if (PyErr_ExceptionMatches(PyExc_OverflowError))
+            PyErr_Format(PyExc_OverflowError, "%s too big for unsigned long",
+                         name);
+        return 0;
+    }
+    *x = tmp;
+    return 1;
+}
+
+
+static int bup_uint_from_py(unsigned int *x, PyObject *py, const char *name)
+{
+    unsigned long tmp;
+    if (!bup_ulong_from_py(&tmp, py, name))
+        return 0;
+
+    if (tmp > UINT_MAX)
+    {
+        PyErr_Format(PyExc_OverflowError, "%s too big for unsigned int", name);
+        return 0;
+    }
+    *x = tmp;
+    return 1;
+}
+
+static int bup_ullong_from_py(unsigned PY_LONG_LONG *x, PyObject *py,
+                              const char *name)
+{
+    if (PyInt_Check(py))
+    {
+        unsigned long tmp;
+        if (bup_ulong_from_pyint(&tmp, py, name))
+        {
+            *x = tmp;
+            return 1;
+        }
+        return 0;
+    }
+
+    if (!PyLong_Check(py))
+    {
+        PyErr_Format(PyExc_TypeError, "integer argument expected for %s", name);
+        return 0;
+    }
+
+    const unsigned PY_LONG_LONG tmp = PyLong_AsUnsignedLongLong(py);
+    if (tmp == (unsigned long long) -1 && PyErr_Occurred())
+    {
+        if (PyErr_ExceptionMatches(PyExc_OverflowError))
+            PyErr_Format(PyExc_OverflowError,
+                         "%s too big for unsigned long long", name);
+        return 0;
+    }
+    *x = tmp;
+    return 1;
+}
+
+
 // Probably we should use autoconf or something and set HAVE_PY_GETARGCARGV...
 #if __WIN32__ || __CYGWIN__
 
@@ -403,7 +502,7 @@ static uint32_t _get_idx_i(struct idx *idx)
 
 static PyObject *merge_into(PyObject *self, PyObject *args)
 {
-    PyObject *ilist = NULL;
+    PyObject *py_total, *ilist = NULL;
     unsigned char *fmap = NULL;
     struct sha *sha_ptr, *sha_start = NULL;
     uint32_t *table_ptr, *name_ptr, *name_start;
@@ -415,8 +514,12 @@ static PyObject *merge_into(PyObject *self, PyObject *args)
     int num_i;
     int last_i;
 
-    if (!PyArg_ParseTuple(args, "w#iIO", &fmap, &flen, &bits, &total, &ilist))
+    if (!PyArg_ParseTuple(args, "w#iOO",
+                          &fmap, &flen, &bits, &py_total, &ilist))
 	return NULL;
+
+    if (!bup_uint_from_py(&total, py_total, "total"))
+        return NULL;
 
     num_i = PyList_Size(ilist);
     idxs = (struct idx **)PyMem_Malloc(num_i * sizeof(struct idx *));
@@ -490,7 +593,7 @@ static uint64_t htonll(uint64_t value)
 static PyObject *write_idx(PyObject *self, PyObject *args)
 {
     char *filename = NULL;
-    PyObject *idx = NULL;
+    PyObject *py_total, *idx = NULL;
     PyObject *part;
     unsigned char *fmap = NULL;
     Py_ssize_t flen = 0;
@@ -501,8 +604,12 @@ static PyObject *write_idx(PyObject *self, PyObject *args)
     uint64_t *ofs64_ptr;
     struct sha *sha_ptr;
 
-    if (!PyArg_ParseTuple(args, "sw#OI", &filename, &fmap, &flen, &idx, &total))
+    if (!PyArg_ParseTuple(args, "sw#OO",
+                          &filename, &fmap, &flen, &idx, &py_total))
 	return NULL;
+
+    if (!bup_uint_from_py(&total, py_total, "total"))
+        return NULL;
 
     if (PyList_Size (idx) != FAN_ENTRIES) // Check for list of the right length.
         return PyErr_Format (PyExc_TypeError, "idx must contain %d entries",
@@ -531,15 +638,20 @@ static PyObject *write_idx(PyObject *self, PyObject *args)
 	{
 	    unsigned char *sha = NULL;
 	    Py_ssize_t sha_len = 0;
-	    unsigned int crc = 0;
-            unsigned PY_LONG_LONG ofs_py = 0;
+            PyObject *crc_py, *ofs_py;
+	    unsigned int crc;
+            unsigned PY_LONG_LONG ofs_ull;
 	    uint64_t ofs;
-	    if (!PyArg_ParseTuple(PyList_GET_ITEM(part, j), "t#IK",
-				  &sha, &sha_len, &crc, &ofs_py))
+	    if (!PyArg_ParseTuple(PyList_GET_ITEM(part, j), "t#OO",
+				  &sha, &sha_len, &crc_py, &ofs_py))
 		return NULL;
+            if(!bup_uint_from_py(&crc, crc_py, "crc"))
+                return NULL;
+            if(!bup_ullong_from_py(&ofs_ull, ofs_py, "ofs"))
+                return NULL;
             assert(crc <= UINT32_MAX);
-            assert(ofs_py <= UINT64_MAX);
-	    ofs = ofs_py;
+            assert(ofs_ull <= UINT64_MAX);
+	    ofs = ofs_ull;
 	    if (sha_len != sizeof(struct sha))
 		return NULL;
 	    memcpy(sha_ptr++, sha, sizeof(struct sha));
@@ -718,15 +830,20 @@ static PyObject *bup_get_linux_file_attr(PyObject *self, PyObject *args)
 #endif /* def BUP_HAVE_FILE_ATTRS */
 
 
+
 #ifdef BUP_HAVE_FILE_ATTRS
 static PyObject *bup_set_linux_file_attr(PyObject *self, PyObject *args)
 {
     int rc;
     unsigned int orig_attr, attr;
     char *path;
+    PyObject *py_attr;
     int fd;
 
-    if (!PyArg_ParseTuple(args, "sI", &path, &attr))
+    if (!PyArg_ParseTuple(args, "sO", &path, &py_attr))
+        return NULL;
+
+    if (!bup_uint_from_py(&attr, py_attr, "attr"))
         return NULL;
 
     fd = open(path, O_RDONLY | O_NONBLOCK | O_LARGEFILE | O_NOFOLLOW);
@@ -948,10 +1065,6 @@ static PyObject *bup_lutimes(PyObject *self, PyObject *args)
 #endif
 
 
-#define INTEGER_TO_PY(x) \
-    (((x) >= 0) ? PyLong_FromUnsignedLongLong(x) : PyLong_FromLongLong(x))
-
-
 static PyObject *stat_struct_to_py(const struct stat *st,
                                    const char *filename,
                                    int fd)
@@ -1096,6 +1209,7 @@ PyMODINIT_FUNC init_helpers(void)
     assert(sizeof(blkcnt_t) <= sizeof(PY_LONG_LONG));
     // Just be sure (relevant when passing timestamps back to Python above).
     assert(sizeof(PY_LONG_LONG) <= sizeof(long long));
+    assert(sizeof(unsigned PY_LONG_LONG) <= sizeof(unsigned long long));
 
     char *e;
     PyObject *m = Py_InitModule("_helpers", helper_methods);
