@@ -179,5 +179,5 @@ clean: Documentation/clean config/clean
 	if test -e bupmeta.tmp/testfs-limited; \
 	  then umount bupmeta.tmp/testfs-limited || true; fi
 	rm -rf *.tmp *.tmp.meta t/*.tmp lib/*/*/*.tmp build lib/bup/build lib/bup/t/testfs
-	if test -e t/tmp; then rm -r t/tmp; fi
+	if test -e t/tmp; then t/force-delete t/tmp; fi
 	t/configure-sampledata --clean

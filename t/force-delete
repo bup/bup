@@ -1,0 +1,32 @@
+#!/bin/bash
+
+set -o pipefail
+
+# Try *hard* to delete $@.  Among other things, some systems have
+# r-xr-xr-x for root and other system dirs.
+
+rc=0
+rm -rf "$@" # Maybe we'll get lucky.
+for f in "$@"; do
+    test -e "$f" || continue
+    if test "$(type -p setfacl)"; then
+        setfacl -Rb "$f"
+    fi
+    if test "$(type -p chattr)"; then
+        chattr -R -aisu "$f"
+    fi
+    chmod -R u+rwX "$f"
+    rm -r "$f"
+    if test -e "$f"; then
+        rc=1
+        find "$f" -ls
+        lsattr -aR "$f"
+        getfacl -R "$f"
+    fi
+done
+
+if test "$rc" -ne 0; then
+    echo "Failed to delete everything" 1>&2
+fi
+
+exit "$rc"

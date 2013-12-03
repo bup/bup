@@ -4,28 +4,7 @@ bup_t_lib_script_home=$(cd "$(dirname $0)" && pwd)
 
 force-delete()
 {
-    local rc=0
-    # Try *hard* to delete $@.  Among other things, some systems have
-    # r-xr-xr-x for root and other system dirs.
-    rm -rf "$@" # Maybe we'll get lucky.
-    for f in "$@"; do
-        test -e "$f" || continue
-        if test "$(type -p setfacl)"; then
-            setfacl -Rb "$f"
-        fi
-        if test "$(type -p chattr)"; then
-            chattr -R -aisu "$f"
-        fi
-        chmod -R u+rwX "$f"
-        rm -r "$f"
-        if test -e "$f"; then
-            rc=1
-            find "$f" -ls
-            lsattr -aR "$f"
-            getfacl -R "$f"
-        fi
-    done
-    return $rc
+    "$bup_t_lib_script_home/force-delete" "$@"
 }
 
 realpath()
