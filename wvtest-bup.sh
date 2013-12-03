@@ -5,7 +5,7 @@
 
 . ./wvtest.sh
 
-_wvtop="$(pwd)"
+_wvtop="$(pwd -P)"
 
 wvmktempdir ()
 {

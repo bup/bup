@@ -35,7 +35,7 @@ WVPASS touch src/foo
 WVPASS chgrp -R "$group" src
 WVPASS bup index src
 WVPASS bup save -n src src
-WVPASS bup restore -C dest "src/latest/$(pwd)/src/"
+WVPASS bup restore -C dest "src/latest/$(pwd -P)/src/"
 WVPASS bup xstat dest/foo > foo-xstat
 WVPASS grep -qE "^user: $user\$" foo-xstat
 WVPASS grep -qE "^uid: $uid\$" foo-xstat
@@ -48,7 +48,7 @@ WVPASS rm -rf dest
 WVPASS bup restore -C dest \
     --map-uid "$uid=$other_uid" --map-gid "$gid=$other_gid" \
     --map-user "$user=$other_user" --map-group "$group=$other_group" \
-    "src/latest/$(pwd)/src/"
+    "src/latest/$(pwd -P)/src/"
 WVPASS bup xstat dest/foo > foo-xstat
 WVPASS grep -qE "^user: $other_user\$" foo-xstat
 WVPASS grep -qE "^uid: $other_uid\$" foo-xstat
@@ -59,7 +59,7 @@ WVSTART "restore --map-user/group/uid/gid (user/group trumps uid/gid)"
 WVPASS rm -rf dest
 WVPASS bup restore -C dest \
     --map-uid "$uid=$other_uid" --map-gid "$gid=$other_gid" \
-    "src/latest/$(pwd)/src/"
+    "src/latest/$(pwd -P)/src/"
 # Should be no changes.
 WVPASS bup xstat dest/foo > foo-xstat
 WVPASS grep -qE "^user: $user\$" foo-xstat
@@ -72,7 +72,7 @@ WVPASS rm -rf dest
 WVPASS bup restore -C dest \
     --map-user "$user=" --map-group "$group=" \
     --map-uid "$uid=$other_uid" --map-gid "$gid=$other_gid" \
-    "src/latest/$(pwd)/src/"
+    "src/latest/$(pwd -P)/src/"
 WVPASS bup xstat dest/foo > foo-xstat
 WVPASS grep -qE "^user: $other_user\$" foo-xstat
 WVPASS grep -qE "^uid: $other_uid\$" foo-xstat
@@ -84,7 +84,7 @@ WVPASS rm -rf dest
 WVPASS bup restore -C dest \
     --map-user "$user=$other_user" --map-group "$group=$other_group" \
     --map-uid "$uid=0" --map-gid "$gid=0" \
-    "src/latest/$(pwd)/src/"
+    "src/latest/$(pwd -P)/src/"
 WVPASS bup xstat dest/foo > foo-xstat
 WVPASS grep -qE "^uid: 0\$" foo-xstat
 WVPASS grep -qE "^gid: 0\$" foo-xstat

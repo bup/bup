@@ -4,7 +4,7 @@
 
 set -o pipefail
 
-TOP="$(WVPASS /bin/pwd)" || exit $?
+TOP="$(WVPASS /bin/pwd -P)" || exit $?
 export BUP_DIR="$TOP/buptest.tmp"
 
 bup()
@@ -740,7 +740,7 @@ $D/
     WVPASS mkdir $D/sub2
     WVPASS touch $D/sub1/a
     WVPASS touch $D/sub2/b
-    WVPASS bup index -u $D --exclude-rx "^$(pwd)/$D/sub1/"
+    WVPASS bup index -u $D --exclude-rx "^$(pwd -P)/$D/sub1/"
     WVPASS bup save --strip -n bupdir $D
     WVPASS bup restore -C buprestore.tmp /bupdir/latest/
     actual="$(WVPASS cd buprestore.tmp; WVPASS find . | WVPASS sort)" || exit $?
