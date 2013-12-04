@@ -101,7 +101,7 @@ setup-test-tree()
     WVPASS force-delete "$BUP_DIR"
     WVPASS force-delete "$TOP/bupmeta.tmp"
     WVPASS mkdir -p "$TOP/bupmeta.tmp/src"
-    WVPASS cp -pPR Documentation cmd lib t "$TOP/bupmeta.tmp"/src
+    WVPASS cp -pPR Documentation cmd config lib "$TOP/bupmeta.tmp"/src
 
     # Add some hard links for the general tests.
     (
