@@ -172,6 +172,7 @@ def test_from_path_error():
             WVPASS(errmsg.startswith('read Linux attr'))
             clear_errors()
     finally:
+        subprocess.call(['chmod', '-R', 'u+rwX', tmpdir])
         subprocess.call(['rm', '-rf', tmpdir])
 
 
