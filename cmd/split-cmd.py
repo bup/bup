@@ -108,7 +108,7 @@ if opt.git_ids:
         def __init__(self, it):
             self.it = iter(it)
         def read(self, size):
-            v = next(self.it)
+            v = next(self.it, None)
             return v or ''
     def read_ids():
         while 1:
@@ -119,7 +119,7 @@ if opt.git_ids:
                 line = line.strip()
             try:
                 it = cp.get(line.strip())
-                next(it)  # skip the file type
+                next(it, None)  # skip the file type
             except KeyError, e:
                 add_error('error: %s' % e)
                 continue

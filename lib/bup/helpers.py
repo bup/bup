@@ -126,14 +126,6 @@ def mkdirp(d, mode=None):
             raise
 
 
-def next(it):
-    """Get the next item from an iterator, None if we reached the end."""
-    try:
-        return it.next()
-    except StopIteration:
-        return None
-
-
 def merge_iter(iters, pfreq, pfunc, pfinal, key=None):
     if key:
         samekey = lambda e, pe: getattr(e, key) == getattr(pe, key, None)
@@ -142,7 +134,7 @@ def merge_iter(iters, pfreq, pfunc, pfinal, key=None):
     count = 0
     total = sum(len(it) for it in iters)
     iters = (iter(it) for it in iters)
-    heap = ((next(it),it) for it in iters)
+    heap = ((next(it, None),it) for it in iters)
     heap = [(e,it) for e,it in heap if e]
 
     heapq.heapify(heap)
