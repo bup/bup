@@ -4,17 +4,6 @@ import stat as pystat
 from bup import _helpers
 
 
-try:
-    _have_bup_utime_ns = _helpers.bup_utime_ns
-except AttributeError, e:
-    _have_bup_utime_ns = False
-
-try:
-    _have_bup_lutime_ns = _helpers.bup_lutime_ns
-except AttributeError, e:
-    _have_bup_lutime_ns = False
-
-
 def timespec_to_nsecs((ts_s, ts_ns)):
     # c.f. _helpers.c: timespec_vals_to_py_ns()
     if ts_ns < 0 or ts_ns > 999999999:
@@ -48,28 +37,18 @@ def fstime_to_sec_str(fstime):
         return '%d.%09d' % (s, ns)
 
 
-if _have_bup_utime_ns:
-    def utime(path, times):
-        """Times must be provided as (atime_ns, mtime_ns)."""
-        atime = nsecs_to_timespec(times[0])
-        mtime = nsecs_to_timespec(times[1])
-        _helpers.bup_utime_ns(path, (atime, mtime))
-else:
-    def utime(path, times):
-        """Times must be provided as (atime_ns, mtime_ns)."""
-        atime = fstime_floor_secs(times[0])
-        mtime = fstime_floor_secs(times[1])
-        os.utime(path, (atime, mtime))
+def utime(path, times):
+    """Times must be provided as (atime_ns, mtime_ns)."""
+    atime = nsecs_to_timespec(times[0])
+    mtime = nsecs_to_timespec(times[1])
+    _helpers.bup_utime_ns(path, (atime, mtime))
 
 
-if _have_bup_lutime_ns:
-    def lutime(path, times):
-        """Times must be provided as (atime_ns, mtime_ns)."""
-        atime = nsecs_to_timespec(times[0])
-        mtime = nsecs_to_timespec(times[1])
-        _helpers.bup_lutime_ns(path, (atime, mtime))
-else:
-    lutime = False
+def lutime(path, times):
+    """Times must be provided as (atime_ns, mtime_ns)."""
+    atime = nsecs_to_timespec(times[0])
+    mtime = nsecs_to_timespec(times[1])
+    _helpers.bup_lutime_ns(path, (atime, mtime))
 
 
 class stat_result:

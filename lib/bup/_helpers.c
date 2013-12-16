@@ -763,6 +763,16 @@ static PyObject *bup_set_linux_file_attr(PyObject *self, PyObject *args)
 #endif /* def BUP_HAVE_FILE_ATTRS */
 
 
+#ifndef HAVE_UTIMENSAT
+#ifndef HAVE_UTIMES
+#error "cannot find utimensat or utimes()"
+#endif
+#ifndef HAVE_LUTIMES
+#error "cannot find utimensat or lutimes()"
+#endif
+#endif
+
+
 #if defined(HAVE_UTIMENSAT) || defined(HAVE_FUTIMES) || defined(HAVE_LUTIMES)
 
 static int bup_parse_xutime_args(char **path,
