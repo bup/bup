@@ -1,0 +1,52 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta http-equiv="Content-Style-Type" content="text/css" />
+  <meta name="generator" content="pandoc" />
+  <meta name="author" content="Rob Browning rlb@defaultvalue.org" />
+  <meta name="date" content="2013-12-09" />
+  <title>bup-cat-file(1) Bup 0.25</title>
+  <style type="text/css">code{white-space: pre;}</style>
+</head>
+<body>
+<div id="header">
+<h1 class="title">bup-cat-file(1) Bup 0.25</h1>
+<h2 class="author">Rob Browning <script type="text/javascript">
+                   <!--
+                   h='&#100;&#x65;&#102;&#x61;&#x75;&#108;&#116;&#118;&#x61;&#108;&#x75;&#x65;&#46;&#x6f;&#114;&#x67;';a='&#64;';n='&#114;&#108;&#98;';e=n+a+h;
+                   document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'">'+e+'<\/'+'a'+'>');
+                   // -->
+                   </script><noscript>&#114;&#108;&#98;&#32;&#x61;&#116;&#32;&#100;&#x65;&#102;&#x61;&#x75;&#108;&#116;&#118;&#x61;&#108;&#x75;&#x65;&#32;&#100;&#x6f;&#116;&#32;&#x6f;&#114;&#x67;</noscript></h2>
+<h3 class="date">2013-12-09</h3>
+</div>
+<h1 id="name">NAME</h1>
+<p>bup-cat-file - extract archive content (low-level)</p>
+<h1 id="synopsis">SYNOPSIS</h1>
+<p>bup cat-file [--meta|--bupm] &lt;<em>path</em>&gt;</p>
+<h1 id="description">DESCRIPTION</h1>
+<p><code>bup cat-file</code> extracts content associated with <em>path</em> from the archive and dumps it to standard output. If nothing special is requested, the actual data contained by <em>path</em> (which must be a regular file) will be dumped.</p>
+<h1 id="options">OPTIONS</h1>
+<dl>
+<dt>--meta</dt>
+<dd><p>retrieve the metadata entry associated with <em>path</em>. Note that currently this does not return the raw bytes for the entry recorded in the relevant .bupm in the archive, but rather a decoded and then re-encoded version. When that matters, it should be possible (though awkward) to use <code>--bupm</code> on the parent directory and then find the relevant entry in the output.</p>
+</dd>
+<dt>--bupm</dt>
+<dd><p>retrieve the .bupm file associated with <em>path</em>, which must be a directory.</p>
+</dd>
+</dl>
+<h1 id="examples">EXAMPLES</h1>
+<pre><code># Retrieve the content of somefile.
+$ bup cat-file /foo/latest/somefile &gt; somefile-content
+
+# Examine the metadata associated with something.
+$ bup cat-file --meta /foo/latest/something | bup meta -tvvf -
+
+# Examine the metadata for somedir, including the items it contains.
+$ bup cat-file --bupm /foo/latest/somedir | bup meta -tvvf -</code></pre>
+<h1 id="see-also">SEE ALSO</h1>
+<p><code>bup-join</code>(1), <code>bup-meta</code>(1)</p>
+<h1 id="bup">BUP</h1>
+<p>Part of the <code>bup</code>(1) suite.</p>
+</body>
+</html>

@@ -1,0 +1,53 @@
+.TH bup\-cat\-file 1 "2013\-12\-09" "Bup 0.25"
+.SH NAME
+.PP
+bup\-cat\-file \- extract archive content (low\-level)
+.SH SYNOPSIS
+.PP
+bup cat\-file [\-\-meta|\-\-bupm] <\f[I]path\f[]>
+.SH DESCRIPTION
+.PP
+\f[C]bup\ cat\-file\f[] extracts content associated with \f[I]path\f[]
+from the archive and dumps it to standard output.
+If nothing special is requested, the actual data contained by
+\f[I]path\f[] (which must be a regular file) will be dumped.
+.SH OPTIONS
+.TP
+.B \-\-meta
+retrieve the metadata entry associated with \f[I]path\f[].
+Note that currently this does not return the raw bytes for the entry
+recorded in the relevant .bupm in the archive, but rather a decoded and
+then re\-encoded version.
+When that matters, it should be possible (though awkward) to use
+\f[C]\-\-bupm\f[] on the parent directory and then find the relevant
+entry in the output.
+.RS
+.RE
+.TP
+.B \-\-bupm
+retrieve the .bupm file associated with \f[I]path\f[], which must be a
+directory.
+.RS
+.RE
+.SH EXAMPLES
+.IP
+.nf
+\f[C]
+#\ Retrieve\ the\ content\ of\ somefile.
+$\ bup\ cat\-file\ /foo/latest/somefile\ >\ somefile\-content
+
+#\ Examine\ the\ metadata\ associated\ with\ something.
+$\ bup\ cat\-file\ \-\-meta\ /foo/latest/something\ |\ bup\ meta\ \-tvvf\ \-
+
+#\ Examine\ the\ metadata\ for\ somedir,\ including\ the\ items\ it\ contains.
+$\ bup\ cat\-file\ \-\-bupm\ /foo/latest/somedir\ |\ bup\ meta\ \-tvvf\ \-
+\f[]
+.fi
+.SH SEE ALSO
+.PP
+\f[C]bup\-join\f[](1), \f[C]bup\-meta\f[](1)
+.SH BUP
+.PP
+Part of the \f[C]bup\f[](1) suite.
+.SH AUTHORS
+Rob Browning <rlb@defaultvalue.org>.

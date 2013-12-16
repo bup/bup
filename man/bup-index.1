@@ -1,4 +1,4 @@
-.TH bup\-index 1 "2013\-09\-22" "Bup 0.25\-rc2\-36\-g81ad1e6"
+.TH bup\-index 1 "2013\-12\-09" "Bup 0.25"
 .SH NAME
 .PP
 bup\-index \- print and/or update the bup filesystem index
@@ -154,7 +154,7 @@ Mostly useful for automated tests.
 .RE
 .TP
 .B \-\-clear
-clear the index.
+clear the default index.
 .RS
 .RE
 .TP
@@ -164,12 +164,14 @@ use a different index filename instead of \f[C]$BUP_DIR/bupindex\f[].
 .RE
 .TP
 .B \-\-exclude=\f[I]path\f[]
-a path to exclude from the backup (can be used more than once)
+exclude \f[I]path\f[] from the backup; bup will not expand \f[I]path\f[]
+in any way (can be used more than once).
 .RS
 .RE
 .TP
 .B \-\-exclude\-from=\f[I]filename\f[]
-a file that contains exclude paths (can be used more than once)
+read \-\-exclude paths from \f[I]filename\f[], one path per\-line (can
+be used more than once).
 .RS
 .RE
 .TP

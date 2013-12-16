@@ -5,27 +5,27 @@
   <meta http-equiv="Content-Style-Type" content="text/css" />
   <meta name="generator" content="pandoc" />
   <meta name="author" content="Gabriel Filion lelutin@gmail.com" />
-  <meta name="date" content="2013-09-22" />
-  <title>bup-tag(1) Bup 0.25-rc2-36-g81ad1e6</title>
+  <meta name="date" content="2013-12-09" />
+  <title>bup-tag(1) Bup 0.25</title>
   <style type="text/css">code{white-space: pre;}</style>
 </head>
 <body>
 <div id="header">
-<h1 class="title">bup-tag(1) Bup 0.25-rc2-36-g81ad1e6</h1>
+<h1 class="title">bup-tag(1) Bup 0.25</h1>
 <h2 class="author">Gabriel Filion <script type="text/javascript">
                    <!--
                    h='&#x67;&#x6d;&#x61;&#x69;&#108;&#46;&#x63;&#x6f;&#x6d;';a='&#64;';n='&#108;&#x65;&#108;&#x75;&#116;&#x69;&#110;';e=n+a+h;
                    document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'">'+e+'<\/'+'a'+'>');
                    // -->
                    </script><noscript>&#108;&#x65;&#108;&#x75;&#116;&#x69;&#110;&#32;&#x61;&#116;&#32;&#x67;&#x6d;&#x61;&#x69;&#108;&#32;&#100;&#x6f;&#116;&#32;&#x63;&#x6f;&#x6d;</noscript></h2>
-<h3 class="date">2013-09-22</h3>
+<h3 class="date">2013-12-09</h3>
 </div>
 <h1 id="name">NAME</h1>
 <p>bup-tag - tag a commit in the bup repository</p>
 <h1 id="synopsis">SYNOPSIS</h1>
 <p>bup tag</p>
-<p>bup tag &lt;tag name&gt; &lt;committish&gt;</p>
-<p>bup tag -d &lt;tag name&gt;</p>
+<p>bup tag [-f] &lt;tag name&gt; &lt;committish&gt;</p>
+<p>bup tag -d [-f] &lt;tag name&gt;</p>
 <h1 id="description">DESCRIPTION</h1>
 <p><code>bup tag</code> lists, creates or deletes a tag in the bup repository.</p>
 <p>A tag is an easy way to retrieve a specific commit. It can be used to mark a specific backup for easier retrieval later.</p>
@@ -38,6 +38,7 @@
 <dd>delete a tag
 </dd>
 </dl>
+<p>-f, --force : Overwrite the named tag even if it already exists. With -f, don't report a missing tag as an error.</p>
 <h1 id="example">EXAMPLE</h1>
 <pre><code>$ bup tag new-puppet-version hostx-backup
 
