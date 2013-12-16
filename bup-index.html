@@ -5,20 +5,20 @@
   <meta http-equiv="Content-Style-Type" content="text/css" />
   <meta name="generator" content="pandoc" />
   <meta name="author" content="Avery Pennarun apenwarr@gmail.com" />
-  <meta name="date" content="2013-09-22" />
-  <title>bup-index(1) Bup 0.25-rc2-36-g81ad1e6</title>
+  <meta name="date" content="2013-12-09" />
+  <title>bup-index(1) Bup 0.25</title>
   <style type="text/css">code{white-space: pre;}</style>
 </head>
 <body>
 <div id="header">
-<h1 class="title">bup-index(1) Bup 0.25-rc2-36-g81ad1e6</h1>
+<h1 class="title">bup-index(1) Bup 0.25</h1>
 <h2 class="author">Avery Pennarun <script type="text/javascript">
                    <!--
                    h='&#x67;&#x6d;&#x61;&#x69;&#108;&#46;&#x63;&#x6f;&#x6d;';a='&#64;';n='&#x61;&#112;&#x65;&#110;&#x77;&#x61;&#114;&#114;';e=n+a+h;
                    document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'">'+e+'<\/'+'a'+'>');
                    // -->
                    </script><noscript>&#x61;&#112;&#x65;&#110;&#x77;&#x61;&#114;&#114;&#32;&#x61;&#116;&#32;&#x67;&#x6d;&#x61;&#x69;&#108;&#32;&#100;&#x6f;&#116;&#32;&#x63;&#x6f;&#x6d;</noscript></h2>
-<h3 class="date">2013-09-22</h3>
+<h3 class="date">2013-12-09</h3>
 </div>
 <h1 id="name">NAME</h1>
 <p>bup-index - print and/or update the bup filesystem index</p>
@@ -82,16 +82,16 @@ $ bup save -n src src  # But src/2 is saved anyway.</code></pre>
 <dd><p>carefully check index file integrity before and after updating. Mostly useful for automated tests.</p>
 </dd>
 <dt>--clear</dt>
-<dd><p>clear the index.</p>
+<dd><p>clear the default index.</p>
 </dd>
 <dt>-f, --indexfile=<em>indexfile</em></dt>
 <dd><p>use a different index filename instead of <code>$BUP_DIR/bupindex</code>.</p>
 </dd>
 <dt>--exclude=<em>path</em></dt>
-<dd><p>a path to exclude from the backup (can be used more than once)</p>
+<dd><p>exclude <em>path</em> from the backup; bup will not expand <em>path</em> in any way (can be used more than once).</p>
 </dd>
 <dt>--exclude-from=<em>filename</em></dt>
-<dd><p>a file that contains exclude paths (can be used more than once)</p>
+<dd><p>read --exclude paths from <em>filename</em>, one path per-line (can be used more than once).</p>
 </dd>
 <dt>--exclude-rx=<em>pattern</em></dt>
 <dd><p>exclude any path matching <em>pattern</em>, which must be a Python regular expression (http://docs.python.org/library/re.html). The pattern will be compared against the full path, without anchoring, so &quot;x/y&quot; will match &quot;ox/yard&quot; or &quot;box/yards&quot;. To exclude the contents of /tmp, but not the directory itself, use &quot;^/tmp/.&quot;. (can be specified more than once)</p>
