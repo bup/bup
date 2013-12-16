@@ -1,4 +1,4 @@
-.TH bup\-tag 1 "2013\-09\-22" "Bup 0.25\-rc2\-36\-g81ad1e6"
+.TH bup\-tag 1 "2013\-12\-09" "Bup 0.25"
 .SH NAME
 .PP
 bup\-tag \- tag a commit in the bup repository
@@ -6,9 +6,9 @@ bup\-tag \- tag a commit in the bup repository
 .PP
 bup tag
 .PP
-bup tag <tag name> <committish>
+bup tag [\-f] <tag name> <committish>
 .PP
-bup tag \-d <tag name>
+bup tag \-d [\-f] <tag name>
 .SH DESCRIPTION
 .PP
 \f[C]bup\ tag\f[] lists, creates or deletes a tag in the bup repository.
@@ -43,6 +43,9 @@ be deleted, the contents of the tagged backup will be available through
 delete a tag
 .RS
 .RE
+.PP
+\-f, \-\-force : Overwrite the named tag even if it already exists.
+With \-f, don\[aq]t report a missing tag as an error.
 .SH EXAMPLE
 .IP
 .nf
