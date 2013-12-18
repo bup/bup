@@ -837,49 +837,89 @@ static int bup_parse_xutime_args(char **path,
           || defined(HAVE_LUTIMES) */
 
 
+#define INTEGRAL_ASSIGNMENT_FITS(dest, src)                             \
+    ({                                                                  \
+        *(dest) = (src);                                                \
+        *(dest) == (src) && (*(dest) < 1) == ((src) < 1);               \
+    })
+
+
+#define ASSIGN_PYLONG_TO_INTEGRAL(dest, pylong, overflow) \
+    ({                                                     \
+        int result = 0;                                                 \
+        *(overflow) = 0;                                                \
+        const long long ltmp = PyLong_AsLongLong(pylong);               \
+        if (ltmp == -1 && PyErr_Occurred())                             \
+        {                                                               \
+            if (PyErr_ExceptionMatches(PyExc_OverflowError))            \
+            {                                                           \
+                const unsigned long ultmp = PyLong_AsUnsignedLongLong(pylong); \
+                if (ultmp == (unsigned long long) -1 && PyErr_Occurred()) \
+                {                                                       \
+                    if (PyErr_ExceptionMatches(PyExc_OverflowError))    \
+                    {                                                   \
+                        PyErr_Clear();                                  \
+                        *(overflow) = 1;                                \
+                    }                                                   \
+                }                                                       \
+                if (INTEGRAL_ASSIGNMENT_FITS((dest), ultmp))            \
+                    result = 1;                                         \
+                else                                                    \
+                    *(overflow) = 1;                                    \
+            }                                                           \
+        }                                                               \
+        else                                                            \
+        {                                                               \
+            if (INTEGRAL_ASSIGNMENT_FITS((dest), ltmp))                 \
+                result = 1;                                             \
+            else                                                        \
+                *(overflow) = 1;                                        \
+        }                                                               \
+        result;                                                         \
+        })
+
+
 #ifdef HAVE_UTIMENSAT
 
-static PyObject *bup_xutime_ns(PyObject *self, PyObject *args,
-                               int follow_symlinks)
+static PyObject *bup_utimensat(PyObject *self, PyObject *args)
 {
     int rc;
+    int fd, flag;
     char *path;
-    long access, access_ns, modification, modification_ns;
+    PyObject *access_py, *modification_py;
     struct timespec ts[2];
 
-    if (!bup_parse_xutime_args(&path, &access, &access_ns,
-                               &modification, &modification_ns,
-                               self, args))
-       return NULL;
+    if (!PyArg_ParseTuple(args, "is((Ol)(Ol))i",
+                          &fd,
+                          &path,
+                          &access_py, &(ts[0].tv_nsec),
+                          &modification_py, &(ts[1].tv_nsec),
+                          &flag))
+        return NULL;
 
-    ts[0].tv_sec = access;
-    ts[0].tv_nsec = access_ns;
-    ts[1].tv_sec = modification;
-    ts[1].tv_nsec = modification_ns;
-    rc = utimensat(AT_FDCWD, path, ts,
-                   follow_symlinks ? 0 : AT_SYMLINK_NOFOLLOW);
+    int overflow;
+    if (!ASSIGN_PYLONG_TO_INTEGRAL(&(ts[0].tv_sec), access_py, &overflow))
+    {
+        if (overflow)
+            PyErr_SetString(PyExc_ValueError,
+                            "unable to convert access time seconds for utimensat");
+        return NULL;
+    }
+    if (!ASSIGN_PYLONG_TO_INTEGRAL(&(ts[1].tv_sec), modification_py, &overflow))
+    {
+        if (overflow)
+            PyErr_SetString(PyExc_ValueError,
+                            "unable to convert modification time seconds for utimensat");
+        return NULL;
+    }
+    rc = utimensat(fd, path, ts, flag);
     if (rc != 0)
         return PyErr_SetFromErrnoWithFilename(PyExc_OSError, path);
 
     return Py_BuildValue("O", Py_None);
 }
 
-
-#define BUP_HAVE_BUP_UTIME_NS 1
-static PyObject *bup_utime_ns(PyObject *self, PyObject *args)
-{
-    return bup_xutime_ns(self, args, 1);
-}
-
-
-#define BUP_HAVE_BUP_LUTIME_NS 1
-static PyObject *bup_lutime_ns(PyObject *self, PyObject *args)
-{
-    return bup_xutime_ns(self, args, 0);
-}
-
-
-#else /* not defined(HAVE_UTIMENSAT) */
+#endif /* def HAVE_UTIMENSAT */
 
 
 #ifdef HAVE_UTIMES
@@ -934,9 +974,6 @@ static PyObject *bup_lutime_ns(PyObject *self, PyObject *args)
     return Py_BuildValue("O", Py_None);
 }
 #endif /* def HAVE_LUTIMES */
-
-
-#endif /* not defined(HAVE_UTIMENSAT) */
 
 
 #ifdef HAVE_STAT_ST_ATIM
@@ -1123,6 +1160,10 @@ static PyMethodDef helper_methods[] = {
     { "set_linux_file_attr", bup_set_linux_file_attr, METH_VARARGS,
       "Set the Linux attributes for the given file." },
 #endif
+#ifdef HAVE_UTIMENSAT
+    { "bup_utimensat", bup_utimensat, METH_VARARGS,
+      "Change path timestamps with nanosecond precision (POSIX)." },
+#endif
 #ifdef BUP_HAVE_BUP_UTIME_NS
     { "bup_utime_ns", bup_utime_ns, METH_VARARGS,
       "Change path timestamps with up to nanosecond precision." },
@@ -1158,6 +1199,22 @@ PyMODINIT_FUNC init_helpers(void)
     PyObject *m = Py_InitModule("_helpers", helper_methods);
     if (m == NULL)
         return;
+
+#ifdef HAVE_UTIMENSAT
+    {
+        PyObject *value;
+        value = INTEGER_TO_PY(AT_FDCWD);
+        PyObject_SetAttrString(m, "AT_FDCWD", value);
+        Py_DECREF(value);
+        value = INTEGER_TO_PY(AT_SYMLINK_NOFOLLOW);
+        PyObject_SetAttrString(m, "AT_SYMLINK_NOFOLLOW", value);
+        Py_DECREF(value);
+        value = INTEGER_TO_PY(UTIME_NOW);
+        PyObject_SetAttrString(m, "UTIME_NOW", value);
+        Py_DECREF(value);
+    }
+#endif
+
     e = getenv("BUP_FORCE_TTY");
     istty2 = isatty(2) || (atoi(e ? e : "0") & 2);
     unpythonize_argv();

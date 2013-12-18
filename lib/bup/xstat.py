@@ -3,6 +3,10 @@ import os
 import stat as pystat
 from bup import _helpers
 
+try:
+    _bup_utimensat = _helpers.bup_utimensat
+except AttributeError, e:
+    _bup_utimensat = False
 
 def timespec_to_nsecs((ts_s, ts_ns)):
     # c.f. _helpers.c: timespec_vals_to_py_ns()
@@ -36,19 +40,29 @@ def fstime_to_sec_str(fstime):
     else:
         return '%d.%09d' % (s, ns)
 
-
-def utime(path, times):
-    """Times must be provided as (atime_ns, mtime_ns)."""
-    atime = nsecs_to_timespec(times[0])
-    mtime = nsecs_to_timespec(times[1])
-    _helpers.bup_utime_ns(path, (atime, mtime))
-
-
-def lutime(path, times):
-    """Times must be provided as (atime_ns, mtime_ns)."""
-    atime = nsecs_to_timespec(times[0])
-    mtime = nsecs_to_timespec(times[1])
-    _helpers.bup_lutime_ns(path, (atime, mtime))
+if _bup_utimensat:
+    def utime(path, times):
+        """Times must be provided as (atime_ns, mtime_ns)."""
+        atime = nsecs_to_timespec(times[0])
+        mtime = nsecs_to_timespec(times[1])
+        _bup_utimensat(_helpers.AT_FDCWD, path, (atime, mtime), 0)
+    def lutime(path, times):
+        """Times must be provided as (atime_ns, mtime_ns)."""
+        atime = nsecs_to_timespec(times[0])
+        mtime = nsecs_to_timespec(times[1])
+        _bup_utimensat(_helpers.AT_FDCWD, path, (atime, mtime),
+                       _helpers.AT_SYMLINK_NOFOLLOW)
+else:
+    def utime(path, times):
+        """Times must be provided as (atime_ns, mtime_ns)."""
+        atime = nsecs_to_timespec(times[0])
+        mtime = nsecs_to_timespec(times[1])
+        _helpers.bup_utime_ns(path, (atime, mtime))
+    def lutime(path, times):
+        """Times must be provided as (atime_ns, mtime_ns)."""
+        atime = nsecs_to_timespec(times[0])
+        mtime = nsecs_to_timespec(times[1])
+        _helpers.bup_lutime_ns(path, (atime, mtime))
 
 
 class stat_result:
