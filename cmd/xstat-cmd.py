@@ -5,7 +5,25 @@
 # Public License as described in the bup LICENSE file.
 import sys, stat, errno
 from bup import metadata, options, xstat
-from bup.helpers import handle_ctrl_c, saved_errors, add_error, log
+from bup.helpers import handle_ctrl_c, parse_timestamp, saved_errors, \
+    add_error, log
+
+
+def parse_timestamp_arg(field, value):
+    res = str(value) # Undo autoconversion.
+    try:
+        res = parse_timestamp(res)
+    except ValueError, ex:
+        if ex.args:
+            o.fatal('unable to parse %s resolution "%s" (%s)'
+                    % (field, value, ex))
+        else:
+            o.fatal('unable to parse %s resolution "%s"' % (field, value))
+
+    if res != 1 and res % 10:
+        o.fatal('%s resolution "%s" must be a power of 10' % (field, value))
+    return res
+
 
 optspec = """
 bup xstat pathinfo [OPTION ...] <PATH ...>
@@ -14,6 +32,9 @@ v,verbose       increase log output (can be used more than once)
 q,quiet         don't show progress meter
 exclude-fields= exclude comma-separated fields
 include-fields= include comma-separated fields (definitive if first)
+atime-resolution=  limit s, ms, us, ns, 10ns (value must be a power of 10) [ns]
+mtime-resolution=  limit s, ms, us, ns, 10ns (value must be a power of 10) [ns]
+ctime-resolution=  limit s, ms, us, ns, 10ns (value must be a power of 10) [ns]
 """
 
 target_filename = ''
@@ -23,6 +44,10 @@ handle_ctrl_c()
 
 o = options.Options(optspec)
 (opt, flags, remainder) = o.parse(sys.argv[1:])
+
+atime_resolution = parse_timestamp_arg('atime', opt.atime_resolution)
+mtime_resolution = parse_timestamp_arg('mtime', opt.mtime_resolution)
+ctime_resolution = parse_timestamp_arg('ctime', opt.ctime_resolution)
 
 treat_include_fields_as_definitive = True
 for flag, value in flags:
@@ -61,6 +86,12 @@ for path in remainder:
     if metadata.verbose >= 0:
         if not first_path:
             print
+        if atime_resolution != 1:
+            m.atime = (m.atime / atime_resolution) * atime_resolution
+        if mtime_resolution != 1:
+            m.mtime = (m.mtime / mtime_resolution) * mtime_resolution
+        if ctime_resolution != 1:
+            m.ctime = (m.ctime / ctime_resolution) * ctime_resolution
         print metadata.detailed_str(m, active_fields)
         first_path = False
 

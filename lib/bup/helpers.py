@@ -625,6 +625,26 @@ def mmap_readwrite_private(f, sz = 0, close=True):
                     close)
 
 
+def parse_timestamp(epoch_str):
+    """Return the number of nanoseconds since the epoch that are described
+by epoch_str (100ms, 100ns, ...); when epoch_str cannot be parsed,
+throw a ValueError that may contain additional information."""
+    ns_per = {'s' :  1000000000,
+              'ms' : 1000000,
+              'us' : 1000,
+              'ns' : 1}
+    match = re.match(r'^((?:[-+]?[0-9]+)?)(s|ms|us|ns)$', epoch_str)
+    if not match:
+        if re.match(r'^([-+]?[0-9]+)$', epoch_str):
+            raise ValueError('must include units, i.e. 100ns, 100ms, ...')
+        raise ValueError()
+    (n, units) = match.group(1, 2)
+    if not n:
+        n = 1
+    n = int(n)
+    return n * ns_per[units]
+
+
 def parse_num(s):
     """Parse data size information into a float number.
 

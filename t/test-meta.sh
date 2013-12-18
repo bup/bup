@@ -7,6 +7,15 @@ set -o pipefail
 TOP="$(WVPASS pwd)" || exit $?
 export BUP_DIR="$TOP/buptest.tmp"
 
+WVPASS force-delete "$TOP/bupmeta.tmp"
+timestamp_resolutions="$(t/ns-timestamp-resolutions "$TOP/bupmeta.tmp")" \
+    || exit $?
+WVPASS rm "$TOP/bupmeta.tmp"
+atime_resolution="$(echo $timestamp_resolutions | WVPASS cut -d' ' -f 1)" \
+    || exit $?
+mtime_resolution="$(echo $timestamp_resolutions | WVPASS cut -d' ' -f 2)" \
+    || exit $?
+
 bup()
 {
     "$TOP/bup" "$@"
@@ -34,7 +43,9 @@ genstat()
         export PATH="$TOP:$PATH" # pick up bup
         # Skip atime (test elsewhere) to avoid the observer effect.
         WVPASS find . | WVPASS sort \
-            | WVPASS xargs bup xstat --exclude-fields ctime,atime,size
+            | WVPASS xargs bup xstat \
+            --mtime-resolution "$mtime_resolution"ns \
+            --exclude-fields ctime,atime,size
     )
 }
 
