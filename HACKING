@@ -7,10 +7,6 @@ Code Branching Model
 The master branch is what we consider the main-line of development,
 and the last, non-rc tag on master is the most recent stable release.
 
-Of course, in all fairness, it has been a *long* time since the last
-stable release, but we're working fairly hard to fix that -- no,
-seriously.
-
 Any branch with a "tmp/" prefix might be rebased (often), so keep that
 in mind when using or depending on one.
 
@@ -23,21 +19,17 @@ via email.
 Current Trajectory
 ==================
 
-At the moment, the primary goal is to test master in preparation for a
-0.25 release, which among many other things will include more complete
-support for filesystem metadata.
+Now that we've finished the 0.25 release, we're working on 0.26, and
+although we're not certain which new features will eventually be
+included, here are some possible candidates:
+
+  - Support for rm/gc.
+  - Support for remote (push and/or pull) restore.
+  - Support for some kind of push/pull.
+  - Smarter (and quieter) handling of cross-filesystem metadata.
 
 If you have the time and inclination, please help review patches
-posted to the list for inclusion in 0.25.  (See "ways to help" below.)
-
-We'd like to try to release (0.25) soon, so we're limiting the scope
-of prospective changes -- definitely in-scope:
-
-  - fixes to the new metadata support
-  - fixes for regressions (portability included)
-  - fixes for "serious" bugs
-  - "simple" fixes
-  - documentation improvements
+posted to the list, or post your own.  (See "ways to help" below.)
 
 
 More specific ways to help
@@ -59,10 +51,9 @@ Submitting patches
 ==================
 
 As mentioned, all patches should be posted to the mailing list for
-review.
-
-You can create a "signed off" (see ./SIGNED-OFF-BY) set of patches in
-./pending, ready for submission to the list, like this:
+review, and must be "signed off" by the author before official
+inclusion (see ./SIGNED-OFF-BY).  You can create a "signed off" set of
+patches in ./pending, ready for submission to the list, like this:
 
     git format-patch -s -o patches origin/master
 
