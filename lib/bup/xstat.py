@@ -8,6 +8,17 @@ try:
 except AttributeError, e:
     _bup_utimensat = False
 
+try:
+    _bup_utimes = _helpers.bup_utimes
+except AttributeError, e:
+    _bup_utimes = False
+
+try:
+    _bup_lutimes = _helpers.bup_lutimes
+except AttributeError, e:
+    _bup_lutimes = False
+
+
 def timespec_to_nsecs((ts_s, ts_ns)):
     # c.f. _helpers.c: timespec_vals_to_py_ns()
     if ts_ns < 0 or ts_ns > 999999999:
@@ -20,6 +31,13 @@ def nsecs_to_timespec(ns):
     and t = s + ns / 10e8""" # metadata record rep (and libc rep)
     ns = int(ns)
     return (ns / 10**9, ns % 10**9)
+
+
+def nsecs_to_timeval(ns):
+    """Return (s, us) where ns is always non-negative
+    and t = s + us / 10e5"""
+    ns = int(ns)
+    return (ns / 10**9, (ns % 10**9) / 1000)
 
 
 def fstime_floor_secs(ns):
@@ -40,6 +58,7 @@ def fstime_to_sec_str(fstime):
     else:
         return '%d.%09d' % (s, ns)
 
+
 if _bup_utimensat:
     def utime(path, times):
         """Times must be provided as (atime_ns, mtime_ns)."""
@@ -52,17 +71,17 @@ if _bup_utimensat:
         mtime = nsecs_to_timespec(times[1])
         _bup_utimensat(_helpers.AT_FDCWD, path, (atime, mtime),
                        _helpers.AT_SYMLINK_NOFOLLOW)
-else:
+else: # Must have these if utimensat isn't available.
     def utime(path, times):
         """Times must be provided as (atime_ns, mtime_ns)."""
-        atime = nsecs_to_timespec(times[0])
-        mtime = nsecs_to_timespec(times[1])
-        _helpers.bup_utime_ns(path, (atime, mtime))
+        atime = nsecs_to_timeval(times[0])
+        mtime = nsecs_to_timeval(times[1])
+        _bup_utimes(path, (atime, mtime))
     def lutime(path, times):
         """Times must be provided as (atime_ns, mtime_ns)."""
-        atime = nsecs_to_timespec(times[0])
-        mtime = nsecs_to_timespec(times[1])
-        _helpers.bup_lutime_ns(path, (atime, mtime))
+        atime = nsecs_to_timeval(times[0])
+        mtime = nsecs_to_timeval(times[1])
+        _bup_lutimes(path, (atime, mtime))
 
 
 class stat_result:

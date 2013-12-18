@@ -773,27 +773,6 @@ static PyObject *bup_set_linux_file_attr(PyObject *self, PyObject *args)
 #endif
 
 
-#if defined(HAVE_UTIMENSAT) || defined(HAVE_FUTIMES) || defined(HAVE_LUTIMES)
-
-static int bup_parse_xutime_args(char **path,
-                                 long *access,
-                                 long *access_ns,
-                                 long *modification,
-                                 long *modification_ns,
-                                 PyObject *self, PyObject *args)
-{
-    if (!PyArg_ParseTuple(args, "s((ll)(ll))",
-                          path,
-                          access, access_ns,
-                          modification, modification_ns))
-        return 0;
-    return 1;
-}
-
-#endif /* defined(HAVE_UTIMENSAT) || defined(HAVE_FUTIMES)
-          || defined(HAVE_LUTIMES) */
-
-
 #define INTEGRAL_ASSIGNMENT_FITS(dest, src)                             \
     ({                                                                  \
         *(dest) = (src);                                                \
@@ -879,52 +858,73 @@ static PyObject *bup_utimensat(PyObject *self, PyObject *args)
 #endif /* def HAVE_UTIMENSAT */
 
 
-#ifdef HAVE_UTIMES
-#define BUP_HAVE_BUP_UTIME_NS 1
-static PyObject *bup_utime_ns(PyObject *self, PyObject *args)
+#if defined(HAVE_UTIMES) || defined(HAVE_LUTIMES)
+
+static int bup_parse_xutimes_args(char **path,
+                                  struct timeval tv[2],
+                                  PyObject *args)
 {
-    int rc;
+    PyObject *access_py, *modification_py;
+    long long access_us, modification_us; // POSIX guarantees tv_usec is signed.
+
+    if (!PyArg_ParseTuple(args, "s((OL)(OL))",
+                          path,
+                          &access_py, &access_us,
+                          &modification_py, &modification_us))
+        return 0;
+
+    int overflow;
+    if (!ASSIGN_PYLONG_TO_INTEGRAL(&(tv[0].tv_sec), access_py, &overflow))
+    {
+        if (overflow)
+            PyErr_SetString(PyExc_ValueError, "unable to convert access time seconds to timeval");
+        return 0;
+    }
+    if (!INTEGRAL_ASSIGNMENT_FITS(&(tv[0].tv_usec), access_us))
+    {
+        PyErr_SetString(PyExc_ValueError, "unable to convert access time nanoseconds to timeval");
+        return 0;
+    }
+    if (!ASSIGN_PYLONG_TO_INTEGRAL(&(tv[1].tv_sec), modification_py, &overflow))
+    {
+        if (overflow)
+            PyErr_SetString(PyExc_ValueError, "unable to convert modification time seconds to timeval");
+        return 0;
+    }
+    if (!INTEGRAL_ASSIGNMENT_FITS(&(tv[1].tv_usec), modification_us))
+    {
+        PyErr_SetString(PyExc_ValueError, "unable to convert modification time nanoseconds to timeval");
+        return 0;
+    }
+    return 1;
+}
+
+#endif /* defined(HAVE_UTIMES) || defined(HAVE_LUTIMES) */
+
+
+#ifdef HAVE_UTIMES
+static PyObject *bup_utimes(PyObject *self, PyObject *args)
+{
     char *path;
-    long access, access_ns, modification, modification_ns;
     struct timeval tv[2];
-
-    if (!bup_parse_xutime_args(&path, &access, &access_ns,
-                               &modification, &modification_ns,
-                               self, args))
-       return NULL;
-
-    tv[0].tv_sec = access;
-    tv[0].tv_usec = access_ns / 1000;
-    tv[1].tv_sec = modification;
-    tv[1].tv_usec = modification_ns / 1000;
-    rc = utimes(path, tv);
+    if (!bup_parse_xutimes_args(&path, tv, args))
+        return NULL;
+    int rc = utimes(path, tv);
     if (rc != 0)
         return PyErr_SetFromErrnoWithFilename(PyExc_OSError, path);
-
     return Py_BuildValue("O", Py_None);
 }
 #endif /* def HAVE_UTIMES */
 
 
 #ifdef HAVE_LUTIMES
-#define BUP_HAVE_BUP_LUTIME_NS 1
-static PyObject *bup_lutime_ns(PyObject *self, PyObject *args)
+static PyObject *bup_lutimes(PyObject *self, PyObject *args)
 {
-    int rc;
     char *path;
-    long access, access_ns, modification, modification_ns;
     struct timeval tv[2];
-
-    if (!bup_parse_xutime_args(&path, &access, &access_ns,
-                               &modification, &modification_ns,
-                               self, args))
-       return NULL;
-
-    tv[0].tv_sec = access;
-    tv[0].tv_usec = access_ns / 1000;
-    tv[1].tv_sec = modification;
-    tv[1].tv_usec = modification_ns / 1000;
-    rc = lutimes(path, tv);
+    if (!bup_parse_xutimes_args(&path, tv, args))
+        return NULL;
+    int rc = lutimes(path, tv);
     if (rc != 0)
         return PyErr_SetFromErrnoWithFilename(PyExc_OSError, path);
 
@@ -1121,13 +1121,13 @@ static PyMethodDef helper_methods[] = {
     { "bup_utimensat", bup_utimensat, METH_VARARGS,
       "Change path timestamps with nanosecond precision (POSIX)." },
 #endif
-#ifdef BUP_HAVE_BUP_UTIME_NS
-    { "bup_utime_ns", bup_utime_ns, METH_VARARGS,
-      "Change path timestamps with up to nanosecond precision." },
+#ifdef HAVE_UTIMES
+    { "bup_utimes", bup_utimes, METH_VARARGS,
+      "Change path timestamps with microsecond precision." },
 #endif
-#ifdef BUP_HAVE_BUP_LUTIME_NS
-    { "bup_lutime_ns", bup_lutime_ns, METH_VARARGS,
-      "Change path timestamps with up to nanosecond precision;"
+#ifdef HAVE_LUTIMES
+    { "bup_lutimes", bup_lutimes, METH_VARARGS,
+      "Change path timestamps with microsecond precision;"
       " don't follow symlinks." },
 #endif
     { "stat", bup_stat, METH_VARARGS,
