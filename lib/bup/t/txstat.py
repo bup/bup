@@ -12,7 +12,7 @@ def test_fstime():
     WVPASSEQ(xstat.timespec_to_nsecs((-1, 0)), -10**9)
     WVPASSEQ(xstat.timespec_to_nsecs((-1, 10**9 / 2)), -500000000)
     WVPASSEQ(xstat.timespec_to_nsecs((-2, 10**9 / 2)), -1500000000)
-    WVEXCEPT(Exception, xstat.timespec_to_nsecs, (0, -1))
+    WVPASSEQ(xstat.timespec_to_nsecs((0, -1)), -1)
     WVPASSEQ(type(xstat.timespec_to_nsecs((2, 22222222))), type(0))
     WVPASSEQ(type(xstat.timespec_to_nsecs((-2, 22222222))), type(0))
 

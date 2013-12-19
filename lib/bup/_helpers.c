@@ -948,48 +948,6 @@ static PyObject *bup_lutimes(PyObject *self, PyObject *args)
 #endif
 
 
-static void set_invalid_timespec_msg(const char *field,
-                                     const long long sec,
-                                     const long nsec,
-                                     const char *filename,
-                                     int fd)
-{
-    if (filename != NULL)
-        PyErr_Format(PyExc_ValueError,
-                     "invalid %s timespec (%lld %ld) for file \"%s\"",
-                     field, sec, nsec, filename);
-    else
-        PyErr_Format(PyExc_ValueError,
-                     "invalid %s timespec (%lld %ld) for file descriptor %d",
-                     field, sec, nsec, fd);
-}
-
-
-static int normalize_timespec_values(const char *name,
-                                     long long *sec,
-                                     long *nsec,
-                                     const char *filename,
-                                     int fd)
-{
-    if (*nsec < -999999999 || *nsec > 999999999)
-    {
-        set_invalid_timespec_msg(name, *sec, *nsec, filename, fd);
-        return 0;
-    }
-    if (*nsec < 0)
-    {
-        if (*sec == LONG_MIN)
-        {
-            set_invalid_timespec_msg(name, *sec, *nsec, filename, fd);
-            return 0;
-        }
-        *nsec += 1000000000;
-        *sec -= 1;
-    }
-    return 1;
-}
-
-
 #define INTEGER_TO_PY(x) \
     (((x) >= 0) ? PyLong_FromUnsignedLongLong(x) : PyLong_FromLongLong(x))
 
@@ -998,24 +956,11 @@ static PyObject *stat_struct_to_py(const struct stat *st,
                                    const char *filename,
                                    int fd)
 {
-    long long atime = st->st_atime;
-    long long mtime = st->st_mtime;
-    long long ctime = st->st_ctime;
-    long atime_ns = BUP_STAT_ATIME_NS(st);
-    long mtime_ns = BUP_STAT_MTIME_NS(st);
-    long ctime_ns = BUP_STAT_CTIME_NS(st);
-
-    if (!normalize_timespec_values("atime", &atime, &atime_ns, filename, fd))
-        return NULL;
-    if (!normalize_timespec_values("mtime", &mtime, &mtime_ns, filename, fd))
-        return NULL;
-    if (!normalize_timespec_values("ctime", &ctime, &ctime_ns, filename, fd))
-        return NULL;
-
     // We can check the known (via POSIX) signed and unsigned types at
     // compile time, but not (easily) the unspecified types, so handle
-    // those via INTEGER_TO_PY().
-    return Py_BuildValue("OKOOOOOL(Ll)(Ll)(Ll)",
+    // those via INTEGER_TO_PY().  Assumes ns values will fit in a
+    // long.
+    return Py_BuildValue("OKOOOOOL(Ol)(Ol)(Ol)",
                          INTEGER_TO_PY(st->st_mode),
                          (unsigned PY_LONG_LONG) st->st_ino,
                          INTEGER_TO_PY(st->st_dev),
@@ -1024,12 +969,12 @@ static PyObject *stat_struct_to_py(const struct stat *st,
                          INTEGER_TO_PY(st->st_gid),
                          INTEGER_TO_PY(st->st_rdev),
                          (PY_LONG_LONG) st->st_size,
-                         (PY_LONG_LONG) atime,
-                         (long) atime_ns,
-                         (PY_LONG_LONG) mtime,
-                         (long) mtime_ns,
-                         (PY_LONG_LONG) ctime,
-                         (long) ctime_ns);
+                         INTEGER_TO_PY(st->st_atime),
+                         (long) BUP_STAT_ATIME_NS(st),
+                         INTEGER_TO_PY(st->st_mtime),
+                         (long) BUP_STAT_MTIME_NS(st),
+                         INTEGER_TO_PY(st->st_ctime),
+                         (long) BUP_STAT_CTIME_NS(st));
 }
 
 

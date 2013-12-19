@@ -20,15 +20,12 @@ except AttributeError, e:
 
 
 def timespec_to_nsecs((ts_s, ts_ns)):
-    # c.f. _helpers.c: timespec_vals_to_py_ns()
-    if ts_ns < 0 or ts_ns > 999999999:
-        raise Exception('invalid timespec nsec value')
     return ts_s * 10**9 + ts_ns
 
 
 def nsecs_to_timespec(ns):
     """Return (s, ns) where ns is always non-negative
-    and t = s + ns / 10e8""" # metadata record rep (and libc rep)
+    and t = s + ns / 10e8""" # metadata record rep
     ns = int(ns)
     return (ns / 10**9, ns % 10**9)
 
