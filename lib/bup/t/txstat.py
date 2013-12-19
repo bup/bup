@@ -61,14 +61,5 @@ def test_timespec_behavior():
         WVPASS(atime_ts[1] == 0 or atime_ts[1] == frac_ts[1])
         WVPASSEQ(mtime_ts[0], 0)
         WVPASS(mtime_ts[1] == 0 or mtime_ts[1] == frac_ts[1])
-        if(mtime_ts[1] == frac_ts[1]):
-            # Sub-second resolution -- check behavior of negative timespecs.
-            neg_ts = (-43, 10**9 / 2)
-            _helpers.bup_utime_ns(path, (neg_ts, neg_ts))
-            st = _helpers.stat(path)
-            atime_ts = st[8]
-            mtime_ts = st[9]
-            WVPASSEQ(atime_ts, neg_ts)
-            WVPASSEQ(mtime_ts, neg_ts)
     finally:
         subprocess.call(['rm', '-rf', tmpdir])
