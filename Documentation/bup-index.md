@@ -10,7 +10,8 @@ bup-index - print and/or update the bup filesystem index
 
 bup index \<-p|-m|-s|-u\> [-H] [-l] [-x] [\--fake-valid] [\--no-check-device]
 [\--fake-invalid] [\--check] [\--clear] [-f *indexfile*] [\--exclude *path*]
-[\--exclude-from *filename*] [\--exclude-rx *pattern*] [-v] \<filenames...\>
+[\--exclude-from *filename*] [\--exclude-rx *pattern*]
+[\--exclude-rx-from *filename*] [-v] \<filenames...\>
 
 # DESCRIPTION
 
@@ -147,11 +148,11 @@ does, due to the accommodations described above.
 
 \--exclude=*path*
 :   exclude *path* from the backup; bup will not expand *path* in any
-    way (can be used more than once).
+    way (may be repeated).
 
 \--exclude-from=*filename*
-:   read --exclude paths from *filename*, one path per-line (can be
-    used more than once).
+:   read --exclude paths from *filename*, one path per-line (may be
+    repeated).
 
 \--exclude-rx=*pattern*
 :   exclude any path matching *pattern*, which must be a Python regular
@@ -159,7 +160,7 @@ does, due to the accommodations described above.
     will be compared against the full path, without anchoring, so
     "x/y" will match "ox/yard" or "box/yards".  To exclude the
     contents of /tmp, but not the directory itself, use
-    "^/tmp/.". (can be specified more than once)
+    "^/tmp/.". (may be repeated)
 
     Examples:
 
@@ -167,6 +168,10 @@ does, due to the accommodations described above.
       * '/foo/$' - exclude any directory named foo
       * '/foo/.' - exclude the content of any directory named foo
       * '^/tmp/.' - exclude root-level /tmp's content, but not /tmp itself
+
+\--exclude-rx-from=*filename*
+:   read --exclude-rx patterns from *filename*, one pattern per-line
+    (may be repeated).
 
 \--no-check-device
 :   don't mark a an entry invalid if the device number (stat(2)

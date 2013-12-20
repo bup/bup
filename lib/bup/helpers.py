@@ -748,13 +748,27 @@ def parse_excludes(options, fatal):
 def parse_rx_excludes(options, fatal):
     """Traverse the options and extract all rx excludes, or call
     Option.fatal()."""
-    rxs = [v for f, v in options if f == '--exclude-rx']
-    for i in range(len(rxs)):
-        try:
-            rxs[i] = re.compile(rxs[i])
-        except re.error, ex:
-            o.fatal('invalid --exclude-rx pattern (%s):' % (ex, rxs[i]))
-    return rxs
+    excluded_patterns = []
+
+    for flag in options:
+        (option, parameter) = flag
+        if option == '--exclude-rx':
+            try:
+                excluded_patterns.append(re.compile(parameter))
+            except re.error, ex:
+                fatal('invalid --exclude-rx pattern (%s): %s' % (parameter, ex))
+        elif option == '--exclude-rx-from':
+            try:
+                f = open(realpath(parameter))
+            except IOError, e:
+                raise fatal("couldn't read %s" % parameter)
+            for pattern in f.readlines():
+                spattern = pattern.rstrip('\n')
+                try:
+                    excluded_patterns.append(re.compile(spattern))
+                except re.error, ex:
+                    fatal('invalid --exclude-rx pattern (%s): %s' % (spattern, ex))
+    return excluded_patterns
 
 
 def should_rx_exclude_path(path, exclude_rxs):

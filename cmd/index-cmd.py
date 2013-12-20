@@ -194,9 +194,10 @@ no-check-device don't invalidate an entry if the containing device changes
 fake-valid mark all index entries as up-to-date even if they aren't
 fake-invalid mark all index entries as invalid
 f,indexfile=  the name of the index file (normally BUP_DIR/bupindex)
-exclude=   a path to exclude from the backup (can be used more than once)
-exclude-from= a file that contains exclude paths (can be used more than once)
-exclude-rx= skip paths that match the unanchored regular expression
+exclude= a path to exclude from the backup (may be repeated)
+exclude-from= skip --exclude paths in file (may be repeated)
+exclude-rx= skip paths matching the unanchored regex (may be repeated)
+exclude-rx-from= skip --exclude-rx patterns in file (may be repeated)
 v,verbose  increase log output (can be used more than once)
 x,xdev,one-file-system  don't cross filesystem boundaries
 """
