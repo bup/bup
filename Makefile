@@ -99,6 +99,7 @@ runtests-cmdline: all
 	TMPDIR="$(test_tmp)" t/test-rm-between-index-and-save.sh
 	TMPDIR="$(test_tmp)" t/test-command-without-init-fails.sh
 	TMPDIR="$(test_tmp)" t/test-redundant-saves.sh
+	TMPDIR="$(test_tmp)" t/test-save-restore-exclude-rx.sh
 	TMPDIR="$(test_tmp)" t/test.sh
 
 stupid:
