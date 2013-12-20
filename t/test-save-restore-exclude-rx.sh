@@ -101,6 +101,30 @@ WVPASSEQ "$actual" ".
 ./sub/foo"
 
 
+# bup index --exclude-rx-from ...
+# ===============================
+WVSTART "index --exclude-rx-from"
+WVPASS rm -rf src "$BUP_DIR" buprestore.tmp
+WVPASS bup init
+WVPASS mkdir src
+WVPASS touch src/a
+WVPASS touch src/b
+WVPASS mkdir src/sub1
+WVPASS mkdir src/sub2
+WVPASS touch src/sub1/a
+WVPASS touch src/sub2/b
+WVPASS echo "^$(pwd)/src/sub1/" > exclude-rx-file
+WVPASS bup index -u src --exclude-rx-from exclude-rx-file
+WVPASS bup save --strip -n bupdir src
+WVPASS bup restore -C buprestore.tmp /bupdir/latest/
+actual="$(WVPASS cd buprestore.tmp; WVPASS find . | WVPASS sort)" || exit $?
+WVPASSEQ "$actual" ".
+./a
+./b
+./sub2
+./sub2/b"
+
+
 # bup restore --exclude-rx ...
 # ============================
 
@@ -185,5 +209,6 @@ WVPASSEQ "$actual" ".
 ./foo
 ./sub
 ./sub/foo"
+
 
 WVPASS rm -rf "$tmpdir"
