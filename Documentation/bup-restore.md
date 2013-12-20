@@ -8,8 +8,8 @@ bup-restore - extract files from a backup set
 
 # SYNOPSIS
 
-bup restore [\--outdir=*outdir*] [\--exclude-rx *pattern*] [-v] [-q]
-\<paths...\>
+bup restore [\--outdir=*outdir*] [\--exclude-rx *pattern*]
+[\--exclude-rx-from *filename*] [-v] [-q] \<paths...\>
 
 # DESCRIPTION
 
@@ -116,6 +116,10 @@ See the EXAMPLES section for a demonstration.
       * '/foo/$' - exclude any directory named foo
       * '/foo/.' - exclude the content of any directory named foo
       * '^/tmp/.' - exclude root-level /tmp's content, but not /tmp itself
+
+\--exclude-rx-from=*filename*
+:   read --exclude-rx patterns from *filename*, one pattern per-line
+    (may be repeated).
 
 \--map-user *old*=*new*
 :   for every path, restore the *old* (saved) user name as *new*.
