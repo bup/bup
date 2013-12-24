@@ -345,7 +345,7 @@ WVPASS mkdir $D/d $D/d/e
 WVPASS bup random 512 >$D/f
 WVPASS bup index -ux $D
 WVPASS bup save -n exclude-bupdir $D
-WVPASSEQ "$(bup ls -a exclude-bupdir/latest/$TOP/$D/)" "a
+WVPASSEQ "$(bup ls -AF exclude-bupdir/latest/$TOP/$D/)" "a
 b
 d/
 f"
@@ -597,7 +597,7 @@ WVPASS touch $D/b
 WVPASS mkdir $D/c
 WVPASS bup index -ux $D
 WVPASS bup save --strip -n bupdir $D
-WVPASSEQ "$(bup ls bupdir/latest/)" "a
+WVPASSEQ "$(bup ls -F bupdir/latest/)" "a
 b
 c/"
 WVPASS bup index -f $INDEXFILE --exclude=$D/c -ux $D
@@ -618,7 +618,7 @@ WVPASS mkdir -p $D/hourly.0/buptest/c/d
 WVPASS touch $D/hourly.0/buptest/c/d/e
 WVPASS true
 WVPASS bup import-rsnapshot $D/
-WVPASSEQ "$(bup ls buptest/latest/)" "a/
+WVPASSEQ "$(bup ls -F buptest/latest/)" "a/
 c/"
 
 
@@ -635,7 +635,7 @@ if [ "$(type -p rdiff-backup)" != "" ]; then
     WVPASS rdiff-backup $TOP/Documentation $D/rdiff-backup
     WVPASS bup import-rdiff-backup $D/rdiff-backup import-rdiff-backup
     WVPASSEQ $(bup ls import-rdiff-backup/ | wc -l) 3
-    WVPASSEQ "$(bup ls -a import-rdiff-backup/latest/ | sort)" \
+    WVPASSEQ "$(bup ls -A import-rdiff-backup/latest/ | sort)" \
         "$(ls -A $TOP/Documentation | sort)"
 fi
 
@@ -699,7 +699,7 @@ WVSTART "save disjoint top-level directories"
     WVPASS bup save -t -n src $(pwd)/$D/x "$tmpdir"
 
     # For now, assume that "ls -a" and "sort" use the same order.
-    actual="$(WVPASS bup ls -a src/latest)" || exit $?
+    actual="$(WVPASS bup ls -AF src/latest)" || exit $?
     expected="$(echo -e "$pwd_top/\n$tmp_top/" | WVPASS sort)" || exit $?
     WVPASSEQ "$actual" "$expected"
 ) || exit $?

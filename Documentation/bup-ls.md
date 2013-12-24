@@ -8,7 +8,7 @@ bup-ls - list the contents of a bup repository
 
 # SYNOPSIS
 
-bup ls [-s] [-a] \<paths...\>
+bup ls [OPTION...] \<paths...\>
 
 # DESCRIPTION
 
@@ -21,12 +21,13 @@ the `-n` option in `bup save`), the next level is the date
 of the backup, and subsequent levels correspond to files in
 the backup.
 
-When `bup ls` is asked to output on a tty, it formats its output
-in columns so that it can list as much as possible in as few lines
-as possible. However, when `bup ls` is asked to output to something
-other than a tty (say you pipe the output to another command, or you
-redirect it to a file), it will output one file name per line. This
-makes the listing easier to parse with external tools.
+When `bup ls` is asked to output on a tty, and `-l` is not specified,
+it formats the output in columns so it can list as much as possible in
+as few lines as possible. However, when `-l` is specified or bup is
+asked to output to something other than a tty (say you pipe the output
+to another command, or you redirect it to a file), it will print one
+file name per line. This makes the listing easier to parse with
+external tools.
 
 Note that `bup ls` doesn't show hidden files by default and one needs to use
 the `-a` option to show them. Files are hidden when their name begins with a
@@ -44,11 +45,23 @@ you can view its contents using `bup join` or `git show`.
 -a, \--all
 :   show hidden files.
 
+-A, \--almost-all
+:   show hidden files, except "." and "..".
+
 -l
-:   show file sizes.
+:   provide a detailed, long listing for each item.
+
+-F, \--classify
+:   append type indicator: dir/, symlink@, fifo|, socket=, and executable*.
+
+\--file-type
+:   append type indicator: dir/, symlink@, fifo|, socket=.
 
 \--human-readable
-:   print human readable file sizes (i.e. 3.9K, 4.7M)
+:   print human readable file sizes (i.e. 3.9K, 4.7M).
+
+\--numeric-ids
+:   display numeric IDs (user, group, etc.) rather than names.
 
 # EXAMPLE
 

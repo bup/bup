@@ -9,5 +9,4 @@ top = vfs.RefList(None)
 
 # Check out lib/bup/ls.py for the opt spec
 ret = ls.do_ls(sys.argv[1:], top, default='/', spec_prefix='bup ')
-
 sys.exit(ret)

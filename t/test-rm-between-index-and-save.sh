@@ -29,7 +29,7 @@ WVPASS rm "$D"/foo
 WVPASS bup save -n save-fail-missing "$D"
 # when the save-call failed, foo is missing from output, since only
 # then bup notices, that it was removed:
-WVPASSEQ "$(bup ls -a save-fail-missing/latest/$TOP/$D/)" "bar
+WVPASSEQ "$(bup ls -A save-fail-missing/latest/$TOP/$D/)" "bar
 baz
 foo"
 # index/save again
@@ -37,7 +37,7 @@ WVPASS bup tick
 WVPASS bup index -ux "$D"
 WVPASS bup save -n save-fail-missing "$D"
 # now foo is gone:
-WVPASSEQ "$(bup ls -a save-fail-missing/latest/$TOP/$D/)" "bar
+WVPASSEQ "$(bup ls -A save-fail-missing/latest/$TOP/$D/)" "bar
 baz"
 
 
@@ -62,7 +62,7 @@ WVPASS rmdir "$D"/foo
 # (complete with delayed error)
 WVFAIL bup save -n save-fail-missing "$D"
 # ... so "foo" is absent from "bup ls"
-WVPASSEQ "$(bup ls -a save-fail-missing/latest/$TOP/$D/)" "bar/
+WVPASSEQ "$(bup ls -AF save-fail-missing/latest/$TOP/$D/)" "bar/
 baz/"
 # Index again:
 WVPASS bup tick
@@ -70,7 +70,7 @@ WVPASS bup index -ux "$D"
 # no non-zero-exitcode anymore:
 WVPASS bup save -n save-fail-missing "$D"
 # foo is (still...) missing, of course:
-WVPASSEQ "$(bup ls -a save-fail-missing/latest/$TOP/$D/)" "bar/
+WVPASSEQ "$(bup ls -AF save-fail-missing/latest/$TOP/$D/)" "bar/
 baz/"
 
 WVPASS rm -rf "$tmpdir"

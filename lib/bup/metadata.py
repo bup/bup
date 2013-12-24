@@ -8,7 +8,7 @@ import errno, os, sys, stat, time, pwd, grp, socket
 from cStringIO import StringIO
 from bup import vint, xstat
 from bup.drecurse import recursive_dirlist
-from bup.helpers import add_error, mkdirp, log, is_superuser
+from bup.helpers import add_error, mkdirp, log, is_superuser, format_filesize
 from bup.helpers import pwd_from_uid, pwd_from_name, grp_from_gid, grp_from_name
 from bup.xstat import utime, lutime
 
@@ -865,19 +865,21 @@ all_fields = frozenset(['path',
                         'posix1e-acl'])
 
 
-def summary_str(meta):
+def summary_str(meta, numeric_ids = False, human_readable = False):
     mode_val = xstat.mode_str(meta.mode)
     user_val = meta.user
-    if not user_val:
+    if numeric_ids or not user_val:
         user_val = str(meta.uid)
     group_val = meta.group
-    if not group_val:
+    if numeric_ids or not group_val:
         group_val = str(meta.gid)
     size_or_dev_val = '-'
     if stat.S_ISCHR(meta.mode) or stat.S_ISBLK(meta.mode):
         size_or_dev_val = '%d,%d' % (os.major(meta.rdev), os.minor(meta.rdev))
-    elif meta.size:
+    elif meta.size != None:
         size_or_dev_val = meta.size
+        if human_readable:
+            size_or_dev_val = format_filesize(meta.size)
     mtime_secs = xstat.fstime_floor_secs(meta.mtime)
     time_val = time.strftime('%Y-%m-%d %H:%M', time.localtime(mtime_secs))
     path_val = meta.path or ''
