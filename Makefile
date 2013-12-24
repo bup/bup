@@ -102,6 +102,7 @@ runtests-cmdline: all
 	TMPDIR="$(test_tmp)" t/test-save-restore-excludes.sh
 	TMPDIR="$(test_tmp)" t/test-save-strip-graft.sh
 	TMPDIR="$(test_tmp)" t/test-import-rdiff-backup.sh
+	TMPDIR="$(test_tmp)" t/test-xdev.sh
 	TMPDIR="$(test_tmp)" t/test.sh
 
 stupid:
@@ -172,8 +173,9 @@ clean: Documentation/clean config/clean
 		bup bup-* cmd/bup-* lib/bup/_version.py randomgen memtest \
 		out[12] out2[tc] tags[12] tags2[tc] \
 		testfs.img lib/bup/t/testfs.img
-	umount t/mnt/* || true
+	if test -e t/mnt; then t/cleanup-mounts-under t/mnt; fi
 	if test -e t/mnt; then rm -r t/mnt; fi
+	if test -e t/tmp; then t/cleanup-mounts-under t/tmp; fi
         # FIXME: migrate these to t/mnt/
 	if test -e bupmeta.tmp/testfs; \
 	  then umount bupmeta.tmp/testfs || true; fi

@@ -30,7 +30,8 @@ come after its children, making this easy.
 # OPTIONS
 
 -x, \--xdev, \--one-file-system
-:   don't cross filesystem boundaries.
+:   don't cross filesystem boundaries -- though as with tar and rsync,
+    the mount points themselves will still be reported.
 
 -q, \--quiet
 :   don't print filenames as they are encountered.  Useful

@@ -1,0 +1,32 @@
+#!/usr/bin/env python
+
+import os.path, re, subprocess, sys
+
+def mntent_unescape(x):
+    def replacement(m):
+        unescapes = {
+            "\\\\" : "\\",
+            "\\011" : "\t",
+            "\\012" : "\n",
+            "\\040" : " "
+        }
+        return unescapes.get(m.group(0))
+    return re.sub(r'(\\\\|\\011|\\012|\\040)', replacement, x)
+
+targets = sys.argv[1:]
+exit_status = 0
+for target in targets:
+    if not os.path.isdir(target):
+        print >> sys.stderr, target, 'is not a directory'
+        exit_status = 1
+        continue
+    top = os.path.realpath(target)
+    proc_mounts = open('/proc/mounts', 'r')
+    for line in proc_mounts:
+        _, point, _ = line.split(' ', 2)
+        point = mntent_unescape(point)
+        if top == point or os.path.commonprefix((top + '/', point)) == top + '/':
+            if subprocess.call(['umount', point]) != 0:
+                exit_status = 1
+
+sys.exit(exit_status)

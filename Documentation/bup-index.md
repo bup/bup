@@ -121,9 +121,10 @@ does, due to the accommodations described above.
     format to the `-l` option to `ls`(1).
 
 -x, \--xdev, \--one-file-system
-:   don't cross filesystem boundaries when recursing
-    through the filesystem.  Only applicable if you're
-    using `-u`.
+:   don't cross filesystem boundaries when recursing through the
+    filesystem -- though as with tar and rsync, the mount points
+    themselves will still be indexed.  Only applicable if you're using
+    `-u`.
     
 \--fake-valid
 :   mark specified filenames as up-to-date even if they

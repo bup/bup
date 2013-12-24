@@ -61,25 +61,25 @@ def _recursive_dirlist(prepend, xdev, bup_dir=None,
         if exclude_rxs and should_rx_exclude_path(path, exclude_rxs):
             continue
         if name.endswith('/'):
-            if xdev != None and pst.st_dev != xdev:
-                debug1('Skipping %r: different filesystem.\n' % (prepend+name))
-                continue
             if bup_dir != None:
-                if os.path.normpath(prepend+name) == bup_dir:
+                if os.path.normpath(path) == bup_dir:
                     debug1('Skipping BUP_DIR.\n')
                     continue
-            try:
-                OsFile(name).fchdir()
-            except OSError, e:
-                add_error('%s: %s' % (prepend, e))
+            if xdev != None and pst.st_dev != xdev:
+                debug1('Skipping contents of %r: different filesystem.\n' % path)
             else:
-                for i in _recursive_dirlist(prepend=prepend+name, xdev=xdev,
-                                            bup_dir=bup_dir,
-                                            excluded_paths=excluded_paths,
-                                            exclude_rxs=exclude_rxs):
-                    yield i
-                os.chdir('..')
-        yield (prepend + name, pst)
+                try:
+                    OsFile(name).fchdir()
+                except OSError, e:
+                    add_error('%s: %s' % (prepend, e))
+                else:
+                    for i in _recursive_dirlist(prepend=prepend+name, xdev=xdev,
+                                                bup_dir=bup_dir,
+                                                excluded_paths=excluded_paths,
+                                                exclude_rxs=exclude_rxs):
+                        yield i
+                    os.chdir('..')
+        yield (path, pst)
 
 
 def recursive_dirlist(paths, xdev, bup_dir=None, excluded_paths=None,

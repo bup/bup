@@ -80,6 +80,10 @@ is restored.
 -R, \--recurse
 :   Recursively descend into subdirectories during `--create`.
 
+\--xdev, \--one-file-system
+:   don't cross filesystem boundaries -- though as with tar and rsync,
+    the mount points themselves will still be handled.
+
 \--numeric-ids
 :   Apply numeric IDs (user, group, etc.) rather than names during
     `--extract` or `--finish-extract`.
