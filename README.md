@@ -92,19 +92,21 @@ From source
  
         git clone git://github.com/bup/bup
 
- - Install the needed python libraries (including the development
+ - Install the required python libraries (including the development
    libraries).
 
-   On Debian/Ubuntu this is usually sufficient (run as root):
+   On very recent Debian/Ubuntu versions, this may be sufficient (run
+   as root):
+
+            apt-get build-dep bup
+
+   Otherwise try this (substitute python2.5-dev if you have an older
+   system):
 
             apt-get install python2.6-dev python-fuse
             apt-get install python-pyxattr python-pylibacl
             apt-get install linux-libc-dev
-
-   Substitute python2.5-dev if you have an older system.  Alternately,
-   on newer Debian/Ubuntu versions, you can try this:
-    
-            apt-get build-dep bup
+            apt-get install python-tornado # optional
 
    On CentOS (for CentOS 6, at least), this should be sufficient (run
    as root):
@@ -118,6 +120,11 @@ From source
    RPMForge (for fuse-python) and EPEL (for pyxattr and pylibacl).
 
    On Cygwin, install python, make, rsync, and gcc4.
+
+   If you would like to use the optional bup web server on systems
+   without a tornado package, you may want to try this:
+
+            pip install tornado
 
  - Build the python module and symlinks:
 

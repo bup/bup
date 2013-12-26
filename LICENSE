@@ -7,9 +7,6 @@ In addition, bupsplit.c, bupsplit.h, and options.py may be
 redistributed according to the separate (BSD-style) license written
 inside those files.
 
-The files in lib/tornado are covered by the license described in
-lib/tornado/README.
-
 The definition of the relpath function was taken from CPython (tag
 v2.6, file Lib/posixpath.py, hg-commit 95fff5a6a276) and is covered
 under the terms of the PYTHON SOFTWARE FOUNDATION LICENSE VERSION 2.

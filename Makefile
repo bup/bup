@@ -30,7 +30,7 @@ BINDIR=$(DESTDIR)$(PREFIX)/bin
 LIBDIR=$(DESTDIR)$(PREFIX)/lib/bup
 install: all
 	$(INSTALL) -d $(MANDIR)/man1 $(DOCDIR) $(BINDIR) \
-		$(LIBDIR)/bup $(LIBDIR)/cmd $(LIBDIR)/tornado \
+		$(LIBDIR)/bup $(LIBDIR)/cmd \
 		$(LIBDIR)/web $(LIBDIR)/web/static
 	[ ! -e Documentation/.docs-available ] || \
 	  $(INSTALL) -m 0644 \
@@ -50,9 +50,6 @@ install: all
 	$(INSTALL) -pm 0755 \
 		lib/bup/*$(SOEXT) \
 		$(LIBDIR)/bup
-	$(INSTALL) -pm 0644 \
-		lib/tornado/*.py \
-		$(LIBDIR)/tornado
 	$(INSTALL) -pm 0644 \
 		lib/web/static/* \
 		$(LIBDIR)/web/static/
