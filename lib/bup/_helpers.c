@@ -787,49 +787,6 @@ static int bup_parse_xutime_args(char **path,
                           access, access_ns,
                           modification, modification_ns))
         return 0;
-
-    if (isnan(*access))
-    {
-        PyErr_SetString(PyExc_ValueError, "access time is NaN");
-        return 0;
-    }
-    else if (isinf(*access))
-    {
-        PyErr_SetString(PyExc_ValueError, "access time is infinite");
-        return 0;
-    }
-    else if (isnan(*modification))
-    {
-        PyErr_SetString(PyExc_ValueError, "modification time is NaN");
-        return 0;
-    }
-    else if (isinf(*modification))
-    {
-        PyErr_SetString(PyExc_ValueError, "modification time is infinite");
-        return 0;
-    }
-
-    if (isnan(*access_ns))
-    {
-        PyErr_SetString(PyExc_ValueError, "access time ns is NaN");
-        return 0;
-    }
-    else if (isinf(*access_ns))
-    {
-        PyErr_SetString(PyExc_ValueError, "access time ns is infinite");
-        return 0;
-    }
-    else if (isnan(*modification_ns))
-    {
-        PyErr_SetString(PyExc_ValueError, "modification time ns is NaN");
-        return 0;
-    }
-    else if (isinf(*modification_ns))
-    {
-        PyErr_SetString(PyExc_ValueError, "modification time ns is infinite");
-        return 0;
-    }
-
     return 1;
 }
 
