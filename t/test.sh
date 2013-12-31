@@ -451,24 +451,6 @@ WVPASSEQ "$(bup ls -F buptest/latest/)" "a/
 c/"
 
 
-if [ "$(type -p rdiff-backup)" != "" ]; then
-    WVSTART "import-rdiff-backup"
-    D=rdiff-backup.tmp
-    export BUP_DIR="$TOP/$D/.bup"
-    WVPASS force-delete $D
-    WVPASS mkdir $D
-    WVPASS bup init
-    WVPASS mkdir $D/rdiff-backup
-    WVPASS rdiff-backup $TOP/cmd $D/rdiff-backup
-    WVPASS bup tick
-    WVPASS rdiff-backup $TOP/Documentation $D/rdiff-backup
-    WVPASS bup import-rdiff-backup $D/rdiff-backup import-rdiff-backup
-    WVPASSEQ $(bup ls import-rdiff-backup/ | wc -l) 3
-    WVPASSEQ "$(bup ls -A import-rdiff-backup/latest/ | sort)" \
-        "$(ls -A $TOP/Documentation | sort)"
-fi
-
-
 WVSTART "compression"
 D=compression0.tmp
 export BUP_DIR="$TOP/$D/.bup"
