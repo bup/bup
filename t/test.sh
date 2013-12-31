@@ -451,36 +451,6 @@ WVPASSEQ "$(bup ls -F buptest/latest/)" "a/
 c/"
 
 
-WVSTART "compression"
-D=compression0.tmp
-export BUP_DIR="$TOP/$D/.bup"
-WVPASS force-delete $D
-WVPASS mkdir $D
-WVPASS bup init
-WVPASS bup index $TOP/Documentation
-WVPASS bup save -n compression -0 --strip $TOP/Documentation
-# 'ls' on NetBSD sets -A by default when running as root, so we have to undo
-# it by grepping out any dotfiles.  (Normal OSes don't auto-set -A, but this
-# is harmless there.)
-expected="$(WVPASS ls $TOP/Documentation | grep -v '^\.' | WVPASS sort)" \
-    || exit $?
-actual="$(WVPASS bup ls compression/latest/ | WVPASS sort)" || exit $?
-WVPASSEQ "$actual" "$expected"
-COMPRESSION_0_SIZE=$(WVPASS du -k -s $D | WVPASS cut -f1) || exit $?
-
-D=compression9.tmp
-export BUP_DIR="$TOP/$D/.bup"
-WVPASS force-delete $D
-WVPASS mkdir $D
-WVPASS bup init
-WVPASS bup index $TOP/Documentation
-WVPASS bup save -n compression -9 --strip $TOP/Documentation
-WVPASSEQ "$(bup ls compression/latest/ | sort)" \
-         "$(ls $TOP/Documentation | grep -v '^\.' | sort)"
-COMPRESSION_9_SIZE=$(WVPASS du -k -s $D | WVPASS cut -f1) || exit $?
-
-WVPASS [ "$COMPRESSION_9_SIZE" -lt "$COMPRESSION_0_SIZE" ]
-
 WVSTART "save disjoint top-level directories"
 (
     # Resolve any symlinks involving the top top-level dirs.

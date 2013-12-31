@@ -89,6 +89,7 @@ runtests-python: all
 runtests-cmdline: all
 	test -e t/tmp || mkdir t/tmp
 	TMPDIR="$(test_tmp)" t/test-cat-file.sh
+	TMPDIR="$(test_tmp)" t/test-compression.sh
 	TMPDIR="$(test_tmp)" t/test-index-check-device.sh
 	TMPDIR="$(test_tmp)" t/test-meta.sh
 	TMPDIR="$(test_tmp)" t/test-restore-map-owner.sh
