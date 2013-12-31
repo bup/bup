@@ -97,6 +97,7 @@ runtests-cmdline: all
 	TMPDIR="$(test_tmp)" t/test-command-without-init-fails.sh
 	TMPDIR="$(test_tmp)" t/test-redundant-saves.sh
 	TMPDIR="$(test_tmp)" t/test-save-restore-exclude-rx.sh
+	TMPDIR="$(test_tmp)" t/test-save-strip-graft.sh
 	TMPDIR="$(test_tmp)" t/test.sh
 
 stupid:
