@@ -416,24 +416,3 @@ WVSTART "save disjoint top-level directories"
     expected="$(echo -e "$pwd_top/\n$tmp_top/" | WVPASS sort)" || exit $?
     WVPASSEQ "$actual" "$expected"
 ) || exit $?
-
-WVSTART "clear-index"
-D=clear-index.tmp
-export BUP_DIR="$TOP/$D/.bup"
-WVPASS force-delete $TOP/$D
-WVPASS mkdir $TOP/$D
-WVPASS bup init
-WVPASS touch $TOP/$D/foo
-WVPASS touch $TOP/$D/bar
-WVPASS bup index -u $D
-WVPASSEQ "$(bup index -p)" "$D/foo
-$D/bar
-$D/
-./"
-WVPASS rm $TOP/$D/foo
-WVPASS bup index --clear
-WVPASS bup index -u $TOP/$D
-expected="$(WVPASS bup index -p)" || exit $?
-WVPASSEQ "$expected" "$D/bar
-$D/
-./"
