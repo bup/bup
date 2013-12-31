@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 . ./wvtest-bup.sh
+. t/lib.sh
 
 set -o pipefail
 
@@ -11,8 +12,68 @@ export GIT_DIR="$tmpdir/bup"
 
 bup() { "$top/bup" "$@"; }
 
-WVPASS bup init
 WVPASS cd "$tmpdir"
+
+
+WVSTART "index excludes bupdir"
+WVPASS force-delete src "$BUP_DIR"
+WVPASS bup init
+WVPASS mkdir src
+WVPASS touch src/a
+WVPASS bup random 128k >src/b
+WVPASS mkdir src/d src/d/e
+WVPASS bup random 512 >src/f
+WVPASS bup index -ux src
+WVPASS bup save -n exclude-bupdir src
+WVPASSEQ "$(bup ls -AF "exclude-bupdir/latest/$tmpdir/src/")" "a
+b
+d/
+f"
+
+
+WVSTART "index --exclude"
+WVPASS force-delete src "$BUP_DIR"
+WVPASS bup init
+WVPASS mkdir src
+WVPASS touch src/a
+WVPASS bup random 128k >src/b
+WVPASS mkdir src/d src/d/e
+WVPASS bup random 512 >src/f
+WVPASS bup random 512 >src/j
+WVPASS bup index -ux --exclude src/d --exclude src/j src
+WVPASS bup save -n exclude src
+WVPASSEQ "$(bup ls "exclude/latest/$tmpdir/src/")" "a
+b
+f"
+WVPASS mkdir src/g src/h
+WVPASS bup index -ux --exclude src/d --exclude $tmpdir/src/g --exclude src/h \
+    --exclude "$tmpdir/src/j" src
+WVPASS bup save -n exclude src
+WVPASSEQ "$(bup ls "exclude/latest/$tmpdir/src/")" "a
+b
+f"
+
+
+WVSTART "index --exclude-from"
+WVPASS force-delete src "$BUP_DIR"
+WVPASS bup init
+WVPASS mkdir src
+WVPASS echo "src/d
+ $tmpdir/src/g
+src/h
+src/i" > exclude-list
+WVPASS touch src/a
+WVPASS bup random 128k >src/b
+WVPASS mkdir src/d src/d/e
+WVPASS bup random 512 >src/f
+WVPASS mkdir src/g src/h
+WVPASS bup random 128k > src/i
+WVPASS bup index -ux --exclude-from exclude-list src
+WVPASS bup save -n exclude-from src
+WVPASSEQ "$(bup ls "exclude-from/latest/$tmpdir/src/")" "a
+b
+f"
+WVPASS rm exclude-list
 
 
 # bup index --exclude-rx ...
