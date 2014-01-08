@@ -196,6 +196,7 @@ def do_root(n, owner_map, restore_root_meta = True):
         # Directory metadata is the first entry in any .bupm file in
         # the directory.  Get it.
         mfile = n.metadata_file() # VFS file -- cannot close().
+        root_meta = None
         if mfile:
             meta_stream = mfile.open()
             root_meta = metadata.Metadata.read(meta_stream)
