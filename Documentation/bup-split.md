@@ -86,12 +86,13 @@ being the most likely choice.
 # OPTIONS
 
 -r, \--remote=*host*:*path*
-:   save the backup set to the given remote server.  If
-    *path* is omitted, uses the default path on the remote
-    server (you still need to include the ':').  The connection to the
-    remote server is made with SSH.  If you'd like to specify which port, user
-    or private key to use for the SSH connection, we recommend you use the
-    `~/.ssh/config` file.
+:   save the backup set to the given remote server.  If *path* is
+    omitted, uses the default path on the remote server (you still
+    need to include the ':').  The connection to the remote server is
+    made with SSH.  If you'd like to specify which port, user or
+    private key to use for the SSH connection, we recommend you use
+    the `~/.ssh/config` file.  Even though the destination is remote,
+    a local bup repository is still required.
 
 -d, \--date=*seconds-since-epoch*
 :   specify the date inscribed in the commit (seconds since 1970-01-01).
