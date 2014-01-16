@@ -70,6 +70,13 @@ static uint64_t htonll(uint64_t value)
 #endif
 
 
+#define INTEGRAL_ASSIGNMENT_FITS(dest, src)                             \
+    ({                                                                  \
+        *(dest) = (src);                                                \
+        *(dest) == (src) && (*(dest) < 1) == ((src) < 1);               \
+    })
+
+
 // At the moment any code that calls INTGER_TO_PY() will have to
 // disable -Wtautological-compare for clang.  See below.
 
@@ -220,6 +227,128 @@ static void unpythonize_argv(void)
 }
 
 #endif // not __WIN32__ or __CYGWIN__
+
+
+static unsigned long long count_leading_zeros(const unsigned char * const buf,
+                                              unsigned long long len)
+{
+    const unsigned char *cur = buf;
+    while(len-- && *cur == 0)
+        cur++;
+    return cur - buf;
+}
+
+
+static int write_all(int fd, const void *buf, const size_t count)
+{
+    size_t written = 0;
+    while (written < count)
+    {
+        const ssize_t rc = write(fd, buf + written, count - written);
+        if (rc == -1)
+            return -1;
+        written += rc;
+    }
+    return 0;
+}
+
+
+static int uadd(unsigned long long *dest,
+                const unsigned long long x,
+                const unsigned long long y)
+{
+    const unsigned long long result = x + y;
+    if (result < x || result < y)
+        return 0;
+    *dest = result;
+    return 1;
+}
+
+
+static PyObject *bup_write_sparsely(PyObject *self, PyObject *args)
+{
+    int fd;
+    unsigned char *buf = NULL;
+    Py_ssize_t sbuf_len;
+    PyObject *py_min_sparse_len, *py_prev_sparse_len;
+    if (!PyArg_ParseTuple(args, "it#OO",
+                          &fd, &buf, &sbuf_len,
+                          &py_min_sparse_len, &py_prev_sparse_len))
+	return NULL;
+    unsigned long long min_sparse_len, prev_sparse_len, buf_len;
+    if (!bup_ullong_from_py(&min_sparse_len, py_min_sparse_len, "min_sparse_len"))
+        return NULL;
+    if (!bup_ullong_from_py(&prev_sparse_len, py_prev_sparse_len, "prev_sparse_len"))
+        return NULL;
+    if (sbuf_len < 0)
+        return PyErr_Format(PyExc_ValueError, "negative bufer length");
+    if (!INTEGRAL_ASSIGNMENT_FITS(&buf_len, sbuf_len))
+        return PyErr_Format(PyExc_OverflowError, "buffer length too large");
+
+    // For now, there are some cases where we just give up if the
+    // values are too large, but we could try to break up the relevant
+    // operations into chunks.
+
+    // Deal with preceding zeros.  Just make them sparse, along with
+    // any leading zeros in buf, even if the region's not >= min,
+    // since the alternative is a potentially extra small write.
+    if (prev_sparse_len)
+    {
+        const unsigned long long zeros = count_leading_zeros(buf, buf_len);
+        unsigned long long new_sparse_len = 0;
+        if (!uadd(&new_sparse_len, prev_sparse_len, zeros))
+            return PyErr_Format (PyExc_OverflowError, "sparse region too large");
+        if (zeros == buf_len)
+            return PyLong_FromUnsignedLongLong(new_sparse_len);
+
+        off_t new_off;
+        if (!INTEGRAL_ASSIGNMENT_FITS(&new_off, new_sparse_len))
+            return PyErr_Format(PyExc_OverflowError,
+                                "sparse region too large for seek");
+        const off_t off = lseek(fd, new_off, SEEK_CUR);
+        if (off == -1)
+            return PyErr_SetFromErrno(PyExc_IOError);
+        buf += zeros;
+        buf_len -= zeros;
+    }
+
+    int rc;
+    unsigned long long unexamined = buf_len;
+    unsigned char *block_start = buf, *cur = buf;
+    while(unexamined)
+    {
+        const unsigned long long zeros = count_leading_zeros(cur, unexamined);
+        assert(zeros <= unexamined);
+        unexamined -= zeros;
+        if (unexamined == 0)  // Runs off the end.
+        {
+            rc = write_all(fd, block_start, cur - block_start);
+            if (rc)
+                return PyErr_SetFromErrno(PyExc_IOError);
+            return PyLong_FromUnsignedLongLong(zeros);
+        }
+        cur += zeros;
+        if (zeros >= min_sparse_len)
+        {
+            off_t new_off;
+            if (!INTEGRAL_ASSIGNMENT_FITS(&new_off, zeros))
+                return PyErr_Format(PyExc_ValueError,
+                                    "zero count overflows off_t");
+            off_t off = lseek(fd, new_off, SEEK_CUR);
+            if (off == -1)
+                return PyErr_SetFromErrno(PyExc_IOError);
+            block_start = cur;
+        }
+        while (unexamined && *cur != 0)
+        {
+            cur++; unexamined--;
+        }
+    }
+    rc = write_all(fd, block_start, cur - block_start);
+    if (rc)
+        return PyErr_SetFromErrno(PyExc_IOError);
+    return PyInt_FromLong(0);
+}
 
 
 static PyObject *selftest(PyObject *self, PyObject *args)
@@ -916,14 +1045,6 @@ static PyObject *bup_set_linux_file_attr(PyObject *self, PyObject *args)
 #endif
 #endif
 
-
-#define INTEGRAL_ASSIGNMENT_FITS(dest, src)                             \
-    ({                                                                  \
-        *(dest) = (src);                                                \
-        *(dest) == (src) && (*(dest) < 1) == ((src) < 1);               \
-    })
-
-
 #define ASSIGN_PYLONG_TO_INTEGRAL(dest, pylong, overflow) \
     ({                                                     \
         int result = 0;                                                 \
@@ -1170,6 +1291,8 @@ static PyObject *bup_fstat(PyObject *self, PyObject *args)
 
 
 static PyMethodDef helper_methods[] = {
+    { "write_sparsely", bup_write_sparsely, METH_VARARGS,
+      "Write buf excepting zeros at the end. Return trailing zero count." },
     { "selftest", selftest, METH_VARARGS,
 	"Check that the rolling checksum rolls correctly (for unit tests)." },
     { "blobbits", blobbits, METH_VARARGS,

@@ -2,6 +2,7 @@
 import copy, errno, sys, stat, re
 from bup import options, git, metadata, vfs
 from bup.helpers import *
+from bup._helpers import write_sparsely
 
 optspec = """
 bup restore [-C outdir] </branch/revision/path/to/dir ...>
@@ -10,6 +11,7 @@ C,outdir=   change to given outdir before extracting files
 numeric-ids restore numeric IDs (user, group, etc.) rather than names
 exclude-rx= skip paths matching the unanchored regex (may be repeated)
 exclude-rx-from= skip --exclude-rx patterns in file (may be repeated)
+sparse      create sparse files
 v,verbose   increase log output (can be used more than once)
 map-user=   given OLD=NEW, restore OLD user as NEW user
 map-group=  given OLD=NEW, restore OLD group as NEW group
@@ -164,6 +166,18 @@ def write_file_content(fullname, n):
         outf.close()
 
 
+def write_file_content_sparsely(fullname, n):
+    outfd = os.open(fullname, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0600)
+    try:
+        trailing_zeros = 0;
+        for b in chunkyreader(n.open()):
+            trailing_zeros = write_sparsely(outfd, b, 512, trailing_zeros)
+        pos = os.lseek(outfd, trailing_zeros, os.SEEK_END)
+        os.ftruncate(outfd, pos)
+    finally:
+        os.close(outfd)
+
+
 def find_dir_item_metadata_by_name(dir, name):
     """Find metadata in dir (a node) for an item with the given name,
     or for the directory itself if the name is ''."""
@@ -188,7 +202,7 @@ def find_dir_item_metadata_by_name(dir, name):
             meta_stream.close()
 
 
-def do_root(n, owner_map, restore_root_meta = True):
+def do_root(n, sparse, owner_map, restore_root_meta = True):
     # Very similar to do_node(), except that this function doesn't
     # create a path for n's destination directory (and so ignores
     # n.fullname).  It assumes the destination is '.', and restores
@@ -211,21 +225,21 @@ def do_root(n, owner_map, restore_root_meta = True):
             # Don't get metadata if this is a dir -- handled in sub do_node().
             if meta_stream and not stat.S_ISDIR(sub.mode):
                 m = metadata.Metadata.read(meta_stream)
-            do_node(n, sub, owner_map, meta = m)
+            do_node(n, sub, sparse, owner_map, meta = m)
         if root_meta and restore_root_meta:
             apply_metadata(root_meta, '.', opt.numeric_ids, owner_map)
     finally:
         if meta_stream:
             meta_stream.close()
 
-
-def do_node(top, n, owner_map, meta = None):
+def do_node(top, n, sparse, owner_map, meta = None):
     # Create n.fullname(), relative to the current directory, and
     # restore all of its metadata, when available.  The meta argument
     # will be None for dirs, or when there is no .bupm (i.e. no
     # metadata).
     global total_restored, opt
     meta_stream = None
+    write_content = sparse and write_file_content_sparsely or write_file_content
     try:
         fullname = n.fullname(stop_at=top)
         # Match behavior of index --exclude-rx with respect to paths.
@@ -251,9 +265,9 @@ def do_node(top, n, owner_map, meta = None):
             create_path(n, fullname, meta)
             if meta:
                 if stat.S_ISREG(meta.mode):
-                    write_file_content(fullname, n)
+                    write_content(fullname, n)
             elif stat.S_ISREG(n.mode):
-                write_file_content(fullname, n)
+                write_content(fullname, n)
 
         total_restored += 1
         plog('Restoring: %d\r' % total_restored)
@@ -262,7 +276,7 @@ def do_node(top, n, owner_map, meta = None):
             # Don't get metadata if this is a dir -- handled in sub do_node().
             if meta_stream and not stat.S_ISDIR(sub.mode):
                 m = metadata.Metadata.read(meta_stream)
-            do_node(top, sub, owner_map, meta = m)
+            do_node(top, sub, sparse, owner_map, meta = m)
         if meta and not created_hardlink:
             apply_metadata(meta, fullname, opt.numeric_ids, owner_map)
     finally:
@@ -312,7 +326,7 @@ for d in extra:
         if not isdir:
             add_error('%r: not a directory' % d)
         else:
-            do_root(n, owner_map, restore_root_meta = (name == '.'))
+            do_root(n, opt.sparse, owner_map, restore_root_meta = (name == '.'))
     else:
         # Source is /foo/what/ever -- extract ./ever to cwd.
         if isinstance(n, vfs.FakeSymlink):
@@ -323,10 +337,10 @@ for d in extra:
             target = n.dereference()
             mkdirp(n.name)
             os.chdir(n.name)
-            do_root(target, owner_map)
+            do_root(target, opt.sparse, owner_map)
         else: # Not a directory or fake symlink.
             meta = find_dir_item_metadata_by_name(n.parent, n.name)
-            do_node(n.parent, n, owner_map, meta = meta)
+            do_node(n.parent, n, opt.sparse, owner_map, meta = meta)
 
 if not opt.quiet:
     progress('Restoring: %d, done.\n' % total_restored)

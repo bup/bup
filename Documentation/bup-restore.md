@@ -121,6 +121,11 @@ See the EXAMPLES section for a demonstration.
 :   read --exclude-rx patterns from *filename*, one pattern per-line
     (may be repeated).  Ignore completely empty lines.
 
+\--sparse
+:   write output data sparsely when reasonable.  Currently, reasonable
+    just means "at least whenever there are 512 or more consecutive
+    zeroes".
+
 \--map-user *old*=*new*
 :   for every path, restore the *old* (saved) user name as *new*.
     Specifying "" for *new* will clear the user.  For example
