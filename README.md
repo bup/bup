@@ -71,8 +71,10 @@ Reasons you might want to avoid bup
    for you, but we don't know why.  It is also missing some
    probably-critical features.
    
- - It requires python >= 2.5, a C compiler, and an installed git version >=
-   1.5.3.1.
+ - It requires python >= 2.5, a C compiler, and an installed git
+   version >= 1.5.3.1.  It also requires par2 if you want fsck to be
+   able to generate the information needed to recover from some types
+   of corruption.
  
  - It currently only works on Linux, MacOS X >= 10.4,
    NetBSD, Solaris, or Windows (with Cygwin).  Patches to support
