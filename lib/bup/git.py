@@ -11,7 +11,6 @@ max_pack_objects = 200*1000  # cache memory usage is about 83 bytes per object
 
 verbose = 0
 ignore_midx = 0
-home_repodir = os.path.expanduser('~/.bup')
 repodir = None
 
 _typemap =  { 'blob':3, 'tree':2, 'commit':1, 'tag':4 }
