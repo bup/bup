@@ -86,18 +86,19 @@ def get_commit_items(id, cp):
     return parse_commit(commit_content)
 
 
-def repo(sub = ''):
+def repo(sub = '', repo_dir=None):
     """Get the path to the git repository or one of its subdirectories."""
     global repodir
-    if not repodir:
+    repo_dir = repo_dir or repodir
+    if not repo_dir:
         raise GitError('You should call check_repo_or_die()')
 
     # If there's a .git subdirectory, then the actual repo is in there.
-    gd = os.path.join(repodir, '.git')
+    gd = os.path.join(repo_dir, '.git')
     if os.path.exists(gd):
         repodir = gd
 
-    return os.path.join(repodir, sub)
+    return os.path.join(repo_dir, sub)
 
 
 def shorten_hash(s):
@@ -771,14 +772,16 @@ def _gitenv(repo_dir = None):
     return env
 
 
-def list_refs(refname = None):
+def list_refs(refname = None, repo_dir = None):
     """Generate a list of tuples in the form (refname,hash).
     If a ref name is specified, list only this particular ref.
     """
     argv = ['git', 'show-ref', '--']
     if refname:
         argv += [refname]
-    p = subprocess.Popen(argv, preexec_fn = _gitenv(), stdout = subprocess.PIPE)
+    p = subprocess.Popen(argv,
+                         preexec_fn = _gitenv(repo_dir),
+                         stdout = subprocess.PIPE)
     out = p.stdout.read().strip()
     rv = p.wait()  # not fatal
     if rv:
@@ -789,9 +792,9 @@ def list_refs(refname = None):
             yield (name, sha.decode('hex'))
 
 
-def read_ref(refname):
+def read_ref(refname, repo_dir = None):
     """Get the commit id of the most recent commit made on a given ref."""
-    l = list(list_refs(refname))
+    l = list(list_refs(refname, repo_dir))
     if l:
         assert(len(l) == 1)
         return l[0][1]
@@ -799,7 +802,7 @@ def read_ref(refname):
         return None
 
 
-def rev_list(ref, count=None):
+def rev_list(ref, count=None, repo_dir=None):
     """Generate a list of reachable commits in reverse chronological order.
 
     This generator walks through commits, from child to parent, that are
@@ -814,7 +817,9 @@ def rev_list(ref, count=None):
     if count:
         opts += ['-n', str(atoi(count))]
     argv = ['git', 'rev-list', '--pretty=format:%at'] + opts + [ref, '--']
-    p = subprocess.Popen(argv, preexec_fn = _gitenv(), stdout = subprocess.PIPE)
+    p = subprocess.Popen(argv,
+                         preexec_fn = _gitenv(repo_dir),
+                         stdout = subprocess.PIPE)
     commit = None
     for row in p.stdout:
         s = row.strip()
@@ -828,18 +833,18 @@ def rev_list(ref, count=None):
         raise GitError, 'git rev-list returned error %d' % rv
 
 
-def get_commit_dates(refs):
+def get_commit_dates(refs, repo_dir=None):
     """Get the dates for the specified commit refs.  For now, every unique
        string in refs must resolve to a different commit or this
        function will fail."""
     result = []
     for ref in refs:
-        commit = get_commit_items(ref, cp())
+        commit = get_commit_items(ref, cp(repo_dir))
         result.append(commit.author_sec)
     return result
 
 
-def rev_parse(committish):
+def rev_parse(committish, repo_dir=None):
     """Resolve the full hash for 'committish', if it exists.
 
     Should be roughly equivalent to 'git rev-parse'.
@@ -847,12 +852,12 @@ def rev_parse(committish):
     Returns the hex value of the hash if it is found, None if 'committish' does
     not correspond to anything.
     """
-    head = read_ref(committish)
+    head = read_ref(committish, repo_dir=repo_dir)
     if head:
         debug2("resolved from ref: commit = %s\n" % head.encode('hex'))
         return head
 
-    pL = PackIdxList(repo('objects/pack'))
+    pL = PackIdxList(repo('objects/pack', repo_dir=repo_dir))
 
     if len(committish) == 40:
         try:
@@ -1121,28 +1126,29 @@ class CatPipe:
             log('booger!\n')
 
 
-_cp = (None, None)
+_cp = {}
 
-def cp():
-    """Create a CatPipe object or reuse an already existing one."""
+def cp(repo_dir=None):
+    """Create a CatPipe object or reuse the already existing one."""
     global _cp
-    cp_dir, cp = _cp
-    cur_dir = os.path.realpath(repo())
-    if cur_dir != cp_dir:
-        cp = CatPipe()
-        _cp = (cur_dir, cp)
+    if not repo_dir:
+        repo_dir = repo()
+    repo_dir = os.path.abspath(repo_dir)
+    cp = _cp.get(repo_dir)
+    if not cp:
+        cp = CatPipe(repo_dir)
+        _cp[repo_dir] = cp
     return cp
 
 
-def tags():
+def tags(repo_dir = None):
     """Return a dictionary of all tags in the form {hash: [tag_names, ...]}."""
     tags = {}
-    for (n,c) in list_refs():
+    for (n,c) in list_refs(repo_dir = repo_dir):
         if n.startswith('refs/tags/'):
             name = n[10:]
             if not c in tags:
                 tags[c] = []
 
             tags[c].append(name)  # more than one tag can point at 'c'
-
     return tags
