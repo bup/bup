@@ -58,7 +58,6 @@ except ImportError:
 # FIXME: Add nfsv4 acl handling - see nfs4-acl-tools.
 # FIXME: Consider other entries mentioned in stat(2) (S_IFDOOR, etc.).
 # FIXME: Consider pack('vvvvsss', ...) optimization.
-# FIXME: Consider caching users/groups.
 
 ## FS notes:
 #
@@ -372,9 +371,6 @@ class Metadata:
                 else:
                     raise
 
-        # Implement tar/rsync-like semantics; see bup-restore(1).
-        # FIXME: should we consider caching user/group name <-> id
-        # mappings, getgroups(), etc.?
         uid = gid = -1 # By default, do nothing.
         if is_superuser():
             uid = self.uid
