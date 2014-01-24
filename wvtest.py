@@ -125,6 +125,8 @@ if __name__ != '__main__':   # we're imported as a module
         else:
             return _check(False, 'EXCEPT(%s)' % _code())
 
+    def wvfailure_count():
+        return _fails
 
     def _check_unfinished():
         if _registered:

@@ -3,6 +3,8 @@ from bup import git
 from bup.helpers import *
 from wvtest import *
 
+bup_tmp = os.path.realpath('../../../t/tmp')
+mkdirp(bup_tmp)
 
 @wvtest
 def testmangle():
@@ -50,9 +52,10 @@ def testencode():
 
 @wvtest
 def testpacks():
+    initial_failures = wvfailure_count()
+    tmpdir = tempfile.mkdtemp(dir=bup_tmp, prefix='bup-tgit-')
     os.environ['BUP_MAIN_EXE'] = bupmain = '../../../bup'
-    os.environ['BUP_DIR'] = bupdir = 'pybuptest.tmp'
-    subprocess.call(['rm','-rf', bupdir])
+    os.environ['BUP_DIR'] = bupdir = tmpdir + "/bup"
     git.init_repo(bupdir)
     git.verbose = 1
 
@@ -60,7 +63,7 @@ def testpacks():
     w.new_blob(os.urandom(100))
     w.new_blob(os.urandom(100))
     w.abort()
-    
+
     w = git.PackWriter()
     hashes = []
     nobj = 1000
@@ -86,17 +89,19 @@ def testpacks():
 
     WVFAIL(r.find_offset('\0'*20))
 
-    r = git.PackIdxList('pybuptest.tmp/objects/pack')
+    r = git.PackIdxList(bupdir + '/objects/pack')
     WVPASS(r.exists(hashes[5]))
     WVPASS(r.exists(hashes[6]))
     WVFAIL(r.exists('\0'*20))
-
+    if wvfailure_count() == initial_failures:
+        subprocess.call(['rm', '-rf', tmpdir])
 
 @wvtest
 def test_pack_name_lookup():
+    initial_failures = wvfailure_count()
+    tmpdir = tempfile.mkdtemp(dir=bup_tmp, prefix='bup-tgit-')
     os.environ['BUP_MAIN_EXE'] = bupmain = '../../../bup'
-    os.environ['BUP_DIR'] = bupdir = 'pybuptest.tmp'
-    subprocess.call(['rm','-rf', bupdir])
+    os.environ['BUP_DIR'] = bupdir = tmpdir + "/bup"
     git.init_repo(bupdir)
     git.verbose = 1
     packdir = git.repo('objects/pack')
@@ -116,10 +121,17 @@ def test_pack_name_lookup():
     for e,idxname in enumerate(idxnames):
         for i in range(e*2, (e+1)*2):
             WVPASSEQ(r.exists(hashes[i], want_source=True), idxname)
+    if wvfailure_count() == initial_failures:
+        subprocess.call(['rm', '-rf', tmpdir])
 
 
 @wvtest
 def test_long_index():
+    initial_failures = wvfailure_count()
+    tmpdir = tempfile.mkdtemp(dir=bup_tmp, prefix='bup-tgit-')
+    os.environ['BUP_MAIN_EXE'] = bupmain = '../../../bup'
+    os.environ['BUP_DIR'] = bupdir = tmpdir + "/bup"
+    git.init_repo(bupdir)
     w = git.PackWriter()
     obj_bin = struct.pack('!IIIII',
             0x00112233, 0x44556677, 0x88990011, 0x22334455, 0x66778899)
@@ -141,28 +153,41 @@ def test_long_index():
     WVPASSEQ(i.find_offset(obj_bin), 0xfffffffff)
     WVPASSEQ(i.find_offset(obj2_bin), 0xffffffffff)
     WVPASSEQ(i.find_offset(obj3_bin), 0xff)
-    os.remove(name)
+    if wvfailure_count() == initial_failures:
+        os.remove(name)
+        subprocess.call(['rm', '-rf', tmpdir])
 
 
 @wvtest
 def test_check_repo_or_die():
-    git.check_repo_or_die()
-    WVPASS('check_repo_or_die')  # if we reach this point the call above passed
-
-    os.rename('pybuptest.tmp/objects/pack', 'pybuptest.tmp/objects/pack.tmp')
-    open('pybuptest.tmp/objects/pack', 'w').close()
+    initial_failures = wvfailure_count()
+    orig_cwd = os.getcwd()
+    tmpdir = tempfile.mkdtemp(dir=bup_tmp, prefix='bup-tgit-')
+    os.environ['BUP_DIR'] = bupdir = tmpdir + "/bup"
     try:
+        os.chdir(tmpdir)
+        git.init_repo(bupdir)
         git.check_repo_or_die()
-    except SystemExit, e:
-        WVPASSEQ(e.code, 14)
-    else:
-        WVFAIL()
-    os.unlink('pybuptest.tmp/objects/pack')
-    os.rename('pybuptest.tmp/objects/pack.tmp', 'pybuptest.tmp/objects/pack')
+        WVPASS('check_repo_or_die')  # if we reach this point the call above passed
 
-    try:
-        git.check_repo_or_die('nonexistantbup.tmp')
-    except SystemExit, e:
-        WVPASSEQ(e.code, 15)
-    else:
-        WVFAIL()
+        os.rename(bupdir + '/objects/pack', bupdir + '/objects/pack.tmp')
+        open(bupdir + '/objects/pack', 'w').close()
+        try:
+            git.check_repo_or_die()
+        except SystemExit, e:
+            WVPASSEQ(e.code, 14)
+        else:
+            WVFAIL()
+        os.unlink(bupdir + '/objects/pack')
+        os.rename(bupdir + '/objects/pack.tmp', bupdir + '/objects/pack')
+
+        try:
+            git.check_repo_or_die('nonexistantbup.tmp')
+        except SystemExit, e:
+            WVPASSEQ(e.code, 15)
+        else:
+            WVFAIL()
+    finally:
+        os.chdir(orig_cwd)
+    if wvfailure_count() == initial_failures:
+        subprocess.call(['rm', '-rf', tmpdir])
