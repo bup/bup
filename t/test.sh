@@ -1,20 +1,20 @@
 #!/usr/bin/env bash
 . wvtest.sh
+. wvtest-bup.sh
 . t/lib.sh
 
 set -o pipefail
 
-TOP="$(WVPASS /bin/pwd)" || exit $?
-export BUP_DIR="$TOP/buptest.tmp"
+top="$(WVPASS /bin/pwd)" || exit $?
+tmpdir="$(WVPASS wvmktempdir)" || exit $?
+export BUP_DIR="$tmpdir/bup"
 
-bup()
-{
-    "$TOP/bup" "$@"
-}
+bup() { "$top/bup" "$@"; }
+
+WVPASS cd "$tmpdir"
 
 WVSTART "init"
 
-WVPASS rm -rf "$BUP_DIR"
 WVPASS bup init
 
 WVSTART "index"
@@ -92,7 +92,7 @@ WVPASSEQ "$(cd $D && bup index -s .)" "$(cd $D && bup index -s .)"
 
 WVFAIL bup save -t $D/doesnt-exist-filename
 
-WVPASS mv $BUP_DIR/bupindex $BUP_DIR/bi.old
+WVPASS mv "$BUP_DIR/bupindex" "$BUP_DIR/bi.old"
 WVFAIL bup save -t $D/d/e/fifotest
 WVPASS mkfifo $D/d/e/fifotest
 WVPASS bup index -u $D/d/e/fifotest
@@ -101,7 +101,7 @@ WVPASS bup save -t $D/d/e
 WVPASS rm -f $D/d/e/fifotest
 WVPASS bup index -u $D/d/e
 WVFAIL bup save -t $D/d/e/fifotest
-WVPASS mv $BUP_DIR/bi.old $BUP_DIR/bupindex
+WVPASS mv "$BUP_DIR/bi.old" "$BUP_DIR/bupindex"
 
 WVPASS bup index -u $D/d/e
 WVPASS bup save -t $D/d/e
@@ -122,9 +122,9 @@ WVPASSEQ "$(cd $D && bup index -m)" \
 f
 a
 ./"
-WVPASS bup save -r :$BUP_DIR -n r-test $D
-WVFAIL bup save -r :$BUP_DIR/fake/path -n r-test $D
-WVFAIL bup save -r :$BUP_DIR -n r-test $D/fake/path
+WVPASS bup save -r ":$BUP_DIR" -n r-test $D
+WVFAIL bup save -r ":$BUP_DIR/fake/path" -n r-test $D
+WVFAIL bup save -r ":$BUP_DIR" -n r-test $D/fake/path
 
 WVSTART "split"
 WVPASS echo a >a.tmp
@@ -142,32 +142,32 @@ WVPASSEQ "$(cat tag[ab].tmp | bup split -b --keep-boundaries --git-ids)" \
          "$(cat tag[ab].tmp)"
 WVPASSEQ "$(cat tag[ab].tmp | bup split -b --git-ids)" \
          "$(cat tagab.tmp)"
-WVPASS bup split --bench -b <t/testfile1 >tags1.tmp
-WVPASS bup split -vvvv -b t/testfile2 >tags2.tmp
+WVPASS bup split --bench -b <"$top/t/testfile1" >tags1.tmp
+WVPASS bup split -vvvv -b "$top/t/testfile2" >tags2.tmp
 WVPASS bup margin
 WVPASS bup midx -f
 WVPASS bup midx --check -a
-WVPASS bup midx -o $BUP_DIR/objects/pack/test1.midx \
-	$BUP_DIR/objects/pack/*.idx
+WVPASS bup midx -o "$BUP_DIR/objects/pack/test1.midx" \
+	"$BUP_DIR"/objects/pack/*.idx
 WVPASS bup midx --check -a
-WVPASS bup midx -o $BUP_DIR/objects/pack/test1.midx \
-	$BUP_DIR/objects/pack/*.idx \
-	$BUP_DIR/objects/pack/*.idx
+WVPASS bup midx -o "$BUP_DIR"/objects/pack/test1.midx \
+	"$BUP_DIR"/objects/pack/*.idx \
+	"$BUP_DIR"/objects/pack/*.idx
 WVPASS bup midx --check -a
-all=$(echo $BUP_DIR/objects/pack/*.idx $BUP_DIR/objects/pack/*.midx)
-WVPASS bup midx -o $BUP_DIR/objects/pack/zzz.midx $all
+all=$(echo "$BUP_DIR"/objects/pack/*.idx "$BUP_DIR"/objects/pack/*.midx)
+WVPASS bup midx -o "$BUP_DIR"/objects/pack/zzz.midx $all
 WVPASS bup tick
-WVPASS bup midx -o $BUP_DIR/objects/pack/yyy.midx $all
+WVPASS bup midx -o "$BUP_DIR"/objects/pack/yyy.midx $all
 WVPASS bup midx -a
-WVPASSEQ "$(echo $BUP_DIR/objects/pack/*.midx)" \
-	"$BUP_DIR/objects/pack/yyy.midx"
+WVPASSEQ "$(echo "$BUP_DIR"/objects/pack/*.midx)" \
+	""$BUP_DIR"/objects/pack/yyy.midx"
 WVPASS bup margin
-WVPASS bup split -t t/testfile2 >tags2t.tmp
-WVPASS bup split -t t/testfile2 --fanout 3 >tags2tf.tmp
-WVPASS bup split -r "$BUP_DIR" -c t/testfile2 >tags2c.tmp
-WVPASS bup split -r :$BUP_DIR -c t/testfile2 >tags2c.tmp
+WVPASS bup split -t "$top/t/testfile2" >tags2t.tmp
+WVPASS bup split -t "$top/t/testfile2" --fanout 3 >tags2tf.tmp
+WVPASS bup split -r "$BUP_DIR" -c "$top/t/testfile2" >tags2c.tmp
+WVPASS bup split -r ":$BUP_DIR" -c "$top/t/testfile2" >tags2c.tmp
 WVPASS ls -lR \
-    | WVPASS bup split -r :$BUP_DIR -c --fanout 3 --max-pack-objects 3 -n lslr \
+    | WVPASS bup split -r ":$BUP_DIR" -c --fanout 3 --max-pack-objects 3 -n lslr \
     || exit $?
 WVPASS bup ls
 WVFAIL bup ls /does-not-exist
@@ -179,18 +179,18 @@ WVFAIL diff -u tags1.tmp tags2.tmp
 
 # fanout must be different from non-fanout
 WVFAIL diff tags2t.tmp tags2tf.tmp
-WVPASS wc -c t/testfile1 t/testfile2
+WVPASS wc -c "$top/t/testfile1" "$top/t/testfile2"
 WVPASS wc -l tags1.tmp tags2.tmp
 
 WVSTART "bloom"
-WVPASS bup bloom -c $(ls -1 $BUP_DIR/objects/pack/*.idx|head -n1)
-WVPASS rm $BUP_DIR/objects/pack/bup.bloom
+WVPASS bup bloom -c $(ls -1 "$BUP_DIR"/objects/pack/*.idx|head -n1)
+WVPASS rm "$BUP_DIR"/objects/pack/bup.bloom
 WVPASS bup bloom -k 4
-WVPASS bup bloom -c $(ls -1 $BUP_DIR/objects/pack/*.idx|head -n1)
-WVPASS bup bloom -d buptest.tmp/objects/pack --ruin --force
-WVFAIL bup bloom -c $(ls -1 $BUP_DIR/objects/pack/*.idx|head -n1)
+WVPASS bup bloom -c $(ls -1 "$BUP_DIR"/objects/pack/*.idx|head -n1)
+WVPASS bup bloom -d "$BUP_DIR"/objects/pack --ruin --force
+WVFAIL bup bloom -c $(ls -1 "$BUP_DIR"/objects/pack/*.idx|head -n1)
 WVPASS bup bloom --force -k 5
-WVPASS bup bloom -c $(ls -1 $BUP_DIR/objects/pack/*.idx|head -n1)
+WVPASS bup bloom -c $(ls -1 "$BUP_DIR"/objects/pack/*.idx|head -n1)
 
 WVSTART "memtest"
 WVPASS bup memtest -c1 -n100
@@ -202,17 +202,17 @@ WVPASS bup join <tags2.tmp >out2.tmp
 WVPASS bup join <tags2t.tmp -o out2t.tmp
 WVPASS bup join -r "$BUP_DIR" <tags2c.tmp >out2c.tmp
 WVPASS bup join -r ":$BUP_DIR" <tags2c.tmp >out2c.tmp
-WVPASS diff -u t/testfile1 out1.tmp
-WVPASS diff -u t/testfile2 out2.tmp
-WVPASS diff -u t/testfile2 out2t.tmp
-WVPASS diff -u t/testfile2 out2c.tmp
+WVPASS diff -u "$top/t/testfile1" out1.tmp
+WVPASS diff -u "$top/t/testfile2" out2.tmp
+WVPASS diff -u "$top/t/testfile2" out2t.tmp
+WVPASS diff -u "$top/t/testfile2" out2c.tmp
 
 WVSTART "save/git-fsck"
 (
     WVPASS cd "$BUP_DIR"
     #git repack -Ad
     #git prune
-    (WVPASS cd "$TOP/t/sampledata" && WVPASS bup save -vvn master /) || exit $?
+    (WVPASS cd "$top/t/sampledata" && WVPASS bup save -vvn master /) || exit $?
     result="$(git fsck --full --strict 2>&1)" || exit $?
     n=$(echo "$result" |
         WVFAIL egrep -v 'dangling (commit|tree|blob)' |
@@ -224,13 +224,13 @@ WVSTART "save/git-fsck"
 WVSTART "restore"
 WVPASS force-delete buprestore.tmp
 WVFAIL bup restore boink
-WVPASS touch $TOP/$D/$D
-WVPASS bup index -u $TOP/$D
+WVPASS touch "$tmpdir/$D/$D"
+WVPASS bup index -u "$tmpdir/$D"
 WVPASS bup save -n master /
-WVPASS bup restore -C buprestore.tmp "/master/latest/$TOP/$D"
+WVPASS bup restore -C buprestore.tmp "/master/latest/$tmpdir/$D"
 WVPASSEQ "$(ls buprestore.tmp)" "bupdata.tmp"
 WVPASS force-delete buprestore.tmp
-WVPASS bup restore -C buprestore.tmp "/master/latest/$TOP/$D/"
+WVPASS bup restore -C buprestore.tmp "/master/latest/$tmpdir/$D/"
 WVPASS touch $D/non-existent-file buprestore.tmp/non-existent-file # else diff fails
 WVPASS diff -ur $D/ buprestore.tmp/
 
@@ -248,44 +248,44 @@ WVPASS diff -ur $D/ buprestore.tmp/
 
     WVSTART "restore /foo/latest"
     WVPASS bup restore -C $tmp/restore /foo/latest
-    WVPASS t/compare-trees $tmp/src/ $tmp/restore/latest/
+    WVPASS "$top/t/compare-trees" $tmp/src/ $tmp/restore/latest/
 
     WVSTART "restore /foo/latest/"
     WVPASS force-delete "$tmp/restore"
     WVPASS bup restore -C $tmp/restore /foo/latest/
     for x in $tmp/src/*; do
-        WVPASS t/compare-trees $x/ $tmp/restore/$(basename $x);
+        WVPASS "$top/t/compare-trees" $x/ $tmp/restore/$(basename $x);
     done
 
     WVSTART "restore /foo/latest/."
     WVPASS force-delete "$tmp/restore"
     WVPASS bup restore -C $tmp/restore /foo/latest/.
-    WVPASS t/compare-trees $tmp/src/ $tmp/restore/
+    WVPASS "$top/t/compare-trees" $tmp/src/ $tmp/restore/
 
     WVSTART "restore /foo/latest/x"
     WVPASS force-delete "$tmp/restore"
     WVPASS bup restore -C $tmp/restore /foo/latest/x
-    WVPASS t/compare-trees $tmp/src/x/ $tmp/restore/x/
+    WVPASS "$top/t/compare-trees" $tmp/src/x/ $tmp/restore/x/
 
     WVSTART "restore /foo/latest/x/"
     WVPASS force-delete "$tmp/restore"
     WVPASS bup restore -C $tmp/restore /foo/latest/x/
     for x in $tmp/src/x/*; do
-        WVPASS t/compare-trees $x/ $tmp/restore/$(basename $x);
+        WVPASS "$top/t/compare-trees" $x/ $tmp/restore/$(basename $x);
     done
 
     WVSTART "restore /foo/latest/x/."
     WVPASS force-delete "$tmp/restore"
     WVPASS bup restore -C $tmp/restore /foo/latest/x/.
-    WVPASS t/compare-trees $tmp/src/x/ $tmp/restore/
+    WVPASS "$top/t/compare-trees" $tmp/src/x/ $tmp/restore/
 ) || exit $?
 
 
 WVSTART "ftp"
-WVPASS bup ftp "cat /master/latest/$TOP/$D/b" >$D/b.new
-WVPASS bup ftp "cat /master/latest/$TOP/$D/f" >$D/f.new
-WVPASS bup ftp "cat /master/latest/$TOP/$D/f"{,} >$D/f2.new
-WVPASS bup ftp "cat /master/latest/$TOP/$D/a" >$D/a.new
+WVPASS bup ftp "cat /master/latest/$tmpdir/$D/b" >$D/b.new
+WVPASS bup ftp "cat /master/latest/$tmpdir/$D/f" >$D/f.new
+WVPASS bup ftp "cat /master/latest/$tmpdir/$D/f"{,} >$D/f2.new
+WVPASS bup ftp "cat /master/latest/$tmpdir/$D/a" >$D/a.new
 WVPASSEQ "$(sha1sum <$D/b)" "$(sha1sum <$D/b.new)"
 WVPASSEQ "$(sha1sum <$D/f)" "$(sha1sum <$D/f.new)"
 WVPASSEQ "$(cat $D/f.new{,} | sha1sum)" "$(sha1sum <$D/f2.new)"
@@ -339,7 +339,7 @@ b"
 
 WVSTART "import-rsnapshot"
 D=rsnapshot.tmp
-export BUP_DIR="$TOP/$D/.bup"
+export BUP_DIR="$tmpdir/$D/.bup"
 WVPASS force-delete $D
 WVPASS mkdir $D
 WVPASS bup init
@@ -369,20 +369,22 @@ WVSTART "save disjoint top-level directories"
     WVPASS force-delete $D
     WVPASS mkdir -p $D/x
     WVPASS date > $D/x/1
-    tmpdir="$(WVPASS mktemp -d $real_tmp/bup-test-XXXXXXX)" || exit $?
-    cleanup() { WVPASS rm -r "${tmpdir}"; }
+    tmpdir2="$(WVPASS mktemp -d $real_tmp/bup-test-XXXXXXX)" || exit $?
+    cleanup() { WVPASS rm -r "$tmpdir2"; }
     WVPASS trap cleanup EXIT
-    WVPASS date > "$tmpdir/2"
+    WVPASS date > "$tmpdir2/2"
 
-    export BUP_DIR="$TOP/buptest.tmp"
+    export BUP_DIR="$tmpdir/bup"
     WVPASS test -d "$BUP_DIR" && WVPASS rm -r "$BUP_DIR"
 
     WVPASS bup init
-    WVPASS bup index -vu $(pwd)/$D/x "$tmpdir"
-    WVPASS bup save -t -n src $(pwd)/$D/x "$tmpdir"
+    WVPASS bup index -vu $(pwd)/$D/x "$tmpdir2"
+    WVPASS bup save -t -n src $(pwd)/$D/x "$tmpdir2"
 
     # For now, assume that "ls -a" and "sort" use the same order.
     actual="$(WVPASS bup ls -AF src/latest)" || exit $?
     expected="$(echo -e "$pwd_top/\n$tmp_top/" | WVPASS sort)" || exit $?
     WVPASSEQ "$actual" "$expected"
 ) || exit $?
+
+WVPASS rm -rf "$tmpdir"

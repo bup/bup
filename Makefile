@@ -171,7 +171,6 @@ clean: Documentation/clean config/clean
 		.*~ *~ */*~ lib/*/*~ lib/*/*/*~ \
 		*.pyc */*.pyc lib/*/*.pyc lib/*/*/*.pyc \
 		bup bup-* cmd/bup-* lib/bup/_version.py randomgen memtest \
-		out[12] out2[tc] tags[12] tags2[tc] \
 		testfs.img lib/bup/t/testfs.img
 	if test -e t/mnt; then t/cleanup-mounts-under t/mnt; fi
 	if test -e t/mnt; then rm -r t/mnt; fi
