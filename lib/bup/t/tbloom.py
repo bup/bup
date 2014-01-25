@@ -3,8 +3,13 @@ from bup import bloom
 from bup.helpers import *
 from wvtest import *
 
+bup_tmp = os.path.realpath('../../../t/tmp')
+mkdirp(bup_tmp)
+
 @wvtest
 def test_bloom():
+    initial_failures = wvfailure_count()
+    tmpdir = tempfile.mkdtemp(dir=bup_tmp, prefix='bup-tbloom-')
     hashes = [os.urandom(20) for i in range(100)]
     class Idx:
         pass
@@ -12,11 +17,11 @@ def test_bloom():
     ix.name='dummy.idx'
     ix.shatable = ''.join(hashes)
     for k in (4, 5):
-        b = bloom.create('pybuptest.bloom', expected=100, k=k)
+        b = bloom.create(tmpdir + '/pybuptest.bloom', expected=100, k=k)
         b.add_idx(ix)
         WVPASSLT(b.pfalse_positive(), .1)
         b.close()
-        b = bloom.ShaBloom('pybuptest.bloom')
+        b = bloom.ShaBloom(tmpdir + '/pybuptest.bloom')
         all_present = True
         for h in hashes:
             all_present &= b.exists(h)
@@ -26,7 +31,7 @@ def test_bloom():
             if b.exists(h):
                 false_positives += 1
         WVPASSLT(false_positives, 5)
-        os.unlink('pybuptest.bloom')
+        os.unlink(tmpdir + '/pybuptest.bloom')
 
     tf = tempfile.TemporaryFile()
     b = bloom.create('bup.bloom', f=tf, expected=100)
@@ -50,3 +55,5 @@ def test_bloom():
             raise
     if not skip_test:
         WVPASSEQ(b.k, 4)
+    if wvfailure_count() == initial_failures:
+        subprocess.call(['rm', '-rf', tmpdir])
