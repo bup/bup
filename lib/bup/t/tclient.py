@@ -1,6 +1,10 @@
-import sys, os, stat, time, random, subprocess, glob
+import sys, os, stat, time, random, subprocess, glob, tempfile
 from bup import client, git
+from bup.helpers import mkdirp
 from wvtest import *
+
+bup_tmp = os.path.realpath('../../../t/tmp')
+mkdirp(bup_tmp)
 
 def randbytes(sz):
     s = ''
@@ -16,9 +20,10 @@ IDX_PAT = '/*.idx'
     
 @wvtest
 def test_server_split_with_indexes():
+    initial_failures = wvfailure_count()
+    tmpdir = tempfile.mkdtemp(dir=bup_tmp, prefix='bup-tclient-')
     os.environ['BUP_MAIN_EXE'] = '../../../bup'
-    os.environ['BUP_DIR'] = bupdir = 'buptest_tclient.tmp'
-    subprocess.call(['rm', '-rf', bupdir])
+    os.environ['BUP_DIR'] = bupdir = tmpdir
     git.init_repo(bupdir)
     lw = git.PackWriter()
     c = client.Client(bupdir, create=True)
@@ -30,13 +35,16 @@ def test_server_split_with_indexes():
     rw.new_blob(s2)
     rw.breakpoint()
     rw.new_blob(s1)
+    if wvfailure_count() == initial_failures:
+        subprocess.call(['rm', '-rf', tmpdir])
     
 
 @wvtest
 def test_multiple_suggestions():
+    initial_failures = wvfailure_count()
+    tmpdir = tempfile.mkdtemp(dir=bup_tmp, prefix='bup-tclient-')
     os.environ['BUP_MAIN_EXE'] = '../../../bup'
-    os.environ['BUP_DIR'] = bupdir = 'buptest_tclient.tmp'
-    subprocess.call(['rm', '-rf', bupdir])
+    os.environ['BUP_DIR'] = bupdir = tmpdir
     git.init_repo(bupdir)
 
     lw = git.PackWriter()
@@ -64,13 +72,16 @@ def test_multiple_suggestions():
     WVPASSEQ(len(glob.glob(c.cachedir+IDX_PAT)), 2)
     rw.close()
     WVPASSEQ(len(glob.glob(c.cachedir+IDX_PAT)), 3)
+    if wvfailure_count() == initial_failures:
+        subprocess.call(['rm', '-rf', tmpdir])
 
 
 @wvtest
 def test_dumb_client_server():
+    initial_failures = wvfailure_count()
+    tmpdir = tempfile.mkdtemp(dir=bup_tmp, prefix='bup-tclient-')
     os.environ['BUP_MAIN_EXE'] = '../../../bup'
-    os.environ['BUP_DIR'] = bupdir = 'buptest_tclient.tmp'
-    subprocess.call(['rm', '-rf', bupdir])
+    os.environ['BUP_DIR'] = bupdir = tmpdir
     git.init_repo(bupdir)
     open(git.repo('bup-dumb-server'), 'w').close()
 
@@ -86,13 +97,16 @@ def test_dumb_client_server():
     rw.new_blob(s2)
     rw.close()
     WVPASSEQ(len(glob.glob(c.cachedir+IDX_PAT)), 2)
+    if wvfailure_count() == initial_failures:
+        subprocess.call(['rm', '-rf', tmpdir])
 
 
 @wvtest
 def test_midx_refreshing():
+    initial_failures = wvfailure_count()
+    tmpdir = tempfile.mkdtemp(dir=bup_tmp, prefix='bup-tclient-')
     os.environ['BUP_MAIN_EXE'] = bupmain = '../../../bup'
-    os.environ['BUP_DIR'] = bupdir = 'buptest_tmidx.tmp'
-    subprocess.call(['rm', '-rf', bupdir])
+    os.environ['BUP_DIR'] = bupdir = tmpdir
     git.init_repo(bupdir)
     c = client.Client(bupdir, create=True)
     rw = c.new_packwriter()
@@ -104,20 +118,20 @@ def test_midx_refreshing():
     p2base = rw.close()
     p2name = os.path.join(c.cachedir, p2base)
     del rw
-    
+
     pi = git.PackIdxList(bupdir + '/objects/pack')
     WVPASSEQ(len(pi.packs), 2)
     pi.refresh()
     WVPASSEQ(len(pi.packs), 2)
     WVPASSEQ(sorted([os.path.basename(i.name) for i in pi.packs]),
              sorted([p1base, p2base]))
-    
+
     p1 = git.open_idx(p1name)
     WVPASS(p1.exists(s1sha))
     p2 = git.open_idx(p2name)
     WVFAIL(p2.exists(s1sha))
     WVPASS(p2.exists(s2sha))
-    
+
     subprocess.call([bupmain, 'midx', '-f'])
     pi.refresh()
     WVPASSEQ(len(pi.packs), 1)
@@ -125,6 +139,8 @@ def test_midx_refreshing():
     WVPASSEQ(len(pi.packs), 2)
     pi.refresh(skip_midx=False)
     WVPASSEQ(len(pi.packs), 1)
+    if wvfailure_count() == initial_failures:
+        subprocess.call(['rm', '-rf', tmpdir])
 
 
 @wvtest
