@@ -670,7 +670,8 @@ class Metadata:
                     raise
 
     def __init__(self):
-        self.mode = None
+        self.mode = self.uid = self.gid = self.user = self.group = None
+        self.atime = self.mtime = self.ctime = None
         # optional members
         self.path = None
         self.size = None
@@ -679,6 +680,33 @@ class Metadata:
         self.linux_attr = None
         self.linux_xattr = None
         self.posix1e_acl = None
+
+    def __repr__(self):
+        result = ['<%s instance at %s' % (self.__class__, hex(id(self)))]
+        if self.path:
+            result += ' path:' + repr(self.path)
+        if self.mode:
+            result += ' mode:' + repr(xstat.mode_str(self.mode)
+                                      + '(%s)' % hex(self.mode))
+        if self.uid:
+            result += ' uid:' + str(self.uid)
+        if self.gid:
+            result += ' gid:' + str(self.gid)
+        if self.user:
+            result += ' user:' + repr(self.user)
+        if self.group:
+            result += ' group:' + repr(self.group)
+        if self.size:
+            result += ' size:' + repr(self.size)
+        for name, val in (('atime', self.atime),
+                          ('mtime', self.mtime),
+                          ('ctime', self.ctime)):
+            result += ' %s:%r' \
+                % (name,
+                   time.strftime('%Y-%m-%d %H:%M %z',
+                                 time.gmtime(xstat.fstime_floor_secs(val))))
+        result += '>'
+        return ''.join(result)
 
     def write(self, port, include_path=True):
         records = include_path and [(_rec_tag_path, self._encode_path())] or []
