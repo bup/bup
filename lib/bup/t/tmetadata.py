@@ -115,37 +115,37 @@ def test_clean_up_extract_path():
 
 @wvtest
 def test_metadata_method():
+    initial_failures = wvfailure_count()
     tmpdir = tempfile.mkdtemp(dir=bup_tmp, prefix='bup-tmetadata-')
-    try:
-        bup_dir = tmpdir + '/bup'
-        data_path = tmpdir + '/foo'
-        os.mkdir(data_path)
-        ex('touch', data_path + '/file')
-        ex('ln', '-s', 'file', data_path + '/symlink')
-        test_time1 = 13 * 1000000000
-        test_time2 = 42 * 1000000000
-        utime(data_path + '/file', (0, test_time1))
-        lutime(data_path + '/symlink', (0, 0))
-        utime(data_path, (0, test_time2))
-        ex(bup_path, '-d', bup_dir, 'init')
-        ex(bup_path, '-d', bup_dir, 'index', '-v', data_path)
-        ex(bup_path, '-d', bup_dir, 'save', '-tvvn', 'test', data_path)
-        git.check_repo_or_die(bup_dir)
-        top = vfs.RefList(None)
-        n = top.lresolve('/test/latest' + realpath(data_path))
-        m = n.metadata()
-        WVPASS(m.mtime == test_time2)
-        WVPASS(len(n.subs()) == 2)
-        WVPASS(n.name == 'foo')
-        WVPASS(set([x.name for x in n.subs()]) == set(['file', 'symlink']))
-        for sub in n:
-            if sub.name == 'file':
-                m = sub.metadata()
-                WVPASS(m.mtime == test_time1)
-            elif sub.name == 'symlink':
-                m = sub.metadata()
-                WVPASS(m.mtime == 0)
-    finally:
+    bup_dir = tmpdir + '/bup'
+    data_path = tmpdir + '/foo'
+    os.mkdir(data_path)
+    ex('touch', data_path + '/file')
+    ex('ln', '-s', 'file', data_path + '/symlink')
+    test_time1 = 13 * 1000000000
+    test_time2 = 42 * 1000000000
+    utime(data_path + '/file', (0, test_time1))
+    lutime(data_path + '/symlink', (0, 0))
+    utime(data_path, (0, test_time2))
+    ex(bup_path, '-d', bup_dir, 'init')
+    ex(bup_path, '-d', bup_dir, 'index', '-v', data_path)
+    ex(bup_path, '-d', bup_dir, 'save', '-tvvn', 'test', data_path)
+    git.check_repo_or_die(bup_dir)
+    top = vfs.RefList(None)
+    n = top.lresolve('/test/latest' + realpath(data_path))
+    m = n.metadata()
+    WVPASS(m.mtime == test_time2)
+    WVPASS(len(n.subs()) == 2)
+    WVPASS(n.name == 'foo')
+    WVPASS(set([x.name for x in n.subs()]) == set(['file', 'symlink']))
+    for sub in n:
+        if sub.name == 'file':
+            m = sub.metadata()
+            WVPASS(m.mtime == test_time1)
+        elif sub.name == 'symlink':
+            m = sub.metadata()
+            WVPASS(m.mtime == 0)
+    if wvfailure_count() == initial_failures:
         subprocess.call(['rm', '-rf', tmpdir])
 
 
@@ -157,22 +157,22 @@ def _first_err():
 
 @wvtest
 def test_from_path_error():
+    initial_failures = wvfailure_count()
     if is_superuser() or detect_fakeroot():
         return
     tmpdir = tempfile.mkdtemp(dir=bup_tmp, prefix='bup-tmetadata-')
-    try:
-        path = tmpdir + '/foo'
-        os.mkdir(path)
-        m = metadata.from_path(path, archive_path=path, save_symlinks=True)
-        WVPASSEQ(m.path, path)
-        os.chmod(path, 000)
-        metadata.from_path(path, archive_path=path, save_symlinks=True)
-        if metadata.get_linux_file_attr:
-            WVPASS(len(helpers.saved_errors) == 1)
-            errmsg = _first_err()
-            WVPASS(errmsg.startswith('read Linux attr'))
-            clear_errors()
-    finally:
+    path = tmpdir + '/foo'
+    os.mkdir(path)
+    m = metadata.from_path(path, archive_path=path, save_symlinks=True)
+    WVPASSEQ(m.path, path)
+    os.chmod(path, 000)
+    metadata.from_path(path, archive_path=path, save_symlinks=True)
+    if metadata.get_linux_file_attr:
+        WVPASS(len(helpers.saved_errors) == 1)
+        errmsg = _first_err()
+        WVPASS(errmsg.startswith('read Linux attr'))
+        clear_errors()
+    if wvfailure_count() == initial_failures:
         subprocess.call(['chmod', '-R', 'u+rwX', tmpdir])
         subprocess.call(['rm', '-rf', tmpdir])
 
@@ -193,68 +193,68 @@ def _linux_attr_supported(path):
 
 @wvtest
 def test_apply_to_path_restricted_access():
+    initial_failures = wvfailure_count()
     if is_superuser() or detect_fakeroot():
         return
     if sys.platform.startswith('cygwin'):
         return # chmod 000 isn't effective.
     tmpdir = tempfile.mkdtemp(dir=bup_tmp, prefix='bup-tmetadata-')
-    try:
-        parent = tmpdir + '/foo'
-        path = parent + '/bar'
-        os.mkdir(parent)
-        os.mkdir(path)
-        clear_errors()
-        m = metadata.from_path(path, archive_path=path, save_symlinks=True)
-        WVPASSEQ(m.path, path)
-        os.chmod(parent, 000)
-        m.apply_to_path(path)
-        print >> sys.stderr, helpers.saved_errors
-        expected_errors = ['utime: ']
-        if m.linux_attr and _linux_attr_supported(tmpdir):
-            expected_errors.append('Linux chattr: ')
-        if metadata.xattr and m.linux_xattr:
-            expected_errors.append('xattr.set: ')
-        WVPASS(len(helpers.saved_errors) == len(expected_errors))
-        for i in xrange(len(expected_errors)):
-            WVPASS(str(helpers.saved_errors[i]).startswith(expected_errors[i]))
-        clear_errors()
-    finally:
+    parent = tmpdir + '/foo'
+    path = parent + '/bar'
+    os.mkdir(parent)
+    os.mkdir(path)
+    clear_errors()
+    m = metadata.from_path(path, archive_path=path, save_symlinks=True)
+    WVPASSEQ(m.path, path)
+    os.chmod(parent, 000)
+    m.apply_to_path(path)
+    print >> sys.stderr, helpers.saved_errors
+    expected_errors = ['utime: ']
+    if m.linux_attr and _linux_attr_supported(tmpdir):
+        expected_errors.append('Linux chattr: ')
+    if metadata.xattr and m.linux_xattr:
+        expected_errors.append('xattr.set: ')
+    WVPASS(len(helpers.saved_errors) == len(expected_errors))
+    for i in xrange(len(expected_errors)):
+        WVPASS(str(helpers.saved_errors[i]).startswith(expected_errors[i]))
+    clear_errors()
+    if wvfailure_count() == initial_failures:
         subprocess.call(['chmod', '-R', 'u+rwX', tmpdir])
         subprocess.call(['rm', '-rf', tmpdir])
 
 
 @wvtest
 def test_restore_over_existing_target():
+    initial_failures = wvfailure_count()
     tmpdir = tempfile.mkdtemp(dir=bup_tmp, prefix='bup-tmetadata-')
-    try:
-        path = tmpdir + '/foo'
-        os.mkdir(path)
-        dir_m = metadata.from_path(path, archive_path=path, save_symlinks=True)
-        os.rmdir(path)
-        open(path, 'w').close()
-        file_m = metadata.from_path(path, archive_path=path, save_symlinks=True)
-        # Restore dir over file.
-        WVPASSEQ(dir_m.create_path(path, create_symlinks=True), None)
-        WVPASS(stat.S_ISDIR(os.stat(path).st_mode))
-        # Restore dir over dir.
-        WVPASSEQ(dir_m.create_path(path, create_symlinks=True), None)
-        WVPASS(stat.S_ISDIR(os.stat(path).st_mode))
-        # Restore file over dir.
-        WVPASSEQ(file_m.create_path(path, create_symlinks=True), None)
-        WVPASS(stat.S_ISREG(os.stat(path).st_mode))
-        # Restore file over file.
-        WVPASSEQ(file_m.create_path(path, create_symlinks=True), None)
-        WVPASS(stat.S_ISREG(os.stat(path).st_mode))
-        # Restore file over non-empty dir.
-        os.remove(path)
-        os.mkdir(path)
-        open(path + '/bar', 'w').close()
-        WVEXCEPT(Exception, file_m.create_path, path, create_symlinks=True)
-        # Restore dir over non-empty dir.
-        os.remove(path + '/bar')
-        os.mkdir(path + '/bar')
-        WVEXCEPT(Exception, dir_m.create_path, path, create_symlinks=True)
-    finally:
+    path = tmpdir + '/foo'
+    os.mkdir(path)
+    dir_m = metadata.from_path(path, archive_path=path, save_symlinks=True)
+    os.rmdir(path)
+    open(path, 'w').close()
+    file_m = metadata.from_path(path, archive_path=path, save_symlinks=True)
+    # Restore dir over file.
+    WVPASSEQ(dir_m.create_path(path, create_symlinks=True), None)
+    WVPASS(stat.S_ISDIR(os.stat(path).st_mode))
+    # Restore dir over dir.
+    WVPASSEQ(dir_m.create_path(path, create_symlinks=True), None)
+    WVPASS(stat.S_ISDIR(os.stat(path).st_mode))
+    # Restore file over dir.
+    WVPASSEQ(file_m.create_path(path, create_symlinks=True), None)
+    WVPASS(stat.S_ISREG(os.stat(path).st_mode))
+    # Restore file over file.
+    WVPASSEQ(file_m.create_path(path, create_symlinks=True), None)
+    WVPASS(stat.S_ISREG(os.stat(path).st_mode))
+    # Restore file over non-empty dir.
+    os.remove(path)
+    os.mkdir(path)
+    open(path + '/bar', 'w').close()
+    WVEXCEPT(Exception, file_m.create_path, path, create_symlinks=True)
+    # Restore dir over non-empty dir.
+    os.remove(path + '/bar')
+    os.mkdir(path + '/bar')
+    WVEXCEPT(Exception, dir_m.create_path, path, create_symlinks=True)
+    if wvfailure_count() == initial_failures:
         subprocess.call(['rm', '-rf', tmpdir])
 
 
