@@ -174,8 +174,9 @@ class Node:
         self._metadata = None
 
     def __repr__(self):
-        return "<%s object at X - name:%r hash:%s parent:%r>" \
-            % (self.__class__, self.name, self.hash.encode('hex'),
+        return "<%s object at %s - name:%r hash:%s parent:%r>" \
+            % (self.__class__, hex(id(self)),
+               self.name, self.hash.encode('hex'),
                self.parent.name if self.parent else None)
 
     def __cmp__(a, b):
