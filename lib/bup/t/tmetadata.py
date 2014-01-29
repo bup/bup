@@ -7,6 +7,7 @@ from bup.xstat import utime, lutime
 
 
 top_dir = '../../..'
+bup_tmp = os.path.realpath('../../../t/tmp')
 bup_path = top_dir + '/bup'
 start_dir = os.getcwd()
 
@@ -114,7 +115,7 @@ def test_clean_up_extract_path():
 
 @wvtest
 def test_metadata_method():
-    tmpdir = tempfile.mkdtemp(prefix='bup-tmetadata-')
+    tmpdir = tempfile.mkdtemp(dir=bup_tmp, prefix='bup-tmetadata-')
     try:
         bup_dir = tmpdir + '/bup'
         data_path = tmpdir + '/foo'
@@ -158,7 +159,7 @@ def _first_err():
 def test_from_path_error():
     if is_superuser() or detect_fakeroot():
         return
-    tmpdir = tempfile.mkdtemp(prefix='bup-tmetadata-')
+    tmpdir = tempfile.mkdtemp(dir=bup_tmp, prefix='bup-tmetadata-')
     try:
         path = tmpdir + '/foo'
         os.mkdir(path)
@@ -196,7 +197,7 @@ def test_apply_to_path_restricted_access():
         return
     if sys.platform.startswith('cygwin'):
         return # chmod 000 isn't effective.
-    tmpdir = tempfile.mkdtemp(prefix='bup-tmetadata-')
+    tmpdir = tempfile.mkdtemp(dir=bup_tmp, prefix='bup-tmetadata-')
     try:
         parent = tmpdir + '/foo'
         path = parent + '/bar'
@@ -224,7 +225,7 @@ def test_apply_to_path_restricted_access():
 
 @wvtest
 def test_restore_over_existing_target():
-    tmpdir = tempfile.mkdtemp(prefix='bup-tmetadata-')
+    tmpdir = tempfile.mkdtemp(dir=bup_tmp, prefix='bup-tmetadata-')
     try:
         path = tmpdir + '/foo'
         os.mkdir(path)

@@ -3,6 +3,8 @@ from wvtest import *
 import bup._helpers as _helpers
 from bup import xstat
 
+bup_tmp = os.path.realpath('../../../t/tmp')
+
 @wvtest
 def test_fstime():
     WVPASSEQ(xstat.timespec_to_nsecs((0, 0)), 0)
@@ -57,7 +59,7 @@ def test_fstime():
 def test_bup_utimensat():
     if not xstat._bup_utimensat:
         return
-    tmpdir = tempfile.mkdtemp(prefix='bup-tmetadata-')
+    tmpdir = tempfile.mkdtemp(dir=bup_tmp, prefix='bup-txstat-')
     try:
         path = tmpdir + '/foo'
         open(path, 'w').close()
@@ -78,7 +80,7 @@ def test_bup_utimensat():
 def test_bup_utimes():
     if not xstat._bup_utimes:
         return
-    tmpdir = tempfile.mkdtemp(prefix='bup-tmetadata-')
+    tmpdir = tempfile.mkdtemp(dir=bup_tmp, prefix='bup-txstat-')
     try:
         path = tmpdir + '/foo'
         open(path, 'w').close()
@@ -99,7 +101,7 @@ def test_bup_utimes():
 def test_bup_lutimes():
     if not xstat._bup_lutimes:
         return
-    tmpdir = tempfile.mkdtemp(prefix='bup-tmetadata-')
+    tmpdir = tempfile.mkdtemp(dir=bup_tmp, prefix='bup-txstat-')
     try:
         path = tmpdir + '/foo'
         open(path, 'w').close()
