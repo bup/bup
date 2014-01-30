@@ -94,6 +94,7 @@ runtests-cmdline: all
 	TMPDIR="$(test_tmp)" t/test-fsck.sh
 	TMPDIR="$(test_tmp)" t/test-index-clear.sh
 	TMPDIR="$(test_tmp)" t/test-index-check-device.sh
+	TMPDIR="$(test_tmp)" t/test-ls.sh
 	TMPDIR="$(test_tmp)" t/test-meta.sh
 	TMPDIR="$(test_tmp)" t/test-restore-map-owner.sh
 	TMPDIR="$(test_tmp)" t/test-restore-single-file.sh

@@ -116,6 +116,7 @@ def lstat(path):
 
 def mode_str(mode):
     result = ''
+    # FIXME: Other types?
     if pystat.S_ISREG(mode):
         result += '-'
     elif pystat.S_ISDIR(mode):
@@ -143,3 +144,23 @@ def mode_str(mode):
     result += 'w' if (mode & pystat.S_IWOTH) else '-'
     result += 'x' if (mode & pystat.S_IXOTH) else '-'
     return result
+
+
+def classification_str(mode, include_exec):
+    if pystat.S_ISREG(mode):
+        if include_exec \
+           and (pystat.S_IMODE(mode) \
+                & (pystat.S_IXUSR | pystat.S_IXGRP | pystat.S_IXOTH)):
+            return '*'
+        else:
+            return ''
+    elif pystat.S_ISDIR(mode):
+        return '/'
+    elif pystat.S_ISLNK(mode):
+        return '@'
+    elif pystat.S_ISFIFO(mode):
+        return '|'
+    elif pystat.S_ISSOCK(mode):
+        return '='
+    else:
+        return ''

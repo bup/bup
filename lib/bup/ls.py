@@ -1,5 +1,5 @@
 """Common code for listing files from a bup repository."""
-import copy, stat
+import copy, stat, xstat
 from bup import metadata, options, vfs
 from helpers import *
 
@@ -11,36 +11,32 @@ def node_info(n, name,
               numeric_ids = False,
               human_readable = False):
     """Return a string containing the information to display for the node
-    n.  Classification may be "all", "type", or None.
-
-    """
+    n.  Classification may be "all", "type", or None."""
     result = ''
     if show_hash:
         result += "%s " % n.hash.encode('hex')
     if long_fmt:
         meta = copy.copy(n.metadata())
-        meta.size = n.size()
+        if meta:
+            meta.path = name
+        else:
+            # Fake it -- summary_str() is designed to handle a fake.
+            meta = metadata.Metadata()
+            meta.size = n.size()
+            meta.mode = n.mode
+            meta.path = name
+            meta.atime, meta.mtime, meta.ctime = n.atime, n.mtime, n.ctime
+            if stat.S_ISLNK(meta.mode):
+                meta.symlink_target = n.readlink()
         result += metadata.summary_str(meta,
                                        numeric_ids = numeric_ids,
-                                       human_readable = human_readable) + ' '
-    result += name
-    if classification:
-        if n.metadata():
-            mode = n.metadata().mode
-        else:
-            mode = n.mode
-        if stat.S_ISREG(mode):
-            if classification == 'all' \
-               and stat.S_IMODE(mode) & (stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH):
-                result += '*'
-        elif stat.S_ISDIR(mode):
-            result += '/'
-        elif stat.S_ISLNK(mode):
-            result += '@'
-        elif stat.S_ISFIFO(mode):
-            result += '|'
-        elif stat.S_ISSOCK(mode):
-            result += '='
+                                       classification = classification,
+                                       human_readable = human_readable)
+    else:
+        result += name
+        if classification:
+            mode = n.metadata() and n.metadata().mode or n.mode
+            result += xstat.classification_str(mode, classification == 'all')
     return result
 
 
@@ -106,8 +102,12 @@ def do_ls(args, pwd, default='.', onabort=None, spec_prefix=''):
 
             if stat.S_ISDIR(n.mode):
                 if show_hidden == 'all':
-                    for implied, name in ((n, '.'), (n.parent, '..')):
-                        output_node_info(implied, name)
+                    output_node_info(n, '.')
+                    # Match non-bup "ls -a ... /".
+                    if n.parent:
+                        output_node_info(n.parent, '..')
+                    else:
+                        output_node_info(n, '..')
                 for sub in n:
                     name = sub.name
                     if show_hidden in ('almost', 'all') \

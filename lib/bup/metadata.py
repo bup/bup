@@ -889,31 +889,57 @@ all_fields = frozenset(['path',
                         'posix1e-acl'])
 
 
-def summary_str(meta, numeric_ids = False, human_readable = False):
-    mode_val = xstat.mode_str(meta.mode)
-    user_val = meta.user
-    if numeric_ids or not user_val:
-        user_val = str(meta.uid)
-    group_val = meta.group
-    if numeric_ids or not group_val:
-        group_val = str(meta.gid)
-    size_or_dev_val = '-'
-    if stat.S_ISCHR(meta.mode) or stat.S_ISBLK(meta.mode):
-        size_or_dev_val = '%d,%d' % (os.major(meta.rdev), os.minor(meta.rdev))
-    elif meta.size != None:
-        size_or_dev_val = meta.size
-        if human_readable:
-            size_or_dev_val = format_filesize(meta.size)
-    mtime_secs = xstat.fstime_floor_secs(meta.mtime)
-    time_val = time.strftime('%Y-%m-%d %H:%M', time.localtime(mtime_secs))
-    path_val = meta.path or ''
-    if stat.S_ISLNK(meta.mode):
-        path_val += ' -> ' + meta.symlink_target
-    return '%-10s %-11s %11s %16s %s' % (mode_val,
-                                         user_val + "/" + group_val,
-                                         size_or_dev_val,
-                                         time_val,
-                                         path_val)
+def summary_str(meta, numeric_ids = False, classification = None,
+                human_readable = False):
+
+    """Return a string containing the "ls -l" style listing for meta.
+    Classification may be "all", "type", or None."""
+    user_str = group_str = size_or_dev_str = '?'
+    symlink_target = None
+    if meta:
+        name = meta.path
+        mode_str = xstat.mode_str(meta.mode)
+        symlink_target = meta.symlink_target
+        mtime_secs = xstat.fstime_floor_secs(meta.mtime)
+        mtime_str = time.strftime('%Y-%m-%d %H:%M', time.localtime(mtime_secs))
+        if meta.user and not numeric_ids:
+            user_str = meta.user
+        elif meta.uid != None:
+            user_str = str(meta.uid)
+        if meta.group and not numeric_ids:
+            group_str = meta.group
+        elif meta.gid != None:
+            group_str = str(meta.gid)
+        if stat.S_ISCHR(meta.mode) or stat.S_ISBLK(meta.mode):
+            if meta.rdev:
+                size_or_dev_str = '%d,%d' % (os.major(meta.rdev),
+                                             os.minor(meta.rdev))
+        elif meta.size:
+            if human_readable:
+                size_or_dev_str = format_filesize(meta.size)
+            else:
+                size_or_dev_str = str(meta.size)
+        else:
+            size_or_dev_str = '-'
+        if classification:
+            classification_str = \
+                xstat.classification_str(meta.mode, classification == 'all')
+    else:
+        mode_str = '?' * 10
+        mtime_str = '????-??-?? ??:??'
+        classification_str = '?'
+
+    name = name or ''
+    if classification:
+        name += classification_str
+    if symlink_target:
+        name += ' -> ' + meta.symlink_target
+
+    return '%-10s %-11s %11s %16s %s' % (mode_str,
+                                         user_str + "/" + group_str,
+                                         size_or_dev_str,
+                                         mtime_str,
+                                         name)
 
 
 def detailed_str(meta, fields = None):
