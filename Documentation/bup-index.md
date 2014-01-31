@@ -148,8 +148,7 @@ does, due to the accommodations described above.
     `$BUP_DIR/bupindex`.
 
 \--exclude=*path*
-:   exclude *path* from the backup; bup will not expand *path* in any
-    way (may be repeated).
+:   exclude *path* from the backup (may be repeated).
 
 \--exclude-from=*filename*
 :   read --exclude paths from *filename*, one path per-line (may be
