@@ -80,4 +80,21 @@ src/a/
 src/a-link
 src/"
 
+WVSTART "drecurse --exclude-rx (trivial)"
+WVPASSEQ "$(bup drecurse --exclude-rx '^src/b' src)" "src/c
+src/a/2
+src/a/1
+src/a/
+src/a-link
+src/"
+
+WVSTART "drecurse --exclude-rx (trivial - absolute path)"
+WVPASSEQ "$(bup drecurse --exclude-rx "^$(pwd)/src/b" "$(pwd)/src")" \
+"$(pwd)/src/c
+$(pwd)/src/a/2
+$(pwd)/src/a/1
+$(pwd)/src/a/
+$(pwd)/src/a-link
+$(pwd)/src/"
+
 WVPASS rm -rf "$tmpdir"
