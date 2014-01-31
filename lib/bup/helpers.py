@@ -762,7 +762,7 @@ def parse_excludes(options, fatal):
                 raise fatal("couldn't read %s" % parameter)
             for exclude_path in f.readlines():
                 excluded_paths.append(realpath(exclude_path.strip()))
-    return excluded_paths
+    return sorted(frozenset(excluded_paths))
 
 
 def parse_rx_excludes(options, fatal):

@@ -88,6 +88,7 @@ runtests-python: all
 
 runtests-cmdline: all
 	test -e t/tmp || mkdir t/tmp
+	TMPDIR="$(test_tmp)" t/test-drecurse.sh
 	TMPDIR="$(test_tmp)" t/test-cat-file.sh
 	TMPDIR="$(test_tmp)" t/test-compression.sh
 	TMPDIR="$(test_tmp)" t/test-fsck.sh

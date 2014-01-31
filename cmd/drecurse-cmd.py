@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+
+from os.path import relpath
 from bup import options, drecurse
 from bup.helpers import *
 
@@ -17,9 +19,12 @@ o = options.Options(optspec)
 if len(extra) != 1:
     o.fatal("exactly one filename expected")
 
+drecurse_top = extra[0]
 excluded_paths = parse_excludes(flags, o.fatal)
-
-it = drecurse.recursive_dirlist(extra, opt.xdev, excluded_paths=excluded_paths)
+if not drecurse_top.startswith('/'):
+    excluded_paths = [relpath(x) for x in excluded_paths]
+it = drecurse.recursive_dirlist([drecurse_top], opt.xdev,
+                                excluded_paths=excluded_paths)
 if opt.profile:
     import cProfile
     def do_it():
