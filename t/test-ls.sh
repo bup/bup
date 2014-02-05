@@ -17,6 +17,7 @@ WVPASS cd "$tmpdir"
 WVPASS mkdir src
 WVPASS touch -t 191111111111 src/.dotfile
 WVPASS date > src/file
+WVPASS bup random 1k > src/file
 WVPASS touch -t 191111111111 src/file
 (WVPASS cd src; WVPASS ln -s file symlink) || exit $?
 WVPASS mkfifo src/fifo
@@ -119,9 +120,10 @@ d--------- ?/? - 1969-12-31 18:00 .commit/
 d--------- ?/? - 1969-12-31 18:00 .tag/
 d--------- ?/? - 1969-12-31 18:00 src/"
 
+symlink_size="$(python -c "import os; print os.lstat('src/symlink').st_size")"
 symlink_date="$(bup ls -l src/latest"$tmpdir"/src | grep symlink)"
 symlink_date="$(echo "$symlink_date" \
-  | perl -ne 'm/.*? - (\d\d\d\d-\d\d-\d\d \d\d:\d\d)/ and print $1')"
+  | perl -ne 'm/.*? (\d+) (\d\d\d\d-\d\d-\d\d \d\d:\d\d)/ and print $2')"
 uid="$(id -u)" || exit $?
 gid="$(id -g)" || exit $?
 user="$(id -un)" || exit $?
@@ -130,9 +132,9 @@ group="$(id -gn)" || exit $?
 WVPASSEQ "$(bup ls -l src/latest"$tmpdir"/src | tr -s ' ' ' ')" \
 "-rwx------ $user/$group - 1911-11-11 11:11 executable
 prw------- $user/$group - 1911-11-11 11:11 fifo
--rw------- $user/$group - 1911-11-11 11:11 file
+-rw------- $user/$group 1024 1911-11-11 11:11 file
 srwx------ $user/$group - 1911-11-11 11:11 socket
-lrwxrwxrwx $user/$group - $symlink_date symlink -> file"
+lrwxrwxrwx $user/$group $symlink_size $symlink_date symlink -> file"
 
 WVPASSEQ "$(bup ls -la src/latest"$tmpdir"/src | tr -s ' ' ' ')" \
 "drwx------ $user/$group - 1911-11-11 11:11 .
@@ -140,38 +142,38 @@ drwx------ $user/$group - 1911-11-11 11:11 ..
 -rw------- $user/$group - 1911-11-11 11:11 .dotfile
 -rwx------ $user/$group - 1911-11-11 11:11 executable
 prw------- $user/$group - 1911-11-11 11:11 fifo
--rw------- $user/$group - 1911-11-11 11:11 file
+-rw------- $user/$group 1024 1911-11-11 11:11 file
 srwx------ $user/$group - 1911-11-11 11:11 socket
-lrwxrwxrwx $user/$group - $symlink_date symlink -> file"
+lrwxrwxrwx $user/$group $symlink_size $symlink_date symlink -> file"
 
 WVPASSEQ "$(bup ls -lA src/latest"$tmpdir"/src | tr -s ' ' ' ')" \
 "-rw------- $user/$group - 1911-11-11 11:11 .dotfile
 -rwx------ $user/$group - 1911-11-11 11:11 executable
 prw------- $user/$group - 1911-11-11 11:11 fifo
--rw------- $user/$group - 1911-11-11 11:11 file
+-rw------- $user/$group 1024 1911-11-11 11:11 file
 srwx------ $user/$group - 1911-11-11 11:11 socket
-lrwxrwxrwx $user/$group - $symlink_date symlink -> file"
+lrwxrwxrwx $user/$group $symlink_size $symlink_date symlink -> file"
 
 WVPASSEQ "$(bup ls -lF src/latest"$tmpdir"/src | tr -s ' ' ' ')" \
 "-rwx------ $user/$group - 1911-11-11 11:11 executable*
 prw------- $user/$group - 1911-11-11 11:11 fifo|
--rw------- $user/$group - 1911-11-11 11:11 file
+-rw------- $user/$group 1024 1911-11-11 11:11 file
 srwx------ $user/$group - 1911-11-11 11:11 socket=
-lrwxrwxrwx $user/$group - $symlink_date symlink@ -> file"
+lrwxrwxrwx $user/$group $symlink_size $symlink_date symlink@ -> file"
 
 WVPASSEQ "$(bup ls -l --file-type src/latest"$tmpdir"/src | tr -s ' ' ' ')" \
 "-rwx------ $user/$group - 1911-11-11 11:11 executable
 prw------- $user/$group - 1911-11-11 11:11 fifo|
--rw------- $user/$group - 1911-11-11 11:11 file
+-rw------- $user/$group 1024 1911-11-11 11:11 file
 srwx------ $user/$group - 1911-11-11 11:11 socket=
-lrwxrwxrwx $user/$group - $symlink_date symlink@ -> file"
+lrwxrwxrwx $user/$group $symlink_size $symlink_date symlink@ -> file"
 
 WVPASSEQ "$(bup ls -ln src/latest"$tmpdir"/src | tr -s ' ' ' ')" \
 "-rwx------ $uid/$gid - 1911-11-11 11:11 executable
 prw------- $uid/$gid - 1911-11-11 11:11 fifo
--rw------- $uid/$gid - 1911-11-11 11:11 file
+-rw------- $uid/$gid 1024 1911-11-11 11:11 file
 srwx------ $uid/$gid - 1911-11-11 11:11 socket
-lrwxrwxrwx $uid/$gid - $symlink_date symlink -> file"
+lrwxrwxrwx $uid/$gid $symlink_size $symlink_date symlink -> file"
 
 WVSTART "ls (backup set - long)"
 WVPASSEQ "$(bup ls -l src | cut -d' ' -f 1-2)" \

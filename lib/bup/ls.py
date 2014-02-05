@@ -19,6 +19,7 @@ def node_info(n, name,
         meta = copy.copy(n.metadata())
         if meta:
             meta.path = name
+            meta.size = n.size()
         else:
             # Fake it -- summary_str() is designed to handle a fake.
             meta = metadata.Metadata()
