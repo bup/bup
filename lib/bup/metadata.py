@@ -914,7 +914,7 @@ def summary_str(meta, numeric_ids = False, classification = None,
             if meta.rdev:
                 size_or_dev_str = '%d,%d' % (os.major(meta.rdev),
                                              os.minor(meta.rdev))
-        elif meta.size:
+        elif meta.size != None:
             if human_readable:
                 size_or_dev_str = format_filesize(meta.size)
             else:
