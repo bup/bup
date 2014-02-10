@@ -744,7 +744,7 @@ def rev_list(ref, count=None):
     opts = []
     if count:
         opts += ['-n', str(atoi(count))]
-    argv = ['git', 'rev-list', '--pretty=format:%ct'] + opts + [ref, '--']
+    argv = ['git', 'rev-list', '--pretty=format:%at'] + opts + [ref, '--']
     p = subprocess.Popen(argv, preexec_fn = _gitenv, stdout = subprocess.PIPE)
     commit = None
     for row in p.stdout:
