@@ -102,12 +102,13 @@ From source
 
             apt-get build-dep bup
 
-   Otherwise try this (substitute python2.5-dev if you have an older
-   system):
+   Otherwise try this (substitute python2.5-dev or python2.6-dev if
+   you have an older system):
 
-            apt-get install python2.6-dev python-fuse
+            apt-get install python2.7-dev python-fuse
             apt-get install python-pyxattr python-pylibacl
             apt-get install linux-libc-dev
+            apt-get install acl attr
             apt-get install python-tornado # optional
 
    On CentOS (for CentOS 6, at least), this should be sufficient (run
