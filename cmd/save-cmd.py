@@ -76,7 +76,7 @@ refname = opt.name and 'refs/heads/%s' % opt.name or None
 if opt.remote or is_reverse:
     cli = client.Client(opt.remote)
     oldref = refname and cli.read_ref(refname) or None
-    w = cli.new_packwriter()
+    w = cli.new_packwriter(compression_level=opt.compress)
 else:
     cli = None
     oldref = refname and git.read_ref(refname) or None
