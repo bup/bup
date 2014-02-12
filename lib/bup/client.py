@@ -52,10 +52,9 @@ def parse_remote(remote):
 
 
 class Client:
-    def __init__(self, remote, create=False, compression_level=1):
+    def __init__(self, remote, create=False):
         self._busy = self.conn = None
         self.sock = self.p = self.pout = self.pin = None
-        self.compression_level = compression_level
         is_reverse = os.environ.get('BUP_SERVER_REVERSE')
         if is_reverse:
             assert(not remote)
@@ -237,7 +236,7 @@ class Client:
             self.conn.write('%s\n' % ob)
         return idx
 
-    def new_packwriter(self):
+    def new_packwriter(self, compression_level = 1):
         self.check_busy()
         def _set_busy():
             self._busy = 'receive-objects-v2'
@@ -248,7 +247,7 @@ class Client:
                                  onopen = _set_busy,
                                  onclose = self._not_busy,
                                  ensure_busy = self.ensure_busy,
-                                 compression_level = self.compression_level)
+                                 compression_level = compression_level)
 
     def read_ref(self, refname):
         self.check_busy()
@@ -297,7 +296,6 @@ class PackWriter_Remote(git.PackWriter):
         self._packopen = False
         self._bwcount = 0
         self._bwtime = time.time()
-        self.compression_level = compression_level
 
     def _open(self):
         if not self._packopen:
