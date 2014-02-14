@@ -2,7 +2,7 @@ from subprocess import check_call
 import struct, os, subprocess, tempfile, time
 
 from bup import git
-from bup.helpers import log, mkdirp, readpipe
+from bup.helpers import localtime, log, mkdirp, readpipe
 
 from wvtest import *
 
@@ -290,6 +290,72 @@ def test_commit_parsing():
 
 
 @wvtest
+def test_new_commit():
+    initial_failures = wvfailure_count()
+    tmpdir = tempfile.mkdtemp(dir=bup_tmp, prefix='bup-tgit-')
+    os.environ['BUP_MAIN_EXE'] = bup_exe
+    os.environ['BUP_DIR'] = bupdir = tmpdir + "/bup"
+    git.init_repo(bupdir)
+    git.verbose = 1
+
+    w = git.PackWriter()
+    tree = os.urandom(20)
+    parent = os.urandom(20)
+    author_name = 'Author'
+    author_mail = 'author@somewhere'
+    adate_sec = 1439657836
+    cdate_sec = adate_sec + 1
+    committer_name = 'Committer'
+    committer_mail = 'committer@somewhere'
+    adate_tz_sec = cdate_tz_sec = None
+    commit = w.new_commit(tree, parent,
+                          '%s <%s>' % (author_name, author_mail),
+                          adate_sec, adate_tz_sec,
+                          '%s <%s>' % (committer_name, committer_mail),
+                          cdate_sec, cdate_tz_sec,
+                          'There is a small mailbox here')
+    adate_tz_sec = -60 * 60
+    cdate_tz_sec = 120 * 60
+    commit_off = w.new_commit(tree, parent,
+                              '%s <%s>' % (author_name, author_mail),
+                              adate_sec, adate_tz_sec,
+                              '%s <%s>' % (committer_name, committer_mail),
+                              cdate_sec, cdate_tz_sec,
+                              'There is a small mailbox here')
+    w.close()
+
+    commit_items = git.get_commit_items(commit.encode('hex'), git.cp())
+    local_author_offset = localtime(adate_sec).tm_gmtoff
+    local_committer_offset = localtime(cdate_sec).tm_gmtoff
+    WVPASSEQ(tree, commit_items.tree.decode('hex'))
+    WVPASSEQ(1, len(commit_items.parents))
+    WVPASSEQ(parent, commit_items.parents[0].decode('hex'))
+    WVPASSEQ(author_name, commit_items.author_name)
+    WVPASSEQ(author_mail, commit_items.author_mail)
+    WVPASSEQ(adate_sec, commit_items.author_sec)
+    WVPASSEQ(local_author_offset, commit_items.author_offset)
+    WVPASSEQ(committer_name, commit_items.committer_name)
+    WVPASSEQ(committer_mail, commit_items.committer_mail)
+    WVPASSEQ(cdate_sec, commit_items.committer_sec)
+    WVPASSEQ(local_committer_offset, commit_items.committer_offset)
+
+    commit_items = git.get_commit_items(commit_off.encode('hex'), git.cp())
+    WVPASSEQ(tree, commit_items.tree.decode('hex'))
+    WVPASSEQ(1, len(commit_items.parents))
+    WVPASSEQ(parent, commit_items.parents[0].decode('hex'))
+    WVPASSEQ(author_name, commit_items.author_name)
+    WVPASSEQ(author_mail, commit_items.author_mail)
+    WVPASSEQ(adate_sec, commit_items.author_sec)
+    WVPASSEQ(adate_tz_sec, commit_items.author_offset)
+    WVPASSEQ(committer_name, commit_items.committer_name)
+    WVPASSEQ(committer_mail, commit_items.committer_mail)
+    WVPASSEQ(cdate_sec, commit_items.committer_sec)
+    WVPASSEQ(cdate_tz_sec, commit_items.committer_offset)
+    if wvfailure_count() == initial_failures:
+        subprocess.call(['rm', '-rf', tmpdir])
+
+
+@wvtest
 def test_list_refs():
     initial_failures = wvfailure_count()
     tmpdir = tempfile.mkdtemp(dir=bup_tmp, prefix='bup-tgit-')
@@ -340,3 +406,8 @@ def test_list_refs():
     WVPASSEQ(frozenset(git.list_refs(limit_to_tags=True)), expected_tags)
     if wvfailure_count() == initial_failures:
         subprocess.call(['rm', '-rf', tmpdir])
+
+def test__git_date_str():
+    WVPASSEQ('0 +0000', git._git_date_str(0, 0))
+    WVPASSEQ('0 -0130', git._git_date_str(0, -90 * 60))
+    WVPASSEQ('0 +0130', git._git_date_str(0, 90 * 60))
