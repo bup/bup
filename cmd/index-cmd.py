@@ -80,6 +80,7 @@ def update_index(top, excluded_paths, exclude_rxs):
 
     total = 0
     bup_dir = os.path.abspath(git.repo())
+    index_start = time.time()
     for (path,pst) in drecurse.recursive_dirlist([top], xdev=opt.xdev,
                                                  bup_dir=bup_dir,
                                                  excluded_paths=excluded_paths,
@@ -87,9 +88,11 @@ def update_index(top, excluded_paths, exclude_rxs):
         if opt.verbose>=2 or (opt.verbose==1 and stat.S_ISDIR(pst.st_mode)):
             sys.stdout.write('%s\n' % path)
             sys.stdout.flush()
-            qprogress('Indexing: %d\r' % total)
+            paths_per_sec = total / (time.time() - index_start)
+            qprogress('Indexing: %d (%d paths/s)\r' % (total, paths_per_sec))
         elif not (total % 128):
-            qprogress('Indexing: %d\r' % total)
+            paths_per_sec = total / (time.time() - index_start)
+            qprogress('Indexing: %d (%d paths/s)\r' % (total, paths_per_sec))
         total += 1
         while rig.cur and rig.cur.name > path:  # deleted paths
             if rig.cur.exists():
@@ -146,8 +149,9 @@ def update_index(top, excluded_paths, exclude_rxs):
             if not stat.S_ISDIR(pst.st_mode) and pst.st_nlink > 1:
                 hlinks.add_path(path, pst.st_dev, pst.st_ino)
 
-    progress('Indexing: %d, done.\n' % total)
-    
+    paths_per_sec = total / (time.time() - index_start)
+    progress('Indexing: %d, done (%d paths/s).\n' % (total, paths_per_sec))
+
     hlinks.prepare_save()
 
     if ri.exists():
