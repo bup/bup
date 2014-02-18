@@ -121,7 +121,7 @@ d--------- ?/? 0 1970-01-01 00:00 .commit/
 d--------- ?/? 0 1970-01-01 00:00 .tag/
 d--------- ?/? 0 1970-01-01 00:00 src/"
 
-symlink_mode="$(WVPASS ls -l src/symlink | cut -d' ' -f 1)" || exit $?
+symlink_mode="$(WVPASS ls -l src/symlink | cut -b -10)" || exit $?
 
 symlink_size="$(WVPASS python -c "import os
 print os.lstat('src/symlink').st_size")" || exit $?
