@@ -46,6 +46,8 @@
 
 static int istty2 = 0;
 
+// At the moment any code that calls INTGER_TO_PY() will have to
+// disable -Wtautological-compare for clang.  See below.
 
 #define INTEGER_TO_PY(x) \
     (((x) >= 0) ? PyLong_FromUnsignedLongLong(x) : PyLong_FromLongLong(x))
@@ -1065,6 +1067,9 @@ static PyObject *bup_lutimes(PyObject *self, PyObject *args)
 #endif
 
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wtautological-compare" // For INTEGER_TO_PY().
+
 static PyObject *stat_struct_to_py(const struct stat *st,
                                    const char *filename,
                                    int fd)
@@ -1090,6 +1095,7 @@ static PyObject *stat_struct_to_py(const struct stat *st,
                          (long) BUP_STAT_CTIME_NS(st));
 }
 
+#pragma clang diagnostic pop  // ignored "-Wtautological-compare"
 
 static PyObject *bup_stat(PyObject *self, PyObject *args)
 {
@@ -1217,6 +1223,8 @@ PyMODINIT_FUNC init_helpers(void)
         return;
 
 #ifdef HAVE_UTIMENSAT
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wtautological-compare" // For INTEGER_TO_PY().
     {
         PyObject *value;
         value = INTEGER_TO_PY(AT_FDCWD);
@@ -1229,6 +1237,7 @@ PyMODINIT_FUNC init_helpers(void)
         PyObject_SetAttrString(m, "UTIME_NOW", value);
         Py_DECREF(value);
     }
+#pragma clang diagnostic pop  // ignored "-Wtautological-compare"
 #endif
 
     e = getenv("BUP_FORCE_TTY");
