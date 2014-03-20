@@ -16,14 +16,12 @@ _wvtextclean()
 if [ -n "$BASH_VERSION" ]; then
 	_wvfind_caller()
 	{
-		LVL=$1
 		WVCALLER_FILE=${BASH_SOURCE[2]}
 		WVCALLER_LINE=${BASH_LINENO[1]}
 	}
 else
 	_wvfind_caller()
 	{
-		LVL=$1
 		WVCALLER_FILE="unknown"
 		WVCALLER_LINE=0
 	}
