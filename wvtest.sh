@@ -130,3 +130,8 @@ WVSTART()
 	_wvfind_caller
 	echo "Testing \"$*\" in $WVCALLER_FILE:" >&2
 }
+
+# Local Variables:
+# indent-tabs-mode: t
+# sh-basic-offset: 8
+# End:
