@@ -124,8 +124,7 @@ handling of metadata.
     is 1 (fast, loose compression)
 
 
-# EXAMPLE
-
+# EXAMPLES
     $ bup index -ux /etc
     Indexing: 1981, done.
 

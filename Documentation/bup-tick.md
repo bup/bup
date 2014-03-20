@@ -21,8 +21,8 @@ ensure a file date will be seen as modified.  It is
 slightly better than `sleep`(1) since it sometimes waits
 for less than one second.
 
-# EXAMPLE
-    
+# EXAMPLES
+
     $ date; bup tick; date
     Sat Feb  6 16:59:58 EST 2010
     Sat Feb  6 16:59:59 EST 2010

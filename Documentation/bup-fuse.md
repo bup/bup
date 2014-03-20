@@ -39,8 +39,7 @@ should unmount it with `umount`(8).
 :   permit other users to access the filesystem. Necessary for
     exporting the filesystem via Samba, for example.
 
-# EXAMPLE
-
+# EXAMPLES
     rm -rf /tmp/buptest
     mkdir /tmp/buptest
     sudo bup fuse -d /tmp/buptest

@@ -63,8 +63,7 @@ you can view its contents using `bup join` or `git show`.
 \--numeric-ids
 :   display numeric IDs (user, group, etc.) rather than names.
 
-# EXAMPLE
-
+# EXAMPLES
     bup ls /myserver/latest/etc/profile
 
     bup ls -a /

@@ -62,8 +62,7 @@ quit
 :   exit the `bup ftp` client
 
 
-# EXAMPLE
-
+# EXAMPLES
     $ bup ftp
     bup> ls
     mybackup/    yourbackup/

@@ -56,8 +56,7 @@ what causes an increase in the VmRSS column.
     searching for existing objects much worse than before.
 
 
-# EXAMPLE
-
+# EXAMPLES
     $ bup memtest -n300 -c5
     PackIdxList: using 1 index.
                    VmSize      VmRSS     VmData      VmStk 

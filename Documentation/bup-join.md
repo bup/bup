@@ -34,8 +34,7 @@ join` reads them from stdin instead.
     `~/.ssh/config` file.  Even though the data source is remote, a
     local bup repository is still required.
 
-# EXAMPLE
-
+# EXAMPLES
     # split and then rejoin a file using its tree id
     TREE=$(tar -cvf - /etc | bup split -t)
     bup join $TREE | tar -tf -

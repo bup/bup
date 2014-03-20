@@ -16,8 +16,8 @@ bup help \<command\>
 This is currently equivalent to typing `man bup-<command>`.
 
 
-# EXAMPLE
-    
+# EXAMPLES
+
     $ bup help help
     (Imagine that this man page was pasted below,
      recursively.  Since that would cause an endless loop

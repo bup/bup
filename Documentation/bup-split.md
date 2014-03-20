@@ -154,8 +154,8 @@ being the most likely choice.
     is 1 (fast, loose compression)
 
 
-# EXAMPLE
-    
+# EXAMPLES
+
     $ tar -cf - /etc | bup split -r myserver: -n mybackup-tar
     tar: Removing leading /' from member names
     Indexing objects: 100% (196/196), done.

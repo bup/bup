@@ -159,8 +159,8 @@ See the EXAMPLES section for a demonstration.
     a tty, a progress display is printed that shows the
     total number of files restored.
 
-# EXAMPLE
-    
+# EXAMPLES
+
 Create a simple test backup set:
     
     $ bup index -u /etc

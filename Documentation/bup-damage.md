@@ -71,8 +71,7 @@ actually work.
     recovery block.  (This is also guaranteed if you use
     `-s 1`.)
     
-# EXAMPLE
-
+# EXAMPLES
     # make a backup in case things go horribly wrong
     cp -a ~/.bup/objects/pack ~/bup-packs.bak
     

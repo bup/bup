@@ -27,8 +27,7 @@ is `~/.bup`.
     `~/.ssh/config` file.
 
 
-# EXAMPLE
-
+# EXAMPLES
     bup init
     
 

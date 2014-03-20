@@ -51,8 +51,7 @@ close to 160 bits.
     only really useful when used with `--predict`.
 
     
-# EXAMPLE
-
+# EXAMPLES
     $ bup margin
     Reading indexes: 100.00% (1612581/1612581), done.
     40

@@ -83,8 +83,7 @@ site redundancy).
     recovery blocks.
 
 
-# EXAMPLE
-
+# EXAMPLES
     # generate recovery blocks for all packs that don't
     # have them
     bup fsck -g

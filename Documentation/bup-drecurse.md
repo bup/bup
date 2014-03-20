@@ -59,8 +59,7 @@ come after its children, making this easy.
 :   print profiling information upon completion.  Useful
     when testing performance of the traversal algorithms.
     
-# EXAMPLE
-
+# EXAMPLES
     bup drecurse -x /
 
 # SEE ALSO

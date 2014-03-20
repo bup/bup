@@ -47,8 +47,8 @@ through /.tag/important as long as the tag is not deleted.
 :  Overwrite the named tag even if it already exists. With -f, don't
    report a missing tag as an error.
 
-# EXAMPLE
-    
+# EXAMPLES
+
     $ bup tag new-puppet-version hostx-backup
     
     $ bup tag

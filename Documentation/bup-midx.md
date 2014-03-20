@@ -54,8 +54,7 @@ commands.
     be useful for debugging.
 
 
-# EXAMPLE
-
+# EXAMPLES
     $ bup midx -a
     Merging 21 indexes (2278559 objects).
     Table size: 524288 (17 bits)

@@ -184,8 +184,7 @@ does, due to the accommodations described above.
     is updated; with two `-v`, print each file too.
 
 
-# EXAMPLE
-
+# EXAMPLES
     bup index -vux /etc /var /usr
     
 

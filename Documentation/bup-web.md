@@ -26,7 +26,7 @@ can omit the bind address to bind to all available interfaces: `:8080`.
 --human-readable
 :   display human readable file sizes (i.e. 3.9K, 4.7M)
 
-# EXAMPLE
+# EXAMPLES
 
     $ bup web
     Serving HTTP on 127.0.0.1:8080...
