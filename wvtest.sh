@@ -30,9 +30,9 @@ fi
 
 _wvcheck()
 {
-	CODE="$1"
-	TEXT=$(_wvtextclean "$2")
-	OK=ok
+	local CODE="$1"
+	local TEXT=$(_wvtextclean "$2")
+	local OK=ok
 	if [ "$CODE" -ne 0 ]; then
 		OK=FAILED
 	fi
@@ -47,7 +47,7 @@ _wvcheck()
 
 WVPASS()
 {
-	TEXT="$*"
+	local TEXT="$*"
 
 	_wvfind_caller
 	if "$@"; then
@@ -63,7 +63,7 @@ WVPASS()
 
 WVFAIL()
 {
-	TEXT="$*"
+	local TEXT="$*"
 
 	_wvfind_caller
 	if "$@"; then
@@ -110,7 +110,7 @@ WVPASSNE()
 
 WVPASSRC()
 {
-	RC=$?
+	local RC=$?
 	_wvfind_caller
 	_wvcheck $(_wvgetrv [ $RC -eq 0 ]) "return code($RC) == 0"
 }
@@ -118,7 +118,7 @@ WVPASSRC()
 
 WVFAILRC()
 {
-	RC=$?
+	local RC=$?
 	_wvfind_caller
 	_wvcheck $(_wvgetrv [ $RC -ne 0 ]) "return code($RC) != 0"
 }
