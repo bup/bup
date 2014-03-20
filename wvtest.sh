@@ -14,12 +14,12 @@ _wvtextclean()
 
 
 if [ -n "$BASH_VERSION" ]; then
-	_wvfind_caller()
-	{
-		WVCALLER_FILE=${BASH_SOURCE[2]}
-		WVCALLER_LINE=${BASH_LINENO[1]}
-	}
+	. ./wvtest-bash.sh  # This keeps sh from choking on the syntax.
 else
+	_wvbacktrace() { true; }
+	_wvpushcall() { true; }
+	_wvpopcall() { true; }
+
 	_wvfind_caller()
 	{
 		WVCALLER_FILE="unknown"
@@ -38,6 +38,7 @@ _wvcheck()
 	fi
 	echo "! $WVCALLER_FILE:$WVCALLER_LINE  $TEXT  $OK" >&2
 	if [ "$CODE" -ne 0 ]; then
+		_wvbacktrace
 		exit $CODE
 	else
 		return 0
@@ -48,9 +49,11 @@ _wvcheck()
 WVPASS()
 {
 	local TEXT="$*"
+	_wvpushcall "$@"
 
 	_wvfind_caller
 	if "$@"; then
+		_wvpopcall
 		_wvcheck 0 "$TEXT"
 		return 0
 	else
@@ -64,6 +67,7 @@ WVPASS()
 WVFAIL()
 {
 	local TEXT="$*"
+	_wvpushcall "$@"
 
 	_wvfind_caller
 	if "$@"; then
@@ -72,6 +76,7 @@ WVFAIL()
 		return 1
 	else
 		_wvcheck 0 "NOT($TEXT)"
+		_wvpopcall
 		return 0
 	fi
 }
@@ -86,6 +91,7 @@ _wvgetrv()
 
 WVPASSEQ()
 {
+	_wvpushcall "$@"
 	_wvfind_caller
 	_wvcheck $(_wvgetrv [ "$#" -eq 2 ]) "exactly 2 arguments"
 	echo "Comparing:" >&2
@@ -93,11 +99,13 @@ WVPASSEQ()
 	echo "--" >&2
 	echo "$2" >&2
 	_wvcheck $(_wvgetrv [ "$1" = "$2" ]) "'$1' = '$2'"
+	_wvpopcall
 }
 
 
 WVPASSNE()
 {
+	_wvpushcall "$@"
 	_wvfind_caller
 	_wvcheck $(_wvgetrv [ "$#" -eq 2 ]) "exactly 2 arguments"
 	echo "Comparing:" >&2
@@ -105,22 +113,27 @@ WVPASSNE()
 	echo "--" >&2
 	echo "$2" >&2
 	_wvcheck $(_wvgetrv [ "$1" != "$2" ]) "'$1' != '$2'"
+	_wvpopcall
 }
 
 
 WVPASSRC()
 {
 	local RC=$?
+	_wvpushcall "$@"
 	_wvfind_caller
 	_wvcheck $(_wvgetrv [ $RC -eq 0 ]) "return code($RC) == 0"
+	_wvpopcall
 }
 
 
 WVFAILRC()
 {
 	local RC=$?
+	_wvpushcall "$@"
 	_wvfind_caller
 	_wvcheck $(_wvgetrv [ $RC -ne 0 ]) "return code($RC) != 0"
+	_wvpopcall
 }
 
 
