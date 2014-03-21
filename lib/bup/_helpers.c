@@ -903,13 +903,13 @@ static PyObject *bup_set_linux_file_attr(PyObject *self, PyObject *args)
     ({                                                     \
         int result = 0;                                                 \
         *(overflow) = 0;                                                \
-        const long long ltmp = PyLong_AsLongLong(pylong);               \
-        if (ltmp == -1 && PyErr_Occurred())                             \
+        const long long lltmp = PyLong_AsLongLong(pylong);              \
+        if (lltmp == -1 && PyErr_Occurred())                            \
         {                                                               \
             if (PyErr_ExceptionMatches(PyExc_OverflowError))            \
             {                                                           \
-                const unsigned long ultmp = PyLong_AsUnsignedLongLong(pylong); \
-                if (ultmp == (unsigned long long) -1 && PyErr_Occurred()) \
+                const unsigned long long ulltmp = PyLong_AsUnsignedLongLong(pylong); \
+                if (ulltmp == (unsigned long long) -1 && PyErr_Occurred()) \
                 {                                                       \
                     if (PyErr_ExceptionMatches(PyExc_OverflowError))    \
                     {                                                   \
@@ -917,7 +917,7 @@ static PyObject *bup_set_linux_file_attr(PyObject *self, PyObject *args)
                         *(overflow) = 1;                                \
                     }                                                   \
                 }                                                       \
-                if (INTEGRAL_ASSIGNMENT_FITS((dest), ultmp))            \
+                if (INTEGRAL_ASSIGNMENT_FITS((dest), ulltmp))           \
                     result = 1;                                         \
                 else                                                    \
                     *(overflow) = 1;                                    \
@@ -925,7 +925,7 @@ static PyObject *bup_set_linux_file_attr(PyObject *self, PyObject *args)
         }                                                               \
         else                                                            \
         {                                                               \
-            if (INTEGRAL_ASSIGNMENT_FITS((dest), ltmp))                 \
+            if (INTEGRAL_ASSIGNMENT_FITS((dest), lltmp))                \
                 result = 1;                                             \
             else                                                        \
                 *(overflow) = 1;                                        \
