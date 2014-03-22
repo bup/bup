@@ -144,6 +144,15 @@ WVSTART()
 	echo "Testing \"$*\" in $WVCALLER_FILE:" >&2
 }
 
+
+WVDIE()
+{
+    echo "$*" 1>&2
+    _wvbacktrace
+    exit 1
+}
+
+
 # Local Variables:
 # indent-tabs-mode: t
 # sh-basic-offset: 8
