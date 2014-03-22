@@ -34,6 +34,7 @@ WVPASS chmod -R u=rwX,g-rwx,o-rwx .
 WVPASS bup index src
 WVPASS bup save -n src src
 
+
 WVSTART "ls (short)"
 
 WVPASSEQ "$(WVPASS bup ls /)" "src"
@@ -91,6 +92,9 @@ fifo|
 file
 socket=
 symlink@"
+
+WVPASSEQ "$(WVPASS bup ls -d src/latest/"$tmpdir"/src)" "src/latest$tmpdir/src"
+
 
 WVSTART "ls (long)"
 
@@ -191,10 +195,15 @@ prw------- $uid/$gid 0 1969-07-20 20:18 fifo
 srwx------ $uid/$gid 0 1969-07-20 20:18 socket
 $symlink_mode $uid/$gid $symlink_size $symlink_date symlink -> file"
 
+WVPASSEQ "$(bup ls -ld "src/latest$tmpdir/src" | tr -s ' ' ' ')" \
+"drwx------ $user/$group 0 1969-07-20 20:18 src/latest$tmpdir/src"
+
+
 WVSTART "ls (backup set - long)"
 WVPASSEQ "$(bup ls -l src | cut -d' ' -f 1-2)" \
 "l--------- ?/?
 l--------- ?/?"
+
 
 WVSTART "ls (dates TZ != UTC)"
 export TZ=US/Central
@@ -208,5 +217,6 @@ prw------- $uid/$gid 0 1969-07-20 15:18 fifo
 srwx------ $uid/$gid 0 1969-07-20 15:18 socket
 $symlink_mode $uid/$gid $symlink_size $symlink_date_central symlink -> file"
 unset TZ
+
 
 WVPASS rm -rf "$tmpdir"

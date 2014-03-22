@@ -1,5 +1,5 @@
 """Common code for listing files from a bup repository."""
-import copy, stat, xstat
+import copy, os.path, stat, xstat
 from bup import metadata, options, vfs
 from helpers import *
 
@@ -48,6 +48,7 @@ s,hash   show hash for each file
 a,all    show hidden files
 A,almost-all    show hidden files except . and ..
 l        use a detailed, long listing format
+d,directory show directories, not contents; don't follow symlinks
 F,classify append type indicator: dir/ sym@ fifo| sock= exec*
 file-type append type indicator: dir/ sym@ fifo| sock=
 human-readable    print human readable file sizes (i.e. 3.9K, 4.7M)
@@ -99,9 +100,12 @@ def do_ls(args, pwd, default='.', onabort=None, spec_prefix=''):
     ret = 0
     for path in (extra or [default]):
         try:
-            n = pwd.try_resolve(path)
+            if opt.directory:
+                n = pwd.lresolve(path)
+            else:
+                n = pwd.try_resolve(path)
 
-            if stat.S_ISDIR(n.mode):
+            if not opt.directory and stat.S_ISDIR(n.mode):
                 if show_hidden == 'all':
                     output_node_info(n, '.')
                     # Match non-bup "ls -a ... /".
@@ -115,7 +119,7 @@ def do_ls(args, pwd, default='.', onabort=None, spec_prefix=''):
                        or not len(name)>1 or not name.startswith('.'):
                         output_node_info(sub, name)
             else:
-                output_node_info(n, path)
+                output_node_info(n, os.path.normpath(path))
         except vfs.NodeError, e:
             log('error: %s\n' % e)
             ret = 1

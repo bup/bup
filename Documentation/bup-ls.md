@@ -48,6 +48,10 @@ you can view its contents using `bup join` or `git show`.
 -A, \--almost-all
 :   show hidden files, except "." and "..".
 
+-d, \--directory
+:   show information about directories themselves, rather than their
+    contents, and don't follow symlinks.
+
 -l
 :   provide a detailed, long listing for each item.
 
