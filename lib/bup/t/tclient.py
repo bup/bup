@@ -16,6 +16,9 @@ def randbytes(sz):
     return s
 
 
+top_dir = os.path.realpath('../../..')
+bup_exe = top_dir + '/bup'
+
 s1 = randbytes(10000)
 s2 = randbytes(10000)
 s3 = randbytes(10000)
@@ -27,7 +30,7 @@ IDX_PAT = '/*.idx'
 def test_server_split_with_indexes():
     with no_lingering_errors():
         with test_tempdir('bup-tclient-') as tmpdir:
-            os.environ['BUP_MAIN_EXE'] = '../../../bup'
+            os.environ['BUP_MAIN_EXE'] = bup_exe
             os.environ['BUP_DIR'] = bupdir = tmpdir
             git.init_repo(bupdir)
             lw = git.PackWriter()
@@ -47,7 +50,7 @@ def test_server_split_with_indexes():
 def test_multiple_suggestions():
     with no_lingering_errors():
         with test_tempdir('bup-tclient-') as tmpdir:
-            os.environ['BUP_MAIN_EXE'] = '../../../bup'
+            os.environ['BUP_MAIN_EXE'] = bup_exe
             os.environ['BUP_DIR'] = bupdir = tmpdir
             git.init_repo(bupdir)
 
@@ -83,7 +86,7 @@ def test_multiple_suggestions():
 def test_dumb_client_server():
     with no_lingering_errors():
         with test_tempdir('bup-tclient-') as tmpdir:
-            os.environ['BUP_MAIN_EXE'] = '../../../bup'
+            os.environ['BUP_MAIN_EXE'] = bup_exe
             os.environ['BUP_DIR'] = bupdir = tmpdir
             git.init_repo(bupdir)
             open(git.repo('bup-dumb-server'), 'w').close()
