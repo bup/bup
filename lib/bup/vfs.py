@@ -396,8 +396,8 @@ class FakeSymlink(Symlink):
 class Dir(Node):
     """A directory stored inside of bup's repository."""
 
-    def __init__(self, *args):
-        Node.__init__(self, *args)
+    def __init__(self, *args, **kwargs):
+        Node.__init__(self, *args, **kwargs)
         self._bupm = None
 
     def _populate_metadata(self):
