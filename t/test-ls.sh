@@ -132,9 +132,10 @@ symlink_date="$(WVPASS echo "$symlink_date" \
     || exit $?
 
 uid="$(id -u)" || exit $?
-gid="$(id -g)" || exit $?
+gid="$(python -c 'import os; print os.stat("src").st_gid')" || exit $?
 user="$(id -un)" || exit $?
-group="$(id -gn)" || exit $?
+group="$(python -c 'import grp, os;
+print grp.getgrgid(os.stat("src").st_gid)[0]')" || exit $?
 
 WVPASSEQ "$(bup ls -l src/latest"$tmpdir"/src | tr -s ' ' ' ')" \
 "-rwx------ $user/$group 0 1969-07-20 20:18 executable
