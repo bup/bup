@@ -645,7 +645,7 @@ class Metadata:
             existing_xattrs = set(xattr.list(path, nofollow=True))
         except IOError, e:
             if e.errno == errno.EACCES:
-                raise ApplyError('xattr.set: %s' % e)
+                raise ApplyError('xattr.set %r: %s' % (path, e))
             else:
                 raise
         for k, v in self.linux_xattr:
@@ -656,7 +656,7 @@ class Metadata:
                 except IOError, e:
                     if e.errno == errno.EPERM \
                             or e.errno == errno.EOPNOTSUPP:
-                        raise ApplyError('xattr.set: %s' % e)
+                        raise ApplyError('xattr.set %r: %s' % (path, e))
                     else:
                         raise
             existing_xattrs -= frozenset([k])
@@ -665,7 +665,7 @@ class Metadata:
                 xattr.remove(path, k, nofollow=True)
             except IOError, e:
                 if e.errno == errno.EPERM:
-                    raise ApplyError('xattr.remove: %s' % e)
+                    raise ApplyError('xattr.remove %r: %s' % (path, e))
                 else:
                     raise
 
