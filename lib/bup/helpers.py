@@ -180,9 +180,11 @@ def unlink(f):
 def readpipe(argv):
     """Run a subprocess and return its output."""
     p = subprocess.Popen(argv, stdout=subprocess.PIPE)
-    r = p.stdout.read()
-    p.wait()
-    return r
+    out, err = p.communicate()
+    if p.returncode != 0:
+        raise Exception('subprocess %r failed with status %d'
+                        % (' '.join(argv), p.retcode))
+    return out
 
 
 def realpath(p):
