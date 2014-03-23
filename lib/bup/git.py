@@ -872,10 +872,11 @@ def rev_parse(committish, repo_dir=None):
 
 
 def update_ref(refname, newval, oldval, repo_dir=None):
-    """Change the commit pointed to by a branch."""
+    """Update a repository reference."""
     if not oldval:
         oldval = ''
-    assert(refname.startswith('refs/heads/'))
+    assert(refname.startswith('refs/heads/') \
+           or refname.startswith('refs/tags/'))
     p = subprocess.Popen(['git', 'update-ref', refname,
                           newval.encode('hex'), oldval.encode('hex')],
                          preexec_fn = _gitenv(repo_dir))
