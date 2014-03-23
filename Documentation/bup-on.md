@@ -14,6 +14,7 @@ bup on \<hostname\> save ...
 
 bup on \<hostname\> split ...
 
+bup on \<hostname\> get ...
 
 # DESCRIPTION
 
@@ -77,7 +78,7 @@ basement.
     
 # SEE ALSO
 
-`bup-index`(1), `bup-save`(1), `bup-split`(1)
+`bup-index`(1), `bup-save`(1), `bup-split`(1), `bup-get`(1)
 
 # BUP
 

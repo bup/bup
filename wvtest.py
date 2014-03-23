@@ -86,6 +86,14 @@ if __name__ != '__main__':   # we're imported as a module
             _result(msg, tb, 'FAILED')
         return cond
 
+    def wvcheck(cond, msg, tb = None):
+        if tb == None: tb = _caller_stack(2)
+        if cond:
+            _result(msg, tb, 'ok')
+        else:
+            _result(msg, tb, 'FAILED')
+        return cond
+
     _code_rx = re.compile(r'^\w+\((.*)\)(\s*#.*)?$')
     def _code():
         text = _caller_stack(2)[3]

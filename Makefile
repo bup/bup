@@ -189,6 +189,19 @@ cmdline_tests := \
   t/test-xdev.sh \
   t/test.sh
 
+tmp-target-run-test-get-%: all t/tmp
+	$(pf); cd $$(pwd -P); TMPDIR="$(test_tmp)" \
+	  t/test-get $* 2>&1 | tee -a t/tmp/test-log/$$$$.log
+
+test_get_targets := \
+  tmp-target-run-test-get-replace \
+  tmp-target-run-test-get-universal \
+  tmp-target-run-test-get-ff \
+  tmp-target-run-test-get-append \
+  tmp-target-run-test-get-pick \
+  tmp-target-run-test-get-new-tag \
+  tmp-target-run-test-get-unnamed
+
 # For parallel runs.
 # The "pwd -P" here may not be appropriate in the long run, but we
 # need it until we settle the relevant drecurse/exclusion questions:
@@ -197,7 +210,7 @@ tmp-target-run-test%: all t/tmp
 	$(pf); cd $$(pwd -P); TMPDIR="$(test_tmp)" \
 	  t/test$* 2>&1 | tee -a t/tmp/test-log/$$$$.log
 
-runtests-cmdline: $(subst t/test,tmp-target-run-test,$(cmdline_tests))
+runtests-cmdline: $(test_get_targets) $(subst t/test,tmp-target-run-test,$(cmdline_tests))
 
 stupid:
 	PATH=/bin:/usr/bin $(MAKE) test
@@ -219,6 +232,12 @@ cmd/python-cmd.sh: config/config.vars Makefile
 	  >> cmd/python-cmd.sh.$$PPID.tmp
 	chmod +x cmd/python-cmd.sh.$$PPID.tmp
 	mv cmd/python-cmd.sh.$$PPID.tmp cmd/python-cmd.sh
+
+long-test: export BUP_TEST_LEVEL=11
+long-test: test
+
+long-check: export BUP_TEST_LEVEL=11
+long-check: check
 
 cmd/bup-%: cmd/%-cmd.py
 	rm -f $@

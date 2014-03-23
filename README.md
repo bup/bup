@@ -154,7 +154,11 @@ From source
  	
  - Run the tests:
  
-        make test
+        make long-check
+
+    or if you're in a bit more of a hurry:
+
+        make check
  	
     The tests should pass.  If they don't pass for you, stop here and
     send an email to bup-list@googlegroups.com.  Though if there are

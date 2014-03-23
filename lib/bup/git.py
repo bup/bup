@@ -112,13 +112,14 @@ def parse_commit(content):
                       message=matches['message'])
 
 
-def get_commit_items(id, cp):
-    commit_it = cp.get(id)
-    _, typ, _ = next(commit_it)
-    assert(typ == 'commit')
-    commit_content = ''.join(commit_it)
-    return parse_commit(commit_content)
+def get_cat_data(cat_iterator, expected_type):
+    _, kind, _ = next(cat_iterator)
+    if kind != expected_type:
+        raise Exception('expected %r, saw %r' % (expected_type, kind))
+    return ''.join(cat_iterator)
 
+def get_commit_items(id, cp):
+    return parse_commit(get_cat_data(cp.get(id), 'commit'))
 
 def _local_git_date_str(epoch_sec):
     return '%d %s' % (epoch_sec, utc_offset_str(epoch_sec))

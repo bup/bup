@@ -1,0 +1,984 @@
+#!/bin/sh
+"""": # -*-python-*-
+bup_python="$(dirname "$0")/../cmd/bup-python" || exit $?
+exec "$bup_python" "$0" ${1+"$@"}
+"""
+# end of bup preamble
+
+from __future__ import print_function
+from errno import ENOENT
+from os import chdir, environ, getcwd, mkdir, rename
+from os.path import abspath, dirname
+from pipes import quote
+from shutil import rmtree
+from subprocess import PIPE
+import re, sys
+
+script_home = abspath(dirname(sys.argv[0] or '.'))
+sys.path[:0] = [abspath(script_home + '/../lib'), abspath(script_home + '/..')]
+
+from bup import compat
+from buptest import ex, exo, test_tempdir
+from wvtest import wvcheck, wvfail, wvmsg, wvpass, wvpasseq, wvpassne, wvstart
+
+# FIXME: per-test function
+environ['GIT_AUTHOR_NAME'] = 'bup test-get'
+environ['GIT_COMMITTER_NAME'] = 'bup test-get'
+environ['GIT_AUTHOR_EMAIL'] = 'bup@85430dcca2b611e4b2c3-8f5691723476'
+environ['GIT_COMMITTER_EMAIL'] = 'bup@85430dcca2b611e4b2c3-8f5691723476'
+
+# The clean-repo test can probably be applied more broadly.  It was
+# initially just applied to test-pick to catch a bug.
+
+top = getcwd()
+bup_cmd = top + '/bup'
+
+def rmrf(path):
+    err = []  # because python's scoping mess...
+    def onerror(function, path, excinfo):
+        err.append((function, path, excinfo))
+    rmtree(path, onerror=onerror)
+    if err:
+        function, path, excinfo = err[0]
+        ex_type, ex, traceback = excinfo
+        if (not isinstance(ex, OSError)) or ex.errno != ENOENT:
+            raise ex
+
+def verify_trees_match(path1, path2):
+    global top
+    exr = exo((top + '/t/compare-trees', '-c', path1, path2), check=False)
+    print(exr.out)
+    sys.stdout.flush()
+    wvcheck(exr.rc == 0, 'process exit %d == 0' % exr.rc)
+
+def verify_rcz(cmd, **kwargs):
+    assert not kwargs.get('check')
+    kwargs['check'] = False
+    result = exo(cmd, **kwargs)
+    print(result.out)
+    rc = result.proc.returncode
+    wvcheck(rc == 0, 'process exit %d == 0' % rc)
+    return result
+
+# FIXME: multline, or allow opts generally?
+
+def verify_rx(rx, string):
+    wvcheck(re.search(rx, string), 'rx %r matches %r' % (rx, string))
+
+def verify_nrx(rx, string):
+    wvcheck(not re.search(rx, string), "rx %r doesn't match %r" % (rx, string))
+
+def validate_clean_repo():
+    out = verify_rcz(('git', '--git-dir', 'get-dest', 'fsck')).out
+    verify_nrx(r'dangling|mismatch|missing|unreachable', out)
+    
+def validate_blob(src_id, dest_id):
+    global top
+    rmrf('restore-src')
+    rmrf('restore-dest')
+    cat_tree = top + '/t/git-cat-tree'
+    src_blob = verify_rcz((cat_tree, '--git-dir', 'get-src', src_id)).out
+    dest_blob = verify_rcz((cat_tree, '--git-dir', 'get-src', src_id)).out
+    wvpasseq(src_blob, dest_blob)
+
+def validate_tree(src_id, dest_id):
+
+    def set_committer_date():
+        environ['GIT_COMMITTER_DATE'] = "2014-01-01 01:01"
+
+    rmrf('restore-src')
+    rmrf('restore-dest')
+    mkdir('restore-src')
+    mkdir('restore-dest')
+    
+    # Create a commit so the archive contents will have matching timestamps.
+    src_c = exo(('git', '--git-dir', 'get-src',
+                 'commit-tree', '-m', 'foo', src_id),
+                preexec_fn=set_committer_date).out.strip()
+    dest_c = exo(('git', '--git-dir', 'get-dest',
+                  'commit-tree', '-m', 'foo', dest_id),
+                 preexec_fn=set_committer_date).out.strip()
+    exr = verify_rcz('git --git-dir get-src archive %s | tar xvf - -C restore-src'
+                     % quote(src_c),
+                     shell=True)
+    if exr.rc != 0: return False
+    ex('cd restore-src && ls --full-time -aR .', shell=True)
+    exr = verify_rcz('git --git-dir get-dest archive %s | tar xvf - -C restore-dest'
+                     % quote(dest_c),
+                     shell=True)
+    if exr.rc != 0: return False
+    
+    # git archive doesn't include an entry for ./.
+    ex(('touch', '-r', 'restore-src', 'restore-dest'))
+    verify_trees_match('restore-src/', 'restore-dest/')
+    rmrf('restore-src')
+    rmrf('restore-dest')
+
+def validate_commit(src_id, dest_id):
+    exr = verify_rcz(('git', '--git-dir', 'get-src', 'cat-file', 'commit', src_id))
+    if exr.rc != 0: return False
+    src_cat = exr.out
+    exr = verify_rcz(('git', '--git-dir', 'get-dest', 'cat-file', 'commit', dest_id))
+    if exr.rc != 0: return False
+    dest_cat = exr.out
+    wvpasseq(src_cat, dest_cat)
+    if src_cat != dest_cat: return False
+    
+    rmrf('restore-src')
+    rmrf('restore-dest')
+    mkdir('restore-src')
+    mkdir('restore-dest')
+    qsrc = quote(src_id)
+    qdest = quote(dest_id)
+    exr = verify_rcz(('git --git-dir get-src archive ' + qsrc
+                      + ' | tar xf - -C restore-src'),
+                     shell=True)
+    if exr.rc != 0: return False
+    exr = verify_rcz(('git --git-dir get-dest archive ' + qdest +
+                      ' | tar xf - -C restore-dest'),
+                     shell=True)
+    if exr.rc != 0: return False
+    
+    # git archive doesn't include an entry for ./.
+    ex(('touch', '-r', 'restore-src', 'restore-dest'))
+    verify_trees_match('restore-src/', 'restore-dest/')
+    rmrf('restore-src')
+    rmrf('restore-dest')
+
+def _validate_save(orig_dir, save_path, commit_id, tree_id):
+    global bup_cmd
+    rmrf('restore')
+    exr = verify_rcz((bup_cmd, '-d', 'get-dest',
+                      'restore', '-C', 'restore', save_path + '/.'))
+    if exr.rc: return False
+    verify_trees_match(orig_dir + '/', 'restore/')    
+    if tree_id:
+        # FIXME: double check that get-dest is correct
+        exr = verify_rcz(('git', '--git-dir', 'get-dest', 'ls-tree', tree_id))
+        if exr.rc: return False
+        cat = verify_rcz(('git', '--git-dir', 'get-dest',
+                          'cat-file', 'commit', commit_id))
+        if cat.rc: return False
+        wvpasseq('tree ' + tree_id, cat.out.splitlines()[0])
+
+# FIXME: re-merge save and new_save?
+        
+def validate_save(dest_name, restore_subpath, commit_id, tree_id, orig_value,
+                  get_out):
+    out = get_out.splitlines()
+    wvpasseq(2, len(out))
+    get_tree_id = out[0]
+    get_commit_id = out[1]
+    wvpasseq(tree_id, get_tree_id)
+    wvpasseq(commit_id, get_commit_id)
+    _validate_save(orig_value, dest_name + restore_subpath, commit_id, tree_id)
+
+def validate_new_save(dest_name, restore_subpath, commit_id, tree_id, orig_value,
+                      get_out):
+    out = get_out.splitlines()
+    wvpasseq(2, len(out))
+    get_tree_id = out[0]
+    get_commit_id = out[1]
+    wvpasseq(tree_id, get_tree_id)
+    wvpassne(commit_id, get_commit_id)
+    _validate_save(orig_value, dest_name + restore_subpath, get_commit_id, tree_id)
+        
+def validate_tagged_save(tag_name, restore_subpath,
+                         commit_id, tree_id, orig_value, get_out):
+    out = get_out.splitlines()
+    wvpasseq(1, len(out))
+    get_tag_id = out[0]
+    wvpasseq(commit_id, get_tag_id)
+    # Make sure tmp doesn't already exist.
+    exr = exo(('git', '--git-dir', 'get-dest', 'show-ref', 'tmp-branch-for-tag'),
+              check=False)
+    wvpasseq(1, exr.rc)
+
+    ex(('git', '--git-dir', 'get-dest', 'branch', 'tmp-branch-for-tag',
+        'refs/tags/' + tag_name))
+    _validate_save(orig_value, 'tmp-branch-for-tag/latest' + restore_subpath,
+                   commit_id, tree_id)
+    ex(('git', '--git-dir', 'get-dest', 'branch', '-D', 'tmp-branch-for-tag'))
+
+def validate_new_tagged_commit(tag_name, commit_id, tree_id, get_out):
+    out = get_out.splitlines()
+    wvpasseq(1, len(out))
+    get_tag_id = out[0]
+    wvpassne(commit_id, get_tag_id)
+    validate_tree(tree_id, tag_name + ':')
+
+
+get_cases_tested = 0
+        
+
+def _run_get(disposition, method, what):
+    global bup_cmd
+
+    if disposition == 'get':
+        get_cmd = (bup_cmd, '-d', 'get-dest',
+                   'get', '-vvct', '--print-tags', '-s', 'get-src')
+    elif disposition == 'get-on':
+        get_cmd = (bup_cmd, '-d', 'get-dest',
+                   'on', '-', 'get', '-vvct', '--print-tags', '-s', 'get-src')
+    elif disposition == 'get-to':
+        get_cmd = (bup_cmd, '-d', 'get-dest',
+                   'get', '-vvct', '--print-tags', '-s', 'get-src',
+                   '-r', '-:' + getcwd() + '/get-dest')
+    else:
+        raise Exception('error: unexpected get disposition ' + disposition)
+    
+    global get_cases_tested
+    if isinstance(what, compat.str_type):
+        cmd = get_cmd + (method, what)
+    else:
+        if method in ('--ff', '--append', '--pick', '--force-pick', '--new-tag',
+                      '--replace'):
+            method += ':'
+        src, dest = what
+        cmd = get_cmd + (method, src, dest)
+    result = exo(cmd, check=False, stderr=PIPE)
+    get_cases_tested += 1
+    return result
+
+def run_get(disposition, method, what=None, given=None):
+    global bup_cmd
+    rmrf('get-dest')
+    ex((bup_cmd, '-d', 'get-dest', 'init'))
+
+    if given:
+        # FIXME: replace bup-get with independent commands as is feasible
+        exr = _run_get(disposition, '--replace', given)
+        assert not exr.rc
+    return _run_get(disposition, method, what)
+
+def test_universal_behaviors(get_disposition):
+    methods = ('--ff', '--append', '--pick', '--force-pick', '--new-tag',
+               '--replace', '--unnamed')
+    for method in methods:
+        wvstart(get_disposition + ' ' + method + ', missing source, fails')
+        exr = run_get(get_disposition, method, 'not-there')
+        wvpassne(0, exr.rc)
+        verify_rx(r'cannot find source', exr.err)
+    for method in methods:
+        wvstart(get_disposition + ' ' + method + ' / fails')
+        exr = run_get(get_disposition, method, '/')
+        wvpassne(0, exr.rc)
+        verify_rx('cannot fetch entire repository', exr.err)
+
+def verify_only_refs(**kwargs):
+    for kind, refs in kwargs.iteritems():
+        if kind == 'heads':
+            abs_refs = ['refs/heads/' + ref for ref in refs]
+            karg = '--heads'
+        elif kind == 'tags':
+            abs_refs = ['refs/tags/' + ref for ref in refs]
+            karg = '--tags'
+        else:
+            raise TypeError('unexpected keyword argument %r' % kind)
+        if abs_refs:
+            verify_rcz(['git', '--git-dir', 'get-dest',
+                        'show-ref', '--verify', karg] + abs_refs)
+            exr = exo(('git', '--git-dir', 'get-dest', 'show-ref', karg),
+                      check=False)
+            wvpasseq(0, exr.rc)
+            expected_refs = sorted(abs_refs)
+            repo_refs = sorted([x.split()[1] for x in exr.out.splitlines()])
+            wvpasseq(expected_refs, repo_refs)
+        else:
+            # FIXME: can we just check "git show-ref --heads == ''"?
+            exr = exo(('git', '--git-dir', 'get-dest', 'show-ref', karg),
+                      check=False)
+            wvpasseq(1, exr.rc)
+            wvpasseq('', exr.out.strip())
+        
+def test_replace(get_disposition, src_info):
+
+    wvstart(get_disposition + ' --replace to root fails')
+    for item in ('.tag/tinyfile',
+                 'src/latest' + src_info['tinyfile-path'],
+                 '.tag/subtree',
+                 'src/latest' + src_info['subtree-vfs-path'],
+                 '.tag/commit-1',
+                 'src/latest',
+                 'src'):
+        exr = run_get(get_disposition, '--replace', (item, '/'))
+        wvpassne(0, exr.rc)
+        verify_rx(r'impossible; can only overwrite branch or tag', exr.err)
+
+    tinyfile_id = src_info['tinyfile-id']
+    tinyfile_path = src_info['tinyfile-path']
+    subtree_vfs_path = src_info['subtree-vfs-path']
+    subtree_id = src_info['subtree-id']
+    commit_2_id = src_info['commit-2-id']
+    tree_2_id = src_info['tree-2-id']
+
+    # Anything to tag
+    existing_items = {'nothing' : None,
+                      'blob' : ('.tag/tinyfile', '.tag/obj'),
+                      'tree' : ('.tag/tree-1', '.tag/obj'),
+                      'commit': ('.tag/commit-1', '.tag/obj')}
+    for ex_type, ex_ref in existing_items.iteritems():
+        wvstart(get_disposition + ' --replace ' + ex_type + ' with blob tag')
+        for item in ('.tag/tinyfile', 'src/latest' + tinyfile_path):
+            exr = run_get(get_disposition, '--replace', (item ,'.tag/obj'),
+                          given=ex_ref)
+            wvpasseq(0, exr.rc)        
+            validate_blob(tinyfile_id, tinyfile_id)
+            verify_only_refs(heads=[], tags=('obj',))
+        wvstart(get_disposition + ' --replace ' + ex_type + ' with tree tag')
+        for item in ('.tag/subtree',  'src/latest' + subtree_vfs_path):
+            exr = run_get(get_disposition, '--replace', (item, '.tag/obj'),
+                          given=ex_ref)
+            validate_tree(subtree_id, subtree_id)
+            verify_only_refs(heads=[], tags=('obj',))
+        wvstart(get_disposition + ' --replace ' + ex_type + ' with commitish tag')
+        for item in ('.tag/commit-2', 'src/latest', 'src'):
+            exr = run_get(get_disposition, '--replace', (item, '.tag/obj'),
+                          given=ex_ref)
+            validate_tagged_save('obj', getcwd() + '/src',
+                                 commit_2_id, tree_2_id, 'src-2', exr.out)
+            verify_only_refs(heads=[], tags=('obj',))
+
+        # Committish to branch.
+        existing_items = (('nothing', None),
+                          ('branch', ('.tag/commit-1', 'obj')))
+        for ex_type, ex_ref in existing_items:
+            for item_type, item in (('commit', '.tag/commit-2'),
+                                    ('save', 'src/latest'),
+                                    ('branch', 'src')):
+                wvstart(get_disposition + ' --replace '
+                        + ex_type + ' with ' + item_type)
+                exr = run_get(get_disposition, '--replace', (item, 'obj'),
+                              given=ex_ref)
+                validate_save('obj/latest', getcwd() + '/src',
+                              commit_2_id, tree_2_id, 'src-2', exr.out)
+                verify_only_refs(heads=('obj',), tags=[])
+
+        # Not committish to branch
+        existing_items = (('nothing', None),
+                          ('branch', ('.tag/commit-1', 'obj')))
+        for ex_type, ex_ref in existing_items:
+            for item_type, item in (('blob', '.tag/tinyfile'),
+                                    ('blob', 'src/latest' + tinyfile_path),
+                                    ('tree', '.tag/subtree'),
+                                    ('tree', 'src/latest' + subtree_vfs_path)):
+                wvstart(get_disposition + ' --replace branch with '
+                        + item_type + ' given ' + ex_type + ' fails')
+
+                exr = run_get(get_disposition, '--replace', (item, 'obj'),
+                              given=ex_ref)
+                wvpassne(0, exr.rc)
+                verify_rx(r'cannot overwrite branch with .+ for', exr.err)
+
+        wvstart(get_disposition + ' --replace, implicit destinations')
+
+        exr = run_get(get_disposition, '--replace', 'src')
+        validate_save('src/latest', getcwd() + '/src',
+                      commit_2_id, tree_2_id, 'src-2', exr.out)
+        verify_only_refs(heads=('src',), tags=[])
+
+        exr = run_get(get_disposition, '--replace', '.tag/commit-2')
+        validate_tagged_save('commit-2', getcwd() + '/src',
+                             commit_2_id, tree_2_id, 'src-2', exr.out)
+        verify_only_refs(heads=[], tags=('commit-2',))
+
+def test_ff(get_disposition, src_info):
+
+    wvstart(get_disposition + ' --ff to root fails')
+    tinyfile_path = src_info['tinyfile-path']
+    for item in ('.tag/tinyfile', 'src/latest' + tinyfile_path):
+        exr = run_get(get_disposition, '--ff', (item, '/'))
+        wvpassne(0, exr.rc)
+        verify_rx(r'source for .+ must be a branch, save, or commit', exr.err)
+    subtree_vfs_path = src_info['subtree-vfs-path']
+    for item in ('.tag/subtree', 'src/latest' + subtree_vfs_path):
+        exr = run_get(get_disposition, '--ff', (item, '/'))
+        wvpassne(0, exr.rc)
+        verify_rx(r'is impossible; can only --append a tree to a branch',
+                  exr.err)    
+    for item in ('.tag/commit-1', 'src/latest', 'src'):
+        exr = run_get(get_disposition, '--ff', (item, '/'))
+        wvpassne(0, exr.rc)
+        verify_rx(r'destination for .+ is a root, not a branch', exr.err)    
+
+    wvstart(get_disposition + ' --ff of not-committish fails')
+    for src in ('.tag/tinyfile', 'src/latest' + tinyfile_path):
+        # FIXME: use get_item elsewhere?
+        for given, get_item in ((None, (src, 'obj')),
+                                (None, (src, '.tag/obj')),
+                                (('.tag/tinyfile', '.tag/obj'), (src, '.tag/obj')),
+                                (('.tag/tree-1', '.tag/obj'), (src, '.tag/obj')),
+                                (('.tag/commit-1', '.tag/obj'), (src, '.tag/obj')),
+                                (('.tag/commit-1', 'obj'), (src, 'obj'))):
+            exr = run_get(get_disposition, '--ff', get_item, given=given)
+            wvpassne(0, exr.rc)
+            verify_rx(r'must be a branch, save, or commit', exr.err)
+    for src in ('.tag/subtree', 'src/latest' + subtree_vfs_path):
+        for given, get_item in ((None, (src, 'obj')),
+                                (None, (src, '.tag/obj')),
+                                (('.tag/tinyfile', '.tag/obj'), (src, '.tag/obj')),
+                                (('.tag/tree-1', '.tag/obj'), (src, '.tag/obj')),
+                                (('.tag/commit-1', '.tag/obj'), (src, '.tag/obj')),
+                                (('.tag/commit-1', 'obj'), (src, 'obj'))):
+            exr = run_get(get_disposition, '--ff', get_item, given=given)
+            wvpassne(0, exr.rc)
+            verify_rx(r'can only --append a tree to a branch', exr.err)
+
+    wvstart(get_disposition + ' --ff committish, ff possible')
+    save_2 = src_info['save-2']
+    for src in ('.tag/commit-2', 'src/' + save_2, 'src'):
+        for given, get_item, complaint in \
+            ((None, (src, '.tag/obj'),
+              r'destination .+ must be a valid branch name'),
+             (('.tag/tinyfile', '.tag/obj'), (src, '.tag/obj'),
+              r'destination .+ is a blob, not a branch'),
+             (('.tag/tree-1', '.tag/obj'), (src, '.tag/obj'),
+              r'destination .+ is a tree, not a branch'),
+             (('.tag/commit-1', '.tag/obj'), (src, '.tag/obj'),
+              r'destination .+ is a tagged commit, not a branch'),
+             (('.tag/commit-2', '.tag/obj'), (src, '.tag/obj'),
+              r'destination .+ is a tagged commit, not a branch')):
+            exr = run_get(get_disposition, '--ff', get_item, given=given)
+            wvpassne(0, exr.rc)
+            verify_rx(complaint, exr.err)
+    # FIXME: use src or item and given or existing consistently in loops...
+    commit_2_id = src_info['commit-2-id']
+    tree_2_id = src_info['tree-2-id']
+    for src in ('.tag/commit-2', 'src/' + save_2, 'src'):
+        for given in (None, ('.tag/commit-1', 'obj'), ('.tag/commit-2', 'obj')):
+            exr = run_get(get_disposition, '--ff', (src, 'obj'), given=given)
+            wvpasseq(0, exr.rc)
+            validate_save('obj/latest', getcwd() + '/src',
+                          commit_2_id, tree_2_id, 'src-2', exr.out)
+            verify_only_refs(heads=('obj',), tags=[])
+            
+    wvstart(get_disposition + ' --ff, implicit destinations')
+    for item in ('src', 'src/latest'):
+        exr = run_get(get_disposition, '--ff', item)
+        wvpasseq(0, exr.rc)
+
+        ex(('find', 'get-dest/refs'))
+        ex((bup_cmd, '-d', 'get-dest', 'ls'))
+
+        validate_save('src/latest', getcwd() + '/src',
+                     commit_2_id, tree_2_id, 'src-2', exr.out)
+        #verify_only_refs(heads=('src',), tags=[])
+
+    wvstart(get_disposition + ' --ff, ff impossible')
+    for given, get_item in ((('unrelated-branch', 'src'), 'src'),
+                            (('.tag/commit-2', 'src'), ('.tag/commit-1', 'src'))):
+        exr = run_get(get_disposition, '--ff', get_item, given=given)
+        wvpassne(0, exr.rc)
+        verify_rx(r'destination is not an ancestor of source', exr.err)
+
+def test_append(get_disposition, src_info):
+    tinyfile_path = src_info['tinyfile-path']
+    subtree_vfs_path = src_info['subtree-vfs-path']
+
+    wvstart(get_disposition + ' --append to root fails')
+    for item in ('.tag/tinyfile', 'src/latest' + tinyfile_path):
+        exr = run_get(get_disposition, '--append', (item, '/'))
+        wvpassne(0, exr.rc)
+        verify_rx(r'source for .+ must be a branch, save, commit, or tree',
+                  exr.err)
+    for item in ('.tag/subtree', 'src/latest' + subtree_vfs_path,
+                 '.tag/commit-1', 'src/latest', 'src'):
+        exr = run_get(get_disposition, '--append', (item, '/'))
+        wvpassne(0, exr.rc)
+        verify_rx(r'destination for .+ is a root, not a branch', exr.err)
+
+    wvstart(get_disposition + ' --append of not-treeish fails')
+    for src in ('.tag/tinyfile', 'src/latest' + tinyfile_path):
+        for given, item in ((None, (src, 'obj')),
+                            (None, (src, '.tag/obj')),
+                            (('.tag/tinyfile', '.tag/obj'), (src, '.tag/obj')),
+                            (('.tag/tree-1', '.tag/obj'), (src, '.tag/obj')),
+                            (('.tag/commit-1', '.tag/obj'), (src, '.tag/obj')),
+                            (('.tag/commit-1', 'obj'), (src, 'obj'))):
+            exr = run_get(get_disposition, '--append', item, given=given)
+            wvpassne(0, exr.rc)
+            verify_rx(r'must be a branch, save, commit, or tree', exr.err)
+
+    wvstart(get_disposition + ' --append committish failure cases')
+    save_2 = src_info['save-2']
+    for src in ('.tag/subtree', 'src/latest' + subtree_vfs_path,
+                '.tag/commit-2', 'src/' + save_2, 'src'):
+        for given, item, complaint in \
+            ((None, (src, '.tag/obj'),
+              r'destination .+ must be a valid branch name'),
+             (('.tag/tinyfile', '.tag/obj'), (src, '.tag/obj'),
+              r'destination .+ is a blob, not a branch'),
+             (('.tag/tree-1', '.tag/obj'), (src, '.tag/obj'),
+              r'destination .+ is a tree, not a branch'),
+             (('.tag/commit-1', '.tag/obj'), (src, '.tag/obj'),
+              r'destination .+ is a tagged commit, not a branch'),
+             (('.tag/commit-2', '.tag/obj'), (src, '.tag/obj'),
+              r'destination .+ is a tagged commit, not a branch')):
+            exr = run_get(get_disposition, '--append', item, given=given)
+            wvpassne(0, exr.rc)
+            verify_rx(complaint, exr.err)
+            
+    wvstart(get_disposition + ' --append committish')
+    commit_2_id = src_info['commit-2-id']
+    tree_2_id = src_info['tree-2-id']
+    for item in ('.tag/commit-2', 'src/' + save_2, 'src'):
+        for existing in (None, ('.tag/commit-1', 'obj'),
+                         ('.tag/commit-2', 'obj'),
+                         ('unrelated-branch', 'obj')):
+            exr = run_get(get_disposition, '--append', (item, 'obj'),
+                          given=existing)
+            wvpasseq(0, exr.rc)
+            validate_new_save('obj/latest', getcwd() + '/src',
+                              commit_2_id, tree_2_id, 'src-2', exr.out)
+            verify_only_refs(heads=('obj',), tags=[])
+    # Append ancestor
+    save_1 = src_info['save-1']
+    commit_1_id = src_info['commit-1-id']
+    tree_1_id = src_info['tree-1-id']
+    for item in ('.tag/commit-1',  'src/' + save_1, 'src-1'):
+        exr = run_get(get_disposition, '--append', (item, 'obj'),
+                      given=('.tag/commit-2', 'obj'))
+        wvpasseq(0, exr.rc)
+        validate_new_save('obj/latest', getcwd() + '/src',
+                          commit_1_id, tree_1_id, 'src-1', exr.out)
+        verify_only_refs(heads=('obj',), tags=[])
+
+    wvstart(get_disposition + ' --append tree')
+    subtree_path = src_info['subtree-path']
+    subtree_id = src_info['subtree-id']
+    for item in ('.tag/subtree', 'src/latest' + subtree_vfs_path):
+        for existing in (None, ('.tag/commit-1', 'obj'), ('.tag/commit-2','obj')):
+            exr = run_get(get_disposition, '--append', (item, 'obj'),
+                          given=existing)
+            wvpasseq(0, exr.rc)
+            validate_new_save('obj/latest', '/', None, subtree_id, subtree_path,
+                              exr.out)
+            verify_only_refs(heads=('obj',), tags=[])
+
+    wvstart(get_disposition + ' --append, implicit destinations')
+
+    for item in ('src', 'src/latest'):
+        exr = run_get(get_disposition, '--append', item)
+        wvpasseq(0, exr.rc)
+        validate_new_save('src/latest', getcwd() + '/src', commit_2_id, tree_2_id,
+                          'src-2', exr.out)
+        verify_only_refs(heads=('src',), tags=[])
+
+def test_pick(get_disposition, src_info, force=False):
+    flavor = '--force-pick' if force else '--pick'
+    tinyfile_path = src_info['tinyfile-path']
+    subtree_vfs_path = src_info['subtree-vfs-path']
+    
+    wvstart(get_disposition + ' ' + flavor + ' to root fails')
+    for item in ('.tag/tinyfile', 'src/latest' + tinyfile_path, 'src'):
+        exr = run_get(get_disposition, flavor, (item, '/'))
+        wvpassne(0, exr.rc)
+        verify_rx(r'can only pick a commit or save', exr.err)
+    for item in ('.tag/commit-1', 'src/latest'):
+        exr = run_get(get_disposition, flavor, (item, '/'))
+        wvpassne(0, exr.rc)
+        verify_rx(r'destination is not a tag or branch', exr.err)
+    for item in ('.tag/subtree', 'src/latest' + subtree_vfs_path):
+        exr = run_get(get_disposition, flavor, (item, '/'))
+        wvpassne(0, exr.rc)
+        verify_rx(r'is impossible; can only --append a tree', exr.err)
+
+    wvstart(get_disposition + ' ' + flavor + ' of blob or branch fails')
+    for item in ('.tag/tinyfile', 'src/latest' + tinyfile_path, 'src'):
+        for given, get_item in ((None, (item, 'obj')),
+                                (None, (item, '.tag/obj')),
+                                (('.tag/tinyfile', '.tag/obj'), (item, '.tag/obj')),
+                                (('.tag/tree-1', '.tag/obj'), (item, '.tag/obj')),
+                                (('.tag/commit-1', '.tag/obj'), (item, '.tag/obj')),
+                                (('.tag/commit-1', 'obj'), (item, 'obj'))):
+            exr = run_get(get_disposition, flavor, get_item, given=given)
+            wvpassne(0, exr.rc)
+            verify_rx(r'impossible; can only pick a commit or save', exr.err)
+
+    wvstart(get_disposition + ' ' + flavor + ' of tree fails')
+    for item in ('.tag/subtree', 'src/latest' + subtree_vfs_path):
+        for given, get_item in ((None, (item, 'obj')),
+                                (None, (item, '.tag/obj')),
+                                (('.tag/tinyfile', '.tag/obj'), (item, '.tag/obj')),
+                                (('.tag/tree-1', '.tag/obj'), (item, '.tag/obj')),
+                                (('.tag/commit-1', '.tag/obj'), (item, '.tag/obj')),
+                                (('.tag/commit-1', 'obj'), (item, 'obj'))):
+            exr = run_get(get_disposition, flavor, get_item, given=given)
+            wvpassne(0, exr.rc)
+            verify_rx(r'impossible; can only --append a tree', exr.err)
+
+    save_2 = src_info['save-2']
+    commit_2_id = src_info['commit-2-id']
+    tree_2_id = src_info['tree-2-id']
+    # FIXME: these two wvstart texts?
+    if force:
+        wvstart(get_disposition + ' ' + flavor + ' commit/save to existing tag')
+        for item in ('.tag/commit-2', 'src/' + save_2):
+            for given in (('.tag/tinyfile', '.tag/obj'),
+                          ('.tag/tree-1', '.tag/obj'),
+                          ('.tag/commit-1', '.tag/obj')):
+                exr = run_get(get_disposition, flavor, (item, '.tag/obj'),
+                              given=given)
+                wvpasseq(0, exr.rc)
+                validate_new_tagged_commit('obj', commit_2_id, tree_2_id,
+                                           exr.out)
+                verify_only_refs(heads=[], tags=('obj',))
+    else: # --pick
+        wvstart(get_disposition + ' ' + flavor
+                + ' commit/save to existing tag fails')
+        for item in ('.tag/commit-2', 'src/' + save_2):
+            for given in (('.tag/tinyfile', '.tag/obj'),
+                          ('.tag/tree-1', '.tag/obj'),
+                          ('.tag/commit-1', '.tag/obj')):
+                exr = run_get(get_disposition, flavor, (item, '.tag/obj'), given=given)
+                wvpassne(0, exr.rc)
+                verify_rx(r'cannot overwrite existing tag', exr.err)
+            
+    wvstart(get_disposition + ' ' + flavor + ' commit/save to tag')
+    for item in ('.tag/commit-2', 'src/' + save_2):
+        exr = run_get(get_disposition, flavor, (item, '.tag/obj'))
+        wvpasseq(0, exr.rc)
+        validate_clean_repo()
+        validate_new_tagged_commit('obj', commit_2_id, tree_2_id, exr.out)
+        verify_only_refs(heads=[], tags=('obj',))
+         
+    wvstart(get_disposition + ' ' + flavor + ' commit/save to branch')
+    for item in ('.tag/commit-2', 'src/' + save_2):
+        for given in (None, ('.tag/commit-1', 'obj'), ('.tag/commit-2', 'obj')):
+            exr = run_get(get_disposition, flavor, (item, 'obj'), given=given)
+            wvpasseq(0, exr.rc)
+            validate_clean_repo()
+            validate_new_save('obj/latest', getcwd() + '/src',
+                              commit_2_id, tree_2_id, 'src-2', exr.out)
+            verify_only_refs(heads=('obj',), tags=[])
+
+    wvstart(get_disposition + ' ' + flavor
+            + ' commit/save unrelated commit to branch')
+    for item in('.tag/commit-2', 'src/' + save_2):
+        exr = run_get(get_disposition, flavor, (item, 'obj'),
+                      given=('unrelated-branch', 'obj'))
+        wvpasseq(0, exr.rc)
+        validate_clean_repo()
+        validate_new_save('obj/latest', getcwd() + '/src',
+                          commit_2_id, tree_2_id, 'src-2', exr.out)
+        verify_only_refs(heads=('obj',), tags=[])
+
+    wvstart(get_disposition + ' ' + flavor + ' commit/save ancestor to branch')
+    save_1 = src_info['save-1']
+    commit_1_id = src_info['commit-1-id']
+    tree_1_id = src_info['tree-1-id']
+    for item in ('.tag/commit-1', 'src/' + save_1):
+        exr = run_get(get_disposition, flavor, (item, 'obj'),
+                      given=('.tag/commit-2', 'obj'))
+        wvpasseq(0, exr.rc)
+        validate_clean_repo()
+        validate_new_save('obj/latest', getcwd() + '/src',
+                          commit_1_id, tree_1_id, 'src-1', exr.out)
+        verify_only_refs(heads=('obj',), tags=[])
+
+
+    wvstart(get_disposition + ' ' + flavor + ', implicit destinations')
+    exr = run_get(get_disposition, flavor, '.tag/commit-2')
+    wvpasseq(0, exr.rc)
+    validate_clean_repo()
+    validate_new_tagged_commit('commit-2', commit_2_id, tree_2_id, exr.out)
+    verify_only_refs(heads=[], tags=('commit-2',))
+
+    exr = run_get(get_disposition, flavor, 'src/latest')
+    wvpasseq(0, exr.rc)
+    validate_clean_repo()
+    validate_new_save('src/latest', getcwd() + '/src',
+                      commit_2_id, tree_2_id, 'src-2', exr.out)
+    verify_only_refs(heads=('src',), tags=[])
+
+def test_new_tag(get_disposition, src_info):
+    tinyfile_id = src_info['tinyfile-id']
+    tinyfile_path = src_info['tinyfile-path']
+    commit_2_id = src_info['commit-2-id']
+    tree_2_id = src_info['tree-2-id']
+    subtree_id = src_info['subtree-id']
+    subtree_vfs_path = src_info['subtree-vfs-path']
+
+    wvstart(get_disposition + ' --new-tag to root fails')
+    for item in ('.tag/tinyfile',
+                 'src/latest' + tinyfile_path,
+                 '.tag/subtree',
+                 'src/latest' + subtree_vfs_path,
+                 '.tag/commit-1',
+                 'src/latest',
+                 'src'):
+        exr = run_get(get_disposition, '--new-tag', (item, '/'))
+        wvpassne(0, exr.rc)
+        verify_rx(r'destination for .+ must be a VFS tag', exr.err)
+
+    # Anything to new tag.
+    wvstart(get_disposition + ' --new-tag, blob tag')
+    for item in ('.tag/tinyfile', 'src/latest' + tinyfile_path):
+        exr = run_get(get_disposition, '--new-tag', (item, '.tag/obj'))
+        wvpasseq(0, exr.rc)        
+        validate_blob(tinyfile_id, tinyfile_id)
+        verify_only_refs(heads=[], tags=('obj',))
+
+    wvstart(get_disposition + ' --new-tag, tree tag')
+    for item in ('.tag/subtree', 'src/latest' + subtree_vfs_path):
+        exr = run_get(get_disposition, '--new-tag', (item, '.tag/obj'))
+        wvpasseq(0, exr.rc)        
+        validate_tree(subtree_id, subtree_id)
+        verify_only_refs(heads=[], tags=('obj',))
+        
+    wvstart(get_disposition + ' --new-tag, committish tag')
+    for item in ('.tag/commit-2', 'src/latest', 'src'):
+        exr = run_get(get_disposition, '--new-tag', (item, '.tag/obj'))
+        wvpasseq(0, exr.rc)        
+        validate_tagged_save('obj', getcwd() + '/src/', commit_2_id, tree_2_id,
+                             'src-2', exr.out)
+        verify_only_refs(heads=[], tags=('obj',))
+        
+    # Anything to existing tag (fails).
+    for ex_type, ex_tag in (('blob', ('.tag/tinyfile', '.tag/obj')),
+                            ('tree', ('.tag/tree-1', '.tag/obj')),
+                            ('commit', ('.tag/commit-1', '.tag/obj'))):
+        for item_type, item in (('blob tag', '.tag/tinyfile'),
+                                ('blob path', 'src/latest' + tinyfile_path),
+                                ('tree tag', '.tag/subtree'),
+                                ('tree path', 'src/latest' + subtree_vfs_path),
+                                ('commit tag', '.tag/commit-2'),
+                                ('save', 'src/latest'),
+                                ('branch', 'src')):
+            wvstart(get_disposition + ' --new-tag of ' + item_type
+                    + ', given existing ' + ex_type + ' tag, fails')
+            exr = run_get(get_disposition, '--new-tag', (item, '.tag/obj'),
+                          given=ex_tag)
+            wvpassne(0, exr.rc)
+            verify_rx(r'cannot overwrite existing tag .* \(requires --replace\)',
+                      exr.err)
+
+    # Anything to branch (fails).
+    for ex_type, ex_tag in (('nothing', None),
+                            ('blob', ('.tag/tinyfile', '.tag/obj')),
+                            ('tree', ('.tag/tree-1', '.tag/obj')),
+                            ('commit', ('.tag/commit-1', '.tag/obj'))):
+        for item_type, item in (('blob tag', '.tag/tinyfile'),
+                ('blob path', 'src/latest' + tinyfile_path),
+                ('tree tag', '.tag/subtree'),
+                ('tree path', 'src/latest' + subtree_vfs_path),
+                ('commit tag', '.tag/commit-2'),
+                ('save', 'src/latest'),
+                ('branch', 'src')):
+            wvstart(get_disposition + ' --new-tag to branch of ' + item_type
+                    + ', given existing ' + ex_type + ' tag, fails')
+            exr = run_get(get_disposition, '--new-tag', (item, 'obj'),
+                          given=ex_tag)
+            wvpassne(0, exr.rc)
+            verify_rx(r'destination for .+ must be a VFS tag', exr.err)
+
+    wvstart(get_disposition + ' --new-tag, implicit destinations')
+    exr = run_get(get_disposition, '--new-tag', '.tag/commit-2')
+    wvpasseq(0, exr.rc)        
+    validate_tagged_save('commit-2', getcwd() + '/src/', commit_2_id, tree_2_id,
+                         'src-2', exr.out)
+    verify_only_refs(heads=[], tags=('commit-2',))
+
+def test_unnamed(get_disposition, src_info):
+    tinyfile_id = src_info['tinyfile-id']
+    tinyfile_path = src_info['tinyfile-path']
+    subtree_vfs_path = src_info['subtree-vfs-path']
+    wvstart(get_disposition + ' --unnamed to root fails')
+    for item in ('.tag/tinyfile',
+                 'src/latest' + tinyfile_path,
+                 '.tag/subtree',
+                 'src/latest' + subtree_vfs_path,
+                 '.tag/commit-1',
+                 'src/latest',
+                 'src'):
+        for ex_ref in (None, (item, '.tag/obj')):
+            exr = run_get(get_disposition, '--unnamed', (item, '/'),
+                          given=ex_ref)
+            wvpassne(0, exr.rc)
+            verify_rx(r'usage: bup get ', exr.err)
+
+    wvstart(get_disposition + ' --unnamed file')
+    for item in ('.tag/tinyfile', 'src/latest' + tinyfile_path):
+        exr = run_get(get_disposition, '--unnamed', item)
+        wvpasseq(0, exr.rc)        
+        validate_blob(tinyfile_id, tinyfile_id)
+        verify_only_refs(heads=[], tags=[])
+
+        exr = run_get(get_disposition, '--unnamed', item,
+                      given=(item, '.tag/obj'))
+        wvpasseq(0, exr.rc)        
+        validate_blob(tinyfile_id, tinyfile_id)
+        verify_only_refs(heads=[], tags=('obj',))
+
+    wvstart(get_disposition + ' --unnamed tree')
+    subtree_id = src_info['subtree-id']
+    for item in ('.tag/subtree', 'src/latest' + subtree_vfs_path):
+        exr = run_get(get_disposition, '--unnamed', item)
+        wvpasseq(0, exr.rc)        
+        validate_tree(subtree_id, subtree_id)
+        verify_only_refs(heads=[], tags=[])
+        
+        exr = run_get(get_disposition, '--unnamed', item,
+                      given=(item, '.tag/obj'))
+        wvpasseq(0, exr.rc)        
+        validate_tree(subtree_id, subtree_id)
+        verify_only_refs(heads=[], tags=('obj',))
+        
+    wvstart(get_disposition + ' --unnamed committish')
+    save_2 = src_info['save-2']
+    commit_2_id = src_info['commit-2-id']
+    for item in ('.tag/commit-2', 'src/' + save_2, 'src'):
+        exr = run_get(get_disposition, '--unnamed', item)
+        wvpasseq(0, exr.rc)        
+        validate_commit(commit_2_id, commit_2_id)
+        verify_only_refs(heads=[], tags=[])
+
+        exr = run_get(get_disposition, '--unnamed', item,
+                      given=(item, '.tag/obj'))
+        wvpasseq(0, exr.rc)        
+        validate_commit(commit_2_id, commit_2_id)
+        verify_only_refs(heads=[], tags=('obj',))
+
+def create_get_src():
+    global bup_cmd, src_info
+    wvstart('preparing')
+    ex((bup_cmd, '-d', 'get-src', 'init'))
+
+    mkdir('src')
+    open('src/unrelated', 'a').close()
+    ex((bup_cmd, '-d', 'get-src', 'index', 'src'))
+    ex((bup_cmd, '-d', 'get-src', 'save', '-tcn', 'unrelated-branch', 'src'))
+
+    ex((bup_cmd, '-d', 'get-src', 'index', '--clear'))
+    rmrf('src')
+    mkdir('src')
+    open('src/zero', 'a').close()
+    ex((bup_cmd, '-d', 'get-src', 'index', 'src'))
+    exr = exo((bup_cmd, '-d', 'get-src', 'save', '-tcn', 'src', 'src'))
+    out = exr.out.splitlines()
+    tree_0_id = out[0]
+    commit_0_id = out[-1]
+    exr = exo((bup_cmd, '-d', 'get-src', 'ls', 'src'))
+    save_0 = exr.out.splitlines()[0]
+    ex(('git', '--git-dir', 'get-src', 'branch', 'src-0', 'src'))
+    ex(('cp', '-a', 'src', 'src-0'))
+    
+    rmrf('src')
+    mkdir('src')
+    mkdir('src/x')
+    mkdir('src/x/y')
+    ex((bup_cmd + ' -d get-src random 1k > src/1'), shell=True)
+    ex((bup_cmd + ' -d get-src random 1k > src/x/2'), shell=True)
+    ex((bup_cmd, '-d', 'get-src', 'index', 'src'))
+    exr = exo((bup_cmd, '-d', 'get-src', 'save', '-tcn', 'src', 'src'))
+    out = exr.out.splitlines()
+    tree_1_id = out[0]
+    commit_1_id = out[-1]
+    exr = exo((bup_cmd, '-d', 'get-src', 'ls', 'src'))
+    save_1 = exr.out.splitlines()[1]
+    ex(('git', '--git-dir', 'get-src', 'branch', 'src-1', 'src'))
+    ex(('cp', '-a', 'src', 'src-1'))
+    
+    # Make a copy the current state of src so we'll have an ancestor.
+    ex(('cp', '-a',
+         'get-src/refs/heads/src', 'get-src/refs/heads/src-ancestor'))
+
+    with open('src/tiny-file', 'a') as f: f.write('xyzzy')
+    ex((bup_cmd, '-d', 'get-src', 'index', 'src'))
+    ex((bup_cmd, '-d', 'get-src', 'tick'))  # Ensure the save names differ
+    exr = exo((bup_cmd, '-d', 'get-src', 'save', '-tcn', 'src', 'src'))
+    out = exr.out.splitlines()
+    tree_2_id = out[0]
+    commit_2_id = out[-1]
+    exr = exo((bup_cmd, '-d', 'get-src', 'ls', 'src'))
+    save_2 = exr.out.splitlines()[2]
+    rename('src', 'src-2')
+
+    src_root = getcwd() + '/src'
+
+    subtree_path = 'src-2/x'
+    subtree_vfs_path = src_root + '/x'
+
+    # No support for "ls -d", so grep...
+    exr = exo((bup_cmd, '-d', 'get-src', 'ls', '-s', 'src/latest' + src_root))
+    out = exr.out.splitlines()
+    subtree_id = None
+    for line in out:
+        if 'x' in line:
+            subtree_id = line.split()[0]
+    assert(subtree_id)
+
+    # With a tiny file, we'll get a single blob, not a chunked tree
+    tinyfile_path = src_root + '/tiny-file'
+    exr = exo((bup_cmd, '-d', 'get-src', 'ls', '-s', 'src/latest' + tinyfile_path))
+    tinyfile_id = exr.out.splitlines()[0].split()[0]
+
+    ex((bup_cmd, '-d', 'get-src', 'tag', 'tinyfile', tinyfile_id))
+    ex((bup_cmd, '-d', 'get-src', 'tag', 'subtree', subtree_id))
+    ex((bup_cmd, '-d', 'get-src', 'tag', 'tree-0', tree_0_id))
+    ex((bup_cmd, '-d', 'get-src', 'tag', 'tree-1', tree_1_id))
+    ex((bup_cmd, '-d', 'get-src', 'tag', 'tree-2', tree_2_id))
+    ex((bup_cmd, '-d', 'get-src', 'tag', 'commit-0', commit_0_id))
+    ex((bup_cmd, '-d', 'get-src', 'tag', 'commit-1', commit_1_id))
+    ex((bup_cmd, '-d', 'get-src', 'tag', 'commit-2', commit_2_id))
+    ex(('git', '--git-dir', 'get-src', 'branch', 'commit-1', commit_1_id))
+    ex(('git', '--git-dir', 'get-src', 'branch', 'commit-2', commit_2_id))
+
+    return {'tinyfile-path' : tinyfile_path,
+            'tinyfile-id' : tinyfile_id,
+            'subtree-id' : subtree_id,
+            'tree-0-id' : tree_0_id,
+            'tree-1-id' : tree_1_id,
+            'tree-2-id' : tree_2_id,
+            'commit-0-id' : commit_0_id,
+            'commit-1-id' : commit_1_id,
+            'commit-2-id' : commit_2_id,
+            'save-1' : save_1,
+            'save-2' : save_2,
+            'subtree-path' : subtree_path,
+            'subtree-vfs-path' : subtree_vfs_path}
+    
+# FIXME: this fails in a strange way:
+#   WVPASS given nothing get --ff not-there
+
+dispositions_to_test = ('get',)
+
+if int(environ.get('BUP_TEST_LEVEL', '0')) >= 11:
+    dispositions_to_test += ('get-on', 'get-to')
+
+if len(sys.argv) == 1:
+    categories = ('replace', 'universal', 'ff', 'append', 'pick', 'new-tag',
+             'unnamed')
+else:
+    categories = sys.argv[1:]
+    
+with test_tempdir('get-') as tmpdir:
+    chdir(tmpdir)
+    try:
+        src_info = create_get_src()
+        for category in categories:
+            for disposition in dispositions_to_test:
+                # given=FOO depends on --replace, so test it early
+                if category == 'replace':
+                    test_replace(disposition, src_info)
+                elif category == 'universal':
+                    test_universal_behaviors(disposition)
+                elif category == 'ff':
+                    test_ff(disposition, src_info)
+                elif category == 'append':
+                    test_append(disposition, src_info)
+                elif category == 'pick':
+                    test_pick(disposition, src_info, force=False)
+                    test_pick(disposition, src_info, force=True)
+                elif category == 'new-tag':
+                    test_new_tag(disposition, src_info)
+                elif category == 'unnamed':
+                    test_unnamed(disposition, src_info)
+                else:
+                    raise Exception('unrecognized get test category')
+    except Exception, ex:
+        chdir(top)
+        raise
+    chdir(top)
+
+wvmsg('checked %d cases' % get_cases_tested)
