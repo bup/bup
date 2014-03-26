@@ -715,7 +715,7 @@ if [ $(t/root-status) = root ]; then
             WVPASS cd testfs-limited/src-restore
             WVFAIL bup meta --extract --file ../../testfs/src.meta
             WVFAIL bup meta --extract --file ../../testfs/src.meta 2>&1 \
-                | WVPASS grep -e '^xattr\.set:' \
+                | WVPASS grep -e "^xattr\.set '" \
                 | WVPASS python -c \
                 'import sys; exit(not len(sys.stdin.readlines()) == 2)'
         ) || exit $?
