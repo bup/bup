@@ -213,7 +213,7 @@ def test_apply_to_path_restricted_access():
     if m.linux_attr and _linux_attr_supported(tmpdir):
         expected_errors.append('Linux chattr: ')
     if metadata.xattr and m.linux_xattr:
-        expected_errors.append('xattr.set: ')
+        expected_errors.append("xattr.set '")
     WVPASS(len(helpers.saved_errors) == len(expected_errors))
     for i in xrange(len(expected_errors)):
         WVPASS(str(helpers.saved_errors[i]).startswith(expected_errors[i]))
