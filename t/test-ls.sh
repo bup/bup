@@ -17,20 +17,16 @@ WVPASS bup init
 WVPASS cd "$tmpdir"
 
 WVPASS mkdir src
-WVPASS touch -t 196907202018 src/.dotfile
-WVPASS bup random 1k > src/file
-WVPASS touch -t 196907202018 src/file
-(WVPASS cd src; WVPASS ln -s file symlink) || exit $?
+WVPASS touch src/.dotfile src/executable
 WVPASS mkfifo src/fifo
-WVPASS touch -t 196907202018 src/fifo
 WVPASS "$top"/t/mksock src/socket
-WVPASS touch -t 196907202018 src/socket
-WVPASS touch -t 196907202018 src/executable
+WVPASS bup random 1k > src/file
 WVPASS chmod u+x src/executable
-WVPASS touch -t 196907202018 src/executable
+WVPASS chmod -R u=rwX,g-rwx,o-rwx .
+WVPASS touch -t 196907202018 src/.dotfile src/*
+(WVPASS cd src; WVPASS ln -s file symlink) || exit $?
 WVPASS touch -t 196907202018 src
 WVPASS touch -t 196907202018 .
-WVPASS chmod -R u=rwX,g-rwx,o-rwx .
 WVPASS bup index src
 WVPASS bup save -n src src
 
