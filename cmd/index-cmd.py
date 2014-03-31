@@ -88,10 +88,12 @@ def update_index(top, excluded_paths, exclude_rxs):
         if opt.verbose>=2 or (opt.verbose==1 and stat.S_ISDIR(pst.st_mode)):
             sys.stdout.write('%s\n' % path)
             sys.stdout.flush()
-            paths_per_sec = total / (time.time() - index_start)
+            elapsed = time.time() - index_start
+            paths_per_sec = total / elapsed if elapsed else 0
             qprogress('Indexing: %d (%d paths/s)\r' % (total, paths_per_sec))
         elif not (total % 128):
-            paths_per_sec = total / (time.time() - index_start)
+            elapsed = time.time() - index_start
+            paths_per_sec = total / elapsed if elapsed else 0
             qprogress('Indexing: %d (%d paths/s)\r' % (total, paths_per_sec))
         total += 1
         while rig.cur and rig.cur.name > path:  # deleted paths
@@ -149,7 +151,8 @@ def update_index(top, excluded_paths, exclude_rxs):
             if not stat.S_ISDIR(pst.st_mode) and pst.st_nlink > 1:
                 hlinks.add_path(path, pst.st_dev, pst.st_ino)
 
-    paths_per_sec = total / (time.time() - index_start)
+    elapsed = time.time() - index_start
+    paths_per_sec = total / elapsed if elapsed else 0
     progress('Indexing: %d, done (%d paths/s).\n' % (total, paths_per_sec))
 
     hlinks.prepare_save()
