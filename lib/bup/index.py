@@ -489,7 +489,7 @@ class Writer:
     def _add(self, ename, entry):
         if self.lastfile and self.lastfile <= ename:
             raise Error('%r must come before %r' 
-                             % (''.join(e.name), ''.join(self.lastfile)))
+                             % (''.join(ename), ''.join(self.lastfile)))
         self.lastfile = ename
         self.level = _golevel(self.level, self.f, ename, entry,
                               self.metastore, self.tmax)
