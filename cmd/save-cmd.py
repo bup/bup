@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import sys, stat, time, math
+from cStringIO import StringIO
 from bup import hashsplit, git, options, index, client, metadata, hlinkdb
 from bup.helpers import *
 from bup.hashsplit import GIT_MODE_TREE, GIT_MODE_FILE, GIT_MODE_SYMLINK
@@ -132,7 +133,11 @@ def _pop(force_tree, dir_metadata=None):
             metalist = [('', dir_metadata)] + metalist[1:]
         sorted_metalist = sorted(metalist, key = lambda x : x[0])
         metadata = ''.join([m[1].encode() for m in sorted_metalist])
-        shalist.append((0100644, '.bupm', w.new_blob(metadata)))
+        metadata_f = StringIO(metadata)
+        mode, id = hashsplit.split_to_blob_or_tree(w.new_blob, w.new_tree,
+                                                   [metadata_f],
+                                                   keep_boundaries=False)
+        shalist.append((mode, '.bupm', id))
     tree = force_tree or w.new_tree(shalist)
     if shalists:
         shalists[-1].append((GIT_MODE_TREE,

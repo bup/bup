@@ -6,6 +6,7 @@ and abstracts internal name mangling and storage from the exposition layer.
 import os, re, stat, time
 from bup import git, metadata
 from helpers import *
+from bup.git import BUP_NORMAL, BUP_CHUNKED
 from bup.hashsplit import GIT_MODE_TREE, GIT_MODE_FILE
 
 EMPTY_SHA='\0'*20
@@ -425,7 +426,9 @@ class Dir(Node):
         assert(type == 'tree')
         for (mode,mangled_name,sha) in git.tree_decode(''.join(it)):
             if mangled_name == '.bupm':
-                self._bupm = File(self, mangled_name, mode, sha, git.BUP_NORMAL)
+                bupmode = stat.S_ISDIR(mode) and BUP_CHUNKED or BUP_NORMAL
+                self._bupm = File(self, mangled_name, GIT_MODE_FILE, sha,
+                                  bupmode)
                 continue
             name = mangled_name
             (name,bupmode) = git.demangle_name(mangled_name)
