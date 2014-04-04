@@ -401,15 +401,18 @@ class Dir(Node):
         self._bupm = None
 
     def _populate_metadata(self):
+        if self._metadata:
+            return
         if not self._subs:
             self._mksubs()
         if not self._bupm:
             return
         meta_stream = self._bupm.open()
-        self._metadata = metadata.Metadata.read(meta_stream)
+        dir_meta = metadata.Metadata.read(meta_stream)
         for sub in self:
             if not stat.S_ISDIR(sub.mode):
                 sub._metadata = metadata.Metadata.read(meta_stream)
+        self._metadata = dir_meta
 
     def _mksubs(self):
         self._subs = {}
