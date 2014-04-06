@@ -235,9 +235,9 @@ WVPASS force-delete buprestore.tmp
 WVPASS bup restore -C buprestore.tmp "/master/latest/$tmpdir/$D/"
 WVPASS touch $D/non-existent-file buprestore.tmp/non-existent-file # else diff fails
 WVPASS diff -ur $D/ buprestore.tmp/
-rm -f split_empty_string.tmp
-WVPASS bup restore split_empty_string.tmp/latest/split_empty_string.tmp
-WVPASSEQ "$(cat split_empty_string.tmp)" ""
+WVPASS force-delete buprestore.tmp
+WVPASS bup restore -C buprestore.tmp split_empty_string.tmp/latest/
+WVPASSEQ "$(cat buprestore.tmp/data)" ""
 
 (
     tmp=testrestore.tmp

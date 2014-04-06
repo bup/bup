@@ -144,9 +144,8 @@ elif pack_writer:  # tree or commit or name
                                             files,
                                             keep_boundaries=opt.keep_boundaries,
                                             progress=prog)
-        dummy_name = git.mangle_name(os.path.basename(opt.name),
-                                     hashsplit.GIT_MODE_FILE, mode)
-        shalist = [(mode, dummy_name, sha)]
+        splitfile_name = git.mangle_name('data', hashsplit.GIT_MODE_FILE, mode)
+        shalist = [(mode, splitfile_name, sha)]
     else:
         shalist = hashsplit.split_to_shalist(
                       pack_writer.new_blob, pack_writer.new_tree, files,
