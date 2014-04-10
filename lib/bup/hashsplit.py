@@ -168,9 +168,10 @@ def split_to_shalist(makeblob, maketree, files,
         return _make_shalist(stacks[-1])[0]
 
 
-def split_to_blob_or_tree(makeblob, maketree, files, keep_boundaries):
+def split_to_blob_or_tree(makeblob, maketree, files,
+                          keep_boundaries, progress=None):
     shalist = list(split_to_shalist(makeblob, maketree,
-                                    files, keep_boundaries))
+                                    files, keep_boundaries, progress))
     if len(shalist) == 1:
         return (shalist[0][0], shalist[0][2])
     elif len(shalist) == 0:

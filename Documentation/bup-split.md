@@ -60,7 +60,9 @@ being the most likely choice.
     will be considered a descendant of the old *name*.
     (Thus, you can continually create new datasets with
     the same name, and later view the history of that
-    dataset to see how it has changed over time.)
+    dataset to see how it has changed over time.)  The original data
+    will also be available as a top-level file named "data" in the VFS,
+    accessible via `bup fuse`, `bup ftp`, etc.
 
 -t, \--tree
 :   output the git tree id of the resulting dataset.
