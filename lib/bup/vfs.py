@@ -163,7 +163,7 @@ class _FileReader(object):
         pass
 
 
-class Node:
+class Node(object):
     """Base class for file representation."""
     def __init__(self, parent, name, mode, hash):
         self.parent = parent
@@ -300,15 +300,20 @@ class Node:
         """Open the current node. It is an error to open a non-file node."""
         raise NotFile('%s is not a regular file' % self.name)
 
-    def _populate_metadata(self):
+    def _populate_metadata(self, force=False):
         # Only Dirs contain .bupm files, so by default, do nothing.
         pass
 
     def metadata(self):
         """Return this Node's Metadata() object, if any."""
-        if self.parent:
-            self.parent._populate_metadata()
+        if not self._metadata and self.parent:
+            self.parent._populate_metadata(force=True)
         return self._metadata
+
+    def release(self):
+        """Release resources that can be automatically restored (at a cost)."""
+        self._metadata = None
+        self._subs = None
 
 
 class File(Node):
@@ -401,8 +406,8 @@ class Dir(Node):
         Node.__init__(self, *args, **kwargs)
         self._bupm = None
 
-    def _populate_metadata(self):
-        if self._metadata:
+    def _populate_metadata(self, force=False):
+        if self._metadata and not force:
             return
         if not self._subs:
             self._mksubs()
@@ -451,6 +456,11 @@ class Dir(Node):
         if not self._subs:
             self._mksubs()
         return self._bupm
+
+    def release(self):
+        """Release restorable resources held by this node."""
+        self._bupm = None
+        super(Dir, self).release()
 
 
 class CommitDir(Node):

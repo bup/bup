@@ -265,6 +265,7 @@ def do_node(top, n, owner_map, meta = None):
     finally:
         if meta_stream:
             meta_stream.close()
+        n.release()
 
 
 handle_ctrl_c()
