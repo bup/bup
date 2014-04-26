@@ -42,7 +42,7 @@ WVPASS chown root:root "$tmpmnt1"
 WVPASS chmod 0700 "$tmpmnt1"
 
 # Create trivial content.
-WVPASS date > "$tmpmnt1/foo"
+WVPASS date > "$tmpmnt1/foo" && sleep 0.1
 WVPASS umount "$tmpmnt1"
 
 # Mount twice, so we'll have the same content with different devices.
