@@ -23,10 +23,14 @@ for target in targets:
     top = os.path.realpath(target)
     proc_mounts = open('/proc/mounts', 'r')
     for line in proc_mounts:
-        _, point, _ = line.split(' ', 2)
+        _, point, fstype, _ = line.split(' ', 3)
         point = mntent_unescape(point)
         if top == point or os.path.commonprefix((top + '/', point)) == top + '/':
-            if subprocess.call(['umount', point]) != 0:
-                exit_status = 1
+            if fstype.startswith('fuse'):
+                if subprocess.call(['fusermount', '-uz', point]) != 0:
+                    exit_status = 1
+            else:
+                if subprocess.call(['umount', '-l', point]) != 0:
+                    exit_status = 1
 
 sys.exit(exit_status)

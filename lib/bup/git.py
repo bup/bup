@@ -764,7 +764,7 @@ def get_commit_dates(refs):
     result = []
     cmd = ['git', 'show', '-s', '--pretty=format:%ct']
     for chunk in batchpipe(cmd, refs, preexec_fn=_gitenv):
-        result += chunk.splitlines()
+        result += [int(x) for x in chunk.splitlines()]
     return result
 
 
