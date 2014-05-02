@@ -77,3 +77,13 @@ def test_grafted_path_components():
              [('', None), ('a', None), ('b', None), ('c', '/'),
               ('foo', '/foo'), ('bar', '/foo/bar')])
     WVEXCEPT(Exception, grafted_path_components, 'foo', [])
+
+
+@wvtest
+def test_readpipe():
+    x = readpipe(['echo', '42'])
+    WVPASSEQ(x, '42\n')
+    try:
+        readpipe(['bash', '-c', 'exit 42'])
+    except Exception, ex:
+        WVPASSEQ(str(ex), "subprocess 'bash -c exit 42' failed with status 42")

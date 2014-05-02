@@ -183,7 +183,7 @@ def readpipe(argv):
     out, err = p.communicate()
     if p.returncode != 0:
         raise Exception('subprocess %r failed with status %d'
-                        % (' '.join(argv), p.retcode))
+                        % (' '.join(argv), p.returncode))
     return out
 
 
