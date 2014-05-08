@@ -126,6 +126,25 @@ def mkdirp(d, mode=None):
             raise
 
 
+_unspecified_next_default = object()
+
+def _fallback_next(it, default=_unspecified_next_default):
+    """Retrieve the next item from the iterator by calling its
+    next() method. If default is given, it is returned if the
+    iterator is exhausted, otherwise StopIteration is raised."""
+
+    if default is _unspecified_next_default:
+        return it.next()
+    else:
+        try:
+            return it.next()
+        except StopIteration:
+            return default
+
+if sys.version_info < (2, 6):
+    next =  _fallback_next
+
+
 def merge_iter(iters, pfreq, pfunc, pfinal, key=None):
     if key:
         samekey = lambda e, pe: getattr(e, key) == getattr(pe, key, None)

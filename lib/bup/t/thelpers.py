@@ -1,8 +1,37 @@
+import helpers
 import math
 import os
 import bup._helpers as _helpers
 from bup.helpers import *
 from wvtest import *
+
+
+@wvtest
+def test_next():
+    # Test whatever you end up with for next() after import '*'.
+    WVPASSEQ(next(iter([]), None), None)
+    x = iter([1])
+    WVPASSEQ(next(x, None), 1)
+    WVPASSEQ(next(x, None), None)
+    x = iter([1])
+    WVPASSEQ(next(x, 'x'), 1)
+    WVPASSEQ(next(x, 'x'), 'x')
+    WVEXCEPT(StopIteration, next, iter([]))
+    x = iter([1])
+    WVPASSEQ(next(x), 1)
+    WVEXCEPT(StopIteration, next, x)
+
+
+@wvtest
+def test_fallback_next():
+    global next
+    orig = next
+    next = helpers._fallback_next
+    try:
+        test_next()
+    finally:
+        next = orig
+
 
 @wvtest
 def test_parse_num():
