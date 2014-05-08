@@ -1,3 +1,4 @@
+import config
 import helpers
 import math
 import os
@@ -116,3 +117,32 @@ def test_readpipe():
         readpipe(['bash', '-c', 'exit 42'])
     except Exception, ex:
         WVPASSEQ(str(ex), "subprocess 'bash -c exit 42' failed with status 42")
+
+
+@wvtest
+def test_batchpipe():
+    for chunk in batchpipe(['echo'], []):
+        WVPASS(False)
+    out = ''
+    for chunk in batchpipe(['echo'], ['42']):
+        out += chunk
+    WVPASSEQ(out, '42\n')
+    try:
+        batchpipe(['bash', '-c'], ['exit 42'])
+    except Exception, ex:
+        WVPASSEQ(str(ex), "subprocess 'bash -c exit 42' failed with status 42")
+    oldmax = config.arg_max
+    args = [str(x) for x in range(6)]
+    # Force batchpipe to break the args into batches of 3.  This
+    # approach assumes all args are the same length.
+    config.arg_max = \
+        helpers._argmax_base(['echo']) + helpers._argmax_args_size(args[:3])
+    batches = batchpipe(['echo'], args)
+    WVPASSEQ(next(batches), '0 1 2\n')
+    WVPASSEQ(next(batches), '3 4 5\n')
+    WVPASSEQ(next(batches, None), None)
+    batches = batchpipe(['echo'], [str(x) for x in range(5)])
+    WVPASSEQ(next(batches), '0 1 2\n')
+    WVPASSEQ(next(batches), '3 4\n')
+    WVPASSEQ(next(batches, None), None)
+    config.arg_max = oldmax

@@ -1,7 +1,10 @@
 """Helper functions and classes for bup."""
 
+from ctypes import sizeof, c_void_p
+from os import environ
 import sys, os, pwd, subprocess, errno, socket, select, mmap, stat, re, struct
-import hashlib, heapq, operator, time, grp
+import config, hashlib, heapq, operator, time, grp
+
 from bup import _version, _helpers
 import bup._helpers as _helpers
 import math
@@ -188,14 +191,47 @@ def unlink(f):
             pass  # it doesn't exist, that's what you asked for
 
 
-def readpipe(argv):
+def readpipe(argv, preexec_fn=None):
     """Run a subprocess and return its output."""
-    p = subprocess.Popen(argv, stdout=subprocess.PIPE)
+    p = subprocess.Popen(argv, stdout=subprocess.PIPE, preexec_fn=preexec_fn)
     out, err = p.communicate()
     if p.returncode != 0:
         raise Exception('subprocess %r failed with status %d'
                         % (' '.join(argv), p.returncode))
     return out
+
+
+def _argmax_base(command):
+    base_size = 2048
+    for c in command:
+        base_size += len(command) + 1
+    for k, v in environ.iteritems():
+        base_size += len(k) + len(v) + 2 + sizeof(c_void_p)
+    return base_size
+
+
+def _argmax_args_size(args):
+    return sum(len(x) + 1 + sizeof(c_void_p) for x in args)
+
+
+def batchpipe(command, args, preexec_fn=None):
+    """If args is not empty, yield the output produced by calling the
+command list with args as a sequence of strings (It may be necessary
+to return multiple strings in order to respect ARG_MAX)."""
+    base_size = _argmax_base(command)
+    while args:
+        room = config.arg_max - base_size
+        i = 0
+        while i < len(args):
+            next_size = _argmax_args_size(args[i:i+1])
+            if room - next_size < 0:
+                break
+            room -= next_size
+            i += 1
+        sub_args = args[:i]
+        args = args[i:]
+        assert(len(sub_args))
+        yield readpipe(command + sub_args, preexec_fn=preexec_fn)
 
 
 def realpath(p):
