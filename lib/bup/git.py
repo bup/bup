@@ -759,11 +759,13 @@ def rev_list(ref, count=None):
         raise GitError, 'git rev-list returned error %d' % rv
 
 
-def rev_get_date(ref):
-    """Get the date of the latest commit on the specified ref."""
-    for (date, commit) in rev_list(ref, count=1):
-        return date
-    raise GitError, 'no such commit %r' % ref
+def get_commit_dates(refs):
+    """Get the dates for the specified commit refs."""
+    result = []
+    cmd = ['git', 'show', '-s', '--pretty=format:%ct']
+    for chunk in batchpipe(cmd, refs, preexec_fn=_gitenv):
+        result += chunk.splitlines()
+    return result
 
 
 def rev_parse(committish):

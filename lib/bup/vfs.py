@@ -523,7 +523,7 @@ class TagDir(Node):
         for (name, sha) in git.list_refs():
             if name.startswith('refs/tags/'):
                 name = name[10:]
-                date = git.rev_get_date(sha.encode('hex'))
+                date = git.get_commit_dates([sha.encode('hex')])[0]
                 commithex = sha.encode('hex')
                 target = '../.commit/%s/%s' % (commithex[:2], commithex[2:])
                 tag1 = FakeSymlink(self, name, target)
@@ -590,10 +590,13 @@ class RefList(Node):
         tag_dir = TagDir(self, '.tag')
         self._subs['.tag'] = tag_dir
 
-        for (name,sha) in git.list_refs():
-            if name.startswith('refs/heads/'):
-                name = name[11:]
-                date = git.rev_get_date(sha.encode('hex'))
-                n1 = BranchList(self, name, sha)
-                n1.ctime = n1.mtime = date
-                self._subs[name] = n1
+        refs_info = [(name[11:], sha) for (name,sha) in git.list_refs() \
+                     if name.startswith('refs/heads/')]
+
+        dates = git.get_commit_dates([sha.encode('hex')
+                                      for (name, sha) in refs_info])
+
+        for (name, sha), date in zip(refs_info, dates):
+            n1 = BranchList(self, name, sha)
+            n1.ctime = n1.mtime = date
+            self._subs[name] = n1
