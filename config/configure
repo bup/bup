@@ -74,4 +74,22 @@ AC_CHECK_FIELD stat st_atimensec sys/types.h sys/stat.h unistd.h
 AC_CHECK_FIELD stat st_mtimensec sys/types.h sys/stat.h unistd.h
 AC_CHECK_FIELD stat st_ctimensec sys/types.h sys/stat.h unistd.h
 
+cat > ../lib/bup/config.py <<EOF
+# Automatically generated file.  Edit config/configure instead of this file.
+EOF
+
+LOGN 'checking for ARG_MAX'
+val_arg_max="$(getconf ARG_MAX)"
+if test $? -ne 0; then
+    AC_FAIL "ERROR: getconf ARG_MAX failed."
+else
+    if ! echo "$val_arg_max" | grep -qE '^[0-9]+$'; then
+        AC_FAIL "ERROR: ARG_MAX does not appear to be an integer: $val_arg_max"
+    fi
+    if ! echo "arg_max = $val_arg_max" >> ../lib/bup/config.py; then
+        AC_FAIL "ERROR: could not write to config.py."
+    fi
+    LOG " ($val_arg_max)"
+fi
+
 AC_OUTPUT config.vars

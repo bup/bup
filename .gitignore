@@ -1,6 +1,7 @@
 /bup
 /cmd/bup-*
 /lib/bup/_version.py
+/lib/bup/config.py
 randomgen
 memtest
 *.o
