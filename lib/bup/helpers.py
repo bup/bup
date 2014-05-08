@@ -126,12 +126,23 @@ def mkdirp(d, mode=None):
             raise
 
 
-def next(it):
-    """Get the next item from an iterator, None if we reached the end."""
-    try:
+_unspecified_next_default = object()
+
+def _fallback_next(it, default=_unspecified_next_default):
+    """Retrieve the next item from the iterator by calling its
+    next() method. If default is given, it is returned if the
+    iterator is exhausted, otherwise StopIteration is raised."""
+
+    if default is _unspecified_next_default:
         return it.next()
-    except StopIteration:
-        return None
+    else:
+        try:
+            return it.next()
+        except StopIteration:
+            return default
+
+if sys.version_info < (2, 6):
+    next =  _fallback_next
 
 
 def merge_iter(iters, pfreq, pfunc, pfinal, key=None):
@@ -142,7 +153,7 @@ def merge_iter(iters, pfreq, pfunc, pfinal, key=None):
     count = 0
     total = sum(len(it) for it in iters)
     iters = (iter(it) for it in iters)
-    heap = ((next(it),it) for it in iters)
+    heap = ((next(it, None),it) for it in iters)
     heap = [(e,it) for e,it in heap if e]
 
     heapq.heapify(heap)
