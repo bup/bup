@@ -1222,9 +1222,9 @@ PyMODINIT_FUNC init_helpers(void)
     if (m == NULL)
         return;
 
-#ifdef HAVE_UTIMENSAT
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wtautological-compare" // For INTEGER_TO_PY().
+#ifdef HAVE_UTIMENSAT
     {
         PyObject *value;
         value = INTEGER_TO_PY(AT_FDCWD);
@@ -1237,8 +1237,20 @@ PyMODINIT_FUNC init_helpers(void)
         PyObject_SetAttrString(m, "UTIME_NOW", value);
         Py_DECREF(value);
     }
-#pragma clang diagnostic pop  // ignored "-Wtautological-compare"
 #endif
+    {
+        PyObject *value;
+        const long arg_max = sysconf(_SC_ARG_MAX);
+        if (arg_max == -1)
+        {
+            fprintf(stderr, "Cannot find SC_ARG_MAX, please report a bug.\n");
+            exit(1);
+        }
+        value = INTEGER_TO_PY(arg_max);
+        PyObject_SetAttrString(m, "SC_ARG_MAX", value);
+        Py_DECREF(value);
+    }
+#pragma clang diagnostic pop  // ignored "-Wtautological-compare"
 
     e = getenv("BUP_FORCE_TTY");
     istty2 = isatty(2) || (atoi(e ? e : "0") & 2);
