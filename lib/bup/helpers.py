@@ -3,7 +3,7 @@
 from ctypes import sizeof, c_void_p
 from os import environ
 import sys, os, pwd, subprocess, errno, socket, select, mmap, stat, re, struct
-import config, hashlib, heapq, operator, time, grp
+import hashlib, heapq, operator, time, grp
 
 from bup import _version, _helpers
 import bup._helpers as _helpers
@@ -201,6 +201,15 @@ def readpipe(argv, preexec_fn=None):
     return out
 
 
+try:
+    _arg_max = os.sysconf('SC_ARG_MAX')
+    if _arg_max == -1:
+        raise ValueError()
+except ValueError, ex:
+    print >> sys.stderr, 'Cannot find SC_ARG_MAX, please report a bug.'
+    sys.exit(1)
+
+
 def _argmax_base(command):
     base_size = 2048
     for c in command:
@@ -214,13 +223,17 @@ def _argmax_args_size(args):
     return sum(len(x) + 1 + sizeof(c_void_p) for x in args)
 
 
-def batchpipe(command, args, preexec_fn=None):
+def batchpipe(command, args, preexec_fn=None, arg_max=None):
     """If args is not empty, yield the output produced by calling the
 command list with args as a sequence of strings (It may be necessary
 to return multiple strings in order to respect ARG_MAX)."""
+    # The optional arg_max arg is a workaround for an issue with the
+    # current wvtest behavior.
+    if not arg_max:
+        arg_max = _arg_max
     base_size = _argmax_base(command)
     while args:
-        room = config.arg_max - base_size
+        room = arg_max - base_size
         i = 0
         while i < len(args):
             next_size = _argmax_args_size(args[i:i+1])
