@@ -5,7 +5,7 @@ from os import environ
 import sys, os, pwd, subprocess, errno, socket, select, mmap, stat, re, struct
 import hashlib, heapq, operator, time, grp
 
-from bup import _version, _helpers
+from bup import _helpers
 import bup._helpers as _helpers
 import math
 
@@ -944,30 +944,3 @@ def grafted_path_components(graft_points, path):
     return path_components(clean_path)
 
 Sha1 = hashlib.sha1
-
-def version_date():
-    """Format bup's version date string for output."""
-    return _version.DATE.split(' ')[0]
-
-
-def version_commit():
-    """Get the commit hash of bup's current version."""
-    return _version.COMMIT
-
-
-def version_tag():
-    """Format bup's version tag (the official version number).
-
-    When generated from a commit other than one pointed to with a tag, the
-    returned string will be "unknown-" followed by the first seven positions of
-    the commit hash.
-    """
-    names = _version.NAMES.strip()
-    assert(names[0] == '(')
-    assert(names[-1] == ')')
-    names = names[1:-1]
-    l = [n.strip() for n in names.split(',')]
-    for n in l:
-        if n.startswith('tag: bup-'):
-            return n[9:]
-    return 'unknown-%s' % _version.COMMIT[:7]
