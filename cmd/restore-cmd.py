@@ -20,6 +20,9 @@ q,quiet     don't show progress meter
 
 total_restored = 0
 
+# stdout should be flushed after each line, even when not connected to a tty
+sys.stdout.flush()
+sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 1)
 
 def verbose1(s):
     if opt.verbose >= 1:
