@@ -68,11 +68,8 @@ is_reverse = os.environ.get('BUP_SERVER_REVERSE')
 if is_reverse and opt.remote:
     o.fatal("don't use -r in reverse mode; it's automatic")
 
-if opt.name:
-    if opt.name.startswith('.'):
-        o.fatal('backup set names cannot start with "."')
-    if '/' in opt.name:
-        o.fatal('backup set names cannot contain "/"')
+if opt.name and opt.name.startswith('.'):
+    o.fatal("'%s' is not a valid branch name" % opt.name)
 refname = opt.name and 'refs/heads/%s' % opt.name or None
 if opt.remote or is_reverse:
     cli = client.Client(opt.remote)
