@@ -53,6 +53,7 @@ class MetaStoreWriter:
         # Map metadata hashes to bupindex.meta offsets.
         self._offsets = {}
         self._filename = filename
+        self._file = None
         # FIXME: see how slow this is; does it matter?
         m_file = open(filename, 'ab+')
         try:
