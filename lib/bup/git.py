@@ -760,12 +760,29 @@ def rev_list(ref, count=None):
 
 
 def get_commit_dates(refs):
-    """Get the dates for the specified commit refs."""
+    """Get the dates for the specified commit refs.  For now, every unique
+       string in refs must resolve to a different commit or this
+       function will fail."""
     result = []
     cmd = ['git', 'show', '-s', '--pretty=format:%ct']
     for chunk in batchpipe(cmd, refs, preexec_fn=_gitenv):
         result += [int(x) for x in chunk.splitlines()]
-    return result
+    if len(result) == len(refs):
+        return result
+    # git show suppressed duplicates -- fix it
+    ref_dates = {}
+    corrected_result = []
+    dates = iter(result)
+    for ref in refs:
+        prev_date = ref_dates.get(ref)
+        if prev_date:
+            corrected_result.append(prev_date)
+        else:
+            date = next(dates)
+            ref_dates[ref] = date
+            corrected_result.append(date)
+    assert(next(dates, None) is None)
+    return corrected_result
 
 
 def rev_parse(committish):
