@@ -191,3 +191,61 @@ def test_check_repo_or_die():
         os.chdir(orig_cwd)
     if wvfailure_count() == initial_failures:
         subprocess.call(['rm', '-rf', tmpdir])
+
+
+@wvtest
+def test_commit_parsing():
+    def showval(commit, val):
+        return readpipe(['git', 'show', '-s',
+                         '--pretty=format:%s' % val, commit]).strip()
+    initial_failures = wvfailure_count()
+    orig_cwd = os.getcwd()
+    tmpdir = tempfile.mkdtemp(dir=bup_tmp, prefix='bup-tgit-')
+    workdir = tmpdir + "/work"
+    repodir = workdir + '/.git'
+    try:
+        readpipe(['git', 'init', workdir])
+        os.environ['GIT_DIR'] = os.environ['BUP_DIR'] = repodir
+        git.check_repo_or_die(repodir)
+        os.chdir(workdir)
+        with open('foo', 'w') as f:
+            print >> f, 'bar'
+        readpipe(['git', 'add', '.'])
+        readpipe(['git', 'commit', '-am', 'Do something',
+                  '--author', 'Someone <someone@somewhere>',
+                  '--date', 'Sat Oct 3 19:48:49 2009 -0400'])
+        commit = readpipe(['git', 'show-ref', '-s', 'master']).strip()
+        parents = showval(commit, '%P')
+        tree = showval(commit, '%T')
+        cname = showval(commit, '%cn')
+        cmail = showval(commit, '%ce')
+        cdate = showval(commit, '%ct')
+        coffs = showval(commit, '%ci')
+        coffs = coffs[-5:]
+        coff = (int(coffs[-4:-2]) * 60 * 60) + (int(coffs[-2:]) * 60)
+        if coffs[-5] == '-':
+            coff = - coff
+        commit_items = git.get_commit_items(commit, git.cp())
+        WVPASSEQ(commit_items.parents, [])
+        WVPASSEQ(commit_items.tree, tree)
+        WVPASSEQ(commit_items.author_name, 'Someone')
+        WVPASSEQ(commit_items.author_mail, 'someone@somewhere')
+        WVPASSEQ(commit_items.author_sec, 1254613729)
+        WVPASSEQ(commit_items.author_offset, -(4 * 60 * 60))
+        WVPASSEQ(commit_items.committer_name, cname)
+        WVPASSEQ(commit_items.committer_mail, cmail)
+        WVPASSEQ(commit_items.committer_sec, int(cdate))
+        WVPASSEQ(commit_items.committer_offset, coff)
+        WVPASSEQ(commit_items.message, 'Do something\n')
+        with open('bar', 'w') as f:
+            print >> f, 'baz'
+        readpipe(['git', 'add', '.'])
+        readpipe(['git', 'commit', '-am', 'Do something else'])
+        child = readpipe(['git', 'show-ref', '-s', 'master']).strip()
+        parents = showval(child, '%P')
+        commit_items = git.get_commit_items(child, git.cp())
+        WVPASSEQ(commit_items.parents, [commit])
+    finally:
+        os.chdir(orig_cwd)
+    if wvfailure_count() == initial_failures:
+        subprocess.call(['rm', '-rf', tmpdir])

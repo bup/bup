@@ -3,6 +3,8 @@ bup repositories are in Git format. This library allows us to
 interact with the Git data structures.
 """
 import os, sys, zlib, time, subprocess, struct, stat, re, tempfile, glob
+from collections import namedtuple
+
 from bup.helpers import *
 from bup import _helpers, path, midx, bloom, xstat
 
@@ -22,6 +24,66 @@ _total_steps = 0
 
 class GitError(Exception):
     pass
+
+
+def parse_tz_offset(s):
+    """UTC offset in seconds."""
+    tz_off = (int(s[1:3]) * 60 * 60) + (int(s[3:5]) * 60)
+    if s[0] == '-':
+        return - tz_off
+    return tz_off
+
+
+# FIXME: derived from http://git.rsbx.net/Documents/Git_Data_Formats.txt
+# Make sure that's authoritative.
+_start_end_char = r'[^ .,:;<>"\'\0\n]'
+_content_char = r'[^\0\n<>]'
+_safe_str_rx = '(?:%s{1,2}|(?:%s%s*%s))' \
+    % (_start_end_char,
+       _start_end_char, _content_char, _start_end_char)
+_tz_rx = r'[-+]\d\d[0-5]\d'
+_parent_rx = r'(?:parent [abcdefABCDEF0123456789]{40}\n)'
+_commit_rx = re.compile(r'''tree (?P<tree>[abcdefABCDEF0123456789]{40})
+(?P<parents>%s*)author (?P<author_name>%s) <(?P<author_mail>%s)> (?P<asec>\d+) (?P<atz>%s)
+committer (?P<committer_name>%s) <(?P<committer_mail>%s)> (?P<csec>\d+) (?P<ctz>%s)
+
+(?P<message>(?:.|\n)*)''' % (_parent_rx,
+                             _safe_str_rx, _safe_str_rx, _tz_rx,
+                             _safe_str_rx, _safe_str_rx, _tz_rx))
+_parent_hash_rx = re.compile(r'\s*parent ([abcdefABCDEF0123456789]{40})\s*')
+
+
+# Note that the author_sec and committer_sec values are (UTC) epoch seconds.
+CommitInfo = namedtuple('CommitInfo', ['tree', 'parents',
+                                       'author_name', 'author_mail',
+                                       'author_sec', 'author_offset',
+                                       'committer_name', 'committer_mail',
+                                       'committer_sec', 'committer_offset',
+                                       'message'])
+
+def parse_commit(content):
+    commit_match = re.match(_commit_rx, content)
+    if not commit_match:
+        raise Exception('cannot parse commit %r' % content)
+    matches = commit_match.groupdict()
+    return CommitInfo(tree=matches['tree'],
+                      parents=re.findall(_parent_hash_rx, matches['parents']),
+                      author_name=matches['author_name'],
+                      author_mail=matches['author_mail'],
+                      author_sec=int(matches['asec']),
+                      author_offset=parse_tz_offset(matches['atz']),
+                      committer_name=matches['committer_name'],
+                      committer_mail=matches['committer_mail'],
+                      committer_sec=int(matches['csec']),
+                      committer_offset=parse_tz_offset(matches['ctz']),
+                      message=matches['message'])
+
+
+def get_commit_items(id, cp):
+    commit_it = cp.get(id)
+    assert(commit_it.next() == 'commit')
+    commit_content = ''.join(commit_it)
+    return parse_commit(commit_content)
 
 
 def repo(sub = ''):
@@ -764,25 +826,10 @@ def get_commit_dates(refs):
        string in refs must resolve to a different commit or this
        function will fail."""
     result = []
-    cmd = ['git', 'show', '-s', '--pretty=format:%ct']
-    for chunk in batchpipe(cmd, refs, preexec_fn=_gitenv):
-        result += [int(x) for x in chunk.splitlines()]
-    if len(result) == len(refs):
-        return result
-    # git show suppressed duplicates -- fix it
-    ref_dates = {}
-    corrected_result = []
-    dates = iter(result)
     for ref in refs:
-        prev_date = ref_dates.get(ref)
-        if prev_date:
-            corrected_result.append(prev_date)
-        else:
-            date = next(dates)
-            ref_dates[ref] = date
-            corrected_result.append(date)
-    assert(next(dates, None) is None)
-    return corrected_result
+        commit = get_commit_items(ref, cp())
+        result.append(commit.author_sec)
+    return result
 
 
 def rev_parse(committish):
