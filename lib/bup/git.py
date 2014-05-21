@@ -1065,6 +1065,20 @@ class CatPipe:
         except StopIteration:
             log('booger!\n')
 
+
+_cp = (None, None)
+
+def cp():
+    """Create a CatPipe object or reuse an already existing one."""
+    global _cp
+    cp_dir, cp = _cp
+    cur_dir = os.path.realpath(repo())
+    if cur_dir != cp_dir:
+        cp = CatPipe()
+        _cp = (cur_dir, cp)
+    return cp
+
+
 def tags():
     """Return a dictionary of all tags in the form {hash: [tag_names, ...]}."""
     tags = {}

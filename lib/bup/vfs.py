@@ -6,18 +6,11 @@ and abstracts internal name mangling and storage from the exposition layer.
 import os, re, stat, time
 from bup import git, metadata
 from helpers import *
-from bup.git import BUP_NORMAL, BUP_CHUNKED
+from bup.git import BUP_NORMAL, BUP_CHUNKED, cp
 from bup.hashsplit import GIT_MODE_TREE, GIT_MODE_FILE
 
 EMPTY_SHA='\0'*20
 
-_cp = None
-def cp():
-    """Create a git.CatPipe object or reuse the already existing one."""
-    global _cp
-    if not _cp:
-        _cp = git.CatPipe()
-    return _cp
 
 class NodeError(Exception):
     """VFS base exception."""
