@@ -81,56 +81,65 @@ def _do_midx(outdir, outfilename, infilenames, prefixstr):
     inp = []
     total = 0
     allfilenames = []
-    for name in infilenames:
-        ix = git.open_idx(name)
-        inp.append((
-            ix.map,
-            len(ix),
-            ix.sha_ofs,
-            isinstance(ix, midx.PackMidx) and ix.which_ofs or 0,
-            len(allfilenames),
-        ))
-        for n in ix.idxnames:
-            allfilenames.append(os.path.basename(n))
-        total += len(ix)
-    inp.sort(lambda x,y: cmp(str(y[0][y[2]:y[2]+20]),str(x[0][x[2]:x[2]+20])))
+    midxs = []
+    try:
+        for name in infilenames:
+            ix = git.open_idx(name)
+            midxs.append(ix)
+            inp.append((
+                ix.map,
+                len(ix),
+                ix.sha_ofs,
+                isinstance(ix, midx.PackMidx) and ix.which_ofs or 0,
+                len(allfilenames),
+            ))
+            for n in ix.idxnames:
+                allfilenames.append(os.path.basename(n))
+            total += len(ix)
+        inp.sort(lambda x,y: cmp(str(y[0][y[2]:y[2]+20]),str(x[0][x[2]:x[2]+20])))
 
-    if not _first: _first = outdir
-    dirprefix = (_first != outdir) and git.repo_rel(outdir)+': ' or ''
-    debug1('midx: %s%screating from %d files (%d objects).\n'
-           % (dirprefix, prefixstr, len(infilenames), total))
-    if (opt.auto and (total < 1024 and len(infilenames) < 3)) \
-       or ((opt.auto or opt.force) and len(infilenames) < 2) \
-       or (opt.force and not total):
-        debug1('midx: nothing to do.\n')
-        return
+        if not _first: _first = outdir
+        dirprefix = (_first != outdir) and git.repo_rel(outdir)+': ' or ''
+        debug1('midx: %s%screating from %d files (%d objects).\n'
+               % (dirprefix, prefixstr, len(infilenames), total))
+        if (opt.auto and (total < 1024 and len(infilenames) < 3)) \
+           or ((opt.auto or opt.force) and len(infilenames) < 2) \
+           or (opt.force and not total):
+            debug1('midx: nothing to do.\n')
+            return
 
-    pages = int(total/SHA_PER_PAGE) or 1
-    bits = int(math.ceil(math.log(pages, 2)))
-    entries = 2**bits
-    debug1('midx: table size: %d (%d bits)\n' % (entries*4, bits))
+        pages = int(total/SHA_PER_PAGE) or 1
+        bits = int(math.ceil(math.log(pages, 2)))
+        entries = 2**bits
+        debug1('midx: table size: %d (%d bits)\n' % (entries*4, bits))
 
-    unlink(outfilename)
-    f = open(outfilename + '.tmp', 'w+b')
-    f.write('MIDX')
-    f.write(struct.pack('!II', midx.MIDX_VERSION, bits))
-    assert(f.tell() == 12)
+        unlink(outfilename)
+        f = open(outfilename + '.tmp', 'w+b')
+        f.write('MIDX')
+        f.write(struct.pack('!II', midx.MIDX_VERSION, bits))
+        assert(f.tell() == 12)
 
-    f.truncate(12 + 4*entries + 20*total + 4*total)
-    f.flush()
-    fdatasync(f.fileno())
+        f.truncate(12 + 4*entries + 20*total + 4*total)
+        f.flush()
+        fdatasync(f.fileno())
 
-    fmap = mmap_readwrite(f, close=False)
+        fmap = mmap_readwrite(f, close=False)
 
-    count = merge_into(fmap, bits, total, inp)
-    del fmap # Assume this calls msync() now.
+        count = merge_into(fmap, bits, total, inp)
+        del fmap # Assume this calls msync() now.
+    finally:
+        for ix in midxs:
+            if isinstance(ix, midx.PackMidx):
+                ix.close()
+        midxs = None
+        inp = None
 
     f.seek(0, os.SEEK_END)
     f.write('\0'.join(allfilenames))
     f.close()
     os.rename(outfilename + '.tmp', outfilename)
 
-    # this is just for testing
+    # This is just for testing (if you enable this, don't clear inp above)
     if 0:
         p = midx.PackMidx(outfilename)
         assert(len(p.idxnames) == len(infilenames))
