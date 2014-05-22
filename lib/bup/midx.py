@@ -18,6 +18,7 @@ class PackMidx:
     def __init__(self, filename):
         self.name = filename
         self.force_keep = False
+        self.map = None
         assert(filename.endswith('.midx'))
         self.map = mmap_read(open(filename))
         if str(self.map[0:4]) != 'MIDX':
@@ -46,6 +47,9 @@ class PackMidx:
         self.whichlist = buffer(self.map, self.which_ofs, nsha*4)
         self.idxnames = str(self.map[self.which_ofs + 4*nsha:]).split('\0')
 
+    def __del__(self):
+        self.close()
+
     def _init_failed(self):
         self.bits = 0
         self.entries = 1
@@ -66,6 +70,11 @@ class PackMidx:
 
     def _get_idxname(self, i):
         return self.idxnames[self._get_idx_i(i)]
+
+    def close(self):
+        if self.map is not None:
+            self.map.close()
+            self.map = None
 
     def exists(self, hash, want_source=False):
         """Return nonempty if the object exists in the index files."""
