@@ -281,8 +281,6 @@ class Node(object):
 
     def nlinks(self):
         """Get the number of hard links to the current node."""
-        if self._subs == None:
-            self._mksubs()
         return 1
 
     def size(self):
