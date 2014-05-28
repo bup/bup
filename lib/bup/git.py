@@ -468,6 +468,7 @@ class PackIdxList:
                                     '  used by %s\n') % (n, mxf))
                                 broken = True
                         if broken:
+                            mx.close()
                             del mx
                             unlink(full)
                         else:
@@ -489,6 +490,7 @@ class PackIdxList:
                     elif not ix.force_keep:
                         debug1('midx: removing redundant: %s\n'
                                % os.path.basename(ix.name))
+                        ix.close()
                         unlink(ix.name)
             for full in glob.glob(os.path.join(self.dir,'*.idx')):
                 if not d.get(full):
