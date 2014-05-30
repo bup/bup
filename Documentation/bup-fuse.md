@@ -39,6 +39,14 @@ should unmount it with `umount`(8).
 :   permit other users to access the filesystem. Necessary for
     exporting the filesystem via Samba, for example.
 
+\--meta
+:   report some of the original metadata (when available) for the
+    mounted paths (currently the uid, gid, mode, and timestamps).
+    Without this, only generic values will be presented.  This option
+    is not yet enabled by default because it may negatively affect
+    performance, and note that any timestamps before 1970-01-01 UTC
+    (i.e. before the Unix epoch) will be presented as 1970-01-01 UTC.
+
 # EXAMPLES
     rm -rf /tmp/buptest
     mkdir /tmp/buptest

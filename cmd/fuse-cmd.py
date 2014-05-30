@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import sys, os, errno
-from bup import options, git, vfs
+from bup import options, git, vfs, xstat
 from bup.helpers import *
 try:
     import fuse
@@ -52,9 +52,10 @@ def cache_get(top, path):
     
 
 class BupFs(fuse.Fuse):
-    def __init__(self, top):
+    def __init__(self, top, meta=False):
         fuse.Fuse.__init__(self)
         self.top = top
+        self.meta = meta
     
     def getattr(self, path):
         log('--getattr(%r)\n' % path)
@@ -63,10 +64,16 @@ class BupFs(fuse.Fuse):
             st = Stat()
             st.st_mode = node.mode
             st.st_nlink = node.nlinks()
-            st.st_size = node.size()
-            st.st_mtime = node.mtime
-            st.st_ctime = node.ctime
-            st.st_atime = node.atime
+            st.st_size = node.size()  # Until/unless we store the size in m.
+            if self.meta:
+                m = node.metadata()
+                if m:
+                    st.st_mode = m.mode
+                    st.st_uid = m.uid
+                    st.st_gid = m.gid
+                    st.st_atime = max(0, xstat.fstime_floor_secs(m.atime))
+                    st.st_mtime = max(0, xstat.fstime_floor_secs(m.mtime))
+                    st.st_ctime = max(0, xstat.fstime_floor_secs(m.ctime))
             return st
         except vfs.NoSuchFile:
             return -errno.ENOENT
@@ -114,6 +121,7 @@ bup fuse [-d] [-f] <mountpoint>
 d,debug   increase debug level
 f,foreground  run in foreground
 o,allow-other allow other users to access the filesystem
+meta          report original metadata for paths when available
 """
 o = options.Options(optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
@@ -123,7 +131,7 @@ if len(extra) != 1:
 
 git.check_repo_or_die()
 top = vfs.RefList(None)
-f = BupFs(top)
+f = BupFs(top, meta=opt.meta)
 f.fuse_args.mountpoint = extra[0]
 if opt.debug:
     f.fuse_args.add('debug')
