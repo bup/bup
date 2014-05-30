@@ -202,7 +202,7 @@ l--------- ?/?"
 
 
 WVSTART "ls (dates TZ != UTC)"
-export TZ=US/Central
+export TZ=America/Chicago
 symlink_date_central="$(bup ls -l src/latest"$tmpdir"/src | grep symlink)"
 symlink_date_central="$(echo "$symlink_date_central" \
   | perl -ne 'm/.*? (\d+) (\d\d\d\d-\d\d-\d\d \d\d:\d\d)/ and print $2')"
