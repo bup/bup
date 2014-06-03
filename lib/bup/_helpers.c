@@ -39,6 +39,14 @@
 #define BUP_HAVE_FILE_ATTRS 1
 #endif
 
+/*
+ * Check for incomplete UTIMENSAT support (NetBSD 6), and if so,
+ * pretend we don't have it.
+ */
+#if !defined(AT_FDCWD) || !defined(AT_SYMLINK_NOFOLLOW)
+#undef HAVE_UTIMENSAT
+#endif
+
 #ifndef FS_NOCOW_FL
 // Of course, this assumes it's a bitfield value.
 #define FS_NOCOW_FL 0
