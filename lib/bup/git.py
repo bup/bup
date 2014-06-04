@@ -152,6 +152,7 @@ def mangle_name(name, mode, gitmode):
     disambiguate normal files from segmented ones.
     """
     if stat.S_ISREG(mode) and not stat.S_ISREG(gitmode):
+        assert(stat.S_ISDIR(gitmode))
         return name + '.bup'
     elif name.endswith('.bup') or name[:-1].endswith('.bup'):
         return name + '.bupl'
