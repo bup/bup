@@ -149,7 +149,7 @@ def mangle_name(name, mode, gitmode):
     """Mangle a file name to present an abstract name for segmented files.
     Mangled file names will have the ".bup" extension added to them. If a
     file's name already ends with ".bup", a ".bupl" extension is added to
-    disambiguate normal files from semgmented ones.
+    disambiguate normal files from segmented ones.
     """
     if stat.S_ISREG(mode) and not stat.S_ISREG(gitmode):
         return name + '.bup'
@@ -167,9 +167,9 @@ def demangle_name(name):
     the following:
 
     * BUP_NORMAL  : files that should be read as-is from the repository
-    * BUP_CHUNKED : files that were chunked and need to be assembled
+    * BUP_CHUNKED : files that were chunked and need to be reassembled
 
-    For more information on the name mangling algorythm, see mangle_name()
+    For more information on the name mangling algorithm, see mangle_name()
     """
     if name.endswith('.bupl'):
         return (name[:-5], BUP_NORMAL)
