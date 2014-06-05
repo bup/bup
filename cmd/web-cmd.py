@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import sys, stat, urllib, mimetypes, posixpath, time
+import sys, stat, urllib, mimetypes, posixpath, time, webbrowser
 from bup import options, git, vfs
 from bup.helpers import *
 try:
@@ -184,6 +184,7 @@ optspec = """
 bup web [[hostname]:port]
 --
 human-readable    display human readable file sizes (i.e. 3.9K, 4.7M)
+browser           open the site in the default browser
 """
 o = options.Options(optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
@@ -223,6 +224,9 @@ if __name__ == "__main__":
         sock = http_server._sockets.values()[0]
 
     print "Serving HTTP on %s:%d..." % sock.getsockname()
+
+    if opt.browser:
+        webbrowser.open('http://' + address[0] + ':' + str(address[1]))
+
     loop = tornado.ioloop.IOLoop.instance()
     loop.start()
-
