@@ -225,8 +225,8 @@ if __name__ == "__main__":
 
     print "Serving HTTP on %s:%d..." % sock.getsockname()
 
-    if opt.browser:
-        webbrowser.open('http://' + address[0] + ':' + str(address[1]))
-
     loop = tornado.ioloop.IOLoop.instance()
+    if opt.browser:
+        browser_addr = 'http://' + address[0] + ':' + str(address[1])
+        loop.add_callback(lambda : webbrowser.open(browser_addr))
     loop.start()
