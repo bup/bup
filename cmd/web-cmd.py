@@ -143,6 +143,8 @@ class BupRequestHandler(tornado.web.RequestHandler):
                 self.request.connection.stream.write(blob,
                                                      callback=lambda: me(me))
             write_more(write_more)
+        else:
+            self.finish()
 
     def _guess_type(self, path):
         """Guess the type of a file.
