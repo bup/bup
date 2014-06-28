@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 import sys, stat, time, math
 from cStringIO import StringIO
+from errno import EACCES
+
 from bup import hashsplit, git, options, index, client, metadata, hlinkdb
 from bup.helpers import *
 from bup.hashsplit import GIT_MODE_TREE, GIT_MODE_FILE, GIT_MODE_SYMLINK
@@ -185,10 +187,13 @@ def progress_report(n):
 
 indexfile = opt.indexfile or git.repo('bupindex')
 r = index.Reader(indexfile)
-if not os.access(indexfile + '.meta', os.W_OK|os.R_OK):
-    log('error: cannot access "%s"; have you run bup index?' % indexfile)
+try:
+    msr = index.MetaStoreReader(indexfile + '.meta')
+except IOError, ex:
+    if ex.errno != EACCES:
+        raise
+    log('error: cannot access %r; have you run bup index?' % indexfile)
     sys.exit(1)
-msr = index.MetaStoreReader(indexfile + '.meta')
 hlink_db = hlinkdb.HLinkDB(indexfile + '.hlink')
 
 def already_saved(ent):
