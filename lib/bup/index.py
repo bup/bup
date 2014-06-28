@@ -30,6 +30,7 @@ class Error(Exception):
 
 class MetaStoreReader:
     def __init__(self, filename):
+        self._file = None
         self._file = open(filename, 'rb')
 
     def close(self):
