@@ -53,7 +53,7 @@ come after its children, making this easy.
 
 \--exclude-rx-from=*filename*
 :   read --exclude-rx patterns from *filename*, one pattern per-line
-    (may be repeated).
+    (may be repeated).  Ignore completely empty lines.
 
 \--profile
 :   print profiling information upon completion.  Useful

@@ -171,7 +171,7 @@ does, due to the accommodations described above.
 
 \--exclude-rx-from=*filename*
 :   read --exclude-rx patterns from *filename*, one pattern per-line
-    (may be repeated).
+    (may be repeated).  Ignore completely empty lines.
 
 \--no-check-device
 :   don't mark a an entry invalid if the device number (stat(2)

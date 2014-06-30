@@ -174,7 +174,10 @@ WVPASS mkdir src/sub1
 WVPASS mkdir src/sub2
 WVPASS touch src/sub1/a
 WVPASS touch src/sub2/b
-WVPASS echo "^$(pwd)/src/sub1/" > exclude-rx-file
+# exclude-rx-file includes blank lines to check that we ignore them.
+WVPASS echo "^$(pwd)/src/sub1/
+
+" > exclude-rx-file
 WVPASS bup index -u src --exclude-rx-from exclude-rx-file
 WVPASS bup save --strip -n bupdir src
 WVPASS bup restore -C buprestore.tmp /bupdir/latest/

@@ -835,6 +835,8 @@ def parse_rx_excludes(options, fatal):
                 raise fatal("couldn't read %s" % parameter)
             for pattern in f.readlines():
                 spattern = pattern.rstrip('\n')
+                if not spattern:
+                    continue
                 try:
                     excluded_patterns.append(re.compile(spattern))
                 except re.error, ex:

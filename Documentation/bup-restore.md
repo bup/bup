@@ -119,7 +119,7 @@ See the EXAMPLES section for a demonstration.
 
 \--exclude-rx-from=*filename*
 :   read --exclude-rx patterns from *filename*, one pattern per-line
-    (may be repeated).
+    (may be repeated).  Ignore completely empty lines.
 
 \--map-user *old*=*new*
 :   for every path, restore the *old* (saved) user name as *new*.
