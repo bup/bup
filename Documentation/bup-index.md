@@ -152,7 +152,7 @@ does, due to the accommodations described above.
 
 \--exclude-from=*filename*
 :   read --exclude paths from *filename*, one path per-line (may be
-    repeated).
+    repeated).  Ignore completely empty lines.
 
 \--exclude-rx=*pattern*
 :   exclude any path matching *pattern*, which must be a Python regular

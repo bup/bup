@@ -812,7 +812,10 @@ def parse_excludes(options, fatal):
             except IOError, e:
                 raise fatal("couldn't read %s" % parameter)
             for exclude_path in f.readlines():
-                excluded_paths.append(realpath(exclude_path.strip()))
+                # FIXME: perhaps this should be rstrip('\n')
+                exclude_path = realpath(exclude_path.strip())
+                if exclude_path:
+                    excluded_paths.append(exclude_path)
     return sorted(frozenset(excluded_paths))
 
 

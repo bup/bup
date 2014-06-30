@@ -43,7 +43,7 @@ come after its children, making this easy.
 
 \--exclude-from=*filename*
 :   read --exclude paths from *filename*, one path per-line (may be
-    repeated).
+    repeated).  Ignore completely empty lines.
     
 \--exclude-rx=*pattern*
 :   exclude any path matching *pattern*.  See `bup-index`(1) for
