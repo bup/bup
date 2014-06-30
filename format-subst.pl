@@ -8,18 +8,25 @@ sub fix($) {
     return $s;
 }
 
+sub ex
+{
+  my ($cmd) = @_;
+  my $result = `$cmd` or die 'FAILED: ' . $cmd;
+  return $result;
+}
+
 while (<>) {
     s{
 	\$Format:\%d\$
     }{
-	my $tag = fix(`git describe --match="[0-9]*"`);
+	my $tag = fix(ex('git describe --match="[0-9]*"'));
 	"(tag: bup-$tag)"
     }ex;
     
     s{ 
 	\$Format:([^\$].*)\$
     }{
-	fix(`git log -1 --pretty=format:"$1"`)
+	fix(ex("git log -1 --pretty=format:'$1'"))
     }ex;
     print;
 }
