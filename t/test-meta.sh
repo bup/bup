@@ -502,23 +502,26 @@ src/foo/3"
         exit 0
     fi
 
+    uid=$(WVPASS id -un) || exit $?
+    gid=$(WVPASS id -gn) || exit $?
+
     WVSTART 'metadata (restoration of ownership as root)'
     WVPASS force-delete "$TOP/bupmeta.tmp"
     WVPASS mkdir "$TOP/bupmeta.tmp"
     WVPASS cd "$TOP/bupmeta.tmp"
     WVPASS touch src
-    WVPASS chown 0:0 src # In case the parent dir is sgid, etc.
+    WVPASS chown "$uid:$gid" src # In case the parent dir is sgid, etc.
     WVPASS bup meta -cf src.meta src
 
     WVPASS mkdir dest
     WVPASS chmod 700 dest # so we can't accidentally do something insecure
     WVPASS cd dest
 
-    other_uinfo="$(id-other-than --user "$(id -un)")"
+    other_uinfo="$(id-other-than --user "$uid")"
     other_user="${other_uinfo%%:*}"
     other_uid="${other_uinfo##*:}"
 
-    other_ginfo="$(id-other-than --group "$(id -gn)")"
+    other_ginfo="$(id-other-than --group "$gid")"
     other_group="${other_ginfo%%:*}"
     other_gid="${other_ginfo##*:}"
 
