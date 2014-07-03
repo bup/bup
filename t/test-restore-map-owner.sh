@@ -21,7 +21,7 @@ other_uinfo=$(WVPASS t/id-other-than --user "$user") || exit $?
 other_user="${other_uinfo%%:*}"
 other_uid="${other_uinfo##*:}"
 
-other_ginfo=$(WVPASS t/id-other-than --group "$group") || exit $?
+other_ginfo=$(WVPASS t/id-other-than --group "$group" 0) || exit $?
 other_group="${other_ginfo%%:*}"
 other_gid="${other_ginfo##*:}"
 
@@ -79,14 +79,26 @@ WVPASS grep -qE "^uid: $other_uid\$" foo-xstat
 WVPASS grep -qE "^group: $other_group\$" foo-xstat
 WVPASS grep -qE "^gid: $other_gid\$" foo-xstat
 
-WVSTART "restore --map-user/group/uid/gid (zero uid/gid trumps all)"
-WVPASS rm -rf dest
-WVPASS bup restore -C dest \
-    --map-user "$user=$other_user" --map-group "$group=$other_group" \
-    --map-uid "$uid=0" --map-gid "$gid=0" \
-    "src/latest/$(pwd)/src/"
-WVPASS bup xstat dest/foo > foo-xstat
-WVPASS grep -qE "^uid: 0\$" foo-xstat
-WVPASS grep -qE "^gid: 0\$" foo-xstat
+has_uid_gid_0=$(WVPASS python -c "
+import grp, pwd
+try:
+  pwd.getpwuid(0)
+  grp.getgrgid(0)
+  print 'yes'
+except KeyError, ex:
+  pass
+" 2>/dev/null) || exit $?
+if [ "$has_uid_gid_0" == yes ]
+then
+    WVSTART "restore --map-user/group/uid/gid (zero uid/gid trumps all)"
+    WVPASS rm -rf dest
+    WVPASS bup restore -C dest \
+        --map-user "$user=$other_user" --map-group "$group=$other_group" \
+        --map-uid "$uid=0" --map-gid "$gid=0" \
+        "src/latest/$(pwd)/src/"
+    WVPASS bup xstat dest/foo > foo-xstat
+    WVPASS grep -qE "^uid: 0\$" foo-xstat
+    WVPASS grep -qE "^gid: 0\$" foo-xstat
 
-WVPASS rm -rf "$tmpdir"
+    WVPASS rm -rf "$tmpdir"
+fi
