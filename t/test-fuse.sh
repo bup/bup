@@ -67,12 +67,12 @@ WVPASS fusermount -uz mnt
 
 WVSTART "extended metadata"
 WVPASS bup fuse --meta mnt
-result=$(WVPASS ls -l mnt/src/latest/) || exit $?
+result=$(TZ=UTC WVPASS ls -l mnt/src/latest/) || exit $?
 readonly user=$(WVPASS id -un) || $?
 readonly group=$(WVPASS id -gn) || $?
 WVPASSEQ "$result" "total 0
 -rw-r--r-- 1 $user $group 29 Nov 11  2011 foo
--rw-r--r-- 1 $user $group 29 Dec 31  1969 pre-epoch"
+-rw-r--r-- 1 $user $group 29 Jan  1  1970 pre-epoch"
 
 WVPASS fusermount -uz mnt
 WVPASS rm -rf "$tmpdir"
