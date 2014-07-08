@@ -1,4 +1,4 @@
-.TH bup\-split 1 "2013\-12\-09" "Bup 0.25"
+.TH "bup\-split" "1" "2014\-06\-30" "Bup 0.26\-rc1\-28\-g7918009" ""
 .SH NAME
 .PP
 bup\-split \- save individual files to bup backup sets
@@ -56,7 +56,9 @@ If \f[I]name\f[] already exists, the new dataset will be considered a
 descendant of the old \f[I]name\f[].
 (Thus, you can continually create new datasets with the same name, and
 later view the history of that dataset to see how it has changed over
-time.)
+time.) The original data will also be available as a top\-level file
+named "data" in the VFS, accessible via \f[C]bup\ fuse\f[],
+\f[C]bup\ ftp\f[], etc.
 .RS
 .RE
 .TP
@@ -102,6 +104,8 @@ The connection to the remote server is made with SSH.
 If you\[aq]d like to specify which port, user or private key to use for
 the SSH connection, we recommend you use the \f[C]~/.ssh/config\f[]
 file.
+Even though the destination is remote, a local bup repository is still
+required.
 .RS
 .RE
 .TP
@@ -185,7 +189,7 @@ highest and 0 is no compression).
 The default is 1 (fast, loose compression)
 .RS
 .RE
-.SH EXAMPLE
+.SH EXAMPLES
 .IP
 .nf
 \f[C]

@@ -1,13 +1,14 @@
-.TH bup\-index 1 "2013\-12\-09" "Bup 0.25"
+.TH "bup\-index" "1" "2014\-06\-30" "Bup 0.26\-rc1\-28\-g7918009" ""
 .SH NAME
 .PP
 bup\-index \- print and/or update the bup filesystem index
 .SH SYNOPSIS
 .PP
-bup index <\-p|\-m|\-s|\-u> [\-H][\-l] [\-x][\\\-\-fake\-valid]
-[\-\-no\-check\-device][\\\-\-fake\-invalid] [\-\-check][\\\-\-clear]
-[\-f \f[I]indexfile\f[]][\\\-\-exclude *path*] [\-\-exclude\-from
-\f[I]filename\f[]][\\\-\-exclude\-rx *pattern*] [\-v] <filenames...>
+bup index <\-p|\-m|\-s|\-u> [\-H] [\-l] [\-x] [\-\-fake\-valid]
+[\-\-no\-check\-device][\-\-fake\-invalid] [\-\-check] [\-\-clear] [\-f
+\f[I]indexfile\f[]] [\-\-exclude \f[I]path\f[]] [\-\-exclude\-from
+\f[I]filename\f[]] [\-\-exclude\-rx \f[I]pattern\f[]]
+[\-\-exclude\-rx\-from \f[I]filename\f[]] [\-v] <filenames...>
 .SH DESCRIPTION
 .PP
 \f[C]bup\ index\f[] prints and/or updates the bup filesystem index,
@@ -129,7 +130,8 @@ print more information about each file, in a similar format to the
 .TP
 .B \-x, \-\-xdev, \-\-one\-file\-system
 don\[aq]t cross filesystem boundaries when recursing through the
-filesystem.
+filesystem \-\- though as with tar and rsync, the mount points
+themselves will still be indexed.
 Only applicable if you\[aq]re using \f[C]\-u\f[].
 .RS
 .RE
@@ -164,14 +166,14 @@ use a different index filename instead of \f[C]$BUP_DIR/bupindex\f[].
 .RE
 .TP
 .B \-\-exclude=\f[I]path\f[]
-exclude \f[I]path\f[] from the backup; bup will not expand \f[I]path\f[]
-in any way (can be used more than once).
+exclude \f[I]path\f[] from the backup (may be repeated).
 .RS
 .RE
 .TP
 .B \-\-exclude\-from=\f[I]filename\f[]
-read \-\-exclude paths from \f[I]filename\f[], one path per\-line (can
-be used more than once).
+read \-\-exclude paths from \f[I]filename\f[], one path per\-line (may
+be repeated).
+Ignore completely empty lines.
 .RS
 .RE
 .TP
@@ -182,7 +184,7 @@ The pattern will be compared against the full path, without anchoring,
 so "x/y" will match "ox/yard" or "box/yards".
 To exclude the contents of /tmp, but not the directory itself, use
 "^/tmp/.".
-(can be specified more than once)
+(may be repeated)
 .RS
 .PP
 Examples:
@@ -195,6 +197,13 @@ Examples:
 .IP \[bu] 2
 \[aq]^/tmp/.\[aq] \- exclude root\-level /tmp\[aq]s content, but not
 /tmp itself
+.RE
+.TP
+.B \-\-exclude\-rx\-from=\f[I]filename\f[]
+read \-\-exclude\-rx patterns from \f[I]filename\f[], one pattern
+per\-line (may be repeated).
+Ignore completely empty lines.
+.RS
 .RE
 .TP
 .B \-\-no\-check\-device
@@ -211,7 +220,7 @@ With one \f[C]\-v\f[], print each directory as it is updated; with two
 \f[C]\-v\f[], print each file too.
 .RS
 .RE
-.SH EXAMPLE
+.SH EXAMPLES
 .IP
 .nf
 \f[C]
