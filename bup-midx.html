@@ -5,20 +5,20 @@
   <meta http-equiv="Content-Style-Type" content="text/css" />
   <meta name="generator" content="pandoc" />
   <meta name="author" content="Avery Pennarun apenwarr@gmail.com" />
-  <meta name="date" content="2013-12-09" />
-  <title>bup-midx(1) Bup 0.25</title>
+  <meta name="date" content="2014-06-30" />
+  <title>bup-midx(1) Bup 0.26-rc1-28-g7918009</title>
   <style type="text/css">code{white-space: pre;}</style>
 </head>
 <body>
 <div id="header">
-<h1 class="title">bup-midx(1) Bup 0.25</h1>
+<h1 class="title">bup-midx(1) Bup 0.26-rc1-28-g7918009</h1>
 <h2 class="author">Avery Pennarun <script type="text/javascript">
-                   <!--
-                   h='&#x67;&#x6d;&#x61;&#x69;&#108;&#46;&#x63;&#x6f;&#x6d;';a='&#64;';n='&#x61;&#112;&#x65;&#110;&#x77;&#x61;&#114;&#114;';e=n+a+h;
-                   document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'">'+e+'<\/'+'a'+'>');
-                   // -->
-                   </script><noscript>&#x61;&#112;&#x65;&#110;&#x77;&#x61;&#114;&#114;&#32;&#x61;&#116;&#32;&#x67;&#x6d;&#x61;&#x69;&#108;&#32;&#100;&#x6f;&#116;&#32;&#x63;&#x6f;&#x6d;</noscript></h2>
-<h3 class="date">2013-12-09</h3>
+<!--
+h='&#x67;&#x6d;&#x61;&#x69;&#108;&#46;&#x63;&#x6f;&#x6d;';a='&#64;';n='&#x61;&#112;&#x65;&#110;&#x77;&#x61;&#114;&#114;';e=n+a+h;
+document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'">'+e+'<\/'+'a'+'>');
+// -->
+</script><noscript>&#x61;&#112;&#x65;&#110;&#x77;&#x61;&#114;&#114;&#32;&#x61;&#116;&#32;&#x67;&#x6d;&#x61;&#x69;&#108;&#32;&#100;&#x6f;&#116;&#32;&#x63;&#x6f;&#x6d;</noscript></h2>
+<h3 class="date">2014-06-30</h3>
 </div>
 <h1 id="name">NAME</h1>
 <p>bup-midx - create a multi-index (<code>.midx</code>) file from several <code>.idx</code> files</p>
@@ -39,7 +39,7 @@
 <dd><p>force generation of a single new <code>.midx</code> file containing <em>all</em> your <code>.idx</code> files, even if other <code>.midx</code> files already exist. This will result in the fastest backup performance, but may take a long time to run.</p>
 </dd>
 <dt>--dir=<em>packdir</em></dt>
-<dd><p>specify the directory containing the <code>.idx</code>/<code>.midx</code> files to work with. The default is <span class="math"><em>B</em><em>U</em><em>P</em><sub><em>D</em></sub><em>I</em><em>R</em> / <em>o</em><em>b</em><em>j</em><em>e</em><em>c</em><em>t</em><em>s</em> / <em>p</em><em>a</em><em>c</em><em>k</em><em>a</em><em>n</em><em>d</em></span>BUP_DIR/indexcache/*.</p>
+<dd><p>specify the directory containing the <code>.idx</code>/<code>.midx</code> files to work with. The default is <span class="math"><em>B</em><em>U</em><em>P</em><sub><em>D</em></sub><em>I</em><em>R</em>/<em>o</em><em>b</em><em>j</em><em>e</em><em>c</em><em>t</em><em>s</em>/<em>p</em><em>a</em><em>c</em><em>k</em><em>a</em><em>n</em><em>d</em></span>BUP_DIR/indexcache/*.</p>
 </dd>
 <dt>--max-files</dt>
 <dd><p>maximum number of <code>.idx</code> files to open at a time. You can use this if you have an especially small number of file descriptors available, so that midx can complete (though possibly non-optimally) even if it can't open all your <code>.idx</code> files at once. The default value of this option should be fine for most people.</p>
@@ -48,7 +48,7 @@
 <dd><p>validate a <code>.midx</code> file by ensuring that all objects in its contained <code>.idx</code> files exist inside the <code>.midx</code>. May be useful for debugging.</p>
 </dd>
 </dl>
-<h1 id="example">EXAMPLE</h1>
+<h1 id="examples">EXAMPLES</h1>
 <pre><code>$ bup midx -a
 Merging 21 indexes (2278559 objects).
 Table size: 524288 (17 bits)

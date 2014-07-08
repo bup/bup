@@ -5,39 +5,39 @@
   <meta http-equiv="Content-Style-Type" content="text/css" />
   <meta name="generator" content="pandoc" />
   <meta name="author" content="Rob Browning rlb@defaultvalue.org" />
-  <meta name="date" content="2013-12-09" />
-  <title>bup-meta(1) Bup 0.25</title>
+  <meta name="date" content="2014-06-30" />
+  <title>bup-meta(1) Bup 0.26-rc1-28-g7918009</title>
   <style type="text/css">code{white-space: pre;}</style>
 </head>
 <body>
 <div id="header">
-<h1 class="title">bup-meta(1) Bup 0.25</h1>
+<h1 class="title">bup-meta(1) Bup 0.26-rc1-28-g7918009</h1>
 <h2 class="author">Rob Browning <script type="text/javascript">
-                   <!--
-                   h='&#100;&#x65;&#102;&#x61;&#x75;&#108;&#116;&#118;&#x61;&#108;&#x75;&#x65;&#46;&#x6f;&#114;&#x67;';a='&#64;';n='&#114;&#108;&#98;';e=n+a+h;
-                   document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'">'+e+'<\/'+'a'+'>');
-                   // -->
-                   </script><noscript>&#114;&#108;&#98;&#32;&#x61;&#116;&#32;&#100;&#x65;&#102;&#x61;&#x75;&#108;&#116;&#118;&#x61;&#108;&#x75;&#x65;&#32;&#100;&#x6f;&#116;&#32;&#x6f;&#114;&#x67;</noscript></h2>
-<h3 class="date">2013-12-09</h3>
+<!--
+h='&#100;&#x65;&#102;&#x61;&#x75;&#108;&#116;&#118;&#x61;&#108;&#x75;&#x65;&#46;&#x6f;&#114;&#x67;';a='&#64;';n='&#114;&#108;&#98;';e=n+a+h;
+document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'">'+e+'<\/'+'a'+'>');
+// -->
+</script><noscript>&#114;&#108;&#98;&#32;&#x61;&#116;&#32;&#100;&#x65;&#102;&#x61;&#x75;&#108;&#116;&#118;&#x61;&#108;&#x75;&#x65;&#32;&#100;&#x6f;&#116;&#32;&#x6f;&#114;&#x67;</noscript></h2>
+<h3 class="date">2014-06-30</h3>
 </div>
 <h1 id="name">NAME</h1>
 <p>bup-meta - create or extract a metadata archive</p>
 <h1 id="synopsis">SYNOPSIS</h1>
 <dl>
 <dt>bup meta --create</dt>
-<dd><p>[-R][-v] [-q][\--no-symlinks] [--no-paths][-f *file*] &lt;<em>paths</em>...&gt;</p>
+<dd><p>[-R] [-v] [-q] [--no-symlinks] [--no-paths] [-f <em>file</em>] &lt;<em>paths</em>...&gt;</p>
 </dd>
 <dt>bup meta --list</dt>
-<dd><p>[-v][-q] [-f <em>file</em>]</p>
+<dd><p>[-v] [-q] [-f <em>file</em>]</p>
 </dd>
 <dt>bup meta --extract</dt>
-<dd><p>[-v][-q] [--numeric-ids][\--no-symlinks] [-f <em>file</em>]</p>
+<dd><p>[-v] [-q] [--numeric-ids] [--no-symlinks] [-f <em>file</em>]</p>
 </dd>
 <dt>bup meta --start-extract</dt>
-<dd><p>[-v][-q] [--numeric-ids][\--no-symlinks] [-f <em>file</em>]</p>
+<dd><p>[-v] [-q] [--numeric-ids] [--no-symlinks] [-f <em>file</em>]</p>
 </dd>
 <dt>bup meta --finish-extract</dt>
-<dd><p>[-v][-q] [--numeric-ids][-f *file*]</p>
+<dd><p>[-v] [-q] [--numeric-ids] [-f <em>file</em>]</p>
 </dd>
 <dt>bup meta --edit</dt>
 <dd><p>[--set-uid <em>uid</em> | --set-gid <em>gid</em> | --set-user <em>user</em> | --set-group <em>group</em> | ...] &lt;<em>paths</em>...&gt;</p>
@@ -71,6 +71,9 @@
 </dd>
 <dt>-R, --recurse</dt>
 <dd><p>Recursively descend into subdirectories during <code>--create</code>.</p>
+</dd>
+<dt>--xdev, --one-file-system</dt>
+<dd><p>don't cross filesystem boundaries -- though as with tar and rsync, the mount points themselves will still be handled.</p>
 </dd>
 <dt>--numeric-ids</dt>
 <dd><p>Apply numeric IDs (user, group, etc.) rather than names during <code>--extract</code> or <code>--finish-extract</code>.</p>

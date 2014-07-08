@@ -5,25 +5,25 @@
   <meta http-equiv="Content-Style-Type" content="text/css" />
   <meta name="generator" content="pandoc" />
   <meta name="author" content="Avery Pennarun apenwarr@gmail.com" />
-  <meta name="date" content="2013-12-09" />
-  <title>bup-fsck(1) Bup 0.25</title>
+  <meta name="date" content="2014-06-30" />
+  <title>bup-fsck(1) Bup 0.26-rc1-28-g7918009</title>
   <style type="text/css">code{white-space: pre;}</style>
 </head>
 <body>
 <div id="header">
-<h1 class="title">bup-fsck(1) Bup 0.25</h1>
+<h1 class="title">bup-fsck(1) Bup 0.26-rc1-28-g7918009</h1>
 <h2 class="author">Avery Pennarun <script type="text/javascript">
-                   <!--
-                   h='&#x67;&#x6d;&#x61;&#x69;&#108;&#46;&#x63;&#x6f;&#x6d;';a='&#64;';n='&#x61;&#112;&#x65;&#110;&#x77;&#x61;&#114;&#114;';e=n+a+h;
-                   document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'">'+e+'<\/'+'a'+'>');
-                   // -->
-                   </script><noscript>&#x61;&#112;&#x65;&#110;&#x77;&#x61;&#114;&#114;&#32;&#x61;&#116;&#32;&#x67;&#x6d;&#x61;&#x69;&#108;&#32;&#100;&#x6f;&#116;&#32;&#x63;&#x6f;&#x6d;</noscript></h2>
-<h3 class="date">2013-12-09</h3>
+<!--
+h='&#x67;&#x6d;&#x61;&#x69;&#108;&#46;&#x63;&#x6f;&#x6d;';a='&#64;';n='&#x61;&#112;&#x65;&#110;&#x77;&#x61;&#114;&#114;';e=n+a+h;
+document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'">'+e+'<\/'+'a'+'>');
+// -->
+</script><noscript>&#x61;&#112;&#x65;&#110;&#x77;&#x61;&#114;&#114;&#32;&#x61;&#116;&#32;&#x67;&#x6d;&#x61;&#x69;&#108;&#32;&#100;&#x6f;&#116;&#32;&#x63;&#x6f;&#x6d;</noscript></h2>
+<h3 class="date">2014-06-30</h3>
 </div>
 <h1 id="name">NAME</h1>
 <p>bup-fsck - verify or repair a bup repository</p>
 <h1 id="synopsis">SYNOPSIS</h1>
-<p>bup fsck [-r][-g] [-v][\--quick] [-j <em>jobs</em>][\--par2-ok] [--disable-par2][filenames...]</p>
+<p>bup fsck [-r] [-g] [-v] [--quick] [-j <em>jobs</em>] [--par2-ok] [--disable-par2] [filenames...]</p>
 <h1 id="description">DESCRIPTION</h1>
 <p><code>bup fsck</code> is a tool for validating bup repositories in the same way that <code>git fsck</code> validates git repositories.</p>
 <p>It can also generate and/or use &quot;recovery blocks&quot; using the <code>par2</code>(1) tool (if you have it installed). This allows you to recover from damaged blocks covering up to 5% of your <code>.pack</code> files.</p>
@@ -54,7 +54,7 @@
 <dd><p>pretend that <code>par2</code>(1) is not installed, and ignore all recovery blocks.</p>
 </dd>
 </dl>
-<h1 id="example">EXAMPLE</h1>
+<h1 id="examples">EXAMPLES</h1>
 <pre><code># generate recovery blocks for all packs that don&#39;t
 # have them
 bup fsck -g

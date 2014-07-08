@@ -5,20 +5,20 @@
   <meta http-equiv="Content-Style-Type" content="text/css" />
   <meta name="generator" content="pandoc" />
   <meta name="author" content="Avery Pennarun apenwarr@gmail.com" />
-  <meta name="date" content="2013-12-09" />
-  <title>bup-split(1) Bup 0.25</title>
+  <meta name="date" content="2014-06-30" />
+  <title>bup-split(1) Bup 0.26-rc1-28-g7918009</title>
   <style type="text/css">code{white-space: pre;}</style>
 </head>
 <body>
 <div id="header">
-<h1 class="title">bup-split(1) Bup 0.25</h1>
+<h1 class="title">bup-split(1) Bup 0.26-rc1-28-g7918009</h1>
 <h2 class="author">Avery Pennarun <script type="text/javascript">
-                   <!--
-                   h='&#x67;&#x6d;&#x61;&#x69;&#108;&#46;&#x63;&#x6f;&#x6d;';a='&#64;';n='&#x61;&#112;&#x65;&#110;&#x77;&#x61;&#114;&#114;';e=n+a+h;
-                   document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'">'+e+'<\/'+'a'+'>');
-                   // -->
-                   </script><noscript>&#x61;&#112;&#x65;&#110;&#x77;&#x61;&#114;&#114;&#32;&#x61;&#116;&#32;&#x67;&#x6d;&#x61;&#x69;&#108;&#32;&#100;&#x6f;&#116;&#32;&#x63;&#x6f;&#x6d;</noscript></h2>
-<h3 class="date">2013-12-09</h3>
+<!--
+h='&#x67;&#x6d;&#x61;&#x69;&#108;&#46;&#x63;&#x6f;&#x6d;';a='&#64;';n='&#x61;&#112;&#x65;&#110;&#x77;&#x61;&#114;&#114;';e=n+a+h;
+document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'">'+e+'<\/'+'a'+'>');
+// -->
+</script><noscript>&#x61;&#112;&#x65;&#110;&#x77;&#x61;&#114;&#114;&#32;&#x61;&#116;&#32;&#x67;&#x6d;&#x61;&#x69;&#108;&#32;&#100;&#x6f;&#116;&#32;&#x63;&#x6f;&#x6d;</noscript></h2>
+<h3 class="date">2014-06-30</h3>
 </div>
 <h1 id="name">NAME</h1>
 <p>bup-split - save individual files to bup backup sets</p>
@@ -41,7 +41,7 @@
 <p>These options select the primary behavior of the command, with -n being the most likely choice.</p>
 <dl>
 <dt>-n, --name=<em>name</em></dt>
-<dd><p>after creating the dataset, create a git branch named <em>name</em> so that it can be accessed using that name. If <em>name</em> already exists, the new dataset will be considered a descendant of the old <em>name</em>. (Thus, you can continually create new datasets with the same name, and later view the history of that dataset to see how it has changed over time.)</p>
+<dd><p>after creating the dataset, create a git branch named <em>name</em> so that it can be accessed using that name. If <em>name</em> already exists, the new dataset will be considered a descendant of the old <em>name</em>. (Thus, you can continually create new datasets with the same name, and later view the history of that dataset to see how it has changed over time.) The original data will also be available as a top-level file named &quot;data&quot; in the VFS, accessible via <code>bup fuse</code>, <code>bup ftp</code>, etc.</p>
 </dd>
 <dt>-t, --tree</dt>
 <dd><p>output the git tree id of the resulting dataset.</p>
@@ -62,7 +62,7 @@
 <h1 id="options">OPTIONS</h1>
 <dl>
 <dt>-r, --remote=<em>host</em>:<em>path</em></dt>
-<dd><p>save the backup set to the given remote server. If <em>path</em> is omitted, uses the default path on the remote server (you still need to include the ':'). The connection to the remote server is made with SSH. If you'd like to specify which port, user or private key to use for the SSH connection, we recommend you use the <code>~/.ssh/config</code> file.</p>
+<dd><p>save the backup set to the given remote server. If <em>path</em> is omitted, uses the default path on the remote server (you still need to include the ':'). The connection to the remote server is made with SSH. If you'd like to specify which port, user or private key to use for the SSH connection, we recommend you use the <code>~/.ssh/config</code> file. Even though the destination is remote, a local bup repository is still required.</p>
 </dd>
 <dt>-d, --date=<em>seconds-since-epoch</em></dt>
 <dd><p>specify the date inscribed in the commit (seconds since 1970-01-01).</p>
@@ -98,7 +98,7 @@
 <dd><p>set the compression level to # (a value from 0-9, where 9 is the highest and 0 is no compression). The default is 1 (fast, loose compression)</p>
 </dd>
 </dl>
-<h1 id="example">EXAMPLE</h1>
+<h1 id="examples">EXAMPLES</h1>
 <pre><code>$ tar -cf - /etc | bup split -r myserver: -n mybackup-tar
 tar: Removing leading /&#39; from member names
 Indexing objects: 100% (196/196), done.
