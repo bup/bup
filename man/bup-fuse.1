@@ -1,10 +1,10 @@
-.TH bup\-fuse 1 "2013\-12\-09" "Bup 0.25"
+.TH "bup\-fuse" "1" "2014\-06\-30" "Bup 0.26\-rc1\-28\-g7918009" ""
 .SH NAME
 .PP
 bup\-fuse \- mount a bup repository as a filesystem
 .SH SYNOPSIS
 .PP
-bup fuse [\-d][\-f] [\-o] <mountpoint>
+bup fuse [\-d] [\-f] [\-o] <mountpoint>
 .SH DESCRIPTION
 .PP
 \f[C]bup\ fuse\f[] opens a bup repository and exports it as a
@@ -35,7 +35,18 @@ permit other users to access the filesystem.
 Necessary for exporting the filesystem via Samba, for example.
 .RS
 .RE
-.SH EXAMPLE
+.TP
+.B \-\-meta
+report some of the original metadata (when available) for the mounted
+paths (currently the uid, gid, mode, and timestamps).
+Without this, only generic values will be presented.
+This option is not yet enabled by default because it may negatively
+affect performance, and note that any timestamps before 1970\-01\-01 UTC
+(i.e.
+before the Unix epoch) will be presented as 1970\-01\-01 UTC.
+.RS
+.RE
+.SH EXAMPLES
 .IP
 .nf
 \f[C]

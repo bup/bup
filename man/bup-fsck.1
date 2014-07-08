@@ -1,11 +1,11 @@
-.TH bup\-fsck 1 "2013\-12\-09" "Bup 0.25"
+.TH "bup\-fsck" "1" "2014\-06\-30" "Bup 0.26\-rc1\-28\-g7918009" ""
 .SH NAME
 .PP
 bup\-fsck \- verify or repair a bup repository
 .SH SYNOPSIS
 .PP
-bup fsck [\-r][\-g] [\-v][\\\-\-quick] [\-j
-\f[I]jobs\f[]][\\\-\-par2\-ok] [\-\-disable\-par2][filenames...]
+bup fsck [\-r] [\-g] [\-v] [\-\-quick] [\-j \f[I]jobs\f[]]
+[\-\-par2\-ok] [\-\-disable\-par2] [filenames...]
 .SH DESCRIPTION
 .PP
 \f[C]bup\ fsck\f[] is a tool for validating bup repositories in the same
@@ -89,7 +89,7 @@ pretend that \f[C]par2\f[](1) is not installed, and ignore all recovery
 blocks.
 .RS
 .RE
-.SH EXAMPLE
+.SH EXAMPLES
 .IP
 .nf
 \f[C]

@@ -1,12 +1,12 @@
-.TH bup\-save 1 "2013\-12\-09" "Bup 0.25"
+.TH "bup\-save" "1" "2014\-06\-30" "Bup 0.26\-rc1\-28\-g7918009" ""
 .SH NAME
 .PP
 bup\-save \- create a new bup backup set
 .SH SYNOPSIS
 .PP
 bup save [\-r \f[I]host\f[]:\f[I]path\f[]] <\-t|\-c|\-n \f[I]name\f[]>
-[\-#][\-f *indexfile*] [\-v][\-q] [\-\-smaller=\f[I]maxsize\f[]]
-<paths...>;
+[\-#] [\-f \f[I]indexfile\f[]] [\-v] [\-q]
+[\-\-smaller=\f[I]maxsize\f[]] <paths...>;
 .SH DESCRIPTION
 .PP
 \f[C]bup\ save\f[] saves the contents of the given files or paths into a
@@ -150,7 +150,7 @@ highest and 0 is no compression).
 The default is 1 (fast, loose compression)
 .RS
 .RE
-.SH EXAMPLE
+.SH EXAMPLES
 .IP
 .nf
 \f[C]

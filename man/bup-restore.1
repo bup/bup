@@ -1,11 +1,12 @@
-.TH bup\-restore 1 "2013\-12\-09" "Bup 0.25"
+.TH "bup\-restore" "1" "2014\-06\-30" "Bup 0.26\-rc1\-28\-g7918009" ""
 .SH NAME
 .PP
 bup\-restore \- extract files from a backup set
 .SH SYNOPSIS
 .PP
-bup restore [\-\-outdir=\f[I]outdir\f[]][\\\-\-exclude\-rx *pattern*]
-[\-v][\-q] <paths...>
+bup restore [\-\-outdir=\f[I]outdir\f[]] [\-\-exclude\-rx
+\f[I]pattern\f[]] [\-\-exclude\-rx\-from \f[I]filename\f[]] [\-v] [\-q]
+<paths...>
 .SH DESCRIPTION
 .PP
 \f[C]bup\ restore\f[] extracts files from a backup set (created with
@@ -138,6 +139,13 @@ Examples:
 /tmp itself
 .RE
 .TP
+.B \-\-exclude\-rx\-from=\f[I]filename\f[]
+read \-\-exclude\-rx patterns from \f[I]filename\f[], one pattern
+per\-line (may be repeated).
+Ignore completely empty lines.
+.RS
+.RE
+.TP
 .B \-\-map\-user \f[I]old\f[]=\f[I]new\f[]
 for every path, restore the \f[I]old\f[] (saved) user name as
 \f[I]new\f[].
@@ -191,7 +199,7 @@ Normally, is stderr is a tty, a progress display is printed that shows
 the total number of files restored.
 .RS
 .RE
-.SH EXAMPLE
+.SH EXAMPLES
 .PP
 Create a simple test backup set:
 .IP

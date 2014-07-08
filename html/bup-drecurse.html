@@ -5,25 +5,25 @@
   <meta http-equiv="Content-Style-Type" content="text/css" />
   <meta name="generator" content="pandoc" />
   <meta name="author" content="Avery Pennarun apenwarr@gmail.com" />
-  <meta name="date" content="2013-12-09" />
-  <title>bup-drecurse(1) Bup 0.25</title>
+  <meta name="date" content="2014-06-30" />
+  <title>bup-drecurse(1) Bup 0.26-rc1-28-g7918009</title>
   <style type="text/css">code{white-space: pre;}</style>
 </head>
 <body>
 <div id="header">
-<h1 class="title">bup-drecurse(1) Bup 0.25</h1>
+<h1 class="title">bup-drecurse(1) Bup 0.26-rc1-28-g7918009</h1>
 <h2 class="author">Avery Pennarun <script type="text/javascript">
-                   <!--
-                   h='&#x67;&#x6d;&#x61;&#x69;&#108;&#46;&#x63;&#x6f;&#x6d;';a='&#64;';n='&#x61;&#112;&#x65;&#110;&#x77;&#x61;&#114;&#114;';e=n+a+h;
-                   document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'">'+e+'<\/'+'a'+'>');
-                   // -->
-                   </script><noscript>&#x61;&#112;&#x65;&#110;&#x77;&#x61;&#114;&#114;&#32;&#x61;&#116;&#32;&#x67;&#x6d;&#x61;&#x69;&#108;&#32;&#100;&#x6f;&#116;&#32;&#x63;&#x6f;&#x6d;</noscript></h2>
-<h3 class="date">2013-12-09</h3>
+<!--
+h='&#x67;&#x6d;&#x61;&#x69;&#108;&#46;&#x63;&#x6f;&#x6d;';a='&#64;';n='&#x61;&#112;&#x65;&#110;&#x77;&#x61;&#114;&#114;';e=n+a+h;
+document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'">'+e+'<\/'+'a'+'>');
+// -->
+</script><noscript>&#x61;&#112;&#x65;&#110;&#x77;&#x61;&#114;&#114;&#32;&#x61;&#116;&#32;&#x67;&#x6d;&#x61;&#x69;&#108;&#32;&#100;&#x6f;&#116;&#32;&#x63;&#x6f;&#x6d;</noscript></h2>
+<h3 class="date">2014-06-30</h3>
 </div>
 <h1 id="name">NAME</h1>
 <p>bup-drecurse - recursively list files in your filesystem</p>
 <h1 id="synopsis">SYNOPSIS</h1>
-<p>bup drecurse [-x][-q] [--exclude <em>path</em>][\--exclude-from *filename*] [--profile] &lt;path&gt;</p>
+<p>bup drecurse [-x] [-q] [--exclude <em>path</em>]  [--exclude-from <em>filename</em>] [--exclude-rx <em>pattern</em>]  [--exclude-rx-from <em>filename</em>] [--profile] &lt;path&gt;</p>
 <h1 id="description">DESCRIPTION</h1>
 <p><code>bup drecurse</code> traverses files in the filesystem in a way similar to <code>find</code>(1). In most cases, you should use <code>find</code>(1) instead.</p>
 <p>This program is useful mainly for testing the file traversal algorithm used in <code>bup-index</code>(1).</p>
@@ -31,22 +31,28 @@
 <h1 id="options">OPTIONS</h1>
 <dl>
 <dt>-x, --xdev, --one-file-system</dt>
-<dd><p>don't cross filesystem boundaries.</p>
+<dd><p>don't cross filesystem boundaries -- though as with tar and rsync, the mount points themselves will still be reported.</p>
 </dd>
 <dt>-q, --quiet</dt>
 <dd><p>don't print filenames as they are encountered. Useful when testing performance of the traversal algorithms.</p>
 </dd>
 <dt>--exclude=<em>path</em></dt>
-<dd><p>a path to exclude from the backup (can be used more than once)</p>
+<dd><p>exclude <em>path</em> from the backup (may be repeated).</p>
 </dd>
 <dt>--exclude-from=<em>filename</em></dt>
-<dd><p>a file that contains exclude paths (can be used more than once)</p>
+<dd><p>read --exclude paths from <em>filename</em>, one path per-line (may be repeated). Ignore completely empty lines.</p>
+</dd>
+<dt>--exclude-rx=<em>pattern</em></dt>
+<dd><p>exclude any path matching <em>pattern</em>. See <code>bup-index</code>(1) for details, but note that unlike index, drecurse will produce relative paths if the drecurse target is a relative path. (may be repeated).</p>
+</dd>
+<dt>--exclude-rx-from=<em>filename</em></dt>
+<dd><p>read --exclude-rx patterns from <em>filename</em>, one pattern per-line (may be repeated). Ignore completely empty lines.</p>
 </dd>
 <dt>--profile</dt>
 <dd><p>print profiling information upon completion. Useful when testing performance of the traversal algorithms.</p>
 </dd>
 </dl>
-<h1 id="example">EXAMPLE</h1>
+<h1 id="examples">EXAMPLES</h1>
 <pre><code>bup drecurse -x /</code></pre>
 <h1 id="see-also">SEE ALSO</h1>
 <p><code>bup-index</code>(1)</p>

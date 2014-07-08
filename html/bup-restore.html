@@ -5,25 +5,25 @@
   <meta http-equiv="Content-Style-Type" content="text/css" />
   <meta name="generator" content="pandoc" />
   <meta name="author" content="Avery Pennarun apenwarr@gmail.com" />
-  <meta name="date" content="2013-12-09" />
-  <title>bup-restore(1) Bup 0.25</title>
+  <meta name="date" content="2014-06-30" />
+  <title>bup-restore(1) Bup 0.26-rc1-28-g7918009</title>
   <style type="text/css">code{white-space: pre;}</style>
 </head>
 <body>
 <div id="header">
-<h1 class="title">bup-restore(1) Bup 0.25</h1>
+<h1 class="title">bup-restore(1) Bup 0.26-rc1-28-g7918009</h1>
 <h2 class="author">Avery Pennarun <script type="text/javascript">
-                   <!--
-                   h='&#x67;&#x6d;&#x61;&#x69;&#108;&#46;&#x63;&#x6f;&#x6d;';a='&#64;';n='&#x61;&#112;&#x65;&#110;&#x77;&#x61;&#114;&#114;';e=n+a+h;
-                   document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'">'+e+'<\/'+'a'+'>');
-                   // -->
-                   </script><noscript>&#x61;&#112;&#x65;&#110;&#x77;&#x61;&#114;&#114;&#32;&#x61;&#116;&#32;&#x67;&#x6d;&#x61;&#x69;&#108;&#32;&#100;&#x6f;&#116;&#32;&#x63;&#x6f;&#x6d;</noscript></h2>
-<h3 class="date">2013-12-09</h3>
+<!--
+h='&#x67;&#x6d;&#x61;&#x69;&#108;&#46;&#x63;&#x6f;&#x6d;';a='&#64;';n='&#x61;&#112;&#x65;&#110;&#x77;&#x61;&#114;&#114;';e=n+a+h;
+document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'">'+e+'<\/'+'a'+'>');
+// -->
+</script><noscript>&#x61;&#112;&#x65;&#110;&#x77;&#x61;&#114;&#114;&#32;&#x61;&#116;&#32;&#x67;&#x6d;&#x61;&#x69;&#108;&#32;&#100;&#x6f;&#116;&#32;&#x63;&#x6f;&#x6d;</noscript></h2>
+<h3 class="date">2014-06-30</h3>
 </div>
 <h1 id="name">NAME</h1>
 <p>bup-restore - extract files from a backup set</p>
 <h1 id="synopsis">SYNOPSIS</h1>
-<p>bup restore [--outdir=<em>outdir</em>][\--exclude-rx *pattern*] [-v][-q] &lt;paths...&gt;</p>
+<p>bup restore [--outdir=<em>outdir</em>] [--exclude-rx <em>pattern</em>] [--exclude-rx-from <em>filename</em>] [-v] [-q] &lt;paths...&gt;</p>
 <h1 id="description">DESCRIPTION</h1>
 <p><code>bup restore</code> extracts files from a backup set (created with <code>bup-save</code>(1)) to the local filesystem.</p>
 <p>The specified <em>paths</em> are of the form /<em>branch</em>/<em>revision</em>/<em>some/where</em>. The components of the path are as follows:</p>
@@ -65,6 +65,9 @@
 <li>'^/tmp/.' - exclude root-level /tmp's content, but not /tmp itself</li>
 </ul>
 </dd>
+<dt>--exclude-rx-from=<em>filename</em></dt>
+<dd><p>read --exclude-rx patterns from <em>filename</em>, one pattern per-line (may be repeated). Ignore completely empty lines.</p>
+</dd>
 <dt>--map-user <em>old</em>=<em>new</em></dt>
 <dd><p>for every path, restore the <em>old</em> (saved) user name as <em>new</em>. Specifying &quot;&quot; for <em>new</em> will clear the user. For example &quot;--map-user foo=&quot; will allow the uid to take effect for any path that originally had a user of &quot;foo&quot;, unless countermanded by a subsequent &quot;--map-user foo=...&quot; specification. See DESCRIPTION above for further information.</p>
 </dd>
@@ -84,7 +87,7 @@
 <dd><p>don't show the progress meter. Normally, is stderr is a tty, a progress display is printed that shows the total number of files restored.</p>
 </dd>
 </dl>
-<h1 id="example">EXAMPLE</h1>
+<h1 id="examples">EXAMPLES</h1>
 <p>Create a simple test backup set:</p>
 <pre><code>$ bup index -u /etc
 $ bup save -n mybackup /etc/passwd /etc/profile</code></pre>

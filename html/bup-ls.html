@@ -5,29 +5,29 @@
   <meta http-equiv="Content-Style-Type" content="text/css" />
   <meta name="generator" content="pandoc" />
   <meta name="author" content="Avery Pennarun apenwarr@gmail.com" />
-  <meta name="date" content="2013-12-09" />
-  <title>bup-ls(1) Bup 0.25</title>
+  <meta name="date" content="2014-06-30" />
+  <title>bup-ls(1) Bup 0.26-rc1-28-g7918009</title>
   <style type="text/css">code{white-space: pre;}</style>
 </head>
 <body>
 <div id="header">
-<h1 class="title">bup-ls(1) Bup 0.25</h1>
+<h1 class="title">bup-ls(1) Bup 0.26-rc1-28-g7918009</h1>
 <h2 class="author">Avery Pennarun <script type="text/javascript">
-                   <!--
-                   h='&#x67;&#x6d;&#x61;&#x69;&#108;&#46;&#x63;&#x6f;&#x6d;';a='&#64;';n='&#x61;&#112;&#x65;&#110;&#x77;&#x61;&#114;&#114;';e=n+a+h;
-                   document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'">'+e+'<\/'+'a'+'>');
-                   // -->
-                   </script><noscript>&#x61;&#112;&#x65;&#110;&#x77;&#x61;&#114;&#114;&#32;&#x61;&#116;&#32;&#x67;&#x6d;&#x61;&#x69;&#108;&#32;&#100;&#x6f;&#116;&#32;&#x63;&#x6f;&#x6d;</noscript></h2>
-<h3 class="date">2013-12-09</h3>
+<!--
+h='&#x67;&#x6d;&#x61;&#x69;&#108;&#46;&#x63;&#x6f;&#x6d;';a='&#64;';n='&#x61;&#112;&#x65;&#110;&#x77;&#x61;&#114;&#114;';e=n+a+h;
+document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'">'+e+'<\/'+'a'+'>');
+// -->
+</script><noscript>&#x61;&#112;&#x65;&#110;&#x77;&#x61;&#114;&#114;&#32;&#x61;&#116;&#32;&#x67;&#x6d;&#x61;&#x69;&#108;&#32;&#100;&#x6f;&#116;&#32;&#x63;&#x6f;&#x6d;</noscript></h2>
+<h3 class="date">2014-06-30</h3>
 </div>
 <h1 id="name">NAME</h1>
 <p>bup-ls - list the contents of a bup repository</p>
 <h1 id="synopsis">SYNOPSIS</h1>
-<p>bup ls [-s][-a] &lt;paths...&gt;</p>
+<p>bup ls [OPTION...] &lt;paths...&gt;</p>
 <h1 id="description">DESCRIPTION</h1>
 <p><code>bup ls</code> lists files and directories in your bup repository using the same directory hierarchy as they would have with <code>bup-fuse</code>(1).</p>
 <p>The top level directory contains the branch (corresponding to the <code>-n</code> option in <code>bup save</code>), the next level is the date of the backup, and subsequent levels correspond to files in the backup.</p>
-<p>When <code>bup ls</code> is asked to output on a tty, it formats its output in columns so that it can list as much as possible in as few lines as possible. However, when <code>bup ls</code> is asked to output to something other than a tty (say you pipe the output to another command, or you redirect it to a file), it will output one file name per line. This makes the listing easier to parse with external tools.</p>
+<p>When <code>bup ls</code> is asked to output on a tty, and <code>-l</code> is not specified, it formats the output in columns so it can list as much as possible in as few lines as possible. However, when <code>-l</code> is specified or bup is asked to output to something other than a tty (say you pipe the output to another command, or you redirect it to a file), it will print one file name per line. This makes the listing easier to parse with external tools.</p>
 <p>Note that <code>bup ls</code> doesn't show hidden files by default and one needs to use the <code>-a</code> option to show them. Files are hidden when their name begins with a dot. For example, on the topmost level, the special directories named <code>.commit</code> and <code>.tag</code> are hidden directories.</p>
 <p>Once you have identified the file you want using <code>bup ls</code>, you can view its contents using <code>bup join</code> or <code>git show</code>.</p>
 <h1 id="options">OPTIONS</h1>
@@ -38,14 +38,29 @@
 <dt>-a, --all</dt>
 <dd><p>show hidden files.</p>
 </dd>
+<dt>-A, --almost-all</dt>
+<dd><p>show hidden files, except &quot;.&quot; and &quot;..&quot;.</p>
+</dd>
+<dt>-d, --directory</dt>
+<dd><p>show information about directories themselves, rather than their contents, and don't follow symlinks.</p>
+</dd>
 <dt>-l</dt>
-<dd><p>show file sizes.</p>
+<dd><p>provide a detailed, long listing for each item.</p>
+</dd>
+<dt>-F, --classify</dt>
+<dd><p>append type indicator: dir/, symlink@, fifo|, socket=, and executable*.</p>
+</dd>
+<dt>--file-type</dt>
+<dd><p>append type indicator: dir/, symlink@, fifo|, socket=.</p>
 </dd>
 <dt>--human-readable</dt>
-<dd><p>print human readable file sizes (i.e. 3.9K, 4.7M)</p>
+<dd><p>print human readable file sizes (i.e. 3.9K, 4.7M).</p>
+</dd>
+<dt>--numeric-ids</dt>
+<dd><p>display numeric IDs (user, group, etc.) rather than names.</p>
 </dd>
 </dl>
-<h1 id="example">EXAMPLE</h1>
+<h1 id="examples">EXAMPLES</h1>
 <pre><code>bup ls /myserver/latest/etc/profile
 
 bup ls -a /</code></pre>
