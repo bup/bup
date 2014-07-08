@@ -19,13 +19,20 @@ via email.
 Current Trajectory
 ==================
 
-Now that we've finished the 0.25 release, we're working on 0.26, and
-although we're not certain which new features will eventually be
-included, here are some possible candidates:
+Now that we've finished the 0.26 release, we're working on 0.27, and
+although we're not certain which new features will be included, here
+are some possible candidates:
+
+  - Support for transferring saves between repositories and rewriting
+    branches.
+
+  - Better VFS performance for large repositories (i.e. fuse, ls,
+    web...).
+
+  - Incremental indexing via inotify.
 
   - Support for rm/gc.
-  - Support for remote (push and/or pull) restore.
-  - Support for some kind of push/pull.
+
   - Smarter (and quieter) handling of cross-filesystem metadata.
 
 If you have the time and inclination, please help review patches
