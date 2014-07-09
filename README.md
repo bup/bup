@@ -213,7 +213,7 @@ Using bup
 
         bup restore -C ./dest-2 local-etc/2013-11-23-11195/etc
 
- - Make a backup on a remote server (which must already have the 'bup' command
+ - Make a backup to a remote server (which must already have the 'bup' command
    somewhere in the server's PATH (see /etc/profile, etc/environment,
    ~/.profile, or ~/.bashrc), and be accessible via ssh.
    Make sure to replace SERVERNAME with the actual hostname of your server):
