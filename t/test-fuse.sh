@@ -30,12 +30,12 @@ savename1="$(printf '%(%Y-%m-%d-%H%M%S)T' "$savestamp1")" || exit $?
 savename2="$(printf '%(%Y-%m-%d-%H%M%S)T' "$savestamp2")" || exit $?
 
 WVPASS mkdir src
-WVPASS date > src/foo
+WVPASS echo content > src/foo
 WVPASS chmod 644 src/foo
 WVPASS touch -t 201111111111 src/foo
 # FUSE, python-fuse, something, can't handle negative epoch times.
 # Use pre-epoch to make sure bup properly "bottoms out" at 0 for now.
-WVPASS date > src/pre-epoch
+WVPASS echo content > src/pre-epoch
 WVPASS chmod 644 src/pre-epoch
 WVPASS touch -t 196907202018 src/pre-epoch
 WVPASS bup index src
@@ -71,8 +71,8 @@ result=$(TZ=UTC WVPASS ls -l mnt/src/latest/) || exit $?
 readonly user=$(WVPASS id -un) || $?
 readonly group=$(WVPASS id -gn) || $?
 WVPASSEQ "$result" "total 0
--rw-r--r-- 1 $user $group 29 Nov 11  2011 foo
--rw-r--r-- 1 $user $group 29 Jan  1  1970 pre-epoch"
+-rw-r--r-- 1 $user $group 8 Nov 11  2011 foo
+-rw-r--r-- 1 $user $group 8 Jan  1  1970 pre-epoch"
 
 WVPASS fusermount -uz mnt
 WVPASS rm -rf "$tmpdir"
