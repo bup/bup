@@ -189,17 +189,15 @@ class Client:
         self.conn.write('send-index %s\n' % name)
         n = struct.unpack('!I', self.conn.read(4))[0]
         assert(n)
-        f = open(fn + '.tmp', 'w')
-        count = 0
-        progress('Receiving index from server: %d/%d\r' % (count, n))
-        for b in chunkyreader(self.conn, n):
-            f.write(b)
-            count += len(b)
-            qprogress('Receiving index from server: %d/%d\r' % (count, n))
-        progress('Receiving index from server: %d/%d, done.\n' % (count, n))
-        self.check_ok()
-        f.close()
-        os.rename(fn + '.tmp', fn)
+        with atomically_replaced_file(fn, 'w') as f:
+            count = 0
+            progress('Receiving index from server: %d/%d\r' % (count, n))
+            for b in chunkyreader(self.conn, n):
+                f.write(b)
+                count += len(b)
+                qprogress('Receiving index from server: %d/%d\r' % (count, n))
+            progress('Receiving index from server: %d/%d, done.\n' % (count, n))
+            self.check_ok()
 
     def _make_objcache(self):
         return git.PackIdxList(self.cachedir)

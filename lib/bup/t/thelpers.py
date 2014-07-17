@@ -1,6 +1,9 @@
 import helpers
 import math
 import os
+import os.path
+import tempfile
+import stat
 import bup._helpers as _helpers
 from bup.helpers import *
 from wvtest import *
@@ -143,3 +146,21 @@ def test_batchpipe():
     WVPASSEQ(next(batches), '0 1 2\n')
     WVPASSEQ(next(batches), '3 4\n')
     WVPASSEQ(next(batches, None), None)
+
+
+@wvtest
+def test_atomically_replaced_file():
+    target_file = os.path.join(tempfile.gettempdir(),
+                               'test_atomic_write')
+    try:
+        with atomically_replaced_file(target_file, mode='w') as f:
+            f.write('asdf')
+            WVPASSEQ(f.mode, 'w')
+        f = open(target_file, 'r')
+        WVPASSEQ(f.read(), 'asdf')
+
+        with atomically_replaced_file(target_file, mode='wb') as f:
+            f.write(os.urandom(20))
+            WVPASSEQ(f.mode, 'wb')
+    finally:
+        unlink(target_file)

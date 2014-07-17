@@ -114,19 +114,21 @@ def _do_midx(outdir, outfilename, infilenames, prefixstr):
         debug1('midx: table size: %d (%d bits)\n' % (entries*4, bits))
 
         unlink(outfilename)
-        f = open(outfilename + '.tmp', 'w+b')
-        f.write('MIDX')
-        f.write(struct.pack('!II', midx.MIDX_VERSION, bits))
-        assert(f.tell() == 12)
+        with atomically_replaced_file(outfilename, 'wb') as f:
+            f.write('MIDX')
+            f.write(struct.pack('!II', midx.MIDX_VERSION, bits))
+            assert(f.tell() == 12)
 
-        f.truncate(12 + 4*entries + 20*total + 4*total)
-        f.flush()
-        fdatasync(f.fileno())
+            f.truncate(12 + 4*entries + 20*total + 4*total)
+            f.flush()
+            fdatasync(f.fileno())
 
-        fmap = mmap_readwrite(f, close=False)
+            fmap = mmap_readwrite(f, close=False)
 
-        count = merge_into(fmap, bits, total, inp)
-        del fmap # Assume this calls msync() now.
+            count = merge_into(fmap, bits, total, inp)
+            del fmap # Assume this calls msync() now.
+            f.seek(0, os.SEEK_END)
+            f.write('\0'.join(allfilenames))
     finally:
         for ix in midxs:
             if isinstance(ix, midx.PackMidx):
@@ -134,10 +136,6 @@ def _do_midx(outdir, outfilename, infilenames, prefixstr):
         midxs = None
         inp = None
 
-    f.seek(0, os.SEEK_END)
-    f.write('\0'.join(allfilenames))
-    f.close()
-    os.rename(outfilename + '.tmp', outfilename)
 
     # This is just for testing (if you enable this, don't clear inp above)
     if 0:
