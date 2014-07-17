@@ -40,20 +40,21 @@ class HLinkDB:
             (dir, name) = os.path.split(self._filename)
             (ffd, self._tmpname) = tempfile.mkstemp('.tmp', name, dir)
             try:
-                f = os.fdopen(ffd, 'wb', 65536)
+                try:
+                    f = os.fdopen(ffd, 'wb', 65536)
+                except:
+                    os.close(ffd)
+                    raise
+                try:
+                    cPickle.dump(self._node_paths, f, 2)
+                finally:
+                    f.close()
+                    f = None
             except:
-                os.close(ffd)
-                raise
-            try:
-                cPickle.dump(self._node_paths, f, 2)
-            except:
-                f.close()
-                os.unlink(self._tmpname)
+                tmpname = self._tmpname
                 self._tmpname = None
+                os.unlink(tmpname)
                 raise
-            else:
-                f.close()
-                f = None
         self._save_prepared = True
 
     def commit_save(self):
