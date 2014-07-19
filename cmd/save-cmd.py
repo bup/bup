@@ -274,7 +274,8 @@ for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse_during):
         continue
     if opt.smaller and ent.size >= opt.smaller:
         if exists and not hashvalid:
-            add_error('skipping large file "%s"' % ent.name)
+            if opt.verbose:
+                log('skipping large file "%s"\n' % ent.name)
             lastskip_name = ent.name
         continue
 
