@@ -4,7 +4,7 @@
 #
 # This code is covered under the terms of the GNU Library General
 # Public License as described in the bup LICENSE file.
-import errno, os, sys, stat, time, pwd, grp, socket
+import errno, os, sys, stat, time, pwd, grp, socket, struct
 from cStringIO import StringIO
 from bup import vint, xstat
 from bup.drecurse import recursive_dirlist
@@ -42,7 +42,19 @@ except ImportError:
     # not on Linux, in which case files don't have any linux attrs anyway, so
     # lacking the functions isn't a problem.
     get_linux_file_attr = set_linux_file_attr = None
-    
+
+
+_suppress_linux_file_attr = \
+    sys.byteorder == 'big' and struct.calcsize('=l') > struct.calcsize('=i')
+
+def check_linux_file_attr_api():
+    global get_linux_file_attr, set_linux_file_attr
+    if not (get_linux_file_attr or set_linux_file_attr):
+        return
+    if _suppress_linux_file_attr:
+        log('Warning: Linux attr support disabled (see "bup help index").\n')
+        get_linux_file_attr = set_linux_file_attr = None
+
 
 # WARNING: the metadata encoding is *not* stable yet.  Caveat emptor!
 
@@ -554,6 +566,7 @@ class Metadata:
     ## Linux attributes (lsattr(1), chattr(1))
 
     def _add_linux_attr(self, path, st):
+        check_linux_file_attr_api()
         if not get_linux_file_attr: return
         if stat.S_ISREG(st.st_mode) or stat.S_ISDIR(st.st_mode):
             try:
@@ -585,6 +598,7 @@ class Metadata:
 
     def _apply_linux_attr_rec(self, path, restore_numeric_ids=False):
         if self.linux_attr:
+            check_linux_file_attr_api()
             if not set_linux_file_attr:
                 add_error("%s: can't restore linuxattrs: "
                           "linuxattr support missing.\n" % path)

@@ -815,11 +815,21 @@ static PyObject *fadvise_done(PyObject *self, PyObject *args)
 }
 
 
+// Currently the Linux kernel and FUSE disagree over the type for
+// FS_IOC_GETFLAGS and FS_IOC_SETFLAGS.  The kernel actually uses int,
+// but FUSE chose long (matching the declaration in linux/fs.h).  So
+// if you use int, and then traverse a FUSE filesystem, you may
+// corrupt the stack.  But if you use long, then you may get invalid
+// results on big-endian systems.
+//
+// For now, we just use long, and then disable Linux attrs entirely
+// (with a warning) in helpers.py on systems that are affected.
+
 #ifdef BUP_HAVE_FILE_ATTRS
 static PyObject *bup_get_linux_file_attr(PyObject *self, PyObject *args)
 {
     int rc;
-    unsigned int attr;
+    unsigned long attr;
     char *path;
     int fd;
 
@@ -830,8 +840,9 @@ static PyObject *bup_get_linux_file_attr(PyObject *self, PyObject *args)
     if (fd == -1)
         return PyErr_SetFromErrnoWithFilename(PyExc_OSError, path);
 
-    attr = 0;
+    attr = 0;  // Handle int/long mismatch (see above)
     rc = ioctl(fd, FS_IOC_GETFLAGS, &attr);
+    assert(attr <= UINT_MAX);  // Kernel type is actually int
     if (rc == -1)
     {
         close(fd);
@@ -839,7 +850,7 @@ static PyObject *bup_get_linux_file_attr(PyObject *self, PyObject *args)
     }
 
     close(fd);
-    return Py_BuildValue("I", attr);
+    return PyLong_FromUnsignedLong(attr);
 }
 #endif /* def BUP_HAVE_FILE_ATTRS */
 
@@ -849,7 +860,8 @@ static PyObject *bup_get_linux_file_attr(PyObject *self, PyObject *args)
 static PyObject *bup_set_linux_file_attr(PyObject *self, PyObject *args)
 {
     int rc;
-    unsigned int orig_attr, attr;
+    unsigned long orig_attr;
+    unsigned int attr;
     char *path;
     PyObject *py_attr;
     int fd;
@@ -873,13 +885,15 @@ static PyObject *bup_set_linux_file_attr(PyObject *self, PyObject *args)
     | FS_TOPDIR_FL | FS_NOCOW_FL;
 
     // The extents flag can't be removed, so don't (see chattr(1) and chattr.c).
+    orig_attr = 0; // Handle int/long mismatch (see above)
     rc = ioctl(fd, FS_IOC_GETFLAGS, &orig_attr);
+    assert(orig_attr <= UINT_MAX);  // Kernel type is actually int
     if (rc == -1)
     {
         close(fd);
         return PyErr_SetFromErrnoWithFilename(PyExc_OSError, path);
     }
-    attr |= (orig_attr & FS_EXTENT_FL);
+    attr |= ((unsigned int) orig_attr) & FS_EXTENT_FL;
 
     rc = ioctl(fd, FS_IOC_SETFLAGS, &attr);
     if (rc == -1)

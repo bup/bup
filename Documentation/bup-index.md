@@ -42,6 +42,15 @@ need the same information).
 
 # NOTES
 
+At the moment, bup will ignore Linux attributes (cf. chattr(1) and
+lsattr(1)) on some systems (any big-endian systems where sizeof(long)
+< sizeof(int)).  This is because the Linux kernel and FUSE currently
+disagree over the type of the attr system call arguments, and so on
+big-endian systems there's no way to get the results without the risk
+of stack corruption (http://lwn.net/Articles/575846/).  In these
+situations, bup will print a warning the first time Linux attrs are
+relevant during any index/save/restore operation.
+
 bup makes accommodations for the expected "worst-case" filesystem
 timestamp resolution -- currently one second; examples include VFAT,
 ext2, ext3, small ext4, etc.  Since bup cannot know the filesystem
