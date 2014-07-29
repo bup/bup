@@ -54,6 +54,22 @@
 
 static int istty2 = 0;
 
+
+#ifndef htonll
+// This function should technically be macro'd out if it's going to be used
+// more than ocasionally.  As of this writing, it'll actually never be called
+// in real world bup scenarios (because our packs are < MAX_INT bytes).
+static uint64_t htonll(uint64_t value)
+{
+    static const int endian_test = 42;
+
+    if (*(char *)&endian_test == endian_test) // LSB-MSB
+	return ((uint64_t)htonl(value & 0xFFFFFFFF) << 32) | htonl(value >> 32);
+    return value; // already in network byte order MSB-LSB
+}
+#endif
+
+
 // At the moment any code that calls INTGER_TO_PY() will have to
 // disable -Wtautological-compare for clang.  See below.
 
@@ -584,18 +600,6 @@ static PyObject *merge_into(PyObject *self, PyObject *args)
 
     PyMem_Free(idxs);
     return PyLong_FromUnsignedLong(count);
-}
-
-// This function should technically be macro'd out if it's going to be used
-// more than ocasionally.  As of this writing, it'll actually never be called
-// in real world bup scenarios (because our packs are < MAX_INT bytes).
-static uint64_t htonll(uint64_t value)
-{
-    static const int endian_test = 42;
-
-    if (*(char *)&endian_test == endian_test) // LSB-MSB
-	return ((uint64_t)htonl(value & 0xFFFFFFFF) << 32) | htonl(value >> 32);
-    return value; // already in network byte order MSB-LSB
 }
 
 #define FAN_ENTRIES 256
