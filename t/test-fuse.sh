@@ -67,7 +67,7 @@ WVPASS fusermount -uz mnt
 
 WVSTART "extended metadata"
 WVPASS bup fuse --meta mnt
-result=$(TZ=UTC WVPASS ls -l mnt/src/latest/) || exit $?
+result=$(TZ=UTC LC_ALL=C WVPASS ls -l mnt/src/latest/) || exit $?
 readonly user=$(WVPASS id -un) || $?
 readonly group=$(WVPASS id -gn) || $?
 WVPASSEQ "$result" "total 0
