@@ -631,15 +631,15 @@ def chunkyreader(f, count = None):
 
 @contextmanager
 def atomically_replaced_file(name, mode='w', buffering=-1):
-    """Write to file which will atomically become name when finished.
+    """Yield a file that will be atomically renamed name when leaving the block.
 
     This contextmanager yields an open file object that is backed by a
     temporary file which will be renamed (atomically) to the target
     name if everything succeeds.
 
     The mode and buffering arguments are handled exactly as with open,
-    and upon success the resulting file will have very restrictive
-    permissions, as per mkstemp.
+    and the yielded file will have have very restrictive permissions,
+    as per mkstemp.
 
     E.g.::
 
