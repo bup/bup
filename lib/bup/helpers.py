@@ -2,8 +2,9 @@
 
 from ctypes import sizeof, c_void_p
 from os import environ
+from contextlib import contextmanager
 import sys, os, pwd, subprocess, errno, socket, select, mmap, stat, re, struct
-import hashlib, heapq, operator, time, grp
+import hashlib, heapq, operator, time, grp, tempfile
 
 from bup import _helpers
 import bup._helpers as _helpers
@@ -626,6 +627,42 @@ def chunkyreader(f, count = None):
             b = f.read(65536)
             if not b: break
             yield b
+
+
+@contextmanager
+def atomically_replaced_file(name, mode='w', buffering=-1):
+    """Yield a file that will be atomically renamed name when leaving the block.
+
+    This contextmanager yields an open file object that is backed by a
+    temporary file which will be renamed (atomically) to the target
+    name if everything succeeds.
+
+    The mode and buffering arguments are handled exactly as with open,
+    and the yielded file will have have very restrictive permissions,
+    as per mkstemp.
+
+    E.g.::
+
+        with atomically_replaced_file('foo.txt', 'w') as f:
+            f.write('hello jack.')
+
+    """
+
+    (ffd, tempname) = tempfile.mkstemp(dir=os.path.dirname(name),
+                                       text=('b' not in mode))
+    try:
+        try:
+            f = os.fdopen(ffd, mode, buffering)
+        except:
+            os.close(ffd)
+            raise
+        try:
+            yield f
+        finally:
+            f.close()
+        os.rename(tempname, name)
+    finally:
+        unlink(tempname)  # nonexistant file is ignored
 
 
 def slashappend(s):
