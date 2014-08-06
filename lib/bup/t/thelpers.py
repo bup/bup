@@ -162,6 +162,15 @@ def test_atomically_replaced_file():
     f = open(target_file, 'r')
     WVPASSEQ(f.read(), 'asdf')
 
+    try:
+        with atomically_replaced_file(target_file, mode='w') as f:
+            f.write('wxyz')
+            raise Exception()
+    except:
+        pass
+    with open(target_file) as f:
+        WVPASSEQ(f.read(), 'asdf')
+
     with atomically_replaced_file(target_file, mode='wb') as f:
         f.write(os.urandom(20))
         WVPASSEQ(f.mode, 'wb')
