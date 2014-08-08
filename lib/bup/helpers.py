@@ -188,8 +188,8 @@ def unlink(f):
     try:
         os.unlink(f)
     except OSError, e:
-        if e.errno == errno.ENOENT:
-            pass  # it doesn't exist, that's what you asked for
+        if e.errno != errno.ENOENT:
+            raise
 
 
 def readpipe(argv, preexec_fn=None):
