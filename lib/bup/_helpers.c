@@ -842,14 +842,13 @@ static PyObject *bup_get_linux_file_attr(PyObject *self, PyObject *args)
 
     attr = 0;  // Handle int/long mismatch (see above)
     rc = ioctl(fd, FS_IOC_GETFLAGS, &attr);
-    assert(attr <= UINT_MAX);  // Kernel type is actually int
     if (rc == -1)
     {
         close(fd);
         return PyErr_SetFromErrnoWithFilename(PyExc_OSError, path);
     }
-
     close(fd);
+    assert(attr <= UINT_MAX);  // Kernel type is actually int
     return PyLong_FromUnsignedLong(attr);
 }
 #endif /* def BUP_HAVE_FILE_ATTRS */
