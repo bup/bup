@@ -638,8 +638,8 @@ def atomically_replaced_file(name, mode='w', buffering=-1):
     name if everything succeeds.
 
     The mode and buffering arguments are handled exactly as with open,
-    and the yielded file will have have very restrictive permissions,
-    as per mkstemp.
+    and the yielded file will have very restrictive permissions, as
+    per mkstemp.
 
     E.g.::
 
