@@ -74,7 +74,11 @@ if opt.name and opt.name.startswith('.'):
     o.fatal("'%s' is not a valid branch name" % opt.name)
 refname = opt.name and 'refs/heads/%s' % opt.name or None
 if opt.remote or is_reverse:
-    cli = client.Client(opt.remote)
+    try:
+        cli = client.Client(opt.remote)
+    except client.ClientError, e:
+        log('error: %s' % e)
+        sys.exit(1)
     oldref = refname and cli.read_ref(refname) or None
     w = cli.new_packwriter(compression_level=opt.compress)
 else:
