@@ -423,7 +423,10 @@ class Metadata:
                     raise
 
         if _have_lchmod:
-            os.lchmod(path, stat.S_IMODE(self.mode))
+            try:
+                os.lchmod(path, stat.S_IMODE(self.mode))
+            except errno.ENOSYS:  # Function not implemented
+                pass
         elif not stat.S_ISLNK(self.mode):
             os.chmod(path, stat.S_IMODE(self.mode))
 
