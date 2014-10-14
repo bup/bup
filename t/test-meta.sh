@@ -433,6 +433,7 @@ src/foo/3"
       print grp.getgrgid(os.getgroups()[0])[0]')" || exit $?
     last_group="$(python -c 'import os,grp; \
       print grp.getgrgid(os.getgroups()[-1])[0]')" || exit $?
+    last_group_erx="$(escape-erx "$last_group")"
 
     WVSTART 'metadata (restoration of ownership)'
     WVPASS force-delete "$TOP/bupmeta.tmp"
@@ -459,7 +460,7 @@ src/foo/3"
     WVPASS rm -rf src
     WVPASS bup meta --edit --set-group "$last_group" ../src.meta \
         | WVPASS bup meta -x
-    WVPASS bup xstat src | WVPASS grep -qE "^group: $last_group"
+    WVPASS bup xstat src | WVPASS grep -qE "^group: $last_group_erx"
 
     # Make sure we can restore one of the user's gids.
     user_gids="$(id -G)"
@@ -537,23 +538,25 @@ src/foo/3"
 
     other_uinfo2="$(id-other-than --user "$(id -un)" "$other_user")"
     other_user2="${other_uinfo2%%:*}"
+    other_user2_erx="$(escape-erx "$other_user2")"
     other_uid2="${other_uinfo2##*:}"
 
     other_ginfo2="$(id-other-than --group "$(id -gn)" "$other_group")"
     other_group2="${other_ginfo2%%:*}"
+    other_group2_erx="$(escape-erx "$other_group2")"
     other_gid2="${other_ginfo2##*:}"
 
     # Try to restore a user (and see that user trumps uid when uid is not 0).
     WVPASS bup meta --edit \
         --set-uid "$other_uid" --set-user "$other_user2" ../src.meta \
         | WVPASS bup meta -x
-    WVPASS bup xstat src | WVPASS grep -qE "^user: $other_user2"
+    WVPASS bup xstat src | WVPASS grep -qE "^user: $other_user2_erx"
 
     # Try to restore a group (and see that group trumps gid when gid is not 0).
     WVPASS bup meta --edit \
         --set-gid "$other_gid" --set-group "$other_group2" ../src.meta \
         | WVPASS bup meta -x
-    WVPASS bup xstat src | WVPASS grep -qE "^group: $other_group2"
+    WVPASS bup xstat src | WVPASS grep -qE "^group: $other_group2_erx"
 
     # Test --numeric-ids (uid).  Note the name 'root' is not handled
     # specially, so we use that here as the test user name.  We assume
@@ -598,13 +601,13 @@ src/foo/3"
         # Make sure a uid of 0 trumps a non-root user.
         WVPASS bup meta --edit --set-user "$other_user2" ../src.meta \
             | WVPASS bup meta -x
-        WVPASS bup xstat src | WVPASS grep -qvE "^user: $other_user2"
+        WVPASS bup xstat src | WVPASS grep -qvE "^user: $other_user2_erx"
         WVPASS bup xstat src | WVPASS grep -qE "^uid: 0"
 
         # Make sure a gid of 0 trumps a non-root group.
         WVPASS bup meta --edit --set-group "$other_group2" ../src.meta \
             | WVPASS bup meta -x
-        WVPASS bup xstat src | WVPASS grep -qvE "^group: $other_group2"
+        WVPASS bup xstat src | WVPASS grep -qvE "^group: $other_group2_erx"
         WVPASS bup xstat src | WVPASS grep -qE "^gid: 0"
     fi
 ) || exit $?

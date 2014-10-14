@@ -46,3 +46,8 @@ path-filesystems()
     done
     exit 0
 )
+
+escape-erx()
+{
+    sed 's/[][\.|$(){?+*^]/\\&/g' <<< "$*"
+}
