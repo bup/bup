@@ -545,15 +545,15 @@ src/foo/3"
 
     # Try to restore a user (and see that user trumps uid when uid is not 0).
     WVPASS bup meta --edit \
-        --set-uid "$other_uid2" --set-user "$some_user" ../src.meta \
+        --set-uid "$other_uid" --set-user "$other_user2" ../src.meta \
         | WVPASS bup meta -x
-    WVPASS bup xstat src | WVPASS grep -qE "^user: $some_user"
+    WVPASS bup xstat src | WVPASS grep -qE "^user: $other_user2"
 
     # Try to restore a group (and see that group trumps gid when gid is not 0).
     WVPASS bup meta --edit \
-        --set-gid "$other_gid2" --set-group "$some_group" ../src.meta \
+        --set-gid "$other_gid" --set-group "$other_group2" ../src.meta \
         | WVPASS bup meta -x
-    WVPASS bup xstat src | WVPASS grep -qE "^group: $some_user"
+    WVPASS bup xstat src | WVPASS grep -qE "^group: $other_group2"
 
     # Test --numeric-ids (uid).  Note the name 'root' is not handled
     # specially, so we use that here as the test user name.  We assume
@@ -596,15 +596,15 @@ src/foo/3"
         # restoring an unknown uid/gid.
 
         # Make sure a uid of 0 trumps a non-root user.
-        WVPASS bup meta --edit --set-user "$some_user" ../src.meta \
+        WVPASS bup meta --edit --set-user "$other_user2" ../src.meta \
             | WVPASS bup meta -x
-        WVPASS bup xstat src | WVPASS grep -qvE "^user: $some_user"
+        WVPASS bup xstat src | WVPASS grep -qvE "^user: $other_user2"
         WVPASS bup xstat src | WVPASS grep -qE "^uid: 0"
 
         # Make sure a gid of 0 trumps a non-root group.
-        WVPASS bup meta --edit --set-group "$some_user" ../src.meta \
+        WVPASS bup meta --edit --set-group "$other_group2" ../src.meta \
             | WVPASS bup meta -x
-        WVPASS bup xstat src | WVPASS grep -qvE "^group: $some_group"
+        WVPASS bup xstat src | WVPASS grep -qvE "^group: $other_group2"
         WVPASS bup xstat src | WVPASS grep -qE "^gid: 0"
     fi
 ) || exit $?
