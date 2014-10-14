@@ -577,7 +577,7 @@ src/foo/3"
     WVPASSEQ "$new_gidx" "gid: $other_gid"
 
     # Test that restoring an unknown user works.
-    unknown_user=$("$TOP"/t/unknown-owners --user)
+    unknown_user=$("$TOP"/t/unknown-owner --user)
     WVPASS rm -rf src
     WVPASS bup meta --edit \
         --set-uid "$other_uid" --set-user "$unknown_user" ../src.meta \
@@ -586,7 +586,7 @@ src/foo/3"
     WVPASSEQ "$new_uidx" "uid: $other_uid"
 
     # Test that restoring an unknown group works.
-    unknown_group=$("$TOP"/t/unknown-owners --group)
+    unknown_group=$("$TOP"/t/unknown-owner --group)
     WVPASS rm -rf src
     WVPASS bup meta --edit \
         --set-gid "$other_gid" --set-group "$unknown_group" ../src.meta \

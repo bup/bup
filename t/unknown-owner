@@ -5,7 +5,7 @@ import pwd
 import sys
 
 def usage():
-    print >> sys.stderr, "Usage: unknown-owners (--user | --group)"
+    print >> sys.stderr, "Usage: unknown-owner (--user | --group)"
 
 if len(sys.argv) != 2:
     usage()
