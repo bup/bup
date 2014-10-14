@@ -16,6 +16,8 @@ atime_resolution="$(echo $timestamp_resolutions | WVPASS cut -d' ' -f 1)" \
 mtime_resolution="$(echo $timestamp_resolutions | WVPASS cut -d' ' -f 2)" \
     || exit $?
 
+root_status="$(t/root-status)" || exit $?
+
 bup()
 {
     "$TOP/bup" "$@"
@@ -83,7 +85,7 @@ test-src-save-restore()
     (
         WVPASS rm -rf src.bup
         WVPASS mkdir src.bup
-        export BUP_DIR=$(pwd)/src.bup
+        export BUP_DIR=$(pwd)/src.bup || exit $?
         WVPASS bup init
         WVPASS bup index src
         WVPASS bup save -t -n src src
@@ -99,7 +101,7 @@ test-src-save-restore()
 
 universal-cleanup()
 {
-    if [ $(t/root-status) != root ]; then return 0; fi
+    if [ "$root_status" != root ]; then return 0; fi
     umount "$TOP/bupmeta.tmp/testfs" || true
     umount "$TOP/bupmeta.tmp/testfs-limited" || true
 }
@@ -169,7 +171,7 @@ WVSTART 'metadata save/restore (general)'
     WVPASS test -d src/lib/bup
     WVPASS rm -rf src.bup
     WVPASS mkdir src.bup
-    export BUP_DIR=$(pwd)/src.bup
+    export BUP_DIR=$(pwd)/src.bup || exit $?
     WVPASS bup init
     WVPASS touch -t 201111111111 src-restore # Make sure the top won't match.
     WVPASS bup index src
@@ -204,7 +206,7 @@ WVSTART 'metadata save/restore (using index metadata)'
 
     WVPASS rm -rf src.bup
     WVPASS mkdir src.bup
-    export BUP_DIR=$(pwd)/src.bup
+    export BUP_DIR=$(pwd)/src.bup || exit $?
     WVPASS bup init
     WVPASS bup index src
     WVPASS bup save -t -n src src
@@ -425,7 +427,7 @@ src/foo/3"
 
 # Test ownership restoration (when not root or fakeroot).
 (
-    if [ $(t/root-status) != none ]; then
+    if [ "$root_status" != none ]; then
         exit 0
     fi
 
@@ -463,8 +465,8 @@ src/foo/3"
     WVPASS bup xstat src | WVPASS grep -qE "^group: $last_group_erx"
 
     # Make sure we can restore one of the user's gids.
-    user_gids="$(id -G)"
-    last_gid="$(echo ${user_gids/* /})"
+    user_gids="$(id -G)" || exit $?
+    last_gid="$(echo ${user_gids/* /})" || exit $?
     WVPASS rm -rf src
     WVPASS bup meta --edit --unset-group --set-gid "$last_gid" ../src.meta \
         | WVPASS bup meta -x
@@ -472,34 +474,34 @@ src/foo/3"
 
     # Test --numeric-ids (gid).
     WVPASS rm -rf src
-    current_gidx=$(bup meta -tvvf ../src.meta | grep -e '^gid:')
+    current_gidx=$(bup meta -tvvf ../src.meta | grep -e '^gid:') || exit $?
     WVPASS bup meta --edit --set-group "$last_group" ../src.meta \
         | WVPASS bup meta -x --numeric-ids
-    new_gidx=$(bup xstat src | grep -e '^gid:')
+    new_gidx=$(bup xstat src | grep -e '^gid:') || exit $?
     WVPASSEQ "$current_gidx" "$new_gidx"
 
     # Test that restoring an unknown user works.
-    unknown_user=$("$TOP"/t/unknown-owner --user)
+    unknown_user=$("$TOP"/t/unknown-owner --user) || exit $?
     WVPASS rm -rf src
-    current_uidx=$(bup meta -tvvf ../src.meta | grep -e '^uid:')
+    current_uidx=$(bup meta -tvvf ../src.meta | grep -e '^uid:') || exit $?
     WVPASS bup meta --edit --set-user "$unknown_user" ../src.meta \
         | WVPASS bup meta -x
-    new_uidx=$(bup xstat src | grep -e '^uid:')
+    new_uidx=$(bup xstat src | grep -e '^uid:') || exit $?
     WVPASSEQ "$current_uidx" "$new_uidx"
 
     # Test that restoring an unknown group works.
-    unknown_group=$("$TOP"/t/unknown-owner --group)
+    unknown_group=$("$TOP"/t/unknown-owner --group) || exit $?
     WVPASS rm -rf src
-    current_gidx=$(bup meta -tvvf ../src.meta | grep -e '^gid:')
+    current_gidx=$(bup meta -tvvf ../src.meta | grep -e '^gid:') || exit $?
     WVPASS bup meta --edit --set-group "$unknown_group" ../src.meta \
         | WVPASS bup meta -x
-    new_gidx=$(bup xstat src | grep -e '^gid:')
+    new_gidx=$(bup xstat src | grep -e '^gid:') || exit $?
     WVPASSEQ "$current_gidx" "$new_gidx"
 ) || exit $?
 
 # Test ownership restoration (when root or fakeroot).
 (
-    if [ $(t/root-status) = none ]; then
+    if [ "$root_status" = none ]; then
         exit 0
     fi
 
@@ -518,11 +520,11 @@ src/foo/3"
     WVPASS chmod 700 dest # so we can't accidentally do something insecure
     WVPASS cd dest
 
-    other_uinfo="$(id-other-than --user "$uid")"
+    other_uinfo="$(id-other-than --user "$uid")" || exit $?
     other_user="${other_uinfo%%:*}"
     other_uid="${other_uinfo##*:}"
 
-    other_ginfo="$(id-other-than --group "$gid")"
+    other_ginfo="$(id-other-than --group "$gid")" || exit $?
     other_group="${other_ginfo%%:*}"
     other_gid="${other_ginfo##*:}"
 
@@ -536,14 +538,14 @@ src/foo/3"
         | WVPASS bup meta -x
     WVPASS bup xstat src | WVPASS grep -qE "^gid: $other_gid"
 
-    other_uinfo2="$(id-other-than --user "$(id -un)" "$other_user")"
+    other_uinfo2="$(id-other-than --user "$(id -un)" "$other_user")" || exit $?
     other_user2="${other_uinfo2%%:*}"
-    other_user2_erx="$(escape-erx "$other_user2")"
+    other_user2_erx="$(escape-erx "$other_user2")" || exit $?
     other_uid2="${other_uinfo2##*:}"
 
-    other_ginfo2="$(id-other-than --group "$(id -gn)" "$other_group")"
+    other_ginfo2="$(id-other-than --group "$(id -gn)" "$other_group")" || exit $?
     other_group2="${other_ginfo2%%:*}"
-    other_group2_erx="$(escape-erx "$other_group2")"
+    other_group2_erx="$(escape-erx "$other_group2")" || exit $?
     other_gid2="${other_ginfo2##*:}"
 
     # Try to restore a user (and see that user trumps uid when uid is not 0).
@@ -564,7 +566,7 @@ src/foo/3"
     WVPASS rm -rf src
     WVPASS bup meta --edit --set-user root --set-uid "$other_uid" ../src.meta \
         | WVPASS bup meta -x --numeric-ids
-    new_uidx=$(bup xstat src | grep -e '^uid:')
+    new_uidx=$(bup xstat src | grep -e '^uid:') || exit $?
     WVPASSEQ "$new_uidx" "uid: $other_uid"
 
     # Test --numeric-ids (gid).  Note the name 'root' is not handled
@@ -573,25 +575,25 @@ src/foo/3"
     WVPASS rm -rf src
     WVPASS bup meta --edit --set-group root --set-gid "$other_gid" ../src.meta \
         | WVPASS bup meta -x --numeric-ids
-    new_gidx=$(bup xstat src | grep -e '^gid:')
+    new_gidx=$(bup xstat src | grep -e '^gid:') || exit $?
     WVPASSEQ "$new_gidx" "gid: $other_gid"
 
     # Test that restoring an unknown user works.
-    unknown_user=$("$TOP"/t/unknown-owner --user)
+    unknown_user=$("$TOP"/t/unknown-owner --user) || exit $?
     WVPASS rm -rf src
     WVPASS bup meta --edit \
         --set-uid "$other_uid" --set-user "$unknown_user" ../src.meta \
         | WVPASS bup meta -x
-    new_uidx=$(bup xstat src | grep -e '^uid:')
+    new_uidx=$(bup xstat src | grep -e '^uid:') || exit $?
     WVPASSEQ "$new_uidx" "uid: $other_uid"
 
     # Test that restoring an unknown group works.
-    unknown_group=$("$TOP"/t/unknown-owner --group)
+    unknown_group=$("$TOP"/t/unknown-owner --group) || exit $?
     WVPASS rm -rf src
     WVPASS bup meta --edit \
         --set-gid "$other_gid" --set-group "$unknown_group" ../src.meta \
         | WVPASS bup meta -x
-    new_gidx=$(bup xstat src | grep -e '^gid:')
+    new_gidx=$(bup xstat src | grep -e '^gid:') || exit $?
     WVPASSEQ "$new_gidx" "gid: $other_gid"
 
     if ! [[ $(uname) =~ CYGWIN ]]; then
@@ -615,7 +617,7 @@ src/foo/3"
 
 # Root-only tests that require an FS with all the trimmings: ACLs,
 # Linux attr, Linux xattr, etc.
-if [ $(t/root-status) = root ]; then
+if [ "$root_status" = root ]; then
     (
         # Some cleanup handled in universal-cleanup() above.
         # These tests are only likely to work under Linux for now
