@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+
+# Recursively dump all blobs in the subtree identified by ID.
+
+set -o pipefail
+
+usage() {
+cat <<EOF
+Usage: cat-git-tree ID
+EOF
+}
+
+cat-item()
+{
+    local hash="$1"
+    local type="$2"
+    case "$type" in
+        blob)
+            git cat-file blob "$hash" || exit $?
+            ;;
+        tree)
+            local tree=$(git ls-tree "$hash") || exit $?
+            while read -r line; do
+                local sub_type=$(echo "$line" | cut -d' ' -f 2) || exit $?
+                local sub_hash=$(echo "$line" | cut -d' ' -f 3) || exit $?
+                sub_hash=$(echo "$sub_hash" | cut -d'	' -f 1) || exit $?
+                cat-item "$sub_hash" "$sub_type"
+            done <<< "$tree"
+            ;;
+        *)
+            echo "Unexpected item: $type $hash" 1>&2
+            exit 1
+            ;;
+    esac
+}
+
+if test $# -ne 1
+then
+    usage 1>&2
+    exit 1
+fi
+
+top="$1"
+type=$(git cat-file -t "$top") || exit $?
+cat-item "$top" "$type"

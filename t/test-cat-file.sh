@@ -36,7 +36,7 @@ src_hash=$(WVPASS bup ls -s "src/latest/$(pwd)" | cut -d' ' -f 1) || exit $?
 bupm_hash=$(WVPASS git ls-tree "$src_hash" | grep -F .bupm | cut -d' ' -f 3) \
     || exit $?
 bupm_hash=$(WVPASS echo "$bupm_hash" | cut -d'	' -f 1) || exit $?
-WVPASS git cat-file blob "$bupm_hash" > git-cat-bupm
+WVPASS "$top/t/git-cat-tree" "$bupm_hash" > git-cat-bupm
 if ! cmp git-cat-bupm bup-cat-bupm; then
     cmp -l git-cat-bupm bup-cat-bupm
     diff -uN <(bup meta -tvvf git-cat-bupm) <(bup meta -tvvf bup-cat-bupm)
