@@ -300,7 +300,8 @@ class PackWriter_Remote(git.PackWriter):
             self.onopen()
             self._packopen = True
 
-    def _end(self):
+    def _end(self, run_midx=True):
+        assert(run_midx)  # We don't support this via remote yet
         if self._packopen and self.file:
             self.file.write('\0\0\0\0')
             self._packopen = False

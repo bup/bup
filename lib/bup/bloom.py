@@ -193,11 +193,15 @@ class ShaBloom:
         k = self.k
         return 100*(1-math.exp(-k*float(n)/m))**k
 
-    def add_idx(self, ix):
-        """Add the object to the filter, return current pfalse_positive."""
+    def add(self, ids):
+        """Add the hashes in ids (packed binary 20-bytes) to the filter."""
         if not self.map:
             raise Exception("Cannot add to closed bloom")
-        self.entries += bloom_add(self.map, ix.shatable, self.bits, self.k)
+        self.entries += bloom_add(self.map, ids, self.bits, self.k)
+
+    def add_idx(self, ix):
+        """Add the object to the filter."""
+        self.add(ix.shatable)
         self.idxnames.append(os.path.basename(ix.name))
 
     def exists(self, sha):
@@ -240,3 +244,6 @@ def create(name, expected, delaywrite=None, f=None, k=None):
         expected = 1
     return ShaBloom(name, f=f, readwrite=True, expected=expected)
 
+
+def clear_bloom(dir):
+    unlink(os.path.join(dir, 'bup.bloom'))
