@@ -579,9 +579,13 @@ def idxmerge(idxlist, final_progress=True):
 def _make_objcache():
     return PackIdxList(repo('objects/pack'))
 
+# bup-gc assumes that it can disable all PackWriter activities
+# (bloom/midx/cache) via the constructor and close() arguments.
+
 class PackWriter:
     """Writes Git objects inside a pack file."""
-    def __init__(self, objcache_maker=_make_objcache, compression_level=1):
+    def __init__(self, objcache_maker=_make_objcache, compression_level=1,
+                 run_midx=True, on_pack_finish=None):
         self.file = None
         self.parentfd = None
         self.count = 0
@@ -591,6 +595,8 @@ class PackWriter:
         self.objcache_maker = objcache_maker
         self.objcache = None
         self.compression_level = compression_level
+        self.run_midx=run_midx
+        self.on_pack_finish = on_pack_finish
 
     def __del__(self):
         self.close()
@@ -655,7 +661,7 @@ class PackWriter:
 
     def breakpoint(self):
         """Clear byte and object counts and return the last processed id."""
-        id = self._end()
+        id = self._end(self.run_midx)
         self.outbytes = self.count = 0
         return id
 
@@ -671,11 +677,15 @@ class PackWriter:
         self._require_objcache()
         return self.objcache.exists(id, want_source=want_source)
 
+    def write(self, sha, type, content):
+        """Write an object to the pack file.  Fails if sha exists()."""
+        self._write(sha, type, content)
+
     def maybe_write(self, type, content):
         """Write an object to the pack file if not present and return its id."""
         sha = calc_hash(type, content)
         if not self.exists(sha):
-            self._write(sha, type, content)
+            self.write(sha, type, content)
             self._require_objcache()
             self.objcache.add(sha)
         return sha
@@ -769,6 +779,10 @@ class PackWriter:
 
         if run_midx:
             auto_midx(repo('objects/pack'))
+
+        if self.on_pack_finish:
+            self.on_pack_finish(nameprefix)
+
         return nameprefix
 
     def close(self, run_midx=True):
