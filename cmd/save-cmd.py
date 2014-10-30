@@ -141,7 +141,22 @@ def _pop(force_tree, dir_metadata=None):
                                                    [metadata_f],
                                                    keep_boundaries=False)
         shalist.append((mode, '.bupm', id))
-    tree = force_tree or w.new_tree(shalist)
+    # FIXME: only test if collision is possible (i.e. given --strip, etc.)?
+    if force_tree:
+        tree = force_tree
+    else:
+        names_seen = set()
+        clean_list = []
+        for x in shalist:
+            name = x[1]
+            if name in names_seen:
+                parent_path = '/'.join(parts) + '/'
+                add_error('error: ignoring duplicate path %r in %r'
+                          % (name, parent_path))
+            else:
+                names_seen.add(name)
+                clean_list.append(x)
+        tree = w.new_tree(clean_list)
     if shalists:
         shalists[-1].append((GIT_MODE_TREE,
                              git.mangle_name(part,
