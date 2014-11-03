@@ -308,16 +308,7 @@ for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse_during):
     # ...].
 
     if first_root == None:
-        dir_name, fs_path = dirp[0]
         first_root = dirp[0]
-        # Not indexed, so just grab the FS metadata or use empty metadata.
-        try:
-           meta = metadata.from_path(fs_path) if fs_path else metadata.Metadata()
-        except (OSError, IOError), e:
-            add_error(e)
-            lastskip_name = dir_name
-        else:
-           _push(dir_name, meta)
     elif first_root != dirp[0]:
         root_collision = True
 
