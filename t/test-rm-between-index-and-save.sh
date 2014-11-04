@@ -61,15 +61,16 @@ WVPASS rmdir "$D"/foo
 # with directories, bup notices that foo is missing, so it fails
 # (complete with delayed error)
 WVFAIL bup save -n save-fail-missing "$D"
-# ... so "foo" is absent from "bup ls"
+# ...but foo is still saved since it was just fine in the index
 WVPASSEQ "$(bup ls -AF save-fail-missing/latest/$TOP/$D/)" "bar/
-baz/"
+baz/
+foo/"
 # Index again:
 WVPASS bup tick
 WVPASS bup index -ux "$D"
 # no non-zero-exitcode anymore:
 WVPASS bup save -n save-fail-missing "$D"
-# foo is (still...) missing, of course:
+# foo is now gone
 WVPASSEQ "$(bup ls -AF save-fail-missing/latest/$TOP/$D/)" "bar/
 baz/"
 

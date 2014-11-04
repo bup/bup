@@ -325,8 +325,8 @@ for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse_during):
         except (OSError, IOError), e:
             add_error(e)
             lastskip_name = dir_name
-        else:
-           _push(dir_name, meta)
+            meta = metadata.Metadata()
+        _push(dir_name, meta)
 
     if not file:
         if len(parts) == 1:
