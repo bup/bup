@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import sys, os, struct, getopt, subprocess, signal
+from subprocess import PIPE
 from bup import options, ssh, path
 from bup.helpers import *
 
@@ -33,9 +34,8 @@ try:
         (hostname, port) = (hp[0], None)
     else:
         (hostname, port) = hp
-
     argv = extra[1:]
-    p = ssh.connect(hostname, port, 'on--server')
+    p = ssh.connect(hostname, port, 'on--server', stderr=PIPE)
 
     try:
         argvs = '\0'.join(['bup'] + argv)
@@ -45,6 +45,10 @@ try:
                               stdin=p.stdout, stdout=p.stdin)
         p.stdin.close()
         p.stdout.close()
+        # Demultiplex remote client's stderr (back to stdout/stderr).
+        dmc = DemuxConn(p.stderr.fileno(), open(os.devnull, "w"))
+        for line in iter(dmc.readline, ""):
+            sys.stdout.write(line)
     finally:
         while 1:
             # if we get a signal while waiting, we have to keep waiting, just

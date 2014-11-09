@@ -23,6 +23,7 @@ assert(sz < 1000000)
 buf = sys.stdin.read(sz)
 assert(len(buf) == sz)
 argv = buf.split('\0')
+argv = [argv[0], 'mux', '--'] + argv
 
 # stdin/stdout are supposedly connected to 'bup server' that the caller
 # started for us (often on the other end of an ssh tunnel), so we don't want

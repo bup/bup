@@ -5,7 +5,7 @@ import sys, os, re, subprocess
 from bup import helpers, path
 
 
-def connect(rhost, port, subcmd):
+def connect(rhost, port, subcmd, stderr=None):
     """Connect to 'rhost' and execute the bup subcommand 'subcmd' on it."""
     assert(not re.search(r'[^\w-]', subcmd))
     nicedir = re.sub(r':', "_", path.exedir())
@@ -39,4 +39,5 @@ def connect(rhost, port, subcmd):
                                            os.environ.get('PATH', '')])
         os.setsid()
     return subprocess.Popen(argv, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                            stderr=stderr,
                             preexec_fn=setup)
