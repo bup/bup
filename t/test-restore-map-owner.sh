@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-. ./wvtest-bup.sh
+. ./wvtest-bup.sh || exit $?
 
 if [ $(t/root-status) != root ]; then
     echo 'Not root: skipping restore --map-* tests.'

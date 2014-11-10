@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-. ./wvtest-bup.sh
-. t/lib.sh
+. ./wvtest-bup.sh || exit $?
+. t/lib.sh || exit $?
 
 set -o pipefail
 

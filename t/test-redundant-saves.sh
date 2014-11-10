@@ -9,7 +9,7 @@
 # may change between runs.  So instead we extract the roots of the
 # indexed trees for comparison via t/subtree-hash.
 
-. ./wvtest-bup.sh
+. ./wvtest-bup.sh || exit $?
 
 set -o pipefail
 

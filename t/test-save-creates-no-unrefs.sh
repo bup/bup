@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-. ./wvtest-bup.sh
+. ./wvtest-bup.sh || exit $?
 
 WVSTART 'all'
 
