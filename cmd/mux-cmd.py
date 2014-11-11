@@ -4,7 +4,7 @@ from bup import options
 from bup.helpers import *
 
 optspec = """
-bup mux command [command arguments...]
+bup mux command [arguments...]
 --
 """
 o = options.Options(optspec)
@@ -12,9 +12,7 @@ o = options.Options(optspec)
 if len(extra) < 1:
     o.fatal('command is required')
 
-cmdpath, cmdfn = os.path.split(__file__)
 subcmd = extra
-subcmd[0] = os.path.join(cmdpath, 'bup-' + subcmd[0])
 
 debug2('bup mux: starting %r\n' % (extra,))
 

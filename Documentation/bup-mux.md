@@ -16,14 +16,14 @@ bup mux \<command\> [options...]
 send both data and debugging/error output over the single
 connection stream.
 
-`bup mux server` might be used in an inetd server setup.
+`bup mux bup server` might be used in an inetd server setup.
 
 # OPTIONS
 
 command
-:   the subcommand to run
+:   the command to run
 options
-:   options for command
+:   options for the command
 
 # BUP
 
