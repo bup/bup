@@ -23,38 +23,44 @@ def handler(signum, frame):
 signal.signal(signal.SIGTERM, handler)
 signal.signal(signal.SIGINT, handler)
 
-sp = None
-p = None
-ret = 99
-
-hp = extra[0].split(':')
-if len(hp) == 1:
-    (hostname, port) = (hp[0], None)
-else:
-    (hostname, port) = hp
-
-argv = extra[1:]
-p = ssh.connect(hostname, port, 'on--server')
-
 try:
-    argvs = '\0'.join(['bup'] + argv)
-    p.stdin.write(struct.pack('!I', len(argvs)) + argvs)
-    p.stdin.flush()
-    sp = subprocess.Popen([path.exe(), 'server'],
-                          stdin=p.stdout, stdout=p.stdin)
-    p.stdin.close()
-    p.stdout.close()
-finally:
-    while 1:
-        # if we get a signal while waiting, we have to keep waiting, just
-        # in case our child doesn't die.
-        try:
-            ret = p.wait()
-            if sp:
-                sp.wait()
-            break
-        except SigException, e:
-            log('\nbup on: %s\n' % e)
-            os.kill(p.pid, e.signum)
-            ret = 84
+    sp = None
+    p = None
+    ret = 99
+
+    hp = extra[0].split(':')
+    if len(hp) == 1:
+        (hostname, port) = (hp[0], None)
+    else:
+        (hostname, port) = hp
+
+    argv = extra[1:]
+    p = ssh.connect(hostname, port, 'on--server')
+
+    try:
+        argvs = '\0'.join(['bup'] + argv)
+        p.stdin.write(struct.pack('!I', len(argvs)) + argvs)
+        p.stdin.flush()
+        sp = subprocess.Popen([path.exe(), 'server'],
+                              stdin=p.stdout, stdout=p.stdin)
+        p.stdin.close()
+        p.stdout.close()
+    finally:
+        while 1:
+            # if we get a signal while waiting, we have to keep waiting, just
+            # in case our child doesn't die.
+            try:
+                ret = p.wait()
+                if sp:
+                    sp.wait()
+                break
+            except SigException, e:
+                log('\nbup on: %s\n' % e)
+                os.kill(p.pid, e.signum)
+                ret = 84
+except SigException, e:
+    if ret == 0:
+        ret = 99
+    log('\nbup on: %s\n' % e)
+
 sys.exit(ret)
