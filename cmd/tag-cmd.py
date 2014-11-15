@@ -19,7 +19,7 @@ bup tag [-f] <tag name> <commit>
 bup tag -d [-f] <tag name>
 --
 d,delete=   Delete a tag
-f,force     Overwrite existing tag, or 'delete' a tag that doesn't exist
+f,force     Overwrite existing tag, or ignore missing tag when deleting
 """
 
 o = options.Options(optspec)
