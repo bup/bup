@@ -16,7 +16,7 @@ handle_ctrl_c()
 optspec = """
 bup tag
 bup tag [-f] <tag name> <commit>
-bup tag -d [-f] <tag name>
+bup tag [-f] -d <tag name>
 --
 d,delete=   Delete a tag
 f,force     Overwrite existing tag, or ignore missing tag when deleting
