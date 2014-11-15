@@ -27,24 +27,19 @@ o = options.Options(optspec)
 
 git.check_repo_or_die()
 
-if opt.delete:
-    tag_file = git.repo('refs/tags/%s' % opt.delete)
-    debug1("tag file: %s\n" % tag_file)
-    if not os.path.exists(tag_file):
-        if opt.force:
-            sys.exit(0)
-        log("bup: error: tag '%s' not found.\n" % opt.delete)
-        sys.exit(1)
-
-    try:
-        os.unlink(tag_file)
-    except OSError, e:
-        log("bup: error: unable to delete tag '%s': %s" % (opt.delete, e))
-        sys.exit(1)
-
-    sys.exit(0)
-
 tags = [t for sublist in git.tags().values() for t in sublist]
+
+if opt.delete:
+    # git.delete_ref() doesn't complain if a ref doesn't exist.  We
+    # could implement this verification but we'd need to read in the
+    # contents of the tag file and pass the hash, and we already know
+    # about the tag's existance via "tags".
+    if not opt.force and opt.delete not in tags:
+        log("error: tag '%s' doesn't exist\n" % opt.delete)
+        sys.exit(1)
+    tag_file = 'refs/tags/%s' % opt.delete
+    git.delete_ref(tag_file)
+    sys.exit(0)
 
 if not extra:
     for t in tags:

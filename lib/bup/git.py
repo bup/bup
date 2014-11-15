@@ -883,6 +883,14 @@ def update_ref(refname, newval, oldval, repo_dir=None):
     _git_wait('git update-ref', p)
 
 
+def delete_ref(refname):
+    """Delete a repository reference."""
+    assert(refname.startswith('refs/'))
+    p = subprocess.Popen(['git', 'update-ref', '-d', refname],
+                         preexec_fn = _gitenv())
+    _git_wait('git update-ref', p)
+
+
 def guess_repo(path=None):
     """Set the path value in the global variable "repodir".
     This makes bup look for an existing bup repository, but not fail if a
