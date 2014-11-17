@@ -1,8 +1,5 @@
 #!/usr/bin/env python
-"""Tag a commit in the bup repository.
-Creating a tag on a commit can be used for avoiding automatic cleanup from
-removing this commit due to old age.
-"""
+
 import sys
 import os
 
