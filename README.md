@@ -353,8 +353,8 @@ python.
 
 Basically, 'bup split' reads the data on stdin (or from files specified on
 the command line), breaks it into chunks using a rolling checksum (similar to
-rsync), and saves those chunks into a new git packfile.  There is one git
-packfile per backup.
+rsync), and saves those chunks into a new git packfile.  There is at least one
+git packfile per backup.
 
 When deciding whether to write a particular chunk into the new packfile, bup
 first checks all the other packfiles that exist to see if they already have that
