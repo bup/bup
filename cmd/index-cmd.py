@@ -185,7 +185,7 @@ def update_index(top, excluded_paths, exclude_rxs):
 
 
 optspec = """
-bup index <-p|m|s|u> [options...] <filenames...>
+bup index <-p|-m|-s|-u|--clear|--check> [options...] <filenames...>
 --
  Modes:
 p,print    print the index entries for the given names (also works with -u)

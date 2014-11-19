@@ -8,8 +8,8 @@ bup-index - print and/or update the bup filesystem index
 
 # SYNOPSIS
 
-bup index \<-p|-m|-s|-u\> [-H] [-l] [-x] [\--fake-valid] [\--no-check-device]
-[\--fake-invalid] [\--check] [\--clear] [-f *indexfile*] [\--exclude *path*]
+bup index \<-p|-m|-s|-u|\--clear|\--check\> [-H] [-l] [-x] [\--fake-valid]
+[\--no-check-device] [\--fake-invalid] [-f *indexfile*] [\--exclude *path*]
 [\--exclude-from *filename*] [\--exclude-rx *pattern*]
 [\--exclude-rx-from *filename*] [-v] \<filenames...\>
 
@@ -110,7 +110,14 @@ does, due to the accommodations described above.
     filename.  Implies `-p`.  The codes mean, respectively,
     that a file is marked in the index as added, modified,
     deleted, or unchanged since the last backup.
-    
+
+\--check
+:   carefully check index file integrity before and after
+    updating.  Mostly useful for automated tests.
+
+\--clear
+:   clear the default index.
+
 
 # OPTIONS
 
@@ -144,13 +151,6 @@ does, due to the accommodations described above.
 \--fake-invalid
 :   mark specified filenames as not up-to-date, forcing the
     next "bup save" run to re-check their contents.
-    
-\--check
-:   carefully check index file integrity before and after
-    updating.  Mostly useful for automated tests.
-
-\--clear
-:   clear the default index.
 
 -f, \--indexfile=*indexfile*
 :   use a different index filename instead of
