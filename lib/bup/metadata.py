@@ -446,7 +446,7 @@ class Metadata:
             if stat.S_ISLNK(st.st_mode):
                 self.symlink_target = os.readlink(path)
         except OSError, e:
-            add_error('readlink: %s', e)
+            add_error('readlink: %s' % e)
 
     def _encode_symlink_target(self):
         return self.symlink_target
