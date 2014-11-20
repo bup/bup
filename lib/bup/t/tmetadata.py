@@ -31,6 +31,8 @@ def ex(*cmd):
 def setup_testfs():
     assert(sys.platform.startswith('linux'))
     # Set up testfs with user_xattr, etc.
+    if subprocess.call(['modprobe', 'loop']) != 0:
+        return False
     subprocess.call(['umount', 'testfs'])
     ex('dd', 'if=/dev/zero', 'of=testfs.img', 'bs=1M', 'count=32')
     ex('mke2fs', '-F', '-j', '-m', '0', 'testfs.img')
@@ -40,6 +42,7 @@ def setup_testfs():
     # Hide, so that tests can't create risks.
     os.chown('testfs', 0, 0)
     os.chmod('testfs', 0700)
+    return True
 
 
 def cleanup_testfs():
@@ -272,7 +275,9 @@ if xattr:
         if not is_superuser() or detect_fakeroot():
             WVMSG('skipping test -- not superuser')
             return
-        setup_testfs()
+        if not setup_testfs():
+            WVMSG('unable to load loop module; skipping dependent tests')
+            return
         for f in glob.glob('testfs/*'):
             ex('rm', '-rf', f)
         path = 'testfs/foo'

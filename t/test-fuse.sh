@@ -3,6 +3,11 @@
 
 set -o pipefail
 
+if test -n "$(type -p modprobe)" && ! modprobe fuse; then
+    echo 'Unable to load fuse module; skipping dependent tests.' 1>&2
+    exit 0
+fi
+
 if ! fusermount -V; then
     echo 'skipping FUSE tests: fusermount does not appear to work'
     exit 0

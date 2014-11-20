@@ -9,13 +9,18 @@ if [ $(t/root-status) != root ]; then
     exit 0 # FIXME: add WVSKIP.
 fi
 
+if test -n "$(type -p modprobe)" && ! modprobe loop; then
+    echo 'Unable to load loopback module; skipping --check-device test.' 1>&2
+    exit 0
+fi
+
 if test -z "$(type -p losetup)"; then
-    echo 'Unable to find losetup: skipping --check-device tests.'
+    echo 'Unable to find losetup: skipping --check-device tests.' 1>&2
     exit 0 # FIXME: add WVSKIP.
 fi
 
 if test -z "$(type -p mke2fs)"; then
-    echo 'Unable to find mke2fs: skipping --check-device tests.'
+    echo 'Unable to find mke2fs: skipping --check-device tests.' 1>&2
     exit 0 # FIXME: add WVSKIP.
 fi
 

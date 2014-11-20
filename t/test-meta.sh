@@ -624,6 +624,11 @@ if [ "$root_status" = root ]; then
         # (patches welcome).
         [[ $(uname) =~ Linux ]] || exit 0
 
+        if ! modprobe loop; then
+            echo 'Unable to load loopback module; skipping dependent tests.' 1>&2
+            exit 0
+        fi
+
         WVSTART 'meta - general (as root)'
         WVPASS setup-test-tree
         WVPASS cd "$TOP/bupmeta.tmp"

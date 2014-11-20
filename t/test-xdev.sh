@@ -8,6 +8,11 @@ if [ $(t/root-status) != root ]; then
     exit 0 # FIXME: add WVSKIP.
 fi
 
+if ! modprobe loop; then
+    echo 'Unable to load loopback module; skipping dependent tests.' 1>&2
+    exit 0
+fi
+
 # These tests are only likely to work under Linux for now
 # (patches welcome).
 if ! [[ $(uname) =~ Linux ]]; then
