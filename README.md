@@ -162,6 +162,8 @@ Binary packages of bup are known to be built for the following OSes:
  - pkgsrc (NetBSD, Dragonfly, and others)
     http://pkgsrc.se/sysutils/bup
     http://cvsweb.netbsd.org/bsdweb.cgi/pkgsrc/sysutils/bup/
+ - Arch Linux:
+    https://www.archlinux.org/packages/?sort=&q=bup
 
 
 Using bup
