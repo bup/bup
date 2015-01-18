@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
-. wvtest.sh || exit $?
+. wvtest-bup.sh || exit $?
 . t/lib.sh || exit $?
 
 set -o pipefail
 
 TOP="$(WVPASS pwd)" || exit $?
-export BUP_DIR="$TOP/buptest.tmp"
+tmpdir="$(WVPASS wvmktempdir)" || exit $?
+
+export BUP_DIR="$tmpdir/bup"
 
 WVPASS force-delete "$TOP/bupmeta.tmp"
 timestamp_resolutions="$(t/ns-timestamp-resolutions "$TOP/bupmeta.tmp")" \
@@ -756,3 +758,5 @@ if [ "$root_status" = root ]; then
         ) || exit $?
     ) || exit $?
 fi
+
+WVPASS rm -r "$tmpdir"
