@@ -8,17 +8,16 @@ root_status="$(t/root-status)" || exit $?
 
 TOP="$(WVPASS pwd)" || exit $?
 tmpdir="$(WVPASS wvmktempdir)" || exit $?
-
 export BUP_DIR="$tmpdir/bup"
 
-WVPASS force-delete "$TOP/bupmeta.tmp"
-timestamp_resolutions="$(t/ns-timestamp-resolutions "$TOP/bupmeta.tmp")" \
+# Assume that mvmktempdir will always use the same dir.
+timestamp_resolutions="$(t/ns-timestamp-resolutions "$tmpdir/canary")" \
     || exit $?
-WVPASS rm "$TOP/bupmeta.tmp"
 atime_resolution="$(echo $timestamp_resolutions | WVPASS cut -d' ' -f 1)" \
     || exit $?
 mtime_resolution="$(echo $timestamp_resolutions | WVPASS cut -d' ' -f 2)" \
     || exit $?
+WVPASS rm "$tmpdir/canary"
 
 bup()
 {
@@ -81,13 +80,11 @@ test-src-create-extract()
 test-src-save-restore()
 {
     # Test bup save/restore metadata for ./src -> ./src-restore.  Also
-    # writes to ./src.bup.  Note that for now this just tests the
+    # writes to BUP_DIR.  Note that for now this just tests the
     # restore below src/, in order to avoid having to worry about
     # operations that require root (like chown /home).
     (
-        WVPASS rm -rf src.bup
-        WVPASS mkdir src.bup
-        export BUP_DIR=$(pwd)/src.bup || exit $?
+        WVPASS rm -rf "$BUP_DIR"
         WVPASS bup init
         WVPASS bup index src
         WVPASS bup save -t -n src src
@@ -103,14 +100,11 @@ test-src-save-restore()
 
 setup-test-tree()
 {
-    WVPASS force-delete "$BUP_DIR"
-    WVPASS force-delete "$TOP/bupmeta.tmp"
-    WVPASS mkdir -p "$TOP/bupmeta.tmp/src"
-    WVPASS cp -pPR Documentation cmd config lib "$TOP/bupmeta.tmp"/src
+    WVPASS make PREFIX="$tmpdir"/src install
 
     # Add some hard links for the general tests.
     (
-        WVPASS cd "$TOP/bupmeta.tmp"/src
+        WVPASS cd "$tmpdir"/src
         WVPASS touch hardlink-target
         WVPASS ln hardlink-target hardlink-1
         WVPASS ln hardlink-target hardlink-2
@@ -119,7 +113,7 @@ setup-test-tree()
 
     # Add some trivial files for the index, modify, save tests.
     (
-        WVPASS cd "$TOP/bupmeta.tmp"/src
+        WVPASS cd "$tmpdir"/src
         WVPASS mkdir volatile
         WVPASS touch volatile/{1,2,3}
     ) || exit $?
@@ -127,18 +121,20 @@ setup-test-tree()
     # Regression test for metadata sort order.  Previously, these two
     # entries would sort in the wrong order because the metadata
     # entries were being sorted by mangled name, but the index isn't.
-    WVPASS dd if=/dev/zero of="$TOP/bupmeta.tmp"/src/foo bs=1k count=33
-    WVPASS touch -t 201111111111 "$TOP/bupmeta.tmp"/src/foo
-    WVPASS touch -t 201112121111 "$TOP/bupmeta.tmp"/src/foo-bar
+    WVPASS dd if=/dev/zero of="$tmpdir"/src/foo bs=1k count=33
+    WVPASS touch -t 201111111111 "$tmpdir"/src/foo
+    WVPASS touch -t 201112121111 "$tmpdir"/src/foo-bar
 
-    t/mksock "$TOP/bupmeta.tmp/src/test-socket" || true
+    t/mksock "$tmpdir"/src/test-socket || true
 }
 
 # Use the test tree to check bup meta.
 WVSTART 'meta --create/--extract'
 (
+    tmpdir="$(WVPASS wvmktempdir)" || exit $?
+    export BUP_DIR="$tmpdir/bup"
     WVPASS setup-test-tree
-    WVPASS cd "$TOP/bupmeta.tmp"
+    WVPASS cd "$tmpdir"
     WVPASS test-src-create-extract
 
     # Test a top-level file (not dir).
@@ -147,23 +143,23 @@ WVSTART 'meta --create/--extract'
     WVPASS mkdir dest
     WVPASS cd dest
     WVPASS bup meta -xf ../src-file.meta
+    WVPASS rm -r "$tmpdir"
 ) || exit $?
 
 # Use the test tree to check bup save/restore metadata.
 WVSTART 'metadata save/restore (general)'
 (
+    tmpdir="$(WVPASS wvmktempdir)" || exit $?
+    export BUP_DIR="$tmpdir/bup"
     WVPASS setup-test-tree
-    WVPASS cd "$TOP/bupmeta.tmp"
+    WVPASS cd "$tmpdir"
     WVPASS test-src-save-restore
 
     # Test a deeper subdir/ to make sure top-level non-dir metadata is
     # restored correctly.  We need at least one dir and one non-dir at
     # the "top-level".
-    WVPASS test -f src/lib/__init__.py
-    WVPASS test -d src/lib/bup
-    WVPASS rm -rf src.bup
-    WVPASS mkdir src.bup
-    export BUP_DIR=$(pwd)/src.bup || exit $?
+    WVPASS test -f src/share/man/man1/bup.1
+    WVPASS rm -rf "$BUP_DIR"
     WVPASS bup init
     WVPASS touch -t 201111111111 src-restore # Make sure the top won't match.
     WVPASS bup index src
@@ -175,6 +171,7 @@ WVSTART 'metadata save/restore (general)'
     WVFAIL $TOP/t/compare-trees -c src/lib/ src-restore/ > tmp-compare-trees
     WVPASSEQ $(cat tmp-compare-trees | wc -l) 2
     WVPASS tail -n +2 tmp-compare-trees | WVPASS grep -qE '^\.d[^ ]+ \./$'
+    WVPASS rm -r "$tmpdir"
 ) || exit $?
 
 # Test that we pull the index (not filesystem) metadata for any
@@ -182,8 +179,10 @@ WVSTART 'metadata save/restore (general)'
 # directory.
 WVSTART 'metadata save/restore (using index metadata)'
 (
+    tmpdir="$(WVPASS wvmktempdir)" || exit $?
+    export BUP_DIR="$tmpdir/bup"
     WVPASS setup-test-tree
-    WVPASS cd "$TOP/bupmeta.tmp"
+    WVPASS cd "$tmpdir"
 
     # ...for now -- might be a problem with hardlink restores that was
     # causing noise wrt this test.
@@ -196,9 +195,7 @@ WVSTART 'metadata save/restore (using index metadata)'
     # these metadata..." may fail.
     WVPASS sleep 1
 
-    WVPASS rm -rf src.bup
-    WVPASS mkdir src.bup
-    export BUP_DIR=$(pwd)/src.bup || exit $?
+    WVPASS rm -rf "$BUP_DIR"
     WVPASS bup init
     WVPASS bup index src
     WVPASS bup save -t -n src src
@@ -224,14 +221,16 @@ WVSTART 'metadata save/restore (using index metadata)'
     WVPASS test -d src-restore-2/src
     WVPASS "$TOP/t/compare-trees" -c src-restore-1/src/ src-restore-2/src/
 
-    WVPASS rm -rf src.bup
+    WVPASS rm -r "$tmpdir"
+
 ) || exit $?
+
 
 setup-hardlink-test()
 {
-    WVPASS rm -rf "$TOP/bupmeta.tmp"/src "$TOP/bupmeta.tmp"/src.bup
-    WVPASS mkdir "$TOP/bupmeta.tmp"/src "$TOP/bupmeta.tmp"/src.bup
+    WVPASS rm -rf "$tmpdir/src" "$BUP_DIR"
     WVPASS bup init
+    WVPASS mkdir "$tmpdir/src"
 }
 
 hardlink-test-run-restore()
@@ -245,16 +244,15 @@ hardlink-test-run-restore()
 # Test hardlinks more carefully.
 WVSTART 'metadata save/restore (hardlinks)'
 (
-    export BUP_DIR="$TOP/bupmeta.tmp/src.bup"
-    WVPASS force-delete "$TOP/bupmeta.tmp"
-    WVPASS mkdir -p "$TOP/bupmeta.tmp"
+    tmpdir="$(WVPASS wvmktempdir)" || exit $?    
+    export BUP_DIR="$tmpdir/bup"
 
-    WVPASS cd "$TOP/bupmeta.tmp"
-
-    # Test trivial case - single hardlink.
     WVPASS setup-hardlink-test
+    WVPASS cd "$tmpdir"
+    
+    # Test trivial case - single hardlink.
     (
-        WVPASS cd "$TOP/bupmeta.tmp"/src
+        WVPASS cd src
         WVPASS touch hardlink-target
         WVPASS ln hardlink-target hardlink-1
     ) || exit $?
@@ -267,7 +265,7 @@ WVSTART 'metadata save/restore (hardlinks)'
     # needs to be saved again. i.e. the save-cmd.py "if hashvalid:"
     # case.
     (
-        WVPASS cd "$TOP/bupmeta.tmp"/src
+        WVPASS cd src
         WVPASS echo whatever > something-new
     ) || exit $?
     WVPASS bup index src
@@ -278,7 +276,7 @@ WVSTART 'metadata save/restore (hardlinks)'
     # Test hardlink changes between index runs.
     #
     WVPASS setup-hardlink-test
-    WVPASS cd "$TOP/bupmeta.tmp"/src
+    WVPASS cd src
     WVPASS touch hardlink-target-a
     WVPASS touch hardlink-target-b
     WVPASS ln hardlink-target-a hardlink-b-1
@@ -303,7 +301,7 @@ WVSTART 'metadata save/restore (hardlinks)'
     # b c d] changes to [a b] [c d].  At least right now bup should
     # notice and recreate the latter.
     WVPASS setup-hardlink-test
-    WVPASS cd "$TOP/bupmeta.tmp"/src
+    WVPASS cd "$tmpdir"/src
     WVPASS touch a
     WVPASS ln a b
     WVPASS ln a c
@@ -326,7 +324,7 @@ WVSTART 'metadata save/restore (hardlinks)'
 
     # Test that we don't link outside restore tree.
     WVPASS setup-hardlink-test
-    WVPASS cd "$TOP/bupmeta.tmp"
+    WVPASS cd "$tmpdir"
     WVPASS mkdir src/a src/b
     WVPASS touch src/a/1
     WVPASS ln src/a/1 src/b/1
@@ -343,7 +341,7 @@ WVSTART 'metadata save/restore (hardlinks)'
 
     # Test that we do link within separate sub-trees.
     WVPASS setup-hardlink-test
-    WVPASS cd "$TOP/bupmeta.tmp"
+    WVPASS cd "$tmpdir"
     WVPASS mkdir src/a src/b
     WVPASS touch src/a/1
     WVPASS ln src/a/1 src/b/1
@@ -355,14 +353,17 @@ WVSTART 'metadata save/restore (hardlinks)'
     (WVPASS cd src-restore; WVPASS hardlink-sets .) > hardlink-sets.restored \
         || exit $?
     WVPASS diff -u hardlink-sets.expected hardlink-sets.restored
+
+    WVPASS rm -r "$tmpdir"
+
 ) || exit $?
 
 WVSTART 'meta --edit'
 (
-    WVPASS force-delete "$TOP/bupmeta.tmp"
-    WVPASS mkdir "$TOP/bupmeta.tmp"
-    WVPASS cd "$TOP/bupmeta.tmp"
+    tmpdir="$(WVPASS wvmktempdir)" || exit $?    
+    WVPASS cd "$tmpdir"
     WVPASS mkdir src
+
     WVPASS bup meta -cf src.meta src
 
     WVPASS bup meta --edit --set-uid 0 src.meta | WVPASS bup meta -tvvf - \
@@ -396,14 +397,15 @@ WVSTART 'meta --edit'
         | WVPASS bup meta -tvvf - | WVPASS grep -qE '^group:'
     WVPASS bup meta --edit --unset-group --set-group bar src.meta \
         | WVPASS bup meta -tvvf - | grep -qE '^group: bar'
+
+    WVPASS rm -r "$tmpdir"
+
 ) || exit $?
 
 WVSTART 'meta --no-recurse'
 (
-    set +e
-    WVPASS force-delete "$TOP/bupmeta.tmp"
-    WVPASS mkdir "$TOP/bupmeta.tmp"
-    WVPASS cd "$TOP/bupmeta.tmp"
+    tmpdir="$(WVPASS wvmktempdir)" || exit $?    
+    WVPASS cd "$tmpdir"
     WVPASS mkdir src
     WVPASS mkdir src/foo
     WVPASS touch src/foo/{1,2,3}
@@ -415,6 +417,7 @@ src/foo/2
 src/foo/3"
     WVPASS bup meta --no-recurse -cf src.meta src
     WVPASSEQ "$(LC_ALL=C; bup meta -tf src.meta | sort)" "src/"
+    WVPASS rm -r "$tmpdir"
 ) || exit $?
 
 # Test ownership restoration (when not root or fakeroot).
@@ -423,6 +426,8 @@ src/foo/3"
         exit 0
     fi
 
+    tmpdir="$(WVPASS wvmktempdir)" || exit $?    
+
     first_group="$(WVPASS python -c 'import os,grp; \
       print grp.getgrgid(os.getgroups()[0])[0]')" || exit $?
     last_group="$(python -c 'import os,grp; \
@@ -430,9 +435,7 @@ src/foo/3"
     last_group_erx="$(escape-erx "$last_group")"
 
     WVSTART 'metadata (restoration of ownership)'
-    WVPASS force-delete "$TOP/bupmeta.tmp"
-    WVPASS mkdir "$TOP/bupmeta.tmp"
-    WVPASS cd "$TOP/bupmeta.tmp"
+    WVPASS cd "$tmpdir"
     WVPASS touch src
     # Some systems always assign the parent dir group to new paths
     # (sgid).  Make sure the group is one we're in.
@@ -489,6 +492,9 @@ src/foo/3"
         | WVPASS bup meta -x
     new_gidx=$(bup xstat src | grep -e '^gid:') || exit $?
     WVPASSEQ "$current_gidx" "$new_gidx"
+
+    WVPASS rm -r "$tmpdir"
+
 ) || exit $?
 
 # Test ownership restoration (when root or fakeroot).
@@ -497,13 +503,13 @@ src/foo/3"
         exit 0
     fi
 
+    tmpdir="$(WVPASS wvmktempdir)" || exit $?    
+
     uid=$(WVPASS id -un) || exit $?
     gid=$(WVPASS id -gn) || exit $?
 
     WVSTART 'metadata (restoration of ownership as root)'
-    WVPASS force-delete "$TOP/bupmeta.tmp"
-    WVPASS mkdir "$TOP/bupmeta.tmp"
-    WVPASS cd "$TOP/bupmeta.tmp"
+    WVPASS cd "$tmpdir"
     WVPASS touch src
     WVPASS chown "$uid:$gid" src # In case the parent dir is sgid, etc.
     WVPASS bup meta -cf src.meta src
@@ -604,6 +610,9 @@ src/foo/3"
         WVPASS bup xstat src | WVPASS grep -qvE "^group: $other_group2_erx"
         WVPASS bup xstat src | WVPASS grep -qE "^gid: 0"
     fi
+
+    WVPASS rm -r "$tmpdir"
+
 ) || exit $?
 
 
@@ -623,10 +632,12 @@ if [ "$root_status" = root ]; then
 
         testfs="$(WVPASS wvmkmountpt)" || exit $?
         testfs_limited="$(WVPASS wvmkmountpt)" || exit $?
+        tmpdir="$(WVPASS wvmktempdir)" || exit $?
+        export BUP_DIR="$tmpdir/bup"
 
         WVSTART 'meta - general (as root)'
         WVPASS setup-test-tree
-        WVPASS cd "$TOP/bupmeta.tmp"
+        WVPASS cd "$tmpdir"
 
         umount "$testfs"
         WVPASS dd if=/dev/zero of=testfs.img bs=1M count=32
@@ -751,6 +762,8 @@ if [ "$root_status" = root ]; then
         WVPASS umount "$testfs"
         WVPASS umount "$testfs_limited"
         WVPASS rm -r "$testfs" "$testfs_limited"
+
+        WVPASS rm -r "$tmpdir"
 
     ) || exit $?
 fi
