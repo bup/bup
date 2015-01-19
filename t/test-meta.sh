@@ -4,6 +4,8 @@
 
 set -o pipefail
 
+root_status="$(t/root-status)" || exit $?
+
 TOP="$(WVPASS pwd)" || exit $?
 tmpdir="$(WVPASS wvmktempdir)" || exit $?
 
@@ -17,8 +19,6 @@ atime_resolution="$(echo $timestamp_resolutions | WVPASS cut -d' ' -f 1)" \
     || exit $?
 mtime_resolution="$(echo $timestamp_resolutions | WVPASS cut -d' ' -f 2)" \
     || exit $?
-
-root_status="$(t/root-status)" || exit $?
 
 bup()
 {
@@ -100,16 +100,6 @@ test-src-save-restore()
         WVPASS rm -rf src.bup
     )
 }
-
-universal-cleanup()
-{
-    if [ "$root_status" != root ]; then return 0; fi
-    umount "$TOP/bupmeta.tmp/testfs" || true
-    umount "$TOP/bupmeta.tmp/testfs-limited" || true
-}
-
-WVPASS universal-cleanup
-trap universal-cleanup EXIT
 
 setup-test-tree()
 {
@@ -631,11 +621,14 @@ if [ "$root_status" = root ]; then
             exit 0
         fi
 
+        testfs="$(WVPASS wvmkmountpt)" || exit $?
+        testfs_limited="$(WVPASS wvmkmountpt)" || exit $?
+
         WVSTART 'meta - general (as root)'
         WVPASS setup-test-tree
         WVPASS cd "$TOP/bupmeta.tmp"
 
-        umount testfs
+        umount "$testfs"
         WVPASS dd if=/dev/zero of=testfs.img bs=1M count=32
         # Make sure we have all the options the chattr test needs
         # (i.e. create a "normal" ext4 filesystem).
@@ -643,34 +636,32 @@ if [ "$root_status" = root ]; then
             -I 256 \
             -O has_journal,extent,huge_file,flex_bg,uninit_bg,dir_nlink,extra_isize \
             testfs.img
-        WVPASS mkdir testfs
-        WVPASS mount -o loop,acl,user_xattr testfs.img testfs
+        WVPASS mount -o loop,acl,user_xattr testfs.img "$testfs"
         # Hide, so that tests can't create risks.
-        WVPASS chown root:root testfs
-        WVPASS chmod 0700 testfs
+        WVPASS chown root:root "$testfs"
+        WVPASS chmod 0700 "$testfs"
 
-        umount testfs-limited
+        umount "$testfs_limited"
         WVPASS dd if=/dev/zero of=testfs-limited.img bs=1M count=32
         WVPASS mkfs -t vfat testfs-limited.img
-        WVPASS mkdir testfs-limited
         WVPASS mount -o loop,uid=root,gid=root,umask=0077 \
-            testfs-limited.img testfs-limited
+            testfs-limited.img "$testfs_limited"
 
-        WVPASS cp -pPR src testfs/src
-        (WVPASS cd testfs; WVPASS test-src-create-extract) || exit $?
+        WVPASS cp -pPR src "$testfs"/src
+        (WVPASS cd "$testfs"; WVPASS test-src-create-extract) || exit $?
 
         WVSTART 'meta - atime (as root)'
-        WVPASS force-delete testfs/src
-        WVPASS mkdir testfs/src
+        WVPASS force-delete "$testfs"/src
+        WVPASS mkdir "$testfs"/src
         (
-            WVPASS mkdir testfs/src/foo
-            WVPASS touch testfs/src/bar
+            WVPASS mkdir "$testfs"/src/foo
+            WVPASS touch "$testfs"/src/bar
             PYTHONPATH="$TOP/lib" \
                 WVPASS python -c "from bup import xstat; \
                 x = xstat.timespec_to_nsecs((42, 0));\
-                   xstat.utime('testfs/src/foo', (x, x));\
-                   xstat.utime('testfs/src/bar', (x, x));"
-            WVPASS cd testfs
+                   xstat.utime('$testfs/src/foo', (x, x));\
+                   xstat.utime('$testfs/src/bar', (x, x));"
+            WVPASS cd "$testfs"
             WVPASS bup meta -v --create --recurse --file src.meta src
             WVPASS bup meta -tvf src.meta
             # Test extract.
@@ -690,22 +681,22 @@ if [ "$root_status" = root ]; then
         ) || exit $?
 
         WVSTART 'meta - Linux attr (as root)'
-        WVPASS force-delete testfs/src
-        WVPASS mkdir testfs/src
+        WVPASS force-delete "$testfs"/src
+        WVPASS mkdir "$testfs"/src
         (
-            WVPASS touch testfs/src/foo
-            WVPASS mkdir testfs/src/bar
-            WVPASS chattr +acdeijstuADST testfs/src/foo
-            WVPASS chattr +acdeijstuADST testfs/src/bar
-            (WVPASS cd testfs; WVPASS test-src-create-extract) || exit $?
+            WVPASS touch "$testfs"/src/foo
+            WVPASS mkdir "$testfs"/src/bar
+            WVPASS chattr +acdeijstuADST "$testfs"/src/foo
+            WVPASS chattr +acdeijstuADST "$testfs"/src/bar
+            (WVPASS cd "$testfs"; WVPASS test-src-create-extract) || exit $?
             # Test restoration to a limited filesystem (vfat).
             (
-                WVPASS bup meta --create --recurse --file testfs/src.meta \
-                    testfs/src
-                WVPASS force-delete testfs-limited/src-restore
-                WVPASS mkdir testfs-limited/src-restore
-                WVPASS cd testfs-limited/src-restore
-                WVFAIL bup meta --extract --file ../../testfs/src.meta 2>&1 \
+                WVPASS bup meta --create --recurse --file "$testfs"/src.meta \
+                    "$testfs"/src
+                WVPASS force-delete "$testfs_limited"/src-restore
+                WVPASS mkdir "$testfs_limited"/src-restore
+                WVPASS cd "$testfs_limited"/src-restore
+                WVFAIL bup meta --extract --file "$testfs"/src.meta 2>&1 \
                     | WVPASS grep -e '^Linux chattr:' \
                     | WVPASS python -c \
                     'import sys; exit(not len(sys.stdin.readlines()) == 3)'
@@ -713,49 +704,54 @@ if [ "$root_status" = root ]; then
         ) || exit $?
 
         WVSTART 'meta - Linux xattr (as root)'
-        WVPASS force-delete testfs/src
-        WVPASS mkdir testfs/src
-        WVPASS touch testfs/src/foo
-        WVPASS mkdir testfs/src/bar
-        WVPASS attr -s foo -V bar testfs/src/foo
-        WVPASS attr -s foo -V bar testfs/src/bar
-        (WVPASS cd testfs; WVPASS test-src-create-extract) || exit $?
+        WVPASS force-delete "$testfs"/src
+        WVPASS mkdir "$testfs"/src
+        WVPASS touch "$testfs"/src/foo
+        WVPASS mkdir "$testfs"/src/bar
+        WVPASS attr -s foo -V bar "$testfs"/src/foo
+        WVPASS attr -s foo -V bar "$testfs"/src/bar
+        (WVPASS cd "$testfs"; WVPASS test-src-create-extract) || exit $?
 
         # Test restoration to a limited filesystem (vfat).
         (
-            WVPASS bup meta --create --recurse --file testfs/src.meta \
-                testfs/src
-            WVPASS force-delete testfs-limited/src-restore
-            WVPASS mkdir testfs-limited/src-restore
-            WVPASS cd testfs-limited/src-restore
-            WVFAIL bup meta --extract --file ../../testfs/src.meta
-            WVFAIL bup meta --extract --file ../../testfs/src.meta 2>&1 \
+            WVPASS bup meta --create --recurse --file "$testfs"/src.meta \
+                "$testfs"/src
+            WVPASS force-delete "$testfs_limited"/src-restore
+            WVPASS mkdir "$testfs_limited"/src-restore
+            WVPASS cd "$testfs_limited"/src-restore
+            WVFAIL bup meta --extract --file "$testfs"/src.meta
+            WVFAIL bup meta --extract --file "$testfs"/src.meta 2>&1 \
                 | WVPASS grep -e "^xattr\.set '" \
                 | WVPASS python -c \
                 'import sys; exit(not len(sys.stdin.readlines()) == 2)'
         ) || exit $?
 
         WVSTART 'meta - POSIX.1e ACLs (as root)'
-        WVPASS force-delete testfs/src
-        WVPASS mkdir testfs/src
-        WVPASS touch testfs/src/foo
-        WVPASS mkdir testfs/src/bar
-        WVPASS setfacl -m u:root:r testfs/src/foo
-        WVPASS setfacl -m u:root:r testfs/src/bar
-        (WVPASS cd testfs; WVPASS test-src-create-extract) || exit $?
+        WVPASS force-delete "$testfs"/src
+        WVPASS mkdir "$testfs"/src
+        WVPASS touch "$testfs"/src/foo
+        WVPASS mkdir "$testfs"/src/bar
+        WVPASS setfacl -m u:root:r "$testfs"/src/foo
+        WVPASS setfacl -m u:root:r "$testfs"/src/bar
+        (WVPASS cd "$testfs"; WVPASS test-src-create-extract) || exit $?
 
         # Test restoration to a limited filesystem (vfat).
         (
-            WVPASS bup meta --create --recurse --file testfs/src.meta \
-                testfs/src
-            WVPASS force-delete testfs-limited/src-restore
-            WVPASS mkdir testfs-limited/src-restore
-            WVPASS cd testfs-limited/src-restore
-            WVFAIL bup meta --extract --file ../../testfs/src.meta 2>&1 \
+            WVPASS bup meta --create --recurse --file "$testfs"/src.meta \
+                "$testfs"/src
+            WVPASS force-delete "$testfs_limited"/src-restore
+            WVPASS mkdir "$testfs_limited"/src-restore
+            WVPASS cd "$testfs_limited"/src-restore
+            WVFAIL bup meta --extract --file "$testfs"/src.meta 2>&1 \
                 | WVPASS grep -e '^POSIX1e ACL applyto:' \
                 | WVPASS python -c \
                 'import sys; exit(not len(sys.stdin.readlines()) == 2)'
         ) || exit $?
+
+        WVPASS umount "$testfs"
+        WVPASS umount "$testfs_limited"
+        WVPASS rm -r "$testfs" "$testfs_limited"
+
     ) || exit $?
 fi
 

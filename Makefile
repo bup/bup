@@ -183,12 +183,8 @@ clean: Documentation/clean config/clean
 	if test -e t/mnt; then rm -r t/mnt; fi
 	if test -e t/tmp; then t/cleanup-mounts-under t/tmp; fi
         # FIXME: migrate these to t/mnt/
-	if test -e bupmeta.tmp/testfs; \
-	  then umount bupmeta.tmp/testfs || true; fi
 	if test -e lib/bup/t/testfs; \
 	  then umount lib/bup/t/testfs || true; fi
-	if test -e bupmeta.tmp/testfs-limited; \
-	  then umount bupmeta.tmp/testfs-limited || true; fi
 	rm -rf *.tmp *.tmp.meta t/*.tmp lib/*/*/*.tmp build lib/bup/build lib/bup/t/testfs
 	if test -e t/tmp; then t/force-delete t/tmp; fi
 	t/configure-sampledata --clean
