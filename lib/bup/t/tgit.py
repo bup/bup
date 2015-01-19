@@ -195,6 +195,11 @@ def test_check_repo_or_die():
 
 @wvtest
 def test_commit_parsing():
+    def restore_env_var(name, val):
+        if val is None:
+            del os.environ[name]
+        else:
+            os.environ[name] = val
     def showval(commit, val):
         return readpipe(['git', 'show', '-s',
                          '--pretty=format:%s' % val, commit]).strip()
@@ -203,6 +208,14 @@ def test_commit_parsing():
     tmpdir = tempfile.mkdtemp(dir=bup_tmp, prefix='bup-tgit-')
     workdir = tmpdir + "/work"
     repodir = workdir + '/.git'
+    orig_author_name = os.environ.get('GIT_AUTHOR_NAME')
+    orig_author_email = os.environ.get('GIT_AUTHOR_EMAIL')
+    orig_committer_name = os.environ.get('GIT_COMMITTER_NAME')
+    orig_committer_email = os.environ.get('GIT_COMMITTER_EMAIL')
+    os.environ['GIT_AUTHOR_NAME'] = 'bup test'
+    os.environ['GIT_COMMITTER_NAME'] = os.environ['GIT_AUTHOR_NAME']
+    os.environ['GIT_AUTHOR_EMAIL'] = 'bup@a425bc70a02811e49bdf73ee56450e6f'
+    os.environ['GIT_COMMITTER_EMAIL'] = os.environ['GIT_AUTHOR_EMAIL']
     try:
         readpipe(['git', 'init', workdir])
         os.environ['GIT_DIR'] = os.environ['BUP_DIR'] = repodir
@@ -247,5 +260,9 @@ def test_commit_parsing():
         WVPASSEQ(commit_items.parents, [commit])
     finally:
         os.chdir(orig_cwd)
+        restore_env_var('GIT_AUTHOR_NAME', orig_author_name)
+        restore_env_var('GIT_AUTHOR_EMAIL', orig_author_email)
+        restore_env_var('GIT_COMMITTER_NAME', orig_committer_name)
+        restore_env_var('GIT_COMMITTER_EMAIL', orig_committer_email)
     if wvfailure_count() == initial_failures:
         subprocess.call(['rm', '-rf', tmpdir])
