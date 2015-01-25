@@ -48,11 +48,12 @@ def readfile_iter(files, progress=None):
         while 1:
             if progress:
                 progress(filenum, len(b))
-            fadvise_done(f, max(0, ofs - 1024*1024))
             b = f.read(BLOB_READ_SIZE)
             ofs += len(b)
+            # Warning: ofs == 0 means 'done with the whole file'
+            # This will only happen here when the file is empty
+            fadvise_done(f, ofs)
             if not b:
-                fadvise_done(f, ofs)
                 break
             yield b
 
