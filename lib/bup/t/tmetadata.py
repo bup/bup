@@ -171,6 +171,7 @@ def test_from_path_error():
     os.chmod(path, 000)
     metadata.from_path(path, archive_path=path, save_symlinks=True)
     if metadata.get_linux_file_attr:
+        print >> sys.stderr, 'saved_errors:', helpers.saved_errors
         WVPASS(len(helpers.saved_errors) == 1)
         errmsg = _first_err()
         WVPASS(errmsg.startswith('read Linux attr'))
@@ -211,7 +212,7 @@ def test_apply_to_path_restricted_access():
     WVPASSEQ(m.path, path)
     os.chmod(parent, 000)
     m.apply_to_path(path)
-    print >> sys.stderr, helpers.saved_errors
+    print >> sys.stderr, 'saved_errors:', helpers.saved_errors
     expected_errors = ['utime: ']
     if m.linux_attr and _linux_attr_supported(tmpdir):
         expected_errors.append('Linux chattr: ')
