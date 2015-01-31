@@ -3,6 +3,8 @@
 
 set -o pipefail
 
+unset BLOCKSIZE BLOCK_SIZE DF_BLOCK_SIZE
+
 if test -n "$(type -p modprobe)" && ! modprobe fuse; then
     echo 'Unable to load fuse module; skipping dependent tests.' 1>&2
     exit 0
