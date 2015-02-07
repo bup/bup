@@ -70,6 +70,8 @@ def test_stripped_path_components():
     WVPASSEQ(stripped_path_components('/', []), [('', '/')])
     WVPASSEQ(stripped_path_components('/', ['']), [('', '/')])
     WVPASSEQ(stripped_path_components('/', ['/']), [('', '/')])
+    WVPASSEQ(stripped_path_components('/foo', ['/']),
+             [('', '/'), ('foo', '/foo')])
     WVPASSEQ(stripped_path_components('/', ['/foo']), [('', '/')])
     WVPASSEQ(stripped_path_components('/foo', ['/bar']),
              [('', '/'), ('foo', '/foo')])

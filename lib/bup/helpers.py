@@ -930,6 +930,8 @@ def stripped_path_components(path, strip_prefixes):
     sorted_strip_prefixes = sorted(strip_prefixes, key=len, reverse=True)
     for bp in sorted_strip_prefixes:
         normalized_bp = os.path.abspath(bp)
+        if normalized_bp == '/':
+            continue
         if normalized_path.startswith(normalized_bp):
             prefix = normalized_path[:len(normalized_bp)]
             result = []
