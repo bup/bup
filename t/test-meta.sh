@@ -158,7 +158,8 @@ WVSTART 'metadata save/restore (general)'
     # Test a deeper subdir/ to make sure top-level non-dir metadata is
     # restored correctly.  We need at least one dir and one non-dir at
     # the "top-level".
-    WVPASS test -f src/share/man/man1/bup.1
+    WVPASS test -d src/bin
+    WVPASS test -f src/bin/bup
     WVPASS rm -rf "$BUP_DIR"
     WVPASS bup init
     WVPASS touch -t 201111111111 src-restore # Make sure the top won't match.
