@@ -1,3 +1,4 @@
+{% comment This template expects the default xhtml autoescaping. %}
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <html>
     <head>
@@ -29,7 +30,9 @@
                 </tr>
                 {% for (display, link, size) in dir_contents %}
                 <tr>
-                    <td class="dir-name"><a href="{{ link }}">{{ display }}</a></td>
+                    <td class="dir-name">
+                      <a href="{% raw link %}">{{ display }}</a>
+                    </td>
                     <td class="dir-size">{% if size != None %}{{ size }}{% else %}&nbsp;{% end %}</td>
                 </tr>
                 {% end %}

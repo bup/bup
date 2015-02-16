@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import sys, stat, urllib, mimetypes, posixpath, time, webbrowser
+import urllib
 from bup import options, git, vfs
 from bup.helpers import *
 try:
@@ -47,21 +48,22 @@ def _compute_dir_contents(n, path, show_hidden=False):
     if path != "/":
         yield('..', '../' + url_append, '')
     for sub in n:
-        display = link = sub.name
+        display = sub.name
+        link = urllib.quote(sub.name)
 
         # link should be based on fully resolved type to avoid extra
         # HTTP redirect.
         if stat.S_ISDIR(sub.try_resolve().mode):
-            link = sub.name + "/"
+            link += "/"
 
         if not show_hidden and len(display)>1 and display.startswith('.'):
             continue
 
         size = None
         if stat.S_ISDIR(sub.mode):
-            display = sub.name + '/'
+            display += '/'
         elif stat.S_ISLNK(sub.mode):
-            display = sub.name + '@'
+            display += '@'
         else:
             size = sub.size()
             size = (opt.human_readable and format_filesize(size)) or size
