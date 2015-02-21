@@ -18,7 +18,8 @@ default: all
 all: bup Documentation/all
 	t/configure-sampledata --setup
 
-bup: lib/bup/_version.py lib/bup/_helpers$(SOEXT) cmds
+bup: lib/bup/_version.py lib/bup/_helpers$(SOEXT) cmds main.py
+	ln -sf main.py bup
 
 Documentation/all: bup
 
@@ -119,10 +120,6 @@ test: all
 	./wvtestrun $(MAKE) PYTHON=$(PYTHON) runtests
 
 check: test
-
-bup: main.py
-	rm -f $@
-	ln -s $< $@
 
 cmds: \
     $(patsubst cmd/%-cmd.py,cmd/bup-%,$(wildcard cmd/*-cmd.py)) \
