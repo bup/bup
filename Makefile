@@ -129,14 +129,6 @@ cmd/bup-%: cmd/%-cmd.py
 	rm -f $@
 	ln -s $*-cmd.py $@
 
-%: %.py
-	rm -f $@
-	ln -s $< $@
-
-bup-%: cmd-%.sh
-	rm -f $@
-	ln -s $< $@
-
 cmd/bup-%: cmd/%-cmd.sh
 	rm -f $@
 	ln -s $*-cmd.sh $@
