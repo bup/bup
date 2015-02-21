@@ -82,14 +82,15 @@ lib/bup/_version.py:
 	./format-subst.pl $@.pre >$@.new
 	mv $@.new $@
 
+t/tmp:
+	mkdir t/tmp
+
 runtests: all runtests-python runtests-cmdline
 
-runtests-python: all
-	test -e t/tmp || mkdir t/tmp
+runtests-python: all t/tmp
 	TMPDIR="$(test_tmp)" $(PYTHON) wvtest.py t/t*.py lib/*/t/t*.py
 
-runtests-cmdline: all
-	test -e t/tmp || mkdir t/tmp
+runtests-cmdline: all t/tmp
 	TMPDIR="$(test_tmp)" t/test-fuse.sh
 	TMPDIR="$(test_tmp)" t/test-drecurse.sh
 	TMPDIR="$(test_tmp)" t/test-cat-file.sh
