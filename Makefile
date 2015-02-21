@@ -13,8 +13,7 @@ else
   test_tmp := $(CURDIR)/t/tmp
 endif
 
-default: all
-
+.PHONY: all
 all: bup Documentation/all
 	t/configure-sampledata --setup
 
