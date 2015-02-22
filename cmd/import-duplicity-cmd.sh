@@ -36,7 +36,7 @@ dup_timestamps=$(duplicity collection-status --log-fd=3 \
                  "$duplicity_target_url" 3>&1 1>/dev/null 2>/dev/null |
                  grep "[[:digit:]][[:digit:]]T" |
                  cut -d" " -f 3)
-backups_count=$(echo "$dup_timestamp" | wc -l)
+backups_count=$(echo "$dup_timestamps" | wc -l)
 counter=1
 echo "$dup_timestamps" |
 while read dup_timestamp; do
@@ -49,7 +49,7 @@ while read dup_timestamp; do
 
   tmpdir=$(mktemp -d)
 
-  echo "Restoring from rdiff-backup..." 1>&2
+  echo "Restoring from duplicity..." 1>&2
   duplicity restore -t "$dup_timestamp" "$duplicity_target_url" "$tmpdir"
   echo 1>&2
 
