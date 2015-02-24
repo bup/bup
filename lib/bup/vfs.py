@@ -434,7 +434,6 @@ class Dir(Node):
                 self._bupm = File(self, mangled_name, GIT_MODE_FILE, sha,
                                   bupmode)
                 continue
-            name = mangled_name
             (name,bupmode) = git.demangle_name(mangled_name)
             if bupmode == git.BUP_CHUNKED:
                 mode = GIT_MODE_FILE
