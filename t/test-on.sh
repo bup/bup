@@ -22,7 +22,7 @@ WVPASS date > src/bar
 WVPASS bup random 1k > src/baz
 WVPASS bup on - index src
 WVPASS bup on - save -ctn src src > get.log
-WVPASSEQ "$(cat get.log | wc -l)" 2
+WVPASSEQ $(WVPASS cat get.log | WVPASS wc -l) 2
 tree_id=$(WVPASS awk 'FNR == 1' get.log) || exit $?
 commit_id=$(WVPASS awk 'FNR == 2' get.log) || exit $?
 WVPASS git ls-tree "$tree_id"
