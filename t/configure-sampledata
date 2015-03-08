@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -o pipefail
+
 top=$(pwd)
 
 usage()
@@ -17,7 +19,7 @@ case "$1" in
             cd t/sampledata || exit $?
             ln -sf a b || exit $?
             ln -sf b c || exit $?
-            ln -sf /etc . || exit $?
+            ln -sf "$(pwd)/abs-symlink-target" abs-symlink || exit $?
         ) || exit $?
         ;;
     '--clean')
