@@ -75,49 +75,58 @@ lib/bup/_helpers$(SOEXT): \
 	LDFLAGS="$(LDFLAGS)" CFLAGS="$(CFLAGS)" $(PYTHON) csetup.py build
 	cp lib/bup/build/*/_helpers$(SOEXT) lib/bup/
 
+# This must be completely atomic since it may be run (often) in
+# parallel when "-j" is specified, either via targets here, or via
+# tests that use an install tree as data.
 .PHONY: lib/bup/_version.py
 lib/bup/_version.py:
-	rm -f $@ $@.new
-	./format-subst.pl $@.pre >$@.new
-	mv $@.new $@
+	rm -f $@.tmp-$$$$ \
+	&& ./format-subst.pl $@.pre > $@.tmp-$$$$ \
+	&& (if ! test -e $@ || ! cmp $@ $@.tmp-$$$$; then mv $@.tmp-$$$$ $@; fi)
 
 t/tmp:
 	mkdir t/tmp
 
-runtests: all runtests-python runtests-cmdline
+runtests: runtests-python runtests-cmdline
 
 runtests-python: all t/tmp
 	TMPDIR="$(test_tmp)" $(PYTHON) wvtest.py t/t*.py lib/*/t/t*.py
 
-runtests-cmdline: all t/tmp
-	TMPDIR="$(test_tmp)" t/test-fuse.sh
-	TMPDIR="$(test_tmp)" t/test-drecurse.sh
-	TMPDIR="$(test_tmp)" t/test-cat-file.sh
-	TMPDIR="$(test_tmp)" t/test-compression.sh
-	TMPDIR="$(test_tmp)" t/test-fsck.sh
-	TMPDIR="$(test_tmp)" t/test-index-clear.sh
-	TMPDIR="$(test_tmp)" t/test-index-check-device.sh
-	TMPDIR="$(test_tmp)" t/test-ls.sh
-	TMPDIR="$(test_tmp)" t/test-meta.sh
-	TMPDIR="$(test_tmp)" t/test-on.sh
-	TMPDIR="$(test_tmp)" t/test-restore-map-owner.sh
-	TMPDIR="$(test_tmp)" t/test-restore-single-file.sh
-	TMPDIR="$(test_tmp)" t/test-rm-between-index-and-save.sh
-	TMPDIR="$(test_tmp)" t/test-sparse-files.sh
-	TMPDIR="$(test_tmp)" t/test-command-without-init-fails.sh
-	TMPDIR="$(test_tmp)" t/test-redundant-saves.sh
-	TMPDIR="$(test_tmp)" t/test-save-creates-no-unrefs.sh
-	TMPDIR="$(test_tmp)" t/test-save-restore-excludes.sh
-	TMPDIR="$(test_tmp)" t/test-save-strip-graft.sh
-	TMPDIR="$(test_tmp)" t/test-import-rdiff-backup.sh
-	TMPDIR="$(test_tmp)" t/test-xdev.sh
-	TMPDIR="$(test_tmp)" t/test.sh
+cmdline_tests := \
+  t/test-fuse.sh \
+  t/test-drecurse.sh \
+  t/test-cat-file.sh \
+  t/test-compression.sh \
+  t/test-fsck.sh \
+  t/test-index-clear.sh \
+  t/test-index-check-device.sh \
+  t/test-ls.sh \
+  t/test-meta.sh \
+  t/test-on.sh \
+  t/test-restore-map-owner.sh \
+  t/test-restore-single-file.sh \
+  t/test-rm-between-index-and-save.sh \
+  t/test-sparse-files.sh \
+  t/test-command-without-init-fails.sh \
+  t/test-redundant-saves.sh \
+  t/test-save-creates-no-unrefs.sh \
+  t/test-save-restore-excludes.sh \
+  t/test-save-strip-graft.sh \
+  t/test-import-rdiff-backup.sh \
+  t/test-xdev.sh \
+  t/test.sh
+
+# For parallel runs.
+tmp-target-run-test-%: all t/tmp
+	TMPDIR="$(test_tmp)" t/test-$*
+
+runtests-cmdline: $(subst t/test-,tmp-target-run-test-,$(cmdline_tests))
 
 stupid:
 	PATH=/bin:/usr/bin $(MAKE) test
 
 test: all
-	./wvtestrun $(MAKE) PYTHON=$(PYTHON) runtests
+	./wvtestrun $(MAKE) PYTHON=$(PYTHON) runtests-python runtests-cmdline
 
 check: test
 
@@ -166,7 +175,9 @@ clean: Documentation/clean config/clean
 	rm -f *.o lib/*/*.o *.so lib/*/*.so *.dll lib/*/*.dll *.exe \
 		.*~ *~ */*~ lib/*/*~ lib/*/*/*~ \
 		*.pyc */*.pyc lib/*/*.pyc lib/*/*/*.pyc \
-		bup bup-* cmd/bup-* lib/bup/_version.py randomgen memtest \
+		bup bup-* cmd/bup-* \
+		lib/bup/_version.py lib/bup/_version.py.tmp-* \
+		randomgen memtest \
 		testfs.img lib/bup/t/testfs.img
 	if test -e t/mnt; then t/cleanup-mounts-under t/mnt; fi
 	if test -e t/mnt; then rm -r t/mnt; fi
