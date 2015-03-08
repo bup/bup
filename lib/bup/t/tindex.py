@@ -68,23 +68,24 @@ def index_negative_timestamps():
     initial_failures = wvfailure_count()
     tmpdir = tempfile.mkdtemp(dir=bup_tmp, prefix='bup-tindex-')
     # Makes 'foo' exist
-    f = file('foo', 'wb')
+    foopath = tmpdir + '/foo'
+    f = file(foopath, 'wb')
     f.close()
 
     # Dec 31, 1969
-    os.utime("foo", (-86400, -86400))
+    os.utime(foopath, (-86400, -86400))
     ns_per_sec = 10**9
     tstart = time.time() * ns_per_sec
     tmax = tstart - ns_per_sec
-    e = index.BlankNewEntry("foo", 0, tmax)
-    e.from_stat(xstat.stat("foo"), 0, tstart)
+    e = index.BlankNewEntry(foopath, 0, tmax)
+    e.from_stat(xstat.stat(foopath), 0, tstart)
     assert len(e.packed())
     WVPASS()
 
     # Jun 10, 1893
-    os.utime("foo", (-0x80000000, -0x80000000))
-    e = index.BlankNewEntry("foo", 0, tmax)
-    e.from_stat(xstat.stat("foo"), 0, tstart)
+    os.utime(foopath, (-0x80000000, -0x80000000))
+    e = index.BlankNewEntry(foopath, 0, tmax)
+    e.from_stat(xstat.stat(foopath), 0, tstart)
     assert len(e.packed())
     WVPASS()
     if wvfailure_count() == initial_failures:
