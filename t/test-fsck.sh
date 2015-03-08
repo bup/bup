@@ -6,20 +6,24 @@ set -o pipefail
 top="$(WVPASS pwd)" || exit $?
 tmpdir="$(WVPASS wvmktempdir)" || exit $?
 
+bup() { "$top/bup" "$@"; }
+
+WVPASS make install DESTDIR="$tmpdir/src"
+WVPASS cp -a "$top/t/sampledata" "$tmpdir/src/"
+
 export BUP_DIR="$tmpdir/bup"
 export GIT_DIR="$tmpdir/bup"
-
-bup() { "$top/bup" "$@"; }
 
 WVPASS bup init
 WVPASS cd "$tmpdir"
 
 WVSTART "fsck"
 
-WVPASS bup index "$top"
-WVPASS bup save -n fsck-test "$top/lib"
-WVPASS bup save -n fsck-test "$top/Documentation"
-WVPASS bup save -n fsck-test "$top/cmd"
+WVPASS bup index src
+WVPASS bup save -n fsck-test src/sampledata
+WVPASS bup save -n fsck-test src/usr/bin
+WVPASS bup save -n fsck-test src/usr/lib
+WVPASS bup save -n fsck-test src/usr/share
 WVPASS bup fsck
 WVPASS bup fsck --quick
 if bup fsck --par2-ok; then
