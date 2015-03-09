@@ -40,6 +40,8 @@ def exo(cmd, shell=False):
 
 handle_ctrl_c()
 
+log('\nbup: import-duplicity is EXPERIMENTAL (proceed with caution)\n\n')
+
 o = options.Options(optspec)
 opt, flags, extra = o.parse(sys.argv[1:])
 

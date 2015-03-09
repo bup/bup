@@ -6,6 +6,10 @@
 
 bup-import-duplicity - import duplicity backups
 
+# WARNING
+
+bup-import-duplicity is **EXPERIMENTAL** (proceed with caution)
+
 # SYNOPSIS
 
 bup import-duplicity [-n] \<source-url\> \<save-name\>
