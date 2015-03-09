@@ -170,8 +170,14 @@ WVSTART 'metadata save/restore (general)'
     WVPASS touch -t 201211111111 src-restore # Make sure the top won't match.
     # Check that the only difference is the top dir.
     WVFAIL $TOP/t/compare-trees -c src/lib/ src-restore/ > tmp-compare-trees
-    WVPASSEQ $(cat tmp-compare-trees | wc -l) 2
-    WVPASS tail -n +2 tmp-compare-trees | WVPASS grep -qE '^\.d[^ ]+ \./$'
+    WVPASSEQ $(cat tmp-compare-trees | wc -l) 1
+    # Note: OS X rsync itemize output is currently only 9 chars, not 11.
+    expected_diff_rx='^\.d\.\.t.\.\.\.\.?\.? \./$'
+    if ! grep -qE "$expected_diff_rx" tmp-compare-trees; then
+        echo -n 'tmp-compare-trees: ' 1>&2
+        cat tmp-compare-trees 1>&2
+    fi
+    WVPASS grep -qE "$expected_diff_rx" tmp-compare-trees
     WVPASS rm -r "$tmpdir"
 ) || exit $?
 

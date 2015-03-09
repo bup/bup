@@ -67,7 +67,7 @@ fi
 rsync $rsync_opts "$src" "$dest" > "$tmpfile" || exit $?
 
 if test $(wc -l < "$tmpfile") != 0; then
-    echo "Differences between $src and $dest"
+    echo "Differences between $src and $dest" 1>&2
     cat "$tmpfile"
     exit 1
 fi
