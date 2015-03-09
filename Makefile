@@ -82,7 +82,8 @@ lib/bup/_helpers$(SOEXT): \
 lib/bup/_version.py:
 	rm -f $@.tmp-$$$$ \
 	&& ./format-subst.pl $@.pre > $@.tmp-$$$$ \
-	&& (if ! test -e $@ || ! cmp $@ $@.tmp-$$$$; then mv $@.tmp-$$$$ $@; fi)
+	&& (if ! test -e $@ || ! cmp $@ $@.tmp-$$$$; then mv $@.tmp-$$$$ $@; fi) \
+	&& rm -f $@.tmp-$$$$
 
 t/tmp:
 	mkdir t/tmp
