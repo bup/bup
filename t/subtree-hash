@@ -1,29 +1,34 @@
-#!/usr/bin/env bash
+#!/usr/bin/env python
 
-# Usage: subtree-hash ROOT_HASH [SUBDIR ...]
+from subprocess import check_output
+import argparse
+import sys
 
-subtree_hash()
-{
-    root_hash="$1"
-    if test "$#" -eq 1; then
-        echo $root_hash
-    else
-        subdir="$2"
-        subtree_info="$(git ls-tree "$root_hash" | grep -E "	$subdir\$")" || true
-        if test "$(echo "$subtree_info" | wc -l)" -ne 1; then
-            echo "Didn't find just one matching line in subtree $root_hash" 1>&2
-            return 1
-        fi
+parser = argparse.ArgumentParser()
+parser.add_argument("ROOT_HASH", help="root tree for the search")
+parser.add_argument("PATH_ITEM", help="path component", nargs='*')
+opts = parser.parse_args()
+tree_hash = opts.ROOT_HASH
+path = opts.PATH_ITEM
 
-        subtree_hash="$(echo "$subtree_info" | cut -d' ' -f 3 | cut -d$'\t' -f 1)" || true
-        if test -z "$subtree_hash"; then
-            echo "Unable to find subtree hash in git output: $subtree_info" 1>&2
-            return 1
-        fi
+while path:
+    target_name = path[0]
+    subtree_items = check_output(['git', 'ls-tree', '-z', tree_hash])
+    target_hash = None
+    for entry in subtree_items.split('\0'):
+        if not entry:
+            break
+        info, name = entry.split('\t', 1)
+        if name == target_name:
+            _, _, target_hash = info.split(' ')
+            break
+    if not target_hash:
+        print >> sys.stderr, "Can't find %r in %s" % (target_name, tree_hash)
+        break
+    tree_hash = target_hash
+    path = path[1:]
 
-        shift 2 || exit $?
-        subtree_hash "$subtree_hash" "$@" || exit $?
-    fi
-}
+if path:
+    sys.exit(1)
 
-subtree_hash "$@"
+print tree_hash
