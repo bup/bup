@@ -18,7 +18,8 @@ all: bup Documentation/all
 	t/configure-sampledata --setup
 
 bup: lib/bup/_version.py lib/bup/_helpers$(SOEXT) cmds main.py
-	ln -sf main.py bup
+	-ln -s main.py bup
+	test -L bup
 
 Documentation/all: bup
 
