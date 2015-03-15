@@ -69,6 +69,16 @@ restore_size=$(WVPASS du -k -s restore | WVPASS cut -f1) || exit $?
 WVPASS [ "$restore_size" -lt 100 ]
 WVPASS "$top/t/compare-trees" -c src/ restore/src/
 
+WVSTART "sparse file restore --sparse (bracketed zero run in buf)"
+WVPASS echo 'x' > src/foo
+WVPASS dd if=/dev/zero bs=1 count=512 >> src/foo
+WVPASS echo 'y' >> src/foo
+WVPASS bup index src
+WVPASS bup save -n src src
+WVPASS rm -r restore
+WVPASS bup restore --sparse -C restore "src/latest/$(pwd)/"
+WVPASS "$top/t/compare-trees" -c src/ restore/src/
+
 WVSTART "sparse file restore --sparse (sparse start)"
 WVPASS dd if=/dev/zero of=src/foo seek=$mb bs=1 count=1
 WVPASS echo "end" >> src/foo
