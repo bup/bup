@@ -44,8 +44,9 @@ except ImportError:
     get_linux_file_attr = set_linux_file_attr = None
 
 
+# See the bup_get_linux_file_attr() comments.
 _suppress_linux_file_attr = \
-    sys.byteorder == 'big' and struct.calcsize('=l') > struct.calcsize('=i')
+    sys.byteorder == 'big' and struct.calcsize('@l') > struct.calcsize('@i')
 
 def check_linux_file_attr_api():
     global get_linux_file_attr, set_linux_file_attr
