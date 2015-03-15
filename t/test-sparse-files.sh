@@ -103,7 +103,7 @@ WVPASS [ "$restore_size" -lt 100 ]
 WVPASS "$top/t/compare-trees" -c src/ restore/src/
 
 WVSTART "sparse file restore --sparse (random)"
-WVPASS bup random 512k > src/foo
+WVPASS bup random 1M > src/foo
 WVPASS bup index src
 WVPASS bup save -n src src
 WVPASS rm -r restore

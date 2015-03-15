@@ -264,6 +264,21 @@ static int uadd(unsigned long long *dest,
     return 1;
 }
 
+static PyObject *append_sparse_region(const int fd, unsigned long long n)
+{
+    while(n)
+    {
+        off_t new_off;
+        if (!INTEGRAL_ASSIGNMENT_FITS(&new_off, n))
+            new_off = INT_MAX;
+        const off_t off = lseek(fd, new_off, SEEK_CUR);
+        if (off == (off_t) -1)
+            return PyErr_SetFromErrno(PyExc_IOError);
+        n -= new_off;
+    }
+    return NULL;
+}
+
 
 static PyObject *bup_write_sparsely(PyObject *self, PyObject *args)
 {
@@ -285,69 +300,61 @@ static PyObject *bup_write_sparsely(PyObject *self, PyObject *args)
     if (!INTEGRAL_ASSIGNMENT_FITS(&buf_len, sbuf_len))
         return PyErr_Format(PyExc_OverflowError, "buffer length too large");
 
-    // For now, there are some cases where we just give up if the
-    // values are too large, but we could try to break up the relevant
-    // operations into chunks.
-
-    // Deal with preceding zeros.  Just make them sparse, along with
-    // any leading zeros in buf, even if the region's not >= min,
-    // since the alternative is a potentially extra small write.
-    if (prev_sparse_len)
-    {
-        const unsigned long long zeros = count_leading_zeros(buf, buf_len);
-        unsigned long long new_sparse_len = 0;
-        if (!uadd(&new_sparse_len, prev_sparse_len, zeros))
-            return PyErr_Format (PyExc_OverflowError, "sparse region too large");
-        if (zeros == buf_len)
-            return PyLong_FromUnsignedLongLong(new_sparse_len);
-
-        off_t new_off;
-        if (!INTEGRAL_ASSIGNMENT_FITS(&new_off, new_sparse_len))
-            return PyErr_Format(PyExc_OverflowError,
-                                "sparse region too large for seek");
-        const off_t off = lseek(fd, new_off, SEEK_CUR);
-        if (off == -1)
-            return PyErr_SetFromErrno(PyExc_IOError);
-        buf += zeros;
-        buf_len -= zeros;
-    }
-
+    // The value of zeros_read indicates the number of zeros read from
+    // buf that haven't been accounted for yet (with respect to cur),
+    // while zeros indicates the total number of pending zeros, which
+    // could be larger in the first iteration if prev_sparse_len
+    // wasn't zero.
     int rc;
     unsigned long long unexamined = buf_len;
     unsigned char *block_start = buf, *cur = buf;
+    unsigned long long zeros, zeros_read = count_leading_zeros(cur, unexamined);
+    assert(zeros_read <= unexamined);
+    unexamined -= zeros_read;
+    if (!uadd(&zeros, prev_sparse_len, zeros_read))
+    {
+        PyObject *err = append_sparse_region(fd, prev_sparse_len);
+        if (err != NULL)
+            return err;
+        zeros = zeros_read;
+    }
+
     while(unexamined)
     {
-        const unsigned long long zeros = count_leading_zeros(cur, unexamined);
-        assert(zeros <= unexamined);
-        unexamined -= zeros;
-        if (unexamined == 0)  // Runs off the end.
+        if (zeros < min_sparse_len)
+            cur += zeros_read;
+        else
         {
             rc = write_all(fd, block_start, cur - block_start);
             if (rc)
                 return PyErr_SetFromErrno(PyExc_IOError);
-            return PyLong_FromUnsignedLongLong(zeros);
-        }
-        cur += zeros;
-        if (zeros >= min_sparse_len)
-        {
-            off_t new_off;
-            if (!INTEGRAL_ASSIGNMENT_FITS(&new_off, zeros))
-                return PyErr_Format(PyExc_ValueError,
-                                    "zero count overflows off_t");
-            off_t off = lseek(fd, new_off, SEEK_CUR);
-            if (off == -1)
-                return PyErr_SetFromErrno(PyExc_IOError);
+            PyObject *err = append_sparse_region(fd, zeros);
+            if (err != NULL)
+                return err;
+            cur += zeros_read;
             block_start = cur;
         }
+        // Pending zeros have ether been made sparse, or are going to
+        // be rolled into the next non-sparse block since we know we
+        // now have at least one unexamined non-zero byte.
+        assert(unexamined && *cur != 0);
+        zeros = zeros_read = 0;
         while (unexamined && *cur != 0)
         {
             cur++; unexamined--;
+        }
+        if (unexamined)
+        {
+            zeros_read = count_leading_zeros(cur, unexamined);
+            assert(zeros_read <= unexamined);
+            unexamined -= zeros_read;
+            zeros = zeros_read;
         }
     }
     rc = write_all(fd, block_start, cur - block_start);
     if (rc)
         return PyErr_SetFromErrno(PyExc_IOError);
-    return PyInt_FromLong(0);
+    return PyLong_FromUnsignedLongLong(zeros);
 }
 
 
@@ -1364,6 +1371,13 @@ PyMODINIT_FUNC init_helpers(void)
     // Just be sure (relevant when passing timestamps back to Python above).
     assert(sizeof(PY_LONG_LONG) <= sizeof(long long));
     assert(sizeof(unsigned PY_LONG_LONG) <= sizeof(unsigned long long));
+
+    if (sizeof(off_t) < sizeof(int))
+    {
+        // Originally required by append_sparse_region().
+        fprintf(stderr, "sizeof(off_t) < sizeof(int); please report.\n");
+        exit(1);
+    }
 
     char *e;
     PyObject *m = Py_InitModule("_helpers", helper_methods);
