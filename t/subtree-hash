@@ -1,19 +1,39 @@
 #!/usr/bin/env python
 
-from subprocess import check_output
-import argparse
-import sys
+import os, sys
 
-parser = argparse.ArgumentParser()
-parser.add_argument("ROOT_HASH", help="root tree for the search")
-parser.add_argument("PATH_ITEM", help="path component", nargs='*')
-opts = parser.parse_args()
-tree_hash = opts.ROOT_HASH
-path = opts.PATH_ITEM
+argv = sys.argv
+exe = os.path.realpath(argv[0])
+exepath = os.path.split(exe)[0] or '.'
+exeprefix = os.path.split(os.path.abspath(exepath))[0]
+
+# fix the PYTHONPATH to include our lib dir
+libpath = os.path.join(exepath, '..', 'lib')
+sys.path[:0] = [libpath]
+os.environ['PYTHONPATH'] = libpath + ':' + os.environ.get('PYTHONPATH', '')
+
+from bup.helpers import handle_ctrl_c, readpipe
+from bup import options
+
+optspec = """
+subtree-hash ROOT_HASH [PATH_ITEM...]
+--
+"""
+
+handle_ctrl_c()
+
+o = options.Options(optspec)
+(opt, flags, extra) = o.parse(sys.argv[1:])
+
+if len(extra) < 1:
+    o.fatal('must specify a root hash')
+
+tree_hash = extra[0]
+path = extra[1:]
 
 while path:
     target_name = path[0]
-    subtree_items = check_output(['git', 'ls-tree', '-z', tree_hash])
+    subtree_items = readpipe(['git', 'ls-tree', '-z', tree_hash])
     target_hash = None
     for entry in subtree_items.split('\0'):
         if not entry:
