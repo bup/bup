@@ -28,7 +28,9 @@ case "$1" in
             # test -e is false for dangling symlinks.
             if test -h b -o -e b; then rm b || exit $?; fi
             if test -h c -o -e c; then rm c || exit $?; fi
-            if test -h etc -o -e etc; then rm etc || exit $?; fi
+            if test -h abs-symlink -o -e abs-symlink; then
+                rm abs-symlink || exit $?
+            fi
         )
         ;;
     *)
