@@ -13,15 +13,16 @@ else
   test_tmp := $(CURDIR)/t/tmp
 endif
 
+bup_deps := bup lib/bup/_version.py lib/bup/_helpers$(SOEXT) cmds
+
 .PHONY: all
-all: bup Documentation/all
+all: $(bup_deps) Documentation/all
 	t/configure-sampledata --setup
 
-bup: lib/bup/_version.py lib/bup/_helpers$(SOEXT) cmds main.py
-	-ln -s main.py bup
-	test -L bup
+bup:
+	ln -s main.py bup
 
-Documentation/all: bup
+Documentation/all: $(bup_deps)
 
 INSTALL=install
 PYTHON=python
