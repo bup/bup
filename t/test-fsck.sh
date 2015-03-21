@@ -8,8 +8,7 @@ tmpdir="$(WVPASS wvmktempdir)" || exit $?
 
 bup() { "$top/bup" "$@"; }
 
-WVPASS make install DESTDIR="$tmpdir/src"
-WVPASS cp -a "$top/t/sampledata" "$tmpdir/src/"
+WVPASS cp -a "$top/t/sampledata" "$tmpdir/src"
 
 export BUP_DIR="$tmpdir/bup"
 export GIT_DIR="$tmpdir/bup"
@@ -20,10 +19,11 @@ WVPASS cd "$tmpdir"
 WVSTART "fsck"
 
 WVPASS bup index src
-WVPASS bup save -n fsck-test src/sampledata
-WVPASS bup save -n fsck-test src/usr/bin
-WVPASS bup save -n fsck-test src/usr/lib
-WVPASS bup save -n fsck-test src/usr/share
+WVPASS bup save -n fsck-test src/b2
+WVPASS bup save -n fsck-test src/var/cmd
+WVPASS bup save -n fsck-test src/var/doc
+WVPASS bup save -n fsck-test src/var/lib
+WVPASS bup save -n fsck-test src/y
 WVPASS bup fsck
 WVPASS bup fsck --quick
 if bup fsck --par2-ok; then

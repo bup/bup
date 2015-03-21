@@ -100,7 +100,7 @@ test-src-save-restore()
 
 setup-test-tree()
 {
-    WVPASS make PREFIX="$tmpdir"/src install
+    WVPASS cp -a "$TOP/t/sampledata" "$tmpdir/src"
 
     # Add some hard links for the general tests.
     (
@@ -158,18 +158,18 @@ WVSTART 'metadata save/restore (general)'
     # Test a deeper subdir/ to make sure top-level non-dir metadata is
     # restored correctly.  We need at least one dir and one non-dir at
     # the "top-level".
-    WVPASS test -d src/bin
-    WVPASS test -f src/bin/bup
+    WVPASS test -d src/var/cmd
+    WVPASS test -f src/var/cmd/save-cmd.py
     WVPASS rm -rf "$BUP_DIR"
     WVPASS bup init
     WVPASS touch -t 201111111111 src-restore # Make sure the top won't match.
     WVPASS bup index src
     WVPASS bup save -t -n src src
     WVPASS force-delete src-restore
-    WVPASS bup restore -C src-restore "/src/latest$(pwd)/src/lib/"
+    WVPASS bup restore -C src-restore "/src/latest$(pwd)/src/var/."
     WVPASS touch -t 201211111111 src-restore # Make sure the top won't match.
     # Check that the only difference is the top dir.
-    WVFAIL $TOP/t/compare-trees -c src/lib/ src-restore/ > tmp-compare-trees
+    WVFAIL $TOP/t/compare-trees -c src/var/ src-restore/ > tmp-compare-trees
     WVPASSEQ $(cat tmp-compare-trees | wc -l) 1
     # Note: OS X rsync itemize output is currently only 9 chars, not 11.
     expected_diff_rx='^\.d\.\.t.\.\.\.\.?\.? \./$'

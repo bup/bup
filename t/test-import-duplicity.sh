@@ -16,7 +16,7 @@ bup() { "$top/bup" "$@"; }
 dup() { duplicity --archive-dir "$tmpdir/dup-cache" "$@"; }
 
 WVSTART "import-duplicity"
-WVPASS make install DESTDIR="$tmpdir/src"
+WVPASS cp -a "$top/t/sampledata" "$tmpdir/src"
 
 export BUP_DIR="$tmpdir/bup"
 export GIT_DIR="$tmpdir/bup"
@@ -34,9 +34,14 @@ WVPASSEQ "$(bup ls import-duplicity/ | wc -l)" "3"
 WVPASSEQ "$(bup ls import-duplicity/latest/ | sort)" "$(ls src | sort)"
 WVPASS bup restore -C restore/ import-duplicity/latest/
 WVFAIL "$top/t/compare-trees" src/ restore/ > tmp-compare-trees
-WVPASSEQ $(cat tmp-compare-trees | wc -l) 1
+WVPASSEQ $(cat tmp-compare-trees | wc -l) 4
 # Note: OS X rsync itemize output is currently only 9 chars, not 11.
-expected_diff_rx='^\.d\.\.t.\.\.\.\.?\.? \./$'
+# Expect something like this (without the leading spaces):
+#   .d..t...... ./
+#   .L..t...... abs-symlink -> /home/foo/bup/t/sampledata/var/abs-symlink-target
+#   .L..t...... b -> a
+#   .L..t...... c -> b
+expected_diff_rx='^\.d\.\.t.\.\.\.\.?\.? \./$|^\.L\.\.t.\.\.\.\.?\.? '
 if ! grep -qE "$expected_diff_rx" tmp-compare-trees; then
     echo -n 'tmp-compare-trees: ' 1>&2
     cat tmp-compare-trees 1>&2
