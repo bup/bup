@@ -17,6 +17,7 @@ else
   test_tmp := $(CURDIR)/t/tmp
 endif
 
+initial_setup := $(shell ./configure-version --update)
 bup_deps := bup lib/bup/_version.py lib/bup/_helpers$(SOEXT) cmds
 
 all: $(bup_deps) Documentation/all $(current_sampledata)
@@ -82,15 +83,10 @@ lib/bup/_helpers$(SOEXT): \
 	LDFLAGS="$(LDFLAGS)" CFLAGS="$(CFLAGS)" $(PYTHON) csetup.py build
 	cp lib/bup/build/*/_helpers$(SOEXT) lib/bup/
 
-# This must be completely atomic since it may be run (often) in
-# parallel when "-j" is specified, either via targets here, or via
-# tests that use an install tree as data.
-.PHONY: lib/bup/_version.py
 lib/bup/_version.py:
-	rm -f $@.tmp-$$$$ \
-	&& ./format-subst.pl $@.pre > $@.tmp-$$$$ \
-	&& (if ! test -e $@ || ! cmp $@ $@.tmp-$$$$; then mv $@.tmp-$$$$ $@; fi) \
-	&& rm -f $@.tmp-$$$$
+	@echo "Something has gone wrong; $@ should already exist."
+	@echo 'Check "./configure-version --update"'
+	@false
 
 t/tmp:
 	mkdir t/tmp
@@ -185,7 +181,6 @@ clean: Documentation/clean config/clean
 		.*~ *~ */*~ lib/*/*~ lib/*/*/*~ \
 		*.pyc */*.pyc lib/*/*.pyc lib/*/*/*.pyc \
 		bup bup-* cmd/bup-* \
-		lib/bup/_version.py lib/bup/_version.py.tmp-* \
 		randomgen memtest \
 		testfs.img lib/bup/t/testfs.img
 	if test -e t/mnt; then t/cleanup-mounts-under t/mnt; fi
@@ -196,4 +191,5 @@ clean: Documentation/clean config/clean
 	  then umount lib/bup/t/testfs || true; fi
 	rm -rf *.tmp *.tmp.meta t/*.tmp lib/*/*/*.tmp build lib/bup/build lib/bup/t/testfs
 	if test -e t/tmp; then t/force-delete t/tmp; fi
+	./configure-version --clean
 	t/configure-sampledata --clean

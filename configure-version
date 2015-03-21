@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+
+set -eo pipefail
+
+top="$(pwd)"
+vpy=lib/bup/_version.py
+readonly top vpy
+
+usage()
+{
+    echo 'Usage: ./configure-version [--update | --clean]'
+}
+
+if test "$#" -ne 1; then
+    usage 1>&2; exit 1
+fi
+
+case "$1" in
+    --update)
+        rm -f $vpy.tmp-$$
+        ./format-subst.pl $vpy.pre > $vpy.tmp-$$
+        if ! test -e $vpy || ! cmp -s $vpy $vpy.tmp-$$; then
+            mv $vpy.tmp-$$ $vpy;
+        fi
+        rm -f $vpy.tmp-$$
+        ;;
+    --clean)
+	rm -f lib/bup/_version.py lib/bup/_version.pyc lib/bup/_version.py.tmp-*
+        ;;
+    *)
+        usage 1>&2; exit 1
+        ;;
+esac
