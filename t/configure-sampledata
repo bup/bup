@@ -2,36 +2,57 @@
 
 set -o pipefail
 
-top=$(pwd)
+# NOTE: any relevant changes to var/ must be accompanied by an
+# increment to the revision.
+
+revision=0
+readonly revision
+
+top="$(pwd)" || exit $?
 
 usage()
 {
-    echo 'Usage: t/configure-sampledata [--setup | --clean]'
+    echo 'Usage: t/configure-sampledata [--setup | --clean | --revision]'
 }
 
 if test "$#" -ne 1; then
     usage 1>&2; exit 1
 fi
 
+clean()
+(
+    cd t/sampledata || exit $?
+    if test -e var; then rm -r var || exit $?; fi
+    # Remove legacy content (before everything moved to var/).
+    # test -e is false for dangling symlinks.
+    if test -h b -o -e b; then rm b || exit $?; fi
+    if test -h c -o -e c; then rm c || exit $?; fi
+    if test -h abs-symlink -o -e abs-symlink; then
+        rm abs-symlink || exit $?
+    fi
+)
+
 case "$1" in
-    '--setup')
+    --setup)
         (
-            cd t/sampledata || exit $?
+            clean
+            mkdir -p t/sampledata/var/rev || exit $?
+            cd t/sampledata/var || exit $?
             ln -sf a b || exit $?
             ln -sf b c || exit $?
             ln -sf "$(pwd)/abs-symlink-target" abs-symlink || exit $?
+            # The "v" ensures that if "configure-sampledata
+            # --revision" and/or the setup above fails somehow,
+            # callers like make will be looking for a file that won't
+            # exist.
+            touch rev/v$revision || exit $?
         ) || exit $?
         ;;
-    '--clean')
-        (
-            cd t/sampledata || exit $?
-            # test -e is false for dangling symlinks.
-            if test -h b -o -e b; then rm b || exit $?; fi
-            if test -h c -o -e c; then rm c || exit $?; fi
-            if test -h abs-symlink -o -e abs-symlink; then
-                rm abs-symlink || exit $?
-            fi
-        )
+    --clean)
+        clean
+        ;;
+    --revision)
+        echo "$revision" || exit $?
         ;;
     *)
         usage 1>&2; exit 1

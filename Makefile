@@ -1,3 +1,7 @@
+
+sampledata_rev := $(shell t/configure-sampledata --revision)
+current_sampledata := t/sampledata/var/rev/v$(sampledata_rev)
+
 OS:=$(shell uname | sed 's/[-_].*//')
 CFLAGS := -Wall -O2 -Werror -Wno-unknown-pragmas $(PYINCLUDE) $(CFLAGS)
 CFLAGS := -D_FILE_OFFSET_BITS=64 $(CFLAGS)
@@ -15,14 +19,15 @@ endif
 
 bup_deps := bup lib/bup/_version.py lib/bup/_helpers$(SOEXT) cmds
 
-.PHONY: all
-all: $(bup_deps) Documentation/all
-	t/configure-sampledata --setup
+all: $(bup_deps) Documentation/all $(current_sampledata)
 
 bup:
 	ln -s main.py bup
 
 Documentation/all: $(bup_deps)
+
+$(current_sampledata):
+	t/configure-sampledata --setup
 
 INSTALL=install
 PYTHON=python

@@ -16,10 +16,10 @@ def index_basic():
     sd = os.path.realpath(cd + '/sampledata')
     WVPASSEQ(index.realpath(cd + '/sampledata'), sd)
     WVPASSEQ(os.path.realpath(cd + '/sampledata/x'), sd + '/x')
-    WVPASSEQ(os.path.realpath(cd + '/sampledata/abs-symlink'),
-             sd + '/abs-symlink-target')
-    WVPASSEQ(index.realpath(cd + '/sampledata/abs-symlink'),
-             sd + '/abs-symlink')
+    WVPASSEQ(os.path.realpath(cd + '/sampledata/var/abs-symlink'),
+             sd + '/var/abs-symlink-target')
+    WVPASSEQ(index.realpath(cd + '/sampledata/var/abs-symlink'),
+             sd + '/var/abs-symlink')
 
 
 @wvtest
