@@ -1,14 +1,13 @@
 """Helper functions and classes for bup."""
 
+from collections import namedtuple
 from ctypes import sizeof, c_void_p
 from os import environ
 from contextlib import contextmanager
 import sys, os, pwd, subprocess, errno, socket, select, mmap, stat, re, struct
-import hashlib, heapq, operator, time, grp, tempfile
+import hashlib, heapq, math, operator, time, grp, tempfile
 
 from bup import _helpers
-import bup._helpers as _helpers
-import math
 
 # This function should really be in helpers, not in bup.options.  But we
 # want options.py to be standalone so people can include it in other projects.
@@ -987,4 +986,37 @@ def grafted_path_components(graft_points, path):
             return result
     return path_components(clean_path)
 
+
 Sha1 = hashlib.sha1
+
+
+_localtime = getattr(_helpers, 'localtime', None)
+
+if _localtime:
+    bup_time = namedtuple('bup_time', ['tm_year', 'tm_mon', 'tm_mday',
+                                       'tm_hour', 'tm_min', 'tm_sec',
+                                       'tm_wday', 'tm_yday',
+                                       'tm_isdst', 'tm_gmtoff', 'tm_zone'])
+
+# Define a localtime() that returns bup_time when possible.  Note:
+# this means that any helpers.localtime() results may need to be
+# passed through to_py_time() before being passed to python's time
+# module, which doesn't appear willing to ignore the extra items.
+if _localtime:
+    def localtime(time):
+        return bup_time(*_helpers.localtime(time))
+    def utc_offset_str(t):
+        'Return the local offset from UTC as "+hhmm" or "-hhmm" for time t.'
+        off = localtime(t).tm_gmtoff
+        hrs = off / 60 / 60
+        return "%+03d%02d" % (hrs, abs(off - (hrs * 60 * 60)))
+    def to_py_time(x):
+        if isinstance(x, time.struct_time):
+            return x
+        return time.struct_time(x[:9])
+else:
+    localtime = time.localtime
+    def utc_offset_str(t):
+        return time.strftime('%z', localtime(t))
+    def to_py_time(x):
+        return x

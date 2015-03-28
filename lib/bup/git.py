@@ -761,7 +761,7 @@ class PackWriter:
 
 
 def _git_date(date):
-    return '%d %s' % (date, time.strftime('%z', time.localtime(date)))
+    return '%d %s' % (date, utc_offset_str(date))
 
 
 def _gitenv(repo_dir = None):

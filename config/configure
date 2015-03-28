@@ -74,4 +74,6 @@ AC_CHECK_FIELD stat st_atimensec sys/types.h sys/stat.h unistd.h
 AC_CHECK_FIELD stat st_mtimensec sys/types.h sys/stat.h unistd.h
 AC_CHECK_FIELD stat st_ctimensec sys/types.h sys/stat.h unistd.h
 
+AC_CHECK_FIELD tm tm_gmtoff time.h
+
 AC_OUTPUT config.vars
