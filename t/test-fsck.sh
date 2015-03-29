@@ -8,7 +8,7 @@ tmpdir="$(WVPASS wvmktempdir)" || exit $?
 
 bup() { "$top/bup" "$@"; }
 
-WVPASS cp -a "$top/t/sampledata" "$tmpdir/src"
+WVPASS "$top/t/sync-tree" "$top/t/sampledata/" "$tmpdir/src/"
 
 export BUP_DIR="$tmpdir/bup"
 export GIT_DIR="$tmpdir/bup"

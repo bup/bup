@@ -42,9 +42,9 @@ case "$1" in
             ln -sf b c || exit $?
             ln -sf "$(pwd)/abs-symlink-target" abs-symlink || exit $?
             mkdir -p cmd doc lib/bup || exit $?
-            cp -a "$top"/cmd/*.py cmd/ || exit $?
-            cp -a "$top"/Documentation/*.md doc/ || exit $?
-            cp -a "$top"/lib/bup/*.py lib/bup || exit $?
+            cp -pP "$top"/cmd/*.py cmd/ || exit $?
+            cp -pP "$top"/Documentation/*.md doc/ || exit $?
+            cp -pP "$top"/lib/bup/*.py lib/bup || exit $?
             # The "v" ensures that if "configure-sampledata
             # --revision" and/or the setup above fails somehow,
             # callers like make will be looking for a file that won't

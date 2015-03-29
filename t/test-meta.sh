@@ -100,7 +100,7 @@ test-src-save-restore()
 
 setup-test-tree()
 {
-    WVPASS cp -a "$TOP/t/sampledata" "$tmpdir/src"
+    WVPASS "$TOP/t/sync-tree" "$TOP/t/sampledata/" "$tmpdir/src/"
 
     # Add some hard links for the general tests.
     (
@@ -214,7 +214,7 @@ WVSTART 'metadata save/restore (using index metadata)'
     WVPASS "$TOP/t/compare-trees" -c src/ src-restore-1/src/
 
     WVPASS echo "blarg" > src/volatile/1
-    WVPASS cp -a src/volatile/1 src-restore-1/src/volatile/
+    WVPASS cp -pP src/volatile/1 src-restore-1/src/volatile/
     WVPASS bup index src
 
     # Bup should *not* pick up these metadata changes.

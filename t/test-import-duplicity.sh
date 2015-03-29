@@ -16,7 +16,7 @@ bup() { "$top/bup" "$@"; }
 dup() { duplicity --archive-dir "$tmpdir/dup-cache" "$@"; }
 
 WVSTART "import-duplicity"
-WVPASS cp -a "$top/t/sampledata" "$tmpdir/src"
+WVPASS "$top/t/sync-tree" "$top/t/sampledata/" "$tmpdir/src/"
 
 export BUP_DIR="$tmpdir/bup"
 export GIT_DIR="$tmpdir/bup"

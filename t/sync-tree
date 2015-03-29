@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+
+usage() {
+cat <<EOF
+Usage: sync-tree [-h] [-c] [-x] SOURCE/ DEST/
+  Make the DEST tree match SOURCE as closely as possible
+OPTIONS:
+  -h
+    Display help
+EOF
+}
+
+while getopts "h" OPTION
+do
+    case "$OPTION" in
+        h) usage; exit 0;;
+        ?) usage 1>&2; exit 1;;
+    esac
+done
+
+shift $(($OPTIND - 1)) || exit $?
+
+if ! test $# -eq 2
+then
+    usage 1>&2
+    exit 1
+fi
+
+src="$1"
+dest="$2"
+
+rsync_opts="-aH --delete"
+
+rsync_version=$(rsync --version)
+if [[ ! "$rsync_version" =~ "ACLs" ]] || [[ "$rsync_version" =~ "no ACLs" ]]; then
+    echo "Not syncing ACLs (not supported by available rsync)" 1>&2
+else
+    case $OSTYPE in
+        cygwin|darwin|netbsd)
+            echo "Not syncing ACLs (not yet supported on $OSTYPE)" 1>&2
+            ;;
+        *)
+            rsync_opts="$rsync_opts -A"
+            ;;
+    esac
+fi
+
+if [[ ! "$rsync_version" =~ "xattrs" ]] || [[ "$rsync_version" =~ "no xattrs" ]]; then
+    echo "Not syncing xattrs (not supported by available rsync)" 1>&2
+else
+    rsync_opts="$rsync_opts -X"
+fi
+
+exec rsync $rsync_opts "$src" "$dest"

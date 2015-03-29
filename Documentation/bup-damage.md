@@ -73,7 +73,7 @@ actually work.
     
 # EXAMPLES
     # make a backup in case things go horribly wrong
-    cp -a ~/.bup/objects/pack ~/bup-packs.bak
+    cp -pPR ~/.bup/objects/pack ~/bup-packs.bak
     
     # generate recovery blocks for all packs
     bup fsck -g
