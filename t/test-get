@@ -863,7 +863,7 @@ def create_get_src():
     exr = exo((bup_cmd, '-d', 'get-src', 'ls', 'src'))
     save_0 = exr.out.splitlines()[0]
     ex(('git', '--git-dir', 'get-src', 'branch', 'src-0', 'src'))
-    ex(('cp', '-a', 'src', 'src-0'))
+    ex(('cp', '-RPp', 'src', 'src-0'))
     
     rmrf('src')
     mkdir('src')
@@ -879,10 +879,10 @@ def create_get_src():
     exr = exo((bup_cmd, '-d', 'get-src', 'ls', 'src'))
     save_1 = exr.out.splitlines()[1]
     ex(('git', '--git-dir', 'get-src', 'branch', 'src-1', 'src'))
-    ex(('cp', '-a', 'src', 'src-1'))
+    ex(('cp', '-RPp', 'src', 'src-1'))
     
     # Make a copy the current state of src so we'll have an ancestor.
-    ex(('cp', '-a',
+    ex(('cp', '-RPp',
          'get-src/refs/heads/src', 'get-src/refs/heads/src-ancestor'))
 
     with open('src/tiny-file', 'a') as f: f.write('xyzzy')
