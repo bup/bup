@@ -19,17 +19,20 @@ if test "$#" -ne 1; then
     usage 1>&2; exit 1
 fi
 
+rm_symlinks()
+{
+    for p in "$@"; do
+        # test -e is false for dangling symlinks.
+        if test -h "$p" -o -e "$p"; then rm "$p" || exit $?; fi
+    done
+}
+
 clean()
 (
     cd t/sampledata || exit $?
     if test -e var; then rm -r var || exit $?; fi
     # Remove legacy content (before everything moved to var/).
-    # test -e is false for dangling symlinks.
-    if test -h b -o -e b; then rm b || exit $?; fi
-    if test -h c -o -e c; then rm c || exit $?; fi
-    if test -h abs-symlink -o -e abs-symlink; then
-        rm abs-symlink || exit $?
-    fi
+    rm_symlinks abs-symlink b c etc
 )
 
 case "$1" in
