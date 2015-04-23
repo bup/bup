@@ -827,7 +827,7 @@ def parse_date_or_fatal(str, fatal):
     """Parses the given date or calls Option.fatal().
     For now we expect a string that contains a float."""
     try:
-        date = atof(str)
+        date = float(str)
     except ValueError, e:
         raise fatal('invalid date format (should be a float): %r' % e)
     else:
