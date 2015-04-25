@@ -137,8 +137,13 @@ From source
  
         make test
  	
-    (The tests should pass.  If they don't pass for you, stop here and send
-     an email to bup-list@googlegroups.com.)
+    The tests should pass.  If they don't pass for you, stop here and
+    send an email to bup-list@googlegroups.com.  Though if there are
+    symbolic links along the current working directory path, the tests
+    may fail.  Running something like this before "make check" should
+    sidestep the problem:
+
+        cd "$(/bin/pwd)"
 
  - You can install bup via "make install", and override the default
    destination with DESTDIR and PREFIX.
