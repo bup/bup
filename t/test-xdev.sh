@@ -4,19 +4,19 @@
 set -o pipefail
 
 if [ $(t/root-status) != root ]; then
-    echo 'Not root: skipping xdev tests.'
+    WVSTART 'not root: skipping tests'
     exit 0 # FIXME: add WVSKIP.
 fi
 
 if ! modprobe loop; then
-    echo 'Unable to load loopback module; skipping dependent tests.' 1>&2
+    WVSTART 'unable to load loopback module; skipping tests' 1>&2
     exit 0
 fi
 
 # These tests are only likely to work under Linux for now
 # (patches welcome).
 if ! [[ $(uname) =~ Linux ]]; then
-    echo 'Not Linux: skipping xdev tests.'
+    WVSTART 'not Linux: skipping tests'
     exit 0 # FIXME: add WVSKIP.
 fi
 
