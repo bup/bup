@@ -125,7 +125,7 @@ cmdline_tests := \
 tmp-target-run-test%: all t/tmp
 	TMPDIR="$(test_tmp)" t/test$*
 
-runtests-cmdline: $(subst t/test-,tmp-target-run-test-,$(cmdline_tests))
+runtests-cmdline: $(subst t/test,tmp-target-run-test,$(cmdline_tests))
 
 stupid:
 	PATH=/bin:/usr/bin $(MAKE) test
