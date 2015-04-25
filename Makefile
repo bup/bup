@@ -122,8 +122,8 @@ cmdline_tests := \
   t/test.sh
 
 # For parallel runs.
-tmp-target-run-test-%: all t/tmp
-	TMPDIR="$(test_tmp)" t/test-$*
+tmp-target-run-test%: all t/tmp
+	TMPDIR="$(test_tmp)" t/test$*
 
 runtests-cmdline: $(subst t/test-,tmp-target-run-test-,$(cmdline_tests))
 
