@@ -140,7 +140,7 @@ From source
     The tests should pass.  If they don't pass for you, stop here and
     send an email to bup-list@googlegroups.com.  Though if there are
     symbolic links along the current working directory path, the tests
-    may fail.  Running something like this before "make check" should
+    may fail.  Running something like this before "make test" should
     sidestep the problem:
 
         cd "$(/bin/pwd)"
