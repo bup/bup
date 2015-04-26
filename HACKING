@@ -19,21 +19,26 @@ via email.
 Current Trajectory
 ==================
 
-Now that we've finished the 0.26 release, we're working on 0.27, and
+Now that we've finished the 0.27 release, we're working on 0.28, and
 although we're not certain which new features will be included, here
-are some possible candidates:
+are likely candidates:
+
+  - Support for rm/gc.
 
   - Support for transferring saves between repositories and rewriting
     branches.
+
+and these are also under consideration:
 
   - Better VFS performance for large repositories (i.e. fuse, ls,
     web...).
 
   - Incremental indexing via inotify.
 
-  - Support for rm/gc.
-
   - Smarter (and quieter) handling of cross-filesystem metadata.
+
+  - Support for more general purpose push/pull of branches, saves, and
+    tags between repositories.  (See the bup-get patch series.)
 
 If you have the time and inclination, please help review patches
 posted to the list, or post your own.  (See "ways to help" below.)
