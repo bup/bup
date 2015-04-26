@@ -1,11 +1,11 @@
-.TH "bup\-index" "1" "2014\-07\-08" "Bup 0.26" ""
+.TH "bup\-index" "1" "2015\-04\-26" "Bup 0.27" ""
 .SH NAME
 .PP
 bup\-index \- print and/or update the bup filesystem index
 .SH SYNOPSIS
 .PP
-bup index <\-p|\-m|\-s|\-u> [\-H] [\-l] [\-x] [\-\-fake\-valid]
-[\-\-no\-check\-device][\-\-fake\-invalid] [\-\-check] [\-\-clear] [\-f
+bup index <\-p|\-m|\-s|\-u|\-\-clear|\-\-check> [\-H] [\-l] [\-x]
+[\-\-fake\-valid] [\-\-no\-check\-device] [\-\-fake\-invalid] [\-f
 \f[I]indexfile\f[]] [\-\-exclude \f[I]path\f[]] [\-\-exclude\-from
 \f[I]filename\f[]] [\-\-exclude\-rx \f[I]pattern\f[]]
 [\-\-exclude\-rx\-from \f[I]filename\f[]] [\-v] <filenames...>
@@ -36,6 +36,16 @@ files for each backup set.
 You may want to use the data tracked by bup index for other purposes
 (such as speeding up other programs that need the same information).
 .SH NOTES
+.PP
+At the moment, bup will ignore Linux attributes (cf.
+chattr(1) and lsattr(1)) on some systems (any big\-endian systems where
+sizeof(long) < sizeof(int)).
+This is because the Linux kernel and FUSE currently disagree over the
+type of the attr system call arguments, and so on big\-endian systems
+there\[aq]s no way to get the results without the risk of stack
+corruption (http://lwn.net/Articles/575846/).
+In these situations, bup will print a warning the first time Linux attrs
+are relevant during any index/save/restore operation.
 .PP
 bup makes accommodations for the expected "worst\-case" filesystem
 timestamp resolution \-\- currently one second; examples include VFAT,
@@ -108,6 +118,17 @@ The codes mean, respectively, that a file is marked in the index as
 added, modified, deleted, or unchanged since the last backup.
 .RS
 .RE
+.TP
+.B \-\-check
+carefully check index file integrity before and after updating.
+Mostly useful for automated tests.
+.RS
+.RE
+.TP
+.B \-\-clear
+clear the default index.
+.RS
+.RE
 .SH OPTIONS
 .TP
 .B \-H, \-\-hash
@@ -146,17 +167,6 @@ files that you know are boring.
 .B \-\-fake\-invalid
 mark specified filenames as not up\-to\-date, forcing the next "bup
 save" run to re\-check their contents.
-.RS
-.RE
-.TP
-.B \-\-check
-carefully check index file integrity before and after updating.
-Mostly useful for automated tests.
-.RS
-.RE
-.TP
-.B \-\-clear
-clear the default index.
 .RS
 .RE
 .TP
