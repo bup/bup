@@ -1,4 +1,4 @@
-.TH "bup\-restore" "1" "2014\-07\-08" "Bup 0.26" ""
+.TH "bup\-restore" "1" "2015\-04\-26" "Bup 0.27" ""
 .SH NAME
 .PP
 bup\-restore \- extract files from a backup set
@@ -143,6 +143,13 @@ Examples:
 read \-\-exclude\-rx patterns from \f[I]filename\f[], one pattern
 per\-line (may be repeated).
 Ignore completely empty lines.
+.RS
+.RE
+.TP
+.B \-\-sparse
+write output data sparsely when reasonable.
+Currently, reasonable just means "at least whenever there are 512 or
+more consecutive zeroes".
 .RS
 .RE
 .TP

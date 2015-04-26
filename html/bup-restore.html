@@ -5,20 +5,20 @@
   <meta http-equiv="Content-Style-Type" content="text/css" />
   <meta name="generator" content="pandoc" />
   <meta name="author" content="Avery Pennarun apenwarr@gmail.com" />
-  <meta name="date" content="2014-07-08" />
-  <title>bup-restore(1) Bup 0.26</title>
+  <meta name="date" content="2015-04-26" />
+  <title>bup-restore(1) Bup 0.27</title>
   <style type="text/css">code{white-space: pre;}</style>
 </head>
 <body>
 <div id="header">
-<h1 class="title">bup-restore(1) Bup 0.26</h1>
+<h1 class="title">bup-restore(1) Bup 0.27</h1>
 <h2 class="author">Avery Pennarun <script type="text/javascript">
 <!--
 h='&#x67;&#x6d;&#x61;&#x69;&#108;&#46;&#x63;&#x6f;&#x6d;';a='&#64;';n='&#x61;&#112;&#x65;&#110;&#x77;&#x61;&#114;&#114;';e=n+a+h;
 document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'">'+e+'<\/'+'a'+'>');
 // -->
 </script><noscript>&#x61;&#112;&#x65;&#110;&#x77;&#x61;&#114;&#114;&#32;&#x61;&#116;&#32;&#x67;&#x6d;&#x61;&#x69;&#108;&#32;&#100;&#x6f;&#116;&#32;&#x63;&#x6f;&#x6d;</noscript></h2>
-<h3 class="date">2014-07-08</h3>
+<h3 class="date">2015-04-26</h3>
 </div>
 <h1 id="name">NAME</h1>
 <p>bup-restore - extract files from a backup set</p>
@@ -67,6 +67,9 @@ document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'">'+e+'<\/'+'a'+'>');
 </dd>
 <dt>--exclude-rx-from=<em>filename</em></dt>
 <dd><p>read --exclude-rx patterns from <em>filename</em>, one pattern per-line (may be repeated). Ignore completely empty lines.</p>
+</dd>
+<dt>--sparse</dt>
+<dd><p>write output data sparsely when reasonable. Currently, reasonable just means &quot;at least whenever there are 512 or more consecutive zeroes&quot;.</p>
 </dd>
 <dt>--map-user <em>old</em>=<em>new</em></dt>
 <dd><p>for every path, restore the <em>old</em> (saved) user name as <em>new</em>. Specifying &quot;&quot; for <em>new</em> will clear the user. For example &quot;--map-user foo=&quot; will allow the uid to take effect for any path that originally had a user of &quot;foo&quot;, unless countermanded by a subsequent &quot;--map-user foo=...&quot; specification. See DESCRIPTION above for further information.</p>

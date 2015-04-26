@@ -1,0 +1,53 @@
+.TH "bup\-import\-duplicity" "1" "2015\-04\-26" "Bup 0.27" ""
+.SH NAME
+.PP
+bup\-import\-duplicity \- import duplicity backups
+.SH WARNING
+.PP
+bup\-import\-duplicity is \f[B]EXPERIMENTAL\f[] (proceed with caution)
+.SH SYNOPSIS
+.PP
+bup import\-duplicity [\-n] <source\-url> <save\-name>
+.SH DESCRIPTION
+.PP
+\f[C]bup\ import\-duplicity\f[] imports all of the duplicity backups at
+\f[C]source\-url\f[] into \f[C]bup\f[] via
+\f[C]bup\ save\ \-n\ save\-name\f[].
+The bup saves will have the same timestamps (via
+\f[C]bup\ save\ \-\-date\f[]) as the original backups.
+.PP
+Because this command operates by restoring each duplicity backup to a
+temporary directory, the extent to which the metadata is preserved will
+depend on the characteristics of the underlying filesystem, whether or
+not you run \f[C]import\-duplicity\f[] as root (or under
+\f[C]fakeroot\f[](1)), etc.
+.PP
+Note that this command will use
+\f[C]mkdtemp\f[] (https://docs.python.org/2/library/tempfile.html#tempfile.mkdtemp)
+to create temporary directories, which means that it should respect any
+\f[C]TEMPDIR\f[], \f[C]TEMP\f[], or \f[C]TMP\f[] environment variable
+settings.
+Make sure that the relevant filesystem has enough space for the largest
+duplicity backup being imported.
+.PP
+Since all invocations of duplicity use a temporary
+\f[C]\-\-archive\-dir\f[], \f[C]import\-duplicity\f[] should not affect
+~/.cache/duplicity.
+.SH OPTIONS
+.TP
+.B \-n,\-\-dry\-run
+don\[aq]t do anything; just print out what would be done
+.RS
+.RE
+.SH EXAMPLES
+.IP
+.nf
+\f[C]
+$\ bup\ import\-duplicity\ file:///duplicity/src/\ legacy\-duplicity
+\f[]
+.fi
+.SH BUP
+.PP
+Part of the \f[C]bup\f[](1) suite.
+.SH AUTHORS
+Zoran Zaric <zz@zoranzaric.de>, Rob Browning <rlb@defaultvalue.org>.

@@ -5,25 +5,25 @@
   <meta http-equiv="Content-Style-Type" content="text/css" />
   <meta name="generator" content="pandoc" />
   <meta name="author" content="Avery Pennarun apenwarr@gmail.com" />
-  <meta name="date" content="2014-07-08" />
-  <title>bup-index(1) Bup 0.26</title>
+  <meta name="date" content="2015-04-26" />
+  <title>bup-index(1) Bup 0.27</title>
   <style type="text/css">code{white-space: pre;}</style>
 </head>
 <body>
 <div id="header">
-<h1 class="title">bup-index(1) Bup 0.26</h1>
+<h1 class="title">bup-index(1) Bup 0.27</h1>
 <h2 class="author">Avery Pennarun <script type="text/javascript">
 <!--
 h='&#x67;&#x6d;&#x61;&#x69;&#108;&#46;&#x63;&#x6f;&#x6d;';a='&#64;';n='&#x61;&#112;&#x65;&#110;&#x77;&#x61;&#114;&#114;';e=n+a+h;
 document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'">'+e+'<\/'+'a'+'>');
 // -->
 </script><noscript>&#x61;&#112;&#x65;&#110;&#x77;&#x61;&#114;&#114;&#32;&#x61;&#116;&#32;&#x67;&#x6d;&#x61;&#x69;&#108;&#32;&#100;&#x6f;&#116;&#32;&#x63;&#x6f;&#x6d;</noscript></h2>
-<h3 class="date">2014-07-08</h3>
+<h3 class="date">2015-04-26</h3>
 </div>
 <h1 id="name">NAME</h1>
 <p>bup-index - print and/or update the bup filesystem index</p>
 <h1 id="synopsis">SYNOPSIS</h1>
-<p>bup index &lt;-p|-m|-s|-u&gt; [-H] [-l] [-x] [--fake-valid] [--no-check-device][--fake-invalid] [--check] [--clear] [-f <em>indexfile</em>] [--exclude <em>path</em>] [--exclude-from <em>filename</em>] [--exclude-rx <em>pattern</em>] [--exclude-rx-from <em>filename</em>] [-v] &lt;filenames...&gt;</p>
+<p>bup index &lt;-p|-m|-s|-u|--clear|--check&gt; [-H] [-l] [-x] [--fake-valid] [--no-check-device] [--fake-invalid] [-f <em>indexfile</em>] [--exclude <em>path</em>] [--exclude-from <em>filename</em>] [--exclude-rx <em>pattern</em>] [--exclude-rx-from <em>filename</em>] [-v] &lt;filenames...&gt;</p>
 <h1 id="description">DESCRIPTION</h1>
 <p><code>bup index</code> prints and/or updates the bup filesystem index, which is a cache of the filenames, attributes, and sha-1 hashes of each file and directory in the filesystem. The bup index is similar in function to the <code>git</code>(1) index, and can be found in <code>$BUP_DIR/bupindex</code>.</p>
 <p>Creating a backup in bup consists of two steps: updating the index with <code>bup index</code>, then actually backing up the files (or a subset of the files) with <code>bup save</code>. The separation exists for these reasons:</p>
@@ -33,6 +33,7 @@ document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'">'+e+'<\/'+'a'+'>');
 <li><p>You may want to use the data tracked by bup index for other purposes (such as speeding up other programs that need the same information).</p></li>
 </ol>
 <h1 id="notes">NOTES</h1>
+<p>At the moment, bup will ignore Linux attributes (cf. chattr(1) and lsattr(1)) on some systems (any big-endian systems where sizeof(long) &lt; sizeof(int)). This is because the Linux kernel and FUSE currently disagree over the type of the attr system call arguments, and so on big-endian systems there's no way to get the results without the risk of stack corruption (http://lwn.net/Articles/575846/). In these situations, bup will print a warning the first time Linux attrs are relevant during any index/save/restore operation.</p>
 <p>bup makes accommodations for the expected &quot;worst-case&quot; filesystem timestamp resolution -- currently one second; examples include VFAT, ext2, ext3, small ext4, etc. Since bup cannot know the filesystem timestamp resolution, and could be traversing multiple filesystems during any given run, it always assumes that the resolution may be no better than one second.</p>
 <p>As a practical matter, this means that index updates are a bit imprecise, and so <code>bup save</code> may occasionally record filesystem changes that you didn't expect. That's because, during an index update, if bup encounters a path whose actual timestamps are more recent than one second before the update started, bup will set the index timestamps for that path (mtime and ctime) to exactly one second before the run, -- effectively capping those values.</p>
 <p>This ensures that no subsequent changes to those paths can result in timestamps that are identical to those in the index. If that were possible, bup could overlook the modifications.</p>
@@ -60,6 +61,12 @@ $ bup save -n src src  # But src/2 is saved anyway.</code></pre>
 <dt>-s, --status</dt>
 <dd><p>prepend a status code (A, M, D, or space) before each filename. Implies <code>-p</code>. The codes mean, respectively, that a file is marked in the index as added, modified, deleted, or unchanged since the last backup.</p>
 </dd>
+<dt>--check</dt>
+<dd><p>carefully check index file integrity before and after updating. Mostly useful for automated tests.</p>
+</dd>
+<dt>--clear</dt>
+<dd><p>clear the default index.</p>
+</dd>
 </dl>
 <h1 id="options">OPTIONS</h1>
 <dl>
@@ -77,12 +84,6 @@ $ bup save -n src src  # But src/2 is saved anyway.</code></pre>
 </dd>
 <dt>--fake-invalid</dt>
 <dd><p>mark specified filenames as not up-to-date, forcing the next &quot;bup save&quot; run to re-check their contents.</p>
-</dd>
-<dt>--check</dt>
-<dd><p>carefully check index file integrity before and after updating. Mostly useful for automated tests.</p>
-</dd>
-<dt>--clear</dt>
-<dd><p>clear the default index.</p>
 </dd>
 <dt>-f, --indexfile=<em>indexfile</em></dt>
 <dd><p>use a different index filename instead of <code>$BUP_DIR/bupindex</code>.</p>
