@@ -220,14 +220,14 @@ Using bup
 
         bup restore -C ./dest-2 local-etc/2013-11-23-11195/etc
 
- - Make a backup to a remote server (which must already have the 'bup' command
-   somewhere in the server's PATH (see /etc/profile, etc/environment,
-   ~/.profile, or ~/.bashrc), and be accessible via ssh.
-   Make sure to replace SERVERNAME with the actual hostname of your server):
+ - Make a backup to a remote server which must already have the 'bup' command
+   somewhere in its PATH (see /etc/profile, etc/environment, ~/.profile, or
+   ~/.bashrc), and be accessible via ssh.
+   Make sure to replace SERVERNAME with the actual hostname of your server:
 
-        ssh SERVERNAME bup init
+        bup init -r SERVERNAME:path/to/remote-bup-dir
         bup index /etc
-        bup save -r SERVERNAME: -n local-etc /etc
+        bup save -r SERVERNAME:path/to/remote-bup-dir -n local-etc /etc
 
  - Restore a backup from a remote server.  (FAIL: unfortunately,
    unlike "bup join", "bup restore" does not yet support remote
