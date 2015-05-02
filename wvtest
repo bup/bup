@@ -10,30 +10,21 @@ use strict;
 use warnings;
 use Time::HiRes qw(time);
 
-# always flush
-$| = 1;
-
-if (@ARGV < 2 || $ARGV[0] ne 'run') {
-    print STDERR "Usage: run $0 <command line...>\n";
-    exit 127;
-}
-
-shift @ARGV;
-
-print STDERR "Testing \"all\" in @ARGV:\n";
-
-my $pid = open(my $fh, "-|");
-if (!$pid) {
-    # child
-    setpgrp();
-    open STDERR, '>&STDOUT' or die("Can't dup stdout: $!\n");
-    exec(@ARGV);
-    exit 126; # just in case
-}
-
+my $pid;
 my $istty = -t STDOUT;
 my @log = ();
-my ($gpasses, $gfails) = (0,0);
+
+sub usage
+{
+    my ($fh) = @_;
+    print $fh "Usage: $0 run <command line...>\n";
+}
+
+sub usage_death()
+{
+    usage(\*STDERR);
+    exit 127;
+}
 
 sub bigkill($)
 {
@@ -58,14 +49,6 @@ sub bigkill($)
 
     exit(125);
 }
-
-# parent
-local $SIG{INT} = sub { bigkill($pid); };
-local $SIG{TERM} = sub { bigkill($pid); };
-local $SIG{ALRM} = sub {
-    print STDERR "Alarm timed out!  No test results for too long.\n";
-    bigkill($pid);
-};
 
 sub colourize($)
 {
@@ -101,7 +84,6 @@ sub resultline($$)
     return sprintf("! %-65s %s", $name, colourize($result));
 }
 
-my $allstart = time();
 my ($start, $stop);
 
 sub endsect()
@@ -112,79 +94,119 @@ sub endsect()
     }
 }
 
-while (<$fh>)
+sub run()
 {
-    chomp;
-    s/\r//g;
+    usage_death() if (@ARGV < 1);
 
-    if (/^\s*Testing "(.*)" in (.*):\s*$/)
-    {
-        alarm(120);
-	my ($sect, $file) = ($1, $2);
+    # always flush
+    $| = 1;
 
-	endsect();
+    print STDERR "Testing \"all\" in @ARGV:\n";
 
-	printf("! %s  %s: ", $file, $sect);
-	@log = ();
-	$start = $stop;
+    $pid = open(my $fh, "-|");
+    if (!$pid) {
+        # child
+        setpgrp();
+        open STDERR, '>&STDOUT' or die("Can't dup stdout: $!\n");
+        exec(@ARGV);
+        exit 126; # just in case
     }
-    elsif (/^!\s*(.*?)\s+(\S+)\s*$/)
+
+    # parent
+    my $allstart = time();
+    local $SIG{INT} = sub { bigkill($pid); };
+    local $SIG{TERM} = sub { bigkill($pid); };
+    local $SIG{ALRM} = sub {
+        print STDERR "Alarm timed out!  No test results for too long.\n";
+        bigkill($pid);
+    };
+
+    my ($gpasses, $gfails) = (0,0);
+    while (<$fh>)
     {
-        alarm(120);
+        chomp;
+        s/\r//g;
 
-	my ($name, $result) = ($1, $2);
-	my $pass = ($result eq "ok");
+        if (/^\s*Testing "(.*)" in (.*):\s*$/)
+        {
+            alarm(120);
+            my ($sect, $file) = ($1, $2);
 
-	if (!$start) {
-	    printf("\n! Startup: ");
-	    $start = time();
-	}
+            endsect();
 
-	push @log, resultline($name, $result);
+            printf("! %s  %s: ", $file, $sect);
+            @log = ();
+            $start = $stop;
+        }
+        elsif (/^!\s*(.*?)\s+(\S+)\s*$/)
+        {
+            alarm(120);
 
-	if (!$pass) {
-	    $gfails++;
-	    if (@log) {
-		print "\n" . join("\n", @log) . "\n";
-		@log = ();
-	    }
-	} else {
-	    $gpasses++;
-	    print ".";
-	}
+            my ($name, $result) = ($1, $2);
+            my $pass = ($result eq "ok");
+
+            if (!$start) {
+                printf("\n! Startup: ");
+                $start = time();
+            }
+
+            push @log, resultline($name, $result);
+
+            if (!$pass) {
+                $gfails++;
+                if (@log) {
+                    print "\n" . join("\n", @log) . "\n";
+                    @log = ();
+                }
+            } else {
+                $gpasses++;
+                print ".";
+            }
+        }
+        else
+        {
+            push @log, $_;
+        }
     }
-    else
-    {
-	push @log, $_;
+
+    endsect();
+
+    my $newpid = waitpid($pid, 0);
+    if ($newpid != $pid) {
+        die("waitpid returned '$newpid', expected '$pid'\n");
     }
+
+    my $code = $?;
+    my $ret = ($code >> 8);
+
+    # return death-from-signal exits as >128.  This is what bash does if you ran
+    # the program directly.
+    if ($code && !$ret) { $ret = $code | 128; }
+
+    if ($ret && @log) {
+        print "\n" . join("\n", @log) . "\n";
+    }
+
+    if ($code != 0) {
+        print resultline("Program returned non-zero exit code ($ret)", "FAILED");
+    }
+
+    my $gtotal = $gpasses+$gfails;
+    printf("\nWvTest: %d test%s, %d failure%s, total time %s.\n",
+           $gtotal, $gtotal==1 ? "" : "s",
+           $gfails, $gfails==1 ? "" : "s",
+           mstime(time() - $allstart, 2000, 5000));
+    print STDERR "\nWvTest result code: $ret\n";
+    exit( $ret ? $ret : ($gfails ? 125 : 0) );
 }
 
-endsect();
+usage_death() unless (@ARGV > 1);
+my $action = $ARGV[0];
+shift @ARGV;
 
-my $newpid = waitpid($pid, 0);
-if ($newpid != $pid) {
-    die("waitpid returned '$newpid', expected '$pid'\n");
+if ($action eq 'run') {
+  run();
 }
-
-my $code = $?;
-my $ret = ($code >> 8);
-
-# return death-from-signal exits as >128.  This is what bash does if you ran
-# the program directly.
-if ($code && !$ret) { $ret = $code | 128; }
-
-if ($ret && @log) {
-    print "\n" . join("\n", @log) . "\n";
+else {
+  usage_death();
 }
-
-if ($code != 0) {
-    print resultline("Program returned non-zero exit code ($ret)", "FAILED");
-}
-
-my $gtotal = $gpasses+$gfails;
-printf("\nWvTest: %d test%s, %d failure%s, total time %s.\n",
-    $gtotal, $gtotal==1 ? "" : "s",
-    $gfails, $gfails==1 ? "" : "s",
-    mstime(time() - $allstart, 2000, 5000));
-print STDERR "\nWvTest result code: $ret\n";
-exit( $ret ? $ret : ($gfails ? 125 : 0) );
