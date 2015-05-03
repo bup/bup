@@ -909,10 +909,11 @@ def update_ref(refname, newval, oldval, repo_dir=None):
     _git_wait('git update-ref', p)
 
 
-def delete_ref(refname):
-    """Delete a repository reference."""
+def delete_ref(refname, oldvalue=None):
+    """Delete a repository reference (see git update-ref(1))."""
     assert(refname.startswith('refs/'))
-    p = subprocess.Popen(['git', 'update-ref', '-d', refname],
+    oldvalue = [] if not oldvalue else [oldvalue]
+    p = subprocess.Popen(['git', 'update-ref', '-d', refname] + oldvalue,
                          preexec_fn = _gitenv())
     _git_wait('git update-ref', p)
 
