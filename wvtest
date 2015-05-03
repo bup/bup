@@ -8,23 +8,13 @@
 #
 use strict;
 use warnings;
+use Getopt::Long qw(GetOptionsFromArray :config no_ignore_case bundling);
+use Pod::Usage;
 use Time::HiRes qw(time);
 
 my $pid;
 my $istty = -t STDOUT;
 my @log = ();
-
-sub usage
-{
-    my ($fh) = @_;
-    print $fh "Usage: $0 run <command line...>\n";
-}
-
-sub usage_death()
-{
-    usage(\*STDERR);
-    exit 127;
-}
 
 sub bigkill($)
 {
@@ -96,7 +86,10 @@ sub endsect()
 
 sub run()
 {
-    usage_death() if (@ARGV < 1);
+    my $show_counts = 1;
+    GetOptionsFromArray(\@ARGV, 'counts!', \$show_counts)
+        or pod2usage();
+    pod2usage('$0: no command specified') if (@ARGV < 1);
 
     # always flush
     $| = 1;
@@ -191,22 +184,112 @@ sub run()
         print resultline("Program returned non-zero exit code ($ret)", "FAILED");
     }
 
-    my $gtotal = $gpasses+$gfails;
-    printf("\nWvTest: %d test%s, %d failure%s, total time %s.\n",
-           $gtotal, $gtotal==1 ? "" : "s",
-           $gfails, $gfails==1 ? "" : "s",
+    print "\n";
+    if ($show_counts) {
+        my $gtotal = $gpasses + $gfails;
+        printf("WvTest: %d test%s, %d failure%s\n",
+               $gtotal, $gtotal==1 ? "" : "s",
+               $gfails, $gfails==1 ? "" : "s");
+    }
+    printf("WvTest: result code $ret, total time %s\n",
            mstime(time() - $allstart, 2000, 5000));
-    print STDERR "\nWvTest result code: $ret\n";
-    exit( $ret ? $ret : ($gfails ? 125 : 0) );
+    return ($ret ? $ret : ($gfails ? 125 : 0));
 }
 
-usage_death() unless (@ARGV > 1);
+sub report()
+{
+    my ($gpasses, $gfails) = (0,0);
+    for my $f (@ARGV)
+    {
+        my $fh;
+        open($fh, '<:crlf', $f) or die "Unable to open $f: $!";
+        while (<$fh>)
+        {
+            chomp;
+            s/\r//g;
+
+            if (/^\s*Testing "(.*)" in (.*):\s*$/) {
+                @log = ();
+            }
+            elsif (/^!\s*(.*?)\s+(\S+)\s*$/) {
+                my ($name, $result) = ($1, $2);
+                my $pass = ($result eq "ok");
+                push @log, resultline($name, $result);
+                if (!$pass) {
+                    $gfails++;
+                    if (@log) {
+                        print "\n" . join("\n", @log) . "\n";
+                        @log = ();
+                    }
+                } else {
+                    $gpasses++;
+                }
+            }
+            else
+            {
+                push @log, $_;
+            }
+        }
+    }
+    my $gtotal = $gpasses + $gfails;
+    printf("\nWvTest: %d test%s, %d failure%s\n",
+           $gtotal, $gtotal == 1 ? "" : "s",
+           $gfails, $gfails == 1 ? "" : "s");
+    return ($gfails ? 125 : 0);
+}
+
+my ($show_help, $show_manual);
+Getopt::Long::Configure('no_permute');
+GetOptionsFromArray(\@ARGV,
+                    'help|?' => \$show_help,
+                    'man' => \$show_manual) or pod2usage();
+Getopt::Long::Configure('permute');
+pod2usage(-verbose => 1, -exitval => 0) if $show_help;
+pod2usage(-verbose => 2, -exitval => 0) if $show_manual;
+pod2usage(-msg => "$0: no action specified", -verbose => 1) if (@ARGV < 1);
+
 my $action = $ARGV[0];
 shift @ARGV;
+if ($action eq 'run') { exit run(); }
+elsif ($action  eq 'watch') { run(); }
+elsif ($action  eq 'report') { exit report(); }
+else { pod2usage(-msg => "$0: invalid action $action", -verbose => 1); }
 
-if ($action eq 'run') {
-  run();
-}
-else {
-  usage_death();
-}
+__END__
+
+=head1 NAME
+
+wvtest - the dumbest cross-platform test framework that could possibly work
+
+=head1 SYNOPSIS
+
+  wvtest [GLOBAL...] run [RUN_OPT...] [--] command [arg...]
+  wvtest [GLOBAL...] watch [RUN_OPT...] [--] command [arg...]
+  wvtest [GLOBAL...] report [logfile...]
+
+  GLOBAL:
+    --help, -?       display brief help message and exit
+    --man            display full documentation
+  RUN_OPT:
+    --[no-]counts    [don't] show success/failure counts
+
+=head1 DESCRIPTION
+
+B<wvtest run some-tests> will run some-tests and report on the result.
+This should work fine as long as some-tests doesn't run any sub-tests
+in parallel.
+
+If you'd like to run your tests in parallel, use B<watch> and
+B<report> as described in the EXAMPLES below.
+
+=head1 EXAMPLES
+
+  # Fine if ./tests doesn't produce any output in parallel.
+  wvtest run ./tests
+
+  # Use watch and report for parallel tests.
+  wvtest watch --no-counts \
+    sh -c '(test-1 2>&1 | tee test-1.log)& (test-2 2>&1 | tee test-2.log)&'
+  wvtest report test-1.log test-2.log
+
+=cut

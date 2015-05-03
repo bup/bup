@@ -94,7 +94,8 @@ t/tmp:
 runtests: runtests-python runtests-cmdline
 
 runtests-python: all t/tmp
-	TMPDIR="$(test_tmp)" $(PYTHON) wvtest.py t/t*.py lib/*/t/t*.py
+	TMPDIR="$(test_tmp)" $(PYTHON) wvtest.py t/t*.py lib/*/t/t*.py 2>&1 \
+	| tee -a t/tmp/test-log/$$$$.log
 
 cmdline_tests := \
   t/test-fuse.sh \
@@ -123,7 +124,7 @@ cmdline_tests := \
 
 # For parallel runs.
 tmp-target-run-test%: all t/tmp
-	TMPDIR="$(test_tmp)" t/test$*
+	TMPDIR="$(test_tmp)" t/test$* 2>&1 | tee -a t/tmp/test-log/$$$$.log
 
 runtests-cmdline: $(subst t/test,tmp-target-run-test,$(cmdline_tests))
 
@@ -131,7 +132,11 @@ stupid:
 	PATH=/bin:/usr/bin $(MAKE) test
 
 test: all
-	./wvtest run $(MAKE) PYTHON=$(PYTHON) runtests-python runtests-cmdline
+	if test -e t/tmp/test-log; then rm -r t/tmp/test-log; fi
+	mkdir -p t/tmp/test-log
+	./wvtest watch --no-counts \
+	  $(MAKE) PYTHON=$(PYTHON) runtests-python runtests-cmdline
+	./wvtest report t/tmp/test-log/*.log
 
 check: test
 
