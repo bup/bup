@@ -131,7 +131,7 @@ stupid:
 	PATH=/bin:/usr/bin $(MAKE) test
 
 test: all
-	./wvtestrun $(MAKE) PYTHON=$(PYTHON) runtests-python runtests-cmdline
+	./wvtest run $(MAKE) PYTHON=$(PYTHON) runtests-python runtests-cmdline
 
 check: test
 

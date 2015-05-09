@@ -1,7 +1,8 @@
 #!/usr/bin/env perl
 #
 # WvTest:
-#   Copyright (C)2007-2009 Versabanq Innovations Inc. and contributors.
+#   Copyright (C) 2007-2009 Versabanq Innovations Inc. and contributors.
+#   Copyright (C) 2015 Rob Browning <rlb@defaultvalue.org>
 #       Licensed under the GNU Library General Public License, version 2.
 #       See the included file named LICENSE for license information.
 #
@@ -12,10 +13,12 @@ use Time::HiRes qw(time);
 # always flush
 $| = 1;
 
-if (@ARGV < 1) {
-    print STDERR "Usage: $0 <command line...>\n";
+if (@ARGV < 2 || $ARGV[0] ne 'run') {
+    print STDERR "Usage: run $0 <command line...>\n";
     exit 127;
 }
+
+shift @ARGV;
 
 print STDERR "Testing \"all\" in @ARGV:\n";
 
