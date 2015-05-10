@@ -50,9 +50,6 @@ def readfile_iter(files, progress=None):
                 progress(filenum, len(b))
             b = f.read(BLOB_READ_SIZE)
             ofs += len(b)
-            # Warning: ofs == 0 means 'done with the whole file'
-            # This will only happen here when the file is empty
-            fadvise_done(f, ofs)
             if not b:
                 break
             yield b
@@ -191,9 +188,3 @@ def open_noatime(name):
         except:
             pass
         raise
-
-
-def fadvise_done(f, ofs):
-    assert(ofs >= 0)
-    if ofs > 0 and hasattr(f, 'fileno'):
-        _helpers.fadvise_done(f.fileno(), ofs)
