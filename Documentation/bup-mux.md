@@ -22,6 +22,7 @@ connection stream.
 
 command
 :   the command to run
+
 options
 :   options for the command
 
