@@ -212,6 +212,8 @@ class Metadata:
     # must be non-negative and < 10**9.
 
     def _add_common(self, path, st):
+        assert(st.st_uid >= 0)
+        assert(st.st_gid >= 0)
         self.uid = st.st_uid
         self.gid = st.st_gid
         self.atime = st.st_atime

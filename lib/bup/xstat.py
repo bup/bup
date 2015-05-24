@@ -81,6 +81,13 @@ else: # Must have these if utimensat isn't available.
         _bup_lutimes(path, (atime, mtime))
 
 
+def _fix_cygwin_id(id):
+    if id < 0:
+        id += 0x100000000
+        assert(id >= 0)
+    return id
+
+
 class stat_result:
     @staticmethod
     def from_xstat_rep(st):
@@ -99,6 +106,8 @@ class stat_result:
         result.st_atime = timespec_to_nsecs(result.st_atime)
         result.st_mtime = timespec_to_nsecs(result.st_mtime)
         result.st_ctime = timespec_to_nsecs(result.st_ctime)
+        result.st_uid = _fix_cygwin_id(result.st_uid)
+        result.st_gid = _fix_cygwin_id(result.st_gid)
         return result
 
 

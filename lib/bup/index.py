@@ -205,12 +205,6 @@ class Entry:
         self._fixup()
         
     def _fixup(self):
-        if self.uid < 0:
-            self.uid += 0x100000000
-        if self.gid < 0:
-            self.gid += 0x100000000
-        assert(self.uid >= 0)
-        assert(self.gid >= 0)
         self.mtime = self._fixup_time(self.mtime)
         self.ctime = self._fixup_time(self.ctime)
 
