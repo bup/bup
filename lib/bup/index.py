@@ -5,7 +5,7 @@ from bup.helpers import *
 EMPTY_SHA = '\0'*20
 FAKE_SHA = '\x01'*20
 
-INDEX_HDR = 'BUPI\0\0\0\5'
+INDEX_HDR = 'BUPI\0\0\0\6'
 
 # Time values are handled as integer nanoseconds since the epoch in
 # memory, but are written as xstat/metadata timespecs.  This behavior
@@ -14,7 +14,7 @@ INDEX_HDR = 'BUPI\0\0\0\5'
 # Record times (mtime, ctime, atime) as xstat/metadata timespecs, and
 # store all of the times in the index so they won't interfere with the
 # forthcoming metadata cache.
-INDEX_SIG =  '!QQQqQqQqQIIQII20sHIIQ'
+INDEX_SIG =  '!QQQqQqQqQQII20sHIIQ'
 
 ENTLEN = struct.calcsize(INDEX_SIG)
 FOOTER_SIG = '!Q'
@@ -153,9 +153,9 @@ class Entry:
         self.children_n = 0
 
     def __repr__(self):
-        return ("(%s,0x%04x,%d,%d,%d,%d,%d,%d,%d,%d,%s/%s,0x%04x,%d,0x%08x/%d)"
+        return ("(%s,0x%04x,%d,%d,%d,%d,%d,%d,%s/%s,0x%04x,%d,0x%08x/%d)"
                 % (self.name, self.dev, self.ino, self.nlink,
-                   self.ctime, self.mtime, self.atime, self.uid, self.gid,
+                   self.ctime, self.mtime, self.atime,
                    self.size, self.mode, self.gitmode,
                    self.flags, self.meta_ofs,
                    self.children_ofs, self.children_n))
@@ -170,7 +170,7 @@ class Entry:
                                ctime[0], ctime[1],
                                mtime[0], mtime[1],
                                atime[0], atime[1],
-                               self.uid, self.gid, self.size, self.mode,
+                               self.size, self.mode,
                                self.gitmode, self.sha, self.flags,
                                self.children_ofs, self.children_n,
                                self.meta_ofs)
@@ -181,18 +181,16 @@ class Entry:
     def from_stat(self, st, meta_ofs, tstart, check_device=True):
         old = (self.dev if check_device else 0,
                self.ino, self.nlink, self.ctime, self.mtime,
-               self.uid, self.gid, self.size, self.flags & IX_EXISTS)
+               self.size, self.flags & IX_EXISTS)
         new = (st.st_dev if check_device else 0,
                st.st_ino, st.st_nlink, st.st_ctime, st.st_mtime,
-               st.st_uid, st.st_gid, st.st_size, IX_EXISTS)
+               st.st_size, IX_EXISTS)
         self.dev = st.st_dev
         self.ino = st.st_ino
         self.nlink = st.st_nlink
         self.ctime = st.st_ctime
         self.mtime = st.st_mtime
         self.atime = st.st_atime
-        self.uid = st.st_uid
-        self.gid = st.st_gid
         self.size = st.st_size
         self.mode = st.st_mode
         self.flags |= IX_EXISTS
@@ -260,13 +258,13 @@ class Entry:
 class NewEntry(Entry):
     def __init__(self, basename, name, tmax, dev, ino, nlink,
                  ctime, mtime, atime,
-                 uid, gid, size, mode, gitmode, sha, flags, meta_ofs,
+                 size, mode, gitmode, sha, flags, meta_ofs,
                  children_ofs, children_n):
         Entry.__init__(self, basename, name, meta_ofs, tmax)
         (self.dev, self.ino, self.nlink, self.ctime, self.mtime, self.atime,
-         self.uid, self.gid, self.size, self.mode, self.gitmode, self.sha,
+         self.size, self.mode, self.gitmode, self.sha,
          self.flags, self.children_ofs, self.children_n
-         ) = (dev, ino, nlink, ctime, mtime, atime, uid, gid,
+         ) = (dev, ino, nlink, ctime, mtime, atime,
               size, mode, gitmode, sha, flags, children_ofs, children_n)
         self._fixup()
 
@@ -274,7 +272,7 @@ class NewEntry(Entry):
 class BlankNewEntry(NewEntry):
     def __init__(self, basename, meta_ofs, tmax):
         NewEntry.__init__(self, basename, basename, tmax,
-                          0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                          0, 0, 0, 0, 0, 0, 0, 0,
                           0, EMPTY_SHA, 0, meta_ofs, 0, 0)
 
 
@@ -286,7 +284,7 @@ class ExistingEntry(Entry):
         self._ofs = ofs
         (self.dev, self.ino, self.nlink,
          self.ctime, ctime_ns, self.mtime, mtime_ns, self.atime, atime_ns,
-         self.uid, self.gid, self.size, self.mode, self.gitmode, self.sha,
+         self.size, self.mode, self.gitmode, self.sha,
          self.flags, self.children_ofs, self.children_n, self.meta_ofs
          ) = struct.unpack(INDEX_SIG, str(buffer(m, ofs, ENTLEN)))
         self.atime = xstat.timespec_to_nsecs((self.atime, atime_ns))
@@ -508,7 +506,6 @@ class Writer:
             e = NewEntry(basename, name, self.tmax,
                          st.st_dev, st.st_ino, st.st_nlink,
                          st.st_ctime, st.st_mtime, st.st_atime,
-                         st.st_uid, st.st_gid,
                          st.st_size, st.st_mode, gitmode, sha, flags,
                          meta_ofs, 0, 0)
         else:
