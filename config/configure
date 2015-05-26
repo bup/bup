@@ -65,6 +65,7 @@ if [ -z "$OS_GNU_KFREEBSD" ]; then
 fi
 AC_CHECK_FUNCS utimes
 AC_CHECK_FUNCS lutimes
+AC_CHECK_FUNCS mincore
 
 AC_CHECK_FIELD stat st_atim sys/types.h sys/stat.h unistd.h
 AC_CHECK_FIELD stat st_mtim sys/types.h sys/stat.h unistd.h

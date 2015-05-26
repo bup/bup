@@ -1332,6 +1332,73 @@ static PyObject *bup_localtime(PyObject *self, PyObject *args)
 #endif /* def HAVE_TM_TM_GMTOFF */
 
 
+#ifdef HAVE_MINCORE
+static PyObject *bup_fmincore(PyObject *self, PyObject *args)
+{
+    int fd, rc;
+    if (!PyArg_ParseTuple(args, "i", &fd))
+	return NULL;
+
+    struct stat st;
+    rc = fstat(fd, &st);
+    if (rc != 0)
+        return PyErr_SetFromErrno(PyExc_OSError);
+
+    if (st.st_size == 0)
+        return Py_BuildValue("s", "");
+
+    const size_t page_size = (size_t) sysconf (_SC_PAGESIZE);
+    const off_t pref_chunk_size = 64 * 1024 * 1024;
+    off_t chunk_size = page_size;
+    if (page_size < pref_chunk_size)
+        chunk_size = page_size * (pref_chunk_size / page_size);
+    const off_t pages_per_chunk = chunk_size / page_size;
+    const off_t page_count = (st.st_size + page_size - 1) / page_size;
+    const off_t chunk_count = page_count / chunk_size > 0 ? page_count / chunk_size : 1;
+    unsigned char * const result = malloc(page_count);
+    off_t ci;
+    for(ci = 0; ci < chunk_count; ci++)
+    {
+        const off_t pos = chunk_size * ci;
+        const size_t msize = chunk_size < st.st_size - pos ? chunk_size : st.st_size - pos;
+        void *m = mmap(NULL, msize, PROT_NONE, MAP_SHARED, fd, pos);
+        if (m == MAP_FAILED)
+        {
+            free(result);
+            return PyErr_SetFromErrno(PyExc_OSError);
+        }
+        rc = mincore(m, msize, &result[ci * pages_per_chunk]);
+        if (rc != 0)
+        {
+            const int errno_stash = errno;
+            rc = munmap(m, msize);
+            if (rc != 0)
+            {
+                char buf[512];
+                char *msg = strerror_r(errno, buf, 512);
+                if (rc != 0)
+                    fprintf(stderr, "%s:%d: strerror_r failed (%d)\n",
+                            __FILE__, __LINE__, rc < 0 ? errno : rc);
+                else
+                    fprintf(stderr,
+                            "%s:%d: munmap failed after mincore failed (%s)\n",
+                            __FILE__, __LINE__, msg);
+            }
+            free(result);
+            errno = errno_stash;
+            return PyErr_SetFromErrno(PyExc_OSError);
+        }
+        rc = munmap(m, msize);
+        if (rc != 0)
+            return PyErr_SetFromErrno(PyExc_OSError);
+    }
+    PyObject *py_result = Py_BuildValue("s#", result, page_count);
+    free(result);
+    return py_result;
+}
+#endif /* def HAVE_MINCORE */
+
+
 static PyMethodDef helper_methods[] = {
     { "write_sparsely", bup_write_sparsely, METH_VARARGS,
       "Write buf excepting zeros at the end. Return trailing zero count." },
@@ -1393,6 +1460,10 @@ static PyMethodDef helper_methods[] = {
 #ifdef HAVE_TM_TM_GMTOFF
     { "localtime", bup_localtime, METH_VARARGS,
       "Return struct_time elements plus the timezone offset and name." },
+#endif
+#ifdef HAVE_MINCORE
+    { "fmincore", bup_fmincore, METH_VARARGS,
+      "Return mincore() information for the provided file descriptor." },
 #endif
     { NULL, NULL, 0, NULL },  // sentinel
 };
