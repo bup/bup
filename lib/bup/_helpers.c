@@ -942,6 +942,19 @@ static PyObject *open_noatime(PyObject *self, PyObject *args)
 }
 
 
+static PyObject *fadvise_done(PyObject *self, PyObject *args)
+{
+    int fd = -1;
+    long long ofs = 0;
+    if (!PyArg_ParseTuple(args, "iL", &fd, &ofs))
+	return NULL;
+#ifdef POSIX_FADV_DONTNEED
+    posix_fadvise(fd, 0, ofs, POSIX_FADV_DONTNEED);
+#endif    
+    return Py_BuildValue("");
+}
+
+
 // Currently the Linux kernel and FUSE disagree over the type for
 // FS_IOC_GETFLAGS and FS_IOC_SETFLAGS.  The kernel actually uses int,
 // but FUSE chose long (matching the declaration in linux/fs.h).  So
@@ -1341,6 +1354,8 @@ static PyMethodDef helper_methods[] = {
         "Return a random 20-byte string" },
     { "open_noatime", open_noatime, METH_VARARGS,
 	"open() the given filename for read with O_NOATIME if possible" },
+    { "fadvise_done", fadvise_done, METH_VARARGS,
+	"Inform the kernel that we're finished with earlier parts of a file" },
 #ifdef BUP_HAVE_FILE_ATTRS
     { "get_linux_file_attr", bup_get_linux_file_attr, METH_VARARGS,
       "Return the Linux attributes for the given file." },
