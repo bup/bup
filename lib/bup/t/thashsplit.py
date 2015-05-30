@@ -2,6 +2,80 @@ from bup import hashsplit, _helpers
 from wvtest import *
 from cStringIO import StringIO
 
+def nr_regions(x, max_count=None):
+    return list(hashsplit._nonresident_page_regions(''.join(map(chr, x)),
+                                                    max_count))
+
+@wvtest
+def test_nonresident_page_regions():
+    WVPASSEQ(nr_regions([]), [])
+    WVPASSEQ(nr_regions([1]), [])
+    WVPASSEQ(nr_regions([0]), [(0, 1)])
+    WVPASSEQ(nr_regions([1, 0]), [(1, 1)])
+    WVPASSEQ(nr_regions([0, 0]), [(0, 2)])
+    WVPASSEQ(nr_regions([1, 0, 1]), [(1, 1)])
+    WVPASSEQ(nr_regions([1, 0, 0]), [(1, 2)])
+    WVPASSEQ(nr_regions([0, 1, 0]), [(0, 1), (2, 1)])
+    WVPASSEQ(nr_regions([0, 0, 1, 1, 1, 0, 0, 0, 1, 0, 0]),
+             [(0, 2), (5, 3), (9, 2)])
+    WVPASSEQ(nr_regions([2, 42, 3, 101]), [(0, 2)])
+    # Test limit
+    WVPASSEQ(nr_regions([0, 0, 0], None), [(0, 3)])
+    WVPASSEQ(nr_regions([0, 0, 0], 1), [(0, 1), (1, 1), (2, 1)])
+    WVPASSEQ(nr_regions([0, 0, 0], 2), [(0, 2), (2, 1)])
+    WVPASSEQ(nr_regions([0, 0, 0], 3), [(0, 3)])
+    WVPASSEQ(nr_regions([0, 0, 0], 4), [(0, 3)])
+    WVPASSEQ(nr_regions([0, 0, 1], None), [(0, 2)])
+    WVPASSEQ(nr_regions([0, 0, 1], 1), [(0, 1), (1, 1)])
+    WVPASSEQ(nr_regions([0, 0, 1], 2), [(0, 2)])
+    WVPASSEQ(nr_regions([0, 0, 1], 3), [(0, 2)])
+    WVPASSEQ(nr_regions([1, 0, 0], None), [(1, 2)])
+    WVPASSEQ(nr_regions([1, 0, 0], 1), [(1, 1), (2, 1)])
+    WVPASSEQ(nr_regions([1, 0, 0], 2), [(1, 2)])
+    WVPASSEQ(nr_regions([1, 0, 0], 3), [(1, 2)])
+    WVPASSEQ(nr_regions([1, 0, 0, 0, 1], None), [(1, 3)])
+    WVPASSEQ(nr_regions([1, 0, 0, 0, 1], 1), [(1, 1), (2, 1), (3, 1)])
+    WVPASSEQ(nr_regions([1, 0, 0, 0, 1], 2), [(1, 2), (3, 1)])
+    WVPASSEQ(nr_regions([1, 0, 0, 0, 1], 3), [(1, 3)])
+    WVPASSEQ(nr_regions([1, 0, 0, 0, 1], 4), [(1, 3)])
+
+
+@wvtest
+def test_uncache_ours_upto():
+    history = []
+    def mock_fadvise_pages_done(f, ofs, len):
+        history.append((f, ofs, len))
+
+    uncache_upto = hashsplit._uncache_ours_upto
+    page_size = os.sysconf("SC_PAGE_SIZE")
+    orig_pages_done = hashsplit._fadvise_pages_done
+    try:
+        hashsplit._fadvise_pages_done = mock_fadvise_pages_done
+        history = []
+        uncache_upto(42, 0, (0, 1), iter([]))
+        WVPASSEQ([], history)
+        uncache_upto(42, page_size, (0, 1), iter([]))
+        WVPASSEQ([(42, 0, 1)], history)
+        history = []
+        uncache_upto(42, page_size, (0, 3), iter([(5, 2)]))
+        WVPASSEQ([], history)
+        uncache_upto(42, 2 * page_size, (0, 3), iter([(5, 2)]))
+        WVPASSEQ([], history)
+        uncache_upto(42, 3 * page_size, (0, 3), iter([(5, 2)]))
+        WVPASSEQ([(42, 0, 3)], history)
+        history = []
+        uncache_upto(42, 5 * page_size, (0, 3), iter([(5, 2)]))
+        WVPASSEQ([(42, 0, 3)], history)
+        history = []
+        uncache_upto(42, 6 * page_size, (0, 3), iter([(5, 2)]))
+        WVPASSEQ([(42, 0, 3)], history)
+        history = []
+        uncache_upto(42, 7 * page_size, (0, 3), iter([(5, 2)]))
+        WVPASSEQ([(42, 0, 3), (42, 5, 2)], history)
+    finally:
+        hashsplit._fadvise_pages_done = orig_pages_done
+
+
 @wvtest
 def test_rolling_sums():
     WVPASS(_helpers.selftest())

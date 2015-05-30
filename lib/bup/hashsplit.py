@@ -2,6 +2,13 @@ import math
 from bup import _helpers
 from bup.helpers import *
 
+try:
+    _fmincore = _helpers.fmincore
+except AttributeError, e:
+    _fmincore = None
+
+_page_size = os.sysconf("SC_PAGE_SIZE")
+
 BLOB_MAX = 8192*4   # 8192 is the "typical" blob size for bupsplit
 BLOB_READ_SIZE = 1024*1024
 MAX_PER_TREE = 256
@@ -41,28 +48,71 @@ class Buf:
         return len(self.data) - self.start
 
 
-def _fadvise_done(f, ofs, len):
-    assert(ofs >= 0)
-    assert(len >= 0)
-    if len > 0 and hasattr(f, 'fileno'):
-        _helpers.fadvise_done(f.fileno(), ofs, len)
+def _fadvise_pages_done(fd, first_page, count):
+    assert(first_page >= 0)
+    assert(count >= 0)
+    if count > 0:
+        _helpers.fadvise_done(fd, first_page * _page_size, count * _page_size)
+
+
+def _nonresident_page_regions(status_bytes, max_region_len=None):
+    """Return (start_page, count) pairs in ascending start_page order for
+    each contiguous region of nonresident pages indicated by the
+    mincore() status_bytes.  Limit the number of pages in each region
+    to max_region_len."""
+    assert(max_region_len is None or max_region_len > 0)
+    start = None
+    for i, x in enumerate(status_bytes):
+        in_core = ord(x) & 1
+        if start is None:
+            if not in_core:
+                start = i
+        else:
+            count = i - start
+            if in_core:
+                yield (start, count)
+                start = None
+            elif max_region_len and count >= max_region_len:
+                yield (start, count)
+                start = i
+    if start is not None:
+        yield (start, len(status_bytes) - start)
+
+
+def _uncache_ours_upto(fd, offset, first_region, remaining_regions):
+    """Uncache the pages of fd indicated by first_region and
+    remaining_regions that are before offset, where each region is a
+    (start_page, count) pair.  The final region must have a start_page
+    of None."""
+    rstart, rlen = first_region
+    while rstart is not None and (rstart + rlen) * _page_size <= offset:
+        _fadvise_pages_done(fd, rstart, rlen)
+        rstart, rlen = next(remaining_regions, (None, None))
+    return (rstart, rlen)
 
 
 def readfile_iter(files, progress=None):
     for filenum,f in enumerate(files):
         ofs = 0
         b = ''
+        fd = rpr = rstart = rlen = None
+        if _fmincore and hasattr(f, 'fileno'):
+            fd = f.fileno()
+            max_chunk = max(1, (8 * 1024 * 1024) / _page_size)
+            rpr = _nonresident_page_regions(_helpers.fmincore(fd), max_chunk)
+            rstart, rlen = next(rpr, (None, None))
         while 1:
             if progress:
                 progress(filenum, len(b))
             b = f.read(BLOB_READ_SIZE)
             ofs += len(b)
-            # Warning: ofs == 0 means 'done with the whole file'
-            # This will only happen here when the file is empty
-            _fadvise_done(f, 0, ofs)
+            if rpr:
+                rstart, rlen = _uncache_ours_upto(fd, ofs, (rstart, rlen), rpr)
             if not b:
                 break
             yield b
+        if rpr:
+            rstart, rlen = _uncache_ours_upto(fd, ofs, (rstart, rlen), rpr)
 
 
 def _splitbuf(buf, basebits, fanbits):
