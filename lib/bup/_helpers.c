@@ -945,11 +945,18 @@ static PyObject *open_noatime(PyObject *self, PyObject *args)
 static PyObject *fadvise_done(PyObject *self, PyObject *args)
 {
     int fd = -1;
-    long long ofs = 0;
-    if (!PyArg_ParseTuple(args, "iL", &fd, &ofs))
+    long long llofs, lllen = 0;
+    if (!PyArg_ParseTuple(args, "iLL", &fd, &llofs, &lllen))
 	return NULL;
+    off_t ofs, len;
+    if (!INTEGRAL_ASSIGNMENT_FITS(&ofs, llofs))
+        return PyErr_Format(PyExc_OverflowError,
+                            "fadvise offset overflows off_t");
+    if (!INTEGRAL_ASSIGNMENT_FITS(&len, lllen))
+        return PyErr_Format(PyExc_OverflowError,
+                            "fadvise length overflows off_t");
 #ifdef POSIX_FADV_DONTNEED
-    posix_fadvise(fd, 0, ofs, POSIX_FADV_DONTNEED);
+    posix_fadvise(fd, ofs, len, POSIX_FADV_DONTNEED);
 #endif    
     return Py_BuildValue("");
 }

@@ -52,7 +52,7 @@ def readfile_iter(files, progress=None):
             ofs += len(b)
             # Warning: ofs == 0 means 'done with the whole file'
             # This will only happen here when the file is empty
-            fadvise_done(f, ofs)
+            fadvise_done(f, 0, ofs)
             if not b:
                 break
             yield b
@@ -193,7 +193,9 @@ def open_noatime(name):
         raise
 
 
-def fadvise_done(f, ofs):
+def fadvise_done(f, ofs, len):
+    """Call posix_fadvise(f, ofs, len, POSIX_FADV_DONTNEED)."""
     assert(ofs >= 0)
-    if ofs > 0 and hasattr(f, 'fileno'):
-        _helpers.fadvise_done(f.fileno(), ofs)
+    assert(len >= 0)
+    if ofs > 0 and len > 0 and hasattr(f, 'fileno'):
+        _helpers.fadvise_done(f.fileno(), ofs, len)
