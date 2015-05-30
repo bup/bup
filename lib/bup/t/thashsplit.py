@@ -2,6 +2,72 @@ from bup import hashsplit, _helpers
 from wvtest import *
 from cStringIO import StringIO
 
+def bytestr(x):
+    return ''.join(map(chr, x))
+
+@wvtest
+def test_nonresident_page_regions():
+    rpr = hashsplit._nonresident_page_regions
+    x = bytestr([])
+    WVPASSEQ(list(rpr(x)), [])
+    x = bytestr([1])
+    WVPASSEQ(list(rpr(x)), [])
+    x = bytestr([0])
+    WVPASSEQ(list(rpr(x)), [(0, 1)])
+    x = bytestr([1, 0])
+    WVPASSEQ(list(rpr(x)), [(1, 1)])
+    x = bytestr([0, 0])
+    WVPASSEQ(list(rpr(x)), [(0, 2)])
+    x = bytestr([1, 0, 1])
+    WVPASSEQ(list(rpr(x)), [(1, 1)])
+    x = bytestr([1, 0, 0])
+    WVPASSEQ(list(rpr(x)), [(1, 2)])
+    x = bytestr([0, 1, 0])
+    WVPASSEQ(list(rpr(x)), [(0, 1), (2, 1)])
+    x = bytestr([0, 0, 1, 1, 1, 0, 0, 0, 1, 0, 0])
+    WVPASSEQ(list(rpr(x)), [(0, 2), (5, 3), (9, 2)])
+    x = bytestr([2, 42, 3, 101])
+    WVPASSEQ(list(rpr(x)), [(0, 2)])
+
+
+@wvtest
+def test_uncache_ours_upto():
+    history = []
+    def mock_fadvise_done(f, ofs, len):
+        history.append((f, ofs, len))
+
+    uncache_upto = hashsplit._uncache_ours_upto
+    page_size = os.sysconf("SC_PAGE_SIZE")
+    old_fad = hashsplit.fadvise_done
+    try:
+        hashsplit.fadvise_done = mock_fadvise_done
+        history = []
+        uncache_upto('fd', 0, (0, 1), iter([]))
+        WVPASSEQ([], history)
+        uncache_upto('fd', page_size, (0, 1), iter([]))
+        WVPASSEQ([('fd', 0, page_size)], history)
+        history = []
+        uncache_upto('fd', page_size, (0, 3), iter([(5, 2)]))
+        WVPASSEQ([], history)
+        uncache_upto('fd', 2 * page_size, (0, 3), iter([(5, 2)]))
+        WVPASSEQ([], history)
+        uncache_upto('fd', 3 * page_size, (0, 3), iter([(5, 2)]))
+        WVPASSEQ([('fd', 0, 3 * page_size)], history)
+        history = []
+        uncache_upto('fd', 5 * page_size, (0, 3), iter([(5, 2)]))
+        WVPASSEQ([('fd', 0, 3 * page_size)], history)
+        history = []
+        uncache_upto('fd', 6 * page_size, (0, 3), iter([(5, 2)]))
+        WVPASSEQ([('fd', 0, 3 * page_size)], history)
+        history = []
+        uncache_upto('fd', 7 * page_size, (0, 3), iter([(5, 2)]))
+        WVPASSEQ([('fd', 0, 3 * page_size),
+                  ('fd', 5 * page_size, 2 * page_size)],
+                 history)
+    finally:
+        hashsplit.fadvise_done = old_fad
+
+
 @wvtest
 def test_rolling_sums():
     WVPASS(_helpers.selftest())
