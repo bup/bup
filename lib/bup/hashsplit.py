@@ -41,6 +41,13 @@ class Buf:
         return len(self.data) - self.start
 
 
+def _fadvise_done(f, ofs, len):
+    assert(ofs >= 0)
+    assert(len >= 0)
+    if len > 0 and hasattr(f, 'fileno'):
+        _helpers.fadvise_done(f.fileno(), ofs, len)
+
+
 def readfile_iter(files, progress=None):
     for filenum,f in enumerate(files):
         ofs = 0
@@ -52,7 +59,7 @@ def readfile_iter(files, progress=None):
             ofs += len(b)
             # Warning: ofs == 0 means 'done with the whole file'
             # This will only happen here when the file is empty
-            fadvise_done(f, ofs)
+            _fadvise_done(f, 0, ofs)
             if not b:
                 break
             yield b
@@ -191,9 +198,3 @@ def open_noatime(name):
         except:
             pass
         raise
-
-
-def fadvise_done(f, ofs):
-    assert(ofs >= 0)
-    if ofs > 0 and hasattr(f, 'fileno'):
-        _helpers.fadvise_done(f.fileno(), ofs)
