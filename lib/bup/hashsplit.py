@@ -75,6 +75,8 @@ def _uncache_ours_upto(fd, offset, first_region, remaining_regions):
     while rstart is not None and (rstart + rlen) * _page_size <= offset:
         fadvise_done(fd, rstart * _page_size, rlen * _page_size)
         rstart, rlen = next(remaining_regions, (None, None))
+    if rstart is not None and rstart * _page_size < offset < (rstart + rlen) * _page_size:
+        fadvise_done(fd, rstart * _page_size, offset - rstart * _page_size)
     return (rstart, rlen)
 
 
