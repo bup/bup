@@ -236,9 +236,9 @@ def open_noatime(name):
         raise
 
 
-def fadvise_done(f, ofs, len):
-    """Call posix_fadvise(f, ofs, len, POSIX_FADV_DONTNEED)."""
+def fadvise_done(fd, ofs, len):
+    """Call posix_fadvise(fd, ofs, len, POSIX_FADV_DONTNEED)."""
     assert(ofs >= 0)
     assert(len >= 0)
-    if ofs > 0 and len > 0 and hasattr(f, 'fileno'):
-        _helpers.fadvise_done(f.fileno(), ofs, len)
+    if ofs >= 0 and len > 0 and fd >= 0:
+        _helpers.fadvise_done(fd, ofs, len)
