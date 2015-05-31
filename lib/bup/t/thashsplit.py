@@ -42,27 +42,27 @@ def test_uncache_ours_upto():
     try:
         hashsplit.fadvise_done = mock_fadvise_done
         history = []
-        uncache_upto('fd', 0, (0, 1), iter([]))
+        uncache_upto(0, 0, (0, 1), iter([]))
         WVPASSEQ([], history)
-        uncache_upto('fd', page_size, (0, 1), iter([]))
-        WVPASSEQ([('fd', 0, page_size)], history)
+        uncache_upto(0, page_size, (0, 1), iter([]))
+        WVPASSEQ([(0, 0, page_size)], history)
         history = []
-        uncache_upto('fd', page_size, (0, 3), iter([(5, 2)]))
-        WVPASSEQ([], history)
-        uncache_upto('fd', 2 * page_size, (0, 3), iter([(5, 2)]))
-        WVPASSEQ([], history)
-        uncache_upto('fd', 3 * page_size, (0, 3), iter([(5, 2)]))
-        WVPASSEQ([('fd', 0, 3 * page_size)], history)
+        uncache_upto(0, page_size, (0, 3), iter([(5, 2)]))
+        WVPASSEQ([(0, 0, page_size)], history)
+        uncache_upto(0, 2 * page_size, (0, 3), iter([(5, 2)]))
+        WVPASSEQ([(0, 0, page_size), (0, 0, 2 * page_size)], history)
+        uncache_upto(0, 3 * page_size, (0, 3), iter([(5, 2)]))
+        WVPASSEQ([(0, 0, page_size), (0, 0, 2 * page_size), (0, 0, 3 * page_size)], history)
         history = []
-        uncache_upto('fd', 5 * page_size, (0, 3), iter([(5, 2)]))
-        WVPASSEQ([('fd', 0, 3 * page_size)], history)
+        uncache_upto(0, 5 * page_size, (0, 3), iter([(5, 2)]))
+        WVPASSEQ([(0, 0, 3 * page_size)], history)
         history = []
-        uncache_upto('fd', 6 * page_size, (0, 3), iter([(5, 2)]))
-        WVPASSEQ([('fd', 0, 3 * page_size)], history)
+        uncache_upto(0, 6 * page_size, (0, 3), iter([(5, 2)]))
+        WVPASSEQ([(0, 0, 3 * page_size), (0, 5 * page_size, page_size)], history)
         history = []
-        uncache_upto('fd', 7 * page_size, (0, 3), iter([(5, 2)]))
-        WVPASSEQ([('fd', 0, 3 * page_size),
-                  ('fd', 5 * page_size, 2 * page_size)],
+        uncache_upto(0, 7 * page_size, (0, 3), iter([(5, 2)]))
+        WVPASSEQ([(0, 0, 3 * page_size),
+                  (0, 5 * page_size, 2 * page_size)],
                  history)
     finally:
         hashsplit.fadvise_done = old_fad

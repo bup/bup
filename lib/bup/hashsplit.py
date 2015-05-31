@@ -75,6 +75,8 @@ def _uncache_ours_upto(fd, offset, first_region, remaining_regions):
     while rstart is not None and (rstart + rlen) * _page_size <= offset:
         fadvise_done(fd, rstart * _page_size, rlen * _page_size)
         rstart, rlen = next(remaining_regions, (None, None))
+    if rstart is not None and rstart * _page_size < offset < (rstart + rlen) * _page_size:
+        fadvise_done(fd, rstart * _page_size, offset - rstart * _page_size)
     return (rstart, rlen)
 
 
@@ -236,9 +238,9 @@ def open_noatime(name):
         raise
 
 
-def fadvise_done(f, ofs, len):
-    """Call posix_fadvise(f, ofs, len, POSIX_FADV_DONTNEED)."""
+def fadvise_done(fd, ofs, len):
+    """Call posix_fadvise(fd, ofs, len, POSIX_FADV_DONTNEED)."""
     assert(ofs >= 0)
     assert(len >= 0)
-    if ofs > 0 and len > 0 and hasattr(f, 'fileno'):
-        _helpers.fadvise_done(f.fileno(), ofs, len)
+    if ofs >= 0 and len > 0 and fd >= 0:
+        _helpers.fadvise_done(fd, ofs, len)
