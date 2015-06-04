@@ -157,7 +157,7 @@ def do_midx(outdir, outfilename, infilenames, prefixstr):
         print rv[1]
 
 
-def do_midx_dir(path):
+def do_midx_dir(path, outfilename):
     already = {}
     sizes = {}
     if opt.force and not opt.auto:
@@ -206,7 +206,7 @@ def do_midx_dir(path):
         all.sort()
         part1 = [name for sz,name in all[:len(all)-DESIRED_LWM+1]]
         part2 = all[len(all)-DESIRED_LWM+1:]
-        all = list(do_midx_group(path, part1)) + part2
+        all = list(do_midx_group(path, outfilename, part1)) + part2
         if len(all) > DESIRED_HWM:
             debug1('\nStill too many indexes (%d > %d).  Merging again.\n'
                    % (len(all), DESIRED_HWM))
@@ -217,13 +217,13 @@ def do_midx_dir(path):
                 print name
 
 
-def do_midx_group(outdir, infiles):
+def do_midx_group(outdir, outfilename, infiles):
     groups = list(_group(infiles, opt.max_files))
     gprefix = ''
     for n,sublist in enumerate(groups):
         if len(groups) != 1:
             gprefix = 'Group %d: ' % (n+1)
-        rv = _do_midx(outdir, None, sublist, gprefix)
+        rv = _do_midx(outdir, outfilename, sublist, gprefix)
         if rv:
             yield rv
 
@@ -265,7 +265,7 @@ else:
         paths = opt.dir and [opt.dir] or git.all_packdirs()
         for path in paths:
             debug1('midx: scanning %s\n' % path)
-            do_midx_dir(path)
+            do_midx_dir(path, opt.output)
     else:
         o.fatal("you must use -f or -a or provide input filenames")
 
