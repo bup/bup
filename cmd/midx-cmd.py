@@ -223,7 +223,7 @@ def do_midx_group(outdir, infiles):
     for n,sublist in enumerate(groups):
         if len(groups) != 1:
             gprefix = 'Group %d: ' % (n+1)
-        rv = _do_midx(path, None, sublist, gprefix)
+        rv = _do_midx(outdir, None, sublist, gprefix)
         if rv:
             yield rv
 
