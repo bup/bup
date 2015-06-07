@@ -65,7 +65,7 @@ Submitting patches
 As mentioned, all patches should be posted to the mailing list for
 review, and must be "signed off" by the author before official
 inclusion (see ./SIGNED-OFF-BY).  You can create a "signed off" set of
-patches in ./pending, ready for submission to the list, like this:
+patches in ./patches, ready for submission to the list, like this:
 
     git format-patch -s -o patches origin/master
 
