@@ -28,13 +28,21 @@ export GIT_DIR="$tmpdir/bup"
 
 bup() { "$top/bup" "$@"; }
 
+# Some versions of bash's printf don't support the relevant date expansion.
+savename()
+{
+    readonly secs="$1"
+    WVPASS python -c "from time import strftime, localtime; \
+       print strftime('%Y-%m-%d-%H%M%S', localtime($secs))"
+}
+
 WVPASS bup init
 WVPASS cd "$tmpdir"
 
 savestamp1=$(WVPASS python -c 'import time; print int(time.time())') || exit $?
 savestamp2=$(($savestamp1 + 1))
-savename1="$(printf '%(%Y-%m-%d-%H%M%S)T' "$savestamp1")" || exit $?
-savename2="$(printf '%(%Y-%m-%d-%H%M%S)T' "$savestamp2")" || exit $?
+savename1="$(savename "$savestamp1")" || exit $?
+savename2="$(savename "$savestamp2")" || exit $?
 
 WVPASS mkdir src
 WVPASS echo content > src/foo
