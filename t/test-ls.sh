@@ -28,7 +28,8 @@ WVPASS touch -t 196907202018 src/.dotfile src/*
 WVPASS touch -t 196907202018 src
 WVPASS touch -t 196907202018 .
 WVPASS bup index src
-WVPASS bup save -n src src
+WVPASS bup save -n src -d 242312160 src
+WVPASS bup tag some-tag src
 
 
 WVSTART "ls (short)"
@@ -54,6 +55,13 @@ WVPASSEQ "$(WVPASS bup ls -aF /)" "./
 .commit/
 .tag/
 src/"
+
+WVPASSEQ "$(WVPASS bup ls /.tag)" "some-tag"
+
+WVPASSEQ "$(WVPASS bup ls /src)" \
+"1977-09-05-125600
+latest
+some-tag"
 
 WVPASSEQ "$(WVPASS bup ls src/latest/"$tmpdir"/src)" "executable
 fifo
@@ -198,6 +206,7 @@ WVPASSEQ "$(bup ls -ld "src/latest$tmpdir/src" | tr -s ' ' ' ')" \
 WVSTART "ls (backup set - long)"
 WVPASSEQ "$(bup ls -l src | cut -d' ' -f 1-2)" \
 "l--------- ?/?
+l--------- ?/?
 l--------- ?/?"
 
 

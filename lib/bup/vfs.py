@@ -527,7 +527,7 @@ class TagDir(Node):
                                             repo_dir=self._repo_dir)[0]
                 commithex = sha.encode('hex')
                 target = '../.commit/%s/%s' % (commithex[:2], commithex[2:])
-                tag1 = FakeSymlink(self, name, target, repo_dir, self._repo_dir)
+                tag1 = FakeSymlink(self, name, target, self._repo_dir)
                 tag1.ctime = tag1.mtime = date
                 self._subs[name] = tag1
 
