@@ -98,6 +98,8 @@ runtests-python: all t/tmp
 	| tee -a t/tmp/test-log/$$$$.log
 
 cmdline_tests := \
+  t/test-index.sh \
+  t/test-split-join.sh \
   t/test-fuse.sh \
   t/test-drecurse.sh \
   t/test-cat-file.sh \

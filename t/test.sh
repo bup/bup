@@ -17,171 +17,17 @@ WVSTART "init"
 
 WVPASS bup init
 
-WVSTART "index"
 D=bupdata.tmp
 WVPASS force-delete $D
 WVPASS mkdir $D
-WVFAIL bup index --exclude-from $D/cannot-exist $D
-WVPASSEQ "$(bup index --check -p)" ""
-WVPASSEQ "$(bup index --check -p $D)" ""
-WVFAIL [ -e $D.fake ]
-WVFAIL bup index --check -u $D.fake
-WVPASS bup index --check -u $D
-WVPASSEQ "$(bup index --check -p $D)" "$D/"
 WVPASS touch $D/a
 WVPASS bup random 128k >$D/b
 WVPASS mkdir $D/d $D/d/e
 WVPASS bup random 512 >$D/f
-WVPASS ln -s non-existent-file $D/g
-WVPASSEQ "$(bup index -s $D/)" "A $D/"
-WVPASSEQ "$(bup index -s $D/b)" ""
-WVPASSEQ "$(bup index --check -us $D/b)" "A $D/b"
-WVPASSEQ "$(bup index --check -us $D/b $D/d)" \
-"A $D/d/e/
-A $D/d/
-A $D/b"
 WVPASS touch $D/d/z
-WVPASS bup tick
-WVPASSEQ "$(bup index --check -usx $D)" \
-"A $D/g
-A $D/f
-A $D/d/z
-A $D/d/e/
-A $D/d/
-A $D/b
-A $D/a
-A $D/"
-WVPASSEQ "$(bup index --check -us $D/a $D/b --fake-valid)" \
-"  $D/b
-  $D/a"
-WVPASSEQ "$(bup index --check -us $D/a)" "  $D/a"  # stays unmodified
-WVPASSEQ "$(bup index --check -us $D/d --fake-valid)" \
-"  $D/d/z
-  $D/d/e/
-  $D/d/"
 WVPASS touch $D/d/z
-WVPASS bup index -u $D/d/z  # becomes modified
-WVPASSEQ "$(bup index -s $D/a $D $D/b)" \
-"A $D/g
-A $D/f
-M $D/d/z
-  $D/d/e/
-M $D/d/
-  $D/b
-  $D/a
-A $D/"
-
-WVPASS bup index -u $D/d/e $D/a --fake-invalid
-WVPASSEQ "$(cd $D && bup index -m .)" \
-"./g
-./f
-./d/z
-./d/e/
-./d/
-./a
-./"
-WVPASSEQ "$(cd $D && bup index -m)" \
-"g
-f
-d/z
-d/e/
-d/
-a
-./"
-WVPASSEQ "$(cd $D && bup index -s .)" "$(cd $D && bup index -s .)"
-
-WVFAIL bup save -t $D/doesnt-exist-filename
-
-WVPASS mv "$BUP_DIR/bupindex" "$BUP_DIR/bi.old"
-WVFAIL bup save -t $D/d/e/fifotest
-WVPASS mkfifo $D/d/e/fifotest
-WVPASS bup index -u $D/d/e/fifotest
-WVPASS bup save -t $D/d/e/fifotest
-WVPASS bup save -t $D/d/e
-WVPASS rm -f $D/d/e/fifotest
-WVPASS bup index -u $D/d/e
-WVFAIL bup save -t $D/d/e/fifotest
-WVPASS mv "$BUP_DIR/bi.old" "$BUP_DIR/bupindex"
-
-WVPASS bup index -u $D/d/e
-WVPASS bup save -t $D/d/e
-WVPASSEQ "$(cd $D && bup index -m)" \
-"g
-f
-d/z
-d/
-a
-./"
-WVPASS bup save -t $D/d
-WVPASS bup index --fake-invalid $D/d/z
-WVPASS bup save -t $D/d/z
-WVPASS bup save -t $D/d/z  # test regenerating trees when no files are changed
-WVPASS bup save -t $D/d
-WVPASSEQ "$(cd $D && bup index -m)" \
-"g
-f
-a
-./"
-WVPASS bup save -r ":$BUP_DIR" -n r-test $D
-WVFAIL bup save -r ":$BUP_DIR/fake/path" -n r-test $D
-WVFAIL bup save -r ":$BUP_DIR" -n r-test $D/fake/path
-
-WVSTART "split"
-WVPASS echo a >a.tmp
-WVPASS echo b >b.tmp
-WVPASS bup split -b a.tmp >taga.tmp
-WVPASS bup split -b b.tmp >tagb.tmp
-WVPASS cat a.tmp b.tmp | WVPASS bup split -b >tagab.tmp
-WVPASSEQ $(cat taga.tmp | wc -l) 1
-WVPASSEQ $(cat tagb.tmp | wc -l) 1
-WVPASSEQ $(cat tagab.tmp | wc -l) 1
-WVPASSEQ $(cat tag[ab].tmp | wc -l) 2
-WVPASSEQ "$(bup split -b a.tmp b.tmp)" "$(cat tagab.tmp)"
-WVPASSEQ "$(bup split -b --keep-boundaries a.tmp b.tmp)" "$(cat tag[ab].tmp)"
-WVPASSEQ "$(cat tag[ab].tmp | bup split -b --keep-boundaries --git-ids)" \
-         "$(cat tag[ab].tmp)"
-WVPASSEQ "$(cat tag[ab].tmp | bup split -b --git-ids)" \
-         "$(cat tagab.tmp)"
-WVPASS bup split --bench -b <"$top/t/testfile1" >tags1.tmp
-WVPASS bup split -vvvv -b "$top/t/testfile2" >tags2.tmp
-WVPASS echo -n "" | bup split -n split_empty_string.tmp
-WVPASS bup margin
-WVPASS bup midx -f
-WVPASS bup midx --check -a
-WVPASS bup midx -o "$BUP_DIR/objects/pack/test1.midx" \
-	"$BUP_DIR"/objects/pack/*.idx
-WVPASS bup midx --check -a
-WVPASS bup midx -o "$BUP_DIR"/objects/pack/test1.midx \
-	"$BUP_DIR"/objects/pack/*.idx \
-	"$BUP_DIR"/objects/pack/*.idx
-WVPASS bup midx --check -a
-all=$(echo "$BUP_DIR"/objects/pack/*.idx "$BUP_DIR"/objects/pack/*.midx)
-WVPASS bup midx -o "$BUP_DIR"/objects/pack/zzz.midx $all
-WVPASS bup tick
-WVPASS bup midx -o "$BUP_DIR"/objects/pack/yyy.midx $all
-WVPASS bup midx -a
-WVPASSEQ "$(echo "$BUP_DIR"/objects/pack/*.midx)" \
-	""$BUP_DIR"/objects/pack/yyy.midx"
-WVPASS bup margin
-WVPASS bup split -t "$top/t/testfile2" >tags2t.tmp
-WVPASS bup split -t "$top/t/testfile2" --fanout 3 >tags2tf.tmp
-WVPASS bup split -r "$BUP_DIR" -c "$top/t/testfile2" >tags2c.tmp
-WVPASS bup split -r ":$BUP_DIR" -c "$top/t/testfile2" >tags2c.tmp
-WVPASS ls -lR \
-    | WVPASS bup split -r ":$BUP_DIR" -c --fanout 3 --max-pack-objects 3 -n lslr \
-    || exit $?
-WVPASS bup ls
-WVFAIL bup ls /does-not-exist
-WVPASS bup ls /lslr
-WVPASS bup ls /lslr/latest
-WVPASS bup ls /lslr/latest/
-#WVPASS bup ls /lslr/1971-01-01   # all dates always exist
-WVFAIL diff -u tags1.tmp tags2.tmp
-
-# fanout must be different from non-fanout
-WVFAIL diff tags2t.tmp tags2tf.tmp
-WVPASS wc -c "$top/t/testfile1" "$top/t/testfile2"
-WVPASS wc -l tags1.tmp tags2.tmp
+WVPASS bup index $D
+WVPASS bup save -t $D
 
 WVSTART "bloom"
 WVPASS bup bloom -c $(ls -1 "$BUP_DIR"/objects/pack/*.idx|head -n1)
@@ -197,23 +43,12 @@ WVSTART "memtest"
 WVPASS bup memtest -c1 -n100
 WVPASS bup memtest -c1 -n100 --existing
 
-WVSTART "join"
-WVPASS bup join $(cat tags1.tmp) >out1.tmp
-WVPASS bup join <tags2.tmp >out2.tmp
-WVPASS bup join <tags2t.tmp -o out2t.tmp
-WVPASS bup join -r "$BUP_DIR" <tags2c.tmp >out2c.tmp
-WVPASS bup join -r ":$BUP_DIR" <tags2c.tmp >out2c.tmp
-WVPASS diff -u "$top/t/testfile1" out1.tmp
-WVPASS diff -u "$top/t/testfile2" out2.tmp
-WVPASS diff -u "$top/t/testfile2" out2t.tmp
-WVPASS diff -u "$top/t/testfile2" out2c.tmp
-WVPASSEQ "$(bup join split_empty_string.tmp)" ""
-
 WVSTART "save/git-fsck"
 (
     WVPASS cd "$BUP_DIR"
     #git repack -Ad
     #git prune
+    WVPASS bup random 4k | WVPASS bup split -b
     (WVPASS cd "$top/t/sampledata" && WVPASS bup save -vvn master /) || exit $?
     result="$(git fsck --full --strict 2>&1)" || exit $?
     n=$(echo "$result" |
@@ -236,6 +71,7 @@ WVPASS bup restore -C buprestore.tmp "/master/latest/$tmpdir/$D/"
 WVPASS touch $D/non-existent-file buprestore.tmp/non-existent-file # else diff fails
 WVPASS diff -ur $D/ buprestore.tmp/
 WVPASS force-delete buprestore.tmp
+WVPASS echo -n "" | WVPASS bup split -n split_empty_string.tmp
 WVPASS bup restore -C buprestore.tmp split_empty_string.tmp/latest/
 WVPASSEQ "$(cat buprestore.tmp/data)" ""
 
