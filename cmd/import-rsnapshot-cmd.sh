@@ -5,7 +5,7 @@ usage() {
     echo "Usage: bup import-rsnapshot [-n]" \
         "<path to snapshot_root> [<backuptarget>]"
     echo "-n,--dry-run: just print what would be done"
-    exit -1
+    exit 1
 }
 
 DRY_RUN=
