@@ -1,6 +1,6 @@
-import math
+import math, os
+
 from bup import _helpers
-from bup.helpers import *
 
 try:
     _fmincore = _helpers.fmincore
