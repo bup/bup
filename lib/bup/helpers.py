@@ -9,6 +9,7 @@ import hashlib, heapq, math, operator, time, grp, tempfile
 
 from bup import _helpers
 
+sc_page_size = os.sysconf('SC_PAGE_SIZE')
 sc_arg_max = os.sysconf('SC_ARG_MAX')
 
 # This function should really be in helpers, not in bup.options.  But we

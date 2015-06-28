@@ -1,6 +1,9 @@
-from bup import hashsplit, _helpers
-from wvtest import *
 from cStringIO import StringIO
+
+from wvtest import *
+
+from bup import hashsplit, _helpers, helpers
+
 
 def nr_regions(x, max_count=None):
     return list(hashsplit._nonresident_page_regions(''.join(map(chr, x)),
@@ -47,7 +50,7 @@ def test_uncache_ours_upto():
         history.append((f, ofs, len))
 
     uncache_upto = hashsplit._uncache_ours_upto
-    page_size = os.sysconf("SC_PAGE_SIZE")
+    page_size = helpers.sc_page_size
     orig_pages_done = hashsplit._fadvise_pages_done
     try:
         hashsplit._fadvise_pages_done = mock_fadvise_pages_done

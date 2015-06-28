@@ -1,13 +1,12 @@
 import math, os
 
 from bup import _helpers
+from bup.helpers import sc_page_size
 
 try:
     _fmincore = _helpers.fmincore
 except AttributeError, e:
     _fmincore = None
-
-_page_size = os.sysconf("SC_PAGE_SIZE")
 
 BLOB_MAX = 8192*4   # 8192 is the "typical" blob size for bupsplit
 BLOB_READ_SIZE = 1024*1024
@@ -52,7 +51,9 @@ def _fadvise_pages_done(fd, first_page, count):
     assert(first_page >= 0)
     assert(count >= 0)
     if count > 0:
-        _helpers.fadvise_done(fd, first_page * _page_size, count * _page_size)
+        _helpers.fadvise_done(fd,
+                              first_page * sc_page_size,
+                              count * sc_page_size)
 
 
 def _nonresident_page_regions(status_bytes, max_region_len=None):
@@ -85,7 +86,7 @@ def _uncache_ours_upto(fd, offset, first_region, remaining_regions):
     (start_page, count) pair.  The final region must have a start_page
     of None."""
     rstart, rlen = first_region
-    while rstart is not None and (rstart + rlen) * _page_size <= offset:
+    while rstart is not None and (rstart + rlen) * sc_page_size <= offset:
         _fadvise_pages_done(fd, rstart, rlen)
         rstart, rlen = next(remaining_regions, (None, None))
     return (rstart, rlen)
@@ -98,7 +99,7 @@ def readfile_iter(files, progress=None):
         fd = rpr = rstart = rlen = None
         if _fmincore and hasattr(f, 'fileno'):
             fd = f.fileno()
-            max_chunk = max(1, (8 * 1024 * 1024) / _page_size)
+            max_chunk = max(1, (8 * 1024 * 1024) / sc_page_size)
             rpr = _nonresident_page_regions(_helpers.fmincore(fd), max_chunk)
             rstart, rlen = next(rpr, (None, None))
         while 1:
