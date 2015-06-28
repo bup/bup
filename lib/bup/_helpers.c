@@ -1516,18 +1516,6 @@ PyMODINIT_FUNC init_helpers(void)
         Py_DECREF(value);
     }
 #endif
-    {
-        PyObject *value;
-        const long arg_max = sysconf(_SC_ARG_MAX);
-        if (arg_max == -1)
-        {
-            fprintf(stderr, "Cannot find SC_ARG_MAX, please report a bug.\n");
-            exit(1);
-        }
-        value = INTEGER_TO_PY(arg_max);
-        PyObject_SetAttrString(m, "SC_ARG_MAX", value);
-        Py_DECREF(value);
-    }
 #pragma clang diagnostic pop  // ignored "-Wtautological-compare"
 
     e = getenv("BUP_FORCE_TTY");

@@ -9,6 +9,8 @@ import hashlib, heapq, math, operator, time, grp, tempfile
 
 from bup import _helpers
 
+sc_arg_max = os.sysconf('SC_ARG_MAX')
+
 # This function should really be in helpers, not in bup.options.  But we
 # want options.py to be standalone so people can include it in other projects.
 from bup.options import _tty_width
@@ -214,7 +216,7 @@ def _argmax_args_size(args):
     return sum(len(x) + 1 + sizeof(c_void_p) for x in args)
 
 
-def batchpipe(command, args, preexec_fn=None, arg_max=_helpers.SC_ARG_MAX):
+def batchpipe(command, args, preexec_fn=None, arg_max=sc_arg_max):
     """If args is not empty, yield the output produced by calling the
 command list with args as a sequence of strings (It may be necessary
 to return multiple strings in order to respect ARG_MAX)."""
