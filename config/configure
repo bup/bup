@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 bup_find_prog()
 {
@@ -10,6 +10,20 @@ bup_find_prog()
     fi
     TLOG " ($result)"
     echo "$result"
+}
+
+bup_try_c_code()
+{
+    local code="$1" tmpdir rc
+    if test -z "$code"; then
+        AC_FAIL "No code provided to test compile"
+    fi
+    tmpdir="$(mktemp -d "bup-try-c-compile-XXXXXXX")" || exit $?
+    echo "$code" > "$tmpdir/test.c" || exit $?
+    $AC_CC -Wall -Werror -c -o "$tmpdir/test" "$tmpdir/test.c"
+    rc=$?
+    rm -r "$tmpdir" || exit $?
+    return $rc
 }
 
 TARGET=bup
@@ -53,7 +67,12 @@ fi
 # For stat.
 AC_CHECK_HEADERS sys/stat.h
 AC_CHECK_HEADERS sys/types.h
+
+# For stat and mincore.
 AC_CHECK_HEADERS unistd.h
+
+# For mincore.
+AC_CHECK_HEADERS sys/mman.h
 
 # For FS_IOC_GETFLAGS and FS_IOC_SETFLAGS.
 AC_CHECK_HEADERS linux/fs.h
@@ -65,7 +84,58 @@ if [ -z "$OS_GNU_KFREEBSD" ]; then
 fi
 AC_CHECK_FUNCS utimes
 AC_CHECK_FUNCS lutimes
+
+
 AC_CHECK_FUNCS mincore
+
+mincore_incore_code="
+#if 0$ac_defined_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+#if 0$ac_defined_HAVE_SYS_MMAN_H
+#include <sys/mman.h>
+#endif
+int main(int argc, char **argv)
+{
+    if (MINCORE_INCORE)
+      return 0;
+}
+"
+
+mincore_buf_type_code()
+{
+    local vec_type="$1"
+    echo "
+#include <sys/mman.h>
+int main(int argc, char **argv)
+{
+    void *x = 0;
+    $vec_type *buf = 0;
+    return mincore(x, 0, buf);
+}" || exit $?
+}
+
+if test "$ac_defined_HAVE_MINCORE"; then
+    TLOGN "checking for MINCORE_INCORE"
+    if bup_try_c_code "$mincore_incore_code"; then
+        AC_DEFINE BUP_HAVE_MINCORE_INCORE 1
+        TLOG ' (found)'
+    else
+        TLOG ' (not found)'
+    fi
+
+    TLOGN "checking mincore buf type"
+    if bup_try_c_code "$(mincore_buf_type_code char)"; then
+        AC_DEFINE BUP_MINCORE_BUF_TYPE 'char'
+        TLOG ' (char)'
+    elif bup_try_c_code "$(mincore_buf_type_code 'unsigned char')"; then
+        AC_DEFINE BUP_MINCORE_BUF_TYPE 'unsigned char'
+        TLOG ' (unsigned char)'
+    else
+        AC_FAIL "ERROR: unexpected mincore definition; please notify bup-list@googlegroups.com"
+    fi
+fi
+
 
 AC_CHECK_FIELD stat st_atim sys/types.h sys/stat.h unistd.h
 AC_CHECK_FIELD stat st_mtim sys/types.h sys/stat.h unistd.h
