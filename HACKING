@@ -59,6 +59,24 @@ incorporating it into master, so reviews are an important way to help.
 We also love a good "Tested-by:" -- the more the merrier.
 
 
+Testing
+=======
+
+You can run the test suite much more quickly via "make -j test" (as
+compared to "make test"), at the expense of slightly more confusing
+output (interleaved parallel test output), and inaccurate intermediate
+success/failure counts, but the final counts displayed should be
+correct.
+
+Individual non-Python tests can be run via "./wvtest run t/TEST" and
+if you'd like to see all of the test output, you can omit the wvtest
+run wrapper: "t/TEST"
+
+Individual Python tests can be run via "./wvtest run ./wvtest.py
+lib/bup/t/TEST", and as above, you can see all the output by omitting
+the wvtest run wrapper like this: "./wvtest.py lib/bup/t/TEST"
+
+
 Submitting patches
 ==================
 
