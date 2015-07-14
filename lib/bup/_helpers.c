@@ -1339,6 +1339,17 @@ static PyObject *bup_fmincore(PyObject *self, PyObject *args)
     if (!PyArg_ParseTuple(args, "i", &fd))
 	return NULL;
 
+    errno = 0;
+    const long sc_page_size = sysconf(_SC_PAGESIZE);
+    if (sc_page_size == -1) // Stymied - mincore works in page_size chunks
+    {
+        if (errno)
+            return PyErr_SetFromErrno(PyExc_OSError);
+        else
+            PyErr_Format(PyExc_RuntimeError,
+                         "cannot determine memory page size");
+    }
+    
     struct stat st;
     rc = fstat(fd, &st);
     if (rc != 0)
@@ -1347,7 +1358,10 @@ static PyObject *bup_fmincore(PyObject *self, PyObject *args)
     if (st.st_size == 0)
         return Py_BuildValue("s", "");
 
-    const size_t page_size = (size_t) sysconf (_SC_PAGESIZE);
+    size_t page_size;
+    if (!INTEGRAL_ASSIGNMENT_FITS(&page_size, sc_page_size))
+        return PyErr_Format(PyExc_OverflowError, "page size too large");
+
     const off_t pref_chunk_size = 64 * 1024 * 1024;
     off_t chunk_size = page_size;
     if (page_size < pref_chunk_size)
