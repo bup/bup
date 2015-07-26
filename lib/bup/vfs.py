@@ -544,8 +544,6 @@ class BranchList(Node):
     def _mksubs(self):
         self._subs = {}
 
-        tags = git.tags(repo_dir = self._repo_dir)
-
         revs = list(git.rev_list(self.hash.encode('hex'),
                                  repo_dir=self._repo_dir))
         latest = revs[0]
@@ -557,11 +555,6 @@ class BranchList(Node):
             n1 = FakeSymlink(self, ls, target, self._repo_dir)
             n1.ctime = n1.mtime = date
             self._subs[ls] = n1
-
-            for tag in tags.get(commit, []):
-                t1 = FakeSymlink(self, tag, target, self._repo_dir)
-                t1.ctime = t1.mtime = date
-                self._subs[tag] = t1
 
         (date, commit) = latest
         commithex = commit.encode('hex')

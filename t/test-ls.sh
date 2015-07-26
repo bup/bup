@@ -60,8 +60,7 @@ WVPASSEQ "$(WVPASS bup ls /.tag)" "some-tag"
 
 WVPASSEQ "$(WVPASS bup ls /src)" \
 "1977-09-05-125600
-latest
-some-tag"
+latest"
 
 WVPASSEQ "$(WVPASS bup ls src/latest/"$tmpdir"/src)" "executable
 fifo
@@ -206,7 +205,6 @@ WVPASSEQ "$(bup ls -ld "src/latest$tmpdir/src" | tr -s ' ' ' ')" \
 WVSTART "ls (backup set - long)"
 WVPASSEQ "$(bup ls -l src | cut -d' ' -f 1-2)" \
 "l--------- ?/?
-l--------- ?/?
 l--------- ?/?"
 
 

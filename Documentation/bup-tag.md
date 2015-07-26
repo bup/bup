@@ -31,13 +31,6 @@ bup exposes the contents of backups with current tags, via any command that
 lists or shows backups. They can be found under the /.tag directory.  For
 example, the 'ftp' command will show the tag named 'tag1' under /.tag/tag1.
 
-Tags are also exposed under the branches from which they can be reached. For
-example, if you create a tag named 'important' under branch 'computerX', you
-will also be able to retrieve the contents of the backup that was tagged under
-/computerX/important. This is done as a convenience, and should the branch
-'computerX' be deleted, the contents of the tagged backup will be available
-through /.tag/important as long as the tag is not deleted.
-
 # OPTIONS
 
 -d, \--delete
