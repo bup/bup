@@ -163,7 +163,7 @@ def mangle_name(name, mode, gitmode):
 
 
 (BUP_NORMAL, BUP_CHUNKED) = (0,1)
-def demangle_name(name):
+def demangle_name(name, mode):
     """Remove name mangling from a file name, if necessary.
 
     The return value is a tuple (demangled_filename,mode), where mode is one of
@@ -178,6 +178,9 @@ def demangle_name(name):
         return (name[:-5], BUP_NORMAL)
     elif name.endswith('.bup'):
         return (name[:-4], BUP_CHUNKED)
+    elif name.endswith('.bupm'):
+        return (name[:-5],
+                BUP_CHUNKED if stat.S_ISDIR(mode) else BUP_NORMAL)
     else:
         return (name, BUP_NORMAL)
 

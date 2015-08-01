@@ -39,14 +39,17 @@ def testmangle():
     WVPASSEQ(git.mangle_name("f.bup", afile, adir), "f.bup.bup")
     WVPASSEQ(git.mangle_name("f", afile, adir), "f.bup")
 
-    WVPASSEQ(git.demangle_name("f.bup"), ("f", git.BUP_CHUNKED))
-    WVPASSEQ(git.demangle_name("f.bupl"), ("f", git.BUP_NORMAL))
-    WVPASSEQ(git.demangle_name("f.bup.bupl"), ("f.bup", git.BUP_NORMAL))
+    WVPASSEQ(git.demangle_name("f.bup", afile), ("f", git.BUP_CHUNKED))
+    WVPASSEQ(git.demangle_name("f.bupl", afile), ("f", git.BUP_NORMAL))
+    WVPASSEQ(git.demangle_name("f.bup.bupl", afile), ("f.bup", git.BUP_NORMAL))
+
+    WVPASSEQ(git.demangle_name(".bupm", afile), ('', git.BUP_NORMAL))
+    WVPASSEQ(git.demangle_name(".bupm", adir), ('', git.BUP_CHUNKED))
 
     # for safety, we ignore .bup? suffixes we don't recognize.  Future
     # versions might implement a .bup[a-z] extension as something other
     # than BUP_NORMAL.
-    WVPASSEQ(git.demangle_name("f.bupa"), ("f.bupa", git.BUP_NORMAL))
+    WVPASSEQ(git.demangle_name("f.bupa", afile), ("f.bupa", git.BUP_NORMAL))
 
 
 @wvtest
