@@ -6,7 +6,8 @@ from bup import hashsplit, _helpers, helpers
 
 
 def nr_regions(x, max_count=None):
-    return list(hashsplit._nonresident_page_regions(bytearray(x), max_count))
+    return list(hashsplit._nonresident_page_regions(bytearray(x), 1, max_count))
+
 
 @wvtest
 def test_nonresident_page_regions():
