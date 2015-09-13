@@ -9,13 +9,25 @@ top="$(WVPASS /bin/pwd)" || exit $?
 tmpdir="$(WVPASS wvmktempdir)" || exit $?
 export BUP_DIR="$tmpdir/bup"
 
-bup() { "$top/bup" "$@"; }
+gc_log="$tmpdir/gc.log"
+
+bup()
+{
+    "$top/bup" "$@" || return $?
+    test -z "$bup_test_quash_gc" || return 0
+    (BUP_JUST_GC=yes "$top/bup" "$@" >> "$gc_log" 2>&1)
+}
 
 WVPASS cd "$tmpdir"
 
 WVSTART "init"
 
 WVPASS bup init
+
+# Disable the auto-gc here.  At a minimum, the bloom test requires an
+# index which we won't have given the preceeding, existing "save -t",
+# and the fsck test might fail since the bloom gc is statistical.
+bup_test_quash_gc=true
 
 D=bupdata.tmp
 WVPASS force-delete $D
@@ -57,6 +69,8 @@ WVSTART "save/git-fsck"
         WVPASS wc -l) || exit $?
     WVPASS [ "$n" -eq 0 ]
 ) || exit $?
+
+unset bup_test_quash_gc
 
 WVSTART "restore"
 WVPASS force-delete buprestore.tmp

@@ -105,6 +105,10 @@ if len(subcmd) == 0:
     else:
         usage()
 
+if 'BUP_JUST_GC' in os.environ:
+    subcmd = ['gc', '-v', '--unsafe']
+    del os.environ['BUP_JUST_GC']
+
 if help_requested and subcmd[0] != 'help':
     subcmd = ['help'] + subcmd
 
