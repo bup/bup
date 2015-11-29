@@ -13,8 +13,8 @@ sc_page_size = os.sysconf('SC_PAGE_SIZE')
 assert(sc_page_size > 0)
 
 sc_arg_max = os.sysconf('SC_ARG_MAX')
-if sc_arg_max == -1:
-    sc_arg_max = 4096
+if sc_arg_max == -1:  # "no definite limit" - let's choose 2M
+    sc_arg_max = 2 * 1024 * 1024
 
 # This function should really be in helpers, not in bup.options.  But we
 # want options.py to be standalone so people can include it in other projects.
