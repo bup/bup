@@ -74,7 +74,6 @@ pre-epoch"
 # Right now we don't detect new saves.
 WVPASS bup save -n src -d "$savestamp2" --strip src
 result=$(WVPASS ls mnt/src) || exit $?
-savename="$(WVPASS printf '%(%Y-%m-%d-%H%M%S)T' "$savestamp1")" || exit $?
 WVPASSEQ "$result" "$savename1
 latest"
 
