@@ -1321,6 +1321,7 @@ static PyObject *bup_localtime(PyObject *self, PyObject *args)
         return PyErr_Format(PyExc_OverflowError, "time value too large");
 
     struct tm tm;
+    tzset();
     if(localtime_r(&ttime, &tm) == NULL)
         return PyErr_SetFromErrno(PyExc_OSError);
 
