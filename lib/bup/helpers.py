@@ -1049,10 +1049,15 @@ if _localtime:
     def localtime(time):
         return bup_time(*_helpers.localtime(time))
     def utc_offset_str(t):
-        'Return the local offset from UTC as "+hhmm" or "-hhmm" for time t.'
+        """Return the local offset from UTC as "+hhmm" or "-hhmm" for time t.
+        If the current UTC offset does not represent an integer number
+        of minutes, the fractional component will be truncated."""
         off = localtime(t).tm_gmtoff
-        hrs = off / 60 / 60
-        return "%+03d%02d" % (hrs, abs(off - (hrs * 60 * 60)))
+        # Note: // doesn't truncate like C for negative values, it rounds down.
+        offmin = abs(off) // 60
+        m = offmin % 60
+        h = (offmin - m) // 60
+        return "%+03d%02d" % (-h if off < 0 else h, m)
     def to_py_time(x):
         if isinstance(x, time.struct_time):
             return x

@@ -179,3 +179,33 @@ def test_atomically_replaced_file():
 
     if wvfailure_count() == initial_failures:
         subprocess.call(['rm', '-rf', tmpdir])
+
+
+@wvtest
+def test_utc_offset_str():
+    tz = os.environ.get('TZ')
+    try:
+        os.environ['TZ'] = 'FOO+0:00'
+        WVPASSEQ(utc_offset_str(0), '+0000')
+        os.environ['TZ'] = 'FOO+1:00'
+        WVPASSEQ(utc_offset_str(0), '-0100')
+        os.environ['TZ'] = 'FOO-1:00'
+        WVPASSEQ(utc_offset_str(0), '+0100')
+        os.environ['TZ'] = 'FOO+3:3'
+        WVPASSEQ(utc_offset_str(0), '-0303')
+        os.environ['TZ'] = 'FOO-3:3'
+        WVPASSEQ(utc_offset_str(0), '+0303')
+        # Offset is not an integer number of minutes
+        os.environ['TZ'] = 'FOO+3:3:3'
+        WVPASSEQ(utc_offset_str(1), '-0303')
+        os.environ['TZ'] = 'FOO-3:3:3'
+        WVPASSEQ(utc_offset_str(1), '+0303')
+        WVPASSEQ(utc_offset_str(314159), '+0303')
+    finally:
+        if tz:
+            os.environ['TZ'] = tz
+        else:
+            try:
+                del os.environ['TZ']
+            except KeyError:
+                pass
