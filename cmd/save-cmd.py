@@ -1,4 +1,9 @@
-#!/usr/bin/env python
+#!/bin/sh
+"""": # -*-python-*-
+bup_python="$(dirname "$0")/bup-python" || exit $?
+exec "$bup_python" "$0" ${1+"$@"}
+"""
+# end of bup preamble
 import sys, stat, time, math
 from cStringIO import StringIO
 from errno import EACCES

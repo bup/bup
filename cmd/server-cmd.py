@@ -1,4 +1,9 @@
-#!/usr/bin/env python
+#!/bin/sh
+"""": # -*-python-*-
+bup_python="$(dirname "$0")/bup-python" || exit $?
+exec "$bup_python" "$0" ${1+"$@"}
+"""
+# end of bup preamble
 import os, sys, struct
 from bup import options, git
 from bup.helpers import *

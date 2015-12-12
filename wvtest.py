@@ -1,4 +1,9 @@
-#!/usr/bin/env python
+#!/bin/sh
+"""": # -*-python-*-
+export PATH="$(dirname "$0")/cmd:$PATH"
+exec "$bup_python" "$0" ${1+"$@"}
+"""
+# end of bup preamble
 #
 # WvTest:
 #   Copyright (C)2007-2012 Versabanq Innovations Inc. and contributors.

@@ -1,4 +1,10 @@
-#!/usr/bin/env python
+#!/bin/sh
+"""": # -*-python-*- # -*-python-*-
+bup_python="$(dirname "$0")/cmd/bup-python" || exit $?
+exec "$bup_python" "$0" ${1+"$@"}
+"""
+# end of bup preamble
+
 import sys, os, subprocess, signal, getopt
 
 argv = sys.argv

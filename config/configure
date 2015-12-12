@@ -56,8 +56,18 @@ if [ -z "$MAKE_VERSION" ]; then
 fi
 expr "$MAKE_VERSION" '>=' '3.81' || AC_FAIL "ERROR: $MAKE must be >= version 3.81"
 
-if test -z "$(bup_find_prog python '')"; then
+bup_python="$PYTHON"
+test -z "$bup_python" && bup_python="$(bup_find_prog python2.7 '')"
+test -z "$bup_python" && bup_python="$(bup_find_prog python2.6 '')"
+test -z "$bup_python" && bup_python="$(bup_find_prog python2 '')"
+test -z "$bup_python" && bup_python="$(bup_find_prog python '')"
+if test -z "$bup_python"; then
     AC_FAIL "ERROR: unable to find python"
+else
+    echo "#!/bin/sh" > ../cmd/python-cmd.sh
+    printf "exec %q \"\$@\"" "$bup_python" >> ../cmd/python-cmd.sh
+    chmod u+x ../cmd/python-cmd.sh
+    cd ../cmd && ln -sf python-cmd.sh bup-python
 fi
 
 if test -z "$(bup_find_prog git '')"; then

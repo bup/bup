@@ -154,6 +154,12 @@ From source
 
         make install DESTDIR=/opt/bup PREFIX=''
 
+ - The Python executable that bup will use is chosen by ./configure,
+   which will search for a reasonable version unless PYTHON is set in
+   the environment, in which case, bup will use that path.  You can
+   see which Python executable was chosen by looking at the
+   configure output, or examining cmd/python-cmd.sh, and you can
+   change the selection by re-running ./configure.
 
 From binary packages
 --------------------

@@ -1,5 +1,8 @@
 #!/usr/bin/env python
 
+# This cannot rely on bup-python because it runs during clean, and so
+# it also needs to be compatible with Python 2 and 3.
+
 import os.path, re, subprocess, sys
 
 def mntent_unescape(x):

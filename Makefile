@@ -30,8 +30,15 @@ Documentation/all: $(bup_deps)
 $(current_sampledata):
 	t/configure-sampledata --setup
 
+PYTHON = $(shell cmd/bup-python -c 'import sys; print sys.executable')
+
+define install-python-bin
+  set -e; \
+  sed -e '1 s|.*|#!$(PYTHON)|; 2,/^# end of bup preamble$$/d' $1 > $2; \
+  chmod 0755 $2;
+endef
+
 INSTALL=install
-PYTHON=python
 PREFIX=/usr
 MANDIR=$(DESTDIR)$(PREFIX)/share/man
 DOCDIR=$(DESTDIR)$(PREFIX)/share/doc/bup
@@ -49,10 +56,11 @@ install: all
 	  $(INSTALL) -m 0644 \
 		Documentation/*.html \
 		$(DOCDIR)
-	$(INSTALL) -pm 0755 bup $(BINDIR)
-	$(INSTALL) -pm 0755 \
-		cmd/bup-* \
-		$(LIBDIR)/cmd
+	$(call install-python-bin,bup,"$(BINDIR)/bup")
+	set -e; \
+	for cmd in $$(ls cmd/bup-* | grep -v cmd/bup-python); do \
+	  $(call install-python-bin,"$$cmd","$(LIBDIR)/$$cmd") \
+	done
 	$(INSTALL) -pm 0644 \
 		lib/bup/*.py \
 		$(LIBDIR)/bup
@@ -142,6 +150,9 @@ test: all
 	./wvtest report t/tmp/test-log/*.log
 
 check: test
+
+cmd/python-cmd.sh: config/configure
+	./config/configure
 
 cmds: \
     $(patsubst cmd/%-cmd.py,cmd/bup-%,$(wildcard cmd/*-cmd.py)) \
