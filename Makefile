@@ -151,8 +151,8 @@ test: all
 
 check: test
 
-cmd/python-cmd.sh: config/configure
-	./config/configure
+cmd/python-cmd.sh: config/configure config/configure.inc
+	./configure
 
 cmds: \
     $(patsubst cmd/%-cmd.py,cmd/bup-%,$(wildcard cmd/*-cmd.py)) \
@@ -200,6 +200,7 @@ clean: Documentation/clean config/clean
 		.*~ *~ */*~ lib/*/*~ lib/*/*/*~ \
 		*.pyc */*.pyc lib/*/*.pyc lib/*/*/*.pyc \
 		bup bup-* cmd/bup-* \
+		cmd/python-cmd.sh \
 		randomgen memtest \
 		testfs.img lib/bup/t/testfs.img
 	if test -e t/mnt; then t/cleanup-mounts-under t/mnt; fi
