@@ -2,15 +2,29 @@
 SHELL := bash
 pf := set -o pipefail
 
-sampledata_rev := $(shell t/configure-sampledata --revision)
+define isok
+  && echo " ok" || echo " no"
+endef
+
+# If ok, strip trailing " ok" and return the output, otherwise, error
+define shout
+$(if $(subst ok,,$(lastword $(1))),$(error $(2)),$(shell x="$(1)"; echo $${x%???}))
+endef
+
+sampledata_rev := $(shell t/configure-sampledata --revision $(isok))
+sampledata_rev := \
+  $(call shout,$(sampledata_rev),Could not parse sampledata revision)
+
 current_sampledata := t/sampledata/var/rev/v$(sampledata_rev)
 
-OS:=$(shell uname | sed 's/[-_].*//')
+os := $(shell ($(pf); uname | sed 's/[-_].*//') $(isok))
+os := $(call shout,$(os),Unable to determine OS)
+
 CFLAGS := -Wall -O2 -Werror -Wno-unknown-pragmas $(PYINCLUDE) $(CFLAGS)
 CFLAGS := -D_FILE_OFFSET_BITS=64 $(CFLAGS)
 SOEXT:=.so
 
-ifeq ($(OS),CYGWIN)
+ifeq ($(os),CYGWIN)
   SOEXT:=.dll
 endif
 
@@ -20,7 +34,9 @@ else
   test_tmp := $(CURDIR)/t/tmp
 endif
 
-initial_setup := $(shell ./configure-version --update)
+initial_setup := $(shell ./configure-version --update $(isok))
+initial_setup := $(call shout,$(initial_setup),Version configuration failed))
+
 bup_deps := bup lib/bup/_version.py lib/bup/_helpers$(SOEXT) cmds
 
 all: $(bup_deps) Documentation/all $(current_sampledata)
@@ -33,6 +49,7 @@ Documentation/all: $(bup_deps)
 $(current_sampledata):
 	t/configure-sampledata --setup
 
+# This needs to be a delayed assignment
 PYTHON = $(shell cmd/bup-python -c 'import sys; print sys.executable')
 
 define install-python-bin
