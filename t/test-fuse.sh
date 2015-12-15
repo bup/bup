@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 . ./wvtest-bup.sh || exit $?
+. t/lib.sh || exit $?
 
 set -o pipefail
 
@@ -32,15 +33,16 @@ bup() { "$top/bup" "$@"; }
 savename()
 {
     readonly secs="$1"
-    WVPASS python -c "from time import strftime, localtime; \
+    WVPASS bup-python -c "from time import strftime, localtime; \
        print strftime('%Y-%m-%d-%H%M%S', localtime($secs))"
 }
 
 WVPASS bup init
 WVPASS cd "$tmpdir"
 
-savestamp1=$(WVPASS python -c 'import time; print int(time.time())') || exit $?
+savestamp1=$(WVPASS bup-python -c 'import time; print int(time.time())') || exit $?
 savestamp2=$(($savestamp1 + 1))
+
 savename1="$(savename "$savestamp1")" || exit $?
 savename2="$(savename "$savestamp2")" || exit $?
 

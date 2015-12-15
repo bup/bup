@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 . ./wvtest-bup.sh || exit $?
+. t/lib.sh || exit $?
 
 if [ $(t/root-status) != root ]; then
     echo 'Not root: skipping restore --map-* tests.'
@@ -79,7 +80,7 @@ WVPASS grep -qE "^uid: $other_uid\$" foo-xstat
 WVPASS grep -qE "^group: $other_group\$" foo-xstat
 WVPASS grep -qE "^gid: $other_gid\$" foo-xstat
 
-has_uid_gid_0=$(WVPASS python -c "
+has_uid_gid_0=$(WVPASS bup-python -c "
 import grp, pwd
 try:
   pwd.getpwuid(0)

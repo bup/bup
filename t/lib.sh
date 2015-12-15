@@ -1,6 +1,11 @@
 # Assumes shell is Bash, and pipefail is set.
 
-bup_t_lib_script_home=$(cd "$(dirname $0)" && pwd)
+bup_t_lib_script_home=$(cd "$(dirname $0)" && pwd) || exit $?
+
+bup-python()
+{
+    "$bup_t_lib_script_home/../cmd/bup-python" "$@"
+}
 
 force-delete()
 {
@@ -11,7 +16,7 @@ realpath()
 {
     test "$#" -eq 1 || return $?
     echo "$1" | \
-        PYTHONPATH="$bup_t_lib_script_home/../lib" python -c \
+        PYTHONPATH="$bup_t_lib_script_home/../lib" bup-python -c \
         "import sys, bup.helpers; print bup.helpers.realpath(sys.stdin.readline())" \
         || return $?
 }

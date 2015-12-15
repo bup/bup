@@ -435,9 +435,9 @@ src/foo/3"
 
     tmpdir="$(WVPASS wvmktempdir)" || exit $?    
 
-    first_group="$(WVPASS python -c 'import os,grp; \
+    first_group="$(WVPASS bup-python -c 'import os,grp; \
       print grp.getgrgid(os.getgroups()[0])[0]')" || exit $?
-    last_group="$(python -c 'import os,grp; \
+    last_group="$(bup-python -c 'import os,grp; \
       print grp.getgrgid(os.getgroups()[-1])[0]')" || exit $?
     last_group_erx="$(escape-erx "$last_group")"
 
@@ -675,7 +675,7 @@ if [ "$root_status" = root ]; then
             WVPASS mkdir "$testfs"/src/foo
             WVPASS touch "$testfs"/src/bar
             PYTHONPATH="$TOP/lib" \
-                WVPASS python -c "from bup import xstat; \
+                WVPASS bup-python -c "from bup import xstat; \
                 x = xstat.timespec_to_nsecs((42, 0));\
                    xstat.utime('$testfs/src/foo', (x, x));\
                    xstat.utime('$testfs/src/bar', (x, x));"
@@ -716,7 +716,7 @@ if [ "$root_status" = root ]; then
                 WVPASS cd "$testfs_limited"/src-restore
                 WVFAIL bup meta --extract --file "$testfs"/src.meta 2>&1 \
                     | WVPASS grep -e '^Linux chattr:' \
-                    | WVPASS python -c \
+                    | WVPASS bup-python -c \
                     'import sys; exit(not len(sys.stdin.readlines()) == 3)'
             ) || exit $?
         ) || exit $?
@@ -740,7 +740,7 @@ if [ "$root_status" = root ]; then
             WVFAIL bup meta --extract --file "$testfs"/src.meta
             WVFAIL bup meta --extract --file "$testfs"/src.meta 2>&1 \
                 | WVPASS grep -e "^xattr\.set '" \
-                | WVPASS python -c \
+                | WVPASS bup-python -c \
                 'import sys; exit(not len(sys.stdin.readlines()) == 2)'
         ) || exit $?
 
@@ -762,7 +762,7 @@ if [ "$root_status" = root ]; then
             WVPASS cd "$testfs_limited"/src-restore
             WVFAIL bup meta --extract --file "$testfs"/src.meta 2>&1 \
                 | WVPASS grep -e '^POSIX1e ACL applyto:' \
-                | WVPASS python -c \
+                | WVPASS bup-python -c \
                 'import sys; exit(not len(sys.stdin.readlines()) == 2)'
         ) || exit $?
 
