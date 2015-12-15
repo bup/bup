@@ -1,4 +1,7 @@
 
+SHELL := bash
+pf := set -o pipefail
+
 sampledata_rev := $(shell t/configure-sampledata --revision)
 current_sampledata := t/sampledata/var/rev/v$(sampledata_rev)
 
@@ -102,8 +105,9 @@ t/tmp:
 runtests: runtests-python runtests-cmdline
 
 runtests-python: all t/tmp
-	TMPDIR="$(test_tmp)" $(PYTHON) wvtest.py t/t*.py lib/*/t/t*.py 2>&1 \
-	| tee -a t/tmp/test-log/$$$$.log
+	$(pf); TMPDIR="$(test_tmp)" \
+	  $(PYTHON) wvtest.py t/t*.py lib/*/t/t*.py 2>&1 \
+	    | tee -a t/tmp/test-log/$$$$.log
 
 cmdline_tests := \
   t/test-index.sh \
@@ -135,7 +139,8 @@ cmdline_tests := \
 
 # For parallel runs.
 tmp-target-run-test%: all t/tmp
-	TMPDIR="$(test_tmp)" t/test$* 2>&1 | tee -a t/tmp/test-log/$$$$.log
+	$(pf); TMPDIR="$(test_tmp)" \
+	  t/test$* 2>&1 | tee -a t/tmp/test-log/$$$$.log
 
 runtests-cmdline: $(subst t/test,tmp-target-run-test,$(cmdline_tests))
 
@@ -171,6 +176,7 @@ cmd/bup-%: cmd/%-cmd.sh
 export-docs: Documentation/all
 	git update-ref refs/heads/man origin/man '' 2>/dev/null || true
 	git update-ref refs/heads/html origin/html '' 2>/dev/null || true
+	set -eo pipefail; \
 	GIT_INDEX_FILE=gitindex.tmp; export GIT_INDEX_FILE; \
 	rm -f $${GIT_INDEX_FILE} && \
 	git add -f Documentation/*.1 && \
@@ -192,8 +198,8 @@ push-docs: export-docs
 # import pregenerated doc files from origin/man and origin/html, in case you
 # don't have pandoc but still want to be able to install the docs.
 import-docs: Documentation/clean
-	git archive origin/html | (cd Documentation; tar -xvf -)
-	git archive origin/man | (cd Documentation; tar -xvf -)
+	$(pf); git archive origin/html | (cd Documentation && tar -xvf -)
+	$(pf); git archive origin/man | (cd Documentation && tar -xvf -)
 
 clean: Documentation/clean config/clean
 	rm -f *.o lib/*/*.o *.so lib/*/*.so *.dll lib/*/*.dll *.exe \
