@@ -735,7 +735,8 @@ if _mincore:
 
     def fmincore(fd):
         """Return the mincore() data for fd as a bytearray whose values can be
-        tested via MINCORE_INCORE"""
+        tested via MINCORE_INCORE, or None if fd does not fully
+        support the operation."""
         st = os.fstat(fd)
         if (st.st_size == 0):
             return bytearray(0)
@@ -750,7 +751,13 @@ if _mincore:
         for ci in xrange(chunk_count):
             pos = _fmincore_chunk_size * ci;
             msize = min(_fmincore_chunk_size, st.st_size - pos)
-            m = mmap.mmap(fd, msize, mmap.MAP_PRIVATE, 0, 0, pos)
+            try:
+                m = mmap.mmap(fd, msize, mmap.MAP_PRIVATE, 0, 0, pos)
+            except mmap.error, ex:
+                if ex.errno == errno.ENODEV:
+                    # Perhaps the file was a pipe, i.e. "... | bup split ..."
+                    return None
+                raise ex
             _mincore(m, msize, 0, result, ci * pages_per_chunk);
         return result
 

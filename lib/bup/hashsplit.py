@@ -96,10 +96,12 @@ def readfile_iter(files, progress=None):
         fd = rpr = rstart = rlen = None
         if _fmincore and hasattr(f, 'fileno'):
             fd = f.fileno()
-            max_chunk = max(1, (8 * 1024 * 1024) / sc_page_size)
-            rpr = _nonresident_page_regions(_fmincore(fd),
-                                            helpers.MINCORE_INCORE, max_chunk)
-            rstart, rlen = next(rpr, (None, None))
+            mcore = _fmincore(fd)
+            if mcore:
+                max_chunk = max(1, (8 * 1024 * 1024) / sc_page_size)
+                rpr = _nonresident_page_regions(mcore, helpers.MINCORE_INCORE,
+                                                max_chunk)
+                rstart, rlen = next(rpr, (None, None))
         while 1:
             if progress:
                 progress(filenum, len(b))
