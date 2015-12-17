@@ -57,8 +57,6 @@ all: $(bup_deps) Documentation/all $(current_sampledata)
 bup:
 	ln -s main.py bup
 
-Documentation/all: $(bup_deps)
-
 $(current_sampledata):
 	t/configure-sampledata --setup
 
@@ -68,24 +66,33 @@ define install-python-bin
   chmod 0755 $2;
 endef
 
+PANDOC ?= $(shell type -p pandoc)
+
+ifeq (,$(PANDOC))
+  $(shell echo "Warning: pandoc not found; skipping manpage generation" 1>&2)
+  man_md :=
+else
+  man_md := $(wildcard Documentation/*.md)
+endif
+
+man_roff := $(patsubst %.md,%.1,$(man_md))
+man_html := $(patsubst %.md,%.html,$(man_md))
+
 INSTALL=install
 PREFIX=/usr
 MANDIR=$(DESTDIR)$(PREFIX)/share/man
 DOCDIR=$(DESTDIR)$(PREFIX)/share/doc/bup
 BINDIR=$(DESTDIR)$(PREFIX)/bin
 LIBDIR=$(DESTDIR)$(PREFIX)/lib/bup
+
 install: all
-	$(INSTALL) -d $(MANDIR)/man1 $(DOCDIR) $(BINDIR) \
+	$(INSTALL) -d $(BINDIR) \
 		$(LIBDIR)/bup $(LIBDIR)/cmd \
 		$(LIBDIR)/web $(LIBDIR)/web/static
-	[ ! -e Documentation/.docs-available ] || \
-	  $(INSTALL) -m 0644 \
-		Documentation/*.1 \
-		$(MANDIR)/man1
-	[ ! -e Documentation/.docs-available ] || \
-	  $(INSTALL) -m 0644 \
-		Documentation/*.html \
-		$(DOCDIR)
+	test -z "$(man_roff)" || install -d $(MANDIR)/man1
+	test -z "$(man_roff)" || $(INSTALL) -m 0644 $(man_roff) $(MANDIR)/man1
+	test -z "$(man_html)" || install -d $(DOCDIR)
+	test -z "$(man_html)" || $(INSTALL) -m 0644 $(man_html) $(DOCDIR)
 	$(call install-python-bin,bup,"$(BINDIR)/bup")
 	set -e; \
 	for cmd in $$(ls cmd/bup-* | grep -v cmd/bup-python); do \
@@ -199,6 +206,25 @@ cmd/bup-%: cmd/%-cmd.py
 cmd/bup-%: cmd/%-cmd.sh
 	rm -f $@
 	ln -s $*-cmd.sh $@
+
+.PHONY: Documentation/all
+Documentation/all: $(man_roff) $(man_html)
+
+Documentation/substvars: $(bup_deps)
+	echo "s,%BUP_VERSION%,$$(./bup version --tag),g" > $@
+	echo "s,%BUP_DATE%,$$(./bup version --date),g" >> $@
+
+Documentation/%.1: Documentation/%.md Documentation/substvars
+	$(pf); sed -f Documentation/substvars $< \
+	  | $(PANDOC) -s -r markdown -w man -o $@
+
+Documentation/%.html: Documentation/%.md Documentation/substvars
+	$(pf); sed -f Documentation/substvars $< \
+	  | $(PANDOC) -s -r markdown -w html -o $@
+
+.PHONY: Documentation/clean
+Documentation/clean:
+	cd Documentation && rm -f *~ .*~ *.[0-9] *.html substvars
 
 # update the local 'man' and 'html' branches with pregenerated output files, for
 # people who don't have pandoc (and maybe to aid in google searches or something)
