@@ -1,5 +1,10 @@
 
 SHELL := bash
+.DEFAULT_GOAL := all
+
+# See config/config.vars.in (sets bup_python, among other things)
+include config/config.vars
+
 pf := set -o pipefail
 
 define isok
@@ -37,7 +42,15 @@ endif
 initial_setup := $(shell ./configure-version --update $(isok))
 initial_setup := $(call shout,$(initial_setup),Version configuration failed))
 
-bup_deps := bup lib/bup/_version.py lib/bup/_helpers$(SOEXT) cmds
+config/config.vars: configure config/configure config/configure.inc \
+  $(wildcard config/*.in)
+	./configure
+
+bup_cmds := cmd/bup-python\
+  $(patsubst cmd/%-cmd.py,cmd/bup-%,$(wildcard cmd/*-cmd.py)) \
+  $(patsubst cmd/%-cmd.sh,cmd/bup-%,$(wildcard cmd/*-cmd.sh))
+
+bup_deps := bup lib/bup/_version.py lib/bup/_helpers$(SOEXT) $(bup_cmds)
 
 all: $(bup_deps) Documentation/all $(current_sampledata)
 
@@ -49,12 +62,9 @@ Documentation/all: $(bup_deps)
 $(current_sampledata):
 	t/configure-sampledata --setup
 
-# This needs to be a delayed assignment
-PYTHON = $(shell cmd/bup-python -c 'import sys; print sys.executable')
-
 define install-python-bin
   set -e; \
-  sed -e '1 s|.*|#!$(PYTHON)|; 2,/^# end of bup preamble$$/d' $1 > $2; \
+  sed -e '1 s|.*|#!$(bup_python)|; 2,/^# end of bup preamble$$/d' $1 > $2; \
   chmod 0755 $2;
 endef
 
@@ -99,16 +109,14 @@ install: all
 %/clean:
 	$(MAKE) -C $* clean
 
-config/config.h: config/Makefile config/configure config/configure.inc \
-		$(wildcard config/*.in)
-	cd config && $(MAKE) config.h
+config/config.h: config/config.vars
 
 lib/bup/_helpers$(SOEXT): \
 		config/config.h \
 		lib/bup/bupsplit.c lib/bup/_helpers.c lib/bup/csetup.py
 	@rm -f $@
 	cd lib/bup && \
-	LDFLAGS="$(LDFLAGS)" CFLAGS="$(CFLAGS)" $(PYTHON) csetup.py build
+	LDFLAGS="$(LDFLAGS)" CFLAGS="$(CFLAGS)" "$(bup_python)" csetup.py build
 	cp lib/bup/build/*/_helpers$(SOEXT) lib/bup/
 
 lib/bup/_version.py:
@@ -126,7 +134,7 @@ runtests: runtests-python runtests-cmdline
 # https://groups.google.com/forum/#!topic/bup-list/9ke-Mbp10Q0
 runtests-python: all t/tmp
 	$(pf); cd $$(pwd -P); TMPDIR="$(test_tmp)" \
-	  $(PYTHON) wvtest.py t/t*.py lib/*/t/t*.py 2>&1 \
+	  "$(bup_python)" wvtest.py t/t*.py lib/*/t/t*.py 2>&1 \
 	    | tee -a t/tmp/test-log/$$$$.log
 
 cmdline_tests := \
@@ -173,18 +181,16 @@ stupid:
 test: all
 	if test -e t/tmp/test-log; then rm -r t/tmp/test-log; fi
 	mkdir -p t/tmp/test-log
-	./wvtest watch --no-counts \
-	  $(MAKE) PYTHON=$(PYTHON) runtests-python runtests-cmdline
+	./wvtest watch --no-counts $(MAKE) runtests-python runtests-cmdline
 	./wvtest report t/tmp/test-log/*.log
 
 check: test
 
-cmd/python-cmd.sh: config/configure config/configure.inc
-	./configure
-
-cmds: \
-    $(patsubst cmd/%-cmd.py,cmd/bup-%,$(wildcard cmd/*-cmd.py)) \
-    $(patsubst cmd/%-cmd.sh,cmd/bup-%,$(wildcard cmd/*-cmd.sh))
+cmd/python-cmd.sh: config/config.vars Makefile
+	printf "#!/bin/sh\nexec %q \"\$$@\"" "$(bup_python)" \
+	  >> cmd/python-cmd.sh.$$PPID.tmp
+	chmod u+x cmd/python-cmd.sh.$$PPID.tmp
+	mv cmd/python-cmd.sh.$$PPID.tmp cmd/python-cmd.sh
 
 cmd/bup-%: cmd/%-cmd.py
 	rm -f $@

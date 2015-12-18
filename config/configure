@@ -64,10 +64,7 @@ test -z "$bup_python" && bup_python="$(bup_find_prog python '')"
 if test -z "$bup_python"; then
     AC_FAIL "ERROR: unable to find python"
 else
-    echo "#!/bin/sh" > ../cmd/python-cmd.sh
-    printf "exec %q \"\$@\"" "$bup_python" >> ../cmd/python-cmd.sh
-    chmod u+x ../cmd/python-cmd.sh
-    cd ../cmd && ln -sf python-cmd.sh bup-python
+    AC_SUB bup_python "$bup_python"
 fi
 
 if test -z "$(bup_find_prog git '')"; then
