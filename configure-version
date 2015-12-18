@@ -1,28 +1,46 @@
 #!/usr/bin/env bash
 
-set -eo pipefail
+set -euo pipefail
 
 top="$(pwd)"
-vpy=lib/bup/_version.py
-readonly top vpy
+readonly top
 
 usage()
 {
     echo 'Usage: ./configure-version [--update | --clean]'
 }
 
+update-vpy()
+{
+    declare -r vpy=lib/bup/_version.py
+    rm -f $vpy.tmp-$$
+    local hash date desc
+    hash=$(git log -1 --pretty=format:%H)
+    date=$(git log -1 --pretty=format:%ci)
+    desc=$(git describe --always --match="[0-9]*")
+    cat > $vpy.tmp-$$ <<-EOF
+	COMMIT='$hash'
+	NAMES='(tag: bup-$desc)'
+	DATE='$date'
+	EOF
+    if ! test -e $vpy || ! cmp -s $vpy $vpy.tmp-$$; then
+        mv $vpy.tmp-$$ $vpy;
+    fi
+    rm -f $vpy.tmp-$$
+}
+
 if test "$#" -ne 1; then
     usage 1>&2; exit 1
 fi
 
+if ! test -f lib/bup/bupsplit.c; then
+    echo 'error: cannot find bup source tree' 1>&2
+    exit 1
+fi
+
 case "$1" in
     --update)
-        rm -f $vpy.tmp-$$
-        ./format-subst.pl $vpy.pre > $vpy.tmp-$$
-        if ! test -e $vpy || ! cmp -s $vpy $vpy.tmp-$$; then
-            mv $vpy.tmp-$$ $vpy;
-        fi
-        rm -f $vpy.tmp-$$
+        update-vpy
         ;;
     --clean)
 	rm -f lib/bup/_version.py lib/bup/_version.pyc lib/bup/_version.py.tmp-*
