@@ -121,8 +121,11 @@ t/tmp:
 
 runtests: runtests-python runtests-cmdline
 
+# The "pwd -P" here may not be appropriate in the long run, but we
+# need it until we settle the relevant drecurse/exclusion questions:
+# https://groups.google.com/forum/#!topic/bup-list/9ke-Mbp10Q0
 runtests-python: all t/tmp
-	$(pf); TMPDIR="$(test_tmp)" \
+	$(pf); cd $$(pwd -P); TMPDIR="$(test_tmp)" \
 	  $(PYTHON) wvtest.py t/t*.py lib/*/t/t*.py 2>&1 \
 	    | tee -a t/tmp/test-log/$$$$.log
 
@@ -155,8 +158,11 @@ cmdline_tests := \
   t/test.sh
 
 # For parallel runs.
+# The "pwd -P" here may not be appropriate in the long run, but we
+# need it until we settle the relevant drecurse/exclusion questions:
+# https://groups.google.com/forum/#!topic/bup-list/9ke-Mbp10Q0
 tmp-target-run-test%: all t/tmp
-	$(pf); TMPDIR="$(test_tmp)" \
+	$(pf); cd $$(pwd -P); TMPDIR="$(test_tmp)" \
 	  t/test$* 2>&1 | tee -a t/tmp/test-log/$$$$.log
 
 runtests-cmdline: $(subst t/test,tmp-target-run-test,$(cmdline_tests))
