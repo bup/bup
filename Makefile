@@ -110,11 +110,6 @@ install: all
 	$(INSTALL) -pm 0644 \
 		lib/web/*.html \
 		$(LIBDIR)/web/
-%/all:
-	$(MAKE) -C $* all
-
-%/clean:
-	$(MAKE) -C $* clean
 
 config/config.h: config/config.vars
 
@@ -256,7 +251,9 @@ import-docs: Documentation/clean
 	$(pf); git archive origin/html | (cd Documentation && tar -xvf -)
 	$(pf); git archive origin/man | (cd Documentation && tar -xvf -)
 
-clean: Documentation/clean config/clean
+clean: Documentation/clean
+	cd config && rm -f *~ .*~ \
+	  ${CONFIGURE_DETRITUS} ${CONFIGURE_FILES} ${GENERATED_FILES}
 	rm -f *.o lib/*/*.o *.so lib/*/*.so *.dll lib/*/*.dll *.exe \
 		.*~ *~ */*~ lib/*/*~ lib/*/*/*~ \
 		*.pyc */*.pyc lib/*/*.pyc lib/*/*/*.pyc \
