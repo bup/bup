@@ -15,6 +15,5 @@ memtest
 /build
 *.swp
 nbproject
-/t/sampledata/[bc]
-/t/sampledata/etc
+/t/sampledata/var/
 /t/tmp/
