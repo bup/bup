@@ -44,7 +44,7 @@ initial_setup := $(call shout,$(initial_setup),Version configuration failed))
 
 config/config.vars: configure config/configure config/configure.inc \
   $(wildcard config/*.in)
-	./configure
+	MAKE="$(MAKE)" ./configure
 
 bup_cmds := cmd/bup-python\
   $(patsubst cmd/%-cmd.py,cmd/bup-%,$(wildcard cmd/*-cmd.py)) \
