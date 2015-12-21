@@ -406,6 +406,11 @@ class Reader:
     def __iter__(self):
         return self.iter()
 
+    def find(self, name):
+        return next((e for e in self.iter(name, wantrecurse=lambda x : True)
+                     if e.name == name),
+                    None)
+
     def exists(self):
         return self.m
 
@@ -422,11 +427,20 @@ class Reader:
 
     def filter(self, prefixes, wantrecurse=None):
         for (rp, path) in reduce_paths(prefixes):
+            any_entries = False
             for e in self.iter(rp, wantrecurse=wantrecurse):
+                any_entries = True
                 assert(e.name.startswith(rp))
                 name = path + e.name[len(rp):]
                 yield (name, e)
-
+            if not any_entries:
+                # Always return at least the top for each prefix.
+                # Otherwise something like "save x/y" will produce
+                # nothing if x is up to date.
+                pe = self.find(rp)
+                assert(pe)
+                name = path + pe.name[len(rp):]
+                yield (name, pe)
 
 # FIXME: this function isn't very generic, because it splits the filename
 # in an odd way and depends on a terminating '/' to indicate directories.

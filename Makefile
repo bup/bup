@@ -165,6 +165,7 @@ cmdline_tests := \
   t/test-restore-map-owner.sh \
   t/test-restore-single-file.sh \
   t/test-rm-between-index-and-save.sh \
+  t/test-save-with-valid-parent.sh \
   t/test-sparse-files.sh \
   t/test-command-without-init-fails.sh \
   t/test-redundant-saves.sh \
