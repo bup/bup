@@ -4,6 +4,18 @@
 
 set -o pipefail
 
+# Windows makes *everything* executable unless extraordinary measures are taken.
+case $OSTYPE in
+    cygwin)
+        cygexec='*'
+        cygmod='x'
+        ;;
+    *)
+        cygexec=''
+        cygmod='-'
+        ;;
+esac
+
 top="$(WVPASS pwd)" || exit $?
 tmpdir="$(WVPASS wvmktempdir)" || exit $?
 
@@ -87,7 +99,7 @@ symlink"
 
 WVPASSEQ "$(WVPASS bup ls -F src/latest/"$tmpdir"/src)" "executable*
 fifo|
-file
+file${cygexec}
 socket=
 symlink@"
 
@@ -156,17 +168,17 @@ print grp.getgrgid(os.stat("src").st_gid)[0]')" || exit $?
 WVPASSEQ "$(bup ls -l src/latest"$tmpdir"/src | tr -s ' ' ' ')" \
 "-rwx------ $user/$group 0 1969-07-20 20:18 executable
 prw------- $user/$group 0 1969-07-20 20:18 fifo
--rw------- $user/$group 1024 1969-07-20 20:18 file
+-rw${cygmod}------ $user/$group 1024 1969-07-20 20:18 file
 srwx------ $user/$group 0 1969-07-20 20:18 socket
 $symlink_mode $user/$group $symlink_size $symlink_date symlink -> file"
 
 WVPASSEQ "$(bup ls -la src/latest"$tmpdir"/src | tr -s ' ' ' ')" \
 "drwx------ $user/$group 0 1969-07-20 20:18 .
 drwx------ $user/$group 0 1969-07-20 20:18 ..
--rw------- $user/$group 0 1969-07-20 20:18 .dotfile
+-rw${cygmod}------ $user/$group 0 1969-07-20 20:18 .dotfile
 -rwx------ $user/$group 0 1969-07-20 20:18 executable
 prw------- $user/$group 0 1969-07-20 20:18 fifo
--rw------- $user/$group 1024 1969-07-20 20:18 file
+-rw${cygmod}------ $user/$group 1024 1969-07-20 20:18 file
 srwx------ $user/$group 0 1969-07-20 20:18 socket
 $symlink_mode $user/$group $symlink_size $symlink_date symlink -> file"
 
@@ -174,28 +186,28 @@ WVPASSEQ "$(bup ls -lA src/latest"$tmpdir"/src | tr -s ' ' ' ')" \
 "-rw------- $user/$group 0 1969-07-20 20:18 .dotfile
 -rwx------ $user/$group 0 1969-07-20 20:18 executable
 prw------- $user/$group 0 1969-07-20 20:18 fifo
--rw------- $user/$group 1024 1969-07-20 20:18 file
+-rw${cygmod}------ $user/$group 1024 1969-07-20 20:18 file
 srwx------ $user/$group 0 1969-07-20 20:18 socket
 $symlink_mode $user/$group $symlink_size $symlink_date symlink -> file"
 
 WVPASSEQ "$(bup ls -lF src/latest"$tmpdir"/src | tr -s ' ' ' ')" \
 "-rwx------ $user/$group 0 1969-07-20 20:18 executable*
 prw------- $user/$group 0 1969-07-20 20:18 fifo|
--rw------- $user/$group 1024 1969-07-20 20:18 file
+-rw${cygmod}------ $user/$group 1024 1969-07-20 20:18 file${cygexec}
 srwx------ $user/$group 0 1969-07-20 20:18 socket=
 $symlink_mode $user/$group $symlink_size $symlink_date symlink@ -> file"
 
 WVPASSEQ "$(bup ls -l --file-type src/latest"$tmpdir"/src | tr -s ' ' ' ')" \
 "-rwx------ $user/$group 0 1969-07-20 20:18 executable
 prw------- $user/$group 0 1969-07-20 20:18 fifo|
--rw------- $user/$group 1024 1969-07-20 20:18 file
+-rw${cygmod}------ $user/$group 1024 1969-07-20 20:18 file
 srwx------ $user/$group 0 1969-07-20 20:18 socket=
 $symlink_mode $user/$group $symlink_size $symlink_date symlink@ -> file"
 
 WVPASSEQ "$(bup ls -ln src/latest"$tmpdir"/src | tr -s ' ' ' ')" \
 "-rwx------ $uid/$gid 0 1969-07-20 20:18 executable
 prw------- $uid/$gid 0 1969-07-20 20:18 fifo
--rw------- $uid/$gid 1024 1969-07-20 20:18 file
+-rw${cygmod}------ $uid/$gid 1024 1969-07-20 20:18 file
 srwx------ $uid/$gid 0 1969-07-20 20:18 socket
 $symlink_mode $uid/$gid $symlink_size $symlink_date symlink -> file"
 
@@ -217,7 +229,7 @@ symlink_date_central="$(echo "$symlink_date_central" \
 WVPASSEQ "$(bup ls -ln src/latest"$tmpdir"/src | tr -s ' ' ' ')" \
 "-rwx------ $uid/$gid 0 1969-07-20 15:18 executable
 prw------- $uid/$gid 0 1969-07-20 15:18 fifo
--rw------- $uid/$gid 1024 1969-07-20 15:18 file
+-rw${cygmod}------ $uid/$gid 1024 1969-07-20 15:18 file
 srwx------ $uid/$gid 0 1969-07-20 15:18 socket
 $symlink_mode $uid/$gid $symlink_size $symlink_date_central symlink -> file"
 unset TZ
