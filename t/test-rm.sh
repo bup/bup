@@ -7,7 +7,7 @@ set -o pipefail
 # Perhaps this should check the rsync version instead, and not sure if
 # it's just darwin, or all of these.
 case $OSTYPE in
-    cygwin|darwin|netbsd)
+    darwin|netbsd)
         rsx=''
         ;;
     *)
@@ -39,7 +39,7 @@ WVPASS "$top"/t/sync-tree bup/ bup-baseline/
 # FIXME: test -n
 WVPASS bup tick # Make sure we always get the timestamp changes below
 WVPASS bup rm --unsafe /src
-WVPASSEQ "$(compare-trees bup/ bup-baseline/)" \
+WVPASSEQ "$(compare-trees bup/ bup-baseline/ | sort)" \
 "*deleting   logs/refs/heads/src
 *deleting   refs/heads/src
 .d..t...${rsx} logs/refs/heads/
@@ -58,7 +58,7 @@ WVPASS bup save -n src-3 src
 WVPASS "$top"/t/sync-tree bup/ bup-baseline/
 WVPASS bup tick # Make sure we always get the timestamp changes below
 WVPASS bup rm --unsafe /src
-WVPASSEQ "$(compare-trees bup/ bup-baseline/)" \
+WVPASSEQ "$(compare-trees bup/ bup-baseline/ | sort)" \
 "*deleting   logs/refs/heads/src
 *deleting   refs/heads/src
 .d..t...${rsx} logs/refs/heads/
@@ -77,11 +77,11 @@ WVPASS bup save -n src-5 src
 WVPASS "$top"/t/sync-tree bup/ bup-baseline/
 WVPASS bup tick # Make sure we always get the timestamp changes below
 WVPASS bup rm --unsafe /src-2 /src-4
-WVPASSEQ "$(compare-trees bup/ bup-baseline/)" \
-"*deleting   logs/refs/heads/src-4
-*deleting   logs/refs/heads/src-2
-*deleting   refs/heads/src-4
+WVPASSEQ "$(compare-trees bup/ bup-baseline/ | sort)" \
+"*deleting   logs/refs/heads/src-2
+*deleting   logs/refs/heads/src-4
 *deleting   refs/heads/src-2
+*deleting   refs/heads/src-4
 .d..t...${rsx} logs/refs/heads/
 .d..t...${rsx} refs/heads/"
 
@@ -92,17 +92,17 @@ WVPASS mv bup-baseline bup
 WVPASS "$top"/t/sync-tree bup/ bup-baseline/
 WVPASS bup tick # Make sure we always get the timestamp changes below
 WVPASS bup rm --unsafe /src /src-2 /src-3 /src-4 /src-5
-WVPASSEQ "$(compare-trees bup/ bup-baseline/)" \
-"*deleting   logs/refs/heads/src-5
-*deleting   logs/refs/heads/src-4
-*deleting   logs/refs/heads/src-3
+WVPASSEQ "$(compare-trees bup/ bup-baseline/ | sort)" \
+"*deleting   logs/refs/heads/src
 *deleting   logs/refs/heads/src-2
-*deleting   logs/refs/heads/src
-*deleting   refs/heads/src-5
-*deleting   refs/heads/src-4
-*deleting   refs/heads/src-3
-*deleting   refs/heads/src-2
+*deleting   logs/refs/heads/src-3
+*deleting   logs/refs/heads/src-4
+*deleting   logs/refs/heads/src-5
 *deleting   refs/heads/src
+*deleting   refs/heads/src-2
+*deleting   refs/heads/src-3
+*deleting   refs/heads/src-4
+*deleting   refs/heads/src-5
 .d..t...${rsx} logs/refs/heads/
 .d..t...${rsx} refs/heads/"
 
@@ -119,7 +119,7 @@ WVPASS "$top"/t/sync-tree bup/ bup-baseline/
 WVPASS bup tick # Make sure we always get the timestamp changes below
 WVFAIL bup rm --unsafe /src/latest
 WVPASS bup rm --unsafe /src/"$save1"
-WVPASSEQ "$(compare-trees bup/ bup-baseline/)" \
+WVPASSEQ "$(compare-trees bup/ bup-baseline/ | sort)" \
 "*deleting   logs/refs/heads/src
 *deleting   refs/heads/src
 .d..t...${rsx} logs/refs/heads/
@@ -136,15 +136,15 @@ verify-changes-caused-by-rewriting-save()
     new_paths="$(WVPASS comm -13 "$tmpdir/before" "$tmpdir/after")" || exit $?
     new_idx="$(echo "$new_paths" | WVPASS grep -E '^\./objects/pack/pack-.*\.idx$' | cut -b 3-)"
     new_pack="$(echo "$new_paths" | WVPASS grep -E '^\./objects/pack/pack-.*\.pack$' | cut -b 3-)"
-    WVPASSEQ "$(compare-trees "$after/" "$before/")" \
-">fcst...${rsx} logs/refs/heads/src
-.d..t...${rsx} objects/
+    WVPASSEQ "$(compare-trees "$after/" "$before/" | LC_ALL=C sort)" \
+".d..t...${rsx} objects/
 .d..t...${rsx} objects/pack/
->fcst...${rsx} objects/pack/bup.bloom
+.d..t...${rsx} refs/heads/
 >f+++++++++ $new_idx
 >f+++++++++ $new_pack
-.d..t...${rsx} refs/heads/
->fc.t...${rsx} refs/heads/src"
+>fc.t...${rsx} refs/heads/src
+>fcst...${rsx} logs/refs/heads/src
+>fcst...${rsx} objects/pack/bup.bloom"
     WVPASS rm -rf "$tmpdir"
 )
 
@@ -210,10 +210,10 @@ WVSTART "rm /foo/BAR (last of many)"
 WVPASS "$top"/t/sync-tree bup-baseline/ bup/
 victim="$(WVPASS bup ls src | tail -n 2 | head -n 1)" || exit $?
 WVPASS bup rm --unsafe -vv /src/"$victim"
-WVPASSEQ "$(compare-trees bup/ bup-baseline/)" \
-">fcst...${rsx} logs/refs/heads/src
-.d..t...${rsx} refs/heads/
->fc.t...${rsx} refs/heads/src"
+WVPASSEQ "$(compare-trees bup/ bup-baseline/ | LC_ALL=C sort)" \
+".d..t...${rsx} refs/heads/
+>fc.t...${rsx} refs/heads/src
+>fcst...${rsx} logs/refs/heads/src"
 WVPASSEQ 2 $(git rev-list src | wc -l)
 WVPASSEQ "$(commit-hash-n 1 bup src)" "$(commit-hash-n 1 bup-baseline src)"
 WVPASSEQ "$(commit-hash-n 2 bup src)" "$(commit-hash-n 2 bup-baseline src)"
