@@ -79,7 +79,7 @@ man_roff := $(patsubst %.md,%.1,$(man_md))
 man_html := $(patsubst %.md,%.html,$(man_md))
 
 INSTALL=install
-PREFIX=/usr
+PREFIX=/usr/local
 MANDIR=$(DESTDIR)$(PREFIX)/share/man
 DOCDIR=$(DESTDIR)$(PREFIX)/share/doc/bup
 BINDIR=$(DESTDIR)$(PREFIX)/bin
