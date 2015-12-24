@@ -67,7 +67,8 @@ WVPASS bup save -n src src
 WVPASS mkdir src-restore
 WVPASS bup restore -C src-restore "/src/latest$(pwd)/"
 WVPASS test -d src-restore/src
-WVPASSEQ "$(cd src-restore/src && find . -not -name lost+found | sort)" ".
+WVPASSEQ "$(cd src-restore/src && find . -not -name lost+found | LC_ALL=C sort)" \
+".
 ./1
 ./mnt"
 

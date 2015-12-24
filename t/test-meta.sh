@@ -417,13 +417,13 @@ WVSTART 'meta --no-recurse'
     WVPASS mkdir src/foo
     WVPASS touch src/foo/{1,2,3}
     WVPASS bup meta -cf src.meta src
-    WVPASSEQ "$(LC_ALL=C; bup meta -tf src.meta | sort)" "src/
+    WVPASSEQ "$(bup meta -tf src.meta | LC_ALL=C sort)" "src/
 src/foo/
 src/foo/1
 src/foo/2
 src/foo/3"
     WVPASS bup meta --no-recurse -cf src.meta src
-    WVPASSEQ "$(LC_ALL=C; bup meta -tf src.meta | sort)" "src/"
+    WVPASSEQ "$(bup meta -tf src.meta | LC_ALL=C sort)" "src/"
     WVPASS rm -r "$tmpdir"
 ) || exit $?
 
