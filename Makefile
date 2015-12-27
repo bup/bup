@@ -251,14 +251,13 @@ import-docs: Documentation/clean
 	$(pf); git archive origin/html | (cd Documentation && tar -xvf -)
 	$(pf); git archive origin/man | (cd Documentation && tar -xvf -)
 
-clean: Documentation/clean
+clean: Documentation/clean cmd/bup-python
 	cd config && rm -f *~ .*~ \
 	  ${CONFIGURE_DETRITUS} ${CONFIGURE_FILES} ${GENERATED_FILES}
 	rm -f *.o lib/*/*.o *.so lib/*/*.so *.dll lib/*/*.dll *.exe \
 		.*~ *~ */*~ lib/*/*~ lib/*/*/*~ \
 		*.pyc */*.pyc lib/*/*.pyc lib/*/*/*.pyc \
-		bup bup-* cmd/bup-* \
-		cmd/python-cmd.sh \
+		bup bup-* \
 		randomgen memtest \
 		testfs.img lib/bup/t/testfs.img
 	if test -e t/mnt; then t/cleanup-mounts-under t/mnt; fi
@@ -271,3 +270,5 @@ clean: Documentation/clean
 	if test -e t/tmp; then t/force-delete t/tmp; fi
 	./configure-version --clean
 	t/configure-sampledata --clean
+        # Remove last so that cleanup tools can depend on it
+	rm -f cmd/bup-* cmd/python-cmd.sh
