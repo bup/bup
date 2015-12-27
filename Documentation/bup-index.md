@@ -183,9 +183,10 @@ does, due to the accommodations described above.
     (may be repeated).  Ignore completely empty lines.
 
 \--no-check-device
-:   don't mark a an entry invalid if the device number (stat(2)
-    st_dev) changes.  This can be useful when indexing remote,
-    automounted, or (LVM) snapshot filesystems.
+:   don't mark an entry invalid if the device number (stat(2) st_dev)
+    changes.  This can be useful when indexing remote, automounted, or
+    snapshot filesystems (LVM, Btrfs, etc.), where the device number
+    isn't fixed.
 
 -v, \--verbose
 :   increase log output during update (can be used more
