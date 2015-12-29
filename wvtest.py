@@ -226,4 +226,5 @@ if __name__ == '__main__':
     import wvtest as _wvtestmod
     sys.modules['wvtest'] = _wvtestmod
     sys.modules['wvtest.wvtest'] = _wvtestmod
+    wvtest = _wvtestmod
     wvtest_main(sys.argv[1:])
