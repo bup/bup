@@ -323,23 +323,23 @@ class Metadata:
 
         if stat.S_ISREG(self.mode):
             assert(self._recognized_file_type())
-            fd = os.open(path, os.O_CREAT|os.O_WRONLY|os.O_EXCL, 0600)
+            fd = os.open(path, os.O_CREAT|os.O_WRONLY|os.O_EXCL, 0o600)
             os.close(fd)
         elif stat.S_ISDIR(self.mode):
             assert(self._recognized_file_type())
-            os.mkdir(path, 0700)
+            os.mkdir(path, 0o700)
         elif stat.S_ISCHR(self.mode):
             assert(self._recognized_file_type())
-            os.mknod(path, 0600 | stat.S_IFCHR, self.rdev)
+            os.mknod(path, 0o600 | stat.S_IFCHR, self.rdev)
         elif stat.S_ISBLK(self.mode):
             assert(self._recognized_file_type())
-            os.mknod(path, 0600 | stat.S_IFBLK, self.rdev)
+            os.mknod(path, 0o600 | stat.S_IFBLK, self.rdev)
         elif stat.S_ISFIFO(self.mode):
             assert(self._recognized_file_type())
-            os.mknod(path, 0600 | stat.S_IFIFO)
+            os.mknod(path, 0o600 | stat.S_IFIFO)
         elif stat.S_ISSOCK(self.mode):
             try:
-                os.mknod(path, 0600 | stat.S_IFSOCK)
+                os.mknod(path, 0o600 | stat.S_IFSOCK)
             except OSError, e:
                 if e.errno in (errno.EINVAL, errno.EPERM):
                     s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
@@ -352,7 +352,7 @@ class Metadata:
                 # on MacOS, symlink() permissions depend on umask, and there's
                 # no way to chown a symlink after creating it, so we have to
                 # be careful here!
-                oldumask = os.umask((self.mode & 0777) ^ 0777)
+                oldumask = os.umask((self.mode & 0o777) ^ 0o777)
                 try:
                     os.symlink(self.symlink_target, path)
                 finally:

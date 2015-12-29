@@ -172,7 +172,7 @@ def write_file_content(fullname, n):
 
 
 def write_file_content_sparsely(fullname, n):
-    outfd = os.open(fullname, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0600)
+    outfd = os.open(fullname, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
     try:
         trailing_zeros = 0;
         for b in chunkyreader(n.open()):

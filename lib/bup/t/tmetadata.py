@@ -41,7 +41,7 @@ def setup_testfs():
     ex('mount', '-o', 'loop,acl,user_xattr', 'testfs.img', 'testfs')
     # Hide, so that tests can't create risks.
     os.chown('testfs', 0, 0)
-    os.chmod('testfs', 0700)
+    os.chmod('testfs', 0o700)
     return True
 
 
