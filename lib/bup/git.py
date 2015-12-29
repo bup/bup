@@ -10,7 +10,8 @@ from itertools import islice
 from bup import _helpers, path, midx, bloom, xstat
 from bup.helpers import (Sha1, add_error, chunkyreader, debug1, debug2,
                          fdatasync,
-                         hostname, log, merge_iter, mmap_read, mmap_readwrite,
+                         hostname, localtime, log, merge_iter,
+                         mmap_read, mmap_readwrite,
                          progress, qprogress, unlink, username, userfullname,
                          utc_offset_str)
 
@@ -951,10 +952,11 @@ def update_ref(refname, newval, oldval, repo_dir=None):
     _git_wait('git update-ref', p)
 
 
-def delete_ref(refname):
-    """Delete a repository reference."""
+def delete_ref(refname, oldvalue=None):
+    """Delete a repository reference (see git update-ref(1))."""
     assert(refname.startswith('refs/'))
-    p = subprocess.Popen(['git', 'update-ref', '-d', refname],
+    oldvalue = [] if not oldvalue else [oldvalue]
+    p = subprocess.Popen(['git', 'update-ref', '-d', refname] + oldvalue,
                          preexec_fn = _gitenv())
     _git_wait('git update-ref', p)
 
