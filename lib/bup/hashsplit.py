@@ -1,4 +1,4 @@
-import math, os
+import io, math, os
 
 from bup import _helpers, helpers
 from bup.helpers import sc_page_size
@@ -95,13 +95,17 @@ def readfile_iter(files, progress=None):
         b = ''
         fd = rpr = rstart = rlen = None
         if _fmincore and hasattr(f, 'fileno'):
-            fd = f.fileno()
-            mcore = _fmincore(fd)
-            if mcore:
-                max_chunk = max(1, (8 * 1024 * 1024) / sc_page_size)
-                rpr = _nonresident_page_regions(mcore, helpers.MINCORE_INCORE,
-                                                max_chunk)
-                rstart, rlen = next(rpr, (None, None))
+            try:
+                fd = f.fileno()
+            except io.UnsupportedOperation:
+                pass
+            if fd:
+                mcore = _fmincore(fd)
+                if mcore:
+                    max_chunk = max(1, (8 * 1024 * 1024) / sc_page_size)
+                    rpr = _nonresident_page_regions(mcore, helpers.MINCORE_INCORE,
+                                                    max_chunk)
+                    rstart, rlen = next(rpr, (None, None))
         while 1:
             if progress:
                 progress(filenum, len(b))

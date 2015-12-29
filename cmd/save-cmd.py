@@ -5,8 +5,8 @@ exec "$bup_python" "$0" ${1+"$@"}
 """
 # end of bup preamble
 import sys, stat, time, math
-from cStringIO import StringIO
 from errno import EACCES
+from io import BytesIO
 
 from bup import hashsplit, git, options, index, client, metadata, hlinkdb
 from bup.helpers import *
@@ -141,7 +141,7 @@ def _pop(force_tree, dir_metadata=None):
             metalist = [('', dir_metadata)] + metalist[1:]
         sorted_metalist = sorted(metalist, key = lambda x : x[0])
         metadata = ''.join([m[1].encode() for m in sorted_metalist])
-        metadata_f = StringIO(metadata)
+        metadata_f = BytesIO(metadata)
         mode, id = hashsplit.split_to_blob_or_tree(w.new_blob, w.new_tree,
                                                    [metadata_f],
                                                    keep_boundaries=False)

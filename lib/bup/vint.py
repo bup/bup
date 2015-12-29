@@ -5,7 +5,7 @@
 # This code is covered under the terms of the GNU Library General
 # Public License as described in the bup LICENSE file.
 
-from cStringIO import StringIO
+from io import BytesIO
 
 # Variable length integers are encoded as vints -- see jakarta lucene.
 
@@ -113,7 +113,7 @@ def skip_bvec(port):
 def pack(types, *args):
     if len(types) != len(args):
         raise Exception('number of arguments does not match format string')
-    port = StringIO()
+    port = BytesIO()
     for (type, value) in zip(types, args):
         if type == 'V':
             write_vuint(port, value)
@@ -128,7 +128,7 @@ def pack(types, *args):
 
 def unpack(types, data):
     result = []
-    port = StringIO(data)
+    port = BytesIO(data)
     for type in types:
         if type == 'V':
             result.append(read_vuint(port))

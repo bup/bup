@@ -4,8 +4,10 @@
 #
 # This code is covered under the terms of the GNU Library General
 # Public License as described in the bup LICENSE file.
+
+from io import BytesIO
 import errno, os, sys, stat, time, pwd, grp, socket, struct
-from cStringIO import StringIO
+
 from bup import vint, xstat
 from bup.drecurse import recursive_dirlist
 from bup.helpers import add_error, mkdirp, log, is_superuser, format_filesize
@@ -646,7 +648,7 @@ class Metadata:
 
     def _load_linux_xattr_rec(self, file):
         data = vint.read_bvec(file)
-        memfile = StringIO(data)
+        memfile = BytesIO(data)
         result = []
         for i in range(vint.read_vuint(memfile)):
             key = vint.read_bvec(memfile)
@@ -746,7 +748,7 @@ class Metadata:
         vint.write_vuint(port, _rec_tag_end)
 
     def encode(self, include_path=True):
-        port = StringIO()
+        port = BytesIO()
         self.write(port, include_path)
         return port.getvalue()
 

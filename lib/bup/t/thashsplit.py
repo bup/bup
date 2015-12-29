@@ -1,4 +1,4 @@
-from cStringIO import StringIO
+from io import BytesIO
 
 from wvtest import *
 
@@ -113,11 +113,11 @@ def test_fanout_behaviour():
     # Return a byte which will be split with a level of n
     sb = lambda n: chr(basebits + n)
 
-    split_never = StringIO(z(16))
-    split_first = StringIO(z(1) + sb(3) + z(14))
-    split_end   = StringIO(z(13) + sb(1) + z(2))
-    split_many  = StringIO(sb(1) + z(3) + sb(2) + z(4) +
-                            sb(0) + z(4) + sb(5) + z(1))
+    split_never = BytesIO(z(16))
+    split_first = BytesIO(z(1) + sb(3) + z(14))
+    split_end   = BytesIO(z(13) + sb(1) + z(2))
+    split_many  = BytesIO(sb(1) + z(3) + sb(2) + z(4) +
+                          sb(0) + z(4) + sb(5) + z(1))
     WVPASSEQ(levels(split_never), [(4, 0), (4, 0), (4, 0), (4, 0)])
     WVPASSEQ(levels(split_first), [(2, 3), (4, 0), (4, 0), (4, 0), (2, 0)])
     WVPASSEQ(levels(split_end), [(4, 0), (4, 0), (4, 0), (2, 1), (2, 0)])
