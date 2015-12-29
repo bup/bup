@@ -125,7 +125,7 @@ if opt.git_ids:
             try:
                 it = cp.get(line.strip())
                 next(it, None)  # skip the file type
-            except KeyError, e:
+            except KeyError as e:
                 add_error('error: %s' % e)
                 continue
             yield IterToFile(it)

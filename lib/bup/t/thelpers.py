@@ -121,7 +121,7 @@ def test_readpipe():
     WVPASSEQ(x, '42\n')
     try:
         readpipe(['bash', '-c', 'exit 42'])
-    except Exception, ex:
+    except Exception as ex:
         WVPASSEQ(str(ex), "subprocess 'bash -c exit 42' failed with status 42")
 
 
@@ -135,7 +135,7 @@ def test_batchpipe():
     WVPASSEQ(out, '42\n')
     try:
         batchpipe(['bash', '-c'], ['exit 42'])
-    except Exception, ex:
+    except Exception as ex:
         WVPASSEQ(str(ex), "subprocess 'bash -c exit 42' failed with status 42")
     args = [str(x) for x in range(6)]
     # Force batchpipe to break the args into batches of 3.  This

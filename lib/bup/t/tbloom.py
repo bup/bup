@@ -45,7 +45,7 @@ def test_bloom():
     skip_test = False
     try:
         b = bloom.create('bup.bloom', f=tf, expected=2**28, delaywrite=False)
-    except EnvironmentError, ex:
+    except EnvironmentError as ex:
         (ptr_width, linkage) = platform.architecture()
         if ptr_width == '32bit' and ex.errno == errno.ENOMEM:
             WVMSG('skipping large bloom filter test (mmap probably failed) '

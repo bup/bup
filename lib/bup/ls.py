@@ -120,7 +120,7 @@ def do_ls(args, pwd, default='.', onabort=None, spec_prefix=''):
                         output_node_info(sub, name)
             else:
                 output_node_info(n, os.path.normpath(path))
-        except vfs.NodeError, e:
+        except vfs.NodeError as e:
             log('error: %s\n' % e)
             ret = 1
 

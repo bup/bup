@@ -17,7 +17,7 @@ def linux_memstat():
     d = {}
     try:
         f = open('/proc/self/status')
-    except IOError, e:
+    except IOError as e:
         if not _linux_warned:
             log('Warning: %s\n' % e)
             _linux_warned = 1

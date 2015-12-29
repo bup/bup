@@ -40,7 +40,7 @@ count = 0
 for name in extra:
     try:
         ix = git.open_idx(name)
-    except git.GitError, e:
+    except git.GitError as e:
         add_error('%s: %s' % (name, e))
         continue
     if len(opt.find) == 40:

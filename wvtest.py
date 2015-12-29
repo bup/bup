@@ -122,7 +122,7 @@ if __name__ != '__main__':   # we're imported as a module
         '''
         try:
             func(*args, **kwargs)
-        except etype, e:
+        except etype as e:
             return _check(True, 'EXCEPT(%s)' % _code())
         except:
             _check(False, 'EXCEPT(%s)' % _code())
@@ -186,7 +186,7 @@ def _runtest(fname, f):
     sys.stdout.flush()
     try:
         _run_in_chdir(os.path.split(mod.__file__)[0], f)
-    except Exception, e:
+    except Exception as e:
         print
         print traceback.format_exc()
         tb = sys.exc_info()[2]

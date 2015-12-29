@@ -151,7 +151,7 @@ def hardlink_if_possible(fullname, node, meta):
                 try:
                     os.link(target_path, fullname)
                     return True
-                except OSError, e:
+                except OSError as e:
                     if e.errno != errno.EXDEV:
                         raise
     else:
@@ -319,7 +319,7 @@ for d in extra:
     path,name = os.path.split(d)
     try:
         n = top.lresolve(d)
-    except vfs.NodeError, e:
+    except vfs.NodeError as e:
         add_error(e)
         continue
     isdir = stat.S_ISDIR(n.mode)

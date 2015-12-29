@@ -59,7 +59,7 @@ def _hard_write(fd, buf):
             raise IOError('select(fd) returned without being writable')
         try:
             sz = os.write(fd, buf)
-        except OSError, e:
+        except OSError as e:
             if e.errno != errno.EAGAIN:
                 raise
         assert(sz >= 0)
@@ -129,7 +129,7 @@ def mkdirp(d, mode=None):
             os.makedirs(d, mode)
         else:
             os.makedirs(d)
-    except OSError, e:
+    except OSError as e:
         if e.errno == errno.EEXIST:
             pass
         else:
@@ -193,7 +193,7 @@ def unlink(f):
     """
     try:
         os.unlink(f)
-    except OSError, e:
+    except OSError as e:
         if e.errno != errno.ENOENT:
             raise
 
@@ -753,7 +753,7 @@ if _mincore:
             msize = min(_fmincore_chunk_size, st.st_size - pos)
             try:
                 m = mmap.mmap(fd, msize, mmap.MAP_PRIVATE, 0, 0, pos)
-            except mmap.error, ex:
+            except mmap.error as ex:
                 if ex.errno == errno.EINVAL or ex.errno == errno.ENODEV:
                     # Perhaps the file was a pipe, i.e. "... | bup split ..."
                     return None
@@ -878,7 +878,7 @@ def parse_date_or_fatal(str, fatal):
     For now we expect a string that contains a float."""
     try:
         date = float(str)
-    except ValueError, e:
+    except ValueError as e:
         raise fatal('invalid date format (should be a float): %r' % e)
     else:
         return date
@@ -895,7 +895,7 @@ def parse_excludes(options, fatal):
         elif option == '--exclude-from':
             try:
                 f = open(realpath(parameter))
-            except IOError, e:
+            except IOError as e:
                 raise fatal("couldn't read %s" % parameter)
             for exclude_path in f.readlines():
                 # FIXME: perhaps this should be rstrip('\n')
@@ -915,12 +915,12 @@ def parse_rx_excludes(options, fatal):
         if option == '--exclude-rx':
             try:
                 excluded_patterns.append(re.compile(parameter))
-            except re.error, ex:
+            except re.error as ex:
                 fatal('invalid --exclude-rx pattern (%s): %s' % (parameter, ex))
         elif option == '--exclude-rx-from':
             try:
                 f = open(realpath(parameter))
-            except IOError, e:
+            except IOError as e:
                 raise fatal("couldn't read %s" % parameter)
             for pattern in f.readlines():
                 spattern = pattern.rstrip('\n')
@@ -928,7 +928,7 @@ def parse_rx_excludes(options, fatal):
                     continue
                 try:
                     excluded_patterns.append(re.compile(spattern))
-                except re.error, ex:
+                except re.error as ex:
                     fatal('invalid --exclude-rx pattern (%s): %s' % (spattern, ex))
     return excluded_patterns
 

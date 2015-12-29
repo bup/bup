@@ -306,14 +306,14 @@ class Metadata:
         st = None
         try:
             st = xstat.lstat(path)
-        except OSError, e:
+        except OSError as e:
             if e.errno != errno.ENOENT:
                 raise
         if st:
             if stat.S_ISDIR(st.st_mode):
                 try:
                     os.rmdir(path)
-                except OSError, e:
+                except OSError as e:
                     if e.errno in (errno.ENOTEMPTY, errno.EEXIST):
                         msg = 'refusing to overwrite non-empty dir ' + path
                         raise Exception(msg)
@@ -340,7 +340,7 @@ class Metadata:
         elif stat.S_ISSOCK(self.mode):
             try:
                 os.mknod(path, 0o600 | stat.S_IFSOCK)
-            except OSError, e:
+            except OSError as e:
                 if e.errno in (errno.EINVAL, errno.EPERM):
                     s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
                     s.bind(path)
@@ -372,7 +372,7 @@ class Metadata:
         if lutime and stat.S_ISLNK(self.mode):
             try:
                 lutime(path, (self.atime, self.mtime))
-            except OSError, e:
+            except OSError as e:
                 if e.errno == errno.EACCES:
                     raise ApplyError('lutime: %s' % e)
                 else:
@@ -380,7 +380,7 @@ class Metadata:
         else:
             try:
                 utime(path, (self.atime, self.mtime))
-            except OSError, e:
+            except OSError as e:
                 if e.errno == errno.EACCES:
                     raise ApplyError('utime: %s' % e)
                 else:
@@ -414,7 +414,7 @@ class Metadata:
         if uid != -1 or gid != -1:
             try:
                 os.lchown(path, uid, gid)
-            except OSError, e:
+            except OSError as e:
                 if e.errno == errno.EPERM:
                     add_error('lchown: %s' %  e)
                 elif sys.platform.startswith('cygwin') \
@@ -451,7 +451,7 @@ class Metadata:
         try:
             if stat.S_ISLNK(st.st_mode):
                 self.symlink_target = os.readlink(path)
-        except OSError, e:
+        except OSError as e:
             add_error('readlink: %s' % e)
 
     def _encode_symlink_target(self):
@@ -498,7 +498,7 @@ class Metadata:
                     if stat.S_ISDIR(st.st_mode):
                         def_acl = posix1e.ACL(filedef=path)
                         def_acls = [def_acl, def_acl]
-            except EnvironmentError, e:
+            except EnvironmentError as e:
                 if e.errno not in (errno.EOPNOTSUPP, errno.ENOSYS):
                     raise
             if acls:
@@ -535,7 +535,7 @@ class Metadata:
         def apply_acl(acl_rep, kind):
             try:
                 acl = posix1e.ACL(text = acl_rep)
-            except IOError, e:
+            except IOError as e:
                 if e.errno == 0:
                     # pylibacl appears to return an IOError with errno
                     # set to 0 if a group referred to by the ACL rep
@@ -546,7 +546,7 @@ class Metadata:
                     raise
             try:
                 acl.applyto(path, kind)
-            except IOError, e:
+            except IOError as e:
                 if e.errno == errno.EPERM or e.errno == errno.EOPNOTSUPP:
                     raise ApplyError('POSIX1e ACL applyto: %s' % e)
                 else:
@@ -580,7 +580,7 @@ class Metadata:
                 attr = get_linux_file_attr(path)
                 if attr != 0:
                     self.linux_attr = attr
-            except OSError, e:
+            except OSError as e:
                 if e.errno == errno.EACCES:
                     add_error('read Linux attr: %s' % e)
                 elif e.errno in (errno.ENOTTY, errno.ENOSYS, errno.EOPNOTSUPP):
@@ -612,7 +612,7 @@ class Metadata:
                 return
             try:
                 set_linux_file_attr(path, self.linux_attr)
-            except OSError, e:
+            except OSError as e:
                 if e.errno in (errno.ENOTTY, errno.EOPNOTSUPP, errno.ENOSYS,
                                errno.EACCES):
                     raise ApplyError('Linux chattr: %s (0x%s)'
@@ -627,7 +627,7 @@ class Metadata:
         if not xattr: return
         try:
             self.linux_xattr = xattr.get_all(path, nofollow=True)
-        except EnvironmentError, e:
+        except EnvironmentError as e:
             if e.errno != errno.EOPNOTSUPP:
                 raise
 
@@ -664,7 +664,7 @@ class Metadata:
             return
         try:
             existing_xattrs = set(xattr.list(path, nofollow=True))
-        except IOError, e:
+        except IOError as e:
             if e.errno == errno.EACCES:
                 raise ApplyError('xattr.set %r: %s' % (path, e))
             else:
@@ -674,7 +674,7 @@ class Metadata:
                     or v != xattr.get(path, k, nofollow=True):
                 try:
                     xattr.set(path, k, v, nofollow=True)
-                except IOError, e:
+                except IOError as e:
                     if e.errno == errno.EPERM \
                             or e.errno == errno.EOPNOTSUPP:
                         raise ApplyError('xattr.set %r: %s' % (path, e))
@@ -684,7 +684,7 @@ class Metadata:
         for k in existing_xattrs:
             try:
                 xattr.remove(path, k, nofollow=True)
-            except IOError, e:
+            except IOError as e:
                 if e.errno == errno.EPERM:
                     raise ApplyError('xattr.remove %r: %s' % (path, e))
                 else:
@@ -810,7 +810,7 @@ class Metadata:
                                self._apply_linux_xattr_rec):
             try:
                 apply_metadata(path, restore_numeric_ids=num_ids)
-            except ApplyError, e:
+            except ApplyError as e:
                 add_error(e)
 
     def same_file(self, other):

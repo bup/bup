@@ -15,7 +15,7 @@ class HLinkDB:
         f = None
         try:
             f = open(filename, 'r')
-        except IOError, e:
+        except IOError as e:
             if e.errno == errno.ENOENT:
                 pass
             else:
@@ -67,7 +67,7 @@ class HLinkDB:
         else: # No data -- delete _filename if it exists.
             try:
                 os.unlink(self._filename)
-            except OSError, e:
+            except OSError as e:
                 if e.errno == errno.ENOENT:
                     pass
                 else:

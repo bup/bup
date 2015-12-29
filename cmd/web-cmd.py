@@ -110,7 +110,7 @@ class BupRequestHandler(tornado.web.RequestHandler):
 
         try:
             show_hidden = int(self.request.arguments.get('hidden', [0])[-1])
-        except ValueError, e:
+        except ValueError as e:
             show_hidden = False
 
         self.render(
@@ -229,7 +229,7 @@ if __name__ == "__main__":
 
     try:
         sock = http_server._socket # tornado < 2.0
-    except AttributeError, e:
+    except AttributeError as e:
         sock = http_server._sockets.values()[0]
 
     print "Serving HTTP on %s:%d..." % sock.getsockname()

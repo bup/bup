@@ -62,7 +62,7 @@ def clear_index(indexfile):
             os.remove(path)
             if opt.verbose:
                 log('clear: removed %s\n' % path)
-        except OSError, e:
+        except OSError as e:
             if e.errno != errno.ENOENT:
                 raise
 
@@ -111,7 +111,7 @@ def update_index(top, excluded_paths, exclude_rxs):
         if rig.cur and rig.cur.name == path:    # paths that already existed
             try:
                 meta = metadata.from_path(path, statinfo=pst)
-            except (OSError, IOError), e:
+            except (OSError, IOError) as e:
                 add_error(e)
                 rig.next()
                 continue
@@ -146,7 +146,7 @@ def update_index(top, excluded_paths, exclude_rxs):
         else:  # new paths
             try:
                 meta = metadata.from_path(path, statinfo=pst)
-            except (OSError, IOError), e:
+            except (OSError, IOError) as e:
                 add_error(e)
                 continue
             # See same assignment to 0, above, for rationale.

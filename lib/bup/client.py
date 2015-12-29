@@ -75,7 +75,7 @@ class Client:
                     self.pout = self.p.stdout
                     self.pin = self.p.stdin
                     self.conn = Conn(self.pout, self.pin)
-                except OSError, e:
+                except OSError as e:
                     raise ClientError, 'connect: %s' % e, sys.exc_info()[2]
             elif self.protocol == 'bup':
                 self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -94,7 +94,7 @@ class Client:
     def __del__(self):
         try:
             self.close()
-        except IOError, e:
+        except IOError as e:
             if e.errno == errno.EPIPE:
                 pass
             else:
@@ -130,7 +130,7 @@ class Client:
                                   % rv)
         try:
             return self.conn.check_ok()
-        except Exception, e:
+        except Exception as e:
             raise ClientError, e, sys.exc_info()[2]
 
     def check_busy(self):
@@ -332,7 +332,7 @@ class PackWriter_Remote(git.PackWriter):
         try:
             (self._bwcount, self._bwtime) = _raw_write_bwlimit(
                     self.file, outbuf, self._bwcount, self._bwtime)
-        except IOError, e:
+        except IOError as e:
             raise ClientError, e, sys.exc_info()[2]
         self.outbytes += len(data)
         self.count += 1

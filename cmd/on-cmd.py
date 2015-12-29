@@ -63,11 +63,11 @@ try:
                 if sp:
                     sp.wait()
                 break
-            except SigException, e:
+            except SigException as e:
                 log('\nbup on: %s\n' % e)
                 os.kill(p.pid, e.signum)
                 ret = 84
-except SigException, e:
+except SigException as e:
     if ret == 0:
         ret = 99
     log('\nbup on: %s\n' % e)

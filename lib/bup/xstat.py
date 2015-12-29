@@ -5,17 +5,17 @@ from bup import _helpers
 
 try:
     _bup_utimensat = _helpers.bup_utimensat
-except AttributeError, e:
+except AttributeError as e:
     _bup_utimensat = False
 
 try:
     _bup_utimes = _helpers.bup_utimes
-except AttributeError, e:
+except AttributeError as e:
     _bup_utimes = False
 
 try:
     _bup_lutimes = _helpers.bup_lutimes
-except AttributeError, e:
+except AttributeError as e:
     _bup_lutimes = False
 
 

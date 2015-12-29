@@ -81,7 +81,7 @@ refname = opt.name and 'refs/heads/%s' % opt.name or None
 if opt.remote or is_reverse:
     try:
         cli = client.Client(opt.remote)
-    except client.ClientError, e:
+    except client.ClientError as e:
         log('error: %s' % e)
         sys.exit(1)
     oldref = refname and cli.read_ref(refname) or None
@@ -213,7 +213,7 @@ indexfile = opt.indexfile or git.repo('bupindex')
 r = index.Reader(indexfile)
 try:
     msr = index.MetaStoreReader(indexfile + '.meta')
-except IOError, ex:
+except IOError as ex:
     if ex.errno != EACCES:
         raise
     log('error: cannot access %r; have you run bup index?' % indexfile)
@@ -342,7 +342,7 @@ for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse_during):
         # Not indexed, so just grab the FS metadata or use empty metadata.
         try:
            meta = metadata.from_path(fs_path) if fs_path else metadata.Metadata()
-        except (OSError, IOError), e:
+        except (OSError, IOError) as e:
             add_error(e)
             lastskip_name = dir_name
             meta = metadata.Metadata()
@@ -381,7 +381,7 @@ for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse_during):
         if stat.S_ISREG(ent.mode):
             try:
                 f = hashsplit.open_noatime(ent.name)
-            except (IOError, OSError), e:
+            except (IOError, OSError) as e:
                 add_error(e)
                 lastskip_name = ent.name
             else:
@@ -389,7 +389,7 @@ for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse_during):
                     (mode, id) = hashsplit.split_to_blob_or_tree(
                                             w.new_blob, w.new_tree, [f],
                                             keep_boundaries=False)
-                except (IOError, OSError), e:
+                except (IOError, OSError) as e:
                     add_error('%s: %s' % (ent.name, e))
                     lastskip_name = ent.name
         else:
@@ -398,7 +398,7 @@ for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse_during):
             elif stat.S_ISLNK(ent.mode):
                 try:
                     rl = os.readlink(ent.name)
-                except (OSError, IOError), e:
+                except (OSError, IOError) as e:
                     add_error(e)
                     lastskip_name = ent.name
                 else:
@@ -419,7 +419,7 @@ for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse_during):
             hlink = find_hardlink_target(hlink_db, ent)
             try:
                 meta = metadata.from_path(ent.name, hardlink_target=hlink)
-            except (OSError, IOError), e:
+            except (OSError, IOError) as e:
                 add_error(e)
                 lastskip_name = ent.name
             else:

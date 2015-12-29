@@ -26,7 +26,7 @@ elif len(extra) == 1:
             os.execvp('man', ['man', '-l', g[0]])
         else:
             os.execvp('man', ['man', docname])
-    except OSError, e:
+    except OSError as e:
         sys.stderr.write('Unable to run man command: %s\n' % e)
         sys.exit(1)
 else:

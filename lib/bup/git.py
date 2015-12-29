@@ -129,7 +129,7 @@ def auto_midx(objdir):
     args = [path.exe(), 'midx', '--auto', '--dir', objdir]
     try:
         rv = subprocess.call(args, stdout=open('/dev/null', 'w'))
-    except OSError, e:
+    except OSError as e:
         # make sure 'args' gets printed to help with debugging
         add_error('%r: exception: %s' % (args, e))
         raise
@@ -139,7 +139,7 @@ def auto_midx(objdir):
     args = [path.exe(), 'bloom', '--dir', objdir]
     try:
         rv = subprocess.call(args, stdout=open('/dev/null', 'w'))
-    except OSError, e:
+    except OSError as e:
         # make sure 'args' gets printed to help with debugging
         add_error('%r: exception: %s' % (args, e))
         raise
@@ -502,7 +502,7 @@ class PackIdxList:
                 if not d.get(full):
                     try:
                         ix = open_idx(full)
-                    except GitError, e:
+                    except GitError as e:
                         add_error(e)
                         continue
                     d[full] = ix
@@ -594,7 +594,7 @@ class PackWriter:
         oneblob = ''.join(datalist)
         try:
             f.write(oneblob)
-        except IOError, e:
+        except IOError as e:
             raise GitError, e, sys.exc_info()[2]
         nw = len(oneblob)
         crc = zlib.crc32(oneblob) & 0xffffffff
@@ -953,7 +953,7 @@ def check_repo_or_die(path=None):
     guess_repo(path)
     try:
         os.stat(repo('objects/pack/.'))
-    except OSError, e:
+    except OSError as e:
         if e.errno == errno.ENOENT:
             log('error: %r is not a bup repository; run "bup init"\n'
                 % repo())
@@ -1015,7 +1015,7 @@ class _AbortableIter:
     def next(self):
         try:
             return self.it.next()
-        except StopIteration, e:
+        except StopIteration as e:
             self.done = True
             raise
         except:
@@ -1100,7 +1100,7 @@ class CatPipe:
             readline_result = self.p.stdout.readline()
             assert(readline_result == '\n')
             self.inprogress = None
-        except Exception, e:
+        except Exception as e:
             it.abort()
             raise
 

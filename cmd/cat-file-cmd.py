@@ -37,7 +37,7 @@ if not re.match(r'/*[^/]+/[^/]+', target):
 
 try:
     n = top.lresolve(target)
-except vfs.NodeError, e:
+except vfs.NodeError as e:
     o.fatal(e)
 
 if isinstance(n, vfs.FakeSymlink):

@@ -247,7 +247,7 @@ class Options:
         """
         try:
             (flags,extra) = self.optfunc(args, self._shortopts, self._longopts)
-        except getopt.GetoptError, e:
+        except getopt.GetoptError as e:
             self.fatal(e)
 
         opt = OptDict(aliases=self._aliases)

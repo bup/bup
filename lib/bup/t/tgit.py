@@ -193,7 +193,7 @@ def test_check_repo_or_die():
         open(bupdir + '/objects/pack', 'w').close()
         try:
             git.check_repo_or_die()
-        except SystemExit, e:
+        except SystemExit as e:
             WVPASSEQ(e.code, 14)
         else:
             WVFAIL()
@@ -202,7 +202,7 @@ def test_check_repo_or_die():
 
         try:
             git.check_repo_or_die('nonexistantbup.tmp')
-        except SystemExit, e:
+        except SystemExit as e:
             WVPASSEQ(e.code, 15)
         else:
             WVFAIL()

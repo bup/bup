@@ -41,7 +41,7 @@ for id in extra:
     try:
         for blob in cat(id):
             outfile.write(blob)
-    except KeyError, e:
+    except KeyError as e:
         outfile.flush()
         log('error: %s\n' % e)
         ret = 1

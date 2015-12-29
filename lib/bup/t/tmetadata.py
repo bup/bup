@@ -23,7 +23,7 @@ def ex(*cmd):
         elif rc > 0:
             print >> sys.stderr, 'returned exit status', rc
             sys.exit(1)
-    except OSError, e:
+    except OSError as e:
         print >> sys.stderr, 'subprocess call failed:', e
         sys.exit(1)
 
@@ -187,7 +187,7 @@ def _linux_attr_supported(path):
         return False
     try:
         metadata.get_linux_file_attr(path)
-    except OSError, e:
+    except OSError as e:
         if e.errno in (errno.ENOTTY, errno.ENOSYS, errno.EOPNOTSUPP):
             return False
         else:

@@ -158,7 +158,7 @@ def cat(conn, id):
         for blob in cat_pipe.join(id):
             conn.write(struct.pack('!I', len(blob)))
             conn.write(blob)
-    except KeyError, e:
+    except KeyError as e:
         log('server: error: %s\n' % e)
         conn.write('\0\0\0\0')
         conn.error(e)

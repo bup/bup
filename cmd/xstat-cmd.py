@@ -18,7 +18,7 @@ def parse_timestamp_arg(field, value):
     res = str(value) # Undo autoconversion.
     try:
         res = parse_timestamp(res)
-    except ValueError, ex:
+    except ValueError as ex:
         if ex.args:
             o.fatal('unable to parse %s resolution "%s" (%s)'
                     % (field, value, ex))
@@ -82,7 +82,7 @@ first_path = True
 for path in remainder:
     try:
         m = metadata.from_path(path, archive_path = path)
-    except (OSError,IOError), e:
+    except (OSError,IOError) as e:
         if e.errno == errno.ENOENT:
             add_error(e)
             continue

@@ -174,7 +174,7 @@ class Entry:
                                self.gitmode, self.sha, self.flags,
                                self.children_ofs, self.children_n,
                                self.meta_ofs)
-        except (DeprecationWarning, struct.error), e:
+        except (DeprecationWarning, struct.error) as e:
             log('pack error: %s (%r)\n' % (e, self))
             raise
 
@@ -353,7 +353,7 @@ class Reader:
         f = None
         try:
             f = open(filename, 'r+')
-        except IOError, e:
+        except IOError as e:
             if e.errno == errno.ENOENT:
                 pass
             else:
@@ -536,7 +536,7 @@ def reduce_paths(paths):
                 rp = slashappend(rp)
                 p = slashappend(p)
             xpaths.append((rp, p))
-        except OSError, e:
+        except OSError as e:
             add_error('reduce_paths: %s' % e)
     xpaths.sort()
 

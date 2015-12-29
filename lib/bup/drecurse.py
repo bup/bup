@@ -39,7 +39,7 @@ def _dirlist():
     for n in os.listdir('.'):
         try:
             st = xstat.lstat(n)
-        except OSError, e:
+        except OSError as e:
             add_error(Exception('%s: %s' % (realpath(n), str(e))))
             continue
         if (st.st_mode & _IFMT) == stat.S_IFDIR:
@@ -70,7 +70,7 @@ def _recursive_dirlist(prepend, xdev, bup_dir=None,
             else:
                 try:
                     OsFile(name).fchdir()
-                except OSError, e:
+                except OSError as e:
                     add_error('%s: %s' % (prepend, e))
                 else:
                     for i in _recursive_dirlist(prepend=prepend+name, xdev=xdev,
@@ -93,12 +93,12 @@ def recursive_dirlist(paths, xdev, bup_dir=None, excluded_paths=None,
                 if stat.S_ISLNK(pst.st_mode):
                     yield (path, pst)
                     continue
-            except OSError, e:
+            except OSError as e:
                 add_error('recursive_dirlist: %s' % e)
                 continue
             try:
                 pfile = OsFile(path)
-            except OSError, e:
+            except OSError as e:
                 add_error(e)
                 continue
             pst = pfile.stat()

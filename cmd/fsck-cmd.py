@@ -76,7 +76,7 @@ def git_verify(base):
     if opt.quick:
         try:
             quick_verify(base)
-        except Exception, e:
+        except Exception as e:
             debug('error: %s\n' % e)
             return 1
         return 0
@@ -201,7 +201,7 @@ for name in extra:
         else: # child
             try:
                 sys.exit(do_pack(base, last, par2_exists))
-            except Exception, e:
+            except Exception as e:
                 log('exception: %r\n' % e)
                 sys.exit(99)
                 

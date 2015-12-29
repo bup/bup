@@ -30,7 +30,7 @@ for res in socket.getaddrinfo(host, port, socket.AF_UNSPEC,
     af, socktype, proto, canonname, sa = res
     try:
         s = socket.socket(af, socktype, proto)
-    except socket.error, e:
+    except socket.error as e:
         continue
     try:
         if af == socket.AF_INET6:
@@ -41,7 +41,7 @@ for res in socket.getaddrinfo(host, port, socket.AF_UNSPEC,
         s.bind(sa)
         s.listen(1)
         fcntl.fcntl(s.fileno(), fcntl.F_SETFD, fcntl.FD_CLOEXEC)
-    except socket.error, e:
+    except socket.error as e:
         s.close()
         continue
     socks.append(s)

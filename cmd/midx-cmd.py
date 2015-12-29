@@ -46,7 +46,7 @@ def check_midx(name):
     log('Checking %s.\n' % nicename)
     try:
         ix = git.open_idx(name)
-    except git.GitError, e:
+    except git.GitError as e:
         add_error('%s: %s' % (name, e))
         return
     for count,subname in enumerate(ix.idxnames):
