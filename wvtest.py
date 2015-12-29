@@ -1,6 +1,6 @@
 #!/bin/sh
 """": # -*-python-*-
-export PATH="$(dirname "$0")/cmd:$PATH"
+bup_python="$(dirname "$0")/cmd/bup-python"
 exec "$bup_python" "$0" ${1+"$@"}
 """
 # end of bup preamble
