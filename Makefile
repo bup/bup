@@ -80,36 +80,41 @@ man_html := $(patsubst %.md,%.html,$(man_md))
 
 INSTALL=install
 PREFIX=/usr/local
-MANDIR=$(DESTDIR)$(PREFIX)/share/man
-DOCDIR=$(DESTDIR)$(PREFIX)/share/doc/bup
-BINDIR=$(DESTDIR)$(PREFIX)/bin
-LIBDIR=$(DESTDIR)$(PREFIX)/lib/bup
+MANDIR=$(PREFIX)/share/man
+DOCDIR=$(PREFIX)/share/doc/bup
+BINDIR=$(PREFIX)/bin
+LIBDIR=$(PREFIX)/lib/bup
+
+dest_mandir := $(DESTDIR)$(MANDIR)
+dest_docdir := $(DESTDIR)$(DOCDIR)
+dest_bindir := $(DESTDIR)$(BINDIR)
+dest_libdir := $(DESTDIR)$(LIBDIR)
 
 install: all
-	$(INSTALL) -d $(BINDIR) \
-		$(LIBDIR)/bup $(LIBDIR)/cmd \
-		$(LIBDIR)/web $(LIBDIR)/web/static
-	test -z "$(man_roff)" || install -d $(MANDIR)/man1
-	test -z "$(man_roff)" || $(INSTALL) -m 0644 $(man_roff) $(MANDIR)/man1
-	test -z "$(man_html)" || install -d $(DOCDIR)
-	test -z "$(man_html)" || $(INSTALL) -m 0644 $(man_html) $(DOCDIR)
-	$(call install-python-bin,bup,"$(BINDIR)/bup")
+	$(INSTALL) -d $(dest_bindir) \
+		$(dest_libdir)/bup $(dest_libdir)/cmd \
+		$(dest_libdir)/web $(dest_libdir)/web/static
+	test -z "$(man_roff)" || install -d $(dest_mandir)/man1
+	test -z "$(man_roff)" || $(INSTALL) -m 0644 $(man_roff) $(dest_mandir)/man1
+	test -z "$(man_html)" || install -d $(dest_docdir)
+	test -z "$(man_html)" || $(INSTALL) -m 0644 $(man_html) $(dest_docdir)
+	$(call install-python-bin,bup,"$(dest_bindir)/bup")
 	set -e; \
 	for cmd in $$(ls cmd/bup-* | grep -v cmd/bup-python); do \
-	  $(call install-python-bin,"$$cmd","$(LIBDIR)/$$cmd") \
+	  $(call install-python-bin,"$$cmd","$(dest_libdir)/$$cmd") \
 	done
 	$(INSTALL) -pm 0644 \
 		lib/bup/*.py \
-		$(LIBDIR)/bup
+		$(dest_libdir)/bup
 	$(INSTALL) -pm 0755 \
 		lib/bup/*$(SOEXT) \
-		$(LIBDIR)/bup
+		$(dest_libdir)/bup
 	$(INSTALL) -pm 0644 \
 		lib/web/static/* \
-		$(LIBDIR)/web/static/
+		$(dest_libdir)/web/static/
 	$(INSTALL) -pm 0644 \
 		lib/web/*.html \
-		$(LIBDIR)/web/
+		$(dest_libdir)/web/
 
 config/config.h: config/config.vars
 
