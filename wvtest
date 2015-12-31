@@ -84,8 +84,12 @@ sub endsect()
     }
 }
 
-sub run()
+sub run
 {
+    # dup_msgs should be true when "watching".  In that case all top
+    # level wvtest protocol messages should be duplicated to stderr so
+    # that they can be safely captured for report to process later.
+    my ($dup_msgs) = @_;
     my $show_counts = 1;
     GetOptionsFromArray(\@ARGV, 'counts!', \$show_counts)
         or pod2usage();
@@ -94,7 +98,11 @@ sub run()
     # always flush
     $| = 1;
 
-    print STDERR "Testing \"all\" in @ARGV:\n";
+    {
+        my $msg = "Testing \"all\" in @ARGV:\n";
+        print $msg;
+        print STDERR $msg if $dup_msgs;
+    }
 
     $pid = open(my $fh, "-|");
     if (!$pid) {
@@ -110,7 +118,8 @@ sub run()
     local $SIG{INT} = sub { bigkill($pid); };
     local $SIG{TERM} = sub { bigkill($pid); };
     local $SIG{ALRM} = sub {
-        print STDERR "Alarm timed out!  No test results for too long.\n";
+        print STDERR resultline('Alarm timed out!  No test results for too long.\n',
+                                'FAILED');
         bigkill($pid);
     };
 
@@ -181,18 +190,27 @@ sub run()
     }
 
     if ($code != 0) {
-        print resultline("Program returned non-zero exit code ($ret)", "FAILED");
+        my $msg = resultline("Program returned non-zero exit code ($ret)",
+                             'FAILED');
+        print $msg;
+        print STDERR "$msg\n" if $dup_msgs;
     }
 
     print "\n";
     if ($show_counts) {
         my $gtotal = $gpasses + $gfails;
-        printf("WvTest: %d test%s, %d failure%s\n",
-               $gtotal, $gtotal==1 ? "" : "s",
-               $gfails, $gfails==1 ? "" : "s");
+        my $msg = sprintf("WvTest: %d test%s, %d failure%s\n",
+                          $gtotal, $gtotal == 1 ? "" : "s", $gfails,
+                          $gfails == 1 ? "" : "s");
+        print $msg;
+        print STDERR $msg if $dup_msgs;
     }
-    printf("WvTest: result code $ret, total time %s\n",
-           mstime(time() - $allstart, 2000, 5000));
+    {
+        my $msg = sprintf("WvTest: result code $ret, total time %s\n",
+                          mstime(time() - $allstart, 2000, 5000));
+        print $msg;
+        print STDERR $msg if $dup_msgs;
+    }
     return ($ret ? $ret : ($gfails ? 125 : 0));
 }
 
@@ -250,8 +268,8 @@ pod2usage(-msg => "$0: no action specified", -verbose => 1) if (@ARGV < 1);
 
 my $action = $ARGV[0];
 shift @ARGV;
-if ($action eq 'run') { exit run(); }
-elsif ($action  eq 'watch') { run(); }
+if ($action eq 'run') { exit run(0); }
+elsif ($action  eq 'watch') { run(1); }
 elsif ($action  eq 'report') { exit report(); }
 else { pod2usage(-msg => "$0: invalid action $action", -verbose => 1); }
 
@@ -287,9 +305,12 @@ B<report> as described in the EXAMPLES below.
   # Fine if ./tests doesn't produce any output in parallel.
   wvtest run ./tests
 
-  # Use watch and report for parallel tests.
+  # Use watch and report for parallel tests.  Note that watch's stderr will
+  # include copies of any top level messages - reporting non-zero
+  # test command exits, etc., and so must be included in the report arguments.
   wvtest watch --no-counts \
-    sh -c '(test-1 2>&1 | tee test-1.log)& (test-2 2>&1 | tee test-2.log)&'
-  wvtest report test-1.log test-2.log
+    "sh -c '(test-1 2>&1 | tee test-1.log)& (test-2 2>&1 | tee test-2.log)&'" \
+    2>test-3.log \
+  wvtest report test-1.log test-2.log test-3.log
 
 =cut

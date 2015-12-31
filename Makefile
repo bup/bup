@@ -188,7 +188,8 @@ stupid:
 test: all
 	if test -e t/tmp/test-log; then rm -r t/tmp/test-log; fi
 	mkdir -p t/tmp/test-log
-	./wvtest watch --no-counts $(MAKE) runtests-python runtests-cmdline
+	./wvtest watch --no-counts \
+	  $(MAKE) runtests-python runtests-cmdline 2>t/tmp/test-log/$$$$.log
 	./wvtest report t/tmp/test-log/*.log
 
 check: test
