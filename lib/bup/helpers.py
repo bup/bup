@@ -41,11 +41,15 @@ def atof(s):
 buglvl = atoi(os.environ.get('BUP_DEBUG', 0))
 
 
-# If the platform doesn't have fdatasync (OS X), fall back to fsync.
-try:
-    fdatasync = os.fdatasync
-except AttributeError:
-    fdatasync = os.fsync
+if sys.platform.startswith('darwin'):
+    # Apparently fsync on OS X doesn't guarantee to sync all the way down
+    import fcntl
+    fdatasync = lambda fd : fcntl.fcntl(fd, fcntl.F_FULLFSYNC)
+else: # If the platform doesn't have fdatasync, fall back to fsync
+    try:
+        fdatasync = os.fdatasync
+    except AttributeError:
+        fdatasync = os.fsync
 
 
 # Write (blockingly) to sockets that may or may not be in blocking mode.
