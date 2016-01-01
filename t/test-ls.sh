@@ -147,10 +147,10 @@ else
         || exit $?
 fi
 
-uid="$(id -u)" || exit $?
-gid="$(bup-python -c 'import os; print os.stat("src").st_gid')" || exit $?
-user="$(id -un)" || exit $?
-group="$(bup-python -c 'import grp, os;
+uid="$(WVPASS id -u)" || exit $?
+gid="$(WVPASS bup-python -c 'import os; print os.stat("src").st_gid')" || exit $?
+user="$(WVPASS id -un)" || exit $?
+group="$(WVPASS bup-python -c 'import grp, os;
 print grp.getgrgid(os.stat("src").st_gid)[0]')" || exit $?
 
 WVPASSEQ "$(bup ls -l src/latest"$tmpdir"/src | tr -s ' ' ' ')" \
