@@ -685,8 +685,10 @@ class PackWriter:
         if f:
             self.idx = None
             self.file = None
-            f.close()
-            os.unlink(self.filename + '.pack')
+            try:
+                os.unlink(self.filename + '.pack')
+            finally:
+                f.close()
 
     def _end(self, run_midx=True):
         f = self.file
