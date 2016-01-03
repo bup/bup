@@ -582,7 +582,11 @@ class PackWriter:
     def _open(self):
         if not self.file:
             (fd,name) = tempfile.mkstemp(suffix='.pack', dir=repo('objects'))
-            self.file = os.fdopen(fd, 'w+b')
+            try:
+                self.file = os.fdopen(fd, 'w+b')
+            except:
+                os.close(fd)
+                raise
             assert(name.endswith('.pack'))
             self.filename = name[:-5]
             self.file.write('PACK\0\0\0\2\0\0\0\0')
