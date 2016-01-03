@@ -694,24 +694,26 @@ class PackWriter:
         f = self.file
         if not f: return None
         self.file = None
-        self.objcache = None
-        idx = self.idx
-        self.idx = None
+        try:
+            self.objcache = None
+            idx = self.idx
+            self.idx = None
 
-        # update object count
-        f.seek(8)
-        cp = struct.pack('!i', self.count)
-        assert(len(cp) == 4)
-        f.write(cp)
+            # update object count
+            f.seek(8)
+            cp = struct.pack('!i', self.count)
+            assert(len(cp) == 4)
+            f.write(cp)
 
-        # calculate the pack sha1sum
-        f.seek(0)
-        sum = Sha1()
-        for b in chunkyreader(f):
-            sum.update(b)
-        packbin = sum.digest()
-        f.write(packbin)
-        f.close()
+            # calculate the pack sha1sum
+            f.seek(0)
+            sum = Sha1()
+            for b in chunkyreader(f):
+                sum.update(b)
+            packbin = sum.digest()
+            f.write(packbin)
+        finally:
+            f.close()
 
         obj_list_sha = self._write_pack_idx_v2(self.filename + '.idx', idx, packbin)
 
