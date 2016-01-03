@@ -567,10 +567,10 @@ def _make_objcache():
 class PackWriter:
     """Writes Git objects inside a pack file."""
     def __init__(self, objcache_maker=_make_objcache, compression_level=1):
+        self.file = None
         self.count = 0
         self.outbytes = 0
         self.filename = None
-        self.file = None
         self.idx = None
         self.objcache_maker = objcache_maker
         self.objcache = None
