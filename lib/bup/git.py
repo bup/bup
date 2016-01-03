@@ -749,10 +749,12 @@ class PackWriter:
         try:
             idx_f.truncate(index_len)
             idx_map = mmap_readwrite(idx_f, close=False)
-            count = _helpers.write_idx(filename, idx_map, idx, self.count)
-            assert(count == self.count)
+            try:
+                count = _helpers.write_idx(filename, idx_map, idx, self.count)
+                assert(count == self.count)
+            finally:
+                idx_map.close()
         finally:
-            if idx_map: idx_map.close()
             idx_f.close()
 
         idx_f = open(filename, 'a+b')
