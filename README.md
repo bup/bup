@@ -175,6 +175,8 @@ Binary packages of bup are known to be built for the following OSes:
     http://cvsweb.netbsd.org/bsdweb.cgi/pkgsrc/sysutils/bup/
  - Arch Linux:
     https://www.archlinux.org/packages/?sort=&q=bup
+ - Fedora:
+    https://apps.fedoraproject.org/packages/bup
 
 
 Using bup
