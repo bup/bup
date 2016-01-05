@@ -744,7 +744,7 @@ class PackWriter:
         os.rename(self.filename + '.pack', nameprefix + '.pack')
         os.rename(self.filename + '.idx', nameprefix + '.idx')
         try:
-            fdatasync(self.parentfd)
+            os.fsync(self.parentfd)
         finally:
             os.close(self.parentfd)
 
