@@ -247,8 +247,8 @@ to return multiple strings in order to respect ARG_MAX)."""
         yield readpipe(command + sub_args, preexec_fn=preexec_fn)
 
 
-def realpath(p):
-    """Get the absolute path of a file.
+def resolve_parent(p):
+    """Return the absolute path of a file without following any final symlink.
 
     Behaves like os.path.realpath, but doesn't follow a symlink for the last
     element. (ie. if 'p' itself is a symlink, this one won't follow it, but it
@@ -895,15 +895,15 @@ def parse_excludes(options, fatal):
     for flag in options:
         (option, parameter) = flag
         if option == '--exclude':
-            excluded_paths.append(realpath(parameter))
+            excluded_paths.append(resolve_parent(parameter))
         elif option == '--exclude-from':
             try:
-                f = open(realpath(parameter))
+                f = open(resolve_parent(parameter))
             except IOError as e:
                 raise fatal("couldn't read %s" % parameter)
             for exclude_path in f.readlines():
                 # FIXME: perhaps this should be rstrip('\n')
-                exclude_path = realpath(exclude_path.strip())
+                exclude_path = resolve_parent(exclude_path.strip())
                 if exclude_path:
                     excluded_paths.append(exclude_path)
     return sorted(frozenset(excluded_paths))
@@ -923,7 +923,7 @@ def parse_rx_excludes(options, fatal):
                 fatal('invalid --exclude-rx pattern (%s): %s' % (parameter, ex))
         elif option == '--exclude-rx-from':
             try:
-                f = open(realpath(parameter))
+                f = open(resolve_parent(parameter))
             except IOError as e:
                 raise fatal("couldn't read %s" % parameter)
             for pattern in f.readlines():

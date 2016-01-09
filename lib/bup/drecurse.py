@@ -40,7 +40,7 @@ def _dirlist():
         try:
             st = xstat.lstat(n)
         except OSError as e:
-            add_error(Exception('%s: %s' % (realpath(n), str(e))))
+            add_error(Exception('%s: %s' % (resolve_parent(n), str(e))))
             continue
         if (st.st_mode & _IFMT) == stat.S_IFDIR:
             n += '/'

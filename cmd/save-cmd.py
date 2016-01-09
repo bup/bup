@@ -69,7 +69,8 @@ if opt.graft:
             old_path, new_path = splitted_parameter
             if not (old_path and new_path):
                 o.fatal("a graft point cannot be empty")
-            graft_points.append((realpath(old_path), realpath(new_path)))
+            graft_points.append((resolve_parent(old_path),
+                                 resolve_parent(new_path)))
 
 is_reverse = os.environ.get('BUP_SERVER_REVERSE')
 if is_reverse and opt.remote:

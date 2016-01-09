@@ -197,8 +197,8 @@ c/"
 WVSTART "save disjoint top-level directories"
 (
     # Resolve any symlinks involving the top top-level dirs.
-    real_pwd="$(WVPASS realpath .)" || exit $?
-    real_tmp="$(WVPASS realpath /tmp/.)" || exit $?
+    real_pwd="$(WVPASS resolve-parent .)" || exit $?
+    real_tmp="$(WVPASS resolve-parent /tmp/.)" || exit $?
     pwd_top="$(echo $real_pwd | WVPASS awk -F "/" '{print $2}')" || exit $?
     tmp_top="$(echo $real_tmp | WVPASS awk -F "/" '{print $2}')" || exit $?
 

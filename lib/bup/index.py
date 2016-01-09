@@ -443,7 +443,7 @@ class Writer:
         self.count = 0
         self.lastfile = None
         self.filename = None
-        self.filename = filename = realpath(filename)
+        self.filename = filename = resolve_parent(filename)
         self.metastore = metastore
         self.tmax = tmax
         (dir,name) = os.path.split(filename)
@@ -529,7 +529,7 @@ class Writer:
 def reduce_paths(paths):
     xpaths = []
     for p in paths:
-        rp = realpath(p)
+        rp = resolve_parent(p)
         try:
             st = os.lstat(rp)
             if stat.S_ISDIR(st.st_mode):

@@ -12,12 +12,12 @@ force-delete()
     "$bup_t_lib_script_home/force-delete" "$@"
 }
 
-realpath()
+resolve-parent()
 {
     test "$#" -eq 1 || return $?
     echo "$1" | \
         PYTHONPATH="$bup_t_lib_script_home/../lib" bup-python -c \
-        "import sys, bup.helpers; print bup.helpers.realpath(sys.stdin.readline())" \
+        "import sys, bup.helpers; print bup.helpers.resolve_parent(sys.stdin.readline())" \
         || return $?
 }
 
