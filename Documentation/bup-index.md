@@ -139,7 +139,7 @@ does, due to the accommodations described above.
     format to the `-l` option to `ls`(1).
 
 -x, \--xdev, \--one-file-system
-:   don't cross filesystem boundaries when recursing through the
+:   don't cross filesystem boundaries when traversing the
     filesystem -- though as with tar and rsync, the mount points
     themselves will still be indexed.  Only applicable if you're using
     `-u`.

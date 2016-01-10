@@ -543,18 +543,34 @@ class Writer:
         return Reader(self.tmpname)
 
 
+def _slashappend_or_add_error(p, caller):
+    """Return p, after ensuring it has a single trailing slash if it names
+    a directory, unless there's an OSError, in which case, call
+    add_error() and return None."""
+    try:
+        st = os.lstat(p)
+    except OSError as e:
+        add_error('%s: %s' % (caller, e))
+        return None
+    else:
+        if stat.S_ISDIR(st.st_mode):
+            return slashappend(p)
+        return p
+
+
+def unique_resolved_paths(paths):
+    "Return a collection of unique resolved paths."
+    rps = (_slashappend_or_add_error(resolve_parent(p), 'unique_resolved_paths')
+           for p in paths)
+    return frozenset((x for x in rps if x is not None))
+
+
 def reduce_paths(paths):
     xpaths = []
     for p in paths:
-        rp = resolve_parent(p)
-        try:
-            st = os.lstat(rp)
-            if stat.S_ISDIR(st.st_mode):
-                rp = slashappend(rp)
-                p = slashappend(p)
-            xpaths.append((rp, p))
-        except OSError as e:
-            add_error('reduce_paths: %s' % e)
+        rp = _slashappend_or_add_error(resolve_parent(p), 'reduce_paths')
+        if rp:
+            xpaths.append((rp, slashappend(p) if rp.endswith('/') else p))
     xpaths.sort()
 
     paths = []
@@ -567,6 +583,7 @@ def reduce_paths(paths):
         prev = rp
     paths.sort(reverse=True)
     return paths
+
 
 def merge(*iters):
     def pfunc(count, total):
