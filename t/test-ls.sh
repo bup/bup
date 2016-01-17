@@ -35,6 +35,8 @@ WVPASS bup tag some-tag src
 
 WVSTART "ls (short)"
 
+(export BUP_FORCE_TTY=1; WVPASSEQ "$(WVPASS bup ls | tr -d ' ')" src)
+
 WVPASSEQ "$(WVPASS bup ls /)" "src"
 
 WVPASSEQ "$(WVPASS bup ls -A /)" ".commit
