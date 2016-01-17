@@ -4,10 +4,14 @@ bup_python="$(dirname "$0")/bup-python" || exit $?
 exec "$bup_python" "$0" ${1+"$@"}
 """
 # end of bup preamble
-import sys, math, struct, glob, resource
-import tempfile
+
+import glob, math, os, resource, struct, sys, tempfile
+
 from bup import options, git, midx, _helpers, xstat
-from bup.helpers import *
+from bup.helpers import (Sha1, atomically_replaced_file, debug1, fdatasync,
+                         handle_ctrl_c, log, mmap_readwrite, qprogress,
+                         saved_errors, unlink)
+
 
 PAGE_SIZE=4096
 SHA_PER_PAGE=PAGE_SIZE/20.

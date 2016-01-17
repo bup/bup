@@ -1,6 +1,9 @@
-import metadata, os, stat, struct, tempfile
+import errno, metadata, os, stat, struct, tempfile
+
 from bup import xstat
-from bup.helpers import *
+from bup.helpers import (add_error, log, merge_iter, mmap_readwrite,
+                         progress, qprogress, resolve_parent, slashappend)
+
 
 EMPTY_SHA = '\0'*20
 FAKE_SHA = '\x01'*20

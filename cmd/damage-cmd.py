@@ -4,9 +4,11 @@ bup_python="$(dirname "$0")/bup-python" || exit $?
 exec "$bup_python" "$0" ${1+"$@"}
 """
 # end of bup preamble
+
 import sys, os, random
+
 from bup import options
-from bup.helpers import *
+from bup.helpers import log
 
 
 def randblock(n):

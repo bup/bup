@@ -4,9 +4,10 @@ bup_python="$(dirname "$0")/bup-python" || exit $?
 exec "$bup_python" "$0" ${1+"$@"}
 """
 # end of bup preamble
+
 import sys
+
 from bup import git, vfs, ls
-from bup.helpers import *
 
 
 git.check_repo_or_die()

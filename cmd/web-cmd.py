@@ -4,10 +4,12 @@ bup_python="$(dirname "$0")/bup-python" || exit $?
 exec "$bup_python" "$0" ${1+"$@"}
 """
 # end of bup preamble
-import sys, stat, urllib, mimetypes, posixpath, time, webbrowser
-import urllib
+
+import mimetypes, os, posixpath, stat, sys, time, urllib, webbrowser
+
 from bup import options, git, vfs
-from bup.helpers import *
+from bup.helpers import debug1, handle_ctrl_c, log, resource_path
+
 try:
     import tornado.httpserver
     import tornado.ioloop
@@ -15,6 +17,7 @@ try:
 except ImportError:
     log('error: cannot find the python "tornado" module; please install it\n')
     sys.exit(1)
+
 
 handle_ctrl_c()
 

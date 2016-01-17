@@ -4,9 +4,12 @@ bup_python="$(dirname "$0")/bup-python" || exit $?
 exec "$bup_python" "$0" ${1+"$@"}
 """
 # end of bup preamble
+
 import os, sys, struct
+
 from bup import options, git
-from bup.helpers import *
+from bup.helpers import Conn, debug1, debug2, linereader, log
+
 
 suspended_w = None
 dumb_server_mode = False

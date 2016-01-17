@@ -4,9 +4,11 @@ bup_python="$(dirname "$0")/bup-python" || exit $?
 exec "$bup_python" "$0" ${1+"$@"}
 """
 # end of bup preamble
-import sys, stat
+
+import re, stat, sys
+
 from bup import options, git, vfs
-from bup.helpers import *
+from bup.helpers import chunkyreader, handle_ctrl_c, log, saved_errors
 
 optspec = """
 bup cat-file [--meta|--bupm] /branch/revision/[path]

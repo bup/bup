@@ -4,13 +4,17 @@ bup_python="$(dirname "$0")/bup-python" || exit $?
 exec "$bup_python" "$0" ${1+"$@"}
 """
 # end of bup preamble
-import sys, stat, time, math
+
 from errno import EACCES
 from io import BytesIO
+import os, sys, stat, time, math
 
 from bup import hashsplit, git, options, index, client, metadata, hlinkdb
-from bup.helpers import *
 from bup.hashsplit import GIT_MODE_TREE, GIT_MODE_FILE, GIT_MODE_SYMLINK
+from bup.helpers import (add_error, grafted_path_components, handle_ctrl_c,
+                         istty2, log, parse_date_or_fatal, parse_num,
+                         path_components, progress, qprogress, resolve_parent,
+                         saved_errors, stripped_path_components)
 
 
 optspec = """

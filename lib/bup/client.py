@@ -1,6 +1,10 @@
-import re, struct, errno, time, zlib
+
+import errno, os, re, struct, time, zlib
+
 from bup import git, ssh
-from bup.helpers import *
+from bup.helpers import (Conn, atomically_replaced_file, chunkyreader, debug1,
+                         debug2, linereader, mkdirp, progress, qprogress)
+
 
 bwlimit = None
 

@@ -1,7 +1,9 @@
 """Common code for listing files from a bup repository."""
+
 import copy, os.path, stat, xstat
+
 from bup import metadata, options, vfs
-from helpers import *
+from helpers import istty1, log
 
 
 def node_info(n, name,

@@ -4,9 +4,12 @@ bup_python="$(dirname "$0")/bup-python" || exit $?
 exec "$bup_python" "$0" ${1+"$@"}
 """
 # end of bup preamble
+
 import os, sys, subprocess, struct
+
 from bup import options
-from bup.helpers import *
+from bup.helpers import debug1, debug2, mux
+
 
 # Give the subcommand exclusive access to stdin.
 orig_stdin = os.dup(0)

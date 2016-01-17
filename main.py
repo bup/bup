@@ -7,6 +7,7 @@ exec "$bup_python" "$0" ${1+"$@"}
 
 import sys, os, subprocess, signal, getopt
 
+
 argv = sys.argv
 exe = os.path.realpath(argv[0])
 exepath = os.path.split(exe)[0] or '.'
@@ -29,8 +30,10 @@ os.environ['PYTHONPATH'] = libpath + ':' + os.environ.get('PYTHONPATH', '')
 os.environ['BUP_MAIN_EXE'] = os.path.abspath(exe)
 os.environ['BUP_RESOURCE_PATH'] = resourcepath
 
+
 from bup import helpers
-from bup.helpers import *
+from bup.helpers import atoi, columnate, debug1, log, tty_width
+
 
 # after running 'bup newliner', the tty_width() ioctl won't work anymore
 os.environ['WIDTH'] = str(tty_width())

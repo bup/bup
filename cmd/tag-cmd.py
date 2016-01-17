@@ -5,11 +5,10 @@ exec "$bup_python" "$0" ${1+"$@"}
 """
 # end of bup preamble
 
-import sys
-import os
+import os, sys
 
 from bup import git, options
-from bup.helpers import *
+from bup.helpers import debug1, handle_ctrl_c, log
 
 # FIXME: review for safe writes.
 

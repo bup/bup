@@ -4,9 +4,12 @@ bup_python="$(dirname "$0")/bup-python" || exit $?
 exec "$bup_python" "$0" ${1+"$@"}
 """
 # end of bup preamble
-import sys
+
+import os, sys
+
 from bup import options, _helpers
-from bup.helpers import *
+from bup.helpers import atoi, handle_ctrl_c, log, parse_num
+
 
 optspec = """
 bup random [-S seed] <numbytes>

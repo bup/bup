@@ -6,8 +6,11 @@ exec "$bup_python" "$0" ${1+"$@"}
 # end of bup preamble
 
 from os.path import relpath
+import sys
+
 from bup import options, drecurse
-from bup.helpers import *
+from bup.helpers import log, parse_excludes, parse_rx_excludes, saved_errors
+
 
 optspec = """
 bup drecurse <path>

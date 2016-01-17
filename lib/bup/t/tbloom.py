@@ -1,7 +1,11 @@
-import errno, platform, tempfile
+
+import errno, platform, subprocess, tempfile
+
 from bup import bloom
-from bup.helpers import *
+from bup.helpers import mkdirp
+
 from wvtest import *
+
 
 bup_tmp = os.path.realpath('../../../t/tmp')
 mkdirp(bup_tmp)

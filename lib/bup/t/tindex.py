@@ -1,12 +1,12 @@
-import os
-import time, tempfile
+
+import os, subprocess, time, tempfile
 
 from bup import index, metadata
-from bup.helpers import *
-import bup.helpers as helpers
+from bup.helpers import mkdirp, resolve_parent
 import bup.xstat as xstat
 
 from wvtest import *
+
 
 lib_t_dir = os.getcwd()
 bup_tmp = os.path.realpath('../../../t/tmp')
@@ -17,11 +17,11 @@ def index_basic():
     cd = os.path.realpath('../../../t')
     WVPASS(cd)
     sd = os.path.realpath(cd + '/sampledata')
-    WVPASSEQ(helpers.resolve_parent(cd + '/sampledata'), sd)
+    WVPASSEQ(resolve_parent(cd + '/sampledata'), sd)
     WVPASSEQ(os.path.realpath(cd + '/sampledata/x'), sd + '/x')
     WVPASSEQ(os.path.realpath(cd + '/sampledata/var/abs-symlink'),
              sd + '/var/abs-symlink-target')
-    WVPASSEQ(helpers.resolve_parent(cd + '/sampledata/var/abs-symlink'),
+    WVPASSEQ(resolve_parent(cd + '/sampledata/var/abs-symlink'),
              sd + '/var/abs-symlink')
 
 

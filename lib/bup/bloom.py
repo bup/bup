@@ -79,9 +79,13 @@ None of this tells us what max_pfalse_positive to choose.
 
 Brandon Low <lostlogic@lostlogicx.com> 2011-02-04
 """
-import sys, os, math, mmap
+
+import sys, os, math, mmap, struct
+
 from bup import _helpers
-from bup.helpers import *
+from bup.helpers import (debug1, debug2, log, mmap_read, mmap_readwrite,
+                         mmap_readwrite_private)
+
 
 BLOOM_VERSION = 2
 MAX_BITS_EACH = 32 # Kinda arbitrary, but 4 bytes per entry is pretty big

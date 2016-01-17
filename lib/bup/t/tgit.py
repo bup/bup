@@ -1,7 +1,9 @@
-import struct, os, tempfile, time
 from subprocess import check_call
+import struct, os, subprocess, tempfile, time
+
 from bup import git
-from bup.helpers import *
+from bup.helpers import log, mkdirp, readpipe
+
 from wvtest import *
 
 

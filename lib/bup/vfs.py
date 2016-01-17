@@ -3,9 +3,11 @@
 The vfs.py library makes it possible to expose contents from bup's repository
 and abstracts internal name mangling and storage from the exposition layer.
 """
+
 import os, re, stat, time
+
 from bup import git, metadata
-from helpers import *
+from helpers import debug1, debug2
 from bup.git import BUP_NORMAL, BUP_CHUNKED, cp
 from bup.hashsplit import GIT_MODE_TREE, GIT_MODE_FILE
 

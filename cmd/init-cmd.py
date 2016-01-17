@@ -4,10 +4,11 @@ bup_python="$(dirname "$0")/bup-python" || exit $?
 exec "$bup_python" "$0" ${1+"$@"}
 """
 # end of bup preamble
+
 import sys
 
 from bup import git, options, client
-from bup.helpers import *
+from bup.helpers import log, saved_errors
 
 
 optspec = """

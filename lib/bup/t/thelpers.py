@@ -4,9 +4,16 @@ import os
 import os.path
 import tempfile
 import stat
+import subprocess
+
+from bup.helpers import (atomically_replaced_file, batchpipe, detect_fakeroot,
+                         grafted_path_components, mkdirp, parse_num,
+                         path_components, readpipe, stripped_path_components,
+                         utc_offset_str)
 import bup._helpers as _helpers
-from bup.helpers import *
+
 from wvtest import *
+
 
 bup_tmp = os.path.realpath('../../../t/tmp')
 mkdirp(bup_tmp)

@@ -4,9 +4,11 @@ bup_python="$(dirname "$0")/bup-python" || exit $?
 exec "$bup_python" "$0" ${1+"$@"}
 """
 # end of bup preamble
+
 import sys, os, glob, subprocess
+
 from bup import options, git
-from bup.helpers import *
+from bup.helpers import Sha1, chunkyreader, istty2, log, progress
 
 par2_ok = 0
 nullf = open('/dev/null')
@@ -77,7 +79,7 @@ def git_verify(base):
         try:
             quick_verify(base)
         except Exception as e:
-            debug('error: %s\n' % e)
+            log('error: %s\n' % e)
             return 1
         return 0
     else:

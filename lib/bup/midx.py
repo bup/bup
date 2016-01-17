@@ -1,6 +1,9 @@
-import mmap
+
+import mmap, struct
+
 from bup import _helpers
-from bup.helpers import *
+from bup.helpers import log, mmap_read
+
 
 MIDX_VERSION = 4
 

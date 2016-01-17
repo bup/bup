@@ -1,6 +1,9 @@
+
 import stat, os
-from bup.helpers import *
+
+from bup.helpers import should_rx_exclude_path, debug1
 import bup.xstat as xstat
+
 
 try:
     O_LARGEFILE = os.O_LARGEFILE

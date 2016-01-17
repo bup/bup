@@ -4,9 +4,12 @@ bup_python="$(dirname "$0")/bup-python" || exit $?
 exec "$bup_python" "$0" ${1+"$@"}
 """
 # end of bup preamble
-import sys, glob, tempfile
+
+import glob, os, sys, tempfile
+
 from bup import options, git, bloom
-from bup.helpers import *
+from bup.helpers import (debug1, handle_ctrl_c, log, progress, qprogress,
+                         saved_errors)
 
 optspec = """
 bup bloom [options...]

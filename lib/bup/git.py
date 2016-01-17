@@ -2,12 +2,17 @@
 bup repositories are in Git format. This library allows us to
 interact with the Git data structures.
 """
-import os, sys, zlib, time, subprocess, struct, stat, re, tempfile, glob
+
+import errno, os, sys, zlib, time, subprocess, struct, stat, re, tempfile, glob
 from collections import namedtuple
 from itertools import islice
 
-from bup.helpers import *
 from bup import _helpers, path, midx, bloom, xstat
+from bup.helpers import (Sha1, add_error, chunkyreader, debug1, debug2,
+                         hostname, log, merge_iter, mmap_read, mmap_readwrite,
+                         progress, qprogress, unlink, username, userfullname,
+                         utc_offset_str)
+
 
 max_pack_size = 1000*1000*1000  # larger packs will slow down pruning
 max_pack_objects = 200*1000  # cache memory usage is about 83 bytes per object

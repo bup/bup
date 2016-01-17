@@ -4,11 +4,15 @@ bup_python="$(dirname "$0")/bup-python" || exit $?
 exec "$bup_python" "$0" ${1+"$@"}
 """
 # end of bup preamble
+
 import sys, re, struct, time, resource
+
 from bup import git, bloom, midx, options, _helpers
-from bup.helpers import *
+from bup.helpers import handle_ctrl_c
+
 
 handle_ctrl_c()
+
 
 _linux_warned = 0
 def linux_memstat():
