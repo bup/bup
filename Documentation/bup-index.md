@@ -15,11 +15,10 @@ bup index \<-p|-m|-s|-u|\--clear|\--check\> [-H] [-l] [-x] [\--fake-valid]
 
 # DESCRIPTION
 
-`bup index` prints and/or updates the bup filesystem index,
-which is a cache of the absolute paths, attributes, and sha-1
-hashes of each file and directory in the filesystem.  The
-bup index is similar in function to the `git`(1) index, and
-can be found in `$BUP_DIR/bupindex`.
+`bup index` manipulates the filesystem index, which is a cache of
+absolute paths and their metadata (atttributes, SHA-1 hashes, etc.).
+The bup index is similar in function to the `git`(1) index, and the
+default index can be found in `$BUP_DIR/bupindex`.
 
 Creating a backup in bup consists of two steps: updating
 the index with `bup index`, then actually backing up the
@@ -109,7 +108,7 @@ does, due to the accommodations described above.
 
 -s, \--status
 :   prepend a status code (A, M, D, or space) before each
-    filename.  Implies `-p`.  The codes mean, respectively,
+    path.  Implies `-p`.  The codes mean, respectively,
     that a file is marked in the index as added, modified,
     deleted, or unchanged since the last backup.
 
