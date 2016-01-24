@@ -11,12 +11,12 @@ bup-index - print and/or update the bup filesystem index
 bup index \<-p|-m|-s|-u|\--clear|\--check\> [-H] [-l] [-x] [\--fake-valid]
 [\--no-check-device] [\--fake-invalid] [-f *indexfile*] [\--exclude *path*]
 [\--exclude-from *filename*] [\--exclude-rx *pattern*]
-[\--exclude-rx-from *filename*] [-v] \<filenames...\>
+[\--exclude-rx-from *filename*] [-v] \<paths...\>
 
 # DESCRIPTION
 
 `bup index` prints and/or updates the bup filesystem index,
-which is a cache of the filenames, attributes, and sha-1
+which is a cache of the absolute paths, attributes, and sha-1
 hashes of each file and directory in the filesystem.  The
 bup index is similar in function to the `git`(1) index, and
 can be found in `$BUP_DIR/bupindex`.
@@ -89,15 +89,17 @@ does, due to the accommodations described above.
 # MODES
 
 -u, \--update
-:   recursively update the index for the given filenames and
-    their descendants.  One or more filenames must be
-    given.  If no mode option is given, this is the
-    default.
+:   recursively update the index for the given paths and their
+    descendants.  One or more paths must be specified, and if a path
+    ends with a symbolic link, the link itself will be indexed, not
+    the target.  If no mode option is given, `--update` is the
+    default, and paths may be excluded by the `--exclude`,
+    `--exclude-rx`, and `--one-file-system` options.
 
 -p, \--print
-:   print the contents of the index.  If filenames are
+:   print the contents of the index.  If paths are
     given, shows the given entries and their descendants. 
-    If no filenames are given, shows the entries starting
+    If no paths are given, shows the entries starting
     at the current working directory (.).
     
 -m, \--modified
@@ -143,13 +145,13 @@ does, due to the accommodations described above.
     `-u`.
     
 \--fake-valid
-:   mark specified filenames as up-to-date even if they
+:   mark specified paths as up-to-date even if they
     aren't.  This can be useful for testing, or to avoid
     unnecessarily backing up files that you know are
     boring.
     
 \--fake-invalid
-:   mark specified filenames as not up-to-date, forcing the
+:   mark specified paths as not up-to-date, forcing the
     next "bup save" run to re-check their contents.
 
 -f, \--indexfile=*indexfile*
