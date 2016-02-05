@@ -19,12 +19,12 @@ except ImportError:
 
 class Stat(fuse.Stat):
     def __init__(self):
-        self.st_mode = 0
+        self.st_mode = 16749
         self.st_ino = 0
         self.st_dev = 0
         self.st_nlink = 0
-        self.st_uid = 0
-        self.st_gid = 0
+        self.st_uid = os.getuid()
+        self.st_gid = os.getgid()
         self.st_size = 0
         self.st_atime = 0
         self.st_mtime = 0
@@ -70,7 +70,8 @@ class BupFs(fuse.Fuse):
         try:
             node = cache_get(self.top, path)
             st = Stat()
-            st.st_mode = node.mode
+            if node.mode != 16384:
+                st.st_mode = node.mode
             st.st_nlink = node.nlinks()
             st.st_size = node.size()  # Until/unless we store the size in m.
             if self.meta:
