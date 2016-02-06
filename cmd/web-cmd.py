@@ -84,6 +84,12 @@ def _compute_dir_contents(n, path, show_hidden=False):
 
 
 class BupRequestHandler(tornado.web.RequestHandler):
+
+    def decode_argument(self, value, name=None):
+        if name == 'path':
+            return value
+        return super(BupRequestHandler, self).decode_argument(value, name)
+
     def get(self, path):
         return self._process_request(path)
 
@@ -248,7 +254,7 @@ settings = dict(
 sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
 
 application = tornado.web.Application([
-    (r"(/.*)", BupRequestHandler),
+    (r"(?P<path>/.*)", BupRequestHandler),
 ], **settings)
 
 http_server = HTTPServer(application)
