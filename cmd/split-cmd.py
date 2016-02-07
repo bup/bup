@@ -8,7 +8,7 @@ exec "$bup_python" "$0" ${1+"$@"}
 import os, sys, time
 
 from bup import hashsplit, git, options, client
-from bup.helpers import (handle_ctrl_c, log, parse_num, qprogress, reprogress,
+from bup.helpers import (add_error, handle_ctrl_c, log, parse_num, qprogress, reprogress,
                          saved_errors)
 
 

@@ -9,7 +9,7 @@ import copy, errno, os, sys, stat, re
 
 from bup import options, git, metadata, vfs
 from bup._helpers import write_sparsely
-from bup.helpers import (chunkyreader, handle_ctrl_c, log, mkdirp,
+from bup.helpers import (add_error, chunkyreader, handle_ctrl_c, log, mkdirp,
                          parse_rx_excludes, progress, qprogress, saved_errors,
                          should_rx_exclude_path, unlink)
 

@@ -8,7 +8,7 @@ exec "$bup_python" "$0" ${1+"$@"}
 import sys, os
 
 from bup import git, options
-from bup.helpers import handle_ctrl_c, log, qprogress, saved_errors
+from bup.helpers import add_error, handle_ctrl_c, log, qprogress, saved_errors
 
 
 optspec = """
