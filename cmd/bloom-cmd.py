@@ -8,7 +8,7 @@ exec "$bup_python" "$0" ${1+"$@"}
 import glob, os, sys, tempfile
 
 from bup import options, git, bloom
-from bup.helpers import (debug1, handle_ctrl_c, log, progress, qprogress,
+from bup.helpers import (add_error, debug1, handle_ctrl_c, log, progress, qprogress,
                          saved_errors)
 
 optspec = """

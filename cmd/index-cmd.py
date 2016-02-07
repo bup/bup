@@ -10,7 +10,7 @@ import sys, stat, time, os, errno, re
 from bup import metadata, options, git, index, drecurse, hlinkdb
 from bup.drecurse import recursive_dirlist
 from bup.hashsplit import GIT_MODE_TREE, GIT_MODE_FILE
-from bup.helpers import (handle_ctrl_c, log, parse_excludes, parse_rx_excludes,
+from bup.helpers import (add_error, handle_ctrl_c, log, parse_excludes, parse_rx_excludes,
                          progress, qprogress, saved_errors)
 
 

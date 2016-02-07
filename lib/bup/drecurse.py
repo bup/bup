@@ -1,7 +1,7 @@
 
 import stat, os
 
-from bup.helpers import should_rx_exclude_path, debug1
+from bup.helpers import add_error, should_rx_exclude_path, debug1
 import bup.xstat as xstat
 
 
