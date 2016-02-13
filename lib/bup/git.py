@@ -7,7 +7,7 @@ import errno, os, sys, zlib, time, subprocess, struct, stat, re, tempfile, glob
 from collections import namedtuple
 from itertools import islice
 
-from bup import _helpers, path, midx, bloom, xstat
+from bup import _helpers, hashsplit, path, midx, bloom, xstat
 from bup.helpers import (Sha1, add_error, chunkyreader, debug1, debug2,
                          fdatasync,
                          hostname, localtime, log, merge_iter,
@@ -579,9 +579,13 @@ def idxmerge(idxlist, final_progress=True):
 def _make_objcache():
     return PackIdxList(repo('objects/pack'))
 
+# bup-gc assumes that it can disable all PackWriter activities
+# (bloom/midx/cache) via the constructor and close() arguments.
+
 class PackWriter:
     """Writes Git objects inside a pack file."""
-    def __init__(self, objcache_maker=_make_objcache, compression_level=1):
+    def __init__(self, objcache_maker=_make_objcache, compression_level=1,
+                 run_midx=True, on_pack_finish=None):
         self.file = None
         self.parentfd = None
         self.count = 0
@@ -591,6 +595,8 @@ class PackWriter:
         self.objcache_maker = objcache_maker
         self.objcache = None
         self.compression_level = compression_level
+        self.run_midx=run_midx
+        self.on_pack_finish = on_pack_finish
 
     def __del__(self):
         self.close()
@@ -655,7 +661,7 @@ class PackWriter:
 
     def breakpoint(self):
         """Clear byte and object counts and return the last processed id."""
-        id = self._end()
+        id = self._end(self.run_midx)
         self.outbytes = self.count = 0
         return id
 
@@ -671,11 +677,15 @@ class PackWriter:
         self._require_objcache()
         return self.objcache.exists(id, want_source=want_source)
 
+    def write(self, sha, type, content):
+        """Write an object to the pack file.  Fails if sha exists()."""
+        self._write(sha, type, content)
+
     def maybe_write(self, type, content):
         """Write an object to the pack file if not present and return its id."""
         sha = calc_hash(type, content)
         if not self.exists(sha):
-            self._write(sha, type, content)
+            self.write(sha, type, content)
             self._require_objcache()
             self.objcache.add(sha)
         return sha
@@ -769,6 +779,10 @@ class PackWriter:
 
         if run_midx:
             auto_midx(repo('objects/pack'))
+
+        if self.on_pack_finish:
+            self.on_pack_finish(nameprefix)
+
         return nameprefix
 
     def close(self, run_midx=True):
@@ -1230,3 +1244,92 @@ def tags(repo_dir = None):
             tags[c] = []
         tags[c].append(name)  # more than one tag can point at 'c'
     return tags
+
+
+WalkItem = namedtuple('WalkItem', ['id', 'type', 'mode',
+                                   'path', 'chunk_path', 'data'])
+# The path is the mangled path, and if an item represents a fragment
+# of a chunked file, the chunk_path will be the chunked subtree path
+# for the chunk, i.e. ['', '2d3115e', ...].  The top-level path for a
+# chunked file will have a chunk_path of [''].  So some chunk subtree
+# of the file '/foo/bar/baz' might look like this:
+#
+#   item.path = ['foo', 'bar', 'baz.bup']
+#   item.chunk_path = ['', '2d3115e', '016b097']
+#   item.type = 'tree'
+#   ...
+
+
+def _walk_object(cat_pipe, id,
+                 parent_path, chunk_path,
+                 mode=None,
+                 stop_at=None,
+                 include_data=None):
+
+    if stop_at and stop_at(id):
+        return
+
+    item_it = cat_pipe.get(id)  # FIXME: use include_data
+    type = item_it.next()
+
+    if type not in ('blob', 'commit', 'tree'):
+        raise Exception('unexpected repository object type %r' % type)
+
+    # FIXME: set the mode based on the type when the mode is None
+
+    if type == 'blob' and not include_data:
+        # Dump data until we can ask cat_pipe not to fetch it
+        for ignored in item_it:
+            pass
+        data = None
+    else:
+        data = ''.join(item_it)
+
+    yield  WalkItem(id=id, type=type,
+                    chunk_path=chunk_path, path=parent_path,
+                    mode=mode,
+                    data=(data if include_data else None))
+
+    if type == 'commit':
+        commit_items = parse_commit(data)
+        tree_id = commit_items.tree
+        for x in _walk_object(cat_pipe, tree_id, parent_path, chunk_path,
+                              mode=hashsplit.GIT_MODE_TREE,
+                              stop_at=stop_at,
+                              include_data=include_data):
+            yield x
+        parents = commit_items.parents
+        for pid in parents:
+            for x in _walk_object(cat_pipe, pid, parent_path, chunk_path,
+                                  mode=mode, # Same mode as this child
+                                  stop_at=stop_at,
+                                  include_data=include_data):
+                yield x
+    elif type == 'tree':
+        for mode, name, ent_id in tree_decode(data):
+            demangled, bup_type = demangle_name(name, mode)
+            if chunk_path:
+                sub_path = parent_path
+                sub_chunk_path = chunk_path + [name]
+            else:
+                sub_path = parent_path + [name]
+                if bup_type == BUP_CHUNKED:
+                    sub_chunk_path = ['']
+                else:
+                    sub_chunk_path = chunk_path
+            for x in _walk_object(cat_pipe, ent_id.encode('hex'),
+                                  sub_path, sub_chunk_path,
+                                  mode=mode,
+                                  stop_at=stop_at,
+                                  include_data=include_data):
+                yield x
+
+
+def walk_object(cat_pipe, id,
+                stop_at=None,
+                include_data=None):
+    """Yield everything reachable from id via cat_pipe as a WalkItem,
+    stopping whenever stop_at(id) returns true."""
+    return _walk_object(cat_pipe, id, [], [],
+                        stop_at=stop_at,
+                        include_data=include_data)
