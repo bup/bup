@@ -1,0 +1,17 @@
+language: python
+sudo: true
+python:
+- 2.7
+- pypy
+- 3.3
+- 3.4
+- 3.5
+- nightly
+- pypy3
+
+# using only `install:` and leaving `script` empty causes travis to fail
+script:
+- ./configure
+- make -j16
+- make -j16 check
+- sudo make install
