@@ -145,6 +145,7 @@ runtests-python: all t/tmp
 	    | tee -a t/tmp/test-log/$$$$.log
 
 cmdline_tests := \
+  t/test-rm.sh \
   t/test-main.sh \
   t/test-list-idx.sh \
   t/test-index.sh \

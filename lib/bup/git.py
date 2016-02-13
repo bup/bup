@@ -10,7 +10,8 @@ from itertools import islice
 from bup import _helpers, path, midx, bloom, xstat
 from bup.helpers import (Sha1, add_error, chunkyreader, debug1, debug2,
                          fdatasync,
-                         hostname, log, merge_iter, mmap_read, mmap_readwrite,
+                         hostname, localtime, log, merge_iter,
+                         mmap_read, mmap_readwrite,
                          progress, qprogress, unlink, username, userfullname,
                          utc_offset_str)
 
@@ -91,6 +92,19 @@ def get_commit_items(id, cp):
     assert(commit_it.next() == 'commit')
     commit_content = ''.join(commit_it)
     return parse_commit(commit_content)
+
+
+def _local_git_date_str(epoch_sec):
+    return '%d %s' % (epoch_sec, utc_offset_str(epoch_sec))
+
+
+def _git_date_str(epoch_sec, tz_offset_sec):
+    offs =  tz_offset_sec // 60
+    return '%d %s%02d%02d' \
+        % (epoch_sec,
+           '+' if offs >= 0 else '-',
+           abs(offs) // 60,
+           abs(offs) % 60)
 
 
 def repo(sub = '', repo_dir=None):
@@ -675,23 +689,28 @@ class PackWriter:
         content = tree_encode(shalist)
         return self.maybe_write('tree', content)
 
-    def _new_commit(self, tree, parent, author, adate, committer, cdate, msg):
+    def new_commit(self, tree, parent,
+                   author, adate_sec, adate_tz,
+                   committer, cdate_sec, cdate_tz,
+                   msg):
+        """Create a commit object in the pack.  The date_sec values must be
+        epoch-seconds, and if a tz is None, the local timezone is assumed."""
+        if adate_tz:
+            adate_str = _git_date_str(adate_sec, adate_tz)
+        else:
+            adate_str = _local_git_date_str(adate_sec)
+        if cdate_tz:
+            cdate_str = _git_date_str(cdate_sec, cdate_tz)
+        else:
+            cdate_str = _local_git_date_str(cdate_sec)
         l = []
         if tree: l.append('tree %s' % tree.encode('hex'))
         if parent: l.append('parent %s' % parent.encode('hex'))
-        if author: l.append('author %s %s' % (author, _git_date(adate)))
-        if committer: l.append('committer %s %s' % (committer, _git_date(cdate)))
+        if author: l.append('author %s %s' % (author, adate_str))
+        if committer: l.append('committer %s %s' % (committer, cdate_str))
         l.append('')
         l.append(msg)
         return self.maybe_write('commit', '\n'.join(l))
-
-    def new_commit(self, parent, tree, date, msg):
-        """Create a commit object in the pack."""
-        userline = '%s <%s@%s>' % (userfullname(), username(), hostname())
-        commit = self._new_commit(tree, parent,
-                                  userline, date, userline, date,
-                                  msg)
-        return commit
 
     def abort(self):
         """Remove the pack file from disk."""
@@ -801,10 +820,6 @@ class PackWriter:
             return namebase
         finally:
             idx_f.close()
-
-
-def _git_date(date):
-    return '%d %s' % (date, utc_offset_str(date))
 
 
 def _gitenv(repo_dir = None):
@@ -937,10 +952,11 @@ def update_ref(refname, newval, oldval, repo_dir=None):
     _git_wait('git update-ref', p)
 
 
-def delete_ref(refname):
-    """Delete a repository reference."""
+def delete_ref(refname, oldvalue=None):
+    """Delete a repository reference (see git update-ref(1))."""
     assert(refname.startswith('refs/'))
-    p = subprocess.Popen(['git', 'update-ref', '-d', refname],
+    oldvalue = [] if not oldvalue else [oldvalue]
+    p = subprocess.Popen(['git', 'update-ref', '-d', refname] + oldvalue,
                          preexec_fn = _gitenv())
     _git_wait('git update-ref', p)
 
