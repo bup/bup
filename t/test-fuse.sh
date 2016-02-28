@@ -73,6 +73,9 @@ result=$(WVPASS ls mnt/src/latest) || exit $?
 WVPASSEQ "$result" "foo
 pre-epoch"
 
+result=$(WVPASS cat mnt/src/latest/foo) || exit $?
+WVPASSEQ "$result" "content"
+
 # Right now we don't detect new saves.
 WVPASS bup save -n src -d "$savestamp2" --strip src
 result=$(WVPASS ls mnt/src) || exit $?
@@ -86,7 +89,7 @@ WVPASS bup fuse --meta mnt
 result=$(TZ=UTC LC_ALL=C WVPASS ls -l mnt/src/latest/) || exit $?
 readonly user=$(WVPASS id -un) || $?
 readonly group=$(WVPASS id -gn) || $?
-WVPASSEQ "$result" "total 0
+WVPASSEQ "$result" "total 1
 -rw-r--r-- 1 $user $group 8 Nov 11  2011 foo
 -rw-r--r-- 1 $user $group 8 Jan  1  1970 pre-epoch"
 

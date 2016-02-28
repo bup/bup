@@ -17,23 +17,6 @@ except ImportError:
     sys.exit(1)
 
 
-class Stat(fuse.Stat):
-    def __init__(self):
-        self.st_mode = 0
-        self.st_ino = 0
-        self.st_dev = 0
-        self.st_nlink = 0
-        self.st_uid = 0
-        self.st_gid = 0
-        self.st_size = 0
-        self.st_atime = 0
-        self.st_mtime = 0
-        self.st_ctime = 0
-        self.st_blocks = 0
-        self.st_blksize = 0
-        self.st_rdev = 0
-
-
 cache = {}
 def cache_get(top, path):
     parts = path.split('/')
@@ -74,10 +57,10 @@ class BupFs(fuse.Fuse):
             log('--getattr(%r)\n' % path)
         try:
             node = cache_get(self.top, path)
-            st = Stat()
-            st.st_mode = node.mode
-            st.st_nlink = node.nlinks()
-            st.st_size = node.size()  # Until/unless we store the size in m.
+            st = fuse.Stat(st_mode=node.mode,
+                           st_nlink=node.nlinks(),
+                           # Until/unless we store the size in m.
+                           st_size=node.size())
             if self.meta:
                 m = node.metadata()
                 if m:
