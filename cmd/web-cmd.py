@@ -5,14 +5,15 @@ exec "$bup_python" "$0" ${1+"$@"}
 """
 # end of bup preamble
 
-import mimetypes, os, posixpath, stat, sys, time, urllib, webbrowser
+import mimetypes, os, posixpath, signal, stat, sys, time, urllib, webbrowser
 
 from bup import options, git, vfs
-from bup.helpers import debug1, handle_ctrl_c, log, resource_path
+from bup.helpers import (debug1, handle_ctrl_c, log, resource_path,
+                         saved_errors)
 
 try:
+    from tornado.ioloop import IOLoop
     import tornado.httpserver
-    import tornado.ioloop
     import tornado.web
 except ImportError:
     log('error: cannot find the python "tornado" module; please install it\n')
@@ -192,6 +193,19 @@ class BupRequestHandler(tornado.web.RequestHandler):
         return time.strftime('%a, %d %b %Y %H:%M:%S', time.gmtime(t))
 
 
+io_loop = None
+
+def handle_sigterm(signum, frame):
+    global io_loop
+    debug1('\nbup-web: signal %d received\n' % signum)
+    log('Shutdown requested\n')
+    if not io_loop:
+        sys.exit(0)
+    io_loop.stop()
+
+
+signal.signal(signal.SIGTERM, handle_sigterm)
+
 optspec = """
 bup web [[hostname]:port]
 --
@@ -236,8 +250,14 @@ except AttributeError as e:
 
 print "Serving HTTP on %s:%d..." % sock.getsockname()
 
-loop = tornado.ioloop.IOLoop.instance()
+io_loop_pending = IOLoop.instance()
 if opt.browser:
     browser_addr = 'http://' + address[0] + ':' + str(address[1])
-    loop.add_callback(lambda : webbrowser.open(browser_addr))
-loop.start()
+    io_loop_pending.add_callback(lambda : webbrowser.open(browser_addr))
+
+io_loop = io_loop_pending
+io_loop.start()
+
+if saved_errors:
+    log('WARNING: %d errors encountered while saving.\n' % len(saved_errors))
+    sys.exit(1)
