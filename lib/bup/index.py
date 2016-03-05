@@ -1,9 +1,9 @@
 import errno, metadata, os, stat, struct, tempfile
 
 from bup import xstat
+from bup._helpers import UINT_MAX
 from bup.helpers import (add_error, log, merge_iter, mmap_readwrite,
                          progress, qprogress, resolve_parent, slashappend)
-
 
 EMPTY_SHA = '\0'*20
 FAKE_SHA = '\x01'*20
@@ -324,7 +324,7 @@ class ExistingEntry(Entry):
             dname += '/'
         ofs = self.children_ofs
         assert(ofs <= len(self._m))
-        assert(self.children_n < 1000000)
+        assert(self.children_n <= UINT_MAX)  # i.e. python struct 'I'
         for i in xrange(self.children_n):
             eon = self._m.find('\0', ofs)
             assert(eon >= 0)

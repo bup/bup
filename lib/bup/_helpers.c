@@ -1477,6 +1477,15 @@ PyMODINIT_FUNC init_helpers(void)
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wtautological-compare" // For INTEGER_TO_PY().
+    {
+        PyObject *value;
+        value = INTEGER_TO_PY(INT_MAX);
+        PyObject_SetAttrString(m, "INT_MAX", value);
+        Py_DECREF(value);
+        value = INTEGER_TO_PY(UINT_MAX);
+        PyObject_SetAttrString(m, "UINT_MAX", value);
+        Py_DECREF(value);
+    }
 #ifdef HAVE_UTIMENSAT
     {
         PyObject *value;
