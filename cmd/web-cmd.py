@@ -5,6 +5,7 @@ exec "$bup_python" "$0" ${1+"$@"}
 """
 # end of bup preamble
 
+from collections import namedtuple
 import mimetypes, os, posixpath, signal, stat, sys, time, urllib, webbrowser
 
 from bup import options, git, vfs
@@ -12,8 +13,9 @@ from bup.helpers import (debug1, handle_ctrl_c, log, resource_path,
                          saved_errors)
 
 try:
+    from tornado.httpserver import HTTPServer
     from tornado.ioloop import IOLoop
-    import tornado.httpserver
+    from tornado.netutil import bind_unix_socket
     import tornado.web
 except ImportError:
     log('error: cannot find the python "tornado" module; please install it\n')
@@ -206,11 +208,15 @@ def handle_sigterm(signum, frame):
 
 signal.signal(signal.SIGTERM, handle_sigterm)
 
+UnixAddress = namedtuple('UnixAddress', ['path'])
+InetAddress = namedtuple('InetAddress', ['host', 'port'])
+
 optspec = """
 bup web [[hostname]:port]
+bup web unix://path
 --
 human-readable    display human readable file sizes (i.e. 3.9K, 4.7M)
-browser           open the site in the default browser
+browser           show repository in default browser (incompatible with unix://)
 """
 o = options.Options(optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
@@ -218,11 +224,24 @@ o = options.Options(optspec)
 if len(extra) > 1:
     o.fatal("at most one argument expected")
 
-address = ('127.0.0.1', 8080)
-if len(extra) > 0:
-    addressl = extra[0].split(':', 1)
-    addressl[1] = int(addressl[1])
-    address = tuple(addressl)
+if len(extra) == 0:
+    address = InetAddress(host='127.0.0.1', port=8080)
+else:
+    bind_url = extra[0]
+    if bind_url.startswith('unix://'):
+        address = UnixAddress(path=bind_url[len('unix://'):])
+    else:
+        addr_parts = extra[0].split(':', 1)
+        if len(addr_parts) == 1:
+            host = '127.0.0.1'
+            port = addr_parts[0]
+        else:
+            host, port = addr_parts
+        try:
+            port = int(port)
+        except (TypeError, ValueError) as ex:
+            o.fatal('port must be an integer, not %r', port)
+        address = InetAddress(host=host, port=port)
 
 git.check_repo_or_die()
 top = vfs.RefList(None)
@@ -240,20 +259,26 @@ application = tornado.web.Application([
     (r"(/.*)", BupRequestHandler),
 ], **settings)
 
-http_server = tornado.httpserver.HTTPServer(application)
-http_server.listen(address[1], address=address[0])
-
-try:
-    sock = http_server._socket # tornado < 2.0
-except AttributeError as e:
-    sock = http_server._sockets.values()[0]
-
-print "Serving HTTP on %s:%d..." % sock.getsockname()
-
+http_server = HTTPServer(application)
 io_loop_pending = IOLoop.instance()
-if opt.browser:
-    browser_addr = 'http://' + address[0] + ':' + str(address[1])
-    io_loop_pending.add_callback(lambda : webbrowser.open(browser_addr))
+
+if isinstance(address, InetAddress):
+    http_server.listen(address.port, address.host)
+    try:
+        sock = http_server._socket # tornado < 2.0
+    except AttributeError as e:
+        sock = http_server._sockets.values()[0]
+    print "Serving HTTP on %s:%d..." % sock.getsockname()
+    if opt.browser:
+        browser_addr = 'http://' + address[0] + ':' + str(address[1])
+        io_loop_pending.add_callback(lambda : webbrowser.open(browser_addr))
+elif isinstance(address, UnixAddress):
+    unix_socket = bind_unix_socket(address.path)
+    http_server.add_socket(unix_socket)
+    print "Serving HTTP on filesystem socket %r" % address.path
+else:
+    log('error: unexpected address %r', address)
+    sys.exit(1)
 
 io_loop = io_loop_pending
 io_loop.start()
