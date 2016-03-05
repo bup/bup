@@ -9,8 +9,8 @@ from collections import namedtuple
 import mimetypes, os, posixpath, signal, stat, sys, time, urllib, webbrowser
 
 from bup import options, git, vfs
-from bup.helpers import (debug1, handle_ctrl_c, log, resource_path,
-                         saved_errors)
+from bup.helpers import (chunkyreader, debug1, handle_ctrl_c, log,
+                         resource_path, saved_errors)
 
 try:
     from tornado.httpserver import HTTPServer
