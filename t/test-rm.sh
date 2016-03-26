@@ -2,8 +2,6 @@
 . ./wvtest-bup.sh || exit $?
 . ./t/lib.sh || exit $?
 
-set -o pipefail
-
 top="$(WVPASS pwd)" || exit $?
 tmpdir="$(WVPASS wvmktempdir)" || exit $?
 
@@ -16,23 +14,23 @@ compare-trees() { "$top/t/compare-trees" "$@"; }
 
 wv_matches_rx()
 {
-    caller_file=${BASH_SOURCE[0]}
-    caller_line=${BASH_LINENO[0]}
-    src="$caller_file:$caller_line"
+    local caller_file=${BASH_SOURCE[0]}
+    local caller_line=${BASH_LINENO[0]}
+    local src="$caller_file:$caller_line"
     if test $# -ne 2; then
         echo "! $src wv_matches_rx requires 2 arguments FAILED" 1>&2
         return
     fi
-    str="$1"
-    rx="$2"
-    (echo "Matching:"
-     echo "$str" | sed 's/^\(.*\)/  \1/'
-     echo "Against:"
-     echo "$rx" | sed 's/^\(.*\)/  \1/') 1>&2
+    local str="$1"
+    local rx="$2"
+    echo "Matching:" 1>&2 || exit $?
+    echo "$str" | sed 's/^\(.*\)/  \1/' 1>&2 || exit $?
+    echo "Against:" 1>&2 || exit $?
+    echo "$rx" | sed 's/^\(.*\)/  \1/' 1>&2 || exit $?
     if [[ "$str" =~ $rx ]]; then
-        echo "! $src regex matches ok" 1>&2
+        echo "! $src regex matches ok" 1>&2 || exit $?
     else
-        echo "! $src regex doesn't match FAILED" 1>&2
+        echo "! $src regex doesn't match FAILED" 1>&2 || exit $?
     fi
 }
 
@@ -125,7 +123,8 @@ WVPASS mkdir src
 WVPASS echo twisty-maze > src/1
 WVPASS bup index src
 WVPASS bup save -n src src
-save1="$(WVPASS bup ls src | head -n 1)" || exit $?
+WVPASS bup ls src > tmp-ls
+save1="$(WVPASS head -n 1 tmp-ls)" || exit $?
 WVPASS "$top"/t/sync-tree bup/ bup-baseline/
 WVPASS bup tick # Make sure we always get the timestamp changes below
 WVFAIL bup rm --unsafe /src/latest
@@ -138,15 +137,17 @@ wv_matches_rx "$(compare-trees bup/ bup-baseline/)" \
 
 
 verify-changes-caused-by-rewriting-save()
-(
-    local before="$1"
-    local after="$2"
-    local tmpdir="$(WVPASS wvmktempdir)" || exit $?
-    (WVPASS cd "$before" && WVPASS find . | WVPASS sort) > "$tmpdir/before"
-    (WVPASS cd "$after" && WVPASS find . | WVPASS sort) > "$tmpdir/after"
+{
+    local before="$1" after="$2" tmpdir
+    tmpdir="$(WVPASS wvmktempdir)" || exit $?
+    (WVPASS cd "$before" && WVPASS find . | WVPASS sort) \
+        > "$tmpdir/before" || exit $?
+    (WVPASS cd "$after" && WVPASS find . | WVPASS sort) \
+        > "$tmpdir/after" || exit $?
+    local new_paths new_idx new_pack observed
     new_paths="$(WVPASS comm -13 "$tmpdir/before" "$tmpdir/after")" || exit $?
-    new_idx="$(echo "$new_paths" | WVPASS grep -E '^\./objects/pack/pack-.*\.idx$' | cut -b 3-)"
-    new_pack="$(echo "$new_paths" | WVPASS grep -E '^\./objects/pack/pack-.*\.pack$' | cut -b 3-)"
+    new_idx="$(echo "$new_paths" | WVPASS grep -E '^\./objects/pack/pack-.*\.idx$' | cut -b 3-)" || exit $?
+    new_pack="$(echo "$new_paths" | WVPASS grep -E '^\./objects/pack/pack-.*\.pack$' | cut -b 3-)" || exit $?
     wv_matches_rx "$(compare-trees "$after/" "$before/")" \
 ">fcst\.\.\.[.]*[ ]+logs/refs/heads/src
 \.d\.\.t\.\.\.[.]*[ ]+objects/
@@ -157,7 +158,7 @@ verify-changes-caused-by-rewriting-save()
 \.d\.\.t\.\.\.[.]*[ ]+refs/heads/
 >fc\.t\.\.\.[.]*[ ]+refs/heads/src"
     WVPASS rm -rf "$tmpdir"
-)
+}
 
 commit-hash-n()
 {
@@ -199,10 +200,12 @@ WVPASS bup tick # Make sure we always get the timestamp changes below
 
 WVSTART "rm /foo/BAR (first of many)"
 WVPASS "$top"/t/sync-tree bup-baseline/ bup/
-victim="$(WVPASS bup ls src | head -n 1)" || exit $?
+WVPASS bup ls src > tmp-ls
+victim="$(WVPASS head -n 1 tmp-ls)" || exit $?
 WVPASS bup rm --unsafe /src/"$victim"
 verify-changes-caused-by-rewriting-save bup-baseline bup
-WVPASSEQ 2 $(git rev-list src | wc -l)
+observed=$(WVPASS git rev-list src | WVPASS wc -l) || exit $?
+WVPASSEQ 2 $observed
 WVPASSEQ "$(rm-safe-cinfo 1 bup src)" "$(rm-safe-cinfo 2 bup-baseline src)"
 WVPASSEQ "$(rm-safe-cinfo 2 bup src)" "$(rm-safe-cinfo 3 bup-baseline src)"
 
@@ -212,7 +215,8 @@ WVPASS "$top"/t/sync-tree bup-baseline/ bup/
 victim="$(WVPASS bup ls src | tail -n +2 | head -n 1)" || exit $?
 WVPASS bup rm --unsafe /src/"$victim"
 verify-changes-caused-by-rewriting-save bup-baseline bup
-WVPASSEQ 2 $(git rev-list src | wc -l)
+observed=$(git rev-list src | wc -l) || exit $?
+WVPASSEQ 2 $observed
 WVPASSEQ "$(commit-hash-n 1 bup src)" "$(commit-hash-n 1 bup-baseline src)"
 WVPASSEQ "$(rm-safe-cinfo 2 bup src)" "$(rm-safe-cinfo 3 bup-baseline src)"
 
@@ -225,7 +229,8 @@ wv_matches_rx "$(compare-trees bup/ bup-baseline/)" \
 ">fcst\.\.\.[.]*[ ]+logs/refs/heads/src
 \.d\.\.t\.\.\.[.]*[ ]+refs/heads/
 >fc\.t\.\.\.[.]*[ ]+refs/heads/src"
-WVPASSEQ 2 $(git rev-list src | wc -l)
+observed=$(git rev-list src | wc -l) || exit $?
+WVPASSEQ 2 $observed
 WVPASSEQ "$(commit-hash-n 1 bup src)" "$(commit-hash-n 1 bup-baseline src)"
 WVPASSEQ "$(commit-hash-n 2 bup src)" "$(commit-hash-n 2 bup-baseline src)"
 
