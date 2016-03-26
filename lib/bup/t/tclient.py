@@ -35,6 +35,7 @@ def test_server_split_with_indexes():
     rw.new_blob(s2)
     rw.breakpoint()
     rw.new_blob(s1)
+    rw.close()
     if wvfailure_count() == initial_failures:
         subprocess.call(['rm', '-rf', tmpdir])
     
