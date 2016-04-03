@@ -23,8 +23,6 @@ Now that we've finished the 0.27 release, we're working on 0.28, and
 although we're not certain which new features will be included, here
 are likely candidates:
 
-  - Support for rm/gc.
-
   - Support for transferring saves between repositories and rewriting
     branches.
 

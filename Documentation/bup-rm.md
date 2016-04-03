@@ -18,10 +18,9 @@ any storage space), but it may make it very difficult or impossible to
 refer to the deleted items, unless there are other references to them
 (e.g. tags).
 
-A subsequent garbage collection, either by the forthcoming `bup gc`
-command, or by a normal `git gc`, may permanently delete data that is
-no longer reachable from the remaining branches or tags, and reclaim
-the related storage space.
+A subsequent garbage collection, either by a `bup gc`, or by a normal
+`git gc`, may permanently delete data that is no longer reachable from
+the remaining branches or tags, and reclaim the related storage space.
 
 NOTE: This is one of the few bup commands that modifies your archive
 in intentionally destructive ways.
@@ -43,7 +42,7 @@ in intentionally destructive ways.
 
 # SEE ALSO
 
-`bup-save`(1), `bup-fsck`(1), and `bup-tag`(1)
+`bup-gc`(1), `bup-save`(1), `bup-fsck`(1), and `bup-tag`(1)
 
 # BUP
 
