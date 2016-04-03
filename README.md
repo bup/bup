@@ -76,9 +76,9 @@ Reasons you might want to avoid bup
    able to generate the information needed to recover from some types
    of corruption.
  
- - It currently only works on Linux, MacOS X >= 10.4,
-   NetBSD, Solaris, or Windows (with Cygwin).  Patches to support
-   other platforms are welcome.
+ - It currently only works on Linux, FreeBSD, NetBSD, OS X >= 10.4,
+   Solaris, or Windows (with Cygwin).  Patches to support other
+   platforms are welcome.
 
  - Any items in "Things that are stupid" below.
 
@@ -102,7 +102,7 @@ From source
 
             apt-get build-dep bup
 
-   Otherwise try this (substitute python2.5-dev or python2.6-dev if
+   Otherwise try this (substitute python2.6-dev or python2.5-dev if
    you have an older system):
 
             apt-get install python2.7-dev python-fuse
@@ -488,7 +488,8 @@ mailing list (see below) if you'd like to help.
    workaround is to just start a new BUP_DIR occasionally,
    i.e. bup-2013, bup-2014...
 
- - bup has never been tested on anything but Linux, MacOS, and Windows+Cygwin.
+ - bup has never been tested on anything but Linux, FreeBSD, NetBSD,
+   OS X, and Windows+Cygwin.
  
     There's nothing that makes it *inherently* non-portable, though, so
     that's mostly a matter of someone putting in some effort.  (For a
@@ -511,10 +512,9 @@ mailing list (see below) if you'd like to help.
    
  - bup has no GUI.
  
-    Actually, that's not stupid, but you might consider it a limitation. 
-    There are a bunch of Linux GUI backup programs; someday I expect someone
-    will adapt one of them to use bup.
-    
+   Actually, that's not stupid, but you might consider it a
+   limitation.  See the ["Related Projects"](https://bup.github.io/)
+   list for some possible options.
     
 More Documentation
 ==================
