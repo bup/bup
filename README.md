@@ -476,20 +476,17 @@ mailing list (see below) if you'd like to help.
     give the continuous-backup process a really low CPU and I/O priority so
     you wouldn't even know it was running.
 
- - bup currently has no way to prune *old* backups.
- 
-    Because of the way the packfile system works, backups become "entangled"
-    in weird ways and it's not actually possible to delete one pack
-    (corresponding approximately to one backup) without risking screwing up
-    other backups.
-   
-    git itself has lots of ways of optimizing this sort of thing, but its
-    methods aren't really applicable here; bup packfiles are just too huge.
-    We'll have to do it in a totally different way.  There are lots of
-    options.  For now: make sure you've got lots of disk space :)
+ - bup only has experimental support for pruning old backups.
 
-    Until we fix this, one possible workaround is to just start a new
-    BUP_DIR occasionally, i.e. bup-2013-10, bup-2013-11...
+   While you should now be able to drop old saves and branches with
+   `bup rm`, and reclaim the space occupied by data that's no longer
+   needed by other backups with `bup gc`, these commands are
+   experimental, and should be handled with great care.  See the
+   man pages for more information.
+
+   Unless you want to help test the new commands, one possible
+   workaround is to just start a new BUP_DIR occasionally,
+   i.e. bup-2013, bup-2014...
 
  - bup has never been tested on anything but Linux, MacOS, and Windows+Cygwin.
  

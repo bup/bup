@@ -26,8 +26,12 @@ approaches.
 Typically, the garbage collector would be invoked after some set of
 invocations of `bup rm`.
 
-WARNING: This is one of the few bup commands that modifies your archive
-in intentionally destructive ways.
+WARNING: This is one of the few bup commands that modifies your
+archive in intentionally destructive ways.  Though if an attempt to
+`join` or `restore` the data you still care about after a `gc`
+succeeds, that's a fairly encouraging sign that the commands worked
+correctly.  (The `t/compare-trees` command in the source tree can be
+used to help test before/after results.)
 
 # OPTIONS
 
