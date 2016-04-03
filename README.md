@@ -82,10 +82,14 @@ Reasons you might want to avoid bup
 
  - Any items in "Things that are stupid" below.
 
-   
+
+Notable changes introduced by a release
+=======================================
+
+ - <a href="note/0.28-from-0.27.md">Changes in 0.28 (unreleased) as compared to 0.27</a>
+
 Getting started
 ===============
-
 
 From source
 -----------
