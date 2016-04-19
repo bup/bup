@@ -127,4 +127,19 @@ WVPASS rm -r restore
 WVPASS bup restore --sparse -C restore "src/latest/$(pwd)/"
 WVPASS "$top/t/compare-trees" -c src/ restore/src/
 
+WVSTART "sparse file restore --sparse (short zero runs around boundary)"
+WVPASS bup-python > src/foo <<EOF
+from sys import stdout
+stdout.write("x" * 65535 + "\0")
+stdout.write("\0" + "x" * 65535)
+stdout.write("\0" + "x" * 65534 + "\0")
+stdout.write("x" * 65536)
+stdout.write("\0")
+EOF
+WVPASS bup index src
+WVPASS bup save -n src src
+WVPASS rm -r restore
+WVPASS bup restore --sparse -C restore "src/latest/$(pwd)/"
+WVPASS "$top/t/compare-trees" -c src/ restore/src/
+
 WVPASS rm -rf "$tmpdir"
