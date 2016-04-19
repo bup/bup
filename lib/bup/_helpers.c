@@ -318,12 +318,12 @@ static PyObject *bup_write_sparsely(PyObject *self, PyObject *args)
     assert(zeros_read <= unexamined);
     unexamined -= zeros_read;
     if (!uadd(&zeros, prev_sparse_len, zeros_read))
-    {
-        PyObject *err = append_sparse_region(fd, prev_sparse_len);
-        if (err != NULL)
-            return err;
-        zeros = zeros_read;
-    }
+        return PyErr_Format(PyExc_OverflowError, "(prev_sparse_len, zeros_read) too large");
+
+    PyObject *err = append_sparse_region(fd, prev_sparse_len);
+    if (err != NULL)
+        return err;
+    zeros = zeros_read;
 
     while(unexamined)
     {
