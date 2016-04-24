@@ -120,7 +120,7 @@ else
     random_size=1M
 fi
 WVSTART "sparse file restore --sparse (random $random_size)"
-WVPASS bup random 1M > src/foo
+WVPASS bup random --seed "$RANDOM" 1M > src/foo
 WVPASS bup index src
 WVPASS bup save -n src src
 WVPASS rm -r restore
