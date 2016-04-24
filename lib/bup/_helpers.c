@@ -11,6 +11,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <arpa/inet.h>
+#include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -55,6 +56,9 @@
 // Of course, this assumes it's a bitfield value.
 #define FS_NOCOW_FL 0
 #endif
+
+
+typedef unsigned char byte;
 
 static int istty2 = 0;
 
@@ -233,16 +237,6 @@ static void unpythonize_argv(void)
 #endif // not __WIN32__ or __CYGWIN__
 
 
-static unsigned long long count_leading_zeros(const unsigned char * const buf,
-                                              unsigned long long len)
-{
-    const unsigned char *cur = buf;
-    while(len-- && *cur == 0)
-        cur++;
-    return cur - buf;
-}
-
-
 static int write_all(int fd, const void *buf, const size_t count)
 {
     size_t written = 0;
@@ -268,9 +262,10 @@ static int uadd(unsigned long long *dest,
     return 1;
 }
 
+
 static PyObject *append_sparse_region(const int fd, unsigned long long n)
 {
-    while(n)
+    while (n)
     {
         off_t new_off;
         if (!INTEGRAL_ASSIGNMENT_FITS(&new_off, n))
@@ -281,6 +276,97 @@ static PyObject *append_sparse_region(const int fd, unsigned long long n)
         n -= new_off;
     }
     return NULL;
+}
+
+
+static PyObject *record_sparse_zeros(unsigned long long *new_pending,
+                                     const int fd,
+                                     unsigned long long prev_pending,
+                                     const unsigned long long count)
+{
+    // Add count additional sparse zeros to prev_pending and store the
+    // result in new_pending, or if the total won't fit in
+    // new_pending, write some of the zeros to fd sparsely, and store
+    // the remaining sum in new_pending.
+    if (!uadd(new_pending, prev_pending, count))
+    {
+        PyObject *err = append_sparse_region(fd, prev_pending);
+        if (err != NULL)
+            return err;
+        *new_pending = count;
+    }
+    return NULL;
+}
+
+
+static const byte * find_end_of_zero_run(const byte * const start,
+                                         const byte * const end)
+{
+    // Return a pointer to first non-zero byte between start and end,
+    // or end if there isn't one.
+    assert(start <= end);
+    const unsigned char *cur = start;
+    while (cur < end && *cur == 0)
+        cur++;
+    return cur;
+}
+
+
+static const byte *find_non_sparse_end(const byte * const start,
+                                       const byte * const end,
+                                       const unsigned long long min_len)
+{
+    // Return the first pointer to a min_len sparse block in [start,
+    // end) if there is one, otherwise a pointer to the start of any
+    // trailing run of zeros.  If there are no trailing zeros, return
+    // end.
+    if (start == end)
+        return end;
+    assert(start < end);
+    assert(min_len);
+    // Probe in min_len jumps, searching backward from the jump
+    // destination for a non-zero byte.  If such a byte is found, move
+    // just past that byte and try again.
+    const byte *candidate = start;
+    ptrdiff_t known_trailing = 0;
+    while (end - candidate >= min_len)
+    {
+        const byte * const probe_region_end = candidate + min_len;
+        const byte *probe = probe_region_end - 1;
+        while (probe > candidate + known_trailing && *probe == 0)
+            probe--;
+        if (probe == candidate + known_trailing && *probe == 0)
+        {
+            assert(candidate + min_len == probe_region_end);
+            return candidate;
+        }
+        assert(*probe != 0);
+        // Skip past the probe and try again (remembering the leading zeros
+        // at the new location that we've already seen).
+        known_trailing = probe_region_end - probe - 1;
+        candidate = probe + 1;
+    }
+    // No min_len sparse run found, search backward from end for any
+    // trailing run of zeros.
+    const byte *probe = end - 1;
+    while (probe > candidate + known_trailing && *probe == 0)
+        probe--;
+
+    const byte *result;
+    if (probe == candidate + known_trailing && *probe == 0)
+        result = candidate;
+    else
+        result = probe + 1;
+
+    if (result == end)
+        assert(*(result - 1) != 0);
+    else
+    {
+        assert(result >= start);
+        assert(result <= end);
+        assert(*result == 0);
+    }
+    return result;
 }
 
 
@@ -304,61 +390,50 @@ static PyObject *bup_write_sparsely(PyObject *self, PyObject *args)
     if (!INTEGRAL_ASSIGNMENT_FITS(&buf_len, sbuf_len))
         return PyErr_Format(PyExc_OverflowError, "buffer length too large");
 
-    // The value of zeros_read indicates the number of zeros read from
-    // buf that haven't been accounted for yet (with respect to cur),
-    // while zeros indicates the total number of pending zeros, which
-    // could be larger in the first iteration if prev_sparse_len
-    // wasn't zero.
-    int rc;
-    unsigned long long unexamined = buf_len;
-    unsigned char *block_start = buf, *cur = buf;
-    unsigned long long zeros, zeros_read = count_leading_zeros(cur, unexamined);
-    assert(zeros_read <= unexamined);
-    unexamined -= zeros_read;
-    if (!uadd(&zeros, prev_sparse_len, zeros_read))
+    const byte * block = buf; // Start of pending block
+    const byte * const end = buf + buf_len;
+    unsigned long long zeros = prev_sparse_len;
+    while (1)
     {
-        PyObject *err = append_sparse_region(fd, prev_sparse_len);
-        if (err != NULL)
-            return err;
-        zeros = zeros_read;
-    }
+        assert(block <= end);
+        if (block == end)
+            return PyLong_FromUnsignedLongLong(zeros);
 
-    while(unexamined)
-    {
-        if (zeros < min_sparse_len)
-            cur += zeros_read;
-        else
+        if (*block != 0)
         {
-            rc = write_all(fd, block_start, cur - block_start);
-            if (rc)
-                return PyErr_SetFromErrno(PyExc_IOError);
+            // Look for the end of block, i.e. the next sparse run of
+            // at least min_sparse_len zeros, or the end of the
+            // buffer.
+            const byte * const probe = find_non_sparse_end(block + 1, end,
+                                                           min_sparse_len);
+            // Either at end of block, or end of non-sparse; write pending data
             PyObject *err = append_sparse_region(fd, zeros);
             if (err != NULL)
                 return err;
-            cur += zeros_read;
-            block_start = cur;
+            int rc = write_all(fd, block, probe - block);
+            if (rc)
+                return PyErr_SetFromErrno(PyExc_IOError);
+
+            if (end - probe < min_sparse_len)
+                zeros = end - probe;
+            else
+                zeros = min_sparse_len;
+            block = probe + zeros;
         }
-        // Pending zeros have ether been made sparse, or are going to
-        // be rolled into the next non-sparse block since we know we
-        // now have at least one unexamined non-zero byte.
-        assert(unexamined && *cur != 0);
-        zeros = zeros_read = 0;
-        while (unexamined && *cur != 0)
+        else // *block == 0
         {
-            cur++; unexamined--;
-        }
-        if (unexamined)
-        {
-            zeros_read = count_leading_zeros(cur, unexamined);
-            assert(zeros_read <= unexamined);
-            unexamined -= zeros_read;
-            zeros = zeros_read;
+            // Should be in the first loop iteration, a sparse run of
+            // zeros, or nearly at the end of the block (within
+            // min_sparse_len).
+            const byte * const zeros_end = find_end_of_zero_run(block, end);
+            PyObject *err = record_sparse_zeros(&zeros, fd,
+                                                zeros, zeros_end - block);
+            if (err != NULL)
+                return err;
+            assert(block <= zeros_end);
+            block = zeros_end;
         }
     }
-    rc = write_all(fd, block_start, cur - block_start);
-    if (rc)
-        return PyErr_SetFromErrno(PyExc_IOError);
-    return PyLong_FromUnsignedLongLong(zeros);
 }
 
 
@@ -1404,11 +1479,14 @@ PyMODINIT_FUNC init_helpers(void)
     assert(sizeof(PY_LONG_LONG) <= sizeof(long long));
     assert(sizeof(unsigned PY_LONG_LONG) <= sizeof(unsigned long long));
 
-    if (sizeof(off_t) < sizeof(int))
+    // Originally required by append_sparse_region()
     {
-        // Originally required by append_sparse_region().
-        fprintf(stderr, "sizeof(off_t) < sizeof(int); please report.\n");
-        exit(1);
+        off_t probe;
+        if (!INTEGRAL_ASSIGNMENT_FITS(&probe, INT_MAX))
+        {
+            fprintf(stderr, "off_t can't hold INT_MAX; please report.\n");
+            exit(1);
+        }
     }
 
     char *e;
