@@ -299,8 +299,8 @@ static PyObject *record_sparse_zeros(unsigned long long *new_pending,
 }
 
 
-static const byte * find_end_of_zero_run(const byte * const start,
-                                         const byte * const end)
+static const byte * find_not_zero(const byte * const start,
+                                  const byte * const end)
 {
     // Return a pointer to first non-zero byte between start and end,
     // or end if there isn't one.
@@ -309,6 +309,23 @@ static const byte * find_end_of_zero_run(const byte * const start,
     while (cur < end && *cur == 0)
         cur++;
     return cur;
+}
+
+
+static const byte * const find_trailing_zeros(const byte * const start,
+                                              const byte * const end)
+{
+    // Return a pointer to the start of any trailing run of zeros, or
+    // end if there isn't one.
+    assert(start <= end);
+    if (start == end)
+        return end;
+    const byte * cur = end;
+    while (cur > start && *--cur == 0) {}
+    if (*cur == 0)
+        return cur;
+    else
+        return cur + 1;
 }
 
 
@@ -326,47 +343,58 @@ static const byte *find_non_sparse_end(const byte * const start,
     assert(min_len);
     // Probe in min_len jumps, searching backward from the jump
     // destination for a non-zero byte.  If such a byte is found, move
-    // just past that byte and try again.
+    // just past it and try again.
     const byte *candidate = start;
-    ptrdiff_t known_trailing = 0;
-    while (end - candidate >= min_len)
+    // End of any run of zeros, starting at candidate, that we've already seen
+    const byte *end_of_known_zeros = candidate;
+    while (end - candidate >= min_len) // Handle all min_len candidate blocks
     {
-        const byte * const probe_region_end = candidate + min_len;
-        const byte *probe = probe_region_end - 1;
-        while (probe > candidate + known_trailing && *probe == 0)
-            probe--;
-        if (probe == candidate + known_trailing && *probe == 0)
+        const byte * const probe_end = candidate + min_len;
+        const byte * const trailing_zeros =
+            find_trailing_zeros(end_of_known_zeros, probe_end);
+        if (trailing_zeros == probe_end)
+            end_of_known_zeros = candidate = probe_end;
+        else if (trailing_zeros == end_of_known_zeros)
         {
-            assert(candidate + min_len == probe_region_end);
+            assert(candidate >= start);
+            assert(candidate <= end);
+            assert(*candidate == 0);
             return candidate;
         }
-        assert(*probe != 0);
-        // Skip past the probe and try again (remembering the leading zeros
-        // at the new location that we've already seen).
-        known_trailing = probe_region_end - probe - 1;
-        candidate = probe + 1;
+        else
+        {
+            candidate = trailing_zeros;
+            end_of_known_zeros = probe_end;
+        }
     }
-    // No min_len sparse run found, search backward from end for any
-    // trailing run of zeros.
-    const byte *probe = end - 1;
-    while (probe > candidate + known_trailing && *probe == 0)
-        probe--;
 
-    const byte *result;
-    if (probe == candidate + known_trailing && *probe == 0)
-        result = candidate;
-    else
-        result = probe + 1;
+    if (candidate == end)
+        return end;
 
-    if (result == end)
-        assert(*(result - 1) != 0);
-    else
+    // No min_len sparse run found, search backward from end
+    const byte * const trailing_zeros = find_trailing_zeros(end_of_known_zeros,
+                                                            end);
+
+    if (trailing_zeros == end_of_known_zeros)
     {
-        assert(result >= start);
-        assert(result <= end);
-        assert(*result == 0);
+        assert(candidate >= start);
+        assert(candidate < end);
+        assert(*candidate == 0);
+        assert(end - candidate < min_len);
+        return candidate;
     }
-    return result;
+
+    if (trailing_zeros == end)
+    {
+        assert(*(end - 1) != 0);
+        return end;
+    }
+
+    assert(end - trailing_zeros < min_len);
+    assert(trailing_zeros >= start);
+    assert(trailing_zeros < end);
+    assert(*trailing_zeros == 0);
+    return trailing_zeros;
 }
 
 
@@ -425,7 +453,7 @@ static PyObject *bup_write_sparsely(PyObject *self, PyObject *args)
             // Should be in the first loop iteration, a sparse run of
             // zeros, or nearly at the end of the block (within
             // min_sparse_len).
-            const byte * const zeros_end = find_end_of_zero_run(block, end);
+            const byte * const zeros_end = find_not_zero(block, end);
             PyObject *err = record_sparse_zeros(&zeros, fd,
                                                 zeros, zeros_end - block);
             if (err != NULL)
