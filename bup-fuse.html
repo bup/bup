@@ -5,20 +5,20 @@
   <meta http-equiv="Content-Style-Type" content="text/css" />
   <meta name="generator" content="pandoc" />
   <meta name="author" content="Avery Pennarun apenwarr@gmail.com" />
-  <meta name="date" content="2015-04-26" />
-  <title>bup-fuse(1) Bup 0.27</title>
+  <meta name="date" content="2016-05-18" />
+  <title>bup-fuse(1) Bup 0.27.1</title>
   <style type="text/css">code{white-space: pre;}</style>
 </head>
 <body>
 <div id="header">
-<h1 class="title">bup-fuse(1) Bup 0.27</h1>
+<h1 class="title">bup-fuse(1) Bup 0.27.1</h1>
 <h2 class="author">Avery Pennarun <script type="text/javascript">
 <!--
 h='&#x67;&#x6d;&#x61;&#x69;&#108;&#46;&#x63;&#x6f;&#x6d;';a='&#64;';n='&#x61;&#112;&#x65;&#110;&#x77;&#x61;&#114;&#114;';e=n+a+h;
-document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'">'+e+'<\/'+'a'+'>');
+document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'" clas'+'s="em' + 'ail">'+e+'<\/'+'a'+'>');
 // -->
 </script><noscript>&#x61;&#112;&#x65;&#110;&#x77;&#x61;&#114;&#114;&#32;&#x61;&#116;&#32;&#x67;&#x6d;&#x61;&#x69;&#108;&#32;&#100;&#x6f;&#116;&#32;&#x63;&#x6f;&#x6d;</noscript></h2>
-<h3 class="date">2015-04-26</h3>
+<h3 class="date">2016-05-18</h3>
 </div>
 <h1 id="name">NAME</h1>
 <p>bup-fuse - mount a bup repository as a filesystem</p>
@@ -32,16 +32,16 @@ document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'">'+e+'<\/'+'a'+'>');
 <h1 id="options">OPTIONS</h1>
 <dl>
 <dt>-d, --debug</dt>
-<dd><p>run in the foreground and print FUSE debug information for each request.</p>
+<dd>run in the foreground and print FUSE debug information for each request.
 </dd>
 <dt>-f, --foreground</dt>
-<dd><p>run in the foreground and exit only when the filesystem is unmounted.</p>
+<dd>run in the foreground and exit only when the filesystem is unmounted.
 </dd>
 <dt>-o, --allow-other</dt>
-<dd><p>permit other users to access the filesystem. Necessary for exporting the filesystem via Samba, for example.</p>
+<dd>permit other users to access the filesystem. Necessary for exporting the filesystem via Samba, for example.
 </dd>
 <dt>--meta</dt>
-<dd><p>report some of the original metadata (when available) for the mounted paths (currently the uid, gid, mode, and timestamps). Without this, only generic values will be presented. This option is not yet enabled by default because it may negatively affect performance, and note that any timestamps before 1970-01-01 UTC (i.e. before the Unix epoch) will be presented as 1970-01-01 UTC.</p>
+<dd>report some of the original metadata (when available) for the mounted paths (currently the uid, gid, mode, and timestamps). Without this, only generic values will be presented. This option is not yet enabled by default because it may negatively affect performance, and note that any timestamps before 1970-01-01 UTC (i.e. before the Unix epoch) will be presented as 1970-01-01 UTC.
 </dd>
 </dl>
 <h1 id="examples">EXAMPLES</h1>

@@ -5,20 +5,20 @@
   <meta http-equiv="Content-Style-Type" content="text/css" />
   <meta name="generator" content="pandoc" />
   <meta name="author" content="Avery Pennarun apenwarr@gmail.com" />
-  <meta name="date" content="2015-04-26" />
-  <title>bup-fsck(1) Bup 0.27</title>
+  <meta name="date" content="2016-05-18" />
+  <title>bup-fsck(1) Bup 0.27.1</title>
   <style type="text/css">code{white-space: pre;}</style>
 </head>
 <body>
 <div id="header">
-<h1 class="title">bup-fsck(1) Bup 0.27</h1>
+<h1 class="title">bup-fsck(1) Bup 0.27.1</h1>
 <h2 class="author">Avery Pennarun <script type="text/javascript">
 <!--
 h='&#x67;&#x6d;&#x61;&#x69;&#108;&#46;&#x63;&#x6f;&#x6d;';a='&#64;';n='&#x61;&#112;&#x65;&#110;&#x77;&#x61;&#114;&#114;';e=n+a+h;
-document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'">'+e+'<\/'+'a'+'>');
+document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'" clas'+'s="em' + 'ail">'+e+'<\/'+'a'+'>');
 // -->
 </script><noscript>&#x61;&#112;&#x65;&#110;&#x77;&#x61;&#114;&#114;&#32;&#x61;&#116;&#32;&#x67;&#x6d;&#x61;&#x69;&#108;&#32;&#100;&#x6f;&#116;&#32;&#x63;&#x6f;&#x6d;</noscript></h2>
-<h3 class="date">2015-04-26</h3>
+<h3 class="date">2016-05-18</h3>
 </div>
 <h1 id="name">NAME</h1>
 <p>bup-fsck - verify or repair a bup repository</p>
@@ -33,25 +33,25 @@ document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'">'+e+'<\/'+'a'+'>');
 <h1 id="options">OPTIONS</h1>
 <dl>
 <dt>-r, --repair</dt>
-<dd><p>attempt to repair any damaged packs using existing recovery blocks. (Requires <code>par2</code>(1).)</p>
+<dd>attempt to repair any damaged packs using existing recovery blocks. (Requires <code>par2</code>(1).)
 </dd>
 <dt>-g, --generate</dt>
-<dd><p>generate recovery blocks for any packs that don't already have them. (Requires <code>par2</code>(1).)</p>
+<dd>generate recovery blocks for any packs that don't already have them. (Requires <code>par2</code>(1).)
 </dd>
 <dt>-v, --verbose</dt>
-<dd><p>increase verbosity (can be used more than once).</p>
+<dd>increase verbosity (can be used more than once).
 </dd>
 <dt>--quick</dt>
-<dd><p>don't run a full <code>git verify-pack</code> on each pack file; instead just check the final checksum. This can cause a significant speedup with no obvious decrease in reliability. However, you may want to avoid this option if you're paranoid. Has no effect on packs that already have recovery information.</p>
+<dd>don't run a full <code>git verify-pack</code> on each pack file; instead just check the final checksum. This can cause a significant speedup with no obvious decrease in reliability. However, you may want to avoid this option if you're paranoid. Has no effect on packs that already have recovery information.
 </dd>
 <dt>-j, --jobs=<em>numjobs</em></dt>
-<dd><p>maximum number of pack verifications to run at a time. The optimal value for this option depends how fast your CPU can verify packs vs. your disk throughput. If you run too many jobs at once, your disk will get saturated by seeking back and forth between files and performance will actually decrease, even if <em>numjobs</em> is less than the number of CPU cores on your system. You can experiment with this option to find the optimal value.</p>
+<dd>maximum number of pack verifications to run at a time. The optimal value for this option depends how fast your CPU can verify packs vs. your disk throughput. If you run too many jobs at once, your disk will get saturated by seeking back and forth between files and performance will actually decrease, even if <em>numjobs</em> is less than the number of CPU cores on your system. You can experiment with this option to find the optimal value.
 </dd>
 <dt>--par2-ok</dt>
-<dd><p>immediately return 0 if <code>par2</code>(1) is installed and working, or 1 otherwise. Do not actually check anything.</p>
+<dd>immediately return 0 if <code>par2</code>(1) is installed and working, or 1 otherwise. Do not actually check anything.
 </dd>
 <dt>--disable-par2</dt>
-<dd><p>pretend that <code>par2</code>(1) is not installed, and ignore all recovery blocks.</p>
+<dd>pretend that <code>par2</code>(1) is not installed, and ignore all recovery blocks.
 </dd>
 </dl>
 <h1 id="examples">EXAMPLES</h1>

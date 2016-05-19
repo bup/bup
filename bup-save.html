@@ -5,20 +5,20 @@
   <meta http-equiv="Content-Style-Type" content="text/css" />
   <meta name="generator" content="pandoc" />
   <meta name="author" content="Avery Pennarun apenwarr@gmail.com" />
-  <meta name="date" content="2015-04-26" />
-  <title>bup-save(1) Bup 0.27</title>
+  <meta name="date" content="2016-05-18" />
+  <title>bup-save(1) Bup 0.27.1</title>
   <style type="text/css">code{white-space: pre;}</style>
 </head>
 <body>
 <div id="header">
-<h1 class="title">bup-save(1) Bup 0.27</h1>
+<h1 class="title">bup-save(1) Bup 0.27.1</h1>
 <h2 class="author">Avery Pennarun <script type="text/javascript">
 <!--
 h='&#x67;&#x6d;&#x61;&#x69;&#108;&#46;&#x63;&#x6f;&#x6d;';a='&#64;';n='&#x61;&#112;&#x65;&#110;&#x77;&#x61;&#114;&#114;';e=n+a+h;
-document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'">'+e+'<\/'+'a'+'>');
+document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'" clas'+'s="em' + 'ail">'+e+'<\/'+'a'+'>');
 // -->
 </script><noscript>&#x61;&#112;&#x65;&#110;&#x77;&#x61;&#114;&#114;&#32;&#x61;&#116;&#32;&#x67;&#x6d;&#x61;&#x69;&#108;&#32;&#100;&#x6f;&#116;&#32;&#x63;&#x6f;&#x6d;</noscript></h2>
-<h3 class="date">2015-04-26</h3>
+<h3 class="date">2016-05-18</h3>
 </div>
 <h1 id="name">NAME</h1>
 <p>bup-save - create a new bup backup set</p>
@@ -32,34 +32,34 @@ document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'">'+e+'<\/'+'a'+'>');
 <h1 id="options">OPTIONS</h1>
 <dl>
 <dt>-r, --remote=<em>host</em>:<em>path</em></dt>
-<dd><p>save the backup set to the given remote server. If <em>path</em> is omitted, uses the default path on the remote server (you still need to include the ':'). The connection to the remote server is made with SSH. If you'd like to specify which port, user or private key to use for the SSH connection, we recommend you use the <code>~/.ssh/config</code> file.</p>
+<dd>save the backup set to the given remote server. If <em>path</em> is omitted, uses the default path on the remote server (you still need to include the ':'). The connection to the remote server is made with SSH. If you'd like to specify which port, user or private key to use for the SSH connection, we recommend you use the <code>~/.ssh/config</code> file.
 </dd>
 <dt>-t, --tree</dt>
-<dd><p>after creating the backup set, print out the git tree id of the resulting backup.</p>
+<dd>after creating the backup set, print out the git tree id of the resulting backup.
 </dd>
 <dt>-c, --commit</dt>
-<dd><p>after creating the backup set, print out the git commit id of the resulting backup.</p>
+<dd>after creating the backup set, print out the git commit id of the resulting backup.
 </dd>
 <dt>-n, --name=<em>name</em></dt>
-<dd><p>after creating the backup set, create a git branch named <em>name</em> so that the backup can be accessed using that name. If <em>name</em> already exists, the new backup will be considered a descendant of the old <em>name</em>. (Thus, you can continually create new backup sets with the same name, and later view the history of that backup set to see how files have changed over time.)</p>
+<dd>after creating the backup set, create a git branch named <em>name</em> so that the backup can be accessed using that name. If <em>name</em> already exists, the new backup will be considered a descendant of the old <em>name</em>. (Thus, you can continually create new backup sets with the same name, and later view the history of that backup set to see how files have changed over time.)
 </dd>
 <dt>-d, --date=<em>date</em></dt>
-<dd><p>specify the date of the backup, in seconds since the epoch, instead of the current time.</p>
+<dd>specify the date of the backup, in seconds since the epoch, instead of the current time.
 </dd>
 <dt>-f, --indexfile=<em>indexfile</em></dt>
-<dd><p>use a different index filename instead of <code>$BUP_DIR/bupindex</code>.</p>
+<dd>use a different index filename instead of <code>$BUP_DIR/bupindex</code>.
 </dd>
 <dt>-v, --verbose</dt>
-<dd><p>increase verbosity (can be used more than once). With one -v, prints every directory name as it gets backed up. With two -v, also prints every filename.</p>
+<dd>increase verbosity (can be used more than once). With one -v, prints every directory name as it gets backed up. With two -v, also prints every filename.
 </dd>
 <dt>-q, --quiet</dt>
-<dd><p>disable progress messages.</p>
+<dd>disable progress messages.
 </dd>
 <dt>--smaller=<em>maxsize</em></dt>
-<dd><p>don't back up files &gt;= <em>maxsize</em> bytes. You can use this to run frequent incremental backups of your small files, which can usually be backed up quickly, and skip over large ones (like virtual machine images) which take longer. Then you can back up the large files less frequently. Use a suffix like k, M, or G to specify multiples of 1024, 1024<em>1024, 1024</em>1024*1024 respectively.</p>
+<dd>don't back up files &gt;= <em>maxsize</em> bytes. You can use this to run frequent incremental backups of your small files, which can usually be backed up quickly, and skip over large ones (like virtual machine images) which take longer. Then you can back up the large files less frequently. Use a suffix like k, M, or G to specify multiples of 1024, 1024<em>1024, 1024</em>1024*1024 respectively.
 </dd>
 <dt>--bwlimit=<em>bytes/sec</em></dt>
-<dd><p>don't transmit more than <em>bytes/sec</em> bytes per second to the server. This is good for making your backups not suck up all your network bandwidth. Use a suffix like k, M, or G to specify multiples of 1024, 1024<em>1024, 1024</em>1024*1024 respectively.</p>
+<dd>don't transmit more than <em>bytes/sec</em> bytes per second to the server. This is good for making your backups not suck up all your network bandwidth. Use a suffix like k, M, or G to specify multiples of 1024, 1024<em>1024, 1024</em>1024*1024 respectively.
 </dd>
 <dt>--strip</dt>
 <dd><p>strips the path that is given from all files and directories.</p>
@@ -74,7 +74,7 @@ document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'">'+e+'<\/'+'a'+'>');
 <p>A directory <em>/root/chroot/a/etc</em> saved with &quot;bup save -n chroot --graft /root/chroot/a=/chroot/a&quot; would be saved as <em>/chroot/a/etc</em>. Note that currently, metadata will not be saved for the root directory (<em>/</em>) when this option is specified.</p>
 </dd>
 <dt>-<em>#</em>, --compress=<em>#</em></dt>
-<dd><p>set the compression level to # (a value from 0-9, where 9 is the highest and 0 is no compression). The default is 1 (fast, loose compression)</p>
+<dd>set the compression level to # (a value from 0-9, where 9 is the highest and 0 is no compression). The default is 1 (fast, loose compression)
 </dd>
 </dl>
 <h1 id="examples">EXAMPLES</h1>

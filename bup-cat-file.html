@@ -5,20 +5,20 @@
   <meta http-equiv="Content-Style-Type" content="text/css" />
   <meta name="generator" content="pandoc" />
   <meta name="author" content="Rob Browning rlb@defaultvalue.org" />
-  <meta name="date" content="2015-04-26" />
-  <title>bup-cat-file(1) Bup 0.27</title>
+  <meta name="date" content="2016-05-18" />
+  <title>bup-cat-file(1) Bup 0.27.1</title>
   <style type="text/css">code{white-space: pre;}</style>
 </head>
 <body>
 <div id="header">
-<h1 class="title">bup-cat-file(1) Bup 0.27</h1>
+<h1 class="title">bup-cat-file(1) Bup 0.27.1</h1>
 <h2 class="author">Rob Browning <script type="text/javascript">
 <!--
 h='&#100;&#x65;&#102;&#x61;&#x75;&#108;&#116;&#118;&#x61;&#108;&#x75;&#x65;&#46;&#x6f;&#114;&#x67;';a='&#64;';n='&#114;&#108;&#98;';e=n+a+h;
-document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'">'+e+'<\/'+'a'+'>');
+document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'" clas'+'s="em' + 'ail">'+e+'<\/'+'a'+'>');
 // -->
 </script><noscript>&#114;&#108;&#98;&#32;&#x61;&#116;&#32;&#100;&#x65;&#102;&#x61;&#x75;&#108;&#116;&#118;&#x61;&#108;&#x75;&#x65;&#32;&#100;&#x6f;&#116;&#32;&#x6f;&#114;&#x67;</noscript></h2>
-<h3 class="date">2015-04-26</h3>
+<h3 class="date">2016-05-18</h3>
 </div>
 <h1 id="name">NAME</h1>
 <p>bup-cat-file - extract archive content (low-level)</p>
@@ -29,10 +29,10 @@ document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'">'+e+'<\/'+'a'+'>');
 <h1 id="options">OPTIONS</h1>
 <dl>
 <dt>--meta</dt>
-<dd><p>retrieve the metadata entry associated with <em>path</em>. Note that currently this does not return the raw bytes for the entry recorded in the relevant .bupm in the archive, but rather a decoded and then re-encoded version. When that matters, it should be possible (though awkward) to use <code>--bupm</code> on the parent directory and then find the relevant entry in the output.</p>
+<dd>retrieve the metadata entry associated with <em>path</em>. Note that currently this does not return the raw bytes for the entry recorded in the relevant .bupm in the archive, but rather a decoded and then re-encoded version. When that matters, it should be possible (though awkward) to use <code>--bupm</code> on the parent directory and then find the relevant entry in the output.
 </dd>
 <dt>--bupm</dt>
-<dd><p>retrieve the .bupm file associated with <em>path</em>, which must be a directory.</p>
+<dd>retrieve the .bupm file associated with <em>path</em>, which must be a directory.
 </dd>
 </dl>
 <h1 id="examples">EXAMPLES</h1>

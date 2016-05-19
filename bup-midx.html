@@ -5,20 +5,20 @@
   <meta http-equiv="Content-Style-Type" content="text/css" />
   <meta name="generator" content="pandoc" />
   <meta name="author" content="Avery Pennarun apenwarr@gmail.com" />
-  <meta name="date" content="2015-04-26" />
-  <title>bup-midx(1) Bup 0.27</title>
+  <meta name="date" content="2016-05-18" />
+  <title>bup-midx(1) Bup 0.27.1</title>
   <style type="text/css">code{white-space: pre;}</style>
 </head>
 <body>
 <div id="header">
-<h1 class="title">bup-midx(1) Bup 0.27</h1>
+<h1 class="title">bup-midx(1) Bup 0.27.1</h1>
 <h2 class="author">Avery Pennarun <script type="text/javascript">
 <!--
 h='&#x67;&#x6d;&#x61;&#x69;&#108;&#46;&#x63;&#x6f;&#x6d;';a='&#64;';n='&#x61;&#112;&#x65;&#110;&#x77;&#x61;&#114;&#114;';e=n+a+h;
-document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'">'+e+'<\/'+'a'+'>');
+document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'" clas'+'s="em' + 'ail">'+e+'<\/'+'a'+'>');
 // -->
 </script><noscript>&#x61;&#112;&#x65;&#110;&#x77;&#x61;&#114;&#114;&#32;&#x61;&#116;&#32;&#x67;&#x6d;&#x61;&#x69;&#108;&#32;&#100;&#x6f;&#116;&#32;&#x63;&#x6f;&#x6d;</noscript></h2>
-<h3 class="date">2015-04-26</h3>
+<h3 class="date">2016-05-18</h3>
 </div>
 <h1 id="name">NAME</h1>
 <p>bup-midx - create a multi-index (<code>.midx</code>) file from several <code>.idx</code> files</p>
@@ -30,22 +30,22 @@ document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'">'+e+'<\/'+'a'+'>');
 <h1 id="options">OPTIONS</h1>
 <dl>
 <dt>-o, --output=<em>filename.midx</em></dt>
-<dd><p>use the given output filename for the <code>.midx</code> file. Default is auto-generated.</p>
+<dd>use the given output filename for the <code>.midx</code> file. Default is auto-generated.
 </dd>
 <dt>-a, --auto</dt>
-<dd><p>automatically generate new <code>.midx</code> files for any <code>.idx</code> files where it would be appropriate.</p>
+<dd>automatically generate new <code>.midx</code> files for any <code>.idx</code> files where it would be appropriate.
 </dd>
 <dt>-f, --force</dt>
-<dd><p>force generation of a single new <code>.midx</code> file containing <em>all</em> your <code>.idx</code> files, even if other <code>.midx</code> files already exist. This will result in the fastest backup performance, but may take a long time to run.</p>
+<dd>force generation of a single new <code>.midx</code> file containing <em>all</em> your <code>.idx</code> files, even if other <code>.midx</code> files already exist. This will result in the fastest backup performance, but may take a long time to run.
 </dd>
 <dt>--dir=<em>packdir</em></dt>
-<dd><p>specify the directory containing the <code>.idx</code>/<code>.midx</code> files to work with. The default is <span class="math"><em>B</em><em>U</em><em>P</em><sub><em>D</em></sub><em>I</em><em>R</em>/<em>o</em><em>b</em><em>j</em><em>e</em><em>c</em><em>t</em><em>s</em>/<em>p</em><em>a</em><em>c</em><em>k</em><em>a</em><em>n</em><em>d</em></span>BUP_DIR/indexcache/*.</p>
+<dd>specify the directory containing the <code>.idx</code>/<code>.midx</code> files to work with. The default is $BUP_DIR/objects/pack and $BUP_DIR/indexcache/*.
 </dd>
 <dt>--max-files</dt>
-<dd><p>maximum number of <code>.idx</code> files to open at a time. You can use this if you have an especially small number of file descriptors available, so that midx can complete (though possibly non-optimally) even if it can't open all your <code>.idx</code> files at once. The default value of this option should be fine for most people.</p>
+<dd>maximum number of <code>.idx</code> files to open at a time. You can use this if you have an especially small number of file descriptors available, so that midx can complete (though possibly non-optimally) even if it can't open all your <code>.idx</code> files at once. The default value of this option should be fine for most people.
 </dd>
 <dt>--check</dt>
-<dd><p>validate a <code>.midx</code> file by ensuring that all objects in its contained <code>.idx</code> files exist inside the <code>.midx</code>. May be useful for debugging.</p>
+<dd>validate a <code>.midx</code> file by ensuring that all objects in its contained <code>.idx</code> files exist inside the <code>.midx</code>. May be useful for debugging.
 </dd>
 </dl>
 <h1 id="examples">EXAMPLES</h1>

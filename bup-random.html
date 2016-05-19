@@ -5,20 +5,20 @@
   <meta http-equiv="Content-Style-Type" content="text/css" />
   <meta name="generator" content="pandoc" />
   <meta name="author" content="Avery Pennarun apenwarr@gmail.com" />
-  <meta name="date" content="2015-04-26" />
-  <title>bup-random(1) Bup 0.27</title>
+  <meta name="date" content="2016-05-18" />
+  <title>bup-random(1) Bup 0.27.1</title>
   <style type="text/css">code{white-space: pre;}</style>
 </head>
 <body>
 <div id="header">
-<h1 class="title">bup-random(1) Bup 0.27</h1>
+<h1 class="title">bup-random(1) Bup 0.27.1</h1>
 <h2 class="author">Avery Pennarun <script type="text/javascript">
 <!--
 h='&#x67;&#x6d;&#x61;&#x69;&#108;&#46;&#x63;&#x6f;&#x6d;';a='&#64;';n='&#x61;&#112;&#x65;&#110;&#x77;&#x61;&#114;&#114;';e=n+a+h;
-document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'">'+e+'<\/'+'a'+'>');
+document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'" clas'+'s="em' + 'ail">'+e+'<\/'+'a'+'>');
 // -->
 </script><noscript>&#x61;&#112;&#x65;&#110;&#x77;&#x61;&#114;&#114;&#32;&#x61;&#116;&#32;&#x67;&#x6d;&#x61;&#x69;&#108;&#32;&#100;&#x6f;&#116;&#32;&#x63;&#x6f;&#x6d;</noscript></h2>
-<h3 class="date">2015-04-26</h3>
+<h3 class="date">2016-05-18</h3>
 </div>
 <h1 id="name">NAME</h1>
 <p>bup-random - generate a stream of random output</p>
@@ -31,16 +31,16 @@ document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'">'+e+'<\/'+'a'+'>');
 <h1 id="options">OPTIONS</h1>
 <dl>
 <dt>&lt;numbytes&gt;</dt>
-<dd><p>the number of bytes of data to generate. Can be used with the suffices <code>k</code>, <code>M</code>, or <code>G</code> to indicate kilobytes, megabytes, or gigabytes, respectively.</p>
+<dd>the number of bytes of data to generate. Can be used with the suffices <code>k</code>, <code>M</code>, or <code>G</code> to indicate kilobytes, megabytes, or gigabytes, respectively.
 </dd>
 <dt>-S, --seed=<em>seed</em></dt>
-<dd><p>use the given value to seed the pseudorandom number generator. The generated output stream will be identical for every stream seeded with the same value. The default seed is 1. A seed value of 0 is equivalent to 1.</p>
+<dd>use the given value to seed the pseudorandom number generator. The generated output stream will be identical for every stream seeded with the same value. The default seed is 1. A seed value of 0 is equivalent to 1.
 </dd>
 <dt>-f, --force</dt>
-<dd><p>generate output even if stdout is a tty. (Generating random data to a tty is generally considered ill-advised, but you can do if you really want.)</p>
+<dd>generate output even if stdout is a tty. (Generating random data to a tty is generally considered ill-advised, but you can do if you really want.)
 </dd>
 <dt>-v, --verbose</dt>
-<dd><p>print a progress message showing the number of bytes that has been output so far.</p>
+<dd>print a progress message showing the number of bytes that has been output so far.
 </dd>
 </dl>
 <h1 id="examples">EXAMPLES</h1>

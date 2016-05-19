@@ -5,20 +5,20 @@
   <meta http-equiv="Content-Style-Type" content="text/css" />
   <meta name="generator" content="pandoc" />
   <meta name="author" content="Avery Pennarun apenwarr@gmail.com" />
-  <meta name="date" content="2015-04-26" />
-  <title>bup-ftp(1) Bup 0.27</title>
+  <meta name="date" content="2016-05-18" />
+  <title>bup-ftp(1) Bup 0.27.1</title>
   <style type="text/css">code{white-space: pre;}</style>
 </head>
 <body>
 <div id="header">
-<h1 class="title">bup-ftp(1) Bup 0.27</h1>
+<h1 class="title">bup-ftp(1) Bup 0.27.1</h1>
 <h2 class="author">Avery Pennarun <script type="text/javascript">
 <!--
 h='&#x67;&#x6d;&#x61;&#x69;&#108;&#46;&#x63;&#x6f;&#x6d;';a='&#64;';n='&#x61;&#112;&#x65;&#110;&#x77;&#x61;&#114;&#114;';e=n+a+h;
-document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'">'+e+'<\/'+'a'+'>');
+document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'" clas'+'s="em' + 'ail">'+e+'<\/'+'a'+'>');
 // -->
 </script><noscript>&#x61;&#112;&#x65;&#110;&#x77;&#x61;&#114;&#114;&#32;&#x61;&#116;&#32;&#x67;&#x6d;&#x61;&#x69;&#108;&#32;&#100;&#x6f;&#116;&#32;&#x63;&#x6f;&#x6d;</noscript></h2>
-<h3 class="date">2015-04-26</h3>
+<h3 class="date">2016-05-18</h3>
 </div>
 <h1 id="name">NAME</h1>
 <p>bup-ftp - ftp-like client for navigating bup repositories</p>
@@ -31,28 +31,28 @@ document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'">'+e+'<\/'+'a'+'>');
 <p>The following commands are available inside <code>bup ftp</code>:</p>
 <dl>
 <dt>ls [-s] [-a] [<em>path</em>]</dt>
-<dd><p>print the contents of a directory. If no path argument is given, the current directory's contents are listed. If -a is given, also include hidden files (files which start with a <code>.</code> character). If -s is given, each file is displayed with its hash from the bup archive to its left.</p>
+<dd>print the contents of a directory. If no path argument is given, the current directory's contents are listed. If -a is given, also include hidden files (files which start with a <code>.</code> character). If -s is given, each file is displayed with its hash from the bup archive to its left.
 </dd>
 <dt>cd <em>dirname</em></dt>
-<dd><p>change to a different working directory</p>
+<dd>change to a different working directory
 </dd>
 <dt>pwd</dt>
-<dd><p>print the path of the current working directory</p>
+<dd>print the path of the current working directory
 </dd>
 <dt>cat <em>filenames...</em></dt>
-<dd><p>print the contents of one or more files to stdout</p>
+<dd>print the contents of one or more files to stdout
 </dd>
 <dt>get <em>filename</em> <em>localname</em></dt>
-<dd><p>download the contents of <em>filename</em> and save it to disk as <em>localname</em>. If <em>localname</em> is omitted, uses <em>filename</em> as the local name.</p>
+<dd>download the contents of <em>filename</em> and save it to disk as <em>localname</em>. If <em>localname</em> is omitted, uses <em>filename</em> as the local name.
 </dd>
 <dt>mget <em>filenames...</em></dt>
-<dd><p>download the contents of the given <em>filenames</em> and stores them to disk under the same names. The filenames may contain Unix filename globs (<code>*</code>, <code>?</code>, etc.)</p>
+<dd>download the contents of the given <em>filenames</em> and stores them to disk under the same names. The filenames may contain Unix filename globs (<code>*</code>, <code>?</code>, etc.)
 </dd>
 <dt>help</dt>
-<dd><p>print a list of available commands</p>
+<dd>print a list of available commands
 </dd>
 <dt>quit</dt>
-<dd><p>exit the <code>bup ftp</code> client</p>
+<dd>exit the <code>bup ftp</code> client
 </dd>
 </dl>
 <h1 id="examples">EXAMPLES</h1>
