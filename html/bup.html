@@ -5,20 +5,20 @@
   <meta http-equiv="Content-Style-Type" content="text/css" />
   <meta name="generator" content="pandoc" />
   <meta name="author" content="Avery Pennarun apenwarr@gmail.com" />
-  <meta name="date" content="2015-04-26" />
-  <title>bup(1) Bup 0.27</title>
+  <meta name="date" content="2016-05-18" />
+  <title>bup(1) Bup 0.27.1</title>
   <style type="text/css">code{white-space: pre;}</style>
 </head>
 <body>
 <div id="header">
-<h1 class="title">bup(1) Bup 0.27</h1>
+<h1 class="title">bup(1) Bup 0.27.1</h1>
 <h2 class="author">Avery Pennarun <script type="text/javascript">
 <!--
 h='&#x67;&#x6d;&#x61;&#x69;&#108;&#46;&#x63;&#x6f;&#x6d;';a='&#64;';n='&#x61;&#112;&#x65;&#110;&#x77;&#x61;&#114;&#114;';e=n+a+h;
-document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'">'+e+'<\/'+'a'+'>');
+document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'" clas'+'s="em' + 'ail">'+e+'<\/'+'a'+'>');
 // -->
 </script><noscript>&#x61;&#112;&#x65;&#110;&#x77;&#x61;&#114;&#114;&#32;&#x61;&#116;&#32;&#x67;&#x6d;&#x61;&#x69;&#108;&#32;&#100;&#x6f;&#116;&#32;&#x63;&#x6f;&#x6d;</noscript></h2>
-<h3 class="date">2015-04-26</h3>
+<h3 class="date">2016-05-18</h3>
 </div>
 <h1 id="name">NAME</h1>
 <p>bup - Backup program using rolling checksums and git file formats</p>
@@ -31,89 +31,68 @@ document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'">'+e+'<\/'+'a'+'>');
 <h1 id="global-options">GLOBAL OPTIONS</h1>
 <dl>
 <dt>--version</dt>
-<dd><p>print bup's version number. Equivalent to <code>bup-version</code>(1)</p>
+<dd>print bup's version number. Equivalent to <code>bup-version</code>(1)
 </dd>
 <dt>-d, --bup-dir=<em>BUP_DIR</em></dt>
-<dd><p>use the given BUP_DIR parameter as the bup repository location, instead of reading it from the $BUP_DIR environment variable or using the default <code>~/.bup</code> location.</p>
+<dd>use the given BUP_DIR parameter as the bup repository location, instead of reading it from the $BUP_DIR environment variable or using the default <code>~/.bup</code> location.
 </dd>
 </dl>
 <h1 id="commonly-used-subcommands">COMMONLY USED SUBCOMMANDS</h1>
 <dl>
 <dt><code>bup-fsck</code>(1)</dt>
-<dd>Check backup sets for damage and add redundancy information
+<dd>Check backup sets for damage and add redundancy information <code>bup-ftp</code>(1)
 </dd>
-<dt><code>bup-ftp</code>(1)</dt>
-<dd>Browse backup sets using an ftp-like client
+<dd>Browse backup sets using an ftp-like client <code>bup-fuse</code>(1)
 </dd>
-<dt><code>bup-fuse</code>(1)</dt>
-<dd>Mount your backup sets as a filesystem
+<dd>Mount your backup sets as a filesystem <code>bup-help</code>(1)
 </dd>
-<dt><code>bup-help</code>(1)</dt>
-<dd>Print detailed help for the given command
+<dd>Print detailed help for the given command <code>bup-index</code>(1)
 </dd>
-<dt><code>bup-index</code>(1)</dt>
-<dd>Create or display the index of files to back up
+<dd>Create or display the index of files to back up <code>bup-on</code>(1)
 </dd>
-<dt><code>bup-on</code>(1)</dt>
-<dd>Backup a remote machine to the local one
+<dd>Backup a remote machine to the local one <code>bup-restore</code>(1)
 </dd>
-<dt><code>bup-restore</code>(1)</dt>
-<dd>Extract files from a backup set
+<dd>Extract files from a backup set <code>bup-save</code>(1)
 </dd>
-<dt><code>bup-save</code>(1)</dt>
-<dd>Save files into a backup set (note: run &quot;bup index&quot; first)
+<dd>Save files into a backup set (note: run &quot;bup index&quot; first) <code>bup-web</code>(1)
 </dd>
-<dt><code>bup-web</code>(1)</dt>
 <dd>Launch a web server to examine backup sets
 </dd>
 </dl>
 <h1 id="rarely-used-subcommands">RARELY USED SUBCOMMANDS</h1>
 <dl>
 <dt><code>bup-damage</code>(1)</dt>
-<dd>Deliberately destroy data
+<dd>Deliberately destroy data <code>bup-drecurse</code>(1)
 </dd>
-<dt><code>bup-drecurse</code>(1)</dt>
-<dd>Recursively list files in your filesystem
+<dd>Recursively list files in your filesystem <code>bup-init</code>(1)
 </dd>
-<dt><code>bup-init</code>(1)</dt>
-<dd>Initialize a bup repository
+<dd>Initialize a bup repository <code>bup-join</code>(1)
 </dd>
-<dt><code>bup-join</code>(1)</dt>
-<dd>Retrieve a file backed up using <code>bup-split</code>(1)
+<dd>Retrieve a file backed up using <code>bup-split</code>(1) <code>bup-ls</code>(1)
 </dd>
-<dt><code>bup-ls</code>(1)</dt>
-<dd>Browse the files in your backup sets
+<dd>Browse the files in your backup sets <code>bup-margin</code>(1)
 </dd>
-<dt><code>bup-margin</code>(1)</dt>
-<dd>Determine how close your bup repository is to armageddon
+<dd>Determine how close your bup repository is to armageddon <code>bup-memtest</code>(1)
 </dd>
-<dt><code>bup-memtest</code>(1)</dt>
-<dd>Test bup memory usage statistics
+<dd>Test bup memory usage statistics <code>bup-midx</code>(1)
 </dd>
-<dt><code>bup-midx</code>(1)</dt>
-<dd>Index objects to speed up future backups
+<dd>Index objects to speed up future backups <code>bup-newliner</code>(1)
 </dd>
-<dt><code>bup-newliner</code>(1)</dt>
-<dd>Make sure progress messages don't overlap with output
+<dd>Make sure progress messages don't overlap with output <code>bup-random</code>(1)
 </dd>
-<dt><code>bup-random</code>(1)</dt>
-<dd>Generate a stream of random output
+<dd>Generate a stream of random output <code>bup-server</code>(1)
 </dd>
-<dt><code>bup-server</code>(1)</dt>
-<dd>The server side of the bup client-server relationship
+<dd>The server side of the bup client-server relationship <code>bup-split</code>(1)
 </dd>
-<dt><code>bup-split</code>(1)</dt>
-<dd>Split a single file into its own backup set
+<dd>Split a single file into its own backup set <code>bup-tick</code>(1)
 </dd>
-<dt><code>bup-tick</code>(1)</dt>
-<dd>Wait for up to one second.
+<dd>Wait for up to one second. <code>bup-version</code>(1)
 </dd>
-<dt><code>bup-version</code>(1)</dt>
 <dd>Report the version number of your copy of bup.
 </dd>
 </dl>
 <h1 id="see-also">SEE ALSO</h1>
 <p><code>git</code>(1) and the <em>README</em> file from the bup distribution.</p>
-<p>The home of bup is at <a href="http://github.com/bup/bup/">http://github.com/bup/bup/</a>.</p>
+<p>The home of bup is at <a href="http://github.com/bup/bup/" class="uri">http://github.com/bup/bup/</a>.</p>
 </body>
 </html>

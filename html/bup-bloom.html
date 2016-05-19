@@ -5,20 +5,20 @@
   <meta http-equiv="Content-Style-Type" content="text/css" />
   <meta name="generator" content="pandoc" />
   <meta name="author" content="Brandon Low lostlogic@lostlogicx.com" />
-  <meta name="date" content="2015-04-26" />
-  <title>bup-bloom(1) Bup 0.27</title>
+  <meta name="date" content="2016-05-18" />
+  <title>bup-bloom(1) Bup 0.27.1</title>
   <style type="text/css">code{white-space: pre;}</style>
 </head>
 <body>
 <div id="header">
-<h1 class="title">bup-bloom(1) Bup 0.27</h1>
+<h1 class="title">bup-bloom(1) Bup 0.27.1</h1>
 <h2 class="author">Brandon Low <script type="text/javascript">
 <!--
 h='&#108;&#x6f;&#x73;&#116;&#108;&#x6f;&#x67;&#x69;&#x63;&#120;&#46;&#x63;&#x6f;&#x6d;';a='&#64;';n='&#108;&#x6f;&#x73;&#116;&#108;&#x6f;&#x67;&#x69;&#x63;';e=n+a+h;
-document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'">'+e+'<\/'+'a'+'>');
+document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'" clas'+'s="em' + 'ail">'+e+'<\/'+'a'+'>');
 // -->
 </script><noscript>&#108;&#x6f;&#x73;&#116;&#108;&#x6f;&#x67;&#x69;&#x63;&#32;&#x61;&#116;&#32;&#108;&#x6f;&#x73;&#116;&#108;&#x6f;&#x67;&#x69;&#x63;&#120;&#32;&#100;&#x6f;&#116;&#32;&#x63;&#x6f;&#x6d;</noscript></h2>
-<h3 class="date">2015-04-26</h3>
+<h3 class="date">2016-05-18</h3>
 </div>
 <h1 id="name">NAME</h1>
 <p>bup-bloom - generates, regenerates, updates bloom filters</p>
@@ -29,22 +29,22 @@ document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'">'+e+'<\/'+'a'+'>');
 <h1 id="options">OPTIONS</h1>
 <dl>
 <dt>--ruin</dt>
-<dd><p>destroy bloom filters by setting the whole bitmask to zeros. you really want to know what you are doing if run this and you want to delete the resulting bloom when you are done with it.</p>
+<dd>destroy bloom filters by setting the whole bitmask to zeros. you really want to know what you are doing if run this and you want to delete the resulting bloom when you are done with it.
 </dd>
 <dt>-f, --force</dt>
-<dd><p>don't update the existing bloom file; generate a new one from scratch.</p>
+<dd>don't update the existing bloom file; generate a new one from scratch.
 </dd>
 <dt>-d, --dir=<em>directory</em></dt>
-<dd><p>the directory, containing <code>.idx</code> files, to process. Defaults to $BUP_DIR/objects/pack</p>
+<dd>the directory, containing <code>.idx</code> files, to process. Defaults to $BUP_DIR/objects/pack
 </dd>
 <dt>-o, --outfile=<em>outfile</em></dt>
-<dd><p>the file to write the bloom filter to. defaults to $dir/bup.bloom</p>
+<dd>the file to write the bloom filter to. defaults to $dir/bup.bloom
 </dd>
 <dt>-k, --hashes=<em>hashes</em></dt>
-<dd><p>number of hash functions to use only 4 and 5 are valid. defaults to 5 for repositories &lt; 2 TiB, or 4 otherwise. See comments in git.py for more on this value.</p>
+<dd>number of hash functions to use only 4 and 5 are valid. defaults to 5 for repositories &lt; 2 TiB, or 4 otherwise. See comments in git.py for more on this value.
 </dd>
 <dt>-c, --check=<em>idxfile</em></dt>
-<dd><p>checks the bloom file (counterintuitively outfile) against the specified <code>.idx</code> file, first checks that the bloom filter is claiming to contain the <code>.idx</code>, then checks that it does actually contain all of the objects in the <code>.idx</code>. Does not write anything and ignores the <code>-k</code> option.</p>
+<dd>checks the bloom file (counterintuitively outfile) against the specified <code>.idx</code> file, first checks that the bloom filter is claiming to contain the <code>.idx</code>, then checks that it does actually contain all of the objects in the <code>.idx</code>. Does not write anything and ignores the <code>-k</code> option.
 </dd>
 </dl>
 <h1 id="bup">BUP</h1>

@@ -5,20 +5,20 @@
   <meta http-equiv="Content-Style-Type" content="text/css" />
   <meta name="generator" content="pandoc" />
   <meta name="author" content="Avery Pennarun apenwarr@gmail.com" />
-  <meta name="date" content="2015-04-26" />
-  <title>bup-split(1) Bup 0.27</title>
+  <meta name="date" content="2016-05-18" />
+  <title>bup-split(1) Bup 0.27.1</title>
   <style type="text/css">code{white-space: pre;}</style>
 </head>
 <body>
 <div id="header">
-<h1 class="title">bup-split(1) Bup 0.27</h1>
+<h1 class="title">bup-split(1) Bup 0.27.1</h1>
 <h2 class="author">Avery Pennarun <script type="text/javascript">
 <!--
 h='&#x67;&#x6d;&#x61;&#x69;&#108;&#46;&#x63;&#x6f;&#x6d;';a='&#64;';n='&#x61;&#112;&#x65;&#110;&#x77;&#x61;&#114;&#114;';e=n+a+h;
-document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'">'+e+'<\/'+'a'+'>');
+document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'" clas'+'s="em' + 'ail">'+e+'<\/'+'a'+'>');
 // -->
 </script><noscript>&#x61;&#112;&#x65;&#110;&#x77;&#x61;&#114;&#114;&#32;&#x61;&#116;&#32;&#x67;&#x6d;&#x61;&#x69;&#108;&#32;&#100;&#x6f;&#116;&#32;&#x63;&#x6f;&#x6d;</noscript></h2>
-<h3 class="date">2015-04-26</h3>
+<h3 class="date">2016-05-18</h3>
 </div>
 <h1 id="name">NAME</h1>
 <p>bup-split - save individual files to bup backup sets</p>
@@ -41,61 +41,61 @@ document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'">'+e+'<\/'+'a'+'>');
 <p>These options select the primary behavior of the command, with -n being the most likely choice.</p>
 <dl>
 <dt>-n, --name=<em>name</em></dt>
-<dd><p>after creating the dataset, create a git branch named <em>name</em> so that it can be accessed using that name. If <em>name</em> already exists, the new dataset will be considered a descendant of the old <em>name</em>. (Thus, you can continually create new datasets with the same name, and later view the history of that dataset to see how it has changed over time.) The original data will also be available as a top-level file named &quot;data&quot; in the VFS, accessible via <code>bup fuse</code>, <code>bup ftp</code>, etc.</p>
+<dd>after creating the dataset, create a git branch named <em>name</em> so that it can be accessed using that name. If <em>name</em> already exists, the new dataset will be considered a descendant of the old <em>name</em>. (Thus, you can continually create new datasets with the same name, and later view the history of that dataset to see how it has changed over time.) The original data will also be available as a top-level file named &quot;data&quot; in the VFS, accessible via <code>bup fuse</code>, <code>bup ftp</code>, etc.
 </dd>
 <dt>-t, --tree</dt>
-<dd><p>output the git tree id of the resulting dataset.</p>
+<dd>output the git tree id of the resulting dataset.
 </dd>
 <dt>-c, --commit</dt>
-<dd><p>output the git commit id of the resulting dataset.</p>
+<dd>output the git commit id of the resulting dataset.
 </dd>
 <dt>-b, --blobs</dt>
-<dd><p>output a series of git blob ids that correspond to the chunks in the dataset. Incompatible with -n, -t, and -c.</p>
+<dd>output a series of git blob ids that correspond to the chunks in the dataset. Incompatible with -n, -t, and -c.
 </dd>
 <dt>--noop</dt>
-<dd><p>read the data and split it into blocks based on the &quot;bupsplit&quot; rolling checksum algorithm, but don't do anything with the blocks. This is mostly useful for benchmarking. Incompatible with -n, -t, -c, and -b.</p>
+<dd>read the data and split it into blocks based on the &quot;bupsplit&quot; rolling checksum algorithm, but don't do anything with the blocks. This is mostly useful for benchmarking. Incompatible with -n, -t, -c, and -b.
 </dd>
 <dt>--copy</dt>
-<dd><p>like <code>--noop</code>, but also write the data to stdout. This can be useful for benchmarking the speed of read+bupsplit+write for large amounts of data. Incompatible with -n, -t, -c, and -b.</p>
+<dd>like <code>--noop</code>, but also write the data to stdout. This can be useful for benchmarking the speed of read+bupsplit+write for large amounts of data. Incompatible with -n, -t, -c, and -b.
 </dd>
 </dl>
 <h1 id="options">OPTIONS</h1>
 <dl>
 <dt>-r, --remote=<em>host</em>:<em>path</em></dt>
-<dd><p>save the backup set to the given remote server. If <em>path</em> is omitted, uses the default path on the remote server (you still need to include the ':'). The connection to the remote server is made with SSH. If you'd like to specify which port, user or private key to use for the SSH connection, we recommend you use the <code>~/.ssh/config</code> file. Even though the destination is remote, a local bup repository is still required.</p>
+<dd>save the backup set to the given remote server. If <em>path</em> is omitted, uses the default path on the remote server (you still need to include the ':'). The connection to the remote server is made with SSH. If you'd like to specify which port, user or private key to use for the SSH connection, we recommend you use the <code>~/.ssh/config</code> file. Even though the destination is remote, a local bup repository is still required.
 </dd>
 <dt>-d, --date=<em>seconds-since-epoch</em></dt>
-<dd><p>specify the date inscribed in the commit (seconds since 1970-01-01).</p>
+<dd>specify the date inscribed in the commit (seconds since 1970-01-01).
 </dd>
 <dt>-q, --quiet</dt>
-<dd><p>disable progress messages.</p>
+<dd>disable progress messages.
 </dd>
 <dt>-v, --verbose</dt>
-<dd><p>increase verbosity (can be used more than once).</p>
+<dd>increase verbosity (can be used more than once).
 </dd>
 <dt>--git-ids</dt>
-<dd><p>stdin is a list of git object ids instead of raw data. <code>bup split</code> will read the contents of each named git object (if it exists in the bup repository) and split it. This might be useful for converting a git repository with large binary files to use bup-style hashsplitting instead. This option is probably most useful when combined with <code>--keep-boundaries</code>.</p>
+<dd>stdin is a list of git object ids instead of raw data. <code>bup split</code> will read the contents of each named git object (if it exists in the bup repository) and split it. This might be useful for converting a git repository with large binary files to use bup-style hashsplitting instead. This option is probably most useful when combined with <code>--keep-boundaries</code>.
 </dd>
 <dt>--keep-boundaries</dt>
-<dd><p>if multiple filenames are given on the command line, they are normally concatenated together as if the content all came from a single file. That is, the set of blobs/trees produced is identical to what it would have been if there had been a single input file. However, if you use <code>--keep-boundaries</code>, each file is split separately. You still only get a single tree or commit or series of blobs, but each blob comes from only one of the files; the end of one of the input files always ends a blob.</p>
+<dd>if multiple filenames are given on the command line, they are normally concatenated together as if the content all came from a single file. That is, the set of blobs/trees produced is identical to what it would have been if there had been a single input file. However, if you use <code>--keep-boundaries</code>, each file is split separately. You still only get a single tree or commit or series of blobs, but each blob comes from only one of the files; the end of one of the input files always ends a blob.
 </dd>
 <dt>--bench</dt>
-<dd><p>print benchmark timings to stderr.</p>
+<dd>print benchmark timings to stderr.
 </dd>
 <dt>--max-pack-size=<em>bytes</em></dt>
-<dd><p>never create git packfiles larger than the given number of bytes. Default is 1 billion bytes. Usually there is no reason to change this.</p>
+<dd>never create git packfiles larger than the given number of bytes. Default is 1 billion bytes. Usually there is no reason to change this.
 </dd>
 <dt>--max-pack-objects=<em>numobjs</em></dt>
-<dd><p>never create git packfiles with more than the given number of objects. Default is 200 thousand objects. Usually there is no reason to change this.</p>
+<dd>never create git packfiles with more than the given number of objects. Default is 200 thousand objects. Usually there is no reason to change this.
 </dd>
 <dt>--fanout=<em>numobjs</em></dt>
-<dd><p>when splitting very large files, try and keep the number of elements in trees to an average of <em>numobjs</em>.</p>
+<dd>when splitting very large files, try and keep the number of elements in trees to an average of <em>numobjs</em>.
 </dd>
 <dt>--bwlimit=<em>bytes/sec</em></dt>
-<dd><p>don't transmit more than <em>bytes/sec</em> bytes per second to the server. This is good for making your backups not suck up all your network bandwidth. Use a suffix like k, M, or G to specify multiples of 1024, 1024<em>1024, 1024</em>1024*1024 respectively.</p>
+<dd>don't transmit more than <em>bytes/sec</em> bytes per second to the server. This is good for making your backups not suck up all your network bandwidth. Use a suffix like k, M, or G to specify multiples of 1024, 1024<em>1024, 1024</em>1024*1024 respectively.
 </dd>
 <dt>-<em>#</em>, --compress=<em>#</em></dt>
-<dd><p>set the compression level to # (a value from 0-9, where 9 is the highest and 0 is no compression). The default is 1 (fast, loose compression)</p>
+<dd>set the compression level to # (a value from 0-9, where 9 is the highest and 0 is no compression). The default is 1 (fast, loose compression)
 </dd>
 </dl>
 <h1 id="examples">EXAMPLES</h1>

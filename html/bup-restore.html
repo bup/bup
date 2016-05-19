@@ -5,20 +5,20 @@
   <meta http-equiv="Content-Style-Type" content="text/css" />
   <meta name="generator" content="pandoc" />
   <meta name="author" content="Avery Pennarun apenwarr@gmail.com" />
-  <meta name="date" content="2015-04-26" />
-  <title>bup-restore(1) Bup 0.27</title>
+  <meta name="date" content="2016-05-18" />
+  <title>bup-restore(1) Bup 0.27.1</title>
   <style type="text/css">code{white-space: pre;}</style>
 </head>
 <body>
 <div id="header">
-<h1 class="title">bup-restore(1) Bup 0.27</h1>
+<h1 class="title">bup-restore(1) Bup 0.27.1</h1>
 <h2 class="author">Avery Pennarun <script type="text/javascript">
 <!--
 h='&#x67;&#x6d;&#x61;&#x69;&#108;&#46;&#x63;&#x6f;&#x6d;';a='&#64;';n='&#x61;&#112;&#x65;&#110;&#x77;&#x61;&#114;&#114;';e=n+a+h;
-document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'">'+e+'<\/'+'a'+'>');
+document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'" clas'+'s="em' + 'ail">'+e+'<\/'+'a'+'>');
 // -->
 </script><noscript>&#x61;&#112;&#x65;&#110;&#x77;&#x61;&#114;&#114;&#32;&#x61;&#116;&#32;&#x67;&#x6d;&#x61;&#x69;&#108;&#32;&#100;&#x6f;&#116;&#32;&#x63;&#x6f;&#x6d;</noscript></h2>
-<h3 class="date">2015-04-26</h3>
+<h3 class="date">2016-05-18</h3>
 </div>
 <h1 id="name">NAME</h1>
 <p>bup-restore - extract files from a backup set</p>
@@ -29,13 +29,13 @@ document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'">'+e+'<\/'+'a'+'>');
 <p>The specified <em>paths</em> are of the form /<em>branch</em>/<em>revision</em>/<em>some/where</em>. The components of the path are as follows:</p>
 <dl>
 <dt>branch</dt>
-<dd><p>the name of the backup set to restore from; this corresponds to the <code>--name</code> (<code>-n</code>) option to <code>bup save</code>.</p>
+<dd>the name of the backup set to restore from; this corresponds to the <code>--name</code> (<code>-n</code>) option to <code>bup save</code>.
 </dd>
 <dt>revision</dt>
-<dd><p>the revision of the backup set to restore. The revision <em>latest</em> is always the most recent backup on the given branch. You can discover other revisions using <code>bup ls /branch</code>.</p>
+<dd>the revision of the backup set to restore. The revision <em>latest</em> is always the most recent backup on the given branch. You can discover other revisions using <code>bup ls /branch</code>.
 </dd>
 <dt>some/where</dt>
-<dd><p>the previously saved path (after any stripping/grafting) that you want to restore. For example, <code>etc/passwd</code>.</p>
+<dd>the previously saved path (after any stripping/grafting) that you want to restore. For example, <code>etc/passwd</code>.
 </dd>
 </dl>
 <p>If <em>some/where</em> names a directory, <code>bup restore</code> will restore that directory and then recursively restore its contents.</p>
@@ -49,10 +49,10 @@ document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'">'+e+'<\/'+'a'+'>');
 <h1 id="options">OPTIONS</h1>
 <dl>
 <dt>-C, --outdir=<em>outdir</em></dt>
-<dd><p>create and change to directory <em>outdir</em> before extracting the files.</p>
+<dd>create and change to directory <em>outdir</em> before extracting the files.
 </dd>
 <dt>--numeric-ids</dt>
-<dd><p>restore numeric IDs (user, group, etc.) rather than names.</p>
+<dd>restore numeric IDs (user, group, etc.) rather than names.
 </dd>
 <dt>--exclude-rx=<em>pattern</em></dt>
 <dd><p>exclude any path matching <em>pattern</em>, which must be a Python regular expression (http://docs.python.org/library/re.html). The pattern will be compared against the full path rooted at the top of the restore tree, without anchoring, so &quot;x/y&quot; will match &quot;ox/yard&quot; or &quot;box/yards&quot;. To exclude the contents of /tmp, but not the directory itself, use &quot;^/tmp/.&quot;. (can be specified more than once)</p>
@@ -66,28 +66,28 @@ document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'">'+e+'<\/'+'a'+'>');
 </ul>
 </dd>
 <dt>--exclude-rx-from=<em>filename</em></dt>
-<dd><p>read --exclude-rx patterns from <em>filename</em>, one pattern per-line (may be repeated). Ignore completely empty lines.</p>
+<dd>read --exclude-rx patterns from <em>filename</em>, one pattern per-line (may be repeated). Ignore completely empty lines.
 </dd>
 <dt>--sparse</dt>
-<dd><p>write output data sparsely when reasonable. Currently, reasonable just means &quot;at least whenever there are 512 or more consecutive zeroes&quot;.</p>
+<dd>write output data sparsely when reasonable. Currently, reasonable just means &quot;at least whenever there are 512 or more consecutive zeroes&quot;.
 </dd>
 <dt>--map-user <em>old</em>=<em>new</em></dt>
-<dd><p>for every path, restore the <em>old</em> (saved) user name as <em>new</em>. Specifying &quot;&quot; for <em>new</em> will clear the user. For example &quot;--map-user foo=&quot; will allow the uid to take effect for any path that originally had a user of &quot;foo&quot;, unless countermanded by a subsequent &quot;--map-user foo=...&quot; specification. See DESCRIPTION above for further information.</p>
+<dd>for every path, restore the <em>old</em> (saved) user name as <em>new</em>. Specifying &quot;&quot; for <em>new</em> will clear the user. For example &quot;--map-user foo=&quot; will allow the uid to take effect for any path that originally had a user of &quot;foo&quot;, unless countermanded by a subsequent &quot;--map-user foo=...&quot; specification. See DESCRIPTION above for further information.
 </dd>
 <dt>--map-group <em>old</em>=<em>new</em></dt>
-<dd><p>for every path, restore the <em>old</em> (saved) group name as <em>new</em>. Specifying &quot;&quot; for <em>new</em> will clear the group. For example &quot;--map-group foo=&quot; will allow the gid to take effect for any path that originally had a group of &quot;foo&quot;, unless countermanded by a subsequent &quot;--map-group foo=...&quot; specification. See DESCRIPTION above for further information.</p>
+<dd>for every path, restore the <em>old</em> (saved) group name as <em>new</em>. Specifying &quot;&quot; for <em>new</em> will clear the group. For example &quot;--map-group foo=&quot; will allow the gid to take effect for any path that originally had a group of &quot;foo&quot;, unless countermanded by a subsequent &quot;--map-group foo=...&quot; specification. See DESCRIPTION above for further information.
 </dd>
 <dt>--map-uid <em>old</em>=<em>new</em></dt>
-<dd><p>for every path, restore the <em>old</em> (saved) uid as <em>new</em>, unless countermanded by a subsequent &quot;--map-uid <em>old</em>=...&quot; option. Note that the uid will only be relevant for paths with no user. See DESCRIPTION above for further information.</p>
+<dd>for every path, restore the <em>old</em> (saved) uid as <em>new</em>, unless countermanded by a subsequent &quot;--map-uid <em>old</em>=...&quot; option. Note that the uid will only be relevant for paths with no user. See DESCRIPTION above for further information.
 </dd>
 <dt>--map-gid <em>old</em>=<em>new</em></dt>
-<dd><p>for every path, restore the <em>old</em> (saved) gid as <em>new</em>, unless countermanded by a subsequent &quot;--map-gid <em>old</em>=...&quot; option. Note that the gid will only be relevant for paths with no user. See DESCRIPTION above for further information.</p>
+<dd>for every path, restore the <em>old</em> (saved) gid as <em>new</em>, unless countermanded by a subsequent &quot;--map-gid <em>old</em>=...&quot; option. Note that the gid will only be relevant for paths with no user. See DESCRIPTION above for further information.
 </dd>
 <dt>-v, --verbose</dt>
-<dd><p>increase log output. Given once, prints every directory as it is restored; given twice, prints every file and directory.</p>
+<dd>increase log output. Given once, prints every directory as it is restored; given twice, prints every file and directory.
 </dd>
 <dt>-q, --quiet</dt>
-<dd><p>don't show the progress meter. Normally, is stderr is a tty, a progress display is printed that shows the total number of files restored.</p>
+<dd>don't show the progress meter. Normally, is stderr is a tty, a progress display is printed that shows the total number of files restored.
 </dd>
 </dl>
 <h1 id="examples">EXAMPLES</h1>

@@ -5,20 +5,20 @@
   <meta http-equiv="Content-Style-Type" content="text/css" />
   <meta name="generator" content="pandoc" />
   <meta name="author" content="Avery Pennarun apenwarr@gmail.com" />
-  <meta name="date" content="2015-04-26" />
-  <title>bup-server(1) Bup 0.27</title>
+  <meta name="date" content="2016-05-18" />
+  <title>bup-server(1) Bup 0.27.1</title>
   <style type="text/css">code{white-space: pre;}</style>
 </head>
 <body>
 <div id="header">
-<h1 class="title">bup-server(1) Bup 0.27</h1>
+<h1 class="title">bup-server(1) Bup 0.27.1</h1>
 <h2 class="author">Avery Pennarun <script type="text/javascript">
 <!--
 h='&#x67;&#x6d;&#x61;&#x69;&#108;&#46;&#x63;&#x6f;&#x6d;';a='&#64;';n='&#x61;&#112;&#x65;&#110;&#x77;&#x61;&#114;&#114;';e=n+a+h;
-document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'">'+e+'<\/'+'a'+'>');
+document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'" clas'+'s="em' + 'ail">'+e+'<\/'+'a'+'>');
 // -->
 </script><noscript>&#x61;&#112;&#x65;&#110;&#x77;&#x61;&#114;&#114;&#32;&#x61;&#116;&#32;&#x67;&#x6d;&#x61;&#x69;&#108;&#32;&#100;&#x6f;&#116;&#32;&#x63;&#x6f;&#x6d;</noscript></h2>
-<h3 class="date">2015-04-26</h3>
+<h3 class="date">2016-05-18</h3>
 </div>
 <h1 id="name">NAME</h1>
 <p>bup-server - the server side of the bup client-server relationship</p>
@@ -30,10 +30,10 @@ document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'">'+e+'<\/'+'a'+'>');
 <h1 id="modes">MODES</h1>
 <dl>
 <dt>smart</dt>
-<dd><p>In this mode, the server checks each incoming object against the idx files in its repository. If any object already exists, it tells the client about the idx file it was found in, allowing the client to download that idx and avoid sending duplicate data. This is <code>bup-server</code>'s default mode.</p>
+<dd>In this mode, the server checks each incoming object against the idx files in its repository. If any object already exists, it tells the client about the idx file it was found in, allowing the client to download that idx and avoid sending duplicate data. This is <code>bup-server</code>'s default mode.
 </dd>
 <dt>dumb</dt>
-<dd><p>In this mode, the server will not check its local index before writing an object. To avoid writing duplicate objects, the server will tell the client to download all of its <code>.idx</code> files at the start of the session. This mode is useful on low powered server hardware (ie router/slow NAS).</p>
+<dd>In this mode, the server will not check its local index before writing an object. To avoid writing duplicate objects, the server will tell the client to download all of its <code>.idx</code> files at the start of the session. This mode is useful on low powered server hardware (ie router/slow NAS).
 </dd>
 </dl>
 <h1 id="files">FILES</h1>
