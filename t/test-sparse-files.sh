@@ -142,7 +142,7 @@ WVPASS bup restore --sparse -C restore "src/latest/$(pwd)/"
 WVPASS "$top/t/compare-trees" -c src/ restore/src/
 
 WVSTART "sparse file restore --sparse (short zero runs around boundary)"
-WVPASS python > src/foo <<EOF
+WVPASS bup-python > src/foo <<EOF
 from sys import stdout
 stdout.write("x" * 65535 + "\0")
 stdout.write("\0" + "x" * 65535)
