@@ -120,11 +120,41 @@ else
     random_size=1M
 fi
 WVSTART "sparse file restore --sparse (random $random_size)"
-WVPASS bup random 1M > src/foo
+WVPASS bup random --seed "$RANDOM" 1M > src/foo
 WVPASS bup index src
 WVPASS bup save -n src src
 WVPASS rm -r restore
 WVPASS bup restore --sparse -C restore "src/latest/$(pwd)/"
 WVPASS "$top/t/compare-trees" -c src/ restore/src/
+
+WVSTART "sparse file restore --sparse (random sparse regions)"
+WVPASS rm -rf "$BUP_DIR" src
+WVPASS bup init
+WVPASS mkdir src
+for sparse_dataset in 0 1 2 3 4 5 6 7 8 9
+do
+    WVPASS "$top/t/sparse-test-data" "src/foo-$sparse_dataset"
+done
+WVPASS bup index src
+WVPASS bup save -n src src
+WVPASS rm -r restore
+WVPASS bup restore --sparse -C restore "src/latest/$(pwd)/"
+WVPASS "$top/t/compare-trees" -c src/ restore/src/
+
+WVSTART "sparse file restore --sparse (short zero runs around boundary)"
+WVPASS bup-python > src/foo <<EOF
+from sys import stdout
+stdout.write("x" * 65535 + "\0")
+stdout.write("\0" + "x" * 65535)
+stdout.write("\0" + "x" * 65534 + "\0")
+stdout.write("x" * 65536)
+stdout.write("\0")
+EOF
+WVPASS bup index src
+WVPASS bup save -n src src
+WVPASS rm -r restore
+WVPASS bup restore --sparse -C restore "src/latest/$(pwd)/"
+WVPASS "$top/t/compare-trees" -c src/ restore/src/
+
 
 WVPASS rm -rf "$tmpdir"
