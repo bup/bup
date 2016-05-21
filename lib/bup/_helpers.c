@@ -301,8 +301,7 @@ static PyObject *record_sparse_zeros(unsigned long long *new_pending,
 }
 
 
-static const byte * find_not_zero(const byte * const start,
-                                  const byte * const end)
+static byte* find_not_zero(const byte * const start, const byte * const end)
 {
     // Return a pointer to first non-zero byte between start and end,
     // or end if there isn't one.
@@ -310,37 +309,37 @@ static const byte * find_not_zero(const byte * const start,
     const unsigned char *cur = start;
     while (cur < end && *cur == 0)
         cur++;
-    return cur;
+    return (byte *) cur;
 }
 
 
-static const byte * const find_trailing_zeros(const byte * const start,
-                                              const byte * const end)
+static byte* find_trailing_zeros(const byte * const start,
+                                 const byte * const end)
 {
     // Return a pointer to the start of any trailing run of zeros, or
     // end if there isn't one.
     assert(start <= end);
     if (start == end)
-        return end;
+        return (byte *) end;
     const byte * cur = end;
     while (cur > start && *--cur == 0) {}
     if (*cur == 0)
-        return cur;
+        return (byte *) cur;
     else
-        return cur + 1;
+        return (byte *) (cur + 1);
 }
 
 
-static const byte *find_non_sparse_end(const byte * const start,
-                                       const byte * const end,
-                                       const unsigned long long min_len)
+static byte *find_non_sparse_end(const byte * const start,
+                                 const byte * const end,
+                                 const unsigned long long min_len)
 {
     // Return the first pointer to a min_len sparse block in [start,
     // end) if there is one, otherwise a pointer to the start of any
     // trailing run of zeros.  If there are no trailing zeros, return
     // end.
     if (start == end)
-        return end;
+        return (byte *) end;
     assert(start < end);
     assert(min_len);
     // Probe in min_len jumps, searching backward from the jump
@@ -361,7 +360,7 @@ static const byte *find_non_sparse_end(const byte * const start,
             assert(candidate >= start);
             assert(candidate <= end);
             assert(*candidate == 0);
-            return candidate;
+            return (byte *) candidate;
         }
         else
         {
@@ -371,7 +370,7 @@ static const byte *find_non_sparse_end(const byte * const start,
     }
 
     if (candidate == end)
-        return end;
+        return (byte *) end;
 
     // No min_len sparse run found, search backward from end
     const byte * const trailing_zeros = find_trailing_zeros(end_of_known_zeros,
@@ -383,20 +382,20 @@ static const byte *find_non_sparse_end(const byte * const start,
         assert(candidate < end);
         assert(*candidate == 0);
         assert(end - candidate < min_len);
-        return candidate;
+        return (byte *) candidate;
     }
 
     if (trailing_zeros == end)
     {
         assert(*(end - 1) != 0);
-        return end;
+        return (byte *) end;
     }
 
     assert(end - trailing_zeros < min_len);
     assert(trailing_zeros >= start);
     assert(trailing_zeros < end);
     assert(*trailing_zeros == 0);
-    return trailing_zeros;
+    return (byte *) trailing_zeros;
 }
 
 
