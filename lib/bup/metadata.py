@@ -687,7 +687,7 @@ class Metadata:
             try:
                 xattr.remove(path, k, nofollow=True)
             except IOError as e:
-                if e.errno == errno.EPERM:
+                if e.errno in (errno.EPERM, errno.EACCES):
                     raise ApplyError('xattr.remove %r: %s' % (path, e))
                 else:
                     raise
