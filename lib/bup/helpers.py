@@ -1079,3 +1079,22 @@ else:
         return time.strftime('%z', localtime(t))
     def to_py_time(x):
         return x
+
+
+_some_invalid_save_parts_rx = re.compile(r'[[ ~^:?*\\]|\.\.|//|@{')
+
+def valid_save_name(name):
+    # Enforce a superset of the restrictions in git-check-ref-format(1)
+    if name == '@' \
+       or name.startswith('/') or name.endswith('/') \
+       or name.endswith('.'):
+        return False
+    if _some_invalid_save_parts_rx.search(name):
+        return False
+    for c in name:
+        if ord(c) < 0x20 or ord(c) == 0x7f:
+            return False
+    for part in name.split('/'):
+        if part.startswith('.') or part.endswith('.lock'):
+            return False
+    return True

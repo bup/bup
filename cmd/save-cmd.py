@@ -15,7 +15,7 @@ from bup.helpers import (add_error, grafted_path_components, handle_ctrl_c,
                          hostname, istty2, log, parse_date_or_fatal, parse_num,
                          path_components, progress, qprogress, resolve_parent,
                          saved_errors, stripped_path_components,
-                         userfullname, username)
+                         userfullname, username, valid_save_name)
 
 
 optspec = """
@@ -81,7 +81,7 @@ is_reverse = os.environ.get('BUP_SERVER_REVERSE')
 if is_reverse and opt.remote:
     o.fatal("don't use -r in reverse mode; it's automatic")
 
-if opt.name and opt.name.startswith('.'):
+if opt.name and not valid_save_name(opt.name):
     o.fatal("'%s' is not a valid branch name" % opt.name)
 refname = opt.name and 'refs/heads/%s' % opt.name or None
 if opt.remote or is_reverse:

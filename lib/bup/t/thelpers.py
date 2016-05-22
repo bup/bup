@@ -221,3 +221,29 @@ def test_utc_offset_str():
                     del os.environ['TZ']
                 except KeyError:
                     pass
+
+@wvtest
+def test_valid_save_name():
+    with no_lingering_errors():
+        valid = helpers.valid_save_name
+        WVPASS(valid('x'))
+        WVPASS(valid('x@'))
+        WVFAIL(valid('@'))
+        WVFAIL(valid('/'))
+        WVFAIL(valid('/foo'))
+        WVFAIL(valid('foo/'))
+        WVFAIL(valid('/foo/'))
+        WVFAIL(valid('foo//bar'))
+        WVFAIL(valid('.'))
+        WVFAIL(valid('bar.'))
+        WVFAIL(valid('foo@{'))
+        for x in ' ~^:?*[\\':
+            WVFAIL(valid('foo' + x))
+        for i in range(20):
+            WVFAIL(valid('foo' + chr(i)))
+        WVFAIL(valid('foo' + chr(0x7f)))
+        WVFAIL(valid('foo..bar'))
+        WVFAIL(valid('bar.lock/baz'))
+        WVFAIL(valid('foo/bar.lock/baz'))
+        WVFAIL(valid('.bar/baz'))
+        WVFAIL(valid('foo/.bar/baz'))

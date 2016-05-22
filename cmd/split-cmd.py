@@ -10,7 +10,7 @@ import os, sys, time
 from bup import hashsplit, git, options, client
 from bup.helpers import (add_error, handle_ctrl_c, hostname, log, parse_num,
                          qprogress, reprogress, saved_errors,
-                         userfullname, username)
+                         userfullname, username, valid_save_name)
 
 
 optspec = """
@@ -89,7 +89,7 @@ if is_reverse and opt.remote:
     o.fatal("don't use -r in reverse mode; it's automatic")
 start_time = time.time()
 
-if opt.name and opt.name.startswith('.'):
+if opt.name and not valid_save_name(opt.name):
     o.fatal("'%s' is not a valid branch name." % opt.name)
 refname = opt.name and 'refs/heads/%s' % opt.name or None
 if opt.noop or opt.copy:
