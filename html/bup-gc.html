@@ -1,0 +1,53 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta http-equiv="Content-Style-Type" content="text/css" />
+  <meta name="generator" content="pandoc" />
+  <meta name="author" content="Rob Browning rlb@defaultvalue.org" />
+  <meta name="date" content="2016-05-24" />
+  <title>bup-gc(1) Bup 0.28</title>
+  <style type="text/css">code{white-space: pre;}</style>
+</head>
+<body>
+<div id="header">
+<h1 class="title">bup-gc(1) Bup 0.28</h1>
+<h2 class="author">Rob Browning <script type="text/javascript">
+<!--
+h='&#100;&#x65;&#102;&#x61;&#x75;&#108;&#116;&#118;&#x61;&#108;&#x75;&#x65;&#46;&#x6f;&#114;&#x67;';a='&#64;';n='&#114;&#108;&#98;';e=n+a+h;
+document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'" clas'+'s="em' + 'ail">'+e+'<\/'+'a'+'>');
+// -->
+</script><noscript>&#114;&#108;&#98;&#32;&#x61;&#116;&#32;&#100;&#x65;&#102;&#x61;&#x75;&#108;&#116;&#118;&#x61;&#108;&#x75;&#x65;&#32;&#100;&#x6f;&#116;&#32;&#x6f;&#114;&#x67;</noscript></h2>
+<h3 class="date">2016-05-24</h3>
+</div>
+<h1 id="name">NAME</h1>
+<p>bup-gc - remove unreferenced, unneeded data (CAUTION: EXPERIMENTAL)</p>
+<h1 id="synopsis">SYNOPSIS</h1>
+<p>bup gc [-#|--verbose] &lt;<em>branch</em>|<em>save</em>...&gt;</p>
+<h1 id="description">DESCRIPTION</h1>
+<p><code>bup gc</code> removes (permanently deletes) unreachable data from the repository, data that isn't referred to directly or indirectly by the current set of branches (backup sets) and tags. But bear in mind that given deduplication, deleting a save and running the garbage collector might or might not actually delete anything (or reclaim any space).</p>
+<p>With the current, proababilistic implementation, some fraction of the unreachable data may be retained. In exchange, the garbage collection should require much less RAM than might by some more precise approaches.</p>
+<p>Typically, the garbage collector would be invoked after some set of invocations of <code>bup rm</code>.</p>
+<p>WARNING: This is one of the few bup commands that modifies your archive in intentionally destructive ways. Though if an attempt to <code>join</code> or <code>restore</code> the data you still care about after a <code>gc</code> succeeds, that's a fairly encouraging sign that the commands worked correctly. (The <code>t/compare-trees</code> command in the source tree can be used to help test before/after results.)</p>
+<h1 id="options">OPTIONS</h1>
+<dl>
+<dt>--threshold=N</dt>
+<dd>only rewrite a packfile if it's over N percent garbage; otherwise leave it alone. The default threshold is 10%.
+</dd>
+<dt>-v, --verbose</dt>
+<dd>increase verbosity (can be used more than once). With one -v, bup prints every directory name as it gets backed up. With two -v, it also prints every filename.
+</dd>
+<dt>-<em>#</em>, --compress=<em>#</em></dt>
+<dd>set the compression level to # (a value from 0-9, where 9 is the highest and 0 is no compression). The default is 6.
+</dd>
+</dl>
+<h1 id="examples">EXAMPLES</h1>
+<pre><code># Remove all saves of &quot;home&quot; and most of the otherwise unreferenced data.
+$ bup rm home
+$ bup gc</code></pre>
+<h1 id="see-also">SEE ALSO</h1>
+<p><code>bup-rm</code>(1) and <code>bup-fsck</code>(1)</p>
+<h1 id="bup">BUP</h1>
+<p>Part of the <code>bup</code>(1) suite.</p>
+</body>
+</html>
