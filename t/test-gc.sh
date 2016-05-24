@@ -13,6 +13,7 @@ GC_OPTS=--unsafe
 
 bup() { "$top/bup" "$@"; }
 compare-trees() { "$top/t/compare-trees" "$@"; }
+data-size() { "$top/t/data-size" "$@"; }
 
 WVPASS cd "$tmpdir"
 WVPASS bup init
@@ -51,13 +52,13 @@ WVPASS compare-trees src-2/ "$tmpdir/restore/latest/"
 
 WVSTART "gc (removed branch)"
 
-size_before=$(WVPASS du -k -s "$BUP_DIR" | WVPASS cut -f1) || exit $?
+size_before=$(WVPASS data-size "$BUP_DIR") || exit $?
 WVPASS rm "$BUP_DIR/refs/heads/src-2"
 WVPASS bup gc $GC_OPTS -v
-size_after=$(WVPASS du -k -s "$BUP_DIR" | WVPASS cut -f1) || exit $?
+size_after=$(WVPASS data-size "$BUP_DIR") || exit $?
 
-WVPASS [ "$size_before" -gt 5000 ]
-WVPASS [ "$size_after" -lt 500 ]
+WVPASS [ "$size_before" -gt 5000000 ]
+WVPASS [ "$size_after" -lt 50000 ]
 
 WVPASS rm -r "$tmpdir/restore"
 WVPASS bup restore -C "$tmpdir/restore" /src-1/latest
@@ -85,13 +86,13 @@ WVPASS bup index --clear
 WVPASS bup index src-ab
 WVPASS bup save -vvv --strip -n a src-ab/a
 
-size_before=$(WVPASS du -k -s "$BUP_DIR" | WVPASS cut -f1) || exit $?
+size_before=$(WVPASS data-size "$BUP_DIR") || exit $?
 WVPASS rm "$BUP_DIR/refs/heads/src-ab"
 WVPASS bup gc $GC_OPTS -v
-size_after=$(WVPASS du -k -s "$BUP_DIR" | WVPASS cut -f1) || exit $?
+size_after=$(WVPASS data-size "$BUP_DIR") || exit $?
 
-WVPASS [ "$size_before" -gt 5000 ]
-WVPASS [ "$size_after" -lt 500 ]
+WVPASS [ "$size_before" -gt 5000000 ]
+WVPASS [ "$size_after" -lt 100000 ]
 
 WVPASS rm -r "$tmpdir/restore"
 WVPASS bup restore -C "$tmpdir/restore" /a/latest
@@ -115,13 +116,13 @@ WVPASS bup index --clear
 WVPASS bup index src-ab
 WVPASS bup save -r :bup-remote -vvv --strip -n a src-ab/a
 
-size_before=$(WVPASS du -k -s bup-remote | WVPASS cut -f1) || exit $?
+size_before=$(WVPASS data-size bup-remote) || exit $?
 WVPASS rm bup-remote/refs/heads/src-ab
 WVPASS bup -d bup-remote gc $GC_OPTS -v
-size_after=$(WVPASS du -k -s bup-remote | WVPASS cut -f1) || exit $?
+size_after=$(WVPASS data-size bup-remote) || exit $?
 
-WVPASS [ "$size_before" -gt 5000 ]
-WVPASS [ "$size_after" -lt 500 ]
+WVPASS [ "$size_before" -gt 5000000 ]
+WVPASS [ "$size_after" -lt 100000 ]
 
 WVPASS rm -rf "$tmpdir/restore"
 WVPASS bup -d bup-remote restore -C "$tmpdir/restore" /a/latest
@@ -151,13 +152,13 @@ WVPASS bup index --clear
 WVPASS bup on - index src-ab
 WVPASS bup on - save -vvv --strip -n a src-ab/a
 
-size_before=$(WVPASS du -k -s "$BUP_DIR" | WVPASS cut -f1) || exit $?
+size_before=$(WVPASS data-size "$BUP_DIR") || exit $?
 WVPASS rm "$BUP_DIR/refs/heads/src-ab"
 WVPASS bup gc $GC_OPTS -v
-size_after=$(WVPASS du -k -s "$BUP_DIR" | WVPASS cut -f1) || exit $?
+size_after=$(WVPASS data-size "$BUP_DIR") || exit $?
 
-WVPASS [ "$size_before" -gt 5000 ]
-WVPASS [ "$size_after" -lt 500 ]
+WVPASS [ "$size_before" -gt 5000000 ]
+WVPASS [ "$size_after" -lt 100000 ]
 
 WVPASS rm -r "$tmpdir/restore"
 WVPASS bup restore -C "$tmpdir/restore" /a/latest

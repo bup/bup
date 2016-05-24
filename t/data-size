@@ -1,0 +1,26 @@
+#!/bin/sh
+"""": # -*-python-*-
+bup_python="$(dirname "$0")/../cmd/bup-python" || exit $?
+exec "$bup_python" "$0" ${1+"$@"}
+"""
+# end of bup preamble
+
+from os.path import getsize, isdir
+from sys import argv, stderr
+import os
+
+def listdir_failure(ex):
+    raise ex
+
+def usage():
+    print >> stderr, "Usage: data-size PATH ..."
+
+total = 0
+for path in argv[1:]:
+    if isdir(path):
+        for root, dirs, files in os.walk(path, onerror=listdir_failure):
+            total += sum(getsize(os.path.join(root, name)) for name in files)
+    else:
+        total += getsize(path)
+
+print total
