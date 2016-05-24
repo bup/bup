@@ -5,27 +5,27 @@
   <meta http-equiv="Content-Style-Type" content="text/css" />
   <meta name="generator" content="pandoc" />
   <meta name="author" content="Avery Pennarun apenwarr@gmail.com" />
-  <meta name="date" content="2016-05-18" />
-  <title>bup-index(1) Bup 0.27.1</title>
+  <meta name="date" content="2016-05-24" />
+  <title>bup-index(1) Bup 0.28</title>
   <style type="text/css">code{white-space: pre;}</style>
 </head>
 <body>
 <div id="header">
-<h1 class="title">bup-index(1) Bup 0.27.1</h1>
+<h1 class="title">bup-index(1) Bup 0.28</h1>
 <h2 class="author">Avery Pennarun <script type="text/javascript">
 <!--
 h='&#x67;&#x6d;&#x61;&#x69;&#108;&#46;&#x63;&#x6f;&#x6d;';a='&#64;';n='&#x61;&#112;&#x65;&#110;&#x77;&#x61;&#114;&#114;';e=n+a+h;
 document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'" clas'+'s="em' + 'ail">'+e+'<\/'+'a'+'>');
 // -->
 </script><noscript>&#x61;&#112;&#x65;&#110;&#x77;&#x61;&#114;&#114;&#32;&#x61;&#116;&#32;&#x67;&#x6d;&#x61;&#x69;&#108;&#32;&#100;&#x6f;&#116;&#32;&#x63;&#x6f;&#x6d;</noscript></h2>
-<h3 class="date">2016-05-18</h3>
+<h3 class="date">2016-05-24</h3>
 </div>
 <h1 id="name">NAME</h1>
 <p>bup-index - print and/or update the bup filesystem index</p>
 <h1 id="synopsis">SYNOPSIS</h1>
-<p>bup index &lt;-p|-m|-s|-u|--clear|--check&gt; [-H] [-l] [-x] [--fake-valid] [--no-check-device] [--fake-invalid] [-f <em>indexfile</em>] [--exclude <em>path</em>] [--exclude-from <em>filename</em>] [--exclude-rx <em>pattern</em>] [--exclude-rx-from <em>filename</em>] [-v] &lt;filenames...&gt;</p>
+<p>bup index &lt;-p|-m|-s|-u|--clear|--check&gt; [-H] [-l] [-x] [--fake-valid] [--no-check-device] [--fake-invalid] [-f <em>indexfile</em>] [--exclude <em>path</em>] [--exclude-from <em>filename</em>] [--exclude-rx <em>pattern</em>] [--exclude-rx-from <em>filename</em>] [-v] &lt;paths...&gt;</p>
 <h1 id="description">DESCRIPTION</h1>
-<p><code>bup index</code> prints and/or updates the bup filesystem index, which is a cache of the filenames, attributes, and sha-1 hashes of each file and directory in the filesystem. The bup index is similar in function to the <code>git</code>(1) index, and can be found in <code>$BUP_DIR/bupindex</code>.</p>
+<p><code>bup index</code> manipulates the filesystem index, which is a cache of absolute paths and their metadata (atttributes, SHA-1 hashes, etc.). The bup index is similar in function to the <code>git</code>(1) index, and the default index can be found in <code>$BUP_DIR/bupindex</code>.</p>
 <p>Creating a backup in bup consists of two steps: updating the index with <code>bup index</code>, then actually backing up the files (or a subset of the files) with <code>bup save</code>. The separation exists for these reasons:</p>
 <ol style="list-style-type: decimal">
 <li><p>There is more than one way to generate a list of files that need to be backed up. For example, you might want to use <code>inotify</code>(7) or <code>dnotify</code>(7).</p></li>
@@ -50,16 +50,16 @@ $ bup save -n src src  # But src/2 is saved anyway.</code></pre>
 <h1 id="modes">MODES</h1>
 <dl>
 <dt>-u, --update</dt>
-<dd>recursively update the index for the given filenames and their descendants. One or more filenames must be given. If no mode option is given, this is the default.
+<dd>recursively update the index for the given paths and their descendants. One or more paths must be specified, and if a path ends with a symbolic link, the link itself will be indexed, not the target. If no mode option is given, <code>--update</code> is the default, and paths may be excluded by the <code>--exclude</code>, <code>--exclude-rx</code>, and <code>--one-file-system</code> options.
 </dd>
 <dt>-p, --print</dt>
-<dd>print the contents of the index. If filenames are given, shows the given entries and their descendants. If no filenames are given, shows the entries starting at the current working directory (.).
+<dd>print the contents of the index. If paths are given, shows the given entries and their descendants. If no paths are given, shows the entries starting at the current working directory (.).
 </dd>
 <dt>-m, --modified</dt>
 <dd>prints only files which are marked as modified (ie. changed since the most recent backup) in the index. Implies <code>-p</code>.
 </dd>
 <dt>-s, --status</dt>
-<dd>prepend a status code (A, M, D, or space) before each filename. Implies <code>-p</code>. The codes mean, respectively, that a file is marked in the index as added, modified, deleted, or unchanged since the last backup.
+<dd>prepend a status code (A, M, D, or space) before each path. Implies <code>-p</code>. The codes mean, respectively, that a file is marked in the index as added, modified, deleted, or unchanged since the last backup.
 </dd>
 <dt>--check</dt>
 <dd>carefully check index file integrity before and after updating. Mostly useful for automated tests.
@@ -77,13 +77,13 @@ $ bup save -n src src  # But src/2 is saved anyway.</code></pre>
 <dd>print more information about each file, in a similar format to the <code>-l</code> option to <code>ls</code>(1).
 </dd>
 <dt>-x, --xdev, --one-file-system</dt>
-<dd>don't cross filesystem boundaries when recursing through the filesystem -- though as with tar and rsync, the mount points themselves will still be indexed. Only applicable if you're using <code>-u</code>.
+<dd>don't cross filesystem boundaries when traversing the filesystem -- though as with tar and rsync, the mount points themselves will still be indexed. Only applicable if you're using <code>-u</code>.
 </dd>
 <dt>--fake-valid</dt>
-<dd>mark specified filenames as up-to-date even if they aren't. This can be useful for testing, or to avoid unnecessarily backing up files that you know are boring.
+<dd>mark specified paths as up-to-date even if they aren't. This can be useful for testing, or to avoid unnecessarily backing up files that you know are boring.
 </dd>
 <dt>--fake-invalid</dt>
-<dd>mark specified filenames as not up-to-date, forcing the next &quot;bup save&quot; run to re-check their contents.
+<dd>mark specified paths as not up-to-date, forcing the next &quot;bup save&quot; run to re-check their contents.
 </dd>
 <dt>-f, --indexfile=<em>indexfile</em></dt>
 <dd>use a different index filename instead of <code>$BUP_DIR/bupindex</code>.
@@ -108,7 +108,7 @@ $ bup save -n src src  # But src/2 is saved anyway.</code></pre>
 <dd>read --exclude-rx patterns from <em>filename</em>, one pattern per-line (may be repeated). Ignore completely empty lines.
 </dd>
 <dt>--no-check-device</dt>
-<dd>don't mark a an entry invalid if the device number (stat(2) st_dev) changes. This can be useful when indexing remote, automounted, or (LVM) snapshot filesystems.
+<dd>don't mark an entry invalid if the device number (stat(2) st_dev) changes. This can be useful when indexing remote, automounted, or snapshot filesystems (LVM, Btrfs, etc.), where the device number isn't fixed.
 </dd>
 <dt>-v, --verbose</dt>
 <dd>increase log output during update (can be used more than once). With one <code>-v</code>, print each directory as it is updated; with two <code>-v</code>, print each file too.
