@@ -4,9 +4,11 @@ bup_python="$(dirname "$0")/bup-python" || exit $?
 exec "$bup_python" "$0" ${1+"$@"}
 """
 # end of bup preamble
-import sys
+import re, sys
 from bup import options
-from bup import _version
+from bup import version
+
+version_rx = re.compile(r'^[0-9]+\.[0-9]+(\.[0-9]+)?(-[0-9]+-g[0-9abcdef]+)?$')
 
 optspec = """
 bup version [--date|--commit|--tag]
@@ -26,12 +28,12 @@ if total > 1:
 
 def version_date():
     """Format bup's version date string for output."""
-    return _version.DATE.split(' ')[0]
+    return version.DATE.split(' ')[0]
 
 
 def version_commit():
     """Get the commit hash of bup's current version."""
-    return _version.COMMIT
+    return version.COMMIT
 
 
 def version_tag():
@@ -41,15 +43,15 @@ def version_tag():
     returned string will be "unknown-" followed by the first seven positions of
     the commit hash.
     """
-    names = _version.NAMES.strip()
+    names = version.NAMES.strip()
     assert(names[0] == '(')
     assert(names[-1] == ')')
     names = names[1:-1]
     l = [n.strip() for n in names.split(',')]
     for n in l:
-        if n.startswith('tag: bup-'):
-            return n[9:]
-    return 'unknown-%s' % _version.COMMIT[:7]
+        if n.startswith('tag: ') and version_rx.match(n[5:]):
+            return n[5:]
+    return 'unknown-%s' % version.COMMIT[:7]
 
 
 if opt.date:

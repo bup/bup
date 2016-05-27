@@ -131,7 +131,7 @@ sub run
 
         if (/^\s*Testing "(.*)" in (.*):\s*$/)
         {
-            alarm(120);
+            alarm(300);
             my ($sect, $file) = ($1, $2);
 
             endsect();
@@ -142,7 +142,7 @@ sub run
         }
         elsif (/^!\s*(.*?)\s+(\S+)\s*$/)
         {
-            alarm(120);
+            alarm(300);
 
             my ($name, $result) = ($1, $2);
             my $pass = ($result eq "ok");

@@ -50,7 +50,7 @@ bup_cmds := cmd/bup-python\
   $(patsubst cmd/%-cmd.py,cmd/bup-%,$(wildcard cmd/*-cmd.py)) \
   $(patsubst cmd/%-cmd.sh,cmd/bup-%,$(wildcard cmd/*-cmd.sh))
 
-bup_deps := bup lib/bup/_version.py lib/bup/_helpers$(SOEXT) $(bup_cmds)
+bup_deps := bup lib/bup/_checkout.py lib/bup/_helpers$(SOEXT) $(bup_cmds)
 
 all: $(bup_deps) Documentation/all $(current_sampledata)
 
@@ -126,10 +126,13 @@ lib/bup/_helpers$(SOEXT): \
 	LDFLAGS="$(LDFLAGS)" CFLAGS="$(CFLAGS)" "$(bup_python)" csetup.py build
 	cp lib/bup/build/*/_helpers$(SOEXT) lib/bup/
 
-lib/bup/_version.py:
-	@echo "Something has gone wrong; $@ should already exist."
-	@echo 'Check "./configure-version --update"'
-	@false
+lib/bup/_checkout.py:
+	@if grep -F '$Format' lib/bup/_release.py \
+	    && ! test -e lib/bup/_checkout.py; then \
+	  echo "Something has gone wrong; $@ should already exist."; \
+	  echo 'Check "./configure-version --update"'; \
+	  false; \
+	fi
 
 t/tmp:
 	mkdir t/tmp
@@ -199,6 +202,9 @@ test: all
 	./wvtest report t/tmp/test-log/*.log
 
 check: test
+
+distcheck: all
+	./wvtest run t/test-release-archive.sh
 
 cmd/python-cmd.sh: config/config.vars Makefile
 	printf "#!/bin/sh\nexec %q \"\$$@\"" "$(bup_python)" \
