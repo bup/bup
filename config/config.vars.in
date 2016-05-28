@@ -1,3 +1,4 @@
 CONFIGURE_FILES=@CONFIGURE_FILES@
 GENERATED_FILES=@GENERATED_FILES@
+bup_make=@bup_make@
 bup_python=@bup_python@

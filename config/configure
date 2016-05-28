@@ -37,7 +37,7 @@ if ! AC_PROG_CC; then
     exit 1
 fi
 
-MAKE="$(bup_find_prog make $MAKE)"
+MAKE="$(bup_find_prog make "$MAKE")"
 if test -z "$MAKE"; then
     MAKE="$(bup_find_prog gmake "$GMAKE")"
 fi
@@ -55,6 +55,8 @@ if [ -z "$MAKE_VERSION" ]; then
     AC_FAIL "ERROR: $MAKE --version does not return sensible output?"
 fi
 expr "$MAKE_VERSION" '>=' '3.81' || AC_FAIL "ERROR: $MAKE must be >= version 3.81"
+
+AC_SUB bup_make "$MAKE"
 
 bup_python="$PYTHON"
 test -z "$bup_python" && bup_python="$(bup_find_prog python2.7 '')"
@@ -154,4 +156,9 @@ AC_CHECK_FIELD stat st_ctimensec sys/types.h sys/stat.h unistd.h
 
 AC_CHECK_FIELD tm tm_gmtoff time.h
 
+__config_files="$__config_files config.vars.sh"
+
 AC_OUTPUT config.vars
+
+printf 'bup_make=%q\n' "$MAKE" > config.vars.sh
+printf 'bup_python=%q\n' "$bup_python" >> config.vars.sh
