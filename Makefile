@@ -203,7 +203,7 @@ check: test
 cmd/python-cmd.sh: config/config.vars Makefile
 	printf "#!/bin/sh\nexec %q \"\$$@\"" "$(bup_python)" \
 	  >> cmd/python-cmd.sh.$$PPID.tmp
-	chmod u+x cmd/python-cmd.sh.$$PPID.tmp
+	chmod +x cmd/python-cmd.sh.$$PPID.tmp
 	mv cmd/python-cmd.sh.$$PPID.tmp cmd/python-cmd.sh
 
 cmd/bup-%: cmd/%-cmd.py
