@@ -46,18 +46,18 @@ if test -n "$run_test"; then
     WVSTART 'web'
     WVPASS bup init
     WVPASS mkdir src
-    WVPASS echo 'éxcitement' > src/data
+    WVPASS echo '¡excitement!' > src/data
     WVPASS bup index src
-    WVPASS bup save -n 'éxcitement' --strip src
+    WVPASS bup save -n '¡excitement!' --strip src
 
     "$TOP/bup" web unix://socket &
     web_pid=$!
     wait-for-server-start
 
     WVPASS curl --unix-socket ./socket \
-           'http://localhost/%C3%A9xcitement/latest/data' > result
+           'http://localhost/%C2%A1excitement%21/latest/data' > result
 
-    WVPASSEQ 'éxcitement' "$(cat result)"
+    WVPASSEQ '¡excitement!' "$(cat result)"
     WVPASS kill -s TERM "$web_pid"
     WVPASS wait "$web_pid"
 fi
