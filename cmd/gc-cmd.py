@@ -6,7 +6,7 @@ exec "$bup_python" "$0" ${1+"$@"}
 # end of bup preamble
 import glob, os, stat, subprocess, sys, tempfile
 from bup import bloom, git, midx, options, vfs
-from bup.git import walk_object
+from bup.git import MissingObject, walk_object
 from bup.helpers import handle_ctrl_c, log, progress, qprogress, saved_errors
 from os.path import basename
 
@@ -260,7 +260,11 @@ if not existing_count:
     if opt.verbose:
         log('nothing to collect\n')
 else:
-    live_objects = find_live_objects(existing_count, cat_pipe, opt)
+    try:
+        live_objects = find_live_objects(existing_count, cat_pipe, opt)
+    except MissingObject as ex:
+        log('bup: missing object %r \n' % ex.id.encode('hex'))
+        sys.exit(1)
     try:
         # FIXME: just rename midxes and bloom, and restore them at the end if
         # we didn't change any packs?

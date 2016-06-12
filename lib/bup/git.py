@@ -1102,6 +1102,12 @@ class _AbortableIter:
         self.abort()
 
 
+class MissingObject(KeyError):
+    def __init__(self, id):
+        self.id = id
+        KeyError.__init__(self, 'object %r is missing' % id.encode('hex'))
+
+
 _ver_warned = 0
 class CatPipe:
     """Link to 'git cat-file' that is used to retrieve blob data."""
@@ -1154,7 +1160,7 @@ class CatPipe:
         hdr = self.p.stdout.readline()
         if hdr.endswith(' missing\n'):
             self.inprogress = None
-            raise KeyError('blob %r is missing' % id)
+            raise MissingObject(id.decode('hex'))
         spl = hdr.split(' ')
         if len(spl) != 3 or len(spl[0]) != 40:
             raise GitError('expected blob, got %r' % spl)
@@ -1329,7 +1335,10 @@ def walk_object(cat_pipe, id,
                 stop_at=None,
                 include_data=None):
     """Yield everything reachable from id via cat_pipe as a WalkItem,
-    stopping whenever stop_at(id) returns true."""
+    stopping whenever stop_at(id) returns true.  Throw MissingObject
+    if a hash encountered is missing from the repository.
+
+    """
     return _walk_object(cat_pipe, id, [], [],
                         stop_at=stop_at,
                         include_data=include_data)
