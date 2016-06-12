@@ -99,7 +99,7 @@ From source
 
  - Check out the bup source code using git:
  
-        git clone git://github.com/bup/bup
+        git clone https://github.com/bup/bup
 
  - Install the required python libraries (including the development
    libraries).
