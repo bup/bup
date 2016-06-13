@@ -41,7 +41,12 @@ if test $? -ne 7; then
     WVSTART 'curl does not appear to support --unix-socket; skipping test'
     run_test=''
 fi
-    
+
+if ! python -c 'import tornado' 2> /dev/null; then
+    WVSTART 'unable to import tornado; skipping test'
+    run_test=''
+fi
+
 if test -n "$run_test"; then
     WVSTART 'web'
     WVPASS bup init
