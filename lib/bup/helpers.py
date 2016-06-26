@@ -11,6 +11,10 @@ import hashlib, heapq, math, operator, time, grp, tempfile
 
 from bup import _helpers
 from bup import compat
+# This function should really be in helpers, not in bup.options.  But we
+# want options.py to be standalone so people can include it in other projects.
+from bup.options import _tty_width as tty_width
+
 
 class Nonlocal:
     """Helper to deal with Python scoping issues"""
@@ -23,11 +27,6 @@ assert(sc_page_size > 0)
 sc_arg_max = os.sysconf('SC_ARG_MAX')
 if sc_arg_max == -1:  # "no definite limit" - let's choose 2M
     sc_arg_max = 2 * 1024 * 1024
-
-# This function should really be in helpers, not in bup.options.  But we
-# want options.py to be standalone so people can include it in other projects.
-from bup.options import _tty_width
-tty_width = _tty_width
 
 
 def last(iterable):

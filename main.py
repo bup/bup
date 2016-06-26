@@ -5,8 +5,12 @@ exec "$bup_python" "$0" ${1+"$@"}
 """
 # end of bup preamble
 
-import sys, os, subprocess, signal, getopt
+import errno, re, sys, os, subprocess, signal, getopt
 
+from fcntl import F_GETFL, F_SETFL
+from subprocess import PIPE
+from sys import stderr, stdout
+import fcntl, select
 
 argv = sys.argv
 exe = os.path.realpath(argv[0])
@@ -32,12 +36,9 @@ os.environ['BUP_RESOURCE_PATH'] = resourcepath
 
 
 from bup import helpers
-from bup.compat import wrap_main
+from bup.compat import add_ex_tb, chain_ex, wrap_main
 from bup.helpers import atoi, columnate, debug1, log, tty_width
 
-
-# after running 'bup newliner', the tty_width() ioctl won't work anymore
-os.environ['WIDTH'] = str(tty_width())
 
 def usage(msg=""):
     log('Usage: bup [-?|--help] [-d BUP_DIR] [--debug] [--profile] '
@@ -145,74 +146,118 @@ def force_tty():
     if fix_stdout or fix_stderr:
         amt = (fix_stdout and 1 or 0) + (fix_stderr and 2 or 0)
         os.environ['BUP_FORCE_TTY'] = str(amt)
-    os.setsid()  # make sure ctrl-c is sent just to us, not to child too
 
-if fix_stdout or fix_stderr:
-    realf = fix_stderr and 2 or 1
-    drealf = os.dup(realf)  # Popen goes crazy with stdout=2
-    n = subprocess.Popen([subpath('newliner')],
-                         stdin=subprocess.PIPE, stdout=drealf,
-                         close_fds=True, preexec_fn=force_tty)
-    os.close(drealf)
-    outf = fix_stdout and n.stdin.fileno() or None
-    errf = fix_stderr and n.stdin.fileno() or None
-else:
-    n = None
-    outf = None
-    errf = None
 
-ret = 95
-p = None
-forward_signals = True
+sep_rx = re.compile(r'([\r\n])')
 
-def handler(signum, frame):
-    debug1('\nbup: signal %d received\n' % signum)
-    if not p or not forward_signals:
+def print_clean_line(dest, content, width, sep=None):
+    """Write some or all of content, followed by sep, to the dest fd after
+    padding the content with enough spaces to fill the current
+    terminal width or truncating it to the terminal width if sep is a
+    carriage return."""
+    global sep_rx
+    assert sep in ('\r', '\n', None)
+    if not content:
+        if sep:
+            os.write(dest, sep)
         return
-    if signum != signal.SIGTSTP:
-        os.kill(p.pid, signum)
-    else: # SIGTSTP: stop the child, then ourselves.
-        os.kill(p.pid, signal.SIGSTOP)
-        signal.signal(signal.SIGTSTP, signal.SIG_DFL)
-        os.kill(os.getpid(), signal.SIGTSTP)
-        # Back from suspend -- reestablish the handler.
-        signal.signal(signal.SIGTSTP, handler)
-    ret = 94
+    for x in content:
+        assert not sep_rx.match(x)
+    content = ''.join(content)
+    if sep == '\r' and len(content) > width:
+        content = content[width:]
+    os.write(dest, content)
+    if len(content) < width:
+        os.write(dest, ' ' * (width - len(content)))
+    os.write(dest, sep)
 
-def main():
-    signal.signal(signal.SIGTERM, handler)
-    signal.signal(signal.SIGINT, handler)
-    signal.signal(signal.SIGTSTP, handler)
-    signal.signal(signal.SIGCONT, handler)
-
+def filter_output(src_out, src_err, dest_out, dest_err):
+    """Transfer data from src_out to dest_out and src_err to dest_err via
+    print_clean_line until src_out and src_err close."""
+    global sep_rx
+    assert not isinstance(src_out, bool)
+    assert not isinstance(src_err, bool)
+    assert not isinstance(dest_out, bool)
+    assert not isinstance(dest_err, bool)
+    assert src_out is not None or src_err is not None
+    assert (src_out is None) == (dest_out is None)
+    assert (src_err is None) == (dest_err is None)
+    pending = {}
+    pending_ex = None
     try:
-        try:
-            c = (do_profile and [sys.executable, '-m', 'cProfile'] or []) + subcmd
-            if not n and not outf and not errf:
-                # shortcut when no bup-newliner stuff is needed
-                os.execvp(c[0], c)
-            else:
-                p = subprocess.Popen(c, stdout=outf, stderr=errf,
-                                     preexec_fn=force_tty)
-            while 1:
-                # if we get a signal while waiting, we have to keep waiting, just
-                # in case our child doesn't die.
-                ret = p.wait()
-                forward_signals = False
-                break
-        except OSError as e:
-            log('%s: %s\n' % (subcmd[0], e))
-            ret = 98
-    finally:
-        if p and p.poll() == None:
-            os.kill(p.pid, signal.SIGTERM)
-            p.wait()
-        if n:
-            n.stdin.close()
+        fds = tuple([x for x in (src_out, src_err) if x is not None])
+        for fd in fds:
+            flags = fcntl.fcntl(fd, F_GETFL)
+            assert fcntl.fcntl(fd, F_SETFL, flags | os.O_NONBLOCK) == 0
+        while fds:
+            ready_fds, _, _ = select.select(fds, [], [])
+            width = tty_width()
+            for fd in ready_fds:
+                buf = os.read(fd, 4096)
+                dest = dest_out if fd == src_out else dest_err
+                if not buf:
+                    fds = tuple([x for x in fds if x is not fd])
+                    print_clean_line(dest, pending.pop(fd, []), width)
+                else:
+                    split = sep_rx.split(buf)
+                    if len(split) > 2:
+                        while len(split) > 1:
+                            content, sep = split[:2]
+                            split = split[2:]
+                            print_clean_line(dest,
+                                             pending.pop(fd, []) + [content],
+                                             width,
+                                             sep)
+                    else:
+                        assert(len(split) == 1)
+                        pending.setdefault(fd, []).extend(split)
+    except BaseException as ex:
+        pending_ex = chain_ex(add_ex_tb(ex), pending_ex)
+    try:
+        # Try to finish each of the streams
+        for fd, pending_items in pending.iteritems():
+            dest = dest_out if fd == src_out else dest_err
             try:
-                n.wait()
-            except:
-                pass
-    sys.exit(ret)
+                print_clean_line(dest, pending_items, width)
+            except (EnvironmentError, EOFError) as ex:
+                pending_ex = chain_ex(add_ex_tb(ex), pending_ex)
+    except BaseException as ex:
+        pending_ex = chain_ex(add_ex_tb(ex), pending_ex)
+    if pending_ex:
+        raise pending_ex
 
-wrap_main(main)
+def run_subcmd(subcmd):
+
+    c = (do_profile and [sys.executable, '-m', 'cProfile'] or []) + subcmd
+    if not (fix_stdout or fix_stderr):
+        os.execvp(c[0], c)
+
+    p = None
+    try:
+        p = subprocess.Popen(c,
+                             stdout=PIPE if fix_stdout else sys.stdout,
+                             stderr=PIPE if fix_stderr else sys.stderr,
+                             preexec_fn=force_tty,
+                             bufsize=4096,
+                             close_fds=True)
+        # Assume p will receive these signals and quit, which will
+        # then cause us to quit.
+        for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGQUIT):
+            signal.signal(sig, signal.SIG_IGN)
+
+        filter_output(fix_stdout and p.stdout.fileno() or None,
+                      fix_stderr and p.stderr.fileno() or None,
+                      fix_stdout and sys.stdout.fileno() or None,
+                      fix_stderr and sys.stderr.fileno() or None)
+        return p.wait()
+    except BaseException as ex:
+        add_ex_tb(ex)
+        try:
+            if p and p.poll() == None:
+                os.kill(p.pid, signal.SIGTERM)
+                p.wait()
+        except BaseException as kill_ex:
+            raise chain_ex(add_ex_tb(kill_ex), ex)
+        raise ex
+        
+wrap_main(lambda : run_subcmd(subcmd))
