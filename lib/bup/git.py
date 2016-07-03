@@ -252,6 +252,8 @@ def tree_decode(buf):
 
 
 def _encode_packobj(type, content, compression_level=1):
+    if compression_level not in (0, 1, 2, 3, 4, 5, 6, 7, 8, 9):
+        raise ValueError('invalid compression level %s' % compression_level)
     szout = ''
     sz = len(content)
     szbits = (sz & 0x0f) | (_typemap[type]<<4)
@@ -263,10 +265,6 @@ def _encode_packobj(type, content, compression_level=1):
             break
         szbits = sz & 0x7f
         sz >>= 7
-    if compression_level > 9:
-        raise BaseException("Compression Level Above 9")
-    elif compression_level < 0:
-        raise BaseException("Compression Level Below 0")
     z = zlib.compressobj(compression_level)
     yield szout
     yield z.compress(content)

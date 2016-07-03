@@ -72,6 +72,13 @@ def testencode():
         WVPASSEQ(git._decode_packobj(packb), ('blob', s))
         WVPASSEQ(git._decode_packobj(packt), ('tree', s))
         WVPASSEQ(git._decode_packobj(packc), ('commit', s))
+        for i in xrange(10):
+            WVPASS(git._encode_looseobj('blob', s, compression_level=i))
+        def encode_pobj(n):
+            return ''.join(git._encode_packobj('blob', s, compression_level=n))
+        WVEXCEPT(ValueError, encode_pobj, -1)
+        WVEXCEPT(ValueError, encode_pobj, 10)
+        WVEXCEPT(ValueError, encode_pobj, 'x')
 
 
 @wvtest
