@@ -156,7 +156,7 @@ From source
    destination with DESTDIR and PREFIX.
 
    Files are normally installed to "$DESTDIR/$PREFIX" where DESTDIR is
-   empty by default, and PREFIX is set to /usr.  So if you wanted to
+   empty by default, and PREFIX is set to /usr/local.  So if you wanted to
    install bup to /opt/bup, you might do something like this:
 
         make install DESTDIR=/opt/bup PREFIX=''
