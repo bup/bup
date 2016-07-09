@@ -7,13 +7,13 @@ exec "$bup_python" "$0" ${1+"$@"}
 
 from calendar import timegm
 from pipes import quote
-from subprocess import check_call, check_output
+from subprocess import check_call
 from time import strftime, strptime
 import sys
 import tempfile
 
 from bup import git, options, vfs
-from bup.helpers import handle_ctrl_c, log, saved_errors, unlink
+from bup.helpers import handle_ctrl_c, log, readpipe, saved_errors, unlink
 import bup.path
 
 optspec = """
@@ -40,7 +40,7 @@ def exo(cmd, shell=False):
     global opt
     logcmd(cmd)
     if not opt.dry_run:
-        return check_output(cmd, shell=shell)
+        return readpipe(cmd, shell=shell)
 
 
 handle_ctrl_c()

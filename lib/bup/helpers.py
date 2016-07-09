@@ -212,9 +212,10 @@ def unlink(f):
             raise
 
 
-def readpipe(argv, preexec_fn=None):
+def readpipe(argv, preexec_fn=None, shell=False):
     """Run a subprocess and return its output."""
-    p = subprocess.Popen(argv, stdout=subprocess.PIPE, preexec_fn=preexec_fn)
+    p = subprocess.Popen(argv, stdout=subprocess.PIPE, preexec_fn=preexec_fn,
+                         shell=shell)
     out, err = p.communicate()
     if p.returncode != 0:
         raise Exception('subprocess %r failed with status %d'
