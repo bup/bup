@@ -6,6 +6,11 @@ set -o pipefail
 
 unset BLOCKSIZE BLOCK_SIZE DF_BLOCK_SIZE
 
+if ! bup-python -c 'import fuse' 2> /dev/null; then
+    WVSTART 'unable to import fuse; skipping test'
+    exit 0
+fi
+
 if test -n "$(type -p modprobe)" && ! modprobe fuse; then
     echo 'Unable to load fuse module; skipping dependent tests.' 1>&2
     exit 0
