@@ -42,7 +42,7 @@ if test $? -ne 7; then
     run_test=''
 fi
 
-if ! python -c 'import tornado' 2> /dev/null; then
+if ! bup-python -c 'import tornado' 2> /dev/null; then
     WVSTART 'unable to import tornado; skipping test'
     run_test=''
 fi
