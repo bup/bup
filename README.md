@@ -71,7 +71,7 @@ Reasons you might want to avoid bup
    for you, but we don't know why.  It is also missing some
    probably-critical features.
    
- - It requires python >= 2.5, a C compiler, and an installed git
+ - It requires python >= 2.6, a C compiler, and an installed git
    version >= 1.5.3.1.  It also requires par2 if you want fsck to be
    able to generate the information needed to recover from some types
    of corruption.
@@ -109,8 +109,8 @@ From source
 
             apt-get build-dep bup
 
-   Otherwise try this (substitute python2.6-dev or python2.5-dev if
-   you have an older system):
+   Otherwise try this (substitute python2.6-dev if you have an older
+   system):
 
             apt-get install python2.7-dev python-fuse
             apt-get install python-pyxattr python-pylibacl
