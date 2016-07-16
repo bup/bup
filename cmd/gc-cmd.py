@@ -50,7 +50,7 @@ optspec = """
 bup gc [options...]
 --
 v,verbose   increase log output (can be used more than once)
-threshold   only rewrite a packfile if it's over this percent garbage [10]
+threshold=  only rewrite a packfile if it's over this percent garbage [10]
 #,compress= set compression level to # (0-9, 9 is highest) [1]
 unsafe      use the command even though it may be DANGEROUS
 """
