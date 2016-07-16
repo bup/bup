@@ -169,27 +169,28 @@ def test_batchpipe():
 
 @wvtest
 def test_atomically_replaced_file():
-    with no_lingering_errors(), test_tempdir('bup-thelper-') as tmpdir:
-        target_file = os.path.join(tmpdir, 'test-atomic-write')
+    with no_lingering_errors():
+        with test_tempdir('bup-thelper-') as tmpdir:
+            target_file = os.path.join(tmpdir, 'test-atomic-write')
 
-        with atomically_replaced_file(target_file, mode='w') as f:
-            f.write('asdf')
-            WVPASSEQ(f.mode, 'w')
-        f = open(target_file, 'r')
-        WVPASSEQ(f.read(), 'asdf')
-
-        try:
             with atomically_replaced_file(target_file, mode='w') as f:
-                f.write('wxyz')
-                raise Exception()
-        except:
-            pass
-        with open(target_file) as f:
+                f.write('asdf')
+                WVPASSEQ(f.mode, 'w')
+            f = open(target_file, 'r')
             WVPASSEQ(f.read(), 'asdf')
 
-        with atomically_replaced_file(target_file, mode='wb') as f:
-            f.write(os.urandom(20))
-            WVPASSEQ(f.mode, 'wb')
+            try:
+                with atomically_replaced_file(target_file, mode='w') as f:
+                    f.write('wxyz')
+                    raise Exception()
+            except:
+                pass
+            with open(target_file) as f:
+                WVPASSEQ(f.read(), 'asdf')
+
+            with atomically_replaced_file(target_file, mode='wb') as f:
+                f.write(os.urandom(20))
+                WVPASSEQ(f.mode, 'wb')
 
 
 @wvtest

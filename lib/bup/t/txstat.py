@@ -62,51 +62,54 @@ def test_fstime():
 def test_bup_utimensat():
     if not xstat._bup_utimensat:
         return
-    with no_lingering_errors(), test_tempdir('bup-txstat-') as tmpdir:
-        path = tmpdir + '/foo'
-        open(path, 'w').close()
-        frac_ts = (0, 10**9 / 2)
-        xstat._bup_utimensat(_helpers.AT_FDCWD, path, (frac_ts, frac_ts), 0)
-        st = _helpers.stat(path)
-        atime_ts = st[8]
-        mtime_ts = st[9]
-        WVPASSEQ(atime_ts[0], 0)
-        WVPASS(atime_ts[1] == 0 or atime_ts[1] == frac_ts[1])
-        WVPASSEQ(mtime_ts[0], 0)
-        WVPASS(mtime_ts[1] == 0 or mtime_ts[1] == frac_ts[1])
+    with no_lingering_errors():
+        with test_tempdir('bup-txstat-') as tmpdir:
+            path = tmpdir + '/foo'
+            open(path, 'w').close()
+            frac_ts = (0, 10**9 / 2)
+            xstat._bup_utimensat(_helpers.AT_FDCWD, path, (frac_ts, frac_ts), 0)
+            st = _helpers.stat(path)
+            atime_ts = st[8]
+            mtime_ts = st[9]
+            WVPASSEQ(atime_ts[0], 0)
+            WVPASS(atime_ts[1] == 0 or atime_ts[1] == frac_ts[1])
+            WVPASSEQ(mtime_ts[0], 0)
+            WVPASS(mtime_ts[1] == 0 or mtime_ts[1] == frac_ts[1])
 
 
 @wvtest
 def test_bup_utimes():
     if not xstat._bup_utimes:
         return
-    with no_lingering_errors(), test_tempdir('bup-txstat-') as tmpdir:
-        path = tmpdir + '/foo'
-        open(path, 'w').close()
-        frac_ts = (0, 10**6 / 2)
-        xstat._bup_utimes(path, (frac_ts, frac_ts))
-        st = _helpers.stat(path)
-        atime_ts = st[8]
-        mtime_ts = st[9]
-        WVPASSEQ(atime_ts[0], 0)
-        WVPASS(atime_ts[1] == 0 or atime_ts[1] == frac_ts[1] * 1000)
-        WVPASSEQ(mtime_ts[0], 0)
-        WVPASS(mtime_ts[1] == 0 or mtime_ts[1] == frac_ts[1] * 1000)
+    with no_lingering_errors():
+        with test_tempdir('bup-txstat-') as tmpdir:
+            path = tmpdir + '/foo'
+            open(path, 'w').close()
+            frac_ts = (0, 10**6 / 2)
+            xstat._bup_utimes(path, (frac_ts, frac_ts))
+            st = _helpers.stat(path)
+            atime_ts = st[8]
+            mtime_ts = st[9]
+            WVPASSEQ(atime_ts[0], 0)
+            WVPASS(atime_ts[1] == 0 or atime_ts[1] == frac_ts[1] * 1000)
+            WVPASSEQ(mtime_ts[0], 0)
+            WVPASS(mtime_ts[1] == 0 or mtime_ts[1] == frac_ts[1] * 1000)
 
 
 @wvtest
 def test_bup_lutimes():
     if not xstat._bup_lutimes:
         return
-    with no_lingering_errors(), test_tempdir('bup-txstat-') as tmpdir:
-        path = tmpdir + '/foo'
-        open(path, 'w').close()
-        frac_ts = (0, 10**6 / 2)
-        xstat._bup_lutimes(path, (frac_ts, frac_ts))
-        st = _helpers.stat(path)
-        atime_ts = st[8]
-        mtime_ts = st[9]
-        WVPASSEQ(atime_ts[0], 0)
-        WVPASS(atime_ts[1] == 0 or atime_ts[1] == frac_ts[1] * 1000)
-        WVPASSEQ(mtime_ts[0], 0)
-        WVPASS(mtime_ts[1] == 0 or mtime_ts[1] == frac_ts[1] * 1000)
+    with no_lingering_errors():
+        with test_tempdir('bup-txstat-') as tmpdir:
+            path = tmpdir + '/foo'
+            open(path, 'w').close()
+            frac_ts = (0, 10**6 / 2)
+            xstat._bup_lutimes(path, (frac_ts, frac_ts))
+            st = _helpers.stat(path)
+            atime_ts = st[8]
+            mtime_ts = st[9]
+            WVPASSEQ(atime_ts[0], 0)
+            WVPASS(atime_ts[1] == 0 or atime_ts[1] == frac_ts[1] * 1000)
+            WVPASSEQ(mtime_ts[0], 0)
+            WVPASS(mtime_ts[1] == 0 or mtime_ts[1] == frac_ts[1] * 1000)
