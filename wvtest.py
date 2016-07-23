@@ -201,7 +201,7 @@ def _run_registered_tests():
         print
 
 
-def wvtest_main(extra_testfiles=[]):
+def wvtest_main(extra_testfiles=tuple()):
     import wvtest as _wvtestmod
     _run_registered_tests()
     for modname in extra_testfiles:
