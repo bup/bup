@@ -93,26 +93,25 @@ def bup_rm(paths, compression=6, verbosity=None):
 
     updated_refs = {}  # ref_name -> (original_ref, tip_commit(bin))
 
-    writer = None
+    for branch, node in dead_branches.iteritems():
+        ref = 'refs/heads/' + branch
+        assert(not ref in updated_refs)
+        updated_refs[ref] = (node.hash, None)
+
     if dead_saves:
         writer = git.PackWriter(compression_level=compression)
-
-    try:
-        for branch, saves in dead_saves.iteritems():
-            assert(saves)
-            updated_refs['refs/heads/' + branch] = rm_saves(saves, writer)
-        for branch, node in dead_branches.iteritems():
-            ref = 'refs/heads/' + branch
-            assert(not ref in updated_refs)
-            updated_refs[ref] = (node.hash, None)
-    except:
-        if writer:
-            writer.abort()
-        raise
-    else:
-        if writer:
-            # Must close before we can update the ref(s) below.
-            writer.close()
+        try:
+            for branch, saves in dead_saves.iteritems():
+                assert(saves)
+                updated_refs['refs/heads/' + branch] = rm_saves(saves, writer)
+        except:
+            if writer:
+                writer.abort()
+            raise
+        else:
+            if writer:
+                # Must close before we can update the ref(s) below.
+                writer.close()
 
     # Only update the refs here, at the very end, so that if something
     # goes wrong above, the old refs will be undisturbed.  Make an attempt
