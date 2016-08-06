@@ -855,6 +855,15 @@ def clear_errors():
     saved_errors = []
 
 
+def die_if_errors(msg=None, status=1):
+    global saved_errors
+    if saved_errors:
+        if not msg:
+            msg = 'warning: %d errors encountered\n' % len(saved_errors)
+        log(msg)
+        sys.exit(status)
+
+
 def handle_ctrl_c():
     """Replace the default exception handler for KeyboardInterrupt (Ctrl-C).
 
