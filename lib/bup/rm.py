@@ -85,7 +85,7 @@ def dead_items(vfs_top, paths):
     return dead_branches, dead_saves
 
 
-def bup_rm(paths, opt):
+def bup_rm(paths, compression=6, verbosity=None):
     root = vfs.RefList(None)
 
     dead_branches, dead_saves = dead_items(root, paths)
@@ -95,7 +95,7 @@ def bup_rm(paths, opt):
 
     writer = None
     if dead_saves:
-        writer = git.PackWriter(compression_level=opt.compress)
+        writer = git.PackWriter(compression_level=compression)
 
     try:
         for branch, saves in dead_saves.iteritems():
@@ -124,7 +124,7 @@ def bup_rm(paths, opt):
                 git.delete_ref(ref_name, orig_ref.encode('hex'))
             else:
                 git.update_ref(ref_name, new_ref, orig_ref)
-                if opt.verbose:
+                if verbosity:
                     new_hex = new_ref.encode('hex')
                     if orig_ref:
                         orig_hex = orig_ref.encode('hex')

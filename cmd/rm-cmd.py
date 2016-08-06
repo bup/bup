@@ -32,5 +32,5 @@ if len(extra) < 1:
     o.fatal('no paths specified')
 
 check_repo_or_die()
-bup_rm(extra, opt)
+bup_rm(extra, compression=opt.compress, verbosity=opt.verbose)
 die_if_errors()
