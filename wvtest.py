@@ -71,11 +71,11 @@ if __name__ != '__main__':   # we're imported as a module
             _result(msg, tb, 'FAILED')
         return cond
 
-
+    _code_rx = re.compile(r'^\w+\((.*)\)(\s*#.*)?$')
     def _code():
         (filename, line, func, text) = traceback.extract_stack()[-3]
-        text = re.sub(r'^\w+\((.*)\)(\s*#.*)?$', r'\1', text);
-        return text
+        return _code_rx.sub(r'\1', text)
+
 
 
     def WVMSG(message):
