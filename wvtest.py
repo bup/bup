@@ -18,6 +18,8 @@ import re
 import sys
 import traceback
 
+_start_dir = os.getcwd()
+
 # NOTE
 # Why do we do we need the "!= main" check?  Because if you run
 # wvtest.py as a main program and it imports your test files, then
@@ -63,8 +65,18 @@ if __name__ != '__main__':   # we're imported as a module
         sys.stdout.flush()
 
 
+    def _caller_stack():
+        # Without the chdir, the source text lookup may fail
+        orig = os.getcwd()
+        os.chdir(_start_dir)
+        try:
+            return traceback.extract_stack()[-4]
+        finally:
+            os.chdir(orig)
+
+
     def _check(cond, msg = 'unknown', tb = None):
-        if tb == None: tb = traceback.extract_stack()[-3]
+        if tb == None: tb = _caller_stack()
         if cond:
             _result(msg, tb, 'ok')
         else:
@@ -73,14 +85,12 @@ if __name__ != '__main__':   # we're imported as a module
 
     _code_rx = re.compile(r'^\w+\((.*)\)(\s*#.*)?$')
     def _code():
-        (filename, line, func, text) = traceback.extract_stack()[-3]
+        text = _caller_stack()[3]
         return _code_rx.sub(r'\1', text)
-
-
 
     def WVMSG(message):
         ''' Issues a notification. '''
-        return _result(message, traceback.extract_stack()[-3], 'ok')
+        return _result(message, _caller_stack(), 'ok')
 
     def WVPASS(cond = True):
         ''' Counts a test failure unless cond is true. '''
