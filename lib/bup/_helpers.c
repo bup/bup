@@ -1137,12 +1137,12 @@ static PyObject *bup_set_linux_file_attr(PyObject *self, PyObject *args)
     // The extents flag can't be removed, so don't (see chattr(1) and chattr.c).
     orig_attr = 0; // Handle int/long mismatch (see above)
     rc = ioctl(fd, FS_IOC_GETFLAGS, &orig_attr);
-    assert(orig_attr <= UINT_MAX);  // Kernel type is actually int
     if (rc == -1)
     {
         close(fd);
         return PyErr_SetFromErrnoWithFilename(PyExc_OSError, path);
     }
+    assert(orig_attr <= UINT_MAX);  // Kernel type is actually int
     attr |= ((unsigned int) orig_attr) & FS_EXTENT_FL;
 
     rc = ioctl(fd, FS_IOC_SETFLAGS, &attr);
