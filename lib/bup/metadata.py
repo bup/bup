@@ -5,6 +5,7 @@
 # This code is covered under the terms of the GNU Library General
 # Public License as described in the bup LICENSE file.
 
+from errno import EACCES, EINVAL, ENOTTY, ENOSYS, EOPNOTSUPP
 from io import BytesIO
 import errno, os, sys, stat, time, pwd, grp, socket, struct
 
@@ -187,6 +188,8 @@ _rec_tag_linux_attr = 6       # lsattr(1) chattr(1)
 _rec_tag_linux_xattr = 7      # getfattr(1) setfattr(1)
 _rec_tag_hardlink_target = 8 # hard link target path
 _rec_tag_common_v2 = 9 # times, user, group, type, perms, etc. (current)
+
+_warned_about_attr_einval = None
 
 
 class ApplyError(Exception):
@@ -585,8 +588,16 @@ class Metadata:
             except OSError as e:
                 if e.errno == errno.EACCES:
                     add_error('read Linux attr: %s' % e)
-                elif e.errno in (errno.ENOTTY, errno.ENOSYS, errno.EOPNOTSUPP):
+                elif e.errno in (ENOTTY, ENOSYS, EOPNOTSUPP):
                     # Assume filesystem doesn't support attrs.
+                    return
+                elif e.errno == EINVAL:
+                    global _warned_about_attr_einval
+                    if not _warned_about_attr_einval:
+                        log("Ignoring attr EINVAL;"
+                            + " if you're not using ntfs-3g, please report: "
+                            + repr(path) + '\n')
+                        _warned_about_attr_einval = True
                     return
                 else:
                     raise
@@ -615,10 +626,13 @@ class Metadata:
             try:
                 set_linux_file_attr(path, self.linux_attr)
             except OSError as e:
-                if e.errno in (errno.ENOTTY, errno.EOPNOTSUPP, errno.ENOSYS,
-                               errno.EACCES):
+                if e.errno in (EACCES, ENOTTY, EOPNOTSUPP, ENOSYS):
                     raise ApplyError('Linux chattr: %s (0x%s)'
                                      % (e, hex(self.linux_attr)))
+                elif e.errno == EINVAL:
+                    msg = "if you're not using ntfs-3g, please report"
+                    raise ApplyError('Linux chattr: %s (0x%s) (%s)'
+                                     % (e, hex(self.linux_attr), msg))
                 else:
                     raise
 
