@@ -47,7 +47,7 @@ used to help test before/after results.)
 -*#*, \--compress=*#*
 :   set the compression level to # (a value from 0-9, where
     9 is the highest and 0 is no compression).  The default
-    is 6.
+    is 1 (fast, loose compression).
 
 # EXAMPLES
 
