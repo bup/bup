@@ -4,7 +4,9 @@
 
 set -o pipefail
 
-if [ $(t/root-status) != root ]; then
+root_status="$(t/root-status)" || exit $?
+
+if [ "$root_status" != root ]; then
     echo 'Not root: skipping --check-device tests.'
     exit 0 # FIXME: add WVSKIP.
 fi

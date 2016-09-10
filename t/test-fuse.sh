@@ -6,6 +6,8 @@ set -o pipefail
 
 unset BLOCKSIZE BLOCK_SIZE DF_BLOCK_SIZE
 
+root_status="$(t/root-status)" || exit $?
+
 if ! bup-python -c 'import fuse' 2> /dev/null; then
     WVSTART 'unable to import fuse; skipping test'
     exit 0
@@ -21,7 +23,7 @@ if ! fusermount -V; then
     exit 0
 fi
 
-if ! groups | grep -q fuse && test "$(t/root-status)" != root; then
+if ! groups | grep -q fuse && test "$root_status" != root; then
     echo 'skipping FUSE tests: you are not root and not in the fuse group'
     exit 0
 fi

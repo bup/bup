@@ -2,7 +2,9 @@
 . ./wvtest-bup.sh || exit $?
 . t/lib.sh || exit $?
 
-if [ $(t/root-status) != root ]; then
+root_status="$(t/root-status)" || exit $?
+
+if [ "$root_status" != root ]; then
     echo 'Not root: skipping restore --map-* tests.'
     exit 0 # FIXME: add WVSKIP.
 fi
