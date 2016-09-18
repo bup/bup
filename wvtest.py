@@ -144,6 +144,18 @@ if __name__ != '__main__':   # we're imported as a module
         else:
             return _check(False, 'EXCEPT(%s)' % _code())
 
+    wvstart = WVSTART
+    wvmsg = WVMSG
+    wvpass = WVPASS
+    wvfail = WVFAIL
+    wvpasseq = WVPASSEQ
+    wvpassne = WVPASSNE
+    wvpaslt = WVPASSLT
+    wvpassle = WVPASSLE
+    wvpassgt = WVPASSGT
+    wvpassge = WVPASSGE
+    wvexcept = WVEXCEPT
+
     def wvfailure_count():
         return _fails
 
