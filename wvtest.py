@@ -65,18 +65,18 @@ if __name__ != '__main__':   # we're imported as a module
         sys.stdout.flush()
 
 
-    def _caller_stack():
+    def _caller_stack(wv_call_depth):
         # Without the chdir, the source text lookup may fail
         orig = os.getcwd()
         os.chdir(_start_dir)
         try:
-            return traceback.extract_stack()[-4]
+            return traceback.extract_stack()[-(wv_call_depth + 2)]
         finally:
             os.chdir(orig)
 
 
     def _check(cond, msg = 'unknown', tb = None):
-        if tb == None: tb = _caller_stack()
+        if tb == None: tb = _caller_stack(2)
         if cond:
             _result(msg, tb, 'ok')
         else:
@@ -85,12 +85,16 @@ if __name__ != '__main__':   # we're imported as a module
 
     _code_rx = re.compile(r'^\w+\((.*)\)(\s*#.*)?$')
     def _code():
-        text = _caller_stack()[3]
+        text = _caller_stack(2)[3]
         return _code_rx.sub(r'\1', text)
+
+    def WVSTART(message):
+        filename = _caller_stack(1)[0]
+        sys.stderr.write('Testing \"' + message + '\" in ' + filename + ':\n')
 
     def WVMSG(message):
         ''' Issues a notification. '''
-        return _result(message, _caller_stack(), 'ok')
+        return _result(message, _caller_stack(1), 'ok')
 
     def WVPASS(cond = True):
         ''' Counts a test failure unless cond is true. '''
