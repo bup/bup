@@ -66,7 +66,7 @@ define install-python-bin
   chmod 0755 $2;
 endef
 
-PANDOC ?= $(shell type -p pandoc)
+PANDOC ?= "$(shell type -p pandoc)"
 
 ifeq (,$(PANDOC))
   $(shell echo "Warning: pandoc not found; skipping manpage generation" 1>&2)
