@@ -8,7 +8,7 @@ from bup.helpers import (add_error, log, merge_iter, mmap_readwrite,
 EMPTY_SHA = '\0'*20
 FAKE_SHA = '\x01'*20
 
-INDEX_HDR = 'BUPI\0\0\0\6'
+INDEX_HDR = 'BUPI\0\0\0\7'
 
 # Time values are handled as integer nanoseconds since the epoch in
 # memory, but are written as xstat/metadata timespecs.  This behavior
@@ -29,7 +29,7 @@ INDEX_SIG = ('!'
              'I'                # gitmode
              '20s'              # sha
              'H'                # flags
-             'I'                # children_ofs
+             'Q'                # children_ofs
              'I'                # children_n
              'Q')               # meta_ofs
 
