@@ -17,7 +17,21 @@ INDEX_HDR = 'BUPI\0\0\0\6'
 # Record times (mtime, ctime, atime) as xstat/metadata timespecs, and
 # store all of the times in the index so they won't interfere with the
 # forthcoming metadata cache.
-INDEX_SIG =  '!QQQqQqQqQQII20sHIIQ'
+INDEX_SIG = ('!'
+             'Q'                # dev
+             'Q'                # ino
+             'Q'                # nlink
+             'qQ'               # ctime_s, ctime_ns
+             'qQ'               # mtime_s, mtime_ns
+             'qQ'               # atime_s, atime_ns
+             'Q'                # size
+             'I'                # mode
+             'I'                # gitmode
+             '20s'              # sha
+             'H'                # flags
+             'I'                # children_ofs
+             'I'                # children_n
+             'Q')               # meta_ofs
 
 ENTLEN = struct.calcsize(INDEX_SIG)
 FOOTER_SIG = '!Q'
