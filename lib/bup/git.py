@@ -1264,71 +1264,6 @@ WalkItem = namedtuple('WalkItem', ['id', 'type', 'mode',
 #   ...
 
 
-def _walk_object(cat_pipe, id,
-                 parent_path, chunk_path,
-                 mode=None,
-                 stop_at=None,
-                 include_data=None):
-
-    if stop_at and stop_at(id):
-        return
-
-    item_it = cat_pipe.get(id)  # FIXME: use include_data
-    type = item_it.next()
-
-    if type not in ('blob', 'commit', 'tree'):
-        raise Exception('unexpected repository object type %r' % type)
-
-    # FIXME: set the mode based on the type when the mode is None
-
-    if type == 'blob' and not include_data:
-        # Dump data until we can ask cat_pipe not to fetch it
-        for ignored in item_it:
-            pass
-        data = None
-    else:
-        data = ''.join(item_it)
-
-    yield  WalkItem(id=id, type=type,
-                    chunk_path=chunk_path, path=parent_path,
-                    mode=mode,
-                    data=(data if include_data else None))
-
-    if type == 'commit':
-        commit_items = parse_commit(data)
-        tree_id = commit_items.tree
-        for x in _walk_object(cat_pipe, tree_id, parent_path, chunk_path,
-                              mode=hashsplit.GIT_MODE_TREE,
-                              stop_at=stop_at,
-                              include_data=include_data):
-            yield x
-        parents = commit_items.parents
-        for pid in parents:
-            for x in _walk_object(cat_pipe, pid, parent_path, chunk_path,
-                                  mode=mode, # Same mode as this child
-                                  stop_at=stop_at,
-                                  include_data=include_data):
-                yield x
-    elif type == 'tree':
-        for mode, name, ent_id in tree_decode(data):
-            demangled, bup_type = demangle_name(name, mode)
-            if chunk_path:
-                sub_path = parent_path
-                sub_chunk_path = chunk_path + [name]
-            else:
-                sub_path = parent_path + [name]
-                if bup_type == BUP_CHUNKED:
-                    sub_chunk_path = ['']
-                else:
-                    sub_chunk_path = chunk_path
-            for x in _walk_object(cat_pipe, ent_id.encode('hex'),
-                                  sub_path, sub_chunk_path,
-                                  mode=mode,
-                                  stop_at=stop_at,
-                                  include_data=include_data):
-                yield x
-
-
 def walk_object(cat_pipe, id,
                 stop_at=None,
                 include_data=None):
@@ -1337,6 +1272,49 @@ def walk_object(cat_pipe, id,
     if a hash encountered is missing from the repository.
 
     """
-    return _walk_object(cat_pipe, id, [], [],
-                        stop_at=stop_at,
-                        include_data=include_data)
+    # Maintain the pending stack on the heap to avoid stack overflow
+    pending = [(id, [], [], None)]
+    while len(pending):
+        id, parent_path, chunk_path, mode = pending.pop()
+        if stop_at and stop_at(id):
+            continue
+
+        item_it = cat_pipe.get(id)  # FIXME: use include_data
+        type = item_it.next()
+        if type not in ('blob', 'commit', 'tree'):
+            raise Exception('unexpected repository object type %r' % type)
+
+        # FIXME: set the mode based on the type when the mode is None
+        if type == 'blob' and not include_data:
+            # Dump data until we can ask cat_pipe not to fetch it
+            for ignored in item_it:
+                pass
+            data = None
+        else:
+            data = ''.join(item_it)
+
+        yield WalkItem(id=id, type=type,
+                       chunk_path=chunk_path, path=parent_path,
+                       mode=mode,
+                       data=(data if include_data else None))
+
+        if type == 'commit':
+            commit_items = parse_commit(data)
+            for pid in commit_items.parents:
+                pending.append((pid, parent_path, chunk_path, mode))
+            pending.append((commit_items.tree, parent_path, chunk_path,
+                            hashsplit.GIT_MODE_TREE))
+        elif type == 'tree':
+            for mode, name, ent_id in tree_decode(data):
+                demangled, bup_type = demangle_name(name, mode)
+                if chunk_path:
+                    sub_path = parent_path
+                    sub_chunk_path = chunk_path + [name]
+                else:
+                    sub_path = parent_path + [name]
+                    if bup_type == BUP_CHUNKED:
+                        sub_chunk_path = ['']
+                    else:
+                        sub_chunk_path = chunk_path
+                pending.append((ent_id.encode('hex'), sub_path, sub_chunk_path,
+                                mode))
