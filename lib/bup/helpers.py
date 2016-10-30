@@ -9,6 +9,12 @@ import hashlib, heapq, math, operator, time, grp, tempfile
 
 from bup import _helpers
 
+
+class Nonlocal:
+    """Helper to deal with Python scoping issues"""
+    pass
+
+
 sc_page_size = os.sysconf('SC_PAGE_SIZE')
 assert(sc_page_size > 0)
 
@@ -60,6 +66,29 @@ if sys.platform.startswith('darwin'):
                 raise
 else:
     fdatasync = _fdatasync
+
+
+def partition(predicate, stream):
+    """Returns (leading_matches_it, rest_it), where leading_matches_it
+    must be completely exhausted before traversing rest_it.
+
+    """
+    stream = iter(stream)
+    ns = Nonlocal()
+    ns.first_nonmatch = None
+    def leading_matches():
+        for x in stream:
+            if predicate(x):
+                yield x
+            else:
+                ns.first_nonmatch = (x,)
+                break
+    def rest():
+        if ns.first_nonmatch:
+            yield ns.first_nonmatch[0]
+            for x in stream:
+                yield x
+    return (leading_matches(), rest())
 
 
 # Write (blockingly) to sockets that may or may not be in blocking mode.
@@ -1126,3 +1155,22 @@ def valid_save_name(name):
         if part.startswith('.') or part.endswith('.lock'):
             return False
     return True
+
+
+_period_rx = re.compile(r'^([0-9]+)(s|min|h|d|w|m|y)$')
+
+def period_as_secs(s):
+    if s == 'forever':
+        return float('inf')
+    match = _period_rx.match(s)
+    if not match:
+        return None
+    mag = int(match.group(1))
+    scale = match.group(2)
+    return mag * {'s': 1,
+                  'min': 60,
+                  'h': 60 * 60,
+                  'd': 60 * 60 * 24,
+                  'w': 60 * 60 * 24 * 7,
+                  'm': 60 * 60 * 24 * 31,
+                  'y': 60 * 60 * 24 * 366}[scale]

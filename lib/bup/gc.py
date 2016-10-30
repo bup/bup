@@ -1,7 +1,7 @@
 import glob, os, subprocess, sys, tempfile
 from bup import bloom, git, midx
 from bup.git import MissingObject, walk_object
-from bup.helpers import log, progress, qprogress
+from bup.helpers import Nonlocal, log, progress, qprogress
 from os.path import basename
 
 # This garbage collector uses a Bloom filter to track the live objects
@@ -38,10 +38,6 @@ from os.path import basename
 # This should decrease the IO load at the cost of increased RAM use.
 
 # FIXME: add a bloom filter tuning parameter?
-
-
-class Nonlocal:
-    pass
 
 
 def count_objects(dir, verbosity):
