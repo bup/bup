@@ -201,13 +201,22 @@ packs_after="$(ls "$BUP_DIR/objects/pack/"*.pack)" || exit $?
 WVPASSEQ 1 "$(grep -cE '^rewriting ' gc.log)"
 
 # Check that only one pack was rewritten
-only_in_before="$(comm -2 -3 <(echo "$packs_before") <(echo "$packs_after"))"
-only_in_after="$(comm -1 -3 <(echo "$packs_before") <(echo "$packs_after"))"
-in_both="$(comm -1 -2 <(echo "$packs_before") <(echo "$packs_after"))"
+
+# Accommodate some systems that apparently used to change the default
+# ls sort order which must match LC_COLLATE for comm to work.
+packs_before="$(sort <(echo "$packs_before"))" || die $?
+packs_after="$(sort <(echo "$packs_after"))" || die $?
+
+only_in_before="$(comm -2 -3 <(echo "$packs_before") <(echo "$packs_after"))" \
+    || die $?
+
+only_in_after="$(comm -1 -3 <(echo "$packs_before") <(echo "$packs_after"))" \
+    || die $?
+
+in_both="$(comm -1 -2 <(echo "$packs_before") <(echo "$packs_after"))" || die $?
 
 WVPASSEQ 1 $(echo "$only_in_before" | wc -l)
 WVPASSEQ 1 $(echo "$only_in_after" | wc -l)
 WVPASSEQ 1 $(echo "$in_both" | wc -l)
-
 
 WVPASS rm -rf "$tmpdir"
