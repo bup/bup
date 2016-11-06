@@ -185,7 +185,7 @@ def sweep(live_objects, existing_count, cat_pipe, threshold, compression,
             if live_objects.exists(sha):
                 item_it = cat_pipe.get(sha.encode('hex'))
                 type = item_it.next()
-                writer.write(sha, type, ''.join(item_it))
+                writer.just_write(sha, type, ''.join(item_it))
 
         ns.stale_files.append(idx_name)
         ns.stale_files.append(idx_name[:-3] + 'pack')

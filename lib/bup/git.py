@@ -675,15 +675,16 @@ class PackWriter:
         self._require_objcache()
         return self.objcache.exists(id, want_source=want_source)
 
-    def write(self, sha, type, content):
-        """Write an object to the pack file.  Fails if sha exists()."""
+    def just_write(self, sha, type, content):
+        """Write an object to the pack file, bypassing the objcache.  Fails if
+        sha exists()."""
         self._write(sha, type, content)
 
     def maybe_write(self, type, content):
         """Write an object to the pack file if not present and return its id."""
         sha = calc_hash(type, content)
         if not self.exists(sha):
-            self.write(sha, type, content)
+            self.just_write(sha, type, content)
             self._require_objcache()
             self.objcache.add(sha)
         return sha
