@@ -251,7 +251,7 @@ relatively infrequently.  (You might think you change your source code
 "frequently" and that git handles much more frequent changes than, say, svn
 can handle.  But that's not the same kind of "frequently" we're talking
 about.  Imagine you're backing up all the files on your disk, and one of
-those files is a 100 GB database file with hundreds of daily users.  You
+those files is a 100 GB database file with hundreds of daily users.  Your
 disk changes so frequently you can't even back up all the revisions even if
 you were backing stuff up 24 hours a day.  That's "frequently.")
 
