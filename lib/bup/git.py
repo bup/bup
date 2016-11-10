@@ -1270,8 +1270,9 @@ def walk_object(cat_pipe, id,
                 include_data=None):
     """Yield everything reachable from id via cat_pipe as a WalkItem,
     stopping whenever stop_at(id) returns true.  Throw MissingObject
-    if a hash encountered is missing from the repository.
-
+    if a hash encountered is missing from the repository, and don't
+    read or return blob content in the data field unless include_data
+    is set.
     """
     # Maintain the pending stack on the heap to avoid stack overflow
     pending = [(id, [], [], None)]
@@ -1280,7 +1281,17 @@ def walk_object(cat_pipe, id,
         if stop_at and stop_at(id):
             continue
 
-        item_it = cat_pipe.get(id)  # FIXME: use include_data
+        if (not include_data) and mode and stat.S_ISREG(mode):
+            # If the object is a "regular file", then it's a leaf in
+            # the graph, so we can skip reading the data if the caller
+            # hasn't requested it.
+            yield WalkItem(id=id, type='blob',
+                           chunk_path=chunk_path, path=parent_path,
+                           mode=mode,
+                           data=None)
+            continue
+
+        item_it = cat_pipe.get(id)
         type = item_it.next()
         if type not in ('blob', 'commit', 'tree'):
             raise Exception('unexpected repository object type %r' % type)
