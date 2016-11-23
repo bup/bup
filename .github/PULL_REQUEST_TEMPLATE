@@ -1,0 +1,24 @@
+
+First off, thanks for the help.
+
+Note that we handle development on the mailing list, so if you're
+comfortable with "git send-email" (or the equivalent), please post
+your patches there as described in the "Submitting Patches" section in
+./HACKING:
+
+  https://github.com/bup/bup/blob/master/HACKING
+
+However, if you're more comfortable with PRs, that's just fine.
+Someone will eventually redirect the PR it to the list for review, and
+you will of course be included in the conversation there.
+
+In either case, assuming you're comfortable with it, please make sure
+to include a Signed-off-by header in each commit message as described
+in ./SIGNED-OFF-BY:
+
+  https://github.com/bup/bup/blob/master/SIGNED-OFF-BY
+
+i.e. a line like this in your commit messages:
+
+  Signed-off-by: Someone <someone@somewhere>
+
