@@ -430,24 +430,24 @@ mailing list (see below) if you'd like to help.
 
  - 'bup restore' can't pull directly from a remote server.
 
-    So in one sense "save -r" is a dead-end right now.  Obviously you
-    can use "ssh SERVER bup restore -C ./dest..." to create a tree you
-    can transfer elsewhere via rsync/tar/whatever, but that's *lame*.
+   So in one sense "save -r" is a dead-end right now.  Obviously you
+   can use "ssh SERVER bup restore -C ./dest..." to create a tree you
+   can transfer elsewhere via rsync/tar/whatever, but that's *lame*.
 
-    Until we fix it, you may be able to mount the remote BUP_DIR via
-    sshfs and then restore "normally", though that hasn't been
-    officially tested.
+   Until we fix it, you may be able to mount the remote BUP_DIR via
+   sshfs and then restore "normally", though that hasn't been
+   officially tested.
 
  - 'bup save' and 'bup restore' have immature metadata support.
  
-    On the plus side, they actually do have support now, but it's new,
-    and not remotely as well tested as tar/rsync/whatever's.  However,
-    you have to start somewhere, and as of 0.25, we think it's ready
-    for more general use.  Please let us know if you have any trouble.
+   On the plus side, they actually do have support now, but it's new,
+   and not remotely as well tested as tar/rsync/whatever's.  However,
+   you have to start somewhere, and as of 0.25, we think it's ready
+   for more general use.  Please let us know if you have any trouble.
 
-    Also, if any strip or graft-style options are specified to 'bup
-    save', then no metadata will be written for the root directory.
-    That's obviously less than ideal.
+   Also, if any strip or graft-style options are specified to 'bup
+   save', then no metadata will be written for the root directory.
+   That's obviously less than ideal.
 
  - bup is overly optimistic about mmap.  Right now bup just assumes
    that it can mmap as large a block as it likes, and that mmap will
@@ -455,8 +455,8 @@ mailing list (see below) if you'd like to help.
    32-bit architectures (and 31-bit is even worse -- looking at you,
    s390).
 
-   To fix this, we might just implement a FakeMmap[1] class that uses
-   normal file IO and handles all of the mmap methods[2] that bup
+   To fix this, we might just implement a FakeMmap [1] class that uses
+   normal file IO and handles all of the mmap methods[ 2] that bup
    actually calls.  Then we'd swap in one of those whenever mmap
    fails.
 
@@ -478,10 +478,10 @@ mailing list (see below) if you'd like to help.
    
  - bup could use inotify for *really* efficient incremental backups.
 
-    You could even have your system doing "continuous" backups: whenever a
-    file changes, we immediately send an image of it to the server.  We could
-    give the continuous-backup process a really low CPU and I/O priority so
-    you wouldn't even know it was running.
+   You could even have your system doing "continuous" backups: whenever a
+   file changes, we immediately send an image of it to the server.  We could
+   give the continuous-backup process a really low CPU and I/O priority so
+   you wouldn't even know it was running.
 
  - bup only has experimental support for pruning old backups.
 
@@ -498,24 +498,24 @@ mailing list (see below) if you'd like to help.
  - bup has never been tested on anything but Linux, FreeBSD, NetBSD,
    OS X, and Windows+Cygwin.
  
-    There's nothing that makes it *inherently* non-portable, though, so
-    that's mostly a matter of someone putting in some effort.  (For a
-    "native" Windows port, the most annoying thing is the absence of ssh in
-    a default Windows installation.)
+   There's nothing that makes it *inherently* non-portable, though, so
+   that's mostly a matter of someone putting in some effort.  (For a
+   "native" Windows port, the most annoying thing is the absence of ssh in
+   a default Windows installation.)
     
  - bup needs better documentation.
  
-    According to a recent article about bup in Linux Weekly News
-    (https://lwn.net/Articles/380983/), "it's a bit short on examples and
-    a user guide would be nice."  Documentation is the sort of thing that
-    will never be great unless someone from outside contributes it (since
-    the developers can never remember which parts are hard to understand).
+   According to a recent article about bup in Linux Weekly News
+   (https://lwn.net/Articles/380983/), "it's a bit short on examples and
+   a user guide would be nice."  Documentation is the sort of thing that
+   will never be great unless someone from outside contributes it (since
+   the developers can never remember which parts are hard to understand).
     
  - bup is "relatively speedy" and has "pretty good" compression.
  
-    ...according to the same LWN article.  Clearly neither of those is good
-    enough.  We should have awe-inspiring speed and crazy-good compression. 
-    Must work on that.  Writing more parts in C might help with the speed.
+   ...according to the same LWN article.  Clearly neither of those is good
+   enough.  We should have awe-inspiring speed and crazy-good compression. 
+   Must work on that.  Writing more parts in C might help with the speed.
    
  - bup has no GUI.
  
@@ -551,7 +551,6 @@ and you can subscribe by sending a message to:
 Please see <a href="HACKING">./HACKING</a> for
 additional information, i.e. how to submit patches (hint - no pull
 requests), how we handle branches, etc.
-
 
 Have fun,
 
