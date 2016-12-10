@@ -138,6 +138,8 @@ def sweep(live_objects, existing_count, cat_pipe, threshold, compression,
             if verbosity:
                 log('removing ' + basename(p) + '\n')
             os.unlink(p)
+        if ns.stale_files:  # So git cat-pipe will close them
+            cat_pipe.restart()
         ns.stale_files = []
 
     writer = git.PackWriter(objcache_maker=None,

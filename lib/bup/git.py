@@ -1131,7 +1131,7 @@ class CatPipe:
         self.p = None
         self.inprogress = None
 
-    def _restart(self):
+    def restart(self):
         self._abort()
         self.p = subprocess.Popen(['git', 'cat-file', '--batch'],
                                   stdin=subprocess.PIPE,
@@ -1142,7 +1142,7 @@ class CatPipe:
 
     def _fast_get(self, id):
         if not self.p or self.p.poll() != None:
-            self._restart()
+            self.restart()
         assert(self.p)
         poll_result = self.p.poll()
         assert(poll_result == None)
