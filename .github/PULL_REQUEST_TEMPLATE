@@ -1,24 +1,25 @@
 
-First off, thanks for the help.
+We discuss code changes on the mailing list bup-list@googlegroups.com,
+but if you'd prefer to begin the process with a pull request, that's
+just fine.  We're happy to have the help.
 
-Note that we handle development on the mailing list, so if you're
-comfortable with "git send-email" (or the equivalent), please post
-your patches there as described in the "Submitting Patches" section in
-./HACKING:
+In any case, please make sure each commit includes a
 
-  https://github.com/bup/bup/blob/master/HACKING
+  Signed-off-by: Someone <someone@some.where>
 
-However, if you're more comfortable with PRs, that's just fine.
-Someone will eventually redirect the PR it to the list for review, and
-you will of course be included in the conversation there.
-
-In either case, assuming you're comfortable with it, please make sure
-to include a Signed-off-by header in each commit message as described
-in ./SIGNED-OFF-BY:
+line in the commit message that matches the "Author" line so that
+we'll be able to include your work in the project.  See
+./SIGNED-OFF-BY for the meaning:
 
   https://github.com/bup/bup/blob/master/SIGNED-OFF-BY
 
-i.e. a line like this in your commit messages:
+After you submit the pull request, someone will eventually redirect it
+to the list for review, and you will of course be included in the
+conversation there.
 
-  Signed-off-by: Someone <someone@somewhere>
+On the other hand, if you're comfortable with "git send-email" (or the
+equivalent), please post your patches to the list as described in the
+"Submitting Patches" section in ./HACKING:
+
+  https://github.com/bup/bup/blob/master/HACKING
 
