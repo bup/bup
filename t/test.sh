@@ -5,6 +5,18 @@
 
 set -o pipefail
 
+# Windows makes *everything* executable unless extraordinary measures are taken.
+case $OSTYPE in
+    cygwin)
+        cygexec='*'
+        cygmod='x'
+        ;;
+    *)
+        cygexec=''
+        cygmod='-'
+        ;;
+esac
+
 top="$(WVPASS /bin/pwd)" || exit $?
 tmpdir="$(WVPASS wvmktempdir)" || exit $?
 export BUP_DIR="$tmpdir/bup"
@@ -169,8 +181,8 @@ WVPASS touch $D/b
 WVPASS mkdir $D/c
 WVPASS bup index -ux $D
 WVPASS bup save --strip -n bupdir $D
-WVPASSEQ "$(bup ls -F bupdir/latest/)" "a
-b
+WVPASSEQ "$(bup ls -F bupdir/latest/)" "a${cygexec}
+b${cygexec}
 c/"
 WVPASS bup index -f $INDEXFILE --exclude=$D/c -ux $D
 WVPASS bup save --strip -n indexfile -f $INDEXFILE $D

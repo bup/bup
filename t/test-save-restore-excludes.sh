@@ -4,6 +4,18 @@
 
 set -o pipefail
 
+# Windows makes *everything* executable unless extraordinary measures are taken.
+case $OSTYPE in
+    cygwin)
+        cygexec='*'
+        cygmod='x'
+        ;;
+    *)
+        cygexec=''
+        cygmod='-'
+        ;;
+esac
+
 top="$(WVPASS pwd)" || exit $?
 tmpdir="$(WVPASS wvmktempdir)" || exit $?
 
@@ -25,10 +37,10 @@ WVPASS mkdir src/d src/d/e
 WVPASS bup random 512 >src/f
 WVPASS bup index -ux src
 WVPASS bup save -n exclude-bupdir src
-WVPASSEQ "$(bup ls -AF "exclude-bupdir/latest/$tmpdir/src/")" "a
-b
+WVPASSEQ "$(bup ls -AF "exclude-bupdir/latest/$tmpdir/src/")" "a${cygexec}
+b${cygexec}
 d/
-f"
+f${cygexec}"
 
 
 WVSTART "index --exclude"
