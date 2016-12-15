@@ -63,7 +63,10 @@ def create_older_random_saves(n, start_utc, end_utc):
     with open('foo', 'w') as f:
         pass
     exc(['git', 'add', 'foo'])
-    utcs = sorted(randint(start_utc, end_utc) for x in xrange(n))
+    utcs = set()
+    while len(utcs) != n:
+        utcs.add(randint(start_utc, end_utc))
+    utcs = sorted(utcs)
     for utc in utcs:
         with open('foo', 'w') as f:
             f.write(str(utc) + '\n')
