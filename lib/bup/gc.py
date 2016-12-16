@@ -94,6 +94,8 @@ def find_live_objects(existing_count, cat_pipe, verbosity=0):
     # FIXME: allow selection of k?
     # FIXME: support ephemeral bloom filters (i.e. *never* written to disk)
     live_objs = bloom.create(bloom_filename, expected=existing_count, k=None)
+    # live_objs will hold on to the fd until close or exit
+    os.unlink(bloom_filename)
     stop_at, trees_visited = None, None
     if prune_visited_trees:
         trees_visited = set()
@@ -238,4 +240,3 @@ def bup_gc(threshold=10, compression=1, verbosity=0):
                   verbosity)
         finally:
             live_objects.close()
-            os.unlink(live_objects.name)
