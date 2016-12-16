@@ -91,6 +91,15 @@ def partition(predicate, stream):
     return (leading_matches(), rest())
 
 
+def stat_if_exists(path):
+    try:
+        return os.stat(path)
+    except OSError as e:
+        if e.errno != errno.ENOENT:
+            raise
+    return None
+
+
 # Write (blockingly) to sockets that may or may not be in blocking mode.
 # We need this because our stderr is sometimes eaten by subprocesses
 # (probably ssh) that sometimes make it nonblocking, if only temporarily,

@@ -12,7 +12,8 @@ from bup.helpers import (Sha1, add_error, chunkyreader, debug1, debug2,
                          fdatasync,
                          hostname, localtime, log, merge_iter,
                          mmap_read, mmap_readwrite,
-                         progress, qprogress, unlink, username, userfullname,
+                         progress, qprogress, stat_if_exists,
+                         unlink, username, userfullname,
                          utc_offset_str)
 
 
@@ -1014,21 +1015,20 @@ def init_repo(path=None):
 
 
 def check_repo_or_die(path=None):
-    """Make sure a bup repository exists, and abort if not.
-    If the path to a particular repository was not specified, this function
-    initializes the default repository automatically.
-    """
+    """Check to see if a bup repository probably exists, and abort if not."""
     guess_repo(path)
-    try:
-        os.stat(repo('objects/pack/.'))
-    except OSError as e:
-        if e.errno == errno.ENOENT:
-            log('error: %r is not a bup repository; run "bup init"\n'
-                % repo())
+    top = repo()
+    pst = stat_if_exists(top + '/objects/pack')
+    if pst and stat.S_ISDIR(pst.st_mode):
+        return
+    if not pst:
+        top_st = stat_if_exists(top)
+        if not top_st:
+            log('error: repository %r does not exist (see "bup help init")\n'
+                % top)
             sys.exit(15)
-        else:
-            log('error: %s\n' % e)
-            sys.exit(14)
+    log('error: %r is not a repository\n' % top)
+    sys.exit(14)
 
 
 _ver = None
