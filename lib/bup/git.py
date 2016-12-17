@@ -22,7 +22,7 @@ max_pack_objects = 200*1000  # cache memory usage is about 83 bytes per object
 
 verbose = 0
 ignore_midx = 0
-repodir = None
+repodir = None  # The default repository, once initialized
 
 _typemap =  { 'blob':3, 'tree':2, 'commit':1, 'tag':4 }
 _typermap = { 3:'blob', 2:'tree', 1:'commit', 4:'tag' }
@@ -1228,9 +1228,9 @@ _cp = {}
 
 def cp(repo_dir=None):
     """Create a CatPipe object or reuse the already existing one."""
-    global _cp
+    global _cp, repodir
     if not repo_dir:
-        repo_dir = repo()
+        repo_dir = repodir or repo()
     repo_dir = os.path.abspath(repo_dir)
     cp = _cp.get(repo_dir)
     if not cp:
