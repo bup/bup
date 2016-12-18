@@ -62,11 +62,6 @@ calendar, so `--keep-dailies-for 5d` means a period starting exactly
 :   when no smaller time scale --keep option applies, retain the
     oldest save for any year within the given period.
 
---keep ALL,DAILY,MONTHLY,YEARLY
-:   shorthand equivalent to specifying each of the related `--keep-*`
-    options for each period.  If an underscore is specified for a
-    period, then that time-scale will be unaffected by this argument.
-
 --wrt UTC_SECONDS
 :   when computing a keep period, place the most recent end of the
     range at UTC\_SECONDS, and any saves newer than this will be kept.
