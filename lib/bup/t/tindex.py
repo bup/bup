@@ -77,19 +77,16 @@ def index_negative_timestamps():
             # Dec 31, 1969
             os.utime(foopath, (-86400, -86400))
             ns_per_sec = 10**9
-            tstart = time.time() * ns_per_sec
-            tmax = tstart - ns_per_sec
+            tmax = (time.time() - 1) * ns_per_sec
             e = index.BlankNewEntry(foopath, 0, tmax)
-            e.from_stat(xstat.stat(foopath), 0, tstart)
-            assert len(e.packed())
-            WVPASS()
+            e.update_from_stat(xstat.stat(foopath), 0)
+            WVPASS(e.packed())
 
             # Jun 10, 1893
             os.utime(foopath, (-0x80000000, -0x80000000))
             e = index.BlankNewEntry(foopath, 0, tmax)
-            e.from_stat(xstat.stat(foopath), 0, tstart)
-            assert len(e.packed())
-            WVPASS()
+            e.update_from_stat(xstat.stat(foopath), 0)
+            WVPASS(e.packed())
 
 
 @wvtest

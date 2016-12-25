@@ -195,13 +195,34 @@ class Entry:
             log('pack error: %s (%r)\n' % (e, self))
             raise
 
-    def from_stat(self, st, meta_ofs, tstart, check_device=True):
-        old = (self.dev if check_device else 0,
-               self.ino, self.nlink, self.ctime, self.mtime,
-               self.size, self.flags & IX_EXISTS)
-        new = (st.st_dev if check_device else 0,
-               st.st_ino, st.st_nlink, st.st_ctime, st.st_mtime,
-               st.st_size, IX_EXISTS)
+    def stale(self, st, tstart, check_device=True):
+        if self.size != st.st_size:
+            return True
+        if self.mtime != st.st_mtime:
+            return True
+        if self.sha == EMPTY_SHA:
+            return True
+        if not self.gitmode:
+            return True
+        if self.ctime != st.st_ctime:
+            return True
+        if self.ino != st.st_ino:
+            return True
+        if self.nlink != st.st_nlink:
+            return True
+        if not (self.flags & IX_EXISTS):
+            return True
+        if check_device and (self.dev != st.st_dev):
+            return True
+        # Check that the ctime's "second" is at or after tstart's.
+        ctime_sec_in_ns = xstat.fstime_floor_secs(st.st_ctime) * 10**9
+        if ctime_sec_in_ns >= tstart:
+            return True
+        return False
+
+    def update_from_stat(self, st, meta_ofs):
+        # Should only be called when the entry is stale(), and
+        # invalidate() should almost certainly be called afterward.
         self.dev = st.st_dev
         self.ino = st.st_ino
         self.nlink = st.st_nlink
@@ -212,13 +233,8 @@ class Entry:
         self.mode = st.st_mode
         self.flags |= IX_EXISTS
         self.meta_ofs = meta_ofs
-        # Check that the ctime's "second" is at or after tstart's.
-        ctime_sec_in_ns = xstat.fstime_floor_secs(st.st_ctime) * 10**9
-        if ctime_sec_in_ns >= tstart or old != new \
-              or self.sha == EMPTY_SHA or not self.gitmode:
-            self.invalidate()
         self._fixup()
-        
+
     def _fixup(self):
         self.mtime = self._fixup_time(self.mtime)
         self.ctime = self._fixup_time(self.ctime)
