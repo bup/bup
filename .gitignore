@@ -16,3 +16,4 @@ memtest
 nbproject
 /t/sampledata/var/
 /t/tmp/
+/lib/bup/_checkout.py
