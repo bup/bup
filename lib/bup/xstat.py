@@ -1,5 +1,5 @@
 """Enhanced stat operations for bup."""
-import os
+import os, sys
 import stat as pystat
 from bup import _helpers
 
@@ -80,6 +80,7 @@ else: # Must have these if utimensat isn't available.
         mtime = nsecs_to_timeval(times[1])
         _bup_lutimes(path, (atime, mtime))
 
+_cygwin_sys = sys.platform.startswith('cygwin')
 
 def _fix_cygwin_id(id):
     if id < 0:
@@ -91,6 +92,7 @@ def _fix_cygwin_id(id):
 class stat_result:
     @staticmethod
     def from_xstat_rep(st):
+        global _cygwin_sys
         result = stat_result()
         (result.st_mode,
          result.st_ino,
@@ -103,11 +105,13 @@ class stat_result:
          result.st_atime,
          result.st_mtime,
          result.st_ctime) = st
-        result.st_atime = timespec_to_nsecs(result.st_atime)
-        result.st_mtime = timespec_to_nsecs(result.st_mtime)
-        result.st_ctime = timespec_to_nsecs(result.st_ctime)
-        result.st_uid = _fix_cygwin_id(result.st_uid)
-        result.st_gid = _fix_cygwin_id(result.st_gid)
+        # Inlined timespec_to_nsecs after profiling
+        result.st_atime = result.st_atime[0] * 10**9 + result.st_atime[1]
+        result.st_mtime = result.st_mtime[0] * 10**9 + result.st_mtime[1]
+        result.st_ctime = result.st_ctime[0] * 10**9 + result.st_ctime[1]
+        if _cygwin_sys:
+            result.st_uid = _fix_cygwin_id(result.st_uid)
+            result.st_gid = _fix_cygwin_id(result.st_gid)
         return result
 
 
