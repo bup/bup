@@ -5,20 +5,15 @@
   <meta http-equiv="Content-Style-Type" content="text/css" />
   <meta name="generator" content="pandoc" />
   <meta name="author" content="Rob Browning rlb@defaultvalue.org" />
-  <meta name="date" content="2016-06-12" />
-  <title>bup-gc(1) Bup 0.28.1</title>
+  <meta name="date" content="2016-12-26" />
+  <title>bup-gc(1) Bup 0.29</title>
   <style type="text/css">code{white-space: pre;}</style>
 </head>
 <body>
 <div id="header">
-<h1 class="title">bup-gc(1) Bup 0.28.1</h1>
-<h2 class="author">Rob Browning <script type="text/javascript">
-<!--
-h='&#100;&#x65;&#102;&#x61;&#x75;&#108;&#116;&#118;&#x61;&#108;&#x75;&#x65;&#46;&#x6f;&#114;&#x67;';a='&#64;';n='&#114;&#108;&#98;';e=n+a+h;
-document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'" clas'+'s="em' + 'ail">'+e+'<\/'+'a'+'>');
-// -->
-</script><noscript>&#114;&#108;&#98;&#32;&#x61;&#116;&#32;&#100;&#x65;&#102;&#x61;&#x75;&#108;&#116;&#118;&#x61;&#108;&#x75;&#x65;&#32;&#100;&#x6f;&#116;&#32;&#x6f;&#114;&#x67;</noscript></h2>
-<h3 class="date">2016-06-12</h3>
+<h1 class="title">bup-gc(1) Bup 0.29</h1>
+<h2 class="author">Rob Browning <a href="mailto:rlb@defaultvalue.org">rlb@defaultvalue.org</a></h2>
+<h3 class="date">2016-12-26</h3>
 </div>
 <h1 id="name">NAME</h1>
 <p>bup-gc - remove unreferenced, unneeded data (CAUTION: EXPERIMENTAL)</p>
@@ -38,7 +33,7 @@ document.write('<a h'+'ref'+'="ma'+'ilto'+':'+e+'" clas'+'s="em' + 'ail">'+e+'<\
 <dd>increase verbosity (can be used more than once). With one -v, bup prints every directory name as it gets backed up. With two -v, it also prints every filename.
 </dd>
 <dt>-<em>#</em>, --compress=<em>#</em></dt>
-<dd>set the compression level to # (a value from 0-9, where 9 is the highest and 0 is no compression). The default is 6.
+<dd>set the compression level to # (a value from 0-9, where 9 is the highest and 0 is no compression). The default is 1 (fast, loose compression).
 </dd>
 </dl>
 <h1 id="examples">EXAMPLES</h1>
