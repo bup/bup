@@ -48,7 +48,8 @@ WVPASS "$top"/t/sync-tree bup/ bup-baseline/
 # FIXME: test -n
 WVPASS bup tick # Make sure we always get the timestamp changes below
 WVPASS bup rm --unsafe /src
-wv_matches_rx "$(compare-trees bup/ bup-baseline/)" \
+observed="$(compare-trees bup/ bup-baseline/ | LC_ALL=C sort)" || exit $?
+wv_matches_rx "$observed" \
 '\*deleting[ ]+logs/refs/heads/src
 \*deleting[ ]+refs/heads/src
 \.d\.\.t\.\.\.[.]*[ ]+logs/refs/heads/
@@ -67,7 +68,8 @@ WVPASS bup save -n src-3 src
 WVPASS "$top"/t/sync-tree bup/ bup-baseline/
 WVPASS bup tick # Make sure we always get the timestamp changes below
 WVPASS bup rm --unsafe /src
-wv_matches_rx "$(compare-trees bup/ bup-baseline/)" \
+observed="$(compare-trees bup/ bup-baseline/ | LC_ALL=C sort)" || exit $?
+wv_matches_rx "$observed" \
 "\*deleting[ ]+logs/refs/heads/src
 \*deleting[ ]+refs/heads/src
 \.d\.\.t\.\.\.[.]*[ ]+logs/refs/heads/
@@ -86,11 +88,12 @@ WVPASS bup save -n src-5 src
 WVPASS "$top"/t/sync-tree bup/ bup-baseline/
 WVPASS bup tick # Make sure we always get the timestamp changes below
 WVPASS bup rm --unsafe /src-2 /src-4
-wv_matches_rx "$(compare-trees bup/ bup-baseline/)" \
-"\*deleting[ ]+logs/refs/heads/src-4
-\*deleting[ ]+logs/refs/heads/src-2
-\*deleting[ ]+refs/heads/src-4
+observed="$(compare-trees bup/ bup-baseline/ | LC_ALL=C sort)" || exit $?
+wv_matches_rx "$observed" \
+"\*deleting[ ]+logs/refs/heads/src-2
+\*deleting[ ]+logs/refs/heads/src-4
 \*deleting[ ]+refs/heads/src-2
+\*deleting[ ]+refs/heads/src-4
 \.d\.\.t\.\.\.[.]*[ ]+logs/refs/heads/
 \.d\.\.t\.\.\.[.]*[ ]+refs/heads/"
 
@@ -101,17 +104,18 @@ WVPASS mv bup-baseline bup
 WVPASS "$top"/t/sync-tree bup/ bup-baseline/
 WVPASS bup tick # Make sure we always get the timestamp changes below
 WVPASS bup rm --unsafe /src /src-2 /src-3 /src-4 /src-5
-wv_matches_rx "$(compare-trees bup/ bup-baseline/)" \
-"\*deleting[ ]+logs/refs/heads/src-5
-\*deleting[ ]+logs/refs/heads/src-4
-\*deleting[ ]+logs/refs/heads/src-3
+observed="$(compare-trees bup/ bup-baseline/ | LC_ALL=C sort)" || exit $?
+wv_matches_rx "$observed" \
+"\*deleting[ ]+logs/refs/heads/src
 \*deleting[ ]+logs/refs/heads/src-2
-\*deleting[ ]+logs/refs/heads/src
-\*deleting[ ]+refs/heads/src-5
-\*deleting[ ]+refs/heads/src-4
-\*deleting[ ]+refs/heads/src-3
-\*deleting[ ]+refs/heads/src-2
+\*deleting[ ]+logs/refs/heads/src-3
+\*deleting[ ]+logs/refs/heads/src-4
+\*deleting[ ]+logs/refs/heads/src-5
 \*deleting[ ]+refs/heads/src
+\*deleting[ ]+refs/heads/src-2
+\*deleting[ ]+refs/heads/src-3
+\*deleting[ ]+refs/heads/src-4
+\*deleting[ ]+refs/heads/src-5
 \.d\.\.t\.\.\.[.]*[ ]+logs/refs/heads/
 \.d\.\.t\.\.\.[.]*[ ]+refs/heads/"
 
@@ -129,7 +133,8 @@ WVPASS "$top"/t/sync-tree bup/ bup-baseline/
 WVPASS bup tick # Make sure we always get the timestamp changes below
 WVFAIL bup rm --unsafe /src/latest
 WVPASS bup rm --unsafe /src/"$save1"
-wv_matches_rx "$(compare-trees bup/ bup-baseline/)" \
+observed="$(compare-trees bup/ bup-baseline/ | LC_ALL=C sort)" || exit $?
+wv_matches_rx "$observed" \
 "\*deleting[ ]+logs/refs/heads/src
 \*deleting[ ]+refs/heads/src
 \.d\.\.t\.\.\.[.]*[ ]+logs/refs/heads/
@@ -225,10 +230,11 @@ WVSTART "rm /foo/BAR (last of many)"
 WVPASS "$top"/t/sync-tree bup-baseline/ bup/
 victim="$(WVPASS bup ls src | tail -n 2 | head -n 1)" || exit $?
 WVPASS bup rm --unsafe -vv /src/"$victim"
-wv_matches_rx "$(compare-trees bup/ bup-baseline/)" \
-">fcst\.\.\.[.]*[ ]+logs/refs/heads/src
-\.d\.\.t\.\.\.[.]*[ ]+refs/heads/
->fc\.t\.\.\.[.]*[ ]+refs/heads/src"
+observed="$(compare-trees bup/ bup-baseline/ | LC_ALL=C sort)" || exit $?
+wv_matches_rx "$observed" \
+"\.d\.\.t\.\.\.[.]*[ ]+refs/heads/
+>fc\.t\.\.\.[.]*[ ]+refs/heads/src
+>fcst\.\.\.[.]*[ ]+logs/refs/heads/src"
 observed=$(git rev-list src | wc -l) || exit $?
 WVPASSEQ 2 $observed
 WVPASSEQ "$(commit-hash-n 1 bup src)" "$(commit-hash-n 1 bup-baseline src)"
