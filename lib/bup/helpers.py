@@ -325,7 +325,7 @@ def detect_fakeroot():
 _warned_about_superuser_detection = None
 def is_superuser():
     if sys.platform.startswith('cygwin'):
-        if sys.getwindowsversion()[0] > 5:
+        if not hasattr(sys, 'getwindowsversion') or sys.getwindowsversion()[0] > 5:
             # Sounds like situation is much more complicated here
             global _warned_about_superuser_detection
             if not _warned_about_superuser_detection:
