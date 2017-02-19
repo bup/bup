@@ -723,17 +723,18 @@ class PackWriter:
         return self.objcache.exists(id, want_source=want_source)
 
     def just_write(self, sha, type, content):
-        """Write an object to the pack file, bypassing the objcache.  Fails if
-        sha exists()."""
+        """Write an object to the pack file without checking for duplication."""
         self._write(sha, type, content)
+        # If nothing else, gc doesn't have/want an objcache
+        if self.objcache is not None:
+            self.objcache.add(sha)
 
     def maybe_write(self, type, content):
         """Write an object to the pack file if not present and return its id."""
         sha = calc_hash(type, content)
         if not self.exists(sha):
-            self.just_write(sha, type, content)
             self._require_objcache()
-            self.objcache.add(sha)
+            self.just_write(sha, type, content)
         return sha
 
     def new_blob(self, blob):

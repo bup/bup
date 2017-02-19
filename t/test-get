@@ -238,6 +238,8 @@ def _run_get(disposition, method, what):
         cmd = get_cmd + (method, src, dest)
     result = exo(cmd, check=False, stderr=PIPE)
     get_cases_tested += 1
+    fsck = ex((bup_cmd, '-d', 'get-dest', 'fsck'), check=False)
+    wvpasseq(0, fsck.rc)
     return result
 
 def run_get(disposition, method, what=None, given=None):
