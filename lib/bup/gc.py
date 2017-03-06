@@ -135,6 +135,8 @@ def sweep(live_objects, existing_count, cat_pipe, threshold, compression,
         if verbosity and new_pack_prefix:
             log('created ' + basename(new_pack_prefix) + '\n')
         for p in ns.stale_files:
+            if new_pack_prefix and p.startswith(new_pack_prefix):
+                continue  # Don't remove the new pack file
             if verbosity:
                 log('removing ' + basename(p) + '\n')
             os.unlink(p)

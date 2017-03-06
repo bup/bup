@@ -219,4 +219,23 @@ WVPASSEQ 1 $(echo "$only_in_before" | wc -l)
 WVPASSEQ 1 $(echo "$only_in_after" | wc -l)
 WVPASSEQ 1 $(echo "$in_both" | wc -l)
 
+WVSTART "gc (threshold 0)"
+
+WVPASS rm -rf "$BUP_DIR"
+WVPASS bup init
+WVPASS rm -rf src && mkdir src
+WVPASS echo 0 > src/0
+WVPASS echo 1 > src/1
+
+WVPASS bup index src
+WVPASS bup save -n src-1 src
+
+packs_before="$(ls "$BUP_DIR/objects/pack/"*.pack)" || exit $?
+WVPASS bup gc -v $GC_OPTS --threshold 0 2>&1 | tee gc.log
+packs_after="$(ls "$BUP_DIR/objects/pack/"*.pack)" || exit $?
+# Check that the pack was rewritten, but not removed (since the
+# result-pack is equal to the source pack)
+WVPASSEQ 1 "$(grep -cE '^rewriting ' gc.log)"
+WVPASSEQ "$packs_before" "$packs_after"
+
 WVPASS rm -rf "$tmpdir"
