@@ -552,7 +552,7 @@ class PackIdxList:
             if self.bloom is None and os.path.exists(bfull):
                 self.bloom = bloom.ShaBloom(bfull)
             self.packs = list(set(d.values()))
-            self.packs.sort(lambda x,y: -cmp(len(x),len(y)))
+            self.packs.sort(reverse=True, key=lambda x: len(x))
             if self.bloom and self.bloom.valid() and len(self.bloom) >= len(self):
                 self.do_bloom = True
             else:

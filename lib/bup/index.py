@@ -1,7 +1,7 @@
 import errno, metadata, os, stat, struct, tempfile
 
 from bup import xstat
-from bup._helpers import UINT_MAX
+from bup._helpers import UINT_MAX, bytescmp
 from bup.helpers import (add_error, log, merge_iter, mmap_readwrite,
                          progress, qprogress, resolve_parent, slashappend)
 
@@ -279,10 +279,36 @@ class Entry:
     def is_fake(self):
         return not self.ctime
 
-    def __cmp__(a, b):
-        return (cmp(b.name, a.name)
-                or cmp(a.is_valid(), b.is_valid())
-                or cmp(a.is_fake(), b.is_fake()))
+    def _cmp(self, other):
+        # Note reversed name ordering
+        bc = bytescmp(other.name, self.name)
+        if bc != 0:
+            return bc
+        vc = self.is_valid() - other.is_valid()
+        if vc != 0:
+            return vc
+        fc = self.is_fake() - other.is_fake()
+        if fc != 0:
+            return fc
+        return 0
+
+    def __eq__(self, other):
+        return self._cmp(other) == 0
+
+    def __ne__():
+        return self._cmp(other) != 0
+
+    def __lt__(self, other):
+        return self._cmp(other) < 0
+
+    def __gt__(self, other):
+        return self._cmp(other) > 0
+
+    def __le__():
+        return self._cmp(other) <= 0
+
+    def __ge__():
+        return self._cmp(other) >= 0
 
     def write(self, f):
         f.write(self.basename + '\0' + self.packed())

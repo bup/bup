@@ -28,7 +28,6 @@ sc_arg_max = os.sysconf('SC_ARG_MAX')
 if sc_arg_max == -1:  # "no definite limit" - let's choose 2M
     sc_arg_max = 2 * 1024 * 1024
 
-
 def last(iterable):
     result = None
     for result in iterable:

@@ -105,7 +105,7 @@ def _do_midx(outdir, outfilename, infilenames, prefixstr):
             for n in ix.idxnames:
                 allfilenames.append(os.path.basename(n))
             total += len(ix)
-        inp.sort(lambda x,y: cmp(str(y[0][y[2]:y[2]+20]),str(x[0][x[2]:x[2]+20])))
+        inp.sort(reverse=True, key=lambda x: str(x[0][x[2]:x[2]+20]))
 
         if not _first: _first = outdir
         dirprefix = (_first != outdir) and git.repo_rel(outdir)+': ' or ''

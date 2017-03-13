@@ -15,6 +15,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 
 #ifdef HAVE_SYS_MMAN_H
 #include <sys/mman.h>
@@ -185,6 +186,27 @@ static int bup_ullong_from_py(unsigned PY_LONG_LONG *x, PyObject *py,
     }
     *x = tmp;
     return 1;
+}
+
+
+static PyObject *bup_bytescmp(PyObject *self, PyObject *args)
+{
+    PyObject *py_s1, *py_s2;  // This is really a PyBytes/PyString
+    if (!PyArg_ParseTuple(args, "SS", &py_s1, &py_s2))
+	return NULL;
+    char *s1, *s2;
+    Py_ssize_t s1_len, s2_len;
+    if (PyBytes_AsStringAndSize(py_s1, &s1, &s1_len) == -1)
+        return NULL;
+    if (PyBytes_AsStringAndSize(py_s2, &s2, &s2_len) == -1)
+        return NULL;
+    const Py_ssize_t n = (s1_len < s2_len) ? s1_len : s2_len;
+    const int cmp = memcmp(s1, s2, n);
+    if (cmp != 0)
+        return PyLong_FromLong(cmp);
+    if (s1_len == s2_len)
+        return PyLong_FromLong(0);;
+    return PyLong_FromLong((s1_len < s2_len) ? -1 : 1);
 }
 
 
@@ -1543,6 +1565,8 @@ static PyMethodDef helper_methods[] = {
     { "localtime", bup_localtime, METH_VARARGS,
       "Return struct_time elements plus the timezone offset and name." },
 #endif
+    { "bytescmp", bup_bytescmp, METH_VARARGS,
+      "Return a negative value if x < y, zero if equal, positive otherwise."},
 #ifdef BUP_MINCORE_BUF_TYPE
     { "mincore", bup_mincore, METH_VARARGS,
       "For mincore(src, src_n, src_off, dest, dest_off)"
