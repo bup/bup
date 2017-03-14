@@ -101,17 +101,17 @@ def expected_retentions(utcs, utc_start, spec):
     utcs = list(dropwhile(lambda x: x >= period_start['all'], utcs))
 
     matches = takewhile(lambda x: x >= period_start['dailies'], utcs)
-    dailies = [min(day_utcs) for yday, day_utcs
+    dailies = [max(day_utcs) for yday, day_utcs
                in groupby(matches, lambda x: localtime(x).tm_yday)]
     utcs = list(dropwhile(lambda x: x >= period_start['dailies'], utcs))
 
     matches = takewhile(lambda x: x >= period_start['monthlies'], utcs)
-    monthlies = [min(month_utcs) for month, month_utcs
+    monthlies = [max(month_utcs) for month, month_utcs
                  in groupby(matches, lambda x: localtime(x).tm_mon)]
     utcs = dropwhile(lambda x: x >= period_start['monthlies'], utcs)
 
     matches = takewhile(lambda x: x >= period_start['yearlies'], utcs)
-    yearlies = [min(year_utcs) for year, year_utcs
+    yearlies = [max(year_utcs) for year, year_utcs
                 in groupby(matches, lambda x: localtime(x).tm_year)]
 
     return chain(all, dailies, monthlies, yearlies)

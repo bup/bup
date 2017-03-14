@@ -32,14 +32,11 @@ def classify_saves(saves, period_start):
     The ids are binary hashes.
     """
 
-    def retain_oldest_in_region(region):
-        prev = None
-        for save in region:
-            if prev:
-                yield False, prev
-            prev = save
-        if prev:
-            yield True, prev
+    def retain_newest_in_region(region):
+        for save in region[0:1]:
+            yield True, save
+        for save in region[1:]:
+            yield False, save
 
     matches, rest = partition(lambda s: s[0] >= period_start['all'], saves)
     for save in matches:
@@ -49,10 +46,12 @@ def classify_saves(saves, period_start):
                  (period_start['monthlies'], lambda s: localtime(s[0]).tm_mon),
                  (period_start['yearlies'], lambda s: localtime(s[0]).tm_year))
 
+    # Foreach period, seek back from now to the period's starting time, and
+    # collect the most recent saves
     for pstart, time_region_id in tm_ranges:
         matches, rest = partition(lambda s: s[0] >= pstart, rest)
         for region_id, region_saves in groupby(matches, time_region_id):
-            for action in retain_oldest_in_region(region_saves):
+            for action in retain_newest_in_region(list(region_saves)):
                 yield action
 
     for save in rest:
@@ -63,9 +62,9 @@ optspec = """
 bup prune-older [options...] [BRANCH...]
 --
 keep-all-for=       retain all saves within the PERIOD
-keep-dailies-for=   retain the oldest save per day within the PERIOD
-keep-monthlies-for= retain the oldest save per month within the PERIOD
-keep-yearlies-for=  retain the oldest save per year within the PERIOD
+keep-dailies-for=   retain the newest save per day within the PERIOD
+keep-monthlies-for= retain the newest save per month within the PERIOD
+keep-yearlies-for=  retain the newest save per year within the PERIOD
 wrt=                end all periods at this number of seconds since the epoch
 pretend       don't prune, just report intended actions to standard output
 gc            collect garbage after removals [1]
