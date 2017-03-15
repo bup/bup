@@ -5,6 +5,7 @@ exec "$bup_python" "$0" ${1+"$@"}
 """
 # end of bup preamble
 
+from __future__ import print_function
 from sys import stderr
 import sys
 
@@ -12,19 +13,20 @@ import sys
 if sys.platform.startswith('cygwin'):
     if sys.getwindowsversion()[0] > 5:
         # Sounds like the situation is much more complicated here
-        print >> stderr, "can't detect root status for OS version > 5; assuming not root"
-        print 'none'
+        print("can't detect root status for OS version > 5; assuming not root",
+              file=stderr)
+        print('none')
     import ctypes
     if ctypes.cdll.shell32.IsUserAnAdmin():
-        print 'root'
+        print('root')
     else:
-        print 'none'
+        print('none')
 else:
     import os
     if os.environ.get('FAKEROOTKEY'):
-        print 'fake'
+        print('fake')
     else:
         if os.geteuid() == 0:
-            print 'root'
+            print('root')
         else:
-            print 'none'
+            print('none')
