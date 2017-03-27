@@ -548,7 +548,7 @@ the index and backs up any file that is "dirty," that is, doesn't already
 exist in the repository.
 
 Determination of dirtiness is a little more complicated than it sounds.  The
-most dirtiness-relevant relevant flag in the bupindex is IX_HASHVALID; if
+most dirtiness-relevant flag in the bupindex is IX_HASHVALID; if
 this flag is reset, the file *definitely* is dirty and needs to be backed
 up.  But a file may be dirty even if IX_HASHVALID is set, and that's the
 confusing part.
