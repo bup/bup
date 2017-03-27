@@ -196,7 +196,7 @@ sequence data.
 As an overhead percentage, 0.25% basically doesn't matter.  488 megs sounds
 like a lot, but compared to the 200GB you have to store anyway, it's
 irrelevant.  What *is* relevant is that 488 megs is a lot of memory you have
-to use in order to to keep track of the list.  Worse, if you back up an
+to use in order to keep track of the list.  Worse, if you back up an
 almost-identical file tomorrow, you'll have *another* 488 meg blob to keep
 track of, and it'll be almost but not quite the same as last time.
 
@@ -374,7 +374,7 @@ So that's the basic structure of a bup repository, which is also a git
 repository.  There's just one more thing we have to deal with:
 filesystem metadata.  Git repositories are really only intended to
 store file contents with a small bit of extra information, like
-symlink targets and and executable bits, so we have to store the rest
+symlink targets and executable bits, so we have to store the rest
 some other way.
 
 Bup stores more complete metadata in the VFS in a file named .bupm in
