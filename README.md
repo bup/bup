@@ -152,7 +152,7 @@ From source
     may fail.  Running something like this before "make test" should
     sidestep the problem:
 
-        cd "$(/bin/pwd)"
+        cd "$(pwd -P)"
 
  - You can install bup via "make install", and override the default
    destination with DESTDIR and PREFIX.
