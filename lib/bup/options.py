@@ -62,6 +62,16 @@ space. The text on that line will be output after an empty line.
 """
 import sys, os, textwrap, getopt, re, struct
 
+try:
+    import fcntl
+except ImportError:
+    fcntl = None
+
+try:
+    import termios
+except ImportError:
+    termios = None
+
 
 def _invert(v, invert):
     if invert:
@@ -123,15 +133,18 @@ def _atoi(v):
         return 0
 
 
-def _tty_width():
-    s = struct.pack("HHHH", 0, 0, 0, 0)
-    try:
-        import fcntl, termios
-        s = fcntl.ioctl(sys.stderr.fileno(), termios.TIOCGWINSZ, s)
-    except (IOError, ImportError):
-        return _atoi(os.environ.get('WIDTH')) or 70
-    (ysize,xsize,ypix,xpix) = struct.unpack('HHHH', s)
-    return xsize or 70
+if not fcntl and termios:
+    def _tty_width():
+        return 70
+else:
+    def _tty_width():
+        s = struct.pack("HHHH", 0, 0, 0, 0)
+        try:
+            s = fcntl.ioctl(sys.stderr.fileno(), termios.TIOCGWINSZ, s)
+        except IOError:
+            return 70
+        ysize, xsize, ypix, xpix = struct.unpack('HHHH', s)
+        return xsize or 70
 
 
 class Options:
