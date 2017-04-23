@@ -46,14 +46,18 @@ def classify_saves(saves, period_start):
                  (period_start['monthlies'], lambda s: localtime(s[0]).tm_mon),
                  (period_start['yearlies'], lambda s: localtime(s[0]).tm_year))
 
-    # Foreach period, seek back from now to the period's starting time, and
-    # collect the most recent saves
+    # Break the decreasing utc sorted saves up into the respective
+    # period ranges (dailies, monthlies, ...).  Within each range,
+    # group the saves by the period scale (days, months, ...), and
+    # then yield a "keep" action (True, utc) for the newest save in
+    # each group, and a "drop" action (False, utc) for the rest.
     for pstart, time_region_id in tm_ranges:
         matches, rest = partition(lambda s: s[0] >= pstart, rest)
         for region_id, region_saves in groupby(matches, time_region_id):
             for action in retain_newest_in_region(list(region_saves)):
                 yield action
 
+    # Finally, drop any saves older than the specified periods
     for save in rest:
         yield False, save
 
