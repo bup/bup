@@ -52,15 +52,15 @@ calendar, so `--keep-dailies-for 5d` means a period starting exactly
 
 --keep-dailies-for PERIOD
 :   when no smaller time scale --keep option applies, retain the
-    oldest save for any day within the given period.
+    newest save for any day within the given period.
 
 --keep-monthlies-for PERIOD
 :   when no smaller time scale --keep option applies, retain the
-    oldest save for any month within the given period.
+    newest save for any month within the given period.
 
 --keep-yearlies-for PERIOD
 :   when no smaller time scale --keep option applies, retain the
-    oldest save for any year within the given period.
+    newest save for any year within the given period.
 
 --wrt UTC_SECONDS
 :   when computing a keep period, place the most recent end of the
@@ -108,7 +108,7 @@ that case, you will see something like this:
 
 # EXAMPLES
 
-    # Keep all saves for the past month, and any older monthlies for
+    # Keep all saves for the past month, and any newer monthlies for
     # the past year.  Delete everything else.
     $ bup prune-older --keep-all-for 1m --keep-monthlies-for 1y
 
