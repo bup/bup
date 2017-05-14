@@ -35,6 +35,18 @@ class GitError(Exception):
     pass
 
 
+def _git_wait(cmd, p):
+    rv = p.wait()
+    if rv != 0:
+        raise GitError('%s returned %d' % (cmd, rv))
+
+def _git_capture(argv):
+    p = subprocess.Popen(argv, stdout=subprocess.PIPE, preexec_fn = _gitenv())
+    r = p.stdout.read()
+    _git_wait(repr(argv), p)
+    return r
+
+
 def parse_tz_offset(s):
     """UTC offset in seconds."""
     tz_off = (int(s[1:3]) * 60 * 60) + (int(s[3:5]) * 60)
@@ -1056,19 +1068,6 @@ def ver():
         raise GitError('git version %s or higher is required; you have %s'
                        % ('.'.join(needed), '.'.join(_ver)))
     return _ver
-
-
-def _git_wait(cmd, p):
-    rv = p.wait()
-    if rv != 0:
-        raise GitError('%s returned %d' % (cmd, rv))
-
-
-def _git_capture(argv):
-    p = subprocess.Popen(argv, stdout=subprocess.PIPE, preexec_fn = _gitenv())
-    r = p.stdout.read()
-    _git_wait(repr(argv), p)
-    return r
 
 
 class _AbortableIter:
