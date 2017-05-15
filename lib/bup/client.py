@@ -288,7 +288,9 @@ class PackWriter_Remote(git.PackWriter):
                  onopen, onclose,
                  ensure_busy,
                  compression_level=1):
-        git.PackWriter.__init__(self, objcache_maker)
+        git.PackWriter.__init__(self,
+                                objcache_maker=objcache_maker,
+                                compression_level=compression_level)
         self.file = conn
         self.filename = 'remote socket'
         self.suggest_packs = suggest_packs
