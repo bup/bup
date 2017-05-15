@@ -12,6 +12,7 @@ from bup.helpers import (Sha1, add_error, chunkyreader, debug1, debug2,
                          fdatasync,
                          hostname, localtime, log, merge_iter,
                          mmap_read, mmap_readwrite,
+                         parse_num,
                          progress, qprogress, stat_if_exists,
                          unlink, username, userfullname,
                          utc_offset_str)
@@ -41,6 +42,18 @@ def _git_capture(argv):
     r = p.stdout.read()
     _git_wait(repr(argv), p)
     return r
+
+def git_config_get(option, repo_dir=None):
+    cmd = ('git', 'config', '--get', option)
+    p = subprocess.Popen(cmd, stdout=subprocess.PIPE,
+                         preexec_fn=_gitenv(repo_dir=repo_dir))
+    r = p.stdout.read()
+    rc = p.wait()
+    if rc == 0:
+        return r
+    if rc != 1:
+        raise GitError('%s returned %d' % (cmd, rc))
+    return None
 
 
 def parse_tz_offset(s):
@@ -606,9 +619,15 @@ class PackWriter:
         self.compression_level = compression_level
         self.run_midx=run_midx
         self.on_pack_finish = on_pack_finish
-        # larger packs will slow down pruning
-        self.max_pack_size = max_pack_size if max_pack_size \
-                             else 1000 * 1000 * 1000
+        if not max_pack_size:
+            max_pack_size = git_config_get('pack.packSizeLimit',
+                                           repo_dir=self.repo_dir)
+            if max_pack_size is not None:
+                max_pack_size = parse_num(max_pack_size)
+            if not max_pack_size:
+                # larger packs slow down pruning
+                max_pack_size = 1000 * 1000 * 1000
+        self.max_pack_size = max_pack_size
         # cache memory usage is about 83 bytes per object
         self.max_pack_objects = max_pack_objects if max_pack_objects \
                                 else max(1, self.max_pack_size // 5000)

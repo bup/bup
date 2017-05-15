@@ -148,6 +148,7 @@ runtests-python: all t/tmp
 	    | tee -a t/tmp/test-log/$$$$.log
 
 cmdline_tests := \
+  t/test-packsizelimit \
   t/test-prune-older \
   t/test-web.sh \
   t/test-rm.sh \
