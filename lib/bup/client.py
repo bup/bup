@@ -238,7 +238,8 @@ class Client:
             self.conn.write('%s\n' % ob)
         return idx
 
-    def new_packwriter(self, compression_level = 1):
+    def new_packwriter(self, compression_level=1,
+                       max_pack_size=None, max_pack_objects=None):
         self.check_busy()
         def _set_busy():
             self._busy = 'receive-objects-v2'
@@ -249,7 +250,9 @@ class Client:
                                  onopen = _set_busy,
                                  onclose = self._not_busy,
                                  ensure_busy = self.ensure_busy,
-                                 compression_level = compression_level)
+                                 compression_level=compression_level,
+                                 max_pack_size=max_pack_size,
+                                 max_pack_objects=max_pack_objects)
 
     def read_ref(self, refname):
         self.check_busy()
@@ -287,10 +290,14 @@ class PackWriter_Remote(git.PackWriter):
     def __init__(self, conn, objcache_maker, suggest_packs,
                  onopen, onclose,
                  ensure_busy,
-                 compression_level=1):
+                 compression_level=1,
+                 max_pack_size=None,
+                 max_pack_objects=None):
         git.PackWriter.__init__(self,
                                 objcache_maker=objcache_maker,
-                                compression_level=compression_level)
+                                compression_level=compression_level,
+                                max_pack_size=max_pack_size,
+                                max_pack_objects=max_pack_objects)
         self.file = conn
         self.filename = 'remote socket'
         self.suggest_packs = suggest_packs

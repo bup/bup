@@ -58,10 +58,14 @@ if extra and opt.git_ids:
 if opt.verbose >= 2:
     git.verbose = opt.verbose - 1
     opt.bench = 1
+
+max_pack_size = None
 if opt.max_pack_size:
-    git.max_pack_size = parse_num(opt.max_pack_size)
+    max_pack_size = parse_num(opt.max_pack_size)
+max_pack_objects = None
 if opt.max_pack_objects:
-    git.max_pack_objects = parse_num(opt.max_pack_objects)
+    max_pack_objects = parse_num(opt.max_pack_objects)
+
 if opt.fanout:
     hashsplit.fanout = parse_num(opt.fanout)
 if opt.blobs:
@@ -97,11 +101,15 @@ if opt.noop or opt.copy:
 elif opt.remote or is_reverse:
     cli = client.Client(opt.remote)
     oldref = refname and cli.read_ref(refname) or None
-    pack_writer = cli.new_packwriter(compression_level=opt.compress)
+    pack_writer = cli.new_packwriter(compression_level=opt.compress,
+                                     max_pack_size=max_pack_size,
+                                     max_pack_objects=max_pack_objects)
 else:
     cli = None
     oldref = refname and git.read_ref(refname) or None
-    pack_writer = git.PackWriter(compression_level=opt.compress)
+    pack_writer = git.PackWriter(compression_level=opt.compress,
+                                 max_pack_size=max_pack_size,
+                                 max_pack_objects=max_pack_objects)
 
 if opt.git_ids:
     # the input is actually a series of git object ids that we should retrieve
