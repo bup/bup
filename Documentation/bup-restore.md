@@ -160,9 +160,9 @@ See the EXAMPLES section for a demonstration.
     file and directory.
 
 -q, \--quiet
-:   don't show the progress meter.  Normally, is stderr is
-    a tty, a progress display is printed that shows the
-    total number of files restored.
+:   suppress output, including the progress meter.  Normally, if
+    stderr is a tty, a progress meter displays the total number of
+    files restored.
 
 # EXAMPLES
 
