@@ -50,7 +50,7 @@ def exo(cmd, stdin=None, stdout=True, stderr=False, shell=False, check=True):
     out, err = p.communicate()
     if check and p.returncode != 0:
         raise Exception('subprocess %r failed with status %d, stderr: %r'
-                        % (' '.join(argv), p.returncode, err))
+                        % (' '.join(map(quote, cmd)), p.returncode, err))
     return out, err, p
 
 def bup(*args):
