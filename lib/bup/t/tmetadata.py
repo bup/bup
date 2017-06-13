@@ -173,7 +173,7 @@ def test_from_path_error():
             os.mkdir(path)
             m = metadata.from_path(path, archive_path=path, save_symlinks=True)
             WVPASSEQ(m.path, path)
-            os.chmod(path, 000)
+            os.chmod(path, 0o000)
             metadata.from_path(path, archive_path=path, save_symlinks=True)
             if metadata.get_linux_file_attr:
                 print >> sys.stderr, 'saved_errors:', helpers.saved_errors
@@ -212,7 +212,7 @@ def test_apply_to_path_restricted_access():
             clear_errors()
             m = metadata.from_path(path, archive_path=path, save_symlinks=True)
             WVPASSEQ(m.path, path)
-            os.chmod(parent, 000)
+            os.chmod(parent, 0o000)
             m.apply_to_path(path)
             print >> sys.stderr, 'saved_errors:', helpers.saved_errors
             expected_errors = ['utime: ']

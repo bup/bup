@@ -351,7 +351,7 @@ _symrefs = 0
 class Symlink(File):
     """A symbolic link from bup's repository."""
     def __init__(self, parent, name, hash, bupmode, repo_dir=None):
-        File.__init__(self, parent, name, 0120000, hash, bupmode,
+        File.__init__(self, parent, name, 0o120000, hash, bupmode,
                       repo_dir = repo_dir)
 
     def size(self):

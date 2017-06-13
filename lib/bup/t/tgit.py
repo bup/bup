@@ -28,11 +28,11 @@ def exo(*cmd):
 @wvtest
 def testmangle():
     with no_lingering_errors():
-        afile  = 0100644
-        afile2 = 0100770
-        alink  = 0120000
-        adir   = 0040000
-        adir2  = 0040777
+        afile  = 0o100644
+        afile2 = 0o100770
+        alink  = 0o120000
+        adir   = 0o040000
+        adir2  = 0o040777
         WVPASSEQ(git.mangle_name("a", adir2, adir), "a")
         WVPASSEQ(git.mangle_name(".bup", adir2, adir), ".bup.bupl")
         WVPASSEQ(git.mangle_name("a.bupa", adir2, adir), "a.bupa.bupl")

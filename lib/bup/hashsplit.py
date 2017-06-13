@@ -11,10 +11,9 @@ MAX_PER_TREE = 256
 progress_callback = None
 fanout = 16
 
-GIT_MODE_FILE = 0100644
-GIT_MODE_TREE = 040000
-GIT_MODE_SYMLINK = 0120000
-assert(GIT_MODE_TREE != 40000)  # 0xxx should be treated as octal
+GIT_MODE_FILE = 0o100644
+GIT_MODE_TREE = 0o40000
+GIT_MODE_SYMLINK = 0o120000
 
 # The purpose of this type of buffer is to avoid copying on peek(), get(),
 # and eat().  We do copy the buffer contents on put(), but that should
