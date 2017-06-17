@@ -463,7 +463,9 @@ class Metadata:
         return self.symlink_target
 
     def _load_symlink_target_rec(self, port):
-        self.symlink_target = vint.read_bvec(port)
+        target = vint.read_bvec(port)
+        self.symlink_target = target
+        self.size = len(target)
 
 
     ## Hardlink targets

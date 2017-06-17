@@ -154,7 +154,9 @@ def test_metadata_method():
                     WVPASS(m.mtime == test_time1)
                 elif sub.name == 'symlink':
                     m = sub.metadata()
-                    WVPASS(m.mtime == 0)
+                    WVPASSEQ(m.symlink_target, 'file')
+                    WVPASSEQ(m.size, 4)
+                    WVPASSEQ(m.mtime, 0)
 
 
 def _first_err():
