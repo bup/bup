@@ -880,13 +880,13 @@ def _gitenv(repo_dir = None):
     return env
 
 
-def list_refs(refnames=None, repo_dir=None,
+def list_refs(patterns=None, repo_dir=None,
               limit_to_heads=False, limit_to_tags=False):
     """Yield (refname, hash) tuples for all repository refs unless
-    refnames are specified.  In that case, only include tuples for
-    those refs.  The limits restrict the result items to refs/heads or
-    refs/tags.  If both limits are specified, items from both sources
-    will be included.
+    patterns are specified.  In that case, only include tuples for
+    refs matching those patterns (cf. git-show-ref(1)).  The limits
+    restrict the result items to refs/heads or refs/tags.  If both
+    limits are specified, items from both sources will be included.
 
     """
     argv = ['git', 'show-ref']
@@ -895,8 +895,8 @@ def list_refs(refnames=None, repo_dir=None,
     if limit_to_tags:
         argv.append('--tags')
     argv.append('--')
-    if refnames:
-        argv += refnames
+    if patterns:
+        argv.extend(patterns)
     p = subprocess.Popen(argv,
                          preexec_fn = _gitenv(repo_dir),
                          stdout = subprocess.PIPE)
@@ -912,7 +912,7 @@ def list_refs(refnames=None, repo_dir=None,
 
 def read_ref(refname, repo_dir = None):
     """Get the commit id of the most recent commit made on a given ref."""
-    refs = list_refs(refnames=[refname], repo_dir=repo_dir, limit_to_heads=True)
+    refs = list_refs(patterns=[refname], repo_dir=repo_dir, limit_to_heads=True)
     l = tuple(islice(refs, 2))
     if l:
         assert(len(l) == 1)

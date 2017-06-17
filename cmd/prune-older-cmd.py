@@ -20,7 +20,7 @@ from bup.rm import bup_rm
 
 def branches(refnames=()):
     return ((name[11:], sha) for (name,sha)
-            in git.list_refs(refnames=('refs/heads/' + n for n in refnames),
+            in git.list_refs(patterns=('refs/heads/' + n for n in refnames),
                              limit_to_heads=True))
 
 def save_name(branch, utc):
