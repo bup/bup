@@ -1138,14 +1138,9 @@ class CatPipe:
         self.repo_dir = repo_dir
         wanted = ('1','5','6')
         if ver() < wanted:
-            if not _ver_warned:
-                log('warning: git version < %s; bup will be slow.\n'
-                    % '.'.join(wanted))
-                _ver_warned = 1
-            self.get = self._slow_get
-        else:
-            self.p = self.inprogress = None
-            self.get = self._fast_get
+            log('error: git version must be at least 1.5.6\n')
+            sys.exit(1)
+        self.p = self.inprogress = None
 
     def _abort(self):
         if self.p:
@@ -1163,15 +1158,19 @@ class CatPipe:
                                   bufsize = 4096,
                                   preexec_fn = _gitenv(self.repo_dir))
 
-    def _fast_get(self, id):
+    def get(self, id, size=False):
+        """Yield the object type, and then an iterator over the data referred
+        to by the id ref.  If size is true, yield (obj_type, obj_size)
+        instead of just the type.
+
+        """
         if not self.p or self.p.poll() != None:
             self.restart()
         assert(self.p)
         poll_result = self.p.poll()
         assert(poll_result == None)
         if self.inprogress:
-            log('_fast_get: opening %r while %r is open\n'
-                % (id, self.inprogress))
+            log('get: opening %r while %r is open\n' % (id, self.inprogress))
         assert(not self.inprogress)
         assert(id.find('\n') < 0)
         assert(id.find('\r') < 0)
@@ -1186,12 +1185,15 @@ class CatPipe:
         spl = hdr.split(' ')
         if len(spl) != 3 or len(spl[0]) != 40:
             raise GitError('expected blob, got %r' % spl)
-        (hex, type, size) = spl
-
-        it = _AbortableIter(chunkyreader(self.p.stdout, int(spl[2])),
-                           onabort = self._abort)
+        hex, typ, sz = spl
+        sz = int(sz)
+        it = _AbortableIter(chunkyreader(self.p.stdout, sz),
+                            onabort=self._abort)
         try:
-            yield type
+            if size:
+                yield typ, sz
+            else:
+                yield typ
             for blob in it:
                 yield blob
             readline_result = self.p.stdout.readline()
@@ -1200,20 +1202,6 @@ class CatPipe:
         except Exception as e:
             it.abort()
             raise
-
-    def _slow_get(self, id):
-        assert(id.find('\n') < 0)
-        assert(id.find('\r') < 0)
-        assert(id[0] != '-')
-        type = _git_capture(['git', 'cat-file', '-t', id]).strip()
-        yield type
-
-        p = subprocess.Popen(['git', 'cat-file', type, id],
-                             stdout=subprocess.PIPE,
-                             preexec_fn = _gitenv(self.repo_dir))
-        for blob in chunkyreader(p.stdout):
-            yield blob
-        _git_wait('git cat-file', p)
 
     def _join(self, it):
         type = it.next()

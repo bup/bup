@@ -414,3 +414,30 @@ def test__git_date_str():
         WVPASSEQ('0 +0000', git._git_date_str(0, 0))
         WVPASSEQ('0 -0130', git._git_date_str(0, -90 * 60))
         WVPASSEQ('0 +0130', git._git_date_str(0, 90 * 60))
+
+
+@wvtest
+def test_cat_pipe():
+    with no_lingering_errors():
+        with test_tempdir('bup-tgit-') as tmpdir:
+            os.environ['BUP_MAIN_EXE'] = bup_exe
+            os.environ['BUP_DIR'] = bupdir = tmpdir + "/bup"
+            src = tmpdir + '/src'
+            mkdirp(src)
+            with open(src + '/1', 'w+') as f:
+                print f, 'something'
+            with open(src + '/2', 'w+') as f:
+                print f, 'something else'
+            git.init_repo(bupdir)
+            exc(bup_exe, 'index', src)
+            exc(bup_exe, 'save', '-n', 'src', '--strip', src)
+            git_type = exo('git', '--git-dir', bupdir,
+                           'cat-file', '-t', 'src').strip()
+            git_size = int(exo('git', '--git-dir', bupdir,
+                               'cat-file', '-s', 'src'))
+            it = git.cp().get('src', size=True)
+            get_type, get_size = it.next()
+            for buf in it.next():
+                pass
+            WVPASSEQ(get_type, git_type)
+            WVPASSEQ(get_size, git_size)
