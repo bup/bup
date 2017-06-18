@@ -409,6 +409,7 @@ def test_list_refs():
             WVPASSEQ(frozenset(git.list_refs(limit_to_tags=True)), expected_tags)
 
 
+@wvtest
 def test__git_date_str():
     with no_lingering_errors():
         WVPASSEQ('0 +0000', git._git_date_str(0, 0))
