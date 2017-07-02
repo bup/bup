@@ -1,14 +1,16 @@
 """Helper functions and classes for bup."""
 
 from collections import namedtuple
+from contextlib import contextmanager
 from ctypes import sizeof, c_void_p
 from os import environ
-from contextlib import contextmanager
+from pipes import quote
+from subprocess import PIPE, Popen
 import sys, os, pwd, subprocess, errno, socket, select, mmap, stat, re, struct
 import hashlib, heapq, math, operator, time, grp, tempfile
 
 from bup import _helpers
-
+from bup import compat
 
 class Nonlocal:
     """Helper to deal with Python scoping issues"""
@@ -26,6 +28,13 @@ if sc_arg_max == -1:  # "no definite limit" - let's choose 2M
 # want options.py to be standalone so people can include it in other projects.
 from bup.options import _tty_width
 tty_width = _tty_width
+
+
+def last(iterable):
+    result = None
+    for result in iterable:
+        pass
+    return result
 
 
 def atoi(s):
@@ -89,6 +98,17 @@ def partition(predicate, stream):
             for x in stream:
                 yield x
     return (leading_matches(), rest())
+
+
+def lines_until_sentinel(f, sentinel, ex_type):
+    # sentinel must end with \n and must contain only one \n
+    while True:
+        line = f.readline()
+        if not (line and line.endswith('\n')):
+            raise ex_type('Hit EOF while reading line')
+        if line == sentinel:
+            return
+        yield line
 
 
 def stat_if_exists(path):
@@ -230,6 +250,34 @@ def unlink(f):
         if e.errno != errno.ENOENT:
             raise
 
+
+def shstr(cmd):
+    if isinstance(cmd, compat.str_type):
+        return cmd
+    else:
+        return ' '.join(map(quote, cmd))
+
+exc = subprocess.check_call
+
+def exo(cmd,
+        input=None,
+        stdin=None,
+        stderr=None,
+        shell=False,
+        check=True,
+        preexec_fn=None):
+    if input:
+        assert stdin in (None, PIPE)
+        stdin = PIPE
+    p = Popen(cmd,
+              stdin=stdin, stdout=PIPE, stderr=stderr,
+              shell=shell,
+              preexec_fn=preexec_fn)
+    out, err = p.communicate(input)
+    if check and p.returncode != 0:
+        raise Exception('subprocess %r failed with status %d, stderr: %r'
+                        % (' '.join(map(quote, cmd)), p.returncode, err))
+    return out, err, p
 
 def readpipe(argv, preexec_fn=None, shell=False):
     """Run a subprocess and return its output."""

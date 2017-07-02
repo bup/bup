@@ -3,7 +3,8 @@ import errno, os, re, struct, sys, time, zlib
 
 from bup import git, ssh
 from bup.helpers import (Conn, atomically_replaced_file, chunkyreader, debug1,
-                         debug2, linereader, mkdirp, progress, qprogress)
+                         debug2, linereader, lines_until_sentinel,
+                         mkdirp, progress, qprogress)
 
 
 bwlimit = None
@@ -311,19 +312,127 @@ class Client:
                            (oldval or '').encode('hex')))
         self.check_ok()
 
-    def cat(self, id):
-        self._require_command('cat')
+    def join(self, id):
+        self._require_command('join')
         self.check_busy()
-        self._busy = 'cat'
+        self._busy = 'join'
+        # Send 'cat' so we'll work fine with older versions
         self.conn.write('cat %s\n' % re.sub(r'[\n\r]', '_', id))
         while 1:
             sz = struct.unpack('!I', self.conn.read(4))[0]
             if not sz: break
             yield self.conn.read(sz)
+        # FIXME: ok to assume the only NotOk is a KerError? (it is true atm)
         e = self.check_ok()
         self._not_busy()
         if e:
             raise KeyError(str(e))
+
+    def cat_batch(self, refs):
+        self._require_command('cat-batch')
+        self.check_busy()
+        self._busy = 'cat-batch'
+        conn = self.conn
+        conn.write('cat-batch\n')
+        # FIXME: do we want (only) binary protocol?
+        for ref in refs:
+            assert ref
+            assert '\n' not in ref
+            conn.write(ref)
+            conn.write('\n')
+        conn.write('\n')
+        for ref in refs:
+            info = conn.readline()
+            if info == 'missing\n':
+                yield None, None, None, None
+                continue
+            if not (info and info.endswith('\n')):
+                raise ClientError('Hit EOF while looking for object info: %r'
+                                  % info)
+            oidx, oid_t, size = info.split(' ')
+            size = int(size)
+            cr = chunkyreader(conn, size)
+            yield oidx, oid_t, size, cr
+            detritus = next(cr, None)
+            if detritus:
+                raise ClientError('unexpected leftover data ' + repr(detritus))
+        # FIXME: confusing
+        not_ok = self.check_ok()
+        if not_ok:
+            raise not_ok
+        self._not_busy()
+
+    def refs(self, patterns=None, limit_to_heads=False, limit_to_tags=False):
+        patterns = patterns or tuple()
+        self._require_command('refs')
+        self.check_busy()
+        self._busy = 'refs'
+        conn = self.conn
+        conn.write('refs %s %s\n' % (1 if limit_to_heads else 0,
+                                     1 if limit_to_tags else 0))
+        for pattern in patterns:
+            assert '\n' not in pattern
+            conn.write(pattern)
+            conn.write('\n')
+        conn.write('\n')
+        for line in lines_until_sentinel(conn, '\n', ClientError):
+            line = line[:-1]
+            oidx, name = line.split(' ')
+            if len(oidx) != 40:
+                raise ClientError('Invalid object fingerprint in %r' % line)
+            if not name:
+                raise ClientError('Invalid reference name in %r' % line)
+            yield name, oidx.decode('hex')
+        # FIXME: confusing
+        not_ok = self.check_ok()
+        if not_ok:
+            raise not_ok
+        self._not_busy()
+
+    def rev_list(self, refs, count=None, parse=None, format=None):
+        self._require_command('rev-list')
+        assert (count is None) or (isinstance(count, Integral))
+        if format:
+            assert '\n' not in format
+            assert parse
+        for ref in refs:
+            assert ref
+            assert '\n' not in ref
+        self.check_busy()
+        self._busy = 'rev-list'
+        conn = self.conn
+        conn.write('rev-list\n')
+        if count is not None:
+            conn.write(str(count))
+        conn.write('\n')
+        if format:
+            conn.write(format)
+        conn.write('\n')
+        for ref in refs:
+            conn.write(ref)
+            conn.write('\n')
+        conn.write('\n')
+        if not format:
+            for _ in xrange(len(refs)):
+                line = conn.readline()
+                if not line:
+                    raise ClientError('unexpected EOF')
+                line = line.strip()
+                assert len(line) == 40
+                yield line
+        else:
+            for _ in xrange(len(refs)):
+                line = conn.readline()
+                if not line:
+                    raise ClientError('unexpected EOF')
+                if not line.startswith('commit '):
+                    raise ClientError('unexpected line ' + repr(line))
+                yield line[7:], parse(conn)
+        # FIXME: confusing
+        not_ok = self.check_ok()
+        if not_ok:
+            raise not_ok
+        self._not_busy()
 
 
 class PackWriter_Remote(git.PackWriter):

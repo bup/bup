@@ -923,6 +923,26 @@ def read_ref(refname, repo_dir = None):
         return None
 
 
+def rev_list_invocation(ref_or_refs, count=None, format=None):
+    if isinstance(ref_or_refs, compat.str_type):
+        refs = (ref_or_refs,)
+    else:
+        refs = ref_or_refs
+    argv = ['git', 'rev-list']
+    if isinstance(count, Integral):
+        argv.extend(['-n', str(count)])
+    elif count:
+        raise ValueError('unexpected count argument %r' % count)
+
+    if format:
+        argv.append('--pretty=format:' + format)
+    for ref in refs:
+        assert not ref.startswith('-')
+        argv.append(ref)
+    argv.append('--')
+    return argv
+
+
 def rev_list(ref_or_refs, count=None, parse=None, format=None, repo_dir=None):
     """Yield information about commits as per "git rev-list".  If a format
     is not provided, yield one hex hash at a time.  If a format is
@@ -933,22 +953,8 @@ def rev_list(ref_or_refs, count=None, parse=None, format=None, repo_dir=None):
 
     """
     assert bool(parse) == bool(format)
-    if isinstance(ref_or_refs, compat.str_type):
-        refs = (ref_or_refs,)
-    else:
-        refs = ref_or_refs
-    argv = ['git', 'rev-list']
-    if isinstance(count, Integral):
-        argv.extend(['-n', str(count)])
-    else:
-        assert not count
-    if format:
-        argv.append('--pretty=format:' + format)
-    for ref in refs:
-        assert not ref.startswith('-')
-        argv.append(ref)
-    argv.append('--')
-    p = subprocess.Popen(argv,
+    p = subprocess.Popen(rev_list_invocation(ref_or_refs, count=count,
+                                             format=format),
                          preexec_fn = _gitenv(repo_dir),
                          stdout = subprocess.PIPE)
     if not format:

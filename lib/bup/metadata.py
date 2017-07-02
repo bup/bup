@@ -5,6 +5,7 @@
 # This code is covered under the terms of the GNU Library General
 # Public License as described in the bup LICENSE file.
 
+from copy import deepcopy
 from errno import EACCES, EINVAL, ENOTTY, ENOSYS, EOPNOTSUPP
 from io import BytesIO
 from time import gmtime, strftime
@@ -721,6 +722,43 @@ class Metadata:
         self.linux_xattr = None
         self.posix1e_acl = None
 
+    def __eq__(self, other):
+        if not isinstance(other, Metadata): return False
+        if self.mode != other.mode: return False
+        if self.mtime != other.mtime: return False
+        if self.ctime != other.ctime: return False
+        if self.atime != other.atime: return False
+        if self.path != other.path: return False
+        if self.uid != other.uid: return False
+        if self.gid != other.gid: return False
+        if self.size != other.size: return False
+        if self.user != other.user: return False
+        if self.group != other.group: return False
+        if self.symlink_target != other.symlink_target: return False
+        if self.hardlink_target != other.hardlink_target: return False
+        if self.linux_attr != other.linux_attr: return False
+        if self.posix1e_acl != other.posix1e_acl: return False
+        return True
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    def __hash__(self):
+        return hash((self.mode,
+                     self.mtime,
+                     self.ctime,
+                     self.atime,
+                     self.path,
+                     self.uid,
+                     self.gid,
+                     self.size,
+                     self.user,
+                     self.group,
+                     self.symlink_target,
+                     self.hardlink_target,
+                     self.linux_attr,
+                     self.posix1e_acl))
+
     def __repr__(self):
         result = ['<%s instance at %s' % (self.__class__, hex(id(self)))]
         if self.path is not None:
@@ -770,6 +808,9 @@ class Metadata:
         port = BytesIO()
         self.write(port, include_path)
         return port.getvalue()
+
+    def copy(self):
+        return deepcopy(self)
 
     @staticmethod
     def read(port):

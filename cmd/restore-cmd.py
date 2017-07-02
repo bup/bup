@@ -5,13 +5,17 @@ exec "$bup_python" "$0" ${1+"$@"}
 """
 # end of bup preamble
 
+from __future__ import print_function
+from stat import S_ISDIR
 import copy, errno, os, sys, stat, re
 
-from bup import options, git, metadata, vfs
+from bup import options, git, metadata, vfs2
 from bup._helpers import write_sparsely
-from bup.helpers import (add_error, chunkyreader, handle_ctrl_c, log, mkdirp,
-                         parse_rx_excludes, progress, qprogress, saved_errors,
-                         should_rx_exclude_path, unlink)
+from bup.compat import wrap_main
+from bup.helpers import (add_error, chunkyreader, die_if_errors, handle_ctrl_c,
+                         log, mkdirp, parse_rx_excludes, progress, qprogress,
+                         saved_errors, should_rx_exclude_path, unlink)
+from bup.repo import LocalRepo
 
 
 optspec = """
@@ -36,53 +40,12 @@ total_restored = 0
 sys.stdout.flush()
 sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 1)
 
-def verbose1(s):
-    if opt.verbose >= 1:
-        print s
-
-
-def verbose2(s):
-    if opt.verbose >= 2:
-        print s
-
-
-def plog(s):
-    if opt.quiet:
-        return
-    qprogress(s)
-
-
 def valid_restore_path(path):
     path = os.path.normpath(path)
     if path.startswith('/'):
         path = path[1:]
     if '/' in path:
         return True
-
-
-def print_info(n, fullname):
-    if stat.S_ISDIR(n.mode):
-        verbose1('%s/' % fullname)
-    elif stat.S_ISLNK(n.mode):
-        verbose2('%s@ -> %s' % (fullname, n.readlink()))
-    else:
-        verbose2(fullname)
-
-
-def create_path(n, fullname, meta):
-    if meta:
-        meta.create_path(fullname)
-    else:
-        # These fallbacks are important -- meta could be null if, for
-        # example, save created a "fake" item, i.e. a new strip/graft
-        # path element, etc.  You can find cases like that by
-        # searching for "Metadata()".
-        unlink(fullname)
-        if stat.S_ISDIR(n.mode):
-            mkdirp(fullname)
-        elif stat.S_ISLNK(n.mode):
-            os.symlink(n.readlink(), fullname)
-
 
 def parse_owner_mappings(type, options, fatal):
     """Traverse the options and parse all --map-TYPEs, or call Option.fatal()."""
@@ -105,7 +68,6 @@ def parse_owner_mappings(type, options, fatal):
         owner_map[old_id] = new_id
     return owner_map
 
-
 def apply_metadata(meta, name, restore_numeric_ids, owner_map):
     m = copy.deepcopy(meta)
     m.user = owner_map['user'].get(m.user, m.user)
@@ -113,248 +75,215 @@ def apply_metadata(meta, name, restore_numeric_ids, owner_map):
     m.uid = owner_map['uid'].get(m.uid, m.uid)
     m.gid = owner_map['gid'].get(m.gid, m.gid)
     m.apply_to_path(name, restore_numeric_ids = restore_numeric_ids)
-
-
-# Track a list of (restore_path, vfs_path, meta) triples for each path
-# we've written for a given hardlink_target.  This allows us to handle
-# the case where we restore a set of hardlinks out of order (with
-# respect to the original save call(s)) -- i.e. when we don't restore
-# the hardlink_target path first.  This data also allows us to attempt
-# to handle other situations like hardlink sets that change on disk
-# during a save, or between index and save.
-targets_written = {}
-
-def hardlink_compatible(target_path, target_vfs_path, target_meta,
-                        src_node, src_meta):
-    global top
-    if not os.path.exists(target_path):
+    
+def hardlink_compatible(prev_path, prev_item, new_item, top):
+    prev_candidate = top + prev_path
+    if not os.path.exists(prev_candidate):
         return False
-    target_node = top.lresolve(target_vfs_path)
-    if src_node.mode != target_node.mode \
-            or src_node.mtime != target_node.mtime \
-            or src_node.ctime != target_node.ctime \
-            or src_node.hash != target_node.hash:
+    prev_meta, new_meta = prev_item.meta, new_item.meta
+    if new_item.oid != prev_item.oid \
+            or new_meta.mtime != prev_meta.mtime \
+            or new_meta.ctime != prev_meta.ctime \
+            or new_meta.mode != prev_meta.mode:
         return False
-    if not src_meta.same_file(target_meta):
+    # FIXME: should we be checking the path on disk, or the recorded metadata?
+    # The exists() above might seem to suggest the former.
+    if not new_meta.same_file(prev_meta):
         return False
     return True
 
-
-def hardlink_if_possible(fullname, node, meta):
+def hardlink_if_possible(fullname, item, top, hardlinks):
     """Find a suitable hardlink target, link to it, and return true,
     otherwise return false."""
-    # Expect the caller to handle restoring the metadata if
-    # hardlinking isn't possible.
-    global targets_written
-    target = meta.hardlink_target
-    target_versions = targets_written.get(target)
+    # The cwd will be dirname(fullname), and fullname will be
+    # absolute, i.e. /foo/bar, and the caller is expected to handle
+    # restoring the metadata if hardlinking isn't possible.
+
+    # FIXME: we can probably replace the target_vfs_path with the
+    # relevant vfs item
+    
+    # hardlinks tracks a list of (restore_path, vfs_path, meta)
+    # triples for each path we've written for a given hardlink_target.
+    # This allows us to handle the case where we restore a set of
+    # hardlinks out of order (with respect to the original save
+    # call(s)) -- i.e. when we don't restore the hardlink_target path
+    # first.  This data also allows us to attempt to handle other
+    # situations like hardlink sets that change on disk during a save,
+    # or between index and save.
+
+    target = item.meta.hardlink_target
+    assert(target)
+    assert(fullname.startswith('/'))
+    target_versions = hardlinks.get(target)
     if target_versions:
         # Check every path in the set that we've written so far for a match.
-        for (target_path, target_vfs_path, target_meta) in target_versions:
-            if hardlink_compatible(target_path, target_vfs_path, target_meta,
-                                   node, meta):
+        for prev_path, prev_item in target_versions:
+            if hardlink_compatible(prev_path, prev_item, item, top):
                 try:
-                    os.link(target_path, fullname)
+                    os.link(top + prev_path, top + fullname)
                     return True
                 except OSError as e:
                     if e.errno != errno.EXDEV:
                         raise
     else:
         target_versions = []
-        targets_written[target] = target_versions
-    full_vfs_path = node.fullname()
-    target_versions.append((fullname, full_vfs_path, meta))
+        hardlinks[target] = target_versions
+    target_versions.append((fullname, item))
     return False
 
+def write_file_content(repo, dest_path, vfs_file):
+    with vfs2.fopen(repo, vfs_file) as inf:
+        with open(dest_path, 'wb') as outf:
+            for b in chunkyreader(inf):
+                outf.write(b)
 
-def write_file_content(fullname, n):
-    outf = open(fullname, 'wb')
-    try:
-        for b in chunkyreader(n.open()):
-            outf.write(b)
-    finally:
-        outf.close()
+def write_file_content_sparsely(repo, dest_path, vfs_file):
+    with vfs2.fopen(repo, vfs_file) as inf:
+        outfd = os.open(dest_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        try:
+            trailing_zeros = 0;
+            for b in chunkyreader(inf):
+                trailing_zeros = write_sparsely(outfd, b, 512, trailing_zeros)
+            pos = os.lseek(outfd, trailing_zeros, os.SEEK_END)
+            os.ftruncate(outfd, pos)
+        finally:
+            os.close(outfd)
+            
+def restore(repo, parent_path, name, item, top, sparse, numeric_ids, owner_map,
+            exclude_rxs, verbosity, hardlinks):
+    global total_restored
+    mode = vfs2.item_mode(item)
+    treeish = S_ISDIR(mode)
+    fullname = parent_path + '/' + name
+    # Match behavior of index --exclude-rx with respect to paths.
+    if should_rx_exclude_path(fullname + ('/' if treeish else ''),
+                              exclude_rxs):
+        return
 
+    if not treeish:
+        # Do this now so we'll have meta.symlink_target for verbose output
+        item = vfs2.augment_item_meta(repo, item, include_size=True)
+        meta = item.meta
+        assert(meta.mode == mode)
 
-def write_file_content_sparsely(fullname, n):
-    outfd = os.open(fullname, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-    try:
-        trailing_zeros = 0;
-        for b in chunkyreader(n.open()):
-            trailing_zeros = write_sparsely(outfd, b, 512, trailing_zeros)
-        pos = os.lseek(outfd, trailing_zeros, os.SEEK_END)
-        os.ftruncate(outfd, pos)
-    finally:
-        os.close(outfd)
-
-
-def find_dir_item_metadata_by_name(dir, name):
-    """Find metadata in dir (a node) for an item with the given name,
-    or for the directory itself if the name is ''."""
-    meta_stream = None
-    try:
-        mfile = dir.metadata_file() # VFS file -- cannot close().
-        if mfile:
-            meta_stream = mfile.open()
-            # First entry is for the dir itself.
-            meta = metadata.Metadata.read(meta_stream)
-            if name == '':
-                return meta
-            for sub in dir:
-                if stat.S_ISDIR(sub.mode):
-                    meta = find_dir_item_metadata_by_name(sub, '')
-                else:
-                    meta = metadata.Metadata.read(meta_stream)
-                if sub.name == name:
-                    return meta
-    finally:
-        if meta_stream:
-            meta_stream.close()
-
-
-def do_root(n, sparse, owner_map, restore_root_meta = True):
-    # Very similar to do_node(), except that this function doesn't
-    # create a path for n's destination directory (and so ignores
-    # n.fullname).  It assumes the destination is '.', and restores
-    # n's metadata and content there.
-    global total_restored, opt
-    meta_stream = None
-    try:
-        # Directory metadata is the first entry in any .bupm file in
-        # the directory.  Get it.
-        mfile = n.metadata_file() # VFS file -- cannot close().
-        root_meta = None
-        if mfile:
-            meta_stream = mfile.open()
-            root_meta = metadata.Metadata.read(meta_stream)
-        print_info(n, '.')
-        total_restored += 1
-        plog('Restoring: %d\r' % total_restored)
-        for sub in n:
-            m = None
-            # Don't get metadata if this is a dir -- handled in sub do_node().
-            if meta_stream and not stat.S_ISDIR(sub.mode):
-                m = metadata.Metadata.read(meta_stream)
-            do_node(n, sub, sparse, owner_map, meta = m)
-        if root_meta and restore_root_meta:
-            apply_metadata(root_meta, '.', opt.numeric_ids, owner_map)
-    finally:
-        if meta_stream:
-            meta_stream.close()
-
-def do_node(top, n, sparse, owner_map, meta = None):
-    # Create n.fullname(), relative to the current directory, and
-    # restore all of its metadata, when available.  The meta argument
-    # will be None for dirs, or when there is no .bupm (i.e. no
-    # metadata).
-    global total_restored, opt
-    meta_stream = None
-    write_content = sparse and write_file_content_sparsely or write_file_content
-    try:
-        fullname = n.fullname(stop_at=top)
-        # Match behavior of index --exclude-rx with respect to paths.
-        exclude_candidate = '/' + fullname
-        if(stat.S_ISDIR(n.mode)):
-            exclude_candidate += '/'
-        if should_rx_exclude_path(exclude_candidate, exclude_rxs):
-            return
-        # If this is a directory, its metadata is the first entry in
-        # any .bupm file inside the directory.  Get it.
-        if(stat.S_ISDIR(n.mode)):
-            mfile = n.metadata_file() # VFS file -- cannot close().
-            if mfile:
-                meta_stream = mfile.open()
-                meta = metadata.Metadata.read(meta_stream)
-        print_info(n, fullname)
-
-        created_hardlink = False
-        if meta and meta.hardlink_target:
-            created_hardlink = hardlink_if_possible(fullname, n, meta)
-
-        if not created_hardlink:
-            create_path(n, fullname, meta)
-            if meta:
-                if stat.S_ISREG(meta.mode):
-                    write_content(fullname, n)
-            elif stat.S_ISREG(n.mode):
-                write_content(fullname, n)
-
-        total_restored += 1
-        plog('Restoring: %d\r' % total_restored)
-        for sub in n:
-            m = None
-            # Don't get metadata if this is a dir -- handled in sub do_node().
-            if meta_stream and not stat.S_ISDIR(sub.mode):
-                m = metadata.Metadata.read(meta_stream)
-            do_node(top, sub, sparse, owner_map, meta = m)
-        if meta and not created_hardlink:
-            apply_metadata(meta, fullname, opt.numeric_ids, owner_map)
-    finally:
-        if meta_stream:
-            meta_stream.close()
-        n.release()
-
-
-handle_ctrl_c()
-
-o = options.Options(optspec)
-(opt, flags, extra) = o.parse(sys.argv[1:])
-
-git.check_repo_or_die()
-top = vfs.RefList(None)
-
-if not extra:
-    o.fatal('must specify at least one filename to restore')
-    
-exclude_rxs = parse_rx_excludes(flags, o.fatal)
-
-owner_map = {}
-for map_type in ('user', 'group', 'uid', 'gid'):
-    owner_map[map_type] = parse_owner_mappings(map_type, flags, o.fatal)
-
-if opt.outdir:
-    mkdirp(opt.outdir)
-    os.chdir(opt.outdir)
-
-ret = 0
-for d in extra:
-    if not valid_restore_path(d):
-        add_error("ERROR: path %r doesn't include a branch and revision" % d)
-        continue
-    path,name = os.path.split(d)
-    try:
-        n = top.lresolve(d)
-    except vfs.NodeError as e:
-        add_error(e)
-        continue
-    isdir = stat.S_ISDIR(n.mode)
-    if not name or name == '.':
-        # Source is /foo/what/ever/ or /foo/what/ever/. -- extract
-        # what/ever/* to the current directory, and if name == '.'
-        # (i.e. /foo/what/ever/.), then also restore what/ever's
-        # metadata to the current directory.
-        if not isdir:
-            add_error('%r: not a directory' % d)
-        else:
-            do_root(n, opt.sparse, owner_map, restore_root_meta = (name == '.'))
+    if stat.S_ISDIR(mode):
+        if verbosity >= 1:
+            print('%s/' % fullname)
+    elif stat.S_ISLNK(mode):
+        assert(meta.symlink_target)
+        if verbosity >= 2:
+            print('%s@ -> %s' % (fullname, meta.symlink_target))
     else:
-        # Source is /foo/what/ever -- extract ./ever to cwd.
-        if isinstance(n, vfs.FakeSymlink):
-            # Source is actually /foo/what, i.e. a top-level commit
-            # like /foo/latest, which is a symlink to ../.commit/SHA.
-            # So dereference it, and restore ../.commit/SHA/. to
-            # "./what/.".
-            target = n.dereference()
-            mkdirp(n.name)
-            os.chdir(n.name)
-            do_root(target, opt.sparse, owner_map)
-        else: # Not a directory or fake symlink.
-            meta = find_dir_item_metadata_by_name(n.parent, n.name)
-            do_node(n.parent, n, opt.sparse, owner_map, meta = meta)
+        if verbosity >= 2:
+            print(fullname)
 
-if not opt.quiet:
-    progress('Restoring: %d, done.\n' % total_restored)
+    orig_cwd = os.getcwd()
+    try:
+        if treeish:
+            # Assumes contents() returns '.' with the full metadata first
+            sub_items = vfs2.contents(repo, item, want_meta=True)
+            dot, item = next(sub_items, None)
+            assert(dot == '.')
+            item = vfs2.augment_item_meta(repo, item, include_size=True)
+            meta = item.meta
+            meta.create_path(name)
+            os.chdir(name)
+            total_restored += 1
+            if verbosity >= 0:
+                qprogress('Restoring: %d\r' % total_restored)
+            for sub_name, sub_item in sub_items:
+                restore(repo, fullname, sub_name, sub_item, top, sparse,
+                        numeric_ids, owner_map, exclude_rxs, verbosity,
+                        hardlinks)
+            os.chdir('..')
+            apply_metadata(meta, name, numeric_ids, owner_map)
+        else:
+            created_hardlink = False
+            if meta.hardlink_target:
+                created_hardlink = hardlink_if_possible(fullname, item, top,
+                                                        hardlinks)
+            if not created_hardlink:
+                meta.create_path(name)
+                if stat.S_ISREG(meta.mode):
+                    if sparse:
+                        write_file_content_sparsely(repo, name, item)
+                    else:
+                        write_file_content(repo, name, item)
+            total_restored += 1
+            if verbosity >= 0:
+                qprogress('Restoring: %d\r' % total_restored)
+            if not created_hardlink:
+                apply_metadata(meta, name, numeric_ids, owner_map)
+    finally:
+        os.chdir(orig_cwd)
 
-if saved_errors:
-    log('WARNING: %d errors encountered while restoring.\n' % len(saved_errors))
-    sys.exit(1)
+def main():
+    o = options.Options(optspec)
+    opt, flags, extra = o.parse(sys.argv[1:])
+    verbosity = opt.verbose if not opt.quiet else -1
+    
+    git.check_repo_or_die()
+
+    if not extra:
+        o.fatal('must specify at least one filename to restore')
+
+    exclude_rxs = parse_rx_excludes(flags, o.fatal)
+
+    owner_map = {}
+    for map_type in ('user', 'group', 'uid', 'gid'):
+        owner_map[map_type] = parse_owner_mappings(map_type, flags, o.fatal)
+
+    if opt.outdir:
+        mkdirp(opt.outdir)
+        os.chdir(opt.outdir)
+
+    repo = LocalRepo()
+    top = os.getcwd()
+    hardlinks = {}
+    for path in extra:
+        if not valid_restore_path(path):
+            add_error("path %r doesn't include a branch and revision" % path)
+            continue
+        try:
+            resolved = vfs2.lresolve(repo, path, want_meta=True)
+        except vfs2.IOError as e:
+            add_error(e)
+            continue
+        path_parent, path_name = os.path.split(path)
+        leaf_name, leaf_item = resolved[-1]
+        if not leaf_item:
+            add_error('error: cannot access %r in %r'
+                      % ('/'.join(name for name, item in resolved),
+                         path))
+            continue
+        if not path_name or path_name == '.':
+            # Source is /foo/what/ever/ or /foo/what/ever/. -- extract
+            # what/ever/* to the current directory, and if name == '.'
+            # (i.e. /foo/what/ever/.), then also restore what/ever's
+            # metadata to the current directory.
+            treeish = vfs2.item_mode(leaf_item)
+            if not treeish:
+                add_error('%r cannot be restored as a directory' % path)
+            else:
+                items = vfs2.contents(repo, leaf_item, want_meta=True)
+                dot, leaf_item = next(items, None)
+                assert(dot == '.')
+                for sub_name, sub_item in items:
+                    restore(repo, '', sub_name, sub_item, top,
+                            opt.sparse, opt.numeric_ids, owner_map,
+                            exclude_rxs, verbosity, hardlinks)
+                if path_name == '.':
+                    leaf_item = vfs2.augment_item_meta(repo, leaf_item,
+                                                       include_size=True)
+                    apply_metadata(leaf_item.meta, '.',
+                                   opt.numeric_ids, owner_map)
+        else:
+            restore(repo, '', leaf_name, leaf_item, top,
+                    opt.sparse, opt.numeric_ids, owner_map,
+                    exclude_rxs, verbosity, hardlinks)
+
+    if verbosity >= 0:
+        progress('Restoring: %d, done.\n' % total_restored)
+    die_if_errors()
+
+wrap_main(main)
