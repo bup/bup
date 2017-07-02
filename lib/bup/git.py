@@ -6,6 +6,7 @@ interact with the Git data structures.
 import errno, os, sys, zlib, time, subprocess, struct, stat, re, tempfile, glob
 from collections import namedtuple
 from itertools import islice
+from numbers import Integral
 
 from bup import _helpers, hashsplit, path, midx, bloom, xstat
 from bup.helpers import (Sha1, add_error, chunkyreader, debug1, debug2,
@@ -933,8 +934,10 @@ def rev_list(ref, count=None, repo_dir=None):
     """
     assert(not ref.startswith('-'))
     opts = []
-    if count:
-        opts += ['-n', str(atoi(count))]
+    if isinstance(count, Integral):
+        opts += ['-n', str(count)]
+    else:
+        assert not count
     argv = ['git', 'rev-list', '--pretty=format:%at'] + opts + [ref, '--']
     p = subprocess.Popen(argv,
                          preexec_fn = _gitenv(repo_dir),
