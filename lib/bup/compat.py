@@ -8,6 +8,8 @@ py3 = py_maj >= 3
 
 if py3:
 
+    str_type = str
+
     def add_ex_tb(ex):
         pass
 
@@ -15,6 +17,8 @@ if py3:
         return ex
 
 else:  # Python 2
+
+    str_type = basestring
 
     def add_ex_tb(ex):
         if not getattr(ex, '__traceback__', None):

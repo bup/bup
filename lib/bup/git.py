@@ -8,7 +8,7 @@ from collections import namedtuple
 from itertools import islice
 from numbers import Integral
 
-from bup import _helpers, hashsplit, path, midx, bloom, xstat
+from bup import _helpers, compat, hashsplit, path, midx, bloom, xstat
 from bup.helpers import (Sha1, add_error, chunkyreader, debug1, debug2,
                          fdatasync,
                          hostname, localtime, log, merge_iter,
@@ -923,7 +923,7 @@ def read_ref(refname, repo_dir = None):
         return None
 
 
-def rev_list(ref, count=None, parse=None, format=None, repo_dir=None):
+def rev_list(ref_or_refs, count=None, parse=None, format=None, repo_dir=None):
     """Yield information about commits as per "git rev-list".  If a format
     is not provided, yield one hex hash at a time.  If a format is
     provided, pass it to rev-list and call parse(git_stdout) for each
@@ -933,7 +933,10 @@ def rev_list(ref, count=None, parse=None, format=None, repo_dir=None):
 
     """
     assert bool(parse) == bool(format)
-    assert not ref.startswith('-')
+    if isinstance(ref_or_refs, compat.str_type):
+        refs = (ref_or_refs,)
+    else:
+        refs = ref_or_refs
     argv = ['git', 'rev-list']
     if isinstance(count, Integral):
         argv.extend(['-n', str(count)])
@@ -941,7 +944,8 @@ def rev_list(ref, count=None, parse=None, format=None, repo_dir=None):
         assert not count
     if format:
         argv.append('--pretty=format:' + format)
-    if ref:
+    for ref in refs:
+        assert not ref.startswith('-')
         argv.append(ref)
     argv.append('--')
     p = subprocess.Popen(argv,
