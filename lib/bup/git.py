@@ -923,34 +923,42 @@ def read_ref(refname, repo_dir = None):
         return None
 
 
-def rev_list(ref, count=None, repo_dir=None):
-    """Generate a list of reachable commits in reverse chronological order.
+def rev_list(ref, count=None, parse=None, format=None, repo_dir=None):
+    """Yield information about commits as per "git rev-list".  If a format
+    is not provided, yield one hex hash at a time.  If a format is
+    provided, pass it to rev-list and call parse(git_stdout) for each
+    commit with the stream positioned just after the rev-list "commit
+    HASH" header line.  When a format is provided yield (oidx,
+    parse(git_stdout)) for each commit.
 
-    This generator walks through commits, from child to parent, that are
-    reachable via the specified ref and yields a series of tuples of the form
-    (date,hash).
-
-    If count is a non-zero integer, limit the number of commits to "count"
-    objects.
     """
-    assert(not ref.startswith('-'))
-    opts = []
+    assert bool(parse) == bool(format)
+    assert not ref.startswith('-')
+    argv = ['git', 'rev-list']
     if isinstance(count, Integral):
-        opts += ['-n', str(count)]
+        argv.extend(['-n', str(count)])
     else:
         assert not count
-    argv = ['git', 'rev-list', '--pretty=format:%at'] + opts + [ref, '--']
+    if format:
+        argv.append('--pretty=format:' + format)
+    if ref:
+        argv.append(ref)
+    argv.append('--')
     p = subprocess.Popen(argv,
                          preexec_fn = _gitenv(repo_dir),
                          stdout = subprocess.PIPE)
-    commit = None
-    for row in p.stdout:
-        s = row.strip()
-        if s.startswith('commit '):
-            commit = s[7:].decode('hex')
-        else:
-            date = int(s)
-            yield (date, commit)
+    if not format:
+        for line in p.stdout:
+            yield line.strip()
+    else:
+        line = p.stdout.readline()
+        while line:
+            s = line.strip()
+            if not s.startswith('commit '):
+                raise Exception('unexpected line ' + s)
+            yield s[7:], parse(p.stdout)
+            line = p.stdout.readline()
+
     rv = p.wait()  # not fatal
     if rv:
         raise GitError, 'git rev-list returned error %d' % rv

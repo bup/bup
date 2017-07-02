@@ -483,10 +483,13 @@ class CommitDir(Node):
         refs = git.list_refs(repo_dir = self._repo_dir)
         for ref in refs:
             #debug2('ref name: %s\n' % ref[0])
-            revs = git.rev_list(ref[1].encode('hex'), repo_dir = self._repo_dir)
-            for (date, commit) in revs:
+            revs = git.rev_list(ref[1].encode('hex'),
+                                format='%at',
+                                parse=lambda f: int(f.readline().strip()),
+                                repo_dir=self._repo_dir)
+            for commithex, date in revs:
                 #debug2('commit: %s  date: %s\n' % (commit.encode('hex'), date))
-                commithex = commit.encode('hex')
+                commit = commithex.decode('hex')
                 containername = commithex[:2]
                 dirname = commithex[2:]
                 n1 = self._subs.get(containername)
@@ -544,22 +547,23 @@ class BranchList(Node):
         Node.__init__(self, parent, name, GIT_MODE_TREE, hash, repo_dir)
 
     def _mksubs(self):
+
         self._subs = {}
 
         revs = list(git.rev_list(self.hash.encode('hex'),
+                                 format='%at',
+                                 parse=lambda f: int(f.readline().strip()),
                                  repo_dir=self._repo_dir))
         latest = revs[0]
-        for (date, commit) in revs:
+        for commithex, date in revs:
             l = time.localtime(date)
             ls = time.strftime('%Y-%m-%d-%H%M%S', l)
-            commithex = commit.encode('hex')
             target = '../.commit/%s/%s' % (commithex[:2], commithex[2:])
             n1 = FakeSymlink(self, ls, target, self._repo_dir)
             n1.ctime = n1.mtime = date
             self._subs[ls] = n1
 
-        (date, commit) = latest
-        commithex = commit.encode('hex')
+        commithex, date = latest
         target = '../.commit/%s/%s' % (commithex[:2], commithex[2:])
         n1 = FakeSymlink(self, 'latest', target, self._repo_dir)
         n1.ctime = n1.mtime = date
@@ -588,8 +592,8 @@ class RefList(Node):
         self._subs['.tag'] = tag_dir
 
         refs_info = [(name[11:], sha) for (name,sha)
-                     in git.list_refs(repo_dir=self._repo_dir)
-                     if name.startswith('refs/heads/')]
+                     in git.list_refs(limit_to_heads=True,
+                                      repo_dir=self._repo_dir)]
         dates = git.get_commit_dates([sha.encode('hex')
                                       for (name, sha) in refs_info],
                                      repo_dir=self._repo_dir)

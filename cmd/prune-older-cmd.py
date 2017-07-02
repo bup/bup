@@ -19,7 +19,7 @@ from bup.rm import bup_rm
 
 
 def branches(refnames=()):
-    return ((name[11:], sha) for (name,sha)
+    return ((name[11:], sha.encode('hex')) for (name,sha)
             in git.list_refs(patterns=('refs/heads/' + n for n in refnames),
                              limit_to_heads=True))
 
@@ -130,10 +130,15 @@ git.check_repo_or_die()
 # This could be more efficient, but for now just build the whole list
 # in memory and let bup_rm() do some redundant work.
 
+def parse_info(f):
+    author_secs = f.readline().strip()
+    return int(author_secs)
+
 removals = []
 for branch, branch_id in branches(roots):
     die_if_errors()
-    saves = git.rev_list(branch_id.encode('hex'))
+    saves = ((utc, oidx.decode('hex')) for (oidx, utc) in
+             git.rev_list(branch_id, format='%at', parse=parse_info))
     for keep_save, (utc, id) in classify_saves(saves, period_start):
         assert(keep_save in (False, True))
         # FIXME: base removals on hashes

@@ -21,7 +21,7 @@ def append_commit(hash, parent, cp, writer):
 
 def filter_branch(tip_commit_hex, exclude, writer):
     # May return None if everything is excluded.
-    commits = [c for _, c in git.rev_list(tip_commit_hex)]
+    commits = [x.decode('hex') for x in git.rev_list(tip_commit_hex)]
     commits.reverse()
     last_c, tree = None, None
     # Rather than assert that we always find an exclusion here, we'll
