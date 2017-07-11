@@ -707,7 +707,7 @@ if [ "$root_status" = root ]; then
         (
             WVPASS touch "$testfs"/src/foo
             WVPASS mkdir "$testfs"/src/bar
-            WVPASS chattr +acdeijstuADST "$testfs"/src/foo
+            WVPASS chattr +acdeijstuADS "$testfs"/src/foo
             WVPASS chattr +acdeijstuADST "$testfs"/src/bar
             (WVPASS cd "$testfs"; WVPASS test-src-create-extract) || exit $?
             # Test restoration to a limited filesystem (vfat).
