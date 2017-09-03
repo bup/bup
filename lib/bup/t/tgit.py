@@ -431,14 +431,13 @@ def test_cat_pipe():
                 print f, 'something else'
             git.init_repo(bupdir)
             exc(bup_exe, 'index', src)
-            exc(bup_exe, 'save', '-n', 'src', '--strip', src)
-            git_type = exo('git', '--git-dir', bupdir,
-                           'cat-file', '-t', 'src').strip()
-            git_size = int(exo('git', '--git-dir', bupdir,
+            oidx = exo(bup_exe, 'save', '-cn', 'src', '--strip', src).strip()
+            typ = exo('git', '--git-dir', bupdir,
+                      'cat-file', '-t', 'src').strip()
+            size = int(exo('git', '--git-dir', bupdir,
                                'cat-file', '-s', 'src'))
-            it = git.cp().get('src', size=True)
-            get_type, get_size = next(it)
-            for buf in next(it):
+            it = git.cp().get('src')
+            get_info = it.next()
+            for buf in it.next():
                 pass
-            WVPASSEQ(get_type, git_type)
-            WVPASSEQ(get_size, git_size)
+            WVPASSEQ((oidx, typ, size), get_info)

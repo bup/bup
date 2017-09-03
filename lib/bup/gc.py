@@ -186,8 +186,8 @@ def sweep(live_objects, existing_count, cat_pipe, threshold, compression,
             sha = idx.shatable[i * 20 : (i + 1) * 20]
             if live_objects.exists(sha):
                 item_it = cat_pipe.get(sha.encode('hex'))
-                type = next(item_it)
-                writer.just_write(sha, type, ''.join(item_it))
+                _, typ, _ = next(item_it)
+                writer.just_write(sha, typ, ''.join(item_it))
 
         ns.stale_files.append(idx_name)
         ns.stale_files.append(idx_name[:-3] + 'pack')

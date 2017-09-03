@@ -37,7 +37,7 @@ class TooManySymlinks(NodeError):
 
 def _treeget(hash, repo_dir=None):
     it = cp(repo_dir).get(hash.encode('hex'))
-    type = next(it)
+    _, type, _ = next(it)
     assert(type == 'tree')
     return git.tree_decode(''.join(it))
 
@@ -424,11 +424,11 @@ class Dir(Node):
     def _mksubs(self):
         self._subs = {}
         it = cp(self._repo_dir).get(self.hash.encode('hex'))
-        type = next(it)
+        _, type, _ = next(it)
         if type == 'commit':
             del it
             it = cp(self._repo_dir).get(self.hash.encode('hex') + ':')
-            type = next(it)
+            _, type, _ = next(it)
         assert(type == 'tree')
         for (mode,mangled_name,sha) in git.tree_decode(''.join(it)):
             if mangled_name == '.bupm':

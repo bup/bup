@@ -112,7 +112,8 @@ def parse_commit(content):
 
 def get_commit_items(id, cp):
     commit_it = cp.get(id)
-    assert(next(commit_it) == 'commit')
+    _, typ, _ = next(commit_it)
+    assert(typ == 'commit')
     commit_content = ''.join(commit_it)
     return parse_commit(commit_content)
 
@@ -1155,12 +1156,9 @@ class CatPipe:
                                   bufsize = 4096,
                                   preexec_fn = _gitenv(self.repo_dir))
 
-    def get(self, id, size=False):
-        """Yield info about object id, and then if the object exists, all of
-        the data referred to by the object.  If size is false the info
-        will just be the object type name.  If size is true, the info
-        will be (type, size).  When the object does not exist, in both
-        cases the type will be None.
+    def get(self, ref):
+        """Yield (oidx, type, size), followed by the data referred to by ref.
+        If ref does not exist, only yield (None, None, None).
 
         """
         if not self.p or self.p.poll() != None:
@@ -1169,34 +1167,28 @@ class CatPipe:
         poll_result = self.p.poll()
         assert(poll_result == None)
         if self.inprogress:
-            log('get: opening %r while %r is open\n' % (id, self.inprogress))
+            log('get: opening %r while %r is open\n' % (ref, self.inprogress))
         assert(not self.inprogress)
-        assert(id.find('\n') < 0)
-        assert(id.find('\r') < 0)
-        assert(not id.startswith('-'))
-        self.inprogress = id
-        self.p.stdin.write('%s\n' % id)
+        assert(ref.find('\n') < 0)
+        assert(ref.find('\r') < 0)
+        assert(not ref.startswith('-'))
+        self.inprogress = ref
+        self.p.stdin.write('%s\n' % ref)
         self.p.stdin.flush()
         hdr = self.p.stdout.readline()
         if hdr.endswith(' missing\n'):
             self.inprogress = None
-            if size:
-                yield None, None
-            else:
-                yield None
+            yield None, None, None
             return
-        spl = hdr.split(' ')
-        if len(spl) != 3 or len(spl[0]) != 40:
-            raise GitError('expected blob, got %r' % spl)
-        hex, typ, sz = spl
-        sz = int(sz)
-        it = _AbortableIter(chunkyreader(self.p.stdout, sz),
+        info = hdr.split(' ')
+        if len(info) != 3 or len(info[0]) != 40:
+            raise GitError('expected object (id, type, size), got %r' % spl)
+        oidx, typ, size = info
+        size = int(size)
+        it = _AbortableIter(chunkyreader(self.p.stdout, size),
                             onabort=self._abort)
         try:
-            if size:
-                yield typ, sz
-            else:
-                yield typ
+            yield oidx, typ, size
             for blob in it:
                 yield blob
             readline_result = self.p.stdout.readline()
@@ -1207,23 +1199,23 @@ class CatPipe:
             raise
 
     def _join(self, it):
-        type = next(it)
-        if type == 'blob':
+        _, typ, _ = next(it)
+        if typ == 'blob':
             for blob in it:
                 yield blob
-        elif type == 'tree':
+        elif typ == 'tree':
             treefile = ''.join(it)
             for (mode, name, sha) in tree_decode(treefile):
                 for blob in self.join(sha.encode('hex')):
                     yield blob
-        elif type == 'commit':
+        elif typ == 'commit':
             treeline = ''.join(it).split('\n')[0]
             assert(treeline.startswith('tree '))
             for blob in self.join(treeline[5:]):
                 yield blob
         else:
             raise GitError('invalid object type %r: expected blob/tree/commit'
-                           % type)
+                           % typ)
 
     def join(self, id):
         """Generate a list of the content of all blobs that can be reached
@@ -1312,14 +1304,14 @@ def walk_object(cat_pipe, id,
             continue
 
         item_it = cat_pipe.get(id)
-        type = next(item_it)
-        if not type:
+        get_oidx, typ, _ = next(item_it)
+        if not get_oidx:
             raise MissingObject(id.decode('hex'))
-        if type not in ('blob', 'commit', 'tree'):
-            raise Exception('unexpected repository object type %r' % type)
+        if typ not in ('blob', 'commit', 'tree'):
+            raise Exception('unexpected repository object type %r' % typ)
 
         # FIXME: set the mode based on the type when the mode is None
-        if type == 'blob' and not include_data:
+        if typ == 'blob' and not include_data:
             # Dump data until we can ask cat_pipe not to fetch it
             for ignored in item_it:
                 pass
@@ -1327,18 +1319,18 @@ def walk_object(cat_pipe, id,
         else:
             data = ''.join(item_it)
 
-        yield WalkItem(id=id, type=type,
+        yield WalkItem(id=id, type=typ,
                        chunk_path=chunk_path, path=parent_path,
                        mode=mode,
                        data=(data if include_data else None))
 
-        if type == 'commit':
+        if typ == 'commit':
             commit_items = parse_commit(data)
             for pid in commit_items.parents:
                 pending.append((pid, parent_path, chunk_path, mode))
             pending.append((commit_items.tree, parent_path, chunk_path,
                             hashsplit.GIT_MODE_TREE))
-        elif type == 'tree':
+        elif typ == 'tree':
             for mode, name, ent_id in tree_decode(data):
                 demangled, bup_type = demangle_name(name, mode)
                 if chunk_path:

@@ -136,7 +136,7 @@ if opt.git_ids:
                 line = line.strip()
             try:
                 it = cp.get(line.strip())
-                next(it, None)  # skip the file type
+                next(it, None)  # skip the file info
             except KeyError as e:
                 add_error('error: %s' % e)
                 continue
