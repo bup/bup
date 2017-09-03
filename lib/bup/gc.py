@@ -225,7 +225,7 @@ def bup_gc(threshold=10, compression=1, verbosity=0):
             live_objects = find_live_objects(existing_count, cat_pipe,
                                              verbosity=verbosity)
         except MissingObject as ex:
-            log('bup: missing object %r \n' % ex.id.encode('hex'))
+            log('bup: missing object %r \n' % ex.oid.encode('hex'))
             sys.exit(1)
         try:
             # FIXME: just rename midxes and bloom, and restore them at the end if
