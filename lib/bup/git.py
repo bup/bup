@@ -1127,12 +1127,6 @@ class _AbortableIter:
         self.abort()
 
 
-class MissingObject(KeyError):
-    def __init__(self, id):
-        self.id = id
-        KeyError.__init__(self, 'object %r is missing' % id.encode('hex'))
-
-
 _ver_warned = 0
 class CatPipe:
     """Link to 'git cat-file' that is used to retrieve blob data."""
@@ -1162,9 +1156,11 @@ class CatPipe:
                                   preexec_fn = _gitenv(self.repo_dir))
 
     def get(self, id, size=False):
-        """Yield the object type, and then an iterator over the data referred
-        to by the id ref.  If size is true, yield (obj_type, obj_size)
-        instead of just the type.
+        """Yield info about object id, and then if the object exists, all of
+        the data referred to by the object.  If size is false the info
+        will just be the object type name.  If size is true, the info
+        will be (type, size).  When the object does not exist, in both
+        cases the type will be None.
 
         """
         if not self.p or self.p.poll() != None:
@@ -1184,7 +1180,11 @@ class CatPipe:
         hdr = self.p.stdout.readline()
         if hdr.endswith(' missing\n'):
             self.inprogress = None
-            raise MissingObject(id.decode('hex'))
+            if size:
+                yield None, None
+            else:
+                yield None
+            return
         spl = hdr.split(' ')
         if len(spl) != 3 or len(spl[0]) != 40:
             raise GitError('expected blob, got %r' % spl)
@@ -1265,6 +1265,12 @@ def tags(repo_dir = None):
     return tags
 
 
+class MissingObject(KeyError):
+    def __init__(self, id):
+        self.id = id
+        KeyError.__init__(self, 'object %r is missing' % id.encode('hex'))
+
+
 WalkItem = namedtuple('WalkItem', ['id', 'type', 'mode',
                                    'path', 'chunk_path', 'data'])
 # The path is the mangled path, and if an item represents a fragment
@@ -1307,6 +1313,8 @@ def walk_object(cat_pipe, id,
 
         item_it = cat_pipe.get(id)
         type = next(item_it)
+        if not type:
+            raise MissingObject(id.decode('hex'))
         if type not in ('blob', 'commit', 'tree'):
             raise Exception('unexpected repository object type %r' % type)
 
