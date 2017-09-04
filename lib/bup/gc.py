@@ -109,15 +109,14 @@ def find_live_objects(existing_count, cat_pipe, verbosity=0):
             if verbosity:
                 report_live_item(approx_live_count, existing_count,
                                  ref_name, ref_id, item, verbosity)
-            bin_id = item.id.decode('hex')
             if trees_visited is not None and item.type == 'tree':
-                trees_visited.add(bin_id)
+                trees_visited.add(item.oid)
             if verbosity:
-                if not live_objs.exists(bin_id):
-                    live_objs.add(bin_id)
+                if not live_objs.exists(item.oid):
+                    live_objs.add(item.oid)
                     approx_live_count += 1
             else:
-                live_objs.add(bin_id)
+                live_objs.add(item.oid)
     trees_visited = None
     if verbosity:
         log('expecting to retain about %.2f%% unnecessary objects\n'

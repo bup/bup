@@ -1263,7 +1263,7 @@ class MissingObject(KeyError):
         KeyError.__init__(self, 'object %r is missing' % oid.encode('hex'))
 
 
-WalkItem = namedtuple('WalkItem', ['id', 'type', 'mode',
+WalkItem = namedtuple('WalkItem', ['oid', 'type', 'mode',
                                    'path', 'chunk_path', 'data'])
 # The path is the mangled path, and if an item represents a fragment
 # of a chunked file, the chunk_path will be the chunked subtree path
@@ -1290,6 +1290,7 @@ def walk_object(cat_pipe, oidx,
     pending = [(oidx, [], [], None)]
     while len(pending):
         oidx, parent_path, chunk_path, mode = pending.pop()
+        oid = oidx.decode('hex')
         if stop_at and stop_at(oidx):
             continue
 
@@ -1297,7 +1298,7 @@ def walk_object(cat_pipe, oidx,
             # If the object is a "regular file", then it's a leaf in
             # the graph, so we can skip reading the data if the caller
             # hasn't requested it.
-            yield WalkItem(id=oidx, type='blob',
+            yield WalkItem(oid=oid, type='blob',
                            chunk_path=chunk_path, path=parent_path,
                            mode=mode,
                            data=None)
@@ -1319,7 +1320,7 @@ def walk_object(cat_pipe, oidx,
         else:
             data = ''.join(item_it)
 
-        yield WalkItem(id=oidx, type=typ,
+        yield WalkItem(oid=oid, type=typ,
                        chunk_path=chunk_path, path=parent_path,
                        mode=mode,
                        data=(data if include_data else None))
