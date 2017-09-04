@@ -1277,36 +1277,36 @@ WalkItem = namedtuple('WalkItem', ['id', 'type', 'mode',
 #   ...
 
 
-def walk_object(cat_pipe, id,
+def walk_object(cat_pipe, oidx,
                 stop_at=None,
                 include_data=None):
-    """Yield everything reachable from id via cat_pipe as a WalkItem,
-    stopping whenever stop_at(id) returns true.  Throw MissingObject
+    """Yield everything reachable from oidx via cat_pipe as a WalkItem,
+    stopping whenever stop_at(oidx) returns true.  Throw MissingObject
     if a hash encountered is missing from the repository, and don't
     read or return blob content in the data field unless include_data
     is set.
     """
     # Maintain the pending stack on the heap to avoid stack overflow
-    pending = [(id, [], [], None)]
+    pending = [(oidx, [], [], None)]
     while len(pending):
-        id, parent_path, chunk_path, mode = pending.pop()
-        if stop_at and stop_at(id):
+        oidx, parent_path, chunk_path, mode = pending.pop()
+        if stop_at and stop_at(oidx):
             continue
 
         if (not include_data) and mode and stat.S_ISREG(mode):
             # If the object is a "regular file", then it's a leaf in
             # the graph, so we can skip reading the data if the caller
             # hasn't requested it.
-            yield WalkItem(id=id, type='blob',
+            yield WalkItem(id=oidx, type='blob',
                            chunk_path=chunk_path, path=parent_path,
                            mode=mode,
                            data=None)
             continue
 
-        item_it = cat_pipe.get(id)
+        item_it = cat_pipe.get(oidx)
         get_oidx, typ, _ = next(item_it)
         if not get_oidx:
-            raise MissingObject(id.decode('hex'))
+            raise MissingObject(oidx.decode('hex'))
         if typ not in ('blob', 'commit', 'tree'):
             raise Exception('unexpected repository object type %r' % typ)
 
@@ -1319,7 +1319,7 @@ def walk_object(cat_pipe, id,
         else:
             data = ''.join(item_it)
 
-        yield WalkItem(id=id, type=typ,
+        yield WalkItem(id=oidx, type=typ,
                        chunk_path=chunk_path, path=parent_path,
                        mode=mode,
                        data=(data if include_data else None))
