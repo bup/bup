@@ -7,6 +7,7 @@
 
 from errno import EACCES, EINVAL, ENOTTY, ENOSYS, EOPNOTSUPP
 from io import BytesIO
+from time import gmtime, strftime
 import errno, os, sys, stat, time, pwd, grp, socket, struct
 
 from bup import vint, xstat
@@ -722,28 +723,30 @@ class Metadata:
 
     def __repr__(self):
         result = ['<%s instance at %s' % (self.__class__, hex(id(self)))]
-        if self.path:
+        if self.path is not None:
             result += ' path:' + repr(self.path)
-        if self.mode:
+        if self.mode is not None:
             result += ' mode:' + repr(xstat.mode_str(self.mode)
                                       + '(%s)' % hex(self.mode))
-        if self.uid:
+        if self.uid is not None:
             result += ' uid:' + str(self.uid)
-        if self.gid:
+        if self.gid is not None:
             result += ' gid:' + str(self.gid)
-        if self.user:
+        if self.user is not None:
             result += ' user:' + repr(self.user)
-        if self.group:
+        if self.group is not None:
             result += ' group:' + repr(self.group)
-        if self.size:
+        if self.size is not None:
             result += ' size:' + repr(self.size)
         for name, val in (('atime', self.atime),
                           ('mtime', self.mtime),
                           ('ctime', self.ctime)):
-            result += ' %s:%r' \
-                % (name,
-                   time.strftime('%Y-%m-%d %H:%M %z',
-                                 time.gmtime(xstat.fstime_floor_secs(val))))
+            if val is not None:
+                result += ' %s:%r (%d)' \
+                          % (name,
+                             strftime('%Y-%m-%d %H:%M %z',
+                                      gmtime(xstat.fstime_floor_secs(val))),
+                             val)
         result += '>'
         return ''.join(result)
 
@@ -940,7 +943,7 @@ def summary_str(meta, numeric_ids = False, classification = None,
         mode_str = xstat.mode_str(meta.mode)
         symlink_target = meta.symlink_target
         mtime_secs = xstat.fstime_floor_secs(meta.mtime)
-        mtime_str = time.strftime('%Y-%m-%d %H:%M', time.localtime(mtime_secs))
+        mtime_str = strftime('%Y-%m-%d %H:%M', time.localtime(mtime_secs))
         if meta.user and not numeric_ids:
             user_str = meta.user
         elif meta.uid != None:
