@@ -100,7 +100,7 @@ if opt.existing:
 for c in xrange(opt.cycles):
     for n in xrange(opt.number):
         if opt.existing:
-            bin = objit.next()
+            bin = next(objit)
             assert(m.exists(bin))
         else:
             bin = _helpers.random_sha()

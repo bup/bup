@@ -116,7 +116,7 @@ def testpacks():
 
             pi = iter(r)
             for h in sorted(hashes):
-                WVPASSEQ(str(pi.next()).encode('hex'), h.encode('hex'))
+                WVPASSEQ(str(next(pi)).encode('hex'), h.encode('hex'))
 
             WVFAIL(r.find_offset('\0'*20))
 
@@ -437,8 +437,8 @@ def test_cat_pipe():
             git_size = int(exo('git', '--git-dir', bupdir,
                                'cat-file', '-s', 'src'))
             it = git.cp().get('src', size=True)
-            get_type, get_size = it.next()
-            for buf in it.next():
+            get_type, get_size = next(it)
+            for buf in next(it):
                 pass
             WVPASSEQ(get_type, git_type)
             WVPASSEQ(get_size, git_size)

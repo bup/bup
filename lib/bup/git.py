@@ -111,7 +111,7 @@ def parse_commit(content):
 
 def get_commit_items(id, cp):
     commit_it = cp.get(id)
-    assert(commit_it.next() == 'commit')
+    assert(next(commit_it) == 'commit')
     commit_content = ''.join(commit_it)
     return parse_commit(commit_content)
 
@@ -1105,7 +1105,7 @@ class _AbortableIter:
 
     def next(self):
         try:
-            return self.it.next()
+            return next(self.it)
         except StopIteration as e:
             self.done = True
             raise
@@ -1204,7 +1204,7 @@ class CatPipe:
             raise
 
     def _join(self, it):
-        type = it.next()
+        type = next(it)
         if type == 'blob':
             for blob in it:
                 yield blob
@@ -1303,7 +1303,7 @@ def walk_object(cat_pipe, id,
             continue
 
         item_it = cat_pipe.get(id)
-        type = item_it.next()
+        type = next(item_it)
         if type not in ('blob', 'commit', 'tree'):
             raise Exception('unexpected repository object type %r' % type)
 

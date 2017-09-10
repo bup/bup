@@ -21,10 +21,7 @@ class IterHelper:
         self.next()
 
     def next(self):
-        try:
-            self.cur = self.i.next()
-        except StopIteration:
-            self.cur = None
+        self.cur = next(self.i, None)
         return self.cur
 
 
