@@ -4,6 +4,7 @@ from __future__ import absolute_import
 import os, sys
 import stat as pystat
 from bup import _helpers
+from bup.helpers import INO_FIX
 
 try:
     _bup_utimensat = _helpers.bup_utimensat
@@ -107,6 +108,7 @@ class stat_result:
          result.st_atime,
          result.st_mtime,
          result.st_ctime) = st
+        result.st_ino &= INO_FIX
         # Inlined timespec_to_nsecs after profiling
         result.st_atime = result.st_atime[0] * 10**9 + result.st_atime[1]
         result.st_mtime = result.st_mtime[0] * 10**9 + result.st_mtime[1]

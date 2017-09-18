@@ -12,7 +12,7 @@ from bup import metadata, options, git, index, drecurse, hlinkdb
 from bup.drecurse import recursive_dirlist
 from bup.hashsplit import GIT_MODE_TREE, GIT_MODE_FILE
 from bup.helpers import (add_error, handle_ctrl_c, log, parse_excludes, parse_rx_excludes,
-                         progress, qprogress, saved_errors)
+                         progress, qprogress, saved_errors, INO_FIX)
 
 
 class IterHelper:
@@ -129,7 +129,7 @@ def update_index(top, excluded_paths, exclude_rxs, xdev_exceptions):
                 if not stat.S_ISDIR(rig.cur.mode) and rig.cur.nlink > 1:
                     hlinks.del_path(rig.cur.name)
                 if not stat.S_ISDIR(pst.st_mode) and pst.st_nlink > 1:
-                    hlinks.add_path(path, pst.st_dev, pst.st_ino)
+                    hlinks.add_path(path, pst.st_dev, pst.st_ino & INO_FIX)
                 # Clear these so they don't bloat the store -- they're
                 # already in the index (since they vary a lot and they're
                 # fixed length).  If you've noticed "tmax", you might
@@ -172,7 +172,7 @@ def update_index(top, excluded_paths, exclude_rxs, xdev_exceptions):
             meta_ofs = msw.store(meta)
             wi.add(path, pst, meta_ofs, hashgen=fake_hash)
             if not stat.S_ISDIR(pst.st_mode) and pst.st_nlink > 1:
-                hlinks.add_path(path, pst.st_dev, pst.st_ino)
+                hlinks.add_path(path, pst.st_dev, pst.st_ino & INO_FIX)
 
     elapsed = time.time() - index_start
     paths_per_sec = total / elapsed if elapsed else 0
