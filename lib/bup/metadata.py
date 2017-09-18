@@ -889,7 +889,8 @@ class Metadata:
 
 
 def from_path(path, statinfo=None, archive_path=None,
-              save_symlinks=True, hardlink_target=None):
+              save_symlinks=True, hardlink_target=None,
+              no_nonstat_metadata=False):
     result = Metadata()
     result.path = archive_path
     st = statinfo or xstat.lstat(path)
@@ -898,9 +899,10 @@ def from_path(path, statinfo=None, archive_path=None,
     if save_symlinks:
         result._add_symlink_target(path, st)
     result._add_hardlink_target(hardlink_target)
-    result._add_posix1e_acl(path, st)
-    result._add_linux_attr(path, st)
-    result._add_linux_xattr(path, st)
+    if not no_nonstat_metadata:
+        result._add_posix1e_acl(path, st)
+        result._add_linux_attr(path, st)
+        result._add_linux_xattr(path, st)
     return result
 
 

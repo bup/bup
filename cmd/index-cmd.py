@@ -118,7 +118,10 @@ def update_index(top, excluded_paths, exclude_rxs, xdev_exceptions):
             need_repack = False
             if(rig.cur.stale(pst, tstart, check_device=opt.check_device)):
                 try:
-                    meta = metadata.from_path(path, statinfo=pst)
+                    meta = metadata.from_path(
+                        path,
+                        statinfo=pst,
+                        no_nonstat_metadata=opt.no_nonstat_metadata)
                 except (OSError, IOError) as e:
                     add_error(e)
                     rig.next()
@@ -157,7 +160,10 @@ def update_index(top, excluded_paths, exclude_rxs, xdev_exceptions):
             rig.next()
         else:  # new paths
             try:
-                meta = metadata.from_path(path, statinfo=pst)
+                meta = metadata.from_path(
+                    path,
+                    statinfo=pst,
+                    no_nonstat_metadata=opt.no_nonstat_metadata)
             except (OSError, IOError) as e:
                 add_error(e)
                 continue
@@ -215,6 +221,7 @@ clear      clear the default index
 H,hash     print the hash for each object next to its name
 l,long     print more information about each file
 no-check-device don't invalidate an entry if the containing device changes
+no-nonstat-metadata skip indexing metadata beyond stat() (xattrs, ACLs)
 fake-valid mark all index entries as up-to-date even if they aren't
 fake-invalid mark all index entries as invalid
 f,indexfile=  the name of the index file (normally BUP_DIR/bupindex)
