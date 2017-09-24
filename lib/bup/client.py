@@ -86,6 +86,9 @@ class Client:
                 self.sock.connect((self.host, atoi(self.port) or 1982))
                 self.sockw = self.sock.makefile('wb')
                 self.conn = DemuxConn(self.sock.fileno(), self.sockw)
+        self._available_commands = self._get_available_commands()
+        self._require_command('init-dir')
+        self._require_command('set-dir')
         if self.dir:
             self.dir = re.sub(r'[\r\n]', ' ', self.dir)
             if create:
@@ -148,7 +151,39 @@ class Client:
     def _not_busy(self):
         self._busy = None
 
+    def _get_available_commands(self):
+        self.check_busy()
+        self._busy = 'help'
+        conn = self.conn
+        conn.write('help\n')
+        result = set()
+        line = self.conn.readline()
+        if not line == 'Commands:\n':
+            raise ClientError('unexpected help header ' + repr(line))
+        while True:
+            line = self.conn.readline()
+            if line == '\n':
+                break
+            if not line.startswith('    '):
+                raise ClientError('unexpected help line ' + repr(line))
+            cmd = line.strip()
+            if not cmd:
+                raise ClientError('unexpected help line ' + repr(line))
+            result.add(cmd)
+        # FIXME: confusing
+        not_ok = self.check_ok()
+        if not_ok:
+            raise not_ok
+        self._not_busy()
+        return frozenset(result)
+
+    def _require_command(self, name):
+        if name not in self._available_commands:
+            raise ClientError('server does not appear to provide %s command'
+                              % name)
+
     def sync_indexes(self):
+        self._require_command('list-indexes')
         self.check_busy()
         conn = self.conn
         mkdirp(self.cachedir)
@@ -183,6 +218,7 @@ class Client:
         git.auto_midx(self.cachedir)
 
     def sync_index(self, name):
+        self._require_command('send-index')
         #debug1('requesting %r\n' % name)
         self.check_busy()
         mkdirp(self.cachedir)
@@ -240,6 +276,7 @@ class Client:
 
     def new_packwriter(self, compression_level=1,
                        max_pack_size=None, max_pack_objects=None):
+        self._require_command('receive-objects-v2')
         self.check_busy()
         def _set_busy():
             self._busy = 'receive-objects-v2'
@@ -255,6 +292,7 @@ class Client:
                                  max_pack_objects=max_pack_objects)
 
     def read_ref(self, refname):
+        self._require_command('read-ref')
         self.check_busy()
         self.conn.write('read-ref %s\n' % refname)
         r = self.conn.readline().strip()
@@ -266,6 +304,7 @@ class Client:
             return None   # nonexistent ref
 
     def update_ref(self, refname, newval, oldval):
+        self._require_command('update-ref')
         self.check_busy()
         self.conn.write('update-ref %s\n%s\n%s\n' 
                         % (refname, newval.encode('hex'),
@@ -273,6 +312,7 @@ class Client:
         self.check_ok()
 
     def cat(self, id):
+        self._require_command('cat')
         self.check_busy()
         self._busy = 'cat'
         self.conn.write('cat %s\n' % re.sub(r'[\n\r]', '_', id))
