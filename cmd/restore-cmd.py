@@ -15,12 +15,13 @@ from bup.compat import wrap_main
 from bup.helpers import (add_error, chunkyreader, die_if_errors, handle_ctrl_c,
                          log, mkdirp, parse_rx_excludes, progress, qprogress,
                          saved_errors, should_rx_exclude_path, unlink)
-from bup.repo import LocalRepo
+from bup.repo import LocalRepo, RemoteRepo
 
 
 optspec = """
-bup restore [-C outdir] </branch/revision/path/to/dir ...>
+bup restore [-r host:path] [-C outdir] </branch/revision/path/to/dir ...>
 --
+r,remote=   remote repository path
 C,outdir=   change to given outdir before extracting files
 numeric-ids restore numeric IDs (user, group, etc.) rather than names
 exclude-rx= skip paths matching the unanchored regex (may be repeated)
@@ -237,7 +238,7 @@ def main():
         mkdirp(opt.outdir)
         os.chdir(opt.outdir)
 
-    repo = LocalRepo()
+    repo = RemoteRepo(opt.remote) if opt.remote else LocalRepo()
     top = os.getcwd()
     hardlinks = {}
     for path in extra:

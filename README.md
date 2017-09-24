@@ -246,9 +246,15 @@ Using bup
         bup index /etc
         bup save -r SERVERNAME:path/to/remote-bup-dir -n local-etc /etc
 
- - Restore a backup from a remote server.  (FAIL: unfortunately,
-   unlike "bup join", "bup restore" does not yet support remote
-   restores.  See both "bup join" and "Things that are stupid" below.)
+ - Make a remote backup to ~/.bup on SERVER:
+
+        bup index /etc
+        bup save -r SERVER: -n local-etc /etc
+
+ - Restore the remote backup to ./dest:
+
+        bup restore -r SERVER: -C ./dest local-etc/latest/etc
+        ls -l dest/etc
 
  - Defend your backups from death rays (OK fine, more likely from the
    occasional bad disk block).  This writes parity information
@@ -288,11 +294,12 @@ Using bup
  
         GIT_DIR=~/.bup git log local-etc
 	
- - Make a backup on a remote server:
+ - Save a tar archive to a remote server (without tar -z to facilitate
+   deduplication):
    
         tar -cvf - /etc | bup split -r SERVERNAME: -n local-etc -vv
  
- - Try restoring the remote backup tarball:
+ - Restore the archive:
  
         bup join -r SERVERNAME: local-etc | tar -tf -
  	
@@ -429,16 +436,6 @@ Things that are stupid for now but which we'll fix later
 
 Help with any of these problems, or others, is very welcome.  Join the
 mailing list (see below) if you'd like to help.
-
- - 'bup restore' can't pull directly from a remote server.
-
-    So in one sense "save -r" is a dead-end right now.  Obviously you
-    can use "ssh SERVER bup restore -C ./dest..." to create a tree you
-    can transfer elsewhere via rsync/tar/whatever, but that's *lame*.
-
-    Until we fix it, you may be able to mount the remote BUP_DIR via
-    sshfs and then restore "normally", though that hasn't been
-    officially tested.
 
  - 'bup save' and 'bup restore' have immature metadata support.
  

@@ -11,12 +11,22 @@ export BUP_DIR="$tmpdir/bup"
 
 bup() { "$top/bup" "$@"; }
 
+validate-local-and-remote-restore()
+{
+    local src="$1" dest="$2" cmp_src="$3" cmp_dest="$4"
+    force-delete "$dest"
+    WVPASS bup restore -C "$dest" "$src"
+    WVPASS "$top/t/compare-trees" "$cmp_src" "$cmp_dest"
+    force-delete "$dest"
+    WVPASS bup restore -r ":$BUP_DIR" -C "$dest" "$src"
+    WVPASS "$top/t/compare-trees" "$cmp_src" "$cmp_dest"
+}
+
+
 WVPASS cd "$tmpdir"
 
 WVSTART "init"
-
 WVPASS bup init
-
 D=bupdata.tmp
 WVPASS force-delete $D
 WVPASS mkdir $D
@@ -28,6 +38,7 @@ WVPASS touch $D/d/z
 WVPASS touch $D/d/z
 WVPASS bup index $D
 WVPASS bup save -t $D
+
 
 WVSTART "restore"
 WVPASS force-delete buprestore.tmp
@@ -46,6 +57,7 @@ WVPASS echo -n "" | WVPASS bup split -n split_empty_string.tmp
 WVPASS bup restore -C buprestore.tmp split_empty_string.tmp/latest/
 WVPASSEQ "$(cat buprestore.tmp/data)" ""
 
+
 (
     tmp=testrestore.tmp
     WVPASS force-delete $tmp
@@ -59,37 +71,39 @@ WVPASSEQ "$(cat buprestore.tmp/data)" ""
     WVPASS bup save --strip -n foo $tmp/src
 
     WVSTART "restore /foo/latest"
-    WVPASS bup restore -C $tmp/restore /foo/latest
-    WVPASS "$top/t/compare-trees" $tmp/src/ $tmp/restore/latest/
-
-    WVSTART "restore /foo/latest/"
-    WVPASS force-delete "$tmp/restore"
-    WVPASS bup restore -C $tmp/restore /foo/latest/
-    for x in $tmp/src/*; do
-        WVPASS "$top/t/compare-trees" $x/ $tmp/restore/$(basename $x);
-    done
+    validate-local-and-remote-restore \
+        /foo/latest  "$tmp/restore" \
+        "$tmp/src/" "$tmp/restore/latest/"
 
     WVSTART "restore /foo/latest/."
     WVPASS force-delete "$tmp/restore"
-    WVPASS bup restore -C $tmp/restore /foo/latest/.
-    WVPASS "$top/t/compare-trees" $tmp/src/ $tmp/restore/
+    validate-local-and-remote-restore \
+        /foo/latest/.  "$tmp"/restore \
+        "$tmp"/src/ "$tmp"/restore
 
     WVSTART "restore /foo/latest/x"
     WVPASS force-delete "$tmp/restore"
-    WVPASS bup restore -C $tmp/restore /foo/latest/x
-    WVPASS "$top/t/compare-trees" $tmp/src/x/ $tmp/restore/x/
+    validate-local-and-remote-restore \
+        /foo/latest/x  "$tmp"/restore \
+        "$tmp"/src/x/ "$tmp"/restore/x/
 
     WVSTART "restore /foo/latest/x/"
-    WVPASS force-delete "$tmp/restore"
-    WVPASS bup restore -C $tmp/restore /foo/latest/x/
-    for x in $tmp/src/x/*; do
-        WVPASS "$top/t/compare-trees" $x/ $tmp/restore/$(basename $x);
+    WVPASS force-delete "$tmp/restore"  
+    WVPASS bup restore -C "$tmp"/restore /foo/latest/x/
+    for x in "$tmp"/src/x/*; do
+        WVPASS "$top/t/compare-trees" "$x/" "$tmp/restore/$(basename $x)"
+    done
+    WVPASS force-delete "$tmp/restore"  
+    WVPASS bup restore -r ":$BUP_DIR" -C "$tmp"/restore /foo/latest/x/
+    for x in "$tmp"/src/x/*; do
+        WVPASS "$top/t/compare-trees" "$x/" "$tmp/restore/$(basename $x)"
     done
 
     WVSTART "restore /foo/latest/x/."
     WVPASS force-delete "$tmp/restore"
-    WVPASS bup restore -C $tmp/restore /foo/latest/x/.
-    WVPASS "$top/t/compare-trees" $tmp/src/x/ $tmp/restore/
+    validate-local-and-remote-restore \
+        /foo/latest/x/.  "$tmp"/restore \
+        "$tmp"/src/x/ "$tmp"/restore/
 ) || exit $?
 
 
@@ -103,6 +117,7 @@ WVSTART "save (no index)"
     WVFAIL bup save -n nothing /
     WVPASS rm -r "$tmp"
 ) || exit $?
+
 
 WVSTART "save disjoint top-level directories"
 (
@@ -138,4 +153,6 @@ WVSTART "save disjoint top-level directories"
     WVPASSEQ "$actual" "$expected"
 ) || exit $?
 
+
+WVPASS cd "$top"
 WVPASS rm -rf "$tmpdir"
