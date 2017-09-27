@@ -123,8 +123,8 @@ def stat(path):
     return stat_result.from_xstat_rep(_helpers.stat(path))
 
 
-def fstat(path):
-    return stat_result.from_xstat_rep(_helpers.fstat(path))
+def fstat(fd):
+    return stat_result.from_xstat_rep(_helpers.fstat(fd))
 
 
 def lstat(path):
