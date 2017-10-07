@@ -1,45 +1,41 @@
 """Common code for listing files from a bup repository."""
 
-import copy, os.path, stat, sys, xstat
+from __future__ import print_function
+from itertools import chain
+from stat import S_ISDIR, S_ISLNK
+import copy, locale, os.path, stat, sys, xstat
 
-from bup import metadata, options, vfs
-from helpers import columnate, istty1, log
+from bup import metadata, options, vfs2 as vfs
+from bup.repo import LocalRepo
+from helpers import columnate, istty1, last, log
 
 
-def node_info(n, name,
+def item_info(item, name,
               show_hash = False,
               long_fmt = False,
               classification = None,
               numeric_ids = False,
               human_readable = False):
-    """Return a string containing the information to display for the node
-    n.  Classification may be "all", "type", or None."""
+    """Return a string containing the information to display for the VFS
+    item.  Classification may be "all", "type", or None.
+
+    """
     result = ''
-    if show_hash:
-        result += "%s " % n.hash.encode('hex')
+    if show_hash and hasattr(item, 'oid'):
+        result += '%s ' % item.oid.encode('hex')
     if long_fmt:
-        meta = copy.copy(n.metadata())
-        if meta:
-            meta.path = name
-            meta.size = n.size()
-        else:
-            # Fake it -- summary_str() is designed to handle a fake.
-            meta = metadata.Metadata()
-            meta.size = n.size()
-            meta.mode = n.mode
-            meta.path = name
-            meta.atime, meta.mtime, meta.ctime = n.atime, n.mtime, n.ctime
-            if stat.S_ISLNK(meta.mode):
-                meta.symlink_target = n.readlink()
+        meta = item.meta.copy()
+        meta.path = name
+        # FIXME: need some way to track fake vs real meta items?
         result += metadata.summary_str(meta,
-                                       numeric_ids = numeric_ids,
-                                       classification = classification,
-                                       human_readable = human_readable)
+                                       numeric_ids=numeric_ids,
+                                       classification=classification,
+                                       human_readable=human_readable)
     else:
         result += name
         if classification:
-            mode = n.metadata() and n.metadata().mode or n.mode
-            result += xstat.classification_str(mode, classification == 'all')
+            result += xstat.classification_str(item.meta.mode,
+                                               classification == 'all')
     return result
 
 
@@ -57,7 +53,7 @@ human-readable    print human readable file sizes (i.e. 3.9K, 4.7M)
 n,numeric-ids list numeric IDs (user, group, etc.) rather than names
 """
 
-def do_ls(args, pwd, default='.', onabort=None, spec_prefix=''):
+def do_ls(args, default='.', onabort=None, spec_prefix=''):
     """Output a listing of a file or directory in the bup repository.
 
     When a long listing is not requested and stdout is attached to a
@@ -86,47 +82,60 @@ def do_ls(args, pwd, default='.', onabort=None, spec_prefix=''):
         elif option in ('-A', '--almost-all'):
             show_hidden = 'almost'
 
-    L = []
-    def output_node_info(node, name):
-        info = node_info(node, name,
+    def item_line(item, name):
+        return item_info(item, name,
                          show_hash = opt.hash,
                          long_fmt = opt.l,
                          classification = classification,
                          numeric_ids = opt.numeric_ids,
                          human_readable = opt.human_readable)
-        if not opt.l and istty1:
-            L.append(info)
-        else:
-            print info
 
+    repo = LocalRepo()
     ret = 0
+    pending = []
     for path in (extra or [default]):
         try:
             if opt.directory:
-                n = pwd.lresolve(path)
+                resolved = vfs.lresolve(repo, path)
             else:
-                n = pwd.try_resolve(path)
+                # FIXME: deal with invalid symlinks i.e. old vfs try_resolve
+                resolved = vfs.resolve(repo, path)
 
-            if not opt.directory and stat.S_ISDIR(n.mode):
+            leaf_name, leaf_item = resolved[-1]
+            if not leaf_item:
+                log('error: cannot access %r in %r\n'
+                    % ('/'.join(name for name, item in resolved),
+                       path))
+                ret = 1
+                continue
+            if not opt.directory and S_ISDIR(vfs.item_mode(leaf_item)):
+                items = vfs.contents(repo, leaf_item)
                 if show_hidden == 'all':
-                    output_node_info(n, '.')
                     # Match non-bup "ls -a ... /".
-                    if n.parent:
-                        output_node_info(n.parent, '..')
-                    else:
-                        output_node_info(n, '..')
-                for sub in n:
-                    name = sub.name
-                    if show_hidden in ('almost', 'all') \
-                       or not len(name)>1 or not name.startswith('.'):
-                        output_node_info(sub, name)
+                    parent = resolved[-2] if len(resolved) > 1 else resolved[0]
+                    items = chain(items, (('..', parent[1]),))
+
+                items = ((x[0], vfs.augment_item_meta(repo, x[1],
+                                                      include_size=True))
+                         for x in items)
+                for sub_name, sub_item in sorted(items, key=lambda x: x[0]):
+                    if show_hidden != 'all' and sub_name == '.':
+                        continue
+                    if sub_name.startswith('.') and \
+                       show_hidden not in ('almost', 'all'):
+                        continue
+                    line = item_line(sub_item, sub_name)
+                    pending.append(line) if not opt.l and istty1 else print(line)
             else:
-                output_node_info(n, os.path.normpath(path))
-        except vfs.NodeError as e:
-            log('error: %s\n' % e)
+                leaf_item = vfs.augment_item_meta(repo, leaf_item,
+                                                  include_size=True)
+                line = item_line(leaf_item, os.path.normpath(path))
+                pending.append(line) if not opt.l and istty1 else print(line)
+        except vfs.IOError as ex:
+            log('bup: %s\n' % ex)
             ret = 1
 
-    if L:
-        sys.stdout.write(columnate(L, ''))
+    if pending:
+        sys.stdout.write(columnate(pending, ''))
 
     return ret

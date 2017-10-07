@@ -39,23 +39,19 @@ WVSTART "ls (short)"
 
 WVPASSEQ "$(WVPASS bup ls /)" "src"
 
-WVPASSEQ "$(WVPASS bup ls -A /)" ".commit
-.tag
+WVPASSEQ "$(WVPASS bup ls -A /)" ".tag
 src"
 
-WVPASSEQ "$(WVPASS bup ls -AF /)" ".commit/
-.tag/
+WVPASSEQ "$(WVPASS bup ls -AF /)" ".tag/
 src/"
 
 WVPASSEQ "$(WVPASS bup ls -a /)" ".
 ..
-.commit
 .tag
 src"
 
 WVPASSEQ "$(WVPASS bup ls -aF /)" "./
 ../
-.commit/
 .tag/
 src/"
 
@@ -105,31 +101,27 @@ WVPASSEQ "$(WVPASS bup ls -d src/latest)" "src/latest"
 WVSTART "ls (long)"
 
 WVPASSEQ "$(WVPASS bup ls -l / | tr -s ' ' ' ')" \
-"d--------- ?/? 0 1970-01-01 00:00 src"
+"drwxr-xr-x 0/0 0 1977-09-05 12:56 src"
 
 WVPASSEQ "$(WVPASS bup ls -lA / | tr -s ' ' ' ')" \
-"d--------- ?/? 0 1970-01-01 00:00 .commit
-d--------- ?/? 0 1970-01-01 00:00 .tag
-d--------- ?/? 0 1970-01-01 00:00 src"
+"drwxr-xr-x 0/0 0 1970-01-01 00:00 .tag
+drwxr-xr-x 0/0 0 1977-09-05 12:56 src"
 
 WVPASSEQ "$(WVPASS bup ls -lAF / | tr -s ' ' ' ')" \
-"d--------- ?/? 0 1970-01-01 00:00 .commit/
-d--------- ?/? 0 1970-01-01 00:00 .tag/
-d--------- ?/? 0 1970-01-01 00:00 src/"
+"drwxr-xr-x 0/0 0 1970-01-01 00:00 .tag/
+drwxr-xr-x 0/0 0 1977-09-05 12:56 src/"
 
 WVPASSEQ "$(WVPASS bup ls -la / | tr -s ' ' ' ')" \
-"d--------- ?/? 0 1970-01-01 00:00 .
-d--------- ?/? 0 1970-01-01 00:00 ..
-d--------- ?/? 0 1970-01-01 00:00 .commit
-d--------- ?/? 0 1970-01-01 00:00 .tag
-d--------- ?/? 0 1970-01-01 00:00 src"
+"drwxr-xr-x 0/0 0 1970-01-01 00:00 .
+drwxr-xr-x 0/0 0 1970-01-01 00:00 ..
+drwxr-xr-x 0/0 0 1970-01-01 00:00 .tag
+drwxr-xr-x 0/0 0 1977-09-05 12:56 src"
 
 WVPASSEQ "$(WVPASS bup ls -laF / | tr -s ' ' ' ')" \
-"d--------- ?/? 0 1970-01-01 00:00 ./
-d--------- ?/? 0 1970-01-01 00:00 ../
-d--------- ?/? 0 1970-01-01 00:00 .commit/
-d--------- ?/? 0 1970-01-01 00:00 .tag/
-d--------- ?/? 0 1970-01-01 00:00 src/"
+"drwxr-xr-x 0/0 0 1970-01-01 00:00 ./
+drwxr-xr-x 0/0 0 1970-01-01 00:00 ../
+drwxr-xr-x 0/0 0 1970-01-01 00:00 .tag/
+drwxr-xr-x 0/0 0 1977-09-05 12:56 src/"
 
 symlink_mode="$(WVPASS ls -l src/symlink | cut -b -10)" || exit $?
 socket_mode="$(WVPASS ls -l src/socket | cut -b -10)" || exit $?
@@ -139,6 +131,8 @@ symlink_bup_info="$(WVPASS bup ls -l src/latest | grep symlink)" \
 symlink_date="$(WVPASS echo "$symlink_bup_info" \
   | WVPASS perl -ne 'm/.*? (\d+) (\d\d\d\d-\d\d-\d\d \d\d:\d\d)/ and print $2')" \
     || exit $?
+
+test "$symlink_date" || exit 1
 
 if test "$(uname -s)" != NetBSD; then
     symlink_size="$(WVPASS bup-python -c "import os
@@ -165,7 +159,7 @@ $symlink_mode $user/$group $symlink_size $symlink_date symlink -> file"
 
 WVPASSEQ "$(bup ls -la src/latest | tr -s ' ' ' ')" \
 "drwx------ $user/$group 0 2009-10-03 23:48 .
-d--------- ?/? 0 1970-01-01 00:00 ..
+drwxr-xr-x 0/0 0 1977-09-05 12:56 ..
 -rw------- $user/$group 0 2009-10-03 23:48 .dotfile
 -rwx------ $user/$group 0 2009-10-03 23:48 executable
 prw------- $user/$group 0 2009-10-03 23:48 fifo
@@ -202,14 +196,14 @@ prw------- $uid/$gid 0 2009-10-03 23:48 fifo
 $socket_mode $uid/$gid 0 2009-10-03 23:48 socket
 $symlink_mode $uid/$gid $symlink_size $symlink_date symlink -> file"
 
-WVPASSEQ "$(bup ls -ld "src/latest/" | tr -s ' ' ' ')" \
+WVPASSEQ "$(bup ls -ld "src/latest" | tr -s ' ' ' ')" \
 "drwx------ $user/$group 0 2009-10-03 23:48 src/latest"
 
 
 WVSTART "ls (backup set - long)"
-WVPASSEQ "$(bup ls -l src | cut -d' ' -f 1-2)" \
-"l--------- ?/?
-l--------- ?/?"
+WVPASSEQ "$(bup ls -l --numeric-ids src | cut -d' ' -f 1-2)" \
+"drwxr-xr-x 0/0
+drwxr-xr-x 0/0"
 
 
 WVSTART "ls (dates TZ != UTC)"
