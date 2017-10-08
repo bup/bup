@@ -154,7 +154,7 @@ class _FileReader(object):
         self._repo = repo
         self._size = known_size
 
-    def _compute_size():
+    def _compute_size(self):
         if not self._size:
             self._size = _normal_or_chunked_file_size(self._repo, self.oid)
         return self._size
