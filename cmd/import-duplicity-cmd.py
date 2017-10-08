@@ -12,7 +12,7 @@ from time import strftime, strptime
 import sys
 import tempfile
 
-from bup import git, options, vfs
+from bup import git, options
 from bup.helpers import handle_ctrl_c, log, readpipe, saved_errors, unlink
 import bup.path
 
@@ -61,7 +61,6 @@ source_url, save_name = extra
 bup = bup.path.exe()
 
 git.check_repo_or_die()
-top = vfs.RefList(None)
 
 tmpdir = tempfile.mkdtemp(prefix='bup-import-dup-')
 try:
