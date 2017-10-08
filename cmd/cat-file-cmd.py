@@ -7,8 +7,10 @@ exec "$bup_python" "$0" ${1+"$@"}
 
 import re, stat, sys
 
-from bup import options, git, vfs
+from bup import options, git
+from bup import vfs2 as vfs
 from bup.helpers import chunkyreader, handle_ctrl_c, log, saved_errors
+from bup.repo import LocalRepo
 
 optspec = """
 bup cat-file [--meta|--bupm] /branch/revision/[path]
@@ -23,7 +25,6 @@ o = options.Options(optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
 
 git.check_repo_or_die()
-top = vfs.RefList(None)
 
 if not extra:
     o.fatal('must specify a target')
@@ -37,30 +38,31 @@ target = extra[0]
 if not re.match(r'/*[^/]+/[^/]+', target):
     o.fatal("path %r doesn't include a branch and revision" % target)
 
-try:
-    n = top.lresolve(target)
-except vfs.NodeError as e:
-    o.fatal(e)
+repo = LocalRepo()
+resolved = vfs.lresolve(repo, target)
+leaf_name, leaf_item = resolved[-1]
+if not leaf_item:
+    log('error: cannot access %r in %r\n'
+        % ('/'.join(name for name, item in resolved), path))
+    sys.exit(1)
 
-if isinstance(n, vfs.FakeSymlink):
-    # Source is actually /foo/what, i.e. a top-level commit
-    # like /foo/latest, which is a symlink to ../.commit/SHA.
-    # So dereference it.
-    target = n.dereference()
+mode = vfs.item_mode(leaf_item)
 
 if opt.bupm:
-    if not stat.S_ISDIR(n.mode):
+    if not stat.S_ISDIR(mode):
         o.fatal('%r is not a directory' % target)
-    mfile = n.metadata_file() # VFS file -- cannot close().
-    if mfile:
-        meta_stream = mfile.open()
-        sys.stdout.write(meta_stream.read())
+    _, bupm_oid = vfs.tree_data_and_bupm(repo, leaf_item.oid)
+    if bupm_oid:
+        with vfs.tree_data_reader(repo, bupm_oid) as meta_stream:
+            sys.stdout.write(meta_stream.read())
 elif opt.meta:
-    sys.stdout.write(n.metadata().encode())
+    augmented = vfs.augment_item_meta(repo, leaf_item, include_size=True)
+    sys.stdout.write(augmented.meta.encode())
 else:
-    if stat.S_ISREG(n.mode):
-        for b in chunkyreader(n.open()):
-            sys.stdout.write(b)
+    if stat.S_ISREG(mode):
+        with vfs.fopen(repo, leaf_item) as f:
+            for b in chunkyreader(f):
+                sys.stdout.write(b)
     else:
         o.fatal('%r is not a plain file' % target)
 
