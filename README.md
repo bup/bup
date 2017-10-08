@@ -251,6 +251,10 @@ Using bup
         bup index /etc
         bup save -r SERVER: -n local-etc /etc
 
+ - See what saves are available in ~/.bup on SERVER:
+
+        bup ls -r SERVER:
+
  - Restore the remote backup to ./dest:
 
         bup restore -r SERVER: -C ./dest local-etc/latest/etc

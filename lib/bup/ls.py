@@ -6,7 +6,7 @@ from stat import S_ISDIR, S_ISLNK
 import copy, locale, os.path, stat, sys, xstat
 
 from bup import metadata, options, vfs2 as vfs
-from bup.repo import LocalRepo
+from bup.repo import LocalRepo, RemoteRepo
 from helpers import columnate, istty1, last, log
 
 def item_hash(item, tree_for_commit):
@@ -51,8 +51,9 @@ def item_info(item, name,
 
 
 optspec = """
-%sls [-a] [path...]
+%sls [-r host:path] [-l] [-d] [-F] [-a] [-A] [-s] [-n] [path...]
 --
+r,remote=   remote repository path
 s,hash   show hash for each file
 commit-hash show commit hash instead of tree for commits (implies -s)
 a,all    show hidden files
@@ -106,7 +107,7 @@ def do_ls(args, default='.', onabort=None, spec_prefix=''):
                          numeric_ids = opt.numeric_ids,
                          human_readable = opt.human_readable)
 
-    repo = LocalRepo()
+    repo = RemoteRepo(opt.remote) if opt.remote else LocalRepo()
     ret = 0
     pending = []
     for path in (extra or [default]):

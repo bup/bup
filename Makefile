@@ -165,7 +165,8 @@ cmdline_tests := \
   t/test-fsck.sh \
   t/test-index-clear.sh \
   t/test-index-check-device.sh \
-  t/test-ls.sh \
+  t/test-ls \
+  t/test-ls-remote \
   t/test-tz.sh \
   t/test-meta.sh \
   t/test-on.sh \
