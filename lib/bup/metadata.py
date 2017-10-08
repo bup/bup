@@ -765,7 +765,7 @@ class Metadata:
             result += ' path:' + repr(self.path)
         if self.mode is not None:
             result += ' mode:' + repr(xstat.mode_str(self.mode)
-                                      + '(%s)' % hex(self.mode))
+                                      + '(%s)' % oct(self.mode))
         if self.uid is not None:
             result += ' uid:' + str(self.uid)
         if self.gid is not None:
