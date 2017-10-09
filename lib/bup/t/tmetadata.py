@@ -3,8 +3,10 @@ import errno, glob, grp, pwd, stat, tempfile, subprocess
 
 from wvtest import *
 
-from bup import git, metadata, vfs
+from bup import git, metadata
+from bup import vfs2 as vfs
 from bup.helpers import clear_errors, detect_fakeroot, is_superuser, resolve_parent
+from bup.repo import LocalRepo
 from bup.xstat import utime, lutime
 from buptest import no_lingering_errors, test_tempdir
 import bup.helpers as helpers
@@ -141,19 +143,23 @@ def test_metadata_method():
             ex(bup_path, '-d', bup_dir, 'index', '-v', data_path)
             ex(bup_path, '-d', bup_dir, 'save', '-tvvn', 'test', data_path)
             git.check_repo_or_die(bup_dir)
-            top = vfs.RefList(None)
-            n = top.lresolve('/test/latest' + resolve_parent(data_path))
-            m = n.metadata()
+            repo = LocalRepo()
+            resolved = vfs.lresolve(repo,
+                                    '/test/latest' + resolve_parent(data_path))
+            leaf_name, leaf_item = resolved[-1]
+            m = leaf_item.meta
             WVPASS(m.mtime == test_time2)
-            WVPASS(len(n.subs()) == 2)
-            WVPASS(n.name == 'foo')
-            WVPASS(set([x.name for x in n.subs()]) == set(['file', 'symlink']))
-            for sub in n:
-                if sub.name == 'file':
-                    m = sub.metadata()
+            WVPASS(leaf_name == 'foo')
+            contents = tuple(vfs.contents(repo, leaf_item))
+            WVPASS(len(contents) == 3)
+            WVPASSEQ(frozenset(name for name, item in contents),
+                     frozenset(('.', 'file', 'symlink')))
+            for name, item in contents:
+                if name == 'file':
+                    m = item.meta
                     WVPASS(m.mtime == test_time1)
-                elif sub.name == 'symlink':
-                    m = sub.metadata()
+                elif name == 'symlink':
+                    m = item.meta
                     WVPASSEQ(m.symlink_target, 'file')
                     WVPASSEQ(m.size, 4)
                     WVPASSEQ(m.mtime, 0)
