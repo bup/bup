@@ -8,7 +8,7 @@ bup-restore - extract files from a backup set
 
 # SYNOPSIS
 
-bup restore [\--outdir=*outdir*] [\--exclude-rx *pattern*]
+bup restore [-r *host*:[*path*]] [\--outdir=*outdir*] [\--exclude-rx *pattern*]
 [\--exclude-rx-from *filename*] [-v] [-q] \<paths...\>
 
 # DESCRIPTION
@@ -87,6 +87,14 @@ subdirectory, and then move the resulting tree to its final position.
 See the EXAMPLES section for a demonstration.
 
 # OPTIONS
+
+-r, \--remote=*host*:*path*
+:   restore the backup set from the given remote server.  If
+    *path* is omitted, uses the default path on the remote
+    server (you still need to include the ':').  The connection to the
+    remote server is made with SSH.  If you'd like to specify which port, user
+    or private key to use for the SSH connection, we recommend you use the
+    `~/.ssh/config` file.
 
 -C, \--outdir=*outdir*
 :   create and change to directory *outdir* before
