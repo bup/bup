@@ -427,7 +427,7 @@ class Client:
                     raise ClientError('unexpected EOF')
                 if not line.startswith('commit '):
                     raise ClientError('unexpected line ' + repr(line))
-                yield line[7:], parse(conn)
+                yield line[7:].strip(), parse(conn)
         # FIXME: confusing
         not_ok = self.check_ok()
         if not_ok:
