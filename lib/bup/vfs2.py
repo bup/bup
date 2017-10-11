@@ -527,11 +527,12 @@ def revlist_items(repo, oid, names):
                                  oid=tree_oidx.decode('hex'))
         return
 
-    last_name = max(names)
+    # Revs are in reverse chronological order by default
+    last_name = min(names)
     for commit, (tree_oidx, utc) in revs:
         assert len(tree_oidx) == 40
         name = strftime('%Y-%m-%d-%H%M%S', localtime(utc))
-        if name > last_name:
+        if name < last_name:
             break
         if not name in names:
             continue
