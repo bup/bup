@@ -264,8 +264,9 @@ def test_resolve():
             wvpasseq((('', vfs._root), ('test', test_revlist)), res)
             ignore, test_item = res[1]
             test_content = frozenset(vfs.contents(repo, test_item))
-            expected_latest_item = vfs.Item(meta=S_IFDIR | 0o755,
-                                                    oid=tip_tree_oid)
+            expected_latest_item = vfs.Commit(meta=S_IFDIR | 0o755,
+                                              oid=tip_tree_oid,
+                                              coid=tip_oid)
             wvpasseq(frozenset([('.', test_revlist),
                                 (save_time_str, expected_latest_item),
                                 ('latest', expected_latest_item)]),
@@ -274,8 +275,9 @@ def test_resolve():
             wvstart('resolve: /test/latest')
             res = resolve(repo, '/test/latest')
             wvpasseq(3, len(res))
-            expected_latest_item_w_meta = vfs.Item(meta=tip_tree['.'].meta,
-                                                   oid=tip_tree_oid)
+            expected_latest_item_w_meta = vfs.Commit(meta=tip_tree['.'].meta,
+                                                     oid=tip_tree_oid,
+                                                     coid=tip_oid)
             expected = (('', vfs._root),
                         ('test', test_revlist),
                         ('latest', expected_latest_item_w_meta))

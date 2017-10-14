@@ -36,10 +36,12 @@ value for any directories other than '.' will be a default directory
 mode, not a Metadata object.  This is because the actual metadata for
 a directory is stored inside the directory.
 
-At the moment tagged commits (e.g. /.tag/some-commit) are represented
-as an item that is indistinguishable from a normal directory, so you
-cannot assume that the oid of an item satisfying
-S_ISDIR(item_mode(item)) refers to a tree.
+Commit items represent commits (e.g. /.tag/some-commit or
+/foo/latest), and for most purposes, they appear as the underlying
+tree.  S_ISDIR(item_mode(item)) will return true for both tree Items
+and Commits and the commit's oid is the tree hash.  The commit hash
+will be item.coid, and nominal_oid(item) will return coid for commits,
+oid for everything else.
 
 """
 
@@ -211,10 +213,23 @@ Chunky = namedtuple('Chunky', ('meta', 'oid'))
 Root = namedtuple('Root', ('meta'))
 Tags = namedtuple('Tags', ('meta'))
 RevList = namedtuple('RevList', ('meta', 'oid'))
-item_types = (Item, Chunky, Root, Tags, RevList)
+Commit = namedtuple('Commit', ('meta', 'oid', 'coid'))
+
+item_types = frozenset((Item, Chunky, Root, Tags, RevList, Commit))
+real_tree_types = frozenset((Item, Commit))
 
 _root = Root(meta=default_dir_mode)
 _tags = Tags(meta=default_dir_mode)
+
+
+def nominal_oid(item):
+    """If the item is a Commit, return its commit oid, otherwise return
+    the item's oid, if it has one.
+
+    """
+    if isinstance(item, Commit):
+        return item.coid
+    return getattr(item, 'oid', None)
 
 def copy_item(item):
     """Return a completely independent copy of item, such that
@@ -520,8 +535,11 @@ def _name_for_rev(rev):
 
 def _item_for_rev(rev):
     commit, (tree_oidx, utc) = rev
+    assert len(commit) == 40
     assert len(tree_oidx) == 40
-    return Item(meta=default_dir_mode, oid=tree_oidx.decode('hex'))
+    return Commit(meta=default_dir_mode,
+                  oid=tree_oidx.decode('hex'),
+                  coid=commit.decode('hex'))
 
 def revlist_items(repo, oid, names):
     assert len(oid) == 20
@@ -534,22 +552,23 @@ def revlist_items(repo, oid, names):
         yield '.', RevList(oid=oid, meta=_commit_meta_from_oidx(repo, oidx))
     
     revs = repo.rev_list((oidx,), format='%T %at', parse=parse_rev_auth_secs)
-    first_rev = next(revs, None)
-    revs = chain((first_rev,), revs)
     rev_items, rev_names = tee(revs)
     revs = None  # Don't disturb the tees
     rev_names = _reverse_suffix_duplicates(_name_for_rev(x) for x in rev_names)
     rev_items = (_item_for_rev(x) for x in rev_items)
+    first_commit = None
 
     if not names:
         for item in rev_items:
+            first_commit = first_commit or item
             yield next(rev_names), item
-        yield 'latest', _item_for_rev(first_rev)
+        yield 'latest', first_commit
         return
 
     # Revs are in reverse chronological order by default
     last_name = min(names)
     for item in rev_items:
+        first_commit = first_commit or item
         name = next(rev_names)  # Might have -N dup suffix
         if name < last_name:
             break
@@ -562,7 +581,7 @@ def revlist_items(repo, oid, names):
     for _ in rev_names: pass
         
     if 'latest' in names:
-        yield 'latest', _item_for_rev(first_rev)
+        yield 'latest', first_commit
 
 def tags_items(repo, names):
     global _tags
@@ -633,10 +652,12 @@ def contents(repo, item, names=None, want_meta=True):
 
     """
     # Q: are we comfortable promising '.' first when no names?
+    global _root, _tags
     assert repo
     assert S_ISDIR(item_mode(item))
     item_t = type(item)
-    if item_t == Item:
+
+    if item_t in real_tree_types:
         it = repo.cat(item.oid.encode('hex'))
         _, obj_type, size = next(it)
         data = ''.join(it)
@@ -687,7 +708,6 @@ def _resolve_path(repo, path, parent=None, want_meta=True, deref=False):
     if not future:  # e.g. if path was effectively '.'
         return tuple(past)
     hops = 0
-    result = None
     while True:
         segment = future.pop()
         if segment == '..':
@@ -715,7 +735,7 @@ def _resolve_path(repo, path, parent=None, want_meta=True, deref=False):
                     past.append((segment, item),)
                     return tuple(past)
                 # It's treeish
-                if want_meta and type(item) == Item:
+                if want_meta and type(item) in real_tree_types:
                     dir_meta = _find_dir_item_metadata(repo, item)
                     if dir_meta:
                         item = item._replace(meta=dir_meta)
