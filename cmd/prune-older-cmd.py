@@ -15,6 +15,7 @@ import re, sys
 from bup import git, options
 from bup.gc import bup_gc
 from bup.helpers import die_if_errors, log, partition, period_as_secs
+from bup.repo import LocalRepo
 from bup.rm import bup_rm
 
 
@@ -149,7 +150,8 @@ for branch, branch_id in branches(roots):
 
 if not opt.pretend:
     die_if_errors()
-    bup_rm(removals, compression=opt.compress, verbosity=opt.verbose)
+    repo = LocalRepo()
+    bup_rm(repo, removals, compression=opt.compress, verbosity=opt.verbose)
     if opt.gc:
         die_if_errors()
         bup_gc(threshold=opt.gc_threshold,

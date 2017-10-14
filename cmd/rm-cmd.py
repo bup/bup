@@ -10,6 +10,7 @@ import sys
 from bup.git import check_repo_or_die
 from bup.options import Options
 from bup.helpers import die_if_errors, handle_ctrl_c, log
+from bup.repo import LocalRepo
 from bup.rm import bup_rm
 
 optspec = """
@@ -32,5 +33,6 @@ if len(extra) < 1:
     o.fatal('no paths specified')
 
 check_repo_or_die()
-bup_rm(extra, compression=opt.compress, verbosity=opt.verbose)
+repo = LocalRepo()
+bup_rm(repo, extra, compression=opt.compress, verbosity=opt.verbose)
 die_if_errors()
