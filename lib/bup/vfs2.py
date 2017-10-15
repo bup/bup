@@ -46,7 +46,7 @@ S_ISDIR(item_mode(item)) refers to a tree.
 from __future__ import print_function
 from collections import namedtuple
 from errno import ELOOP, ENOENT, ENOTDIR
-from itertools import chain, dropwhile, izip
+from itertools import chain, dropwhile, groupby, izip, tee
 from stat import S_IFDIR, S_IFLNK, S_IFREG, S_ISDIR, S_ISLNK, S_ISREG
 from time import localtime, strftime
 import exceptions, re, sys
@@ -494,13 +494,37 @@ def tree_items_with_meta(repo, oid, tree_data, names):
     for item in tree_items(oid, tree_data, names, bupm):
         yield item
 
-_save_name_rx = re.compile(r'^\d\d\d\d-\d\d-\d\d-\d{6}$')
+_save_name_rx = re.compile(r'^\d\d\d\d-\d\d-\d\d-\d{6}(-\d+)?$')
         
+def _reverse_suffix_duplicates(strs):
+    """Yields the elements of strs, with any runs of duplicate values
+    suffixed with -N suffixes, where the zero padded integer N
+    decreases to 0 by 1 (e.g. 10, 09, ..., 00).
+
+    """
+    for name, duplicates in groupby(strs):
+        ndup = len(tuple(duplicates))
+        if ndup == 1:
+            yield name
+        else:
+            ndig = len(str(ndup - 1))
+            fmt = '%s-' + '%0' + str(ndig) + 'd'
+            for i in xrange(ndup - 1, -1, -1):
+                yield fmt % (name, i)
+
+def _name_for_rev(rev):
+    commit, (tree_oidx, utc) = rev
+    assert len(commit) == 40
+    return strftime('%Y-%m-%d-%H%M%S', localtime(utc))
+
+def _item_for_rev(rev):
+    commit, (tree_oidx, utc) = rev
+    assert len(tree_oidx) == 40
+    return Item(meta=default_dir_mode, oid=tree_oidx.decode('hex'))
+
 def revlist_items(repo, oid, names):
     assert len(oid) == 20
     oidx = oid.encode('hex')
-
-    # There might well be duplicate names in this dir (time resolution is secs)
     names = frozenset(name for name in (names or tuple()) \
                       if _save_name_rx.match(name) or name in ('.', 'latest'))
 
@@ -511,36 +535,33 @@ def revlist_items(repo, oid, names):
     revs = repo.rev_list((oidx,), format='%T %at', parse=parse_rev_auth_secs)
     first_rev = next(revs, None)
     revs = chain((first_rev,), revs)
+    rev_items, rev_names = tee(revs)
+    revs = None  # Don't disturb the tees
+    rev_names = _reverse_suffix_duplicates(_name_for_rev(x) for x in rev_names)
+    rev_items = (_item_for_rev(x) for x in rev_items)
 
     if not names:
-        for commit, (tree_oidx, utc) in revs:
-            assert len(tree_oidx) == 40
-            name = strftime('%Y-%m-%d-%H%M%S', localtime(utc))
-            yield name, Item(meta=default_dir_mode, oid=tree_oidx.decode('hex'))
-        if first_rev:
-            commit, (tree_oidx, utc) = first_rev
-            yield 'latest', Item(meta=default_dir_mode,
-                                 oid=tree_oidx.decode('hex'))
+        for item in rev_items:
+            yield next(rev_names), item
+        yield 'latest', _item_for_rev(first_rev)
         return
 
     # Revs are in reverse chronological order by default
     last_name = min(names)
-    for commit, (tree_oidx, utc) in revs:
-        assert len(tree_oidx) == 40
-        name = strftime('%Y-%m-%d-%H%M%S', localtime(utc))
+    for item in rev_items:
+        name = next(rev_names)  # Might have -N dup suffix
         if name < last_name:
             break
         if not name in names:
             continue
-        yield name, Item(meta=default_dir_mode, oid=tree_oidx.decode('hex'))
+        yield name, item
 
     # FIXME: need real short circuit...
-    for _ in revs:
-        pass
+    for _ in rev_items: pass
+    for _ in rev_names: pass
         
-    if first_rev and 'latest' in names:
-        commit, (tree_oidx, utc) = first_rev
-        yield 'latest', Item(meta=default_dir_mode, oid=tree_oidx.decode('hex'))
+    if 'latest' in names:
+        yield 'latest', _item_for_rev(first_rev)
 
 def tags_items(repo, names):
     global _tags
@@ -600,10 +621,6 @@ def contents(repo, item, names=None, want_meta=True):
     unspecified order.  If there are no names, then yields (name,
     item) for all items, including, a first item named '.'
     representing the container itself.
-
-    Any given name might produce more than one result.  For example,
-    saves to a branch that happen within the same second currently end
-    up with the same VFS timestmap, i.e. /foo/2017-09-10-150833/.
 
     Note that want_meta is advisory.  For any given item, item.meta
     might be a Metadata instance or a mode, and if the former,

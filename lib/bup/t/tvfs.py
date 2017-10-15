@@ -130,6 +130,18 @@ def test_item_mode():
         wvpasseq(meta.mode, vfs.item_mode(vfs.Item(oid=oid, meta=meta)))
 
 @wvtest
+def test_reverse_suffix_duplicates():
+    suffix = lambda x: tuple(vfs._reverse_suffix_duplicates(x))
+    wvpasseq(('x',), suffix(('x',)))
+    wvpasseq(('x', 'y'), suffix(('x', 'y')))
+    wvpasseq(('x-1', 'x-0'), suffix(('x',) * 2))
+    wvpasseq(['x-%02d' % n for n in reversed(range(11))],
+             list(suffix(('x',) * 11)))
+    wvpasseq(('x-1', 'x-0', 'y'), suffix(('x', 'x', 'y')))
+    wvpasseq(('x', 'y-1', 'y-0'), suffix(('x', 'y', 'y')))
+    wvpasseq(('x', 'y-1', 'y-0', 'z'), suffix(('x', 'y', 'y', 'z')))
+
+@wvtest
 def test_misc():
     with no_lingering_errors():
         with test_tempdir('bup-tvfs-') as tmpdir:
@@ -372,5 +384,42 @@ def test_contents_with_mismatched_bupm_git_ordering():
             wvpass(S_ISDIR(item.meta))
             name, item = next(((n, i) for n, i in contents if n == 'foo.'))
             wvpass(S_ISREG(item.meta.mode))
+
+@wvtest
+def test_duplicate_save_dates():
+    with no_lingering_errors():
+        with test_tempdir('bup-tvfs-') as tmpdir:
+            bup_dir = tmpdir + '/bup'
+            environ['GIT_DIR'] = bup_dir
+            environ['BUP_DIR'] = bup_dir
+            environ['TZ'] = 'UTC'
+            git.repodir = bup_dir
+            data_path = tmpdir + '/src'
+            os.mkdir(data_path)
+            with open(data_path + '/file', 'w+') as tmpfile:
+                tmpfile.write(b'canary\n')
+            ex((bup_path, 'init'))
+            ex((bup_path, 'index', '-v', data_path))
+            for i in range(11):
+                ex((bup_path, 'save', '-d', '100000', '-n', 'test', data_path))
+            repo = LocalRepo()
+            res = vfs.resolve(repo, '/test')
+            wvpasseq(2, len(res))
+            name, revlist = res[-1]
+            wvpasseq('test', name)
+            wvpasseq(('.',
+                      '1970-01-02-034640-10',
+                      '1970-01-02-034640-09',
+                      '1970-01-02-034640-08',
+                      '1970-01-02-034640-07',
+                      '1970-01-02-034640-06',
+                      '1970-01-02-034640-05',
+                      '1970-01-02-034640-04',
+                      '1970-01-02-034640-03',
+                      '1970-01-02-034640-02',
+                      '1970-01-02-034640-01',
+                      '1970-01-02-034640-00',
+                      'latest'),
+                     tuple(x[0] for x in vfs.contents(repo, revlist)))
 
 # FIXME: add tests for the want_meta=False cases.
