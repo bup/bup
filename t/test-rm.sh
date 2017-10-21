@@ -27,7 +27,7 @@ wv_matches_rx()
     echo "$str" | sed 's/^\(.*\)/  \1/' 1>&2 || exit $?
     echo "Against:" 1>&2 || exit $?
     echo "$rx" | sed 's/^\(.*\)/  \1/' 1>&2 || exit $?
-    if [[ "$str" =~ $rx ]]; then
+    if [[ "$str" =~ ^${rx}$ ]]; then
         echo "! $src regex matches ok" 1>&2 || exit $?
     else
         echo "! $src regex doesn't match FAILED" 1>&2 || exit $?
