@@ -1,14 +1,14 @@
 import errno, metadata, os, stat, struct, tempfile
 
 from bup import xstat
+from bup._helpers import UINT_MAX
 from bup.helpers import (add_error, log, merge_iter, mmap_readwrite,
                          progress, qprogress, resolve_parent, slashappend)
-
 
 EMPTY_SHA = '\0'*20
 FAKE_SHA = '\x01'*20
 
-INDEX_HDR = 'BUPI\0\0\0\6'
+INDEX_HDR = 'BUPI\0\0\0\7'
 
 # Time values are handled as integer nanoseconds since the epoch in
 # memory, but are written as xstat/metadata timespecs.  This behavior
@@ -17,7 +17,21 @@ INDEX_HDR = 'BUPI\0\0\0\6'
 # Record times (mtime, ctime, atime) as xstat/metadata timespecs, and
 # store all of the times in the index so they won't interfere with the
 # forthcoming metadata cache.
-INDEX_SIG =  '!QQQqQqQqQQII20sHIIQ'
+INDEX_SIG = ('!'
+             'Q'                # dev
+             'Q'                # ino
+             'Q'                # nlink
+             'qQ'               # ctime_s, ctime_ns
+             'qQ'               # mtime_s, mtime_ns
+             'qQ'               # atime_s, atime_ns
+             'Q'                # size
+             'I'                # mode
+             'I'                # gitmode
+             '20s'              # sha
+             'H'                # flags
+             'Q'                # children_ofs
+             'I'                # children_n
+             'Q')               # meta_ofs
 
 ENTLEN = struct.calcsize(INDEX_SIG)
 FOOTER_SIG = '!Q'
@@ -181,13 +195,34 @@ class Entry:
             log('pack error: %s (%r)\n' % (e, self))
             raise
 
-    def from_stat(self, st, meta_ofs, tstart, check_device=True):
-        old = (self.dev if check_device else 0,
-               self.ino, self.nlink, self.ctime, self.mtime,
-               self.size, self.flags & IX_EXISTS)
-        new = (st.st_dev if check_device else 0,
-               st.st_ino, st.st_nlink, st.st_ctime, st.st_mtime,
-               st.st_size, IX_EXISTS)
+    def stale(self, st, tstart, check_device=True):
+        if self.size != st.st_size:
+            return True
+        if self.mtime != st.st_mtime:
+            return True
+        if self.sha == EMPTY_SHA:
+            return True
+        if not self.gitmode:
+            return True
+        if self.ctime != st.st_ctime:
+            return True
+        if self.ino != st.st_ino:
+            return True
+        if self.nlink != st.st_nlink:
+            return True
+        if not (self.flags & IX_EXISTS):
+            return True
+        if check_device and (self.dev != st.st_dev):
+            return True
+        # Check that the ctime's "second" is at or after tstart's.
+        ctime_sec_in_ns = xstat.fstime_floor_secs(st.st_ctime) * 10**9
+        if ctime_sec_in_ns >= tstart:
+            return True
+        return False
+
+    def update_from_stat(self, st, meta_ofs):
+        # Should only be called when the entry is stale(), and
+        # invalidate() should almost certainly be called afterward.
         self.dev = st.st_dev
         self.ino = st.st_ino
         self.nlink = st.st_nlink
@@ -198,13 +233,8 @@ class Entry:
         self.mode = st.st_mode
         self.flags |= IX_EXISTS
         self.meta_ofs = meta_ofs
-        # Check that the ctime's "second" is at or after tstart's.
-        ctime_sec_in_ns = xstat.fstime_floor_secs(st.st_ctime) * 10**9
-        if ctime_sec_in_ns >= tstart or old != new \
-              or self.sha == EMPTY_SHA or not self.gitmode:
-            self.invalidate()
         self._fixup()
-        
+
     def _fixup(self):
         self.mtime = self._fixup_time(self.mtime)
         self.ctime = self._fixup_time(self.ctime)
@@ -324,7 +354,7 @@ class ExistingEntry(Entry):
             dname += '/'
         ofs = self.children_ofs
         assert(ofs <= len(self._m))
-        assert(self.children_n < 1000000)
+        assert(self.children_n <= UINT_MAX)  # i.e. python struct 'I'
         for i in xrange(self.children_n):
             eon = self._m.find('\0', ofs)
             assert(eon >= 0)
@@ -406,6 +436,11 @@ class Reader:
     def __iter__(self):
         return self.iter()
 
+    def find(self, name):
+        return next((e for e in self.iter(name, wantrecurse=lambda x : True)
+                     if e.name == name),
+                    None)
+
     def exists(self):
         return self.m
 
@@ -422,11 +457,20 @@ class Reader:
 
     def filter(self, prefixes, wantrecurse=None):
         for (rp, path) in reduce_paths(prefixes):
+            any_entries = False
             for e in self.iter(rp, wantrecurse=wantrecurse):
+                any_entries = True
                 assert(e.name.startswith(rp))
                 name = path + e.name[len(rp):]
                 yield (name, e)
-
+            if not any_entries:
+                # Always return at least the top for each prefix.
+                # Otherwise something like "save x/y" will produce
+                # nothing if x is up to date.
+                pe = self.find(rp)
+                assert(pe)
+                name = path + pe.name[len(rp):]
+                yield (name, pe)
 
 # FIXME: this function isn't very generic, because it splits the filename
 # in an odd way and depends on a terminating '/' to indicate directories.
@@ -529,18 +573,34 @@ class Writer:
         return Reader(self.tmpname)
 
 
+def _slashappend_or_add_error(p, caller):
+    """Return p, after ensuring it has a single trailing slash if it names
+    a directory, unless there's an OSError, in which case, call
+    add_error() and return None."""
+    try:
+        st = os.lstat(p)
+    except OSError as e:
+        add_error('%s: %s' % (caller, e))
+        return None
+    else:
+        if stat.S_ISDIR(st.st_mode):
+            return slashappend(p)
+        return p
+
+
+def unique_resolved_paths(paths):
+    "Return a collection of unique resolved paths."
+    rps = (_slashappend_or_add_error(resolve_parent(p), 'unique_resolved_paths')
+           for p in paths)
+    return frozenset((x for x in rps if x is not None))
+
+
 def reduce_paths(paths):
     xpaths = []
     for p in paths:
-        rp = resolve_parent(p)
-        try:
-            st = os.lstat(rp)
-            if stat.S_ISDIR(st.st_mode):
-                rp = slashappend(rp)
-                p = slashappend(p)
-            xpaths.append((rp, p))
-        except OSError as e:
-            add_error('reduce_paths: %s' % e)
+        rp = _slashappend_or_add_error(resolve_parent(p), 'reduce_paths')
+        if rp:
+            xpaths.append((rp, slashappend(p) if rp.endswith('/') else p))
     xpaths.sort()
 
     paths = []
@@ -553,6 +613,7 @@ def reduce_paths(paths):
         prev = rp
     paths.sort(reverse=True)
     return paths
+
 
 def merge(*iters):
     def pfunc(count, total):

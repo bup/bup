@@ -8,8 +8,9 @@ exec "$bup_python" "$0" ${1+"$@"}
 import sys, stat, time, os, errno, re
 
 from bup import metadata, options, git, index, drecurse, hlinkdb
+from bup.drecurse import recursive_dirlist
 from bup.hashsplit import GIT_MODE_TREE, GIT_MODE_FILE
-from bup.helpers import (handle_ctrl_c, log, parse_excludes, parse_rx_excludes,
+from bup.helpers import (add_error, handle_ctrl_c, log, parse_excludes, parse_rx_excludes,
                          progress, qprogress, saved_errors)
 
 
@@ -20,10 +21,7 @@ class IterHelper:
         self.next()
 
     def next(self):
-        try:
-            self.cur = self.i.next()
-        except StopIteration:
-            self.cur = None
+        self.cur = next(self.i, None)
         return self.cur
 
 
@@ -70,7 +68,7 @@ def clear_index(indexfile):
                 raise
 
 
-def update_index(top, excluded_paths, exclude_rxs):
+def update_index(top, excluded_paths, exclude_rxs, xdev_exceptions):
     # tmax and start must be epoch nanoseconds.
     tmax = (time.time() - 1) * 10**9
     ri = index.Reader(indexfile)
@@ -81,18 +79,20 @@ def update_index(top, excluded_paths, exclude_rxs):
 
     hlinks = hlinkdb.HLinkDB(indexfile + '.hlink')
 
-    hashgen = None
+    fake_hash = None
     if opt.fake_valid:
-        def hashgen(name):
+        def fake_hash(name):
             return (GIT_MODE_FILE, index.FAKE_SHA)
 
     total = 0
     bup_dir = os.path.abspath(git.repo())
     index_start = time.time()
-    for (path,pst) in drecurse.recursive_dirlist([top], xdev=opt.xdev,
-                                                 bup_dir=bup_dir,
-                                                 excluded_paths=excluded_paths,
-                                                 exclude_rxs=exclude_rxs):
+    for path, pst in recursive_dirlist([top],
+                                       xdev=opt.xdev,
+                                       bup_dir=bup_dir,
+                                       excluded_paths=excluded_paths,
+                                       exclude_rxs=exclude_rxs,
+                                       xdev_exceptions=xdev_exceptions):
         if opt.verbose>=2 or (opt.verbose==1 and stat.S_ISDIR(pst.st_mode)):
             sys.stdout.write('%s\n' % path)
             sys.stdout.flush()
@@ -104,6 +104,7 @@ def update_index(top, excluded_paths, exclude_rxs):
             paths_per_sec = total / elapsed if elapsed else 0
             qprogress('Indexing: %d (%d paths/s)\r' % (total, paths_per_sec))
         total += 1
+
         while rig.cur and rig.cur.name > path:  # deleted paths
             if rig.cur.exists():
                 rig.cur.set_deleted()
@@ -111,40 +112,47 @@ def update_index(top, excluded_paths, exclude_rxs):
                 if rig.cur.nlink > 1 and not stat.S_ISDIR(rig.cur.mode):
                     hlinks.del_path(rig.cur.name)
             rig.next()
+
         if rig.cur and rig.cur.name == path:    # paths that already existed
-            try:
-                meta = metadata.from_path(path, statinfo=pst)
-            except (OSError, IOError) as e:
-                add_error(e)
-                rig.next()
-                continue
-            if not stat.S_ISDIR(rig.cur.mode) and rig.cur.nlink > 1:
-                hlinks.del_path(rig.cur.name)
-            if not stat.S_ISDIR(pst.st_mode) and pst.st_nlink > 1:
-                hlinks.add_path(path, pst.st_dev, pst.st_ino)
-            # Clear these so they don't bloat the store -- they're
-            # already in the index (since they vary a lot and they're
-            # fixed length).  If you've noticed "tmax", you might
-            # wonder why it's OK to do this, since that code may
-            # adjust (mangle) the index mtime and ctime -- producing
-            # fake values which must not end up in a .bupm.  However,
-            # it looks like that shouldn't be possible:  (1) When
-            # "save" validates the index entry, it always reads the
-            # metadata from the filesytem. (2) Metadata is only
-            # read/used from the index if hashvalid is true. (3) index
-            # always invalidates "faked" entries, because "old != new"
-            # in from_stat().
-            meta.ctime = meta.mtime = meta.atime = 0
-            meta_ofs = msw.store(meta)
-            rig.cur.from_stat(pst, meta_ofs, tstart,
-                              check_device=opt.check_device)
+            need_repack = False
+            if(rig.cur.stale(pst, tstart, check_device=opt.check_device)):
+                try:
+                    meta = metadata.from_path(path, statinfo=pst)
+                except (OSError, IOError) as e:
+                    add_error(e)
+                    rig.next()
+                    continue
+                if not stat.S_ISDIR(rig.cur.mode) and rig.cur.nlink > 1:
+                    hlinks.del_path(rig.cur.name)
+                if not stat.S_ISDIR(pst.st_mode) and pst.st_nlink > 1:
+                    hlinks.add_path(path, pst.st_dev, pst.st_ino)
+                # Clear these so they don't bloat the store -- they're
+                # already in the index (since they vary a lot and they're
+                # fixed length).  If you've noticed "tmax", you might
+                # wonder why it's OK to do this, since that code may
+                # adjust (mangle) the index mtime and ctime -- producing
+                # fake values which must not end up in a .bupm.  However,
+                # it looks like that shouldn't be possible:  (1) When
+                # "save" validates the index entry, it always reads the
+                # metadata from the filesytem. (2) Metadata is only
+                # read/used from the index if hashvalid is true. (3)
+                # "faked" entries will be stale(), and so we'll invalidate
+                # them below.
+                meta.ctime = meta.mtime = meta.atime = 0
+                meta_ofs = msw.store(meta)
+                rig.cur.update_from_stat(pst, meta_ofs)
+                rig.cur.invalidate()
+                need_repack = True
             if not (rig.cur.flags & index.IX_HASHVALID):
-                if hashgen:
-                    (rig.cur.gitmode, rig.cur.sha) = hashgen(path)
+                if fake_hash:
+                    rig.cur.gitmode, rig.cur.sha = fake_hash(path)
                     rig.cur.flags |= index.IX_HASHVALID
+                    need_repack = True
             if opt.fake_invalid:
                 rig.cur.invalidate()
-            rig.cur.repack()
+                need_repack = True
+            if need_repack:
+                rig.cur.repack()
             rig.next()
         else:  # new paths
             try:
@@ -155,7 +163,7 @@ def update_index(top, excluded_paths, exclude_rxs):
             # See same assignment to 0, above, for rationale.
             meta.atime = meta.mtime = meta.ctime = 0
             meta_ofs = msw.store(meta)
-            wi.add(path, pst, meta_ofs, hashgen = hashgen)
+            wi.add(path, pst, meta_ofs, hashgen=fake_hash)
             if not stat.S_ISDIR(pst.st_mode) and pst.st_nlink > 1:
                 hlinks.add_path(path, pst.st_dev, pst.st_ino)
 
@@ -253,15 +261,14 @@ if opt.clear:
     log('clear: clearing index.\n')
     clear_index(indexfile)
 
-excluded_paths = parse_excludes(flags, o.fatal)
-exclude_rxs = parse_rx_excludes(flags, o.fatal)
-paths = index.reduce_paths(extra)
-
 if opt.update:
     if not extra:
         o.fatal('update mode (-u) requested but no paths given')
-    for (rp,path) in paths:
-        update_index(rp, excluded_paths, exclude_rxs)
+    excluded_paths = parse_excludes(flags, o.fatal)
+    exclude_rxs = parse_rx_excludes(flags, o.fatal)
+    xexcept = index.unique_resolved_paths(extra)
+    for rp, path in index.reduce_paths(extra):
+        update_index(rp, excluded_paths, exclude_rxs, xdev_exceptions=xexcept)
 
 if opt['print'] or opt.status or opt.modified:
     for (name, ent) in index.Reader(indexfile).filter(extra or ['']):

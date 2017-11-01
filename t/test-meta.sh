@@ -171,8 +171,11 @@ WVSTART 'metadata save/restore (general)'
     # Check that the only difference is the top dir.
     WVFAIL $TOP/t/compare-trees -c src/var/ src-restore/ > tmp-compare-trees
     WVPASSEQ $(cat tmp-compare-trees | wc -l) 1
-    # Note: OS X rsync itemize output is currently only 9 chars, not 11.
-    expected_diff_rx='^\.d\.\.t.\.\.\.\.?\.? \./$'
+    # The number of rsync status characters varies, so accept any
+    # number of trailing dots.  For example OS X native rsync produces
+    # 9, but Homebrew's produces 12, while on other platforms, 11 is
+    # common.
+    expected_diff_rx='^\.d\.\.t\.\.\.(\.)+ \./$'
     if ! grep -qE "$expected_diff_rx" tmp-compare-trees; then
         echo -n 'tmp-compare-trees: ' 1>&2
         cat tmp-compare-trees 1>&2
@@ -704,7 +707,7 @@ if [ "$root_status" = root ]; then
         (
             WVPASS touch "$testfs"/src/foo
             WVPASS mkdir "$testfs"/src/bar
-            WVPASS chattr +acdeijstuADST "$testfs"/src/foo
+            WVPASS chattr +acdeijstuADS "$testfs"/src/foo
             WVPASS chattr +acdeijstuADST "$testfs"/src/bar
             (WVPASS cd "$testfs"; WVPASS test-src-create-extract) || exit $?
             # Test restoration to a limited filesystem (vfat).

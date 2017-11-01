@@ -5,7 +5,10 @@
 # This code is covered under the terms of the GNU Library General
 # Public License as described in the bup LICENSE file.
 
+from copy import deepcopy
+from errno import EACCES, EINVAL, ENOTTY, ENOSYS, EOPNOTSUPP
 from io import BytesIO
+from time import gmtime, strftime
 import errno, os, sys, stat, time, pwd, grp, socket, struct
 
 from bup import vint, xstat
@@ -187,6 +190,8 @@ _rec_tag_linux_attr = 6       # lsattr(1) chattr(1)
 _rec_tag_linux_xattr = 7      # getfattr(1) setfattr(1)
 _rec_tag_hardlink_target = 8 # hard link target path
 _rec_tag_common_v2 = 9 # times, user, group, type, perms, etc. (current)
+
+_warned_about_attr_einval = None
 
 
 class ApplyError(Exception):
@@ -460,7 +465,9 @@ class Metadata:
         return self.symlink_target
 
     def _load_symlink_target_rec(self, port):
-        self.symlink_target = vint.read_bvec(port)
+        target = vint.read_bvec(port)
+        self.symlink_target = target
+        self.size = len(target)
 
 
     ## Hardlink targets
@@ -585,8 +592,16 @@ class Metadata:
             except OSError as e:
                 if e.errno == errno.EACCES:
                     add_error('read Linux attr: %s' % e)
-                elif e.errno in (errno.ENOTTY, errno.ENOSYS, errno.EOPNOTSUPP):
+                elif e.errno in (ENOTTY, ENOSYS, EOPNOTSUPP):
                     # Assume filesystem doesn't support attrs.
+                    return
+                elif e.errno == EINVAL:
+                    global _warned_about_attr_einval
+                    if not _warned_about_attr_einval:
+                        log("Ignoring attr EINVAL;"
+                            + " if you're not using ntfs-3g, please report: "
+                            + repr(path) + '\n')
+                        _warned_about_attr_einval = True
                     return
                 else:
                     raise
@@ -615,10 +630,13 @@ class Metadata:
             try:
                 set_linux_file_attr(path, self.linux_attr)
             except OSError as e:
-                if e.errno in (errno.ENOTTY, errno.EOPNOTSUPP, errno.ENOSYS,
-                               errno.EACCES):
+                if e.errno in (EACCES, ENOTTY, EOPNOTSUPP, ENOSYS):
                     raise ApplyError('Linux chattr: %s (0x%s)'
                                      % (e, hex(self.linux_attr)))
+                elif e.errno == EINVAL:
+                    msg = "if you're not using ntfs-3g, please report"
+                    raise ApplyError('Linux chattr: %s (0x%s) (%s)'
+                                     % (e, hex(self.linux_attr), msg))
                 else:
                     raise
 
@@ -687,7 +705,7 @@ class Metadata:
             try:
                 xattr.remove(path, k, nofollow=True)
             except IOError as e:
-                if e.errno == errno.EPERM:
+                if e.errno in (errno.EPERM, errno.EACCES):
                     raise ApplyError('xattr.remove %r: %s' % (path, e))
                 else:
                     raise
@@ -704,30 +722,69 @@ class Metadata:
         self.linux_xattr = None
         self.posix1e_acl = None
 
+    def __eq__(self, other):
+        if not isinstance(other, Metadata): return False
+        if self.mode != other.mode: return False
+        if self.mtime != other.mtime: return False
+        if self.ctime != other.ctime: return False
+        if self.atime != other.atime: return False
+        if self.path != other.path: return False
+        if self.uid != other.uid: return False
+        if self.gid != other.gid: return False
+        if self.size != other.size: return False
+        if self.user != other.user: return False
+        if self.group != other.group: return False
+        if self.symlink_target != other.symlink_target: return False
+        if self.hardlink_target != other.hardlink_target: return False
+        if self.linux_attr != other.linux_attr: return False
+        if self.posix1e_acl != other.posix1e_acl: return False
+        return True
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    def __hash__(self):
+        return hash((self.mode,
+                     self.mtime,
+                     self.ctime,
+                     self.atime,
+                     self.path,
+                     self.uid,
+                     self.gid,
+                     self.size,
+                     self.user,
+                     self.group,
+                     self.symlink_target,
+                     self.hardlink_target,
+                     self.linux_attr,
+                     self.posix1e_acl))
+
     def __repr__(self):
         result = ['<%s instance at %s' % (self.__class__, hex(id(self)))]
-        if self.path:
+        if self.path is not None:
             result += ' path:' + repr(self.path)
-        if self.mode:
+        if self.mode is not None:
             result += ' mode:' + repr(xstat.mode_str(self.mode)
-                                      + '(%s)' % hex(self.mode))
-        if self.uid:
+                                      + '(%s)' % oct(self.mode))
+        if self.uid is not None:
             result += ' uid:' + str(self.uid)
-        if self.gid:
+        if self.gid is not None:
             result += ' gid:' + str(self.gid)
-        if self.user:
+        if self.user is not None:
             result += ' user:' + repr(self.user)
-        if self.group:
+        if self.group is not None:
             result += ' group:' + repr(self.group)
-        if self.size:
+        if self.size is not None:
             result += ' size:' + repr(self.size)
         for name, val in (('atime', self.atime),
                           ('mtime', self.mtime),
                           ('ctime', self.ctime)):
-            result += ' %s:%r' \
-                % (name,
-                   time.strftime('%Y-%m-%d %H:%M %z',
-                                 time.gmtime(xstat.fstime_floor_secs(val))))
+            if val is not None:
+                result += ' %s:%r (%d)' \
+                          % (name,
+                             strftime('%Y-%m-%d %H:%M %z',
+                                      gmtime(xstat.fstime_floor_secs(val))),
+                             val)
         result += '>'
         return ''.join(result)
 
@@ -751,6 +808,9 @@ class Metadata:
         port = BytesIO()
         self.write(port, include_path)
         return port.getvalue()
+
+    def copy(self):
+        return deepcopy(self)
 
     @staticmethod
     def read(port):
@@ -924,7 +984,7 @@ def summary_str(meta, numeric_ids = False, classification = None,
         mode_str = xstat.mode_str(meta.mode)
         symlink_target = meta.symlink_target
         mtime_secs = xstat.fstime_floor_secs(meta.mtime)
-        mtime_str = time.strftime('%Y-%m-%d %H:%M', time.localtime(mtime_secs))
+        mtime_str = strftime('%Y-%m-%d %H:%M', time.localtime(mtime_secs))
         if meta.user and not numeric_ids:
             user_str = meta.user
         elif meta.uid != None:

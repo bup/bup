@@ -47,6 +47,9 @@ should unmount it with `umount`(8).
     performance, and note that any timestamps before 1970-01-01 UTC
     (i.e. before the Unix epoch) will be presented as 1970-01-01 UTC.
 
+-v, \--verbose
+:   increase verbosity (can be used more than once).
+
 # EXAMPLES
     rm -rf /tmp/buptest
     mkdir /tmp/buptest

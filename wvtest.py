@@ -18,6 +18,8 @@ import re
 import sys
 import traceback
 
+_start_dir = os.getcwd()
+
 # NOTE
 # Why do we do we need the "!= main" check?  Because if you run
 # wvtest.py as a main program and it imports your test files, then
@@ -63,24 +65,36 @@ if __name__ != '__main__':   # we're imported as a module
         sys.stdout.flush()
 
 
+    def _caller_stack(wv_call_depth):
+        # Without the chdir, the source text lookup may fail
+        orig = os.getcwd()
+        os.chdir(_start_dir)
+        try:
+            return traceback.extract_stack()[-(wv_call_depth + 2)]
+        finally:
+            os.chdir(orig)
+
+
     def _check(cond, msg = 'unknown', tb = None):
-        if tb == None: tb = traceback.extract_stack()[-3]
+        if tb == None: tb = _caller_stack(2)
         if cond:
             _result(msg, tb, 'ok')
         else:
             _result(msg, tb, 'FAILED')
         return cond
 
-
+    _code_rx = re.compile(r'^\w+\((.*)\)(\s*#.*)?$')
     def _code():
-        (filename, line, func, text) = traceback.extract_stack()[-3]
-        text = re.sub(r'^\w+\((.*)\)(\s*#.*)?$', r'\1', text);
-        return text
+        text = _caller_stack(2)[3]
+        return _code_rx.sub(r'\1', text)
 
+    def WVSTART(message):
+        filename = _caller_stack(1)[0]
+        sys.stderr.write('Testing \"' + message + '\" in ' + filename + ':\n')
 
     def WVMSG(message):
         ''' Issues a notification. '''
-        return _result(message, traceback.extract_stack()[-3], 'ok')
+        return _result(message, _caller_stack(1), 'ok')
 
     def WVPASS(cond = True):
         ''' Counts a test failure unless cond is true. '''
@@ -129,6 +143,18 @@ if __name__ != '__main__':   # we're imported as a module
             raise
         else:
             return _check(False, 'EXCEPT(%s)' % _code())
+
+    wvstart = WVSTART
+    wvmsg = WVMSG
+    wvpass = WVPASS
+    wvfail = WVFAIL
+    wvpasseq = WVPASSEQ
+    wvpassne = WVPASSNE
+    wvpaslt = WVPASSLT
+    wvpassle = WVPASSLE
+    wvpassgt = WVPASSGT
+    wvpassge = WVPASSGE
+    wvexcept = WVEXCEPT
 
     def wvfailure_count():
         return _fails
@@ -201,7 +227,7 @@ def _run_registered_tests():
         print
 
 
-def wvtest_main(extra_testfiles=[]):
+def wvtest_main(extra_testfiles=tuple()):
     import wvtest as _wvtestmod
     _run_registered_tests()
     for modname in extra_testfiles:

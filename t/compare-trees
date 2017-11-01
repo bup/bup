@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -u
+
 # Test that src and dest trees are as identical as bup is capable of
 # making them.  For now, use rsync -niaHAX ...
 
@@ -58,13 +60,25 @@ else
     esac
 fi
 
+xattrs_available=''
 if [[ ! "$rsync_version" =~ "xattrs" ]] || [[ "$rsync_version" =~ "no xattrs" ]]; then
     echo "Not comparing xattrs (not supported by available rsync)" 1>&2
 else
-    rsync_opts="$rsync_opts -X"
+    xattrs_available=yes
 fi
 
-rsync $rsync_opts "$src" "$dest" > "$tmpfile" || exit $?
+# Even in dry-run mode, rsync may fail if -X is specified and the
+# filesystems don't support xattrs.
+
+if test "$xattrs_available"; then
+    rsync $rsync_opts -X "$src" "$dest" > "$tmpfile"
+    if test $? -ne 0; then
+        # Try again without -X
+        rsync $rsync_opts "$src" "$dest" > "$tmpfile" || exit $?
+    fi
+else
+    rsync $rsync_opts "$src" "$dest" > "$tmpfile" || exit $?
+fi
 
 if test $(wc -l < "$tmpfile") != 0; then
     echo "Differences between $src and $dest" 1>&2

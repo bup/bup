@@ -5,14 +5,18 @@ exec "$bup_python" "$0" ${1+"$@"}
 """
 # end of bup preamble
 
-import mimetypes, os, posixpath, stat, sys, time, urllib, webbrowser
+from collections import namedtuple
+import mimetypes, os, posixpath, signal, stat, sys, time, urllib, webbrowser
 
 from bup import options, git, vfs
-from bup.helpers import debug1, handle_ctrl_c, log, resource_path
+from bup.helpers import (chunkyreader, debug1, handle_ctrl_c, log,
+                         resource_path, saved_errors)
 
 try:
-    import tornado.httpserver
-    import tornado.ioloop
+    from tornado import gen
+    from tornado.httpserver import HTTPServer
+    from tornado.ioloop import IOLoop
+    from tornado.netutil import bind_unix_socket
     import tornado.web
 except ImportError:
     log('error: cannot find the python "tornado" module; please install it\n')
@@ -80,13 +84,18 @@ def _compute_dir_contents(n, path, show_hidden=False):
 
 
 class BupRequestHandler(tornado.web.RequestHandler):
+
+    def decode_argument(self, value, name=None):
+        if name == 'path':
+            return value
+        return super(BupRequestHandler, self).decode_argument(value, name)
+
     def get(self, path):
         return self._process_request(path)
 
     def head(self, path):
         return self._process_request(path)
     
-    @tornado.web.asynchronous
     def _process_request(self, path):
         path = urllib.unquote(path)
         print 'Handling request for %s' % path
@@ -124,6 +133,7 @@ class BupRequestHandler(tornado.web.RequestHandler):
             hidden_shown=show_hidden,
             dir_contents=_compute_dir_contents(n, path, show_hidden))
 
+    @gen.coroutine
     def _get_file(self, path, n):
         """Process a request on a file.
 
@@ -131,30 +141,21 @@ class BupRequestHandler(tornado.web.RequestHandler):
         In either case, the headers are sent.
         """
         ctype = self._guess_type(path)
-
         self.set_header("Last-Modified", self.date_time_string(n.mtime))
         self.set_header("Content-Type", ctype)
         size = n.size()
         self.set_header("Content-Length", str(size))
         assert(len(n.hash) == 20)
         self.set_header("Etag", n.hash.encode('hex'))
-
         if self.request.method != 'HEAD':
-            self.flush()
             f = n.open()
-            it = chunkyreader(f)
-            def write_more(me):
-                try:
-                    blob = it.next()
-                except StopIteration:
-                    f.close()
-                    self.finish()
-                    return
-                self.request.connection.stream.write(blob,
-                                                     callback=lambda: me(me))
-            write_more(write_more)
-        else:
-            self.finish()
+            try:
+                it = chunkyreader(f)
+                for blob in chunkyreader(f):
+                    self.write(blob)
+            finally:
+                f.close()
+        raise gen.Return()
 
     def _guess_type(self, path):
         """Guess the type of a file.
@@ -192,11 +193,28 @@ class BupRequestHandler(tornado.web.RequestHandler):
         return time.strftime('%a, %d %b %Y %H:%M:%S', time.gmtime(t))
 
 
+io_loop = None
+
+def handle_sigterm(signum, frame):
+    global io_loop
+    debug1('\nbup-web: signal %d received\n' % signum)
+    log('Shutdown requested\n')
+    if not io_loop:
+        sys.exit(0)
+    io_loop.stop()
+
+
+signal.signal(signal.SIGTERM, handle_sigterm)
+
+UnixAddress = namedtuple('UnixAddress', ['path'])
+InetAddress = namedtuple('InetAddress', ['host', 'port'])
+
 optspec = """
 bup web [[hostname]:port]
+bup web unix://path
 --
 human-readable    display human readable file sizes (i.e. 3.9K, 4.7M)
-browser           open the site in the default browser
+browser           show repository in default browser (incompatible with unix://)
 """
 o = options.Options(optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
@@ -204,11 +222,24 @@ o = options.Options(optspec)
 if len(extra) > 1:
     o.fatal("at most one argument expected")
 
-address = ('127.0.0.1', 8080)
-if len(extra) > 0:
-    addressl = extra[0].split(':', 1)
-    addressl[1] = int(addressl[1])
-    address = tuple(addressl)
+if len(extra) == 0:
+    address = InetAddress(host='127.0.0.1', port=8080)
+else:
+    bind_url = extra[0]
+    if bind_url.startswith('unix://'):
+        address = UnixAddress(path=bind_url[len('unix://'):])
+    else:
+        addr_parts = extra[0].split(':', 1)
+        if len(addr_parts) == 1:
+            host = '127.0.0.1'
+            port = addr_parts[0]
+        else:
+            host, port = addr_parts
+        try:
+            port = int(port)
+        except (TypeError, ValueError) as ex:
+            o.fatal('port must be an integer, not %r', port)
+        address = InetAddress(host=host, port=port)
 
 git.check_repo_or_die()
 top = vfs.RefList(None)
@@ -223,22 +254,33 @@ settings = dict(
 sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
 
 application = tornado.web.Application([
-    (r"(/.*)", BupRequestHandler),
+    (r"(?P<path>/.*)", BupRequestHandler),
 ], **settings)
 
-if __name__ == "__main__":
-    http_server = tornado.httpserver.HTTPServer(application)
-    http_server.listen(address[1], address=address[0])
+http_server = HTTPServer(application)
+io_loop_pending = IOLoop.instance()
 
+if isinstance(address, InetAddress):
+    http_server.listen(address.port, address.host)
     try:
         sock = http_server._socket # tornado < 2.0
     except AttributeError as e:
         sock = http_server._sockets.values()[0]
-
     print "Serving HTTP on %s:%d..." % sock.getsockname()
-
-    loop = tornado.ioloop.IOLoop.instance()
     if opt.browser:
         browser_addr = 'http://' + address[0] + ':' + str(address[1])
-        loop.add_callback(lambda : webbrowser.open(browser_addr))
-    loop.start()
+        io_loop_pending.add_callback(lambda : webbrowser.open(browser_addr))
+elif isinstance(address, UnixAddress):
+    unix_socket = bind_unix_socket(address.path)
+    http_server.add_socket(unix_socket)
+    print "Serving HTTP on filesystem socket %r" % address.path
+else:
+    log('error: unexpected address %r', address)
+    sys.exit(1)
+
+io_loop = io_loop_pending
+io_loop.start()
+
+if saved_errors:
+    log('WARNING: %d errors encountered while saving.\n' % len(saved_errors))
+    sys.exit(1)

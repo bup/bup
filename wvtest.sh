@@ -147,9 +147,11 @@ WVSTART()
 
 WVDIE()
 {
-    echo "$*" 1>&2
-    _wvbacktrace
-    exit 1
+	local TEXT=$(_wvtextclean "$@")
+	_wvpushcall "$@"
+	_wvfind_caller
+	echo "! $WVCALLER_FILE:$WVCALLER_LINE  $TEXT  FAILED" 1>&2
+	exit 1
 }
 
 

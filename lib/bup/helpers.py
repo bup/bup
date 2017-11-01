@@ -1,13 +1,21 @@
 """Helper functions and classes for bup."""
 
 from collections import namedtuple
+from contextlib import contextmanager
 from ctypes import sizeof, c_void_p
 from os import environ
-from contextlib import contextmanager
+from pipes import quote
+from subprocess import PIPE, Popen
 import sys, os, pwd, subprocess, errno, socket, select, mmap, stat, re, struct
 import hashlib, heapq, math, operator, time, grp, tempfile
 
 from bup import _helpers
+from bup import compat
+
+class Nonlocal:
+    """Helper to deal with Python scoping issues"""
+    pass
+
 
 sc_page_size = os.sysconf('SC_PAGE_SIZE')
 assert(sc_page_size > 0)
@@ -20,6 +28,13 @@ if sc_arg_max == -1:  # "no definite limit" - let's choose 2M
 # want options.py to be standalone so people can include it in other projects.
 from bup.options import _tty_width
 tty_width = _tty_width
+
+
+def last(iterable):
+    result = None
+    for result in iterable:
+        pass
+    return result
 
 
 def atoi(s):
@@ -41,15 +56,68 @@ def atof(s):
 buglvl = atoi(os.environ.get('BUP_DEBUG', 0))
 
 
+try:
+    _fdatasync = os.fdatasync
+except AttributeError:
+    _fdatasync = os.fsync
+
 if sys.platform.startswith('darwin'):
-    # Apparently fsync on OS X doesn't guarantee to sync all the way down
+    # Apparently os.fsync on OS X doesn't guarantee to sync all the way down
     import fcntl
-    fdatasync = lambda fd : fcntl.fcntl(fd, fcntl.F_FULLFSYNC)
-else: # If the platform doesn't have fdatasync, fall back to fsync
+    def fdatasync(fd):
+        try:
+            return fcntl.fcntl(fd, fcntl.F_FULLFSYNC)
+        except IOError as e:
+            # Fallback for file systems (SMB) that do not support F_FULLFSYNC
+            if e.errno == errno.ENOTSUP:
+                return _fdatasync(fd)
+            else:
+                raise
+else:
+    fdatasync = _fdatasync
+
+
+def partition(predicate, stream):
+    """Returns (leading_matches_it, rest_it), where leading_matches_it
+    must be completely exhausted before traversing rest_it.
+
+    """
+    stream = iter(stream)
+    ns = Nonlocal()
+    ns.first_nonmatch = None
+    def leading_matches():
+        for x in stream:
+            if predicate(x):
+                yield x
+            else:
+                ns.first_nonmatch = (x,)
+                break
+    def rest():
+        if ns.first_nonmatch:
+            yield ns.first_nonmatch[0]
+            for x in stream:
+                yield x
+    return (leading_matches(), rest())
+
+
+def lines_until_sentinel(f, sentinel, ex_type):
+    # sentinel must end with \n and must contain only one \n
+    while True:
+        line = f.readline()
+        if not (line and line.endswith('\n')):
+            raise ex_type('Hit EOF while reading line')
+        if line == sentinel:
+            return
+        yield line
+
+
+def stat_if_exists(path):
     try:
-        fdatasync = os.fdatasync
-    except AttributeError:
-        fdatasync = os.fsync
+        return os.stat(path)
+    except OSError as e:
+        if e.errno != errno.ENOENT:
+            raise
+    return None
 
 
 # Write (blockingly) to sockets that may or may not be in blocking mode.
@@ -140,25 +208,6 @@ def mkdirp(d, mode=None):
             raise
 
 
-_unspecified_next_default = object()
-
-def _fallback_next(it, default=_unspecified_next_default):
-    """Retrieve the next item from the iterator by calling its
-    next() method. If default is given, it is returned if the
-    iterator is exhausted, otherwise StopIteration is raised."""
-
-    if default is _unspecified_next_default:
-        return it.next()
-    else:
-        try:
-            return it.next()
-        except StopIteration:
-            return default
-
-if sys.version_info < (2, 6):
-    next =  _fallback_next
-
-
 def merge_iter(iters, pfreq, pfunc, pfinal, key=None):
     if key:
         samekey = lambda e, pe: getattr(e, key) == getattr(pe, key, None)
@@ -181,7 +230,7 @@ def merge_iter(iters, pfreq, pfunc, pfinal, key=None):
             yield e
         count += 1
         try:
-            e = it.next() # Don't use next() function, it's too expensive
+            e = next(it)
         except StopIteration:
             heapq.heappop(heap) # remove current
         else:
@@ -202,9 +251,38 @@ def unlink(f):
             raise
 
 
-def readpipe(argv, preexec_fn=None):
+def shstr(cmd):
+    if isinstance(cmd, compat.str_type):
+        return cmd
+    else:
+        return ' '.join(map(quote, cmd))
+
+exc = subprocess.check_call
+
+def exo(cmd,
+        input=None,
+        stdin=None,
+        stderr=None,
+        shell=False,
+        check=True,
+        preexec_fn=None):
+    if input:
+        assert stdin in (None, PIPE)
+        stdin = PIPE
+    p = Popen(cmd,
+              stdin=stdin, stdout=PIPE, stderr=stderr,
+              shell=shell,
+              preexec_fn=preexec_fn)
+    out, err = p.communicate(input)
+    if check and p.returncode != 0:
+        raise Exception('subprocess %r failed with status %d, stderr: %r'
+                        % (' '.join(map(quote, cmd)), p.returncode, err))
+    return out, err, p
+
+def readpipe(argv, preexec_fn=None, shell=False):
     """Run a subprocess and return its output."""
-    p = subprocess.Popen(argv, stdout=subprocess.PIPE, preexec_fn=preexec_fn)
+    p = subprocess.Popen(argv, stdout=subprocess.PIPE, preexec_fn=preexec_fn,
+                         shell=shell)
     out, err = p.communicate()
     if p.returncode != 0:
         raise Exception('subprocess %r failed with status %d'
@@ -273,8 +351,16 @@ def detect_fakeroot():
     return os.getenv("FAKEROOTKEY") != None
 
 
+_warned_about_superuser_detection = None
 def is_superuser():
     if sys.platform.startswith('cygwin'):
+        if sys.getwindowsversion()[0] > 5:
+            # Sounds like situation is much more complicated here
+            global _warned_about_superuser_detection
+            if not _warned_about_superuser_detection:
+                log("can't detect root status for OS version > 5; assuming not root")
+                _warned_about_superuser_detection = True
+            return False
         import ctypes
         return ctypes.cdll.shell32.IsUserAnAdmin()
     else:
@@ -566,7 +652,7 @@ class DemuxConn(BaseConn):
                 if not self._next_packet(timeout):
                     return False
             try:
-                self.buf = self.reader.next()
+                self.buf = next(self.reader)
                 return True
             except StopIteration:
                 self.reader = None
@@ -836,6 +922,15 @@ def clear_errors():
     saved_errors = []
 
 
+def die_if_errors(msg=None, status=1):
+    global saved_errors
+    if saved_errors:
+        if not msg:
+            msg = 'warning: %d errors encountered\n' % len(saved_errors)
+        log(msg)
+        sys.exit(status)
+
+
 def handle_ctrl_c():
     """Replace the default exception handler for KeyboardInterrupt (Ctrl-C).
 
@@ -1079,3 +1174,41 @@ else:
         return time.strftime('%z', localtime(t))
     def to_py_time(x):
         return x
+
+
+_some_invalid_save_parts_rx = re.compile(r'[[ ~^:?*\\]|\.\.|//|@{')
+
+def valid_save_name(name):
+    # Enforce a superset of the restrictions in git-check-ref-format(1)
+    if name == '@' \
+       or name.startswith('/') or name.endswith('/') \
+       or name.endswith('.'):
+        return False
+    if _some_invalid_save_parts_rx.search(name):
+        return False
+    for c in name:
+        if ord(c) < 0x20 or ord(c) == 0x7f:
+            return False
+    for part in name.split('/'):
+        if part.startswith('.') or part.endswith('.lock'):
+            return False
+    return True
+
+
+_period_rx = re.compile(r'^([0-9]+)(s|min|h|d|w|m|y)$')
+
+def period_as_secs(s):
+    if s == 'forever':
+        return float('inf')
+    match = _period_rx.match(s)
+    if not match:
+        return None
+    mag = int(match.group(1))
+    scale = match.group(2)
+    return mag * {'s': 1,
+                  'min': 60,
+                  'h': 60 * 60,
+                  'd': 60 * 60 * 24,
+                  'w': 60 * 60 * 24 * 7,
+                  'm': 60 * 60 * 24 * 31,
+                  'y': 60 * 60 * 24 * 366}[scale]

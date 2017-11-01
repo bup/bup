@@ -8,7 +8,7 @@ exec "$bup_python" "$0" ${1+"$@"}
 import glob, math, os, resource, struct, sys, tempfile
 
 from bup import options, git, midx, _helpers, xstat
-from bup.helpers import (Sha1, atomically_replaced_file, debug1, fdatasync,
+from bup.helpers import (Sha1, add_error, atomically_replaced_file, debug1, fdatasync,
                          handle_ctrl_c, log, mmap_readwrite, qprogress,
                          saved_errors, unlink)
 
@@ -153,7 +153,7 @@ def _do_midx(outdir, outfilename, infilenames, prefixstr):
         print p.idxnames
         assert(len(p) == total)
         for pe, e in p, git.idxmerge(inp, final_progress=False):
-            pin = pi.next()
+            pin = next(pi)
             assert(i == pin)
             assert(p.exists(i))
 

@@ -1,7 +1,6 @@
 /bup
 /cmd/bup-*
 /cmd/python-cmd.sh
-/lib/bup/_version.py
 randomgen
 memtest
 *.o
@@ -17,3 +16,4 @@ memtest
 nbproject
 /t/sampledata/var/
 /t/tmp/
+/lib/bup/_checkout.py

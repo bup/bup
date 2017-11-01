@@ -5,10 +5,12 @@ exec "$bup_python" "$0" ${1+"$@"}
 """
 # end of bup preamble
 
-import os, sys, struct
+import os, sys, struct, subprocess
 
 from bup import options, git
-from bup.helpers import Conn, debug1, debug2, linereader, log
+from bup.git import MissingObject
+from bup.helpers import (Conn, debug1, debug2, linereader, lines_until_sentinel,
+                         log)
 
 
 suspended_w = None
@@ -150,15 +152,10 @@ def update_ref(conn, refname):
     git.update_ref(refname, newval.decode('hex'), oldval.decode('hex'))
     conn.ok()
 
-
-cat_pipe = None
-def cat(conn, id):
-    global cat_pipe
+def join(conn, id):
     _init_session()
-    if not cat_pipe:
-        cat_pipe = git.CatPipe()
     try:
-        for blob in cat_pipe.join(id):
+        for blob in git.cp().join(id):
             conn.write(struct.pack('!I', len(blob)))
             conn.write(blob)
     except KeyError as e:
@@ -168,6 +165,65 @@ def cat(conn, id):
     else:
         conn.write('\0\0\0\0')
         conn.ok()
+
+def cat_batch(conn, dummy):
+    _init_session()
+    cat_pipe = git.cp()
+    # For now, avoid potential deadlock by just reading them all
+    for ref in tuple(lines_until_sentinel(conn, '\n', Exception)):
+        ref = ref[:-1]
+        it = cat_pipe.get(ref)
+        info = next(it)
+        if not info[0]:
+            conn.write('missing\n')
+            continue
+        conn.write('%s %s %d\n' % info)
+        for buf in it:
+            conn.write(buf)
+    conn.ok()
+
+def refs(conn, args):
+    limit_to_heads, limit_to_tags = args.split()
+    assert limit_to_heads in ('0', '1')
+    assert limit_to_tags in ('0', '1')
+    limit_to_heads = int(limit_to_heads)
+    limit_to_tags = int(limit_to_tags)
+    _init_session()
+    patterns = tuple(x[:-1] for x in lines_until_sentinel(conn, '\n', Exception))
+    for name, oid in git.list_refs(patterns=patterns,
+                                   limit_to_heads=limit_to_heads,
+                                   limit_to_tags=limit_to_tags):
+        assert '\n' not in name
+        conn.write('%s %s\n' % (oid.encode('hex'), name))
+    conn.write('\n')
+    conn.ok()
+
+def rev_list(conn, _):
+    _init_session()
+    count = conn.readline()
+    if not count:
+        raise Exception('Unexpected EOF while reading rev-list count')
+    count = None if count == '\n' else int(count)
+    fmt = conn.readline()
+    if not fmt:
+        raise Exception('Unexpected EOF while reading rev-list format')
+    fmt = None if fmt == '\n' else fmt[:-1]
+    refs = tuple(x[:-1] for x in lines_until_sentinel(conn, '\n', Exception))
+    args = git.rev_list_invocation(refs, count=count, format=fmt)
+    p = subprocess.Popen(git.rev_list_invocation(refs, count=count, format=fmt),
+                         preexec_fn=git._gitenv(git.repodir),
+                         stdout=subprocess.PIPE)
+    while True:
+        out = p.stdout.read(64 * 1024)
+        if not out:
+            break
+        conn.write(out)
+    rv = p.wait()  # not fatal
+    if rv:
+        msg = 'git rev-list returned error %d' % rv
+        conn.error(msg)
+        raise GitError(msg)
+    conn.ok()
 
 
 optspec = """
@@ -191,7 +247,11 @@ commands = {
     'receive-objects-v2': receive_objects_v2,
     'read-ref': read_ref,
     'update-ref': update_ref,
-    'cat': cat,
+    'join': join,
+    'cat': join,  # apocryphal alias
+    'cat-batch' : cat_batch,
+    'refs': refs,
+    'rev-list': rev_list
 }
 
 # FIXME: this protocol is totally lame and not at all future-proof.

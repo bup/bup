@@ -8,7 +8,7 @@ exec "$bup_python" "$0" ${1+"$@"}
 import glob, os, sys, tempfile
 
 from bup import options, git, bloom
-from bup.helpers import (debug1, handle_ctrl_c, log, progress, qprogress,
+from bup.helpers import (add_error, debug1, handle_ctrl_c, log, progress, qprogress,
                          saved_errors)
 
 optspec = """
@@ -109,7 +109,7 @@ def do_bloom(path, outfilename):
     msg = b is None and 'creating from' or 'adding'
     if not _first: _first = path
     dirprefix = (_first != path) and git.repo_rel(path)+': ' or ''
-    progress('bloom: %s%s %d file%s (%d object%s).\n'
+    progress('bloom: %s%s %d file%s (%d object%s).\r'
         % (dirprefix, msg,
            len(add), len(add)!=1 and 's' or '',
            add_count, add_count!=1 and 's' or ''))

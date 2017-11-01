@@ -6,21 +6,21 @@ interact with the Git data structures.
 import errno, os, sys, zlib, time, subprocess, struct, stat, re, tempfile, glob
 from collections import namedtuple
 from itertools import islice
+from numbers import Integral
 
-from bup import _helpers, path, midx, bloom, xstat
+from bup import _helpers, compat, hashsplit, path, midx, bloom, xstat
 from bup.helpers import (Sha1, add_error, chunkyreader, debug1, debug2,
                          fdatasync,
-                         hostname, log, merge_iter, mmap_read, mmap_readwrite,
-                         progress, qprogress, unlink, username, userfullname,
+                         hostname, localtime, log, merge_iter,
+                         mmap_read, mmap_readwrite,
+                         parse_num,
+                         progress, qprogress, stat_if_exists,
+                         unlink, username, userfullname,
                          utc_offset_str)
-
-
-max_pack_size = 1000*1000*1000  # larger packs will slow down pruning
-max_pack_objects = 200*1000  # cache memory usage is about 83 bytes per object
 
 verbose = 0
 ignore_midx = 0
-repodir = None
+repodir = None  # The default repository, once initialized
 
 _typemap =  { 'blob':3, 'tree':2, 'commit':1, 'tag':4 }
 _typermap = { 3:'blob', 2:'tree', 1:'commit', 4:'tag' }
@@ -31,6 +31,30 @@ _total_steps = 0
 
 class GitError(Exception):
     pass
+
+
+def _git_wait(cmd, p):
+    rv = p.wait()
+    if rv != 0:
+        raise GitError('%s returned %d' % (cmd, rv))
+
+def _git_capture(argv):
+    p = subprocess.Popen(argv, stdout=subprocess.PIPE, preexec_fn = _gitenv())
+    r = p.stdout.read()
+    _git_wait(repr(argv), p)
+    return r
+
+def git_config_get(option, repo_dir=None):
+    cmd = ('git', 'config', '--get', option)
+    p = subprocess.Popen(cmd, stdout=subprocess.PIPE,
+                         preexec_fn=_gitenv(repo_dir=repo_dir))
+    r = p.stdout.read()
+    rc = p.wait()
+    if rc == 0:
+        return r
+    if rc != 1:
+        raise GitError('%s returned %d' % (cmd, rc))
+    return None
 
 
 def parse_tz_offset(s):
@@ -88,9 +112,23 @@ def parse_commit(content):
 
 def get_commit_items(id, cp):
     commit_it = cp.get(id)
-    assert(commit_it.next() == 'commit')
+    _, typ, _ = next(commit_it)
+    assert(typ == 'commit')
     commit_content = ''.join(commit_it)
     return parse_commit(commit_content)
+
+
+def _local_git_date_str(epoch_sec):
+    return '%d %s' % (epoch_sec, utc_offset_str(epoch_sec))
+
+
+def _git_date_str(epoch_sec, tz_offset_sec):
+    offs =  tz_offset_sec // 60
+    return '%d %s%02d%02d' \
+        % (epoch_sec,
+           '+' if offs >= 0 else '-',
+           abs(offs) // 60,
+           abs(offs) % 60)
 
 
 def repo(sub = '', repo_dir=None):
@@ -238,6 +276,8 @@ def tree_decode(buf):
 
 
 def _encode_packobj(type, content, compression_level=1):
+    if compression_level not in (0, 1, 2, 3, 4, 5, 6, 7, 8, 9):
+        raise ValueError('invalid compression level %s' % compression_level)
     szout = ''
     sz = len(content)
     szbits = (sz & 0x0f) | (_typemap[type]<<4)
@@ -249,10 +289,6 @@ def _encode_packobj(type, content, compression_level=1):
             break
         szbits = sz & 0x7f
         sz >>= 7
-    if compression_level > 9:
-        compression_level = 9
-    elif compression_level < 0:
-        compression_level = 0
     z = zlib.compressobj(compression_level)
     yield szout
     yield z.compress(content)
@@ -565,9 +601,15 @@ def idxmerge(idxlist, final_progress=True):
 def _make_objcache():
     return PackIdxList(repo('objects/pack'))
 
+# bup-gc assumes that it can disable all PackWriter activities
+# (bloom/midx/cache) via the constructor and close() arguments.
+
 class PackWriter:
     """Writes Git objects inside a pack file."""
-    def __init__(self, objcache_maker=_make_objcache, compression_level=1):
+    def __init__(self, objcache_maker=_make_objcache, compression_level=1,
+                 run_midx=True, on_pack_finish=None,
+                 max_pack_size=None, max_pack_objects=None):
+        self.repo_dir = repo()
         self.file = None
         self.parentfd = None
         self.count = 0
@@ -577,13 +619,27 @@ class PackWriter:
         self.objcache_maker = objcache_maker
         self.objcache = None
         self.compression_level = compression_level
+        self.run_midx=run_midx
+        self.on_pack_finish = on_pack_finish
+        if not max_pack_size:
+            max_pack_size = git_config_get('pack.packSizeLimit',
+                                           repo_dir=self.repo_dir)
+            if max_pack_size is not None:
+                max_pack_size = parse_num(max_pack_size)
+            if not max_pack_size:
+                # larger packs slow down pruning
+                max_pack_size = 1000 * 1000 * 1000
+        self.max_pack_size = max_pack_size
+        # cache memory usage is about 83 bytes per object
+        self.max_pack_objects = max_pack_objects if max_pack_objects \
+                                else max(1, self.max_pack_size // 5000)
 
     def __del__(self):
         self.close()
 
     def _open(self):
         if not self.file:
-            objdir = dir=repo('objects')
+            objdir = dir = os.path.join(self.repo_dir, 'objects')
             fd, name = tempfile.mkstemp(suffix='.pack', dir=objdir)
             try:
                 self.file = os.fdopen(fd, 'w+b')
@@ -635,13 +691,14 @@ class PackWriter:
         size, crc = self._raw_write(_encode_packobj(type, content,
                                                     self.compression_level),
                                     sha=sha)
-        if self.outbytes >= max_pack_size or self.count >= max_pack_objects:
+        if self.outbytes >= self.max_pack_size \
+           or self.count >= self.max_pack_objects:
             self.breakpoint()
         return sha
 
     def breakpoint(self):
         """Clear byte and object counts and return the last processed id."""
-        id = self._end()
+        id = self._end(self.run_midx)
         self.outbytes = self.count = 0
         return id
 
@@ -657,11 +714,16 @@ class PackWriter:
         self._require_objcache()
         return self.objcache.exists(id, want_source=want_source)
 
+    def just_write(self, sha, type, content):
+        """Write an object to the pack file, bypassing the objcache.  Fails if
+        sha exists()."""
+        self._write(sha, type, content)
+
     def maybe_write(self, type, content):
         """Write an object to the pack file if not present and return its id."""
         sha = calc_hash(type, content)
         if not self.exists(sha):
-            self._write(sha, type, content)
+            self.just_write(sha, type, content)
             self._require_objcache()
             self.objcache.add(sha)
         return sha
@@ -675,23 +737,28 @@ class PackWriter:
         content = tree_encode(shalist)
         return self.maybe_write('tree', content)
 
-    def _new_commit(self, tree, parent, author, adate, committer, cdate, msg):
+    def new_commit(self, tree, parent,
+                   author, adate_sec, adate_tz,
+                   committer, cdate_sec, cdate_tz,
+                   msg):
+        """Create a commit object in the pack.  The date_sec values must be
+        epoch-seconds, and if a tz is None, the local timezone is assumed."""
+        if adate_tz:
+            adate_str = _git_date_str(adate_sec, adate_tz)
+        else:
+            adate_str = _local_git_date_str(adate_sec)
+        if cdate_tz:
+            cdate_str = _git_date_str(cdate_sec, cdate_tz)
+        else:
+            cdate_str = _local_git_date_str(cdate_sec)
         l = []
         if tree: l.append('tree %s' % tree.encode('hex'))
         if parent: l.append('parent %s' % parent.encode('hex'))
-        if author: l.append('author %s %s' % (author, _git_date(adate)))
-        if committer: l.append('committer %s %s' % (committer, _git_date(cdate)))
+        if author: l.append('author %s %s' % (author, adate_str))
+        if committer: l.append('committer %s %s' % (committer, cdate_str))
         l.append('')
         l.append(msg)
         return self.maybe_write('commit', '\n'.join(l))
-
-    def new_commit(self, parent, tree, date, msg):
-        """Create a commit object in the pack."""
-        userline = '%s <%s@%s>' % (userfullname(), username(), hostname())
-        commit = self._new_commit(tree, parent,
-                                  userline, date, userline, date,
-                                  msg)
-        return commit
 
     def abort(self):
         """Remove the pack file from disk."""
@@ -737,8 +804,8 @@ class PackWriter:
             f.close()
 
         obj_list_sha = self._write_pack_idx_v2(self.filename + '.idx', idx, packbin)
-
-        nameprefix = repo('objects/pack/pack-%s' % obj_list_sha)
+        nameprefix = os.path.join(self.repo_dir,
+                                  'objects/pack/pack-' +  obj_list_sha)
         if os.path.exists(self.filename + '.map'):
             os.unlink(self.filename + '.map')
         os.rename(self.filename + '.pack', nameprefix + '.pack')
@@ -749,7 +816,11 @@ class PackWriter:
             os.close(self.parentfd)
 
         if run_midx:
-            auto_midx(repo('objects/pack'))
+            auto_midx(os.path.join(self.repo_dir, 'objects/pack'))
+
+        if self.on_pack_finish:
+            self.on_pack_finish(nameprefix)
+
         return nameprefix
 
     def close(self, run_midx=True):
@@ -803,10 +874,6 @@ class PackWriter:
             idx_f.close()
 
 
-def _git_date(date):
-    return '%d %s' % (date, utc_offset_str(date))
-
-
 def _gitenv(repo_dir = None):
     if not repo_dir:
         repo_dir = repo()
@@ -815,13 +882,13 @@ def _gitenv(repo_dir = None):
     return env
 
 
-def list_refs(refname=None, repo_dir=None,
+def list_refs(patterns=None, repo_dir=None,
               limit_to_heads=False, limit_to_tags=False):
-    """Yield (refname, hash) tuples for all repository refs unless a ref
-    name is specified.  Given a ref name, only include tuples for that
-    particular ref.  The limits restrict the result items to
-    refs/heads or refs/tags.  If both limits are specified, items from
-    both sources will be included.
+    """Yield (refname, hash) tuples for all repository refs unless
+    patterns are specified.  In that case, only include tuples for
+    refs matching those patterns (cf. git-show-ref(1)).  The limits
+    restrict the result items to refs/heads or refs/tags.  If both
+    limits are specified, items from both sources will be included.
 
     """
     argv = ['git', 'show-ref']
@@ -830,8 +897,8 @@ def list_refs(refname=None, repo_dir=None,
     if limit_to_tags:
         argv.append('--tags')
     argv.append('--')
-    if refname:
-        argv += [refname]
+    if patterns:
+        argv.extend(patterns)
     p = subprocess.Popen(argv,
                          preexec_fn = _gitenv(repo_dir),
                          stdout = subprocess.PIPE)
@@ -847,7 +914,7 @@ def list_refs(refname=None, repo_dir=None,
 
 def read_ref(refname, repo_dir = None):
     """Get the commit id of the most recent commit made on a given ref."""
-    refs = list_refs(refname, repo_dir=repo_dir, limit_to_heads=True)
+    refs = list_refs(patterns=[refname], repo_dir=repo_dir, limit_to_heads=True)
     l = tuple(islice(refs, 2))
     if l:
         assert(len(l) == 1)
@@ -856,32 +923,52 @@ def read_ref(refname, repo_dir = None):
         return None
 
 
-def rev_list(ref, count=None, repo_dir=None):
-    """Generate a list of reachable commits in reverse chronological order.
+def rev_list_invocation(ref_or_refs, count=None, format=None):
+    if isinstance(ref_or_refs, compat.str_type):
+        refs = (ref_or_refs,)
+    else:
+        refs = ref_or_refs
+    argv = ['git', 'rev-list']
+    if isinstance(count, Integral):
+        argv.extend(['-n', str(count)])
+    elif count:
+        raise ValueError('unexpected count argument %r' % count)
 
-    This generator walks through commits, from child to parent, that are
-    reachable via the specified ref and yields a series of tuples of the form
-    (date,hash).
+    if format:
+        argv.append('--pretty=format:' + format)
+    for ref in refs:
+        assert not ref.startswith('-')
+        argv.append(ref)
+    argv.append('--')
+    return argv
 
-    If count is a non-zero integer, limit the number of commits to "count"
-    objects.
+
+def rev_list(ref_or_refs, count=None, parse=None, format=None, repo_dir=None):
+    """Yield information about commits as per "git rev-list".  If a format
+    is not provided, yield one hex hash at a time.  If a format is
+    provided, pass it to rev-list and call parse(git_stdout) for each
+    commit with the stream positioned just after the rev-list "commit
+    HASH" header line.  When a format is provided yield (oidx,
+    parse(git_stdout)) for each commit.
+
     """
-    assert(not ref.startswith('-'))
-    opts = []
-    if count:
-        opts += ['-n', str(atoi(count))]
-    argv = ['git', 'rev-list', '--pretty=format:%at'] + opts + [ref, '--']
-    p = subprocess.Popen(argv,
+    assert bool(parse) == bool(format)
+    p = subprocess.Popen(rev_list_invocation(ref_or_refs, count=count,
+                                             format=format),
                          preexec_fn = _gitenv(repo_dir),
                          stdout = subprocess.PIPE)
-    commit = None
-    for row in p.stdout:
-        s = row.strip()
-        if s.startswith('commit '):
-            commit = s[7:].decode('hex')
-        else:
-            date = int(s)
-            yield (date, commit)
+    if not format:
+        for line in p.stdout:
+            yield line.strip()
+    else:
+        line = p.stdout.readline()
+        while line:
+            s = line.strip()
+            if not s.startswith('commit '):
+                raise Exception('unexpected line ' + s)
+            yield s[7:], parse(p.stdout)
+            line = p.stdout.readline()
+
     rv = p.wait()  # not fatal
     if rv:
         raise GitError, 'git rev-list returned error %d' % rv
@@ -937,10 +1024,11 @@ def update_ref(refname, newval, oldval, repo_dir=None):
     _git_wait('git update-ref', p)
 
 
-def delete_ref(refname):
-    """Delete a repository reference."""
+def delete_ref(refname, oldvalue=None):
+    """Delete a repository reference (see git update-ref(1))."""
     assert(refname.startswith('refs/'))
-    p = subprocess.Popen(['git', 'update-ref', '-d', refname],
+    oldvalue = [] if not oldvalue else [oldvalue]
+    p = subprocess.Popen(['git', 'update-ref', '-d', refname] + oldvalue,
                          preexec_fn = _gitenv())
     _git_wait('git update-ref', p)
 
@@ -985,21 +1073,20 @@ def init_repo(path=None):
 
 
 def check_repo_or_die(path=None):
-    """Make sure a bup repository exists, and abort if not.
-    If the path to a particular repository was not specified, this function
-    initializes the default repository automatically.
-    """
+    """Check to see if a bup repository probably exists, and abort if not."""
     guess_repo(path)
-    try:
-        os.stat(repo('objects/pack/.'))
-    except OSError as e:
-        if e.errno == errno.ENOENT:
-            log('error: %r is not a bup repository; run "bup init"\n'
-                % repo())
+    top = repo()
+    pst = stat_if_exists(top + '/objects/pack')
+    if pst and stat.S_ISDIR(pst.st_mode):
+        return
+    if not pst:
+        top_st = stat_if_exists(top)
+        if not top_st:
+            log('error: repository %r does not exist (see "bup help init")\n'
+                % top)
             sys.exit(15)
-        else:
-            log('error: %s\n' % e)
-            sys.exit(14)
+    log('error: %r is not a repository\n' % top)
+    sys.exit(14)
 
 
 _ver = None
@@ -1029,19 +1116,6 @@ def ver():
     return _ver
 
 
-def _git_wait(cmd, p):
-    rv = p.wait()
-    if rv != 0:
-        raise GitError('%s returned %d' % (cmd, rv))
-
-
-def _git_capture(argv):
-    p = subprocess.Popen(argv, stdout=subprocess.PIPE, preexec_fn = _gitenv())
-    r = p.stdout.read()
-    _git_wait(repr(argv), p)
-    return r
-
-
 class _AbortableIter:
     def __init__(self, it, onabort = None):
         self.it = it
@@ -1053,7 +1127,7 @@ class _AbortableIter:
 
     def next(self):
         try:
-            return self.it.next()
+            return next(self.it)
         except StopIteration as e:
             self.done = True
             raise
@@ -1080,14 +1154,9 @@ class CatPipe:
         self.repo_dir = repo_dir
         wanted = ('1','5','6')
         if ver() < wanted:
-            if not _ver_warned:
-                log('warning: git version < %s; bup will be slow.\n'
-                    % '.'.join(wanted))
-                _ver_warned = 1
-            self.get = self._slow_get
-        else:
-            self.p = self.inprogress = None
-            self.get = self._fast_get
+            log('error: git version must be at least 1.5.6\n')
+            sys.exit(1)
+        self.p = self.inprogress = None
 
     def _abort(self):
         if self.p:
@@ -1096,7 +1165,7 @@ class CatPipe:
         self.p = None
         self.inprogress = None
 
-    def _restart(self):
+    def restart(self):
         self._abort()
         self.p = subprocess.Popen(['git', 'cat-file', '--batch'],
                                   stdin=subprocess.PIPE,
@@ -1105,35 +1174,39 @@ class CatPipe:
                                   bufsize = 4096,
                                   preexec_fn = _gitenv(self.repo_dir))
 
-    def _fast_get(self, id):
+    def get(self, ref):
+        """Yield (oidx, type, size), followed by the data referred to by ref.
+        If ref does not exist, only yield (None, None, None).
+
+        """
         if not self.p or self.p.poll() != None:
-            self._restart()
+            self.restart()
         assert(self.p)
         poll_result = self.p.poll()
         assert(poll_result == None)
         if self.inprogress:
-            log('_fast_get: opening %r while %r is open\n'
-                % (id, self.inprogress))
+            log('get: opening %r while %r is open\n' % (ref, self.inprogress))
         assert(not self.inprogress)
-        assert(id.find('\n') < 0)
-        assert(id.find('\r') < 0)
-        assert(not id.startswith('-'))
-        self.inprogress = id
-        self.p.stdin.write('%s\n' % id)
+        assert(ref.find('\n') < 0)
+        assert(ref.find('\r') < 0)
+        assert(not ref.startswith('-'))
+        self.inprogress = ref
+        self.p.stdin.write('%s\n' % ref)
         self.p.stdin.flush()
         hdr = self.p.stdout.readline()
         if hdr.endswith(' missing\n'):
             self.inprogress = None
-            raise KeyError('blob %r is missing' % id)
-        spl = hdr.split(' ')
-        if len(spl) != 3 or len(spl[0]) != 40:
-            raise GitError('expected blob, got %r' % spl)
-        (hex, type, size) = spl
-
-        it = _AbortableIter(chunkyreader(self.p.stdout, int(spl[2])),
-                           onabort = self._abort)
+            yield None, None, None
+            return
+        info = hdr.split(' ')
+        if len(info) != 3 or len(info[0]) != 40:
+            raise GitError('expected object (id, type, size), got %r' % spl)
+        oidx, typ, size = info
+        size = int(size)
+        it = _AbortableIter(chunkyreader(self.p.stdout, size),
+                            onabort=self._abort)
         try:
-            yield type
+            yield oidx, typ, size
             for blob in it:
                 yield blob
             readline_result = self.p.stdout.readline()
@@ -1143,38 +1216,24 @@ class CatPipe:
             it.abort()
             raise
 
-    def _slow_get(self, id):
-        assert(id.find('\n') < 0)
-        assert(id.find('\r') < 0)
-        assert(id[0] != '-')
-        type = _git_capture(['git', 'cat-file', '-t', id]).strip()
-        yield type
-
-        p = subprocess.Popen(['git', 'cat-file', type, id],
-                             stdout=subprocess.PIPE,
-                             preexec_fn = _gitenv(self.repo_dir))
-        for blob in chunkyreader(p.stdout):
-            yield blob
-        _git_wait('git cat-file', p)
-
     def _join(self, it):
-        type = it.next()
-        if type == 'blob':
+        _, typ, _ = next(it)
+        if typ == 'blob':
             for blob in it:
                 yield blob
-        elif type == 'tree':
+        elif typ == 'tree':
             treefile = ''.join(it)
             for (mode, name, sha) in tree_decode(treefile):
                 for blob in self.join(sha.encode('hex')):
                     yield blob
-        elif type == 'commit':
+        elif typ == 'commit':
             treeline = ''.join(it).split('\n')[0]
             assert(treeline.startswith('tree '))
             for blob in self.join(treeline[5:]):
                 yield blob
         else:
             raise GitError('invalid object type %r: expected blob/tree/commit'
-                           % type)
+                           % typ)
 
     def join(self, id):
         """Generate a list of the content of all blobs that can be reached
@@ -1193,9 +1252,9 @@ _cp = {}
 
 def cp(repo_dir=None):
     """Create a CatPipe object or reuse the already existing one."""
-    global _cp
+    global _cp, repodir
     if not repo_dir:
-        repo_dir = repo()
+        repo_dir = repodir or repo()
     repo_dir = os.path.abspath(repo_dir)
     cp = _cp.get(repo_dir)
     if not cp:
@@ -1214,3 +1273,93 @@ def tags(repo_dir = None):
             tags[c] = []
         tags[c].append(name)  # more than one tag can point at 'c'
     return tags
+
+
+class MissingObject(KeyError):
+    def __init__(self, oid):
+        self.oid = oid
+        KeyError.__init__(self, 'object %r is missing' % oid.encode('hex'))
+
+
+WalkItem = namedtuple('WalkItem', ['oid', 'type', 'mode',
+                                   'path', 'chunk_path', 'data'])
+# The path is the mangled path, and if an item represents a fragment
+# of a chunked file, the chunk_path will be the chunked subtree path
+# for the chunk, i.e. ['', '2d3115e', ...].  The top-level path for a
+# chunked file will have a chunk_path of [''].  So some chunk subtree
+# of the file '/foo/bar/baz' might look like this:
+#
+#   item.path = ['foo', 'bar', 'baz.bup']
+#   item.chunk_path = ['', '2d3115e', '016b097']
+#   item.type = 'tree'
+#   ...
+
+
+def walk_object(cat_pipe, oidx,
+                stop_at=None,
+                include_data=None):
+    """Yield everything reachable from oidx via cat_pipe as a WalkItem,
+    stopping whenever stop_at(oidx) returns true.  Throw MissingObject
+    if a hash encountered is missing from the repository, and don't
+    read or return blob content in the data field unless include_data
+    is set.
+    """
+    # Maintain the pending stack on the heap to avoid stack overflow
+    pending = [(oidx, [], [], None)]
+    while len(pending):
+        oidx, parent_path, chunk_path, mode = pending.pop()
+        oid = oidx.decode('hex')
+        if stop_at and stop_at(oidx):
+            continue
+
+        if (not include_data) and mode and stat.S_ISREG(mode):
+            # If the object is a "regular file", then it's a leaf in
+            # the graph, so we can skip reading the data if the caller
+            # hasn't requested it.
+            yield WalkItem(oid=oid, type='blob',
+                           chunk_path=chunk_path, path=parent_path,
+                           mode=mode,
+                           data=None)
+            continue
+
+        item_it = cat_pipe.get(oidx)
+        get_oidx, typ, _ = next(item_it)
+        if not get_oidx:
+            raise MissingObject(oidx.decode('hex'))
+        if typ not in ('blob', 'commit', 'tree'):
+            raise Exception('unexpected repository object type %r' % typ)
+
+        # FIXME: set the mode based on the type when the mode is None
+        if typ == 'blob' and not include_data:
+            # Dump data until we can ask cat_pipe not to fetch it
+            for ignored in item_it:
+                pass
+            data = None
+        else:
+            data = ''.join(item_it)
+
+        yield WalkItem(oid=oid, type=typ,
+                       chunk_path=chunk_path, path=parent_path,
+                       mode=mode,
+                       data=(data if include_data else None))
+
+        if typ == 'commit':
+            commit_items = parse_commit(data)
+            for pid in commit_items.parents:
+                pending.append((pid, parent_path, chunk_path, mode))
+            pending.append((commit_items.tree, parent_path, chunk_path,
+                            hashsplit.GIT_MODE_TREE))
+        elif typ == 'tree':
+            for mode, name, ent_id in tree_decode(data):
+                demangled, bup_type = demangle_name(name, mode)
+                if chunk_path:
+                    sub_path = parent_path
+                    sub_chunk_path = chunk_path + [name]
+                else:
+                    sub_path = parent_path + [name]
+                    if bup_type == BUP_CHUNKED:
+                        sub_chunk_path = ['']
+                    else:
+                        sub_chunk_path = chunk_path
+                pending.append((ent_id.encode('hex'), sub_path, sub_chunk_path,
+                                mode))

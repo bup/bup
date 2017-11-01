@@ -1,9 +1,10 @@
 
-import errno, os, re, struct, time, zlib
+import errno, os, re, struct, sys, time, zlib
 
 from bup import git, ssh
 from bup.helpers import (Conn, atomically_replaced_file, chunkyreader, debug1,
-                         debug2, linereader, mkdirp, progress, qprogress)
+                         debug2, linereader, lines_until_sentinel,
+                         mkdirp, progress, qprogress)
 
 
 bwlimit = None
@@ -86,6 +87,9 @@ class Client:
                 self.sock.connect((self.host, atoi(self.port) or 1982))
                 self.sockw = self.sock.makefile('wb')
                 self.conn = DemuxConn(self.sock.fileno(), self.sockw)
+        self._available_commands = self._get_available_commands()
+        self._require_command('init-dir')
+        self._require_command('set-dir')
         if self.dir:
             self.dir = re.sub(r'[\r\n]', ' ', self.dir)
             if create:
@@ -148,7 +152,39 @@ class Client:
     def _not_busy(self):
         self._busy = None
 
+    def _get_available_commands(self):
+        self.check_busy()
+        self._busy = 'help'
+        conn = self.conn
+        conn.write('help\n')
+        result = set()
+        line = self.conn.readline()
+        if not line == 'Commands:\n':
+            raise ClientError('unexpected help header ' + repr(line))
+        while True:
+            line = self.conn.readline()
+            if line == '\n':
+                break
+            if not line.startswith('    '):
+                raise ClientError('unexpected help line ' + repr(line))
+            cmd = line.strip()
+            if not cmd:
+                raise ClientError('unexpected help line ' + repr(line))
+            result.add(cmd)
+        # FIXME: confusing
+        not_ok = self.check_ok()
+        if not_ok:
+            raise not_ok
+        self._not_busy()
+        return frozenset(result)
+
+    def _require_command(self, name):
+        if name not in self._available_commands:
+            raise ClientError('server does not appear to provide %s command'
+                              % name)
+
     def sync_indexes(self):
+        self._require_command('list-indexes')
         self.check_busy()
         conn = self.conn
         mkdirp(self.cachedir)
@@ -183,6 +219,7 @@ class Client:
         git.auto_midx(self.cachedir)
 
     def sync_index(self, name):
+        self._require_command('send-index')
         #debug1('requesting %r\n' % name)
         self.check_busy()
         mkdirp(self.cachedir)
@@ -238,7 +275,9 @@ class Client:
             self.conn.write('%s\n' % ob)
         return idx
 
-    def new_packwriter(self, compression_level = 1):
+    def new_packwriter(self, compression_level=1,
+                       max_pack_size=None, max_pack_objects=None):
+        self._require_command('receive-objects-v2')
         self.check_busy()
         def _set_busy():
             self._busy = 'receive-objects-v2'
@@ -249,9 +288,12 @@ class Client:
                                  onopen = _set_busy,
                                  onclose = self._not_busy,
                                  ensure_busy = self.ensure_busy,
-                                 compression_level = compression_level)
+                                 compression_level=compression_level,
+                                 max_pack_size=max_pack_size,
+                                 max_pack_objects=max_pack_objects)
 
     def read_ref(self, refname):
+        self._require_command('read-ref')
         self.check_busy()
         self.conn.write('read-ref %s\n' % refname)
         r = self.conn.readline().strip()
@@ -263,32 +305,148 @@ class Client:
             return None   # nonexistent ref
 
     def update_ref(self, refname, newval, oldval):
+        self._require_command('update-ref')
         self.check_busy()
         self.conn.write('update-ref %s\n%s\n%s\n' 
                         % (refname, newval.encode('hex'),
                            (oldval or '').encode('hex')))
         self.check_ok()
 
-    def cat(self, id):
+    def join(self, id):
+        self._require_command('join')
         self.check_busy()
-        self._busy = 'cat'
+        self._busy = 'join'
+        # Send 'cat' so we'll work fine with older versions
         self.conn.write('cat %s\n' % re.sub(r'[\n\r]', '_', id))
         while 1:
             sz = struct.unpack('!I', self.conn.read(4))[0]
             if not sz: break
             yield self.conn.read(sz)
+        # FIXME: ok to assume the only NotOk is a KerError? (it is true atm)
         e = self.check_ok()
         self._not_busy()
         if e:
             raise KeyError(str(e))
+
+    def cat_batch(self, refs):
+        self._require_command('cat-batch')
+        self.check_busy()
+        self._busy = 'cat-batch'
+        conn = self.conn
+        conn.write('cat-batch\n')
+        # FIXME: do we want (only) binary protocol?
+        for ref in refs:
+            assert ref
+            assert '\n' not in ref
+            conn.write(ref)
+            conn.write('\n')
+        conn.write('\n')
+        for ref in refs:
+            info = conn.readline()
+            if info == 'missing\n':
+                yield None, None, None, None
+                continue
+            if not (info and info.endswith('\n')):
+                raise ClientError('Hit EOF while looking for object info: %r'
+                                  % info)
+            oidx, oid_t, size = info.split(' ')
+            size = int(size)
+            cr = chunkyreader(conn, size)
+            yield oidx, oid_t, size, cr
+            detritus = next(cr, None)
+            if detritus:
+                raise ClientError('unexpected leftover data ' + repr(detritus))
+        # FIXME: confusing
+        not_ok = self.check_ok()
+        if not_ok:
+            raise not_ok
+        self._not_busy()
+
+    def refs(self, patterns=None, limit_to_heads=False, limit_to_tags=False):
+        patterns = patterns or tuple()
+        self._require_command('refs')
+        self.check_busy()
+        self._busy = 'refs'
+        conn = self.conn
+        conn.write('refs %s %s\n' % (1 if limit_to_heads else 0,
+                                     1 if limit_to_tags else 0))
+        for pattern in patterns:
+            assert '\n' not in pattern
+            conn.write(pattern)
+            conn.write('\n')
+        conn.write('\n')
+        for line in lines_until_sentinel(conn, '\n', ClientError):
+            line = line[:-1]
+            oidx, name = line.split(' ')
+            if len(oidx) != 40:
+                raise ClientError('Invalid object fingerprint in %r' % line)
+            if not name:
+                raise ClientError('Invalid reference name in %r' % line)
+            yield name, oidx.decode('hex')
+        # FIXME: confusing
+        not_ok = self.check_ok()
+        if not_ok:
+            raise not_ok
+        self._not_busy()
+
+    def rev_list(self, refs, count=None, parse=None, format=None):
+        self._require_command('rev-list')
+        assert (count is None) or (isinstance(count, Integral))
+        if format:
+            assert '\n' not in format
+            assert parse
+        for ref in refs:
+            assert ref
+            assert '\n' not in ref
+        self.check_busy()
+        self._busy = 'rev-list'
+        conn = self.conn
+        conn.write('rev-list\n')
+        if count is not None:
+            conn.write(str(count))
+        conn.write('\n')
+        if format:
+            conn.write(format)
+        conn.write('\n')
+        for ref in refs:
+            conn.write(ref)
+            conn.write('\n')
+        conn.write('\n')
+        if not format:
+            for _ in xrange(len(refs)):
+                line = conn.readline()
+                if not line:
+                    raise ClientError('unexpected EOF')
+                line = line.strip()
+                assert len(line) == 40
+                yield line
+        else:
+            for _ in xrange(len(refs)):
+                line = conn.readline()
+                if not line:
+                    raise ClientError('unexpected EOF')
+                if not line.startswith('commit '):
+                    raise ClientError('unexpected line ' + repr(line))
+                yield line[7:].strip(), parse(conn)
+        # FIXME: confusing
+        not_ok = self.check_ok()
+        if not_ok:
+            raise not_ok
+        self._not_busy()
 
 
 class PackWriter_Remote(git.PackWriter):
     def __init__(self, conn, objcache_maker, suggest_packs,
                  onopen, onclose,
                  ensure_busy,
-                 compression_level=1):
-        git.PackWriter.__init__(self, objcache_maker)
+                 compression_level=1,
+                 max_pack_size=None,
+                 max_pack_objects=None):
+        git.PackWriter.__init__(self,
+                                objcache_maker=objcache_maker,
+                                compression_level=compression_level,
+                                max_pack_size=max_pack_size,
+                                max_pack_objects=max_pack_objects)
         self.file = conn
         self.filename = 'remote socket'
         self.suggest_packs = suggest_packs
@@ -304,7 +462,8 @@ class PackWriter_Remote(git.PackWriter):
             self.onopen()
             self._packopen = True
 
-    def _end(self):
+    def _end(self, run_midx=True):
+        assert(run_midx)  # We don't support this via remote yet
         if self._packopen and self.file:
             self.file.write('\0\0\0\0')
             self._packopen = False

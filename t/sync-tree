@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -u
+
 usage() {
 cat <<EOF
 Usage: sync-tree [-h] [-c] [-x] SOURCE/ DEST/
@@ -45,10 +47,23 @@ else
     esac
 fi
 
+xattrs_available=''
 if [[ ! "$rsync_version" =~ "xattrs" ]] || [[ "$rsync_version" =~ "no xattrs" ]]; then
     echo "Not syncing xattrs (not supported by available rsync)" 1>&2
 else
-    rsync_opts="$rsync_opts -X"
+    xattrs_available=yes
 fi
 
-exec rsync $rsync_opts "$src" "$dest"
+
+# rsync may fail if -X is specified and the filesystems don't support
+# xattrs.
+
+if test "$xattrs_available"; then
+    rsync $rsync_opts -X "$src" "$dest"
+    if test $? -ne 0; then
+        # Try again without -X
+        exec rsync $rsync_opts "$src" "$dest"
+    fi
+else
+    exec rsync $rsync_opts "$src" "$dest"
+fi

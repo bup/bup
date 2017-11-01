@@ -8,7 +8,7 @@ exec "$bup_python" "$0" ${1+"$@"}
 import sys, os, errno
 
 from bup import options, git, vfs, xstat
-from bup.helpers import log
+from bup.helpers import buglvl, log
 
 try:
     import fuse
@@ -17,63 +17,50 @@ except ImportError:
     sys.exit(1)
 
 
-class Stat(fuse.Stat):
-    def __init__(self):
-        self.st_mode = 16749
-        self.st_ino = 0
-        self.st_dev = 0
-        self.st_nlink = 0
-        self.st_uid = os.getuid()
-        self.st_gid = os.getgid()
-        self.st_size = 0
-        self.st_atime = 0
-        self.st_mtime = 0
-        self.st_ctime = 0
-        self.st_blocks = 0
-        self.st_blksize = 0
-        self.st_rdev = 0
-
-
 cache = {}
 def cache_get(top, path):
     parts = path.split('/')
     cache[('',)] = top
     c = None
     max = len(parts)
-    #log('cache: %r\n' % cache.keys())
+    if buglvl >= 1:
+        log('cache: %r\n' % cache.keys())
     for i in range(max):
         pre = parts[:max-i]
-        #log('cache trying: %r\n' % pre)
+        if buglvl >= 1:
+            log('cache trying: %r\n' % pre)
         c = cache.get(tuple(pre))
         if c:
             rest = parts[max-i:]
             for r in rest:
-                #log('resolving %r from %r\n' % (r, c.fullname()))
+                if buglvl >= 1:
+                    log('resolving %r from %r\n' % (r, c.fullname()))
                 c = c.lresolve(r)
                 key = tuple(pre + [r])
-                #log('saving: %r\n' % (key,))
+                if buglvl >= 1:
+                    log('saving: %r\n' % (key,))
                 cache[key] = c
             break
     assert(c)
     return c
-        
-    
+
 
 class BupFs(fuse.Fuse):
-    def __init__(self, top, meta=False):
+    def __init__(self, top, meta=False, verbose=0):
         fuse.Fuse.__init__(self)
         self.top = top
         self.meta = meta
+        self.verbose = verbose
     
     def getattr(self, path):
-        log('--getattr(%r)\n' % path)
+        if self.verbose > 0:
+            log('--getattr(%r)\n' % path)
         try:
             node = cache_get(self.top, path)
-            st = Stat()
-            if node.mode != 16384:
-                st.st_mode = node.mode
-            st.st_nlink = node.nlinks()
-            st.st_size = node.size()  # Until/unless we store the size in m.
+            st = fuse.Stat(st_mode=node.mode,
+                           st_nlink=node.nlinks(),
+                           # Until/unless we store the size in m.
+                           st_size=node.size())
             if self.meta:
                 m = node.metadata()
                 if m:
@@ -88,7 +75,8 @@ class BupFs(fuse.Fuse):
             return -errno.ENOENT
 
     def readdir(self, path, offset):
-        log('--readdir(%r)\n' % path)
+        if self.verbose > 0:
+            log('--readdir(%r)\n' % path)
         node = cache_get(self.top, path)
         yield fuse.Direntry('.')
         yield fuse.Direntry('..')
@@ -96,12 +84,14 @@ class BupFs(fuse.Fuse):
             yield fuse.Direntry(sub.name)
 
     def readlink(self, path):
-        log('--readlink(%r)\n' % path)
+        if self.verbose > 0:
+            log('--readlink(%r)\n' % path)
         node = cache_get(self.top, path)
         return node.readlink()
 
     def open(self, path, flags):
-        log('--open(%r)\n' % path)
+        if self.verbose > 0:
+            log('--open(%r)\n' % path)
         node = cache_get(self.top, path)
         accmode = os.O_RDONLY | os.O_WRONLY | os.O_RDWR
         if (flags & accmode) != os.O_RDONLY:
@@ -109,10 +99,12 @@ class BupFs(fuse.Fuse):
         node.open()
 
     def release(self, path, flags):
-        log('--release(%r)\n' % path)
+        if self.verbose > 0:
+            log('--release(%r)\n' % path)
 
     def read(self, path, size, offset):
-        log('--read(%r)\n' % path)
+        if self.verbose > 0:
+            log('--read(%r)\n' % path)
         n = cache_get(self.top, path)
         o = n.open()
         o.seek(offset)
@@ -127,10 +119,11 @@ fuse.fuse_python_api = (0, 2)
 optspec = """
 bup fuse [-d] [-f] <mountpoint>
 --
-d,debug   increase debug level
 f,foreground  run in foreground
+d,debug       run in the foreground and display FUSE debug information
 o,allow-other allow other users to access the filesystem
 meta          report original metadata for paths when available
+v,verbose     increase log output (can be used more than once)
 """
 o = options.Options(optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
@@ -140,7 +133,7 @@ if len(extra) != 1:
 
 git.check_repo_or_die()
 top = vfs.RefList(None)
-f = BupFs(top, meta=opt.meta)
+f = BupFs(top, meta=opt.meta, verbose=opt.verbose)
 f.fuse_args.mountpoint = extra[0]
 if opt.debug:
     f.fuse_args.add('debug')

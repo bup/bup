@@ -32,6 +32,7 @@ os.environ['BUP_RESOURCE_PATH'] = resourcepath
 
 
 from bup import helpers
+from bup.compat import wrap_main
 from bup.helpers import atoi, columnate, debug1, log, tty_width
 
 
@@ -178,37 +179,40 @@ def handler(signum, frame):
         signal.signal(signal.SIGTSTP, handler)
     ret = 94
 
-signal.signal(signal.SIGTERM, handler)
-signal.signal(signal.SIGINT, handler)
-signal.signal(signal.SIGTSTP, handler)
-signal.signal(signal.SIGCONT, handler)
+def main():
+    signal.signal(signal.SIGTERM, handler)
+    signal.signal(signal.SIGINT, handler)
+    signal.signal(signal.SIGTSTP, handler)
+    signal.signal(signal.SIGCONT, handler)
 
-try:
     try:
-        c = (do_profile and [sys.executable, '-m', 'cProfile'] or []) + subcmd
-        if not n and not outf and not errf:
-            # shortcut when no bup-newliner stuff is needed
-            os.execvp(c[0], c)
-        else:
-            p = subprocess.Popen(c, stdout=outf, stderr=errf,
-                                 preexec_fn=force_tty)
-        while 1:
-            # if we get a signal while waiting, we have to keep waiting, just
-            # in case our child doesn't die.
-            ret = p.wait()
-            forward_signals = False
-            break
-    except OSError as e:
-        log('%s: %s\n' % (subcmd[0], e))
-        ret = 98
-finally:
-    if p and p.poll() == None:
-        os.kill(p.pid, signal.SIGTERM)
-        p.wait()
-    if n:
-        n.stdin.close()
         try:
-            n.wait()
-        except:
-            pass
-sys.exit(ret)
+            c = (do_profile and [sys.executable, '-m', 'cProfile'] or []) + subcmd
+            if not n and not outf and not errf:
+                # shortcut when no bup-newliner stuff is needed
+                os.execvp(c[0], c)
+            else:
+                p = subprocess.Popen(c, stdout=outf, stderr=errf,
+                                     preexec_fn=force_tty)
+            while 1:
+                # if we get a signal while waiting, we have to keep waiting, just
+                # in case our child doesn't die.
+                ret = p.wait()
+                forward_signals = False
+                break
+        except OSError as e:
+            log('%s: %s\n' % (subcmd[0], e))
+            ret = 98
+    finally:
+        if p and p.poll() == None:
+            os.kill(p.pid, signal.SIGTERM)
+            p.wait()
+        if n:
+            n.stdin.close()
+            try:
+                n.wait()
+            except:
+                pass
+    sys.exit(ret)
+
+wrap_main(main)

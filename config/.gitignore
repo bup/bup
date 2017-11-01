@@ -5,3 +5,4 @@ config.mak
 config.md
 config.sub
 config.vars
+config.vars.sh

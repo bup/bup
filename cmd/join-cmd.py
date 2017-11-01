@@ -7,8 +7,9 @@ exec "$bup_python" "$0" ${1+"$@"}
 
 import sys
 
-from bup import git, options, client
+from bup import git, options
 from bup.helpers import linereader, log
+from bup.repo import LocalRepo, RemoteRepo
 
 
 optspec = """
@@ -26,22 +27,16 @@ if not extra:
     extra = linereader(sys.stdin)
 
 ret = 0
-
-if opt.remote:
-    cli = client.Client(opt.remote)
-    cat = cli.cat
-else:
-    cp = git.CatPipe()
-    cat = cp.join
+repo = RemoteRepo(opt.remote) if opt.remote else LocalRepo()
 
 if opt.o:
     outfile = open(opt.o, 'wb')
 else:
     outfile = sys.stdout
 
-for id in extra:
+for ref in extra:
     try:
-        for blob in cat(id):
+        for blob in repo.join(ref):
             outfile.write(blob)
     except KeyError as e:
         outfile.flush()

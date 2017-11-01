@@ -10,23 +10,23 @@ usage()
     echo 'Usage: ./configure-version [--update | --clean]'
 }
 
-update-vpy()
+update-cpy()
 {
-    declare -r vpy=lib/bup/_version.py
-    rm -f $vpy.tmp-$$
+    declare -r cpy=lib/bup/_checkout.py
+    rm -f $cpy.tmp-$$
     local hash date desc
     hash=$(git log -1 --pretty=format:%H)
     date=$(git log -1 --pretty=format:%ci)
     desc=$(git describe --always --match="[0-9]*")
-    cat > $vpy.tmp-$$ <<-EOF
+    cat > $cpy.tmp-$$ <<-EOF
 	COMMIT='$hash'
-	NAMES='(tag: bup-$desc)'
+	NAMES='(tag: $desc)'
 	DATE='$date'
 	EOF
-    if ! test -e $vpy || ! cmp -s $vpy $vpy.tmp-$$; then
-        mv $vpy.tmp-$$ $vpy;
+    if ! test -e $cpy || ! cmp -s $cpy $cpy.tmp-$$; then
+        mv $cpy.tmp-$$ $cpy;
     fi
-    rm -f $vpy.tmp-$$
+    rm -f $cpy.tmp-$$
 }
 
 if test "$#" -ne 1; then
@@ -40,10 +40,25 @@ fi
 
 case "$1" in
     --update)
-        update-vpy
+        rc=0
+        grep -q -F '$Format' lib/bup/_release.py || rc=$?
+        case $rc in
+            0) update-cpy
+               ;;
+            1) if test -d .git; then
+                   echo 'error: detected release, but found ./.git' 1>&2
+                   exit 1
+               fi
+               echo "Detected release tree; skipping version configuration" 1>&2
+               exit 0
+               ;;
+            *)
+                echo 'error: grep failed' 1>&2
+                exit 1
+        esac
         ;;
     --clean)
-	rm -f lib/bup/_version.py lib/bup/_version.pyc lib/bup/_version.py.tmp-*
+	rm -f lib/bup/_checkout.py lib/bup/_checkout.pyc lib/bup/_checkout.py.tmp-*
         ;;
     *)
         usage 1>&2; exit 1

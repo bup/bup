@@ -1,5 +1,5 @@
 
-import mmap, struct
+import git, glob, mmap, os, struct
 
 from bup import _helpers
 from bup.helpers import log, mmap_read
@@ -121,3 +121,7 @@ class PackMidx:
         return int(self._fanget(self.entries-1))
 
 
+def clear_midxes(dir=None):
+    dir = dir or git.repo('objects/pack')
+    for midx in glob.glob(os.path.join(dir, '*.midx')):
+        os.unlink(midx)

@@ -71,28 +71,37 @@ Reasons you might want to avoid bup
    for you, but we don't know why.  It is also missing some
    probably-critical features.
    
- - It requires python >= 2.5, a C compiler, and an installed git
+ - It requires python >= 2.6, a C compiler, and an installed git
    version >= 1.5.3.1.  It also requires par2 if you want fsck to be
    able to generate the information needed to recover from some types
    of corruption.
  
- - It currently only works on Linux, MacOS X >= 10.4,
-   NetBSD, Solaris, or Windows (with Cygwin).  Patches to support
-   other platforms are welcome.
+ - It currently only works on Linux, FreeBSD, NetBSD, OS X >= 10.4,
+   Solaris, or Windows (with Cygwin).  Patches to support other
+   platforms are welcome.
 
  - Any items in "Things that are stupid" below.
 
-   
+
+Notable changes introduced by a release
+=======================================
+
+ - <a href="note/0.29.1-from-0.29.md">Changes in 0.29.1 as compared to 0.29</a>
+ - <a href="note/0.29-from-0.28.1.md">Changes in 0.29 as compared to 0.28.1</a>
+ - <a href="note/0.28.1-from-0.28.md">Changes in 0.28.1 as compared to 0.28</a>
+ - <a href="note/0.28-from-0.27.1.md">Changes in 0.28 as compared to 0.27.1</a>
+ - <a href="note/0.27.1-from-0.27.md">Changes in 0.27.1 as compared to 0.27</a>
+
+
 Getting started
 ===============
-
 
 From source
 -----------
 
  - Check out the bup source code using git:
  
-        git clone git://github.com/bup/bup
+        git clone https://github.com/bup/bup
 
  - Install the required python libraries (including the development
    libraries).
@@ -102,8 +111,8 @@ From source
 
             apt-get build-dep bup
 
-   Otherwise try this (substitute python2.5-dev or python2.6-dev if
-   you have an older system):
+   Otherwise try this (substitute python2.6-dev if you have an older
+   system):
 
             apt-get install python2.7-dev python-fuse
             apt-get install python-pyxattr python-pylibacl
@@ -143,13 +152,13 @@ From source
     may fail.  Running something like this before "make test" should
     sidestep the problem:
 
-        cd "$(/bin/pwd)"
+        cd "$(pwd -P)"
 
  - You can install bup via "make install", and override the default
    destination with DESTDIR and PREFIX.
 
    Files are normally installed to "$DESTDIR/$PREFIX" where DESTDIR is
-   empty by default, and PREFIX is set to /usr.  So if you wanted to
+   empty by default, and PREFIX is set to /usr/local.  So if you wanted to
    install bup to /opt/bup, you might do something like this:
 
         make install DESTDIR=/opt/bup PREFIX=''
@@ -237,9 +246,15 @@ Using bup
         bup index /etc
         bup save -r SERVERNAME:path/to/remote-bup-dir -n local-etc /etc
 
- - Restore a backup from a remote server.  (FAIL: unfortunately,
-   unlike "bup join", "bup restore" does not yet support remote
-   restores.  See both "bup join" and "Things that are stupid" below.)
+ - Make a remote backup to ~/.bup on SERVER:
+
+        bup index /etc
+        bup save -r SERVER: -n local-etc /etc
+
+ - Restore the remote backup to ./dest:
+
+        bup restore -r SERVER: -C ./dest local-etc/latest/etc
+        ls -l dest/etc
 
  - Defend your backups from death rays (OK fine, more likely from the
    occasional bad disk block).  This writes parity information
@@ -279,11 +294,12 @@ Using bup
  
         GIT_DIR=~/.bup git log local-etc
 	
- - Make a backup on a remote server:
+ - Save a tar archive to a remote server (without tar -z to facilitate
+   deduplication):
    
         tar -cvf - /etc | bup split -r SERVERNAME: -n local-etc -vv
  
- - Try restoring the remote backup tarball:
+ - Restore the archive:
  
         bup join -r SERVERNAME: local-etc | tar -tf -
  	
@@ -421,16 +437,6 @@ Things that are stupid for now but which we'll fix later
 Help with any of these problems, or others, is very welcome.  Join the
 mailing list (see below) if you'd like to help.
 
- - 'bup restore' can't pull directly from a remote server.
-
-    So in one sense "save -r" is a dead-end right now.  Obviously you
-    can use "ssh SERVER bup restore -C ./dest..." to create a tree you
-    can transfer elsewhere via rsync/tar/whatever, but that's *lame*.
-
-    Until we fix it, you may be able to mount the remote BUP_DIR via
-    sshfs and then restore "normally", though that hasn't been
-    officially tested.
-
  - 'bup save' and 'bup restore' have immature metadata support.
  
     On the plus side, they actually do have support now, but it's new,
@@ -476,22 +482,20 @@ mailing list (see below) if you'd like to help.
     give the continuous-backup process a really low CPU and I/O priority so
     you wouldn't even know it was running.
 
- - bup currently has no way to prune *old* backups.
- 
-    Because of the way the packfile system works, backups become "entangled"
-    in weird ways and it's not actually possible to delete one pack
-    (corresponding approximately to one backup) without risking screwing up
-    other backups.
-   
-    git itself has lots of ways of optimizing this sort of thing, but its
-    methods aren't really applicable here; bup packfiles are just too huge.
-    We'll have to do it in a totally different way.  There are lots of
-    options.  For now: make sure you've got lots of disk space :)
+ - bup only has experimental support for pruning old backups.
 
-    Until we fix this, one possible workaround is to just start a new
-    BUP_DIR occasionally, i.e. bup-2013-10, bup-2013-11...
+   While you should now be able to drop old saves and branches with
+   `bup rm`, and reclaim the space occupied by data that's no longer
+   needed by other backups with `bup gc`, these commands are
+   experimental, and should be handled with great care.  See the
+   man pages for more information.
 
- - bup has never been tested on anything but Linux, MacOS, and Windows+Cygwin.
+   Unless you want to help test the new commands, one possible
+   workaround is to just start a new BUP_DIR occasionally,
+   i.e. bup-2013, bup-2014...
+
+ - bup has never been tested on anything but Linux, FreeBSD, NetBSD,
+   OS X, and Windows+Cygwin.
  
     There's nothing that makes it *inherently* non-portable, though, so
     that's mostly a matter of someone putting in some effort.  (For a
@@ -514,10 +518,9 @@ mailing list (see below) if you'd like to help.
    
  - bup has no GUI.
  
-    Actually, that's not stupid, but you might consider it a limitation. 
-    There are a bunch of Linux GUI backup programs; someday I expect someone
-    will adapt one of them to use bup.
-    
+   Actually, that's not stupid, but you might consider it a
+   limitation.  See the ["Related Projects"](https://bup.github.io/)
+   list for some possible options.
     
 More Documentation
 ==================

@@ -50,7 +50,7 @@ bup_cmds := cmd/bup-python\
   $(patsubst cmd/%-cmd.py,cmd/bup-%,$(wildcard cmd/*-cmd.py)) \
   $(patsubst cmd/%-cmd.sh,cmd/bup-%,$(wildcard cmd/*-cmd.sh))
 
-bup_deps := bup lib/bup/_version.py lib/bup/_helpers$(SOEXT) $(bup_cmds)
+bup_deps := bup lib/bup/_checkout.py lib/bup/_helpers$(SOEXT) $(bup_cmds)
 
 all: $(bup_deps) Documentation/all $(current_sampledata)
 
@@ -126,10 +126,13 @@ lib/bup/_helpers$(SOEXT): \
 	LDFLAGS="$(LDFLAGS)" CFLAGS="$(CFLAGS)" "$(bup_python)" csetup.py build
 	cp lib/bup/build/*/_helpers$(SOEXT) lib/bup/
 
-lib/bup/_version.py:
-	@echo "Something has gone wrong; $@ should already exist."
-	@echo 'Check "./configure-version --update"'
-	@false
+lib/bup/_checkout.py:
+	@if grep -F '$Format' lib/bup/_release.py \
+	    && ! test -e lib/bup/_checkout.py; then \
+	  echo "Something has gone wrong; $@ should already exist."; \
+	  echo 'Check "./configure-version --update"'; \
+	  false; \
+	fi
 
 t/tmp:
 	mkdir t/tmp
@@ -145,6 +148,12 @@ runtests-python: all t/tmp
 	    | tee -a t/tmp/test-log/$$$$.log
 
 cmdline_tests := \
+  t/test-save-restore \
+  t/test-packsizelimit \
+  t/test-prune-older \
+  t/test-web.sh \
+  t/test-rm.sh \
+  t/test-gc.sh \
   t/test-main.sh \
   t/test-list-idx.sh \
   t/test-index.sh \
@@ -163,6 +172,7 @@ cmdline_tests := \
   t/test-restore-map-owner.sh \
   t/test-restore-single-file.sh \
   t/test-rm-between-index-and-save.sh \
+  t/test-save-with-valid-parent.sh \
   t/test-sparse-files.sh \
   t/test-command-without-init-fails.sh \
   t/test-redundant-saves.sh \
@@ -196,10 +206,13 @@ test: all
 
 check: test
 
+distcheck: all
+	./wvtest run t/test-release-archive.sh
+
 cmd/python-cmd.sh: config/config.vars Makefile
 	printf "#!/bin/sh\nexec %q \"\$$@\"" "$(bup_python)" \
 	  >> cmd/python-cmd.sh.$$PPID.tmp
-	chmod u+x cmd/python-cmd.sh.$$PPID.tmp
+	chmod +x cmd/python-cmd.sh.$$PPID.tmp
 	mv cmd/python-cmd.sh.$$PPID.tmp cmd/python-cmd.sh
 
 cmd/bup-%: cmd/%-cmd.py

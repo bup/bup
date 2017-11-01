@@ -4,6 +4,7 @@ bup_python="$(dirname "$0")/../cmd/bup-python" || exit $?
 exec "$bup_python" "$0" ${1+"$@"}
 """
 
+from sys import stderr
 import os.path, re, subprocess, sys
 
 def mntent_unescape(x):
@@ -18,10 +19,15 @@ def mntent_unescape(x):
     return re.sub(r'(\\\\|\\011|\\012|\\040)', replacement, x)
 
 targets = sys.argv[1:]
+
+if not os.path.exists('/proc/mounts'):
+    print >> stderr, 'No /proc/mounts; skipping mount cleanup in', repr(targets)
+    sys.exit(0)
+
 exit_status = 0
 for target in targets:
     if not os.path.isdir(target):
-        print >> sys.stderr, target, 'is not a directory'
+        print >> stderr, repr(target), 'is not a directory'
         exit_status = 1
         continue
     top = os.path.realpath(target)

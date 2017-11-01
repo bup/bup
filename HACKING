@@ -19,11 +19,9 @@ via email.
 Current Trajectory
 ==================
 
-Now that we've finished the 0.27 release, we're working on 0.28, and
+Now that we've finished the 0.29.1 release, we're working on 0.30, and
 although we're not certain which new features will be included, here
 are likely candidates:
-
-  - Support for rm/gc.
 
   - Support for transferring saves between repositories and rewriting
     branches.

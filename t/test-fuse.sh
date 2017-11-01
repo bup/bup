@@ -6,6 +6,13 @@ set -o pipefail
 
 unset BLOCKSIZE BLOCK_SIZE DF_BLOCK_SIZE
 
+root_status="$(t/root-status)" || exit $?
+
+if ! bup-python -c 'import fuse' 2> /dev/null; then
+    WVSTART 'unable to import fuse; skipping test'
+    exit 0
+fi
+
 if test -n "$(type -p modprobe)" && ! modprobe fuse; then
     echo 'Unable to load fuse module; skipping dependent tests.' 1>&2
     exit 0
@@ -16,7 +23,7 @@ if ! fusermount -V; then
     exit 0
 fi
 
-if ! groups | grep -q fuse && test "$(t/root-status)" != root; then
+if ! groups | grep -q fuse && test "$root_status" != root; then
     echo 'skipping FUSE tests: you are not root and not in the fuse group'
     exit 0
 fi
@@ -73,6 +80,9 @@ result=$(WVPASS ls mnt/src/latest) || exit $?
 WVPASSEQ "$result" "foo
 pre-epoch"
 
+result=$(WVPASS cat mnt/src/latest/foo) || exit $?
+WVPASSEQ "$result" "content"
+
 # Right now we don't detect new saves.
 WVPASS bup save -n src -d "$savestamp2" --strip src
 result=$(WVPASS ls mnt/src) || exit $?
@@ -86,7 +96,7 @@ WVPASS bup fuse --meta mnt
 result=$(TZ=UTC LC_ALL=C WVPASS ls -l mnt/src/latest/) || exit $?
 readonly user=$(WVPASS id -un) || $?
 readonly group=$(WVPASS id -gn) || $?
-WVPASSEQ "$result" "total 0
+WVPASSEQ "$result" "total 1
 -rw-r--r-- 1 $user $group 8 Nov 11  2011 foo
 -rw-r--r-- 1 $user $group 8 Jan  1  1970 pre-epoch"
 
