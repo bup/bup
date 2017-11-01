@@ -9,6 +9,7 @@ import sys, os, errno
 
 from bup import options, git, vfs, xstat
 from bup.helpers import buglvl, log
+from pprint import pprint
 
 try:
     import fuse
@@ -59,6 +60,8 @@ class BupFs(fuse.Fuse):
             node = cache_get(self.top, path)
             st = fuse.Stat(st_mode=node.mode,
                            st_nlink=node.nlinks(),
+                           st_uid=os.getuid(),
+                           st_gid=os.getgid(),
                            # Until/unless we store the size in m.
                            st_size=node.size())
             if self.meta:
