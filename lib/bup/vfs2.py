@@ -34,7 +34,8 @@ include_size=True).
 When traversing a directory using functions like contents(), the meta
 value for any directories other than '.' will be a default directory
 mode, not a Metadata object.  This is because the actual metadata for
-a directory is stored inside the directory.
+a directory is stored inside the directory (see
+fill_in_metadata_if_dir() or ensure_item_has_metadata()).
 
 Commit items represent commits (e.g. /.tag/some-commit or
 /foo/latest), and for most purposes, they appear as the underlying
@@ -330,34 +331,6 @@ def fopen(repo, item):
     assert S_ISREG(item_mode(item))
     return _FileReader(repo, item.oid)
 
-def augment_item_meta(repo, item, include_size=False):
-    """Ensure item has a Metadata instance for item.meta.  If item.meta is
-    currently a mode, replace it with a compatible "fake" Metadata
-    instance.  If include_size is true, ensure item.meta.size is
-    correct, computing it if needed.  If item.meta is a Metadata
-    instance, this call may modify it in place or replace it.
-
-    """
-    # If we actually had parallelism, we'd need locking...
-    assert repo
-    m = item.meta
-    if isinstance(m, Metadata):
-        if include_size and m.size is None:
-            m.size = _compute_item_size(repo, item)
-            return item._replace(meta=m)
-        return item
-    # m is mode
-    meta = Metadata()
-    meta.mode = m
-    meta.uid = meta.gid = meta.atime = meta.mtime = meta.ctime = 0
-    if S_ISLNK(m):
-        target = _readlink(repo, item.oid)
-        meta.symlink_target = target
-        meta.size = len(target)
-    elif include_size:
-        meta.size = _compute_item_size(repo, item)
-    return item._replace(meta=meta)
-
 def _commit_meta_from_auth_sec(author_sec):
     m = Metadata()
     m.mode = default_dir_mode
@@ -642,6 +615,11 @@ def contents(repo, item, names=None, want_meta=True):
     item) for all items, including, a first item named '.'
     representing the container itself.
 
+    The meta value for any directories other than '.' will be a
+    default directory mode, not a Metadata object.  This is because
+    the actual metadata for a directory is stored inside the directory
+    (see fill_in_metadata_if_dir() or ensure_item_has_metadata()).
+
     Note that want_meta is advisory.  For any given item, item.meta
     might be a Metadata instance or a mode, and if the former,
     meta.size might be None.  Missing sizes can be computed via via
@@ -816,3 +794,56 @@ def resolve(repo, path, parent=None, want_meta=True):
     if leaf_item:
         assert not S_ISLNK(item_mode(leaf_item))
     return result
+
+def augment_item_meta(repo, item, include_size=False):
+    """Ensure item has a Metadata instance for item.meta.  If item.meta is
+    currently a mode, replace it with a compatible "fake" Metadata
+    instance.  If include_size is true, ensure item.meta.size is
+    correct, computing it if needed.  If item.meta is a Metadata
+    instance, this call may modify it in place or replace it.
+
+    """
+    # If we actually had parallelism, we'd need locking...
+    assert repo
+    m = item.meta
+    if isinstance(m, Metadata):
+        if include_size and m.size is None:
+            m.size = _compute_item_size(repo, item)
+            return item._replace(meta=m)
+        return item
+    # m is mode
+    meta = Metadata()
+    meta.mode = m
+    meta.uid = meta.gid = meta.atime = meta.mtime = meta.ctime = 0
+    if S_ISLNK(m):
+        target = _readlink(repo, item.oid)
+        meta.symlink_target = target
+        meta.size = len(target)
+    elif include_size:
+        meta.size = _compute_item_size(repo, item)
+    return item._replace(meta=meta)
+
+def fill_in_metadata_if_dir(repo, item):
+    """If item is a directory and item.meta is not a Metadata instance,
+    attempt to find the metadata for the directory.  If found, return
+    a new item augmented to include that metadata.  Otherwise, return
+    item.  May be useful for the output of contents().
+
+    """
+    if S_ISDIR(item_mode(item)) and not isinstance(item.meta, Metadata):
+        items = tuple(contents(repo, item, ('.',), want_meta=True))
+        assert len(items) == 1
+        assert items[0][0] == '.'
+        item = items[0][1]
+    return item
+
+def ensure_item_has_metadata(repo, item, include_size=False):
+    """If item is a directory, attempt to find and add its metadata.  If
+    the item still doesn't have a Metadata instance for item.meta,
+    give it one via augment_item_meta().  May be useful for the output
+    of contents().
+
+    """
+    return augment_item_meta(repo,
+                             fill_in_metadata_if_dir(repo, item),
+                             include_size=include_size)
