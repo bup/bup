@@ -14,7 +14,7 @@ from bup.helpers import (Sha1, add_error, chunkyreader, debug1, debug2,
                          hostname, localtime, log, merge_iter,
                          mmap_read, mmap_readwrite,
                          parse_num,
-                         progress, qprogress, stat_if_exists,
+                         progress, qprogress, shstr, stat_if_exists,
                          unlink, username, userfullname,
                          utc_offset_str)
 
@@ -36,7 +36,7 @@ class GitError(Exception):
 def _git_wait(cmd, p):
     rv = p.wait()
     if rv != 0:
-        raise GitError('%s returned %d' % (cmd, rv))
+        raise GitError('%s returned %d' % (shstr(cmd), rv))
 
 def _git_capture(argv):
     p = subprocess.Popen(argv, stdout=subprocess.PIPE, preexec_fn = _gitenv())
