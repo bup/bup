@@ -226,15 +226,17 @@ def test_resolve():
             tip_hash = exo(('git', 'show-ref', 'refs/heads/test'))[0]
             tip_oidx = tip_hash.strip().split()[0]
             tip_oid = tip_oidx.decode('hex')
-            tip_meta = Metadata()
-            tip_meta.mode = S_IFDIR | 0o755
-            tip_meta.uid = tip_meta.gid = tip_meta.size = 0
-            tip_meta.atime = tip_meta.mtime = tip_meta.ctime = save_time * 10**9
-            test_revlist = vfs.RevList(meta=tip_meta, oid=tip_oid)
             tip_tree_oidx = exo(('git', 'log', '--pretty=%T', '-n1',
                                  tip_oidx))[0].strip()
             tip_tree_oid = tip_tree_oidx.decode('hex')
             tip_tree = tree_dict(repo, tip_tree_oid)
+            test_revlist = vfs.RevList(meta=S_IFDIR | 0o755, oid=tip_oid)
+            test_revlist_w_meta = vfs.RevList(meta=tip_tree['.'].meta,
+                                              oid=tip_oid)
+            expected_latest_item = vfs.Commit(meta=S_IFDIR | 0o755,
+                                              oid=tip_tree_oid,
+                                              coid=tip_oid)
+            expected_test_tag_item = expected_latest_item
 
             wvstart('resolve: /')
             res = resolve(repo, '/')
@@ -255,7 +257,7 @@ def test_resolve():
             ignore, tag_item = res[1]
             tag_content = frozenset(vfs.contents(repo, tag_item))
             wvpasseq(frozenset([('.', tag_item),
-                                ('test-tag', test_revlist)]),
+                                ('test-tag', expected_test_tag_item)]),
                      tag_content)
 
             wvstart('resolve: /test')
@@ -264,10 +266,7 @@ def test_resolve():
             wvpasseq((('', vfs._root), ('test', test_revlist)), res)
             ignore, test_item = res[1]
             test_content = frozenset(vfs.contents(repo, test_item))
-            expected_latest_item = vfs.Commit(meta=S_IFDIR | 0o755,
-                                              oid=tip_tree_oid,
-                                              coid=tip_oid)
-            wvpasseq(frozenset([('.', test_revlist),
+            wvpasseq(frozenset([('.', test_revlist_w_meta),
                                 (save_time_str, expected_latest_item),
                                 ('latest', expected_latest_item)]),
                      test_content)
@@ -410,18 +409,18 @@ def test_duplicate_save_dates():
             name, revlist = res[-1]
             wvpasseq('test', name)
             wvpasseq(('.',
-                      '1970-01-02-034640-10',
-                      '1970-01-02-034640-09',
-                      '1970-01-02-034640-08',
-                      '1970-01-02-034640-07',
-                      '1970-01-02-034640-06',
-                      '1970-01-02-034640-05',
-                      '1970-01-02-034640-04',
-                      '1970-01-02-034640-03',
-                      '1970-01-02-034640-02',
-                      '1970-01-02-034640-01',
                       '1970-01-02-034640-00',
+                      '1970-01-02-034640-01',
+                      '1970-01-02-034640-02',
+                      '1970-01-02-034640-03',
+                      '1970-01-02-034640-04',
+                      '1970-01-02-034640-05',
+                      '1970-01-02-034640-06',
+                      '1970-01-02-034640-07',
+                      '1970-01-02-034640-08',
+                      '1970-01-02-034640-09',
+                      '1970-01-02-034640-10',
                       'latest'),
-                     tuple(x[0] for x in vfs.contents(repo, revlist)))
+                     tuple(sorted(x[0] for x in vfs.contents(repo, revlist))))
 
 # FIXME: add tests for the want_meta=False cases.

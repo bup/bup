@@ -284,12 +284,12 @@ def tree_data_and_bupm(repo, oid):
             break
     return data, None
 
-def _find_dir_item_metadata(repo, item):
-    """Return the metadata for the tree or commit item, or None if the
-    tree has no metadata (i.e. older bup save, or non-bup tree).
+def _find_treeish_oid_metadata(repo, oid):
+    """Return the metadata for the tree or commit oid, or None if the tree
+    has no metadata (i.e. older bup save, or non-bup tree).
 
     """
-    tree_data, bupm_oid = tree_data_and_bupm(repo, item.oid)
+    tree_data, bupm_oid = tree_data_and_bupm(repo, oid)
     if bupm_oid:
         with _FileReader(repo, bupm_oid) as meta_stream:
             return _read_dir_meta(meta_stream)
@@ -331,19 +331,29 @@ def fopen(repo, item):
     assert S_ISREG(item_mode(item))
     return _FileReader(repo, item.oid)
 
-def _commit_meta_from_auth_sec(author_sec):
-    m = Metadata()
-    m.mode = default_dir_mode
-    m.uid = m.gid = m.size = 0
-    m.atime = m.mtime = m.ctime = author_sec * 10**9
-    return m
+def _commit_item_from_data(oid, data):
+    info = parse_commit(data)
+    return Commit(meta=default_dir_mode,
+                  oid=info.tree.decode('hex'),
+                  coid=oid)
 
-def _commit_meta_from_oidx(repo, oidx):
-    it = repo.cat(oidx)
+def _commit_item_from_oid(repo, oid, require_meta):
+    it = repo.cat(oid.encode('hex'))
     _, typ, size = next(it)
     assert typ == 'commit'
-    author_sec = parse_commit(''.join(it)).author_sec
-    return _commit_meta_from_auth_sec(author_sec)
+    commit = _commit_item_from_data(oid, ''.join(it))
+    if require_meta:
+        meta = _find_treeish_oid_metadata(repo, commit.tree)
+        if meta:
+            commit = commit._replace(meta=meta)
+    return commit
+
+def _revlist_item_from_oid(repo, oid, require_meta):
+    if require_meta:
+        meta = _find_treeish_oid_metadata(repo, oid) or default_dir_mode
+    else:
+        meta = default_dir_mode
+    return RevList(oid=oid, meta=meta)
 
 def parse_rev_auth_secs(f):
     tree, author_secs = f.readline().split(None, 2)
@@ -366,9 +376,7 @@ def root_items(repo, names=None):
         # in parallel (i.e. meta vs refs).
         for name, oid in tuple(repo.refs([], limit_to_heads=True)):
             assert(name.startswith('refs/heads/'))
-            name = name[11:]
-            m = _commit_meta_from_oidx(repo, oid.encode('hex'))
-            yield name, RevList(meta=m, oid=oid)
+            yield name[11:], _revlist_item_from_oid(repo, oid, False)
         return
 
     if '.' in names:
@@ -385,8 +393,7 @@ def root_items(repo, names=None):
             continue
         assert typ == 'commit'
         commit = parse_commit(''.join(it))
-        yield ref, RevList(meta=_commit_meta_from_auth_sec(commit.author_sec),
-                           oid=oidx.decode('hex'))
+        yield ref, _revlist_item_from_oid(repo, oidx.decode('hex'), False)
 
 def ordered_tree_entries(tree_data, bupm=None):
     """Yields (name, mangled_name, kind, gitmode, oid) for each item in
@@ -519,11 +526,10 @@ def revlist_items(repo, oid, names):
     oidx = oid.encode('hex')
     names = frozenset(name for name in (names or tuple()) \
                       if _save_name_rx.match(name) or name in ('.', 'latest'))
-
     # Do this before we open the rev_list iterator so we're not nesting
     if (not names) or ('.' in names):
-        yield '.', RevList(oid=oid, meta=_commit_meta_from_oidx(repo, oidx))
-    
+        yield '.', _revlist_item_from_oid(repo, oid, True)
+
     revs = repo.rev_list((oidx,), format='%T %at', parse=parse_rev_auth_secs)
     rev_items, rev_names = tee(revs)
     revs = None  # Don't disturb the tees
@@ -565,10 +571,7 @@ def tags_items(repo, names):
         it = repo.cat(oidx)
         _, typ, size = next(it)
         if typ == 'commit':
-            tree_oid = parse_commit(''.join(it)).tree.decode('hex')
-            assert len(tree_oid) == 20
-            # FIXME: more efficient/bulk?
-            return RevList(meta=_commit_meta_from_oidx(repo, oidx), oid=oid)
+            return _commit_item_from_data(oid, ''.join(it))
         for _ in it: pass
         if typ == 'blob':
             return Item(meta=default_file_mode, oid=oid)
@@ -714,7 +717,7 @@ def _resolve_path(repo, path, parent=None, want_meta=True, deref=False):
                     return tuple(past)
                 # It's treeish
                 if want_meta and type(item) in real_tree_types:
-                    dir_meta = _find_dir_item_metadata(repo, item)
+                    dir_meta = _find_treeish_oid_metadata(repo, item.oid)
                     if dir_meta:
                         item = item._replace(meta=dir_meta)
                 if not future:
