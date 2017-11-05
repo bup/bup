@@ -681,16 +681,15 @@ def _resolve_path(repo, path, parent=None, want_meta=True, deref=False):
         else:
             parent_name, parent_item = past[-1]
             wanted = (segment,) if not want_meta else ('.', segment)
-            items = contents(repo, parent_item, names=wanted,
-                             want_meta=want_meta)
-            if want_meta:  # First item will be '.' and have the metadata
-                dot, parent_item = next(items)
+            items = tuple(contents(repo, parent_item, names=wanted,
+                                   want_meta=want_meta))
+            if not want_meta:
+                item = items[0][1] if items else None
+            else:  # First item will be '.' and have the metadata
+                item = items[1][1] if len(items) == 2 else None
+                dot, dot_item = items[0]
                 assert dot == '.'
                 past[-1] = parent_name, parent_item
-            item = None
-            # FIXME: content no longer returns anything for missing items
-            if items:
-                _, item = next(items, (None, None))
             if not item:
                 return tuple(past + [(segment, None)])
             mode = item_mode(item)
