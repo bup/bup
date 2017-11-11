@@ -51,11 +51,11 @@ WVPASS bup rm --unsafe /src
 observed="$(compare-trees bup/ bup-baseline/ | LC_ALL=C sort)" || exit $?
 wv_matches_rx "$observed" \
 '\*deleting[ ]+logs/refs/heads/src
-\*deleting[ ]+refs/heads/src
-(\.d\.\.t\.\.\.\.\.\.[ ]+\./)?
+\*deleting[ ]+refs/heads/src(
+\.d\.\.t\.\.\.\.\.\.[ ]+\./)?
 \.d\.\.t\.\.\.[.]*[ ]+logs/refs/heads/
-\.d\.\.t\.\.\.[.]*[ ]+refs/heads/
-(>f\+\+\+\+\+\+\+\+\+[ ]+packed-refs)?'
+\.d\.\.t\.\.\.[.]*[ ]+refs/heads/(
+>f\+\+\+\+\+\+\+\+\+[ ]+packed-refs)?'
 
 
 WVSTART "rm /foo (one of many)"
@@ -73,11 +73,11 @@ WVPASS bup rm --unsafe /src
 observed="$(compare-trees bup/ bup-baseline/ | LC_ALL=C sort)" || exit $?
 wv_matches_rx "$observed" \
 "\*deleting[ ]+logs/refs/heads/src
-\*deleting[ ]+refs/heads/src
-(\.d\.\.t\.\.\.\.\.\.[ ]+\./)?
+\*deleting[ ]+refs/heads/src(
+\.d\.\.t\.\.\.\.\.\.[ ]+\./)?
 \.d\.\.t\.\.\.[.]*[ ]+logs/refs/heads/
-\.d\.\.t\.\.\.[.]*[ ]+refs/heads/
-(>f\+\+\+\+\+\+\+\+\+[ ]+packed-refs)?"
+\.d\.\.t\.\.\.[.]*[ ]+refs/heads/(
+>f\+\+\+\+\+\+\+\+\+[ ]+packed-refs)?"
 
 
 WVSTART "rm /foo /bar (multiple of many)"
@@ -97,11 +97,11 @@ wv_matches_rx "$observed" \
 "\*deleting[ ]+logs/refs/heads/src-2
 \*deleting[ ]+logs/refs/heads/src-4
 \*deleting[ ]+refs/heads/src-2
-\*deleting[ ]+refs/heads/src-4
-(\.d\.\.t\.\.\.\.\.\.[ ]+\./)?
+\*deleting[ ]+refs/heads/src-4(
+\.d\.\.t\.\.\.\.\.\.[ ]+\./)?
 \.d\.\.t\.\.\.[.]*[ ]+logs/refs/heads/
-\.d\.\.t\.\.\.[.]*[ ]+refs/heads/
-(>f\+\+\+\+\+\+\+\+\+[ ]+packed-refs)?"
+\.d\.\.t\.\.\.[.]*[ ]+refs/heads/(
+>f\+\+\+\+\+\+\+\+\+[ ]+packed-refs)?"
 
 
 WVSTART "rm /foo /bar (all)"
@@ -121,11 +121,11 @@ wv_matches_rx "$observed" \
 \*deleting[ ]+refs/heads/src-2
 \*deleting[ ]+refs/heads/src-3
 \*deleting[ ]+refs/heads/src-4
-\*deleting[ ]+refs/heads/src-5
-(\.d\.\.t\.\.\.\.\.\.[ ]+\./)?
+\*deleting[ ]+refs/heads/src-5(
+\.d\.\.t\.\.\.\.\.\.[ ]+\./)?
 \.d\.\.t\.\.\.[.]*[ ]+logs/refs/heads/
-\.d\.\.t\.\.\.[.]*[ ]+refs/heads/
-(>f\+\+\+\+\+\+\+\+\+[ ]+packed-refs)?"
+\.d\.\.t\.\.\.[.]*[ ]+refs/heads/(
+>f\+\+\+\+\+\+\+\+\+[ ]+packed-refs)?"
 
 
 WVSTART "rm /foo/bar (lone save - equivalent to rm /foo)"
@@ -144,11 +144,11 @@ WVPASS bup rm --unsafe /src/"$save1"
 observed="$(compare-trees bup/ bup-baseline/ | LC_ALL=C sort)" || exit $?
 wv_matches_rx "$observed" \
 "\*deleting[ ]+logs/refs/heads/src
-\*deleting[ ]+refs/heads/src
-(\.d\.\.t\.\.\.\.\.\.[ ]+\./)?
+\*deleting[ ]+refs/heads/src(
+\.d\.\.t\.\.\.\.\.\.[ ]+\./)?
 \.d\.\.t\.\.\.[.]*[ ]+logs/refs/heads/
-\.d\.\.t\.\.\.[.]*[ ]+refs/heads/
-(>f\+\+\+\+\+\+\+\+\+[ ]+packed-refs)?"
+\.d\.\.t\.\.\.[.]*[ ]+refs/heads/(
+>f\+\+\+\+\+\+\+\+\+[ ]+packed-refs)?"
 
 
 verify-changes-caused-by-rewriting-save()
