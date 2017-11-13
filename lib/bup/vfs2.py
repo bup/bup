@@ -231,6 +231,77 @@ _root = Root(meta=default_dir_mode)
 _tags = Tags(meta=default_dir_mode)
 
 
+### vfs cache
+
+### A general purpose shared cache with (currently) cheap random
+### eviction.  There is currently no weighting so a single commit item
+### is just as likely to be evicted as an entire "rev-list".  See
+### is_valid_cache_key for a description of the expected content.
+
+_cache = {}
+_cache_keys = []
+_cache_max_items = 30000
+
+def clear_cache():
+    global _cache, _cache_keys
+    _cache = {}
+    _cache_keys = []
+
+def is_valid_cache_key(x):
+    """Return logically true if x looks like it could be a valid cache key
+    (with respect to structure).  Current valid cache entries:
+      commit_oid -> commit
+      commit_oid + ':r' -> rev-list
+         i.e. rev-list -> {'.', commit, '2012...', next_commit, ...}
+    """
+    # Suspect we may eventually add "(container_oid, name) -> ...", and others.
+    x_t = type(x)
+    if x_t is bytes:
+        if len(x) == 20:
+            return True
+        if len(x) == 22 and x.endswith(b':r'):
+            return True
+
+def cache_get(key):
+    global _cache
+    assert is_valid_cache_key(key)
+    return _cache.get(key)
+
+def cache_notice(key, value):
+    global _cache, _cache_keys, _cache_max_items
+    assert is_valid_cache_key(key)
+    if key in _cache:
+        return
+    _cache[key] = value
+    if len(_cache) < _cache_max_items:
+        return
+    victim_i = random.randrange(0, len(_cache_keys))
+    victim = _cache_keys[victim_i]
+    _cache_keys[victim_i] = key
+    _cache.pop(victim)
+
+
+def cache_get_commit_item(oid, need_meta=True):
+    """Return the requested tree item if it can be found in the cache.
+    When need_meta is true don't return a cached item that only has a
+    mode."""
+    # tree might be stored independently, or as '.' with its entries.
+    item = cache_get(oid)
+    if item:
+        if not need_meta:
+            return item
+        if isinstance(item.meta, Metadata):
+            return item
+    entries = cache_get(oid + b':r')
+    if entries:
+        return entries['.']
+
+def cache_get_revlist_item(oid, need_meta=True):
+    commit = cache_get_commit_item(oid, need_meta=need_meta)
+    if commit:
+        return RevList(oid=oid, meta=commit.meta)
+
+
 def copy_item(item):
     """Return a completely independent copy of item, such that
     modifications will not affect the original.
@@ -341,28 +412,25 @@ def _commit_item_from_data(oid, data):
                   coid=oid)
 
 def _commit_item_from_oid(repo, oid, require_meta):
+    commit = cache_get_commit_item(oid, need_meta=require_meta)
+    if commit and ((not require_meta) or isinstance(commit.meta, Metadata)):
+        return commit
     it = repo.cat(oid.encode('hex'))
     _, typ, size = next(it)
     assert typ == 'commit'
     commit = _commit_item_from_data(oid, ''.join(it))
     if require_meta:
-        meta = _find_treeish_oid_metadata(repo, commit.tree)
+        meta = _find_treeish_oid_metadata(repo, commit.oid)
         if meta:
             commit = commit._replace(meta=meta)
+    cache_notice(oid, commit)
     return commit
 
 def _revlist_item_from_oid(repo, oid, require_meta):
-    if require_meta:
-        meta = _find_treeish_oid_metadata(repo, oid) or default_dir_mode
-    else:
-        meta = default_dir_mode
-    return RevList(oid=oid, meta=meta)
+    commit = _commit_item_from_oid(repo, oid, require_meta)
+    return RevList(oid=oid, meta=commit.meta)
 
-def parse_rev_auth_secs(f):
-    tree, author_secs = f.readline().split(None, 2)
-    return tree, int(author_secs)
-
-def root_items(repo, names=None):
+def root_items(repo, names=None, want_meta=True):
     """Yield (name, item) for the items in '/' in the VFS.  Return
     everything if names is logically false, otherwise return only
     items with a name in the collection.
@@ -379,7 +447,7 @@ def root_items(repo, names=None):
         # in parallel (i.e. meta vs refs).
         for name, oid in tuple(repo.refs([], limit_to_heads=True)):
             assert(name.startswith('refs/heads/'))
-            yield name[11:], _revlist_item_from_oid(repo, oid, False)
+            yield name[11:], _revlist_item_from_oid(repo, oid, want_meta)
         return
 
     if '.' in names:
@@ -396,7 +464,7 @@ def root_items(repo, names=None):
             continue
         assert typ == 'commit'
         commit = parse_commit(''.join(it))
-        yield ref, _revlist_item_from_oid(repo, oidx.decode('hex'), False)
+        yield ref, _revlist_item_from_oid(repo, oidx.decode('hex'), want_meta)
 
 def ordered_tree_entries(tree_data, bupm=None):
     """Yields (name, mangled_name, kind, gitmode, oid) for each item in
@@ -511,59 +579,78 @@ def _reverse_suffix_duplicates(strs):
             for i in xrange(ndup - 1, -1, -1):
                 yield fmt % (name, i)
 
+def parse_rev(f):
+    items = f.readline().split(None)
+    assert len(items) == 2
+    tree, auth_sec = items
+    return tree.decode('hex'), int(auth_sec)
+
 def _name_for_rev(rev):
-    commit, (tree_oidx, utc) = rev
-    assert len(commit) == 40
+    commit_oidx, (tree_oid, utc) = rev
     return strftime('%Y-%m-%d-%H%M%S', localtime(utc))
 
 def _item_for_rev(rev):
-    commit, (tree_oidx, utc) = rev
-    assert len(commit) == 40
-    assert len(tree_oidx) == 40
-    return Commit(meta=default_dir_mode,
-                  oid=tree_oidx.decode('hex'),
-                  coid=commit.decode('hex'))
+    commit_oidx, (tree_oid, utc) = rev
+    coid = commit_oidx.decode('hex')
+    item = cache_get_commit_item(coid, need_meta=False)
+    if item:
+        return item
+    item = Commit(meta=default_dir_mode, oid=tree_oid, coid=coid)
+    cache_notice(item.coid, item)
+    return item
 
-def revlist_items(repo, oid, names):
-    assert len(oid) == 20
-    oidx = oid.encode('hex')
-    names = frozenset(name for name in (names or tuple()) \
-                      if _save_name_rx.match(name) or name in ('.', 'latest'))
-    # Do this before we open the rev_list iterator so we're not nesting
-    if (not names) or ('.' in names):
-        yield '.', _revlist_item_from_oid(repo, oid, True)
+def cache_commit(repo, oid):
+    """Build, cache, and return a "name -> commit_item" dict of the entire
+    commit rev-list.
 
-    revs = repo.rev_list((oidx,), format='%T %at', parse=parse_rev_auth_secs)
+    """
+    # For now, always cache with full metadata
+    entries = {}
+    entries['.'] = _revlist_item_from_oid(repo, oid, True)
+    revs = repo.rev_list((oid.encode('hex'),), format='%T %at',
+                         parse=parse_rev)
     rev_items, rev_names = tee(revs)
     revs = None  # Don't disturb the tees
     rev_names = _reverse_suffix_duplicates(_name_for_rev(x) for x in rev_names)
     rev_items = (_item_for_rev(x) for x in rev_items)
-    first_commit = None
+    latest = None
+    for item in rev_items:
+        latest = latest or item
+        name = next(rev_names)
+        entries[name] = item
+    entries['latest'] = latest
+    cache_notice(latest.coid + b':r', entries)
+    return entries
 
-    if not names:
-        for item in rev_items:
-            first_commit = first_commit or item
-            yield next(rev_names), item
-        yield 'latest', first_commit
+def revlist_items(repo, oid, names):
+    assert len(oid) == 20
+
+    # Special case '.' instead of caching the whole history since it's
+    # the only way to get the metadata for the commit.
+    if names and all(x == '.' for x in names):
+        yield '.', _revlist_item_from_oid(repo, oid, True)
         return
 
-    # Revs are in reverse chronological order by default
-    last_name = min(names)
-    for item in rev_items:
-        first_commit = first_commit or item
-        name = next(rev_names)  # Might have -N dup suffix
-        if name < last_name:
-            break
-        if not name in names:
-            continue
-        yield name, item
+    # For now, don't worry about the possibility of the contents being
+    # "too big" for the cache.
+    entries = cache_get(oid + b':r')
+    if not entries:
+        entries = cache_commit(repo, oid)
 
-    # FIXME: need real short circuit...
-    for _ in rev_items: pass
-    for _ in rev_names: pass
-        
-    if 'latest' in names:
-        yield 'latest', first_commit
+    if not names:
+        for name in sorted(entries.keys()):
+            yield name, entries[name]
+        return
+
+    names = frozenset(name for name in names
+                      if _save_name_rx.match(name) or name in ('.', 'latest'))
+
+    if '.' in names:
+        yield '.', entries['.']
+    for name in (n for n in names if n != '.'):
+        commit = entries.get(name)
+        if commit:
+            yield name, commit
 
 def tags_items(repo, names):
     global _tags
@@ -574,7 +661,8 @@ def tags_items(repo, names):
         it = repo.cat(oidx)
         _, typ, size = next(it)
         if typ == 'commit':
-            return _commit_item_from_data(oid, ''.join(it))
+            return cache_get_commit_item(oid, need_meta=False) \
+                or _commit_item_from_data(oid, ''.join(it))
         for _ in it: pass
         if typ == 'blob':
             return Item(meta=default_file_mode, oid=oid)
@@ -661,7 +749,7 @@ def contents(repo, item, names=None, want_meta=True):
     elif item_t == RevList:
         item_gen = revlist_items(repo, item.oid, names)
     elif item_t == Root:
-        item_gen = root_items(repo, names)
+        item_gen = root_items(repo, names, want_meta)
     elif item_t == Tags:
         item_gen = tags_items(repo, names)
     else:
