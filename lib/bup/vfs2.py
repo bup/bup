@@ -211,6 +211,7 @@ Chunky = namedtuple('Chunky', ('meta', 'oid'))
 Root = namedtuple('Root', ('meta'))
 Tags = namedtuple('Tags', ('meta'))
 RevList = namedtuple('RevList', ('meta', 'oid'))
+item_types = (Item, Chunky, Root, Tags, RevList)
 
 _root = Root(meta=default_dir_mode)
 _tags = Tags(meta=default_dir_mode)
@@ -664,20 +665,27 @@ def contents(repo, item, names=None, want_meta=True):
         yield x
 
 def _resolve_path(repo, path, parent=None, want_meta=True, deref=False):
+    global _root
     assert repo
     assert len(path)
-    global _root
-    future = _decompose_path(path)
-    past = []
-    if path.startswith('/'):
-        assert(not parent)
-        past = [('', _root)]
-        if future == ['']: # path was effectively '/'
-            return tuple(past)
-    if not past and not parent:
-        past = [('', _root)]
     if parent:
-        past = [parent]
+        for x in parent:
+            assert len(x) == 2
+            assert type(x[0]) in (bytes, str)
+            assert type(x[1]) in item_types
+        assert parent[0][1] == _root
+    future = _decompose_path(path)
+    if path.startswith('/'):
+        if future == ['']: # path was effectively '/'
+            return (('', _root),)
+        past = [('', _root)]
+    else:
+        if parent:
+            past = list(parent)
+        else:
+            past = [('', _root)]
+    if not future:  # e.g. if path was effectively '.'
+        return tuple(past)
     hops = 0
     result = None
     while True:
@@ -762,11 +770,11 @@ def resolve(repo, path, parent=None, want_meta=True):
 
     Currently, a path ending in '/' will still resolve if it exists,
     even if not a directory.  The parent, if specified, must be a
-    (name, item) tuple, and will provide the starting point for the
-    resolution of the path.  Currently, the path must be relative when
-    a parent is provided.  The result may include parent directly, so
-    it must not be modified later.  If this is a concern, pass in
-    copy_item(parent) instead.
+    sequence of (name, item) tuples, and will provide the starting
+    point for the resolution of the path.  The result may include
+    elements of parent directly, so they must not be modified later.
+    If this is a concern, pass in "name, copy_item(item) for
+    name, item in parent" instead.
 
     When want_meta is true, detailed metadata will be included in each
     result item if it's avaiable, otherwise item.meta will be an
