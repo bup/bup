@@ -698,23 +698,27 @@ def _resolve_path(repo, path, parent=None, want_meta=True, deref=False):
                 assert dot == '.'
                 past[-1] = parent_name, parent_item
             if not item:
-                return tuple(past + [(segment, None)])
+                past.append((segment, None),)
+                return tuple(past)
             mode = item_mode(item)
             if not S_ISLNK(mode):
                 if not S_ISDIR(mode):
                     assert(not future)
-                    return tuple(past + [(segment, item)])
+                    past.append((segment, item),)
+                    return tuple(past)
                 # It's treeish
                 if want_meta and type(item) == Item:
                     dir_meta = _find_dir_item_metadata(repo, item)
                     if dir_meta:
                         item = item._replace(meta=dir_meta)
                 if not future:
-                    return tuple(past + [(segment, item)])
+                    past.append((segment, item),)
+                    return tuple(past)
                 past.append((segment, item))
             else:  # symlink            
                 if not future and not deref:
-                    return tuple(past + [(segment, item)])
+                    past.append((segment, item),)
+                    return tuple(past)
                 target = readlink(repo, item)
                 target_future = _decompose_path(target)
                 if target.startswith('/'):
@@ -723,7 +727,7 @@ def _resolve_path(repo, path, parent=None, want_meta=True, deref=False):
                     if target_future == ['']:  # path was effectively '/'
                         return tuple(past)
                 else:
-                    future = future + target_future
+                    future.extend(target_future)
                 hops += 1
                 if hops > 100:
                     raise Loop('too many symlinks encountered while resolving %r%s'
