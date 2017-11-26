@@ -13,5 +13,5 @@ from bup import git, ls
 git.check_repo_or_die()
 
 # Check out lib/bup/ls.py for the opt spec
-rc = ls.do_ls(sys.argv[1:], default='/', spec_prefix='bup ')
+rc = ls.via_cmdline(sys.argv[1:])
 sys.exit(rc)

@@ -6,6 +6,7 @@ from stat import S_ISDIR, S_ISLNK
 import copy, locale, os.path, stat, sys, xstat
 
 from bup import metadata, options, vfs2 as vfs
+from bup.options import Options
 from bup.repo import LocalRepo, RemoteRepo
 from helpers import columnate, istty1, last, log
 
@@ -51,7 +52,7 @@ def item_info(item, name,
 
 
 optspec = """
-%sls [-r host:path] [-l] [-d] [-F] [-a] [-A] [-s] [-n] [path...]
+bup ls [-r host:path] [-l] [-d] [-F] [-a] [-A] [-s] [-n] [path...]
 --
 r,remote=   remote repository path
 s,hash   show hash for each file
@@ -66,51 +67,50 @@ human-readable    print human readable file sizes (i.e. 3.9K, 4.7M)
 n,numeric-ids list numeric IDs (user, group, etc.) rather than names
 """
 
-def do_ls(args, default='.', onabort=None, spec_prefix=''):
-    """Output a listing of a file or directory in the bup repository.
-
-    When a long listing is not requested and stdout is attached to a
-    tty, the output is formatted in columns. When not attached to tty
-    (for example when the output is piped to another command), one
-    file is listed per line.
+def opts_from_cmdline(args, onabort=None):
+    """Parse ls command line arguments and return a dictionary of ls
+    options, agumented with "classification", "long_listing",
+    "paths", and "show_hidden".
 
     """
     if onabort:
-        o = options.Options(optspec % spec_prefix, onabort=onabort)
+        opt, flags, extra = Options(optspec, onabort=onabort).parse(args)
     else:
-        o = options.Options(optspec % spec_prefix)
-    (opt, flags, extra) = o.parse(args)
+        opt, flags, extra = Options(optspec).parse(args)
 
-    # Handle order-sensitive options.
-    classification = None
-    show_hidden = None
+    opt.paths = extra or ('/',)
+    opt.long_listing = opt.l
+    opt.classification = None
+    opt.show_hidden = None
     for flag in flags:
-        (option, parameter) = flag
+        option, parameter = flag
         if option in ('-F', '--classify'):
-            classification = 'all'
+            opt.classification = 'all'
         elif option == '--file-type':
-            classification = 'type'
+            opt.classification = 'type'
         elif option in ('-a', '--all'):
-            show_hidden = 'all'
+            opt.show_hidden = 'all'
         elif option in ('-A', '--almost-all'):
-            show_hidden = 'almost'
+            opt.show_hidden = 'almost'
+    return opt
+
+def within_repo(repo, opt):
 
     if opt.commit_hash:
         opt.hash = True
 
     def item_line(item, name):
         return item_info(item, name,
-                         show_hash = opt.hash,
+                         show_hash=opt.hash,
                          commit_hash=opt.commit_hash,
-                         long_fmt = opt.l,
-                         classification = classification,
-                         numeric_ids = opt.numeric_ids,
-                         human_readable = opt.human_readable)
+                         long_fmt=opt.long_listing,
+                         classification=opt.classification,
+                         numeric_ids=opt.numeric_ids,
+                         human_readable=opt.human_readable)
 
-    repo = RemoteRepo(opt.remote) if opt.remote else LocalRepo()
     ret = 0
     pending = []
-    for path in (extra or [default]):
+    for path in opt.paths:
         try:
             if opt.directory:
                 resolved = vfs.lresolve(repo, path)
@@ -126,15 +126,15 @@ def do_ls(args, default='.', onabort=None, spec_prefix=''):
                 continue
             if not opt.directory and S_ISDIR(vfs.item_mode(leaf_item)):
                 items = vfs.contents(repo, leaf_item)
-                if show_hidden == 'all':
+                if opt.show_hidden == 'all':
                     # Match non-bup "ls -a ... /".
                     parent = resolved[-2] if len(resolved) > 1 else resolved[0]
                     items = chain(items, (('..', parent[1]),))
                 for sub_name, sub_item in sorted(items, key=lambda x: x[0]):
-                    if show_hidden != 'all' and sub_name == '.':
+                    if opt.show_hidden != 'all' and sub_name == '.':
                         continue
                     if sub_name.startswith('.') and \
-                       show_hidden not in ('almost', 'all'):
+                       opt.show_hidden not in ('almost', 'all'):
                         continue
                     if opt.l:
                         sub_item = vfs.ensure_item_has_metadata(repo, sub_item,
@@ -143,12 +143,18 @@ def do_ls(args, default='.', onabort=None, spec_prefix=''):
                         sub_item = vfs.augment_item_meta(repo, sub_item,
                                                          include_size=True)
                     line = item_line(sub_item, sub_name)
-                    pending.append(line) if not opt.l and istty1 else print(line)
+                    if not opt.long_listing and istty1:
+                        pending.append(line)
+                    else:
+                        print(line)
             else:
                 leaf_item = vfs.augment_item_meta(repo, leaf_item,
                                                   include_size=True)
                 line = item_line(leaf_item, os.path.normpath(path))
-                pending.append(line) if not opt.l and istty1 else print(line)
+                if not opt.long_listing and istty1:
+                    pending.append(line)
+                else:
+                    print(line)
         except vfs.IOError as ex:
             log('bup: %s\n' % ex)
             ret = 1
@@ -157,3 +163,16 @@ def do_ls(args, default='.', onabort=None, spec_prefix=''):
         sys.stdout.write(columnate(pending, ''))
 
     return ret
+
+def via_cmdline(args, onabort=None):
+    """Output a listing of a file or directory in the bup repository.
+
+    When a long listing is not requested and stdout is attached to a
+    tty, the output is formatted in columns. When not attached to tty
+    (for example when the output is piped to another command), one
+    file is listed per line.
+
+    """
+    opt = opts_from_cmdline(args, onabort=onabort)
+    return within_repo(RemoteRepo(opt.remote) if opt.remote else LocalRepo(),
+                       opt)
