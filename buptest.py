@@ -1,5 +1,6 @@
 
 from __future__ import print_function
+from collections import namedtuple
 from contextlib import contextmanager
 from os.path import basename, dirname, realpath
 from pipes import quote
@@ -52,19 +53,35 @@ def logcmd(cmd):
     else:
         print(' '.join(map(quote, cmd)), file=sys.stderr)
 
-def exc(cmd, shell=False):
-    logcmd(cmd)
-    check_call(cmd, shell=shell)
 
-def exo(cmd, stdin=None, stdout=True, stderr=False, shell=False, check=True):
+SubprocInfo = namedtuple('SubprocInfo', ('out', 'err', 'rc', 'p'))
+
+def exo(cmd, input=None, stdin=None, stdout=PIPE, stderr=PIPE,
+        shell=False, check=True):
+    """Print cmd to stderr, run it, and return the resulting SubprocInfo.
+    The keyword arguments are passed to Popen, and the defaults
+    capture both stdout and stderr.
+
+    """
     logcmd(cmd)
     p = Popen(cmd,
-              stdin=None,
-              stdout=(PIPE if stdout else None),
-              stderr=PIPE,
+              stdin=(PIPE if input else stdin),
+              stdout=stdout,
+              stderr=stderr,
               shell=shell)
-    out, err = p.communicate()
+    out, err = p.communicate(input=input)
     if check and p.returncode != 0:
-        raise Exception('subprocess %r failed with status %d, stderr: %r'
-                        % (' '.join(map(quote, cmd)), p.returncode, err))
-    return out, err, p
+        raise Exception('subprocess %r failed with status %d%s'
+                        % (' '.join(map(quote, cmd)),
+                           p.returncode,
+                           (', stderr: %r' % err) if stderr else ''))
+    return SubprocInfo(out=out, err=err, rc=p.returncode, p=p)
+
+def exc(cmd, input=None, stdout=None, stderr=None, shell=False, check=True):
+    """Print cmd to stderr, run it, and return the resulting SubprocInfo.
+    The keyword arguments are passed to Popen, and the defaults
+    allow stdout and stderr to pass through.
+
+    """
+    return exo(cmd, input=input, stdout=stdout, stderr=stderr, shell=shell,
+               check=check)
