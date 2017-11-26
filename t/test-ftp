@@ -1,0 +1,131 @@
+#!/bin/sh
+"""": # -*-python-*-
+bup_python="$(dirname "$0")/../cmd/bup-python" || exit $?
+exec "$bup_python" "$0" ${1+"$@"}
+"""
+# end of bup preamble
+
+from __future__ import print_function
+from os import environ, chdir, mkdir, symlink, unlink
+from os.path import abspath, dirname
+from time import localtime, strftime
+import os, sys
+
+script_home = abspath(dirname(sys.argv[0] or '.'))
+sys.path[:0] = [abspath(script_home + '/../lib'), abspath(script_home + '/..')]
+top = os.getcwd()
+bup_cmd = top + '/bup'
+
+from buptest import exc, exo, logcmd, test_tempdir
+from wvtest import wvfail, wvpass, wvpasseq, wvpassne, wvstart
+
+from bup.helpers import unlink as unlink_if_exists
+
+def bup(*args, **kwargs):
+    return exo((bup_cmd,) + args, **kwargs)[0]
+
+def bupc(*args, **kwargs):
+    return exc((bup_cmd,) + args, **kwargs)
+
+def jl(*lines):
+    return ''.join(line + '\n' for line in lines)
+
+environ['GIT_AUTHOR_NAME'] = 'bup test'
+environ['GIT_COMMITTER_NAME'] = 'bup test'
+environ['GIT_AUTHOR_EMAIL'] = 'bup@a425bc70a02811e49bdf73ee56450e6f'
+environ['GIT_COMMITTER_EMAIL'] = 'bup@a425bc70a02811e49bdf73ee56450e6f'
+
+with test_tempdir('ftp-') as tmpdir:
+    environ['BUP_DIR'] = tmpdir + '/repo'
+    environ['GIT_DIR'] = tmpdir + '/repo'
+
+    chdir(tmpdir)
+    mkdir('src')
+    chdir('src')
+    mkdir('dir')
+    with open('file-1', 'wb') as f:
+        print('excitement!', file=f)
+    with open('dir/file-2', 'wb') as f:
+        print('more excitement!', file=f)
+    symlink('file-1', 'file-symlink')
+    symlink('dir', 'dir-symlink')
+    symlink('not-there', 'bad-symlink')
+
+    chdir(tmpdir)    
+    bupc('init')
+    bupc('index', 'src')
+    bupc('save', '-n', 'src', '--strip', 'src')
+    save_utc = int(exo(('git', 'show', '-s', '--format=%at', 'src')).out.strip())
+    save_name = strftime('%Y-%m-%d-%H%M%S', localtime(save_utc))
+    
+    wvstart('help')
+    wvpasseq('Commands: ls cd pwd cat get mget help quit\n',
+             exo((bup_cmd, 'ftp'), input='help\n').err)
+
+    wvstart('pwd/cd')
+    wvpasseq('/\n', bup('ftp', input='pwd\n'))
+    wvpasseq('', bup('ftp', input='cd src\n'))
+    wvpasseq('/src\n', bup('ftp', input=jl('cd src', 'pwd')))
+    wvpasseq('/src\n/\n', bup('ftp', input=jl('cd src', 'pwd', 'cd ..', 'pwd')))
+    wvpasseq('/src\n/\n', bup('ftp', input=jl('cd src', 'pwd',
+                                              'cd ..', 'cd ..', 'pwd')))
+    wvpasseq('/src/latest/dir\n',
+             bup('ftp', input=jl('cd src/latest/dir-symlink', 'pwd')))
+    wvpasseq('/src/latest/dir\n',
+             bup('ftp', input=jl('cd src latest dir-symlink', 'pwd')))
+    wvpassne(0, bupc('ftp',
+                     input=jl('cd src/latest/bad-symlink', 'pwd'),
+                     check=False).rc)
+    wvpassne(0, bupc('ftp',
+                     input=jl('cd src/latest/not-there', 'pwd'),
+                     check=False).rc)
+
+    wvstart('ls')
+    # FIXME: elaborate
+    wvpasseq('src\n', bup('ftp', input='ls\n'))
+    wvpasseq(save_name + '\nlatest\n',
+             bup('ftp', input='ls src\n'))
+
+    wvstart('cat')
+    wvpasseq('excitement!\n',
+             bup('ftp', input='cat src/latest/file-1\n'))
+    wvpasseq('excitement!\nmore excitement!\n',
+             bup('ftp', input='cat src/latest/file-1 src/latest/dir/file-2\n'))
+    
+    wvstart('get')
+    bupc('ftp', input=jl('get src/latest/file-1 dest'))
+    with open('dest', 'rb') as f:
+        wvpasseq('excitement!\n', f.read())
+    unlink('dest')
+    bupc('ftp', input=jl('get src/latest/file-symlink dest'))
+    with open('dest', 'rb') as f:
+        wvpasseq('excitement!\n', f.read())
+    unlink('dest')
+    wvpassne(0, bupc('ftp',
+                     input=jl('get src/latest/bad-symlink dest'),
+                     check=False).rc)
+    wvpassne(0, bupc('ftp',
+                     input=jl('get src/latest/not-there'),
+                     check=False).rc)
+    
+    wvstart('mget')
+    unlink_if_exists('file-1')
+    bupc('ftp', input=jl('mget src/latest/file-1'))
+    with open('file-1', 'rb') as f:
+        wvpasseq('excitement!\n', f.read())
+    unlink_if_exists('file-1')
+    unlink_if_exists('file-2')
+    bupc('ftp', input=jl('mget src/latest/file-1 src/latest/dir/file-2'))
+    with open('file-1', 'rb') as f:
+        wvpasseq('excitement!\n', f.read())
+    with open('file-2', 'rb') as f:
+        wvpasseq('more excitement!\n', f.read())
+    unlink_if_exists('file-symlink')
+    bupc('ftp', input=jl('mget src/latest/file-symlink'))
+    with open('file-symlink', 'rb') as f:
+        wvpasseq('excitement!\n', f.read())
+    wvpassne(0, bupc('ftp',
+                     input=jl('mget src/latest/bad-symlink dest'),
+                     check=False).rc)
+    # bup mget currently always does pattern matching
+    bupc('ftp', input='mget src/latest/not-there\n')
