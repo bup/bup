@@ -11,10 +11,8 @@ from difflib import unified_diff
 from itertools import chain, dropwhile, groupby, takewhile
 from os import environ, chdir
 from os.path import abspath, dirname
-from pipes import quote
 from random import choice, randint
 from shutil import copytree, rmtree
-from subprocess import PIPE, Popen, check_call
 from sys import stderr
 from time import localtime, strftime, time
 import os, random, sys
@@ -24,34 +22,11 @@ sys.path[:0] = [abspath(script_home + '/../lib'), abspath(script_home + '/..')]
 top = os.getcwd()
 bup_cmd = top + '/bup'
 
-from buptest import test_tempdir
+from buptest import exc, exo, test_tempdir
 from wvtest import wvfail, wvpass, wvpasseq, wvpassne, wvstart
 
 from bup.helpers import partition, period_as_secs, readpipe
 
-
-def logcmd(cmd):
-    if isinstance(cmd, basestring):
-        print(cmd, file=stderr)
-    else:
-        print(' '.join(map(quote, cmd)), file=stderr)
-
-def exc(cmd, shell=False):
-    logcmd(cmd)
-    check_call(cmd, shell=shell)
-
-def exo(cmd, stdin=None, stdout=True, stderr=False, shell=False, check=True):
-    logcmd(cmd)
-    p = Popen(cmd,
-              stdin=None,
-              stdout=(PIPE if stdout else None),
-              stderr=PIPE,
-              shell=shell)
-    out, err = p.communicate()
-    if check and p.returncode != 0:
-        raise Exception('subprocess %r failed with status %d, stderr: %r'
-                        % (' '.join(map(quote, cmd)), p.returncode, err))
-    return out, err, p
 
 def bup(*args):
     return exo((bup_cmd,) + args)[0]

@@ -1,6 +1,9 @@
 
+from __future__ import print_function
 from contextlib import contextmanager
 from os.path import basename, dirname, realpath
+from pipes import quote
+from subprocess import PIPE, Popen, check_call
 from traceback import extract_stack
 import subprocess, sys, tempfile
 
@@ -16,10 +19,10 @@ def no_lingering_errors():
             bt = extract_stack()
             src_file, src_line, src_func, src_txt = bt[-4]
             msg = 'saved_errors ' + repr(helpers.saved_errors)
-            print '! %-70s %s' % ('%s:%-4d %s' % (basename(src_file),
+            print('! %-70s %s' % ('%s:%-4d %s' % (basename(src_file),
                                                   src_line,
                                                   msg),
-                                  'FAILED')
+                                  'FAILED'))
             sys.stdout.flush()
     fail_if_errors()
     helpers.clear_errors()
@@ -41,3 +44,27 @@ def test_tempdir(prefix):
     if wvfailure_count() == initial_failures:
         subprocess.call(['chmod', '-R', 'u+rwX', tmpdir])
         subprocess.call(['rm', '-rf', tmpdir])
+
+
+def logcmd(cmd):
+    if isinstance(cmd, basestring):
+        print(cmd, file=sys.stderr)
+    else:
+        print(' '.join(map(quote, cmd)), file=sys.stderr)
+
+def exc(cmd, shell=False):
+    logcmd(cmd)
+    check_call(cmd, shell=shell)
+
+def exo(cmd, stdin=None, stdout=True, stderr=False, shell=False, check=True):
+    logcmd(cmd)
+    p = Popen(cmd,
+              stdin=None,
+              stdout=(PIPE if stdout else None),
+              stderr=PIPE,
+              shell=shell)
+    out, err = p.communicate()
+    if check and p.returncode != 0:
+        raise Exception('subprocess %r failed with status %d, stderr: %r'
+                        % (' '.join(map(quote, cmd)), p.returncode, err))
+    return out, err, p
