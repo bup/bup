@@ -469,12 +469,8 @@ def tree_items(oid, tree_data, names=frozenset(), bupm=None):
             continue
         assert name != '.'
         if name not in names:
-            if bupm:
-                if (name + '/') > last_name:
-                    break  # given git sort order, we're finished
-            else:
-                if name > last_name:
-                    break  # given bupm sort order, we're finished
+            if name > last_name:
+                break  # given bupm sort order, we're finished
             if (kind == BUP_CHUNKED or not S_ISDIR(gitmode)) and bupm:
                 Metadata.read(bupm)
             continue
