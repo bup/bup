@@ -420,7 +420,7 @@ def ordered_tree_entries(tree_data, bupm=None):
     for ent in tree_ents:
         yield ent
     
-def tree_items(oid, tree_data, names=frozenset(tuple()), bupm=None):
+def tree_items(oid, tree_data, names=frozenset(), bupm=None):
 
     def tree_item(ent_oid, kind, gitmode):
         if kind == BUP_CHUNKED:
