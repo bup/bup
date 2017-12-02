@@ -628,16 +628,10 @@ def contents(repo, item, names=None, want_meta=True):
             else:
                 item_gen = tree_items(item.oid, data, names)
         elif obj_type == 'commit':
-            tree_oidx = parse_commit(data).tree
-            it = repo.cat(tree_oidx)
-            _, obj_type, size = next(it)
-            assert obj_type == 'tree'
-            tree_data = ''.join(it)
             if want_meta:
-                item_gen = tree_items_with_meta(repo, tree_oidx.decode('hex'),
-                                                tree_data, names)
+                item_gen = tree_items_with_meta(repo, item.oid, tree_data, names)
             else:
-                item_gen = tree_items(tree_oidx.decode('hex'), tree_data, names)
+                item_gen = tree_items(item.oid, tree_data, names)
         else:
             for _ in it: pass
             raise Exception('unexpected git ' + obj_type)
