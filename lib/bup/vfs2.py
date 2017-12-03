@@ -748,7 +748,6 @@ def lresolve(repo, path, parent=None, want_meta=True):
      return it in the result."""
     return _resolve_path(repo, path, parent=parent, want_meta=want_meta,
                          deref=False)
-                         
 
 def resolve(repo, path, parent=None, want_meta=True):
     """Follow the path in the virtual filesystem and return a tuple
@@ -791,5 +790,9 @@ def resolve(repo, path, parent=None, want_meta=True):
     needed, make a copy via item.meta.copy() and modify that instead.
 
     """
-    return _resolve_path(repo, path, parent=parent, want_meta=want_meta,
-                         deref=True)
+    result = _resolve_path(repo, path, parent=parent, want_meta=want_meta,
+                           deref=True)
+    _, leaf_item = result[-1]
+    if leaf_item:
+        assert not S_ISLNK(item_mode(leaf_item))
+    return result
