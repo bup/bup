@@ -826,6 +826,24 @@ def resolve(repo, path, parent=None, want_meta=True):
         assert not S_ISLNK(item_mode(leaf_item))
     return result
 
+def try_resolve(repo, path, parent=None, want_meta=True):
+    """If path does not refer to a symlink, does not exist, or refers to a
+    valid symlink, behave exactly like resolve().  If path refers to
+    an invalid symlink, behave like lresolve.
+
+    """
+    res = lresolve(repo, path, parent=parent, want_meta=want_meta)
+    leaf_name, leaf_item = res[-1]
+    if not leaf_item:
+        return res
+    if not S_ISLNK(item_mode(leaf_item)):
+        return res
+    deref = resolve(repo, leaf_name, parent=res[:-1], want_meta=want_meta)
+    deref_name, deref_item = deref[-1]
+    if deref_item:
+        return deref
+    return res
+
 def augment_item_meta(repo, item, include_size=False):
     """Ensure item has a Metadata instance for item.meta.  If item.meta is
     currently a mode, replace it with a compatible "fake" Metadata

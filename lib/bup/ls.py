@@ -114,8 +114,7 @@ def do_ls(args, default='.', onabort=None, spec_prefix=''):
             if opt.directory:
                 resolved = vfs.lresolve(repo, path)
             else:
-                # FIXME: deal with invalid symlinks i.e. old vfs try_resolve
-                resolved = vfs.resolve(repo, path)
+                resolved = vfs.try_resolve(repo, path)
 
             leaf_name, leaf_item = resolved[-1]
             if not leaf_item:
