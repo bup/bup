@@ -40,9 +40,8 @@ fill_in_metadata_if_dir() or ensure_item_has_metadata()).
 Commit items represent commits (e.g. /.tag/some-commit or
 /foo/latest), and for most purposes, they appear as the underlying
 tree.  S_ISDIR(item_mode(item)) will return true for both tree Items
-and Commits and the commit's oid is the tree hash.  The commit hash
-will be item.coid, and nominal_oid(item) will return coid for commits,
-oid for everything else.
+and Commits and the commit's oid is the tree hash; the commit hash is
+item.coid.
 
 """
 
@@ -230,15 +229,6 @@ real_tree_types = frozenset((Item, Commit))
 _root = Root(meta=default_dir_mode)
 _tags = Tags(meta=default_dir_mode)
 
-
-def nominal_oid(item):
-    """If the item is a Commit, return its commit oid, otherwise return
-    the item's oid, if it has one.
-
-    """
-    if isinstance(item, Commit):
-        return item.coid
-    return getattr(item, 'oid', None)
 
 def copy_item(item):
     """Return a completely independent copy of item, such that

@@ -32,6 +32,9 @@ WVPASS bup index src
 WVPASS bup save -n src -d 242312160 --strip src
 WVPASS bup tag some-tag src
 
+src_commit_hash=$(git log --format=%H -n1 src)
+src_tree_hash=$(git log --format=%T -n1 src)
+
 
 WVSTART "ls (short)"
 
@@ -204,6 +207,12 @@ WVSTART "ls (backup set - long)"
 WVPASSEQ "$(bup ls -l --numeric-ids src | cut -d' ' -f 1-2)" \
 "drwxr-xr-x 0/0
 drwxr-xr-x 0/0"
+
+WVPASSEQ "$(bup ls -ds "src/latest" | tr -s ' ' ' ')" \
+"$src_tree_hash src/latest"
+
+WVPASSEQ "$(bup ls -ds --commit-hash "src/latest" | tr -s ' ' ' ')" \
+"$src_commit_hash src/latest"
 
 
 WVSTART "ls (dates TZ != UTC)"

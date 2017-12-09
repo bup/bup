@@ -9,9 +9,18 @@ from bup import metadata, options, vfs2 as vfs
 from bup.repo import LocalRepo
 from helpers import columnate, istty1, last, log
 
+def item_hash(item, tree_for_commit):
+    """If the item is a Commit, return its commit oid, otherwise return
+    the item's oid, if it has one.
+
+    """
+    if tree_for_commit and isinstance(item, vfs.Commit):
+        return item.coid
+    return getattr(item, 'oid', None)
 
 def item_info(item, name,
               show_hash = False,
+              commit_hash=False,
               long_fmt = False,
               classification = None,
               numeric_ids = False,
@@ -21,8 +30,10 @@ def item_info(item, name,
 
     """
     result = ''
-    if show_hash and hasattr(item, 'oid'):
-        result += '%s ' % item.oid.encode('hex')
+    if show_hash:
+        oid = item_hash(item, commit_hash)
+        result += '%s ' % (oid.encode('hex') if oid
+                           else '0000000000000000000000000000000000000000')
     if long_fmt:
         meta = item.meta.copy()
         meta.path = name
@@ -43,6 +54,7 @@ optspec = """
 %sls [-a] [path...]
 --
 s,hash   show hash for each file
+commit-hash show commit hash instead of tree for commits (implies -s)
 a,all    show hidden files
 A,almost-all    show hidden files except . and ..
 l        use a detailed, long listing format
@@ -82,9 +94,13 @@ def do_ls(args, default='.', onabort=None, spec_prefix=''):
         elif option in ('-A', '--almost-all'):
             show_hidden = 'almost'
 
+    if opt.commit_hash:
+        opt.hash = True
+
     def item_line(item, name):
         return item_info(item, name,
                          show_hash = opt.hash,
+                         commit_hash=opt.commit_hash,
                          long_fmt = opt.l,
                          classification = classification,
                          numeric_ids = opt.numeric_ids,
