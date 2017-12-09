@@ -146,6 +146,7 @@ class _ChunkReader:
 
 class _FileReader(object):
     def __init__(self, repo, oid, known_size=None):
+        assert len(oid) == 20
         self.oid = oid
         self.ofs = 0
         self.reader = None
@@ -323,11 +324,15 @@ def item_size(repo, item):
         return m.size
     return _compute_item_size(repo, item)
 
+def tree_data_reader(repo, oid):
+    """Return an open reader for all of the data contained within oid.  If
+    oid refers to a tree, recursively concatenate all of its contents."""
+    return _FileReader(repo, oid)
+
 def fopen(repo, item):
     """Return an open reader for the given file item."""
-    assert repo
     assert S_ISREG(item_mode(item))
-    return _FileReader(repo, item.oid)
+    return tree_data_reader(repo, item.oid)
 
 def _commit_item_from_data(oid, data):
     info = parse_commit(data)
