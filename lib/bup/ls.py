@@ -45,7 +45,7 @@ def item_info(item, name,
     else:
         result += name
         if classification:
-            result += xstat.classification_str(item.meta.mode,
+            result += xstat.classification_str(vfs.item_mode(item),
                                                classification == 'all')
     return result
 
@@ -129,16 +129,18 @@ def do_ls(args, default='.', onabort=None, spec_prefix=''):
                     # Match non-bup "ls -a ... /".
                     parent = resolved[-2] if len(resolved) > 1 else resolved[0]
                     items = chain(items, (('..', parent[1]),))
-
-                items = ((x[0], vfs.augment_item_meta(repo, x[1],
-                                                      include_size=True))
-                         for x in items)
                 for sub_name, sub_item in sorted(items, key=lambda x: x[0]):
                     if show_hidden != 'all' and sub_name == '.':
                         continue
                     if sub_name.startswith('.') and \
                        show_hidden not in ('almost', 'all'):
                         continue
+                    if opt.l:
+                        sub_item = vfs.ensure_item_has_metadata(repo, sub_item,
+                                                                include_size=True)
+                    else:
+                        sub_item = vfs.augment_item_meta(repo, sub_item,
+                                                         include_size=True)
                     line = item_line(sub_item, sub_name)
                     pending.append(line) if not opt.l and istty1 else print(line)
             else:

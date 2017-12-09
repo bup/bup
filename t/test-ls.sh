@@ -33,6 +33,11 @@ WVPASS bup index src
 WVPASS bup save -n src -d 242312160 --strip src
 WVPASS bup tag some-tag src
 
+uid="$(WVPASS id -u)" || exit $?
+gid="$(WVPASS bup-python -c 'import os; print os.stat("src").st_gid')" || exit $?
+user="$(WVPASS id -un)" || exit $?
+group="$(WVPASS bup-python -c 'import grp, os;
+print grp.getgrgid(os.stat("src").st_gid)[0]')" || exit $?
 src_commit_hash=$(git log --format=%H -n1 src)
 src_tree_hash=$(git log --format=%T -n1 src)
 
@@ -110,27 +115,27 @@ WVPASSEQ "$(WVPASS bup ls -d src/latest)" "src/latest"
 WVSTART "ls (long)"
 
 WVPASSEQ "$(WVPASS bup ls -l / | tr -s ' ' ' ')" \
-"drwxr-xr-x 0/0 0 1970-01-01 00:00 src"
+"drwx------ $user/$group 0 2009-10-03 23:48 src"
 
 WVPASSEQ "$(WVPASS bup ls -lA / | tr -s ' ' ' ')" \
 "drwxr-xr-x 0/0 0 1970-01-01 00:00 .tag
-drwxr-xr-x 0/0 0 1970-01-01 00:00 src"
+drwx------ $user/$group 0 2009-10-03 23:48 src"
 
 WVPASSEQ "$(WVPASS bup ls -lAF / | tr -s ' ' ' ')" \
 "drwxr-xr-x 0/0 0 1970-01-01 00:00 .tag/
-drwxr-xr-x 0/0 0 1970-01-01 00:00 src/"
+drwx------ $user/$group 0 2009-10-03 23:48 src/"
 
 WVPASSEQ "$(WVPASS bup ls -la / | tr -s ' ' ' ')" \
 "drwxr-xr-x 0/0 0 1970-01-01 00:00 .
 drwxr-xr-x 0/0 0 1970-01-01 00:00 ..
 drwxr-xr-x 0/0 0 1970-01-01 00:00 .tag
-drwxr-xr-x 0/0 0 1970-01-01 00:00 src"
+drwx------ $user/$group 0 2009-10-03 23:48 src"
 
 WVPASSEQ "$(WVPASS bup ls -laF / | tr -s ' ' ' ')" \
 "drwxr-xr-x 0/0 0 1970-01-01 00:00 ./
 drwxr-xr-x 0/0 0 1970-01-01 00:00 ../
 drwxr-xr-x 0/0 0 1970-01-01 00:00 .tag/
-drwxr-xr-x 0/0 0 1970-01-01 00:00 src/"
+drwx------ $user/$group 0 2009-10-03 23:48 src/"
 
 socket_mode="$(WVPASS ls -l src/socket | cut -b -10)" || exit $?
 
@@ -176,13 +181,6 @@ else
         || exit $?
 fi
 
-
-uid="$(WVPASS id -u)" || exit $?
-gid="$(WVPASS bup-python -c 'import os; print os.stat("src").st_gid')" || exit $?
-user="$(WVPASS id -un)" || exit $?
-group="$(WVPASS bup-python -c 'import grp, os;
-print grp.getgrgid(os.stat("src").st_gid)[0]')" || exit $?
-
 WVPASSEQ "$(bup ls -l src/latest | tr -s ' ' ' ')" \
 "$bad_symlink_mode $user/$group $bad_symlink_size $bad_symlink_date bad-symlink -> not-there
 -rwx------ $user/$group 0 2009-10-03 23:48 executable
@@ -193,7 +191,7 @@ $symlink_mode $user/$group $symlink_size $symlink_date symlink -> file"
 
 WVPASSEQ "$(bup ls -la src/latest | tr -s ' ' ' ')" \
 "drwx------ $user/$group 0 2009-10-03 23:48 .
-drwxr-xr-x 0/0 0 1970-01-01 00:00 ..
+drwx------ $user/$group 0 2009-10-03 23:48 ..
 -rw------- $user/$group 0 2009-10-03 23:48 .dotfile
 $bad_symlink_mode $user/$group $bad_symlink_size $bad_symlink_date bad-symlink -> not-there
 -rwx------ $user/$group 0 2009-10-03 23:48 executable
@@ -241,8 +239,8 @@ WVPASSEQ "$(bup ls -ld "src/latest" | tr -s ' ' ' ')" \
 
 WVSTART "ls (backup set - long)"
 WVPASSEQ "$(bup ls -l --numeric-ids src | cut -d' ' -f 1-2)" \
-"drwxr-xr-x 0/0
-drwxr-xr-x 0/0"
+"drwx------ $uid/$gid
+drwx------ $uid/$gid"
 
 WVPASSEQ "$(bup ls -ds "src/latest" | tr -s ' ' ' ')" \
 "$src_tree_hash src/latest"
