@@ -244,7 +244,7 @@ def _read_dir_meta(bupm):
         m.size = 0
     return m
 
-def _tree_data_and_bupm(repo, oid):
+def tree_data_and_bupm(repo, oid):
     """Return (tree_bytes, bupm_oid) where bupm_oid will be None if the
     tree has no metadata (i.e. older bup save, or non-bup tree).
 
@@ -273,7 +273,7 @@ def _find_dir_item_metadata(repo, item):
     tree has no metadata (i.e. older bup save, or non-bup tree).
 
     """
-    tree_data, bupm_oid = _tree_data_and_bupm(repo, item.oid)
+    tree_data, bupm_oid = tree_data_and_bupm(repo, item.oid)
     if bupm_oid:
         with _FileReader(repo, bupm_oid) as meta_stream:
             return _read_dir_meta(meta_stream)

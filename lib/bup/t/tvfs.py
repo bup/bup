@@ -35,7 +35,7 @@ def tree_items(repo, oid):
     """
     # This is a simpler approach than the one in the vfs, used to
     # cross-check its behavior.
-    tree_data, bupm_oid = vfs._tree_data_and_bupm(repo, oid)
+    tree_data, bupm_oid = vfs.tree_data_and_bupm(repo, oid)
     bupm = vfs._FileReader(repo, bupm_oid) if bupm_oid else None
     try:
         maybe_meta = lambda : Metadata.read(bupm) if bupm else None
