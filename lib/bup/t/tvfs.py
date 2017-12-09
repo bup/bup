@@ -1,6 +1,7 @@
 
 from __future__ import print_function
 from collections import namedtuple
+from errno import ELOOP
 from io import BytesIO
 from os import environ, symlink
 from stat import S_IFDIR, S_IFREG, S_ISDIR, S_ISREG
@@ -346,7 +347,12 @@ def test_resolve_loop():
             ex((bup_path, 'index', '-v', data_path))
             ex((bup_path, 'save', '-d', '100000', '-tvvn', 'test', '--strip',
                 data_path))
-            wvexcept(vfs.Loop, resolve, repo, '/test/latest/loop')
+            try:
+                resolve(repo, '/test/latest/loop')
+            except vfs.IOError as res_ex:
+                wvpasseq(ELOOP, res_ex.errno)
+                wvpasseq(['', 'test', 'latest', 'loop'],
+                         [name for name, item in res_ex.terminus])
 
 @wvtest
 def test_contents_with_mismatched_bupm_git_ordering():

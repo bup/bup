@@ -62,12 +62,8 @@ from bup.repo import LocalRepo, RemoteRepo
 
 
 class IOError(exceptions.IOError):
-    def __init__(self, errno, message):
+    def __init__(self, errno, message, terminus=None):
         exceptions.IOError.__init__(self, errno, message)
-
-class Loop(IOError):
-    def __init__(self, message, terminus=None):
-        IOError.__init__(self, ELOOP, message)
         self.terminus = terminus
 
 default_file_mode = S_IFREG | 0o644
@@ -739,9 +735,10 @@ def _resolve_path(repo, path, parent=None, want_meta=True, deref=False):
                     future.extend(target_future)
                 hops += 1
                 if hops > 100:
-                    raise Loop('too many symlinks encountered while resolving %r%s'
-                               % (path,
-                                  'relative to %r' % parent if parent else ''))
+                    raise IOError(ELOOP,
+                                  'too many symlinks encountered while resolving %r%s'
+                                  % (path, 'relative to %r' % parent if parent else ''),
+                                  terminus=tuple(past + [(segment, item)]))
                 
 def lresolve(repo, path, parent=None, want_meta=True):
     """Perform exactly the same function as resolve(), except if the
@@ -761,12 +758,12 @@ def resolve(repo, path, parent=None, want_meta=True):
     item, and that item in the result will be None.
 
     Any symlinks along the path, including at the end, will be
-    resolved.  A Loop exception will be raised if too many symlinks
-    are traversed whiile following the path.  raised if too many
-    symlinks are traversed while following the path.  That exception
-    is effectively like a normal ELOOP IOError exception, but will
-    include a terminus element describing the location of the failure,
-    which will be a tuple of (name, info) elements.
+    resolved.  A VFS IOError with the errno attribute set to ELOOP
+    will be raised if too many symlinks are traversed while following
+    the path.  That exception is effectively like a normal
+    ELOOP IOError exception, but will include a terminus element
+    describing the location of the failure, which will be a tuple of
+    (name, info) elements.
 
     Currently, a path ending in '/' will still resolve if it exists,
     even if not a directory.  The parent, if specified, must be a
