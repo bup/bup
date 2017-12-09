@@ -193,16 +193,28 @@ class _FileReader(object):
 _multiple_slashes_rx = re.compile(r'//+')
 
 def _decompose_path(path):
-    """Return a reversed list of path elements, omitting any occurrences
-    of "."  and ignoring any leading or trailing slash."""
+    """Return a boolean indicating whether the path is absolute, and a
+    reversed list of path elements, omitting any occurrences of "."
+    and ignoring any leading or trailing slash.  If the path is
+    effectively '/' or '.', return an empty list.
+
+    """
     path = re.sub(_multiple_slashes_rx, '/', path)
+    if path == '/':
+        return True, True, []
+    is_absolute = must_be_dir = False
     if path.startswith('/'):
+        is_absolute = True
         path = path[1:]
-    if path.endswith('/'):
-        path = path[:-1]
-    result = [x for x in path.split('/') if x != '.']
-    result.reverse()
-    return result
+    for suffix in ('/', '/.'):
+        if path.endswith(suffix):
+            must_be_dir = True
+            path = path[:-len(suffix)]
+    parts = [x for x in path.split('/') if x != '.']
+    parts.reverse()
+    if not parts:
+        must_be_dir = True  # e.g. path was effectively '.' or '/', etc.
+    return is_absolute, must_be_dir, parts
     
 
 Item = namedtuple('Item', ('meta', 'oid'))
@@ -663,6 +675,13 @@ def contents(repo, item, names=None, want_meta=True):
         yield x
 
 def _resolve_path(repo, path, parent=None, want_meta=True, deref=False):
+    def raise_dir_required_but_not_dir(path, parent, past):
+        raise IOError(ENOTDIR,
+                      "path %r%s resolves to non-directory %r"
+                      % (path,
+                         ' (relative to %r)' % parent if parent else '',
+                         past),
+                      terminus=past)
     global _root
     assert repo
     assert len(path)
@@ -672,23 +691,34 @@ def _resolve_path(repo, path, parent=None, want_meta=True, deref=False):
             assert type(x[0]) in (bytes, str)
             assert type(x[1]) in item_types
         assert parent[0][1] == _root
-    future = _decompose_path(path)
-    if path.startswith('/'):
-        if future == ['']: # path was effectively '/'
+        if not S_ISDIR(item_mode(parent[-1][1])):
+            raise IOError(ENOTDIR,
+                          'path resolution parent %r is not a directory'
+                          % (parent,))
+    is_absolute, must_be_dir, future = _decompose_path(path)
+    if must_be_dir:
+        deref = True
+    if not future:  # path was effectively '.' or '/'
+        if is_absolute:
             return (('', _root),)
+        if parent:
+            return tuple(parent)
+        return [('', _root)]
+    if is_absolute:
         past = [('', _root)]
     else:
-        if parent:
-            past = list(parent)
-        else:
-            past = [('', _root)]
-    if not future:  # e.g. if path was effectively '.'
-        return tuple(past)
+        past = list(parent) if parent else [('', _root)]
     hops = 0
     while True:
+        if not future:
+            if must_be_dir and not S_ISDIR(item_mode(past[-1][1])):
+                raise_dir_required_but_not_dir(path, parent, past)
+            return tuple(past)
         segment = future.pop()
         if segment == '..':
+            assert len(past) > 0
             if len(past) > 1:  # .. from / is /
+                assert S_ISDIR(item_mode(past[-1][1]))
                 past.pop()
         else:
             parent_name, parent_item = past[-1]
@@ -708,42 +738,49 @@ def _resolve_path(repo, path, parent=None, want_meta=True, deref=False):
             mode = item_mode(item)
             if not S_ISLNK(mode):
                 if not S_ISDIR(mode):
-                    assert(not future)
                     past.append((segment, item),)
+                    if future:
+                        raise IOError(ENOTDIR,
+                                      'path %r%s ends internally in non-directory here: %r'
+                                      % (path,
+                                         ' (relative to %r)' % parent if parent else '',
+                                         past),
+                                      terminus=past)
+                    if must_be_dir:
+                        raise_dir_required_but_not_dir(path, parent, past)
                     return tuple(past)
                 # It's treeish
                 if want_meta and type(item) in real_tree_types:
                     dir_meta = _find_treeish_oid_metadata(repo, item.oid)
                     if dir_meta:
                         item = item._replace(meta=dir_meta)
-                if not future:
-                    past.append((segment, item),)
-                    return tuple(past)
                 past.append((segment, item))
-            else:  # symlink            
+            else:  # symlink
                 if not future and not deref:
                     past.append((segment, item),)
-                    return tuple(past)
-                target = readlink(repo, item)
-                target_future = _decompose_path(target)
-                if target.startswith('/'):
-                    future = target_future
-                    past = [('', _root)]
-                    if target_future == ['']:  # path was effectively '/'
-                        return tuple(past)
-                else:
-                    future.extend(target_future)
-                hops += 1
+                    continue
                 if hops > 100:
                     raise IOError(ELOOP,
                                   'too many symlinks encountered while resolving %r%s'
-                                  % (path, 'relative to %r' % parent if parent else ''),
+                                  % (path, ' relative to %r' % parent if parent else ''),
                                   terminus=tuple(past + [(segment, item)]))
+                target = readlink(repo, item)
+                is_absolute, _, target_future = _decompose_path(target)
+                if is_absolute:
+                    if not target_future:  # path was effectively '/'
+                        return (('', _root),)
+                    past = [('', _root)]
+                    future = target_future
+                else:
+                    future.extend(target_future)
+                hops += 1
                 
 def lresolve(repo, path, parent=None, want_meta=True):
-    """Perform exactly the same function as resolve(), except if the
-     final path element is a symbolic link, don't follow it, just
-     return it in the result."""
+    """Perform exactly the same function as resolve(), except if the final
+    path element is a symbolic link, don't follow it, just return it
+    in the result.
+
+    """
     return _resolve_path(repo, path, parent=parent, want_meta=want_meta,
                          deref=False)
 
@@ -757,6 +794,9 @@ def resolve(repo, path, parent=None, want_meta=True):
     resolution, the result will represent the location of the missing
     item, and that item in the result will be None.
 
+    Any attempt to traverse a non-directory will raise a VFS ENOTDIR
+    IOError exception.
+
     Any symlinks along the path, including at the end, will be
     resolved.  A VFS IOError with the errno attribute set to ELOOP
     will be raised if too many symlinks are traversed while following
@@ -765,13 +805,14 @@ def resolve(repo, path, parent=None, want_meta=True):
     describing the location of the failure, which will be a tuple of
     (name, info) elements.
 
-    Currently, a path ending in '/' will still resolve if it exists,
-    even if not a directory.  The parent, if specified, must be a
-    sequence of (name, item) tuples, and will provide the starting
-    point for the resolution of the path.  The result may include
-    elements of parent directly, so they must not be modified later.
-    If this is a concern, pass in "name, copy_item(item) for
-    name, item in parent" instead.
+    The parent, if specified, must be a sequence of (name, item)
+    tuples, and will provide the starting point for the resolution of
+    the path.  If no parent is specified, resolution will start at
+    '/'.
+
+    The result may include elements of parent directly, so they must
+    not be modified later.  If this is a concern, pass in "name,
+    copy_item(item) for name, item in parent" instead.
 
     When want_meta is true, detailed metadata will be included in each
     result item if it's avaiable, otherwise item.meta will be an

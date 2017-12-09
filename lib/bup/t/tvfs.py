@@ -1,7 +1,7 @@
 
 from __future__ import print_function
 from collections import namedtuple
-from errno import ELOOP
+from errno import ELOOP, ENOTDIR
 from io import BytesIO
 from os import environ, symlink
 from stat import S_IFDIR, S_IFREG, S_ISDIR, S_ISREG
@@ -214,9 +214,12 @@ def test_resolve():
             save_time = 100000
             save_time_str = strftime('%Y-%m-%d-%H%M%S', localtime(save_time))
             os.mkdir(data_path)
+            os.mkdir(data_path + '/dir')
             with open(data_path + '/file', 'w+') as tmpfile:
                 print('canary', file=tmpfile)
-            symlink('file', data_path + '/symlink')
+            symlink('file', data_path + '/file-symlink')
+            symlink('dir', data_path + '/dir-symlink')
+            symlink('not-there', data_path + '/bad-symlink')
             ex((bup_path, 'init'))
             ex((bup_path, 'index', '-v', data_path))
             ex((bup_path, 'save', '-d', str(save_time), '-tvvn', 'test',
@@ -249,6 +252,20 @@ def test_resolve():
                                 ('.tag', vfs._tags),
                                 ('test', test_revlist)]),
                      root_content)
+            for path in ('//', '/.', '/./', '/..', '/../',
+                         '/test/latest/dir/../../..',
+                         '/test/latest/dir/../../../',
+                         '/test/latest/dir/../../../.',
+                         '/test/latest/dir/../../..//',
+                         '/test//latest/dir/../../..',
+                         '/test/./latest/dir/../../..',
+                         '/test/././latest/dir/../../..',
+                         '/test/.//./latest/dir/../../..',
+                         '/test//.//.//latest/dir/../../..'
+                         '/test//./latest/dir/../../..'):
+                wvstart('resolve: ' + path)
+                res = resolve(repo, path)
+                wvpasseq((('', vfs._root),), res)
 
             wvstart('resolve: /.tag')
             res = resolve(repo, '/.tag')
@@ -286,11 +303,15 @@ def test_resolve():
             latest_content = frozenset(vfs.contents(repo, latest_item))
             expected = frozenset((x.name, vfs.Item(oid=x.oid, meta=x.meta))
                                  for x in (tip_tree[name]
-                                           for name in ('.', 'file',
-                                                        'symlink')))
+                                           for name in ('.',
+                                                        'bad-symlink',
+                                                        'dir',
+                                                        'dir-symlink',
+                                                        'file',
+                                                        'file-symlink')))
             wvpasseq(expected, latest_content)
 
-            wvstart('resolve: /test/latest/foo')
+            wvstart('resolve: /test/latest/file')
             res = resolve(repo, '/test/latest/file')
             wvpasseq(4, len(res))
             expected_file_item_w_meta = vfs.Item(meta=tip_tree['file'].meta,
@@ -301,8 +322,29 @@ def test_resolve():
                         ('file', expected_file_item_w_meta))
             wvpasseq(expected, res)
 
-            wvstart('resolve: /test/latest/symlink')
-            res = resolve(repo, '/test/latest/symlink')
+            wvstart('resolve: /test/latest/bad-symlink')
+            res = resolve(repo, '/test/latest/bad-symlink')
+            wvpasseq(4, len(res))
+            expected = (('', vfs._root),
+                        ('test', test_revlist),
+                        ('latest', expected_latest_item_w_meta),
+                        ('not-there', None))
+            wvpasseq(expected, res)
+
+            wvstart('lresolve: /test/latest/bad-symlink')
+            res = lresolve(repo, '/test/latest/bad-symlink')
+            wvpasseq(4, len(res))
+            bad_symlink_value = tip_tree['bad-symlink']
+            expected_bad_symlink_item_w_meta = vfs.Item(meta=bad_symlink_value.meta,
+                                                        oid=bad_symlink_value.oid)
+            expected = (('', vfs._root),
+                        ('test', test_revlist),
+                        ('latest', expected_latest_item_w_meta),
+                        ('bad-symlink', expected_bad_symlink_item_w_meta))
+            wvpasseq(expected, res)
+
+            wvstart('resolve: /test/latest/file-symlink')
+            res = resolve(repo, '/test/latest/file-symlink')
             wvpasseq(4, len(res))
             expected = (('', vfs._root),
                         ('test', test_revlist),
@@ -310,16 +352,16 @@ def test_resolve():
                         ('file', expected_file_item_w_meta))
             wvpasseq(expected, res)
 
-            wvstart('lresolve: /test/latest/symlink')
-            res = lresolve(repo, '/test/latest/symlink')
+            wvstart('lresolve: /test/latest/file-symlink')
+            res = lresolve(repo, '/test/latest/file-symlink')
             wvpasseq(4, len(res))
-            symlink_value = tip_tree['symlink']
-            expected_symlink_item_w_meta = vfs.Item(meta=symlink_value.meta,
-                                                    oid=symlink_value.oid)
+            file_symlink_value = tip_tree['file-symlink']
+            expected_file_symlink_item_w_meta = vfs.Item(meta=file_symlink_value.meta,
+                                                         oid=file_symlink_value.oid)
             expected = (('', vfs._root),
                         ('test', test_revlist),
                         ('latest', expected_latest_item_w_meta),
-                        ('symlink', expected_symlink_item_w_meta))
+                        ('file-symlink', expected_file_symlink_item_w_meta))
             wvpasseq(expected, res)
 
             wvstart('resolve: /test/latest/missing')
@@ -328,6 +370,75 @@ def test_resolve():
             name, item = res[-1]
             wvpasseq('missing', name)
             wvpass(item is None)
+
+            for path in ('/test/latest/file/',
+                         '/test/latest/file/.',
+                         '/test/latest/file/..',
+                         '/test/latest/file/../',
+                         '/test/latest/file/../.',
+                         '/test/latest/file/../..',
+                         '/test/latest/file/foo'):
+                wvstart('resolve: ' + path)
+                try:
+                    resolve(repo, path)
+                except vfs.IOError as res_ex:
+                    wvpasseq(ENOTDIR, res_ex.errno)
+                    wvpasseq(['', 'test', 'latest', 'file'],
+                             [name for name, item in res_ex.terminus])
+
+            for path in ('/test/latest/file-symlink/',
+                         '/test/latest/file-symlink/.',
+                         '/test/latest/file-symlink/..',
+                         '/test/latest/file-symlink/../',
+                         '/test/latest/file-symlink/../.',
+                         '/test/latest/file-symlink/../..'):
+                wvstart('lresolve: ' + path)
+                try:
+                    lresolve(repo, path)
+                except vfs.IOError as res_ex:
+                    wvpasseq(ENOTDIR, res_ex.errno)
+                    wvpasseq(['', 'test', 'latest', 'file'],
+                             [name for name, item in res_ex.terminus])
+
+            wvstart('resolve: non-directory parent')
+            file_res = resolve(repo, '/test/latest/file')
+            try:
+                resolve(repo, 'foo', parent=file_res)
+            except vfs.IOError as res_ex:
+                wvpasseq(ENOTDIR, res_ex.errno)
+                wvpasseq(None, res_ex.terminus)
+
+            wvstart('lresolve: /test/latest/dir-symlink')
+            res = lresolve(repo, '/test/latest/dir-symlink')
+            wvpasseq(4, len(res))
+            dir_symlink_value = tip_tree['dir-symlink']
+            expected_dir_symlink_item_w_meta = vfs.Item(meta=dir_symlink_value.meta,
+                                                         oid=dir_symlink_value.oid)
+            expected = (('', vfs._root),
+                        ('test', test_revlist),
+                        ('latest', expected_latest_item_w_meta),
+                        ('dir-symlink', expected_dir_symlink_item_w_meta))
+            wvpasseq(expected, res)
+
+            dir_value = tip_tree['dir']
+            expected_dir_item = vfs.Item(oid=dir_value.oid,
+                                         meta=tree_dict(repo, dir_value.oid)['.'].meta)
+            expected = (('', vfs._root),
+                        ('test', test_revlist),
+                        ('latest', expected_latest_item_w_meta),
+                        ('dir', expected_dir_item))
+            for resname, resolver in (('resolve', resolve),
+                                      ('lresolve', lresolve)):
+                for path in ('/test/latest/dir-symlink/',
+                             '/test/latest/dir-symlink/.'):
+                    wvstart(resname + ': ' + path)
+                    res = resolver(repo, path)
+                    wvpasseq(4, len(res))
+                    wvpasseq(expected, res)
+            wvstart('resolve: /test/latest/dir-symlink')
+            res = resolve(repo, path)
+            wvpasseq(4, len(res))
+            wvpasseq(expected, res)
 
 @wvtest
 def test_resolve_loop():
