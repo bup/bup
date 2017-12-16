@@ -29,7 +29,7 @@ WVPASS touch -t 200910032348 src/.dotfile src/*
 WVPASS touch -t 200910032348 src
 WVPASS touch -t 200910032348 .
 WVPASS bup index src
-WVPASS bup save -n src -d 242312160 src
+WVPASS bup save -n src -d 242312160 --strip src
 WVPASS bup tag some-tag src
 
 
@@ -65,20 +65,20 @@ WVPASSEQ "$(WVPASS bup ls /src)" \
 "1977-09-05-125600
 latest"
 
-WVPASSEQ "$(WVPASS bup ls src/latest/"$tmpdir"/src)" "executable
+WVPASSEQ "$(WVPASS bup ls src/latest)" "executable
 fifo
 file
 socket
 symlink"
 
-WVPASSEQ "$(WVPASS bup ls -A src/latest/"$tmpdir"/src)" ".dotfile
+WVPASSEQ "$(WVPASS bup ls -A src/latest)" ".dotfile
 executable
 fifo
 file
 socket
 symlink"
 
-WVPASSEQ "$(WVPASS bup ls -a src/latest/"$tmpdir"/src)" ".
+WVPASSEQ "$(WVPASS bup ls -a src/latest)" ".
 ..
 .dotfile
 executable
@@ -87,19 +87,19 @@ file
 socket
 symlink"
 
-WVPASSEQ "$(WVPASS bup ls -F src/latest/"$tmpdir"/src)" "executable*
+WVPASSEQ "$(WVPASS bup ls -F src/latest)" "executable*
 fifo|
 file
 socket=
 symlink@"
 
-WVPASSEQ "$(WVPASS bup ls --file-type src/latest/"$tmpdir"/src)" "executable
+WVPASSEQ "$(WVPASS bup ls --file-type src/latest)" "executable
 fifo|
 file
 socket=
 symlink@"
 
-WVPASSEQ "$(WVPASS bup ls -d src/latest/"$tmpdir"/src)" "src/latest$tmpdir/src"
+WVPASSEQ "$(WVPASS bup ls -d src/latest)" "src/latest"
 
 
 WVSTART "ls (long)"
@@ -134,7 +134,7 @@ d--------- ?/? 0 1970-01-01 00:00 src/"
 symlink_mode="$(WVPASS ls -l src/symlink | cut -b -10)" || exit $?
 socket_mode="$(WVPASS ls -l src/socket | cut -b -10)" || exit $?
 
-symlink_bup_info="$(WVPASS bup ls -l src/latest"$tmpdir"/src | grep symlink)" \
+symlink_bup_info="$(WVPASS bup ls -l src/latest | grep symlink)" \
     || exit $?
 symlink_date="$(WVPASS echo "$symlink_bup_info" \
   | WVPASS perl -ne 'm/.*? (\d+) (\d\d\d\d-\d\d-\d\d \d\d:\d\d)/ and print $2')" \
@@ -156,16 +156,16 @@ user="$(WVPASS id -un)" || exit $?
 group="$(WVPASS bup-python -c 'import grp, os;
 print grp.getgrgid(os.stat("src").st_gid)[0]')" || exit $?
 
-WVPASSEQ "$(bup ls -l src/latest"$tmpdir"/src | tr -s ' ' ' ')" \
+WVPASSEQ "$(bup ls -l src/latest | tr -s ' ' ' ')" \
 "-rwx------ $user/$group 0 2009-10-03 23:48 executable
 prw------- $user/$group 0 2009-10-03 23:48 fifo
 -rw------- $user/$group 1024 2009-10-03 23:48 file
 $socket_mode $user/$group 0 2009-10-03 23:48 socket
 $symlink_mode $user/$group $symlink_size $symlink_date symlink -> file"
 
-WVPASSEQ "$(bup ls -la src/latest"$tmpdir"/src | tr -s ' ' ' ')" \
+WVPASSEQ "$(bup ls -la src/latest | tr -s ' ' ' ')" \
 "drwx------ $user/$group 0 2009-10-03 23:48 .
-drwx------ $user/$group 0 2009-10-03 23:48 ..
+d--------- ?/? 0 1970-01-01 00:00 ..
 -rw------- $user/$group 0 2009-10-03 23:48 .dotfile
 -rwx------ $user/$group 0 2009-10-03 23:48 executable
 prw------- $user/$group 0 2009-10-03 23:48 fifo
@@ -173,7 +173,7 @@ prw------- $user/$group 0 2009-10-03 23:48 fifo
 $socket_mode $user/$group 0 2009-10-03 23:48 socket
 $symlink_mode $user/$group $symlink_size $symlink_date symlink -> file"
 
-WVPASSEQ "$(bup ls -lA src/latest"$tmpdir"/src | tr -s ' ' ' ')" \
+WVPASSEQ "$(bup ls -lA src/latest | tr -s ' ' ' ')" \
 "-rw------- $user/$group 0 2009-10-03 23:48 .dotfile
 -rwx------ $user/$group 0 2009-10-03 23:48 executable
 prw------- $user/$group 0 2009-10-03 23:48 fifo
@@ -181,29 +181,29 @@ prw------- $user/$group 0 2009-10-03 23:48 fifo
 $socket_mode $user/$group 0 2009-10-03 23:48 socket
 $symlink_mode $user/$group $symlink_size $symlink_date symlink -> file"
 
-WVPASSEQ "$(bup ls -lF src/latest"$tmpdir"/src | tr -s ' ' ' ')" \
+WVPASSEQ "$(bup ls -lF src/latest | tr -s ' ' ' ')" \
 "-rwx------ $user/$group 0 2009-10-03 23:48 executable*
 prw------- $user/$group 0 2009-10-03 23:48 fifo|
 -rw------- $user/$group 1024 2009-10-03 23:48 file
 $socket_mode $user/$group 0 2009-10-03 23:48 socket=
 $symlink_mode $user/$group $symlink_size $symlink_date symlink@ -> file"
 
-WVPASSEQ "$(bup ls -l --file-type src/latest"$tmpdir"/src | tr -s ' ' ' ')" \
+WVPASSEQ "$(bup ls -l --file-type src/latest | tr -s ' ' ' ')" \
 "-rwx------ $user/$group 0 2009-10-03 23:48 executable
 prw------- $user/$group 0 2009-10-03 23:48 fifo|
 -rw------- $user/$group 1024 2009-10-03 23:48 file
 $socket_mode $user/$group 0 2009-10-03 23:48 socket=
 $symlink_mode $user/$group $symlink_size $symlink_date symlink@ -> file"
 
-WVPASSEQ "$(bup ls -ln src/latest"$tmpdir"/src | tr -s ' ' ' ')" \
+WVPASSEQ "$(bup ls -ln src/latest | tr -s ' ' ' ')" \
 "-rwx------ $uid/$gid 0 2009-10-03 23:48 executable
 prw------- $uid/$gid 0 2009-10-03 23:48 fifo
 -rw------- $uid/$gid 1024 2009-10-03 23:48 file
 $socket_mode $uid/$gid 0 2009-10-03 23:48 socket
 $symlink_mode $uid/$gid $symlink_size $symlink_date symlink -> file"
 
-WVPASSEQ "$(bup ls -ld "src/latest$tmpdir/src" | tr -s ' ' ' ')" \
-"drwx------ $user/$group 0 2009-10-03 23:48 src/latest$tmpdir/src"
+WVPASSEQ "$(bup ls -ld "src/latest/" | tr -s ' ' ' ')" \
+"drwx------ $user/$group 0 2009-10-03 23:48 src/latest"
 
 
 WVSTART "ls (backup set - long)"
@@ -214,10 +214,10 @@ l--------- ?/?"
 
 WVSTART "ls (dates TZ != UTC)"
 export TZ=America/Chicago
-symlink_date_central="$(bup ls -l src/latest"$tmpdir"/src | grep symlink)"
+symlink_date_central="$(bup ls -l src/latest | grep symlink)"
 symlink_date_central="$(echo "$symlink_date_central" \
   | perl -ne 'm/.*? (\d+) (\d\d\d\d-\d\d-\d\d \d\d:\d\d)/ and print $2')"
-WVPASSEQ "$(bup ls -ln src/latest"$tmpdir"/src | tr -s ' ' ' ')" \
+WVPASSEQ "$(bup ls -ln src/latest | tr -s ' ' ' ')" \
 "-rwx------ $uid/$gid 0 2009-10-03 18:48 executable
 prw------- $uid/$gid 0 2009-10-03 18:48 fifo
 -rw------- $uid/$gid 1024 2009-10-03 18:48 file
