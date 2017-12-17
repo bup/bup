@@ -143,5 +143,7 @@ print f.multithreaded
 f.multithreaded = False
 if opt.allow_other:
     f.fuse_args.add('allow_other')
+if opt.meta:
+    f.fuse_args.add('default_permissions')
 
 f.main()
