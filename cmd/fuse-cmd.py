@@ -16,7 +16,7 @@ if not hasattr(fuse, '__version__'):
     raise RuntimeError, "your fuse module is too old for fuse.__version__"
 fuse.fuse_python_api = (0, 2)
 
-from bup import options, git, vfs2 as vfs, xstat
+from bup import options, git, vfs, xstat
 from bup.helpers import log
 from bup.repo import LocalRepo
 

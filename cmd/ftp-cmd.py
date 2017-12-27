@@ -7,7 +7,7 @@ exec "$bup_python" "$0" ${1+"$@"}
 
 import sys, os, stat, fnmatch
 
-from bup import options, git, shquote, ls, vfs2 as vfs
+from bup import options, git, shquote, ls, vfs
 from bup.helpers import chunkyreader, handle_ctrl_c, log
 from bup.repo import LocalRepo
 

@@ -9,7 +9,7 @@ from __future__ import print_function
 from stat import S_ISDIR
 import copy, errno, os, sys, stat, re
 
-from bup import options, git, metadata, vfs2
+from bup import options, git, metadata, vfs
 from bup._helpers import write_sparsely
 from bup.compat import wrap_main
 from bup.helpers import (add_error, chunkyreader, die_if_errors, handle_ctrl_c,
@@ -133,13 +133,13 @@ def hardlink_if_possible(fullname, item, top, hardlinks):
     return False
 
 def write_file_content(repo, dest_path, vfs_file):
-    with vfs2.fopen(repo, vfs_file) as inf:
+    with vfs.fopen(repo, vfs_file) as inf:
         with open(dest_path, 'wb') as outf:
             for b in chunkyreader(inf):
                 outf.write(b)
 
 def write_file_content_sparsely(repo, dest_path, vfs_file):
-    with vfs2.fopen(repo, vfs_file) as inf:
+    with vfs.fopen(repo, vfs_file) as inf:
         outfd = os.open(dest_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
         try:
             trailing_zeros = 0;
@@ -153,7 +153,7 @@ def write_file_content_sparsely(repo, dest_path, vfs_file):
 def restore(repo, parent_path, name, item, top, sparse, numeric_ids, owner_map,
             exclude_rxs, verbosity, hardlinks):
     global total_restored
-    mode = vfs2.item_mode(item)
+    mode = vfs.item_mode(item)
     treeish = S_ISDIR(mode)
     fullname = parent_path + '/' + name
     # Match behavior of index --exclude-rx with respect to paths.
@@ -163,7 +163,7 @@ def restore(repo, parent_path, name, item, top, sparse, numeric_ids, owner_map,
 
     if not treeish:
         # Do this now so we'll have meta.symlink_target for verbose output
-        item = vfs2.augment_item_meta(repo, item, include_size=True)
+        item = vfs.augment_item_meta(repo, item, include_size=True)
         meta = item.meta
         assert(meta.mode == mode)
 
@@ -182,10 +182,10 @@ def restore(repo, parent_path, name, item, top, sparse, numeric_ids, owner_map,
     try:
         if treeish:
             # Assumes contents() returns '.' with the full metadata first
-            sub_items = vfs2.contents(repo, item, want_meta=True)
+            sub_items = vfs.contents(repo, item, want_meta=True)
             dot, item = next(sub_items, None)
             assert(dot == '.')
-            item = vfs2.augment_item_meta(repo, item, include_size=True)
+            item = vfs.augment_item_meta(repo, item, include_size=True)
             meta = item.meta
             meta.create_path(name)
             os.chdir(name)
@@ -246,8 +246,8 @@ def main():
             add_error("path %r doesn't include a branch and revision" % path)
             continue
         try:
-            resolved = vfs2.lresolve(repo, path, want_meta=True)
-        except vfs2.IOError as e:
+            resolved = vfs.lresolve(repo, path, want_meta=True)
+        except vfs.IOError as e:
             add_error(e)
             continue
         path_parent, path_name = os.path.split(path)
@@ -262,11 +262,11 @@ def main():
             # what/ever/* to the current directory, and if name == '.'
             # (i.e. /foo/what/ever/.), then also restore what/ever's
             # metadata to the current directory.
-            treeish = vfs2.item_mode(leaf_item)
+            treeish = vfs.item_mode(leaf_item)
             if not treeish:
                 add_error('%r cannot be restored as a directory' % path)
             else:
-                items = vfs2.contents(repo, leaf_item, want_meta=True)
+                items = vfs.contents(repo, leaf_item, want_meta=True)
                 dot, leaf_item = next(items, None)
                 assert(dot == '.')
                 for sub_name, sub_item in items:
@@ -274,8 +274,8 @@ def main():
                             opt.sparse, opt.numeric_ids, owner_map,
                             exclude_rxs, verbosity, hardlinks)
                 if path_name == '.':
-                    leaf_item = vfs2.augment_item_meta(repo, leaf_item,
-                                                       include_size=True)
+                    leaf_item = vfs.augment_item_meta(repo, leaf_item,
+                                                      include_size=True)
                     apply_metadata(leaf_item.meta, '.',
                                    opt.numeric_ids, owner_map)
         else:

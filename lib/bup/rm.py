@@ -1,8 +1,7 @@
 
 import sys
 
-from bup import git
-from bup import vfs2 as vfs
+from bup import git, vfs
 from bup.client import ClientError
 from bup.git import get_commit_items
 from bup.helpers import add_error, die_if_errors, log, saved_errors

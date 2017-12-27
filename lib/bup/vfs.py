@@ -1,106 +1,129 @@
-"""Virtual File System representing bup's repository contents.
+"""Virtual File System interface to bup repository content.
 
-The vfs.py library makes it possible to expose contents from bup's repository
-and abstracts internal name mangling and storage from the exposition layer.
+This module provides a path-based interface to the content of a bup
+repository.
+
+The VFS is structured like this:
+
+  /SAVE-NAME/latest/...
+  /SAVE-NAME/SAVE-DATE/...
+  /.tag/TAG-NAME/...
+
+Each path is represented by an item that has least an item.meta which
+may be either a Metadata object, or an integer mode.  Functions like
+item_mode() and item_size() will return the mode and size in either
+case.  Any item.meta Metadata instances must not be modified directly.
+Make a copy to modify via item.meta.copy() if needed.
+
+The want_meta argument is advisory for calls that accept it, and it
+may not be honored.  Callers must be able to handle an item.meta value
+that is either an instance of Metadata or an integer mode, perhaps
+via item_mode() or augment_item_meta().
+
+Setting want_meta=False is rarely desirable since it can limit the VFS
+to only the metadata that git itself can represent, and so for
+example, fifos and sockets will appear to be regular files
+(e.g. S_ISREG(item_mode(item)) will be true).  But the option is still
+provided because it may be more efficient when just the path names or
+the more limited metadata is sufficient.
+
+Any given metadata object's size may be None, in which case the size
+can be computed via item_size() or augment_item_meta(...,
+include_size=True).
+
+When traversing a directory using functions like contents(), the meta
+value for any directories other than '.' will be a default directory
+mode, not a Metadata object.  This is because the actual metadata for
+a directory is stored inside the directory (see
+fill_in_metadata_if_dir() or ensure_item_has_metadata()).
+
+Commit items represent commits (e.g. /.tag/some-commit or
+/foo/latest), and for most purposes, they appear as the underlying
+tree.  S_ISDIR(item_mode(item)) will return true for both tree Items
+and Commits and the commit's oid is the tree hash; the commit hash is
+item.coid.
+
 """
 
-import os, re, stat, time
+from __future__ import print_function
+from collections import namedtuple
+from errno import ELOOP, ENOENT, ENOTDIR
+from itertools import chain, dropwhile, groupby, izip, tee
+from stat import S_IFDIR, S_IFLNK, S_IFREG, S_ISDIR, S_ISLNK, S_ISREG
+from time import localtime, strftime
+import exceptions, re, sys
 
-from bup import git, metadata
-from helpers import debug1, debug2
-from bup.git import BUP_NORMAL, BUP_CHUNKED, cp
-from bup.hashsplit import GIT_MODE_TREE, GIT_MODE_FILE
-
-EMPTY_SHA='\0'*20
-
-
-class NodeError(Exception):
-    """VFS base exception."""
-    pass
-
-class NoSuchFile(NodeError):
-    """Request of a file that does not exist."""
-    pass
-
-class NotDir(NodeError):
-    """Attempt to do a directory action on a file that is not one."""
-    pass
-
-class NotFile(NodeError):
-    """Access to a node that does not represent a file."""
-    pass
-
-class TooManySymlinks(NodeError):
-    """Symlink dereferencing level is too deep."""
-    pass
+from bup import client, git, metadata
+from bup.git import BUP_CHUNKED, cp, get_commit_items, parse_commit, tree_decode
+from bup.helpers import debug2, last
+from bup.metadata import Metadata
+from bup.repo import LocalRepo, RemoteRepo
 
 
-def _treeget(hash, repo_dir=None):
-    it = cp(repo_dir).get(hash.encode('hex'))
-    _, type, _ = next(it)
-    assert(type == 'tree')
-    return git.tree_decode(''.join(it))
+class IOError(exceptions.IOError):
+    def __init__(self, errno, message, terminus=None):
+        exceptions.IOError.__init__(self, errno, message)
+        self.terminus = terminus
 
+default_file_mode = S_IFREG | 0o644
+default_dir_mode = S_IFDIR | 0o755
+default_symlink_mode = S_IFLNK | 0o755
 
-def _tree_decode(hash, repo_dir=None):
-    tree = [(int(name,16),stat.S_ISDIR(mode),sha)
-            for (mode,name,sha)
-            in _treeget(hash, repo_dir)]
-    assert(tree == list(sorted(tree)))
-    return tree
+def _default_mode_for_gitmode(gitmode):
+    if S_ISREG(gitmode):
+        return default_file_mode
+    if S_ISDIR(gitmode):
+        return default_dir_mode
+    if S_ISLNK(gitmode):
+        return default_symlink_mode
+    raise Exception('unexpected git mode ' + oct(gitmode))
 
+def _normal_or_chunked_file_size(repo, oid):
+    """Return the size of the normal or chunked file indicated by oid."""
+    # FIXME: --batch-format CatPipe?
+    it = repo.cat(oid.encode('hex'))
+    _, obj_t, size = next(it)
+    ofs = 0
+    while obj_t == 'tree':
+        mode, name, last_oid = last(tree_decode(''.join(it)))
+        ofs += int(name, 16)
+        it = repo.cat(last_oid.encode('hex'))
+        _, obj_t, size = next(it)
+    return ofs + sum(len(b) for b in it)
 
-def _chunk_len(hash, repo_dir=None):
-    return sum(len(b) for b in cp(repo_dir).join(hash.encode('hex')))
-
-
-def _last_chunk_info(hash, repo_dir=None):
-    tree = _tree_decode(hash, repo_dir)
-    assert(tree)
-    (ofs,isdir,sha) = tree[-1]
-    if isdir:
-        (subofs, sublen) = _last_chunk_info(sha, repo_dir)
-        return (ofs+subofs, sublen)
-    else:
-        return (ofs, _chunk_len(sha))
-
-
-def _total_size(hash, repo_dir=None):
-    (lastofs, lastsize) = _last_chunk_info(hash, repo_dir)
-    return lastofs + lastsize
-
-
-def _chunkiter(hash, startofs, repo_dir=None):
+def _tree_chunks(repo, tree, startofs):
+    "Tree should be a sequence of (name, mode, hash) as per tree_decode()."
     assert(startofs >= 0)
-    tree = _tree_decode(hash, repo_dir)
-
-    # skip elements before startofs
-    for i in xrange(len(tree)):
-        if i+1 >= len(tree) or tree[i+1][0] > startofs:
-            break
-    first = i
-
-    # iterate through what's left
-    for i in xrange(first, len(tree)):
-        (ofs,isdir,sha) = tree[i]
-        skipmore = startofs-ofs
+    # name is the chunk's hex offset in the original file
+    tree = dropwhile(lambda (_1, name, _2): int(name, 16) < startofs, tree)
+    for mode, name, oid in tree:
+        ofs = int(name, 16)
+        skipmore = startofs - ofs
         if skipmore < 0:
             skipmore = 0
-        if isdir:
-            for b in _chunkiter(sha, skipmore, repo_dir):
+        it = repo.cat(oid.encode('hex'))
+        _, obj_t, size = next(it)
+        data = ''.join(it)            
+        if S_ISDIR(mode):
+            assert obj_t == 'tree'
+            for b in _tree_chunks(repo, tree_decode(data), skipmore):
                 yield b
         else:
-            yield ''.join(cp(repo_dir).join(sha.encode('hex')))[skipmore:]
-
+            assert obj_t == 'blob'
+            yield data[skipmore:]
 
 class _ChunkReader:
-    def __init__(self, hash, isdir, startofs, repo_dir=None):
+    def __init__(self, repo, oid, startofs):
+        it = repo.cat(oid.encode('hex'))
+        _, obj_t, size = next(it)
+        isdir = obj_t == 'tree'
+        data = ''.join(it)
         if isdir:
-            self.it = _chunkiter(hash, startofs, repo_dir)
+            self.it = _tree_chunks(repo, tree_decode(data), startofs)
             self.blob = None
         else:
             self.it = None
-            self.blob = ''.join(cp(repo_dir).join(hash.encode('hex')))[startofs:]
+            self.blob = data[startofs:]
         self.ofs = startofs
 
     def next(self, size):
@@ -108,7 +131,7 @@ class _ChunkReader:
         while len(out) < size:
             if self.it and not self.blob:
                 try:
-                    self.blob = next(self.it)
+                    self.blob = self.it.next()
                 except StopIteration:
                     self.it = None
             if self.blob:
@@ -121,33 +144,35 @@ class _ChunkReader:
         self.ofs += len(out)
         return out
 
-
 class _FileReader(object):
-    def __init__(self, hash, size, isdir, repo_dir=None):
-        self.hash = hash
+    def __init__(self, repo, oid, known_size=None):
+        assert len(oid) == 20
+        self.oid = oid
         self.ofs = 0
-        self.size = size
-        self.isdir = isdir
         self.reader = None
-        self._repo_dir = repo_dir
+        self._repo = repo
+        self._size = known_size
 
+    def _compute_size(self):
+        if not self._size:
+            self._size = _normal_or_chunked_file_size(self._repo, self.oid)
+        return self._size
+        
     def seek(self, ofs):
-        if ofs > self.size:
-            self.ofs = self.size
-        elif ofs < 0:
-            self.ofs = 0
-        else:
-            self.ofs = ofs
+        if ofs < 0:
+            raise IOError(errno.EINVAL, 'Invalid argument')
+        if ofs > self._compute_size():
+            raise IOError(errno.EINVAL, 'Invalid argument')
+        self.ofs = ofs
 
     def tell(self):
         return self.ofs
 
-    def read(self, count = -1):
+    def read(self, count=-1):
         if count < 0:
-            count = self.size - self.ofs
+            count = self._compute_size() - self.ofs
         if not self.reader or self.reader.ofs != self.ofs:
-            self.reader = _ChunkReader(self.hash, self.isdir, self.ofs,
-                                       self._repo_dir)
+            self.reader = _ChunkReader(self._repo, self.oid, self.ofs)
         try:
             buf = self.reader.next(count)
         except:
@@ -159,445 +184,808 @@ class _FileReader(object):
     def close(self):
         pass
 
+    def __enter__(self):
+        return self
+    def __exit__(self, type, value, traceback):
+        self.close()
+        return False
 
-class Node(object):
-    """Base class for file representation."""
-    def __init__(self, parent, name, mode, hash, repo_dir=None):
-        self.parent = parent
-        self.name = name
-        self.mode = mode
-        self.hash = hash
-        self.ctime = self.mtime = self.atime = 0
-        self._repo_dir = repo_dir
-        self._subs = None
-        self._metadata = None
+_multiple_slashes_rx = re.compile(r'//+')
 
-    def __repr__(self):
-        return "<%s object at %s - name:%r hash:%s parent:%r>" \
-            % (self.__class__, hex(id(self)),
-               self.name, self.hash.encode('hex'),
-               self.parent.name if self.parent else None)
+def _decompose_path(path):
+    """Return a boolean indicating whether the path is absolute, and a
+    reversed list of path elements, omitting any occurrences of "."
+    and ignoring any leading or trailing slash.  If the path is
+    effectively '/' or '.', return an empty list.
 
-    def __cmp__(a, b):
-        if a is b:
-            return 0
-        return (cmp(a and a.parent, b and b.parent) or
-                cmp(a and a.name, b and b.name))
+    """
+    path = re.sub(_multiple_slashes_rx, '/', path)
+    if path == '/':
+        return True, True, []
+    is_absolute = must_be_dir = False
+    if path.startswith('/'):
+        is_absolute = True
+        path = path[1:]
+    for suffix in ('/', '/.'):
+        if path.endswith(suffix):
+            must_be_dir = True
+            path = path[:-len(suffix)]
+    parts = [x for x in path.split('/') if x != '.']
+    parts.reverse()
+    if not parts:
+        must_be_dir = True  # e.g. path was effectively '.' or '/', etc.
+    return is_absolute, must_be_dir, parts
+    
 
-    def __iter__(self):
-        return iter(self.subs())
+Item = namedtuple('Item', ('meta', 'oid'))
+Chunky = namedtuple('Chunky', ('meta', 'oid'))
+Root = namedtuple('Root', ('meta'))
+Tags = namedtuple('Tags', ('meta'))
+RevList = namedtuple('RevList', ('meta', 'oid'))
+Commit = namedtuple('Commit', ('meta', 'oid', 'coid'))
 
-    def fullname(self, stop_at=None):
-        """Get this file's full path."""
-        assert(self != stop_at)  # would be the empty string; too weird
-        if self.parent and self.parent != stop_at:
-            return os.path.join(self.parent.fullname(stop_at=stop_at),
-                                self.name)
-        else:
-            return self.name
+item_types = frozenset((Item, Chunky, Root, Tags, RevList, Commit))
+real_tree_types = frozenset((Item, Commit))
 
-    def _mksubs(self):
-        self._subs = {}
-
-    def subs(self):
-        """Get a list of nodes that are contained in this node."""
-        if self._subs == None:
-            self._mksubs()
-        return sorted(self._subs.values())
-
-    def sub(self, name):
-        """Get node named 'name' that is contained in this node."""
-        if self._subs == None:
-            self._mksubs()
-        ret = self._subs.get(name)
-        if not ret:
-            raise NoSuchFile("no file %r in %r" % (name, self.name))
-        return ret
-
-    def top(self):
-        """Return the very top node of the tree."""
-        if self.parent:
-            return self.parent.top()
-        else:
-            return self
-
-    def fs_top(self):
-        """Return the top node of the particular backup set.
-
-        If this node isn't inside a backup set, return the root level.
-        """
-        if self.parent and not isinstance(self.parent, CommitList):
-            return self.parent.fs_top()
-        else:
-            return self
-
-    def _lresolve(self, parts):
-        #debug2('_lresolve %r in %r\n' % (parts, self.name))
-        if not parts:
-            return self
-        (first, rest) = (parts[0], parts[1:])
-        if first == '.':
-            return self._lresolve(rest)
-        elif first == '..':
-            if not self.parent:
-                raise NoSuchFile("no parent dir for %r" % self.name)
-            return self.parent._lresolve(rest)
-        elif rest:
-            return self.sub(first)._lresolve(rest)
-        else:
-            return self.sub(first)
-
-    def lresolve(self, path, stay_inside_fs=False):
-        """Walk into a given sub-path of this node.
-
-        If the last element is a symlink, leave it as a symlink, don't resolve
-        it.  (like lstat())
-        """
-        start = self
-        if not path:
-            return start
-        if path.startswith('/'):
-            if stay_inside_fs:
-                start = self.fs_top()
-            else:
-                start = self.top()
-            path = path[1:]
-        parts = re.split(r'/+', path or '.')
-        if not parts[-1]:
-            parts[-1] = '.'
-        #debug2('parts: %r %r\n' % (path, parts))
-        return start._lresolve(parts)
-
-    def resolve(self, path = ''):
-        """Like lresolve(), and dereference it if it was a symlink."""
-        return self.lresolve(path).lresolve('.')
-
-    def try_resolve(self, path = ''):
-        """Like resolve(), but don't worry if a symlink uses an invalid path.
-
-        Returns an error if any intermediate nodes were invalid.
-        """
-        n = self.lresolve(path)
-        try:
-            n = n.lresolve('.')
-        except NoSuchFile:
-            pass
-        return n
-
-    def nlinks(self):
-        """Get the number of hard links to the current node."""
-        return 1
-
-    def size(self):
-        """Get the size of the current node."""
-        return 0
-
-    def open(self):
-        """Open the current node. It is an error to open a non-file node."""
-        raise NotFile('%s is not a regular file' % self.name)
-
-    def _populate_metadata(self, force=False):
-        # Only Dirs contain .bupm files, so by default, do nothing.
-        pass
-
-    def metadata(self):
-        """Return this Node's Metadata() object, if any."""
-        if not self._metadata and self.parent:
-            self.parent._populate_metadata(force=True)
-        return self._metadata
-
-    def release(self):
-        """Release resources that can be automatically restored (at a cost)."""
-        self._metadata = None
-        self._subs = None
+_root = Root(meta=default_dir_mode)
+_tags = Tags(meta=default_dir_mode)
 
 
-class File(Node):
-    """A normal file from bup's repository."""
-    def __init__(self, parent, name, mode, hash, bupmode, repo_dir=None):
-        Node.__init__(self, parent, name, mode, hash, repo_dir)
-        self.bupmode = bupmode
-        self._cached_size = None
-        self._filereader = None
+### vfs cache
 
-    def open(self):
-        """Open the file."""
-        # You'd think FUSE might call this only once each time a file is
-        # opened, but no; it's really more of a refcount, and it's called
-        # once per read().  Thus, it's important to cache the filereader
-        # object here so we're not constantly re-seeking.
-        if not self._filereader:
-            self._filereader = _FileReader(self.hash, self.size(),
-                                           self.bupmode == git.BUP_CHUNKED,
-                                           repo_dir = self._repo_dir)
-        self._filereader.seek(0)
-        return self._filereader
+### A general purpose shared cache with (currently) cheap random
+### eviction.  There is currently no weighting so a single commit item
+### is just as likely to be evicted as an entire "rev-list".  See
+### is_valid_cache_key for a description of the expected content.
 
-    def size(self):
-        """Get this file's size."""
-        if self._cached_size == None:
-            debug1('<<<<File.size() is calculating (for %r)...\n' % self.name)
-            if self.bupmode == git.BUP_CHUNKED:
-                self._cached_size = _total_size(self.hash,
-                                                repo_dir = self._repo_dir)
-            else:
-                self._cached_size = _chunk_len(self.hash,
-                                               repo_dir = self._repo_dir)
-            debug1('<<<<File.size() done.\n')
-        return self._cached_size
+_cache = {}
+_cache_keys = []
+_cache_max_items = 30000
 
+def clear_cache():
+    global _cache, _cache_keys
+    _cache = {}
+    _cache_keys = []
 
-_symrefs = 0
-class Symlink(File):
-    """A symbolic link from bup's repository."""
-    def __init__(self, parent, name, hash, bupmode, repo_dir=None):
-        File.__init__(self, parent, name, 0o120000, hash, bupmode,
-                      repo_dir = repo_dir)
+def is_valid_cache_key(x):
+    """Return logically true if x looks like it could be a valid cache key
+    (with respect to structure).  Current valid cache entries:
+      commit_oid -> commit
+      commit_oid + ':r' -> rev-list
+         i.e. rev-list -> {'.', commit, '2012...', next_commit, ...}
+    """
+    # Suspect we may eventually add "(container_oid, name) -> ...", and others.
+    x_t = type(x)
+    if x_t is bytes:
+        if len(x) == 20:
+            return True
+        if len(x) == 22 and x.endswith(b':r'):
+            return True
 
-    def size(self):
-        """Get the file size of the file at which this link points."""
-        return len(self.readlink())
+def cache_get(key):
+    global _cache
+    assert is_valid_cache_key(key)
+    return _cache.get(key)
 
-    def readlink(self):
-        """Get the path that this link points at."""
-        return ''.join(cp(self._repo_dir).join(self.hash.encode('hex')))
-
-    def dereference(self):
-        """Get the node that this link points at.
-
-        If the path is invalid, raise a NoSuchFile exception. If the level of
-        indirection of symlinks is 100 levels deep, raise a TooManySymlinks
-        exception.
-        """
-        global _symrefs
-        if _symrefs > 100:
-            raise TooManySymlinks('too many levels of symlinks: %r'
-                                  % self.fullname())
-        _symrefs += 1
-        try:
-            try:
-                return self.parent.lresolve(self.readlink(),
-                                            stay_inside_fs=True)
-            except NoSuchFile:
-                raise NoSuchFile("%s: broken symlink to %r"
-                                 % (self.fullname(), self.readlink()))
-        finally:
-            _symrefs -= 1
-
-    def _lresolve(self, parts):
-        return self.dereference()._lresolve(parts)
+def cache_notice(key, value):
+    global _cache, _cache_keys, _cache_max_items
+    assert is_valid_cache_key(key)
+    if key in _cache:
+        return
+    _cache[key] = value
+    if len(_cache) < _cache_max_items:
+        return
+    victim_i = random.randrange(0, len(_cache_keys))
+    victim = _cache_keys[victim_i]
+    _cache_keys[victim_i] = key
+    _cache.pop(victim)
 
 
-class FakeSymlink(Symlink):
-    """A symlink that is not stored in the bup repository."""
-    def __init__(self, parent, name, toname, repo_dir=None):
-        Symlink.__init__(self, parent, name, EMPTY_SHA, git.BUP_NORMAL,
-                         repo_dir = repo_dir)
-        self.toname = toname
+def cache_get_commit_item(oid, need_meta=True):
+    """Return the requested tree item if it can be found in the cache.
+    When need_meta is true don't return a cached item that only has a
+    mode."""
+    # tree might be stored independently, or as '.' with its entries.
+    item = cache_get(oid)
+    if item:
+        if not need_meta:
+            return item
+        if isinstance(item.meta, Metadata):
+            return item
+    entries = cache_get(oid + b':r')
+    if entries:
+        return entries['.']
 
-    def readlink(self):
-        """Get the path that this link points at."""
-        return self.toname
+def cache_get_revlist_item(oid, need_meta=True):
+    commit = cache_get_commit_item(oid, need_meta=need_meta)
+    if commit:
+        return RevList(oid=oid, meta=commit.meta)
 
 
-class Dir(Node):
-    """A directory stored inside of bup's repository."""
+def copy_item(item):
+    """Return a completely independent copy of item, such that
+    modifications will not affect the original.
 
-    def __init__(self, *args, **kwargs):
-        Node.__init__(self, *args, **kwargs)
-        self._bupm = None
+    """
+    meta = getattr(item, 'meta', None)
+    if not meta:
+        return item
+    return(item._replace(meta=meta.copy()))
 
-    def _populate_metadata(self, force=False):
-        if self._metadata and not force:
-            return
-        if not self._subs:
-            self._mksubs()
-        if not self._bupm:
-            return
-        meta_stream = self._bupm.open()
-        dir_meta = metadata.Metadata.read(meta_stream)
-        for sub in self:
-            if not stat.S_ISDIR(sub.mode):
-                sub._metadata = metadata.Metadata.read(meta_stream)
-        self._metadata = dir_meta
+def item_mode(item):
+    """Return the integer mode (stat st_mode) for item."""
+    m = item.meta
+    if isinstance(m, Metadata):
+        return m.mode
+    return m
 
-    def _mksubs(self):
-        self._subs = {}
-        it = cp(self._repo_dir).get(self.hash.encode('hex'))
-        _, type, _ = next(it)
-        if type == 'commit':
-            del it
-            it = cp(self._repo_dir).get(self.hash.encode('hex') + ':')
-            _, type, _ = next(it)
-        assert(type == 'tree')
-        for (mode,mangled_name,sha) in git.tree_decode(''.join(it)):
+def _read_dir_meta(bupm):
+    # This is because save writes unmodified Metadata() entries for
+    # fake parents -- test-save-strip-graft.sh demonstrates.
+    m = Metadata.read(bupm)
+    if not m:
+        return default_dir_mode
+    assert m.mode is not None
+    if m.size is None:
+        m.size = 0
+    return m
+
+def tree_data_and_bupm(repo, oid):
+    """Return (tree_bytes, bupm_oid) where bupm_oid will be None if the
+    tree has no metadata (i.e. older bup save, or non-bup tree).
+
+    """    
+    assert len(oid) == 20
+    it = repo.cat(oid.encode('hex'))
+    _, item_t, size = next(it)
+    data = ''.join(it)
+    if item_t == 'commit':
+        commit = parse_commit(data)
+        it = repo.cat(commit.tree)
+        _, item_t, size = next(it)
+        data = ''.join(it)
+        assert item_t == 'tree'
+    elif item_t != 'tree':
+        raise Exception('%r is not a tree or commit' % oid.encode('hex'))
+    for _, mangled_name, sub_oid in tree_decode(data):
+        if mangled_name == '.bupm':
+            return data, sub_oid
+        if mangled_name > '.bupm':
+            break
+    return data, None
+
+def _find_treeish_oid_metadata(repo, oid):
+    """Return the metadata for the tree or commit oid, or None if the tree
+    has no metadata (i.e. older bup save, or non-bup tree).
+
+    """
+    tree_data, bupm_oid = tree_data_and_bupm(repo, oid)
+    if bupm_oid:
+        with _FileReader(repo, bupm_oid) as meta_stream:
+            return _read_dir_meta(meta_stream)
+    return None
+
+def _readlink(repo, oid):
+    return ''.join(repo.join(oid.encode('hex')))
+
+def readlink(repo, item):
+    """Return the link target of item, which must be a symlink.  Reads the
+    target from the repository if necessary."""
+    assert repo
+    assert S_ISLNK(item_mode(item))
+    if isinstance(item.meta, Metadata):
+        target = item.meta.symlink_target
+        if target:
+            return target
+    return _readlink(repo, item.oid)
+
+def _compute_item_size(repo, item):
+    mode = item_mode(item)
+    if S_ISREG(mode):
+        size = _normal_or_chunked_file_size(repo, item.oid)
+        return size
+    if S_ISLNK(mode):
+        return len(_readlink(repo, item.oid))
+    return 0
+
+def item_size(repo, item):
+    """Return the size of item, computing it if necessary."""
+    m = item.meta
+    if isinstance(m, Metadata) and m.size is not None:
+        return m.size
+    return _compute_item_size(repo, item)
+
+def tree_data_reader(repo, oid):
+    """Return an open reader for all of the data contained within oid.  If
+    oid refers to a tree, recursively concatenate all of its contents."""
+    return _FileReader(repo, oid)
+
+def fopen(repo, item):
+    """Return an open reader for the given file item."""
+    assert S_ISREG(item_mode(item))
+    return tree_data_reader(repo, item.oid)
+
+def _commit_item_from_data(oid, data):
+    info = parse_commit(data)
+    return Commit(meta=default_dir_mode,
+                  oid=info.tree.decode('hex'),
+                  coid=oid)
+
+def _commit_item_from_oid(repo, oid, require_meta):
+    commit = cache_get_commit_item(oid, need_meta=require_meta)
+    if commit and ((not require_meta) or isinstance(commit.meta, Metadata)):
+        return commit
+    it = repo.cat(oid.encode('hex'))
+    _, typ, size = next(it)
+    assert typ == 'commit'
+    commit = _commit_item_from_data(oid, ''.join(it))
+    if require_meta:
+        meta = _find_treeish_oid_metadata(repo, commit.oid)
+        if meta:
+            commit = commit._replace(meta=meta)
+    cache_notice(oid, commit)
+    return commit
+
+def _revlist_item_from_oid(repo, oid, require_meta):
+    commit = _commit_item_from_oid(repo, oid, require_meta)
+    return RevList(oid=oid, meta=commit.meta)
+
+def root_items(repo, names=None, want_meta=True):
+    """Yield (name, item) for the items in '/' in the VFS.  Return
+    everything if names is logically false, otherwise return only
+    items with a name in the collection.
+
+    """
+    # FIXME: what about non-leaf refs like 'refs/heads/foo/bar/baz?
+
+    global _root, _tags
+    if not names:
+        yield '.', _root
+        yield '.tag', _tags
+        # FIXME: maybe eventually support repo.clone() or something
+        # and pass in two repos, so we can drop the tuple() and stream
+        # in parallel (i.e. meta vs refs).
+        for name, oid in tuple(repo.refs([], limit_to_heads=True)):
+            assert(name.startswith('refs/heads/'))
+            yield name[11:], _revlist_item_from_oid(repo, oid, want_meta)
+        return
+
+    if '.' in names:
+        yield '.', _root
+    if '.tag' in names:
+        yield '.tag', _tags
+    for ref in names:
+        if ref in ('.', '.tag'):
+            continue
+        it = repo.cat(ref)
+        oidx, typ, size = next(it)
+        if not oidx:
+            for _ in it: pass
+            continue
+        assert typ == 'commit'
+        commit = parse_commit(''.join(it))
+        yield ref, _revlist_item_from_oid(repo, oidx.decode('hex'), want_meta)
+
+def ordered_tree_entries(tree_data, bupm=None):
+    """Yields (name, mangled_name, kind, gitmode, oid) for each item in
+    tree, sorted by name.
+
+    """
+    # Sadly, the .bupm entries currently aren't in git tree order,
+    # i.e. they don't account for the fact that git sorts trees
+    # (including our chunked trees) as if their names ended with "/",
+    # so "fo" sorts after "fo." iff fo is a directory.  This makes
+    # streaming impossible when we need the metadata.
+    def result_from_tree_entry(tree_entry):
+        gitmode, mangled_name, oid = tree_entry
+        name, kind = git.demangle_name(mangled_name, gitmode)
+        return name, mangled_name, kind, gitmode, oid
+
+    tree_ents = (result_from_tree_entry(x) for x in tree_decode(tree_data))
+    if bupm:
+        tree_ents = sorted(tree_ents, key=lambda x: x[0])
+    for ent in tree_ents:
+        yield ent
+    
+def tree_items(oid, tree_data, names=frozenset(), bupm=None):
+
+    def tree_item(ent_oid, kind, gitmode):
+        if kind == BUP_CHUNKED:
+            meta = Metadata.read(bupm) if bupm else default_file_mode
+            return Chunky(oid=ent_oid, meta=meta)
+
+        if S_ISDIR(gitmode):
+            # No metadata here (accessable via '.' inside ent_oid).
+            return Item(meta=default_dir_mode, oid=ent_oid)
+
+        return Item(oid=ent_oid,
+                    meta=(Metadata.read(bupm) if bupm \
+                          else _default_mode_for_gitmode(gitmode)))
+
+    assert len(oid) == 20
+    if not names:
+        dot_meta = _read_dir_meta(bupm) if bupm else default_dir_mode
+        yield '.', Item(oid=oid, meta=dot_meta)
+        tree_entries = ordered_tree_entries(tree_data, bupm)
+        for name, mangled_name, kind, gitmode, ent_oid in tree_entries:
             if mangled_name == '.bupm':
-                bupmode = stat.S_ISDIR(mode) and BUP_CHUNKED or BUP_NORMAL
-                self._bupm = File(self, mangled_name, GIT_MODE_FILE, sha,
-                                  bupmode)
                 continue
-            name, bupmode = git.demangle_name(mangled_name, mode)
-            if bupmode == git.BUP_CHUNKED:
-                mode = GIT_MODE_FILE
-            if stat.S_ISDIR(mode):
-                self._subs[name] = Dir(self, name, mode, sha, self._repo_dir)
-            elif stat.S_ISLNK(mode):
-                self._subs[name] = Symlink(self, name, sha, bupmode,
-                                           self._repo_dir)
+            assert name != '.'
+            yield name, tree_item(ent_oid, kind, gitmode)
+        return
+
+    # Assumes the tree is properly formed, i.e. there are no
+    # duplicates, and entries will be in git tree order.
+    if type(names) not in (frozenset, set):
+        names = frozenset(names)
+    remaining = len(names)
+
+    # Account for the bupm sort order issue (cf. ordered_tree_entries above)
+    last_name = max(names) if bupm else max(names) + '/'
+
+    if '.' in names:
+        dot_meta = _read_dir_meta(bupm) if bupm else default_dir_mode
+        yield '.', Item(oid=oid, meta=dot_meta)
+        if remaining == 1:
+            return
+        remaining -= 1
+
+    tree_entries = ordered_tree_entries(tree_data, bupm)
+    for name, mangled_name, kind, gitmode, ent_oid in tree_entries:
+        if mangled_name == '.bupm':
+            continue
+        assert name != '.'
+        if name not in names:
+            if name > last_name:
+                break  # given bupm sort order, we're finished
+            if (kind == BUP_CHUNKED or not S_ISDIR(gitmode)) and bupm:
+                Metadata.read(bupm)
+            continue
+        yield name, tree_item(ent_oid, kind, gitmode)
+        if remaining == 1:
+            break
+        remaining -= 1
+
+def tree_items_with_meta(repo, oid, tree_data, names):
+    # For now, the .bupm order doesn't quite match git's, and we don't
+    # load the tree data incrementally anyway, so we just work in RAM
+    # via tree_data.
+    assert len(oid) == 20
+    bupm = None
+    for _, mangled_name, sub_oid in tree_decode(tree_data):
+        if mangled_name == '.bupm':
+            bupm = _FileReader(repo, sub_oid)
+            break
+        if mangled_name > '.bupm':
+            break
+    for item in tree_items(oid, tree_data, names, bupm):
+        yield item
+
+_save_name_rx = re.compile(r'^\d\d\d\d-\d\d-\d\d-\d{6}(-\d+)?$')
+        
+def _reverse_suffix_duplicates(strs):
+    """Yields the elements of strs, with any runs of duplicate values
+    suffixed with -N suffixes, where the zero padded integer N
+    decreases to 0 by 1 (e.g. 10, 09, ..., 00).
+
+    """
+    for name, duplicates in groupby(strs):
+        ndup = len(tuple(duplicates))
+        if ndup == 1:
+            yield name
+        else:
+            ndig = len(str(ndup - 1))
+            fmt = '%s-' + '%0' + str(ndig) + 'd'
+            for i in xrange(ndup - 1, -1, -1):
+                yield fmt % (name, i)
+
+def parse_rev(f):
+    items = f.readline().split(None)
+    assert len(items) == 2
+    tree, auth_sec = items
+    return tree.decode('hex'), int(auth_sec)
+
+def _name_for_rev(rev):
+    commit_oidx, (tree_oid, utc) = rev
+    return strftime('%Y-%m-%d-%H%M%S', localtime(utc))
+
+def _item_for_rev(rev):
+    commit_oidx, (tree_oid, utc) = rev
+    coid = commit_oidx.decode('hex')
+    item = cache_get_commit_item(coid, need_meta=False)
+    if item:
+        return item
+    item = Commit(meta=default_dir_mode, oid=tree_oid, coid=coid)
+    cache_notice(item.coid, item)
+    return item
+
+def cache_commit(repo, oid):
+    """Build, cache, and return a "name -> commit_item" dict of the entire
+    commit rev-list.
+
+    """
+    # For now, always cache with full metadata
+    entries = {}
+    entries['.'] = _revlist_item_from_oid(repo, oid, True)
+    revs = repo.rev_list((oid.encode('hex'),), format='%T %at',
+                         parse=parse_rev)
+    rev_items, rev_names = tee(revs)
+    revs = None  # Don't disturb the tees
+    rev_names = _reverse_suffix_duplicates(_name_for_rev(x) for x in rev_names)
+    rev_items = (_item_for_rev(x) for x in rev_items)
+    latest = None
+    for item in rev_items:
+        latest = latest or item
+        name = next(rev_names)
+        entries[name] = item
+    entries['latest'] = latest
+    cache_notice(latest.coid + b':r', entries)
+    return entries
+
+def revlist_items(repo, oid, names):
+    assert len(oid) == 20
+
+    # Special case '.' instead of caching the whole history since it's
+    # the only way to get the metadata for the commit.
+    if names and all(x == '.' for x in names):
+        yield '.', _revlist_item_from_oid(repo, oid, True)
+        return
+
+    # For now, don't worry about the possibility of the contents being
+    # "too big" for the cache.
+    entries = cache_get(oid + b':r')
+    if not entries:
+        entries = cache_commit(repo, oid)
+
+    if not names:
+        for name in sorted(entries.keys()):
+            yield name, entries[name]
+        return
+
+    names = frozenset(name for name in names
+                      if _save_name_rx.match(name) or name in ('.', 'latest'))
+
+    if '.' in names:
+        yield '.', entries['.']
+    for name in (n for n in names if n != '.'):
+        commit = entries.get(name)
+        if commit:
+            yield name, commit
+
+def tags_items(repo, names):
+    global _tags
+
+    def tag_item(oid):
+        assert len(oid) == 20
+        oidx = oid.encode('hex')
+        it = repo.cat(oidx)
+        _, typ, size = next(it)
+        if typ == 'commit':
+            return cache_get_commit_item(oid, need_meta=False) \
+                or _commit_item_from_data(oid, ''.join(it))
+        for _ in it: pass
+        if typ == 'blob':
+            return Item(meta=default_file_mode, oid=oid)
+        elif typ == 'tree':
+            return Item(meta=default_dir_mode, oid=oid)
+        raise Exception('unexpected tag type ' + typ + ' for tag ' + name)
+
+    if not names:
+        yield '.', _tags
+        # We have to pull these all into ram because tag_item calls cat()
+        for name, oid in tuple(repo.refs(names, limit_to_tags=True)):
+            assert(name.startswith('refs/tags/'))
+            name = name[10:]
+            yield name, tag_item(oid)
+        return
+
+    # Assumes no duplicate refs
+    if type(names) not in (frozenset, set):
+        names = frozenset(names)
+    remaining = len(names)
+    last_name = max(names)
+    if '.' in names:
+        yield '.', _tags
+        if remaining == 1:
+            return
+        remaining -= 1
+
+    for name, oid in repo.refs(names, limit_to_tags=True):
+        assert(name.startswith('refs/tags/'))
+        name = name[10:]
+        if name > last_name:
+            return
+        if name not in names:
+            continue
+        yield name, tag_item(oid)
+        if remaining == 1:
+            return
+        remaining -= 1
+
+def contents(repo, item, names=None, want_meta=True):
+    """Yields information about the items contained in item.  Yields
+    (name, item) for each name in names, if the name exists, in an
+    unspecified order.  If there are no names, then yields (name,
+    item) for all items, including, a first item named '.'
+    representing the container itself.
+
+    The meta value for any directories other than '.' will be a
+    default directory mode, not a Metadata object.  This is because
+    the actual metadata for a directory is stored inside the directory
+    (see fill_in_metadata_if_dir() or ensure_item_has_metadata()).
+
+    Note that want_meta is advisory.  For any given item, item.meta
+    might be a Metadata instance or a mode, and if the former,
+    meta.size might be None.  Missing sizes can be computed via via
+    item_size() or augment_item_meta(..., include_size=True).
+
+    Do not modify any item.meta Metadata instances directly.  If
+    needed, make a copy via item.meta.copy() and modify that instead.
+
+    """
+    # Q: are we comfortable promising '.' first when no names?
+    global _root, _tags
+    assert repo
+    assert S_ISDIR(item_mode(item))
+    item_t = type(item)
+
+    if item_t in real_tree_types:
+        it = repo.cat(item.oid.encode('hex'))
+        _, obj_type, size = next(it)
+        data = ''.join(it)
+        if obj_type == 'tree':
+            if want_meta:
+                item_gen = tree_items_with_meta(repo, item.oid, data, names)
             else:
-                self._subs[name] = File(self, name, mode, sha, bupmode,
-                                        self._repo_dir)
+                item_gen = tree_items(item.oid, data, names)
+        elif obj_type == 'commit':
+            if want_meta:
+                item_gen = tree_items_with_meta(repo, item.oid, tree_data, names)
+            else:
+                item_gen = tree_items(item.oid, tree_data, names)
+        else:
+            for _ in it: pass
+            raise Exception('unexpected git ' + obj_type)
+    elif item_t == RevList:
+        item_gen = revlist_items(repo, item.oid, names)
+    elif item_t == Root:
+        item_gen = root_items(repo, names, want_meta)
+    elif item_t == Tags:
+        item_gen = tags_items(repo, names)
+    else:
+        raise Exception('unexpected VFS item ' + str(item))
+    for x in item_gen:
+        yield x
 
-    def metadata(self):
-        """Return this Dir's Metadata() object, if any."""
-        self._populate_metadata()
-        return self._metadata
+def _resolve_path(repo, path, parent=None, want_meta=True, deref=False):
+    def raise_dir_required_but_not_dir(path, parent, past):
+        raise IOError(ENOTDIR,
+                      "path %r%s resolves to non-directory %r"
+                      % (path,
+                         ' (relative to %r)' % parent if parent else '',
+                         past),
+                      terminus=past)
+    global _root
+    assert repo
+    assert len(path)
+    if parent:
+        for x in parent:
+            assert len(x) == 2
+            assert type(x[0]) in (bytes, str)
+            assert type(x[1]) in item_types
+        assert parent[0][1] == _root
+        if not S_ISDIR(item_mode(parent[-1][1])):
+            raise IOError(ENOTDIR,
+                          'path resolution parent %r is not a directory'
+                          % (parent,))
+    is_absolute, must_be_dir, future = _decompose_path(path)
+    if must_be_dir:
+        deref = True
+    if not future:  # path was effectively '.' or '/'
+        if is_absolute:
+            return (('', _root),)
+        if parent:
+            return tuple(parent)
+        return [('', _root)]
+    if is_absolute:
+        past = [('', _root)]
+    else:
+        past = list(parent) if parent else [('', _root)]
+    hops = 0
+    while True:
+        if not future:
+            if must_be_dir and not S_ISDIR(item_mode(past[-1][1])):
+                raise_dir_required_but_not_dir(path, parent, past)
+            return tuple(past)
+        segment = future.pop()
+        if segment == '..':
+            assert len(past) > 0
+            if len(past) > 1:  # .. from / is /
+                assert S_ISDIR(item_mode(past[-1][1]))
+                past.pop()
+        else:
+            parent_name, parent_item = past[-1]
+            wanted = (segment,) if not want_meta else ('.', segment)
+            items = tuple(contents(repo, parent_item, names=wanted,
+                                   want_meta=want_meta))
+            if not want_meta:
+                item = items[0][1] if items else None
+            else:  # First item will be '.' and have the metadata
+                item = items[1][1] if len(items) == 2 else None
+                dot, dot_item = items[0]
+                assert dot == '.'
+                past[-1] = parent_name, parent_item
+            if not item:
+                past.append((segment, None),)
+                return tuple(past)
+            mode = item_mode(item)
+            if not S_ISLNK(mode):
+                if not S_ISDIR(mode):
+                    past.append((segment, item),)
+                    if future:
+                        raise IOError(ENOTDIR,
+                                      'path %r%s ends internally in non-directory here: %r'
+                                      % (path,
+                                         ' (relative to %r)' % parent if parent else '',
+                                         past),
+                                      terminus=past)
+                    if must_be_dir:
+                        raise_dir_required_but_not_dir(path, parent, past)
+                    return tuple(past)
+                # It's treeish
+                if want_meta and type(item) in real_tree_types:
+                    dir_meta = _find_treeish_oid_metadata(repo, item.oid)
+                    if dir_meta:
+                        item = item._replace(meta=dir_meta)
+                past.append((segment, item))
+            else:  # symlink
+                if not future and not deref:
+                    past.append((segment, item),)
+                    continue
+                if hops > 100:
+                    raise IOError(ELOOP,
+                                  'too many symlinks encountered while resolving %r%s'
+                                  % (path, ' relative to %r' % parent if parent else ''),
+                                  terminus=tuple(past + [(segment, item)]))
+                target = readlink(repo, item)
+                is_absolute, _, target_future = _decompose_path(target)
+                if is_absolute:
+                    if not target_future:  # path was effectively '/'
+                        return (('', _root),)
+                    past = [('', _root)]
+                    future = target_future
+                else:
+                    future.extend(target_future)
+                hops += 1
+                
+def lresolve(repo, path, parent=None, want_meta=True):
+    """Perform exactly the same function as resolve(), except if the final
+    path element is a symbolic link, don't follow it, just return it
+    in the result.
 
-    def metadata_file(self):
-        """Return this Dir's .bupm File, if any."""
-        if not self._subs:
-            self._mksubs()
-        return self._bupm
-
-    def release(self):
-        """Release restorable resources held by this node."""
-        self._bupm = None
-        super(Dir, self).release()
-
-
-class CommitDir(Node):
-    """A directory that contains all commits that are reachable by a ref.
-
-    Contains a set of subdirectories named after the commits' first byte in
-    hexadecimal. Each of those directories contain all commits with hashes that
-    start the same as the directory name. The name used for those
-    subdirectories is the hash of the commit without the first byte. This
-    separation helps us avoid having too much directories on the same level as
-    the number of commits grows big.
     """
-    def __init__(self, parent, name, repo_dir=None):
-        Node.__init__(self, parent, name, GIT_MODE_TREE, EMPTY_SHA, repo_dir)
+    return _resolve_path(repo, path, parent=parent, want_meta=want_meta,
+                         deref=False)
 
-    def _mksubs(self):
-        self._subs = {}
-        refs = git.list_refs(repo_dir = self._repo_dir)
-        for ref in refs:
-            #debug2('ref name: %s\n' % ref[0])
-            revs = git.rev_list(ref[1].encode('hex'),
-                                format='%at',
-                                parse=lambda f: int(f.readline().strip()),
-                                repo_dir=self._repo_dir)
-            for commithex, date in revs:
-                #debug2('commit: %s  date: %s\n' % (commit.encode('hex'), date))
-                commit = commithex.decode('hex')
-                containername = commithex[:2]
-                dirname = commithex[2:]
-                n1 = self._subs.get(containername)
-                if not n1:
-                    n1 = CommitList(self, containername, self._repo_dir)
-                    self._subs[containername] = n1
+def resolve(repo, path, parent=None, want_meta=True):
+    """Follow the path in the virtual filesystem and return a tuple
+    representing the location, if any, denoted by the path.  Each
+    element in the result tuple will be (name, info), where info will
+    be a VFS item that can be passed to functions like item_mode().
 
-                if n1.commits.get(dirname):
-                    # Stop work for this ref, the rest should already be present
-                    break
+    If a path segment that does not exist is encountered during
+    resolution, the result will represent the location of the missing
+    item, and that item in the result will be None.
 
-                n1.commits[dirname] = (commit, date)
+    Any attempt to traverse a non-directory will raise a VFS ENOTDIR
+    IOError exception.
 
+    Any symlinks along the path, including at the end, will be
+    resolved.  A VFS IOError with the errno attribute set to ELOOP
+    will be raised if too many symlinks are traversed while following
+    the path.  That exception is effectively like a normal
+    ELOOP IOError exception, but will include a terminus element
+    describing the location of the failure, which will be a tuple of
+    (name, info) elements.
 
-class CommitList(Node):
-    """A list of commits with hashes that start with the current node's name."""
-    def __init__(self, parent, name, repo_dir=None):
-        Node.__init__(self, parent, name, GIT_MODE_TREE, EMPTY_SHA, repo_dir)
-        self.commits = {}
+    The parent, if specified, must be a sequence of (name, item)
+    tuples, and will provide the starting point for the resolution of
+    the path.  If no parent is specified, resolution will start at
+    '/'.
 
-    def _mksubs(self):
-        self._subs = {}
-        for (name, (hash, date)) in self.commits.items():
-            n1 = Dir(self, name, GIT_MODE_TREE, hash, self._repo_dir)
-            n1.ctime = n1.mtime = date
-            self._subs[name] = n1
+    The result may include elements of parent directly, so they must
+    not be modified later.  If this is a concern, pass in "name,
+    copy_item(item) for name, item in parent" instead.
 
+    When want_meta is true, detailed metadata will be included in each
+    result item if it's avaiable, otherwise item.meta will be an
+    integer mode.  The metadata size may or may not be provided, but
+    can be computed by item_size() or augment_item_meta(...,
+    include_size=True).  Setting want_meta=False is rarely desirable
+    since it can limit the VFS to just the metadata git itself can
+    represent, and so, as an example, fifos and sockets will appear to
+    be regular files (e.g. S_ISREG(item_mode(item)) will be true) .
+    But the option is provided because it may be more efficient when
+    only the path names or the more limited metadata is sufficient.
 
-class TagDir(Node):
-    """A directory that contains all tags in the repository."""
-    def __init__(self, parent, name, repo_dir = None):
-        Node.__init__(self, parent, name, GIT_MODE_TREE, EMPTY_SHA, repo_dir)
+    Do not modify any item.meta Metadata instances directly.  If
+    needed, make a copy via item.meta.copy() and modify that instead.
 
-    def _mksubs(self):
-        self._subs = {}
-        for (name, sha) in git.list_refs(repo_dir = self._repo_dir):
-            if name.startswith('refs/tags/'):
-                name = name[10:]
-                date = git.get_commit_dates([sha.encode('hex')],
-                                            repo_dir=self._repo_dir)[0]
-                commithex = sha.encode('hex')
-                target = '../.commit/%s/%s' % (commithex[:2], commithex[2:])
-                tag1 = FakeSymlink(self, name, target, self._repo_dir)
-                tag1.ctime = tag1.mtime = date
-                self._subs[name] = tag1
-
-
-class BranchList(Node):
-    """A list of links to commits reachable by a branch in bup's repository.
-
-    Represents each commit as a symlink that points to the commit directory in
-    /.commit/??/ . The symlink is named after the commit date.
     """
-    def __init__(self, parent, name, hash, repo_dir=None):
-        Node.__init__(self, parent, name, GIT_MODE_TREE, hash, repo_dir)
+    result = _resolve_path(repo, path, parent=parent, want_meta=want_meta,
+                           deref=True)
+    _, leaf_item = result[-1]
+    if leaf_item:
+        assert not S_ISLNK(item_mode(leaf_item))
+    return result
 
-    def _mksubs(self):
+def try_resolve(repo, path, parent=None, want_meta=True):
+    """If path does not refer to a symlink, does not exist, or refers to a
+    valid symlink, behave exactly like resolve().  If path refers to
+    an invalid symlink, behave like lresolve.
 
-        self._subs = {}
-
-        revs = list(git.rev_list(self.hash.encode('hex'),
-                                 format='%at',
-                                 parse=lambda f: int(f.readline().strip()),
-                                 repo_dir=self._repo_dir))
-        latest = revs[0]
-        for commithex, date in revs:
-            l = time.localtime(date)
-            ls = time.strftime('%Y-%m-%d-%H%M%S', l)
-            target = '../.commit/%s/%s' % (commithex[:2], commithex[2:])
-            n1 = FakeSymlink(self, ls, target, self._repo_dir)
-            n1.ctime = n1.mtime = date
-            self._subs[ls] = n1
-
-        commithex, date = latest
-        target = '../.commit/%s/%s' % (commithex[:2], commithex[2:])
-        n1 = FakeSymlink(self, 'latest', target, self._repo_dir)
-        n1.ctime = n1.mtime = date
-        self._subs['latest'] = n1
-
-
-class RefList(Node):
-    """A list of branches in bup's repository.
-
-    The sub-nodes of the ref list are a series of CommitList for each commit
-    hash pointed to by a branch.
-
-    Also, a special sub-node named '.commit' contains all commit directories
-    that are reachable via a ref (e.g. a branch).  See CommitDir for details.
     """
-    def __init__(self, parent, repo_dir=None):
-        Node.__init__(self, parent, '/', GIT_MODE_TREE, EMPTY_SHA, repo_dir)
+    res = lresolve(repo, path, parent=parent, want_meta=want_meta)
+    leaf_name, leaf_item = res[-1]
+    if not leaf_item:
+        return res
+    if not S_ISLNK(item_mode(leaf_item)):
+        return res
+    deref = resolve(repo, leaf_name, parent=res[:-1], want_meta=want_meta)
+    deref_name, deref_item = deref[-1]
+    if deref_item:
+        return deref
+    return res
 
-    def _mksubs(self):
-        self._subs = {}
+def augment_item_meta(repo, item, include_size=False):
+    """Ensure item has a Metadata instance for item.meta.  If item.meta is
+    currently a mode, replace it with a compatible "fake" Metadata
+    instance.  If include_size is true, ensure item.meta.size is
+    correct, computing it if needed.  If item.meta is a Metadata
+    instance, this call may modify it in place or replace it.
 
-        commit_dir = CommitDir(self, '.commit', self._repo_dir)
-        self._subs['.commit'] = commit_dir
+    """
+    # If we actually had parallelism, we'd need locking...
+    assert repo
+    m = item.meta
+    if isinstance(m, Metadata):
+        if include_size and m.size is None:
+            m.size = _compute_item_size(repo, item)
+            return item._replace(meta=m)
+        return item
+    # m is mode
+    meta = Metadata()
+    meta.mode = m
+    meta.uid = meta.gid = meta.atime = meta.mtime = meta.ctime = 0
+    if S_ISLNK(m):
+        target = _readlink(repo, item.oid)
+        meta.symlink_target = target
+        meta.size = len(target)
+    elif include_size:
+        meta.size = _compute_item_size(repo, item)
+    return item._replace(meta=meta)
 
-        tag_dir = TagDir(self, '.tag', self._repo_dir)
-        self._subs['.tag'] = tag_dir
+def fill_in_metadata_if_dir(repo, item):
+    """If item is a directory and item.meta is not a Metadata instance,
+    attempt to find the metadata for the directory.  If found, return
+    a new item augmented to include that metadata.  Otherwise, return
+    item.  May be useful for the output of contents().
 
-        refs_info = [(name[11:], sha) for (name,sha)
-                     in git.list_refs(limit_to_heads=True,
-                                      repo_dir=self._repo_dir)]
-        dates = git.get_commit_dates([sha.encode('hex')
-                                      for (name, sha) in refs_info],
-                                     repo_dir=self._repo_dir)
-        for (name, sha), date in zip(refs_info, dates):
-            n1 = BranchList(self, name, sha, self._repo_dir)
-            n1.ctime = n1.mtime = date
-            self._subs[name] = n1
+    """
+    if S_ISDIR(item_mode(item)) and not isinstance(item.meta, Metadata):
+        items = tuple(contents(repo, item, ('.',), want_meta=True))
+        assert len(items) == 1
+        assert items[0][0] == '.'
+        item = items[0][1]
+    return item
+
+def ensure_item_has_metadata(repo, item, include_size=False):
+    """If item is a directory, attempt to find and add its metadata.  If
+    the item still doesn't have a Metadata instance for item.meta,
+    give it one via augment_item_meta().  May be useful for the output
+    of contents().
+
+    """
+    return augment_item_meta(repo,
+                             fill_in_metadata_if_dir(repo, item),
+                             include_size=include_size)

@@ -4,7 +4,7 @@ import errno, glob, grp, pwd, stat, tempfile, subprocess
 from wvtest import *
 
 from bup import git, metadata
-from bup import vfs2 as vfs
+from bup import vfs
 from bup.helpers import clear_errors, detect_fakeroot, is_superuser, resolve_parent
 from bup.repo import LocalRepo
 from bup.xstat import utime, lutime

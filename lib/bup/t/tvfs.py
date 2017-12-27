@@ -10,7 +10,7 @@ from time import localtime, strftime
 
 from wvtest import *
 
-from bup import git, metadata, vfs2 as vfs
+from bup import git, metadata, vfs
 from bup.git import BUP_CHUNKED
 from bup.helpers import exc, exo, shstr
 from bup.metadata import Metadata

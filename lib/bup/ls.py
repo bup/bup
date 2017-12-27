@@ -5,7 +5,7 @@ from itertools import chain
 from stat import S_ISDIR, S_ISLNK
 import copy, locale, os.path, stat, sys, xstat
 
-from bup import metadata, options, vfs2 as vfs
+from bup import metadata, options, vfs
 from bup.options import Options
 from bup.repo import LocalRepo, RemoteRepo
 from helpers import columnate, istty1, last, log
