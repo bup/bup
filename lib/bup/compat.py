@@ -3,6 +3,9 @@ from __future__ import print_function
 from traceback import print_exception
 import sys
 
+# Please see CODINGSTYLE for important exception handling guidelines
+# and the rationale behind add_ex_tb(), chain_ex(), etc.
+
 py_maj = sys.version_info[0]
 py3 = py_maj >= 3
 

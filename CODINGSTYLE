@@ -1,7 +1,14 @@
 .. -*-rst-*-
 
-General
-=======
+C
+=
+
+The C implementations should follow the `kernel/git coding style
+<http://www.kernel.org/doc/Documentation/CodingStyle>`_.
+
+
+Python
+======
 
 Python code follows `PEP8 <http://www.python.org/dev/peps/pep-0008/>`_
 with regard to coding style and `PEP257
@@ -23,5 +30,40 @@ blank line in between). Here's an example from
 Module-level docstrings follow exactly the same guidelines but without the
 blank line between the summary and the details.
 
-The C implementations should follow the `kernel/git coding style
-<http://www.kernel.org/doc/Documentation/CodingStyle>`_.
+
+Exception Handling
+------------------
+
+Avoid finally: blocks in favor of explict catches because a throw
+from a finally block will lose any pending exception.  An explicit
+catch can chain it (see below).
+
+To behave similarly under Python 2 and 3, use add_ex_tb() to
+explicitly add stack traces to any exceptions that are going to be
+re-raised by anything other than a no-argument raise (otherwise the
+stack trace will be lost)::
+
+
+  try:
+      ...
+  except ... as ex:
+      add_ex_tb(ex)
+      pending_ex = ex
+  ...
+  raise pending_ex
+
+If an exception is thrown from an exception handler, the pending
+exception should be "chained" to the new exception as the context.
+This can be accomplished via ``chain_ex()``::
+
+  try:
+      ...
+  except ... as ex:
+      add_ex_tb(ex)
+      try:
+          ...
+      except ... as ex2:
+          add_ex_tb(ex2)
+          raise chain_ex(ex2, ex)
+
+See the end of ``lib/bup/compat.py`` for a functional example.
