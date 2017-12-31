@@ -12,6 +12,11 @@ use Getopt::Long qw(GetOptionsFromArray :config no_ignore_case bundling);
 use Pod::Usage;
 use Time::HiRes qw(time);
 
+my $per_test_warn_time = 100000;  # upstream was 500
+my $per_test_bad_time = 100000;  # upstream was 1000
+my $overall_test_warn_time = 100000;  # upstream was 2000
+my $overall_test_bad_time = 100000;  # upstream was 5000
+
 my $pid;
 my $istty = -t STDOUT;
 my @log = ();
@@ -80,7 +85,9 @@ sub endsect()
 {
     $stop = time();
     if ($start) {
-	printf " %s %s\n", mstime($stop - $start, 500, 1000), colourize("ok");
+	printf " %s %s\n",
+            mstime($stop - $start, $per_test_warn_time, $per_test_bad_time),
+            colourize("ok");
     }
 }
 
@@ -207,7 +214,9 @@ sub run
     }
     {
         my $msg = sprintf("WvTest: result code $ret, total time %s\n",
-                          mstime(time() - $allstart, 2000, 5000));
+                          mstime(time() - $allstart,
+                                 $overall_test_warn_time,
+                                 $overall_test_bad_time));
         print $msg;
         print STDERR $msg if $dup_msgs;
     }
