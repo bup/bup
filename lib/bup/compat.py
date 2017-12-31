@@ -11,7 +11,8 @@ if py3:
     str_type = str
 
     def add_ex_tb(ex):
-        pass
+        """Do nothing (already handled by Python 3 infrastructure)."""
+        return ex
 
     def chain_ex(ex, context_ex):
         return ex
@@ -21,8 +22,12 @@ else:  # Python 2
     str_type = basestring
 
     def add_ex_tb(ex):
+        """Add a traceback to ex if it doesn't already have one.  Return ex.
+
+        """
         if not getattr(ex, '__traceback__', None):
             ex.__traceback__ = sys.exc_info()[2]
+        return ex
 
     def chain_ex(ex, context_ex):
         if context_ex:
