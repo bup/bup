@@ -15,6 +15,7 @@ if py3:
         return ex
 
     def chain_ex(ex, context_ex):
+        """Do nothing (already handled by Python 3 infrastructure)."""
         return ex
 
 else:  # Python 2
@@ -30,8 +31,11 @@ else:  # Python 2
         return ex
 
     def chain_ex(ex, context_ex):
+        """Chain context_ex to ex as the __context__ (unless it already has
+        one).  Return ex.
+
+        """
         if context_ex:
-            add_ex_tb(context_ex)
             if not getattr(ex, '__context__', None):
                 ex.__context__ = context_ex
         return ex
@@ -72,11 +76,14 @@ def wrap_main(main):
         sys.exit(1)
 
 
-# Excepting wrap_main() in the traceback, these should produce the same output:
+# Excepting wrap_main() in the traceback, these should produce similar output:
 #   python2 lib/bup/compat.py
 #   python3 lib/bup/compat.py
 # i.e.:
 #   diff -u <(python2 lib/bup/compat.py 2>&1) <(python3 lib/bup/compat.py 2>&1)
+#
+# Though the python3 output for 'second' will include a stacktrace
+# starting from wrap_main, rather than from outer().
 
 if __name__ == '__main__':
 
@@ -87,6 +94,10 @@ if __name__ == '__main__':
         try:
             inner()
         except Exception as ex:
-            raise chain_ex(Exception('second'), ex)
+            add_ex_tb(ex)
+            try:
+                raise Exception('second')
+            except Exception as ex2:
+                raise chain_ex(add_ex_tb(ex2), ex)
 
     wrap_main(outer)
