@@ -10,9 +10,12 @@ import sys
 
 
 if sys.platform.startswith('cygwin'):
-    if sys.getwindowsversion()[0] > 5:
-        # Sounds like the situation is much more complicated here
-        print >> stderr, "can't detect root status for OS version > 5; assuming not root"
+    try:
+	if sys.getwindowsversion()[0] > 5:
+	    # Sounds like the situation is much more complicated here
+            print >> stderr, "can't detect root status for OS version > 5; assuming not root"
+            print 'none'
+    except:
         print 'none'
     import ctypes
     if ctypes.cdll.shell32.IsUserAnAdmin():
