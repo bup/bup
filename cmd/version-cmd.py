@@ -4,7 +4,10 @@ bup_python="$(dirname "$0")/bup-python" || exit $?
 exec "$bup_python" "$0" ${1+"$@"}
 """
 # end of bup preamble
+
+from __future__ import print_function
 import re, sys
+
 from bup import options
 from bup import version
 
@@ -55,8 +58,8 @@ def version_tag():
 
 
 if opt.date:
-    print version_date()
+    print(version_date())
 elif opt.commit:
-    print version_commit()
+    print(version_commit())
 else:
-    print version_tag()
+    print(version_tag())
