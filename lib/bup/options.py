@@ -265,7 +265,7 @@ class Options:
 
         opt = OptDict(aliases=self._aliases)
 
-        for k,v in self._defaults.iteritems():
+        for k,v in self._defaults.items():
             opt[k] = v
 
         for (k,v) in flags:
