@@ -215,7 +215,7 @@ def filter_output(src_out, src_err, dest_out, dest_err):
         pending_ex = chain_ex(add_ex_tb(ex), pending_ex)
     try:
         # Try to finish each of the streams
-        for fd, pending_items in pending.iteritems():
+        for fd, pending_items in compat.items(pending):
             dest = dest_out if fd == src_out else dest_err
             try:
                 print_clean_line(dest, pending_items, width)

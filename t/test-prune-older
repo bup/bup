@@ -26,6 +26,7 @@ bup_cmd = top + '/bup'
 from buptest import exc, exo, test_tempdir
 from wvtest import wvfail, wvpass, wvpasseq, wvpassne, wvstart
 
+from bup import compat
 from bup.helpers import partition, period_as_secs, readpipe
 
 
@@ -69,7 +70,7 @@ def expected_retentions(utcs, utc_start, spec):
         return utcs
     utcs = sorted(utcs, reverse=True)
     period_start = dict(spec)
-    for kind, duration in period_start.iteritems():
+    for kind, duration in compat.items(period_start):
         period_start[kind] = utc_start - period_as_secs(duration)
     period_start = defaultdict(lambda: float('inf'), period_start)
 

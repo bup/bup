@@ -1,5 +1,7 @@
 import cPickle, errno, os, tempfile
 
+from bup import compat
+
 class Error(Exception):
     pass
 
@@ -27,7 +29,7 @@ class HLinkDB:
                 f.close()
                 f = None
         # Set up the reverse hard link index.
-        for node, paths in self._node_paths.iteritems():
+        for node, paths in compat.items(self._node_paths):
             for path in paths:
                 self._path_node[path] = node
 

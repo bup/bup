@@ -21,6 +21,9 @@ if py3:
         """Do nothing (already handled by Python 3 infrastructure)."""
         return ex
 
+    def items(x):
+        return x.items()
+
 else:  # Python 2
 
     str_type = basestring
@@ -58,6 +61,10 @@ else:  # Python 2
                   file=sys.stderr)
             tb = getattr(ex, '__traceback__', None)
             print_exception(type(ex), ex, tb)
+
+    def items(x):
+        return x.iteritems()
+
 
 def wrap_main(main):
     """Run main() and raise a SystemExit with the return value if it

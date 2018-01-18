@@ -292,7 +292,7 @@ def _argmax_base(command):
     base_size = 2048
     for c in command:
         base_size += len(command) + 1
-    for k, v in environ.iteritems():
+    for k, v in compat.items(environ):
         base_size += len(k) + len(v) + 2 + sizeof(c_void_p)
     return base_size
 
