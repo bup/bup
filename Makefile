@@ -124,7 +124,10 @@ lib/bup/_helpers$(SOEXT): \
 	@rm -f $@
 	cd lib/bup && \
 	LDFLAGS="$(LDFLAGS)" CFLAGS="$(CFLAGS)" "$(bup_python)" csetup.py build
-	cp lib/bup/build/*/_helpers$(SOEXT) lib/bup/
+        # Make sure there's just the one file we expect before we copy it.
+	find lib/bup/build/* -maxdepth 1 -name '_helpers*$(SOEXT)' \
+	  -exec printf 'x\c' '{}' \; | wc -c | xargs test 1 -eq
+	cp lib/bup/build/*/_helpers*$(SOEXT) "$@"
 
 lib/bup/_checkout.py:
 	@if grep -F '$Format' lib/bup/_release.py \

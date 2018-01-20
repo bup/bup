@@ -63,7 +63,17 @@
 
 typedef unsigned char byte;
 
-static int istty2 = 0;
+
+typedef struct {
+    int istty2;
+} state_t;
+
+#if PY_MAJOR_VERSION < 3
+static state_t state;
+#  define get_state(x) (&state)
+#else
+#  define get_state(x) ((state_t *) PyModule_GetState(x))
+#endif // PY_MAJOR_VERSION >= 3
 
 
 #ifndef htonll
@@ -95,6 +105,8 @@ static uint64_t htonll(uint64_t value)
     (((x) >= 0) ? PyLong_FromUnsignedLongLong(x) : PyLong_FromLongLong(x))
 
 
+
+#if PY_MAJOR_VERSION < 3
 static int bup_ulong_from_pyint(unsigned long *x, PyObject *py,
                                 const char *name)
 {
@@ -115,12 +127,15 @@ static int bup_ulong_from_pyint(unsigned long *x, PyObject *py,
     *x = tmp;
     return 1;
 }
+#endif
 
 
 static int bup_ulong_from_py(unsigned long *x, PyObject *py, const char *name)
 {
+#if PY_MAJOR_VERSION < 3
     if (PyInt_Check(py))
         return bup_ulong_from_pyint(x, py, name);
+#endif
 
     if (!PyLong_Check(py))
     {
@@ -159,6 +174,7 @@ static int bup_uint_from_py(unsigned int *x, PyObject *py, const char *name)
 static int bup_ullong_from_py(unsigned PY_LONG_LONG *x, PyObject *py,
                               const char *name)
 {
+#if PY_MAJOR_VERSION < 3
     if (PyInt_Check(py))
     {
         unsigned long tmp;
@@ -169,6 +185,7 @@ static int bup_ullong_from_py(unsigned PY_LONG_LONG *x, PyObject *py,
         }
         return 0;
     }
+#endif
 
     if (!PyLong_Check(py))
     {
@@ -842,7 +859,7 @@ static PyObject *merge_into(PyObject *self, PyObject *args)
     {
 	struct idx *idx;
 	uint32_t new_prefix;
-	if (count % 102424 == 0 && istty2)
+	if (count % 102424 == 0 && get_state(self)->istty2)
 	    fprintf(stderr, "midx: writing %.2f%% (%d/%d)\r",
 		    count*100.0/total, count, total);
 	idx = idxs[last_i];
@@ -1575,12 +1592,12 @@ static PyMethodDef helper_methods[] = {
     { NULL, NULL, 0, NULL },  // sentinel
 };
 
-
-PyMODINIT_FUNC init_helpers(void)
+static int setup_module(PyObject *m)
 {
-    // FIXME: migrate these tests to configure.  Check against the
-    // type we're going to use when passing to python.  Other stat
-    // types are tested at runtime.
+    // FIXME: migrate these tests to configure, or at least don't
+    // possibly crash the whole application.  Check against the type
+    // we're going to use when passing to python.  Other stat types
+    // are tested at runtime.
     assert(sizeof(ino_t) <= sizeof(unsigned PY_LONG_LONG));
     assert(sizeof(off_t) <= sizeof(PY_LONG_LONG));
     assert(sizeof(blksize_t) <= sizeof(PY_LONG_LONG));
@@ -1600,10 +1617,6 @@ PyMODINIT_FUNC init_helpers(void)
     }
 
     char *e;
-    PyObject *m = Py_InitModule("_helpers", helper_methods);
-    if (m == NULL)
-        return;
-
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wtautological-compare" // For INTEGER_TO_PY().
     {
@@ -1640,6 +1653,52 @@ PyMODINIT_FUNC init_helpers(void)
 #pragma clang diagnostic pop  // ignored "-Wtautological-compare"
 
     e = getenv("BUP_FORCE_TTY");
-    istty2 = isatty(2) || (atoi(e ? e : "0") & 2);
+    get_state(m)->istty2 = isatty(2) || (atoi(e ? e : "0") & 2);
     unpythonize_argv();
+    return 1;
 }
+
+
+#if PY_MAJOR_VERSION < 3
+
+PyMODINIT_FUNC init_helpers(void)
+{
+    PyObject *m = Py_InitModule("_helpers", helper_methods);
+    if (m == NULL)
+        return;
+
+    if (!setup_module(m))
+    {
+        Py_DECREF(m);
+        return;
+    }
+}
+
+# else // PY_MAJOR_VERSION >= 3
+
+static struct PyModuleDef helpers_def = {
+    PyModuleDef_HEAD_INIT,
+    "_helpers",
+    NULL,
+    sizeof(state_t),
+    helper_methods,
+    NULL,
+    NULL, // helpers_traverse,
+    NULL, // helpers_clear,
+    NULL
+};
+
+PyMODINIT_FUNC PyInit__helpers(void)
+{
+    PyObject *module = PyModule_Create(&helpers_def);
+    if (module == NULL)
+        return NULL;
+    if (!setup_module(module))
+    {
+        Py_DECREF(module);
+        return NULL;
+    }
+    return module;
+}
+
+#endif // PY_MAJOR_VERSION >= 3
