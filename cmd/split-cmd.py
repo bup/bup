@@ -5,7 +5,7 @@ exec "$bup_python" "$0" ${1+"$@"}
 """
 # end of bup preamble
 
-from __future__ import absolute_import, print_function
+from __future__ import absolute_import, division, print_function
 import os, sys, time
 
 from bup import hashsplit, git, options, client
@@ -87,9 +87,9 @@ def prog(filenum, nbytes):
     total_bytes += nbytes
     if filenum > 0:
         qprogress('Splitting: file #%d, %d kbytes\r'
-                  % (filenum+1, total_bytes/1024))
+                  % (filenum+1, total_bytes // 1024))
     else:
-        qprogress('Splitting: %d kbytes\r' % (total_bytes/1024))
+        qprogress('Splitting: %d kbytes\r' % (total_bytes // 1024))
 
 
 is_reverse = os.environ.get('BUP_SERVER_REVERSE')
@@ -190,7 +190,7 @@ else:
         hashsplit.total_split += len(blob)
         if opt.copy:
             sys.stdout.write(str(blob))
-        megs = hashsplit.total_split/1024/1024
+        megs = hashsplit.total_split // 1024 // 1024
         if not opt.quiet and last != megs:
             last = megs
 
@@ -223,7 +223,7 @@ secs = time.time() - start_time
 size = hashsplit.total_split
 if opt.bench:
     log('bup: %.2f kbytes in %.2f secs = %.2f kbytes/sec\n'
-        % (size/1024., secs, size/1024./secs))
+        % (size / 1024, secs, size / 1024 / secs))
 
 if saved_errors:
     log('WARNING: %d errors encountered while saving.\n' % len(saved_errors))
