@@ -1,6 +1,6 @@
 """Helper functions and classes for bup."""
 
-from __future__ import absolute_import
+from __future__ import absolute_import, division
 from collections import namedtuple
 from contextlib import contextmanager
 from ctypes import sizeof, c_void_p
@@ -474,9 +474,9 @@ def format_filesize(size):
     size = float(size)
     if size < unit:
         return "%d" % (size)
-    exponent = int(math.log(size) / math.log(unit))
+    exponent = int(math.log(size) // math.log(unit))
     size_prefix = "KMGTPE"[exponent - 1]
-    return "%.1f%s" % (size / math.pow(unit, exponent), size_prefix)
+    return "%.1f%s" % (size // math.pow(unit, exponent), size_prefix)
 
 
 class NotOk(Exception):
@@ -813,7 +813,7 @@ if _mincore:
         pref_chunk_size = 64 * 1024 * 1024
         chunk_size = sc_page_size
         if (sc_page_size < pref_chunk_size):
-            chunk_size = sc_page_size * (pref_chunk_size / sc_page_size)
+            chunk_size = sc_page_size * (pref_chunk_size // sc_page_size)
         _fmincore_chunk_size = chunk_size
 
     def fmincore(fd):
@@ -825,9 +825,9 @@ if _mincore:
             return bytearray(0)
         if not _fmincore_chunk_size:
             _set_fmincore_chunk_size()
-        pages_per_chunk = _fmincore_chunk_size / sc_page_size;
-        page_count = (st.st_size + sc_page_size - 1) / sc_page_size;
-        chunk_count = page_count / _fmincore_chunk_size
+        pages_per_chunk = _fmincore_chunk_size // sc_page_size;
+        page_count = (st.st_size + sc_page_size - 1) // sc_page_size;
+        chunk_count = page_count // _fmincore_chunk_size
         if chunk_count < 1:
             chunk_count = 1
         result = bytearray(page_count)
