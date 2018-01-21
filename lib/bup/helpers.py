@@ -960,14 +960,14 @@ def columnate(l, prefix):
         return ""
     l = l[:]
     clen = max(len(s) for s in l)
-    ncols = (tty_width() - len(prefix)) / (clen + 2)
+    ncols = (tty_width() - len(prefix)) // (clen + 2)
     if ncols <= 1:
         ncols = 1
         clen = 0
     cols = []
     while len(l) % ncols:
         l.append('')
-    rows = len(l)/ncols
+    rows = len(l) // ncols
     for s in range(0, len(l), rows):
         cols.append(l[s:s+rows])
     out = ''
