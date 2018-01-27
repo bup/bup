@@ -229,10 +229,11 @@ def bup_gc(threshold=10, compression=1, verbosity=0):
         try:
             # FIXME: just rename midxes and bloom, and restore them at the end if
             # we didn't change any packs?
+            packdir = git.repo('objects/pack')
             if verbosity: log('clearing midx files\n')
-            midx.clear_midxes()
+            midx.clear_midxes(packdir)
             if verbosity: log('clearing bloom filter\n')
-            bloom.clear_bloom(git.repo('objects/pack'))
+            bloom.clear_bloom(packdir)
             if verbosity: log('clearing reflog\n')
             expirelog_cmd = ['git', 'reflog', 'expire', '--all', '--expire=all']
             expirelog = subprocess.Popen(expirelog_cmd, preexec_fn = git._gitenv())
