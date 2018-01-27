@@ -8,10 +8,9 @@ exec "$bup_python" "$0" ${1+"$@"}
 from __future__ import absolute_import
 import errno, re, sys, os, subprocess, signal, getopt
 
-from fcntl import F_GETFL, F_SETFL
 from subprocess import PIPE
 from sys import stderr, stdout
-import fcntl, select
+import select
 
 argv = sys.argv
 exe = os.path.realpath(argv[0])
@@ -187,9 +186,6 @@ def filter_output(src_out, src_err, dest_out, dest_err):
     pending_ex = None
     try:
         fds = tuple([x for x in (src_out, src_err) if x is not None])
-        for fd in fds:
-            flags = fcntl.fcntl(fd, F_GETFL)
-            assert fcntl.fcntl(fd, F_SETFL, flags | os.O_NONBLOCK) == 0
         while fds:
             ready_fds, _, _ = select.select(fds, [], [])
             width = tty_width()
