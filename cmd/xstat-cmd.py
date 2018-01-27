@@ -4,11 +4,15 @@ bup_python="$(dirname "$0")/bup-python" || exit $?
 exec "$bup_python" "$0" ${1+"$@"}
 """
 # end of bup preamble
+
 # Copyright (C) 2010 Rob Browning
 #
 # This code is covered under the terms of the GNU Library General
 # Public License as described in the bup LICENSE file.
+
+from __future__ import absolute_import
 import sys, stat, errno
+
 from bup import metadata, options, xstat
 from bup.helpers import add_error, handle_ctrl_c, parse_timestamp, saved_errors, \
     add_error, log

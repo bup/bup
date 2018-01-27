@@ -4,6 +4,8 @@ bup_python="$(dirname "$0")/bup-python" || exit $?
 exec "$bup_python" "$0" ${1+"$@"}
 """
 # end of bup preamble
+
+from __future__ import absolute_import
 import sys, os, struct
 from bup import options, helpers
 

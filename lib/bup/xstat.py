@@ -1,4 +1,6 @@
 """Enhanced stat operations for bup."""
+
+from __future__ import absolute_import
 import os, sys
 import stat as pystat
 from bup import _helpers

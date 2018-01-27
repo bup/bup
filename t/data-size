@@ -5,6 +5,8 @@ exec "$bup_python" "$0" ${1+"$@"}
 """
 # end of bup preamble
 
+from __future__ import absolute_import
+
 from os.path import getsize, isdir
 from sys import argv, stderr
 import os

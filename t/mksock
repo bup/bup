@@ -5,6 +5,8 @@ exec "$bup_python" "$0" ${1+"$@"}
 """
 # end of bup preamble
 
+from __future__ import absolute_import
+
 import socket, sys
 
 s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM, 0)

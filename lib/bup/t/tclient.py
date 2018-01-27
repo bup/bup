@@ -1,4 +1,5 @@
 
+from __future__ import absolute_import
 import sys, os, stat, time, random, subprocess, glob
 
 from wvtest import *

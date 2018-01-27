@@ -1,3 +1,5 @@
+
+from __future__ import absolute_import
 import glob, os, subprocess, sys, tempfile
 from bup import bloom, git, midx
 from bup.git import MissingObject, walk_object

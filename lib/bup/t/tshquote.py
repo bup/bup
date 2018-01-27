@@ -1,4 +1,6 @@
 
+from __future__ import absolute_import
+
 from wvtest import *
 
 from bup import shquote

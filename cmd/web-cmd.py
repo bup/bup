@@ -5,7 +5,7 @@ exec "$bup_python" "$0" ${1+"$@"}
 """
 # end of bup preamble
 
-from __future__ import print_function
+from __future__ import absolute_import, print_function
 from collections import namedtuple
 import mimetypes, os, posixpath, signal, stat, sys, time, urllib, webbrowser
 

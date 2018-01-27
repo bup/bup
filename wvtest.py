@@ -4,6 +4,7 @@ bup_python="$(dirname "$0")/cmd/bup-python"
 exec "$bup_python" "$0" ${1+"$@"}
 """
 # end of bup preamble
+
 #
 # WvTest:
 #   Copyright (C)2007-2012 Versabanq Innovations Inc. and contributors.
@@ -11,6 +12,8 @@ exec "$bup_python" "$0" ${1+"$@"}
 #       See the included file named LICENSE for license information.
 #       You can get wvtest from: http://github.com/apenwarr/wvtest
 #
+
+from __future__ import absolute_import
 import atexit
 import inspect
 import os

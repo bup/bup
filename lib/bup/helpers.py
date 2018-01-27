@@ -1,5 +1,6 @@
 """Helper functions and classes for bup."""
 
+from __future__ import absolute_import
 from collections import namedtuple
 from contextlib import contextmanager
 from ctypes import sizeof, c_void_p

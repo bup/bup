@@ -60,6 +60,8 @@ Options can be put in different groups. Options in the same group must be on
 consecutive lines. Groups are formed by inserting a line that begins with a
 space. The text on that line will be output after an empty line.
 """
+
+from __future__ import absolute_import
 import sys, os, textwrap, getopt, re, struct
 
 try:

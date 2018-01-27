@@ -1,6 +1,8 @@
 """This is a separate module so we can cleanly getcwd() before anyone
    does chdir().
 """
+
+from __future__ import absolute_import
 import sys, os
 
 startdir = os.getcwd()

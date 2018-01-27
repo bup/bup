@@ -1,4 +1,6 @@
 
+from __future__ import absolute_import
+
 from bup import _release
 
 if _release.COMMIT != '$Format:%H$':

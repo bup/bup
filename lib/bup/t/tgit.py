@@ -1,4 +1,5 @@
 
+from __future__ import absolute_import
 from subprocess import check_call
 import struct, os, time
 

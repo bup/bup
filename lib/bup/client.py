@@ -1,4 +1,5 @@
 
+from __future__ import absolute_import
 import errno, os, re, struct, sys, time, zlib
 
 from bup import git, ssh

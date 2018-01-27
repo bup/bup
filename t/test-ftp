@@ -5,7 +5,7 @@ exec "$bup_python" "$0" ${1+"$@"}
 """
 # end of bup preamble
 
-from __future__ import print_function
+from __future__ import absolute_import, print_function
 from os import environ, chdir, mkdir, symlink, unlink
 from os.path import abspath, dirname
 from time import localtime, strftime

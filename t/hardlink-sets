@@ -5,6 +5,8 @@ exec "$bup_python" "$0" ${1+"$@"}
 """
 # end of bup preamble
 
+from __future__ import absolute_import
+
 import os, stat, sys
 
 # Print the full paths of all the files in each hardlink set

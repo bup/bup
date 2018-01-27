@@ -1,6 +1,8 @@
-import errno, metadata, os, stat, struct, tempfile
 
-from bup import xstat
+from __future__ import absolute_import
+import errno, os, stat, struct, tempfile
+
+from bup import metadata, xstat
 from bup._helpers import UINT_MAX, bytescmp
 from bup.helpers import (add_error, log, merge_iter, mmap_readwrite,
                          progress, qprogress, resolve_parent, slashappend)

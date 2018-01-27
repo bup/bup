@@ -5,6 +5,7 @@
 # This code is covered under the terms of the GNU Library General
 # Public License as described in the bup LICENSE file.
 
+from __future__ import absolute_import
 from io import BytesIO
 
 # Variable length integers are encoded as vints -- see jakarta lucene.

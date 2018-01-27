@@ -80,6 +80,7 @@ None of this tells us what max_pfalse_positive to choose.
 Brandon Low <lostlogic@lostlogicx.com> 2011-02-04
 """
 
+from __future__ import absolute_import
 import sys, os, math, mmap, struct
 
 from bup import _helpers

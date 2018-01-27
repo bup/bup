@@ -5,6 +5,7 @@ exec "$bup_python" "$0" ${1+"$@"}
 """
 # end of bup preamble
 
+from __future__ import absolute_import
 import sys, re, struct, time, resource
 
 from bup import git, bloom, midx, options, _helpers

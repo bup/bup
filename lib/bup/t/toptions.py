@@ -1,8 +1,9 @@
 
-from bup import options
+from __future__ import absolute_import
 
 from wvtest import *
 
+from bup import options
 from buptest import no_lingering_errors
 
 

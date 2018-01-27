@@ -1,4 +1,5 @@
 
+from __future__ import absolute_import
 import helpers, math, os, os.path, stat, subprocess
 
 from wvtest import *

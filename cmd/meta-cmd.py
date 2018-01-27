@@ -12,6 +12,7 @@ exec "$bup_python" "$0" ${1+"$@"}
 
 # TODO: Add tar-like -C option.
 
+from __future__ import absolute_import
 import sys
 from bup import metadata
 from bup import options

@@ -5,6 +5,7 @@ exec "$bup_python" "$0" ${1+"$@"}
 """
 # end of bup preamble
 
+from __future__ import absolute_import
 import sys, stat, time, os, errno, re
 
 from bup import metadata, options, git, index, drecurse, hlinkdb

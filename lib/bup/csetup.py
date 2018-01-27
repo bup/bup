@@ -1,3 +1,6 @@
+
+from __future__ import absolute_import
+
 from distutils.core import setup, Extension
 
 _helpers_mod = Extension('_helpers',

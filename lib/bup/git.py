@@ -3,6 +3,7 @@ bup repositories are in Git format. This library allows us to
 interact with the Git data structures.
 """
 
+from __future__ import absolute_import
 import errno, os, sys, zlib, time, subprocess, struct, stat, re, tempfile, glob
 from collections import namedtuple
 from itertools import islice

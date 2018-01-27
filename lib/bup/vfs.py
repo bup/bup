@@ -45,7 +45,7 @@ item.coid.
 
 """
 
-from __future__ import print_function
+from __future__ import absolute_import, print_function
 from collections import namedtuple
 from errno import ELOOP, ENOENT, ENOTDIR
 from itertools import chain, dropwhile, groupby, izip, tee

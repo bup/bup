@@ -5,6 +5,7 @@ exec "$bup_python" "$0" ${1+"$@"}
 """
 # end of bup preamble
 
+from __future__ import absolute_import
 from errno import EACCES
 from io import BytesIO
 import os, sys, stat, time, math

@@ -1,3 +1,5 @@
+
+from __future__ import absolute_import
 import io, math, os
 
 from bup import _helpers, helpers

@@ -1,4 +1,5 @@
 
+from __future__ import absolute_import
 import errno, glob, grp, pwd, stat, tempfile, subprocess
 
 from wvtest import *

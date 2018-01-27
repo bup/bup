@@ -1,6 +1,8 @@
 """SSH connection.
 Connect to a remote host via SSH and execute a command on the host.
 """
+
+from __future__ import absolute_import
 import sys, os, re, subprocess
 from bup import helpers, path
 

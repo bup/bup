@@ -1,3 +1,5 @@
+
+from __future__ import absolute_import
 import cPickle, errno, os, tempfile
 
 from bup import compat

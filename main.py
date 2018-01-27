@@ -5,6 +5,7 @@ exec "$bup_python" "$0" ${1+"$@"}
 """
 # end of bup preamble
 
+from __future__ import absolute_import
 import errno, re, sys, os, subprocess, signal, getopt
 
 from fcntl import F_GETFL, F_SETFL
@@ -35,7 +36,7 @@ os.environ['BUP_MAIN_EXE'] = os.path.abspath(exe)
 os.environ['BUP_RESOURCE_PATH'] = resourcepath
 
 
-from bup import helpers
+from bup import compat, helpers
 from bup.compat import add_ex_tb, chain_ex, wrap_main
 from bup.helpers import atoi, columnate, debug1, log, tty_width
 

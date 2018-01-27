@@ -1,4 +1,5 @@
 
+from __future__ import absolute_import
 import stat, os
 
 from bup.helpers import add_error, should_rx_exclude_path, debug1, resolve_parent

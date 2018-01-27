@@ -1,14 +1,14 @@
 """Common code for listing files from a bup repository."""
 
-from __future__ import print_function
+from __future__ import absolute_import, print_function
 from itertools import chain
 from stat import S_ISDIR, S_ISLNK
-import copy, locale, os.path, stat, sys, xstat
+import copy, locale, os.path, stat, sys
 
-from bup import metadata, options, vfs
+from bup import metadata, options, vfs, xstat
 from bup.options import Options
 from bup.repo import LocalRepo, RemoteRepo
-from helpers import columnate, istty1, last, log
+from bup.helpers import columnate, istty1, last, log
 
 def item_hash(item, tree_for_commit):
     """If the item is a Commit, return its commit oid, otherwise return
