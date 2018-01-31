@@ -134,7 +134,6 @@ def _git_date_str(epoch_sec, tz_offset_sec):
 
 def repo(sub = '', repo_dir=None):
     """Get the path to the git repository or one of its subdirectories."""
-    global repodir
     repo_dir = repo_dir or repodir
     if not repo_dir:
         raise GitError('You should call check_repo_or_die()')
@@ -142,7 +141,7 @@ def repo(sub = '', repo_dir=None):
     # If there's a .git subdirectory, then the actual repo is in there.
     gd = os.path.join(repo_dir, '.git')
     if os.path.exists(gd):
-        repodir = gd
+        repo_dir = gd
 
     return os.path.join(repo_dir, sub)
 
