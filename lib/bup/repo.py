@@ -8,8 +8,8 @@ from bup import client, git
 class LocalRepo:
     def __init__(self, repo_dir=None):
         self.repo_dir = repo_dir or git.repo()
-        self._cp = git.cp(repo_dir)
-        self.rev_list = partial(git.rev_list, repo_dir=repo_dir)
+        self._cp = git.cp(self.repo_dir)
+        self.rev_list = partial(git.rev_list, repo_dir=self.repo_dir)
 
     def cat(self, ref):
         """If ref does not exist, yield (None, None, None).  Otherwise yield
