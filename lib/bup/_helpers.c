@@ -71,8 +71,10 @@ typedef struct {
 #if PY_MAJOR_VERSION < 3
 static state_t state;
 #  define get_state(x) (&state)
+#  define buf_argf "s"
 #else
 #  define get_state(x) ((state_t *) PyModule_GetState(x))
+#  define buf_argf "y"
 #endif // PY_MAJOR_VERSION >= 3
 
 
@@ -1479,43 +1481,59 @@ static PyObject *bup_localtime(PyObject *self, PyObject *args)
 #ifdef BUP_MINCORE_BUF_TYPE
 static PyObject *bup_mincore(PyObject *self, PyObject *args)
 {
-    const char *src;
-    Py_ssize_t src_ssize;
-    Py_buffer dest;
+    Py_buffer src, dest;
     PyObject *py_src_n, *py_src_off, *py_dest_off;
-    if (!PyArg_ParseTuple(args, "s#OOw*O",
-                          &src, &src_ssize, &py_src_n, &py_src_off,
+
+    if (!PyArg_ParseTuple(args, buf_argf "*OOw*O",
+                          &src, &py_src_n, &py_src_off,
                           &dest, &py_dest_off))
 	return NULL;
 
-    unsigned long long src_size, src_n, src_off, dest_size, dest_off;
+    PyObject *result = NULL;
+
+    unsigned long long src_n, src_off, dest_off;
     if (!(bup_ullong_from_py(&src_n, py_src_n, "src_n")
           && bup_ullong_from_py(&src_off, py_src_off, "src_off")
           && bup_ullong_from_py(&dest_off, py_dest_off, "dest_off")))
-        return NULL;
+        goto clean_and_return;
 
-    if (!INTEGRAL_ASSIGNMENT_FITS(&src_size, src_ssize))
-        return PyErr_Format(PyExc_OverflowError, "invalid src size");
     unsigned long long src_region_end;
+    if (!uadd(&src_region_end, src_off, src_n)) {
+        result = PyErr_Format(PyExc_OverflowError, "(src_off + src_n) too large");
+        goto clean_and_return;
+    }
+    if (src_region_end > src.len) {
+        result = PyErr_Format(PyExc_OverflowError, "region runs off end of src");
+        goto clean_and_return;
+    }
 
-    if (!uadd(&src_region_end, src_off, src_n))
-        return PyErr_Format(PyExc_OverflowError, "(src_off + src_n) too large");
-    if (src_region_end > src_size)
-        return PyErr_Format(PyExc_OverflowError, "region runs off end of src");
-
-    if (!INTEGRAL_ASSIGNMENT_FITS(&dest_size, dest.len))
-        return PyErr_Format(PyExc_OverflowError, "invalid dest size");
-    if (dest_off > dest_size)
-        return PyErr_Format(PyExc_OverflowError, "region runs off end of dest");
+    unsigned long long dest_size;
+    if (!INTEGRAL_ASSIGNMENT_FITS(&dest_size, dest.len)) {
+        result = PyErr_Format(PyExc_OverflowError, "invalid dest size");
+        goto clean_and_return;
+    }
+    if (dest_off > dest_size) {
+        result = PyErr_Format(PyExc_OverflowError, "region runs off end of dest");
+        goto clean_and_return;
+    }
 
     size_t length;
-    if (!INTEGRAL_ASSIGNMENT_FITS(&length, src_n))
-        return PyErr_Format(PyExc_OverflowError, "src_n overflows size_t");
-    int rc = mincore((void *)(src + src_off), src_n,
+    if (!INTEGRAL_ASSIGNMENT_FITS(&length, src_n)) {
+        result = PyErr_Format(PyExc_OverflowError, "src_n overflows size_t");
+        goto clean_and_return;
+    }
+    int rc = mincore((void *)(src.buf + src_off), src_n,
                      (BUP_MINCORE_BUF_TYPE *) (dest.buf + dest_off));
-    if (rc != 0)
-        return PyErr_SetFromErrno(PyExc_OSError);
-    return Py_BuildValue("O", Py_None);
+    if (rc != 0) {
+        result = PyErr_SetFromErrno(PyExc_OSError);
+        goto clean_and_return;
+    }
+    result = Py_BuildValue("O", Py_None);
+
+ clean_and_return:
+    PyBuffer_Release(&src);
+    PyBuffer_Release(&dest);
+    return result;
 }
 #endif /* def BUP_MINCORE_BUF_TYPE */
 
