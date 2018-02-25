@@ -742,6 +742,11 @@ struct sha {
     unsigned char bytes[20];
 };
 
+static inline int _cmp_sha(const struct sha *sha1, const struct sha *sha2)
+{
+    return memcmp(sha1->bytes, sha2->bytes, sizeof(sha1->bytes));
+}
+
 
 struct idx {
     unsigned char *map;
@@ -751,17 +756,6 @@ struct idx {
     Py_ssize_t bytes;
     int name_base;
 };
-
-
-static int _cmp_sha(const struct sha *sha1, const struct sha *sha2)
-{
-    int i;
-    for (i = 0; i < sizeof(struct sha); i++)
-	if (sha1->bytes[i] != sha2->bytes[i])
-	    return sha1->bytes[i] - sha2->bytes[i];
-    return 0;
-}
-
 
 static void _fix_idx_order(struct idx **idxs, int *last_i)
 {
