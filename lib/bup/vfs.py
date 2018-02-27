@@ -60,7 +60,6 @@ from bup.compat import range
 from bup.git import BUP_CHUNKED, cp, get_commit_items, parse_commit, tree_decode
 from bup.helpers import debug2, last
 from bup.metadata import Metadata
-from bup.repo import LocalRepo, RemoteRepo
 
 
 class IOError(exceptions.IOError):
@@ -780,9 +779,9 @@ def contents(repo, item, names=None, want_meta=True):
     for x in item_gen:
         yield x
 
-def _resolve_path(repo, path, parent=None, want_meta=True, deref=False):
+def _resolve_path(repo, path, parent=None, want_meta=True, follow=True):
     cache_key = b'res:%d%d%d:%s\0%s' \
-                % (bool(want_meta), bool(deref), repo.id(),
+                % (bool(want_meta), bool(follow), repo.id(),
                    ('/'.join(x[0] for x in parent) if parent else ''),
                    '/'.join(path))
     resolution = cache_get(cache_key)
@@ -815,7 +814,7 @@ def _resolve_path(repo, path, parent=None, want_meta=True, deref=False):
                           % (parent,))
     is_absolute, must_be_dir, future = _decompose_path(path)
     if must_be_dir:
-        deref = True
+        follow = True
     if not future:  # path was effectively '.' or '/'
         if is_absolute:
             return notice_resolution((('', _root),))
@@ -874,7 +873,7 @@ def _resolve_path(repo, path, parent=None, want_meta=True, deref=False):
                         item = item._replace(meta=dir_meta)
                 past.append((segment, item))
             else:  # symlink
-                if not future and not deref:
+                if not future and not follow:
                     past.append((segment, item),)
                     continue
                 if hops > 100:
@@ -893,20 +892,14 @@ def _resolve_path(repo, path, parent=None, want_meta=True, deref=False):
                     future.extend(target_future)
                 hops += 1
                 
-def lresolve(repo, path, parent=None, want_meta=True):
-    """Perform exactly the same function as resolve(), except if the final
-    path element is a symbolic link, don't follow it, just return it
-    in the result.
-
-    """
-    return _resolve_path(repo, path, parent=parent, want_meta=want_meta,
-                         deref=False)
-
-def resolve(repo, path, parent=None, want_meta=True):
+def resolve(repo, path, parent=None, want_meta=True, follow=True):
     """Follow the path in the virtual filesystem and return a tuple
     representing the location, if any, denoted by the path.  Each
     element in the result tuple will be (name, info), where info will
     be a VFS item that can be passed to functions like item_mode().
+
+    If follow is false, and if the final path element is a symbolic
+    link, don't follow it, just return it in the result.
 
     If a path segment that does not exist is encountered during
     resolution, the result will represent the location of the missing
@@ -948,28 +941,29 @@ def resolve(repo, path, parent=None, want_meta=True):
 
     """
     result = _resolve_path(repo, path, parent=parent, want_meta=want_meta,
-                           deref=True)
+                           follow=follow)
     _, leaf_item = result[-1]
-    if leaf_item:
+    if leaf_item and follow:
         assert not S_ISLNK(item_mode(leaf_item))
     return result
 
 def try_resolve(repo, path, parent=None, want_meta=True):
     """If path does not refer to a symlink, does not exist, or refers to a
-    valid symlink, behave exactly like resolve().  If path refers to
-    an invalid symlink, behave like lresolve.
+    valid symlink, behave exactly like resolve(..., follow=True).  If
+    path refers to an invalid symlink, behave like resolve(...,
+    follow=False).
 
     """
-    res = lresolve(repo, path, parent=parent, want_meta=want_meta)
+    res = resolve(repo, path, parent=parent, want_meta=want_meta, follow=False)
     leaf_name, leaf_item = res[-1]
     if not leaf_item:
         return res
     if not S_ISLNK(item_mode(leaf_item)):
         return res
-    deref = resolve(repo, leaf_name, parent=res[:-1], want_meta=want_meta)
-    deref_name, deref_item = deref[-1]
-    if deref_item:
-        return deref
+    follow = resolve(repo, leaf_name, parent=res[:-1], want_meta=want_meta)
+    follow_name, follow_item = follow[-1]
+    if follow_item:
+        return follow
     return res
 
 def augment_item_meta(repo, item, include_size=False):

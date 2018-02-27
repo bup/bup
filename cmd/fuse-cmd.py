@@ -34,7 +34,8 @@ class BupFs(fuse.Fuse):
         global opt
         if self.verbose > 0:
             log('--getattr(%r)\n' % path)
-        res = vfs.lresolve(self.repo, path, want_meta=(not self.fake_metadata))
+        res = vfs.resolve(self.repo, path, want_meta=(not self.fake_metadata),
+                          follow=False)
         name, item = res[-1]
         if not item:
             return -errno.ENOENT
@@ -56,7 +57,7 @@ class BupFs(fuse.Fuse):
 
     def readdir(self, path, offset):
         assert not offset  # We don't return offsets, so offset should be unused
-        res = vfs.lresolve(self.repo, path)
+        res = vfs.resolve(self.repo, path, follow=False)
         dir_name, dir_item = res[-1]
         if not dir_item:
             yield -errno.ENOENT
@@ -68,7 +69,7 @@ class BupFs(fuse.Fuse):
     def readlink(self, path):
         if self.verbose > 0:
             log('--readlink(%r)\n' % path)
-        res = vfs.lresolve(self.repo, path)
+        res = vfs.resolve(self.repo, path, follow=False)
         name, item = res[-1]
         if not item:
             return -errno.ENOENT
@@ -77,7 +78,7 @@ class BupFs(fuse.Fuse):
     def open(self, path, flags):
         if self.verbose > 0:
             log('--open(%r)\n' % path)
-        res = vfs.lresolve(self.repo, path)
+        res = vfs.resolve(self.repo, path, follow=False)
         name, item = res[-1]
         if not item:
             return -errno.ENOENT
@@ -91,7 +92,7 @@ class BupFs(fuse.Fuse):
     def read(self, path, size, offset):
         if self.verbose > 0:
             log('--read(%r)\n' % path)
-        res = vfs.lresolve(self.repo, path)
+        res = vfs.resolve(self.repo, path, follow=False)
         name, item = res[-1]
         if not item:
             return -errno.ENOENT

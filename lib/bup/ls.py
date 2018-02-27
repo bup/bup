@@ -113,7 +113,7 @@ def within_repo(repo, opt):
     for path in opt.paths:
         try:
             if opt.directory:
-                resolved = vfs.lresolve(repo, path)
+                resolved = vfs.resolve(repo, path, follow=False)
             else:
                 resolved = vfs.try_resolve(repo, path)
 

@@ -117,7 +117,7 @@ def run_augment_item_meta_tests(repo,
                                 file_path, file_size,
                                 link_path, link_target):
     _, file_item = vfs.resolve(repo, file_path)[-1]
-    _, link_item = vfs.lresolve(repo, link_path)[-1]
+    _, link_item = vfs.resolve(repo, link_path, follow=False)[-1]
     wvpass(isinstance(file_item.meta, Metadata))
     wvpass(isinstance(link_item.meta, Metadata))
     # Note: normally, modifying item.meta values is forbidden
@@ -253,7 +253,6 @@ def test_resolve():
     with no_lingering_errors():
         with test_tempdir('bup-tvfs-') as tmpdir:
             resolve = vfs.resolve
-            lresolve = vfs.lresolve
             bup_dir = tmpdir + '/bup'
             environ['GIT_DIR'] = bup_dir
             environ['BUP_DIR'] = bup_dir
@@ -391,9 +390,9 @@ def test_resolve():
                         ('not-there', None))
             wvpasseq(expected, res)
 
-            wvstart('lresolve: /test/latest/bad-symlink')
+            wvstart('resolve nofollow: /test/latest/bad-symlink')
             vfs.clear_cache()
-            res = lresolve(repo, '/test/latest/bad-symlink')
+            res = resolve(repo, '/test/latest/bad-symlink', follow=False)
             wvpasseq(4, len(res))
             bad_symlink_value = tip_tree['bad-symlink']
             expected_bad_symlink_item_w_meta = vfs.Item(meta=bad_symlink_value.meta,
@@ -414,9 +413,9 @@ def test_resolve():
                         ('file', expected_file_item_w_meta))
             wvpasseq(expected, res)
 
-            wvstart('lresolve: /test/latest/file-symlink')
+            wvstart('resolve nofollow: /test/latest/file-symlink')
             vfs.clear_cache()
-            res = lresolve(repo, '/test/latest/file-symlink')
+            res = resolve(repo, '/test/latest/file-symlink', follow=False)
             wvpasseq(4, len(res))
             file_symlink_value = tip_tree['file-symlink']
             expected_file_symlink_item_w_meta = vfs.Item(meta=file_symlink_value.meta,
@@ -457,10 +456,10 @@ def test_resolve():
                          '/test/latest/file-symlink/../',
                          '/test/latest/file-symlink/../.',
                          '/test/latest/file-symlink/../..'):
-                wvstart('lresolve: ' + path)
+                wvstart('resolve nofollow: ' + path)
                 vfs.clear_cache()
                 try:
-                    lresolve(repo, path)
+                    resolve(repo, path, follow=False)
                 except vfs.IOError as res_ex:
                     wvpasseq(ENOTDIR, res_ex.errno)
                     wvpasseq(['', 'test', save_time_str, 'file'],
@@ -475,9 +474,9 @@ def test_resolve():
                 wvpasseq(ENOTDIR, res_ex.errno)
                 wvpasseq(None, res_ex.terminus)
 
-            wvstart('lresolve: /test/latest/dir-symlink')
+            wvstart('resolve nofollow: /test/latest/dir-symlink')
             vfs.clear_cache()
-            res = lresolve(repo, '/test/latest/dir-symlink')
+            res = resolve(repo, '/test/latest/dir-symlink', follow=False)
             wvpasseq(4, len(res))
             dir_symlink_value = tip_tree['dir-symlink']
             expected_dir_symlink_item_w_meta = vfs.Item(meta=dir_symlink_value.meta,
@@ -495,8 +494,10 @@ def test_resolve():
                         ('test', test_revlist_w_meta),
                         (save_time_str, expected_latest_item_w_meta),
                         ('dir', expected_dir_item))
+            def lresolve(*args, **keys):
+                return resolve(*args, **dict(keys, follow=False))
             for resname, resolver in (('resolve', resolve),
-                                      ('lresolve', lresolve)):
+                                      ('resolve nofollow', lresolve)):
                 for path in ('/test/latest/dir-symlink/',
                              '/test/latest/dir-symlink/.'):
                     wvstart(resname + ': ' + path)
@@ -611,7 +612,6 @@ def test_resolve_loop():
     with no_lingering_errors():
         with test_tempdir('bup-tvfs-resloop-') as tmpdir:
             resolve = vfs.resolve
-            lresolve = vfs.lresolve
             bup_dir = tmpdir + '/bup'
             environ['GIT_DIR'] = bup_dir
             environ['BUP_DIR'] = bup_dir

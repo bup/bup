@@ -246,7 +246,7 @@ def main():
             add_error("path %r doesn't include a branch and revision" % path)
             continue
         try:
-            resolved = vfs.lresolve(repo, path, want_meta=True)
+            resolved = vfs.resolve(repo, path, want_meta=True, follow=False)
         except vfs.IOError as e:
             add_error(e)
             continue

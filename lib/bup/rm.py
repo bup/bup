@@ -68,7 +68,7 @@ def dead_items(repo, paths):
     # Scan for bad requests, and opportunities to optimize
     for path in paths:
         try:
-            resolved = vfs.lresolve(repo, path)
+            resolved = vfs.resolve(repo, path, follow=False)
         except vfs.IOError as e:
             add_error(e)
             continue

@@ -39,7 +39,7 @@ if not re.match(r'/*[^/]+/[^/]+', target):
     o.fatal("path %r doesn't include a branch and revision" % target)
 
 repo = LocalRepo()
-resolved = vfs.lresolve(repo, target)
+resolved = vfs.resolve(repo, target, follow=False)
 leaf_name, leaf_item = resolved[-1]
 if not leaf_item:
     log('error: cannot access %r in %r\n'

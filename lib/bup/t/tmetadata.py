@@ -146,8 +146,9 @@ def test_metadata_method():
             ex(bup_path, '-d', bup_dir, 'save', '-tvvn', 'test', data_path)
             git.check_repo_or_die(bup_dir)
             repo = LocalRepo()
-            resolved = vfs.lresolve(repo,
-                                    '/test/latest' + resolve_parent(data_path))
+            resolved = vfs.resolve(repo,
+                                   '/test/latest' + resolve_parent(data_path),
+                                   follow=False)
             leaf_name, leaf_item = resolved[-1]
             m = leaf_item.meta
             WVPASS(m.mtime == test_time2)
