@@ -103,6 +103,15 @@ From source
  
         git clone https://github.com/bup/bup
 
+ - This will leave you on the master branch, which is perfect if you
+   would like to help with development, but if you'd just like to use
+   bup, please check out the latest stable release like this:
+
+        git checkout 0.29.1
+
+   You can see the latest stable release here:
+   https://github.com/bup/bup/releases.
+
  - Install the required python libraries (including the development
    libraries).
 
