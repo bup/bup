@@ -1,5 +1,6 @@
 
-Patches to bup should have a Signed-off-by: header.  If you include this
-header in your patches, this signifies that you are licensing your patch to
-be used under the same terms as the rest of bup, ie. the GNU Library General
-Public License, version 2.
+Patches to bup should have a Signed-off-by: header.  Including this
+header in your patches signifies that you are licensing your changes
+under the terms described in the LICENSE file residing in the
+top-level directory of the source tree, the directory that also
+contains this SIGNED-OFF-BY file.
