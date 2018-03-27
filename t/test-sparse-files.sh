@@ -42,21 +42,21 @@ WVPASS bup save -n src src
 
 WVSTART "sparse file restore (all sparse)"
 WVPASS bup restore -C restore "src/latest/$(pwd)/"
-restore_size=$(WVPASS du -k -s restore | WVPASS cut -f1) || exit $?
+restore_size=$(WVPASS du -k -s restore/src/foo | WVPASS cut -f1) || exit $?
 WVPASS [ "$restore_size" -ge "$((data_size / 1024))" ]
 WVPASS "$top/t/compare-trees" -c src/ restore/src/
 
 WVSTART "sparse file restore --no-sparse (all sparse)"
 WVPASS rm -r restore
 WVPASS bup restore --no-sparse -C restore "src/latest/$(pwd)/"
-restore_size=$(WVPASS du -k -s restore | WVPASS cut -f1) || exit $?
+restore_size=$(WVPASS du -k -s restore/src/foo | WVPASS cut -f1) || exit $?
 WVPASS [ "$restore_size" -ge "$((data_size / 1024))" ]
 WVPASS "$top/t/compare-trees" -c src/ restore/src/
 
 WVSTART "sparse file restore --sparse (all sparse)"
 WVPASS rm -r restore
 WVPASS bup restore --sparse -C restore "src/latest/$(pwd)/"
-restore_size=$(WVPASS du -k -s restore | WVPASS cut -f1) || exit $?
+restore_size=$(WVPASS du -k -s restore/src/foo | WVPASS cut -f1) || exit $?
 WVPASS [ "$restore_size" -le "$((3 * (block_size / 1024)))" ]
 WVPASS "$top/t/compare-trees" -c src/ restore/src/
 
@@ -67,7 +67,7 @@ WVPASS bup index src
 WVPASS bup save -n src src
 WVPASS rm -r restore
 WVPASS bup restore --sparse -C restore "src/latest/$(pwd)/"
-restore_size=$(WVPASS du -k -s restore | WVPASS cut -f1) || exit $?
+restore_size=$(WVPASS du -k -s restore/src/foo | WVPASS cut -f1) || exit $?
 WVPASS [ "$restore_size" -le "$((3 * (block_size / 1024)))" ]
 WVPASS "$top/t/compare-trees" -c src/ restore/src/
 
@@ -77,7 +77,7 @@ WVPASS bup index src
 WVPASS bup save -n src src
 WVPASS rm -r restore
 WVPASS bup restore --sparse -C restore "src/latest/$(pwd)/"
-restore_size=$(WVPASS du -k -s restore | WVPASS cut -f1) || exit $?
+restore_size=$(WVPASS du -k -s restore/src/foo | WVPASS cut -f1) || exit $?
 WVPASS [ "$restore_size" -le "$((5 * (block_size / 1024)))" ]
 WVPASS "$top/t/compare-trees" -c src/ restore/src/
 
@@ -98,7 +98,7 @@ WVPASS bup index src
 WVPASS bup save -n src src
 WVPASS rm -r restore
 WVPASS bup restore --sparse -C restore "src/latest/$(pwd)/"
-restore_size=$(WVPASS du -k -s restore | WVPASS cut -f1) || exit $?
+restore_size=$(WVPASS du -k -s restore/src/foo | WVPASS cut -f1) || exit $?
 WVPASS [ "$restore_size" -le "$((5 * (block_size / 1024)))" ]
 WVPASS "$top/t/compare-trees" -c src/ restore/src/
 
@@ -110,7 +110,7 @@ WVPASS bup index src
 WVPASS bup save -n src src
 WVPASS rm -r restore
 WVPASS bup restore --sparse -C restore "src/latest/$(pwd)/"
-restore_size=$(WVPASS du -k -s restore | WVPASS cut -f1) || exit $?
+restore_size=$(WVPASS du -k -s restore/src/foo | WVPASS cut -f1) || exit $?
 WVPASS [ "$restore_size" -le "$((5 * (block_size / 1024)))" ]
 WVPASS "$top/t/compare-trees" -c src/ restore/src/
 
