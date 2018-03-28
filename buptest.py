@@ -6,7 +6,7 @@ from os.path import basename, dirname, realpath
 from pipes import quote
 from subprocess import PIPE, Popen, check_call
 from traceback import extract_stack
-import subprocess, sys, tempfile
+import errno, os, subprocess, sys, tempfile
 
 from wvtest import WVPASSEQ, wvfailure_count
 
@@ -34,7 +34,11 @@ def no_lingering_errors():
 
 # Assumes (of course) this file is at the top-level of the source tree
 _bup_tmp = realpath(dirname(__file__) + '/t/tmp')
-helpers.mkdirp(_bup_tmp)
+try:
+    os.makedirs(_bup_tmp)
+except OSError as e:
+    if e.errno != errno.EEXIST:
+        raise
 
 
 @contextmanager
