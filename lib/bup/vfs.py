@@ -54,6 +54,7 @@ from time import localtime, strftime
 import exceptions, re, sys
 
 from bup import client, git, metadata
+from bup.compat import range
 from bup.git import BUP_CHUNKED, cp, get_commit_items, parse_commit, tree_decode
 from bup.helpers import debug2, last
 from bup.metadata import Metadata
@@ -576,7 +577,7 @@ def _reverse_suffix_duplicates(strs):
         else:
             ndig = len(str(ndup - 1))
             fmt = '%s-' + '%0' + str(ndig) + 'd'
-            for i in xrange(ndup - 1, -1, -1):
+            for i in range(ndup - 1, -1, -1):
                 yield fmt % (name, i)
 
 def parse_rev(f):

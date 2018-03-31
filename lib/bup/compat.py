@@ -11,6 +11,7 @@ py3 = py_maj >= 3
 
 if py3:
 
+    range = range
     str_type = str
 
     def add_ex_tb(ex):
@@ -26,6 +27,7 @@ if py3:
 
 else:  # Python 2
 
+    range = xrange
     str_type = basestring
 
     def add_ex_tb(ex):
