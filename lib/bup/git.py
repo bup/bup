@@ -637,6 +637,12 @@ class PackWriter:
     def __del__(self):
         self.close()
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        self.close()
+
     def _open(self):
         if not self.file:
             objdir = dir = os.path.join(self.repo_dir, 'objects')
