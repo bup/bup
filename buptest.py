@@ -4,7 +4,7 @@ from collections import namedtuple
 from contextlib import contextmanager
 from os.path import basename, dirname, realpath
 from pipes import quote
-from subprocess import PIPE, Popen, check_call
+from subprocess import PIPE, Popen
 from traceback import extract_stack
 import errno, os, subprocess, sys, tempfile
 
@@ -51,41 +51,49 @@ def test_tempdir(prefix):
         subprocess.call(['rm', '-rf', tmpdir])
 
 
+ex_res = namedtuple('SubprocResult', ['out', 'err', 'proc', 'rc'])
+
+def run(cmd, check=True, input=None, **kwargs):
+    """Run a subprocess as per subprocess.Popen(cmd, **kwargs) followed by
+    communicate(input=input).  If check is true, then throw an
+    exception if the subprocess exits with non-zero status.  Return a
+    SubprocResult tuple.
+
+    """
+    if input:
+        assert 'stdin' not in kwargs
+        kwargs['stdin'] = PIPE
+    p = Popen(cmd, **kwargs)
+    out, err = p.communicate(input=input)
+    if check and p.returncode != 0:
+        raise Exception('subprocess %r failed with status %d%s'
+                        % (' '.join(map(quote, cmd)), p.returncode,
+                           (', stderr: %r' % err) if err else ''))
+    return ex_res(out=out, err=err, proc=p, rc=p.returncode)
+
 def logcmd(cmd):
     if isinstance(cmd, basestring):
         print(cmd, file=sys.stderr)
     else:
         print(' '.join(map(quote, cmd)), file=sys.stderr)
 
-
-SubprocInfo = namedtuple('SubprocInfo', ('out', 'err', 'rc', 'p'))
-
-def exo(cmd, input=None, stdin=None, stdout=PIPE, stderr=PIPE,
-        shell=False, check=True):
-    """Print cmd to stderr, run it, and return the resulting SubprocInfo.
-    The keyword arguments are passed to Popen, and the defaults
-    capture both stdout and stderr.
-
+def ex(cmd, **kwargs):
+    """Print cmd to stderr and then run it as per ex(...).
+    Print the subprocess stderr to stderr if stderr=PIPE and there's
+    any data.
     """
     logcmd(cmd)
-    p = Popen(cmd,
-              stdin=(PIPE if input else stdin),
-              stdout=stdout,
-              stderr=stderr,
-              shell=shell)
-    out, err = p.communicate(input=input)
-    if check and p.returncode != 0:
-        raise Exception('subprocess %r failed with status %d%s'
-                        % (' '.join(map(quote, cmd)),
-                           p.returncode,
-                           (', stderr: %r' % err) if stderr else ''))
-    return SubprocInfo(out=out, err=err, rc=p.returncode, p=p)
+    result = run(cmd, **kwargs)
+    if result.err:
+        sys.stderr.write(result.err)
+    return result
 
-def exc(cmd, input=None, stdout=None, stderr=None, shell=False, check=True):
-    """Print cmd to stderr, run it, and return the resulting SubprocInfo.
-    The keyword arguments are passed to Popen, and the defaults
-    allow stdout and stderr to pass through.
+def exo(cmd, **kwargs):
+    """Print cmd to stderr and then run it as per ex(..., stdout=PIPE).
+    Print the subprocess stderr to stderr if stderr=PIPE and there's
+    any data.
 
     """
-    return exo(cmd, input=input, stdout=stdout, stderr=stderr, shell=shell,
-               check=check)
+    assert 'stdout' not in kwargs
+    kwargs['stdout'] = PIPE
+    return ex(cmd, **kwargs)

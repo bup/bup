@@ -23,23 +23,17 @@ sys.path[:0] = [abspath(script_home + '/../lib'), abspath(script_home + '/..')]
 top = os.getcwd()
 bup_cmd = top + '/bup'
 
-from buptest import exc, exo, test_tempdir
+from buptest import ex, exo, test_tempdir
 from wvtest import wvfail, wvpass, wvpasseq, wvpassne, wvstart
 
 from bup import compat
 from bup.helpers import partition, period_as_secs, readpipe
 
 
-def bup(*args):
-    return exo((bup_cmd,) + args).out
-
-def bupc(*args):
-    return exc((bup_cmd,) + args)
-
 def create_older_random_saves(n, start_utc, end_utc):
     with open('foo', 'w') as f:
         pass
-    exc(['git', 'add', 'foo'])
+    ex(['git', 'add', 'foo'])
     utcs = set()
     while len(utcs) != n:
         utcs.add(randint(start_utc, end_utc))
@@ -47,8 +41,8 @@ def create_older_random_saves(n, start_utc, end_utc):
     for utc in utcs:
         with open('foo', 'w') as f:
             f.write(str(utc) + '\n')
-        exc(['git', 'commit', '--date', str(utc), '-qam', str(utc)])
-    exc(['git', 'gc', '--aggressive'])
+        ex(['git', 'commit', '--date', str(utc), '-qam', str(utc)])
+    ex(['git', 'gc', '--aggressive'])
     return utcs
 
 # There is corresponding code in bup for some of this, but the
@@ -160,23 +154,23 @@ with test_tempdir('prune-older-') as tmpdir:
     now = int(time())
     three_years_ago = now - (60 * 60 * 24 * 366 * 3)
     chdir(tmpdir)
-    exc(['git', 'init', 'work'])
+    ex(['git', 'init', 'work'])
 
     wvstart('generating ' + str(save_population) + ' random saves')
     chdir(tmpdir + '/work')
     save_utcs = create_older_random_saves(save_population, three_years_ago, now)
     chdir(tmpdir)
     test_set_hash = exo(['git', 'show-ref', '-s', 'master']).out.rstrip()
-    ls_saves = bup('ls', 'master').splitlines()
+    ls_saves = exo((bup_cmd, 'ls', 'master')).out.splitlines()
     wvpasseq(save_population + 1, len(ls_saves))
 
     wvstart('ensure everything kept, if no keep arguments')
-    exc(['git', 'reset', '--hard', test_set_hash])
-    proc = exo((bup_cmd,
-                'prune-older', '-v', '--unsafe', '--no-gc',
-                '--wrt', str(now)) \
-               + ('master',),
-               stdout=None, stderr=PIPE, check=False)
+    ex(['git', 'reset', '--hard', test_set_hash])
+    proc = ex((bup_cmd,
+               'prune-older', '-v', '--unsafe', '--no-gc',
+               '--wrt', str(now)) \
+              + ('master',),
+              stdout=None, stderr=PIPE, check=False)
     wvpassne(proc.rc, 0)
     wvpass('at least one keep argument is required' in proc.err)
     check_prune_result(save_utcs)
@@ -189,19 +183,19 @@ with test_tempdir('prune-older-') as tmpdir:
                                     # some outside the save range.
                                     three_years_ago - period_scale['m'],
                                     now):
-        exc(['git', 'reset', '--hard', test_set_hash])
+        ex(['git', 'reset', '--hard', test_set_hash])
         expected = sorted(expected_retentions(save_utcs, now, spec))
-        exc((bup_cmd,
-             'prune-older', '-v', '--unsafe', '--no-gc', '--wrt', str(now)) \
-            + period_spec_to_period_args(spec) \
-            + ('master',))
+        ex((bup_cmd,
+            'prune-older', '-v', '--unsafe', '--no-gc', '--wrt', str(now)) \
+           + period_spec_to_period_args(spec) \
+           + ('master',))
         check_prune_result(expected)
 
 
     # More expensive because we have to recreate the repo each time
     wvstart('running %d generative gc tests on %d saves' % (prune_gc_cycles,
                                                             save_population))
-    exc(['git', 'reset', '--hard', test_set_hash])
+    ex(['git', 'reset', '--hard', test_set_hash])
     copytree('work/.git', 'clean-test-repo', symlinks=True)
     for spec in unique_period_specs(prune_gc_cycles,
                                     # Make it more likely we'll have
@@ -211,8 +205,8 @@ with test_tempdir('prune-older-') as tmpdir:
         rmtree('work/.git')
         copytree('clean-test-repo', 'work/.git')
         expected = sorted(expected_retentions(save_utcs, now, spec))
-        exc((bup_cmd,
-             'prune-older', '-v', '--unsafe', '--wrt', str(now)) \
-            + period_spec_to_period_args(spec) \
-            + ('master',))
+        ex((bup_cmd,
+            'prune-older', '-v', '--unsafe', '--wrt', str(now)) \
+           + period_spec_to_period_args(spec) \
+           + ('master',))
         check_prune_result(expected)
