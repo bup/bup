@@ -43,6 +43,9 @@ class LocalRepo:
         (e.g. refs, tags, etc.)."""
         return self._id
 
+    def is_remote(self):
+        return False
+
     def cat(self, ref):
         """If ref does not exist, yield (None, None, None).  Otherwise yield
         (oidx, type, size), and then all of the data associated with
@@ -93,6 +96,9 @@ class RemoteRepo:
         doesn't share the same repository-specific information
         (e.g. refs, tags, etc.)."""
         return self._id
+
+    def is_remote(self):
+        return True
 
     def cat(self, ref):
         """If ref does not exist, yield (None, None, None).  Otherwise yield
