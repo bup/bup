@@ -457,7 +457,7 @@ def root_items(repo, names=None, want_meta=True):
     for ref in names:
         if ref in ('.', '.tag'):
             continue
-        it = repo.cat(ref)
+        it = repo.cat('refs/heads/' + ref)
         oidx, typ, size = next(it)
         if not oidx:
             for _ in it: pass
