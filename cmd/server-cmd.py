@@ -12,11 +12,12 @@ from bup import options, git
 from bup.git import MissingObject
 from bup.helpers import (Conn, debug1, debug2, linereader, lines_until_sentinel,
                          log)
+from bup.repo import LocalRepo
 
 
 suspended_w = None
 dumb_server_mode = False
-
+repo = None
 
 def do_help(conn, junk):
     conn.write('Commands:\n    %s\n' % '\n    '.join(sorted(commands)))
@@ -31,9 +32,15 @@ def _set_mode():
 
 
 def _init_session(reinit_with_new_repopath=None):
+    global repo
     if reinit_with_new_repopath is None and git.repodir:
+        if not repo:
+            repo = LocalRepo()
         return
     git.check_repo_or_die(reinit_with_new_repopath)
+    if repo:
+        repo.close()
+    repo = LocalRepo()
     # OK. we now know the path is a proper repository. Record this path in the
     # environment so that subprocesses inherit it and know where to operate.
     os.environ['BUP_DIR'] = git.repodir
