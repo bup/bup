@@ -608,8 +608,8 @@ class PackWriter:
     """Writes Git objects inside a pack file."""
     def __init__(self, objcache_maker=_make_objcache, compression_level=1,
                  run_midx=True, on_pack_finish=None,
-                 max_pack_size=None, max_pack_objects=None):
-        self.repo_dir = repo()
+                 max_pack_size=None, max_pack_objects=None, repo_dir=None):
+        self.repo_dir = repo_dir or repo()
         self.file = None
         self.parentfd = None
         self.count = 0
