@@ -11,6 +11,18 @@ class LocalRepo:
         self._cp = git.cp(self.repo_dir)
         self.rev_list = partial(git.rev_list, repo_dir=self.repo_dir)
 
+    def close(self):
+        pass
+
+    def __del__(self):
+        self.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        self.close()
+
     def cat(self, ref):
         """If ref does not exist, yield (None, None, None).  Otherwise yield
         (oidx, type, size), and then all of the data associated with
@@ -40,6 +52,20 @@ class RemoteRepo:
         self.address = address
         self.client = client.Client(address)
         self.rev_list = self.client.rev_list
+
+    def close(self):
+        if self.client:
+            self.client.close()
+            self.client = None
+
+    def __del__(self):
+        self.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        self.close()
 
     def cat(self, ref):
         """If ref does not exist, yield (None, None, None).  Otherwise yield
