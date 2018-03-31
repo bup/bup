@@ -383,4 +383,12 @@ def test_duplicate_save_dates():
                       'latest'),
                      tuple(sorted(x[0] for x in vfs.contents(repo, revlist))))
 
-# FIXME: add tests for the want_meta=False cases.
+@wvtest
+def test_item_read_write():
+    with no_lingering_errors():
+        x = vfs.Root(meta=13)
+        stream = BytesIO()
+        vfs.write_item(stream, x)
+        print('stream:', repr(stream.getvalue()), stream.tell(), file=sys.stderr)
+        stream.seek(0)
+        wvpasseq(x, vfs.read_item(stream))

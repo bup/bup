@@ -110,11 +110,9 @@ def read_bvec(port):
 def skip_bvec(port):
     port.read(read_vuint(port))
 
-
-def pack(types, *args):
+def send(port, types, *args):
     if len(types) != len(args):
         raise Exception('number of arguments does not match format string')
-    port = BytesIO()
     for (type, value) in zip(types, args):
         if type == 'V':
             write_vuint(port, value)
@@ -124,12 +122,9 @@ def pack(types, *args):
             write_bvec(port, value)
         else:
             raise Exception('unknown xpack format string item "' + type + '"')
-    return port.getvalue()
 
-
-def unpack(types, data):
+def recv(port, types):
     result = []
-    port = BytesIO(data)
     for type in types:
         if type == 'V':
             result.append(read_vuint(port))
@@ -140,3 +135,12 @@ def unpack(types, data):
         else:
             raise Exception('unknown xunpack format string item "' + type + '"')
     return result
+
+def pack(types, *args):
+    port = BytesIO()
+    send(port, types, *args)
+    return port.getvalue()
+
+def unpack(types, data):
+    port = BytesIO(data)
+    return recv(port, types)

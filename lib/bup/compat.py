@@ -11,6 +11,7 @@ py3 = py_maj >= 3
 
 if py3:
 
+    from shlex import quote
     range = range
     str_type = str
 
@@ -27,6 +28,7 @@ if py3:
 
 else:  # Python 2
 
+    from pipes import quote
     range = xrange
     str_type = basestring
 

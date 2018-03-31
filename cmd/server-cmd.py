@@ -8,7 +8,7 @@ exec "$bup_python" "$0" ${1+"$@"}
 from __future__ import absolute_import
 import os, sys, struct, subprocess
 
-from bup import options, git
+from bup import options, git, vfs, vint
 from bup.git import MissingObject
 from bup.helpers import (Conn, debug1, debug2, linereader, lines_until_sentinel,
                          log)
@@ -233,6 +233,29 @@ def rev_list(conn, _):
         raise GitError(msg)
     conn.ok()
 
+def resolve(conn, args):
+    _init_session()
+    (flags,) = args.split()
+    flags = int(flags)
+    want_meta = bool(flags & 1)
+    follow = bool(flags & 2)
+    have_parent = bool(flags & 4)
+    parent = vfs.read_resolution(conn) if have_parent else None
+    path = vint.read_bvec(conn)
+    if not len(path):
+        raise Exception('Empty resolve path')
+    try:
+        res = list(vfs.resolve(repo, path, parent=parent, want_meta=want_meta,
+                               follow=follow))
+    except vfs.IOError as ex:
+        res = ex
+    if isinstance(res, vfs.IOError):
+        conn.write(b'\0')  # error
+        vfs.write_ioerror(conn, res)
+    else:
+        conn.write(b'\1')  # success
+        vfs.write_resolution(conn, res)
+    conn.ok()
 
 optspec = """
 bup server
@@ -259,7 +282,8 @@ commands = {
     'cat': join,  # apocryphal alias
     'cat-batch' : cat_batch,
     'refs': refs,
-    'rev-list': rev_list
+    'rev-list': rev_list,
+    'resolve': resolve
 }
 
 # FIXME: this protocol is totally lame and not at all future-proof.
