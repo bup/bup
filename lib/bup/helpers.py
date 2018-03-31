@@ -322,19 +322,13 @@ def detect_fakeroot():
     return os.getenv("FAKEROOTKEY") != None
 
 
-_warned_about_superuser_detection = None
-def is_superuser():
-    if sys.platform.startswith('cygwin'):
-        if sys.getwindowsversion()[0] > 5:
-            # Sounds like situation is much more complicated here
-            global _warned_about_superuser_detection
-            if not _warned_about_superuser_detection:
-                log("can't detect root status for OS version > 5; assuming not root")
-                _warned_about_superuser_detection = True
-            return False
-        import ctypes
-        return ctypes.cdll.shell32.IsUserAnAdmin()
-    else:
+if sys.platform.startswith('cygwin'):
+    def is_superuser():
+        # https://cygwin.com/ml/cygwin/2015-02/msg00057.html
+        groups = os.getgroups()
+        return 544 in groups or 0 in groups
+else:
+    def is_superuser():
         return os.geteuid() == 0
 
 
