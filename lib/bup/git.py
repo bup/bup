@@ -1206,7 +1206,7 @@ class CatPipe:
             return
         info = hdr.split(' ')
         if len(info) != 3 or len(info[0]) != 40:
-            raise GitError('expected object (id, type, size), got %r' % spl)
+            raise GitError('expected object (id, type, size), got %r' % info)
         oidx, typ, size = info
         size = int(size)
         it = _AbortableIter(chunkyreader(self.p.stdout, size),
