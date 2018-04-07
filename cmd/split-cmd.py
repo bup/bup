@@ -42,11 +42,11 @@ fanout=    average number of blobs in a single tree
 bwlimit=   maximum bytes/sec to transmit to server
 #,compress=  set compression level to # (0-9, 9 is highest) [1]
 """
+handle_ctrl_c()
+
 o = options.Options(optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
 
-handle_ctrl_c()
-git.check_repo_or_die()
 if not (opt.blobs or opt.tree or opt.commit or opt.name or
         opt.noop or opt.copy):
     o.fatal("use one or more of -b, -t, -c, -n, --noop, --copy")
@@ -100,15 +100,18 @@ start_time = time.time()
 if opt.name and not valid_save_name(opt.name):
     o.fatal("'%s' is not a valid branch name." % opt.name)
 refname = opt.name and 'refs/heads/%s' % opt.name or None
+
 if opt.noop or opt.copy:
     cli = pack_writer = oldref = None
 elif opt.remote or is_reverse:
+    git.check_repo_or_die()
     cli = client.Client(opt.remote)
     oldref = refname and cli.read_ref(refname) or None
     pack_writer = cli.new_packwriter(compression_level=opt.compress,
                                      max_pack_size=max_pack_size,
                                      max_pack_objects=max_pack_objects)
 else:
+    git.check_repo_or_die()
     cli = None
     oldref = refname and git.read_ref(refname) or None
     pack_writer = git.PackWriter(compression_level=opt.compress,
