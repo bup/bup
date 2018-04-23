@@ -6,8 +6,7 @@ exec "$bup_python" "$0" ${1+"$@"}
 # end of bup preamble
 
 from __future__ import absolute_import, print_function
-from sys import stderr
-import sys
+import os, sys
 
 if sys.platform.startswith('cygwin'):
     groups = os.getgroups()
@@ -16,7 +15,6 @@ if sys.platform.startswith('cygwin'):
     else:
         print('none')
 else:
-    import os
     if os.environ.get('FAKEROOTKEY'):
         print('fake')
     else:
