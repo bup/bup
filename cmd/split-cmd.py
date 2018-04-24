@@ -211,7 +211,7 @@ if cli:
 secs = time.time() - start_time
 size = hashsplit.total_split
 if opt.bench:
-    log('bup: %.2fkbytes in %.2f secs = %.2f kbytes/sec\n'
+    log('bup: %.2f kbytes in %.2f secs = %.2f kbytes/sec\n'
         % (size/1024., secs, size/1024./secs))
 
 if saved_errors:
