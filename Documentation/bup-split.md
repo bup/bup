@@ -12,7 +12,9 @@ bup split \[-t\] \[-c\] \[-n *name*\] COMMON\_OPTIONS
 
 bup split -b COMMON\_OPTIONS
 
-bup split \<--noop \[--copy\]|--copy\> COMMON\_OPTIONS
+bup split --copy COMMON\_OPTIONS
+
+bup split --noop \<\[-t|-b\]\> COMMON\_OPTIONS
 
 COMMON\_OPTIONS
   ~ \[-r *host*:*path*\] \[-v\] \[-q\] \[-d *seconds-since-epoch*\] \[\--bench\]
@@ -76,9 +78,11 @@ being the most likely choice.
 
 \--noop
 :   read the data and split it into blocks based on the "bupsplit"
-    rolling checksum algorithm, but don't do anything with the blocks.
-    This is mostly useful for benchmarking.  Incompatible with -n, -t,
-    -c, and -b.
+    rolling checksum algorithm, but don't store anything in the repo.
+    Can be combined with -b or -t to compute (but not store) the git
+    blobs or tree ids for the dataset. This is mostly useful for
+    benchmarking and validating the bupsplit algorithm. Incompatible
+    with -n and -c.
 
 \--copy
 :   like `--noop`, but also write the data to stdout.  This can be

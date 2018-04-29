@@ -18,7 +18,8 @@ from bup.helpers import (add_error, handle_ctrl_c, hostname, log, parse_num,
 optspec = """
 bup split [-t] [-c] [-n name] OPTIONS [--git-ids | filenames...]
 bup split -b OPTIONS [--git-ids | filenames...]
-bup split <--noop [--copy]|--copy>  OPTIONS [--git-ids | filenames...]
+bup split --copy OPTIONS [--git-ids | filenames...]
+bup split --noop [<-b|-t>] OPTIONS [--git-ids | filenames...]
 --
  Modes:
 b,blobs    output a series of blob ids.  Implies --fanout=0.
@@ -49,9 +50,10 @@ git.check_repo_or_die()
 if not (opt.blobs or opt.tree or opt.commit or opt.name or
         opt.noop or opt.copy):
     o.fatal("use one or more of -b, -t, -c, -n, --noop, --copy")
-if (opt.noop or opt.copy) and (opt.blobs or opt.tree or
-                               opt.commit or opt.name):
-    o.fatal('--noop and --copy are incompatible with -b, -t, -c, -n')
+if opt.copy and (opt.blobs or opt.tree):
+    o.fatal('--copy is incompatible with -b, -t')
+if (opt.noop or opt.copy) and (opt.commit or opt.name):
+    o.fatal('--noop and --copy are incompatible with -c, -n')
 if opt.blobs and (opt.tree or opt.commit or opt.name):
     o.fatal('-b is incompatible with -t, -c, -n')
 if extra and opt.git_ids:
@@ -148,28 +150,34 @@ else:
     # the input either comes from a series of files or from stdin.
     files = extra and (open(fn) for fn in extra) or [sys.stdin]
 
-if pack_writer and opt.blobs:
-    shalist = hashsplit.split_to_blobs(pack_writer.new_blob, files,
+if pack_writer:
+    new_blob = pack_writer.new_blob
+    new_tree = pack_writer.new_tree
+elif opt.blobs or opt.tree:
+    # --noop mode
+    new_blob = lambda content: git.calc_hash('blob', content)
+    new_tree = lambda shalist: git.calc_hash('tree', git.tree_encode(shalist))
+
+if opt.blobs:
+    shalist = hashsplit.split_to_blobs(new_blob, files,
                                        keep_boundaries=opt.keep_boundaries,
                                        progress=prog)
     for (sha, size, level) in shalist:
         print sha.encode('hex')
         reprogress()
-elif pack_writer:  # tree or commit or name
+elif opt.tree or opt.commit or opt.name:
     if opt.name: # insert dummy_name which may be used as a restore target
         mode, sha = \
-            hashsplit.split_to_blob_or_tree(pack_writer.new_blob,
-                                            pack_writer.new_tree,
-                                            files,
+            hashsplit.split_to_blob_or_tree(new_blob, new_tree, files,
                                             keep_boundaries=opt.keep_boundaries,
                                             progress=prog)
         splitfile_name = git.mangle_name('data', hashsplit.GIT_MODE_FILE, mode)
         shalist = [(mode, splitfile_name, sha)]
     else:
         shalist = hashsplit.split_to_shalist(
-                      pack_writer.new_blob, pack_writer.new_tree, files,
+                      new_blob, new_tree, files,
                       keep_boundaries=opt.keep_boundaries, progress=prog)
-    tree = pack_writer.new_tree(shalist)
+    tree = new_tree(shalist)
 else:
     last = 0
     it = hashsplit.hashsplit_iter(files,
