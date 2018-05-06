@@ -169,7 +169,8 @@ def print_clean_line(dest, content, width, sep=None):
     os.write(dest, content)
     if len(content) < width:
         os.write(dest, ' ' * (width - len(content)))
-    os.write(dest, sep)
+    if sep:
+        os.write(dest, sep)
 
 def filter_output(src_out, src_err, dest_out, dest_err):
     """Transfer data from src_out to dest_out and src_err to dest_err via
