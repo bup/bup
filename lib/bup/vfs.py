@@ -13,7 +13,9 @@ Each path is represented by an item that has least an item.meta which
 may be either a Metadata object, or an integer mode.  Functions like
 item_mode() and item_size() will return the mode and size in either
 case.  Any item.meta Metadata instances must not be modified directly.
-Make a copy to modify via item.meta.copy() if needed.
+Make a copy to modify via item.meta.copy() if needed, or call
+copy_item().
+
 
 The want_meta argument is advisory for calls that accept it, and it
 may not be honored.  Callers must be able to handle an item.meta value
@@ -312,9 +314,9 @@ def copy_item(item):
 
     """
     meta = getattr(item, 'meta', None)
-    if not meta:
-        return item
-    return(item._replace(meta=meta.copy()))
+    if isinstance(meta, Metadata):
+        return(item._replace(meta=meta.copy()))
+    return item
 
 def item_mode(item):
     """Return the integer mode (stat st_mode) for item."""
