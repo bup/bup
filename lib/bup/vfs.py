@@ -16,7 +16,6 @@ case.  Any item.meta Metadata instances must not be modified directly.
 Make a copy to modify via item.meta.copy() if needed, or call
 copy_item().
 
-
 The want_meta argument is advisory for calls that accept it, and it
 may not be honored.  Callers must be able to handle an item.meta value
 that is either an instance of Metadata or an integer mode, perhaps
@@ -238,8 +237,8 @@ _tags = Tags(meta=default_dir_mode)
 ### vfs cache
 
 ### A general purpose shared cache with (currently) cheap random
-### eviction.  There is currently no weighting so a single commit item
-### is just as likely to be evicted as an entire "rev-list".  See
+### eviction.  At the moment there is no weighting so a single commit
+### item is just as likely to be evicted as an entire "rev-list".  See
 ### is_valid_cache_key for a description of the expected content.
 
 _cache = {}
@@ -254,12 +253,15 @@ def clear_cache():
 def is_valid_cache_key(x):
     """Return logically true if x looks like it could be a valid cache key
     (with respect to structure).  Current valid cache entries:
+      (path, parent, want_meta, dref) -> resolution
       commit_oid -> commit
       commit_oid + ':r' -> rev-list
          i.e. rev-list -> {'.', commit, '2012...', next_commit, ...}
     """
     # Suspect we may eventually add "(container_oid, name) -> ...", and others.
     x_t = type(x)
+    if x_t is tuple:
+        return len(x) == 4
     if x_t is bytes:
         if len(x) == 20:
             return True
@@ -286,7 +288,6 @@ def cache_notice(key, value):
     _cache_keys[victim_i] = key
     _cache[key] = value
 
-
 def cache_get_commit_item(oid, need_meta=True):
     """Return the requested tree item if it can be found in the cache.
     When need_meta is true don't return a cached item that only has a
@@ -306,7 +307,6 @@ def cache_get_revlist_item(oid, need_meta=True):
     commit = cache_get_commit_item(oid, need_meta=need_meta)
     if commit:
         return RevList(oid=oid, meta=commit.meta)
-
 
 def copy_item(item):
     """Return a completely independent copy of item, such that
@@ -764,6 +764,15 @@ def contents(repo, item, names=None, want_meta=True):
         yield x
 
 def _resolve_path(repo, path, parent=None, want_meta=True, deref=False):
+    cache_key = (tuple(path), parent, not not want_meta, not not deref)
+    resolution = cache_get(cache_key)
+    if resolution:
+        return resolution
+
+    def notice_resolution(r):
+        cache_notice(cache_key, r)
+        return r
+
     def raise_dir_required_but_not_dir(path, parent, past):
         raise IOError(ENOTDIR,
                       "path %r%s resolves to non-directory %r"
@@ -789,10 +798,10 @@ def _resolve_path(repo, path, parent=None, want_meta=True, deref=False):
         deref = True
     if not future:  # path was effectively '.' or '/'
         if is_absolute:
-            return (('', _root),)
+            return notice_resolution((('', _root),))
         if parent:
-            return tuple(parent)
-        return [('', _root)]
+            return notice_resolution(tuple(parent))
+        return notice_resolution((('', _root),))
     if is_absolute:
         past = [('', _root)]
     else:
@@ -802,7 +811,7 @@ def _resolve_path(repo, path, parent=None, want_meta=True, deref=False):
         if not future:
             if must_be_dir and not S_ISDIR(item_mode(past[-1][1])):
                 raise_dir_required_but_not_dir(path, parent, past)
-            return tuple(past)
+            return notice_resolution(tuple(past))
         segment = future.pop()
         if segment == '..':
             assert len(past) > 0
@@ -823,7 +832,7 @@ def _resolve_path(repo, path, parent=None, want_meta=True, deref=False):
                 past[-1] = parent_name, parent_item
             if not item:
                 past.append((segment, None),)
-                return tuple(past)
+                return notice_resolution(tuple(past))
             mode = item_mode(item)
             if not S_ISLNK(mode):
                 if not S_ISDIR(mode):
@@ -837,7 +846,7 @@ def _resolve_path(repo, path, parent=None, want_meta=True, deref=False):
                                       terminus=past)
                     if must_be_dir:
                         raise_dir_required_but_not_dir(path, parent, past)
-                    return tuple(past)
+                    return notice_resolution(tuple(past))
                 # It's treeish
                 if want_meta and type(item) in real_tree_types:
                     dir_meta = _find_treeish_oid_metadata(repo, item.oid)
@@ -857,7 +866,7 @@ def _resolve_path(repo, path, parent=None, want_meta=True, deref=False):
                 is_absolute, _, target_future = _decompose_path(target)
                 if is_absolute:
                     if not target_future:  # path was effectively '/'
-                        return (('', _root),)
+                        return notice_resolution((('', _root),))
                     past = [('', _root)]
                     future = target_future
                 else:
