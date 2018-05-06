@@ -49,6 +49,7 @@ from __future__ import absolute_import, print_function
 from collections import namedtuple
 from errno import ELOOP, ENOENT, ENOTDIR
 from itertools import chain, dropwhile, groupby, izip, tee
+from random import randrange
 from stat import S_IFDIR, S_IFLNK, S_IFREG, S_ISDIR, S_ISLNK, S_ISREG
 from time import localtime, strftime
 import exceptions, re, sys
@@ -273,13 +274,15 @@ def cache_notice(key, value):
     assert is_valid_cache_key(key)
     if key in _cache:
         return
-    _cache[key] = value
     if len(_cache) < _cache_max_items:
+        _cache_keys.append(key)
+        _cache[key] = value
         return
-    victim_i = random.randrange(0, len(_cache_keys))
+    victim_i = randrange(0, len(_cache_keys))
     victim = _cache_keys[victim_i]
+    del _cache[victim]
     _cache_keys[victim_i] = key
-    _cache.pop(victim)
+    _cache[key] = value
 
 
 def cache_get_commit_item(oid, need_meta=True):

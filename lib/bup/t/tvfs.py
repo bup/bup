@@ -22,15 +22,49 @@ bup_tmp = os.path.realpath('../../../t/tmp')
 bup_path = top_dir + '/bup'
 start_dir = os.getcwd()
 
+def ex(cmd, **kwargs):
+    print(shstr(cmd), file=stderr)
+    return exc(cmd, **kwargs)
+
+@wvtest
+def test_cache_behavior():
+    orig_max = vfs._cache_max_items
+    try:
+        vfs._cache_max_items = 2
+        vfs.clear_cache()
+        wvpasseq({}, vfs._cache)
+        wvpasseq([], vfs._cache_keys)
+        wvfail(vfs._cache_keys)
+        wvexcept(AssertionError, vfs.cache_notice, 'x', 1)
+        key_0 = b'\0' * 20
+        key_1 = b'\1' * 20
+        key_2 = b'\2' * 20
+        vfs.cache_notice(key_0, 'something')
+        wvpasseq({key_0 : 'something'}, vfs._cache)
+        wvpasseq([key_0], vfs._cache_keys)
+        vfs.cache_notice(key_1, 'something else')
+        wvpasseq({key_0 : 'something', key_1 : 'something else'}, vfs._cache)
+        wvpasseq(frozenset([key_0, key_1]), frozenset(vfs._cache_keys))
+        vfs.cache_notice(key_2, 'and also')
+        wvpasseq(2, len(vfs._cache))
+        wvpass(frozenset(vfs._cache.iteritems())
+               < frozenset({key_0 : 'something',
+                            key_1 : 'something else',
+                            key_2 : 'and also'}.iteritems()))
+        wvpasseq(2, len(vfs._cache_keys))
+        wvpass(frozenset(vfs._cache_keys) < frozenset([key_0, key_1, key_2]))
+        vfs.clear_cache()
+        wvpasseq({}, vfs._cache)
+        wvpasseq([], vfs._cache_keys)
+    finally:
+        vfs._cache_max_items = orig_max
+        vfs.clear_cache()
+
 ## The clear_cache() calls below are to make sure that the test starts
 ## from a known state since at the moment the cache entry for a given
 ## item (like a commit) can change.  For example, its meta value might
 ## be promoted from a mode to a Metadata instance once the tree it
 ## refers to is traversed.
-
-def ex(cmd, **kwargs):
-    print(shstr(cmd), file=stderr)
-    return exc(cmd, **kwargs)
 
 TreeDictValue = namedtuple('TreeDictValue', ('name', 'oid', 'meta'))
 
