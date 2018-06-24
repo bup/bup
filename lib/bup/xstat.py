@@ -21,7 +21,8 @@ except AttributeError as e:
     _bup_lutimes = False
 
 
-def timespec_to_nsecs((ts_s, ts_ns)):
+def timespec_to_nsecs(ts):
+    ts_s, ts_ns = ts
     return ts_s * 10**9 + ts_ns
 
 
