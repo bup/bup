@@ -16,7 +16,8 @@ WVPASS cd "$tmpdir"
 WVPASS bup init
 
 WVSTART "split --noop"
-WVPASS bup split --noop <"$top/t/testfile1"
+WVPASS bup split --noop <"$top/t/testfile1" >noop.tmp
+WVPASSEQ '' "$(<noop.tmp)"
 WVPASS bup split --noop -b <"$top/t/testfile1" >tags1n.tmp
 WVPASS bup split --noop -t <"$top/t/testfile2" >tags2tn.tmp
 WVPASSEQ $(find "$BUP_DIR/objects/pack" -name '*.pack' | wc -l) 0
