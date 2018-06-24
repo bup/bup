@@ -19,7 +19,7 @@ optspec = """
 bup split [-t] [-c] [-n name] OPTIONS [--git-ids | filenames...]
 bup split -b OPTIONS [--git-ids | filenames...]
 bup split --copy OPTIONS [--git-ids | filenames...]
-bup split --noop [<-b|-t>] OPTIONS [--git-ids | filenames...]
+bup split --noop [-b|-t] OPTIONS [--git-ids | filenames...]
 --
  Modes:
 b,blobs    output a series of blob ids.  Implies --fanout=0.

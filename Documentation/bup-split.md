@@ -14,7 +14,7 @@ bup split -b COMMON\_OPTIONS
 
 bup split --copy COMMON\_OPTIONS
 
-bup split --noop \<\[-t|-b\]\> COMMON\_OPTIONS
+bup split --noop \[-t|-b\] COMMON\_OPTIONS
 
 COMMON\_OPTIONS
   ~ \[-r *host*:*path*\] \[-v\] \[-q\] \[-d *seconds-since-epoch*\] \[\--bench\]
