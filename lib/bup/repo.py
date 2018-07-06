@@ -1,15 +1,29 @@
 
 from __future__ import absolute_import
+from os.path import realpath
 from functools import partial
 
 from bup import client, git
 
 
+_next_repo_id = 0
+_repo_ids = {}
+
+def _repo_id(key):
+    global _next_repo_id, _repo_ids
+    repo_id = _repo_ids.get(key)
+    if repo_id:
+        return repo_id
+    next_id = _next_repo_id = _next_repo_id + 1
+    _repo_ids[key] = next_id
+    return next_id
+
 class LocalRepo:
     def __init__(self, repo_dir=None):
-        self.repo_dir = repo_dir or git.repo()
+        self.repo_dir = realpath(repo_dir or git.repo())
         self._cp = git.cp(self.repo_dir)
         self.rev_list = partial(git.rev_list, repo_dir=self.repo_dir)
+        self._id = _repo_id(self.repo_dir)
 
     def close(self):
         pass
@@ -22,6 +36,12 @@ class LocalRepo:
 
     def __exit__(self, type, value, traceback):
         self.close()
+
+    def id(self):
+        """Return an identifier that differs from any other repository that
+        doesn't share the same repository-specific information
+        (e.g. refs, tags, etc.)."""
+        return self._id
 
     def cat(self, ref):
         """If ref does not exist, yield (None, None, None).  Otherwise yield
@@ -52,6 +72,7 @@ class RemoteRepo:
         self.address = address
         self.client = client.Client(address)
         self.rev_list = self.client.rev_list
+        self._id = _repo_id(self.address)
 
     def close(self):
         if self.client:
@@ -66,6 +87,12 @@ class RemoteRepo:
 
     def __exit__(self, type, value, traceback):
         self.close()
+
+    def id(self):
+        """Return an identifier that differs from any other repository that
+        doesn't share the same repository-specific information
+        (e.g. refs, tags, etc.)."""
+        return self._id
 
     def cat(self, ref):
         """If ref does not exist, yield (None, None, None).  Otherwise yield

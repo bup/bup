@@ -253,7 +253,7 @@ def clear_cache():
 def is_valid_cache_key(x):
     """Return logically true if x looks like it could be a valid cache key
     (with respect to structure).  Current valid cache entries:
-      (path, parent, want_meta, dref) -> resolution
+      (repo-id, path, parent, want_meta, dref) -> resolution
       commit_oid -> commit
       commit_oid + ':r' -> rev-list
          i.e. rev-list -> {'.', commit, '2012...', next_commit, ...}
@@ -261,7 +261,7 @@ def is_valid_cache_key(x):
     # Suspect we may eventually add "(container_oid, name) -> ...", and others.
     x_t = type(x)
     if x_t is tuple:
-        return len(x) == 4
+        return len(x) == 5
     if x_t is bytes:
         if len(x) == 20:
             return True
@@ -759,7 +759,7 @@ def contents(repo, item, names=None, want_meta=True):
         yield x
 
 def _resolve_path(repo, path, parent=None, want_meta=True, deref=False):
-    cache_key = (tuple(path), parent, not not want_meta, not not deref)
+    cache_key = (repo.id(), tuple(path), parent, bool(want_meta), bool(deref))
     resolution = cache_get(cache_key)
     if resolution:
         return resolution
