@@ -734,24 +734,19 @@ def contents(repo, item, names=None, want_meta=True):
     assert repo
     assert S_ISDIR(item_mode(item))
     item_t = type(item)
-
     if item_t in real_tree_types:
         it = repo.cat(item.oid.encode('hex'))
-        _, obj_type, size = next(it)
+        _, obj_t, size = next(it)
         data = ''.join(it)
-        if obj_type == 'tree':
-            if want_meta:
-                item_gen = tree_items_with_meta(repo, item.oid, data, names)
-            else:
-                item_gen = tree_items(item.oid, data, names)
-        elif obj_type == 'commit':
-            if want_meta:
-                item_gen = tree_items_with_meta(repo, item.oid, tree_data, names)
-            else:
-                item_gen = tree_items(item.oid, tree_data, names)
-        else:
+        if obj_t != 'tree':
             for _ in it: pass
-            raise Exception('unexpected git ' + obj_type)
+            # Note: it shouldn't be possible to see an Item with type
+            # 'commit' since a 'commit' should always produce a Commit.
+            raise Exception('unexpected git ' + obj_t)
+        if want_meta:
+            item_gen = tree_items_with_meta(repo, item.oid, data, names)
+        else:
+            item_gen = tree_items(item.oid, data, names)
     elif item_t == RevList:
         item_gen = revlist_items(repo, item.oid, names)
     elif item_t == Root:
