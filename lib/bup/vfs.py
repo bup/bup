@@ -268,28 +268,28 @@ def is_valid_cache_key(x):
     """Return logically true if x looks like it could be a valid cache key
     (with respect to structure).  Current valid cache entries:
       res:... -> resolution
-      commit_oid -> commit
-      commit_oid + ':r' -> rev-list
-         i.e. rev-list -> {'.', commit, '2012...', next_commit, ...}
+      itm:OID -> Commit
+      rvl:OID -> {'.', commit, '2012...', next_commit, ...}
     """
     # Suspect we may eventually add "(container_oid, name) -> ...", and others.
     x_t = type(x)
     if x_t is bytes:
-        if len(x) == 20:
+        tag = x[:4]
+        if tag in ('itm:', 'rvl:') and len(x) == 24:
             return True
-        if len(x) == 22 and x.endswith(b':r'):
-            return True
-        if x.startswith('res:'):
+        if tag == 'res:':
             return True
 
 def cache_get(key):
     global _cache
-    assert is_valid_cache_key(key)
+    if not is_valid_cache_key(key):
+        raise Exception('invalid cache key: ' + repr(key))
     return _cache.get(key)
 
 def cache_notice(key, value):
     global _cache, _cache_keys, _cache_max_items
-    assert is_valid_cache_key(key)
+    if not is_valid_cache_key(key):
+        raise Exception('invalid cache key: ' + repr(key))
     if key in _cache:
         return
     if len(_cache) < _cache_max_items:
@@ -307,13 +307,14 @@ def cache_get_commit_item(oid, need_meta=True):
     When need_meta is true don't return a cached item that only has a
     mode."""
     # tree might be stored independently, or as '.' with its entries.
-    item = cache_get(oid)
+    commit_key = b'itm:' + oid
+    item = cache_get(commit_key)
     if item:
         if not need_meta:
             return item
         if isinstance(item.meta, Metadata):
             return item
-    entries = cache_get(oid + b':r')
+    entries = cache_get(b'rvl:' + oid)
     if entries:
         return entries['.']
 
@@ -443,7 +444,8 @@ def _commit_item_from_oid(repo, oid, require_meta):
         meta = _find_treeish_oid_metadata(repo, commit.oid)
         if meta:
             commit = commit._replace(meta=meta)
-    cache_notice(oid, commit)
+    commit_key = b'itm:' + oid
+    cache_notice(commit_key, commit)
     return commit
 
 def _revlist_item_from_oid(repo, oid, require_meta):
@@ -616,7 +618,8 @@ def _item_for_rev(rev):
     if item:
         return item
     item = Commit(meta=default_dir_mode, oid=tree_oid, coid=coid)
-    cache_notice(item.coid, item)
+    commit_key = b'itm:' + coid
+    cache_notice(commit_key, item)
     return item
 
 def cache_commit(repo, oid):
@@ -639,7 +642,8 @@ def cache_commit(repo, oid):
         name = next(rev_names)
         entries[name] = item
     entries['latest'] = latest
-    cache_notice(latest.coid + b':r', entries)
+    revlist_key = b'rvl:' + latest.coid
+    cache_notice(revlist_key, entries)
     return entries
 
 def revlist_items(repo, oid, names):
@@ -653,7 +657,8 @@ def revlist_items(repo, oid, names):
 
     # For now, don't worry about the possibility of the contents being
     # "too big" for the cache.
-    entries = cache_get(oid + b':r')
+    revlist_key = b'rvl:' + oid
+    entries = cache_get(revlist_key)
     if not entries:
         entries = cache_commit(repo, oid)
 

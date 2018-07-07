@@ -37,10 +37,10 @@ def test_cache_behavior():
         wvpasseq({}, vfs._cache)
         wvpasseq([], vfs._cache_keys)
         wvfail(vfs._cache_keys)
-        wvexcept(AssertionError, vfs.cache_notice, 'x', 1)
-        key_0 = b'\0' * 20
-        key_1 = b'\1' * 20
-        key_2 = b'\2' * 20
+        wvexcept(Exception, vfs.cache_notice, 'x', 1)
+        key_0 = 'itm:' + b'\0' * 20
+        key_1 = 'itm:' + b'\1' * 20
+        key_2 = 'itm:' + b'\2' * 20
         vfs.cache_notice(key_0, 'something')
         wvpasseq({key_0 : 'something'}, vfs._cache)
         wvpasseq([key_0], vfs._cache_keys)
