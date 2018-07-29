@@ -72,7 +72,7 @@ Reasons you might want to avoid bup
    probably-critical features.
    
  - It requires python >= 2.6, a C compiler, and an installed git
-   version >= 1.5.3.1.  It also requires par2 if you want fsck to be
+   version >= 1.5.6.  It also requires par2 if you want fsck to be
    able to generate the information needed to recover from some types
    of corruption.
  
