@@ -16,7 +16,7 @@ bup index \<-p|-m|-s|-u|\--clear|\--check\> [-H] [-l] [-x] [\--fake-valid]
 # DESCRIPTION
 
 `bup index` manipulates the filesystem index, which is a cache of
-absolute paths and their metadata (atttributes, SHA-1 hashes, etc.).
+absolute paths and their metadata (attributes, SHA-1 hashes, etc.).
 The bup index is similar in function to the `git`(1) index, and the
 default index can be found in `$BUP_DIR/bupindex`.
 
