@@ -67,9 +67,9 @@ bup has a few advantages over other backup software:
 Reasons you might want to avoid bup
 -----------------------------------
 
- - This is a very early version. Therefore it will most probably not work
-   for you, but we don't know why.  It is also missing some
-   probably-critical features.
+ - It's not remotely as well tested as something like tar, so it's
+   more likely to eat your data.  It's also missing some
+   probably-critical features, though fewer than it used to be.
    
  - It requires python >= 2.6, a C compiler, and an installed git
    version >= 1.5.6.  It also requires par2 if you want fsck to be
@@ -517,7 +517,7 @@ mailing list (see below) if you'd like to help.
     
  - bup needs better documentation.
  
-    According to a recent article about bup in Linux Weekly News
+    According to an article about bup in Linux Weekly News
     (https://lwn.net/Articles/380983/), "it's a bit short on examples and
     a user guide would be nice."  Documentation is the sort of thing that
     will never be great unless someone from outside contributes it (since
