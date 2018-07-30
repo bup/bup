@@ -296,7 +296,7 @@ Using bup
  - Look at how little extra space your second backup used on top of
    the first:
  
- 	du -s ~/.bup
+        du -s ~/.bup
  	
  - Restore the first tar backup again (the ~1 is git notation for "one
    older than the most recent"):
