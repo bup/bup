@@ -53,8 +53,9 @@ WVPASS date > "$tmpmnt1/foo"
 WVPASS umount "$tmpmnt1"
 
 # Mount twice, so we'll have the same content with different devices.
+WVPASS cp -pP testfs.img testfs2.img
 WVPASS mount -oro,loop testfs.img "$tmpmnt1"
-WVPASS mount -oro,loop testfs.img "$tmpmnt2"
+WVPASS mount -oro,loop testfs2.img "$tmpmnt2"
 
 # Test default behavior: --check-device.
 WVPASS mount -oro --bind "$tmpmnt1" "$srcmnt"
