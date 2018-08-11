@@ -41,7 +41,7 @@ WVPASS mkfs -F testfs-1.img # Don't care what type (though must have symlinks)
 WVPASS mkfs -F testfs-2.img # Don't care what type (though must have symlinks)
 WVPASS mkdir -p src/mnt-1/hidden-1 src/mnt-2/hidden-2
 WVPASS mount -o loop testfs-1.img src/mnt-1
-WVPASS mount -o loop testfs-1.img src/mnt-2
+WVPASS mount -o loop testfs-2.img src/mnt-2
 
 WVPASS touch src/1
 
