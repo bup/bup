@@ -209,7 +209,9 @@ Using bup
         bup help restore
         ...
 
- - Initialize the default BUP_DIR (~/.bup):
+ - Initialize the default BUP_DIR (~/.bup -- you can choose another by
+   either specifying `bup -d DIR ...` or setting the `BUP_DIR`
+   environment variable for a command):
 
         bup init
 
