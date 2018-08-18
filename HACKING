@@ -112,7 +112,7 @@ Of course, unless your machine is set up to handle outgoing mail
 locally, you may need to configure git to be able to send mail.  See
 git-send-email(1) for further details.
 
-Oh, and we do have a ./CODING-STYLE, hobgoblins and all, though don't
+Oh, and we do have a ./CODINGSTYLE, hobgoblins and all, though don't
 let that scare you off.  We're not all that fierce.
 
 
