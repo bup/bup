@@ -14,7 +14,7 @@ except ImportError:
     log('error: cannot find the python "fuse" module; please install it\n')
     sys.exit(1)
 if not hasattr(fuse, '__version__'):
-    raise RuntimeError, "your fuse module is too old for fuse.__version__"
+    raise RuntimeError('your fuse module is too old for fuse.__version__')
 fuse.fuse_python_api = (0, 2)
 
 from bup import options, git, vfs, xstat
