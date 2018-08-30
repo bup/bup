@@ -30,19 +30,19 @@ def nsecs_to_timespec(ns):
     """Return (s, ns) where ns is always non-negative
     and t = s + ns / 10e8""" # metadata record rep
     ns = int(ns)
-    return (ns / 10**9, ns % 10**9)
+    return (ns // 10**9, ns % 10**9)
 
 
 def nsecs_to_timeval(ns):
     """Return (s, us) where ns is always non-negative
     and t = s + us / 10e5"""
     ns = int(ns)
-    return (ns / 10**9, (ns % 10**9) / 1000)
+    return (ns // 10**9, (ns % 10**9) // 1000)
 
 
 def fstime_floor_secs(ns):
     """Return largest integer not greater than ns / 10e8."""
-    return int(ns) / 10**9;
+    return int(ns) // 10**9;
 
 
 def fstime_to_timespec(ns):
