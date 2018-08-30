@@ -9,6 +9,7 @@ from __future__ import absolute_import, print_function
 import sys, re, struct, time, resource
 
 from bup import git, bloom, midx, options, _helpers
+from bup.compat import range
 from bup.helpers import handle_ctrl_c
 
 
@@ -97,9 +98,9 @@ if opt.existing:
             for e in mi:
                 yield e
     objit = iter(foreverit(m))
-    
-for c in xrange(opt.cycles):
-    for n in xrange(opt.number):
+
+for c in range(opt.cycles):
+    for n in range(opt.number):
         if opt.existing:
             bin = next(objit)
             assert(m.exists(bin))

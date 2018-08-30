@@ -3,6 +3,7 @@ from __future__ import absolute_import
 import errno, os, re, struct, sys, time, zlib
 
 from bup import git, ssh
+from bup.compat import range
 from bup.helpers import (Conn, atomically_replaced_file, chunkyreader, debug1,
                          debug2, linereader, lines_until_sentinel,
                          mkdirp, progress, qprogress)
@@ -27,7 +28,7 @@ def _raw_write_bwlimit(f, buf, bwcount, bwtime):
         # the average back up to bwlimit - that will risk overflowing the
         # outbound queue, which defeats the purpose.  So if we fall behind
         # by more than one block delay, we shouldn't ever try to catch up.
-        for i in xrange(0,len(buf),4096):
+        for i in range(0,len(buf),4096):
             now = time.time()
             next = max(now, bwtime + 1.0*bwcount/bwlimit)
             time.sleep(next-now)
@@ -414,7 +415,7 @@ class Client:
             conn.write('\n')
         conn.write('\n')
         if not format:
-            for _ in xrange(len(refs)):
+            for _ in range(len(refs)):
                 line = conn.readline()
                 if not line:
                     raise ClientError('unexpected EOF')
@@ -422,7 +423,7 @@ class Client:
                 assert len(line) == 40
                 yield line
         else:
-            for _ in xrange(len(refs)):
+            for _ in range(len(refs)):
                 line = conn.readline()
                 if not line:
                     raise ClientError('unexpected EOF')

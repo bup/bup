@@ -9,12 +9,13 @@ from __future__ import absolute_import
 import sys, os, random
 
 from bup import options
+from bup.compat import range
 from bup.helpers import log
 
 
 def randblock(n):
     l = []
-    for i in xrange(n):
+    for i in range(n):
         l.append(chr(random.randrange(0,256)))
     return ''.join(l)
 

@@ -3,6 +3,7 @@ from __future__ import absolute_import
 import glob, mmap, os, struct
 
 from bup import _helpers
+from bup.compat import range
 from bup.helpers import log, mmap_read
 
 
@@ -115,7 +116,7 @@ class PackMidx:
         return None
 
     def __iter__(self):
-        for i in xrange(self._fanget(self.entries-1)):
+        for i in range(self._fanget(self.entries-1)):
             yield buffer(self.shatable, i*20, 20)
 
     def __len__(self):

@@ -9,6 +9,7 @@ from __future__ import absolute_import
 import glob, math, os, resource, struct, sys, tempfile
 
 from bup import options, git, midx, _helpers, xstat
+from bup.compat import range
 from bup.helpers import (Sha1, add_error, atomically_replaced_file, debug1, fdatasync,
                          handle_ctrl_c, log, mmap_readwrite, qprogress,
                          saved_errors, unlink)
@@ -33,10 +34,10 @@ merge_into = _helpers.merge_into
 
 
 def _group(l, count):
-    for i in xrange(0, len(l), count):
+    for i in range(0, len(l), count):
         yield l[i:i+count]
-        
-        
+
+
 def max_files():
     mf = min(resource.getrlimit(resource.RLIMIT_NOFILE))
     if mf > 32:

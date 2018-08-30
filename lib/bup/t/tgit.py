@@ -6,6 +6,7 @@ import struct, os, time
 from wvtest import *
 
 from bup import git
+from bup.compat import range
 from bup.helpers import localtime, log, mkdirp, readpipe
 from buptest import no_lingering_errors, test_tempdir
 
@@ -73,7 +74,7 @@ def testencode():
         WVPASSEQ(git._decode_packobj(packb), ('blob', s))
         WVPASSEQ(git._decode_packobj(packt), ('tree', s))
         WVPASSEQ(git._decode_packobj(packc), ('commit', s))
-        for i in xrange(10):
+        for i in range(10):
             WVPASS(git._encode_looseobj('blob', s, compression_level=i))
         def encode_pobj(n):
             return ''.join(git._encode_packobj('blob', s, compression_level=n))
@@ -170,7 +171,7 @@ def test_long_index():
                     0x22334455, 0x66778899, 0x00112233, 0x44556677, 0x88990011)
             pack_bin = struct.pack('!IIIII',
                     0x99887766, 0x55443322, 0x11009988, 0x77665544, 0x33221100)
-            idx = list(list() for i in xrange(256))
+            idx = list(list() for i in range(256))
             idx[0].append((obj_bin, 1, 0xfffffffff))
             idx[0x11].append((obj2_bin, 2, 0xffffffffff))
             idx[0x22].append((obj3_bin, 3, 0xff))

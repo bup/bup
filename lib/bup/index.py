@@ -4,6 +4,7 @@ import errno, os, stat, struct, tempfile
 
 from bup import metadata, xstat
 from bup._helpers import UINT_MAX, bytescmp
+from bup.compat import range
 from bup.helpers import (add_error, log, merge_iter, mmap_readwrite,
                          progress, qprogress, resolve_parent, slashappend)
 
@@ -383,7 +384,7 @@ class ExistingEntry(Entry):
         ofs = self.children_ofs
         assert(ofs <= len(self._m))
         assert(self.children_n <= UINT_MAX)  # i.e. python struct 'I'
-        for i in xrange(self.children_n):
+        for i in range(self.children_n):
             eon = self._m.find('\0', ofs)
             assert(eon >= 0)
             assert(eon >= ofs)

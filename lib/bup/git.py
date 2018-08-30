@@ -10,6 +10,7 @@ from itertools import islice
 from numbers import Integral
 
 from bup import _helpers, compat, hashsplit, path, midx, bloom, xstat
+from bup.compat import range
 from bup.helpers import (Sha1, add_error, chunkyreader, debug1, debug2,
                          fdatasync,
                          hostname, localtime, log, merge_iter,
@@ -395,7 +396,7 @@ class PackIdxV1(PackIdx):
         return str(self.shatable[idx*24+4 : idx*24+24])
 
     def __iter__(self):
-        for i in xrange(self.fanout[255]):
+        for i in range(self.fanout[255]):
             yield buffer(self.map, 256*4 + 24*i + 4, 20)
 
 
@@ -430,7 +431,7 @@ class PackIdxV2(PackIdx):
         return str(self.shatable[idx*20:(idx+1)*20])
 
     def __iter__(self):
-        for i in xrange(self.fanout[255]):
+        for i in range(self.fanout[255]):
             yield buffer(self.map, 8 + 256*4 + 20*i, 20)
 
 

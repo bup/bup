@@ -6,6 +6,7 @@ from wvtest import *
 
 from bup import git, metadata
 from bup import vfs
+from bup.compat import range
 from bup.helpers import clear_errors, detect_fakeroot, is_superuser, resolve_parent
 from bup.repo import LocalRepo
 from bup.xstat import utime, lutime
@@ -230,7 +231,7 @@ def test_apply_to_path_restricted_access():
             if metadata.xattr and m.linux_xattr:
                 expected_errors.append("xattr.set '")
             WVPASS(len(helpers.saved_errors) == len(expected_errors))
-            for i in xrange(len(expected_errors)):
+            for i in range(len(expected_errors)):
                 WVPASS(str(helpers.saved_errors[i]).startswith(expected_errors[i]))
             clear_errors()
 
