@@ -5,7 +5,7 @@ exec "$bup_python" "$0" ${1+"$@"}
 """
 # end of bup preamble
 
-from __future__ import absolute_import
+from __future__ import absolute_import, print_function
 import sys, os
 
 from bup import git, options
@@ -49,13 +49,13 @@ for name in extra:
         continue
     if len(opt.find) == 40:
         if ix.exists(bin):
-            print name, find
+            print(name, find)
     else:
         # slow, exhaustive search
         for _i in ix:
             i = str(_i).encode('hex')
             if i.startswith(find):
-                print name, i
+                print(name, i)
             qprogress('Searching: %d\r' % count)
             count += 1
 

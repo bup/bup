@@ -5,7 +5,7 @@ exec "$bup_python" "$0" ${1+"$@"}
 """
 # end of bup preamble
 
-from __future__ import absolute_import
+from __future__ import absolute_import, print_function
 from os.path import relpath
 import sys
 
@@ -50,7 +50,7 @@ else:
             pass
     else:
         for (name,st) in it:
-            print name
+            print(name)
 
 if saved_errors:
     log('WARNING: %d errors encountered.\n' % len(saved_errors))

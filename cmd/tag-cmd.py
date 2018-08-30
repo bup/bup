@@ -5,7 +5,7 @@ exec "$bup_python" "$0" ${1+"$@"}
 """
 # end of bup preamble
 
-from __future__ import absolute_import
+from __future__ import absolute_import, print_function
 import os, sys
 
 from bup import git, options
@@ -45,7 +45,7 @@ if opt.delete:
 
 if not extra:
     for t in tags:
-        print t
+        print(t)
     sys.exit(0)
 elif len(extra) < 2:
     o.fatal('no commit ref or hash given.')

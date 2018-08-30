@@ -1,5 +1,5 @@
 
-from __future__ import absolute_import
+from __future__ import absolute_import, print_function
 import errno, glob, grp, pwd, stat, tempfile, subprocess
 
 from wvtest import *
@@ -22,16 +22,16 @@ start_dir = os.getcwd()
 def ex(*cmd):
     try:
         cmd_str = ' '.join(cmd)
-        print >> sys.stderr, cmd_str
+        print(cmd_str, file=sys.stderr)
         rc = subprocess.call(cmd)
         if rc < 0:
-            print >> sys.stderr, 'terminated by signal', - rc
+            print('terminated by signal', - rc, file=sys.stderr)
             sys.exit(1)
         elif rc > 0:
-            print >> sys.stderr, 'returned exit status', rc
+            print('returned exit status', rc, file=sys.stderr)
             sys.exit(1)
     except OSError as e:
-        print >> sys.stderr, 'subprocess call failed:', e
+        print('subprocess call failed:', e, file=sys.stderr)
         sys.exit(1)
 
 
@@ -185,7 +185,7 @@ def test_from_path_error():
             os.chmod(path, 0o000)
             metadata.from_path(path, archive_path=path, save_symlinks=True)
             if metadata.get_linux_file_attr:
-                print >> sys.stderr, 'saved_errors:', helpers.saved_errors
+                print('saved_errors:', helpers.saved_errors, file=sys.stderr)
                 WVPASS(len(helpers.saved_errors) == 1)
                 errmsg = _first_err()
                 WVPASS(errmsg.startswith('read Linux attr'))
@@ -223,7 +223,7 @@ def test_apply_to_path_restricted_access():
             WVPASSEQ(m.path, path)
             os.chmod(parent, 0o000)
             m.apply_to_path(path)
-            print >> sys.stderr, 'saved_errors:', helpers.saved_errors
+            print('saved_errors:', helpers.saved_errors, file=sys.stderr)
             expected_errors = ['utime: ']
             if m.linux_attr and _linux_attr_supported(tmpdir):
                 expected_errors.append('Linux chattr: ')

@@ -5,7 +5,7 @@ exec "$bup_python" "$0" ${1+"$@"}
 """
 # end of bup preamble
 
-from __future__ import absolute_import
+from __future__ import absolute_import, print_function
 import sys, stat, time, os, errno, re
 
 from bup import metadata, options, git, index, drecurse, hlinkdb
@@ -291,7 +291,7 @@ if opt['print'] or opt.status or opt.modified:
             line += ent.sha.encode('hex') + ' '
         if opt.long:
             line += "%7s %7s " % (oct(ent.mode), oct(ent.gitmode))
-        print line + (name or './')
+        print(line + (name or './'))
 
 if opt.check and (opt['print'] or opt.status or opt.modified or opt.update):
     log('check: starting final check.\n')

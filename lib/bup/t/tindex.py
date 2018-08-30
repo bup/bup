@@ -1,5 +1,5 @@
 
-from __future__ import absolute_import
+from __future__ import absolute_import, print_function
 import os, time
 
 from wvtest import *
@@ -51,9 +51,9 @@ def index_writer():
 
 def dump(m):
     for e in list(m):
-        print '%s%s %s' % (e.is_valid() and ' ' or 'M',
+        print('%s%s %s' % (e.is_valid() and ' ' or 'M',
                            e.is_fake() and 'F' or ' ',
-                           e.name)
+                           e.name))
 
 def fake_validate(*l):
     for i in l:
@@ -149,7 +149,7 @@ def index_dirty():
                 fake_validate(r1)
                 dump(r1)
 
-                print [hex(e.flags) for e in r1]
+                print([hex(e.flags) for e in r1])
                 WVPASSEQ([e.name for e in r1 if e.is_valid()], r1all)
                 WVPASSEQ([e.name for e in r1 if not e.is_valid()], [])
                 WVPASSEQ([e.name for e in index.merge(r2, r1, r3) if not e.is_valid()],
@@ -161,7 +161,7 @@ def index_dirty():
                                 | set(['/a/b/n/2', '/a/c/n/3'])
                 dump(index.merge(r2, r1, r3))
                 for e in index.merge(r2, r1, r3):
-                    print e.name, hex(e.flags), e.ctime
+                    print(e.name, hex(e.flags), e.ctime)
                     eiv = e.name in expect_invalid
                     er  = e.name in expect_real
                     WVPASSEQ(eiv, not e.is_valid())

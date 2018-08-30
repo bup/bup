@@ -5,7 +5,7 @@ exec "$bup_python" "$0" ${1+"$@"}
 """
 # end of bup preamble
 
-from __future__ import absolute_import
+from __future__ import absolute_import, print_function
 import sys, os, stat, fnmatch
 
 from bup import options, git, shquote, ls, vfs
@@ -39,7 +39,7 @@ def inputiter():
             try:
                 yield raw_input('bup> ')
             except EOFError:
-                print ''  # Clear the line for the terminal's next prompt
+                print()  # Clear the line for the terminal's next prompt
                 break
     else:
         for line in sys.stdin:
@@ -190,7 +190,7 @@ for line in lines:
         elif cmd == 'pwd':
             if len(pwd) == 1:
                 sys.stdout.write('/')
-            print '/'.join(name for name, item in pwd)
+            print('/'.join(name for name, item in pwd))
         elif cmd == 'cat':
             for parm in words[1:]:
                 res = vfs.resolve(repo, parm, parent=pwd)

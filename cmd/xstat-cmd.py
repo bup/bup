@@ -10,7 +10,7 @@ exec "$bup_python" "$0" ${1+"$@"}
 # This code is covered under the terms of the GNU Library General
 # Public License as described in the bup LICENSE file.
 
-from __future__ import absolute_import
+from __future__ import absolute_import, print_function
 import sys, stat, errno
 
 from bup import metadata, options, xstat
@@ -94,14 +94,14 @@ for path in remainder:
             raise
     if metadata.verbose >= 0:
         if not first_path:
-            print
+            print()
         if atime_resolution != 1:
             m.atime = (m.atime / atime_resolution) * atime_resolution
         if mtime_resolution != 1:
             m.mtime = (m.mtime / mtime_resolution) * mtime_resolution
         if ctime_resolution != 1:
             m.ctime = (m.ctime / ctime_resolution) * ctime_resolution
-        print metadata.detailed_str(m, active_fields)
+        print(metadata.detailed_str(m, active_fields))
         first_path = False
 
 if saved_errors:

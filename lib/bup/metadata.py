@@ -5,7 +5,7 @@
 # This code is covered under the terms of the GNU Library General
 # Public License as described in the bup LICENSE file.
 
-from __future__ import absolute_import
+from __future__ import absolute_import, print_function
 from copy import deepcopy
 from errno import EACCES, EINVAL, ENOTTY, ENOSYS, EOPNOTSUPP
 from io import BytesIO
@@ -925,7 +925,7 @@ def save_tree(output_file, paths,
             m = from_path(p, statinfo=st, archive_path=safe_path,
                           save_symlinks=save_symlinks)
             if verbose:
-                print >> sys.stderr, m.path
+                print(m.path, file=sys.stderr)
             m.write(output_file, include_path=write_paths)
     else:
         start_dir = os.getcwd()
@@ -937,7 +937,7 @@ def save_tree(output_file, paths,
                 m = from_path(p, statinfo=st, archive_path=safe_path,
                               save_symlinks=save_symlinks)
                 if verbose:
-                    print >> sys.stderr, m.path
+                    print(m.path, file=sys.stderr)
                 m.write(output_file, include_path=write_paths)
                 os.chdir(dirlist_dir)
         finally:
@@ -1107,20 +1107,19 @@ def display_archive(file):
         first_item = True
         for meta in _ArchiveIterator(file):
             if not first_item:
-                print
-            print detailed_str(meta)
+                print()
+            print(detailed_str(meta))
             first_item = False
     elif verbose > 0:
         for meta in _ArchiveIterator(file):
-            print summary_str(meta)
+            print(summary_str(meta))
     elif verbose == 0:
         for meta in _ArchiveIterator(file):
             if not meta.path:
-                print >> sys.stderr, \
-                    'bup: no metadata path, but asked to only display path', \
-                    '(increase verbosity?)'
+                print('bup: no metadata path, but asked to only display path'
+                     '(increase verbosity?)')
                 sys.exit(1)
-            print meta.path
+            print(meta.path)
 
 
 def start_extract(file, create_symlinks=True):
@@ -1128,7 +1127,7 @@ def start_extract(file, create_symlinks=True):
         if not meta: # Hit end record.
             break
         if verbose:
-            print >> sys.stderr, meta.path
+            print(meta.path, file=sys.stderr)
         xpath = _clean_up_extract_path(meta.path)
         if not xpath:
             add_error(Exception('skipping risky path "%s"' % meta.path))
@@ -1150,7 +1149,7 @@ def finish_extract(file, restore_numeric_ids=False):
                 all_dirs.append(meta)
             else:
                 if verbose:
-                    print >> sys.stderr, meta.path
+                    print(meta.path, file=sys.stderr)
                 meta.apply_to_path(path=xpath,
                                    restore_numeric_ids=restore_numeric_ids)
     all_dirs.sort(key = lambda x : len(x.path), reverse=True)
@@ -1158,7 +1157,7 @@ def finish_extract(file, restore_numeric_ids=False):
         # Don't need to check xpath -- won't be in all_dirs if not OK.
         xpath = _clean_up_extract_path(dir.path)
         if verbose:
-            print >> sys.stderr, dir.path
+            print(dir.path, file=sys.stderr)
         dir.apply_to_path(path=xpath, restore_numeric_ids=restore_numeric_ids)
 
 
@@ -1175,20 +1174,20 @@ def extract(file, restore_numeric_ids=False, create_symlinks=True):
         else:
             meta.path = xpath
             if verbose:
-                print >> sys.stderr, '+', meta.path
+                print('+', meta.path, file=sys.stderr)
             _set_up_path(meta, create_symlinks=create_symlinks)
             if os.path.isdir(meta.path):
                 all_dirs.append(meta)
             else:
                 if verbose:
-                    print >> sys.stderr, '=', meta.path
+                    print('=', meta.path, file=sys.stderr)
                 meta.apply_to_path(restore_numeric_ids=restore_numeric_ids)
     all_dirs.sort(key = lambda x : len(x.path), reverse=True)
     for dir in all_dirs:
         # Don't need to check xpath -- won't be in all_dirs if not OK.
         xpath = _clean_up_extract_path(dir.path)
         if verbose:
-            print >> sys.stderr, '=', xpath
+            print('=', xpath, file=sys.stderr)
         # Shouldn't have to check for risky paths here (omitted above).
         dir.apply_to_path(path=dir.path,
                           restore_numeric_ids=restore_numeric_ids)

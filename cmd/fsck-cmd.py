@@ -5,7 +5,7 @@ exec "$bup_python" "$0" ${1+"$@"}
 """
 # end of bup preamble
 
-from __future__ import absolute_import
+from __future__ import absolute_import, print_function
 import sys, os, glob, subprocess
 
 from bup import options, git
@@ -129,7 +129,7 @@ def do_pack(base, last, par2_exists):
         assert(opt.generate and (not par2_ok or par2_exists))
         action_result = 'exists' if par2_exists else 'skipped'
     if opt.verbose:
-        print last, action_result
+        print(last, action_result)
     return code
 
 
