@@ -102,7 +102,7 @@ def find_live_objects(existing_count, cat_pipe, verbosity=0):
     stop_at, trees_visited = None, None
     if prune_visited_trees:
         trees_visited = set()
-        stop_at = lambda (x): x.decode('hex') in trees_visited
+        stop_at = lambda x: x.decode('hex') in trees_visited
     approx_live_count = 0
     for ref_name, ref_id in git.list_refs():
         for item in walk_object(cat_pipe, ref_id.encode('hex'),
