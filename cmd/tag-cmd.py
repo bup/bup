@@ -79,7 +79,7 @@ if not pL.exists(hash):
 
 tag_file = git.repo('refs/tags/%s' % tag_name)
 try:
-    tag = file(tag_file, 'w')
+    tag = open(tag_file, 'w')
 except OSError as e:
     log("bup: error: could not create tag '%s': %s" % (tag_name, e))
     sys.exit(3)

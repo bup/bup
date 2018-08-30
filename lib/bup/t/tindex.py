@@ -72,7 +72,7 @@ def index_negative_timestamps():
         with test_tempdir('bup-tindex-') as tmpdir:
             # Makes 'foo' exist
             foopath = tmpdir + '/foo'
-            f = file(foopath, 'wb')
+            f = open(foopath, 'wb')
             f.close()
 
             # Dec 31, 1969
