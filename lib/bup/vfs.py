@@ -49,7 +49,7 @@ item.coid.
 from __future__ import absolute_import, print_function
 from collections import namedtuple
 from errno import ELOOP, ENOENT, ENOTDIR
-from itertools import chain, dropwhile, groupby, izip, tee
+from itertools import chain, dropwhile, groupby, tee
 from random import randrange
 from stat import S_IFDIR, S_IFLNK, S_IFREG, S_ISDIR, S_ISLNK, S_ISREG
 from time import localtime, strftime
