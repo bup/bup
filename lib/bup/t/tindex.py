@@ -58,7 +58,7 @@ def dump(m):
 def fake_validate(*l):
     for i in l:
         for e in i:
-            e.validate(0100644, index.FAKE_SHA)
+            e.validate(0o100644, index.FAKE_SHA)
             e.repack()
 
 def eget(l, ename):
