@@ -5,8 +5,14 @@ exec "$bup_python" "$0" ${1+"$@"}
 """
 # end of bup preamble
 
-from __future__ import absolute_import
+from __future__ import absolute_import, print_function
 import errno, re, sys, os, subprocess, signal, getopt
+
+if sys.version_info[0] != 2 \
+   and not os.environ.get('BUP_ALLOW_UNEXPECTED_PYTHON_VERSION') == 'true':
+    print('error: bup may crash with python versions other than 2, or eat your data',
+          file=sys.stderr)
+    sys.exit(2)
 
 from subprocess import PIPE
 from sys import stderr, stdout
