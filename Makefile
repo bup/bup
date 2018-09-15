@@ -62,8 +62,12 @@ $(current_sampledata):
 
 define install-python-bin
   set -e; \
-  sed -e '1 s|.*|#!$(bup_python)|; 2,/^# end of bup preamble$$/d' $1 > $2; \
-  chmod 0755 $2;
+  if grep -qE '^# end of bup preamble$$' "$1"; then \
+    sed -E '1 s|.*|#!$(bup_python)|; 2,/^# end of bup preamble$$/d' $(1) > $(2); \
+  else \
+    cp $(1) $(2); \
+  fi; \
+  chmod 0755 $(2);
 endef
 
 PANDOC ?= $(shell type -p pandoc)
