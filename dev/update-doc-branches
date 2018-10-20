@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+
+# Ensures that the working tree is clean, and Documentation/ is up to
+# date, and then commits Documentation/*.1 to the man branch, and
+# Documentation/*.html to the html branch.
+
+set -uexo pipefail
+
+test "$#" -eq 2
+
+# Must be full ref name, i.e. refs/heads/man, etc.
+man_ref="$1"
+html_ref="$2"
+
+git diff-index --quiet HEAD --  # no uncommitted changes
+git rev-parse --verify "$man_ref"
+git rev-parse --verify "$html_ref"
+echo "$man_ref" | grep -qE '^refs/heads'
+echo "$html_ref" | grep -qE '^refs/heads'
+
+"${MAKE:-make}"
+
+tmpdir="$(mktemp -d "t/tmp/update-doc-branches-XXXXXX")"
+trap "$(printf 'rm -rf %q' "$tmpdir")" EXIT
+tmpidx="$tmpdir/git-index.tmp"
+
+for fmt in man html; do
+    rm -f "$tmpidx"
+    for f in $(git ls-files 'Documentation/*.md'); do
+        base="$(basename "$f" .md)"
+        if test "$fmt" = man; then
+            ref="$man_ref"
+            GIT_INDEX_FILE="$tmpidx" git add -f "Documentation/$base.1"
+        else
+            ref="$html_ref"
+            GIT_INDEX_FILE="$tmpidx" git add -f "Documentation/$base.html"
+        fi
+    done
+    msg="Update $fmt pages for $(git describe --always)"
+    tree=$(GIT_INDEX_FILE="$tmpidx" git write-tree --prefix=Documentation)
+    commit=$(echo "$msg" | git commit-tree "$tree" -p refs/heads/"$fmt")
+    git update-ref "$ref" "$commit"
+done
