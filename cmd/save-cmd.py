@@ -107,7 +107,6 @@ def eatslash(dir):
     else:
         return dir
 
-
 # Metadata is stored in a file named .bupm in each directory.  The
 # first metadata entry will be the metadata for the current directory.
 # The remaining entries will be for each of the other directory
@@ -348,7 +347,8 @@ for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse_during):
         dir_name, fs_path = path_component
         # Not indexed, so just grab the FS metadata or use empty metadata.
         try:
-           meta = metadata.from_path(fs_path) if fs_path else metadata.Metadata()
+            meta = metadata.from_path(fs_path, normalized=True) \
+                if fs_path else metadata.Metadata()
         except (OSError, IOError) as e:
             add_error(e)
             lastskip_name = dir_name
@@ -425,7 +425,8 @@ for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse_during):
             sort_key = git.shalist_item_sort_key((ent.mode, file, id))
             hlink = find_hardlink_target(hlink_db, ent)
             try:
-                meta = metadata.from_path(ent.name, hardlink_target=hlink)
+                meta = metadata.from_path(ent.name, hardlink_target=hlink,
+                                          normalized=True)
             except (OSError, IOError) as e:
                 add_error(e)
                 lastskip_name = ent.name

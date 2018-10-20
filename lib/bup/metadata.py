@@ -183,7 +183,7 @@ def _clean_up_extract_path(p):
 # must be unique, and must *never* be changed.
 _rec_tag_end = 0
 _rec_tag_path = 1
-_rec_tag_common = 2 # times, user, group, type, perms, etc. (legacy/broken)
+_rec_tag_common_v1 = 2 # times, user, group, type, perms, etc. (legacy/broken)
 _rec_tag_symlink_target = 3
 _rec_tag_posix1e_acl = 4      # getfacl(1), setfacl(1), etc.
 _rec_tag_nfsv4_acl = 5        # intended to supplant posix1e? (unimplemented)
@@ -191,6 +191,7 @@ _rec_tag_linux_attr = 6       # lsattr(1) chattr(1)
 _rec_tag_linux_xattr = 7      # getfattr(1) setfattr(1)
 _rec_tag_hardlink_target = 8 # hard link target path
 _rec_tag_common_v2 = 9 # times, user, group, type, perms, etc. (current)
+_rec_tag_common_v3 = 10  # adds optional size to v2
 
 _warned_about_attr_einval = None
 
@@ -222,6 +223,7 @@ class Metadata:
     def _add_common(self, path, st):
         assert(st.st_uid >= 0)
         assert(st.st_gid >= 0)
+        self.size = st.st_size
         self.uid = st.st_uid
         self.gid = st.st_gid
         self.atime = st.st_atime
@@ -252,7 +254,8 @@ class Metadata:
             and self.mtime == other.mtime \
             and self.ctime == other.ctime \
             and self.user == other.user \
-            and self.group == other.group
+            and self.group == other.group \
+            and self.size == other.size
 
     def _encode_common(self):
         if not self.mode:
@@ -260,7 +263,7 @@ class Metadata:
         atime = xstat.nsecs_to_timespec(self.atime)
         mtime = xstat.nsecs_to_timespec(self.mtime)
         ctime = xstat.nsecs_to_timespec(self.ctime)
-        result = vint.pack('vvsvsvvVvVvV',
+        result = vint.pack('vvsvsvvVvVvVv',
                            self.mode,
                            self.uid,
                            self.user,
@@ -272,26 +275,36 @@ class Metadata:
                            mtime[0],
                            mtime[1],
                            ctime[0],
-                           ctime[1])
+                           ctime[1],
+                           self.size if self.size is not None else -1)
         return result
 
-    def _load_common_rec(self, port, legacy_format=False):
-        unpack_fmt = 'vvsvsvvVvVvV'
-        if legacy_format:
+    def _load_common_rec(self, port, version=3):
+        if version == 3:
+            # Added trailing size to v2, negative when None.
+            unpack_fmt = 'vvsvsvvVvVvVv'
+        elif version == 2:
+            unpack_fmt = 'vvsvsvvVvVvV'
+        elif version == 1:
             unpack_fmt = 'VVsVsVvVvVvV'
+        else:
+            raise Exception('unexpected common_rec version %d' % version)
         data = vint.read_bvec(port)
-        (self.mode,
-         self.uid,
-         self.user,
-         self.gid,
-         self.group,
-         self.rdev,
-         self.atime,
-         atime_ns,
-         self.mtime,
-         mtime_ns,
-         self.ctime,
-         ctime_ns) = vint.unpack(unpack_fmt, data)
+        values = vint.unpack(unpack_fmt, data)
+        if version == 3:
+            (self.mode, self.uid, self.user, self.gid, self.group,
+             self.rdev,
+             self.atime, atime_ns,
+             self.mtime, mtime_ns,
+             self.ctime, ctime_ns, size) = values
+            if size >= 0:
+                self.size = size
+        else:
+            (self.mode, self.uid, self.user, self.gid, self.group,
+             self.rdev,
+             self.atime, atime_ns,
+             self.mtime, mtime_ns,
+             self.ctime, ctime_ns) = values
         self.atime = xstat.timespec_to_nsecs((self.atime, atime_ns))
         self.mtime = xstat.timespec_to_nsecs((self.mtime, mtime_ns))
         self.ctime = xstat.timespec_to_nsecs((self.ctime, ctime_ns))
@@ -468,7 +481,10 @@ class Metadata:
     def _load_symlink_target_rec(self, port):
         target = vint.read_bvec(port)
         self.symlink_target = target
-        self.size = len(target)
+        if self.size is None:
+            self.size = len(target)
+        else:
+            assert(self.size == len(target))
 
 
     ## Hardlink targets
@@ -791,7 +807,7 @@ class Metadata:
 
     def write(self, port, include_path=True):
         records = include_path and [(_rec_tag_path, self._encode_path())] or []
-        records.extend([(_rec_tag_common_v2, self._encode_common()),
+        records.extend([(_rec_tag_common_v3, self._encode_common()),
                         (_rec_tag_symlink_target,
                          self._encode_symlink_target()),
                         (_rec_tag_hardlink_target,
@@ -828,8 +844,10 @@ class Metadata:
             while True: # only exit is error (exception) or _rec_tag_end
                 if tag == _rec_tag_path:
                     result._load_path_rec(port)
+                elif tag == _rec_tag_common_v3:
+                    result._load_common_rec(port, version=3)
                 elif tag == _rec_tag_common_v2:
-                    result._load_common_rec(port)
+                    result._load_common_rec(port, version=2)
                 elif tag == _rec_tag_symlink_target:
                     result._load_symlink_target_rec(port)
                 elif tag == _rec_tag_hardlink_target:
@@ -842,8 +860,8 @@ class Metadata:
                     result._load_linux_xattr_rec(port)
                 elif tag == _rec_tag_end:
                     return result
-                elif tag == _rec_tag_common: # Should be very rare.
-                    result._load_common_rec(port, legacy_format = True)
+                elif tag == _rec_tag_common_v1: # Should be very rare.
+                    result._load_common_rec(port, version=1)
                 else: # unknown record
                     vint.skip_bvec(port)
                 tag = vint.read_vuint(port)
@@ -889,11 +907,14 @@ class Metadata:
 
 
 def from_path(path, statinfo=None, archive_path=None,
-              save_symlinks=True, hardlink_target=None):
+              save_symlinks=True, hardlink_target=None,
+              normalized=False):
+    """Return the metadata associated with the path.  When normalized is
+    true, return the metadata appropriate for a typical save, which
+    may or may not be all of it."""
     result = Metadata()
     result.path = archive_path
     st = statinfo or xstat.lstat(path)
-    result.size = st.st_size
     result._add_common(path, st)
     if save_symlinks:
         result._add_symlink_target(path, st)
@@ -901,6 +922,10 @@ def from_path(path, statinfo=None, archive_path=None,
     result._add_posix1e_acl(path, st)
     result._add_linux_attr(path, st)
     result._add_linux_xattr(path, st)
+    if normalized:
+        # Only store sizes for regular files and symlinks for now.
+        if not (stat.S_ISREG(result.mode) or stat.S_ISLNK(result.mode)):
+            result.size = None
     return result
 
 
@@ -1047,7 +1072,7 @@ def detailed_str(meta, fields = None):
                                            os.minor(meta.rdev)))
         else:
             result.append('rdev: 0')
-    if 'size' in fields and meta.size:
+    if 'size' in fields and meta.size is not None:
         result.append('size: ' + str(meta.size))
     if 'uid' in fields:
         result.append('uid: ' + str(meta.uid))

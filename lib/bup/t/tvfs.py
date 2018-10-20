@@ -89,7 +89,7 @@ def tree_items(repo, oid):
     try:
         maybe_meta = lambda : Metadata.read(bupm) if bupm else None
         m = maybe_meta()
-        if m:
+        if m and m.size is None:
             m.size = 0
         yield TreeDictValue(name='.', oid=oid, meta=m)
         tree_ents = vfs.ordered_tree_entries(tree_data, bupm=True)
