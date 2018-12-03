@@ -4,12 +4,14 @@ from collections import namedtuple
 from errno import ELOOP, ENOTDIR
 from io import BytesIO
 from os import environ, symlink
+from random import Random, randint
 from stat import S_IFDIR, S_IFREG, S_ISDIR, S_ISREG
 from sys import stderr
 from time import localtime, strftime
 
 from wvtest import *
 
+from bup._helpers import write_random
 from bup import git, metadata, vfs
 from bup.git import BUP_CHUNKED
 from bup.helpers import exc, exo, shstr
@@ -499,6 +501,102 @@ def test_resolve():
             res = resolve(repo, path)
             wvpasseq(4, len(res))
             wvpasseq(expected, res)
+
+def write_sized_random_content(parent_dir, size, seed):
+    verbose = 0
+    with open('%s/%d' % (parent_dir, size), 'wb') as f:
+        write_random(f.fileno(), size, seed, verbose)
+
+def validate_vfs_streaming_read(repo, item, expected_path, read_sizes):
+    for read_size in read_sizes:
+        with open(expected_path, 'rb') as expected:
+            with vfs.fopen(repo, item) as actual:
+                ex_buf = expected.read(read_size)
+                act_buf = actual.read(read_size)
+                while ex_buf and act_buf:
+                    wvpassge(read_size, len(ex_buf))
+                    wvpassge(read_size, len(act_buf))
+                    wvpasseq(len(ex_buf), len(act_buf))
+                    wvpass(ex_buf == act_buf)
+                    ex_buf = expected.read(read_size)
+                    act_buf = actual.read(read_size)
+                wvpasseq('', ex_buf)
+                wvpasseq('', act_buf)
+
+def validate_vfs_seeking_read(repo, item, expected_path, read_sizes):
+    def read_act(act_pos):
+        with vfs.fopen(repo, item) as actual:
+            actual.seek(act_pos)
+            wvpasseq(act_pos, actual.tell())
+            act_buf = actual.read(read_size)
+            act_pos += len(act_buf)
+            wvpasseq(act_pos, actual.tell())
+            return act_pos, act_buf
+
+    for read_size in read_sizes:
+        with open(expected_path, 'rb') as expected:
+                ex_buf = expected.read(read_size)
+                act_buf = None
+                act_pos = 0
+                while ex_buf:
+                    act_pos, act_buf = read_act(act_pos)
+                    wvpassge(read_size, len(ex_buf))
+                    wvpassge(read_size, len(act_buf))
+                    wvpasseq(len(ex_buf), len(act_buf))
+                    wvpass(ex_buf == act_buf)
+                    if not act_buf:
+                        break
+                    ex_buf = expected.read(read_size)
+                else:  # hit expected eof first
+                    act_pos, act_buf = read_act(act_pos)
+                wvpasseq('', ex_buf)
+                wvpasseq('', act_buf)
+
+@wvtest
+def test_read_and_seek():
+    # Write a set of randomly sized files containing random data whose
+    # names are their sizes, and then verify that what we get back
+    # from the vfs when seeking and reading with various block sizes
+    # matches the original content.
+    with no_lingering_errors():
+        with test_tempdir('bup-tvfs-read-') as tmpdir:
+            resolve = vfs.resolve
+            bup_dir = tmpdir + '/bup'
+            environ['GIT_DIR'] = bup_dir
+            environ['BUP_DIR'] = bup_dir
+            git.repodir = bup_dir
+            repo = LocalRepo()
+            data_path = tmpdir + '/src'
+            os.mkdir(data_path)
+            seed = randint(-(1 << 31), (1 << 31) - 1)
+            rand = Random()
+            rand.seed(seed)
+            print('test_read seed:', seed, file=sys.stderr)
+            max_size = 2 * 1024 * 1024
+            sizes = set((rand.randint(1, max_size) for _ in xrange(5)))
+            sizes.add(1)
+            sizes.add(max_size)
+            for size in sizes:
+                write_sized_random_content(data_path, size, seed)
+            ex((bup_path, 'init'))
+            ex((bup_path, 'index', '-v', data_path))
+            ex((bup_path, 'save', '-d', '100000', '-tvvn', 'test', '--strip',
+                data_path))
+            read_sizes = set((rand.randint(1, max_size) for _ in xrange(10)))
+            sizes.add(1)
+            sizes.add(max_size)
+            print('test_read src sizes:', sizes, file=sys.stderr)
+            print('test_read read sizes:', read_sizes, file=sys.stderr)
+            for size in sizes:
+                res = resolve(repo, '/test/latest/' + str(size))
+                _, item = res[-1]
+                wvpasseq(size, vfs.item_size(repo, res[-1][1]))
+                validate_vfs_streaming_read(repo, item,
+                                            '%s/%d' % (data_path, size),
+                                            read_sizes)
+                validate_vfs_seeking_read(repo, item,
+                                          '%s/%d' % (data_path, size),
+                                          read_sizes)
 
 @wvtest
 def test_resolve_loop():

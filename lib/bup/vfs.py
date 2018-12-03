@@ -94,12 +94,25 @@ def _normal_or_chunked_file_size(repo, oid):
         _, obj_t, size = next(it)
     return ofs + sum(len(b) for b in it)
 
+def _skip_chunks_before_offset(tree, offset):
+    prev_ent = next(tree, None)
+    if not prev_ent:
+        return tree
+    ent = None
+    for ent in tree:
+        ent_ofs = int(ent[1], 16)
+        if ent_ofs > offset:
+            return chain([prev_ent, ent], tree)
+        if ent_ofs == offset:
+            return chain([ent], tree)
+        prev_ent = ent
+    return [prev_ent]
+
 def _tree_chunks(repo, tree, startofs):
     "Tree should be a sequence of (name, mode, hash) as per tree_decode()."
     assert(startofs >= 0)
     # name is the chunk's hex offset in the original file
-    tree = dropwhile(lambda (_1, name, _2): int(name, 16) < startofs, tree)
-    for mode, name, oid in tree:
+    for mode, name, oid in _skip_chunks_before_offset(tree, startofs):
         ofs = int(name, 16)
         skipmore = startofs - ofs
         if skipmore < 0:
