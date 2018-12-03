@@ -35,7 +35,6 @@ class BupFs(fuse.Fuse):
         if self.verbose > 0:
             log('--getattr(%r)\n' % path)
         res = vfs.lresolve(self.repo, path, want_meta=(not self.fake_metadata))
-        log('res: %r\n' % (res,))
         name, item = res[-1]
         if not item:
             return -errno.ENOENT
