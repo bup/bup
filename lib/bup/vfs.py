@@ -170,8 +170,11 @@ class _FileReader(object):
         return self.ofs
 
     def read(self, count=-1):
+        size = self._compute_size()
+        if self.ofs >= size:
+            return ''
         if count < 0:
-            count = self._compute_size() - self.ofs
+            count = size - self.ofs
         if not self.reader or self.reader.ofs != self.ofs:
             self.reader = _ChunkReader(self._repo, self.oid, self.ofs)
         try:
