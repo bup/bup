@@ -48,7 +48,7 @@ item.coid.
 
 from __future__ import absolute_import, print_function
 from collections import namedtuple
-from errno import ELOOP, ENOENT, ENOTDIR
+from errno import EINVAL, ELOOP, ENOENT, ENOTDIR
 from itertools import chain, dropwhile, groupby, tee
 from random import randrange
 from stat import S_IFDIR, S_IFLNK, S_IFREG, S_ISDIR, S_ISLNK, S_ISREG
@@ -162,10 +162,8 @@ class _FileReader(object):
         return self._size
         
     def seek(self, ofs):
-        if ofs < 0:
-            raise IOError(errno.EINVAL, 'Invalid argument')
-        if ofs > self._compute_size():
-            raise IOError(errno.EINVAL, 'Invalid argument')
+        if ofs < 0 or ofs > self._compute_size():
+            raise IOError(EINVAL, 'Invalid seek offset: %d' % ofs)
         self.ofs = ofs
 
     def tell(self):
