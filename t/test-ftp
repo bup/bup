@@ -70,9 +70,9 @@ with test_tempdir('ftp-') as tmpdir:
                                               'cd ..', 'pwd')).out)
     wvpasseq('/src\n/\n', bup('ftp', input=jl('cd src', 'pwd',
                                               'cd ..', 'cd ..', 'pwd')).out)
-    wvpasseq('/src/latest/dir\n',
+    wvpasseq('/src/%s/dir\n' % save_name,
              bup('ftp', input=jl('cd src/latest/dir-symlink', 'pwd')).out)
-    wvpasseq('/src/latest/dir\n',
+    wvpasseq('/src/%s/dir\n' % save_name,
              bup('ftp', input=jl('cd src latest dir-symlink', 'pwd')).out)
     wvpassne(0, bup('ftp',
                     input=jl('cd src/latest/bad-symlink', 'pwd'),

@@ -5,7 +5,7 @@ from errno import ELOOP, ENOTDIR
 from io import BytesIO
 from os import environ, symlink
 from random import Random, randint
-from stat import S_IFDIR, S_IFREG, S_ISDIR, S_ISREG
+from stat import S_IFDIR, S_IFLNK, S_IFREG, S_ISDIR, S_ISREG
 from sys import stderr
 from time import localtime, strftime
 
@@ -27,6 +27,12 @@ start_dir = os.getcwd()
 def ex(cmd, **kwargs):
     print(shstr(cmd), file=stderr)
     return exc(cmd, **kwargs)
+
+@wvtest
+def test_default_modes():
+    wvpasseq(S_IFREG | 0o644, vfs.default_file_mode)
+    wvpasseq(S_IFDIR | 0o755, vfs.default_dir_mode)
+    wvpasseq(S_IFLNK | 0o755, vfs.default_symlink_mode)
 
 @wvtest
 def test_cache_behavior():
@@ -284,6 +290,8 @@ def test_resolve():
             expected_latest_item_w_meta = vfs.Commit(meta=tip_tree['.'].meta,
                                                      oid=tip_tree_oid,
                                                      coid=tip_oid)
+            expected_latest_link = vfs.FakeLink(meta=vfs.default_symlink_mode,
+                                                target=save_time_str)
             expected_test_tag_item = expected_latest_item
 
             wvstart('resolve: /')
@@ -335,7 +343,7 @@ def test_resolve():
             # latest has metadata here due to caching
             wvpasseq(frozenset([('.', test_revlist_w_meta),
                                 (save_time_str, expected_latest_item_w_meta),
-                                ('latest', expected_latest_item_w_meta)]),
+                                ('latest', expected_latest_link)]),
                      test_content)
 
             wvstart('resolve: /test/latest')
@@ -347,7 +355,7 @@ def test_resolve():
                                                      coid=tip_oid)
             expected = (('', vfs._root),
                         ('test', test_revlist_w_meta),
-                        ('latest', expected_latest_item_w_meta))
+                        (save_time_str, expected_latest_item_w_meta))
             wvpasseq(expected, res)
             ignore, latest_item = res[2]
             latest_content = frozenset(vfs.contents(repo, latest_item))
@@ -369,7 +377,7 @@ def test_resolve():
                                                  oid=tip_tree['file'].oid)
             expected = (('', vfs._root),
                         ('test', test_revlist_w_meta),
-                        ('latest', expected_latest_item_w_meta),
+                        (save_time_str, expected_latest_item_w_meta),
                         ('file', expected_file_item_w_meta))
             wvpasseq(expected, res)
 
@@ -379,7 +387,7 @@ def test_resolve():
             wvpasseq(4, len(res))
             expected = (('', vfs._root),
                         ('test', test_revlist_w_meta),
-                        ('latest', expected_latest_item_w_meta),
+                        (save_time_str, expected_latest_item_w_meta),
                         ('not-there', None))
             wvpasseq(expected, res)
 
@@ -392,7 +400,7 @@ def test_resolve():
                                                         oid=bad_symlink_value.oid)
             expected = (('', vfs._root),
                         ('test', test_revlist_w_meta),
-                        ('latest', expected_latest_item_w_meta),
+                        (save_time_str, expected_latest_item_w_meta),
                         ('bad-symlink', expected_bad_symlink_item_w_meta))
             wvpasseq(expected, res)
 
@@ -402,7 +410,7 @@ def test_resolve():
             wvpasseq(4, len(res))
             expected = (('', vfs._root),
                         ('test', test_revlist_w_meta),
-                        ('latest', expected_latest_item_w_meta),
+                        (save_time_str, expected_latest_item_w_meta),
                         ('file', expected_file_item_w_meta))
             wvpasseq(expected, res)
 
@@ -415,7 +423,7 @@ def test_resolve():
                                                          oid=file_symlink_value.oid)
             expected = (('', vfs._root),
                         ('test', test_revlist_w_meta),
-                        ('latest', expected_latest_item_w_meta),
+                        (save_time_str, expected_latest_item_w_meta),
                         ('file-symlink', expected_file_symlink_item_w_meta))
             wvpasseq(expected, res)
 
@@ -440,7 +448,7 @@ def test_resolve():
                     resolve(repo, path)
                 except vfs.IOError as res_ex:
                     wvpasseq(ENOTDIR, res_ex.errno)
-                    wvpasseq(['', 'test', 'latest', 'file'],
+                    wvpasseq(['', 'test', save_time_str, 'file'],
                              [name for name, item in res_ex.terminus])
 
             for path in ('/test/latest/file-symlink/',
@@ -455,7 +463,7 @@ def test_resolve():
                     lresolve(repo, path)
                 except vfs.IOError as res_ex:
                     wvpasseq(ENOTDIR, res_ex.errno)
-                    wvpasseq(['', 'test', 'latest', 'file'],
+                    wvpasseq(['', 'test', save_time_str, 'file'],
                              [name for name, item in res_ex.terminus])
 
             wvstart('resolve: non-directory parent')
@@ -476,7 +484,7 @@ def test_resolve():
                                                          oid=dir_symlink_value.oid)
             expected = (('', vfs._root),
                         ('test', test_revlist_w_meta),
-                        ('latest', expected_latest_item_w_meta),
+                        (save_time_str, expected_latest_item_w_meta),
                         ('dir-symlink', expected_dir_symlink_item_w_meta))
             wvpasseq(expected, res)
 
@@ -485,7 +493,7 @@ def test_resolve():
                                          meta=tree_dict(repo, dir_value.oid)['.'].meta)
             expected = (('', vfs._root),
                         ('test', test_revlist_w_meta),
-                        ('latest', expected_latest_item_w_meta),
+                        (save_time_str, expected_latest_item_w_meta),
                         ('dir', expected_dir_item))
             for resname, resolver in (('resolve', resolve),
                                       ('lresolve', lresolve)):
@@ -614,10 +622,12 @@ def test_resolve_loop():
             symlink('loop', data_path + '/loop')
             ex((bup_path, 'init'))
             ex((bup_path, 'index', '-v', data_path))
-            ex((bup_path, 'save', '-d', '100000', '-tvvn', 'test', '--strip',
+            save_utc = 100000
+            ex((bup_path, 'save', '-d', str(save_utc), '-tvvn', 'test', '--strip',
                 data_path))
+            save_name = strftime('%Y-%m-%d-%H%M%S', localtime(save_utc))
             try:
-                resolve(repo, '/test/latest/loop')
+                resolve(repo, '/test/%s/loop' % save_utc)
             except vfs.IOError as res_ex:
                 wvpasseq(ELOOP, res_ex.errno)
                 wvpasseq(['', 'test', 'latest', 'loop'],
@@ -638,8 +648,10 @@ def test_contents_with_mismatched_bupm_git_ordering():
                 tmpfile.write(b'canary\n')
             ex((bup_path, 'init'))
             ex((bup_path, 'index', '-v', data_path))
-            ex((bup_path, 'save', '-tvvn', 'test', '--strip',
-                data_path))
+            save_utc = 100000
+            save_name = strftime('%Y-%m-%d-%H%M%S', localtime(save_utc))
+            ex((bup_path, 'save', '-tvvn', 'test', '-d', str(save_utc),
+                '--strip', data_path))
             repo = LocalRepo()
             tip_sref = exo(('git', 'show-ref', 'refs/heads/test'))[0]
             tip_oidx = tip_sref.strip().split()[0]
@@ -649,7 +661,7 @@ def test_contents_with_mismatched_bupm_git_ordering():
             tip_tree = tree_dict(repo, tip_tree_oid)
 
             name, item = vfs.resolve(repo, '/test/latest')[2]
-            wvpasseq('latest', name)
+            wvpasseq(save_name, name)
             expected = frozenset((x.name, vfs.Item(oid=x.oid, meta=x.meta))
                                  for x in (tip_tree[name]
                                            for name in ('.', 'foo', 'foo.')))

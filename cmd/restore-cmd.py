@@ -250,6 +250,17 @@ def main():
         except vfs.IOError as e:
             add_error(e)
             continue
+        if len(resolved) == 3 and resolved[2][0] == 'latest':
+            # Follow latest symlink to the actual save
+            try:
+                resolved = vfs.resolve(repo, 'latest', parent=resolved[:-1],
+                                       want_meta=True)
+            except vfs.IOError as e:
+                add_error(e)
+                continue
+            # Rename it back to 'latest'
+            resolved = tuple(elt if i != 2 else ('latest',) + elt[1:]
+                             for i, elt in enumerate(resolved))
         path_parent, path_name = os.path.split(path)
         leaf_name, leaf_item = resolved[-1]
         if not leaf_item:

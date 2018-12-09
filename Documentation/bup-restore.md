@@ -48,6 +48,11 @@ path/to/dir/.), `bup restore` will do exactly what it would have done
 for path/to/dir, and then restore _dir_'s metadata to the current
 directory (or the `--outdir`).  See the EXAMPLES section.
 
+As a special case, if _some/where_ names the "latest" symlink,
+e.g. `bup restore /foo/latest`, then bup will act exactly as if the
+save that "latest" points to had been specified, and restore that,
+rather than the "latest" symlink itself.
+
 Whenever path metadata is available, `bup restore` will attempt to
 restore it.  When restoring ownership, bup implements tar/rsync-like
 semantics.  It will normally prefer user and group names to uids and

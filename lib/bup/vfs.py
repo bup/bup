@@ -236,6 +236,7 @@ def _decompose_path(path):
 
 Item = namedtuple('Item', ('meta', 'oid'))
 Chunky = namedtuple('Chunky', ('meta', 'oid'))
+FakeLink = namedtuple('FakeLink', ('meta', 'target'))
 Root = namedtuple('Root', ('meta'))
 Tags = namedtuple('Tags', ('meta'))
 RevList = namedtuple('RevList', ('meta', 'oid'))
@@ -398,6 +399,8 @@ def readlink(repo, item):
         target = item.meta.symlink_target
         if target:
             return target
+    elif isinstance(item, FakeLink):
+        return item.target
     return _readlink(repo, item.oid)
 
 def _compute_item_size(repo, item):
@@ -636,13 +639,13 @@ def cache_commit(repo, oid):
     revs = None  # Don't disturb the tees
     rev_names = _reverse_suffix_duplicates(_name_for_rev(x) for x in rev_names)
     rev_items = (_item_for_rev(x) for x in rev_items)
-    latest = None
+    tip = None
     for item in rev_items:
-        latest = latest or item
         name = next(rev_names)
+        tip = tip or (name, item)
         entries[name] = item
-    entries['latest'] = latest
-    revlist_key = b'rvl:' + latest.coid
+    entries['latest'] = FakeLink(meta=default_symlink_mode, target=tip[0])
+    revlist_key = b'rvl:' + tip[1].coid
     cache_notice(revlist_key, entries)
     return entries
 
@@ -990,7 +993,10 @@ def augment_item_meta(repo, item, include_size=False):
     meta.mode = m
     meta.uid = meta.gid = meta.atime = meta.mtime = meta.ctime = 0
     if S_ISLNK(m):
-        target = _readlink(repo, item.oid)
+        if isinstance(item, FakeLink):
+            target = item.target
+        else:
+            target = _readlink(repo, item.oid)
         meta.symlink_target = target
         meta.size = len(target)
     elif include_size:
