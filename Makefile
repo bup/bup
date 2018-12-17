@@ -125,8 +125,8 @@ lib/bup/_helpers$(SOEXT): \
 	cd lib/bup && \
 	LDFLAGS="$(LDFLAGS)" CFLAGS="$(CFLAGS)" "$(bup_python)" csetup.py build
         # Make sure there's just the one file we expect before we copy it.
-	find lib/bup/build/* -maxdepth 1 -name '_helpers*$(SOEXT)' -print0 \
-	  | tr -C -d '\000' | wc -c | xargs test 1 -eq
+	"$(bup_python)" -c \
+	  "import glob; assert(len(glob.glob('lib/bup/build/*/_helpers*$(SOEXT)')) == 1)"
 	cp lib/bup/build/*/_helpers*$(SOEXT) "$@"
 
 lib/bup/_checkout.py:
