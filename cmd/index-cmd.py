@@ -12,7 +12,7 @@ from bup import metadata, options, git, index, drecurse, hlinkdb
 from bup.drecurse import recursive_dirlist
 from bup.hashsplit import GIT_MODE_TREE, GIT_MODE_FILE
 from bup.helpers import (add_error, handle_ctrl_c, log, parse_excludes, parse_rx_excludes,
-                         progress, qprogress, saved_errors)
+                         progress, qprogress, saved_errors, INO_FIX)
 
 
 class IterHelper:
@@ -118,7 +118,10 @@ def update_index(top, excluded_paths, exclude_rxs, xdev_exceptions):
             need_repack = False
             if(rig.cur.stale(pst, tstart, check_device=opt.check_device)):
                 try:
-                    meta = metadata.from_path(path, statinfo=pst)
+                    meta = metadata.from_path(
+                        path,
+                        statinfo=pst,
+                        no_nonstat_metadata=opt.no_nonstat_metadata)
                 except (OSError, IOError) as e:
                     add_error(e)
                     rig.next()
@@ -126,7 +129,7 @@ def update_index(top, excluded_paths, exclude_rxs, xdev_exceptions):
                 if not stat.S_ISDIR(rig.cur.mode) and rig.cur.nlink > 1:
                     hlinks.del_path(rig.cur.name)
                 if not stat.S_ISDIR(pst.st_mode) and pst.st_nlink > 1:
-                    hlinks.add_path(path, pst.st_dev, pst.st_ino)
+                    hlinks.add_path(path, pst.st_dev, pst.st_ino & INO_FIX)
                 # Clear these so they don't bloat the store -- they're
                 # already in the index (since they vary a lot and they're
                 # fixed length).  If you've noticed "tmax", you might
@@ -157,7 +160,10 @@ def update_index(top, excluded_paths, exclude_rxs, xdev_exceptions):
             rig.next()
         else:  # new paths
             try:
-                meta = metadata.from_path(path, statinfo=pst)
+                meta = metadata.from_path(
+                    path,
+                    statinfo=pst,
+                    no_nonstat_metadata=opt.no_nonstat_metadata)
             except (OSError, IOError) as e:
                 add_error(e)
                 continue
@@ -166,7 +172,7 @@ def update_index(top, excluded_paths, exclude_rxs, xdev_exceptions):
             meta_ofs = msw.store(meta)
             wi.add(path, pst, meta_ofs, hashgen=fake_hash)
             if not stat.S_ISDIR(pst.st_mode) and pst.st_nlink > 1:
-                hlinks.add_path(path, pst.st_dev, pst.st_ino)
+                hlinks.add_path(path, pst.st_dev, pst.st_ino & INO_FIX)
 
     elapsed = time.time() - index_start
     paths_per_sec = total / elapsed if elapsed else 0
@@ -215,6 +221,7 @@ clear      clear the default index
 H,hash     print the hash for each object next to its name
 l,long     print more information about each file
 no-check-device don't invalidate an entry if the containing device changes
+no-nonstat-metadata skip indexing metadata beyond stat() (xattrs, ACLs)
 fake-valid mark all index entries as up-to-date even if they aren't
 fake-invalid mark all index entries as invalid
 f,indexfile=  the name of the index file (normally BUP_DIR/bupindex)

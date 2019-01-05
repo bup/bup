@@ -23,6 +23,9 @@ if len(sys.argv) < 2:
 def on_walk_error(e):
     raise e
 
+# See helpers.py for an explanation
+INO_FIX = sys.maxsize * 2 + 1  # 0b11...11 for this architecture
+
 hardlink_set = {}
 
 for p in sys.argv[1:]:
@@ -31,7 +34,7 @@ for p in sys.argv[1:]:
           full_path = os.path.join(root, filename)
           st = os.lstat(full_path)
           if not stat.S_ISDIR(st.st_mode):
-              node = '%s:%s' % (st.st_dev, st.st_ino)
+              node = '%s:%s' % (st.st_dev, st.st_ino & INO_FIX)
               link_paths = hardlink_set.get(node)
               if link_paths:
                   link_paths.append(full_path)

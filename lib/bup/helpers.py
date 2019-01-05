@@ -1210,3 +1210,12 @@ def period_as_secs(s):
                   'w': 60 * 60 * 24 * 7,
                   'm': 60 * 60 * 24 * 31,
                   'y': 60 * 60 * 24 * 366}[scale]
+
+# Used to work around st_ino incorrectly being signed instead of unsigned
+# in Python < 3.6:
+#   https://bugs.python.org/issue29619
+#   https://github.com/python/cpython/commit/0f6d73343d342c106cda2219ebb8a6f0c4bd9b3c
+#
+# To work around it, any `st_ino` as obtained from `os.stat()`
+# should be cast to unsigned using `thestat.st_ino & INO_FIX`.
+INO_FIX = sys.maxsize * 2 + 1  # 0b11...11 for this architecture

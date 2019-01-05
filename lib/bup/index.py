@@ -6,7 +6,8 @@ from bup import metadata, xstat
 from bup._helpers import UINT_MAX, bytescmp
 from bup.compat import range
 from bup.helpers import (add_error, log, merge_iter, mmap_readwrite,
-                         progress, qprogress, resolve_parent, slashappend)
+                         progress, qprogress, resolve_parent, slashappend,
+                         INO_FIX)
 
 EMPTY_SHA = '\0'*20
 FAKE_SHA = '\x01'*20
@@ -209,7 +210,7 @@ class Entry:
             return True
         if self.ctime != st.st_ctime:
             return True
-        if self.ino != st.st_ino:
+        if self.ino != (st.st_ino & INO_FIX):
             return True
         if self.nlink != st.st_nlink:
             return True
@@ -227,7 +228,7 @@ class Entry:
         # Should only be called when the entry is stale(), and
         # invalidate() should almost certainly be called afterward.
         self.dev = st.st_dev
-        self.ino = st.st_ino
+        self.ino = st.st_ino & INO_FIX
         self.nlink = st.st_nlink
         self.ctime = st.st_ctime
         self.mtime = st.st_mtime
@@ -580,7 +581,7 @@ class Writer:
             isdir = stat.S_ISDIR(st.st_mode)
             assert(isdir == endswith)
             e = NewEntry(basename, name, self.tmax,
-                         st.st_dev, st.st_ino, st.st_nlink,
+                         st.st_dev, st.st_ino & INO_FIX, st.st_nlink,
                          st.st_ctime, st.st_mtime, st.st_atime,
                          st.st_size, st.st_mode, gitmode, sha, flags,
                          meta_ofs, 0, 0)

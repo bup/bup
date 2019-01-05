@@ -128,6 +128,7 @@ From source
             apt-get install python-pyxattr python-pylibacl
             apt-get install linux-libc-dev
             apt-get install acl attr
+            apt-get install python-scandir # optional, improves performance
             apt-get install python-tornado # optional
 
    On CentOS (for CentOS 6, at least), this should be sufficient (run
@@ -136,12 +137,18 @@ From source
             yum groupinstall "Development Tools"
             yum install python python-devel
             yum install fuse-python pyxattr pylibacl
+            yum install python-scandir # optional, improves performance
             yum install perl-Time-HiRes
 
    In addition to the default CentOS repositories, you may need to add
    RPMForge (for fuse-python) and EPEL (for pyxattr and pylibacl).
 
    On Cygwin, install python, make, rsync, and gcc4.
+
+   If you would like to have optional on system without a python-scandir
+   package, you may want to try this:
+
+            pip install scandir
 
    If you would like to use the optional bup web server on systems
    without a tornado package, you may want to try this:
