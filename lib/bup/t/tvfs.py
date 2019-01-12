@@ -627,10 +627,11 @@ def test_resolve_loop():
                 data_path))
             save_name = strftime('%Y-%m-%d-%H%M%S', localtime(save_utc))
             try:
-                resolve(repo, '/test/%s/loop' % save_utc)
+                wvpasseq('this call should never return',
+                         resolve(repo, '/test/%s/loop' % save_name))
             except vfs.IOError as res_ex:
                 wvpasseq(ELOOP, res_ex.errno)
-                wvpasseq(['', 'test', 'latest', 'loop'],
+                wvpasseq(['', 'test', save_name, 'loop'],
                          [name for name, item in res_ex.terminus])
 
 @wvtest
