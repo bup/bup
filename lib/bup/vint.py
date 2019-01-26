@@ -16,27 +16,32 @@ def write_vuint(port, x):
     elif x == 0:
         port.write('\0')
     else:
-        while x:
+        while True:
             seven_bits = x & 0x7f
             x >>= 7
             if x:
                 port.write(chr(0x80 | seven_bits))
             else:
                 port.write(chr(seven_bits))
+                break
 
 
 def read_vuint(port):
     c = port.read(1)
-    if c == '':
-        raise EOFError('encountered EOF while reading vuint');
+    if not c:
+        raise EOFError('encountered EOF while reading vuint')
+    if ord(c) == 0:
+        return 0
     result = 0
     offset = 0
-    while c:
+    while True:
         b = ord(c)
         if b & 0x80:
             result |= ((b & 0x7f) << offset)
             offset += 7
             c = port.read(1)
+            if not c:
+                raise EOFError('encountered EOF while reading vuint')
         else:
             result |= (b << offset)
             break
@@ -64,8 +69,8 @@ def write_vint(port, x):
 
 def read_vint(port):
     c = port.read(1)
-    if c == '':
-        raise EOFError('encountered EOF while reading vint');
+    if not c:
+        raise EOFError('encountered EOF while reading vint')
     negative = False
     result = 0
     offset = 0
@@ -82,12 +87,14 @@ def read_vint(port):
             return -result
         else:
             return result
-    while c:
+    while True:
         b = ord(c)
         if b & 0x80:
             result |= ((b & 0x7f) << offset)
             offset += 7
             c = port.read(1)
+            if not c:
+                raise EOFError('encountered EOF while reading vint')
         else:
             result |= (b << offset)
             break
