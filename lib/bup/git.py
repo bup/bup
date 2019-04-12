@@ -76,17 +76,21 @@ _safe_str_rx = '(?:%s{1,2}|(?:%s%s*%s))' \
        _start_end_char, _content_char, _start_end_char)
 _tz_rx = r'[-+]\d\d[0-5]\d'
 _parent_rx = r'(?:parent [abcdefABCDEF0123456789]{40}\n)'
+# Assumes every following line starting with a space is part of the
+# mergetag.  Is there a formal commit blob spec?
+_mergetag_rx = r'(?:\nmergetag object [abcdefABCDEF0123456789]{40}(?:\n [^\0\n]*)*)'
 _commit_rx = re.compile(r'''tree (?P<tree>[abcdefABCDEF0123456789]{40})
 (?P<parents>%s*)author (?P<author_name>%s) <(?P<author_mail>%s)> (?P<asec>\d+) (?P<atz>%s)
-committer (?P<committer_name>%s) <(?P<committer_mail>%s)> (?P<csec>\d+) (?P<ctz>%s)
+committer (?P<committer_name>%s) <(?P<committer_mail>%s)> (?P<csec>\d+) (?P<ctz>%s)(?P<mergetag>%s?)
 
 (?P<message>(?:.|\n)*)''' % (_parent_rx,
                              _safe_str_rx, _safe_str_rx, _tz_rx,
-                             _safe_str_rx, _safe_str_rx, _tz_rx))
+                             _safe_str_rx, _safe_str_rx, _tz_rx,
+                             _mergetag_rx))
 _parent_hash_rx = re.compile(r'\s*parent ([abcdefABCDEF0123456789]{40})\s*')
 
-
-# Note that the author_sec and committer_sec values are (UTC) epoch seconds.
+# Note that the author_sec and committer_sec values are (UTC) epoch
+# seconds, and for now the mergetag is not included.
 CommitInfo = namedtuple('CommitInfo', ['tree', 'parents',
                                        'author_name', 'author_mail',
                                        'author_sec', 'author_offset',
