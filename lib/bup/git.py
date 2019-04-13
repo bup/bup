@@ -979,7 +979,9 @@ def rev_list(ref_or_refs, count=None, parse=None, format=None, repo_dir=None):
             s = line.strip()
             if not s.startswith('commit '):
                 raise Exception('unexpected line ' + s)
-            yield s[7:], parse(p.stdout)
+            s = s[7:]
+            assert len(s) == 40
+            yield s, parse(p.stdout)
             line = p.stdout.readline()
 
     rv = p.wait()  # not fatal

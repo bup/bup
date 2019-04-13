@@ -393,6 +393,13 @@ class Client:
         self._not_busy()
 
     def rev_list(self, refs, count=None, parse=None, format=None):
+        """See git.rev_list for the general semantics, but note that with the
+        current interface, the parse function must be able to handle
+        (consume) any blank lines produced by the format because the
+        first one received that it doesn't consume will be interpreted
+        as a terminator for the entire rev-list result.
+
+        """
         self._require_command('rev-list')
         assert (count is None) or (isinstance(count, Integral))
         if format:
@@ -416,21 +423,17 @@ class Client:
             conn.write('\n')
         conn.write('\n')
         if not format:
-            for _ in range(len(refs)):
-                line = conn.readline()
-                if not line:
-                    raise ClientError('unexpected EOF')
+            for line in lines_until_sentinel(conn, '\n', ClientError):
                 line = line.strip()
                 assert len(line) == 40
                 yield line
         else:
-            for _ in range(len(refs)):
-                line = conn.readline()
-                if not line:
-                    raise ClientError('unexpected EOF')
+            for line in lines_until_sentinel(conn, '\n', ClientError):
                 if not line.startswith('commit '):
                     raise ClientError('unexpected line ' + repr(line))
-                yield line[7:].strip(), parse(conn)
+                cmt_oidx = line[7:].strip()
+                assert len(cmt_oidx) == 40
+                yield cmt_oidx, parse(conn)
         # FIXME: confusing
         not_ok = self.check_ok()
         if not_ok:

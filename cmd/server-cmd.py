@@ -226,6 +226,7 @@ def rev_list(conn, _):
         if not out:
             break
         conn.write(out)
+    conn.write('\n')
     rv = p.wait()  # not fatal
     if rv:
         msg = 'git rev-list returned error %d' % rv

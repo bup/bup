@@ -45,6 +45,8 @@ WVPASS touch -t 200910032348 src/.dotfile src/*
 WVPASS touch -t 200910032348 src
 WVPASS touch -t 200910032348 .
 WVPASS bup index src
+# Include two saves to test multiple results per ref from rev_list.
+WVPASS bup save -n src -d 242312159 --strip src
 WVPASS bup save -n src -d 242312160 --strip src
 WVPASS bup tag some-tag src
 
@@ -82,7 +84,8 @@ src/"
 WVPASSEQ "$(WVPASS bup-ls /.tag)" "some-tag"
 
 WVPASSEQ "$(WVPASS bup-ls /src)" \
-"1977-09-05-125600
+"1977-09-05-125559
+1977-09-05-125600
 latest"
 
 WVPASSEQ "$(WVPASS bup-ls src/latest)" "bad-symlink
@@ -255,6 +258,7 @@ WVPASSEQ "$(bup-ls -ld "src/latest" | tr -s ' ' ' ')" \
 WVSTART "$ls_cmd_desc (backup set - long)"
 WVPASSEQ "$(bup-ls -l --numeric-ids src | cut -d' ' -f 1-2)" \
 "drwx------ $uid/$gid
+drwx------ $uid/$gid
 lrwxr-xr-x 0/0"
 
 WVPASSEQ "$(bup-ls -ds "src/1977-09-05-125600" | tr -s ' ' ' ')" \
