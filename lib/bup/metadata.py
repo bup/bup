@@ -357,7 +357,7 @@ class Metadata:
             os.mknod(path, 0o600 | stat.S_IFBLK, self.rdev)
         elif stat.S_ISFIFO(self.mode):
             assert(self._recognized_file_type())
-            os.mknod(path, 0o600 | stat.S_IFIFO)
+            os.mkfifo(path, 0o600 | stat.S_IFIFO)
         elif stat.S_ISSOCK(self.mode):
             try:
                 os.mknod(path, 0o600 | stat.S_IFSOCK)
