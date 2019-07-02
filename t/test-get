@@ -102,7 +102,6 @@ def validate_tree(src_id, dest_id):
                      % quote(src_c),
                      shell=True)
     if exr.rc != 0: return False
-    ex('cd restore-src && ls --full-time -aR .', shell=True)
     exr = verify_rcz('git --git-dir get-dest archive %s | tar xvf - -C restore-dest'
                      % quote(dest_c),
                      shell=True)
