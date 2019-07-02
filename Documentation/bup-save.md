@@ -104,10 +104,11 @@ handling of metadata.
 :   strips the given path prefix *path-prefix* from all
     files and directories.
     
-    A directory */root/chroot/webserver* saved with "bup save -n
-    webserver \--strip-path=/root/chroot" would be saved as
-    */webserver/etc*.  Note that currently, metadata will not be saved
-    for the root directory (*/*) when this option is specified.
+    A directory */root/chroot/webserver/etc* saved with "bup save -n
+    webserver \--strip-path=/root/chroot /root/chroot/webserver/etc"
+    would be saved as */webserver/etc*.  Note that currently, metadata
+    will not be saved for the root directory (*/*) when this option is
+    specified.
     
 \--graft=*old_path*=*new_path*
 :   a graft point *old_path*=*new_path* (can be used more than
