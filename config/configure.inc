@@ -594,7 +594,7 @@ MF_PATH_INCLUDE () {
 # and fd 5 points to what used to be fd 1
 #
 AC_INIT () {
-    __ac_tmpdir=$(mktemp -d)
+    __ac_tmpdir=$(mktemp -d configure-XXXXX)
     __config_files="config.cmd config.sub config.h config.mak config.log"
     __config_detritus="config.h.tmp"
     rm -f $__config_files $__config_detritus
