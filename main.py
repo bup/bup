@@ -204,16 +204,15 @@ def filter_output(src_out, src_err, dest_out, dest_err):
                     print_clean_line(dest, pending.pop(fd, []), width)
                 else:
                     split = sep_rx.split(buf)
-                    if len(split) > 2:
-                        while len(split) > 1:
-                            content, sep = split[:2]
-                            split = split[2:]
-                            print_clean_line(dest,
-                                             pending.pop(fd, []) + [content],
-                                             width,
-                                             sep)
-                    else:
-                        assert(len(split) == 1)
+                    while len(split) > 1:
+                        content, sep = split[:2]
+                        split = split[2:]
+                        print_clean_line(dest,
+                                         pending.pop(fd, []) + [content],
+                                         width,
+                                         sep)
+                    assert(len(split) == 1)
+                    if split[0]:
                         pending.setdefault(fd, []).extend(split)
     except BaseException as ex:
         pending_ex = chain_ex(add_ex_tb(ex), pending_ex)
