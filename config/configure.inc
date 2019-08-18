@@ -528,7 +528,7 @@ EOF
 # acLookFor actually looks for a program, without setting anything.
 #
 acLookFor () {
-    path=${AC_PATH:-$ac_default_path}
+    path="${AC_PATH:-$ac_default_path}"
     case "X$1" in
     X-[rx]) __mode=$1
 	    shift
@@ -540,8 +540,8 @@ acLookFor () {
     for program in $*; do
 	IFS=":"
 	for x in $path; do
-	    if [ $__mode $x/$program -a -f $x/$program ]; then
-		echo $x/$program
+	    if [ $__mode "$x/$program" -a -f "$x/$program" ]; then
+		echo "$x/$program"
 		break 2
 	    fi
 	done
@@ -576,7 +576,7 @@ MF_PATH_INCLUDE () {
 	AC_MAK $SYM
 	AC_DEFINE PATH_$__sym \""$DEST"\"
 	AC_SUB $__sym "$DEST"
-	eval CF_$SYM=$DEST
+	eval CF_$SYM="'$DEST'"
 	return 0
     else
 	#AC_SUB $__sym ''
@@ -793,7 +793,7 @@ AC_PROG_LN_S () {
 
     if [ "$DEST" ]; then
 	rm -f "$__ac_tmpdir/b$$"
-	$DEST -s "$__ac_tmpdir/a$$" "$__ac_tmpdir/b$$"
+	"$DEST" -s "$__ac_tmpdir/a$$" "$__ac_tmpdir/b$$"
 	if [ "`$AC_FIND_PROG $__ac_tmpdir/b$$ -type l -print`" ]; then
 	    TLOG " ($DEST)"
 	    echo "$DEST exists, and ln -s works"
@@ -823,7 +823,7 @@ AC_PROG_FIND () {
     if test -z "$AC_FIND_PROG"; then
 	MF_PATH_INCLUDE FIND find
 	rc=$?
-	AC_FIND_PROG=$DEST
+	AC_FIND_PROG="$DEST"
 	return $rc
     fi
     return 0
@@ -838,7 +838,7 @@ AC_PROG_AWK () {
     if test -z "$AC_AWK_PROG"; then
 	MF_PATH_INCLUDE AWK awk
 	rc=$?
-	AC_AWK_PROG=$DEST
+	AC_AWK_PROG="$DEST"
 	return $rc
     fi
     return 0
@@ -853,7 +853,7 @@ AC_PROG_SED () {
     if test -z "$AC_SED_PROG"; then
 	MF_PATH_INCLUDE SED sed
 	rc=$?
-	AC_SED_PROG=$DEST
+	AC_SED_PROG="$DEST"
 	return $rc
     fi
     return 0
@@ -1145,7 +1145,7 @@ AC_PROG_INSTALL () {
 	# BSD install or GNU install?  Let's find out...
 	touch "$__ac_tmpdir/a$$"
 
-	$DEST "$__ac_tmpdir/a$$" "$__ac_tmpdir/b$$"
+	"$DEST" "$__ac_tmpdir/a$$" "$__ac_tmpdir/b$$"
 
 	if test -r "$__ac_tmpdir/a$$"; then
 	    LOG " ($DEST)"
@@ -1245,7 +1245,7 @@ EOF
 #
 AC_PROG_CPP () {
     if [ "$AC_CPP_PROG" ]; then
-	DEST=$AC_CPP_PROG
+	DEST="$AC_CPP_PROG"
     else
 	__ac_path="$AC_PATH"
 	AC_PATH="/lib:/usr/lib:${__ac_path:-$ac_default_path}"
@@ -1257,11 +1257,11 @@ AC_PROG_CPP () {
     LOGN "Looking for cpp"
     if [ "$DEST" ]; then
 	TLOGN " ($DEST)"
-	acCheckCPP $DEST "$CPPFLAGS" || \
-		 acCheckCPP $DEST -traditional-cpp -E || \
-		 acCheckCPP $DEST -E || \
-		 acCheckCPP $DEST -traditional-cpp -pipe || \
-	         acCheckCPP $DEST -pipe || fail=1
+	acCheckCPP "$DEST" "$CPPFLAGS" || \
+		 acCheckCPP "$DEST" -traditional-cpp -E || \
+		 acCheckCPP "$DEST" -E || \
+		 acCheckCPP "$DEST" -traditional-cpp -pipe || \
+	         acCheckCPP "$DEST" -pipe || fail=1
 
 	if [ "$fail" ]; then
 	    AC_FAIL " (can't run cpp as a pipeline)"
