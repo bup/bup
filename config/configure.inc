@@ -47,6 +47,16 @@ ac_standard="--src=DIR		where the source lives (.)
 
 __fail=exit
 
+
+__ac_tmpdir=''
+__ac_clean_up () {
+    if test "$__ac_tmpdir"; then
+        rm -rf "$__ac_tmpdir"
+    fi
+}
+trap __ac_clean_up EXIT
+
+
 if dirname B/A 2>/dev/null >/dev/null; then
 __ac_dirname() {
     dirname "$1"
@@ -585,7 +595,6 @@ MF_PATH_INCLUDE () {
 #
 AC_INIT () {
     __ac_tmpdir=$(mktemp -d)
-    trap "$(printf 'rm -rf %q' "$__ac_tmpdir")" EXIT
     __config_files="config.cmd config.sub config.h config.mak config.log"
     __config_detritus="config.h.tmp"
     rm -f $__config_files $__config_detritus
