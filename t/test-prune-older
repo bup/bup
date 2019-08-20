@@ -155,6 +155,7 @@ with test_tempdir('prune-older-') as tmpdir:
     three_years_ago = now - (60 * 60 * 24 * 366 * 3)
     chdir(tmpdir)
     ex(['git', 'init', 'work'])
+    ex(['git', 'config', 'gc.autoDetach', 'false'])
 
     wvstart('generating ' + str(save_population) + ' random saves')
     chdir(tmpdir + '/work')
