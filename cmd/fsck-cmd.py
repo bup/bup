@@ -51,14 +51,14 @@ def parv(lvl):
         return ['-qq']
 
 def par2_generate(base):
-    return run(['par2', 'create', '-n1', '-c200'] + parv(2)
+    return run(['par2', 'create', '-t1', '-n1', '-c200'] + parv(2)
                + ['--', base, base+'.pack', base+'.idx'])
 
 def par2_verify(base):
-    return run(['par2', 'verify'] + parv(3) + ['--', base])
+    return run(['par2', 'verify', '-t1'] + parv(3) + ['--', base])
 
 def par2_repair(base):
-    return run(['par2', 'repair'] + parv(2) + ['--', base])
+    return run(['par2', 'repair', '-t1'] + parv(2) + ['--', base])
 
 def quick_verify(base):
     f = open(base + '.pack', 'rb')
