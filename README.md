@@ -94,6 +94,13 @@ Notable changes introduced by a release
  - <a href="note/0.27.1-from-0.27.md">Changes in 0.27.1 as compared to 0.27</a>
 
 
+Test status: [![Debian test status](https://api.cirrus-ci.com/github/bup/bup.svg?branch=tmp/test-cirrus&task=debian)](https://cirrus-ci.com/github/bup/bup)
+[![FreeBSD test status](https://api.cirrus-ci.com/github/bup/bup.svg?branch=tmp/test-cirrus&task=freebsd)](https://cirrus-ci.com/github/bup/bup)
+[![macOS test status](https://api.cirrus-ci.com/github/bup/bup.svg?branch=tmp/test-cirrus&task=macos)](https://cirrus-ci.com/github/bup/bup)
+==============================================================
+
+
+
 Getting started
 ===============
 

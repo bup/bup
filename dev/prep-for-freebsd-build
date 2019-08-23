@@ -1,0 +1,11 @@
+#!/bin/sh
+
+set -ex
+
+# Install build deps
+export ASSUME_ALWAYS_YES=yes
+pkg update
+pkg install \
+    gmake git bash rsync curl par2cmdline \
+    python2 python py27-pylibacl py27-tornado \
+    duplicity rdiff-backup rsnapshot

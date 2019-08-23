@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+
+set -exo pipefail
+
+export DEBIAN_FRONTEND=noninteractive
+apt-get update
+apt-get install -y \
+        gcc make linux-libc-dev git rsync eatmydata \
+        acl attr par2 \
+        python2.7-dev python-fuse \
+        python-pyxattr python-pylibacl python-tornado \
+        duplicity rdiff-backup rsnapshot
