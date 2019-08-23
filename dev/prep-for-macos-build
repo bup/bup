@@ -1,0 +1,8 @@
+#!/bin/sh
+
+set -ex
+
+ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+
+brew update
+brew install par2

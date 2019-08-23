@@ -1,0 +1,37 @@
+
+task:
+  name: debian
+  container:
+    image: debian:buster
+    cpu: 2
+    memory: 8
+  script: |
+    set -xe
+    dev/prep-for-debianish-build
+    adduser --disabled-password --gecos '' bup
+    chown -R bup:bup .
+    su -l bup -c "eatmydata make -j3 -C '$(pwd)' check"
+
+task:
+  name: freebsd
+  freebsd_instance:
+    image: freebsd-11-2-release-amd64
+    cpu: 2
+    memory: 8
+  script: |
+    set -xe
+    dev/prep-for-freebsd-build
+    gmake check
+    # It looks like su might not work here...
+    #pw useradd -n bup -s /bin/sh -m -w no
+    #chown -R bup .
+    #su -l bup -c "gmake -j3 -C '$PWD' check"
+
+task:
+  name: macos
+  osx_instance:
+    image: mojave-xcode-10.2
+  script: |
+    set -xe
+    dev/prep-for-macos-build
+    make -j2 check
