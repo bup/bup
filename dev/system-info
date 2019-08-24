@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+
+set -e
+
+case "$OSTYPE" in
+    linux*)
+        cat /proc/cpuinfo
+        cat /proc/meminfo
+    ;;
+    darwin*)
+        system_profiler SPHardwareDataType
+    ;;
+esac
+
+rsync --version
+
+# Older versions of par2 don't support -V, but it'll still show the
+# version when it fails.
+if command -v par2; then par2 -V || true; fi
