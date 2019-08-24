@@ -5,7 +5,12 @@ exec "$bup_python" "$0" ${1+"$@"}
 """
 # end of bup preamble
 
+from __future__ import print_function
+
 import sys, os, glob, subprocess
+from shutil import rmtree
+from subprocess import call
+from tempfile import mkdtemp
 
 from bup import options, git
 from bup.helpers import Sha1, chunkyreader, istty2, log, progress
@@ -41,24 +46,45 @@ def par2_setup():
     else:
         par2_ok = 1
 
-def parv(lvl):
-    if opt.verbose >= lvl:
-        if istty2:
-            return []
-        else:
-            return ['-q']
+def is_par2_parallel():
+    # A true result means it definitely allows -t1; a false result is
+    # technically inconclusive, but likely means no.
+    tmpdir = mkdtemp(prefix="bup-fsck")
+    try:
+        canary = tmpdir + '/canary'
+        with open(canary, 'w') as f:
+            print('canary', file=f)
+        rc = call(('par2', 'create', '-qq', '-t1', canary))
+        return rc == 0
+    finally:
+        rmtree(tmpdir)
+
+_par2_parallel = None
+
+def par2(action, args, verb_floor=0):
+    global _par2_parallel
+    if _par2_parallel is None:
+        _par2_parallel = is_par2_parallel()
+    cmd = ['par2', action]
+    if opt.verbose >= verb_floor and not istty2:
+        cmd.append('-q')
     else:
-        return ['-qq']
+        cmd.append('-qq')
+    if _par2_parallel:
+        cmd.append('-t1')
+    cmd.extend(args)
+    return run(cmd)
 
 def par2_generate(base):
-    return run(['par2', 'create', '-t1', '-n1', '-c200'] + parv(2)
-               + ['--', base, base+'.pack', base+'.idx'])
+    return par2('create',
+                ['-n1', '-c200', '--', base, base + '.pack', base + '.idx'],
+                verb_floor=2)
 
 def par2_verify(base):
-    return run(['par2', 'verify', '-t1'] + parv(3) + ['--', base])
+    return par2('verify', ['--', base], verb_floor=3)
 
 def par2_repair(base):
-    return run(['par2', 'repair', '-t1'] + parv(2) + ['--', base])
+    return par2('repair', ['--', base], verb_floor=2)
 
 def quick_verify(base):
     f = open(base + '.pack', 'rb')
@@ -128,7 +154,7 @@ def do_pack(base, last, par2_exists):
         assert(opt.generate and (not par2_ok or par2_exists))
         action_result = 'exists' if par2_exists else 'skipped'
     if opt.verbose:
-        print last, action_result
+        print(last, action_result)
     return code
 
 
