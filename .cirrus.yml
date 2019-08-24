@@ -21,7 +21,7 @@ task:
   script: |
     set -xe
     dev/prep-for-freebsd-build
-    gmake check
+    gmake -j3 check
     # It looks like su might not work here...
     #pw useradd -n bup -s /bin/sh -m -w no
     #chown -R bup .
@@ -34,4 +34,4 @@ task:
   script: |
     set -xe
     dev/prep-for-macos-build
-    make -j2 check
+    make -j3 check
