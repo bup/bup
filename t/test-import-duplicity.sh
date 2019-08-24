@@ -30,7 +30,7 @@ WVPASS bup tick
 WVPASS touch src/new-file
 WVPASS dup src file://duplicity
 WVPASS bup import-duplicity "file://duplicity" import-duplicity
-WVPASSEQ "$(bup ls import-duplicity/ | wc -l)" "3"
+WVPASSEQ $(bup ls import-duplicity/ | wc -l) 3
 WVPASSEQ "$(bup ls import-duplicity/latest/ | sort)" "$(ls src | sort)"
 WVPASS bup restore -C restore/ import-duplicity/latest/
 WVFAIL "$top/t/compare-trees" src/ restore/ > tmp-compare-trees
