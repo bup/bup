@@ -8,6 +8,7 @@ task:
   script: |
     set -xe
     dev/prep-for-debianish-build
+    dev/system-info
     adduser --disabled-password --gecos '' bup
     chown -R bup:bup .
     su -l bup -c "eatmydata make -j3 -C '$(pwd)' check"
@@ -21,6 +22,7 @@ task:
   script: |
     set -xe
     dev/prep-for-freebsd-build
+    dev/system-info
     gmake -j3 check
     # It looks like su might not work here...
     #pw useradd -n bup -s /bin/sh -m -w no
@@ -34,4 +36,5 @@ task:
   script: |
     set -xe
     dev/prep-for-macos-build
+    dev/system-info
     make -j3 check
