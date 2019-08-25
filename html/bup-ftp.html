@@ -1,20 +1,25 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml">
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
 <head>
-  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-  <meta http-equiv="Content-Style-Type" content="text/css" />
+  <meta charset="utf-8" />
   <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <meta name="author" content="Avery Pennarun apenwarr@gmail.com" />
-  <meta name="date" content="2018-10-20" />
-  <title>bup-ftp(1) Bup 0.29.2</title>
-  <style type="text/css">code{white-space: pre;}</style>
+  <meta name="dcterms.date" content="2019-08-25" />
+  <title>bup-ftp(1) Bup 0.29.3</title>
+  <style type="text/css">
+      code{white-space: pre-wrap;}
+      span.smallcaps{font-variant: small-caps;}
+      span.underline{text-decoration: underline;}
+      div.column{display: inline-block; vertical-align: top; width: 50%;}
+  </style>
 </head>
 <body>
-<div id="header">
-<h1 class="title">bup-ftp(1) Bup 0.29.2</h1>
-<h2 class="author">Avery Pennarun <a href="mailto:apenwarr@gmail.com">apenwarr@gmail.com</a></h2>
-<h3 class="date">2018-10-20</h3>
-</div>
+<header>
+<h1 class="title">bup-ftp(1) Bup 0.29.3</h1>
+<p class="author">Avery Pennarun <a href="mailto:apenwarr@gmail.com">apenwarr@gmail.com</a></p>
+<p class="date">2019-08-25</p>
+</header>
 <h1 id="name">NAME</h1>
 <p>bup-ftp - ftp-like client for navigating bup repositories</p>
 <h1 id="synopsis">SYNOPSIS</h1>
@@ -26,7 +31,7 @@
 <p>The following commands are available inside <code>bup ftp</code>:</p>
 <dl>
 <dt>ls [-s] [-a] [<em>path</em>]</dt>
-<dd>print the contents of a directory. If no path argument is given, the current directory's contents are listed. If -a is given, also include hidden files (files which start with a <code>.</code> character). If -s is given, each file is displayed with its hash from the bup archive to its left.
+<dd>print the contents of a directory. If no path argument is given, the current directory’s contents are listed. If -a is given, also include hidden files (files which start with a <code>.</code> character). If -s is given, each file is displayed with its hash from the bup archive to its left.
 </dd>
 <dt>cd <em>dirname</em></dt>
 <dd>change to a different working directory
@@ -34,13 +39,13 @@
 <dt>pwd</dt>
 <dd>print the path of the current working directory
 </dd>
-<dt>cat <em>filenames...</em></dt>
+<dt>cat <em>filenames…</em></dt>
 <dd>print the contents of one or more files to stdout
 </dd>
 <dt>get <em>filename</em> <em>localname</em></dt>
 <dd>download the contents of <em>filename</em> and save it to disk as <em>localname</em>. If <em>localname</em> is omitted, uses <em>filename</em> as the local name.
 </dd>
-<dt>mget <em>filenames...</em></dt>
+<dt>mget <em>filenames…</em></dt>
 <dd>download the contents of the given <em>filenames</em> and stores them to disk under the same names. The filenames may contain Unix filename globs (<code>*</code>, <code>?</code>, etc.)
 </dd>
 <dt>help</dt>

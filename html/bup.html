@@ -1,24 +1,29 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml">
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
 <head>
-  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-  <meta http-equiv="Content-Style-Type" content="text/css" />
+  <meta charset="utf-8" />
   <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <meta name="author" content="Avery Pennarun apenwarr@gmail.com" />
-  <meta name="date" content="2018-10-20" />
-  <title>bup(1) Bup 0.29.2</title>
-  <style type="text/css">code{white-space: pre;}</style>
+  <meta name="dcterms.date" content="2019-08-25" />
+  <title>bup(1) Bup 0.29.3</title>
+  <style type="text/css">
+      code{white-space: pre-wrap;}
+      span.smallcaps{font-variant: small-caps;}
+      span.underline{text-decoration: underline;}
+      div.column{display: inline-block; vertical-align: top; width: 50%;}
+  </style>
 </head>
 <body>
-<div id="header">
-<h1 class="title">bup(1) Bup 0.29.2</h1>
-<h2 class="author">Avery Pennarun <a href="mailto:apenwarr@gmail.com">apenwarr@gmail.com</a></h2>
-<h3 class="date">2018-10-20</h3>
-</div>
+<header>
+<h1 class="title">bup(1) Bup 0.29.3</h1>
+<p class="author">Avery Pennarun <a href="mailto:apenwarr@gmail.com">apenwarr@gmail.com</a></p>
+<p class="date">2019-08-25</p>
+</header>
 <h1 id="name">NAME</h1>
 <p>bup - Backup program using rolling checksums and git file formats</p>
 <h1 id="synopsis">SYNOPSIS</h1>
-<p>bup [global options...] &lt;command&gt; [options...]</p>
+<p>bup [global options…] &lt;command&gt; [options…]</p>
 <h1 id="description">DESCRIPTION</h1>
 <p><code>bup</code> is a program for making backups of your files using the git file format.</p>
 <p>Unlike <code>git</code>(1) itself, bup is optimized for handling huge data sets including individual very large files (such a virtual machine images). However, once a backup set is created, it can still be accessed using git tools.</p>
@@ -26,7 +31,7 @@
 <h1 id="global-options">GLOBAL OPTIONS</h1>
 <dl>
 <dt>--version</dt>
-<dd>print bup's version number. Equivalent to <code>bup-version</code>(1)
+<dd>print bup’s version number. Equivalent to <code>bup-version</code>(1)
 </dd>
 <dt>-d, --bup-dir=<em>BUP_DIR</em></dt>
 <dd>use the given BUP_DIR parameter as the bup repository location, instead of reading it from the $BUP_DIR environment variable or using the default <code>~/.bup</code> location.
@@ -56,7 +61,7 @@
 <dd>Extract files from a backup set
 </dd>
 <dt><code>bup-save</code>(1)</dt>
-<dd>Save files into a backup set (note: run &quot;bup index&quot; first)
+<dd>Save files into a backup set (note: run “bup index” first)
 </dd>
 <dt><code>bup-web</code>(1)</dt>
 <dd>Launch a web server to examine backup sets
@@ -89,7 +94,7 @@
 <dd>Index objects to speed up future backups
 </dd>
 <dt><code>bup-newliner</code>(1)</dt>
-<dd>Make sure progress messages don't overlap with output
+<dd>Make sure progress messages don’t overlap with output
 </dd>
 <dt><code>bup-random</code>(1)</dt>
 <dd>Generate a stream of random output

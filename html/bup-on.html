@@ -1,30 +1,35 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml">
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
 <head>
-  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-  <meta http-equiv="Content-Style-Type" content="text/css" />
+  <meta charset="utf-8" />
   <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <meta name="author" content="Avery Pennarun apenwarr@gmail.com" />
-  <meta name="date" content="2018-10-20" />
-  <title>bup-on(1) Bup 0.29.2</title>
-  <style type="text/css">code{white-space: pre;}</style>
+  <meta name="dcterms.date" content="2019-08-25" />
+  <title>bup-on(1) Bup 0.29.3</title>
+  <style type="text/css">
+      code{white-space: pre-wrap;}
+      span.smallcaps{font-variant: small-caps;}
+      span.underline{text-decoration: underline;}
+      div.column{display: inline-block; vertical-align: top; width: 50%;}
+  </style>
 </head>
 <body>
-<div id="header">
-<h1 class="title">bup-on(1) Bup 0.29.2</h1>
-<h2 class="author">Avery Pennarun <a href="mailto:apenwarr@gmail.com">apenwarr@gmail.com</a></h2>
-<h3 class="date">2018-10-20</h3>
-</div>
+<header>
+<h1 class="title">bup-on(1) Bup 0.29.3</h1>
+<p class="author">Avery Pennarun <a href="mailto:apenwarr@gmail.com">apenwarr@gmail.com</a></p>
+<p class="date">2019-08-25</p>
+</header>
 <h1 id="name">NAME</h1>
 <p>bup-on - run a bup server locally and client remotely</p>
 <h1 id="synopsis">SYNOPSIS</h1>
-<p>bup on &lt;hostname&gt; index ...</p>
-<p>bup on &lt;hostname&gt; save ...</p>
-<p>bup on &lt;hostname&gt; split ...</p>
+<p>bup on &lt;hostname&gt; index …</p>
+<p>bup on &lt;hostname&gt; save …</p>
+<p>bup on &lt;hostname&gt; split …</p>
 <h1 id="description">DESCRIPTION</h1>
-<p><code>bup on</code> runs the given bup command on the given host using ssh. It runs a bup server on the local machine, so that commands like <code>bup save</code> on the remote machine can back up to the local machine. (You don't need to provide a <code>--remote</code> option to <code>bup save</code> in order for this to work.)</p>
+<p><code>bup on</code> runs the given bup command on the given host using ssh. It runs a bup server on the local machine, so that commands like <code>bup save</code> on the remote machine can back up to the local machine. (You don’t need to provide a <code>--remote</code> option to <code>bup save</code> in order for this to work.)</p>
 <p>See <code>bup-index</code>(1), <code>bup-save</code>(1), and so on for details of how each subcommand works.</p>
-<p>This 'reverse mode' operation is useful when the machine being backed up isn't supposed to be able to ssh into the backup server. For example, your backup server can be hidden behind a one-way firewall on a private or dynamic IP address; using an ssh key, it can be authorized to ssh into each of your important machines. After connecting to each destination machine, it initiates a backup, receiving the resulting data and storing in its local repository.</p>
+<p>This ‘reverse mode’ operation is useful when the machine being backed up isn’t supposed to be able to ssh into the backup server. For example, your backup server can be hidden behind a one-way firewall on a private or dynamic IP address; using an ssh key, it can be authorized to ssh into each of your important machines. After connecting to each destination machine, it initiates a backup, receiving the resulting data and storing in its local repository.</p>
 <p>For example, if you run several virtual private Linux machines on a remote hosting provider, you could back them up to a local (much less expensive) computer in your basement.</p>
 <h1 id="examples">EXAMPLES</h1>
 <pre><code># First index the files on the remote server

@@ -1,36 +1,41 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml">
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
 <head>
-  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-  <meta http-equiv="Content-Style-Type" content="text/css" />
+  <meta charset="utf-8" />
   <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <meta name="author" content="Avery Pennarun apenwarr@gmail.com" />
-  <meta name="date" content="2018-10-20" />
-  <title>bup-index(1) Bup 0.29.2</title>
-  <style type="text/css">code{white-space: pre;}</style>
+  <meta name="dcterms.date" content="2019-08-25" />
+  <title>bup-index(1) Bup 0.29.3</title>
+  <style type="text/css">
+      code{white-space: pre-wrap;}
+      span.smallcaps{font-variant: small-caps;}
+      span.underline{text-decoration: underline;}
+      div.column{display: inline-block; vertical-align: top; width: 50%;}
+  </style>
 </head>
 <body>
-<div id="header">
-<h1 class="title">bup-index(1) Bup 0.29.2</h1>
-<h2 class="author">Avery Pennarun <a href="mailto:apenwarr@gmail.com">apenwarr@gmail.com</a></h2>
-<h3 class="date">2018-10-20</h3>
-</div>
+<header>
+<h1 class="title">bup-index(1) Bup 0.29.3</h1>
+<p class="author">Avery Pennarun <a href="mailto:apenwarr@gmail.com">apenwarr@gmail.com</a></p>
+<p class="date">2019-08-25</p>
+</header>
 <h1 id="name">NAME</h1>
 <p>bup-index - print and/or update the bup filesystem index</p>
 <h1 id="synopsis">SYNOPSIS</h1>
-<p>bup index &lt;-p|-m|-s|-u|--clear|--check&gt; [-H] [-l] [-x] [--fake-valid] [--no-check-device] [--fake-invalid] [-f <em>indexfile</em>] [--exclude <em>path</em>] [--exclude-from <em>filename</em>] [--exclude-rx <em>pattern</em>] [--exclude-rx-from <em>filename</em>] [-v] &lt;paths...&gt;</p>
+<p>bup index &lt;-p|-m|-s|-u|--clear|--check&gt; [-H] [-l] [-x] [--fake-valid] [--no-check-device] [--fake-invalid] [-f <em>indexfile</em>] [--exclude <em>path</em>] [--exclude-from <em>filename</em>] [--exclude-rx <em>pattern</em>] [--exclude-rx-from <em>filename</em>] [-v] &lt;paths…&gt;</p>
 <h1 id="description">DESCRIPTION</h1>
 <p><code>bup index</code> manipulates the filesystem index, which is a cache of absolute paths and their metadata (atttributes, SHA-1 hashes, etc.). The bup index is similar in function to the <code>git</code>(1) index, and the default index can be found in <code>$BUP_DIR/bupindex</code>.</p>
 <p>Creating a backup in bup consists of two steps: updating the index with <code>bup index</code>, then actually backing up the files (or a subset of the files) with <code>bup save</code>. The separation exists for these reasons:</p>
-<ol style="list-style-type: decimal">
+<ol type="1">
 <li><p>There is more than one way to generate a list of files that need to be backed up. For example, you might want to use <code>inotify</code>(7) or <code>dnotify</code>(7).</p></li>
 <li><p>Even if you back up files to multiple destinations (for added redundancy), the file names, attributes, and hashes will be the same each time. Thus, you can save the trouble of repeatedly re-generating the list of files for each backup set.</p></li>
 <li><p>You may want to use the data tracked by bup index for other purposes (such as speeding up other programs that need the same information).</p></li>
 </ol>
 <h1 id="notes">NOTES</h1>
-<p>At the moment, bup will ignore Linux attributes (cf. chattr(1) and lsattr(1)) on some systems (any big-endian systems where sizeof(long) &lt; sizeof(int)). This is because the Linux kernel and FUSE currently disagree over the type of the attr system call arguments, and so on big-endian systems there's no way to get the results without the risk of stack corruption (http://lwn.net/Articles/575846/). In these situations, bup will print a warning the first time Linux attrs are relevant during any index/save/restore operation.</p>
-<p>bup makes accommodations for the expected &quot;worst-case&quot; filesystem timestamp resolution -- currently one second; examples include VFAT, ext2, ext3, small ext4, etc. Since bup cannot know the filesystem timestamp resolution, and could be traversing multiple filesystems during any given run, it always assumes that the resolution may be no better than one second.</p>
-<p>As a practical matter, this means that index updates are a bit imprecise, and so <code>bup save</code> may occasionally record filesystem changes that you didn't expect. That's because, during an index update, if bup encounters a path whose actual timestamps are more recent than one second before the update started, bup will set the index timestamps for that path (mtime and ctime) to exactly one second before the run, -- effectively capping those values.</p>
+<p>At the moment, bup will ignore Linux attributes (cf. chattr(1) and lsattr(1)) on some systems (any big-endian systems where sizeof(long) &lt; sizeof(int)). This is because the Linux kernel and FUSE currently disagree over the type of the attr system call arguments, and so on big-endian systems there’s no way to get the results without the risk of stack corruption (http://lwn.net/Articles/575846/). In these situations, bup will print a warning the first time Linux attrs are relevant during any index/save/restore operation.</p>
+<p>bup makes accommodations for the expected “worst-case” filesystem timestamp resolution – currently one second; examples include VFAT, ext2, ext3, small ext4, etc. Since bup cannot know the filesystem timestamp resolution, and could be traversing multiple filesystems during any given run, it always assumes that the resolution may be no better than one second.</p>
+<p>As a practical matter, this means that index updates are a bit imprecise, and so <code>bup save</code> may occasionally record filesystem changes that you didn’t expect. That’s because, during an index update, if bup encounters a path whose actual timestamps are more recent than one second before the update started, bup will set the index timestamps for that path (mtime and ctime) to exactly one second before the run, – effectively capping those values.</p>
 <p>This ensures that no subsequent changes to those paths can result in timestamps that are identical to those in the index. If that were possible, bup could overlook the modifications.</p>
 <p>You can see the effect of this behavior in this example (assume that less than one second elapses between the initial file creation and first index run):</p>
 <pre><code>$ touch src/1 src/2
@@ -72,13 +77,13 @@ $ bup save -n src src  # But src/2 is saved anyway.</code></pre>
 <dd>print more information about each file, in a similar format to the <code>-l</code> option to <code>ls</code>(1).
 </dd>
 <dt>-x, --xdev, --one-file-system</dt>
-<dd>don't cross filesystem boundaries when traversing the filesystem -- though as with tar and rsync, the mount points themselves will still be indexed. Only applicable if you're using <code>-u</code>.
+<dd>don’t cross filesystem boundaries when traversing the filesystem – though as with tar and rsync, the mount points themselves will still be indexed. Only applicable if you’re using <code>-u</code>.
 </dd>
 <dt>--fake-valid</dt>
-<dd>mark specified paths as up-to-date even if they aren't. This can be useful for testing, or to avoid unnecessarily backing up files that you know are boring.
+<dd>mark specified paths as up-to-date even if they aren’t. This can be useful for testing, or to avoid unnecessarily backing up files that you know are boring.
 </dd>
 <dt>--fake-invalid</dt>
-<dd>mark specified paths as not up-to-date, forcing the next &quot;bup save&quot; run to re-check their contents.
+<dd>mark specified paths as not up-to-date, forcing the next “bup save” run to re-check their contents.
 </dd>
 <dt>-f, --indexfile=<em>indexfile</em></dt>
 <dd>use a different index filename instead of <code>$BUP_DIR/bupindex</code>.
@@ -87,23 +92,23 @@ $ bup save -n src src  # But src/2 is saved anyway.</code></pre>
 <dd>exclude <em>path</em> from the backup (may be repeated).
 </dd>
 <dt>--exclude-from=<em>filename</em></dt>
-<dd>read --exclude paths from <em>filename</em>, one path per-line (may be repeated). Ignore completely empty lines.
+<dd>read –exclude paths from <em>filename</em>, one path per-line (may be repeated). Ignore completely empty lines.
 </dd>
 <dt>--exclude-rx=<em>pattern</em></dt>
-<dd><p>exclude any path matching <em>pattern</em>, which must be a Python regular expression (http://docs.python.org/library/re.html). The pattern will be compared against the full path, without anchoring, so &quot;x/y&quot; will match &quot;ox/yard&quot; or &quot;box/yards&quot;. To exclude the contents of /tmp, but not the directory itself, use &quot;^/tmp/.&quot;. (may be repeated)</p>
+<dd><p>exclude any path matching <em>pattern</em>, which must be a Python regular expression (http://docs.python.org/library/re.html). The pattern will be compared against the full path, without anchoring, so “x/y” will match “ox/yard” or “box/yards”. To exclude the contents of /tmp, but not the directory itself, use “^/tmp/.”. (may be repeated)</p>
 <p>Examples:</p>
 <ul>
-<li>'/foo$' - exclude any file named foo</li>
-<li>'/foo/$' - exclude any directory named foo</li>
-<li>'/foo/.' - exclude the content of any directory named foo</li>
-<li>'^/tmp/.' - exclude root-level /tmp's content, but not /tmp itself</li>
+<li>‘/foo$’ - exclude any file named foo</li>
+<li>‘/foo/$’ - exclude any directory named foo</li>
+<li>‘/foo/.’ - exclude the content of any directory named foo</li>
+<li>‘^/tmp/.’ - exclude root-level /tmp’s content, but not /tmp itself</li>
 </ul>
 </dd>
 <dt>--exclude-rx-from=<em>filename</em></dt>
-<dd>read --exclude-rx patterns from <em>filename</em>, one pattern per-line (may be repeated). Ignore completely empty lines.
+<dd>read –exclude-rx patterns from <em>filename</em>, one pattern per-line (may be repeated). Ignore completely empty lines.
 </dd>
 <dt>--no-check-device</dt>
-<dd>don't mark an entry invalid if the device number (stat(2) st_dev) changes. This can be useful when indexing remote, automounted, or snapshot filesystems (LVM, Btrfs, etc.), where the device number isn't fixed.
+<dd>don’t mark an entry invalid if the device number (stat(2) st_dev) changes. This can be useful when indexing remote, automounted, or snapshot filesystems (LVM, Btrfs, etc.), where the device number isn’t fixed.
 </dd>
 <dt>-v, --verbose</dt>
 <dd>increase log output during update (can be used more than once). With one <code>-v</code>, print each directory as it is updated; with two <code>-v</code>, print each file too.

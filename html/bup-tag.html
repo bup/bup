@@ -1,20 +1,25 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml">
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
 <head>
-  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-  <meta http-equiv="Content-Style-Type" content="text/css" />
+  <meta charset="utf-8" />
   <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <meta name="author" content="Gabriel Filion lelutin@gmail.com" />
-  <meta name="date" content="2018-10-20" />
-  <title>bup-tag(1) Bup 0.29.2</title>
-  <style type="text/css">code{white-space: pre;}</style>
+  <meta name="dcterms.date" content="2019-08-25" />
+  <title>bup-tag(1) Bup 0.29.3</title>
+  <style type="text/css">
+      code{white-space: pre-wrap;}
+      span.smallcaps{font-variant: small-caps;}
+      span.underline{text-decoration: underline;}
+      div.column{display: inline-block; vertical-align: top; width: 50%;}
+  </style>
 </head>
 <body>
-<div id="header">
-<h1 class="title">bup-tag(1) Bup 0.29.2</h1>
-<h2 class="author">Gabriel Filion <a href="mailto:lelutin@gmail.com">lelutin@gmail.com</a></h2>
-<h3 class="date">2018-10-20</h3>
-</div>
+<header>
+<h1 class="title">bup-tag(1) Bup 0.29.3</h1>
+<p class="author">Gabriel Filion <a href="mailto:lelutin@gmail.com">lelutin@gmail.com</a></p>
+<p class="date">2019-08-25</p>
+</header>
 <h1 id="name">NAME</h1>
 <p>bup-tag - tag a commit in the bup repository</p>
 <h1 id="synopsis">SYNOPSIS</h1>
@@ -24,15 +29,15 @@
 <h1 id="description">DESCRIPTION</h1>
 <p><code>bup tag</code> lists, creates or deletes a tag in the bup repository.</p>
 <p>A tag is an easy way to retrieve a specific commit. It can be used to mark a specific backup for easier retrieval later.</p>
-<p>When called without any arguments, the command lists all tags that can be found in the repository. When called with a tag name and a commit ID or ref name, it creates a new tag with the given name, if it doesn't already exist, that points to the commit given in the second argument. When called with '-d' and a tag name, it removes the given tag, if it exists.</p>
-<p>bup exposes the contents of backups with current tags, via any command that lists or shows backups. They can be found under the /.tag directory. For example, the 'ftp' command will show the tag named 'tag1' under /.tag/tag1.</p>
+<p>When called without any arguments, the command lists all tags that can be found in the repository. When called with a tag name and a commit ID or ref name, it creates a new tag with the given name, if it doesn’t already exist, that points to the commit given in the second argument. When called with ‘-d’ and a tag name, it removes the given tag, if it exists.</p>
+<p>bup exposes the contents of backups with current tags, via any command that lists or shows backups. They can be found under the /.tag directory. For example, the ‘ftp’ command will show the tag named ‘tag1’ under /.tag/tag1.</p>
 <h1 id="options">OPTIONS</h1>
 <dl>
 <dt>-d, --delete</dt>
 <dd>delete a tag
 </dd>
 <dt>-f, --force</dt>
-<dd>Overwrite the named tag even if it already exists. With -f, don't report a missing tag as an error.
+<dd>Overwrite the named tag even if it already exists. With -f, don’t report a missing tag as an error.
 </dd>
 </dl>
 <h1 id="examples">EXAMPLES</h1>
