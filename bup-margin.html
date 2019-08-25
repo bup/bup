@@ -1,36 +1,41 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml">
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
 <head>
-  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-  <meta http-equiv="Content-Style-Type" content="text/css" />
+  <meta charset="utf-8" />
   <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <meta name="author" content="Avery Pennarun apenwarr@gmail.com" />
-  <meta name="date" content="2018-10-20" />
-  <title>bup-margin(1) Bup 0.29.2</title>
-  <style type="text/css">code{white-space: pre;}</style>
+  <meta name="dcterms.date" content="2019-08-25" />
+  <title>bup-margin(1) Bup 0.29.3</title>
+  <style type="text/css">
+      code{white-space: pre-wrap;}
+      span.smallcaps{font-variant: small-caps;}
+      span.underline{text-decoration: underline;}
+      div.column{display: inline-block; vertical-align: top; width: 50%;}
+  </style>
 </head>
 <body>
-<div id="header">
-<h1 class="title">bup-margin(1) Bup 0.29.2</h1>
-<h2 class="author">Avery Pennarun <a href="mailto:apenwarr@gmail.com">apenwarr@gmail.com</a></h2>
-<h3 class="date">2018-10-20</h3>
-</div>
+<header>
+<h1 class="title">bup-margin(1) Bup 0.29.3</h1>
+<p class="author">Avery Pennarun <a href="mailto:apenwarr@gmail.com">apenwarr@gmail.com</a></p>
+<p class="date">2019-08-25</p>
+</header>
 <h1 id="name">NAME</h1>
 <p>bup-margin - figure out your deduplication safety margin</p>
 <h1 id="synopsis">SYNOPSIS</h1>
-<p>bup margin [options...]</p>
+<p>bup margin [options…]</p>
 <h1 id="description">DESCRIPTION</h1>
 <p><code>bup margin</code> iterates through all objects in your bup repository, calculating the largest number of prefix bits shared between any two entries. This number, <code>n</code>, identifies the longest subset of SHA-1 you could use and still encounter a collision between your object ids.</p>
 <p>For example, one system that was tested had a collection of 11 million objects (70 GB), and <code>bup margin</code> returned 45. That means a 46-bit hash would be sufficient to avoid all collisions among that set of objects; each object in that repository could be uniquely identified by its first 46 bits.</p>
-<p>The number of bits needed seems to increase by about 1 or 2 for every doubling of the number of objects. Since SHA-1 hashes have 160 bits, that leaves 115 bits of margin. Of course, because SHA-1 hashes are essentially random, it's theoretically possible to use many more bits with far fewer objects.</p>
-<p>If you're paranoid about the possibility of SHA-1 collisions, you can monitor your repository by running <code>bup margin</code> occasionally to see if you're getting dangerously close to 160 bits.</p>
+<p>The number of bits needed seems to increase by about 1 or 2 for every doubling of the number of objects. Since SHA-1 hashes have 160 bits, that leaves 115 bits of margin. Of course, because SHA-1 hashes are essentially random, it’s theoretically possible to use many more bits with far fewer objects.</p>
+<p>If you’re paranoid about the possibility of SHA-1 collisions, you can monitor your repository by running <code>bup margin</code> occasionally to see if you’re getting dangerously close to 160 bits.</p>
 <h1 id="options">OPTIONS</h1>
 <dl>
 <dt>--predict</dt>
 <dd>Guess the offset into each index file where a particular object will appear, and report the maximum deviation of the correct answer from the guess. This is potentially useful for tuning an interpolation search algorithm.
 </dd>
 <dt>--ignore-midx</dt>
-<dd>don't use <code>.midx</code> files, use only <code>.idx</code> files. This is only really useful when used with <code>--predict</code>.
+<dd>don’t use <code>.midx</code> files, use only <code>.idx</code> files. This is only really useful when used with <code>--predict</code>.
 </dd>
 </dl>
 <h1 id="examples">EXAMPLES</h1>

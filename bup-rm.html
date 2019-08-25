@@ -1,26 +1,31 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml">
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
 <head>
-  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-  <meta http-equiv="Content-Style-Type" content="text/css" />
+  <meta charset="utf-8" />
   <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <meta name="author" content="Rob Browning rlb@defaultvalue.org" />
-  <meta name="date" content="2018-10-20" />
-  <title>bup-rm(1) Bup 0.29.2</title>
-  <style type="text/css">code{white-space: pre;}</style>
+  <meta name="dcterms.date" content="2019-08-25" />
+  <title>bup-rm(1) Bup 0.29.3</title>
+  <style type="text/css">
+      code{white-space: pre-wrap;}
+      span.smallcaps{font-variant: small-caps;}
+      span.underline{text-decoration: underline;}
+      div.column{display: inline-block; vertical-align: top; width: 50%;}
+  </style>
 </head>
 <body>
-<div id="header">
-<h1 class="title">bup-rm(1) Bup 0.29.2</h1>
-<h2 class="author">Rob Browning <a href="mailto:rlb@defaultvalue.org">rlb@defaultvalue.org</a></h2>
-<h3 class="date">2018-10-20</h3>
-</div>
+<header>
+<h1 class="title">bup-rm(1) Bup 0.29.3</h1>
+<p class="author">Rob Browning <a href="mailto:rlb@defaultvalue.org">rlb@defaultvalue.org</a></p>
+<p class="date">2019-08-25</p>
+</header>
 <h1 id="name">NAME</h1>
 <p>bup-rm - remove references to archive content (CAUTION: EXPERIMENTAL)</p>
 <h1 id="synopsis">SYNOPSIS</h1>
-<p>bup rm [-#|--verbose] &lt;<em>branch</em>|<em>save</em>...&gt;</p>
+<p>bup rm [-#|–verbose] &lt;<em>branch</em>|<em>save</em>…&gt;</p>
 <h1 id="description">DESCRIPTION</h1>
-<p><code>bup rm</code> removes the indicated <em>branch</em>es (backup sets) and <em>save</em>s. By itself, this command does not delete any actual data (nor recover any storage space), but it may make it very difficult or impossible to refer to the deleted items, unless there are other references to them (e.g. tags).</p>
+<p><code>bup rm</code> removes the indicated <em>branch</em>es (backup sets) and <em>save</em>s. By itself, this command does not delete any actual data (nor recover any storage space), but it may make it very difficult or impossible to refer to the deleted items, unless there are other references to them (e.g. tags).</p>
 <p>A subsequent garbage collection, either by a <code>bup gc</code>, or by a normal <code>git gc</code>, may permanently delete data that is no longer reachable from the remaining branches or tags, and reclaim the related storage space.</p>
 <p>NOTE: This is one of the few bup commands that modifies your archive in intentionally destructive ways.</p>
 <h1 id="options">OPTIONS</h1>

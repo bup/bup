@@ -1,20 +1,25 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml">
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
 <head>
-  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-  <meta http-equiv="Content-Style-Type" content="text/css" />
+  <meta charset="utf-8" />
   <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <meta name="author" content="Brandon Low lostlogic@lostlogicx.com" />
-  <meta name="date" content="2018-10-20" />
-  <title>bup-bloom(1) Bup 0.29.2</title>
-  <style type="text/css">code{white-space: pre;}</style>
+  <meta name="dcterms.date" content="2019-08-25" />
+  <title>bup-bloom(1) Bup 0.29.3</title>
+  <style type="text/css">
+      code{white-space: pre-wrap;}
+      span.smallcaps{font-variant: small-caps;}
+      span.underline{text-decoration: underline;}
+      div.column{display: inline-block; vertical-align: top; width: 50%;}
+  </style>
 </head>
 <body>
-<div id="header">
-<h1 class="title">bup-bloom(1) Bup 0.29.2</h1>
-<h2 class="author">Brandon Low <a href="mailto:lostlogic@lostlogicx.com">lostlogic@lostlogicx.com</a></h2>
-<h3 class="date">2018-10-20</h3>
-</div>
+<header>
+<h1 class="title">bup-bloom(1) Bup 0.29.3</h1>
+<p class="author">Brandon Low <a href="mailto:lostlogic@lostlogicx.com">lostlogic@lostlogicx.com</a></p>
+<p class="date">2019-08-25</p>
+</header>
 <h1 id="name">NAME</h1>
 <p>bup-bloom - generates, regenerates, updates bloom filters</p>
 <h1 id="synopsis">SYNOPSIS</h1>
@@ -27,7 +32,7 @@
 <dd>destroy bloom filters by setting the whole bitmask to zeros. you really want to know what you are doing if run this and you want to delete the resulting bloom when you are done with it.
 </dd>
 <dt>-f, --force</dt>
-<dd>don't update the existing bloom file; generate a new one from scratch.
+<dd>don’t update the existing bloom file; generate a new one from scratch.
 </dd>
 <dt>-d, --dir=<em>directory</em></dt>
 <dd>the directory, containing <code>.idx</code> files, to process. Defaults to $BUP_DIR/objects/pack

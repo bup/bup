@@ -1,29 +1,34 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml">
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
 <head>
-  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-  <meta http-equiv="Content-Style-Type" content="text/css" />
+  <meta charset="utf-8" />
   <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <meta name="author" content="Avery Pennarun apenwarr@gmail.com" />
-  <meta name="date" content="2018-10-20" />
-  <title>bup-ls(1) Bup 0.29.2</title>
-  <style type="text/css">code{white-space: pre;}</style>
+  <meta name="dcterms.date" content="2019-08-25" />
+  <title>bup-ls(1) Bup 0.29.3</title>
+  <style type="text/css">
+      code{white-space: pre-wrap;}
+      span.smallcaps{font-variant: small-caps;}
+      span.underline{text-decoration: underline;}
+      div.column{display: inline-block; vertical-align: top; width: 50%;}
+  </style>
 </head>
 <body>
-<div id="header">
-<h1 class="title">bup-ls(1) Bup 0.29.2</h1>
-<h2 class="author">Avery Pennarun <a href="mailto:apenwarr@gmail.com">apenwarr@gmail.com</a></h2>
-<h3 class="date">2018-10-20</h3>
-</div>
+<header>
+<h1 class="title">bup-ls(1) Bup 0.29.3</h1>
+<p class="author">Avery Pennarun <a href="mailto:apenwarr@gmail.com">apenwarr@gmail.com</a></p>
+<p class="date">2019-08-25</p>
+</header>
 <h1 id="name">NAME</h1>
 <p>bup-ls - list the contents of a bup repository</p>
 <h1 id="synopsis">SYNOPSIS</h1>
-<p>bup ls [OPTION...] &lt;paths...&gt;</p>
+<p>bup ls [OPTION…] &lt;paths…&gt;</p>
 <h1 id="description">DESCRIPTION</h1>
 <p><code>bup ls</code> lists files and directories in your bup repository using the same directory hierarchy as they would have with <code>bup-fuse</code>(1).</p>
 <p>The top level directory contains the branch (corresponding to the <code>-n</code> option in <code>bup save</code>), the next level is the date of the backup, and subsequent levels correspond to files in the backup.</p>
 <p>When <code>bup ls</code> is asked to output on a tty, and <code>-l</code> is not specified, it formats the output in columns so it can list as much as possible in as few lines as possible. However, when <code>-l</code> is specified or bup is asked to output to something other than a tty (say you pipe the output to another command, or you redirect it to a file), it will print one file name per line. This makes the listing easier to parse with external tools.</p>
-<p>Note that <code>bup ls</code> doesn't show hidden files by default and one needs to use the <code>-a</code> option to show them. Files are hidden when their name begins with a dot. For example, on the topmost level, the special directories named <code>.commit</code> and <code>.tag</code> are hidden directories.</p>
+<p>Note that <code>bup ls</code> doesn’t show hidden files by default and one needs to use the <code>-a</code> option to show them. Files are hidden when their name begins with a dot. For example, on the topmost level, the special directories named <code>.commit</code> and <code>.tag</code> are hidden directories.</p>
 <p>Once you have identified the file you want using <code>bup ls</code>, you can view its contents using <code>bup join</code> or <code>git show</code>.</p>
 <h1 id="options">OPTIONS</h1>
 <dl>
@@ -34,10 +39,10 @@
 <dd>show hidden files.
 </dd>
 <dt>-A, --almost-all</dt>
-<dd>show hidden files, except &quot;.&quot; and &quot;..&quot;.
+<dd>show hidden files, except “.” and “..”.
 </dd>
 <dt>-d, --directory</dt>
-<dd>show information about directories themselves, rather than their contents, and don't follow symlinks.
+<dd>show information about directories themselves, rather than their contents, and don’t follow symlinks.
 </dd>
 <dt>-l</dt>
 <dd>provide a detailed, long listing for each item.
@@ -49,7 +54,7 @@
 <dd>append type indicator: dir/, symlink@, fifo|, socket=.
 </dd>
 <dt>--human-readable</dt>
-<dd>print human readable file sizes (i.e. 3.9K, 4.7M).
+<dd>print human readable file sizes (i.e. 3.9K, 4.7M).
 </dd>
 <dt>--numeric-ids</dt>
 <dd>display numeric IDs (user, group, etc.) rather than names.

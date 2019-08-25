@@ -1,26 +1,31 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml">
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
 <head>
-  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-  <meta http-equiv="Content-Style-Type" content="text/css" />
+  <meta charset="utf-8" />
   <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <meta name="author" content="Rob Browning rlb@defaultvalue.org" />
-  <meta name="date" content="2018-10-20" />
-  <title>bup-meta(1) Bup 0.29.2</title>
-  <style type="text/css">code{white-space: pre;}</style>
+  <meta name="dcterms.date" content="2019-08-25" />
+  <title>bup-meta(1) Bup 0.29.3</title>
+  <style type="text/css">
+      code{white-space: pre-wrap;}
+      span.smallcaps{font-variant: small-caps;}
+      span.underline{text-decoration: underline;}
+      div.column{display: inline-block; vertical-align: top; width: 50%;}
+  </style>
 </head>
 <body>
-<div id="header">
-<h1 class="title">bup-meta(1) Bup 0.29.2</h1>
-<h2 class="author">Rob Browning <a href="mailto:rlb@defaultvalue.org">rlb@defaultvalue.org</a></h2>
-<h3 class="date">2018-10-20</h3>
-</div>
+<header>
+<h1 class="title">bup-meta(1) Bup 0.29.3</h1>
+<p class="author">Rob Browning <a href="mailto:rlb@defaultvalue.org">rlb@defaultvalue.org</a></p>
+<p class="date">2019-08-25</p>
+</header>
 <h1 id="name">NAME</h1>
 <p>bup-meta - create or extract a metadata archive</p>
 <h1 id="synopsis">SYNOPSIS</h1>
 <dl>
 <dt>bup meta --create</dt>
-<dd>[-R] [-v] [-q] [--no-symlinks] [--no-paths] [-f <em>file</em>] &lt;<em>paths</em>...&gt;
+<dd>[-R] [-v] [-q] [--no-symlinks] [--no-paths] [-f <em>file</em>] &lt;<em>paths</em>…&gt;
 </dd>
 <dt>bup meta --list</dt>
 <dd>[-v] [-q] [-f <em>file</em>]
@@ -35,7 +40,7 @@
 <dd>[-v] [-q] [--numeric-ids] [-f <em>file</em>]
 </dd>
 <dt>bup meta --edit</dt>
-<dd>[--set-uid <em>uid</em> | --set-gid <em>gid</em> | --set-user <em>user</em> | --set-group <em>group</em> | ...] &lt;<em>paths</em>...&gt;
+<dd>[--set-uid <em>uid</em> | --set-gid <em>gid</em> | --set-user <em>user</em> | --set-group <em>group</em> | …] &lt;<em>paths</em>…&gt;
 </dd>
 </dl>
 <h1 id="description">DESCRIPTION</h1>
@@ -62,13 +67,13 @@
 <dd>Edit metadata archives. The result will be written to standard output unless <code>--file</code> is specified.
 </dd>
 <dt>-f, --file=<em>filename</em></dt>
-<dd>Read the metadata archive from <em>filename</em> or write it to <em>filename</em> as appropriate. If <em>filename</em> is &quot;-&quot;, then read from standard input or write to standard output.
+<dd>Read the metadata archive from <em>filename</em> or write it to <em>filename</em> as appropriate. If <em>filename</em> is “-”, then read from standard input or write to standard output.
 </dd>
 <dt>-R, --recurse</dt>
 <dd>Recursively descend into subdirectories during <code>--create</code>.
 </dd>
 <dt>--xdev, --one-file-system</dt>
-<dd>don't cross filesystem boundaries -- though as with tar and rsync, the mount points themselves will still be handled.
+<dd>don’t cross filesystem boundaries – though as with tar and rsync, the mount points themselves will still be handled.
 </dd>
 <dt>--numeric-ids</dt>
 <dd>Apply numeric IDs (user, group, etc.) rather than names during <code>--extract</code> or <code>--finish-extract</code>.

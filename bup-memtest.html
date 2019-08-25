@@ -1,27 +1,32 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml">
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
 <head>
-  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-  <meta http-equiv="Content-Style-Type" content="text/css" />
+  <meta charset="utf-8" />
   <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <meta name="author" content="Avery Pennarun apenwarr@gmail.com" />
-  <meta name="date" content="2018-10-20" />
-  <title>bup-memtest(1) Bup 0.29.2</title>
-  <style type="text/css">code{white-space: pre;}</style>
+  <meta name="dcterms.date" content="2019-08-25" />
+  <title>bup-memtest(1) Bup 0.29.3</title>
+  <style type="text/css">
+      code{white-space: pre-wrap;}
+      span.smallcaps{font-variant: small-caps;}
+      span.underline{text-decoration: underline;}
+      div.column{display: inline-block; vertical-align: top; width: 50%;}
+  </style>
 </head>
 <body>
-<div id="header">
-<h1 class="title">bup-memtest(1) Bup 0.29.2</h1>
-<h2 class="author">Avery Pennarun <a href="mailto:apenwarr@gmail.com">apenwarr@gmail.com</a></h2>
-<h3 class="date">2018-10-20</h3>
-</div>
+<header>
+<h1 class="title">bup-memtest(1) Bup 0.29.3</h1>
+<p class="author">Avery Pennarun <a href="mailto:apenwarr@gmail.com">apenwarr@gmail.com</a></p>
+<p class="date">2019-08-25</p>
+</header>
 <h1 id="name">NAME</h1>
 <p>bup-memtest - test bup memory usage statistics</p>
 <h1 id="synopsis">SYNOPSIS</h1>
-<p>bup memtest [options...]</p>
+<p>bup memtest [options…]</p>
 <h1 id="description">DESCRIPTION</h1>
 <p><code>bup memtest</code> opens the list of pack indexes in your bup repository, then searches the list for a series of nonexistent objects, printing memory usage statistics after each cycle.</p>
-<p>Because of the way Unix systems work, the output will usually show a large (and unchanging) value in the VmSize column, because mapping the index files in the first place takes a certain amount of virtual address space. However, this virtual memory usage is entirely virtual; it doesn't take any of your RAM. Over time, bup uses <em>parts</em> of the indexes, which need to be loaded from disk, and this is what causes an increase in the VmRSS column.</p>
+<p>Because of the way Unix systems work, the output will usually show a large (and unchanging) value in the VmSize column, because mapping the index files in the first place takes a certain amount of virtual address space. However, this virtual memory usage is entirely virtual; it doesn’t take any of your RAM. Over time, bup uses <em>parts</em> of the indexes, which need to be loaded from disk, and this is what causes an increase in the VmRSS column.</p>
 <h1 id="options">OPTIONS</h1>
 <dl>
 <dt>-n, --number=<em>number</em></dt>
@@ -34,7 +39,7 @@
 <dd>ignore any <code>.midx</code> files created by <code>bup midx</code>. This allows you to compare memory performance with and without using midx.
 </dd>
 <dt>--existing</dt>
-<dd>search for existing objects instead of searching for random nonexistent ones. This can greatly affect memory usage and performance. Note that most of the time, <code>bup save</code> spends most of its time searching for nonexistent objects, since existing ones are probably in unmodified files that we won't be trying to back up anyway. So the default behaviour reflects real bup performance more accurately. But you might want this option anyway just to make sure you haven't made searching for existing objects much worse than before.
+<dd>search for existing objects instead of searching for random nonexistent ones. This can greatly affect memory usage and performance. Note that most of the time, <code>bup save</code> spends most of its time searching for nonexistent objects, since existing ones are probably in unmodified files that we won’t be trying to back up anyway. So the default behaviour reflects real bup performance more accurately. But you might want this option anyway just to make sure you haven’t made searching for existing objects much worse than before.
 </dd>
 </dl>
 <h1 id="examples">EXAMPLES</h1>
@@ -58,12 +63,12 @@ PackIdxList: using 361 indexes.
      1200    27448 kB   18388 kB    2520 kB      84 kB 
      1500    27448 kB   18556 kB    2520 kB      84 kB </code></pre>
 <h1 id="discussion">DISCUSSION</h1>
-<p>When optimizing bup indexing, the first goal is to keep the VmRSS reasonably low. However, it might eventually be necessary to swap in all the indexes, simply because you're searching for a lot of objects, and this will cause your RSS to grow as large as VmSize eventually.</p>
+<p>When optimizing bup indexing, the first goal is to keep the VmRSS reasonably low. However, it might eventually be necessary to swap in all the indexes, simply because you’re searching for a lot of objects, and this will cause your RSS to grow as large as VmSize eventually.</p>
 <p>The key word here is <em>eventually</em>. As long as VmRSS grows reasonably slowly, the amount of disk activity caused by accessing pack indexes is reasonably small. If it grows quickly, bup will probably spend most of its time swapping index data from disk instead of actually running your backup, so backups will run very slowly.</p>
 <p>The purpose of <code>bup memtest</code> is to give you an idea of how fast your memory usage is growing, and to help in optimizing bup for better memory use. If you have memory problems you might be asked to send the output of <code>bup memtest</code> to help diagnose the problems.</p>
 <p>Tip: try using <code>bup midx -a</code> or <code>bup midx -f</code> to see if it helps reduce your memory usage.</p>
-<p>Trivia: index memory usage in bup (or git) is only really a problem when adding a large number of previously unseen objects. This is because for each object, we need to absolutely confirm that it isn't already in the database, which requires us to search through <em>all</em> the existing pack indexes to ensure that none of them contain the object in question. In the more obvious case of searching for objects that <em>do</em> exist, the objects being searched for are typically related in some way, which means they probably all exist in a small number of packfiles, so memory usage will be constrained to just those packfile indexes.</p>
-<p>Since git users typically don't add a lot of files in a single run, git doesn't really need a program like <code>bup midx</code>. bup, on the other hand, spends most of its time backing up files it hasn't seen before, so its memory usage patterns are different.</p>
+<p>Trivia: index memory usage in bup (or git) is only really a problem when adding a large number of previously unseen objects. This is because for each object, we need to absolutely confirm that it isn’t already in the database, which requires us to search through <em>all</em> the existing pack indexes to ensure that none of them contain the object in question. In the more obvious case of searching for objects that <em>do</em> exist, the objects being searched for are typically related in some way, which means they probably all exist in a small number of packfiles, so memory usage will be constrained to just those packfile indexes.</p>
+<p>Since git users typically don’t add a lot of files in a single run, git doesn’t really need a program like <code>bup midx</code>. bup, on the other hand, spends most of its time backing up files it hasn’t seen before, so its memory usage patterns are different.</p>
 <h1 id="see-also">SEE ALSO</h1>
 <p><code>bup-midx</code>(1)</p>
 <h1 id="bup">BUP</h1>

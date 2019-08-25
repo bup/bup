@@ -1,33 +1,38 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml">
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
 <head>
-  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-  <meta http-equiv="Content-Style-Type" content="text/css" />
+  <meta charset="utf-8" />
   <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <meta name="author" content="Avery Pennarun apenwarr@gmail.com" />
-  <meta name="date" content="2018-10-20" />
-  <title>bup-save(1) Bup 0.29.2</title>
-  <style type="text/css">code{white-space: pre;}</style>
+  <meta name="dcterms.date" content="2019-08-25" />
+  <title>bup-save(1) Bup 0.29.3</title>
+  <style type="text/css">
+      code{white-space: pre-wrap;}
+      span.smallcaps{font-variant: small-caps;}
+      span.underline{text-decoration: underline;}
+      div.column{display: inline-block; vertical-align: top; width: 50%;}
+  </style>
 </head>
 <body>
-<div id="header">
-<h1 class="title">bup-save(1) Bup 0.29.2</h1>
-<h2 class="author">Avery Pennarun <a href="mailto:apenwarr@gmail.com">apenwarr@gmail.com</a></h2>
-<h3 class="date">2018-10-20</h3>
-</div>
+<header>
+<h1 class="title">bup-save(1) Bup 0.29.3</h1>
+<p class="author">Avery Pennarun <a href="mailto:apenwarr@gmail.com">apenwarr@gmail.com</a></p>
+<p class="date">2019-08-25</p>
+</header>
 <h1 id="name">NAME</h1>
 <p>bup-save - create a new bup backup set</p>
 <h1 id="synopsis">SYNOPSIS</h1>
-<p>bup save [-r <em>host</em>:<em>path</em>] &lt;-t|-c|-n <em>name</em>&gt; [-#] [-f <em>indexfile</em>] [-v] [-q] [--smaller=<em>maxsize</em>] &lt;paths...&gt;;</p>
+<p>bup save [-r <em>host</em>:<em>path</em>] &lt;-t|-c|-n <em>name</em>&gt; [-#] [-f <em>indexfile</em>] [-v] [-q] [--smaller=<em>maxsize</em>] &lt;paths…&gt;;</p>
 <h1 id="description">DESCRIPTION</h1>
 <p><code>bup save</code> saves the contents of the given files or paths into a new backup set and optionally names that backup set.</p>
-<p>Note that in order to refer to your backup set later (i.e. for restoration), you must either specify <code>--name</code> (the normal case), or record the tree or commit id printed by <code>--tree</code> or <code>--commit</code>.</p>
+<p>Note that in order to refer to your backup set later (i.e. for restoration), you must either specify <code>--name</code> (the normal case), or record the tree or commit id printed by <code>--tree</code> or <code>--commit</code>.</p>
 <p>Before trying to save files using <code>bup save</code>, you should first update the index using <code>bup index</code>. The reasons for separating the two steps are described in the man page for <code>bup-index</code>(1).</p>
 <p>By default, metadata will be saved for every path, and the metadata for any unindexed parent directories of indexed paths will be taken directly from the filesystem. However, if <code>--strip</code>, <code>--strip-path</code>, or <code>--graft</code> is specified, metadata will not be saved for the root directory (<em>/</em>). See <code>bup-restore</code>(1) for more information about the handling of metadata.</p>
 <h1 id="options">OPTIONS</h1>
 <dl>
 <dt>-r, --remote=<em>host</em>:<em>path</em></dt>
-<dd>save the backup set to the given remote server. If <em>path</em> is omitted, uses the default path on the remote server (you still need to include the ':'). The connection to the remote server is made with SSH. If you'd like to specify which port, user or private key to use for the SSH connection, we recommend you use the <code>~/.ssh/config</code> file.
+<dd>save the backup set to the given remote server. If <em>path</em> is omitted, uses the default path on the remote server (you still need to include the ‘:’). The connection to the remote server is made with SSH. If you’d like to specify which port, user or private key to use for the SSH connection, we recommend you use the <code>~/.ssh/config</code> file.
 </dd>
 <dt>-t, --tree</dt>
 <dd>after creating the backup set, print out the git tree id of the resulting backup.
@@ -51,22 +56,22 @@
 <dd>disable progress messages.
 </dd>
 <dt>--smaller=<em>maxsize</em></dt>
-<dd>don't back up files &gt;= <em>maxsize</em> bytes. You can use this to run frequent incremental backups of your small files, which can usually be backed up quickly, and skip over large ones (like virtual machine images) which take longer. Then you can back up the large files less frequently. Use a suffix like k, M, or G to specify multiples of 1024, 1024<em>1024, 1024</em>1024*1024 respectively.
+<dd>don’t back up files &gt;= <em>maxsize</em> bytes. You can use this to run frequent incremental backups of your small files, which can usually be backed up quickly, and skip over large ones (like virtual machine images) which take longer. Then you can back up the large files less frequently. Use a suffix like k, M, or G to specify multiples of 1024, 1024<em>1024, 1024</em>1024*1024 respectively.
 </dd>
 <dt>--bwlimit=<em>bytes/sec</em></dt>
-<dd>don't transmit more than <em>bytes/sec</em> bytes per second to the server. This is good for making your backups not suck up all your network bandwidth. Use a suffix like k, M, or G to specify multiples of 1024, 1024<em>1024, 1024</em>1024*1024 respectively.
+<dd>don’t transmit more than <em>bytes/sec</em> bytes per second to the server. This is good for making your backups not suck up all your network bandwidth. Use a suffix like k, M, or G to specify multiples of 1024, 1024<em>1024, 1024</em>1024*1024 respectively.
 </dd>
 <dt>--strip</dt>
 <dd><p>strips the path that is given from all files and directories.</p>
-<p>A directory <em>/root/chroot/etc</em> saved with &quot;bup save -n chroot --strip /root/chroot&quot; would be saved as <em>/etc</em>. Note that currently, metadata will not be saved for the root directory (<em>/</em>) when this option is specified.</p>
+<p>A directory <em>/root/chroot/etc</em> saved with “bup save -n chroot --strip /root/chroot” would be saved as <em>/etc</em>. Note that currently, metadata will not be saved for the root directory (<em>/</em>) when this option is specified.</p>
 </dd>
 <dt>--strip-path=<em>path-prefix</em></dt>
 <dd><p>strips the given path prefix <em>path-prefix</em> from all files and directories.</p>
-<p>A directory <em>/root/chroot/webserver</em> saved with &quot;bup save -n webserver --strip-path=/root/chroot&quot; would be saved as <em>/webserver/etc</em>. Note that currently, metadata will not be saved for the root directory (<em>/</em>) when this option is specified.</p>
+<p>A directory <em>/root/chroot/webserver</em> saved with “bup save -n webserver --strip-path=/root/chroot” would be saved as <em>/webserver/etc</em>. Note that currently, metadata will not be saved for the root directory (<em>/</em>) when this option is specified.</p>
 </dd>
 <dt>--graft=<em>old_path</em>=<em>new_path</em></dt>
 <dd><p>a graft point <em>old_path</em>=<em>new_path</em> (can be used more than once).</p>
-<p>A directory <em>/root/chroot/a/etc</em> saved with &quot;bup save -n chroot --graft /root/chroot/a=/chroot/a&quot; would be saved as <em>/chroot/a/etc</em>. Note that currently, metadata will not be saved for the root directory (<em>/</em>) when this option is specified.</p>
+<p>A directory <em>/root/chroot/a/etc</em> saved with “bup save -n chroot --graft /root/chroot/a=/chroot/a” would be saved as <em>/chroot/a/etc</em>. Note that currently, metadata will not be saved for the root directory (<em>/</em>) when this option is specified.</p>
 </dd>
 <dt>-<em>#</em>, --compress=<em>#</em></dt>
 <dd>set the compression level to # (a value from 0-9, where 9 is the highest and 0 is no compression). The default is 1 (fast, loose compression)
