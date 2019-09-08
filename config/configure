@@ -67,6 +67,8 @@ if test -z "$bup_python"; then
     AC_FAIL "ERROR: unable to find python"
 else
     AC_SUB bup_python "$bup_python"
+    AC_SUB bup_python_majver \
+           "$("$bup_python" -c 'import sys; print(sys.version_info[0])')"
 fi
 
 if test -z "$(bup_find_prog git '')"; then

@@ -140,7 +140,11 @@ lib/bup/_checkout.py:
 t/tmp:
 	mkdir t/tmp
 
-runtests: runtests-python runtests-cmdline
+ifeq "2" "$(bup_python_majver)"
+  runtests: runtests-python runtests-cmdline
+else
+  runtests: runtests-cmdline
+endif
 
 # The "pwd -P" here may not be appropriate in the long run, but we
 # need it until we settle the relevant drecurse/exclusion questions:
@@ -150,57 +154,65 @@ runtests-python: all t/tmp
 	  "$(bup_python)" wvtest.py t/t*.py lib/*/t/t*.py 2>&1 \
 	    | tee -a t/tmp/test-log/$$$$.log
 
-cmdline_tests := \
-  t/test-ftp \
-  t/test-save-restore \
-  t/test-packsizelimit \
-  t/test-prune-older \
-  t/test-web.sh \
-  t/test-rm.sh \
-  t/test-gc.sh \
-  t/test-main.sh \
-  t/test-list-idx.sh \
-  t/test-index.sh \
-  t/test-split-join.sh \
-  t/test-fuse.sh \
-  t/test-drecurse.sh \
-  t/test-cat-file.sh \
-  t/test-compression.sh \
-  t/test-fsck.sh \
-  t/test-index-clear.sh \
-  t/test-index-check-device.sh \
-  t/test-ls \
-  t/test-ls-remote \
-  t/test-tz.sh \
-  t/test-meta.sh \
-  t/test-on.sh \
-  t/test-restore-map-owner.sh \
-  t/test-restore-single-file.sh \
-  t/test-rm-between-index-and-save.sh \
-  t/test-save-with-valid-parent.sh \
-  t/test-sparse-files.sh \
-  t/test-command-without-init-fails.sh \
-  t/test-redundant-saves.sh \
-  t/test-save-creates-no-unrefs.sh \
-  t/test-save-restore-excludes.sh \
-  t/test-save-strip-graft.sh \
-  t/test-import-duplicity.sh \
-  t/test-import-rdiff-backup.sh \
-  t/test-xdev.sh \
-  t/test.sh
+ifeq "2" "$(bup_python_majver)"
+  cmdline_tests := \
+    t/test-ftp \
+    t/test-save-restore \
+    t/test-packsizelimit \
+    t/test-prune-older \
+    t/test-web.sh \
+    t/test-rm.sh \
+    t/test-gc.sh \
+    t/test-main.sh \
+    t/test-list-idx.sh \
+    t/test-index.sh \
+    t/test-split-join.sh \
+    t/test-fuse.sh \
+    t/test-drecurse.sh \
+    t/test-cat-file.sh \
+    t/test-compression.sh \
+    t/test-fsck.sh \
+    t/test-index-clear.sh \
+    t/test-index-check-device.sh \
+    t/test-ls \
+    t/test-ls-remote \
+    t/test-tz.sh \
+    t/test-meta.sh \
+    t/test-on.sh \
+    t/test-restore-map-owner.sh \
+    t/test-restore-single-file.sh \
+    t/test-rm-between-index-and-save.sh \
+    t/test-save-with-valid-parent.sh \
+    t/test-sparse-files.sh \
+    t/test-command-without-init-fails.sh \
+    t/test-redundant-saves.sh \
+    t/test-save-creates-no-unrefs.sh \
+    t/test-save-restore-excludes.sh \
+    t/test-save-strip-graft.sh \
+    t/test-import-duplicity.sh \
+    t/test-import-rdiff-backup.sh \
+    t/test-xdev.sh \
+    t/test.sh
+else
+  cmdline_tests :=
+endif
 
 tmp-target-run-test-get-%: all t/tmp
 	$(pf); cd $$(pwd -P); TMPDIR="$(test_tmp)" \
 	  t/test-get $* 2>&1 | tee -a t/tmp/test-log/$$$$.log
 
-test_get_targets := \
-  tmp-target-run-test-get-replace \
-  tmp-target-run-test-get-universal \
-  tmp-target-run-test-get-ff \
-  tmp-target-run-test-get-append \
-  tmp-target-run-test-get-pick \
-  tmp-target-run-test-get-new-tag \
-  tmp-target-run-test-get-unnamed
+ifeq "2" "$(bup_python_majver)"
+  test_get_targets := \
+    tmp-target-run-test-get-replace \
+    tmp-target-run-test-get-universal \
+    tmp-target-run-test-get-ff \
+    tmp-target-run-test-get-append \
+    tmp-target-run-test-get-pick \
+    tmp-target-run-test-get-new-tag \
+    tmp-target-run-test-get-unnamed
+else
+  test_get_targets :=
+endif
 
 # For parallel runs.
 # The "pwd -P" here may not be appropriate in the long run, but we
@@ -219,7 +231,7 @@ test: all
 	if test -e t/tmp/test-log; then rm -r t/tmp/test-log; fi
 	mkdir -p t/tmp/test-log
 	./wvtest watch --no-counts \
-	  $(MAKE) runtests-python runtests-cmdline 2>t/tmp/test-log/$$$$.log
+	  $(MAKE) runtests 2>t/tmp/test-log/$$$$.log
 	./wvtest report t/tmp/test-log/*.log
 
 check: test
