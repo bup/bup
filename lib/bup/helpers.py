@@ -1174,7 +1174,7 @@ else:
         return x
 
 
-_some_invalid_save_parts_rx = re.compile(r'[[ ~^:?*\\]|\.\.|//|@{')
+_some_invalid_save_parts_rx = re.compile(r'[\[ ~^:?*\\]|\.\.|//|@{')
 
 def valid_save_name(name):
     # Enforce a superset of the restrictions in git-check-ref-format(1)
