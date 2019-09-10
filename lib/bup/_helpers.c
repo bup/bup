@@ -74,10 +74,10 @@ typedef struct {
 #if PY_MAJOR_VERSION < 3
 static state_t state;
 #  define get_state(x) (&state)
-#  define buf_argf "s"
+#  define cstr_argf "s"
 #else
 #  define get_state(x) ((state_t *) PyModule_GetState(x))
-#  define buf_argf "y"
+#  define cstr_argf "y"
 #endif // PY_MAJOR_VERSION >= 3
 
 
@@ -1408,7 +1408,7 @@ static PyObject *bup_stat(PyObject *self, PyObject *args)
     int rc;
     char *filename;
 
-    if (!PyArg_ParseTuple(args, "s", &filename))
+    if (!PyArg_ParseTuple(args, cstr_argf, &filename))
         return NULL;
 
     struct stat st;
@@ -1424,7 +1424,7 @@ static PyObject *bup_lstat(PyObject *self, PyObject *args)
     int rc;
     char *filename;
 
-    if (!PyArg_ParseTuple(args, "s", &filename))
+    if (!PyArg_ParseTuple(args, cstr_argf, &filename))
         return NULL;
 
     struct stat st;
@@ -1481,7 +1481,7 @@ static PyObject *bup_mincore(PyObject *self, PyObject *args)
     Py_buffer src, dest;
     PyObject *py_src_n, *py_src_off, *py_dest_off;
 
-    if (!PyArg_ParseTuple(args, buf_argf "*OOw*O",
+    if (!PyArg_ParseTuple(args, cstr_argf "*OOw*O",
                           &src, &py_src_n, &py_src_off,
                           &dest, &py_dest_off))
 	return NULL;
