@@ -53,7 +53,7 @@ from itertools import chain, dropwhile, groupby, tee
 from random import randrange
 from stat import S_IFDIR, S_IFLNK, S_IFREG, S_ISDIR, S_ISLNK, S_ISREG
 from time import localtime, strftime
-import exceptions, re, sys
+import re, sys
 
 from bup import git, metadata, vint
 from bup.compat import range
@@ -64,12 +64,17 @@ from bup.vint import read_bvec, write_bvec
 from bup.vint import read_vint, write_vint
 from bup.vint import read_vuint, write_vuint
 
+if sys.version_info[0] < 3:
+    from exceptions import IOError as py_IOError
+else:
+    py_IOError = IOError
+
 # We currently assume that it's always appropriate to just forward IOErrors
 # to a remote client.
 
-class IOError(exceptions.IOError):
+class IOError(py_IOError):
     def __init__(self, errno, message, terminus=None):
-        exceptions.IOError.__init__(self, errno, message)
+        py_IOError.__init__(self, errno, message)
         self.terminus = terminus
 
 def write_ioerror(port, ex):
