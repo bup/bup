@@ -12,6 +12,7 @@ py3 = py_maj >= 3
 
 if py3:
 
+    from os import fsencode
     from shlex import quote
     range = range
     str_type = str
@@ -26,6 +27,10 @@ if py3:
 
     def items(x):
         return x.items()
+
+    def argv_bytes(x):
+        """Return the original bytes passed to main() for an argv argument."""
+        return fsencode(x)
 
     def bytes_from_uint(i):
         return bytes((i,))
@@ -86,6 +91,10 @@ else:  # Python 2
 
     def items(x):
         return x.iteritems()
+
+    def argv_bytes(x):
+        """Return the original bytes passed to main() for an argv argument."""
+        return x
 
     def bytes_from_uint(i):
         return chr(i)

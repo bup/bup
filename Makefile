@@ -175,6 +175,7 @@ cmdline_tests :=
 
 ifeq "2" "$(bup_python_majver)"
   cmdline_tests += \
+    t/test-argv \
     t/test-ftp \
     t/test-save-restore \
     t/test-packsizelimit \

@@ -1,0 +1,21 @@
+#!/bin/sh
+"""": # -*-python-*-
+bup_python="$(dirname "$0")/../cmd/bup-python" || exit $?
+exec "$bup_python" "$0" ${1+"$@"}
+"""
+# end of bup preamble
+
+from __future__ import absolute_import, print_function
+
+from os.path import abspath, dirname
+from sys import stdout
+import os, sys
+
+script_home = abspath(dirname(sys.argv[0] or '.'))
+sys.path[:0] = [abspath(script_home + '/../lib'), abspath(script_home + '/..')]
+
+from bup.compat import argv_bytes
+
+for arg in [argv_bytes(x) for x in sys.argv]:
+    os.write(stdout.fileno(), arg)
+    os.write(stdout.fileno(), b'\0\n')
