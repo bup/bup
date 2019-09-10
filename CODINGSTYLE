@@ -53,8 +53,10 @@ stack trace will be lost)::
   raise pending_ex
 
 If an exception is thrown from an exception handler, the pending
-exception should be "chained" to the new exception as the context.
-This can be accomplished via ``chain_ex()``::
+exception should be the `"context"
+<https://docs.python.org/3/reference/simple_stmts.html#the-raise-statement>`_
+of the new exception This can be accomplished via
+``add_ex_ctx()``::
 
   try:
       ...
@@ -64,6 +66,6 @@ This can be accomplished via ``chain_ex()``::
           ...
       except ... as ex2:
           add_ex_tb(ex2)
-          raise chain_ex(ex2, ex)
+          raise add_ex_ctx(ex2, ex)
 
 See the end of ``lib/bup/compat.py`` for a functional example.

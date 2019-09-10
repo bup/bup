@@ -4,7 +4,7 @@ from traceback import print_exception
 import sys
 
 # Please see CODINGSTYLE for important exception handling guidelines
-# and the rationale behind add_ex_tb(), chain_ex(), etc.
+# and the rationale behind add_ex_tb(), add_ex_ctx(), etc.
 
 py_maj = sys.version_info[0]
 py3 = py_maj >= 3
@@ -19,7 +19,7 @@ if py3:
         """Do nothing (already handled by Python 3 infrastructure)."""
         return ex
 
-    def chain_ex(ex, context_ex):
+    def add_ex_ctx(ex, context_ex):
         """Do nothing (already handled by Python 3 infrastructure)."""
         return ex
 
@@ -40,9 +40,9 @@ else:  # Python 2
             ex.__traceback__ = sys.exc_info()[2]
         return ex
 
-    def chain_ex(ex, context_ex):
-        """Chain context_ex to ex as the __context__ (unless it already has
-        one).  Return ex.
+    def add_ex_ctx(ex, context_ex):
+        """Make context_ex the __context__ of ex (unless it already has one).
+        Return ex.
 
         """
         if context_ex:
@@ -112,6 +112,6 @@ if __name__ == '__main__':
             try:
                 raise Exception('second')
             except Exception as ex2:
-                raise chain_ex(add_ex_tb(ex2), ex)
+                raise add_ex_ctx(add_ex_tb(ex2), ex)
 
     wrap_main(outer)

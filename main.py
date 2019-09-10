@@ -42,7 +42,7 @@ os.environ['BUP_RESOURCE_PATH'] = resourcepath
 
 
 from bup import compat, helpers
-from bup.compat import add_ex_tb, chain_ex, wrap_main
+from bup.compat import add_ex_tb, add_ex_ctx, wrap_main
 from bup.helpers import atoi, columnate, debug1, log, tty_width
 
 
@@ -215,7 +215,7 @@ def filter_output(src_out, src_err, dest_out, dest_err):
                     if split[0]:
                         pending.setdefault(fd, []).extend(split)
     except BaseException as ex:
-        pending_ex = chain_ex(add_ex_tb(ex), pending_ex)
+        pending_ex = add_ex_ctx(add_ex_tb(ex), pending_ex)
     try:
         # Try to finish each of the streams
         for fd, pending_items in compat.items(pending):
@@ -223,9 +223,9 @@ def filter_output(src_out, src_err, dest_out, dest_err):
             try:
                 print_clean_line(dest, pending_items, width)
             except (EnvironmentError, EOFError) as ex:
-                pending_ex = chain_ex(add_ex_tb(ex), pending_ex)
+                pending_ex = add_ex_ctx(add_ex_tb(ex), pending_ex)
     except BaseException as ex:
-        pending_ex = chain_ex(add_ex_tb(ex), pending_ex)
+        pending_ex = add_ex_ctx(add_ex_tb(ex), pending_ex)
     if pending_ex:
         raise pending_ex
 
@@ -260,7 +260,7 @@ def run_subcmd(subcmd):
                 os.kill(p.pid, signal.SIGTERM)
                 p.wait()
         except BaseException as kill_ex:
-            raise chain_ex(add_ex_tb(kill_ex), ex)
+            raise add_ex_ctx(add_ex_tb(kill_ex), ex)
         raise ex
         
 wrap_main(lambda : run_subcmd(subcmd))
