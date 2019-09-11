@@ -18,6 +18,7 @@ script_home = abspath(dirname(sys.argv[0] or '.'))
 sys.path[:0] = [abspath(script_home + '/../lib'), abspath(script_home + '/..')]
 
 from bup import compat
+from bup.helpers import unlink
 from buptest import ex, exo, test_tempdir
 from wvtest import wvcheck, wvfail, wvmsg, wvpass, wvpasseq, wvpassne, wvstart
 
@@ -108,6 +109,8 @@ def validate_tree(src_id, dest_id):
     if exr.rc != 0: return False
     
     # git archive doesn't include an entry for ./.
+    unlink('restore-src/pax_global_header')
+    unlink('restore-dest/pax_global_header')
     ex(('touch', '-r', 'restore-src', 'restore-dest'))
     verify_trees_match('restore-src/', 'restore-dest/')
     rmrf('restore-src')
