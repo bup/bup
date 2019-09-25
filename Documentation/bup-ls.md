@@ -8,7 +8,7 @@ bup-ls - list the contents of a bup repository
 
 # SYNOPSIS
 
-bup ls [OPTION...] \<paths...\>
+bup ls [-r *host*:[*path*]] [OPTION...] \<paths...\>
 
 # DESCRIPTION
 
@@ -38,6 +38,14 @@ Once you have identified the file you want using `bup ls`,
 you can view its contents using `bup join` or `git show`.
 
 # OPTIONS
+
+-r, \--remote=*host*:[*path*]
+:   list information for the repository at *path* on the indicated
+    *host*.  If *path* is omitted, uses the default path on the remote
+    server (you still need to include the ':').  The connection to the
+    remote server will be made by SSH.  If you'd like to specify the
+    port, user, or private key, we recommend you use the
+    `~/.ssh/config` file (`ssh_config(5)`).
 
 -s, \--hash
 :   show hash for each file/directory.
@@ -74,7 +82,8 @@ you can view its contents using `bup join` or `git show`.
 
 # SEE ALSO
 
-`bup-join`(1), `bup-fuse`(1), `bup-ftp`(1), `bup-save`(1), `git-show`(1)
+`bup-join`(1), `bup-fuse`(1), `bup-ftp`(1), `bup-save`(1),
+`git-show`(1), `ssh_config`(5)
 
 # BUP
 
