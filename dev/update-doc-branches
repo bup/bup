@@ -20,6 +20,7 @@ echo "$html_ref" | grep -qE '^refs/heads'
 
 "${MAKE:-make}"
 
+mkdir -p t/tmp
 tmpdir="$(mktemp -d "t/tmp/update-doc-branches-XXXXXX")"
 trap "$(printf 'rm -rf %q' "$tmpdir")" EXIT
 tmpidx="$tmpdir/git-index.tmp"
