@@ -5,8 +5,8 @@
   <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <meta name="author" content="Avery Pennarun apenwarr@gmail.com" />
-  <meta name="dcterms.date" content="2019-08-25" />
-  <title>bup-index(1) Bup 0.29.3</title>
+  <meta name="dcterms.date" content="2019-09-28" />
+  <title>bup-index(1) Bup 0.30</title>
   <style type="text/css">
       code{white-space: pre-wrap;}
       span.smallcaps{font-variant: small-caps;}
@@ -16,16 +16,16 @@
 </head>
 <body>
 <header>
-<h1 class="title">bup-index(1) Bup 0.29.3</h1>
+<h1 class="title">bup-index(1) Bup 0.30</h1>
 <p class="author">Avery Pennarun <a href="mailto:apenwarr@gmail.com">apenwarr@gmail.com</a></p>
-<p class="date">2019-08-25</p>
+<p class="date">2019-09-28</p>
 </header>
 <h1 id="name">NAME</h1>
 <p>bup-index - print and/or update the bup filesystem index</p>
 <h1 id="synopsis">SYNOPSIS</h1>
 <p>bup index &lt;-p|-m|-s|-u|--clear|--check&gt; [-H] [-l] [-x] [--fake-valid] [--no-check-device] [--fake-invalid] [-f <em>indexfile</em>] [--exclude <em>path</em>] [--exclude-from <em>filename</em>] [--exclude-rx <em>pattern</em>] [--exclude-rx-from <em>filename</em>] [-v] &lt;paths…&gt;</p>
 <h1 id="description">DESCRIPTION</h1>
-<p><code>bup index</code> manipulates the filesystem index, which is a cache of absolute paths and their metadata (atttributes, SHA-1 hashes, etc.). The bup index is similar in function to the <code>git</code>(1) index, and the default index can be found in <code>$BUP_DIR/bupindex</code>.</p>
+<p><code>bup index</code> manipulates the filesystem index, which is a cache of absolute paths and their metadata (attributes, SHA-1 hashes, etc.). The bup index is similar in function to the <code>git</code>(1) index, and the default index can be found in <code>$BUP_DIR/bupindex</code>.</p>
 <p>Creating a backup in bup consists of two steps: updating the index with <code>bup index</code>, then actually backing up the files (or a subset of the files) with <code>bup save</code>. The separation exists for these reasons:</p>
 <ol type="1">
 <li><p>There is more than one way to generate a list of files that need to be backed up. For example, you might want to use <code>inotify</code>(7) or <code>dnotify</code>(7).</p></li>

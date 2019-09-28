@@ -5,8 +5,8 @@
   <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <meta name="author" content="Avery Pennarun apenwarr@gmail.com" />
-  <meta name="dcterms.date" content="2019-08-25" />
-  <title>bup-ls(1) Bup 0.29.3</title>
+  <meta name="dcterms.date" content="2019-09-28" />
+  <title>bup-ls(1) Bup 0.30</title>
   <style type="text/css">
       code{white-space: pre-wrap;}
       span.smallcaps{font-variant: small-caps;}
@@ -16,14 +16,14 @@
 </head>
 <body>
 <header>
-<h1 class="title">bup-ls(1) Bup 0.29.3</h1>
+<h1 class="title">bup-ls(1) Bup 0.30</h1>
 <p class="author">Avery Pennarun <a href="mailto:apenwarr@gmail.com">apenwarr@gmail.com</a></p>
-<p class="date">2019-08-25</p>
+<p class="date">2019-09-28</p>
 </header>
 <h1 id="name">NAME</h1>
 <p>bup-ls - list the contents of a bup repository</p>
 <h1 id="synopsis">SYNOPSIS</h1>
-<p>bup ls [OPTION…] &lt;paths…&gt;</p>
+<p>bup ls [-r <em>host</em>:[<em>path</em>]] [OPTION…] &lt;paths…&gt;</p>
 <h1 id="description">DESCRIPTION</h1>
 <p><code>bup ls</code> lists files and directories in your bup repository using the same directory hierarchy as they would have with <code>bup-fuse</code>(1).</p>
 <p>The top level directory contains the branch (corresponding to the <code>-n</code> option in <code>bup save</code>), the next level is the date of the backup, and subsequent levels correspond to files in the backup.</p>
@@ -32,6 +32,9 @@
 <p>Once you have identified the file you want using <code>bup ls</code>, you can view its contents using <code>bup join</code> or <code>git show</code>.</p>
 <h1 id="options">OPTIONS</h1>
 <dl>
+<dt>-r, --remote=<em>host</em>:[<em>path</em>]</dt>
+<dd>list information for the repository at <em>path</em> on the indicated <em>host</em>. If <em>path</em> is omitted, uses the default path on the remote server (you still need to include the ‘:’). The connection to the remote server will be made by SSH. If you’d like to specify the port, user, or private key, we recommend you use the <code>~/.ssh/config</code> file (<code>ssh_config(5)</code>).
+</dd>
 <dt>-s, --hash</dt>
 <dd>show hash for each file/directory.
 </dd>
@@ -65,7 +68,7 @@
 
 bup ls -a /</code></pre>
 <h1 id="see-also">SEE ALSO</h1>
-<p><code>bup-join</code>(1), <code>bup-fuse</code>(1), <code>bup-ftp</code>(1), <code>bup-save</code>(1), <code>git-show</code>(1)</p>
+<p><code>bup-join</code>(1), <code>bup-fuse</code>(1), <code>bup-ftp</code>(1), <code>bup-save</code>(1), <code>git-show</code>(1), <code>ssh_config</code>(5)</p>
 <h1 id="bup">BUP</h1>
 <p>Part of the <code>bup</code>(1) suite.</p>
 </body>

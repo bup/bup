@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <meta name="author" content="Rob Browning rlb@defaultvalue.org" />
+  <meta name="dcterms.date" content="2019-09-28" />
+  <title>bup-get(1) Bup 0.30</title>
+  <style type="text/css">
+      code{white-space: pre-wrap;}
+      span.smallcaps{font-variant: small-caps;}
+      span.underline{text-decoration: underline;}
+      div.column{display: inline-block; vertical-align: top; width: 50%;}
+  </style>
+</head>
+<body>
+<header>
+<h1 class="title">bup-get(1) Bup 0.30</h1>
+<p class="author">Rob Browning <a href="mailto:rlb@defaultvalue.org">rlb@defaultvalue.org</a></p>
+<p class="date">2019-09-28</p>
+</header>
+<h1 id="name">NAME</h1>
+<p>bup-get - copy repository items (CAUTION: EXPERIMENTAL)</p>
+<h1 id="synopsis">SYNOPSIS</h1>
+<p>bup get [-s <em>source-path</em>] [-r <em>host</em>:<em>path</em>] OPTIONS &lt;(METHOD <em>ref</em> [<em>dest</em>])&gt;…</p>
+<h1 id="description">DESCRIPTION</h1>
+<p><code>bup get</code> copies the indicated <em>ref</em>s from the source repository to the destination repository (respecting <code>--bup-dir</code> and <code>BUP_DIR</code>), according to the specified METHOD, which may be one of <code>--ff</code>, <code>--ff:</code>, <code>--append</code>, <code>--append:</code>, <code>--pick</code>, <code>--pick:</code>, <code>--force-pick</code>, <code>--force-pick:</code>, <code>--new-tag</code>, <code>--new-tag:</code>, <code>--replace</code>, <code>--replace:</code>, or <code>--unnamed</code>. See the EXAMPLES below for a quick introduction.</p>
+<p>The <em>ref</em> is the source repository reference of the object to be fetched, and the <em>dest</em> is the optional destination reference. A <em>dest</em> may only be specified for a METHOD whose name ends in a colon. For example:</p>
+<pre><code>bup get -s /source/repo --ff foo
+bup get -s /source/repo --ff: foo/latest bar
+bup get -s /source/repo --pick: foo/2010-10-10-101010 .tag/bar</code></pre>
+<p>As a special case, if <em>ref</em> names the “latest” save symlink, then bup will act exactly as if the save that “latest” points to had been specified, rather than the “latest” symlink itself, so <code>bup get foo/latest</code> will actually be interpreted as something like <code>bup get foo/2013-01-01-030405</code>.</p>
+<p>In some situations <code>bup get</code> will evaluate a branch operation according to whether or not it will be a “fast-forward” (which requires that any existing destination branch be an ancestor of the source).</p>
+<p>An existing destination tag can only be overwritten by a <code>--replace</code> or <code>--force-pick</code>.</p>
+<p>When a new commit is created (i.e. via <code>--append</code>, <code>--pick</code>, etc.), it will have the same author, author date, and message as the original, but a committer and committer date corresponding to the current user and time.</p>
+<p>If requested by the appropriate options, bup will print the commit, tree, or tag hash for each destination reference updated. When relevant, the tree hash will be printed before the commit hash.</p>
+<p>Local <em>ref</em>s can be pushed to a remote repository with the <code>--remote</code> option, and remote <em>ref</em>s can be pulled into a local repository via “bup on HOST get …”. See <code>bup-on</code>(1) and the EXAMPLES below for further information.</p>
+<p>WARNING: This is one of the few bup commands that can modify your archives in intentionally destructive ways. Though if an attempt to join or restore the data you still care about succeeds after you’ve run this command, then that’s a fairly encouraging sign that it worked correctly. (The t/compare-trees command in the source tree can be used to help test before/after results.)</p>
+<h1 id="methods">METHODS</h1>
+<dl>
+<dt>–ff <em>ref</em>, –ff: <em>ref</em> <em>dest</em></dt>
+<dd>fast-forward <em>dest</em> to match <em>ref</em>. If <em>dest</em> is not specified and <em>ref</em> names a save, set <em>dest</em> to the save’s branch. If <em>dest</em> is not specified and <em>ref</em> names a branch or a tag, use the same name for <em>dest</em>.
+</dd>
+<dt>–append <em>ref</em>, –append: <em>ref</em> <em>dest</em></dt>
+<dd>append all of the commits represented by <em>ref</em> to <em>dest</em> as new commits. If <em>ref</em> names a directory/tree, append a new commit for that tree. If <em>dest</em> is not specified and <em>ref</em> names a save or branch, set <em>dest</em> to the <em>ref</em> branch name. If <em>dest</em> is not specified and <em>ref</em> names a tag, use the same name for <em>dest</em>.
+</dd>
+<dt>–pick <em>ref</em>, –pick: <em>ref</em> <em>dest</em></dt>
+<dd>append the single commit named by <em>ref</em> to <em>dest</em> as a new commit. If <em>dest</em> is not specified and <em>ref</em> names a save, set <em>dest</em> to the <em>ref</em> branch name. If <em>dest</em> is not specified and <em>ref</em> names a tag, use the same name for <em>dest</em>.
+</dd>
+<dt>–force-pick <em>ref</em>, –force-pick: <em>ref</em> <em>dest</em></dt>
+<dd>do the same thing as <code>--pick</code>, but don’t refuse to overwrite an existing tag.
+</dd>
+<dt>–new-tag <em>ref</em>, –new-tag: <em>ref</em> <em>dest</em></dt>
+<dd>create a <em>dest</em> tag for <em>ref</em>, but refuse to overwrite an existing tag. If <em>dest</em> is not specified and <em>ref</em> names a tag, use the same name for <em>dest</em>.
+</dd>
+<dt>–replace <em>ref</em>, –replace: <em>ref</em> <em>dest</em></dt>
+<dd>clobber <em>dest</em> with <em>ref</em>, overwriting any existing tag, or replacing any existing branch. If <em>dest</em> is not specified and <em>ref</em> names a branch or tag, use the same name for <em>dest</em>.
+</dd>
+<dt>–unnamed <em>ref</em></dt>
+<dd>copy <em>ref</em> into the destination repository, without any name, leaving a potentially dangling reference until/unless the object named by <em>ref</em> is referred to some other way (cf. <code>bup tag</code>).
+</dd>
+</dl>
+<h1 id="options">OPTIONS</h1>
+<dl>
+<dt>-s, –source=<em>path</em></dt>
+<dd>use <em>path</em> as the source repository, instead of the default.
+</dd>
+<dt>-r, –remote=<em>host</em>:<em>path</em></dt>
+<dd>store the indicated items on the given remote server. If <em>path</em> is omitted, uses the default path on the remote server (you still need to include the ‘:’). The connection to the remote server is made with SSH. If you’d like to specify which port, user or private key to use for the SSH connection, we recommend you use the <code>~/.ssh/config</code> file.
+</dd>
+<dt>-c, –print-commits</dt>
+<dd>for each updated branch, print the new git commit id.
+</dd>
+<dt>-t, –print-trees</dt>
+<dd>for each updated branch, print the new git tree id of the filesystem root.
+</dd>
+<dt>–print-tags</dt>
+<dd>for each updated tag, print the new git id.
+</dd>
+<dt>-v, –verbose</dt>
+<dd>increase verbosity (can be used more than once). With <code>-v</code>, print the name of every item fetched, with <code>-vv</code> add directory names, and with <code>-vvv</code> add every filename.
+</dd>
+<dt>–bwlimit=<em>bytes/sec</em></dt>
+<dd>don’t transmit more than <em>bytes/sec</em> bytes per second to the server. This can help avoid sucking up all your network bandwidth. Use a suffix like k, M, or G to specify multiples of 1024, 1024*1024, 1024*1024*1024 respectively.
+</dd>
+<dt>-<em>#</em>, –compress=<em>#</em></dt>
+<dd>set the compression level to # (a value from 0-9, where 9 is the highest and 0 is no compression). The default is 1 (fast, loose compression)
+</dd>
+</dl>
+<h1 id="examples">EXAMPLES</h1>
+<pre><code># Update or copy the archives branch in src-repo to the local repository.
+$ bup get -s src-repo --ff archives
+
+# Append a particular archives save to the pruned-archives branch.
+$ bup get -s src-repo --pick: archives/2013-01-01-030405 pruned-archives
+
+# Update or copy the archives branch on remotehost to the local
+# repository.
+$ bup on remotehost get --ff archives
+
+# Update or copy the local branch archives to remotehost.
+$ bup get -r remotehost: --ff archives
+
+# Update or copy the archives branch in src-repo to remotehost.
+$ bup get -s src-repo -r remotehost: --ff archives
+
+# Update the archives-2 branch on remotehost to match archives.
+# If archives-2 exists and is not an ancestor of archives, bup
+# will refuse.
+$ bup get -r remotehost: --ff: archives archives-2
+
+# Replace the contents of branch y with those of x.
+$ bup get --replace: x y
+
+# Copy the latest local save from the archives branch to the
+# remote tag foo.
+$ bup get -r remotehost: --pick: archives/latest .tag/foo
+
+# Or if foo already exists:
+$ bup get -r remotehost: --force-pick: archives/latest .tag/foo
+
+# Append foo (from above) to the local other-archives branch.
+$ bup on remotehost get --append: .tag/foo other-archives
+
+# Append only the /home directory from archives/latest to only-home.
+$ bup get -s &quot;$BUP_DIR&quot; --append: archives/latest/home only-home</code></pre>
+<h1 id="see-also">SEE ALSO</h1>
+<p><code>bup-on</code>(1), <code>bup-tag</code>(1), <code>ssh_config</code>(5)</p>
+<h1 id="bup">BUP</h1>
+<p>Part of the <code>bup</code>(1) suite.</p>
+</body>
+</html>
