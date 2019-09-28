@@ -4,7 +4,7 @@
 
 # NAME
 
-bup-gc - remove unreferenced, unneeded data (CAUTION: EXPERIMENTAL)
+bup-gc - remove unreferenced, unneeded data
 
 # SYNOPSIS
 

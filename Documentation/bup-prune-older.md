@@ -4,7 +4,7 @@
 
 # NAME
 
-bup-prune-older - remove older saves (CAUTION: EXPERIMENTAL)
+bup-prune-older - remove older saves
 
 # SYNOPSIS
 

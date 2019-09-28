@@ -4,7 +4,7 @@
 
 # NAME
 
-bup-rm - remove references to archive content (CAUTION: EXPERIMENTAL)
+bup-rm - remove references to archive content
 
 # SYNOPSIS
 
@@ -22,8 +22,8 @@ A subsequent garbage collection, either by a `bup gc`, or by a normal
 `git gc`, may permanently delete data that is no longer reachable from
 the remaining branches or tags, and reclaim the related storage space.
 
-NOTE: This is one of the few bup commands that modifies your archive
-in intentionally destructive ways.
+WARNING: This is one of the few bup commands that modifies your
+archive in intentionally destructive ways.
 
 # OPTIONS
 
