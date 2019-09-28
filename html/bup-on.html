@@ -5,8 +5,8 @@
   <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <meta name="author" content="Avery Pennarun apenwarr@gmail.com" />
-  <meta name="dcterms.date" content="2019-08-25" />
-  <title>bup-on(1) Bup 0.29.3</title>
+  <meta name="dcterms.date" content="2019-09-28" />
+  <title>bup-on(1) Bup 0.30</title>
   <style type="text/css">
       code{white-space: pre-wrap;}
       span.smallcaps{font-variant: small-caps;}
@@ -16,9 +16,9 @@
 </head>
 <body>
 <header>
-<h1 class="title">bup-on(1) Bup 0.29.3</h1>
+<h1 class="title">bup-on(1) Bup 0.30</h1>
 <p class="author">Avery Pennarun <a href="mailto:apenwarr@gmail.com">apenwarr@gmail.com</a></p>
-<p class="date">2019-08-25</p>
+<p class="date">2019-09-28</p>
 </header>
 <h1 id="name">NAME</h1>
 <p>bup-on - run a bup server locally and client remotely</p>
@@ -26,6 +26,7 @@
 <p>bup on &lt;hostname&gt; index …</p>
 <p>bup on &lt;hostname&gt; save …</p>
 <p>bup on &lt;hostname&gt; split …</p>
+<p>bup on &lt;hostname&gt; get …</p>
 <h1 id="description">DESCRIPTION</h1>
 <p><code>bup on</code> runs the given bup command on the given host using ssh. It runs a bup server on the local machine, so that commands like <code>bup save</code> on the remote machine can back up to the local machine. (You don’t need to provide a <code>--remote</code> option to <code>bup save</code> in order for this to work.)</p>
 <p>See <code>bup-index</code>(1), <code>bup-save</code>(1), and so on for details of how each subcommand works.</p>
@@ -64,7 +65,7 @@ sys:x:3:3:sys:/dev:/bin/sh
 sync:x:4:65534:sync:/bin:/bin/sync
 ...</code></pre>
 <h1 id="see-also">SEE ALSO</h1>
-<p><code>bup-index</code>(1), <code>bup-save</code>(1), <code>bup-split</code>(1)</p>
+<p><code>bup-index</code>(1), <code>bup-save</code>(1), <code>bup-split</code>(1), <code>bup-get</code>(1)</p>
 <h1 id="bup">BUP</h1>
 <p>Part of the <code>bup</code>(1) suite.</p>
 </body>

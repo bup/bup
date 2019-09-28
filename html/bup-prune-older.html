@@ -5,8 +5,8 @@
   <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <meta name="author" content="Rob Browning rlb@defaultvalue.org" />
-  <meta name="dcterms.date" content="2019-08-25" />
-  <title>bup-prune-older(1) bup 0.29.3 | bup 0.29.3</title>
+  <meta name="dcterms.date" content="2019-09-28" />
+  <title>bup-prune-older(1) bup 0.30 | bup 0.30</title>
   <style type="text/css">
       code{white-space: pre-wrap;}
       span.smallcaps{font-variant: small-caps;}
@@ -16,9 +16,9 @@
 </head>
 <body>
 <header>
-<h1 class="title">bup-prune-older(1) bup 0.29.3 | bup 0.29.3</h1>
+<h1 class="title">bup-prune-older(1) bup 0.30 | bup 0.30</h1>
 <p class="author">Rob Browning <a href="mailto:rlb@defaultvalue.org">rlb@defaultvalue.org</a></p>
-<p class="date">2019-08-25</p>
+<p class="date">2019-09-28</p>
 </header>
 <h1 id="name">NAME</h1>
 <p>bup-prune-older - remove older saves (CAUTION: EXPERIMENTAL)</p>
@@ -46,13 +46,13 @@
 <dd>when no smaller time scale –keep option applies, retain all saves within the given period.
 </dd>
 <dt>–keep-dailies-for PERIOD</dt>
-<dd>when no smaller time scale –keep option applies, retain the oldest save for any day within the given period.
+<dd>when no smaller time scale –keep option applies, retain the newest save for any day within the given period.
 </dd>
 <dt>–keep-monthlies-for PERIOD</dt>
-<dd>when no smaller time scale –keep option applies, retain the oldest save for any month within the given period.
+<dd>when no smaller time scale –keep option applies, retain the newest save for any month within the given period.
 </dd>
 <dt>–keep-yearlies-for PERIOD</dt>
-<dd>when no smaller time scale –keep option applies, retain the oldest save for any year within the given period.
+<dd>when no smaller time scale –keep option applies, retain the newest save for any year within the given period.
 </dd>
 <dt>–wrt UTC_SECONDS</dt>
 <dd>when computing a keep period, place the most recent end of the range at UTC_SECONDS, and any saves newer than this will be kept.
@@ -85,7 +85,7 @@ keeping all yearlies
 <pre><code>keeping yearlies since -30109891477 seconds before 1969-12-31-180000
 ...</code></pre>
 <h1 id="examples">EXAMPLES</h1>
-<pre><code># Keep all saves for the past month, and any older monthlies for
+<pre><code># Keep all saves for the past month, and any newer monthlies for
 # the past year.  Delete everything else.
 $ bup prune-older --keep-all-for 1m --keep-monthlies-for 1y
 

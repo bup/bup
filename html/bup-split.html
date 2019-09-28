@@ -5,8 +5,8 @@
   <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <meta name="author" content="Avery Pennarun apenwarr@gmail.com" />
-  <meta name="dcterms.date" content="2019-08-25" />
-  <title>bup-split(1) Bup 0.29.3</title>
+  <meta name="dcterms.date" content="2019-09-28" />
+  <title>bup-split(1) Bup 0.30</title>
   <style type="text/css">
       code{white-space: pre-wrap;}
       span.smallcaps{font-variant: small-caps;}
@@ -16,16 +16,17 @@
 </head>
 <body>
 <header>
-<h1 class="title">bup-split(1) Bup 0.29.3</h1>
+<h1 class="title">bup-split(1) Bup 0.30</h1>
 <p class="author">Avery Pennarun <a href="mailto:apenwarr@gmail.com">apenwarr@gmail.com</a></p>
-<p class="date">2019-08-25</p>
+<p class="date">2019-09-28</p>
 </header>
 <h1 id="name">NAME</h1>
 <p>bup-split - save individual files to bup backup sets</p>
 <h1 id="synopsis">SYNOPSIS</h1>
 <p>bup split [-t] [-c] [-n <em>name</em>] COMMON_OPTIONS</p>
 <p>bup split -b COMMON_OPTIONS</p>
-<p>bup split &lt;–noop [–copy]|–copy&gt; COMMON_OPTIONS</p>
+<p>bup split –copy COMMON_OPTIONS</p>
+<p>bup split –noop [-t|-b] COMMON_OPTIONS</p>
 <dl>
 <dt>COMMON_OPTIONS</dt>
 <dd>[-r <em>host</em>:<em>path</em>] [-v] [-q] [-d <em>seconds-since-epoch</em>] [--bench] [--max-pack-size=<em>bytes</em>] [-#] [--bwlimit=<em>bytes</em>] [--max-pack-objects=<em>n</em>] [--fanout=<em>count</em>] [--keep-boundaries] [–git-ids | filenames…]
@@ -53,7 +54,7 @@
 <dd>output a series of git blob ids that correspond to the chunks in the dataset. Incompatible with -n, -t, and -c.
 </dd>
 <dt>--noop</dt>
-<dd>read the data and split it into blocks based on the “bupsplit” rolling checksum algorithm, but don’t do anything with the blocks. This is mostly useful for benchmarking. Incompatible with -n, -t, -c, and -b.
+<dd>read the data and split it into blocks based on the “bupsplit” rolling checksum algorithm, but don’t store anything in the repo. Can be combined with -b or -t to compute (but not store) the git blobs or tree ids for the dataset. This is mostly useful for benchmarking and validating the bupsplit algorithm. Incompatible with -n and -c.
 </dd>
 <dt>--copy</dt>
 <dd>like <code>--noop</code>, but also write the data to stdout. This can be useful for benchmarking the speed of read+bupsplit+write for large amounts of data. Incompatible with -n, -t, -c, and -b.
