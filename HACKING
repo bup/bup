@@ -19,24 +19,25 @@ via email.
 Current Trajectory
 ==================
 
-Now that we've finished the 0.29.3 release, we're working on 0.30, and
+Now that we've finished the 0.30 release, we're working on 0.31, and
 although we're not certain which new features will be included, here
 are likely candidates:
 
-  - Support for transferring saves between repositories and rewriting
-    branches.
+  - Accommodation for the upcoming demise of Python 2, most likely via
+    support for Python 3.
 
 and these are also under consideration:
 
   - Better VFS performance for large repositories (i.e. fuse, ls,
     web...).
 
+  - Better VFS caching.
+
+  - Index improvements.
+
   - Incremental indexing via inotify.
 
   - Smarter (and quieter) handling of cross-filesystem metadata.
-
-  - Support for more general purpose push/pull of branches, saves, and
-    tags between repositories.  (See the bup-get patch series.)
 
 If you have the time and inclination, please help review patches
 posted to the list, or post your own.  (See "ways to help" below.)
