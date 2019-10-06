@@ -49,18 +49,18 @@ def encode_and_decode_bvec(x):
 @wvtest
 def test_bvec():
     with no_lingering_errors():
-        values = ('', 'x', 'foo', '\0', '\0foo', 'foo\0bar\0')
+        values = (b'', b'x', b'foo', b'\0', b'\0foo', b'foo\0bar\0')
         for x in values:
             WVPASSEQ(encode_and_decode_bvec(x), x)
         WVEXCEPT(EOFError, vint.read_bvec, BytesIO())
         outf = BytesIO()
-        for x in ('foo', 'bar', 'baz', 'bax'):
+        for x in (b'foo', b'bar', b'baz', b'bax'):
             vint.write_bvec(outf, x)
         inf = BytesIO(outf.getvalue())
-        WVPASSEQ(vint.read_bvec(inf), 'foo')
-        WVPASSEQ(vint.read_bvec(inf), 'bar')
+        WVPASSEQ(vint.read_bvec(inf), b'foo')
+        WVPASSEQ(vint.read_bvec(inf), b'bar')
         vint.skip_bvec(inf)
-        WVPASSEQ(vint.read_bvec(inf), 'bax')
+        WVPASSEQ(vint.read_bvec(inf), b'bax')
 
 
 def pack_and_unpack(types, *values):
@@ -72,16 +72,16 @@ def pack_and_unpack(types, *values):
 def test_pack_and_unpack():
     with no_lingering_errors():
         tests = [('', []),
-                 ('s', ['foo']),
-                 ('ss', ['foo', 'bar']),
-                 ('sV', ['foo', 0]),
-                 ('sv', ['foo', -1]),
+                 ('s', [b'foo']),
+                 ('ss', [b'foo', b'bar']),
+                 ('sV', [b'foo', 0]),
+                 ('sv', [b'foo', -1]),
                  ('V', [0]),
-                 ('Vs', [0, 'foo']),
+                 ('Vs', [0, b'foo']),
                  ('VV', [0, 1]),
                  ('Vv', [0, -1]),
                  ('v', [0]),
-                 ('vs', [0, 'foo']),
+                 ('vs', [0, b'foo']),
                  ('vV', [0, 1]),
                  ('vv', [0, -1])]
         for test in tests:

@@ -5,24 +5,30 @@
 # This code is covered under the terms of the GNU Library General
 # Public License as described in the bup LICENSE file.
 
+# Variable length integers are encoded as vints -- see lucene.
+
 from __future__ import absolute_import
 from io import BytesIO
+import sys
 
-# Variable length integers are encoded as vints -- see jakarta lucene.
+from bup import compat
+
 
 def write_vuint(port, x):
+    write = port.write
+    bytes_from_uint = compat.bytes_from_uint
     if x < 0:
         raise Exception("vuints must not be negative")
     elif x == 0:
-        port.write('\0')
+        write(bytes_from_uint(0))
     else:
         while True:
             seven_bits = x & 0x7f
             x >>= 7
             if x:
-                port.write(chr(0x80 | seven_bits))
+                write(bytes_from_uint(0x80 | seven_bits))
             else:
-                port.write(chr(seven_bits))
+                write(bytes_from_uint(seven_bits))
                 break
 
 
@@ -51,8 +57,10 @@ def read_vuint(port):
 def write_vint(port, x):
     # Sign is handled with the second bit of the first byte.  All else
     # matches vuint.
+    write = port.write
+    bytes_from_uint = compat.bytes_from_uint
     if x == 0:
-        port.write('\0')
+        write(bytes_from_uint(0))
     else:
         if x < 0:
             x = -x
@@ -61,10 +69,10 @@ def write_vint(port, x):
             sign_and_six_bits = x & 0x3f
         x >>= 6
         if x:
-            port.write(chr(0x80 | sign_and_six_bits))
+            write(bytes_from_uint(0x80 | sign_and_six_bits))
             write_vuint(port, x)
         else:
-            port.write(chr(sign_and_six_bits))
+            write(bytes_from_uint(sign_and_six_bits))
 
 
 def read_vint(port):

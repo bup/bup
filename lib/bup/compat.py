@@ -26,6 +26,9 @@ if py3:
     def items(x):
         return x.items()
 
+    def bytes_from_uint(i):
+        return bytes((i,))
+
 else:  # Python 2
 
     from pipes import quote
@@ -68,6 +71,9 @@ else:  # Python 2
 
     def items(x):
         return x.iteritems()
+
+    def bytes_from_uint(i):
+        return chr(i)
 
 
 def wrap_main(main):
