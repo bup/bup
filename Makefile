@@ -140,18 +140,36 @@ lib/bup/_checkout.py:
 t/tmp:
 	mkdir t/tmp
 
+runtests: runtests-python runtests-cmdline
+
+# The wildcards are not expanded until use
 ifeq "2" "$(bup_python_majver)"
-  runtests: runtests-python runtests-cmdline
+  python_tests := \
+    lib/bup/t/tbloom.py \
+    lib/bup/t/tclient.py \
+    lib/bup/t/tgit.py \
+    lib/bup/t/thashsplit.py \
+    lib/bup/t/thelpers.py \
+    lib/bup/t/tindex.py \
+    lib/bup/t/tmetadata.py \
+    lib/bup/t/toptions.py \
+    lib/bup/t/tresolve.py \
+    lib/bup/t/tshquote.py \
+    lib/bup/t/tvfs.py \
+    lib/bup/t/tvint.py \
+    lib/bup/t/txstat.py
 else
-  runtests: runtests-cmdline
+  python_tests := \
+    lib/bup/t/tvint.py
 endif
 
 # The "pwd -P" here may not be appropriate in the long run, but we
 # need it until we settle the relevant drecurse/exclusion questions:
 # https://groups.google.com/forum/#!topic/bup-list/9ke-Mbp10Q0
 runtests-python: all t/tmp
+	mkdir -p t/tmp/test-log
 	$(pf); cd $$(pwd -P); TMPDIR="$(test_tmp)" \
-	  "$(bup_python)" wvtest.py t/t*.py lib/*/t/t*.py 2>&1 \
+	  "$(bup_python)" wvtest.py  $(python_tests) 2>&1 \
 	    | tee -a t/tmp/test-log/$$$$.log
 
 ifeq "2" "$(bup_python_majver)"
