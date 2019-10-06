@@ -234,7 +234,7 @@ def _run_registered_tests():
     import wvtest as _wvtestmod
     while _wvtestmod._registered:
         t = _wvtestmod._registered.pop(0)
-        _runtest(t.func_name, t)
+        _runtest(t.__name__, t)
         print()
 
 
