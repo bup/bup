@@ -161,6 +161,7 @@ ifeq "2" "$(bup_python_majver)"
 else
   python_tests := \
     lib/bup/t/toptions.py \
+    lib/bup/t/tshquote.py \
     lib/bup/t/tvint.py
 endif
 
