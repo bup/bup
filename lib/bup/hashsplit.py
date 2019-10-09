@@ -2,8 +2,13 @@
 from __future__ import absolute_import
 import io, math, os
 
-from bup import _helpers, helpers
+from bup import _helpers, compat, helpers
+from bup.compat import buffer_concat
 from bup.helpers import sc_page_size
+
+if compat.py_maj > 2:
+    from bup.compat import buffer, buffer_concat
+
 
 _fmincore = getattr(helpers, 'fmincore', None)
 
@@ -22,12 +27,12 @@ GIT_MODE_SYMLINK = 0o120000
 # be ok if we always only put() large amounts of data at a time.
 class Buf:
     def __init__(self):
-        self.data = ''
+        self.data = b''
         self.start = 0
 
     def put(self, s):
         if s:
-            self.data = buffer(self.data, self.start) + s
+            self.data = buffer_concat(buffer(self.data, self.start), s)
             self.start = 0
             
     def peek(self, count):

@@ -529,14 +529,29 @@ static PyObject *blobbits(PyObject *self, PyObject *args)
 
 static PyObject *splitbuf(PyObject *self, PyObject *args)
 {
-    unsigned char *buf = NULL;
-    Py_ssize_t len = 0;
+    // We stick to buffers in python 2 because they appear to be
+    // substantially smaller than memoryviews, and because
+    // zlib.compress() in python 2 can't accept a memoryview
+    // (cf. hashsplit.py).
     int out = 0, bits = -1;
-
-    if (!PyArg_ParseTuple(args, "t#", &buf, &len))
-	return NULL;
-    assert(len <= INT_MAX);
-    out = bupsplit_find_ofs(buf, len, &bits);
+    if (PY_MAJOR_VERSION > 2)
+    {
+        Py_buffer buf;
+        if (!PyArg_ParseTuple(args, "y*", &buf))
+            return NULL;
+        assert(buf.len <= INT_MAX);
+        out = bupsplit_find_ofs(buf.buf, buf.len, &bits);
+        PyBuffer_Release(&buf);
+    }
+    else
+    {
+        unsigned char *buf = NULL;
+        Py_ssize_t len = 0;
+        if (!PyArg_ParseTuple(args, "t#", &buf, &len))
+            return NULL;
+        assert(len <= INT_MAX);
+        out = bupsplit_find_ofs(buf, len, &bits);
+    }
     if (out) assert(bits >= BUP_BLOBBITS);
     return Py_BuildValue("ii", out, bits);
 }

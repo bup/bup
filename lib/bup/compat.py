@@ -1,5 +1,6 @@
 
 from __future__ import absolute_import, print_function
+from array import array
 from traceback import print_exception
 import sys
 
@@ -28,6 +29,23 @@ if py3:
 
     def bytes_from_uint(i):
         return bytes((i,))
+
+    byte_int = lambda x: x
+
+    def buffer(object, offset=None, size=None):
+        if size:
+            assert offset is not None
+            return memoryview(object)[offset:offset + size]
+        if offset:
+            return memoryview(object)[offset:]
+        return memoryview(object)
+
+    def buffer_concat(b1, b2):
+        if isinstance(b1, memoryview):
+            b1 = b1.tobytes()
+        if isinstance(b1, memoryview):
+            b2 = b2.tobytes()
+        return b1 + b2
 
 else:  # Python 2
 
@@ -74,6 +92,11 @@ else:  # Python 2
 
     def bytes_from_uint(i):
         return chr(i)
+
+    byte_int = ord
+
+    def buffer_concat(b1, b2):
+        return b1 + b2
 
 
 def wrap_main(main):

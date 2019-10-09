@@ -5,6 +5,7 @@ from io import BytesIO
 from wvtest import *
 
 from bup import hashsplit, _helpers, helpers
+from bup.compat import byte_int, bytes_from_uint
 from buptest import no_lingering_errors
 
 
@@ -97,10 +98,11 @@ def test_fanout_behaviour():
     basebits = _helpers.blobbits()
     def splitbuf(buf):
         ofs = 0
-        for c in buf:
+        for b in buf:
+            b = byte_int(b)
             ofs += 1
-            if ord(c) >= basebits:
-                return ofs, ord(c)
+            if b >= basebits:
+                return ofs, b
         return 0, 0
 
     with no_lingering_errors():
@@ -116,9 +118,9 @@ def test_fanout_behaviour():
         levels = lambda f: [(len(b), l) for b, l in
             hashsplit.hashsplit_iter([f], True, None)]
         # Return a string of n null bytes
-        z = lambda n: '\x00' * n
+        z = lambda n: b'\x00' * n
         # Return a byte which will be split with a level of n
-        sb = lambda n: chr(basebits + n)
+        sb = lambda n: bytes_from_uint(basebits + n)
 
         split_never = BytesIO(z(16))
         split_first = BytesIO(z(1) + sb(3) + z(14))
