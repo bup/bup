@@ -103,7 +103,7 @@ def test_grafted_path_components():
 def test_readpipe():
     with no_lingering_errors():
         x = readpipe(['echo', '42'])
-        WVPASSEQ(x, '42\n')
+        WVPASSEQ(x, b'42\n')
         try:
             readpipe(['bash', '-c', 'exit 42'])
         except Exception as ex:
@@ -116,10 +116,10 @@ def test_batchpipe():
     with no_lingering_errors():
         for chunk in batchpipe(['echo'], []):
             WVPASS(False)
-        out = ''
+        out = b''
         for chunk in batchpipe(['echo'], ['42']):
             out += chunk
-        WVPASSEQ(out, '42\n')
+        WVPASSEQ(out, b'42\n')
         try:
             batchpipe(['bash', '-c'], ['exit 42'])
         except Exception as ex:
@@ -131,12 +131,12 @@ def test_batchpipe():
         arg_max = \
             helpers._argmax_base(['echo']) + helpers._argmax_args_size(args[:3])
         batches = batchpipe(['echo'], args, arg_max=arg_max)
-        WVPASSEQ(next(batches), '0 1 2\n')
-        WVPASSEQ(next(batches), '3 4 5\n')
+        WVPASSEQ(next(batches), b'0 1 2\n')
+        WVPASSEQ(next(batches), b'3 4 5\n')
         WVPASSEQ(next(batches, None), None)
         batches = batchpipe(['echo'], [str(x) for x in range(5)], arg_max=arg_max)
-        WVPASSEQ(next(batches), '0 1 2\n')
-        WVPASSEQ(next(batches), '3 4\n')
+        WVPASSEQ(next(batches), b'0 1 2\n')
+        WVPASSEQ(next(batches), b'3 4\n')
         WVPASSEQ(next(batches, None), None)
 
 

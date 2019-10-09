@@ -160,6 +160,7 @@ ifeq "2" "$(bup_python_majver)"
     lib/bup/t/txstat.py
 else
   python_tests := \
+    lib/bup/t/thashsplit.py \
     lib/bup/t/toptions.py \
     lib/bup/t/tshquote.py \
     lib/bup/t/tvint.py
