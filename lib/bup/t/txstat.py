@@ -65,10 +65,10 @@ def test_bup_utimensat():
     if not xstat._bup_utimensat:
         return
     with no_lingering_errors():
-        with test_tempdir('bup-txstat-') as tmpdir:
-            path = tmpdir + '/foo'
+        with test_tempdir(b'bup-txstat-') as tmpdir:
+            path = tmpdir + b'/foo'
             open(path, 'w').close()
-            frac_ts = (0, 10**9 / 2)
+            frac_ts = (0, 10**9 // 2)
             xstat._bup_utimensat(_helpers.AT_FDCWD, path, (frac_ts, frac_ts), 0)
             st = _helpers.stat(path)
             atime_ts = st[8]
@@ -84,10 +84,10 @@ def test_bup_utimes():
     if not xstat._bup_utimes:
         return
     with no_lingering_errors():
-        with test_tempdir('bup-txstat-') as tmpdir:
-            path = tmpdir + '/foo'
+        with test_tempdir(b'bup-txstat-') as tmpdir:
+            path = tmpdir + b'/foo'
             open(path, 'w').close()
-            frac_ts = (0, 10**6 / 2)
+            frac_ts = (0, 10**6 // 2)
             xstat._bup_utimes(path, (frac_ts, frac_ts))
             st = _helpers.stat(path)
             atime_ts = st[8]
@@ -103,10 +103,10 @@ def test_bup_lutimes():
     if not xstat._bup_lutimes:
         return
     with no_lingering_errors():
-        with test_tempdir('bup-txstat-') as tmpdir:
-            path = tmpdir + '/foo'
+        with test_tempdir(b'bup-txstat-') as tmpdir:
+            path = tmpdir + b'/foo'
             open(path, 'w').close()
-            frac_ts = (0, 10**6 / 2)
+            frac_ts = (0, 10**6 // 2)
             xstat._bup_lutimes(path, (frac_ts, frac_ts))
             st = _helpers.stat(path)
             atime_ts = st[8]

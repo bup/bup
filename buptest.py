@@ -33,7 +33,7 @@ def no_lingering_errors():
 
 
 # Assumes (of course) this file is at the top-level of the source tree
-_bup_tmp = realpath(dirname(__file__) + '/t/tmp')
+_bup_tmp = realpath(dirname(__file__.encode('iso-8859-1')) + b'/t/tmp')
 try:
     os.makedirs(_bup_tmp)
 except OSError as e:

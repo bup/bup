@@ -143,8 +143,8 @@ def test_batchpipe():
 @wvtest
 def test_atomically_replaced_file():
     with no_lingering_errors():
-        with test_tempdir('bup-thelper-') as tmpdir:
-            target_file = os.path.join(tmpdir, 'test-atomic-write')
+        with test_tempdir(b'bup-thelper-') as tmpdir:
+            target_file = os.path.join(tmpdir, b'test-atomic-write')
 
             with atomically_replaced_file(target_file, mode='w') as f:
                 f.write('asdf')

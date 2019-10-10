@@ -163,7 +163,8 @@ else
     lib/bup/t/thashsplit.py \
     lib/bup/t/toptions.py \
     lib/bup/t/tshquote.py \
-    lib/bup/t/tvint.py
+    lib/bup/t/tvint.py \
+    lib/bup/t/txstat.py
 endif
 
 # The "pwd -P" here may not be appropriate in the long run, but we

@@ -1250,7 +1250,7 @@ static PyObject *bup_utimensat(PyObject *self, PyObject *args)
     PyObject *access_py, *modification_py;
     struct timespec ts[2];
 
-    if (!PyArg_ParseTuple(args, "is((Ol)(Ol))i",
+    if (!PyArg_ParseTuple(args, "i" cstr_argf "((Ol)(Ol))i",
                           &fd,
                           &path,
                           &access_py, &(ts[0].tv_nsec),
@@ -1292,7 +1292,7 @@ static int bup_parse_xutimes_args(char **path,
     PyObject *access_py, *modification_py;
     long long access_us, modification_us; // POSIX guarantees tv_usec is signed.
 
-    if (!PyArg_ParseTuple(args, "s((OL)(OL))",
+    if (!PyArg_ParseTuple(args, cstr_argf "((OL)(OL))",
                           path,
                           &access_py, &access_us,
                           &modification_py, &modification_us))
