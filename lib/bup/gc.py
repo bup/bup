@@ -239,7 +239,7 @@ def bup_gc(threshold=10, compression=1, verbosity=0):
             bloom.clear_bloom(packdir)
             if verbosity: log('clearing reflog\n')
             expirelog_cmd = ['git', 'reflog', 'expire', '--all', '--expire=all']
-            expirelog = subprocess.Popen(expirelog_cmd, preexec_fn = git._gitenv())
+            expirelog = subprocess.Popen(expirelog_cmd, env=git._gitenv())
             git._git_wait(' '.join(expirelog_cmd), expirelog)
             if verbosity: log('removing unreachable data\n')
             sweep(live_objects, existing_count, cat_pipe,

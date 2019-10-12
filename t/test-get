@@ -18,7 +18,7 @@ script_home = abspath(dirname(sys.argv[0] or '.'))
 sys.path[:0] = [abspath(script_home + '/../lib'), abspath(script_home + '/..')]
 
 from bup import compat
-from bup.helpers import unlink
+from bup.helpers import merge_dict, unlink
 from buptest import ex, exo, test_tempdir
 from wvtest import wvcheck, wvfail, wvmsg, wvpass, wvpasseq, wvpassne, wvstart
 
@@ -84,21 +84,20 @@ def validate_blob(src_id, dest_id):
 
 def validate_tree(src_id, dest_id):
 
-    def set_committer_date():
-        environ['GIT_COMMITTER_DATE'] = "2014-01-01 01:01"
-
     rmrf('restore-src')
     rmrf('restore-dest')
     mkdir('restore-src')
     mkdir('restore-dest')
     
+    commit_env = merge_dict(environ, {'GIT_COMMITTER_DATE': '2014-01-01 01:01'})
+
     # Create a commit so the archive contents will have matching timestamps.
     src_c = exo(('git', '--git-dir', 'get-src',
                  'commit-tree', '-m', 'foo', src_id),
-                preexec_fn=set_committer_date).out.strip()
+                env=commit_env).out.strip()
     dest_c = exo(('git', '--git-dir', 'get-dest',
                   'commit-tree', '-m', 'foo', dest_id),
-                 preexec_fn=set_committer_date).out.strip()
+                 env=commit_env).out.strip()
     exr = verify_rcz('git --git-dir get-src archive %s | tar xvf - -C restore-src'
                      % quote(src_c),
                      shell=True)

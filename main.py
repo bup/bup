@@ -148,10 +148,12 @@ if subcmd_name in ['mux', 'ftp', 'help']:
 fix_stdout = not already_fixed and os.isatty(1)
 fix_stderr = not already_fixed and os.isatty(2)
 
-def force_tty():
-    if fix_stdout or fix_stderr:
-        amt = (fix_stdout and 1 or 0) + (fix_stderr and 2 or 0)
-        os.environ['BUP_FORCE_TTY'] = str(amt)
+if fix_stdout or fix_stderr:
+    tty_env = merge_dict(os.environ,
+                         {'BUP_FORCE_TTY': str((fix_stdout and 1 or 0)
+                                               + (fix_stderr and 2 or 0))})
+else:
+    tty_env = os.environ
 
 
 sep_rx = re.compile(br'([\r\n])')
@@ -240,9 +242,7 @@ def run_subcmd(subcmd):
         p = subprocess.Popen(c,
                              stdout=PIPE if fix_stdout else sys.stdout,
                              stderr=PIPE if fix_stderr else sys.stderr,
-                             preexec_fn=force_tty,
-                             bufsize=4096,
-                             close_fds=True)
+                             env=tty_env, bufsize=4096, close_fds=True)
         # Assume p will receive these signals and quit, which will
         # then cause us to quit.
         for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGQUIT):

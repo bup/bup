@@ -13,7 +13,9 @@ from bup import _helpers, compat, hashsplit, path, midx, bloom, xstat
 from bup.compat import range
 from bup.helpers import (Sha1, add_error, chunkyreader, debug1, debug2,
                          fdatasync,
-                         hostname, localtime, log, merge_iter,
+                         hostname, localtime, log,
+                         merge_dict,
+                         merge_iter,
                          mmap_read, mmap_readwrite,
                          parse_num,
                          progress, qprogress, shstr, stat_if_exists,
@@ -35,13 +37,18 @@ class GitError(Exception):
     pass
 
 
+def _gitenv(repo_dir=None):
+    if not repo_dir:
+        repo_dir = repo()
+    return merge_dict(os.environ, {'GIT_DIR': os.path.abspath(repo_dir)})
+
 def _git_wait(cmd, p):
     rv = p.wait()
     if rv != 0:
         raise GitError('%s returned %d' % (shstr(cmd), rv))
 
 def _git_capture(argv):
-    p = subprocess.Popen(argv, stdout=subprocess.PIPE, preexec_fn = _gitenv())
+    p = subprocess.Popen(argv, stdout=subprocess.PIPE, env=_gitenv())
     r = p.stdout.read()
     _git_wait(repr(argv), p)
     return r
@@ -49,7 +56,7 @@ def _git_capture(argv):
 def git_config_get(option, repo_dir=None):
     cmd = ('git', 'config', '--get', option)
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE,
-                         preexec_fn=_gitenv(repo_dir=repo_dir))
+                         env=_gitenv(repo_dir=repo_dir))
     r = p.stdout.read()
     rc = p.wait()
     if rc == 0:
@@ -887,14 +894,6 @@ class PackWriter:
             idx_f.close()
 
 
-def _gitenv(repo_dir = None):
-    if not repo_dir:
-        repo_dir = repo()
-    def env():
-        os.environ['GIT_DIR'] = os.path.abspath(repo_dir)
-    return env
-
-
 def list_refs(patterns=None, repo_dir=None,
               limit_to_heads=False, limit_to_tags=False):
     """Yield (refname, hash) tuples for all repository refs unless
@@ -912,9 +911,7 @@ def list_refs(patterns=None, repo_dir=None,
     argv.append('--')
     if patterns:
         argv.extend(patterns)
-    p = subprocess.Popen(argv,
-                         preexec_fn = _gitenv(repo_dir),
-                         stdout = subprocess.PIPE)
+    p = subprocess.Popen(argv, env=_gitenv(repo_dir), stdout=subprocess.PIPE)
     out = p.stdout.read().strip()
     rv = p.wait()  # not fatal
     if rv:
@@ -968,7 +965,7 @@ def rev_list(ref_or_refs, count=None, parse=None, format=None, repo_dir=None):
     assert bool(parse) == bool(format)
     p = subprocess.Popen(rev_list_invocation(ref_or_refs, count=count,
                                              format=format),
-                         preexec_fn = _gitenv(repo_dir),
+                         env=_gitenv(repo_dir),
                          stdout = subprocess.PIPE)
     if not format:
         for line in p.stdout:
@@ -1035,7 +1032,7 @@ def update_ref(refname, newval, oldval, repo_dir=None):
            or refname.startswith('refs/tags/'))
     p = subprocess.Popen(['git', 'update-ref', refname,
                           newval.encode('hex'), oldval.encode('hex')],
-                         preexec_fn = _gitenv(repo_dir))
+                         env=_gitenv(repo_dir))
     _git_wait('git update-ref', p)
 
 
@@ -1044,7 +1041,7 @@ def delete_ref(refname, oldvalue=None):
     assert(refname.startswith('refs/'))
     oldvalue = [] if not oldvalue else [oldvalue]
     p = subprocess.Popen(['git', 'update-ref', '-d', refname] + oldvalue,
-                         preexec_fn = _gitenv())
+                         env=_gitenv())
     _git_wait('git update-ref', p)
 
 
@@ -1074,16 +1071,16 @@ def init_repo(path=None):
     if os.path.exists(d) and not os.path.isdir(os.path.join(d, '.')):
         raise GitError('"%s" exists but is not a directory\n' % d)
     p = subprocess.Popen(['git', '--bare', 'init'], stdout=sys.stderr,
-                         preexec_fn = _gitenv())
+                         env=_gitenv())
     _git_wait('git init', p)
     # Force the index version configuration in order to ensure bup works
     # regardless of the version of the installed Git binary.
     p = subprocess.Popen(['git', 'config', 'pack.indexVersion', '2'],
-                         stdout=sys.stderr, preexec_fn = _gitenv())
+                         stdout=sys.stderr, env=_gitenv())
     _git_wait('git config', p)
     # Enable the reflog
     p = subprocess.Popen(['git', 'config', 'core.logAllRefUpdates', 'true'],
-                         stdout=sys.stderr, preexec_fn = _gitenv())
+                         stdout=sys.stderr, env=_gitenv())
     _git_wait('git config', p)
 
 
@@ -1187,7 +1184,7 @@ class CatPipe:
                                   stdout=subprocess.PIPE,
                                   close_fds = True,
                                   bufsize = 4096,
-                                  preexec_fn = _gitenv(self.repo_dir))
+                                  env=_gitenv(self.repo_dir))
 
     def get(self, ref):
         """Yield (oidx, type, size), followed by the data referred to by ref.

@@ -99,6 +99,13 @@ def partition(predicate, stream):
     return (leading_matches(), rest())
 
 
+def merge_dict(*xs):
+    result = {}
+    for x in xs:
+        result.update(x)
+    return result
+
+
 def lines_until_sentinel(f, sentinel, ex_type):
     # sentinel must end with \n and must contain only one \n
     while True:

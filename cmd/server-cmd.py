@@ -219,7 +219,7 @@ def rev_list(conn, _):
     refs = tuple(x[:-1] for x in lines_until_sentinel(conn, '\n', Exception))
     args = git.rev_list_invocation(refs, count=count, format=fmt)
     p = subprocess.Popen(git.rev_list_invocation(refs, count=count, format=fmt),
-                         preexec_fn=git._gitenv(git.repodir),
+                         env=git._gitenv(git.repodir),
                          stdout=subprocess.PIPE)
     while True:
         out = p.stdout.read(64 * 1024)

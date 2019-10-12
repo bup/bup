@@ -2,7 +2,7 @@
 Connect to a remote host via SSH and execute a command on the host.
 """
 
-from __future__ import absolute_import
+from __future__ import absolute_import, print_function
 import sys, os, re, subprocess
 from bup import helpers, path
 
@@ -34,12 +34,21 @@ def connect(rhost, port, subcmd, stderr=None):
             argv.extend(('-p', port))
         argv.extend((rhost, '--', cmd.strip()))
         #helpers.log('argv is: %r\n' % argv)
-    def setup():
-        # runs in the child process
-        if not rhost:
-            os.environ['PATH'] = ':'.join([nicedir,
-                                           os.environ.get('PATH', '')])
-        os.setsid()
-    return subprocess.Popen(argv, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                            stderr=stderr,
-                            preexec_fn=setup)
+    if rhost:
+        env = os.environ
+    else:
+        envpath = os.environ.get('PATH')
+        env = os.environ.copy()
+        env['PATH'] = nicedir if not envpath else nicedir + ':' + envpath
+    if sys.version_info[0] < 3:
+        return subprocess.Popen(argv,
+                                stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                stderr=stderr,
+                                env=env,
+                                preexec_fn=lambda: os.setsid())
+    else:
+        return subprocess.Popen(argv,
+                                stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                stderr=stderr,
+                                env=env,
+                                start_new_session=True)
