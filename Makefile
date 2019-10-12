@@ -50,21 +50,12 @@ bup_cmds := cmd/bup-python \
   $(patsubst cmd/%-cmd.py,cmd/bup-%,$(wildcard cmd/*-cmd.py)) \
   $(patsubst cmd/%-cmd.sh,cmd/bup-%,$(wildcard cmd/*-cmd.sh))
 
-bup_deps := bup lib/bup/_checkout.py lib/bup/_helpers$(SOEXT) $(bup_cmds)
+bup_deps := lib/bup/_checkout.py lib/bup/_helpers$(SOEXT) $(bup_cmds)
 
 all: $(bup_deps) Documentation/all $(current_sampledata)
 
-bup:
-	ln -s main.py bup
-
 $(current_sampledata):
 	t/configure-sampledata --setup
-
-define install-python-bin
-  set -e; \
-  sed -e '1 s|.*|#!$(bup_python)|; 2,/^# end of bup preamble$$/d' $1 > $2; \
-  chmod 0755 $2;
-endef
 
 PANDOC ?= $(shell type -p pandoc)
 
@@ -98,8 +89,11 @@ install: all
 	test -z "$(man_roff)" || $(INSTALL) -m 0644 $(man_roff) $(dest_mandir)/man1
 	test -z "$(man_html)" || install -d $(dest_docdir)
 	test -z "$(man_html)" || $(INSTALL) -m 0644 $(man_html) $(dest_docdir)
-	$(call install-python-bin,bup,"$(dest_bindir)/bup")
+	$(INSTALL) -pm 0755 cmd/bup $(dest_libdir)/cmd/
 	$(INSTALL) -pm 0755 cmd/bup-* $(dest_libdir)/cmd/
+	cd "$(dest_bindir)" && \
+	  ln -sf "$$($(bup_python) -c 'import os; print(os.path.relpath("$(abspath $(dest_libdir))/cmd/bup"))')"
+	set -e; \
 	$(INSTALL) -pm 0644 \
 		lib/bup/*.py \
 		$(dest_libdir)/bup
@@ -321,7 +315,6 @@ clean: Documentation/clean cmd/bup-python
 	rm -f *.o lib/*/*.o *.so lib/*/*.so *.dll lib/*/*.dll *.exe \
 		.*~ *~ */*~ lib/*/*~ lib/*/*/*~ \
 		*.pyc */*.pyc lib/*/*.pyc lib/*/*/*.pyc \
-		bup \
 		randomgen memtest \
 		testfs.img lib/bup/t/testfs.img
 	for x in $$(ls cmd/*-cmd.py cmd/*-cmd.sh | grep -vF python-cmd.sh | cut -b 5-); do \

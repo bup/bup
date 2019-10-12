@@ -17,7 +17,7 @@ def randbytes(sz):
 
 
 top_dir = os.path.realpath('../../..')
-bup_exe = top_dir + '/bup'
+bup_exe = top_dir + '/cmd/bup'
 
 s1 = randbytes(10000)
 s2 = randbytes(10000)

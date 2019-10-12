@@ -12,7 +12,7 @@ from buptest import no_lingering_errors, test_tempdir
 
 
 top_dir = os.path.realpath('../../..')
-bup_exe = top_dir + '/bup'
+bup_exe = top_dir + '/cmd/bup'
 
 
 def exc(*cmd):

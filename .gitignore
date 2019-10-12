@@ -1,4 +1,3 @@
-/bup
 /cmd/bup-*
 randomgen
 memtest
