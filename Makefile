@@ -46,7 +46,7 @@ config/config.vars: configure config/configure config/configure.inc \
   $(wildcard config/*.in)
 	MAKE="$(MAKE)" ./configure
 
-bup_cmds := cmd/bup-python\
+bup_cmds := cmd/bup-python \
   $(patsubst cmd/%-cmd.py,cmd/bup-%,$(wildcard cmd/*-cmd.py)) \
   $(patsubst cmd/%-cmd.sh,cmd/bup-%,$(wildcard cmd/*-cmd.sh))
 
@@ -99,10 +99,7 @@ install: all
 	test -z "$(man_html)" || install -d $(dest_docdir)
 	test -z "$(man_html)" || $(INSTALL) -m 0644 $(man_html) $(dest_docdir)
 	$(call install-python-bin,bup,"$(dest_bindir)/bup")
-	set -e; \
-	for cmd in $$(ls cmd/bup-* | grep -v cmd/bup-python); do \
-	  $(call install-python-bin,"$$cmd","$(dest_libdir)/$$cmd") \
-	done
+	$(INSTALL) -pm 0755 cmd/bup-* $(dest_libdir)/cmd/
 	$(INSTALL) -pm 0644 \
 		lib/bup/*.py \
 		$(dest_libdir)/bup
@@ -255,11 +252,11 @@ check: test
 distcheck: all
 	./wvtest run t/test-release-archive.sh
 
-cmd/python-cmd.sh: config/config.vars Makefile
-	printf "#!/bin/sh\nexec %q \"\$$@\"" "$(bup_python)" \
-	  >> cmd/python-cmd.sh.$$PPID.tmp
-	chmod +x cmd/python-cmd.sh.$$PPID.tmp
-	mv cmd/python-cmd.sh.$$PPID.tmp cmd/python-cmd.sh
+cmd/bup-python: cmd/python-cmd.sh config/config.vars Makefile
+	head -n -1 $< > "$@".$$PPID.tmp
+	printf "exec %q \"\$$@\"\n" "$(bup_python)" >> "$@".$$PPID.tmp
+	chmod +x "$@".$$PPID.tmp
+	mv "$@".$$PPID.tmp "$@"
 
 long-test: export BUP_TEST_LEVEL=11
 long-test: test
@@ -341,4 +338,4 @@ clean: Documentation/clean cmd/bup-python
 	./configure-version --clean
 	t/configure-sampledata --clean
         # Remove last so that cleanup tools can depend on it
-	rm -f cmd/bup-python cmd/python-cmd.sh
+	rm -f cmd/bup-python

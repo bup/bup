@@ -1,6 +1,5 @@
 /bup
 /cmd/bup-*
-/cmd/python-cmd.sh
 randomgen
 memtest
 *.o
