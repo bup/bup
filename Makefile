@@ -301,9 +301,12 @@ clean: Documentation/clean cmd/bup-python
 	rm -f *.o lib/*/*.o *.so lib/*/*.so *.dll lib/*/*.dll *.exe \
 		.*~ *~ */*~ lib/*/*~ lib/*/*/*~ \
 		*.pyc */*.pyc lib/*/*.pyc lib/*/*/*.pyc \
-		bup bup-* \
+		bup \
 		randomgen memtest \
 		testfs.img lib/bup/t/testfs.img
+	for x in $$(ls cmd/*-cmd.py cmd/*-cmd.sh | grep -vF python-cmd.sh | cut -b 5-); do \
+	    echo "cmd/bup-$${x%-cmd.*}"; \
+	done | xargs -t rm -f
 	if test -e t/mnt; then t/cleanup-mounts-under t/mnt; fi
 	if test -e t/mnt; then rm -r t/mnt; fi
 	if test -e t/tmp; then t/cleanup-mounts-under t/tmp; fi
@@ -315,4 +318,4 @@ clean: Documentation/clean cmd/bup-python
 	./configure-version --clean
 	t/configure-sampledata --clean
         # Remove last so that cleanup tools can depend on it
-	rm -f cmd/bup-* cmd/python-cmd.sh
+	rm -f cmd/bup-python cmd/python-cmd.sh
