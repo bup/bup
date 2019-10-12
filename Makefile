@@ -57,6 +57,15 @@ all: $(bup_deps) Documentation/all $(current_sampledata)
 $(current_sampledata):
 	t/configure-sampledata --setup
 
+
+bup_libdir="$script_home/../lib"  # bup_libdir will be adjusted during install
+
+define install-bup-python
+  set -e; \
+  sed -e 's|.*# bup_libdir will be adjusted during install|bup_libdir="$$script_home/.."|' $1 > $2; \
+  chmod 0755 $2;
+endef
+
 PANDOC ?= $(shell type -p pandoc)
 
 ifeq (,$(PANDOC))
@@ -91,6 +100,7 @@ install: all
 	test -z "$(man_html)" || $(INSTALL) -m 0644 $(man_html) $(dest_docdir)
 	$(INSTALL) -pm 0755 cmd/bup $(dest_libdir)/cmd/
 	$(INSTALL) -pm 0755 cmd/bup-* $(dest_libdir)/cmd/
+	$(call install-bup-python,cmd/bup-python,"$(dest_libdir)/cmd/bup-python")
 	cd "$(dest_bindir)" && \
 	  ln -sf "$$($(bup_python) -c 'import os; print(os.path.relpath("$(abspath $(dest_libdir))/cmd/bup"))')"
 	set -e; \

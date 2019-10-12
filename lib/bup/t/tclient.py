@@ -4,7 +4,7 @@ import sys, os, stat, time, random, subprocess, glob
 
 from wvtest import *
 
-from bup import client, git
+from bup import client, git, path
 from bup.helpers import mkdirp
 from buptest import no_lingering_errors, test_tempdir
 
@@ -15,9 +15,6 @@ def randbytes(sz):
         s += chr(random.randrange(0,256))
     return s
 
-
-top_dir = os.path.realpath('../../..')
-bup_exe = top_dir + '/cmd/bup'
 
 s1 = randbytes(10000)
 s2 = randbytes(10000)
@@ -30,7 +27,6 @@ IDX_PAT = '/*.idx'
 def test_server_split_with_indexes():
     with no_lingering_errors():
         with test_tempdir('bup-tclient-') as tmpdir:
-            os.environ['BUP_MAIN_EXE'] = bup_exe
             os.environ['BUP_DIR'] = bupdir = tmpdir
             git.init_repo(bupdir)
             lw = git.PackWriter()
@@ -50,7 +46,6 @@ def test_server_split_with_indexes():
 def test_multiple_suggestions():
     with no_lingering_errors():
         with test_tempdir('bup-tclient-') as tmpdir:
-            os.environ['BUP_MAIN_EXE'] = bup_exe
             os.environ['BUP_DIR'] = bupdir = tmpdir
             git.init_repo(bupdir)
 
@@ -86,7 +81,6 @@ def test_multiple_suggestions():
 def test_dumb_client_server():
     with no_lingering_errors():
         with test_tempdir('bup-tclient-') as tmpdir:
-            os.environ['BUP_MAIN_EXE'] = bup_exe
             os.environ['BUP_DIR'] = bupdir = tmpdir
             git.init_repo(bupdir)
             open(git.repo('bup-dumb-server'), 'w').close()
@@ -109,7 +103,6 @@ def test_dumb_client_server():
 def test_midx_refreshing():
     with no_lingering_errors():
         with test_tempdir('bup-tclient-') as tmpdir:
-            os.environ['BUP_MAIN_EXE'] = bupmain = '../../../bup'
             os.environ['BUP_DIR'] = bupdir = tmpdir
             git.init_repo(bupdir)
             c = client.Client(bupdir, create=True)
@@ -136,7 +129,7 @@ def test_midx_refreshing():
             WVFAIL(p2.exists(s1sha))
             WVPASS(p2.exists(s2sha))
 
-            subprocess.call([bupmain, 'midx', '-f'])
+            subprocess.call([path.exe(), 'midx', '-f'])
             pi.refresh()
             WVPASSEQ(len(pi.packs), 1)
             pi.refresh(skip_midx=True)

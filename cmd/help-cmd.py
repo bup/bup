@@ -17,7 +17,7 @@ o = options.Options(optspec)
 
 if len(extra) == 0:
     # the wrapper program provides the default usage string
-    os.execvp(os.environ['BUP_MAIN_EXE'], ['bup'])
+    os.execvp(path.exe(), ['bup'])
 elif len(extra) == 1:
     docname = (extra[0]=='bup' and 'bup' or ('bup-%s' % extra[0]))
     manpath = os.path.join(path.exedir(),

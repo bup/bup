@@ -1,6 +1,8 @@
 #!/bin/sh
 # Does an import of a rsnapshot archive.
 
+cmd_dir="$(cd "$(dirname "$0")" && pwd)" || exit $?
+
 usage() {
     echo "Usage: bup import-rsnapshot [-n]" \
         "<path to snapshot_root> [<backuptarget>]"
@@ -16,7 +18,7 @@ done
 
 bup()
 {
-    $DRY_RUN "${BUP_MAIN_EXE:=bup}" "$@"
+    $DRY_RUN "$cmd_dir/bup" "$@"
 }
 
 SNAPSHOT_ROOT=$1

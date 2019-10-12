@@ -8,16 +8,13 @@ from time import localtime, strftime
 
 from wvtest import *
 
-from bup import git, vfs
+from bup import git, path, vfs
 from bup.metadata import Metadata
 from bup.repo import LocalRepo, RemoteRepo
 from bup.test.vfs import tree_dict
 from buptest import ex, exo, no_lingering_errors, test_tempdir
 
-top_dir = '../../..'
-bup_tmp = os.path.realpath('../../../t/tmp')
-bup_path = top_dir + '/bup'
-start_dir = os.getcwd()
+bup_path = path.exe()
 
 ## The clear_cache() calls below are to make sure that the test starts
 ## from a known state since at the moment the cache entry for a given
@@ -31,7 +28,6 @@ def prep_and_test_repo(name, create_repo, test_repo):
             bup_dir = tmpdir + '/bup'
             environ['GIT_DIR'] = bup_dir
             environ['BUP_DIR'] = bup_dir
-            environ['BUP_MAIN_EXE'] = bup_path
             ex((bup_path, 'init'))
             git.repodir = bup_dir
             with create_repo(bup_dir) as repo:

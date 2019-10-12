@@ -1,18 +1,23 @@
-"""This is a separate module so we can cleanly getcwd() before anyone
-   does chdir().
-"""
 
 from __future__ import absolute_import
-import sys, os
+import os
 
-startdir = os.getcwd()
+
+# Eventually, if we physically move the source tree cmd/ to lib/, then
+# we could use realpath here and save some stats...
+
+_libdir = os.path.abspath(os.path.dirname(__file__) + '/..')
+_exedir = os.path.abspath(_libdir + '/cmd')
+_exe = os.path.join(_exedir, 'bup')
+
 
 def exe():
-    return (os.environ.get('BUP_MAIN_EXE') or
-            os.path.join(startdir, sys.argv[0]))
+    return _exe
 
 def exedir():
-    return os.path.split(exe())[0]
+    return _exedir
 
-def exefile():
-    return os.path.split(exe())[1]
+cmddir = exedir
+
+def libdir():
+    return _libdir

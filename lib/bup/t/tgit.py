@@ -5,14 +5,13 @@ import struct, os, time
 
 from wvtest import *
 
-from bup import git
+from bup import git, path
 from bup.compat import range
 from bup.helpers import localtime, log, mkdirp, readpipe
 from buptest import no_lingering_errors, test_tempdir
 
 
-top_dir = os.path.realpath('../../..')
-bup_exe = top_dir + '/cmd/bup'
+bup_exe = path.exe()
 
 
 def exc(*cmd):
@@ -87,7 +86,6 @@ def testencode():
 def testpacks():
     with no_lingering_errors():
         with test_tempdir('bup-tgit-') as tmpdir:
-            os.environ['BUP_MAIN_EXE'] = bup_exe
             os.environ['BUP_DIR'] = bupdir = tmpdir + "/bup"
             git.init_repo(bupdir)
             git.verbose = 1
@@ -132,7 +130,6 @@ def testpacks():
 def test_pack_name_lookup():
     with no_lingering_errors():
         with test_tempdir('bup-tgit-') as tmpdir:
-            os.environ['BUP_MAIN_EXE'] = bup_exe
             os.environ['BUP_DIR'] = bupdir = tmpdir + "/bup"
             git.init_repo(bupdir)
             git.verbose = 1
@@ -159,7 +156,6 @@ def test_pack_name_lookup():
 def test_long_index():
     with no_lingering_errors():
         with test_tempdir('bup-tgit-') as tmpdir:
-            os.environ['BUP_MAIN_EXE'] = bup_exe
             os.environ['BUP_DIR'] = bupdir = tmpdir + "/bup"
             git.init_repo(bupdir)
             w = git.PackWriter()
@@ -300,7 +296,6 @@ def test_commit_parsing():
 def test_new_commit():
     with no_lingering_errors():
         with test_tempdir('bup-tgit-') as tmpdir:
-            os.environ['BUP_MAIN_EXE'] = bup_exe
             os.environ['BUP_DIR'] = bupdir = tmpdir + "/bup"
             git.init_repo(bupdir)
             git.verbose = 1
@@ -364,7 +359,6 @@ def test_new_commit():
 def test_list_refs():
     with no_lingering_errors():
         with test_tempdir('bup-tgit-') as tmpdir:
-            os.environ['BUP_MAIN_EXE'] = bup_exe
             os.environ['BUP_DIR'] = bupdir = tmpdir + "/bup"
             src = tmpdir + '/src'
             mkdirp(src)
@@ -423,7 +417,6 @@ def test__git_date_str():
 def test_cat_pipe():
     with no_lingering_errors():
         with test_tempdir('bup-tgit-') as tmpdir:
-            os.environ['BUP_MAIN_EXE'] = bup_exe
             os.environ['BUP_DIR'] = bupdir = tmpdir + "/bup"
             src = tmpdir + '/src'
             mkdirp(src)

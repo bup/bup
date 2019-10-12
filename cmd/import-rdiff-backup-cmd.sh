@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+cmd_dir="$(cd "$(dirname "$0")" && pwd)" || exit $?
+
 set -o pipefail
 
 must() {
@@ -35,7 +37,7 @@ done
 
 bup()
 {
-    $dry_run "${BUP_MAIN_EXE:=bup}" "$@"
+    $dry_run "$cmd_dir/bup" "$@"
 }
 
 snapshot_root="$1"
