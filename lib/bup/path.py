@@ -7,6 +7,7 @@ import os
 # we could use realpath here and save some stats...
 
 _libdir = os.path.abspath(os.path.dirname(__file__) + '/..')
+_resdir = _libdir
 _exedir = os.path.abspath(_libdir + '/cmd')
 _exe = os.path.join(_exedir, 'bup')
 
@@ -21,3 +22,6 @@ cmddir = exedir
 
 def libdir():
     return _libdir
+
+def resource_path(subdir=''):
+    return os.path.join(_resdir, subdir)

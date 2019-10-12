@@ -35,6 +35,5 @@ export LC_CTYPE=ISO-8859-1
 bup_libdir="$script_home/../lib"  # bup_libdir will be adjusted during install
 
 export PYTHONPATH="$bup_libdir${PYTHONPATH:+:$PYTHONPATH}"
-export BUP_RESOURCE_PATH="$bup_libdir"
 
 # This last line will be replaced with 'exec some/python "$@"

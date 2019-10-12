@@ -11,8 +11,9 @@ import mimetypes, os, posixpath, signal, stat, sys, time, urllib, webbrowser
 
 from bup import options, git, vfs
 from bup.helpers import (chunkyreader, debug1, format_filesize, handle_ctrl_c,
-                         log, resource_path, saved_errors)
+                         log, saved_errors)
 from bup.metadata import Metadata
+from bup.path import resource_path
 from bup.repo import LocalRepo
 
 try:

@@ -395,13 +395,6 @@ def hostname():
     return _hostname
 
 
-_resource_path = None
-def resource_path(subdir=''):
-    global _resource_path
-    if not _resource_path:
-        _resource_path = os.environ.get('BUP_RESOURCE_PATH') or '.'
-    return os.path.join(_resource_path, subdir)
-
 def format_filesize(size):
     unit = 1024.0
     size = float(size)
