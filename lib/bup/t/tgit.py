@@ -1,5 +1,5 @@
 
-from __future__ import absolute_import
+from __future__ import absolute_import, print_function
 from subprocess import check_call
 import struct, os, time
 
@@ -17,13 +17,13 @@ bup_exe = top_dir + '/bup'
 
 def exc(*cmd):
     cmd_str = ' '.join(cmd)
-    print >> sys.stderr, cmd_str
+    print(cmd_str, file=sys.stderr)
     check_call(cmd)
 
 
 def exo(*cmd):
     cmd_str = ' '.join(cmd)
-    print >> sys.stderr, cmd_str
+    print(cmd_str, file=sys.stderr)
     return readpipe(cmd)
 
 
@@ -104,12 +104,12 @@ def testpacks():
                 hashes.append(w.new_blob(str(i)))
             log('\n')
             nameprefix = w.close()
-            print repr(nameprefix)
+            print(repr(nameprefix))
             WVPASS(os.path.exists(nameprefix + '.pack'))
             WVPASS(os.path.exists(nameprefix + '.idx'))
 
             r = git.open_idx(nameprefix + '.idx')
-            print repr(r.fanout)
+            print(repr(r.fanout))
 
             for i in range(nobj):
                 WVPASS(r.find_offset(hashes[i]) > 0)
@@ -252,7 +252,7 @@ def test_commit_parsing():
                 git.check_repo_or_die(repodir)
                 os.chdir(workdir)
                 with open('foo', 'w') as f:
-                    print >> f, 'bar'
+                    print('bar', file=f)
                 readpipe(['git', 'add', '.'])
                 readpipe(['git', 'commit', '-am', 'Do something',
                           '--author', 'Someone <someone@somewhere>',
@@ -281,7 +281,7 @@ def test_commit_parsing():
                 WVPASSEQ(commit_items.committer_offset, coff)
                 WVPASSEQ(commit_items.message, 'Do something\n')
                 with open('bar', 'w') as f:
-                    print >> f, 'baz'
+                    print('baz', file=f)
                 readpipe(['git', 'add', '.'])
                 readpipe(['git', 'commit', '-am', 'Do something else'])
                 child = readpipe(['git', 'show-ref', '-s', 'master']).strip()
@@ -369,9 +369,9 @@ def test_list_refs():
             src = tmpdir + '/src'
             mkdirp(src)
             with open(src + '/1', 'w+') as f:
-                print f, 'something'
+                print('something', file=f)
             with open(src + '/2', 'w+') as f:
-                print f, 'something else'
+                print('something else', file=f)
             git.init_repo(bupdir)
             emptyset = frozenset()
             WVPASSEQ(frozenset(git.list_refs()), emptyset)
@@ -428,9 +428,9 @@ def test_cat_pipe():
             src = tmpdir + '/src'
             mkdirp(src)
             with open(src + '/1', 'w+') as f:
-                print f, 'something'
+                print('something', file=f)
             with open(src + '/2', 'w+') as f:
-                print f, 'something else'
+                print('something else', file=f)
             git.init_repo(bupdir)
             exc(bup_exe, 'index', src)
             oidx = exo(bup_exe, 'save', '-cn', 'src', '--strip', src).strip()
