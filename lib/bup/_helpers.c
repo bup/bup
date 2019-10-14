@@ -71,13 +71,21 @@ typedef struct {
     int istty2;
 } state_t;
 
+// cstr_argf: for byte vectors without null characters (e.g. paths)
+// rbuf_argf: for read-only byte vectors
+// wbuf_argf: for mutable byte vectors
+
 #if PY_MAJOR_VERSION < 3
 static state_t state;
 #  define get_state(x) (&state)
 #  define cstr_argf "s"
+#  define rbuf_argf "s#"
+#  define wbuf_argf "s*"
 #else
 #  define get_state(x) ((state_t *) PyModule_GetState(x))
 #  define cstr_argf "y"
+#  define rbuf_argf "y#"
+#  define wbuf_argf "y*"
 #endif // PY_MAJOR_VERSION >= 3
 
 
@@ -678,72 +686,94 @@ BLOOM_GET_BIT(bloom_get_bit5, to_bloom_address_bitmask5, uint32_t)
 
 static PyObject *bloom_add(PyObject *self, PyObject *args)
 {
-    unsigned char *sha = NULL, *bloom = NULL;
-    unsigned char *end;
-    Py_ssize_t len = 0, blen = 0;
+    Py_buffer bloom, sha;
     int nbits = 0, k = 0;
+    if (!PyArg_ParseTuple(args, wbuf_argf wbuf_argf "ii",
+                          &bloom, &sha, &nbits, &k))
+        return NULL;
 
-    if (!PyArg_ParseTuple(args, "w#s#ii", &bloom, &blen, &sha, &len, &nbits, &k))
-	return NULL;
+    PyObject *result = NULL;
 
-    if (blen < 16+(1<<nbits) || len % 20 != 0)
-	return NULL;
+    if (bloom.len < 16+(1<<nbits) || sha.len % 20 != 0)
+        goto clean_and_return;
 
     if (k == 5)
     {
-	if (nbits > 29)
-	    return NULL;
-	for (end = sha + len; sha < end; sha += 20/k)
-	    bloom_set_bit5(bloom, sha, nbits);
+        if (nbits > 29)
+            goto clean_and_return;
+        unsigned char *cur = sha.buf;
+        for (unsigned char *end = cur + sha.len; cur < end; cur += 20/k)
+            bloom_set_bit5(bloom.buf, cur, nbits);
     }
     else if (k == 4)
     {
-	if (nbits > 37)
-	    return NULL;
-	for (end = sha + len; sha < end; sha += 20/k)
-	    bloom_set_bit4(bloom, sha, nbits);
+        if (nbits > 37)
+            goto clean_and_return;
+        unsigned char *cur = sha.buf;
+        unsigned char *end = cur + sha.len;
+        for (; cur < end; cur += 20/k)
+            bloom_set_bit4(bloom.buf, cur, nbits);
     }
     else
-	return NULL;
+        goto clean_and_return;
 
+    result = Py_BuildValue("n", sha.len / 20);
 
-    return Py_BuildValue("n", len/20);
+ clean_and_return:
+    PyBuffer_Release(&bloom);
+    PyBuffer_Release(&sha);
+    return result;
 }
 
 static PyObject *bloom_contains(PyObject *self, PyObject *args)
 {
-    unsigned char *sha = NULL, *bloom = NULL;
-    Py_ssize_t len = 0, blen = 0;
+    Py_buffer bloom;
+    unsigned char *sha = NULL;
+    Py_ssize_t len = 0;
     int nbits = 0, k = 0;
-    unsigned char *end;
-    int steps;
+    if (!PyArg_ParseTuple(args, wbuf_argf rbuf_argf "ii",
+                          &bloom, &sha, &len, &nbits, &k))
+        return NULL;
 
-    if (!PyArg_ParseTuple(args, "t#s#ii", &bloom, &blen, &sha, &len, &nbits, &k))
-	return NULL;
+    PyObject *result = NULL;
 
     if (len != 20)
-	return NULL;
+        goto clean_and_return;
 
     if (k == 5)
     {
-	if (nbits > 29)
-	    return NULL;
-	for (steps = 1, end = sha + 20; sha < end; sha += 20/k, steps++)
-	    if (!bloom_get_bit5(bloom, sha, nbits))
-		return Py_BuildValue("Oi", Py_None, steps);
+        if (nbits > 29)
+            goto clean_and_return;
+        int steps;
+        unsigned char *end;
+        for (steps = 1, end = sha + 20; sha < end; sha += 20/k, steps++)
+            if (!bloom_get_bit5(bloom.buf, sha, nbits))
+            {
+                result = Py_BuildValue("Oi", Py_None, steps);
+                goto clean_and_return;
+            }
     }
     else if (k == 4)
     {
-	if (nbits > 37)
-	    return NULL;
-	for (steps = 1, end = sha + 20; sha < end; sha += 20/k, steps++)
-	    if (!bloom_get_bit4(bloom, sha, nbits))
-		return Py_BuildValue("Oi", Py_None, steps);
+        if (nbits > 37)
+            goto clean_and_return;
+        int steps;
+        unsigned char *end;
+        for (steps = 1, end = sha + 20; sha < end; sha += 20/k, steps++)
+            if (!bloom_get_bit4(bloom.buf, sha, nbits))
+            {
+                result = Py_BuildValue("Oi", Py_None, steps);
+                goto clean_and_return;
+            }
     }
     else
-	return NULL;
+        goto clean_and_return;
 
-    return Py_BuildValue("ii", 1, k);
+    result = Py_BuildValue("ii", 1, k);
+
+ clean_and_return:
+    PyBuffer_Release(&bloom);
+    return result;
 }
 
 

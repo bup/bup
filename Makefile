@@ -144,6 +144,7 @@ t/tmp:
 runtests: runtests-python runtests-cmdline
 
 python_tests := \
+  lib/bup/t/tbloom.py \
   lib/bup/t/thashsplit.py \
   lib/bup/t/toptions.py \
   lib/bup/t/tshquote.py \
@@ -152,7 +153,6 @@ python_tests := \
 
 ifeq "2" "$(bup_python_majver)"
   python_tests += \
-    lib/bup/t/tbloom.py \
     lib/bup/t/tclient.py \
     lib/bup/t/tgit.py \
     lib/bup/t/thelpers.py \

@@ -149,7 +149,7 @@ def log(s):
     """Print a log message to stderr."""
     global _last_prog
     sys.stdout.flush()
-    _hard_write(sys.stderr.fileno(), s)
+    _hard_write(sys.stderr.fileno(), s if isinstance(s, bytes) else s.encode())
     _last_prog = 0
 
 

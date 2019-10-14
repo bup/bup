@@ -109,7 +109,7 @@ class ShaBloom:
         self.name = filename
         self.rwfile = None
         self.map = None
-        assert(filename.endswith('.bloom'))
+        assert(filename.endswith(b'.bloom'))
         if readwrite:
             assert(expected > 0)
             self.rwfile = f = f or open(filename, 'r+b')
@@ -131,7 +131,7 @@ class ShaBloom:
             # one bit flipped per memory page), let's use a "private" mmap,
             # which defeats Linux's ability to flush it to disk.  Then we'll
             # flush it as one big lump during close().
-            pages = os.fstat(f.fileno()).st_size / 4096 * 5 # assume k=5
+            pages = os.fstat(f.fileno()).st_size // 4096 * 5 # assume k=5
             self.delaywrite = expected > pages
             debug1('bloom: delaywrite=%r\n' % self.delaywrite)
             if self.delaywrite:
@@ -142,8 +142,8 @@ class ShaBloom:
             self.rwfile = None
             f = f or open(filename, 'rb')
             self.map = mmap_read(f)
-        got = str(self.map[0:4])
-        if got != 'BLOM':
+        got = self.map[0:4]
+        if got != b'BLOM':
             log('Warning: invalid BLOM header (%r) in %r\n' % (got, filename))
             return self._init_failed()
         ver = struct.unpack('!I', self.map[4:8])[0]
@@ -157,9 +157,9 @@ class ShaBloom:
             return self._init_failed()
 
         self.bits, self.k, self.entries = struct.unpack('!HHI', self.map[8:16])
-        idxnamestr = str(self.map[16 + 2**self.bits:])
+        idxnamestr = self.map[16 + 2**self.bits:]
         if idxnamestr:
-            self.idxnames = idxnamestr.split('\0')
+            self.idxnames = idxnamestr.split(b'\0')
         else:
             self.idxnames = []
 
@@ -189,7 +189,7 @@ class ShaBloom:
                 self.map.flush()
             self.rwfile.seek(16 + 2**self.bits)
             if self.idxnames:
-                self.rwfile.write('\0'.join(self.idxnames))
+                self.rwfile.write(b'\0'.join(self.idxnames))
         self._init_failed()
 
     def pfalse_positive(self, additional=0):
@@ -220,7 +220,7 @@ class ShaBloom:
         _total_searches += 1
         if not self.map:
             return None
-        found, steps = bloom_contains(self.map, str(sha), self.bits, self.k)
+        found, steps = bloom_contains(self.map, sha, self.bits, self.k)
         _total_steps += steps
         return found
 
@@ -230,14 +230,14 @@ class ShaBloom:
 
 def create(name, expected, delaywrite=None, f=None, k=None):
     """Create and return a bloom filter for `expected` entries."""
-    bits = int(math.floor(math.log(expected*MAX_BITS_EACH/8,2)))
+    bits = int(math.floor(math.log(expected * MAX_BITS_EACH // 8, 2)))
     k = k or ((bits <= MAX_BLOOM_BITS[5]) and 5 or 4)
     if bits > MAX_BLOOM_BITS[k]:
         log('bloom: warning, max bits exceeded, non-optimal\n')
         bits = MAX_BLOOM_BITS[k]
     debug1('bloom: using 2^%d bytes and %d hash functions\n' % (bits, k))
     f = f or open(name, 'w+b')
-    f.write('BLOM')
+    f.write(b'BLOM')
     f.write(struct.pack('!IHHI', BLOOM_VERSION, bits, k, 0))
     assert(f.tell() == 16)
     # NOTE: On some systems this will not extend+zerofill, but it does on
@@ -251,4 +251,4 @@ def create(name, expected, delaywrite=None, f=None, k=None):
 
 
 def clear_bloom(dir):
-    unlink(os.path.join(dir, 'bup.bloom'))
+    unlink(os.path.join(dir, b'bup.bloom'))
