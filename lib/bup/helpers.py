@@ -214,6 +214,13 @@ def mkdirp(d, mode=None):
             raise
 
 
+class MergeIterItem:
+    def __init__(self, entry, read_it):
+        self.entry = entry
+        self.read_it = read_it
+    def __lt__(self, x):
+        return self.entry < x.entry
+
 def merge_iter(iters, pfreq, pfunc, pfinal, key=None):
     if key:
         samekey = lambda e, pe: getattr(e, key) == getattr(pe, key, None)
@@ -223,14 +230,14 @@ def merge_iter(iters, pfreq, pfunc, pfinal, key=None):
     total = sum(len(it) for it in iters)
     iters = (iter(it) for it in iters)
     heap = ((next(it, None),it) for it in iters)
-    heap = [(e,it) for e,it in heap if e]
+    heap = [MergeIterItem(e, it) for e, it in heap if e]
 
     heapq.heapify(heap)
     pe = None
     while heap:
         if not count % pfreq:
             pfunc(count, total)
-        e, it = heap[0]
+        e, it = heap[0].entry, heap[0].read_it
         if not samekey(e, pe):
             pe = e
             yield e
@@ -240,7 +247,8 @@ def merge_iter(iters, pfreq, pfunc, pfinal, key=None):
         except StopIteration:
             heapq.heappop(heap) # remove current
         else:
-            heapq.heapreplace(heap, (e, it)) # shift current to new location
+            # shift current to new location
+            heapq.heapreplace(heap, MergeIterItem(e, it))
     pfinal(count, total)
 
 
