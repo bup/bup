@@ -442,7 +442,7 @@ def username():
     global _username
     if not _username:
         uid = os.getuid()
-        _username = pwd_from_uid(uid)[0] or 'user%d' % uid
+        _username = pwd_from_uid(uid).pw_name or b'user%d' % uid
     return _username
 
 
@@ -454,9 +454,9 @@ def userfullname():
         uid = os.getuid()
         entry = pwd_from_uid(uid)
         if entry:
-            _userfullname = entry[4].split(',')[0] or entry[0]
+            _userfullname = entry.pw_gecos.split(b',')[0] or entry.pw_name
         if not _userfullname:
-            _userfullname = 'user%d' % uid
+            _userfullname = b'user%d' % uid
     return _userfullname
 
 
