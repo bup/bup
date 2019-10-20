@@ -192,6 +192,9 @@ def test_misc():
             fake_item = file_item._replace(meta=meta)
             wvpasseq(42, vfs.item_size(repo, fake_item))
 
+            _, fakelink_item = vfs.resolve(repo, '/test/latest', follow=False)[-1]
+            wvpasseq(17, vfs.item_size(repo, fakelink_item))
+
             wvstart('augment_item_meta')
             run_augment_item_meta_tests(repo,
                                         '/test/latest/file', 7,
