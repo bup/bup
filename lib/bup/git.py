@@ -19,8 +19,9 @@ from bup.helpers import (Sha1, add_error, chunkyreader, debug1, debug2,
                          mmap_read, mmap_readwrite,
                          parse_num,
                          progress, qprogress, shstr, stat_if_exists,
-                         unlink, username, userfullname,
+                         unlink,
                          utc_offset_str)
+from bup.pwdgrp import username, userfullname
 
 verbose = 0
 ignore_midx = 0

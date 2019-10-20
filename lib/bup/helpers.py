@@ -367,7 +367,7 @@ else:
         return os.geteuid() == 0
 
 
-def _cache_key_value(get_value, key, cache):
+def cache_key_value(get_value, key, cache):
     """Return (value, was_cached).  If there is a value in the cache
     for key, use that, otherwise, call get_value(key) which should
     throw a KeyError if there is no value -- in which case the cached
@@ -384,80 +384,6 @@ def _cache_key_value(get_value, key, cache):
     except KeyError:
         cache[key] = None
     return value, False
-
-
-_uid_to_pwd_cache = {}
-_name_to_pwd_cache = {}
-
-def pwd_from_uid(uid):
-    """Return password database entry for uid (may be a cached value).
-    Return None if no entry is found.
-    """
-    global _uid_to_pwd_cache, _name_to_pwd_cache
-    entry, cached = _cache_key_value(pwd.getpwuid, uid, _uid_to_pwd_cache)
-    if entry and not cached:
-        _name_to_pwd_cache[entry.pw_name] = entry
-    return entry
-
-
-def pwd_from_name(name):
-    """Return password database entry for name (may be a cached value).
-    Return None if no entry is found.
-    """
-    global _uid_to_pwd_cache, _name_to_pwd_cache
-    entry, cached = _cache_key_value(pwd.getpwnam, name, _name_to_pwd_cache)
-    if entry and not cached:
-        _uid_to_pwd_cache[entry.pw_uid] = entry
-    return entry
-
-
-_gid_to_grp_cache = {}
-_name_to_grp_cache = {}
-
-def grp_from_gid(gid):
-    """Return password database entry for gid (may be a cached value).
-    Return None if no entry is found.
-    """
-    global _gid_to_grp_cache, _name_to_grp_cache
-    entry, cached = _cache_key_value(grp.getgrgid, gid, _gid_to_grp_cache)
-    if entry and not cached:
-        _name_to_grp_cache[entry.gr_name] = entry
-    return entry
-
-
-def grp_from_name(name):
-    """Return password database entry for name (may be a cached value).
-    Return None if no entry is found.
-    """
-    global _gid_to_grp_cache, _name_to_grp_cache
-    entry, cached = _cache_key_value(grp.getgrnam, name, _name_to_grp_cache)
-    if entry and not cached:
-        _gid_to_grp_cache[entry.gr_gid] = entry
-    return entry
-
-
-_username = None
-def username():
-    """Get the user's login name."""
-    global _username
-    if not _username:
-        uid = os.getuid()
-        _username = pwd_from_uid(uid).pw_name or b'user%d' % uid
-    return _username
-
-
-_userfullname = None
-def userfullname():
-    """Get the user's full name."""
-    global _userfullname
-    if not _userfullname:
-        uid = os.getuid()
-        entry = pwd_from_uid(uid)
-        if entry:
-            _userfullname = entry.pw_gecos.split(b',')[0] or entry.pw_name
-        if not _userfullname:
-            _userfullname = b'user%d' % uid
-    return _userfullname
 
 
 _hostname = None

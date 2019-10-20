@@ -16,7 +16,8 @@ from bup.helpers import (add_error, grafted_path_components, handle_ctrl_c,
                          hostname, istty2, log, parse_date_or_fatal, parse_num,
                          path_components, progress, qprogress, resolve_parent,
                          saved_errors, stripped_path_components,
-                         userfullname, username, valid_save_name)
+                         valid_save_name)
+from bup.pwdgrp import userfullname, username
 
 
 optspec = """

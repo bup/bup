@@ -15,7 +15,7 @@ import errno, os, sys, stat, time, pwd, grp, socket, struct
 from bup import vint, xstat
 from bup.drecurse import recursive_dirlist
 from bup.helpers import add_error, mkdirp, log, is_superuser, format_filesize
-from bup.helpers import pwd_from_uid, pwd_from_name, grp_from_gid, grp_from_name
+from bup.pwdgrp import pwd_from_uid, pwd_from_name, grp_from_gid, grp_from_name
 from bup.xstat import utime, lutime
 
 xattr = None

@@ -11,8 +11,9 @@ import os, sys, time
 from bup import hashsplit, git, options, client
 from bup.helpers import (add_error, handle_ctrl_c, hostname, log, parse_num,
                          qprogress, reprogress, saved_errors,
-                         userfullname, username, valid_save_name,
+                         valid_save_name,
                          parse_date_or_fatal)
+from bup.pwdgrp import userfullname, username
 
 
 optspec = """

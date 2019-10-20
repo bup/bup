@@ -15,7 +15,8 @@ from bup import git, client, helpers, vfs
 from bup.compat import wrap_main
 from bup.git import get_cat_data, parse_commit, walk_object
 from bup.helpers import add_error, debug1, handle_ctrl_c, log, saved_errors
-from bup.helpers import hostname, shstr, tty_width, userfullname, username
+from bup.helpers import hostname, shstr, tty_width
+from bup.pwdgrp import userfullname, username
 from bup.repo import LocalRepo, RemoteRepo
 
 argspec = (
