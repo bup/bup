@@ -507,12 +507,12 @@ def readlink(repo, item):
     target from the repository if necessary."""
     assert repo
     assert S_ISLNK(item_mode(item))
+    if isinstance(item, FakeLink):
+        return item.target
     if isinstance(item.meta, Metadata):
         target = item.meta.symlink_target
         if target:
             return target
-    elif isinstance(item, FakeLink):
-        return item.target
     return _readlink(repo, item.oid)
 
 def _compute_item_size(repo, item):
@@ -521,6 +521,8 @@ def _compute_item_size(repo, item):
         size = _normal_or_chunked_file_size(repo, item.oid)
         return size
     if S_ISLNK(mode):
+        if isinstance(item, FakeLink):
+            return len(item.target)
         return len(_readlink(repo, item.oid))
     return 0
 
