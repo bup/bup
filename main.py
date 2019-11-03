@@ -43,7 +43,7 @@ os.environ['BUP_RESOURCE_PATH'] = resourcepath
 
 from bup import compat, helpers
 from bup.compat import add_ex_tb, add_ex_ctx, wrap_main
-from bup.helpers import atoi, columnate, debug1, log, tty_width
+from bup.helpers import atoi, columnate, debug1, log, merge_dict, tty_width
 
 
 def usage(msg=""):
