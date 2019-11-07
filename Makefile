@@ -164,7 +164,7 @@ endif
 runtests-python: all t/tmp
 	mkdir -p t/tmp/test-log
 	$(pf); cd $$(pwd -P); TMPDIR="$(test_tmp)" \
-	  "$(bup_python)" wvtest.py  $(python_tests) 2>&1 \
+	  ./wvtest.py  $(python_tests) 2>&1 \
 	    | tee -a t/tmp/test-log/$$$$.log
 
 cmdline_tests :=
