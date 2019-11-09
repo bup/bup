@@ -14,6 +14,7 @@ exec "$bup_python" "$0" ${1+"$@"}
 #
 
 from __future__ import absolute_import, print_function
+from os.path import relpath
 import atexit
 import inspect
 import os
@@ -193,33 +194,11 @@ def _run_in_chdir(path, func, *args, **kwargs):
         sys.path = oldpath
 
 
-if sys.version_info >= (2,6,0):
-    _relpath = os.path.relpath;
-else:
-    # Implementation for Python 2.5, taken from CPython (tag v2.6,
-    # file Lib/posixpath.py, hg-commit 95fff5a6a276).  Update
-    # ./LICENSE When this code is eventually removed.
-    def _relpath(path, start=os.path.curdir):
-        if not path:
-            raise ValueError("no path specified")
-
-        start_list = os.path.abspath(start).split(os.path.sep)
-        path_list = os.path.abspath(path).split(os.path.sep)
-
-        # Work out how much of the filepath is shared by start and path.
-        i = len(os.path.commonprefix([start_list, path_list]))
-
-        rel_list = [os.path.pardir] * (len(start_list)-i) + path_list[i:]
-        if not rel_list:
-            return curdir
-        return os.path.join(*rel_list)
-
-
 def _runtest(fname, f):
     mod = inspect.getmodule(f)
-    relpath = _relpath(mod.__file__, os.getcwd()).replace('.pyc', '.py')
+    rpath = relpath(mod.__file__, os.getcwd()).replace('.pyc', '.py')
     print()
-    print('Testing "%s" in %s:' % (fname, relpath))
+    print('Testing "%s" in %s:' % (fname, rpath))
     sys.stdout.flush()
     try:
         _run_in_chdir(os.path.split(mod.__file__)[0], f)
