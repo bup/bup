@@ -4,6 +4,7 @@ import helpers, math, os, os.path, stat, subprocess
 
 from wvtest import *
 
+from bup.compat import environ
 from bup.helpers import (atomically_replaced_file, batchpipe, detect_fakeroot,
                          grafted_path_components, mkdirp, parse_num,
                          path_components, readpipe, stripped_path_components,
@@ -169,30 +170,30 @@ def test_atomically_replaced_file():
 @wvtest
 def test_utc_offset_str():
     with no_lingering_errors():
-        tz = os.environ.get('TZ')
+        tz = environ.get(b'TZ')
         try:
-            os.environ['TZ'] = 'FOO+0:00'
-            WVPASSEQ(utc_offset_str(0), '+0000')
-            os.environ['TZ'] = 'FOO+1:00'
-            WVPASSEQ(utc_offset_str(0), '-0100')
-            os.environ['TZ'] = 'FOO-1:00'
-            WVPASSEQ(utc_offset_str(0), '+0100')
-            os.environ['TZ'] = 'FOO+3:3'
-            WVPASSEQ(utc_offset_str(0), '-0303')
-            os.environ['TZ'] = 'FOO-3:3'
-            WVPASSEQ(utc_offset_str(0), '+0303')
+            environ[b'TZ'] = b'FOO+0:00'
+            WVPASSEQ(utc_offset_str(0), b'+0000')
+            environ[b'TZ'] = b'FOO+1:00'
+            WVPASSEQ(utc_offset_str(0), b'-0100')
+            environ[b'TZ'] = b'FOO-1:00'
+            WVPASSEQ(utc_offset_str(0), b'+0100')
+            environ[b'TZ'] = b'FOO+3:3'
+            WVPASSEQ(utc_offset_str(0), b'-0303')
+            environ[b'TZ'] = b'FOO-3:3'
+            WVPASSEQ(utc_offset_str(0), b'+0303')
             # Offset is not an integer number of minutes
-            os.environ['TZ'] = 'FOO+3:3:3'
-            WVPASSEQ(utc_offset_str(1), '-0303')
-            os.environ['TZ'] = 'FOO-3:3:3'
-            WVPASSEQ(utc_offset_str(1), '+0303')
-            WVPASSEQ(utc_offset_str(314159), '+0303')
+            environ[b'TZ'] = b'FOO+3:3:3'
+            WVPASSEQ(utc_offset_str(1), b'-0303')
+            environ[b'TZ'] = b'FOO-3:3:3'
+            WVPASSEQ(utc_offset_str(1), b'+0303')
+            WVPASSEQ(utc_offset_str(314159), b'+0303')
         finally:
             if tz:
-                os.environ['TZ'] = tz
+                environ[b'TZ'] = tz
             else:
                 try:
-                    del os.environ['TZ']
+                    del environ[b'TZ']
                 except KeyError:
                     pass
 
