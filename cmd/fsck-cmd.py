@@ -53,7 +53,9 @@ def is_par2_parallel():
         canary = tmpdir + '/canary'
         with open(canary, 'w') as f:
             print('canary', file=f)
-        rc = call(('par2', 'create', '-qq', '-t1', canary))
+        p = subprocess.Popen(['par2', 'create', '-qq', '-t1', canary],
+                             stdout=nullf, stderr=nullf, stdin=nullf)
+        rc = p.wait()
         return rc == 0
     finally:
         rmtree(tmpdir)
