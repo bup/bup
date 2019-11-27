@@ -374,7 +374,7 @@ Notes on NetBSD/pkgsrc
    traversal code ("fts") in NetBSD's libc will interpret this as a
    cycle and error out, so "ls -R" and "find" will not work.
 
- - There is no support for ACLs.  If/when some entrprising person
+ - There is no support for ACLs.  If/when some enterprising person
    fixes this, adjust t/compare-trees.
 
 
