@@ -58,8 +58,8 @@ class PackMidx:
     def _init_failed(self):
         self.bits = 0
         self.entries = 1
-        self.fanout = buffer('\0\0\0\0')
-        self.shatable = buffer('\0'*20)
+        self.fanout = b'\0\0\0\0'
+        self.shatable = b'\0' * 20
         self.idxnames = []
 
     def _fanget(self, i):
@@ -116,8 +116,9 @@ class PackMidx:
         return None
 
     def __iter__(self):
-        for i in range(self._fanget(self.entries-1)):
-            yield buffer(self.shatable, i*20, 20)
+        count = self._fanget(self.entries-1)
+        for ofs in range(0, count * 20, 20):
+            yield self.shatable[ofs : ofs + 20]
 
     def __len__(self):
         return int(self._fanget(self.entries-1))

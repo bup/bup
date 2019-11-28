@@ -394,22 +394,25 @@ class PackIdxV1(PackIdx):
         self.name = filename
         self.idxnames = [self.name]
         self.map = mmap_read(f)
-        self.fanout = list(struct.unpack('!256I',
-                                         str(buffer(self.map, 0, 256*4))))
+        self.fanout = list(struct.unpack('!256I', buffer(self.map, 0, 256 * 4)))
         self.fanout.append(0)  # entry "-1"
         nsha = self.fanout[255]
         self.sha_ofs = 256*4
         self.shatable = buffer(self.map, self.sha_ofs, nsha*24)
 
     def _ofs_from_idx(self, idx):
-        return struct.unpack('!I', str(self.shatable[idx*24 : idx*24+4]))[0]
+        ofs = idx * 24
+        return struct.unpack('!I', self.shatable[ofs : ofs + 4])[0]
 
     def _idx_to_hash(self, idx):
-        return str(self.shatable[idx*24+4 : idx*24+24])
+        ofs = idx * 24 + 4
+        return self.shatable[ofs : ofs + 20]
 
     def __iter__(self):
-        for i in range(self.fanout[255]):
-            yield buffer(self.map, 256*4 + 24*i + 4, 20)
+        count = self.fanout[255]
+        start = 256 * 4 + 4
+        for ofs in range(start, start + (24 * count), 24):
+            yield self.map[ofs : ofs + 20]
 
 
 class PackIdxV2(PackIdx):
@@ -418,9 +421,9 @@ class PackIdxV2(PackIdx):
         self.name = filename
         self.idxnames = [self.name]
         self.map = mmap_read(f)
-        assert(str(self.map[0:8]) == '\377tOc\0\0\0\2')
+        assert self.map[0:8] == b'\377tOc\0\0\0\2'
         self.fanout = list(struct.unpack('!256I',
-                                         str(buffer(self.map, 8, 256*4))))
+                                         buffer(self.map[8 : 8 + 256 * 4])))
         self.fanout.append(0)  # entry "-1"
         nsha = self.fanout[255]
         self.sha_ofs = 8 + 256*4
@@ -432,19 +435,22 @@ class PackIdxV2(PackIdx):
                                  8 + 256*4 + nsha*20 + nsha*4 + nsha*4)
 
     def _ofs_from_idx(self, idx):
-        ofs = struct.unpack('!I', str(buffer(self.ofstable, idx*4, 4)))[0]
+        i = idx * 4
+        ofs = struct.unpack('!I', self.ofstable[i : i + 4])[0]
         if ofs & 0x80000000:
             idx64 = ofs & 0x7fffffff
-            ofs = struct.unpack('!Q',
-                                str(buffer(self.ofs64table, idx64*8, 8)))[0]
+            idx64_i = idx64 * 8
+            ofs = struct.unpack('!Q', self.ofs64table[idx64_i : idx64_i + 8])[0]
         return ofs
 
     def _idx_to_hash(self, idx):
-        return str(self.shatable[idx*20:(idx+1)*20])
+        return self.shatable[idx * 20 : (idx + 1) * 20]
 
     def __iter__(self):
-        for i in range(self.fanout[255]):
-            yield buffer(self.map, 8 + 256*4 + 20*i, 20)
+        count = self.fanout[255]
+        start = 8 + 256 * 4
+        for ofs in range(start, start + (20 * count), 20):
+            yield self.map[ofs : ofs + 20]
 
 
 _mpi_count = 0

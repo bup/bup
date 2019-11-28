@@ -165,8 +165,10 @@ def _golevel(level, f, ename, newentry, metastore, tmax):
 
 class Entry:
     def __init__(self, basename, name, meta_ofs, tmax):
-        self.basename = str(basename)
-        self.name = str(name)
+        assert basename is None or type(basename) == bytes
+        assert name is None or type(name) == bytes
+        self.basename = basename
+        self.name = name
         self.meta_ofs = meta_ofs
         self.tmax = tmax
         self.children_ofs = 0
@@ -348,7 +350,7 @@ class ExistingEntry(Entry):
          self.ctime, ctime_ns, self.mtime, mtime_ns, self.atime, atime_ns,
          self.size, self.mode, self.gitmode, self.sha,
          self.flags, self.children_ofs, self.children_n, self.meta_ofs
-         ) = struct.unpack(INDEX_SIG, str(buffer(m, ofs, ENTLEN)))
+         ) = struct.unpack(INDEX_SIG, m[ofs : ofs + ENTLEN])
         self.atime = xstat.timespec_to_nsecs((self.atime, atime_ns))
         self.mtime = xstat.timespec_to_nsecs((self.mtime, mtime_ns))
         self.ctime = xstat.timespec_to_nsecs((self.ctime, ctime_ns))
@@ -389,7 +391,7 @@ class ExistingEntry(Entry):
             assert(eon >= 0)
             assert(eon >= ofs)
             assert(eon > ofs)
-            basename = str(buffer(self._m, ofs, eon-ofs))
+            basename = self._m[ofs : ofs + (eon - ofs)]
             child = ExistingEntry(self, basename, self.name + basename,
                                   self._m, eon+1)
             if (not dname
@@ -431,7 +433,8 @@ class Reader:
                     self.m = mmap_readwrite(f)
                     self.writable = True
                     self.count = struct.unpack(FOOTER_SIG,
-                          str(buffer(self.m, st.st_size-FOOTLEN, FOOTLEN)))[0]
+                                               self.m[st.st_size - FOOTLEN
+                                                      : st.st_size])[0]
 
     def __del__(self):
         self.close()
@@ -446,7 +449,7 @@ class Reader:
             assert(eon >= 0)
             assert(eon >= ofs)
             assert(eon > ofs)
-            basename = str(buffer(self.m, ofs, eon-ofs))
+            basename = self.m[ofs : ofs + (eon - ofs)]
             yield ExistingEntry(None, basename, basename, self.m, eon+1)
             ofs = eon + 1 + ENTLEN
 

@@ -39,7 +39,10 @@ class Buf:
         self.start += count
 
     def get(self, count):
-        v = buffer(self.data, self.start, count)
+        if count <= 256:
+            v = self.data[self.start : self.start + count]
+        else:
+            v = buffer(self.data, self.start, count)
         self.start += count
         return v
 
