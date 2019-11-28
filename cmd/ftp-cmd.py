@@ -60,51 +60,12 @@ def _completer_get_subs(repo, line):
     return dir, name, qtype, lastword, subs
 
 
-def find_readline_lib():
-    """Return the name (and possibly the full path) of the readline library
-    linked to the given readline module.
-    """
-    import readline
-    f = open(readline.__file__, "rb")
-    try:
-        data = f.read()
-    finally:
-        f.close()
-    import re
-    m = re.search('\0([^\0]*libreadline[^\0]*)\0', data)
-    if m:
-        return m.group(1)
-    return None
-
-
-def init_readline_vars():
-    """Work around trailing space automatically inserted by readline.
-    See http://bugs.python.org/issue5833"""
-    try:
-        import ctypes
-    except ImportError:
-        # python before 2.5 didn't have the ctypes module; but those
-        # old systems probably also didn't have this readline bug, so
-        # just ignore it.
-        return
-    lib_name = find_readline_lib()
-    if lib_name is not None:
-        lib = ctypes.cdll.LoadLibrary(lib_name)
-        global rl_completion_suppress_append
-        rl_completion_suppress_append = ctypes.c_int.in_dll(lib,
-                                    "rl_completion_suppress_append")
-
-
-rl_completion_suppress_append = None
 _last_line = None
 _last_res = None
 def completer(text, iteration):
     global repo
     global _last_line
     global _last_res
-    global rl_completion_suppress_append
-    if rl_completion_suppress_append is not None:
-        rl_completion_suppress_append.value = 1
     try:
         line = readline.get_line_buffer()[:readline.get_endidx()]
         if _last_line != line:
@@ -162,7 +123,6 @@ else:
             # MacOS uses a slightly incompatible clone of libreadline
             readline.parse_and_bind('bind ^I rl_complete')
         readline.parse_and_bind('tab: complete')
-        init_readline_vars()
     lines = inputiter()
 
 for line in lines:
