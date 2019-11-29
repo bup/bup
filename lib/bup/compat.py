@@ -40,12 +40,9 @@ if py3:
             return memoryview(object)[offset:]
         return memoryview(object)
 
-    def buffer_concat(b1, b2):
-        if isinstance(b1, memoryview):
-            b1 = b1.tobytes()
-        if isinstance(b1, memoryview):
-            b2 = b2.tobytes()
-        return b1 + b2
+    def join_bytes(*items):
+        """Return the concatenated bytes or memoryview arguments as bytes."""
+        return b''.join(*items)
 
 else:  # Python 2
 
@@ -95,9 +92,18 @@ else:  # Python 2
 
     byte_int = ord
 
-    def buffer_concat(b1, b2):
-        return b1 + b2
+    buffer = buffer
 
+    def join_bytes(x, y):
+        """Return the concatenated bytes or buffer arguments as bytes."""
+        if type(x) == buffer:
+            assert type(y) in (bytes, buffer)
+            return x + y
+        assert type(x) == bytes
+        if type(y) == bytes:
+            return b''.join((x, y))
+        assert type(y) in (bytes, buffer)
+        return buffer(x) + y
 
 def wrap_main(main):
     """Run main() and raise a SystemExit with the return value if it

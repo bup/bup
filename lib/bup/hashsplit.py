@@ -3,11 +3,8 @@ from __future__ import absolute_import
 import io, math, os
 
 from bup import _helpers, compat, helpers
-from bup.compat import buffer_concat
+from bup.compat import buffer, join_bytes
 from bup.helpers import sc_page_size
-
-if compat.py_maj > 2:
-    from bup.compat import buffer, buffer_concat
 
 
 _fmincore = getattr(helpers, 'fmincore', None)
@@ -32,7 +29,7 @@ class Buf:
 
     def put(self, s):
         if s:
-            self.data = buffer_concat(buffer(self.data, self.start), s)
+            self.data = join_bytes(buffer(self.data, self.start), s)
             self.start = 0
             
     def peek(self, count):
