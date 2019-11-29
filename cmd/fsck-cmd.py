@@ -8,7 +8,7 @@ exec "$bup_python" "$0" ${1+"$@"}
 from __future__ import absolute_import, print_function
 import sys, os, glob, subprocess
 from shutil import rmtree
-from subprocess import call
+from subprocess import PIPE, Popen
 from tempfile import mkdtemp
 
 from bup import options, git
@@ -53,10 +53,19 @@ def is_par2_parallel():
         canary = tmpdir + '/canary'
         with open(canary, 'w') as f:
             print('canary', file=f)
-        p = subprocess.Popen(['par2', 'create', '-qq', '-t1', canary],
-                             stdout=nullf, stderr=nullf, stdin=nullf)
-        rc = p.wait()
-        return rc == 0
+        p = subprocess.Popen(('par2', 'create', '-qq', '-t1', canary),
+                             stderr=PIPE, stdin=nullf)
+        _, err = p.communicate()
+        parallel = p.returncode == 0
+        if opt.verbose:
+            if err != b'Invalid option specified: -t1\n':
+                log('Unexpected par2 error output\n')
+                log(err)
+            if parallel:
+                log('Assuming par2 supports parallel processing\n')
+            else:
+                log('Assuming par2 does not support parallel processing\n')
+        return parallel
     finally:
         rmtree(tmpdir)
 
