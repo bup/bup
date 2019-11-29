@@ -142,29 +142,23 @@ t/tmp:
 
 runtests: runtests-python runtests-cmdline
 
-# The wildcards are not expanded until use
+python_tests := \
+  lib/bup/t/thashsplit.py \
+  lib/bup/t/toptions.py \
+  lib/bup/t/tshquote.py \
+  lib/bup/t/tvint.py \
+  lib/bup/t/txstat.py
+
 ifeq "2" "$(bup_python_majver)"
-  python_tests := \
+  python_tests += \
     lib/bup/t/tbloom.py \
     lib/bup/t/tclient.py \
     lib/bup/t/tgit.py \
-    lib/bup/t/thashsplit.py \
     lib/bup/t/thelpers.py \
     lib/bup/t/tindex.py \
     lib/bup/t/tmetadata.py \
-    lib/bup/t/toptions.py \
     lib/bup/t/tresolve.py \
-    lib/bup/t/tshquote.py \
-    lib/bup/t/tvfs.py \
-    lib/bup/t/tvint.py \
-    lib/bup/t/txstat.py
-else
-  python_tests := \
-    lib/bup/t/thashsplit.py \
-    lib/bup/t/toptions.py \
-    lib/bup/t/tshquote.py \
-    lib/bup/t/tvint.py \
-    lib/bup/t/txstat.py
+    lib/bup/t/tvfs.py
 endif
 
 # The "pwd -P" here may not be appropriate in the long run, but we
@@ -176,8 +170,10 @@ runtests-python: all t/tmp
 	  "$(bup_python)" wvtest.py  $(python_tests) 2>&1 \
 	    | tee -a t/tmp/test-log/$$$$.log
 
+cmdline_tests :=
+
 ifeq "2" "$(bup_python_majver)"
-  cmdline_tests := \
+  cmdline_tests += \
     t/test-ftp \
     t/test-save-restore \
     t/test-packsizelimit \
@@ -215,16 +211,16 @@ ifeq "2" "$(bup_python_majver)"
     t/test-import-rdiff-backup.sh \
     t/test-xdev.sh \
     t/test.sh
-else
-  cmdline_tests :=
 endif
 
 tmp-target-run-test-get-%: all t/tmp
 	$(pf); cd $$(pwd -P); TMPDIR="$(test_tmp)" \
 	  t/test-get $* 2>&1 | tee -a t/tmp/test-log/$$$$.log
 
+test_get_targets :=
+
 ifeq "2" "$(bup_python_majver)"
-  test_get_targets := \
+  test_get_targets += \
     tmp-target-run-test-get-replace \
     tmp-target-run-test-get-universal \
     tmp-target-run-test-get-ff \
@@ -232,8 +228,6 @@ ifeq "2" "$(bup_python_majver)"
     tmp-target-run-test-get-pick \
     tmp-target-run-test-get-new-tag \
     tmp-target-run-test-get-unnamed
-else
-  test_get_targets :=
 endif
 
 # For parallel runs.
