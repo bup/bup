@@ -267,6 +267,13 @@ long-test: test
 long-check: export BUP_TEST_LEVEL=11
 long-check: check
 
+.PHONY: check-both
+check-both:
+	$(MAKE) clean \
+	  && PYTHON=python3 BUP_ALLOW_UNEXPECTED_PYTHON_VERSION=true $(MAKE) check
+	$(MAKE) clean \
+	  && PYTHON=python2 $(MAKE) check
+
 cmd/bup-%: cmd/%-cmd.py
 	rm -f $@
 	ln -s $*-cmd.py $@
