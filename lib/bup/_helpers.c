@@ -96,11 +96,26 @@ static uint64_t htonll(uint64_t value)
 #endif
 
 
+#ifdef __clang__
 #define INTEGRAL_ASSIGNMENT_FITS(dest, src)                             \
     ({                                                                  \
         *(dest) = (src);                                                \
         *(dest) == (src) && (*(dest) < 1) == ((src) < 1);               \
     })
+#else
+// Disabling sign-compare here should be fine since we're explicitly
+// checking for a sign mismatch, i.e. if the signs don't match, then
+// it doesn't matter what the value comparison says.
+// FIXME: ... so should we reverse the order?
+#define INTEGRAL_ASSIGNMENT_FITS(dest, src)                             \
+    ({                                                                  \
+        _Pragma("GCC diagnostic push");                                 \
+        _Pragma("GCC diagnostic ignored \"-Wsign-compare\"");           \
+        *(dest) = (src);                                                \
+        *(dest) == (src) && (*(dest) < 1) == ((src) < 1);               \
+        _Pragma("GCC diagnostic pop");                                  \
+    })
+#endif
 
 
 // At the moment any code that calls INTGER_TO_PY() will have to
@@ -376,7 +391,7 @@ static byte* find_trailing_zeros(const byte * const start,
 
 static byte *find_non_sparse_end(const byte * const start,
                                  const byte * const end,
-                                 const unsigned long long min_len)
+                                 const ptrdiff_t min_len)
 {
     // Return the first pointer to a min_len sparse block in [start,
     // end) if there is one, otherwise a pointer to the start of any
@@ -453,9 +468,12 @@ static PyObject *bup_write_sparsely(PyObject *self, PyObject *args)
                           &fd, &buf, &sbuf_len,
                           &py_min_sparse_len, &py_prev_sparse_len))
 	return NULL;
-    unsigned long long min_sparse_len, prev_sparse_len, buf_len;
-    if (!bup_ullong_from_py(&min_sparse_len, py_min_sparse_len, "min_sparse_len"))
+    ptrdiff_t min_sparse_len;
+    unsigned long long prev_sparse_len, buf_len, ul_min_sparse_len;
+    if (!bup_ullong_from_py(&ul_min_sparse_len, py_min_sparse_len, "min_sparse_len"))
         return NULL;
+    if (!INTEGRAL_ASSIGNMENT_FITS(&min_sparse_len, ul_min_sparse_len))
+        return PyErr_Format(PyExc_OverflowError, "min_sparse_len too large");
     if (!bup_ullong_from_py(&prev_sparse_len, py_prev_sparse_len, "prev_sparse_len"))
         return NULL;
     if (sbuf_len < 0)
@@ -888,10 +906,10 @@ static PyObject *merge_into(PyObject *self, PyObject *args)
 	_fix_idx_order(idxs, &last_i);
 	++count;
     }
-    while (prefix < (1<<bits))
+    while (prefix < ((uint32_t) 1 << bits))
 	table_ptr[prefix++] = htonl(count);
     assert(count == total);
-    assert(prefix == (1<<bits));
+    assert(prefix == ((uint32_t) 1 << bits));
     assert(sha_ptr == sha_start+count);
     assert(name_ptr == name_start+count);
 
@@ -1514,7 +1532,8 @@ static PyObject *bup_mincore(PyObject *self, PyObject *args)
         result = PyErr_Format(PyExc_OverflowError, "(src_off + src_n) too large");
         goto clean_and_return;
     }
-    if (src_region_end > src.len) {
+    assert(src.len >= 0);
+    if (src_region_end > (unsigned long long) src.len) {
         result = PyErr_Format(PyExc_OverflowError, "region runs off end of src");
         goto clean_and_return;
     }
@@ -1622,6 +1641,34 @@ static PyMethodDef helper_methods[] = {
     { NULL, NULL, 0, NULL },  // sentinel
 };
 
+static void test_integral_assignment_fits(void)
+{
+    assert(sizeof(signed short) == sizeof(unsigned short));
+    assert(sizeof(signed short) < sizeof(signed long long));
+    assert(sizeof(signed short) < sizeof(unsigned long long));
+    assert(sizeof(unsigned short) < sizeof(signed long long));
+    assert(sizeof(unsigned short) < sizeof(unsigned long long));
+    {
+        signed short ss, ssmin = SHRT_MIN, ssmax = SHRT_MAX;
+        unsigned short us, usmax = USHRT_MAX;
+        signed long long sllmin = LLONG_MIN, sllmax = LLONG_MAX;
+        unsigned long long ullmax = ULLONG_MAX;
+
+        assert(INTEGRAL_ASSIGNMENT_FITS(&ss, ssmax));
+        assert(INTEGRAL_ASSIGNMENT_FITS(&ss, ssmin));
+        assert(!INTEGRAL_ASSIGNMENT_FITS(&ss, usmax));
+        assert(!INTEGRAL_ASSIGNMENT_FITS(&ss, sllmin));
+        assert(!INTEGRAL_ASSIGNMENT_FITS(&ss, sllmax));
+        assert(!INTEGRAL_ASSIGNMENT_FITS(&ss, ullmax));
+
+        assert(INTEGRAL_ASSIGNMENT_FITS(&us, usmax));
+        assert(!INTEGRAL_ASSIGNMENT_FITS(&us, ssmin));
+        assert(!INTEGRAL_ASSIGNMENT_FITS(&us, sllmin));
+        assert(!INTEGRAL_ASSIGNMENT_FITS(&us, sllmax));
+        assert(!INTEGRAL_ASSIGNMENT_FITS(&us, ullmax));
+    }
+}
+
 static int setup_module(PyObject *m)
 {
     // FIXME: migrate these tests to configure, or at least don't
@@ -1635,6 +1682,8 @@ static int setup_module(PyObject *m)
     // Just be sure (relevant when passing timestamps back to Python above).
     assert(sizeof(PY_LONG_LONG) <= sizeof(long long));
     assert(sizeof(unsigned PY_LONG_LONG) <= sizeof(unsigned long long));
+
+    test_integral_assignment_fits();
 
     // Originally required by append_sparse_region()
     {
