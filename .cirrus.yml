@@ -38,3 +38,19 @@ task:
     dev/prep-for-macos-build
     dev/system-info
     make -j3 check
+
+task:
+  name: debian (python 3 - under construction)
+  container:
+    image: debian:buster
+    cpu: 2
+    memory: 8
+  script: |
+    set -xe
+    dev/prep-for-debianish-build python3
+    dev/system-info
+    adduser --disabled-password --gecos '' bup
+    chown -R bup:bup .
+    testcmd='BUP_ALLOW_UNEXPECTED_PYTHON_VERSION=true PYTHON=python3'
+    testcmd="$testcmd eatmydata make -j3 -C '$(pwd)' check"
+    su -l bup -c "$testcmd"

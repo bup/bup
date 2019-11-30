@@ -1,12 +1,35 @@
 #!/usr/bin/env bash
 
-set -exo pipefail
+set -exuo pipefail
+
+usage()
+{
+    echo "Usage: prep-for-debianish-build [python2|python3]"
+}
 
 export DEBIAN_FRONTEND=noninteractive
 apt-get update
-apt-get install -y \
-        gcc make linux-libc-dev git rsync eatmydata \
-        acl attr par2 \
-        python2.7-dev python-fuse \
-        python-pyxattr python-pylibacl python-tornado \
-        duplicity rdiff-backup rsnapshot
+
+common_debs='gcc make linux-libc-dev git rsync eatmydata acl attr par2'
+common_debs="$common_debs duplicity rdiff-backup rsnapshot"
+
+pyver="${1:-python2}"
+
+case "$pyver" in
+    python2)
+        apt-get install -y \
+                $common_debs \
+                python2.7-dev python-fuse \
+                python-pyxattr python-pylibacl python-tornado
+        ;;
+    python3)
+        apt-get install -y \
+                $common_debs \
+                python3.7-dev python3-distutils python3-fuse \
+                python3-pyxattr python3-pylibacl python3-tornado
+        ;;
+    *)
+        usage 1>&2
+        exit 2
+        ;;
+esac
