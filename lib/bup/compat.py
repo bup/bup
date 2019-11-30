@@ -42,7 +42,7 @@ if py3:
 
     def join_bytes(*items):
         """Return the concatenated bytes or memoryview arguments as bytes."""
-        return b''.join(*items)
+        return b''.join(items)
 
 else:  # Python 2
 
