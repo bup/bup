@@ -30,6 +30,12 @@ if os.path.exists("%s/lib/bup/cmd/." % exeprefix):
     cmdpath = "%s/lib/bup/cmd" % exeprefix
     libpath = "%s/lib/bup" % exeprefix
     resourcepath = libpath
+elif os.path.exists("%s/share/bup/cmd/." % exeprefix):
+    # installed binary in /.../share.
+    # eg. /usr/bin/bup means /usr/share/bup/... is where our libraries are.
+    cmdpath = "%s/share/bup/cmd" % exeprefix
+    libpath = "%s/share/bup" % exeprefix
+    resourcepath = libpath
 else:
     # running from the src directory without being installed first
     cmdpath = os.path.join(exepath, 'cmd')
