@@ -111,14 +111,18 @@ From source
 -----------
 
  - Check out the bup source code using git:
- 
-        git clone https://github.com/bup/bup
+
+    ```sh
+    git clone https://github.com/bup/bup
+    ```
 
  - This will leave you on the master branch, which is perfect if you
    would like to help with development, but if you'd just like to use
    bup, please check out the latest stable release like this:
 
-        git checkout 0.29.1
+    ```sh
+    git checkout 0.29.1
+    ```
 
    You can see the latest stable release here:
    https://github.com/bup/bup/releases.
@@ -129,24 +133,30 @@ From source
    On very recent Debian/Ubuntu versions, this may be sufficient (run
    as root):
 
-            apt-get build-dep bup
+    ```sh
+    apt-get build-dep bup
+    ```
 
    Otherwise try this (substitute python2.6-dev if you have an older
    system):
 
-            apt-get install python2.7-dev python-fuse
-            apt-get install python-pyxattr python-pylibacl
-            apt-get install linux-libc-dev
-            apt-get install acl attr
-            apt-get install python-tornado # optional
+    ```sh
+    apt-get install python2.7-dev python-fuse
+    apt-get install python-pyxattr python-pylibacl
+    apt-get install linux-libc-dev
+    apt-get install acl attr
+    apt-get install python-tornado # optional
+    ```
 
    On CentOS (for CentOS 6, at least), this should be sufficient (run
    as root):
 
-            yum groupinstall "Development Tools"
-            yum install python python-devel
-            yum install fuse-python pyxattr pylibacl
-            yum install perl-Time-HiRes
+    ```sh
+    yum groupinstall "Development Tools"
+    yum install python python-devel
+    yum install fuse-python pyxattr pylibacl
+    yum install perl-Time-HiRes
+    ```
 
    In addition to the default CentOS repositories, you may need to add
    RPMForge (for fuse-python) and EPEL (for pyxattr and pylibacl).
@@ -156,19 +166,27 @@ From source
    If you would like to use the optional bup web server on systems
    without a tornado package, you may want to try this:
 
-            pip install tornado
+    ```sh
+    pip install tornado
+    ```
 
  - Build the python module and symlinks:
 
-        make
+    ```sh
+    make
+    ```
  	
  - Run the tests:
- 
-        make long-check
+
+    ```sh
+    make long-check
+    ```
 
     or if you're in a bit more of a hurry:
 
-        make check
+    ```sh
+    make check
+    ```
  	
     The tests should pass.  If they don't pass for you, stop here and
     send an email to bup-list@googlegroups.com.  Though if there are
@@ -176,7 +194,9 @@ From source
     may fail.  Running something like this before "make test" should
     sidestep the problem:
 
-        cd "$(pwd -P)"
+    ```sh
+    cd "$(pwd -P)"
+    ```
 
  - You can install bup via "make install", and override the default
    destination with DESTDIR and PREFIX.
@@ -185,7 +205,9 @@ From source
    empty by default, and PREFIX is set to /usr/local.  So if you wanted to
    install bup to /opt/bup, you might do something like this:
 
-        make install DESTDIR=/opt/bup PREFIX=''
+    ```sh
+    make install DESTDIR=/opt/bup PREFIX=''
+    ```
 
  - The Python executable that bup will use is chosen by ./configure,
    which will search for a reasonable version unless PYTHON is set in
@@ -217,121 +239,167 @@ Using bup
 
  - Get help for any bup command:
 
-        bup help
-        bup help init
-        bup help index
-        bup help save
-        bup help restore
-        ...
+    ```sh
+    bup help
+    bup help init
+    bup help index
+    bup help save
+    bup help restore
+    ...
+    ```
 
  - Initialize the default BUP_DIR (~/.bup -- you can choose another by
    either specifying `bup -d DIR ...` or setting the `BUP_DIR`
    environment variable for a command):
 
-        bup init
+    ```sh
+    bup init
+    ```
 
  - Make a local backup (-v or -vv will increase the verbosity):
 
-        bup index /etc
-        bup save -n local-etc /etc
+    ```sh
+    bup index /etc
+    bup save -n local-etc /etc
+    ```
 
  - Restore a local backup to ./dest:
 
-        bup restore -C ./dest local-etc/latest/etc
-        ls -l dest/etc
+    ```sh
+    bup restore -C ./dest local-etc/latest/etc
+    ls -l dest/etc
+    ```
 
  - Look at how much disk space your backup took:
 
-        du -s ~/.bup
+    ```sh
+    du -s ~/.bup
+    ```
 
  - Make another backup (which should be mostly identical to the last one;
    notice that you don't have to *specify* that this backup is incremental,
    it just saves space automatically):
 
-        bup index /etc
-        bup save -n local-etc /etc
+    ```sh
+    bup index /etc
+    bup save -n local-etc /etc
+    ```
 
  - Look how little extra space your second backup used (on top of the first):
 
-        du -s ~/.bup
+    ```sh
+    du -s ~/.bup
+    ```
 
  - Get a list of your previous backups:
 
-        bup ls local-etc
+    ```sh
+    bup ls local-etc
+    ```
 
  - Restore your first backup again:
 
-        bup restore -C ./dest-2 local-etc/2013-11-23-11195/etc
+    ```sh
+    bup restore -C ./dest-2 local-etc/2013-11-23-11195/etc
+    ```
 
  - Make a backup to a remote server which must already have the 'bup' command
    somewhere in its PATH (see /etc/profile, etc/environment, ~/.profile, or
    ~/.bashrc), and be accessible via ssh.
    Make sure to replace SERVERNAME with the actual hostname of your server:
 
-        bup init -r SERVERNAME:path/to/remote-bup-dir
-        bup index /etc
-        bup save -r SERVERNAME:path/to/remote-bup-dir -n local-etc /etc
+    ```sh
+    bup init -r SERVERNAME:path/to/remote-bup-dir
+    bup index /etc
+    bup save -r SERVERNAME:path/to/remote-bup-dir -n local-etc /etc
+    ```
 
  - Make a remote backup to ~/.bup on SERVER:
 
-        bup index /etc
-        bup save -r SERVER: -n local-etc /etc
+    ```sh
+    bup index /etc
+    bup save -r SERVER: -n local-etc /etc
+    ```
 
  - See what saves are available in ~/.bup on SERVER:
 
-        bup ls -r SERVER:
+    ```sh
+    bup ls -r SERVER:
+    ```
 
  - Restore the remote backup to ./dest:
 
-        bup restore -r SERVER: -C ./dest local-etc/latest/etc
-        ls -l dest/etc
+    ```sh
+    bup restore -r SERVER: -C ./dest local-etc/latest/etc
+    ls -l dest/etc
+    ```
 
  - Defend your backups from death rays (OK fine, more likely from the
    occasional bad disk block).  This writes parity information
    (currently via par2) for all of the existing data so that bup may
    be able to recover from some amount of repository corruption:
 
-        bup fsck -g
+    ```sh
+    bup fsck -g
+    ```
 
  - Use split/join instead of index/save/restore.  Try making a local
    backup using tar:
- 
-        tar -cvf - /etc | bup split -n local-etc -vv
+
+    ```sh
+    tar -cvf - /etc | bup split -n local-etc -vv
+    ```
  	
  - Try restoring the tarball:
- 
-        bup join local-etc | tar -tf -
+
+    ```sh
+    bup join local-etc | tar -tf -
+    ```
  	
  - Look at how much disk space your backup took:
- 
-        du -s ~/.bup
+
+    ```sh
+    du -s ~/.bup
+    ```
  	
  - Make another tar backup:
- 
-        tar -cvf - /etc | bup split -n local-etc -vv
+
+    ```sh
+    tar -cvf - /etc | bup split -n local-etc -vv
+    ```
  	
  - Look at how little extra space your second backup used on top of
    the first:
- 
-        du -s ~/.bup
+
+    ```sh
+    du -s ~/.bup
+    ```
  	
  - Restore the first tar backup again (the ~1 is git notation for "one
    older than the most recent"):
-   
-        bup join local-etc~1 | tar -tf -
+
+    ```sh
+    bup join local-etc~1 | tar -tf -
+    ```
  
  - Get a list of your previous split-based backups:
- 
-        GIT_DIR=~/.bup git log local-etc
+
+    ```sh
+    GIT_DIR=~/.bup git log local-etc
+    ```
 	
  - Save a tar archive to a remote server (without tar -z to facilitate
    deduplication):
-   
-        tar -cvf - /etc | bup split -r SERVERNAME: -n local-etc -vv
+
+    ```sh
+    tar -cvf - /etc | bup split -r SERVERNAME: -n local-etc -vv
+    ```
  
  - Restore the archive:
- 
-        bup join -r SERVERNAME: local-etc | tar -tf -
+
+    ```sh
+    bup join -r SERVERNAME: local-etc | tar -tf -
+    ```
  	
 That's all there is to it!
 
