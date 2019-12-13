@@ -165,8 +165,26 @@ class BaseServer:
                 self.conn.write(buf)
         self.conn.ok()
 
+    def _refs(self, patterns, limit_to_heads, limit_to_tags):
+        """
+        This should yield (name, oid) tuples according to the configuration
+        passed in the arguments.
+        """
+        raise NotImplemented("Subclasses must implement _refs")
+
     def refs(self, args):
-        pass
+        limit_to_heads, limit_to_tags = args.split()
+        assert limit_to_heads in (b'0', b'1')
+        assert limit_to_tags in (b'0', b'1')
+        limit_to_heads = int(limit_to_heads)
+        limit_to_tags = int(limit_to_tags)
+        self._init_session()
+        patterns = tuple(x[:-1] for x in lines_until_sentinel(self.conn, b'\n', Exception))
+        for name, oid in self._refs(patterns, limit_to_heads, limit_to_tags):
+            assert b'\n' not in name
+            self.conn.write(b'%s %s\n' % (hexlify(oid), name))
+        self.conn.write(b'\n')
+        self.conn.ok()
 
     def rev_list(self, args):
         pass
@@ -322,21 +340,11 @@ class BupServer(BaseServer):
     def _cat(self, ref):
         return self.repo.cat(ref)
 
-    def refs(self, args):
-        limit_to_heads, limit_to_tags = args.split()
-        assert limit_to_heads in (b'0', b'1')
-        assert limit_to_tags in (b'0', b'1')
-        limit_to_heads = int(limit_to_heads)
-        limit_to_tags = int(limit_to_tags)
-        self._init_session()
-        patterns = tuple(x[:-1] for x in lines_until_sentinel(self.conn, b'\n', Exception))
+    def _refs(self, patterns, limit_to_heads, limit_to_tags):
         for name, oid in git.list_refs(patterns=patterns,
                                        limit_to_heads=limit_to_heads,
                                        limit_to_tags=limit_to_tags):
-            assert b'\n' not in name
-            self.conn.write(b'%s %s\n' % (hexlify(oid), name))
-        self.conn.write(b'\n')
-        self.conn.ok()
+            yield name, oid
 
     def rev_list(self, _):
         self._init_session()
