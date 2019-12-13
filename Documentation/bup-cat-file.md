@@ -8,7 +8,7 @@ bup-cat-file - extract archive content (low-level)
 
 # SYNOPSIS
 
-bup cat-file [--meta|--bupm] <*path*>
+bup cat-file [\--meta|\--bupm] <*path*>
 
 # DESCRIPTION
 

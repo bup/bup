@@ -38,7 +38,7 @@ Since all invocations of duplicity use a temporary `--archive-dir`,
 
 # OPTIONS
 
--n,--dry-run
+-n, \--dry-run
 :   don't do anything; just print out what would be done
 
 # EXAMPLES

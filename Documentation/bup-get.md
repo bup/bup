@@ -65,50 +65,50 @@ used to help test before/after results.)
 
 # METHODS
 
---ff *ref*, --ff: *ref* *dest*
+\--ff *ref*, \--ff: *ref* *dest*
 :   fast-forward *dest* to match *ref*.  If *dest* is not specified
     and *ref* names a save, set *dest* to the save's branch.  If
     *dest* is not specified and *ref* names a branch or a tag, use the
     same name for *dest*.
 
---append *ref*, --append: *ref* *dest*
+\--append *ref*, \--append: *ref* *dest*
 :   append all of the commits represented by *ref* to *dest* as new
     commits.  If *ref* names a directory/tree, append a new commit for
     that tree.  If *dest* is not specified and *ref* names a save or
     branch, set *dest* to the *ref* branch name.  If *dest* is not
     specified and *ref* names a tag, use the same name for *dest*.
 
---pick *ref*, --pick: *ref* *dest*
+\--pick *ref*, \--pick: *ref* *dest*
 :   append the single commit named by *ref* to *dest* as a new commit.
     If *dest* is not specified and *ref* names a save, set *dest* to
     the *ref* branch name.  If *dest* is not specified and *ref* names
     a tag, use the same name for *dest*.
 
---force-pick *ref*, --force-pick: *ref* *dest*
+\--force-pick *ref*, \--force-pick: *ref* *dest*
 :   do the same thing as `--pick`, but don't refuse to overwrite an
     existing tag.
 
---new-tag *ref*, --new-tag: *ref* *dest*
+\--new-tag *ref*, \--new-tag: *ref* *dest*
 :   create a *dest* tag for *ref*, but refuse to overwrite an existing
     tag.  If *dest* is not specified and *ref* names a tag, use the
     same name for *dest*.
 
---replace *ref*, --replace: *ref* *dest*
+\--replace *ref*, \--replace: *ref* *dest*
 :   clobber *dest* with *ref*, overwriting any existing tag, or
     replacing any existing branch.  If *dest* is not specified and
     *ref* names a branch or tag, use the same name for *dest*.
 
---unnamed *ref*
+\--unnamed *ref*
 :   copy *ref* into the destination repository, without any name,
     leaving a potentially dangling reference until/unless the object
     named by *ref* is referred to some other way (cf. `bup tag`).
 
 # OPTIONS
 
--s, --source=*path*
+-s, \--source=*path*
 :   use *path* as the source repository, instead of the default.
 
--r, --remote=*host*:*path*
+-r, \--remote=*host*:*path*
 :   store the indicated items on the given remote server.  If *path*
     is omitted, uses the default path on the remote server (you still
     need to include the ':').  The connection to the remote server is
@@ -116,28 +116,28 @@ used to help test before/after results.)
     private key to use for the SSH connection, we recommend you use
     the `~/.ssh/config` file.
 
--c, --print-commits
+-c, \--print-commits
 :   for each updated branch, print the new git commit id.
 
--t, --print-trees
+-t, \--print-trees
 :   for each updated branch, print the new git tree id of the
     filesystem root.
 
---print-tags
+\--print-tags
 :   for each updated tag, print the new git id.
 
--v, --verbose
+-v, \--verbose
 :   increase verbosity (can be used more than once).  With
     `-v`, print the name of every item fetched, with `-vv` add
     directory names, and with `-vvv` add every filename.
 
---bwlimit=*bytes/sec*
+\--bwlimit=*bytes/sec*
 :   don't transmit more than *bytes/sec* bytes per second to the
     server.  This can help avoid sucking up all your network
     bandwidth.  Use a suffix like k, M, or G to specify multiples of
     1024, 1024\*1024, 1024\*1024\*1024 respectively.
 
--*#*, --compress=*#*
+-*#*, \--compress=*#*
 :   set the compression level to # (a value from 0-9, where
     9 is the highest and 0 is no compression).  The default
     is 1 (fast, loose compression)
