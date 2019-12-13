@@ -11,6 +11,7 @@ from bup.vint import write_vuint
 class BaseServer:
     def __init__(self, conn):
         self.conn = conn
+        self.dumb_server_mode = False
         # This is temporary due to the subclassing. The subclassing will
         # go away in the future, and we'll make this a decorator instead.
         self._commands = [
@@ -55,8 +56,25 @@ class BaseServer:
         self._init_session(arg)
         self.conn.ok()
 
-    def list_indexes(self, args):
-        pass
+    def _list_indexes(self):
+        """
+        This should return a list of or be an iterator listing all
+        the indexes present in the repository.
+        """
+        raise NotImplementedError('Subclasses must implement _list_indexes')
+
+    def list_indexes(self, junk):
+        self._init_session()
+        suffix = b''
+        if self.dumb_server_mode:
+            suffix = b' load'
+        for f in self._list_indexes():
+            # must end with .idx to not confuse everything, so filter
+            # here ... even if the subclass might not yield anything
+            # else to start with
+            if f.endswith(b'.idx'):
+                self.conn.write(b'%s%s\n' % (f, suffix))
+        self.conn.ok()
 
     def send_index(self, args):
         pass
@@ -126,7 +144,6 @@ class BupServer(BaseServer):
         BaseServer.__init__(self, conn)
         self.suspended_w = None
         self.repo = None
-        self.dumb_server_mode = False
 
     def _set_mode(self):
         self.dumb_server_mode = os.path.exists(git.repo(b'bup-dumb-server'))
@@ -149,15 +166,9 @@ class BupServer(BaseServer):
         git.init_repo(arg)
         debug1('bup server: bupdir initialized: %s\n' % path_msg(git.repodir))
 
-    def list_indexes(self, junk):
-        self._init_session()
-        suffix = b''
-        if self.dumb_server_mode:
-            suffix = b' load'
+    def _list_indexes(self):
         for f in os.listdir(git.repo(b'objects/pack')):
-            if f.endswith(b'.idx'):
-                self.conn.write(b'%s%s\n' % (f, suffix))
-        self.conn.ok()
+            yield f
 
     def send_index(self, name):
         self._init_session()
