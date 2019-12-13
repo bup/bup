@@ -119,12 +119,28 @@ class BaseServer:
         self._update_ref(refname, unhexlify(newval), unhexlify(oldval))
         self.conn.ok()
 
-    def join(self, args):
-        pass
+    def _join(self, id):
+        """
+        This should yield all the blob data for the given id,
+        may raise KeyError if not present.
+        """
+        raise NotImplemented("Subclasses must implemented _join")
 
-    # apocryphal alias
-    def cat(self, args):
-        return self.join(args)
+    def join(self, id):
+        self._init_session()
+        try:
+            for blob in self._join(id):
+                self.conn.write(struct.pack('!I', len(blob)))
+                self.conn.write(blob)
+        except KeyError as e:
+            log('server: error: %s\n' % str(e).encode('utf-8'))
+            self.conn.write(b'\0\0\0\0')
+            self.conn.error(e)
+        else:
+            self.conn.write(b'\0\0\0\0')
+            self.conn.ok()
+
+    cat = join # apocryphal alias
 
     def cat_batch(self, args):
         pass
@@ -279,19 +295,9 @@ class BupServer(BaseServer):
     def _update_ref(self, refname, newval, oldval):
         git.update_ref(refname, newval, oldval)
 
-    def join(self, id):
-        self._init_session()
-        try:
-            for blob in git.cp().join(id):
-                self.conn.write(struct.pack('!I', len(blob)))
-                self.conn.write(blob)
-        except KeyError as e:
-            log('server: error: %s\n' % e)
-            self.conn.write(b'\0\0\0\0')
-            self.conn.error(str(e).encode('utf-8'))
-        else:
-            self.conn.write(b'\0\0\0\0')
-            self.conn.ok()
+    def _join(self, id):
+        for blob in git.cp().join(id):
+            yield blob
 
     def cat_batch(self, dummy):
         self._init_session()
