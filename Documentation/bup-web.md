@@ -31,10 +31,10 @@ shutdown.
 
 # OPTIONS
 
---human-readable
+\--human-readable
 :   display human readable file sizes (i.e. 3.9K, 4.7M)
 
---browser
+\--browser
 :   open the site in the default browser
 
 # EXAMPLES

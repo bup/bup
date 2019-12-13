@@ -8,7 +8,7 @@ bup-gc - remove unreferenced, unneeded data
 
 # SYNOPSIS
 
-bup gc [-#|--verbose] <*branch*|*save*...>
+bup gc [-#|\--verbose] <*branch*|*save*...>
 
 # DESCRIPTION
 

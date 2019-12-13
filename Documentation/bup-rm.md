@@ -8,7 +8,7 @@ bup-rm - remove references to archive content
 
 # SYNOPSIS
 
-bup rm [-#|--verbose] <*branch*|*save*...>
+bup rm [-#|\--verbose] <*branch*|*save*...>
 
 # DESCRIPTION
 
