@@ -333,7 +333,7 @@ class Client:
             sz = struct.unpack('!I', self.conn.read(4))[0]
             if not sz: break
             yield self.conn.read(sz)
-        # FIXME: ok to assume the only NotOk is a KerError? (it is true atm)
+        # FIXME: ok to assume the only NotOk is a KeyError? (it is true atm)
         e = self.check_ok()
         self._not_busy()
         if e:
