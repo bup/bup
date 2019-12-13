@@ -14,6 +14,7 @@ class BaseServer:
     def __init__(self, conn):
         self.conn = conn
         self.dumb_server_mode = False
+        self.suspended_w = None
         # This is temporary due to the subclassing. The subclassing will
         # go away in the future, and we'll make this a decorator instead.
         self._commands = [
@@ -93,8 +94,70 @@ class BaseServer:
         self.conn.write(data)
         self.conn.ok()
 
-    def receive_objects_v2(self, args):
-        pass
+    def _check(self, w, expected, actual, msg):
+        if expected != actual:
+            w.abort()
+            raise Exception(msg % (expected, actual))
+
+    def _new_packwriter(self):
+        """
+        Return an object implementing the PackWriter protocol.
+        """
+        raise NotImplemented("Subclasses must implement _new_packwriter")
+
+    def receive_objects_v2(self, junk):
+        self._init_session()
+        suggested = set()
+        if self.suspended_w:
+            w = self.suspended_w
+            self.suspended_w = None
+        else:
+            w = self._new_packwriter()
+        while 1:
+            ns = self.conn.read(4)
+            if not ns:
+                w.abort()
+                raise Exception('object read: expected length header, got EOF\n')
+            n = struct.unpack('!I', ns)[0]
+            #debug2('expecting %d bytes\n' % n)
+            if not n:
+                debug1('bup server: received %d object%s.\n'
+                    % (w.count, w.count!=1 and "s" or ''))
+                fullpath = w.close(run_midx=not self.dumb_server_mode)
+                if fullpath:
+                    (dir, name) = os.path.split(fullpath)
+                    self.conn.write(b'%s.idx\n' % name)
+                self.conn.ok()
+                return
+            elif n == 0xffffffff:
+                debug2('bup server: receive-objects suspended.\n')
+                self.suspended_w = w
+                self.conn.ok()
+                return
+
+            shar = self.conn.read(20)
+            crcr = struct.unpack('!I', self.conn.read(4))[0]
+            n -= 20 + 4
+            buf = self.conn.read(n)  # object sizes in bup are reasonably small
+            #debug2('read %d bytes\n' % n)
+            self._check(w, n, len(buf), 'object read: expected %d bytes, got %d\n')
+            if not self.dumb_server_mode:
+                oldpack = w.exists(shar, want_source=True)
+                if oldpack:
+                    assert(not oldpack == True)
+                    assert(oldpack.endswith(b'.idx'))
+                    (dir,name) = os.path.split(oldpack)
+                    if not (name in suggested):
+                        debug1("bup server: suggesting index %s\n"
+                               % git.shorten_hash(name))
+                        debug1("bup server:   because of object %s\n"
+                               % hexstr(shar))
+                        self.conn.write(b'index %s\n' % name)
+                        suggested.add(name)
+                    continue
+            nw, crc = w._raw_write((buf,), sha=shar)
+            self._check(w, crcr, crc, 'object read: expected crc %d, got %d\n')
+        # NOTREACHED
 
     def _read_ref(self, refname):
         raise NotImplementedError("Subclasses must implement _read_ref")
@@ -274,7 +337,6 @@ class BaseServer:
 class BupServer(BaseServer):
     def __init__(self, conn):
         BaseServer.__init__(self, conn)
-        self.suspended_w = None
         self.repo = None
 
     def _set_mode(self):
@@ -305,67 +367,10 @@ class BupServer(BaseServer):
     def _send_index(self, name):
         return git.open_idx(git.repo(b'objects/pack/%s' % name)).map
 
-    def receive_objects_v2(self, junk):
-        self._init_session()
-        suggested = set()
-        if self.suspended_w:
-            w = self.suspended_w
-            self.suspended_w = None
-        else:
-            if self.dumb_server_mode:
-                w = git.PackWriter(objcache_maker=None)
-            else:
-                w = git.PackWriter()
-        while 1:
-            ns = self.conn.read(4)
-            if not ns:
-                w.abort()
-                raise Exception('object read: expected length header, got EOF\n')
-            n = struct.unpack('!I', ns)[0]
-            #debug2('expecting %d bytes\n' % n)
-            if not n:
-                debug1('bup server: received %d object%s.\n'
-                    % (w.count, w.count!=1 and "s" or ''))
-                fullpath = w.close(run_midx=not self.dumb_server_mode)
-                if fullpath:
-                    (dir, name) = os.path.split(fullpath)
-                    self.conn.write(b'%s.idx\n' % name)
-                self.conn.ok()
-                return
-            elif n == 0xffffffff:
-                debug2('bup server: receive-objects suspended.\n')
-                self.suspended_w = w
-                self.conn.ok()
-                return
-
-            shar = self.conn.read(20)
-            crcr = struct.unpack('!I', self.conn.read(4))[0]
-            n -= 20 + 4
-            buf = self.conn.read(n)  # object sizes in bup are reasonably small
-            #debug2('read %d bytes\n' % n)
-            self._check(w, n, len(buf), 'object read: expected %d bytes, got %d\n')
-            if not self.dumb_server_mode:
-                oldpack = w.exists(shar, want_source=True)
-                if oldpack:
-                    assert(not oldpack == True)
-                    assert(oldpack.endswith(b'.idx'))
-                    (dir,name) = os.path.split(oldpack)
-                    if not (name in suggested):
-                        debug1("bup server: suggesting index %s\n"
-                               % git.shorten_hash(name))
-                        debug1("bup server:   because of object %s\n"
-                               % hexlify(shar))
-                        self.conn.write(b'index %s\n' % name)
-                        suggested.add(name)
-                    continue
-            nw, crc = w._raw_write((buf,), sha=shar)
-            self._check(w, crcr, crc, 'object read: expected crc %d, got %d\n')
-        # NOTREACHED
-
-    def _check(self, w, expected, actual, msg):
-        if expected != actual:
-            w.abort()
-            raise Exception(msg % (expected, actual))
+    def _new_packwriter(self):
+        if self.dumb_server_mode:
+            return git.PackWriter(objcache_maker=None)
+        return git.PackWriter()
 
     def _read_ref(self, refname):
         return git.read_ref(refname)
