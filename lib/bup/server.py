@@ -105,8 +105,18 @@ class BaseServer:
         self.conn.write(b'%s\n' % hexlify(r) if r else b'')
         self.conn.ok()
 
-    def update_ref(self, args):
-        pass
+    def _update_ref(self, refname, newval, oldval):
+        """
+        This updates the given ref from the old to the new value.
+        """
+        raise NotImplementedError("Subclasses must implemented _update_ref")
+
+    def update_ref(self, refname):
+        self._init_session()
+        newval = self.conn.readline().strip()
+        oldval = self.conn.readline().strip()
+        self._update_ref(refname, unhexlify(newval), unhexlify(oldval))
+        self.conn.ok()
 
     def join(self, args):
         pass
@@ -252,12 +262,8 @@ class BupServer(BaseServer):
     def _read_ref(self, refname):
         return git.read_ref(refname)
 
-    def update_ref(self, refname):
-        self._init_session()
-        newval = self.conn.readline().strip()
-        oldval = self.conn.readline().strip()
-        git.update_ref(refname, unhexlify(newval), unhexlify(oldval))
-        self.conn.ok()
+    def _update_ref(self, refname, newval, oldval):
+        git.update_ref(refname, newval, oldval)
 
     def join(self, id):
         self._init_session()
