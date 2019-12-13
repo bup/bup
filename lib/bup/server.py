@@ -189,8 +189,36 @@ class BaseServer:
     def rev_list(self, args):
         pass
 
+    def _resolve(self, path, parent, want_meta, follow):
+        """
+        Return a list (or yield entries, but we convert to a list) of VFS
+        resolutions given the arguments. May raise vfs.IOError to indicate
+        errors happened.
+        """
+        raise NotImplemented("Subclasses must implement _resolve")
+
     def resolve(self, args):
-        pass
+        self._init_session()
+        (flags,) = args.split()
+        flags = int(flags)
+        want_meta = bool(flags & 1)
+        follow = bool(flags & 2)
+        have_parent = bool(flags & 4)
+        parent = vfs.read_resolution(self.conn) if have_parent else None
+        path = vint.read_bvec(self.conn)
+        if not len(path):
+            raise Exception('Empty resolve path')
+        try:
+            res = list(self._resolve(path, parent, want_meta, follow))
+        except vfs.IOError as ex:
+            res = ex
+        if isinstance(res, vfs.IOError):
+            self.conn.write(b'\0')  # error
+            vfs.write_ioerror(self.conn, res)
+        else:
+            self.conn.write(b'\1')  # success
+            vfs.write_resolution(self.conn, res)
+        self.conn.ok()
 
     def handle(self):
         commands = self._commands
@@ -374,29 +402,9 @@ class BupServer(BaseServer):
             raise git.GitError(msg)
         self.conn.ok()
 
-    def resolve(self, args):
-        self._init_session()
-        (flags,) = args.split()
-        flags = int(flags)
-        want_meta = bool(flags & 1)
-        follow = bool(flags & 2)
-        have_parent = bool(flags & 4)
-        parent = vfs.read_resolution(self.conn) if have_parent else None
-        path = vint.read_bvec(self.conn)
-        if not len(path):
-            raise Exception('Empty resolve path')
-        try:
-            res = list(vfs.resolve(self.repo, path, parent=parent, want_meta=want_meta,
-                                   follow=follow))
-        except vfs.IOError as ex:
-            res = ex
-        if isinstance(res, vfs.IOError):
-            self.conn.write(b'\0')  # error
-            vfs.write_ioerror(self.conn, res)
-        else:
-            self.conn.write(b'\1')  # success
-            vfs.write_resolution(self.conn, res)
-        self.conn.ok()
+    def _resolve(self, path, parent, want_meta, follow):
+        return vfs.resolve(self.repo, path, parent=parent, want_meta=want_meta,
+                           follow=follow)
 
     def config_get(self, args):
         self._init_session()
