@@ -463,10 +463,16 @@ class BaseConn:
     def close(self):
         while self._read(65536): pass
 
+    def _read(self, size):
+        raise NotImplementedError("Subclasses must implement _read")
+
     def read(self, size):
         """Read 'size' bytes from input stream."""
         self.outp.flush()
         return self._read(size)
+
+    def _readline(self, size):
+        raise NotImplementedError("Subclasses must implement _readline")
 
     def readline(self):
         """Read from input stream until a newline is found."""
@@ -480,7 +486,7 @@ class BaseConn:
 
     def has_input(self):
         """Return true if input stream is readable."""
-        raise NotImplemented("Subclasses must implement has_input")
+        raise NotImplementedError("Subclasses must implement has_input")
 
     def ok(self):
         """Indicate end of output from last sent command."""
