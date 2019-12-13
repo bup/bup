@@ -185,8 +185,34 @@ class BaseServer:
         self.conn.write(b'\n')
         self.conn.ok()
 
-    def rev_list(self, args):
-        pass
+    def _rev_list(self, refs, count, fmt):
+        """
+        Yield chunks of data to send to the client containing the
+        git rev-list output for the given arguments.
+        """
+        raise NotImplemented("Subclasses must implement _rev_list")
+
+    def rev_list(self, _):
+        self._init_session()
+        count = self.conn.readline()
+        if not count:
+            raise Exception('Unexpected EOF while reading rev-list count')
+        count = None if count == b'\n' else int(count)
+        fmt = self.conn.readline()
+        if not fmt:
+            raise Exception('Unexpected EOF while reading rev-list format')
+        fmt = None if fmt == b'\n' else fmt[:-1]
+        refs = tuple(x[:-1] for x in lines_until_sentinel(self.conn, b'\n', Exception))
+
+        try:
+            for buf in self._rev_list(refs, count, fmt):
+                self.conn.write(buf)
+            self.conn.write(b'\n')
+            self.conn.ok()
+        except git.GitError as e:
+            self.conn.write(b'\n')
+            self.conn.error(str(e).encode('ascii'))
+            raise
 
     def _resolve(self, path, parent, want_meta, follow):
         """
@@ -360,17 +386,7 @@ class BupServer(BaseServer):
                                        limit_to_tags=limit_to_tags):
             yield name, oid
 
-    def rev_list(self, _):
-        self._init_session()
-        count = self.conn.readline()
-        if not count:
-            raise Exception('Unexpected EOF while reading rev-list count')
-        count = None if count == b'\n' else int(count)
-        fmt = self.conn.readline()
-        if not fmt:
-            raise Exception('Unexpected EOF while reading rev-list format')
-        fmt = None if fmt == b'\n' else fmt[:-1]
-        refs = tuple(x[:-1] for x in lines_until_sentinel(self.conn, b'\n', Exception))
+    def _rev_list(self, refs, count, fmt):
         args = git.rev_list_invocation(refs, count=count, format=fmt)
         p = subprocess.Popen(git.rev_list_invocation(refs, count=count, format=fmt),
                              env=git._gitenv(git.repodir),
@@ -379,14 +395,10 @@ class BupServer(BaseServer):
             out = p.stdout.read(64 * 1024)
             if not out:
                 break
-            self.conn.write(out)
-        self.conn.write(b'\n')
+            yield out
         rv = p.wait()  # not fatal
         if rv:
-            msg = b'git rev-list returned error %d' % rv
-            self.conn.error(msg)
-            raise git.GitError(msg)
-        self.conn.ok()
+            raise git.GitError('git rev-list returned error %d' % rv)
 
     def _resolve(self, path, parent, want_meta, follow):
         return vfs.resolve(self.repo, path, parent=parent, want_meta=want_meta,
