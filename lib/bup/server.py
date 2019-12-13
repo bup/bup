@@ -40,11 +40,20 @@ class BaseServer:
         self.conn.write(b'Commands:\n    %s\n' % b'\n    '.join(sorted(self._commands)))
         self.conn.ok()
 
-    def init_dir(self, args):
-        pass
+    def _init_session(self, reinit_with_new_repopath=None):
+        raise NotImplementedError("Subclasses must implement _init_session")
 
-    def set_dir(self, args):
-        pass
+    def _init_dir(self, arg):
+        raise NotImplementedError("Subclasses must implement _init_dir")
+
+    def init_dir(self, arg):
+        self._init_dir(arg)
+        self._init_session(arg)
+        self.conn.ok()
+
+    def set_dir(self, arg):
+        self._init_session(arg)
+        self.conn.ok()
 
     def list_indexes(self, args):
         pass
@@ -55,8 +64,14 @@ class BaseServer:
     def receive_objects_v2(self, args):
         pass
 
-    def read_ref(self, args):
-        pass
+    def _read_ref(self, refname):
+        raise NotImplementedError("Subclasses must implement _read_ref")
+
+    def read_ref(self, refname):
+        self._init_session()
+        r = self._read_ref(refname)
+        self.conn.write(b'%s\n' % hexlify(r) if r else b'')
+        self.conn.ok()
 
     def update_ref(self, args):
         pass
@@ -130,15 +145,9 @@ class BupServer(BaseServer):
         debug1('bup server: bupdir is %s\n' % path_msg(git.repodir))
         self._set_mode()
 
-    def init_dir(self, arg):
+    def _init_dir(self, arg):
         git.init_repo(arg)
         debug1('bup server: bupdir initialized: %s\n' % path_msg(git.repodir))
-        self._init_session(arg)
-        self.conn.ok()
-
-    def set_dir(self, arg):
-        self._init_session(arg)
-        self.conn.ok()
 
     def list_indexes(self, junk):
         self._init_session()
@@ -232,11 +241,8 @@ class BupServer(BaseServer):
             w.abort()
             raise Exception(msg % (expected, actual))
 
-    def read_ref(self, refname):
-        self._init_session()
-        r = git.read_ref(refname)
-        self.conn.write(b'%s\n' % hexlify(r) if r else b'')
-        self.conn.ok()
+    def _read_ref(self, refname):
+        return git.read_ref(refname)
 
     def update_ref(self, refname):
         self._init_session()
