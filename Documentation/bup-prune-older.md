@@ -46,27 +46,27 @@ calendar, so `--keep-dailies-for 5d` means a period starting exactly
 
 # OPTIONS
 
---keep-all-for PERIOD
-:   when no smaller time scale --keep option applies, retain all saves
+\--keep-all-for PERIOD
+:   when no smaller time scale `--keep` option applies, retain all saves
     within the given period.
 
---keep-dailies-for PERIOD
-:   when no smaller time scale --keep option applies, retain the
+\--keep-dailies-for PERIOD
+:   when no smaller time scale `--keep` option applies, retain the
     newest save for any day within the given period.
 
---keep-monthlies-for PERIOD
-:   when no smaller time scale --keep option applies, retain the
+\--keep-monthlies-for PERIOD
+:   when no smaller time scale `--keep` option applies, retain the
     newest save for any month within the given period.
 
---keep-yearlies-for PERIOD
-:   when no smaller time scale --keep option applies, retain the
+\--keep-yearlies-for PERIOD
+:   when no smaller time scale `--keep` option applies, retain the
     newest save for any year within the given period.
 
---wrt UTC_SECONDS
+\--wrt UTC_SECONDS
 :   when computing a keep period, place the most recent end of the
     range at UTC\_SECONDS, and any saves newer than this will be kept.
 
---pretend
+\--pretend
 :   don't do anything, just list the actions that would be taken to
     standard output, one action per line like this:
 
@@ -74,7 +74,7 @@ calendar, so `--keep-dailies-for 5d` means a period starting exactly
         + SAVE
         ...
 
---gc
+\--gc
 :   garbage collect the repository after removing the relevant saves.
     This is the default behavior, but it can be avoided with `--no-gc`.
 

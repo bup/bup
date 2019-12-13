@@ -18,7 +18,7 @@ the rdiff-backup archive is stripped from the paths.
 
 # OPTIONS
 
--n,--dry-run
+-n, \--dry-run
 :   don't do anything just print out what would be done
 
 # EXAMPLES

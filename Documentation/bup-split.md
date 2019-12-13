@@ -20,7 +20,7 @@ COMMON\_OPTIONS
   ~ \[-r *host*:*path*\] \[-v\] \[-q\] \[-d *seconds-since-epoch*\] \[\--bench\]
     \[\--max-pack-size=*bytes*\] \[-#\] \[\--bwlimit=*bytes*\]
     \[\--max-pack-objects=*n*\] \[\--fanout=*count*\]
-    \[\--keep-boundaries\] \[--git-ids | filenames...\]
+    \[\--keep-boundaries\] \[\--git-ids | filenames...\]
 
 # DESCRIPTION
 
