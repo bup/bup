@@ -3,7 +3,6 @@ import os, struct, subprocess
 from binascii import hexlify, unhexlify
 
 from bup import git, vfs, vint
-from bup.compat import environ
 from bup.io import path_msg
 from bup.helpers import (debug1, debug2, linereader, lines_until_sentinel, log, pending_raise)
 from bup.repo import LocalRepo
@@ -128,9 +127,6 @@ class BupServer(BaseServer):
         if self.repo:
             self.repo.close()
         self.repo = LocalRepo()
-        # OK. we now know the path is a proper repository. Record this path in the
-        # environment so that subprocesses inherit it and know where to operate.
-        environ[b'BUP_DIR'] = git.repodir
         debug1('bup server: bupdir is %s\n' % path_msg(git.repodir))
         self._set_mode()
 
