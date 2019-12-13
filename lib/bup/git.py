@@ -1161,11 +1161,9 @@ class _AbortableIter:
         self.abort()
 
 
-_ver_warned = 0
 class CatPipe:
     """Link to 'git cat-file' that is used to retrieve blob data."""
     def __init__(self, repo_dir = None):
-        global _ver_warned
         self.repo_dir = repo_dir
         wanted = ('1','5','6')
         if ver() < wanted:
