@@ -141,8 +141,28 @@ class BaseServer:
 
     cat = join # apocryphal alias
 
-    def cat_batch(self, args):
-        pass
+    def _cat(self, ref):
+        """
+        Retrieve one ref. This must return an iterator that yields
+        (oidx, type, size), followed by the data referred to by ref,
+        or only (None, None, None) if the ref doesn't exist.
+        """
+        raise NotImplementedError("Subclasses must implement _cat")
+
+    def cat_batch(self, dummy):
+        self._init_session()
+        # For now, avoid potential deadlock by just reading them all
+        for ref in tuple(lines_until_sentinel(self.conn, b'\n', Exception)):
+            ref = ref[:-1]
+            it = self._cat(ref)
+            info = next(it)
+            if not info[0]:
+                self.conn.write(b'missing\n')
+                continue
+            self.conn.write(b'%s %s %d\n' % info)
+            for buf in it:
+                self.conn.write(buf)
+        self.conn.ok()
 
     def refs(self, args):
         pass
@@ -285,21 +305,8 @@ class BupServer(BaseServer):
         for blob in git.cp().join(id):
             yield blob
 
-    def cat_batch(self, dummy):
-        self._init_session()
-        cat_pipe = git.cp()
-        # For now, avoid potential deadlock by just reading them all
-        for ref in tuple(lines_until_sentinel(self.conn, b'\n', Exception)):
-            ref = ref[:-1]
-            it = cat_pipe.get(ref)
-            info = next(it)
-            if not info[0]:
-                self.conn.write(b'missing\n')
-                continue
-            self.conn.write(b'%s %s %d\n' % info)
-            for buf in it:
-                self.conn.write(buf)
-        self.conn.ok()
+    def _cat(self, ref):
+        return self.repo.cat(ref)
 
     def refs(self, args):
         limit_to_heads, limit_to_tags = args.split()
