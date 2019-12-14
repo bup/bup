@@ -10,7 +10,7 @@ import sys
 
 from bup import options
 from bup.io import byte_stream
-from bup.server import BupServer
+from bup.server import BupProtocolServer, GitServerBackend
 from bup.helpers import (Conn, debug2)
 
 
@@ -24,4 +24,5 @@ if extra:
     o.fatal('no arguments expected')
 
 debug2('bup server: reading from stdin.\n')
-BupServer(Conn(byte_stream(sys.stdin), byte_stream(sys.stdout))).handle()
+BupProtocolServer(Conn(byte_stream(sys.stdin), byte_stream(sys.stdout)),
+                  GitServerBackend()).handle()
