@@ -3,7 +3,7 @@ import sys
 
 from bup import options
 from bup.io import byte_stream
-from bup.server import BupServer
+from bup.server import BupProtocolServer, GitServerBackend
 from bup.helpers import Conn, debug2
 
 
@@ -20,5 +20,5 @@ def main(argv):
     debug2('bup server: reading from stdin.\n')
 
     with Conn(byte_stream(sys.stdin), byte_stream(sys.stdout)) as conn, \
-         BupServer(conn) as server:
+         BupProtocolServer(conn, GitServerBackend()) as server:
         server.handle()
