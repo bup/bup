@@ -580,7 +580,9 @@ def main(argv):
         client.bwlimit = parse_num(opt.bwlimit)
     if is_reverse and opt.remote:
         misuse("don't use -r in reverse mode; it's automatic")
-    if opt.remote or is_reverse:
+    if is_reverse:
+        dest_repo = RemoteRepo(b'reverse://%s' % is_reverse)
+    elif opt.remote:
         dest_repo = RemoteRepo(opt.remote)
     else:
         dest_repo = LocalRepo()

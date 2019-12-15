@@ -232,7 +232,10 @@ def main(argv):
         git.check_repo_or_die()
 
     if remote_dest and writing:
-        cli = repo = client.Client(opt.remote)
+        remote = opt.remote
+        if opt.is_reverse:
+            remote = b'reverse://%s' % opt.is_reverse
+        cli = repo = client.Client(remote)
     else:
         cli = nullcontext()
         repo = git

@@ -432,7 +432,10 @@ def main(argv):
         split_trees = git.git_config_get(b'bup.split-trees', opttype='bool')
     else:
         try:
-            cli = repo = client.Client(opt.remote)
+            remote = opt.remote
+            if opt.is_reverse:
+                remote = b'reverse://%s' % opt.is_reverse
+            cli = repo = client.Client(remote)
             split_trees = repo.config_get(b'bup.split-trees', opttype='bool')
         except client.ClientError as e:
             log('error: %s' % e)
