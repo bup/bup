@@ -104,8 +104,11 @@ if name and not valid_save_name(name):
     o.fatal("'%s' is not a valid branch name" % path_msg(name))
 refname = name and b'refs/heads/%s' % name or None
 if opt.remote or is_reverse:
+    remote = opt.remote
+    if is_reverse:
+        remote = b'reverse://%s' % is_reverse
     try:
-        cli = client.Client(opt.remote)
+        cli = client.Client(remote)
     except client.ClientError as e:
         log('error: %s' % e)
         sys.exit(1)

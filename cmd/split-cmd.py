@@ -112,7 +112,10 @@ if opt.noop or opt.copy:
     cli = pack_writer = oldref = None
 elif opt.remote or is_reverse:
     git.check_repo_or_die()
-    cli = client.Client(opt.remote)
+    remote = opt.remote
+    if is_reverse:
+        remote = b'reverse://%s' % is_reverse
+    cli = client.Client(remote)
     oldref = refname and cli.read_ref(refname) or None
     pack_writer = cli.new_packwriter(compression_level=opt.compress,
                                      max_pack_size=max_pack_size,

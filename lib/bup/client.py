@@ -52,9 +52,10 @@ _url_rx = re.compile(br'%s(?:%s%s)?%s' % (_protocol_rs, _host_rs, _port_rs, _pat
                      re.I)
 
 def parse_remote(remote):
+    assert remote is not None
     url_match = _url_rx.match(remote)
     if url_match:
-        if not url_match.group(1) in (b'ssh', b'bup', b'file'):
+        if not url_match.group(1) in (b'ssh', b'bup', b'file', b'reverse'):
             raise ClientError('unexpected protocol: %s'
                               % url_match.group(1).decode('ascii'))
         return url_match.group(1,3,4,5)
@@ -70,10 +71,6 @@ class Client:
     def __init__(self, remote, create=False):
         self._busy = self.conn = None
         self.sock = self.p = self.pout = self.pin = None
-        is_reverse = environ.get(b'BUP_SERVER_REVERSE')
-        if is_reverse:
-            assert(not remote)
-            remote = b'%s:' % is_reverse
         (self.protocol, self.host, self.port, self.dir) = parse_remote(remote)
         self.cachedir = git.repo(b'index-cache/%s'
                                  % re.sub(br'[^@\w]',
@@ -82,25 +79,24 @@ class Client:
                                           # match python 2's behavior
                                           b'%s:%s' % (self.host or b'None',
                                                       self.dir or b'None')))
-        if is_reverse:
+        if self.protocol == b'reverse':
             self.pout = os.fdopen(3, 'rb')
             self.pin = os.fdopen(4, 'wb')
             self.conn = Conn(self.pout, self.pin)
-        else:
-            if self.protocol in (b'ssh', b'file'):
-                try:
-                    # FIXME: ssh and file shouldn't use the same module
-                    self.p = ssh.connect(self.host, self.port, b'server')
-                    self.pout = self.p.stdout
-                    self.pin = self.p.stdin
-                    self.conn = Conn(self.pout, self.pin)
-                except OSError as e:
-                    reraise(ClientError('connect: %s' % e))
-            elif self.protocol == b'bup':
-                self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                self.sock.connect((self.host, atoi(self.port) or 1982))
-                self.sockw = self.sock.makefile('wb')
-                self.conn = DemuxConn(self.sock.fileno(), self.sockw)
+        if self.protocol in (b'ssh', b'file'):
+            try:
+                # FIXME: ssh and file shouldn't use the same module
+                self.p = ssh.connect(self.host, self.port, b'server')
+                self.pout = self.p.stdout
+                self.pin = self.p.stdin
+                self.conn = Conn(self.pout, self.pin)
+            except OSError as e:
+                reraise(ClientError('connect: %s' % e))
+        elif self.protocol == b'bup':
+            self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.sock.connect((self.host, atoi(self.port) or 1982))
+            self.sockw = self.sock.makefile('wb')
+            self.conn = DemuxConn(self.sock.fileno(), self.sockw)
         self._available_commands = self._get_available_commands()
         self._require_command(b'init-dir')
         self._require_command(b'set-dir')

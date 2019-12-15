@@ -581,7 +581,9 @@ def main():
         misuse("don't use -r in reverse mode; it's automatic")
     if opt.remote:
         opt.remote = argv_bytes(opt.remote)
-    if opt.remote or is_reverse:
+    if is_reverse:
+        dest_repo = RemoteRepo(b'reverse://%s' % is_reverse)
+    elif opt.remote:
         dest_repo = RemoteRepo(opt.remote)
     else:
         dest_repo = LocalRepo()
