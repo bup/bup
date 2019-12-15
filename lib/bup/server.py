@@ -370,9 +370,12 @@ class GitServerBackend(AbstractServerBackend):
         self.repo_dir = self.repo.repo_dir
         self.dumb_server_mode = os.path.exists(git.repo(b'bup-dumb-server'))
 
-    def close(self):
-        self.repo.close()
-        self.repo = None
+        self.update_ref = self.repo.update_ref
+        self.join = self.repo.join
+        self.cat = self.repo.cat
+        self.refs = self.repo.refs
+        self.resolve = self.repo.resolve
+        self.close = self.repo.close
 
     def list_indexes(self):
         for f in os.listdir(git.repo(b'objects/pack')):
@@ -389,22 +392,6 @@ class GitServerBackend(AbstractServerBackend):
     def read_ref(self, refname):
         return git.read_ref(refname)
 
-    def update_ref(self, refname, newval, oldval):
-        git.update_ref(refname, newval, oldval)
-
-    def join(self, id):
-        for blob in git.cp().join(id):
-            yield blob
-
-    def cat(self, ref):
-        return self.repo.cat(ref)
-
-    def refs(self, patterns, limit_to_heads, limit_to_tags):
-        for name, oid in git.list_refs(patterns=patterns,
-                                       limit_to_heads=limit_to_heads,
-                                       limit_to_tags=limit_to_tags):
-            yield name, oid
-
     def rev_list_raw(self, refs, count, fmt):
         args = git.rev_list_invocation(refs, count=count, format=fmt)
         p = subprocess.Popen(git.rev_list_invocation(refs, count=count, format=fmt),
@@ -418,7 +405,3 @@ class GitServerBackend(AbstractServerBackend):
         rv = p.wait()  # not fatal
         if rv:
             raise git.GitError('git rev-list returned error %d' % rv)
-
-    def resolve(self, path, parent, want_meta, follow):
-        return vfs.resolve(self.repo, path, parent=parent, want_meta=want_meta,
-                           follow=follow)
