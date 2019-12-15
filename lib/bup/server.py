@@ -230,7 +230,7 @@ class BupProtocolServer:
         refs = tuple(x[:-1] for x in lines_until_sentinel(self.conn, b'\n', Exception))
 
         try:
-            for buf in self.repo.rev_list(refs, fmt):
+            for buf in self.repo.rev_list_raw(refs, fmt):
                 self.conn.write(buf)
             self.conn.write(b'\n')
             self.conn.ok()
@@ -381,12 +381,12 @@ class AbstractServerBackend(object):
         """
         raise NotImplementedError("Subclasses must implement refs")
 
-    def rev_list(self, refs, fmt):
+    def rev_list_raw(self, refs, fmt):
         """
         Yield chunks of data to send to the client containing the
         git rev-list output for the given arguments.
         """
-        raise NotImplementedError("Subclasses must implement rev_list")
+        raise NotImplementedError("Subclasses must implement rev_list_raw")
 
     def resolve(self, path, parent, want_meta, follow):
         """
@@ -451,7 +451,7 @@ class GitServerBackend(AbstractServerBackend):
                                        limit_to_tags=limit_to_tags):
             yield name, oid
 
-    def rev_list(self, refs, fmt):
+    def rev_list_raw(self, refs, fmt):
         args = git.rev_list_invocation(refs, format=fmt)
         p = subprocess.Popen(args, env=git._gitenv(git.repodir),
                              stdout=subprocess.PIPE)
