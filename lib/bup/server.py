@@ -5,7 +5,6 @@ from contextlib import contextmanager
 
 from bup import git, vfs, vint
 from bup.compat import hexstr
-from bup.io import path_msg
 from bup.helpers import (debug1, debug2, linereader, lines_until_sentinel, log, pending_raise)
 from bup.repo import LocalRepo
 from bup.vint import write_vuint
@@ -20,6 +19,7 @@ class BupProtocolServer:
         self._backend = backend
         self._commands = self._get_commands()
         self.suspended_w = None
+        self.repo = None
 
     def _get_commands(self):
         commands = []
@@ -41,22 +41,29 @@ class BupProtocolServer:
         self.conn.write(b'Commands:\n    %s\n' % b'\n    '.join(sorted(self._commands)))
         self.conn.ok()
 
+    def init_session(self, repo_dir=None, init=False):
+        if self.repo:
+            self.repo.close()
+        self.repo = self._backend(repo_dir, init=init)
+        debug1('bup server: bupdir is %r\n' % self.repo.repo_dir)
+        debug1('bup server: serving in %s mode\n'
+               % (self.repo.dumb_server_mode and 'dumb' or 'smart'))
+
     @_command
     def init_dir(self, arg):
-        self._backend.init_dir(arg)
-        self._backend.init_session(arg)
+        self.init_session(arg, init=True)
         self.conn.ok()
 
     @_command
     def set_dir(self, arg):
-        self._backend.init_session(arg)
+        self.init_session(arg)
         self.conn.ok()
 
     @_command
     def list_indexes(self, junk):
-        self._backend.init_session()
-        suffix = b' load' if self._backend.dumb_server_mode else b''
-        for f in self._backend.list_indexes():
+        self.init_session()
+        suffix = b' load' if self.repo.dumb_server_mode else b''
+        for f in self.repo.list_indexes():
             # must end with .idx to not confuse everything, so filter
             # here ... even if the subclass might not yield anything
             # else to start with
@@ -66,10 +73,10 @@ class BupProtocolServer:
 
     @_command
     def send_index(self, name):
-        self._backend.init_session()
+        self.init_session()
         assert(name.find(b'/') < 0)
         assert(name.endswith(b'.idx'))
-        with self._backend.send_index(name) as data:
+        with self.repo.send_index(name) as data:
             self.conn.write(struct.pack('!I', len(data)))
             self.conn.write(data)
         self.conn.ok()
@@ -81,12 +88,12 @@ class BupProtocolServer:
 
     @_command
     def receive_objects_v2(self, junk):
-        self._backend.init_session()
+        self.init_session()
         if self.suspended_w:
             w = self.suspended_w
             self.suspended_w = None
         else:
-            w = self._backend.new_packwriter()
+            w = self.repo.new_packwriter()
         try:
             suggested = set()
             while 1:
@@ -119,7 +126,7 @@ class BupProtocolServer:
                 buf = self.conn.read(n)  # object sizes in bup are reasonably small
                 #debug2('read %d bytes\n' % n)
                 self._check(w, n, len(buf), 'object read: expected %d bytes, got %d\n')
-                if not self._backend.dumb_server_mode:
+                if not self.repo.dumb_server_mode:
                     oldpack = w.exists(shar, want_source=True)
                     if oldpack:
                         assert(not oldpack == True)
@@ -147,24 +154,24 @@ class BupProtocolServer:
 
     @_command
     def read_ref(self, refname):
-        self._backend.init_session()
-        r = self._backend.read_ref(refname)
+        self.init_session()
+        r = self.repo.read_ref(refname)
         self.conn.write(b'%s\n' % hexlify(r or b''))
         self.conn.ok()
 
     @_command
     def update_ref(self, refname):
-        self._backend.init_session()
+        self.init_session()
         newval = self.conn.readline().strip()
         oldval = self.conn.readline().strip()
-        self._backend.update_ref(refname, unhexlify(newval), unhexlify(oldval))
+        self.repo.update_ref(refname, unhexlify(newval), unhexlify(oldval))
         self.conn.ok()
 
     @_command
     def join(self, id):
-        self._backend.init_session()
+        self.init_session()
         try:
-            for blob in self._backend.join(id):
+            for blob in self.repo.join(id):
                 self.conn.write(struct.pack('!I', len(blob)))
                 self.conn.write(blob)
         except KeyError as e:
@@ -179,11 +186,11 @@ class BupProtocolServer:
 
     @_command
     def cat_batch(self, dummy):
-        self._backend.init_session()
+        self.init_session()
         # For now, avoid potential deadlock by just reading them all
         for ref in tuple(lines_until_sentinel(self.conn, b'\n', Exception)):
             ref = ref[:-1]
-            it = self._backend.cat(ref)
+            it = self.repo.cat(ref)
             info = next(it)
             if not info[0]:
                 self.conn.write(b'missing\n')
@@ -200,9 +207,9 @@ class BupProtocolServer:
         assert limit_to_tags in (b'0', b'1')
         limit_to_heads = int(limit_to_heads)
         limit_to_tags = int(limit_to_tags)
-        self._backend.init_session()
+        self.init_session()
         patterns = tuple(x[:-1] for x in lines_until_sentinel(self.conn, b'\n', Exception))
-        for name, oid in self._backend.refs(patterns, limit_to_heads, limit_to_tags):
+        for name, oid in self.repo.refs(patterns, limit_to_heads, limit_to_tags):
             assert b'\n' not in name
             self.conn.write(b'%s %s\n' % (hexlify(oid), name))
         self.conn.write(b'\n')
@@ -210,7 +217,7 @@ class BupProtocolServer:
 
     @_command
     def rev_list(self, _):
-        self._backend.init_session()
+        self.init_session()
         count = self.conn.readline()
         if not count:
             raise Exception('Unexpected EOF while reading rev-list count')
@@ -223,7 +230,7 @@ class BupProtocolServer:
         refs = tuple(x[:-1] for x in lines_until_sentinel(self.conn, b'\n', Exception))
 
         try:
-            for buf in self._backend.rev_list(refs, fmt):
+            for buf in self.repo.rev_list(refs, fmt):
                 self.conn.write(buf)
             self.conn.write(b'\n')
             self.conn.ok()
@@ -234,7 +241,7 @@ class BupProtocolServer:
 
     @_command
     def resolve(self, args):
-        self._backend.init_session()
+        self.init_session()
         (flags,) = args.split()
         flags = int(flags)
         want_meta = bool(flags & 1)
@@ -245,7 +252,7 @@ class BupProtocolServer:
         if not len(path):
             raise Exception('Empty resolve path')
         try:
-            res = list(self._backend.resolve(path, parent, want_meta, follow))
+            res = list(self.repo.resolve(path, parent, want_meta, follow))
         except vfs.IOError as ex:
             res = ex
         if isinstance(res, vfs.IOError):
@@ -258,12 +265,12 @@ class BupProtocolServer:
 
     @_command
     def config_get(self, args):
-        self._backend.init_session()
+        self.init_session()
         assert not args
         key, opttype = vint.recv(self.conn, 'ss')
         if key in (b'bup.split-trees',):
             opttype = None if not len(opttype) else opttype.decode('ascii')
-            val = self._backend.config_get(key, opttype=opttype)
+            val = self.repo.config_get(key, opttype=opttype)
             if val is None:
                 write_vuint(self.conn, 0)
             elif isinstance(val, bool):
@@ -311,8 +318,8 @@ class BupProtocolServer:
         with pending_raise(value, rethrow=False):
             if self.suspended_w:
                 self.suspended_w.close()
-            if self._backend:
-                self._backend.close()
+            if self.repo:
+                self.repo.close()
 
 class AbstractServerBackend(object):
     '''
@@ -320,14 +327,8 @@ class AbstractServerBackend(object):
     really just serves for documentation purposes, you don't even
     need to inherit a backend from this.
     '''
-    def __init__(self):
+    def __init__(self, repo_dir=None, init=False):
         self.dumb_server_mode = False
-
-    def init_session(self, reinit_with_new_repopath=None):
-        raise NotImplementedError("Subclasses must implement init_session")
-
-    def init_dir(self, arg):
-        raise NotImplementedError("Subclasses must implement init_dir")
 
     def list_indexes(self):
         """
@@ -397,36 +398,25 @@ class AbstractServerBackend(object):
 
     def close(self):
         """
-        Close the backend again.
+        Close the underlying backend/repository.
         """
-        raise NotImplementedError("Subclasses must implement close")
-
+        raise NotImplemented("Subclasses must implement close")
 
 class GitServerBackend(AbstractServerBackend):
-    def __init__(self):
-        super(GitServerBackend, self).__init__()
-        self.repo = None
-
-    def _set_mode(self):
+    def __init__(self, repo_dir=None, init=False):
+        super(GitServerBackend, self).__init__(repo_dir, init)
+        if init:
+            git.init_repo(repo_dir)
+            debug1('bup server: bupdir initialized: %r\n' % git.repodir)
+        git.check_repo_or_die(repo_dir)
+        self.repo = LocalRepo(repo_dir)
+        self.repo_dir = self.repo.repo_dir
         self.dumb_server_mode = os.path.exists(git.repo(b'bup-dumb-server'))
-        debug1('bup server: serving in %s mode\n'
-               % (self.dumb_server_mode and 'dumb' or 'smart'))
 
-    def init_session(self, reinit_with_new_repopath=None):
-        if reinit_with_new_repopath is None and git.repodir:
-            if not self.repo:
-                self.repo = LocalRepo()
-            return
-        git.check_repo_or_die(reinit_with_new_repopath)
+    def close(self):
         if self.repo:
             self.repo.close()
-        self.repo = LocalRepo()
-        debug1('bup server: bupdir is %s\n' % path_msg(git.repodir))
-        self._set_mode()
-
-    def init_dir(self, arg):
-        git.init_repo(arg)
-        debug1('bup server: bupdir initialized: %s\n' % path_msg(git.repodir))
+            self.repo = None
 
     def list_indexes(self):
         for f in os.listdir(git.repo(b'objects/pack')):
@@ -480,7 +470,3 @@ class GitServerBackend(AbstractServerBackend):
 
     def config_get(self, key, opttype):
         return git.git_config_get(key, opttype=opttype)
-
-    def close(self):
-        if self.repo:
-            self.repo.close()
