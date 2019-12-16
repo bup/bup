@@ -8,7 +8,7 @@ exec "$bup_python" "$0" ${1+"$@"}
 from __future__ import absolute_import
 import sys
 
-from bup import git, options, client
+from bup import git, options, client, repo
 from bup.helpers import log, saved_errors
 from bup.compat import argv_bytes
 
@@ -26,12 +26,11 @@ if extra:
 
 
 try:
-    git.init_repo()  # local repo
+    repo.LocalRepo.create()
 except git.GitError as e:
     log("bup: error: could not init repository: %s" % e)
     sys.exit(1)
 
 if opt.remote:
     git.check_repo_or_die()
-    cli = client.Client(argv_bytes(opt.remote), create=True)
-    cli.close()
+    repo.RemoteRepo.create(argv_bytes(opt.remote))

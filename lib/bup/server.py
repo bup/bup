@@ -42,17 +42,18 @@ class BupProtocolServer:
         self.conn.write(b'Commands:\n    %s\n' % b'\n    '.join(sorted(self._commands)))
         self.conn.ok()
 
-    def init_session(self, repo_dir=None, init=False):
+    def init_session(self, repo_dir=None):
         if self.repo:
             self.repo.close()
-        self.repo = self._backend(repo_dir, init=init)
+        self.repo = self._backend(repo_dir)
         debug1('bup server: bupdir is %r\n' % self.repo.repo_dir)
         debug1('bup server: serving in %s mode\n'
                % (self.repo.dumb_server_mode and 'dumb' or 'smart'))
 
     @_command
     def init_dir(self, arg):
-        self.init_session(arg, init=True)
+        self._backend.create(arg)
+        self.init_session(arg)
         self.conn.ok()
 
     @_command
@@ -285,7 +286,7 @@ class AbstractServerBackend(object):
     really just serves for documentation purposes, you don't even
     need to inherit a backend from this.
     '''
-    def __init__(self, repo_dir=None, init=False):
+    def __init__(self, repo_dir=None):
         self.dumb_server_mode = False
 
     def list_indexes(self):
@@ -362,11 +363,8 @@ class AbstractServerBackend(object):
         raise NotImplemented("Subclasses must implement close")
 
 class GitServerBackend(AbstractServerBackend):
-    def __init__(self, repo_dir=None, init=False):
-        super(GitServerBackend, self).__init__(repo_dir, init)
-        if init:
-            git.init_repo(repo_dir)
-            debug1('bup server: bupdir initialized: %r\n' % git.repodir)
+    def __init__(self, repo_dir=None):
+        super(GitServerBackend, self).__init__(repo_dir)
         git.check_repo_or_die(repo_dir)
         self.repo = LocalRepo(repo_dir)
         self.repo_dir = self.repo.repo_dir
@@ -381,6 +379,8 @@ class GitServerBackend(AbstractServerBackend):
         self.list_indexes = self.repo.list_indexes
         self.read_ref = self.repo.read_ref
         self.send_index = self.repo.send_index
+
+    create = LocalRepo.create
 
     def new_packwriter(self):
         if self.dumb_server_mode:
