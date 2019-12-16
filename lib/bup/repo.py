@@ -29,6 +29,13 @@ class LocalRepo:
         self.config_get = partial(git.git_config_get, repo_dir=self.repo_dir)
         self._id = _repo_id(self.repo_dir)
 
+    @classmethod
+    def create(self, repo_dir=None):
+        # FIXME: this is not ideal, we should somehow
+        # be able to call the constructor instead?
+        git.init_repo(repo_dir)
+        git.check_repo_or_die(repo_dir)
+
     def close(self):
         self.closed = True
 
@@ -117,6 +124,11 @@ class RemoteRepo:
         self.refs = self.client.refs
         self.resolve = self.client.resolve
         self._id = _repo_id(address)
+
+    @classmethod
+    def create(self, address):
+        with client.Client(address, create=True):
+            pass
 
     def close(self):
         if not self.closed:
