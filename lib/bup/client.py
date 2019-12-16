@@ -497,7 +497,7 @@ class Client:
             raise not_ok
         self._not_busy()
 
-    def resolve(self, path, parent=None, want_meta=True, follow=False):
+    def resolve(self, path, parent=None, want_meta=True, follow=True):
         self._require_command(b'resolve')
         self.check_busy()
         self._busy = b'resolve'
