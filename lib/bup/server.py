@@ -419,6 +419,7 @@ class GitServerBackend(AbstractServerBackend):
         self.resolve = self.repo.resolve
         self.config_get = self.repo.config_get
         self.list_indexes = self.repo.list_indexes
+        self.read_ref = self.repo.read_ref
 
     def close(self):
         if self.repo:
@@ -434,9 +435,6 @@ class GitServerBackend(AbstractServerBackend):
         if self.dumb_server_mode:
             return git.PackWriter(objcache_maker=None, run_midx=False)
         return git.PackWriter()
-
-    def read_ref(self, refname):
-        return git.read_ref(refname)
 
     def rev_list_raw(self, refs, fmt):
         args = git.rev_list_invocation(refs, format=fmt)

@@ -55,6 +55,9 @@ class LocalRepo:
         for f in os.listdir(git.repo(b'objects/pack')):
             yield f
 
+    def read_ref(self, refname):
+        return git.read_ref(refname)
+
     def new_packwriter(self, compression_level=1,
                        max_pack_size=None, max_pack_objects=None):
         return git.PackWriter(repo_dir=self.repo_dir,
@@ -102,6 +105,7 @@ class RemoteRepo:
         self.rev_list = self.client.rev_list
         self.config_get = self.client.config_get
         self.list_indexes = self.client.list_indexes
+        self.read_ref = self.client.read_ref
         self._id = _repo_id(address)
 
     def close(self):
