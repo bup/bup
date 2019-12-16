@@ -10,48 +10,49 @@ from bup.helpers import (debug1, debug2, linereader, lines_until_sentinel, log)
 from bup.repo import LocalRepo
 
 
+def _command(fn):
+    fn.bup_server_command = True
+    return fn
+
 class BupProtocolServer:
     def __init__(self, conn, backend):
         self.conn = conn
         self._backend = backend
+        self._commands = self._get_commands()
         self.suspended_w = None
-        # This is temporary due to the subclassing. The subclassing will
-        # go away in the future, and we'll make this a decorator instead.
-        self._commands = [
-            b'quit',
-            b'help',
-            b'init-dir',
-            b'set-dir',
-            b'list-indexes',
-            b'send-index',
-            b'receive-objects-v2',
-            b'read-ref',
-            b'update-ref',
-            b'join',
-            b'cat',
-            b'cat-batch',
-            b'refs',
-            b'rev-list',
-            b'resolve',
-        ]
 
+    def _get_commands(self):
+        commands = []
+        for name in dir(self):
+            fn = getattr(self, name)
+
+            if getattr(fn, 'bup_server_command', False):
+                commands.append(name.replace('_', '-').encode('ascii'))
+
+        return commands
+
+    @_command
     def quit(self, args):
         # implementation is actually not here
         pass
 
+    @_command
     def help(self, args):
         self.conn.write(b'Commands:\n    %s\n' % b'\n    '.join(sorted(self._commands)))
         self.conn.ok()
 
+    @_command
     def init_dir(self, arg):
         self._backend.init_dir(arg)
         self._backend.init_session(arg)
         self.conn.ok()
 
+    @_command
     def set_dir(self, arg):
         self._backend.init_session(arg)
         self.conn.ok()
 
+    @_command
     def list_indexes(self, junk):
         self._backend.init_session()
         suffix = b' load' if self._backend.dumb_server_mode else b''
@@ -63,6 +64,7 @@ class BupProtocolServer:
                 self.conn.write(b'%s%s\n' % (f, suffix))
         self.conn.ok()
 
+    @_command
     def send_index(self, name):
         self._backend.init_session()
         assert(name.find(b'/') < 0)
@@ -77,6 +79,7 @@ class BupProtocolServer:
             w.abort()
             raise Exception(msg % (expected, actual))
 
+    @_command
     def receive_objects_v2(self, junk):
         self._backend.init_session()
         suggested = set()
@@ -131,12 +134,14 @@ class BupProtocolServer:
             self._check(w, crcr, crc, 'object read: expected crc %d, got %d\n')
         # NOTREACHED
 
+    @_command
     def read_ref(self, refname):
         self._backend.init_session()
         r = self._backend.read_ref(refname)
         self.conn.write(b'%s\n' % hexlify(r or b''))
         self.conn.ok()
 
+    @_command
     def update_ref(self, refname):
         self._backend.init_session()
         newval = self.conn.readline().strip()
@@ -144,6 +149,7 @@ class BupProtocolServer:
         self._backend.update_ref(refname, unhexlify(newval), unhexlify(oldval))
         self.conn.ok()
 
+    @_command
     def join(self, id):
         self._backend.init_session()
         try:
@@ -160,6 +166,7 @@ class BupProtocolServer:
 
     cat = join # apocryphal alias
 
+    @_command
     def cat_batch(self, dummy):
         self._backend.init_session()
         # For now, avoid potential deadlock by just reading them all
@@ -175,6 +182,7 @@ class BupProtocolServer:
                 self.conn.write(buf)
         self.conn.ok()
 
+    @_command
     def refs(self, args):
         limit_to_heads, limit_to_tags = args.split()
         assert limit_to_heads in (b'0', b'1')
@@ -189,6 +197,7 @@ class BupProtocolServer:
         self.conn.write(b'\n')
         self.conn.ok()
 
+    @_command
     def rev_list(self, _):
         self._backend.init_session()
         count = self.conn.readline()
@@ -211,6 +220,7 @@ class BupProtocolServer:
             self.conn.error(str(e).encode('ascii'))
             raise
 
+    @_command
     def resolve(self, args):
         self._backend.init_session()
         (flags,) = args.split()
@@ -256,10 +266,7 @@ class BupProtocolServer:
                 break
 
             cmdattr = cmd.replace(b'-', b'_').decode('ascii', errors='replace')
-            fn = getattr(self, cmdattr, None)
-            if not cmd in commands or not callable(fn):
-                raise Exception('unknown server command: %r\n' % line)
-            fn(rest)
+            getattr(self, cmdattr)(rest)
 
         debug1('bup server: done\n')
 
