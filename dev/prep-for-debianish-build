@@ -4,7 +4,7 @@ set -exuo pipefail
 
 usage()
 {
-    echo "Usage: prep-for-debianish-build [python2|python3]"
+    echo "Usage: prep-for-debianish-build [python2|python3] [pyxattr|xattr]"
 }
 
 export DEBIAN_FRONTEND=noninteractive
@@ -14,19 +14,20 @@ common_debs='gcc make linux-libc-dev git rsync eatmydata acl attr par2'
 common_debs="$common_debs duplicity rdiff-backup rsnapshot"
 
 pyver="${1:-python2}"
+xattr="${2:-pyxattr}"
 
 case "$pyver" in
     python2)
         apt-get install -y \
                 $common_debs \
                 python2.7-dev python-fuse \
-                python-pyxattr python-pylibacl python-tornado
+                python-"$xattr" python-pylibacl python-tornado
         ;;
     python3)
         apt-get install -y \
                 $common_debs \
                 python3.7-dev python3-distutils python3-fuse \
-                python3-pyxattr python3-pylibacl python3-tornado
+                python3-"$xattr" python3-pylibacl python3-tornado
         ;;
     *)
         usage 1>&2

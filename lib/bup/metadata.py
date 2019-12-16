@@ -20,16 +20,18 @@ from bup.xstat import utime, lutime
 
 xattr = None
 if sys.platform.startswith('linux'):
+    # prefer python-pyxattr (it's a lot faster), but fall back to python-xattr
+    # as the two are incompatible and only one can be installed on a system
     try:
         import xattr
     except ImportError:
         log('Warning: Linux xattr support missing; install python-pyxattr.\n')
-    if xattr:
+    if xattr and getattr(xattr, 'get_all', None) is None:
         try:
-            xattr.get_all
-        except AttributeError:
+            from xattr import pyxattr_compat as xattr
+        except ImportError:
             log('Warning: python-xattr module is too old; '
-                'install python-pyxattr instead.\n')
+                'upgrade or install python-pyxattr instead.\n')
             xattr = None
 
 posix1e = None

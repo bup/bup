@@ -14,6 +14,20 @@ task:
     su -l bup -c "eatmydata make -j3 -C '$(pwd)' check"
 
 task:
+  name: debian (xattr)
+  container:
+    image: debian:buster
+    cpu: 2
+    memory: 8
+  script: |
+    set -xe
+    dev/prep-for-debianish-build python2 xattr
+    dev/system-info
+    adduser --disabled-password --gecos '' bup
+    chown -R bup:bup .
+    su -l bup -c "eatmydata make -j3 -C '$(pwd)' check"
+
+task:
   name: freebsd
   freebsd_instance:
     image: freebsd-11-2-release-amd64
