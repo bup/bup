@@ -9,7 +9,7 @@ from __future__ import absolute_import, division, print_function
 from binascii import hexlify
 import os, sys, time
 
-from bup import hashsplit, git, options, client
+from bup import hashsplit, git, options, client, repo
 from bup.compat import argv_bytes, environ
 from bup.helpers import (add_error, handle_ctrl_c, hostname, log, parse_num,
                          qprogress, reprogress, saved_errors,
@@ -109,24 +109,24 @@ if opt.name and not valid_save_name(opt.name):
 refname = opt.name and b'refs/heads/%s' % opt.name or None
 
 if opt.noop or opt.copy:
-    cli = pack_writer = oldref = None
-elif opt.remote or is_reverse:
-    git.check_repo_or_die()
-    remote = opt.remote
-    if is_reverse:
-        remote = b'reverse://%s' % is_reverse
-    cli = client.Client(remote)
-    oldref = refname and cli.read_ref(refname) or None
-    pack_writer = cli.new_packwriter(compression_level=opt.compress,
-                                     max_pack_size=max_pack_size,
-                                     max_pack_objects=max_pack_objects)
+    repo = pack_writer = oldref = None
 else:
     git.check_repo_or_die()
-    cli = None
-    oldref = refname and git.read_ref(refname) or None
-    pack_writer = git.PackWriter(compression_level=opt.compress,
-                                 max_pack_size=max_pack_size,
-                                 max_pack_objects=max_pack_objects)
+    try:
+        if opt.remote:
+            repo = repo.RemoteRepo(opt.remote)
+        elif is_reverse:
+            repo = repo.RemoteRepo(b'reverse://%s' % is_reverse)
+        else:
+            repo = repo.LocalRepo()
+    except client.ClientError as e:
+        log('error: %s' % e)
+        sys.exit(1)
+
+    oldref = refname and repo.read_ref(refname) or None
+    pack_writer = repo.new_packwriter(compression_level=opt.compress,
+                                      max_pack_size=max_pack_size,
+                                      max_pack_objects=max_pack_objects)
 
 input = byte_stream(sys.stdin)
 
@@ -225,14 +225,11 @@ if opt.commit or opt.name:
 if pack_writer:
     pack_writer.close()  # must close before we can update the ref
 
-if opt.name:
-    if cli:
-        cli.update_ref(refname, commit, oldref)
-    else:
-        git.update_ref(refname, commit, oldref)
+if opt.name and repo:
+    repo.update_ref(refname, commit, oldref)
 
-if cli:
-    cli.close()
+if repo:
+    repo.close()
 
 secs = time.time() - start_time
 size = hashsplit.total_split

@@ -11,7 +11,7 @@ from errno import EACCES
 from io import BytesIO
 import os, sys, stat, time, math
 
-from bup import hashsplit, git, options, index, client, metadata, hlinkdb
+from bup import hashsplit, git, options, index, client, repo, metadata, hlinkdb
 from bup.compat import argv_bytes, environ
 from bup import treesplit
 from bup.hashsplit import GIT_MODE_TREE, GIT_MODE_FILE, GIT_MODE_SYMLINK
@@ -103,23 +103,21 @@ name = opt.name
 if name and not valid_save_name(name):
     o.fatal("'%s' is not a valid branch name" % path_msg(name))
 refname = name and b'refs/heads/%s' % name or None
-if opt.remote or is_reverse:
-    remote = opt.remote
-    if is_reverse:
-        remote = b'reverse://%s' % is_reverse
-    try:
-        cli = client.Client(remote)
-    except client.ClientError as e:
-        log('error: %s' % e)
-        sys.exit(1)
-    oldref = refname and cli.read_ref(refname) or None
-    w = cli.new_packwriter(compression_level=opt.compress)
-    use_treesplit = cli.config(b'bup.treesplit', opttype='bool')
-else:
-    cli = None
-    oldref = refname and git.read_ref(refname) or None
-    w = git.PackWriter(compression_level=opt.compress)
-    use_treesplit = git.git_config_get(b'bup.treesplit', opttype='bool')
+
+try:
+    if opt.remote:
+        repo = repo.RemoteRepo(opt.remote)
+    elif is_reverse:
+        repo = repo.RemoteRepo(b'reverse://%s' % is_reverse)
+    else:
+        repo = repo.LocalRepo()
+    use_treesplit = repo.config(b'bup.treesplit', opttype='bool')
+except client.ClientError as e:
+    log('error: %s' % e)
+    sys.exit(1)
+
+oldref = refname and repo.read_ref(refname) or None
+w = repo.new_packwriter(compression_level=opt.compress)
 
 handle_ctrl_c()
 
@@ -499,15 +497,11 @@ if opt.commit or name:
 
 msr.close()
 w.close()  # must close before we can update the ref
-        
-if opt.name:
-    if cli:
-        cli.update_ref(refname, commit, oldref)
-    else:
-        git.update_ref(refname, commit, oldref)
 
-if cli:
-    cli.close()
+if opt.name:
+    repo.update_ref(refname, commit, oldref)
+
+repo.close()
 
 if saved_errors:
     log('WARNING: %d errors encountered while saving.\n' % len(saved_errors))
