@@ -1,7 +1,6 @@
 
 import os, struct, subprocess
 from binascii import hexlify, unhexlify
-from contextlib import contextmanager
 
 from bup import git, vfs, vint
 from bup.compat import hexstr
@@ -71,14 +70,15 @@ class BupProtocolServer:
                 self.conn.write(b'%s%s\n' % (f, suffix))
         self.conn.ok()
 
+    def _send_size(self, size):
+        self.conn.write(struct.pack('!I', size))
+
     @_command
     def send_index(self, name):
         self.init_session()
         assert(name.find(b'/') < 0)
         assert(name.endswith(b'.idx'))
-        with self.repo.send_index(name) as data:
-            self.conn.write(struct.pack('!I', len(data)))
-            self.conn.write(data)
+        self.repo.send_index(name, self.conn, self._send_size)
         self.conn.ok()
 
     def _check(self, w, expected, actual, msg):
@@ -337,10 +337,11 @@ class AbstractServerBackend(object):
         """
         raise NotImplementedError('Subclasses must implement list_indexes')
 
-    def send_index(self, name):
+    def send_index(self, name, conn, send_size):
         """
-        This should return a context manager memory object whose len() can
-        be determined and that can be written to the connection.
+        This should first call send_size() with the size of the data and
+        then call conn.write() for the data, it may be called multiple
+        times if reading in chunks.
         """
         raise NotImplementedError("Subclasses must implement send_index")
 
@@ -426,10 +427,10 @@ class GitServerBackend(AbstractServerBackend):
             self.repo.close()
             self.repo = None
 
-    @contextmanager
-    def send_index(self, name):
+    def send_index(self, name, conn, send_size):
         with git.open_idx(git.repo(b'objects/pack/%s' % name)) as idx:
-            yield idx.map
+            send_size(len(idx.map))
+            conn.write(idx.map)
 
     def new_packwriter(self):
         if self.dumb_server_mode:
