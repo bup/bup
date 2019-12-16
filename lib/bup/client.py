@@ -193,9 +193,25 @@ class Client:
             raise ClientError('server does not appear to provide %s command'
                               % name.encode('ascii'))
 
-    def sync_indexes(self):
+    def _list_indexes(self):
         self._require_command(b'list-indexes')
         self.check_busy()
+        self.conn.write(b'list-indexes\n')
+        for line in linereader(self.conn):
+            if not line:
+                break
+            assert(line.find(b'/') < 0)
+            parts = line.split(b' ')
+            idx = parts[0]
+            load = len(parts) == 2 and parts[1] == b'load'
+            yield idx, load
+        self.check_ok()
+
+    def list_indexes(self):
+        for idx, load in self._list_indexes():
+            yield idx
+
+    def sync_indexes(self):
         conn = self.conn
         mkdirp(self.cachedir)
         # All cached idxs are extra until proven otherwise
@@ -205,21 +221,14 @@ class Client:
             if f.endswith(b'.idx'):
                 extra.add(f)
         needed = set()
-        conn.write(b'list-indexes\n')
-        for line in linereader(conn):
-            if not line:
-                break
-            assert(line.find(b'/') < 0)
-            parts = line.split(b' ')
-            idx = parts[0]
-            if len(parts) == 2 and parts[1] == b'load' and idx not in extra:
+        for idx, load in self._list_indexes():
+            if load:
                 # If the server requests that we load an idx and we don't
                 # already have a copy of it, it is needed
                 needed.add(idx)
             # Any idx that the server has heard of is proven not extra
             extra.discard(idx)
 
-        self.check_ok()
         debug1('client: removing extra indexes: %s\n' % extra)
         for idx in extra:
             os.unlink(os.path.join(self.cachedir, idx))

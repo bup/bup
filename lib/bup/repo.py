@@ -1,5 +1,6 @@
 
 from __future__ import absolute_import
+import os
 from os.path import realpath
 from functools import partial
 
@@ -48,6 +49,10 @@ class LocalRepo:
     def is_remote(self):
         return False
 
+    def list_indexes(self):
+        for f in os.listdir(git.repo(b'objects/pack')):
+            yield f
+
     def new_packwriter(self, compression_level=1,
                        max_pack_size=None, max_pack_objects=None):
         return git.PackWriter(repo_dir=self.repo_dir,
@@ -93,6 +98,7 @@ class RemoteRepo:
         self.update_ref = self.client.update_ref
         self.rev_list = self.client.rev_list
         self.config = self.client.config
+        self.list_indexes = self.client.list_indexes
         self._id = _repo_id(address)
 
     def close(self):

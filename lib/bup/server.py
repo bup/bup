@@ -376,10 +376,7 @@ class GitServerBackend(AbstractServerBackend):
         self.refs = self.repo.refs
         self.resolve = self.repo.resolve
         self.close = self.repo.close
-
-    def list_indexes(self):
-        for f in os.listdir(git.repo(b'objects/pack')):
-            yield f
+        self.list_indexes = self.repo.list_indexes
 
     def send_index(self, name):
         return git.open_idx(git.repo(b'objects/pack/%s' % name)).map
