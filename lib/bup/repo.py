@@ -92,13 +92,12 @@ class LocalRepo:
 class RemoteRepo:
     def __init__(self, address):
         self.closed = False
-        self.address = address
         self.client = client.Client(address)
         self.new_packwriter = self.client.new_packwriter
         self.update_ref = self.client.update_ref
         self.rev_list = self.client.rev_list
         self.config_get = self.client.config_get
-        self._id = _repo_id(self.address)
+        self._id = _repo_id(address)
 
     def close(self):
         if not self.closed:
