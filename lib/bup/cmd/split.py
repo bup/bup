@@ -4,7 +4,7 @@ from binascii import hexlify
 import sys, time
 
 from bup import compat, hashsplit, git, options, client
-from bup.compat import argv_bytes, environ, nullcontext
+from bup.compat import argv_bytes, environ
 from bup.hashsplit import HashSplitter
 from bup.helpers import (add_error, hostname, log, parse_num,
                          qprogress, reprogress, saved_errors,
@@ -12,6 +12,7 @@ from bup.helpers import (add_error, hostname, log, parse_num,
                          parse_date_or_fatal)
 from bup.io import byte_stream
 from bup.pwdgrp import userfullname, username
+import bup.repo
 
 
 optspec = """
@@ -228,20 +229,21 @@ def main(argv):
     writing = not (opt.noop or opt.copy)
     remote_dest = opt.remote or opt.is_reverse
 
-    if writing:
-        git.check_repo_or_die()
+    git.check_repo_or_die()
 
-    if remote_dest and writing:
-        remote = opt.remote
-        if opt.is_reverse:
-            remote = b'bup-rev://' + opt.is_reverse
-        cli = repo = client.Client(remote)
-    else:
-        cli = nullcontext()
-        repo = git
+    try:
+        if opt.remote:
+            repo = bup.repo.RemoteRepo(opt.remote)
+        elif opt.is_reverse:
+            repo = bup.repo.RemoteRepo(b'bup-rev://' + opt.is_reverse)
+        else:
+            repo = bup.repo.LocalRepo()
+    except client.ClientError as e:
+        log('error: %s' % e)
+        sys.exit(1)
 
-    # cli creation must be last nontrivial command in each if clause above
-    with cli:
+    # repo creation must be last nontrivial command in each if clause above
+    with repo:
         if opt.name and writing:
             refname = opt.name and b'refs/heads/%s' % opt.name
             oldref = repo.read_ref(refname)
@@ -250,14 +252,10 @@ def main(argv):
 
         if not writing:
             pack_writer = NoOpPackWriter()
-        elif not remote_dest:
-            pack_writer = git.PackWriter(compression_level=opt.compress,
-                                         max_pack_size=opt.max_pack_size,
-                                         max_pack_objects=opt.max_pack_objects)
         else:
-            pack_writer = cli.new_packwriter(compression_level=opt.compress,
-                                             max_pack_size=opt.max_pack_size,
-                                             max_pack_objects=opt.max_pack_objects)
+            pack_writer = repo.new_packwriter(compression_level=opt.compress,
+                                              max_pack_size=opt.max_pack_size,
+                                              max_pack_objects=opt.max_pack_objects)
 
         # packwriter creation must be last command in each if clause above
         with pack_writer:

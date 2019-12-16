@@ -4,9 +4,10 @@ from binascii import hexlify
 from errno import ENOENT
 import math, os, stat, sys, time
 
+import bup.repo
 from bup import hashsplit, git, options, index, client, metadata
 from bup import hlinkdb
-from bup.compat import argv_bytes, environ, nullcontext
+from bup.compat import argv_bytes, environ
 from bup.hashsplit import GIT_MODE_TREE, GIT_MODE_FILE, GIT_MODE_SYMLINK
 from bup.helpers import (add_error, grafted_path_components, handle_ctrl_c,
                          hostname, istty2, log, parse_date_or_fatal, parse_num,
@@ -425,28 +426,21 @@ def main(argv):
     client.bwlimit = opt.bwlimit
     git.check_repo_or_die()
 
-    remote_dest = opt.remote or opt.is_reverse
-    if not remote_dest:
-        repo = git
-        cli = nullcontext()
-        split_trees = git.git_config_get(b'bup.split-trees', opttype='bool')
-    else:
-        try:
-            remote = opt.remote
-            if opt.is_reverse:
-                remote = b'bup-rev://' + opt.is_reverse
-            cli = repo = client.Client(remote)
-            split_trees = repo.config_get(b'bup.split-trees', opttype='bool')
-        except client.ClientError as e:
-            log('error: %s' % e)
-            sys.exit(2)
-
-    # cli creation must be last nontrivial command in each if clause above
-    with cli:
-        if not remote_dest:
-            w = git.PackWriter(compression_level=opt.compress)
+    try:
+        if opt.remote:
+            repo = bup.repo.RemoteRepo(opt.remote)
+        elif opt.is_reverse:
+            repo = bup.repo.RemoteRepo(b'bup-rev://' + opt.is_reverse)
         else:
-            w = cli.new_packwriter(compression_level=opt.compress)
+            repo = bup.repo.LocalRepo()
+    except client.ClientError as e:
+        log('error: %s' % e)
+        sys.exit(1)
+
+    # repo creation must be last nontrivial command in each if clause above
+    with repo:
+        split_trees = repo.config_get(b'bup.split-trees', opttype='bool')
+        w = repo.new_packwriter(compression_level=opt.compress)
 
         with w:
             sys.stdout.flush()
