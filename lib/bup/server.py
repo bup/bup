@@ -394,8 +394,7 @@ class GitServerBackend(AbstractServerBackend):
 
     def rev_list_raw(self, refs, count, fmt):
         args = git.rev_list_invocation(refs, count=count, format=fmt)
-        p = subprocess.Popen(git.rev_list_invocation(refs, count=count, format=fmt),
-                             env=git._gitenv(git.repodir),
+        p = subprocess.Popen(args, env=git._gitenv(git.repodir),
                              stdout=subprocess.PIPE)
         while True:
             out = p.stdout.read(64 * 1024)
