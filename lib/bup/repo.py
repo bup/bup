@@ -101,6 +101,9 @@ class LocalRepo:
 
 class RemoteRepo:
     def __init__(self, address):
+        # if client.Client() raises an exception, have a client
+        # anyway to avoid follow-up exceptions from __del__
+        self.client = None
         self.client = client.Client(address)
         self.new_packwriter = self.client.new_packwriter
         self.update_ref = self.client.update_ref
