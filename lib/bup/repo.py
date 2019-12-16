@@ -113,6 +113,9 @@ class RemoteRepo:
         self.list_indexes = self.client.list_indexes
         self.read_ref = self.client.read_ref
         self.send_index = self.client.send_index
+        self.join = self.client.join
+        self.refs = self.client.refs
+        self.resolve = self.client.resolve
         self._id = _repo_id(address)
 
     def close(self):
@@ -157,17 +160,3 @@ class RemoteRepo:
             for data in it:
                 yield data
         assert not next(items, None)
-
-    def join(self, ref):
-        return self.client.join(ref)
-
-    def refs(self, patterns=None, limit_to_heads=False, limit_to_tags=False):
-        for ref in self.client.refs(patterns=patterns,
-                                    limit_to_heads=limit_to_heads,
-                                    limit_to_tags=limit_to_tags):
-            yield ref
-
-    def resolve(self, path, parent=None, want_meta=True, follow=True):
-        ## FIXME: mode_only=?
-        return self.client.resolve(path, parent=parent, want_meta=want_meta,
-                                   follow=follow)
