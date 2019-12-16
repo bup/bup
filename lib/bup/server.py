@@ -72,14 +72,15 @@ class BupProtocolServer:
                 self.conn.write(b'%s%s\n' % (f, suffix))
         self.conn.ok()
 
+    def _send_size(self, size):
+        self.conn.write(struct.pack('!I', size))
+
     @_command
     def send_index(self, name):
         self.init_session()
         assert(name.find(b'/') < 0)
         assert(name.endswith(b'.idx'))
-        data = self.repo.send_index(name)
-        self.conn.write(struct.pack('!I', len(data)))
-        self.conn.write(data)
+        self.repo.send_index(name, self.conn, self._send_size)
         self.conn.ok()
 
     def _check(self, w, expected, actual, msg):
@@ -294,10 +295,11 @@ class AbstractServerBackend(object):
         """
         raise NotImplementedError('Subclasses must implement list_indexes')
 
-    def send_index(self, name):
+    def send_index(self, name, conn, send_size):
         """
-        This should return a memory object whose len() can be determined
-        and that can be written to the connection.
+        This should first call send_size() with the size of the data and
+        then call conn.write() for the data, it may be called multiple
+        times if reading in chunks.
         """
         raise NotImplementedError("Subclasses must implement send_index")
 
@@ -379,8 +381,10 @@ class GitServerBackend(AbstractServerBackend):
         self.list_indexes = self.repo.list_indexes
         self.read_ref = self.repo.read_ref
 
-    def send_index(self, name):
-        return git.open_idx(git.repo(b'objects/pack/%s' % name)).map
+    def send_index(self, name, conn, send_size):
+        data = git.open_idx(git.repo(b'objects/pack/%s' % name)).map
+        send_size(len(data))
+        conn.write(data)
 
     def new_packwriter(self):
         if self.dumb_server_mode:
