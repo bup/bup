@@ -93,6 +93,11 @@ class LocalRepo:
         return vfs.resolve(self, path,
                            parent=parent, want_meta=want_meta, follow=follow)
 
+    def send_index(self, name, conn, send_size):
+        data = git.open_idx(git.repo(b'objects/pack/%s' % name)).map
+        send_size(len(data))
+        conn.write(data)
+
 
 class RemoteRepo:
     def __init__(self, address):
@@ -103,6 +108,7 @@ class RemoteRepo:
         self.config = self.client.config
         self.list_indexes = self.client.list_indexes
         self.read_ref = self.client.read_ref
+        self.send_index = self.client.send_index
         self._id = _repo_id(address)
 
     def close(self):

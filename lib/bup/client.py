@@ -237,28 +237,34 @@ class Client:
             self.sync_index(idx)
         git.auto_midx(self.cachedir)
 
-    def sync_index(self, name):
+    def send_index(self, name, f, send_size):
         self._require_command(b'send-index')
         #debug1('requesting %r\n' % name)
         self.check_busy()
+        self.conn.write(b'send-index %s\n' % name)
+        n = struct.unpack('!I', self.conn.read(4))[0]
+        assert(n)
+
+        send_size(n)
+
+        count = 0
+        progress('Receiving index from server: %d/%d\r' % (count, n))
+        for b in chunkyreader(self.conn, n):
+            f.write(b)
+            count += len(b)
+            qprogress('Receiving index from server: %d/%d\r' % (count, n))
+        progress('Receiving index from server: %d/%d, done.\n' % (count, n))
+        self.check_ok()
+
+    def sync_index(self, name):
         mkdirp(self.cachedir)
         fn = os.path.join(self.cachedir, name)
         if os.path.exists(fn):
             msg = ("won't request existing .idx, try `bup bloom --check %s`"
                    % path_msg(fn))
             raise ClientError(msg)
-        self.conn.write(b'send-index %s\n' % name)
-        n = struct.unpack('!I', self.conn.read(4))[0]
-        assert(n)
         with atomically_replaced_file(fn, 'wb') as f:
-            count = 0
-            progress('Receiving index from server: %d/%d\r' % (count, n))
-            for b in chunkyreader(self.conn, n):
-                f.write(b)
-                count += len(b)
-                qprogress('Receiving index from server: %d/%d\r' % (count, n))
-            progress('Receiving index from server: %d/%d, done.\n' % (count, n))
-            self.check_ok()
+            self.send_index(name, f, lambda size: None)
 
     def _make_objcache(self):
         return git.PackIdxList(self.cachedir)

@@ -380,11 +380,7 @@ class GitServerBackend(AbstractServerBackend):
         self.close = self.repo.close
         self.list_indexes = self.repo.list_indexes
         self.read_ref = self.repo.read_ref
-
-    def send_index(self, name, conn, send_size):
-        data = git.open_idx(git.repo(b'objects/pack/%s' % name)).map
-        send_size(len(data))
-        conn.write(data)
+        self.send_index = self.repo.send_index
 
     def new_packwriter(self):
         if self.dumb_server_mode:
