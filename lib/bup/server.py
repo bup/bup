@@ -417,15 +417,12 @@ class GitServerBackend(AbstractServerBackend):
         self.cat = self.repo.cat
         self.refs = self.repo.refs
         self.resolve = self.repo.resolve
+        self.list_indexes = self.repo.list_indexes
 
     def close(self):
         if self.repo:
             self.repo.close()
             self.repo = None
-
-    def list_indexes(self):
-        for f in os.listdir(git.repo(b'objects/pack')):
-            yield f
 
     @contextmanager
     def send_index(self, name):
