@@ -5,7 +5,7 @@ from __future__ import absolute_import
 from binascii import hexlify, unhexlify
 import errno, os, re, struct, sys, time, zlib
 
-from bup import git, ssh, vfs
+from bup import git, ssh, vfs, protocol
 from bup.compat import environ, range, reraise
 from bup.helpers import (Conn, atomically_replaced_file, chunkyreader, debug1,
                          debug2, linereader, lines_until_sentinel,
@@ -474,14 +474,14 @@ class Client:
                                       | (2 if follow else 0)
                                       | (4 if parent else 0)))
         if parent:
-            vfs.write_resolution(conn, parent)
+            protocol.write_resolution(conn, parent)
         write_bvec(conn, path)
         success = ord(conn.read(1))
         assert success in (0, 1)
         if success:
-            result = vfs.read_resolution(conn)
+            result = protocol.read_resolution(conn)
         else:
-            result = vfs.read_ioerror(conn)
+            result = protocol.read_ioerror(conn)
         # FIXME: confusing
         not_ok = self.check_ok()
         if not_ok:

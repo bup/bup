@@ -5,9 +5,120 @@ from binascii import hexlify, unhexlify
 from bup import git, vfs, vint
 from bup.compat import environ, hexstr, int_types
 from bup.io import byte_stream, path_msg
+from bup.vint import read_bvec, write_bvec
+from bup.vint import read_vint, write_vint
+from bup.vint import read_vuint, write_vuint
 from bup.git import MissingObject
 from bup.helpers import (debug1, debug2, linereader, lines_until_sentinel, log)
+from bup.vfs import Item, Chunky, RevList, Root, Tags, Commit, FakeLink
+from bup.metadata import Metadata
 
+
+def read_item(port):
+    def read_m(port, has_meta):
+        if has_meta:
+            m = Metadata.read(port)
+            return m
+        return read_vuint(port)
+    kind, has_meta = vint.recv(port, 'sV')
+    if kind == b'Item':
+        oid, meta = read_bvec(port), read_m(port, has_meta)
+        return Item(oid=oid, meta=meta)
+    if kind == b'Chunky':
+        oid, meta = read_bvec(port), read_m(port, has_meta)
+        return Chunky(oid=oid, meta=meta)
+    if kind == b'RevList':
+        oid, meta = read_bvec(port), read_m(port, has_meta)
+        return RevList(oid=oid, meta=meta)
+    if kind == b'Root':
+        return Root(meta=read_m(port, has_meta))
+    if kind == b'Tags':
+        return Tags(meta=read_m(port, has_meta))
+    if kind == b'Commit':
+        oid, coid = vint.recv(port, 'ss')
+        meta = read_m(port, has_meta)
+        return Commit(oid=oid, coid=coid, meta=meta)
+    if kind == b'FakeLink':
+        target, meta = read_bvec(port), read_m(port, has_meta)
+        return FakeLink(target=target, meta=meta)
+    assert False
+
+def write_item(port, item):
+    kind = type(item)
+    name = bytes(kind.__name__.encode('ascii'))
+    meta = item.meta
+    has_meta = 1 if isinstance(meta, Metadata) else 0
+    if kind in (Item, Chunky, RevList):
+        assert len(item.oid) == 20
+        if has_meta:
+            vint.send(port, 'sVs', name, has_meta, item.oid)
+            Metadata.write(meta, port, include_path=False)
+        else:
+            vint.send(port, 'sVsV', name, has_meta, item.oid, item.meta)
+    elif kind in (Root, Tags):
+        if has_meta:
+            vint.send(port, 'sV', name, has_meta)
+            Metadata.write(meta, port, include_path=False)
+        else:
+            vint.send(port, 'sVV', name, has_meta, item.meta)
+    elif kind == Commit:
+        assert len(item.oid) == 20
+        assert len(item.coid) == 20
+        if has_meta:
+            vint.send(port, 'sVss', name, has_meta, item.oid, item.coid)
+            Metadata.write(meta, port, include_path=False)
+        else:
+            vint.send(port, 'sVssV', name, has_meta, item.oid, item.coid,
+                      item.meta)
+    elif kind == FakeLink:
+        if has_meta:
+            vint.send(port, 'sVs', name, has_meta, item.target)
+            Metadata.write(meta, port, include_path=False)
+        else:
+            vint.send(port, 'sVsV', name, has_meta, item.target, item.meta)
+    else:
+        assert False
+
+def write_ioerror(port, ex):
+    assert isinstance(ex, vfs.IOError)
+    write_vuint(port,
+                (1 if ex.errno is not None else 0)
+                | (2 if ex.message is not None else 0)
+                | (4 if ex.terminus is not None else 0))
+    if ex.errno is not None:
+        write_vint(port, ex.errno)
+    if ex.message is not None:
+        write_bvec(port, ex.message.encode('utf-8'))
+    if ex.terminus is not None:
+        write_resolution(port, ex.terminus)
+
+def read_ioerror(port):
+    mask = read_vuint(port)
+    no = read_vint(port) if 1 & mask else None
+    msg = read_bvec(port).decode('utf-8') if 2 & mask else None
+    term = read_resolution(port) if 4 & mask else None
+    return vfs.IOError(errno=no, message=msg, terminus=term)
+
+def write_resolution(port, resolution):
+    write_vuint(port, len(resolution))
+    for name, item in resolution:
+        write_bvec(port, name)
+        if item:
+            port.write(b'\x01')
+            write_item(port, item)
+        else:
+            port.write(b'\x00')
+
+def read_resolution(port):
+    n = read_vuint(port)
+    result = []
+    for i in range(n):
+        name = read_bvec(port)
+        have_item = ord(port.read(1))
+        assert have_item in (0, 1)
+        item = read_item(port) if have_item else None
+        result.append((name, item))
+    return tuple(result)
 
 def _command(fn):
     fn.bup_server_command = True
@@ -241,8 +352,8 @@ class BupProtocolServer:
         want_meta = bool(flags & 1)
         follow = bool(flags & 2)
         have_parent = bool(flags & 4)
-        parent = vfs.read_resolution(self.conn) if have_parent else None
-        path = vint.read_bvec(self.conn)
+        parent = read_resolution(self.conn) if have_parent else None
+        path = read_bvec(self.conn)
         if not len(path):
             raise Exception('Empty resolve path')
         try:
@@ -251,10 +362,10 @@ class BupProtocolServer:
             res = ex
         if isinstance(res, vfs.IOError):
             self.conn.write(b'\0')  # error
-            vfs.write_ioerror(self.conn, res)
+            write_ioerror(self.conn, res)
         else:
             self.conn.write(b'\1')  # success
-            vfs.write_resolution(self.conn, res)
+            write_resolution(self.conn, res)
         self.conn.ok()
 
     def handle(self):
