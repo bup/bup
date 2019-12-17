@@ -51,7 +51,8 @@ class LocalRepo:
     @property
     def dumb_server_mode(self):
         if self._dumb_server_mode is None:
-            self._dumb_server_mode = os.path.exists(git.repo(b'bup-dumb-server'))
+            self._dumb_server_mode = os.path.exists(git.repo(b'bup-dumb-server',
+                                                             repo_dir=self.repo_dir))
         return self._dumb_server_mode
 
     def id(self):
