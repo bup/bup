@@ -27,6 +27,7 @@ class LocalRepo:
         self.rev_list = partial(git.rev_list, repo_dir=self.repo_dir)
         self.config = partial(git.git_config_get, repo_dir=self.repo_dir)
         self._id = _repo_id(self.repo_dir)
+        self._dumb_server_mode = None
 
     @classmethod
     def create(self, repo_dir=None):
@@ -46,6 +47,12 @@ class LocalRepo:
 
     def __exit__(self, type, value, traceback):
         self.close()
+
+    @property
+    def dumb_server_mode(self):
+        if self._dumb_server_mode is None:
+            self._dumb_server_mode = os.path.exists(git.repo(b'bup-dumb-server'))
+        return self._dumb_server_mode
 
     def id(self):
         """Return an identifier that differs from any other repository that

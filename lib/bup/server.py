@@ -372,7 +372,7 @@ class GitServerBackend(AbstractServerBackend):
         git.check_repo_or_die(repo_dir)
         self.repo = LocalRepo(repo_dir)
         self.repo_dir = self.repo.repo_dir
-        self.dumb_server_mode = os.path.exists(git.repo(b'bup-dumb-server'))
+        self.dumb_server_mode = self.repo.dumb_server_mode
 
         self.update_ref = self.repo.update_ref
         self.join = self.repo.join
