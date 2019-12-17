@@ -670,7 +670,7 @@ def _make_objcache():
 
 class PackWriter:
     """Writes Git objects inside a pack file."""
-    def __init__(self, objcache_maker=_make_objcache, compression_level=1,
+    def __init__(self, objcache_maker=None, compression_level=1,
                  run_midx=True, on_pack_finish=None,
                  max_pack_size=None, max_pack_objects=None, repo_dir=None):
         self.repo_dir = repo_dir or repo()
@@ -680,7 +680,7 @@ class PackWriter:
         self.outbytes = 0
         self.filename = None
         self.idx = None
-        self.objcache_maker = objcache_maker
+        self.objcache_maker = objcache_maker or _make_objcache
         self.objcache = None
         self.compression_level = compression_level
         self.run_midx=run_midx
@@ -773,7 +773,7 @@ class PackWriter:
         return id
 
     def _require_objcache(self):
-        if self.objcache is None and self.objcache_maker:
+        if self.objcache is None:
             self.objcache = self.objcache_maker()
         if self.objcache is None:
             raise GitError(
