@@ -117,7 +117,7 @@ class LocalRepo:
 
     def rev_list_raw(self, refs, count, fmt):
         args = git.rev_list_invocation(refs, count=count, format=fmt)
-        p = subprocess.Popen(args, env=git._gitenv(git.repodir),
+        p = subprocess.Popen(args, env=git._gitenv(self.repo_dir),
                              stdout=subprocess.PIPE)
         while True:
             out = p.stdout.read(64 * 1024)
