@@ -97,7 +97,11 @@ class BupProtocolServer:
             w = self.suspended_w
             self.suspended_w = None
         else:
-            w = self.repo.new_packwriter()
+            if self.repo.dumb_server_mode:
+                objcache_maker = lambda : None
+            else:
+                objcache_maker = None
+            w = self.repo.new_packwriter(objcache_maker=objcache_maker)
         while 1:
             ns = self.conn.read(4)
             if not ns:
@@ -379,15 +383,9 @@ class GitServerBackend(AbstractServerBackend):
         self.list_indexes = self.repo.list_indexes
         self.read_ref = self.repo.read_ref
         self.send_index = self.repo.send_index
+        self.new_packwriter = self.repo.new_packwriter
 
     create = LocalRepo.create
-
-    def new_packwriter(self):
-        if self.dumb_server_mode:
-            objcache_maker = lambda : None
-        else:
-            objcache_maker = None
-        return git.PackWriter(objcache_maker=objcache_maker)
 
     def rev_list_raw(self, refs, count, fmt):
         args = git.rev_list_invocation(refs, count=count, format=fmt)
