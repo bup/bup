@@ -64,11 +64,13 @@ class LocalRepo:
         return git.read_ref(refname)
 
     def new_packwriter(self, compression_level=1,
-                       max_pack_size=None, max_pack_objects=None):
+                       max_pack_size=None, max_pack_objects=None,
+                       objcache_maker=None):
         return git.PackWriter(repo_dir=self.repo_dir,
                               compression_level=compression_level,
                               max_pack_size=max_pack_size,
-                              max_pack_objects=max_pack_objects)
+                              max_pack_objects=max_pack_objects,
+                              objcache_maker=objcache_maker)
 
     def cat(self, ref):
         """If ref does not exist, yield (None, None, None).  Otherwise yield

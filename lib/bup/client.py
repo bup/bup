@@ -302,14 +302,16 @@ class Client:
         return idx
 
     def new_packwriter(self, compression_level=1,
-                       max_pack_size=None, max_pack_objects=None):
+                       max_pack_size=None, max_pack_objects=None,
+                       objcache_maker=None):
         self._require_command(b'receive-objects-v2')
         self.check_busy()
         def _set_busy():
             self._busy = b'receive-objects-v2'
             self.conn.write(b'receive-objects-v2\n')
+        objcache_maker = objcache_maker or self._make_objcache
         return PackWriter_Remote(self.conn,
-                                 objcache_maker = self._make_objcache,
+                                 objcache_maker = objcache_maker,
                                  suggest_packs = self._suggest_packs,
                                  onopen = _set_busy,
                                  onclose = self._not_busy,
