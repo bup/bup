@@ -1106,18 +1106,21 @@ def guess_repo(path=None):
     repository, you would not be calling this function but using
     check_repo_or_die().
     """
-    global repodir
     if path:
-        repodir = path
-    if not repodir:
-        repodir = environ.get(b'BUP_DIR')
-        if not repodir:
-            repodir = os.path.expanduser(b'~/.bup')
+        return path
+    # previously set?
+    if repodir:
+        return repodir
+    repo = environ.get(b'BUP_DIR')
+    if not repo:
+        repo = os.path.expanduser(b'~/.bup')
+    return repo
 
 
 def init_repo(path=None):
     """Create the Git bare repository for bup in a given path."""
-    guess_repo(path)
+    global repodir
+    repodir = guess_repo(path)
     d = repo()  # appends a / to the path
     parent = os.path.dirname(os.path.dirname(d))
     if parent and not os.path.exists(parent):
@@ -1141,7 +1144,8 @@ def init_repo(path=None):
 
 def check_repo_or_die(path=None):
     """Check to see if a bup repository probably exists, and abort if not."""
-    guess_repo(path)
+    global repodir
+    repodir = guess_repo(path)
     top = repo()
     pst = stat_if_exists(top + b'/objects/pack')
     if pst and stat.S_ISDIR(pst.st_mode):
