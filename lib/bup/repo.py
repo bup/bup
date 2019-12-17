@@ -22,7 +22,7 @@ def _repo_id(key):
 class LocalRepo:
     def __init__(self, repo_dir=None):
         self.closed = False
-        self.repo_dir = realpath(repo_dir or git.repo())
+        self.repo_dir = realpath(repo_dir or git.guess_repo())
         self._cp = git.cp(self.repo_dir)
         self.update_ref = partial(git.update_ref, repo_dir=self.repo_dir)
         self.rev_list = partial(git.rev_list, repo_dir=self.repo_dir)
@@ -61,11 +61,12 @@ class LocalRepo:
         return False
 
     def list_indexes(self):
-        for f in os.listdir(git.repo(b'objects/pack')):
+        for f in os.listdir(git.repo(b'objects/pack',
+                                     repo_dir=self.repo_dir)):
             yield f
 
     def read_ref(self, refname):
-        return git.read_ref(refname)
+        return git.read_ref(refname, repo_dir=self.repo_dir)
 
     def new_packwriter(self, compression_level=1,
                        max_pack_size=None, max_pack_objects=None,
@@ -108,7 +109,8 @@ class LocalRepo:
                            parent=parent, want_meta=want_meta, follow=follow)
 
     def send_index(self, name, conn, send_size):
-        with git.open_idx(git.repo(b'objects/pack/%s' % name)) as idx:
+        with git.open_idx(git.repo(b'objects/pack/%s' % name,
+                                   repo_dir=self.repo_dir)) as idx:
             send_size(len(idx.map))
             conn.write(idx.map)
 
