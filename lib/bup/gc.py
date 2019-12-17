@@ -151,7 +151,7 @@ def sweep(live_objects, existing_count, cat_pipe, threshold, compression,
             cat_pipe.restart()
         ns.stale_files = []
 
-    writer = git.PackWriter(objcache_maker=None,
+    writer = git.PackWriter(objcache_maker=lambda : None,
                             compression_level=compression,
                             run_midx=False,
                             on_pack_finish=remove_stale_files)

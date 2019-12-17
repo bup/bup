@@ -430,8 +430,12 @@ class GitServerBackend(AbstractServerBackend):
 
     def new_packwriter(self):
         if self.dumb_server_mode:
-            return git.PackWriter(objcache_maker=None, run_midx=False)
-        return git.PackWriter()
+            objcache_maker = lambda : None
+            run_midx = False
+        else:
+            objcache_maker = None
+            run_midx = True
+        return git.PackWriter(objcache_maker=objcache_maker, run_midx=run_midx)
 
     def rev_list_raw(self, refs, fmt):
         args = git.rev_list_invocation(refs, format=fmt)
