@@ -1185,25 +1185,24 @@ def delete_ref(refname, oldvalue=None):
     _git_wait('git update-ref', p)
 
 
-def guess_repo(path=None):
-    """Set the path value in the global variable "repodir".
-    This makes bup look for an existing bup repository, but not fail if a
-    repository doesn't exist. Usually, if you are interacting with a bup
-    repository, you would not be calling this function but using
-    check_repo_or_die().
+def guess_repo():
+    """Return the global repodir or BUP_DIR when either is set, or ~/.bup.
+    Usually, if you are interacting with a bup repository, you would
+    not be calling this function but using check_repo_or_die().
+
     """
-    global repodir
-    if path:
-        repodir = path
-    if not repodir:
-        repodir = environ.get(b'BUP_DIR')
-        if not repodir:
-            repodir = os.path.expanduser(b'~/.bup')
+    if repodir:
+        return repodir
+    repo = environ.get(b'BUP_DIR')
+    if not repo:
+        repo = os.path.expanduser(b'~/.bup')
+    return repo
 
 
 def init_repo(path=None):
     """Create the Git bare repository for bup in a given path."""
-    guess_repo(path)
+    global repodir
+    repodir = path or guess_repo()
     d = repo()  # appends a / to the path
     parent = os.path.dirname(os.path.dirname(d))
     if parent and not os.path.exists(parent):
@@ -1228,7 +1227,8 @@ def init_repo(path=None):
 
 def check_repo_or_die(path=None):
     """Check to see if a bup repository probably exists, and abort if not."""
-    guess_repo(path)
+    global repodir
+    repodir = path or guess_repo()
     top = repo()
     pst = stat_if_exists(top + b'/objects/pack')
     if pst and stat.S_ISDIR(pst.st_mode):
