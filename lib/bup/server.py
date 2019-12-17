@@ -94,7 +94,14 @@ class BupProtocolServer:
             w = self.suspended_w
             self.suspended_w = None
         else:
-            w = self.repo.new_packwriter()
+            if self.repo.dumb_server_mode:
+                objcache_maker = lambda : None
+                run_midx = False
+            else:
+                objcache_maker = None
+                run_midx = True
+            w = self.repo.new_packwriter(objcache_maker=objcache_maker,
+                                         run_midx=run_midx)
         try:
             suggested = set()
             while 1:
@@ -420,6 +427,7 @@ class GitServerBackend(AbstractServerBackend):
         self.list_indexes = self.repo.list_indexes
         self.read_ref = self.repo.read_ref
         self.send_index = self.repo.send_index
+        self.new_packwriter = self.repo.new_packwriter
 
     create = LocalRepo.create
 
@@ -427,15 +435,6 @@ class GitServerBackend(AbstractServerBackend):
         if self.repo:
             self.repo.close()
             self.repo = None
-
-    def new_packwriter(self):
-        if self.dumb_server_mode:
-            objcache_maker = lambda : None
-            run_midx = False
-        else:
-            objcache_maker = None
-            run_midx = True
-        return git.PackWriter(objcache_maker=objcache_maker, run_midx=run_midx)
 
     def rev_list_raw(self, refs, fmt):
         args = git.rev_list_invocation(refs, format=fmt)
