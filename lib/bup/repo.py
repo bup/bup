@@ -1,5 +1,5 @@
 
-import os
+import os, subprocess
 from os.path import realpath
 from functools import partial
 
@@ -109,6 +109,19 @@ class LocalRepo:
         with git.open_idx(git.repo(b'objects/pack/%s' % name)) as idx:
             send_size(len(idx.map))
             conn.write(idx.map)
+
+    def rev_list_raw(self, refs, fmt):
+        args = git.rev_list_invocation(refs, format=fmt)
+        p = subprocess.Popen(args, env=git._gitenv(git.repodir),
+                             stdout=subprocess.PIPE)
+        while True:
+            out = p.stdout.read(64 * 1024)
+            if not out:
+                break
+            yield out
+        rv = p.wait()  # not fatal
+        if rv:
+            raise git.GitError('git rev-list returned error %d' % rv)
 
 
 class RemoteRepo:
