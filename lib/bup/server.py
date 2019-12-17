@@ -5,8 +5,8 @@ from binascii import hexlify, unhexlify
 from bup import git, vfs, vint
 from bup.compat import hexstr
 from bup.helpers import (debug1, debug2, linereader, lines_until_sentinel, log, pending_raise)
-from bup.repo import LocalRepo
 from bup.vint import write_vuint
+
 
 def _command(fn):
     fn.bup_server_command = True
@@ -328,111 +328,3 @@ class BupProtocolServer:
                 self.suspended_w.close()
             if self.repo:
                 self.repo.close()
-
-class AbstractServerBackend(object):
-    '''
-    This is an abstract base class for the server backend which
-    really just serves for documentation purposes, you don't even
-    need to inherit a backend from this.
-    '''
-    def __init__(self, repo_dir=None):
-        self.dumb_server_mode = False
-
-    def list_indexes(self):
-        """
-        This should return a list of or be an iterator listing all
-        the indexes present in the repository.
-        """
-        raise NotImplementedError('Subclasses must implement list_indexes')
-
-    def send_index(self, name, conn, send_size):
-        """
-        This should first call send_size() with the size of the data and
-        then call conn.write() for the data, it may be called multiple
-        times if reading in chunks.
-        """
-        raise NotImplementedError("Subclasses must implement send_index")
-
-    def new_packwriter(self):
-        """
-        Return an object implementing the PackWriter protocol.
-        """
-        raise NotImplementedError("Subclasses must implement new_packwriter")
-
-    def read_ref(self, refname):
-        raise NotImplementedError("Subclasses must implement read_ref")
-
-    def update_ref(self, refname, newval, oldval):
-        """
-        This updates the given ref from the old to the new value.
-        """
-        raise NotImplementedError("Subclasses must implemented update_ref")
-
-    def join(self, id):
-        """
-        This should yield all the blob data for the given id,
-        may raise KeyError if not present.
-        """
-        raise NotImplementedError("Subclasses must implemented join")
-
-    def cat(self, ref):
-        """
-        Retrieve one ref. This must return an iterator that yields
-        (oidx, type, size), followed by the data referred to by ref,
-        or only (None, None, None) if the ref doesn't exist.
-        """
-        raise NotImplementedError("Subclasses must implement cat")
-
-    def refs(self, patterns, limit_to_heads, limit_to_tags):
-        """
-        This should yield (name, oid) tuples according to the configuration
-        passed in the arguments.
-        """
-        raise NotImplementedError("Subclasses must implement refs")
-
-    def rev_list_raw(self, refs, fmt):
-        """
-        Yield chunks of data to send to the client containing the
-        git rev-list output for the given arguments.
-        """
-        raise NotImplementedError("Subclasses must implement rev_list_raw")
-
-    def resolve(self, path, parent, want_meta, follow):
-        """
-        Return a list (or yield entries, but we convert to a list) of VFS
-        resolutions given the arguments. May raise vfs.IOError to indicate
-        errors happened.
-        """
-        raise NotImplementedError("Subclasses must implement resolve")
-
-    def close(self):
-        """
-        Close the underlying backend/repository.
-        """
-        raise NotImplemented("Subclasses must implement close")
-
-class GitServerBackend(AbstractServerBackend):
-    def __init__(self, repo_dir=None):
-        super(GitServerBackend, self).__init__(repo_dir)
-        git.check_repo_or_die(repo_dir)
-        self.repo = LocalRepo(repo_dir)
-        self.repo_dir = self.repo.repo_dir
-        self.dumb_server_mode = self.repo.dumb_server_mode
-        self.update_ref = self.repo.update_ref
-        self.join = self.repo.join
-        self.cat = self.repo.cat
-        self.refs = self.repo.refs
-        self.resolve = self.repo.resolve
-        self.config_get = self.repo.config_get
-        self.list_indexes = self.repo.list_indexes
-        self.read_ref = self.repo.read_ref
-        self.send_index = self.repo.send_index
-        self.new_packwriter = self.repo.new_packwriter
-        self.rev_list_raw = self.repo.rev_list_raw
-
-    create = LocalRepo.create
-
-    def close(self):
-        if self.repo:
-            self.repo.close()
-            self.repo = None
