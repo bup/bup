@@ -266,7 +266,7 @@ class Client:
         with atomically_replaced_file(fn, 'wb') as f:
             self.send_index(name, f, lambda size: None)
 
-    def _make_objcache(self):
+    def _make_objcache(self, repo_dir):
         return git.PackIdxList(self.cachedir)
 
     def _suggest_packs(self):
