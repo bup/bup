@@ -1,5 +1,5 @@
 from __future__ import absolute_import
-import os, struct, subprocess
+import os, struct
 from binascii import hexlify, unhexlify
 
 from bup import git, vfs, vint
@@ -384,18 +384,6 @@ class GitServerBackend(AbstractServerBackend):
         self.read_ref = self.repo.read_ref
         self.send_index = self.repo.send_index
         self.new_packwriter = self.repo.new_packwriter
+        self.rev_list_raw = self.repo.rev_list_raw
 
     create = LocalRepo.create
-
-    def rev_list_raw(self, refs, count, fmt):
-        args = git.rev_list_invocation(refs, count=count, format=fmt)
-        p = subprocess.Popen(args, env=git._gitenv(git.repodir),
-                             stdout=subprocess.PIPE)
-        while True:
-            out = p.stdout.read(64 * 1024)
-            if not out:
-                break
-            yield out
-        rv = p.wait()  # not fatal
-        if rv:
-            raise git.GitError('git rev-list returned error %d' % rv)

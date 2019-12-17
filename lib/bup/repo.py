@@ -1,6 +1,6 @@
 
 from __future__ import absolute_import
-import os
+import os, subprocess
 from os.path import realpath
 from functools import partial
 
@@ -106,6 +106,19 @@ class LocalRepo:
         data = git.open_idx(git.repo(b'objects/pack/%s' % name)).map
         send_size(len(data))
         conn.write(data)
+
+    def rev_list_raw(self, refs, count, fmt):
+        args = git.rev_list_invocation(refs, count=count, format=fmt)
+        p = subprocess.Popen(args, env=git._gitenv(git.repodir),
+                             stdout=subprocess.PIPE)
+        while True:
+            out = p.stdout.read(64 * 1024)
+            if not out:
+                break
+            yield out
+        rv = p.wait()  # not fatal
+        if rv:
+            raise git.GitError('git rev-list returned error %d' % rv)
 
 
 class RemoteRepo:
