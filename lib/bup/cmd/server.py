@@ -3,7 +3,7 @@ import sys
 
 from bup import options, git
 from bup.io import byte_stream
-from bup.server import BupProtocolServer
+from bup.protocol import BupProtocolServer
 from bup.repo import LocalRepo
 from bup.helpers import Conn, debug2
 
