@@ -28,6 +28,7 @@ class LocalRepo:
         self.rev_list = partial(git.rev_list, repo_dir=self.repo_dir)
         self.config_get = partial(git.git_config_get, repo_dir=self.repo_dir)
         self._id = _repo_id(self.repo_dir)
+        self.dumb_server_mode = os.path.exists(git.repo(b'bup-dumb-server'))
 
     @classmethod
     def create(self, repo_dir=None):
