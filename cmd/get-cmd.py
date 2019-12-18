@@ -585,9 +585,6 @@ def main():
     with dest_repo as dest_repo:
         with LocalRepo(repo_dir=src_dir) as src_repo:
             with dest_repo.new_packwriter(compression_level=opt.compress) as writer:
-
-                src_repo = LocalRepo(repo_dir=src_dir)
-
                 # Resolve and validate all sources and destinations,
                 # implicit or explicit, and do it up-front, so we can
                 # fail before we start writing (for any obviously
