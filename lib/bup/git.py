@@ -24,7 +24,6 @@ from bup.helpers import (Sha1, add_error, chunkyreader, debug1, debug2,
 from bup.pwdgrp import username, userfullname
 
 verbose = 0
-ignore_midx = 0
 repodir = None  # The default repository, once initialized
 
 _typemap =  { 'blob':3, 'tree':2, 'commit':1, 'tag':4 }
@@ -456,7 +455,7 @@ class PackIdxV2(PackIdx):
 
 _mpi_count = 0
 class PackIdxList:
-    def __init__(self, dir):
+    def __init__(self, dir, ignore_midx=False):
         global _mpi_count
         assert(_mpi_count == 0) # these things suck tons of VM; don't waste it
         _mpi_count += 1
@@ -465,6 +464,7 @@ class PackIdxList:
         self.packs = []
         self.do_bloom = False
         self.bloom = None
+        self.ignore_midx = ignore_midx
         self.refresh()
 
     def __del__(self):
@@ -510,12 +510,12 @@ class PackIdxList:
         If skip_midx is True, all work on .midx files will be skipped and .midx
         files will be removed from the list.
 
-        The module-global variable 'ignore_midx' can force this function to
+        The instance variable 'ignore_midx' can force this function to
         always act as if skip_midx was True.
         """
         self.bloom = None # Always reopen the bloom as it may have been relaced
         self.do_bloom = False
-        skip_midx = skip_midx or ignore_midx
+        skip_midx = skip_midx or self.ignore_midx
         d = dict((p.name, p) for p in self.packs
                  if not skip_midx or not isinstance(p, midx.PackMidx))
         if os.path.exists(self.dir):

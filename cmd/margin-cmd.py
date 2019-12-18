@@ -26,9 +26,8 @@ if extra:
     o.fatal("no arguments expected")
 
 git.check_repo_or_die()
-git.ignore_midx = opt.ignore_midx
 
-mi = git.PackIdxList(git.repo('objects/pack'))
+mi = git.PackIdxList(git.repo('objects/pack'), ignore_midx=opt.ignore_midx)
 
 def do_predict(ix):
     total = len(ix)

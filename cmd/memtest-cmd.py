@@ -83,10 +83,8 @@ o = options.Options(optspec)
 if extra:
     o.fatal('no arguments expected')
 
-git.ignore_midx = opt.ignore_midx
-
 git.check_repo_or_die()
-m = git.PackIdxList(git.repo('objects/pack'))
+m = git.PackIdxList(git.repo('objects/pack'), ignore_midx=opt.ignore_midx)
 
 report(-1)
 _helpers.random_sha()
