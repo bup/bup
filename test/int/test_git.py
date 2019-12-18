@@ -3,6 +3,7 @@ from __future__ import absolute_import, print_function
 import sys
 from binascii import hexlify, unhexlify
 from subprocess import check_call
+from functools import partial
 import struct, os, time
 import pytest
 
@@ -503,3 +504,31 @@ def test_midx_close(tmpdir):
             continue
         # check that we don't have it open anymore
         WVPASSEQ(False, b'deleted' in fn)
+
+def test_config():
+    cfg_file = os.path.join(os.path.dirname(__file__), 'sample.conf')
+    no_such_file = os.path.join(os.path.dirname(__file__), 'nosuch.conf')
+    git_config_get = partial(git.git_config_get, cfg_file=cfg_file)
+    WVPASSEQ(git_config_get(b'bup.foo'), b'bar')
+    WVPASSEQ(git_config_get(b'bup.bup'), b'is great')
+    WVPASSEQ(git_config_get(b'bup.end'), b'end')
+    WVPASSEQ(git_config_get(b'bup.comments'), None)
+    WVPASSEQ(git_config_get(b'bup.;comments'), None)
+    WVPASSEQ(git_config_get(b'bup.and'), None)
+    WVPASSEQ(git_config_get(b'bup.#and'), None)
+
+    WVPASSEQ(git.git_config_get(b'bup.foo', cfg_file=no_such_file), None)
+
+    WVEXCEPT(git.GitError, git_config_get, b'bup.isbad', opttype='bool')
+    WVEXCEPT(git.GitError, git_config_get, b'bup.isbad', opttype='int')
+    WVPASSEQ(git_config_get(b'bup.isbad'), b'ok')
+    WVPASSEQ(True, git_config_get(b'bup.istrue1', opttype='bool'))
+    WVPASSEQ(True, git_config_get(b'bup.istrue2', opttype='bool'))
+    WVPASSEQ(True, git_config_get(b'bup.istrue3', opttype='bool'))
+    WVPASSEQ(False, git_config_get(b'bup.isfalse1', opttype='bool'))
+    WVPASSEQ(False, git_config_get(b'bup.isfalse2', opttype='bool'))
+    WVPASSEQ(None, git_config_get(b'bup.nosuchkey', opttype='bool'))
+    WVPASSEQ(1, git_config_get(b'bup.istrue1', opttype='int'))
+    WVPASSEQ(2, git_config_get(b'bup.istrue2', opttype='int'))
+    WVPASSEQ(0, git_config_get(b'bup.isfalse2', opttype='int'))
+    WVPASSEQ(0x777, git_config_get(b'bup.hex', opttype='int'))

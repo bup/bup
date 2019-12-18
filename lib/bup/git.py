@@ -66,8 +66,11 @@ def _git_exo(cmd, **kwargs):
         raise GitError('%r returned %d' % (cmd, proc.returncode))
     return result
 
-def git_config_get(option, repo_dir=None, opttype=None):
+def git_config_get(option, repo_dir=None, opttype=None, cfg_file=None):
+    assert not (repo_dir and cfg_file), "repo_dir and cfg_file cannot both be used"
     cmd = [b'git', b'config', b'--null']
+    if cfg_file:
+        cmd.extend([b'--file', cfg_file])
     if opttype == 'int':
         cmd.extend([b'--int'])
     elif opttype == 'bool':
