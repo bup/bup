@@ -1,0 +1,82 @@
+#!/usr/bin/env bash
+
+. ./wvtest-bup.sh || exit $?
+. t/lib.sh || exit $?
+
+set -o pipefail
+
+# TODO: is there WVSKIP? WVMSG doesn't seem to work.
+if ! bup-python -c "import libnacl" ; then
+	WVSTART skipping - libnacl not available
+	exit 0
+fi
+
+top="$(WVPASS pwd)" || exit $?
+tmpdir="$(WVPASS wvmktempdir)" || exit $?
+
+trap "rm -rf $tmpdir" EXIT
+
+bup() { "$top/bup" "$@"; }
+
+mkdir $tmpdir/repo
+mkdir $tmpdir/cache
+mkdir $tmpdir/src
+
+export BUP_DIR=$tmpdir/cache
+export GIT_DIR=$tmpdir/cache
+
+cat > $tmpdir/repo.conf << EOF
+[bup]
+  type = Encrypted
+  storage = File
+  path = $tmpdir/repo
+  cachedir = $tmpdir/cache/enc-cache
+  separatemeta = True
+EOF
+bup genkey | grep key >> $tmpdir/repo.conf
+
+grep -v readkey < $tmpdir/repo.conf > $tmpdir/repow.conf
+grep -v writekey < $tmpdir/repo.conf > $tmpdir/repor.conf
+
+WREMOTE="config://$tmpdir/repow.conf"
+RREMOTE="config://$tmpdir/repor.conf"
+
+WVPASS bup init -r $WREMOTE
+WVPASS bup ls -r $WREMOTE
+
+WVSTART write repo
+for f in $(seq 100) ; do echo $f > $tmpdir/src/$f ; done
+ln -s 100 $tmpdir/src/l100
+WVPASS bup index $tmpdir/src
+WVPASS bup save -r $WREMOTE -n test $tmpdir/src
+
+for f in $(seq 100 200) ; do echo $f > $tmpdir/src/$f ; done
+for f in $(seq 50) ; do touch $tmpdir/src/$f ; done
+WVPASS bup index $tmpdir/src
+WVPASS bup save -r $WREMOTE -n test $tmpdir/src
+
+WVSTART read repo
+# now try to look at the repo a bit ...
+WVPASS bup ls -r $RREMOTE
+WVPASS bup ls -sAlr $RREMOTE test/latest/$tmpdir/src/
+
+for f in 1 50 100 150 200 ; do
+	WVPASS bup cat-file -r $RREMOTE test/latest$tmpdir/src/$f > $tmpdir/check
+	WVPASS test $(cat $tmpdir/check) == "$f"
+done
+
+WVSTART split/join
+for f in $(seq 10000) ; do echo $f$f$f$f$f >> $tmpdir/splitfile ; done
+WVPASS bup split -r $WREMOTE -n split $tmpdir/splitfile
+WVPASS bup join -r $RREMOTE split > $tmpdir/splitfile.out
+WVPASS cmp $tmpdir/splitfile $tmpdir/splitfile.out
+
+WVSTART idx caching
+# remove index files from cache
+WVPASS sha1sum $tmpdir/cache/enc-cache/*.idx > $tmpdir/cache/sha1
+WVPASS rm -f $tmpdir/cache/enc-cache/*.idx
+WVPASS bup join -r $RREMOTE split > $tmpdir/splitfile.out
+WVPASS cmp $tmpdir/splitfile $tmpdir/splitfile.out
+# cached *.idx files must be reconstructed (all, since we cannot
+# know which ones hold the objects we desired)
+WVPASS sha1sum -c $tmpdir/cache/sha1
