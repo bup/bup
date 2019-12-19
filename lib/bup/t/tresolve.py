@@ -13,7 +13,7 @@ from bup import git, path, vfs
 from bup.compat import environ
 from bup.io import path_msg
 from bup.metadata import Metadata
-from bup.repo import LocalRepo, RemoteRepo
+from bup.repo import LocalRepo, make_repo
 from bup.test.vfs import tree_dict
 from buptest import ex, exo, no_lingering_errors, test_tempdir
 
@@ -301,7 +301,7 @@ def test_local_resolve():
 @wvtest
 def test_remote_resolve():
     prep_and_test_repo(b'remote-vfs-resolve',
-                       lambda x: RemoteRepo(x), test_resolve)
+                       lambda x: make_repo(x), test_resolve)
 
 def test_resolve_loop(repo, tmpdir):
     data_path = tmpdir + b'/src'
@@ -329,6 +329,6 @@ def test_local_resolve_loop():
 @wvtest
 def test_remote_resolve_loop():
     prep_and_test_repo(b'remote-vfs-resolve-loop',
-                       lambda x: RemoteRepo(x), test_resolve_loop)
+                       lambda x: make_repo(x), test_resolve_loop)
 
 # FIXME: add tests for the want_meta=False cases.

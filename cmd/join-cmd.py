@@ -12,7 +12,7 @@ from bup import git, options
 from bup.compat import argv_bytes
 from bup.helpers import linereader, log
 from bup.io import byte_stream
-from bup.repo import LocalRepo, RemoteRepo
+from bup.repo import LocalRepo, make_repo
 
 
 optspec = """
@@ -34,7 +34,7 @@ if not extra:
     extra = linereader(stdin)
 
 ret = 0
-repo = RemoteRepo(opt.remote) if opt.remote else LocalRepo()
+repo = make_repo(opt.remote) if opt.remote else LocalRepo()
 
 if opt.o:
     outfile = open(opt.o, 'wb')

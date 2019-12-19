@@ -131,6 +131,9 @@ class LocalRepo:
             raise git.GitError('git rev-list returned error %d' % rv)
 
 
+def make_repo(address):
+    return RemoteRepo(address)
+
 class RemoteRepo:
     def __init__(self, address):
         # if client.Client() raises an exception, have a client

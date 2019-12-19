@@ -114,9 +114,9 @@ else:
     git.check_repo_or_die()
     try:
         if opt.remote:
-            repo = repo.RemoteRepo(opt.remote)
+            repo = repo.make_repo(opt.remote)
         elif is_reverse:
-            repo = repo.RemoteRepo(b'reverse://%s' % is_reverse)
+            repo = repo.make_repo(b'reverse://%s' % is_reverse)
         else:
             repo = repo.LocalRepo()
     except client.ClientError as e:
