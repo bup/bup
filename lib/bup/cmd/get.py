@@ -17,7 +17,7 @@ from bup.helpers import add_error, debug1, log, saved_errors
 from bup.helpers import hostname, tty_width, parse_num
 from bup.io import path_msg
 from bup.pwdgrp import userfullname, username
-from bup.repo import LocalRepo, RemoteRepo
+from bup.repo import LocalRepo, make_repo
 
 argspec = (
     "usage: bup get [-s source] [-r remote] (<--ff|--append|...> REF [DEST])...",
@@ -581,9 +581,9 @@ def main(argv):
     if is_reverse and opt.remote:
         misuse("don't use -r in reverse mode; it's automatic")
     if is_reverse:
-        dest_repo = RemoteRepo(b'bup-rev://' + is_reverse)
+        dest_repo = make_repo(b'bup-rev://' + is_reverse)
     elif opt.remote:
-        dest_repo = RemoteRepo(opt.remote)
+        dest_repo = make_repo(opt.remote)
     else:
         dest_repo = LocalRepo()
 
