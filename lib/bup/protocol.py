@@ -152,12 +152,16 @@ class BupProtocolServer:
         self.conn.ok()
 
     def init_session(self, repo_dir=None):
-        if self.repo:
+        if self.repo and repo_dir:
             self.repo.close()
-        self.repo = self._backend(repo_dir)
-        debug1('bup server: bupdir is %r\n' % self.repo.repo_dir)
-        debug1('bup server: serving in %s mode\n'
-               % (self.repo.dumb_server_mode and 'dumb' or 'smart'))
+            self.repo = None
+            self.suspended_w.close()
+            self.suspended_w = None
+        if not self.repo:
+            self.repo = self._backend(repo_dir)
+            debug1('bup server: bupdir is %r\n' % self.repo.repo_dir)
+            debug1('bup server: serving in %s mode\n'
+                   % (self.repo.dumb_server_mode and 'dumb' or 'smart'))
 
     @_command
     def init_dir(self, arg):
