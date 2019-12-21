@@ -128,7 +128,7 @@ class BupProtocolServer:
         self.conn = conn
         self._backend = backend
         self._commands = self._get_commands()
-        self.suspended_w = None
+        self.suspended = False
         self.repo = None
 
     def _get_commands(self):
@@ -155,10 +155,9 @@ class BupProtocolServer:
         if self.repo and repo_dir:
             self.repo.close()
             self.repo = None
-            self.suspended_w.close()
-            self.suspended_w = None
+            self.suspended = False
         if not self.repo:
-            self.repo = self._backend(repo_dir)
+            self.repo = self._backend(repo_dir, server=True)
             debug1('bup server: bupdir is %r\n' % self.repo.repo_dir)
             debug1('bup server: serving in %s mode\n'
                    % (self.repo.dumb_server_mode and 'dumb' or 'smart'))
@@ -197,82 +196,68 @@ class BupProtocolServer:
         self.repo.send_index(name, self.conn, self._send_size)
         self.conn.ok()
 
-    def _check(self, w, expected, actual, msg):
+    def _check(self, expected, actual, msg):
         if expected != actual:
-            w.abort()
+            self.repo.abort_writing()
             raise Exception(msg % (expected, actual))
 
     @_command
     def receive_objects_v2(self, junk):
         self.init_session()
-        if self.suspended_w:
-            w = self.suspended_w
-            self.suspended_w = None
-        else:
-            if self.repo.dumb_server_mode:
-                objcache_maker = lambda : None
-                run_midx = False
-            else:
-                objcache_maker = None
-                run_midx = True
-            w = self.repo.new_packwriter(objcache_maker=objcache_maker,
-                                         run_midx=run_midx)
-        try:
-            suggested = set()
-            while 1:
-                ns = self.conn.read(4)
-                if not ns:
-                    w.abort()
-                    raise Exception('object read: expected length header, got EOF\n')
-                n = struct.unpack('!I', ns)[0]
-                #debug2('expecting %d bytes\n' % n)
-                if not n:
-                    debug1('bup server: received %d object%s.\n'
-                        % (w.count, w.count!=1 and "s" or ''))
-                    fullpath = w.close()
-                    w = None
-                    if fullpath:
-                        dir, name = os.path.split(fullpath)
-                        self.conn.write(b'%s.idx\n' % name)
-                    self.conn.ok()
-                    return
-                elif n == 0xffffffff:
-                    debug2('bup server: receive-objects suspending.\n')
-                    self.suspended_w = w
-                    w = None
-                    self.conn.ok()
-                    return
+        if self.suspended:
+            self.suspended = False
+        # FIXME: this goes together with the direct accesses below
+        self.repo._ensure_packwriter()
+        suggested = set()
+        while 1:
+            ns = self.conn.read(4)
+            if not ns:
+                self.repo.abort_writing()
+                raise Exception('object read: expected length header, got EOF\n')
+            n = struct.unpack('!I', ns)[0]
+            #debug2('expecting %d bytes\n' % n)
+            if not n:
+                # FIXME: don't be lazy and count ourselves, or something, at least
+                # don't access self.repo internals
+                debug1('bup server: received %d object%s.\n'
+                    % (self.repo._packwriter.count,
+                       self.repo._packwriter.count != 1 and "s" or ''))
+                fullpath = self.repo.finish_writing()
+                if fullpath:
+                    dir, name = os.path.split(fullpath)
+                    self.conn.write(b'%s.idx\n' % name)
+                self.conn.ok()
+                return
+            elif n == 0xffffffff:
+                debug2('bup server: receive-objects suspending.\n')
+                self.suspended = True
+                self.conn.ok()
+                return
 
-                shar = self.conn.read(20)
-                crcr = struct.unpack('!I', self.conn.read(4))[0]
-                n -= 20 + 4
-                buf = self.conn.read(n)  # object sizes in bup are reasonably small
-                #debug2('read %d bytes\n' % n)
-                self._check(w, n, len(buf), 'object read: expected %d bytes, got %d\n')
-                if not self.repo.dumb_server_mode:
-                    oldpack = w.exists(shar, want_source=True)
-                    if oldpack:
-                        assert(not oldpack == True)
-                        assert(oldpack.endswith(b'.idx'))
-                        (dir,name) = os.path.split(oldpack)
-                        if not (name in suggested):
-                            debug1("bup server: suggesting index %s\n"
-                                   % git.shorten_hash(name).decode('ascii'))
-                            debug1("bup server:   because of object %s\n"
-                                   % hexstr(shar))
-                            self.conn.write(b'index %s\n' % name)
-                            suggested.add(name)
-                        continue
-                nw, crc = w._raw_write((buf,), sha=shar)
-                self._check(w, crcr, crc, 'object read: expected crc %d, got %d\n')
-        # py2: this clause is unneeded with py3
-        except BaseException as ex:
-            with pending_raise(ex):
-                if w:
-                    w, w_tmp = None, w
-                    w_tmp.close()
-        finally:
-            if w: w.close()
+            shar = self.conn.read(20)
+            crcr = struct.unpack('!I', self.conn.read(4))[0]
+            n -= 20 + 4
+            buf = self.conn.read(n)  # object sizes in bup are reasonably small
+            #debug2('read %d bytes\n' % n)
+            self._check(n, len(buf), 'object read: expected %d bytes, got %d\n')
+            if not self.repo.dumb_server_mode:
+                oldpack = self.repo.exists(shar, want_source=True)
+                if oldpack:
+                    assert(not oldpack == True)
+                    assert(oldpack.endswith(b'.idx'))
+                    (dir,name) = os.path.split(oldpack)
+                    if not (name in suggested):
+                        debug1("bup server: suggesting index %s\n"
+                               % git.shorten_hash(name).decode('ascii'))
+                        debug1("bup server:   because of object %s\n"
+                               % hexstr(shar))
+                        self.conn.write(b'index %s\n' % name)
+                        suggested.add(name)
+                    continue
+            # FIXME: figure out the right abstraction for this; or better yet,
+            #        make the protocol aware of the object type
+            nw, crc = self.repo._packwriter._raw_write((buf,), sha=shar)
+            self._check(crcr, crc, 'object read: expected crc %d, got %d\n')
         assert False  # should be unreachable
 
     @_command
@@ -439,7 +424,7 @@ class BupProtocolServer:
 
     def __exit__(self, type, value, traceback):
         with pending_raise(value, rethrow=False):
-            if self.suspended_w:
-                self.suspended_w.close()
+            if self.suspended:
+                self.repo.finish_writing()
             if self.repo:
                 self.repo.close()

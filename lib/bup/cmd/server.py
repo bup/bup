@@ -21,9 +21,9 @@ def main(argv):
     debug2('bup server: reading from stdin.\n')
 
     class ServerRepo(LocalRepo):
-        def __init__(self, repo_dir):
+        def __init__(self, repo_dir, server):
             git.check_repo_or_die(repo_dir)
-            LocalRepo.__init__(self, repo_dir)
+            LocalRepo.__init__(self, repo_dir, server=server)
 
     with Conn(byte_stream(sys.stdin), byte_stream(sys.stdout)) as conn, \
          BupProtocolServer(conn, ServerRepo) as server:
