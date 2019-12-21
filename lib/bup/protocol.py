@@ -129,7 +129,7 @@ class BupProtocolServer:
         self.conn = conn
         self._backend = backend
         self._commands = self._get_commands()
-        self.suspended_w = None
+        self.suspended = False
         self.repo = None
 
     def _get_commands(self):
@@ -156,8 +156,7 @@ class BupProtocolServer:
         if self.repo and repo_dir:
             self.repo.close()
             self.repo = None
-            self.suspended_w.close()
-            self.suspended_w = None
+            self.suspended = False
         if not self.repo:
             self.repo = self._backend(repo_dir)
             debug1('bup server: bupdir is %r\n' % self.repo.repo_dir)
@@ -198,35 +197,38 @@ class BupProtocolServer:
         self.repo.send_index(name, self.conn, self._send_size)
         self.conn.ok()
 
-    def _check(self, w, expected, actual, msg):
+    def _check(self, expected, actual, msg):
         if expected != actual:
-            w.abort()
+            self.repo.abort_writing()
             raise Exception(msg % (expected, actual))
 
     @_command
     def receive_objects_v2(self, junk):
         self.init_session()
         suggested = set()
-        if self.suspended_w:
-            w = self.suspended_w
-            self.suspended_w = None
+        if self.suspended:
+            self.suspended = False
         else:
             if self.repo.dumb_server_mode:
                 objcache_maker = lambda : None
             else:
                 objcache_maker = None
-            w = self.repo.new_packwriter(objcache_maker=objcache_maker)
+        # FIXME: this goes together with the direct accesses below
+        self.repo._ensure_packwriter()
         while 1:
             ns = self.conn.read(4)
             if not ns:
-                w.abort()
+                self.repo.abort_writing()
                 raise Exception('object read: expected length header, got EOF\n')
             n = struct.unpack('!I', ns)[0]
             #debug2('expecting %d bytes\n' % n)
             if not n:
+                # FIXME: don't be lazy and count ourselves, or something, at least
+                # don't access self.repo internals
                 debug1('bup server: received %d object%s.\n'
-                    % (w.count, w.count!=1 and "s" or ''))
-                fullpath = w.close(run_midx=not self.repo.dumb_server_mode)
+                    % (self.repo._packwriter.count,
+                       self.repo._packwriter.count != 1 and "s" or ''))
+                fullpath = self.repo.finish_writing(run_midx=not self.repo.dumb_server_mode)
                 if fullpath:
                     (dir, name) = os.path.split(fullpath)
                     self.conn.write(b'%s.idx\n' % name)
@@ -234,7 +236,7 @@ class BupProtocolServer:
                 return
             elif n == 0xffffffff:
                 debug2('bup server: receive-objects suspended.\n')
-                self.suspended_w = w
+                self.suspended = True
                 self.conn.ok()
                 return
 
@@ -243,9 +245,9 @@ class BupProtocolServer:
             n -= 20 + 4
             buf = self.conn.read(n)  # object sizes in bup are reasonably small
             #debug2('read %d bytes\n' % n)
-            self._check(w, n, len(buf), 'object read: expected %d bytes, got %d\n')
+            self._check(n, len(buf), 'object read: expected %d bytes, got %d\n')
             if not self.repo.dumb_server_mode:
-                oldpack = w.exists(shar, want_source=True)
+                oldpack = self.repo.exists(shar, want_source=True)
                 if oldpack:
                     assert(not oldpack == True)
                     assert(oldpack.endswith(b'.idx'))
@@ -258,8 +260,10 @@ class BupProtocolServer:
                         self.conn.write(b'index %s\n' % name)
                         suggested.add(name)
                     continue
-            nw, crc = w._raw_write((buf,), sha=shar)
-            self._check(w, crcr, crc, 'object read: expected crc %d, got %d\n')
+            # FIXME: figure out the right abstraction for this; or better yet,
+            #        make the protocol aware of the object type
+            nw, crc = self.repo._packwriter._raw_write((buf,), sha=shar)
+            self._check(crcr, crc, 'object read: expected crc %d, got %d\n')
         # NOTREACHED
 
     @_command
