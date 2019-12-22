@@ -1,17 +1,22 @@
 
-from __future__ import absolute_import
+from __future__ import absolute_import, print_function
 import errno, os, stat, struct, tempfile
 
-from bup import metadata, xstat
+from bup import compat, metadata, xstat
 from bup._helpers import UINT_MAX, bytescmp
 from bup.compat import range
 from bup.helpers import (add_error, log, merge_iter, mmap_readwrite,
                          progress, qprogress, resolve_parent, slashappend)
 
-EMPTY_SHA = '\0'*20
-FAKE_SHA = '\x01'*20
+if compat.py_maj > 2:
+    from bup.compat import buffer
 
-INDEX_HDR = 'BUPI\0\0\0\7'
+import sys
+
+EMPTY_SHA = b'\0' * 20
+FAKE_SHA = b'\x01' * 20
+
+INDEX_HDR = b'BUPI\0\0\0\7'
 
 # Time values are handled as integer nanoseconds since the epoch in
 # memory, but are written as xstat/metadata timespecs.  This behavior
@@ -175,7 +180,7 @@ class Entry:
         self.children_n = 0
 
     def __repr__(self):
-        return ("(%s,0x%04x,%d,%d,%d,%d,%d,%d,%s/%s,0x%04x,%d,0x%08x/%d)"
+        return ("(%r,0x%04x,%d,%d,%d,%d,%d,%d,%s/%s,0x%04x,%d,0x%08x/%d)"
                 % (self.name, self.dev, self.ino, self.nlink,
                    self.ctime, self.mtime, self.atime,
                    self.size, self.mode, self.gitmode,
@@ -316,7 +321,7 @@ class Entry:
         return self._cmp(other) >= 0
 
     def write(self, f):
-        f.write(self.basename + '\0' + self.packed())
+        f.write(self.basename + b'\0' + self.packed())
 
 
 class NewEntry(Entry):
@@ -381,13 +386,13 @@ class ExistingEntry(Entry):
 
     def iter(self, name=None, wantrecurse=None):
         dname = name
-        if dname and not dname.endswith('/'):
-            dname += '/'
+        if dname and not dname.endswith(b'/'):
+            dname += b'/'
         ofs = self.children_ofs
         assert(ofs <= len(self._m))
         assert(self.children_n <= UINT_MAX)  # i.e. python struct 'I'
         for i in range(self.children_n):
-            eon = self._m.find('\0', ofs)
+            eon = self._m.find(b'\0', ofs)
             assert(eon >= 0)
             assert(eon >= ofs)
             assert(eon > ofs)
@@ -396,7 +401,7 @@ class ExistingEntry(Entry):
                                   self._m, eon+1)
             if (not dname
                  or child.name.startswith(dname)
-                 or child.name.endswith('/') and dname.startswith(child.name)):
+                 or child.name.endswith(b'/') and dname.startswith(child.name)):
                 if not wantrecurse or wantrecurse(child):
                     for e in child.iter(name=name, wantrecurse=wantrecurse):
                         yield e
@@ -411,12 +416,12 @@ class ExistingEntry(Entry):
 class Reader:
     def __init__(self, filename):
         self.filename = filename
-        self.m = ''
+        self.m = b''
         self.writable = False
         self.count = 0
         f = None
         try:
-            f = open(filename, 'r+')
+            f = open(filename, 'rb+')
         except IOError as e:
             if e.errno == errno.ENOENT:
                 pass
@@ -445,7 +450,7 @@ class Reader:
     def forward_iter(self):
         ofs = len(INDEX_HDR)
         while ofs+ENTLEN <= len(self.m)-FOOTLEN:
-            eon = self.m.find('\0', ofs)
+            eon = self.m.find(b'\0', ofs)
             assert(eon >= 0)
             assert(eon >= ofs)
             assert(eon > ofs)
@@ -456,9 +461,9 @@ class Reader:
     def iter(self, name=None, wantrecurse=None):
         if len(self.m) > len(INDEX_HDR)+ENTLEN:
             dname = name
-            if dname and not dname.endswith('/'):
-                dname += '/'
-            root = ExistingEntry(None, '/', '/',
+            if dname and not dname.endswith(b'/'):
+                dname += b'/'
+            root = ExistingEntry(None, b'/', b'/',
                                  self.m, len(self.m)-FOOTLEN-ENTLEN)
             for sub in root.iter(name=name, wantrecurse=wantrecurse):
                 yield sub
@@ -508,9 +513,9 @@ class Reader:
 # in an odd way and depends on a terminating '/' to indicate directories.
 def pathsplit(p):
     """Split a path into a list of elements of the file system hierarchy."""
-    l = p.split('/')
-    l = [i+'/' for i in l[:-1]] + l[-1:]
-    if l[-1] == '':
+    l = p.split(b'/')
+    l = [i + b'/' for i in l[:-1]] + l[-1:]
+    if l[-1] == b'':
         l.pop()  # extra blank caused by terminating '/'
     return l
 
@@ -526,7 +531,7 @@ class Writer:
         self.metastore = metastore
         self.tmax = tmax
         (dir,name) = os.path.split(filename)
-        (ffd,self.tmpname) = tempfile.mkstemp('.tmp', filename, dir)
+        ffd, self.tmpname = tempfile.mkstemp(b'.tmp', filename, dir)
         self.f = os.fdopen(ffd, 'wb', 65536)
         self.f.write(INDEX_HDR)
 
@@ -568,7 +573,7 @@ class Writer:
                               self.metastore, self.tmax)
 
     def add(self, name, st, meta_ofs, hashgen = None):
-        endswith = name.endswith('/')
+        endswith = name.endswith(b'/')
         ename = pathsplit(name)
         basename = ename[-1]
         #log('add: %r %r\n' % (basename, name))
@@ -632,14 +637,14 @@ def reduce_paths(paths):
     for p in paths:
         rp = _slashappend_or_add_error(resolve_parent(p), 'reduce_paths')
         if rp:
-            xpaths.append((rp, slashappend(p) if rp.endswith('/') else p))
+            xpaths.append((rp, slashappend(p) if rp.endswith(b'/') else p))
     xpaths.sort()
 
     paths = []
     prev = None
     for (rp, p) in xpaths:
         if prev and (prev == rp 
-                     or (prev.endswith('/') and rp.startswith(prev))):
+                     or (prev.endswith(b'/') and rp.startswith(prev))):
             continue # already superceded by previous path
         paths.append((rp, p))
         prev = rp

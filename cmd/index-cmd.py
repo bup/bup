@@ -37,13 +37,13 @@ def check_index(reader):
                     log('%08x+%-4d %r\n' % (e.children_ofs, e.children_n,
                                             e.name))
                 assert(e.children_ofs)
-                assert(e.name.endswith('/'))
+                assert e.name[-1] == b'/'
                 assert(not d.get(e.children_ofs))
                 d[e.children_ofs] = 1
             if e.flags & index.IX_HASHVALID:
                 assert(e.sha != index.EMPTY_SHA)
                 assert(e.gitmode)
-        assert(not e or e.name == '/')  # last entry is *always* /
+        assert not e or bytes(e.name) == b'/'  # last entry is *always* /
         log('check: checking normal iteration...\n')
         last = None
         for e in reader:

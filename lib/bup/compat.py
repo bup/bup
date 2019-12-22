@@ -63,6 +63,9 @@ if py3:
 
 else:  # Python 2
 
+    def fsencode(x):
+        return x
+
     from pipes import quote
     from os import environ
     range = xrange
