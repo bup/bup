@@ -12,7 +12,7 @@ from functools import partial
 from stat import S_ISDIR
 
 from bup import git, client, helpers, vfs
-from bup.compat import wrap_main
+from bup.compat import hexstr, wrap_main
 from bup.git import get_cat_data, parse_commit, walk_object
 from bup.helpers import add_error, debug1, handle_ctrl_c, log, saved_errors
 from bup.helpers import hostname, shstr, tty_width
@@ -556,11 +556,11 @@ def resolve_targets(specs, src_repo, dest_repo):
 
 def log_item(name, type, opt, tree=None, commit=None, tag=None):
     if tag and opt.print_tags:
-        print(tag.encode('hex'))
+        print(hexstr(tag))
     if tree and opt.print_trees:
-        print(tree.encode('hex'))
+        print(hexstr(tree))
     if commit and opt.print_commits:
-        print(commit.encode('hex'))
+        print(hexstr(commit))
     if opt.verbose:
         last = ''
         if type in ('root', 'branch', 'save', 'commit', 'tree'):

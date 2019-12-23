@@ -4,6 +4,7 @@ import sys
 
 from bup import compat, git, vfs
 from bup.client import ClientError
+from bup.compat import hexstr
 from bup.git import get_commit_items
 from bup.helpers import add_error, die_if_errors, log, saved_errors
 
@@ -135,17 +136,17 @@ def bup_rm(repo, paths, compression=6, verbosity=None):
             else:
                 git.update_ref(ref_name, new_ref, orig_ref)
                 if verbosity:
-                    new_hex = new_ref.encode('hex')
-                    if orig_ref:
-                        orig_hex = orig_ref.encode('hex')
-                        log('updated %r (%s -> %s)\n'
-                            % (ref_name, orig_hex, new_hex))
-                    else:
-                        log('updated %r (%s)\n' % (ref_name, new_hex))
+                    log('updated %r (%s%s)\n'
+                        % (ref_name,
+                           hexstr(orig_ref) + ' -> ' if orig_ref else '',
+                           hexstr(new_ref)))
         except (git.GitError, ClientError) as ex:
             if new_ref:
-                add_error('while trying to update %r (%s -> %s): %s'
-                          % (ref_name, orig_ref, new_ref, ex))
+                add_error('while trying to update %r (%s%s): %s'
+                          % (ref_name,
+                             hexstr(orig_ref) + ' -> ' if orig_ref else '',
+                             hexstr(new_ref),
+                             ex))
             else:
                 add_error('while trying to delete %r (%s): %s'
-                          % (ref_name, orig_ref, ex))
+                          % (ref_name, hexstr(orig_ref), ex))

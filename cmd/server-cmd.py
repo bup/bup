@@ -9,6 +9,7 @@ from __future__ import absolute_import
 import os, sys, struct, subprocess
 
 from bup import options, git, vfs, vint
+from bup.compat import hexstr
 from bup.git import MissingObject
 from bup.helpers import (Conn, debug1, debug2, linereader, lines_until_sentinel,
                          log)
@@ -131,7 +132,7 @@ def receive_objects_v2(conn, junk):
                     debug1("bup server: suggesting index %s\n"
                            % git.shorten_hash(name))
                     debug1("bup server:   because of object %s\n"
-                           % shar.encode('hex'))
+                           % hexstr(shar))
                     conn.write('index %s\n' % name)
                     suggested.add(name)
                 continue

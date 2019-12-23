@@ -9,6 +9,7 @@ from __future__ import absolute_import
 import glob, os, sys, tempfile
 
 from bup import options, git, bloom
+from bup.compat import hexstr
 from bup.helpers import (add_error, debug1, handle_ctrl_c, log, progress, qprogress,
                          saved_errors)
 
@@ -54,8 +55,7 @@ def check_bloom(path, bloomfilename, idx):
     log("bloom:   checking %s\n" % ridx)
     for objsha in git.open_idx(idx):
         if not b.exists(objsha):
-            add_error("bloom: ERROR: object %s missing" 
-                      % str(objsha).encode('hex'))
+            add_error('bloom: ERROR: object %s missing' % hexstr(objsha))
 
 
 _first = None

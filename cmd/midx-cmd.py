@@ -9,7 +9,7 @@ from __future__ import absolute_import
 import glob, math, os, resource, struct, sys, tempfile
 
 from bup import options, git, midx, _helpers, xstat
-from bup.compat import range
+from bup.compat import hexstr, range
 from bup.helpers import (Sha1, add_error, atomically_replaced_file, debug1, fdatasync,
                          handle_ctrl_c, log, mmap_readwrite, qprogress,
                          saved_errors, unlink)
@@ -64,20 +64,17 @@ def check_midx(name):
                              git.shorten_hash(subname), ecount, len(sub)))
             if not sub.exists(e):
                 add_error("%s: %s: %s missing from idx"
-                          % (nicename, git.shorten_hash(subname),
-                             str(e).encode('hex')))
+                          % (nicename, git.shorten_hash(subname), hexstr(e)))
             if not ix.exists(e):
                 add_error("%s: %s: %s missing from midx"
-                          % (nicename, git.shorten_hash(subname),
-                             str(e).encode('hex')))
+                          % (nicename, git.shorten_hash(subname), hexstr(e)))
     prev = None
     for ecount,e in enumerate(ix):
         if not (ecount % 1234):
             qprogress('  Ordering: %d/%d\r' % (ecount, len(ix)))
         if not e >= prev:
             add_error('%s: ordering error: %s < %s'
-                      % (nicename,
-                         str(e).encode('hex'), str(prev).encode('hex')))
+                      % (nicename, hexstr(e), hexstr(prev)))
         prev = e
 
 

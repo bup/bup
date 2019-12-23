@@ -1,6 +1,7 @@
 
 from __future__ import absolute_import, print_function
 from array import array
+from binascii import hexlify
 from traceback import print_exception
 import sys
 
@@ -29,6 +30,10 @@ if py3:
     range = range
     str_type = str
     int_types = (int,)
+
+    def hexstr(b):
+        """Return hex string (not bytes as with hexlify) representation of b."""
+        return b.hex()
 
     def add_ex_tb(ex):
         """Do nothing (already handled by Python 3 infrastructure)."""
@@ -72,6 +77,8 @@ else:  # Python 2
     range = xrange
     str_type = basestring
     int_types = (int, long)
+
+    hexstr = hexlify
 
     def add_ex_tb(ex):
         """Add a traceback to ex if it doesn't already have one.  Return ex.

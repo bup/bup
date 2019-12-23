@@ -2,7 +2,7 @@
 from __future__ import absolute_import
 import glob, os, subprocess, sys, tempfile
 from bup import bloom, git, midx
-from bup.compat import range
+from bup.compat import hexstr, range
 from bup.git import MissingObject, walk_object
 from bup.helpers import Nonlocal, log, progress, qprogress
 from os.path import basename
@@ -60,7 +60,7 @@ def count_objects(dir, verbosity):
 
 def report_live_item(n, total, ref_name, ref_id, item, verbosity):
     status = 'scanned %02.2f%%' % (n * 100.0 / total)
-    hex_id = ref_id.encode('hex')
+    hex_id = hexstr(ref_id)
     dirslash = '/' if item.type == 'tree' else ''
     chunk_path = item.chunk_path
 
@@ -227,7 +227,7 @@ def bup_gc(threshold=10, compression=1, verbosity=0):
             live_objects = find_live_objects(existing_count, cat_pipe,
                                              verbosity=verbosity)
         except MissingObject as ex:
-            log('bup: missing object %r \n' % ex.oid.encode('hex'))
+            log('bup: missing object %s \n' % hexstr(ex.oid))
             sys.exit(1)
         try:
             # FIXME: just rename midxes and bloom, and restore them at the end if

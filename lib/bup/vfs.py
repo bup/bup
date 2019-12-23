@@ -56,7 +56,7 @@ from time import localtime, strftime
 import re, sys
 
 from bup import git, metadata, vint
-from bup.compat import range
+from bup.compat import hexstr, range
 from bup.git import BUP_CHUNKED, cp, get_commit_items, parse_commit, tree_decode
 from bup.helpers import debug2, last
 from bup.metadata import Metadata
@@ -485,7 +485,7 @@ def tree_data_and_bupm(repo, oid):
         data = ''.join(it)
         assert item_t == 'tree'
     elif item_t != 'tree':
-        raise Exception('%r is not a tree or commit' % oid.encode('hex'))
+        raise Exception('%s is not a tree or commit' % hexstr(oid))
     for _, mangled_name, sub_oid in tree_decode(data):
         if mangled_name == '.bupm':
             return data, sub_oid
