@@ -28,6 +28,7 @@ if py3:
     from shlex import quote
     range = range
     str_type = str
+    int_types = (int,)
 
     def add_ex_tb(ex):
         """Do nothing (already handled by Python 3 infrastructure)."""
@@ -70,6 +71,7 @@ else:  # Python 2
     from os import environ
     range = xrange
     str_type = basestring
+    int_types = (int, long)
 
     def add_ex_tb(ex):
         """Add a traceback to ex if it doesn't already have one.  Return ex.

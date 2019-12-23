@@ -13,6 +13,7 @@ from time import localtime, strftime, time
 import re, sys
 
 from bup import git, options
+from bup.compat import int_types
 from bup.gc import bup_gc
 from bup.helpers import die_if_errors, log, partition, period_as_secs
 from bup.repo import LocalRepo
@@ -85,8 +86,8 @@ opt, flags, roots = o.parse(sys.argv[1:])
 if not opt.unsafe:
     o.fatal('refusing to run dangerous, experimental command without --unsafe')
 
-now = int(time()) if not opt.wrt else opt.wrt
-if not isinstance(now, (int, long)):
+now = int(time()) if opt.wrt is None else opt.wrt
+if not isinstance(now, int_types):
     o.fatal('--wrt value ' + str(now) + ' is not an integer')
 
 period_start = {}
