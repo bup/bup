@@ -6,6 +6,7 @@ from bup import _helpers
 
 
 BUP_BLOBBITS = 13
+BUP_TREE_BLOBBITS = 13
 MAX_PER_TREE = 256
 progress_callback = None
 fanout = 16

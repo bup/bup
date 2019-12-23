@@ -125,7 +125,16 @@ handling of metadata.
     is 1 (fast, loose compression)
 
 
+# SETTINGS
+
+`bup save` honors the `bup.split-trees` configuration option (see
+`bup-config(5)`.  Note that it must be set in the repository being
+written to, so for example, in the `BUP_DIR` or `-d` repository for
+`bup save ...` without `-r` and in the the remote repository for `bup
+save -r ...`.
+
 # EXAMPLES
+
     $ bup index -ux /etc
     Indexing: 1981, done.
 

@@ -407,6 +407,58 @@ with them.  However, since they're stored as separate files, they don't
 interfere with git's ability to read the repository.
 
 
+Handling large directories (tree splitting)
+-------------------------------------------
+
+Similarly to large files, git doesn't handle frequently changing large
+directories well either, since they're stored in a single tree object
+using up 28 bytes plus the length of the filename for each entry
+(record). If there are a lot of files, these tree objects can become
+very large, and every minor change to a directory such as creating a
+single new file in it requires storing an entirely new tree object.
+Imagine an active Maildir containing tens or hundreds of thousands of
+files.
+
+If tree splitting is permitted (via the `bup.split-trees` config
+option), then instead of writing a tree as one potentially large git
+tree object, bup may split it into a subtree whose "leaves" are git
+tree objects, each containing part of the original tree.  Note that
+for `bup on HOST ...`  `split-trees` must be set on the `HOST`.
+
+The trees are split in a manner similar to the file hashsplitting
+described above, but with the restriction that splits may only occur
+between (not within) tree entries.
+
+When a tree is split, a large directory like
+
+	dir/{.bupm,aa,bb,...,zz}
+
+might become
+
+	dir/.b/{.bupm,aa,...,ii}
+	dir/.bupd.1.bupd
+	dir/j/{jj,...,rr}
+	dir/s/{ss,...,zz}
+
+where the ".bupd.1.bupd" inside dir/ indicates that the tree for dir/
+was split, and the number (here "1") describes the number of levels
+that were created (just one in this case).  The names in an
+intermediate level (inside dir/, but not the leaves -- in this
+example, ".b", "j", "s", etc.) are derived from the first filename
+contained within each subtree, abbreviated to the shortest valid
+unique prefix.  At any level, the names contained in a subtree will
+always be greater than or equal to the name of the subtree itself and
+less than the name of the next subtree at that level.  This makes it
+possible to know which split subtree to read at every level when
+looking for a given filename.
+
+When parsing the split tree depth info file name, i.e. `.bupd.1.bupd`
+in the example above, any extra bytes in the name after the
+`.bupd.DEPTH` prefix, and before the final `.bupd` suffix must be
+ignored.  The `DEPTH` will always be a sequence of `[0-9]+`, and any
+extra bytes will begin with `.`, e.g.  `.bupd.3.SOMETHING.NEW.bupd`.
+This allows future extensions.
+
 Detailed Metadata
 -----------------
 

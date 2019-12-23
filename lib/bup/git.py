@@ -286,6 +286,8 @@ def demangle_name(name, mode):
     elif name.endswith(b'.bupm'):
         return (name[:-5],
                 BUP_CHUNKED if stat.S_ISDIR(mode) else BUP_NORMAL)
+    elif name.endswith(b'.bupd'): # should be unreachable
+        raise ValueError(f'Cannot unmangle *.bupd files: {path_msg(name)}')
     return (name, BUP_NORMAL)
 
 

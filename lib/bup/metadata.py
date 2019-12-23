@@ -932,10 +932,10 @@ class MetadataRO(Metadata):
         super().__init__(*args, **kwargs)
         self._frozen = True
     def __setattr__(self, k, v):
-        if hasattr(self, '_frozen') and self._frozen and k in self.__slots__:
-            raise AttributeError('Cannot modify read-only instance',
+        if getattr(self, '_frozen', None) and hasattr(self, k):
+            raise AttributeError(f'Cannot modify read-only instance attribute {k}',
                                  name=k, obj=self)
-        super().__setattr__(k, v)
+        return super().__setattr__(k, v)
 
 
 def from_path(path, statinfo=None, archive_path=None,
