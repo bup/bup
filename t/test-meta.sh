@@ -677,11 +677,10 @@ if [ "$root_status" = root ]; then
         (
             WVPASS mkdir "$testfs"/src/foo
             WVPASS touch "$testfs"/src/bar
-            PYTHONPATH="$TOP/lib" \
-                WVPASS bup-python -c "from bup import xstat; \
+            WVPASS bup-python -c "from bup import xstat; \
                 x = xstat.timespec_to_nsecs((42, 0));\
-                   xstat.utime('$testfs/src/foo', (x, x));\
-                   xstat.utime('$testfs/src/bar', (x, x));"
+                xstat.utime('$testfs/src/foo', (x, x));\
+                xstat.utime('$testfs/src/bar', (x, x));"
             WVPASS cd "$testfs"
             WVPASS bup meta -v --create --recurse --file src.meta src
             WVPASS bup meta -tvf src.meta
