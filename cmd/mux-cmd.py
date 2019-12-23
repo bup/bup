@@ -38,7 +38,7 @@ def close_fds():
     os.close(errr)
 
 p = subprocess.Popen(subcmd, stdin=orig_stdin, stdout=outw, stderr=errw,
-                     preexec_fn=close_fds)
+                     close_fds=False, preexec_fn=close_fds)
 os.close(outw)
 os.close(errw)
 sys.stdout.write('BUPMUX')
