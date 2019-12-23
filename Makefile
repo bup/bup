@@ -204,7 +204,8 @@ cmdline_tests := \
   t/test-sparse-files.sh \
   t/test-split-join.sh \
   t/test-tz.sh \
-  t/test-xdev.sh
+  t/test-xdev.sh \
+  t/test-treesplit.sh
 
 ifeq "2" "$(bup_python_majver)"
   # unresolved

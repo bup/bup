@@ -9,6 +9,10 @@ from bup.git import BUP_CHUNKED
 
 TreeDictValue = namedtuple('TreeDictValue', ('name', 'oid', 'meta'))
 
+class FakeRepo:
+    def cat(self, oid):
+        assert False
+
 def tree_items(repo, oid):
     """Yield (name, entry_oid, meta) for each entry in oid.  meta will be
     a Metadata object for any non-directories and for '.', otherwise
@@ -25,7 +29,8 @@ def tree_items(repo, oid):
         if m and m.size is None:
             m.size = 0
         yield TreeDictValue(name=b'.', oid=oid, meta=m)
-        tree_ents = vfs.ordered_tree_entries(tree_data, bupm=True)
+        fakerepo = FakeRepo()
+        tree_ents = vfs.ordered_tree_entries(fakerepo, tree_data, bupm=True)
         for name, mangled_name, kind, gitmode, sub_oid in tree_ents:
             if mangled_name == b'.bupm':
                 continue

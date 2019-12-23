@@ -265,6 +265,8 @@ def demangle_name(name, mode):
         return (name[:-5], BUP_NORMAL)
     elif name.endswith(b'.bup'):
         return (name[:-4], BUP_CHUNKED)
+    elif name.endswith(b'.bupd'):
+        assert False, "we should never get here with .bupd suffix"
     elif name.endswith(b'.bupm'):
         return (name[:-5],
                 BUP_CHUNKED if stat.S_ISDIR(mode) else BUP_NORMAL)
@@ -801,9 +803,11 @@ class PackWriter:
         """Create a blob object in the pack with the supplied content."""
         return self.maybe_write(b'blob', blob)
 
-    def new_tree(self, shalist):
+    def new_tree(self, shalist=None, content=None):
         """Create a tree object in the pack."""
-        content = tree_encode(shalist)
+        assert shalist is None or content is None
+        if content is None:
+            content = tree_encode(shalist)
         return self.maybe_write(b'tree', content)
 
     def new_commit(self, tree, parent,

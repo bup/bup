@@ -13,6 +13,7 @@ import os, sys, stat, time, math
 
 from bup import hashsplit, git, options, index, client, metadata, hlinkdb
 from bup.compat import argv_bytes, environ
+from bup import treesplit
 from bup.hashsplit import GIT_MODE_TREE, GIT_MODE_FILE, GIT_MODE_SYMLINK
 from bup.helpers import (add_error, grafted_path_components, handle_ctrl_c,
                          hostname, istty2, log, parse_date_or_fatal, parse_num,
@@ -110,10 +111,12 @@ if opt.remote or is_reverse:
         sys.exit(1)
     oldref = refname and cli.read_ref(refname) or None
     w = cli.new_packwriter(compression_level=opt.compress)
+    use_treesplit = cli.config(b'bup.treesplit', opttype='bool')
 else:
     cli = None
     oldref = refname and git.read_ref(refname) or None
     w = git.PackWriter(compression_level=opt.compress)
+    use_treesplit = git.git_config_get(b'bup.treesplit', opttype='bool')
 
 handle_ctrl_c()
 
@@ -184,7 +187,11 @@ def _pop(force_tree, dir_metadata=None):
             else:
                 names_seen.add(name)
                 clean_list.append(x)
-        tree = w.new_tree(clean_list)
+        if use_treesplit:
+            tree = treesplit.write_split_tree(w.new_tree, w.new_blob,
+                                              clean_list)
+        else:
+            tree = w.new_tree(clean_list)
     if shalists:
         shalists[-1].append((GIT_MODE_TREE,
                              git.mangle_name(part,

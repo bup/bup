@@ -125,6 +125,13 @@ handling of metadata.
     is 1 (fast, loose compression)
 
 
+# SETTINGS
+`bup save` honors the `bup.treesplit` configuration option, you can
+add it using `git config --add --bool bup.treesplit true` or just edit
+the config file appropriately. Note that it must be set on the writer
+side, which is on the client if using `bup on client save`.
+
+
 # EXAMPLES
     $ bup index -ux /etc
     Indexing: 1981, done.

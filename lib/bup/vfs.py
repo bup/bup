@@ -612,7 +612,32 @@ def root_items(repo, names=None, want_meta=True):
         commit = parse_commit(b''.join(it))
         yield ref, _revlist_item_from_oid(repo, unhexlify(oidx), want_meta)
 
-def ordered_tree_entries(tree_data, bupm=None):
+def _get_tree_object(repo, oid):
+    res = repo.cat(hexlify(oid))
+    _, kind, _ = next(res)
+    assert kind == b'tree'
+    return b''.join(res)
+
+def split_tree_decode(repo, buf, levels=None):
+    """Generate a list of (mode,name,hash) from the git tree object in buf,
+       demangling split trees correctly."""
+    # check if there's a tree-split sentinel file in the tree object
+    if levels is None:
+        for mode, name, sha in tree_decode(buf):
+            if name.endswith(b'.bupd'):
+                levels = int(name[:-5], 10)
+                break
+    for mode, name, sha in tree_decode(buf):
+        if name.endswith(b'.bupd'):
+            continue
+        if levels is not None and levels > 0:
+            subtree = _get_tree_object(repo, sha)
+            for r in split_tree_decode(repo, subtree, levels - 1):
+                yield r
+        else:
+            yield mode, name, sha
+
+def ordered_tree_entries(repo, tree_data, bupm=None):
     """Yields (name, mangled_name, kind, gitmode, oid) for each item in
     tree, sorted by name.
 
@@ -627,13 +652,13 @@ def ordered_tree_entries(tree_data, bupm=None):
         name, kind = git.demangle_name(mangled_name, gitmode)
         return name, mangled_name, kind, gitmode, oid
 
-    tree_ents = (result_from_tree_entry(x) for x in tree_decode(tree_data))
+    tree_ents = (result_from_tree_entry(x) for x in split_tree_decode(repo, tree_data))
     if bupm:
         tree_ents = sorted(tree_ents, key=lambda x: x[0])
     for ent in tree_ents:
         yield ent
     
-def tree_items(oid, tree_data, names=frozenset(), bupm=None):
+def tree_items(repo, oid, tree_data, names=frozenset(), bupm=None):
 
     def tree_item(ent_oid, kind, gitmode):
         if kind == BUP_CHUNKED:
@@ -652,7 +677,7 @@ def tree_items(oid, tree_data, names=frozenset(), bupm=None):
     if not names:
         dot_meta = _read_dir_meta(bupm) if bupm else default_dir_mode
         yield b'.', Item(oid=oid, meta=dot_meta)
-        tree_entries = ordered_tree_entries(tree_data, bupm)
+        tree_entries = ordered_tree_entries(repo, tree_data, bupm)
         for name, mangled_name, kind, gitmode, ent_oid in tree_entries:
             if mangled_name == b'.bupm':
                 continue
@@ -676,7 +701,7 @@ def tree_items(oid, tree_data, names=frozenset(), bupm=None):
             return
         remaining -= 1
 
-    tree_entries = ordered_tree_entries(tree_data, bupm)
+    tree_entries = ordered_tree_entries(repo, tree_data, bupm)
     for name, mangled_name, kind, gitmode, ent_oid in tree_entries:
         if mangled_name == b'.bupm':
             continue
@@ -698,13 +723,13 @@ def tree_items_with_meta(repo, oid, tree_data, names):
     # via tree_data.
     assert len(oid) == 20
     bupm = None
-    for _, mangled_name, sub_oid in tree_decode(tree_data):
+    for _, mangled_name, sub_oid in split_tree_decode(repo, tree_data):
         if mangled_name == b'.bupm':
             bupm = _FileReader(repo, sub_oid)
             break
         if mangled_name > b'.bupm':
             break
-    for item in tree_items(oid, tree_data, names, bupm):
+    for item in tree_items(repo, oid, tree_data, names, bupm):
         yield item
 
 _save_name_rx = re.compile(br'^\d\d\d\d-\d\d-\d\d-\d{6}(-\d+)?$')
@@ -890,7 +915,7 @@ def contents(repo, item, names=None, want_meta=True):
         if want_meta:
             item_gen = tree_items_with_meta(repo, item.oid, data, names)
         else:
-            item_gen = tree_items(item.oid, data, names)
+            item_gen = tree_items(repo, item.oid, data, names)
     elif item_t == RevList:
         item_gen = revlist_items(repo, item.oid, names)
     elif item_t == Root:

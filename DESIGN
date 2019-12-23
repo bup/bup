@@ -367,6 +367,38 @@ with them.  However, since they're stored as separate files, they don't
 interfere with git's ability to read the repository.
 
 
+Handling large directories (treesplit)
+--------------------
+Similarly to large files, git doesn't necessarily deal well with large
+directories, as they're stored in a single tree object, using up 28 bytes
+plus the length of the filename for each entry (record). If there are a
+lot of files, these tree objects can become very large, and every minor
+change to a directory such as creating a single new file in it (think e.g.
+of a Maildir) requires storing an entirely new tree object.
+
+If tree-splitting is permitted ('bup.treesplit' config option, note that it
+must be set on the client if 'bup on client' is used), then bup save will
+not always store directories as pure git tree objects, but instead they will
+be subjected to 'tree-splitting', a form of hashsplitting described above,
+but with the restriction that the record-based structure is preserved and
+the result is still stored as git tree objects; such that a large directory
+
+	dir/{.bupm,aa,bb,...,zz}
+
+might become
+
+	dir/1.bupd
+	dir/.b/{.bupm,aa,...,ii}
+	dir/j/{jj,...,rr}
+	dir/s/{ss,...,zz}
+
+where the "1.bupd" indicates inside the tree object that it was split, and
+the number of levels that were created (just one in this case); the names
+in the intermediate layer(s) are derived from the first filename contained
+within each (abbreviated to shortest valid unique substring), so that they
+can be searched without reconstructing the entire directory.
+
+
 Detailed Metadata
 -----------------
 
