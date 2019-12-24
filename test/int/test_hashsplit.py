@@ -7,7 +7,7 @@ import math, os
 from wvpytest import *
 
 from bup import hashsplit, _helpers
-from bup._helpers import HashSplitter
+from bup._helpers import HashSplitter, RecordHashSplitter
 from bup.hashsplit import BUP_BLOBBITS, fanout
 
 # These test objects generate a number of least significant bits set
@@ -204,3 +204,37 @@ def test_hashsplit_boundaries():
     # Subtract 1 because bup has always ignored one bit between the
     # blob bits and the fanout bits.
     WVPASSEQ(res, [(len(data), 27 - BUP_BLOBBITS - 1)])
+
+def test_hashsplitter_object():
+    def _splitbuf(data):
+        data = data[:]
+        hs = HashSplitter([BytesIO(data)], bits=BUP_BLOBBITS, fanbits=1)
+        sz = 0
+        for blob, lvl in hs:
+            # this isn't necessarily _quite_ right, but try to
+            # reconstruct from a max blob to not having split
+            if len(blob) == 4 << 13 and lvl == 0:
+                sz += len(blob)
+                continue
+            yield sz + len(blob), 13 + lvl
+            sz = 0
+    def _splitbufHS(data):
+        offs = None
+        fed = 0
+        data = data[:]
+        s = RecordHashSplitter(bits=BUP_BLOBBITS)
+        while offs != 0:
+            while data:
+                offs, bits = s.feed(data[:1])
+                fed += 1
+                if offs:
+                    yield fed, bits
+                    fed = 0
+                data = data[1:]
+        yield fed, 13
+    data = b''.join([b'%d\n' % x for x in range(10000)])
+    WVPASSEQ([x for x in _splitbuf(data)],
+             [x for x in _splitbufHS(data)])
+    data = b''.join([b'%.10x\n' % x for x in range(10000)])
+    WVPASSEQ([x for x in _splitbuf(data)],
+             [x for x in _splitbufHS(data)])

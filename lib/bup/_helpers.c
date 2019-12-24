@@ -2104,5 +2104,15 @@ PyMODINIT_FUNC PyInit__helpers(void)
         return NULL;
     }
 
+    Py_INCREF(&RecordHashSplitterType);
+    if (PyModule_AddObject(module, "RecordHashSplitter",
+                           (PyObject *) &RecordHashSplitterType) < 0)
+    {
+        Py_DECREF(&RecordHashSplitterType);
+        Py_DECREF(&HashSplitterType);
+        Py_DECREF(module);
+        return NULL;
+    }
+
     return module;
 }
