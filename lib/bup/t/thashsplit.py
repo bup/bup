@@ -137,3 +137,34 @@ def test_fanout_behaviour():
         hashsplit.BLOB_MAX = old_BLOB_MAX
         hashsplit.BLOB_READ_SIZE = old_BLOB_READ_SIZE
         hashsplit.fanout = old_fanout
+
+@wvtest
+def test_hashsplitter_object():
+    with no_lingering_errors():
+        def _splitbuf(data):
+            offs = None
+            data = data[:]
+            while offs != 0:
+                offs, bits = _helpers.splitbuf(data)
+                data = data[offs:]
+                yield offs, bits
+        def _splitbufHS(data):
+            offs = None
+            fed = 0
+            data = data[:]
+            s = _helpers.RecordHashSplitter()
+            while offs != 0:
+                while data:
+                    offs, bits = s.feed(data[:1])
+                    fed += 1
+                    if offs:
+                        yield fed, bits
+                        fed = 0
+                    data = data[1:]
+            yield (0, -1)
+        data = b''.join([b'%d\n' % x for x in range(10000)])
+        WVPASSEQ([x for x in _splitbuf(data)],
+                 [x for x in _splitbufHS(data)])
+        data = b''.join([b'%.10x\n' % x for x in range(10000)])
+        WVPASSEQ([x for x in _splitbuf(data)],
+                 [x for x in _splitbufHS(data)])

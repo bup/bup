@@ -635,6 +635,94 @@ static PyObject *splitbuf(PyObject *self, PyObject *args)
     return Py_BuildValue("ii", out, bits);
 }
 
+/*
+ * A RecordHashSplitter is fed records one-by-one, and will determine
+ * if the accumulated record stream should now be split. Once it does
+ * return a split point, it resets to restart at the next record.
+ */
+typedef struct {
+    PyObject_HEAD
+    Rollsum r;
+} RecordHashSplitter;
+
+static int RecordHashSplitter_init(RecordHashSplitter *self, PyObject *args, PyObject *kwds)
+{
+    rollsum_init(&self->r);
+
+    return 0;
+}
+
+static PyObject *RecordHashSplitter_feed(RecordHashSplitter *self, PyObject *args)
+{
+    int out = 0, bits = -1, count;
+    Py_buffer buf = { .buf = NULL, .len = 0 };
+
+    if (PY_MAJOR_VERSION > 2)
+    {
+
+        if (!PyArg_ParseTuple(args, "y*", &buf))
+            return NULL;
+    }
+    else
+    {
+        if (!PyArg_ParseTuple(args, "t#", &buf.buf, &buf.len))
+            return NULL;
+    }
+    assert(buf.len <= INT_MAX);
+
+    for (count = 0; count < buf.len; count++)
+    {
+	rollsum_roll(&self->r, ((unsigned char *)buf.buf)[count]);
+
+	if ((self->r.s2 & (BUP_BLOBSIZE-1)) == ((~0) & (BUP_BLOBSIZE-1)))
+	{
+	    unsigned rsum = rollsum_digest(&self->r);
+	    rsum >>= BUP_BLOBBITS;
+	    for (bits = BUP_BLOBBITS; (rsum >>= 1) & 1; bits++)
+		;
+	    out = count + 1;
+	    break;
+	}
+    }
+
+    if (PY_MAJOR_VERSION > 2)
+    {
+        PyBuffer_Release(&buf);
+    }
+
+    assert(!out || bits >= BUP_BLOBBITS);
+
+    if (out)
+    {
+        /* reinit to start fresh at next record boundary if we split */
+        rollsum_init(&self->r);
+    }
+
+    return Py_BuildValue("Oi", out ? Py_True : Py_False, bits);
+}
+
+static PyMethodDef RecordHashSplitter_methods[] = {
+    {"feed", (PyCFunction)RecordHashSplitter_feed, METH_VARARGS,
+     "Feed a record into the RecordHashSplitter instance and return a tuple (split, bits).\n"
+     "(False, -1) is returned if no split point was found, and if a splitpoint was found then\n"
+     "(True, bits) is returned."
+    },
+    {NULL}  /* Sentinel */
+};
+
+static PyTypeObject RecordHashSplitterType = {
+    PyVarObject_HEAD_INIT(NULL, 0)
+    .tp_name = "_helpers.RecordHashSplitter",
+    .tp_doc = "Stateful hashsplitter",
+    .tp_basicsize = sizeof(RecordHashSplitter),
+    .tp_itemsize = 0,
+    .tp_flags = Py_TPFLAGS_DEFAULT,
+    .tp_new = PyType_GenericNew,
+    .tp_init = (initproc)RecordHashSplitter_init,
+    .tp_methods = RecordHashSplitter_methods,
+};
+
+
 
 static PyObject *bitmatch(PyObject *self, PyObject *args)
 {
@@ -1871,7 +1959,12 @@ static int setup_module(PyObject *m)
 
 PyMODINIT_FUNC init_helpers(void)
 {
-    PyObject *m = Py_InitModule("_helpers", helper_methods);
+    PyObject *m;
+
+    if (PyType_Ready(&RecordHashSplitterType) < 0)
+        return;
+
+    m = Py_InitModule("_helpers", helper_methods);
     if (m == NULL)
         return;
 
@@ -1880,6 +1973,9 @@ PyMODINIT_FUNC init_helpers(void)
         Py_DECREF(m);
         return;
     }
+
+    Py_INCREF(&RecordHashSplitterType);
+    PyModule_AddObject(m, "RecordHashSplitter", (PyObject *) &RecordHashSplitterType);
 }
 
 # else // PY_MAJOR_VERSION >= 3
@@ -1898,7 +1994,12 @@ static struct PyModuleDef helpers_def = {
 
 PyMODINIT_FUNC PyInit__helpers(void)
 {
-    PyObject *module = PyModule_Create(&helpers_def);
+    PyObject *module;
+
+    if (PyType_Ready(&RecordHashSplitterType) < 0)
+        return NULL;
+
+    module = PyModule_Create(&helpers_def);
     if (module == NULL)
         return NULL;
     if (!setup_module(module))
@@ -1906,6 +2007,16 @@ PyMODINIT_FUNC PyInit__helpers(void)
         Py_DECREF(module);
         return NULL;
     }
+
+    Py_INCREF(&RecordHashSplitterType);
+    if (PyModule_AddObject(module, "RecordHashSplitter",
+                           (PyObject *) &RecordHashSplitterType) < 0)
+    {
+        Py_DECREF(&RecordHashSplitterType);
+        Py_DECREF(module);
+        return NULL;
+    }
+
     return module;
 }
 
