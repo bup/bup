@@ -25,12 +25,12 @@ if sys.version_info[0] != 2 \
     sys.exit(2)
 
 from subprocess import PIPE
-from sys import stderr, stdout
 import select
 
 from bup import compat, path, helpers
 from bup.compat import add_ex_tb, add_ex_ctx, wrap_main
 from bup.helpers import atoi, columnate, debug1, log, merge_dict, tty_width
+from bup.io import byte_stream
 
 cmdpath = path.cmddir()
 
@@ -222,11 +222,15 @@ def run_subcmd(subcmd):
     if not (fix_stdout or fix_stderr):
         os.execvp(c[0], c)
 
+    sys.stdout.flush()
+    sys.stderr.flush()
+    out = byte_stream(sys.stdout)
+    err = byte_stream(sys.stderr)
     p = None
     try:
         p = subprocess.Popen(c,
-                             stdout=PIPE if fix_stdout else sys.stdout,
-                             stderr=PIPE if fix_stderr else sys.stderr,
+                             stdout=PIPE if fix_stdout else out,
+                             stderr=PIPE if fix_stderr else err,
                              env=tty_env, bufsize=4096, close_fds=True)
         # Assume p will receive these signals and quit, which will
         # then cause us to quit.
@@ -235,8 +239,8 @@ def run_subcmd(subcmd):
 
         filter_output(fix_stdout and p.stdout.fileno() or None,
                       fix_stderr and p.stderr.fileno() or None,
-                      fix_stdout and sys.stdout.fileno() or None,
-                      fix_stderr and sys.stderr.fileno() or None)
+                      fix_stdout and out.fileno() or None,
+                      fix_stderr and err.fileno() or None)
         return p.wait()
     except BaseException as ex:
         add_ex_tb(ex)
