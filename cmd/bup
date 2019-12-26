@@ -31,11 +31,15 @@ if sys.version_info[0] != 2 \
 restore_lc_env()
 
 from bup import compat, path, helpers
-from bup.compat import add_ex_tb, add_ex_ctx, wrap_main
+from bup.compat import add_ex_tb, add_ex_ctx, argv_bytes, wrap_main
 from bup.helpers import atoi, columnate, debug1, log, merge_dict, tty_width
-from bup.io import byte_stream
+from bup.io import byte_stream, path_msg
 
 cmdpath = path.cmddir()
+
+# We manipulate the subcmds here as strings, but they must be ASCII
+# compatible, since we're going to be looking for exactly
+# b'bup-SUBCMD' to exec.
 
 def usage(msg=""):
     log('Usage: bup [-?|--help] [-d BUP_DIR] [--debug] [--profile] '
@@ -61,8 +65,8 @@ def usage(msg=""):
     log('Other available commands:\n')
     cmds = []
     for c in sorted(os.listdir(cmdpath)):
-        if c.startswith('bup-') and c.find('.') < 0:
-            cname = c[4:]
+        if c.startswith(b'bup-') and c.find(b'.') < 0:
+            cname = c[4:].decode('iso-8859-1')
             if cname not in common:
                 cmds.append(c[4:])
     log(columnate(cmds, '    '))
@@ -85,63 +89,69 @@ try:
 except getopt.GetoptError as ex:
     usage('error: %s' % ex.msg)
 
+subcmd = [argv_bytes(x) for x in subcmd]
 help_requested = None
 do_profile = False
+bup_dir = None
 
 for opt in global_args:
     if opt[0] in ['-?', '--help']:
         help_requested = True
     elif opt[0] in ['-V', '--version']:
-        subcmd = ['version']
+        subcmd = [b'version']
     elif opt[0] in ['-D', '--debug']:
         helpers.buglvl += 1
-        os.environ['BUP_DEBUG'] = str(helpers.buglvl)
+        environ[b'BUP_DEBUG'] = b'%d' % helpers.buglvl
     elif opt[0] in ['--profile']:
         do_profile = True
     elif opt[0] in ['-d', '--bup-dir']:
-        os.environ['BUP_DIR'] = opt[1]
+        bup_dir = argv_bytes(opt[1])
     else:
         usage('error: unexpected option "%s"' % opt[0])
 
+if bup_dir:
+    bup_dir = argv_bytes(bup_dir)
+
 # Make BUP_DIR absolute, so we aren't affected by chdir (i.e. save -C, etc.).
-if 'BUP_DIR' in os.environ:
-    os.environ['BUP_DIR'] = os.path.abspath(os.environ['BUP_DIR'])
+if bup_dir:
+    environ[b'BUP_DIR'] = os.path.abspath(bup_dir)
 
 if len(subcmd) == 0:
     if help_requested:
-        subcmd = ['help']
+        subcmd = [b'help']
     else:
         usage()
 
-if help_requested and subcmd[0] != 'help':
-    subcmd = ['help'] + subcmd
+if help_requested and subcmd[0] != b'help':
+    subcmd = [b'help'] + subcmd
 
-if len(subcmd) > 1 and subcmd[1] == '--help' and subcmd[0] != 'help':
-    subcmd = ['help', subcmd[0]] + subcmd[2:]
+if len(subcmd) > 1 and subcmd[1] == b'--help' and subcmd[0] != b'help':
+    subcmd = [b'help', subcmd[0]] + subcmd[2:]
 
 subcmd_name = subcmd[0]
 if not subcmd_name:
     usage()
 
-def subpath(s):
-    return os.path.join(cmdpath, 'bup-%s' % s)
+def subpath(subcmd):
+    return os.path.join(cmdpath, b'bup-' + subcmd)
 
 subcmd[0] = subpath(subcmd_name)
 if not os.path.exists(subcmd[0]):
     usage('error: unknown command "%s"' % path_msg(subcmd_name))
 
-already_fixed = atoi(os.environ.get('BUP_FORCE_TTY'))
-if subcmd_name in ['mux', 'ftp', 'help']:
+already_fixed = atoi(environ.get(b'BUP_FORCE_TTY'))
+if subcmd_name in [b'mux', b'ftp', b'help']:
     already_fixed = True
 fix_stdout = not already_fixed and os.isatty(1)
 fix_stderr = not already_fixed and os.isatty(2)
 
 if fix_stdout or fix_stderr:
-    tty_env = merge_dict(os.environ,
-                         {'BUP_FORCE_TTY': str((fix_stdout and 1 or 0)
-                                               + (fix_stderr and 2 or 0))})
+    tty_env = merge_dict(environ,
+                         {b'BUP_FORCE_TTY': (b'%d'
+                                             % ((fix_stdout and 1 or 0)
+                                                + (fix_stderr and 2 or 0)))})
 else:
-    tty_env = os.environ
+    tty_env = environ
 
 
 sep_rx = re.compile(br'([\r\n])')
@@ -221,7 +231,7 @@ def filter_output(src_out, src_err, dest_out, dest_err):
 
 def run_subcmd(subcmd):
 
-    c = (do_profile and [sys.executable, '-m', 'cProfile'] or []) + subcmd
+    c = (do_profile and [sys.executable, b'-m', b'cProfile'] or []) + subcmd
     if not (fix_stdout or fix_stderr):
         os.execvp(c[0], c)
 
