@@ -193,10 +193,10 @@ def _make_shalist(l):
     ofs = 0
     l = list(l)
     total = sum(size for mode,sha,size, in l)
-    vlen = len('%x' % total)
+    vlen = len(b'%x' % total)
     shalist = []
     for (mode, sha, size) in l:
-        shalist.append((mode, '%0*x' % (vlen,ofs), sha))
+        shalist.append((mode, b'%0*x' % (vlen,ofs), sha))
         ofs += size
     assert(ofs == total)
     return (shalist, total)
@@ -244,7 +244,7 @@ def split_to_blob_or_tree(makeblob, maketree, files,
     if len(shalist) == 1:
         return (shalist[0][0], shalist[0][2])
     elif len(shalist) == 0:
-        return (GIT_MODE_FILE, makeblob(''))
+        return (GIT_MODE_FILE, makeblob(b''))
     else:
         return (GIT_MODE_TREE, maketree(shalist))
 
