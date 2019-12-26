@@ -20,6 +20,7 @@ import errno, getopt, os, re, select, signal, subprocess, sys
 from subprocess import PIPE
 
 from bup.compat import environ, restore_lc_env
+from bup.io import path_msg
 
 if sys.version_info[0] != 2 \
    and not environ.get(b'BUP_ALLOW_UNEXPECTED_PYTHON_VERSION') == b'true':
@@ -127,7 +128,7 @@ def subpath(s):
 
 subcmd[0] = subpath(subcmd_name)
 if not os.path.exists(subcmd[0]):
-    usage('error: unknown command "%s"' % subcmd_name)
+    usage('error: unknown command "%s"' % path_msg(subcmd_name))
 
 already_fixed = atoi(os.environ.get('BUP_FORCE_TTY'))
 if subcmd_name in ['mux', 'ftp', 'help']:
