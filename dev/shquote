@@ -1,0 +1,14 @@
+#!/bin/sh
+
+set -eu
+
+case "$#" in
+    0) src="$(cat)";;
+    1) src="$1";;
+    *)
+        echo "Usage: shquote [SOMETHING]" 1>&2
+        exit 2
+        ;;
+esac
+
+printf %s\\n "$src" | sed "s/'/'\\\\''/g;1s/^/'/;\$s/\$/'/"

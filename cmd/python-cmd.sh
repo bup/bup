@@ -36,4 +36,4 @@ bup_libdir="$script_home/../lib"  # bup_libdir will be adjusted during install
 
 export PYTHONPATH="$bup_libdir${PYTHONPATH:+:$PYTHONPATH}"
 
-# This last line will be replaced with 'exec some/python "$@"
+exec @bup_python@ "$@"

@@ -257,9 +257,10 @@ check: test
 distcheck: all
 	./wvtest run t/test-release-archive.sh
 
-cmd/bup-python: cmd/python-cmd.sh config/config.vars Makefile
-	sed -e '$$ d' $< > "$@".$$PPID.tmp
-	printf "exec %q \"\$$@\"\n" "$(bup_python)" >> "$@".$$PPID.tmp
+cmd/bup-python: cmd/python-cmd.sh config/config.var/bup-python
+	dev/replace -l '@bup_python@' \
+	  "$$(dev/shquote < config/config.var/bup-python)" \
+	  < "$<" > "$@".$$PPID.tmp
 	chmod +x "$@".$$PPID.tmp
 	mv "$@".$$PPID.tmp "$@"
 
@@ -323,6 +324,7 @@ import-docs: Documentation/clean
 clean: Documentation/clean cmd/bup-python
 	cd config && rm -f *~ .*~ \
 	  ${CONFIGURE_DETRITUS} ${CONFIGURE_FILES} ${GENERATED_FILES}
+	cd config && rm -rf config.var
 	rm -f *.o lib/*/*.o *.so lib/*/*.so *.dll lib/*/*.dll *.exe \
 		.*~ *~ */*~ lib/*/*~ lib/*/*/*~ \
 		*.pyc */*.pyc lib/*/*.pyc lib/*/*/*.pyc \

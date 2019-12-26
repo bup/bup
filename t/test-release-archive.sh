@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 . ./wvtest-bup.sh || exit $?
 . t/lib.sh || exit $?
-. config/config.vars.sh
 
 set -o pipefail
+
+bup_make=$(< config/config.var/bup-make)
 
 WVPASS git status > /dev/null
 

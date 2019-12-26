@@ -158,9 +158,8 @@ AC_CHECK_FIELD stat st_ctimensec sys/types.h sys/stat.h unistd.h
 
 AC_CHECK_FIELD tm tm_gmtoff time.h
 
-__config_files="$__config_files config.vars.sh"
-
 AC_OUTPUT config.vars
 
-printf 'bup_make=%q\n' "$MAKE" > config.vars.sh
-printf 'bup_python=%q\n' "$bup_python" >> config.vars.sh
+mkdir -p config.var
+echo -n "$MAKE" > config.var/bup-make
+echo -n "$bup_python" > config.var/bup-python
