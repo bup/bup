@@ -139,6 +139,25 @@ else:  # Python 2
         assert type(y) in (bytes, buffer)
         return buffer(x) + y
 
+
+def restore_lc_env():
+    # Once we're up and running with iso-8859-1, undo the bup-python
+    # LC_CTYPE hackery, so we don't affect unrelated subprocesses.
+    bup_lc_all = environ.get(b'BUP_LC_ALL')
+    if bup_lc_all:
+        del environ[b'LC_COLLATE']
+        del environ[b'LC_CTYPE']
+        del environ[b'LC_MONETARY']
+        del environ[b'LC_NUMERIC']
+        del environ[b'LC_TIME']
+        del environ[b'LC_MESSAGES']
+        del environ[b'LC_MESSAGES']
+        environ[b'LC_ALL'] = bup_lc_all
+        return
+    bup_lc_ctype = environ.get(b'BUP_LC_CTYPE')
+    if bup_lc_ctype:
+        environ[b'LC_CTYPE'] = bup_lc_ctype
+
 def wrap_main(main):
     """Run main() and raise a SystemExit with the return value if it
     returns, pass along any SystemExit it raises, convert

@@ -16,16 +16,18 @@ exec "$script_home/bup-python" "$0" ${1+"$@"}
 # end of bup preamble
 
 from __future__ import absolute_import, print_function
-import errno, re, sys, os, subprocess, signal, getopt
+import errno, getopt, os, re, select, signal, subprocess, sys
+from subprocess import PIPE
+
+from bup.compat import environ, restore_lc_env
 
 if sys.version_info[0] != 2 \
-   and not os.environ.get('BUP_ALLOW_UNEXPECTED_PYTHON_VERSION') == 'true':
+   and not environ.get(b'BUP_ALLOW_UNEXPECTED_PYTHON_VERSION') == b'true':
     print('error: bup may crash with python versions other than 2, or eat your data',
           file=sys.stderr)
     sys.exit(2)
 
-from subprocess import PIPE
-import select
+restore_lc_env()
 
 from bup import compat, path, helpers
 from bup.compat import add_ex_tb, add_ex_ctx, wrap_main
