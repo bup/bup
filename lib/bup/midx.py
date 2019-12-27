@@ -44,13 +44,14 @@ class PackMidx:
 
         self.bits = _helpers.firstword(self.map[8:12])
         self.entries = 2**self.bits
-        self.fanout = buffer(self.map, 12, self.entries*4)
-        self.sha_ofs = 12 + self.entries*4
-        self.nsha = nsha = self._fanget(self.entries-1)
-        self.shatable = buffer(self.map, self.sha_ofs, nsha*20)
-        self.which_ofs = self.sha_ofs + 20*nsha
-        self.whichlist = buffer(self.map, self.which_ofs, nsha*4)
-        self.idxnames = str(self.map[self.which_ofs + 4*nsha:]).split('\0')
+        self.fanout_ofs = 12
+        # fanout len is self.entries * 4
+        self.sha_ofs = self.fanout_ofs + self.entries * 4
+        self.nsha = self._fanget(self.entries-1)
+        # sha table len is self.nsha * 20
+        self.which_ofs = self.sha_ofs + 20 * self.nsha
+        # which len is self.nsha * 4
+        self.idxnames = self.map[self.which_ofs + 4 * self.nsha:].split(b'\0')
 
     def __del__(self):
         self.close()
@@ -58,20 +59,25 @@ class PackMidx:
     def _init_failed(self):
         self.bits = 0
         self.entries = 1
-        self.fanout = b'\0\0\0\0'
-        self.shatable = b'\0' * 20
         self.idxnames = []
 
     def _fanget(self, i):
-        start = i*4
-        s = self.fanout[start:start+4]
-        return _helpers.firstword(s)
+        if i >= self.entries * 4 or i < 0:
+            raise IndexError('invalid midx index %d' % i)
+        ofs = self.fanout_ofs + i * 4
+        return _helpers.firstword(self.map[ofs : ofs + 4])
 
     def _get(self, i):
-        return str(self.shatable[i*20:(i+1)*20])
+        if i >= self.nsha or i < 0:
+            raise IndexError('invalid midx index %d' % i)
+        ofs = self.sha_ofs + i * 20
+        return self.map[ofs : ofs + 20]
 
     def _get_idx_i(self, i):
-        return struct.unpack('!I', self.whichlist[i*4:(i+1)*4])[0]
+        if i >= self.nsha * 4 or i < 0:
+            raise IndexError('invalid midx index %d' % i)
+        ofs = self.which_ofs + i * 4
+        return struct.unpack_from('!I', self.map, offset=ofs)[0]
 
     def _get_idxname(self, i):
         return self.idxnames[self._get_idx_i(i)]
@@ -116,12 +122,12 @@ class PackMidx:
         return None
 
     def __iter__(self):
-        count = self._fanget(self.entries-1)
-        for ofs in range(0, count * 20, 20):
-            yield self.shatable[ofs : ofs + 20]
+        start = self.sha_ofs
+        for ofs in range(start, start + self.nsha * 20, 20):
+            yield self.map[ofs : ofs + 20]
 
     def __len__(self):
-        return int(self._fanget(self.entries-1))
+        return int(self.nsha)
 
 
 def clear_midxes(dir=None):
