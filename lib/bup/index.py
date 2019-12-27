@@ -8,11 +8,6 @@ from bup.compat import range
 from bup.helpers import (add_error, log, merge_iter, mmap_readwrite,
                          progress, qprogress, resolve_parent, slashappend)
 
-if compat.py_maj > 2:
-    from bup.compat import buffer
-
-import sys
-
 EMPTY_SHA = b'\0' * 20
 FAKE_SHA = b'\x01' * 20
 
