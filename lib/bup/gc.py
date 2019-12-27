@@ -1,11 +1,14 @@
 
 from __future__ import absolute_import
+from binascii import hexlify, unhexlify
+from os.path import basename
 import glob, os, subprocess, sys, tempfile
+
 from bup import bloom, git, midx
 from bup.compat import hexstr, range
 from bup.git import MissingObject, walk_object
 from bup.helpers import Nonlocal, log, progress, qprogress
-from os.path import basename
+from bup.io import path_msg
 
 # This garbage collector uses a Bloom filter to track the live objects
 # during the mark phase.  This means that the collection is
@@ -48,11 +51,12 @@ def count_objects(dir, verbosity):
     # more efficient since all we need is a single integer (the last
     # fanout entry) from each index.
     object_count = 0
-    indexes = glob.glob(os.path.join(dir, '*.idx'))
+    indexes = glob.glob(os.path.join(dir, b'*.idx'))
     for i, idx_name in enumerate(indexes):
         if verbosity:
             log('found %d objects (%d/%d %s)\r'
-                % (object_count, i + 1, len(indexes), basename(idx_name)))
+                % (object_count, i + 1, len(indexes),
+                   path_msg(basename(idx_name))))
         idx = git.open_idx(idx_name)
         object_count += len(idx)
     return object_count
@@ -61,15 +65,16 @@ def count_objects(dir, verbosity):
 def report_live_item(n, total, ref_name, ref_id, item, verbosity):
     status = 'scanned %02.2f%%' % (n * 100.0 / total)
     hex_id = hexstr(ref_id)
-    dirslash = '/' if item.type == 'tree' else ''
+    dirslash = b'/' if item.type == b'tree' else b''
     chunk_path = item.chunk_path
 
     if chunk_path:
         if verbosity < 4:
             return
-        ps = '/'.join(item.path)
-        chunk_ps = '/'.join(chunk_path)
-        log('%s %s:%s/%s%s\n' % (status, hex_id, ps, chunk_ps, dirslash))
+        ps = b'/'.join(item.path)
+        chunk_ps = b'/'.join(chunk_path)
+        log('%s %s:%s/%s%s\n' % (status, hex_id, path_msg(ps),
+                                 path_msg(chunk_ps), path_msg(dirslash)))
         return
 
     # Top commit, for example has none.
@@ -78,21 +83,23 @@ def report_live_item(n, total, ref_name, ref_id, item, verbosity):
 
     # Don't print mangled paths unless the verbosity is over 3.
     if demangled:
-        ps = '/'.join(item.path[:-1] + [demangled])
+        ps = b'/'.join(item.path[:-1] + [demangled])
         if verbosity == 1:
-            qprogress('%s %s:%s%s\r' % (status, hex_id, ps, dirslash))
-        elif (verbosity > 1 and item.type == 'tree') \
-             or (verbosity > 2 and item.type == 'blob'):
-            log('%s %s:%s%s\n' % (status, hex_id, ps, dirslash))
+            qprogress('%s %s:%s%s\r' % (status, hex_id, path_msg(ps),
+                                        path_msg(dirslash)))
+        elif (verbosity > 1 and item.type == b'tree') \
+             or (verbosity > 2 and item.type == b'blob'):
+            log('%s %s:%s%s\n' % (status, hex_id, path_msg(ps),
+                                  path_msg(dirslash)))
     elif verbosity > 3:
-        ps = '/'.join(item.path)
-        log('%s %s:%s%s\n' % (status, hex_id, ps, dirslash))
+        ps = b'/'.join(item.path)
+        log('%s %s:%s%s\n' % (status, hex_id, path_msg(ps), path_msg(dirslash)))
 
 
 def find_live_objects(existing_count, cat_pipe, verbosity=0):
     prune_visited_trees = True # In case we want a command line option later
-    pack_dir = git.repo('objects/pack')
-    ffd, bloom_filename = tempfile.mkstemp('.bloom', 'tmp-gc-', pack_dir)
+    pack_dir = git.repo(b'objects/pack')
+    ffd, bloom_filename = tempfile.mkstemp(b'.bloom', b'tmp-gc-', pack_dir)
     os.close(ffd)
     # FIXME: allow selection of k?
     # FIXME: support ephemeral bloom filters (i.e. *never* written to disk)
@@ -102,17 +109,16 @@ def find_live_objects(existing_count, cat_pipe, verbosity=0):
     stop_at, trees_visited = None, None
     if prune_visited_trees:
         trees_visited = set()
-        stop_at = lambda x: x.decode('hex') in trees_visited
+        stop_at = lambda x: unhexlify(x) in trees_visited
     approx_live_count = 0
     for ref_name, ref_id in git.list_refs():
-        for item in walk_object(cat_pipe.get, ref_id.encode('hex'),
-                                stop_at=stop_at,
+        for item in walk_object(cat_pipe.get, hexlify(ref_id), stop_at=stop_at,
                                 include_data=None):
             # FIXME: batch ids
             if verbosity:
                 report_live_item(approx_live_count, existing_count,
                                  ref_name, ref_id, item, verbosity)
-            if trees_visited is not None and item.type == 'tree':
+            if trees_visited is not None and item.type == b'tree':
                 trees_visited.add(item.oid)
             if verbosity:
                 if not live_objs.exists(item.oid):
@@ -135,12 +141,12 @@ def sweep(live_objects, existing_count, cat_pipe, threshold, compression,
     ns.stale_files = []
     def remove_stale_files(new_pack_prefix):
         if verbosity and new_pack_prefix:
-            log('created ' + basename(new_pack_prefix) + '\n')
+            log('created ' + path_msg(basename(new_pack_prefix)) + '\n')
         for p in ns.stale_files:
             if new_pack_prefix and p.startswith(new_pack_prefix):
                 continue  # Don't remove the new pack file
             if verbosity:
-                log('removing ' + basename(p) + '\n')
+                log('removing ' + path_msg(basename(p)) + '\n')
             os.unlink(p)
         if ns.stale_files:  # So git cat-pipe will close them
             cat_pipe.restart()
@@ -153,7 +159,7 @@ def sweep(live_objects, existing_count, cat_pipe, threshold, compression,
 
     # FIXME: sanity check .idx names vs .pack names?
     collect_count = 0
-    for idx_name in glob.glob(os.path.join(git.repo('objects/pack'), '*.idx')):
+    for idx_name in glob.glob(os.path.join(git.repo(b'objects/pack'), b'*.idx')):
         if verbosity:
             qprogress('preserving live data (%d%% complete)\r'
                       % ((float(collect_count) / existing_count) * 100))
@@ -168,9 +174,9 @@ def sweep(live_objects, existing_count, cat_pipe, threshold, compression,
         if idx_live_count == 0:
             if verbosity:
                 log('deleting %s\n'
-                    % git.repo_rel(basename(idx_name)))
+                    % path_msg(git.repo_rel(basename(idx_name))))
             ns.stale_files.append(idx_name)
-            ns.stale_files.append(idx_name[:-3] + 'pack')
+            ns.stale_files.append(idx_name[:-3] + b'pack')
             continue
 
         live_frac = idx_live_count / float(len(idx))
@@ -185,21 +191,21 @@ def sweep(live_objects, existing_count, cat_pipe, threshold, compression,
                                                   live_frac * 100))
         for sha in idx:
             if live_objects.exists(sha):
-                item_it = cat_pipe.get(sha.encode('hex'))
+                item_it = cat_pipe.get(hexlify(sha))
                 _, typ, _ = next(item_it)
-                writer.just_write(sha, typ, ''.join(item_it))
+                writer.just_write(sha, typ, b''.join(item_it))
 
         ns.stale_files.append(idx_name)
-        ns.stale_files.append(idx_name[:-3] + 'pack')
+        ns.stale_files.append(idx_name[:-3] + b'pack')
 
     if verbosity:
         progress('preserving live data (%d%% complete)\n'
                  % ((float(collect_count) / existing_count) * 100))
 
     # Nothing should have recreated midx/bloom yet.
-    pack_dir = git.repo('objects/pack')
-    assert(not os.path.exists(os.path.join(pack_dir, 'bup.bloom')))
-    assert(not glob.glob(os.path.join(pack_dir, '*.midx')))
+    pack_dir = git.repo(b'objects/pack')
+    assert(not os.path.exists(os.path.join(pack_dir, b'bup.bloom')))
+    assert(not glob.glob(os.path.join(pack_dir, b'*.midx')))
 
     # try/catch should call writer.abort()?
     # This will finally run midx.
@@ -214,7 +220,7 @@ def sweep(live_objects, existing_count, cat_pipe, threshold, compression,
 
 def bup_gc(threshold=10, compression=1, verbosity=0):
     cat_pipe = git.cp()
-    existing_count = count_objects(git.repo('objects/pack'), verbosity)
+    existing_count = count_objects(git.repo(b'objects/pack'), verbosity)
     if verbosity:
         log('found %d objects\n' % existing_count)
     if not existing_count:
@@ -225,20 +231,20 @@ def bup_gc(threshold=10, compression=1, verbosity=0):
             live_objects = find_live_objects(existing_count, cat_pipe,
                                              verbosity=verbosity)
         except MissingObject as ex:
-            log('bup: missing object %s \n' % hexstr(ex.oid))
+            log('bup: missing object %r \n' % hexstr(ex.oid))
             sys.exit(1)
         try:
             # FIXME: just rename midxes and bloom, and restore them at the end if
             # we didn't change any packs?
-            packdir = git.repo('objects/pack')
+            packdir = git.repo(b'objects/pack')
             if verbosity: log('clearing midx files\n')
             midx.clear_midxes(packdir)
             if verbosity: log('clearing bloom filter\n')
             bloom.clear_bloom(packdir)
             if verbosity: log('clearing reflog\n')
-            expirelog_cmd = ['git', 'reflog', 'expire', '--all', '--expire=all']
+            expirelog_cmd = [b'git', b'reflog', b'expire', b'--all', b'--expire=all']
             expirelog = subprocess.Popen(expirelog_cmd, env=git._gitenv())
-            git._git_wait(' '.join(expirelog_cmd), expirelog)
+            git._git_wait(b' '.join(expirelog_cmd), expirelog)
             if verbosity: log('removing unreachable data\n')
             sweep(live_objects, existing_count, cat_pipe,
                   threshold, compression,
