@@ -5,15 +5,16 @@ exec "$bup_python" "$0" ${1+"$@"}
 """
 # end of bup preamble
 
-from __future__ import absolute_import
+from __future__ import absolute_import, print_function
+from binascii import hexlify
 import glob, math, os, resource, struct, sys, tempfile
 
 from bup import options, git, midx, _helpers, xstat
-from bup.compat import hexstr, range
+from bup.compat import argv_bytes, hexstr, range
 from bup.helpers import (Sha1, add_error, atomically_replaced_file, debug1, fdatasync,
                          handle_ctrl_c, log, mmap_readwrite, qprogress,
                          saved_errors, unlink)
-
+from bup.io import byte_stream, path_msg
 
 PAGE_SIZE=4096
 SHA_PER_PAGE=PAGE_SIZE/20.
@@ -49,11 +50,11 @@ def max_files():
 
 def check_midx(name):
     nicename = git.repo_rel(name)
-    log('Checking %s.\n' % nicename)
+    log('Checking %s.\n' % path_msg(nicename))
     try:
         ix = git.open_idx(name)
     except git.GitError as e:
-        add_error('%s: %s' % (name, e))
+        add_error('%s: %s' % (pathmsg(name), e))
         return
     for count,subname in enumerate(ix.idxnames):
         sub = git.open_idx(os.path.join(os.path.dirname(name), subname))
@@ -61,18 +62,23 @@ def check_midx(name):
             if not (ecount % 1234):
                 qprogress('  %d/%d: %s %d/%d\r' 
                           % (count, len(ix.idxnames),
-                             git.shorten_hash(subname), ecount, len(sub)))
+                             git.shorten_hash(subname).decode('ascii'),
+                             ecount, len(sub)))
             if not sub.exists(e):
                 add_error("%s: %s: %s missing from idx"
-                          % (nicename, git.shorten_hash(subname), hexstr(e)))
+                          % (path_msg(nicename),
+                             git.shorten_hash(subname).decode('ascii'),
+                             hexstr(e)))
             if not ix.exists(e):
                 add_error("%s: %s: %s missing from midx"
-                          % (nicename, git.shorten_hash(subname), hexstr(e)))
+                          % (path_msg(nicename),
+                             git.shorten_hash(subname).decode('ascii'),
+                             hexstr(e)))
     prev = None
     for ecount,e in enumerate(ix):
         if not (ecount % 1234):
             qprogress('  Ordering: %d/%d\r' % (ecount, len(ix)))
-        if not e >= prev:
+        if e and prev and not e >= prev:
             add_error('%s: ordering error: %s < %s'
                       % (nicename, hexstr(e), hexstr(prev)))
         prev = e
@@ -83,8 +89,8 @@ def _do_midx(outdir, outfilename, infilenames, prefixstr):
     global _first
     if not outfilename:
         assert(outdir)
-        sum = Sha1('\0'.join(infilenames)).hexdigest()
-        outfilename = '%s/midx-%s.midx' % (outdir, sum)
+        sum = hexlify(Sha1(b'\0'.join(infilenames)).digest())
+        outfilename = b'%s/midx-%s.midx' % (outdir, sum)
     
     inp = []
     total = 0
@@ -104,10 +110,10 @@ def _do_midx(outdir, outfilename, infilenames, prefixstr):
             for n in ix.idxnames:
                 allfilenames.append(os.path.basename(n))
             total += len(ix)
-        inp.sort(reverse=True, key=lambda x: str(x[0][x[2]:x[2]+20]))
+        inp.sort(reverse=True, key=lambda x: x[0][x[2] : x[2] + 20])
 
         if not _first: _first = outdir
-        dirprefix = (_first != outdir) and git.repo_rel(outdir)+': ' or ''
+        dirprefix = (_first != outdir) and git.repo_rel(outdir) + b': ' or b''
         debug1('midx: %s%screating from %d files (%d objects).\n'
                % (dirprefix, prefixstr, len(infilenames), total))
         if (opt.auto and (total < 1024 and len(infilenames) < 3)) \
@@ -123,7 +129,7 @@ def _do_midx(outdir, outfilename, infilenames, prefixstr):
 
         unlink(outfilename)
         with atomically_replaced_file(outfilename, 'wb') as f:
-            f.write('MIDX')
+            f.write(b'MIDX')
             f.write(struct.pack('!II', midx.MIDX_VERSION, bits))
             assert(f.tell() == 12)
 
@@ -132,11 +138,10 @@ def _do_midx(outdir, outfilename, infilenames, prefixstr):
             fdatasync(f.fileno())
 
             fmap = mmap_readwrite(f, close=False)
-
             count = merge_into(fmap, bits, total, inp)
             del fmap # Assume this calls msync() now.
             f.seek(0, os.SEEK_END)
-            f.write('\0'.join(allfilenames))
+            f.write(b'\0'.join(allfilenames))
     finally:
         for ix in midxs:
             if isinstance(ix, midx.PackMidx):
@@ -149,7 +154,7 @@ def _do_midx(outdir, outfilename, infilenames, prefixstr):
     if 0:
         p = midx.PackMidx(outfilename)
         assert(len(p.idxnames) == len(infilenames))
-        print p.idxnames
+        print(repr(p.idxnames))
         assert(len(p) == total)
         for pe, e in p, git.idxmerge(inp, final_progress=False):
             pin = next(pi)
@@ -159,23 +164,23 @@ def _do_midx(outdir, outfilename, infilenames, prefixstr):
     return total, outfilename
 
 
-def do_midx(outdir, outfilename, infilenames, prefixstr):
+def do_midx(outdir, outfilename, infilenames, prefixstr, prout):
     rv = _do_midx(outdir, outfilename, infilenames, prefixstr)
     if rv and opt['print']:
-        print rv[1]
+        prout.write(rv[1] + b'\n')
 
 
-def do_midx_dir(path, outfilename):
+def do_midx_dir(path, outfilename, prout):
     already = {}
     sizes = {}
     if opt.force and not opt.auto:
         midxs = []   # don't use existing midx files
     else:
-        midxs = glob.glob('%s/*.midx' % path)
+        midxs = glob.glob(b'%s/*.midx' % path)
         contents = {}
         for mname in midxs:
             m = git.open_idx(mname)
-            contents[mname] = [('%s/%s' % (path,i)) for i in m.idxnames]
+            contents[mname] = [(b'%s/%s' % (path,i)) for i in m.idxnames]
             sizes[mname] = len(m)
                     
         # sort the biggest+newest midxes first, so that we can eliminate
@@ -194,7 +199,7 @@ def do_midx_dir(path, outfilename):
                 already[mname] = 1
 
     midxs = [k for k in midxs if not already.get(k)]
-    idxs = [k for k in glob.glob('%s/*.idx' % path) if not already.get(k)]
+    idxs = [k for k in glob.glob(b'%s/*.idx' % path) if not already.get(k)]
 
     for iname in idxs:
         i = git.open_idx(iname)
@@ -222,7 +227,7 @@ def do_midx_dir(path, outfilename):
     if opt['print']:
         for sz,name in all:
             if not existed.get(name):
-                print name
+                prout.write(name + b'\n')
 
 
 def do_midx_group(outdir, outfilename, infiles):
@@ -240,6 +245,8 @@ handle_ctrl_c()
 
 o = options.Options(optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
+opt.dir = argv_bytes(opt.dir) if opt.dir else None
+opt.output = argv_bytes(opt.output) if opt.output else None
 
 if extra and (opt.auto or opt.force):
     o.fatal("you can't use -f/-a and also provide filenames")
@@ -252,6 +259,8 @@ if opt.max_files < 0:
     opt.max_files = max_files()
 assert(opt.max_files >= 5)
 
+extra = [argv_bytes(x) for x in extra]
+
 if opt.check:
     # check existing midx files
     if extra:
@@ -261,19 +270,22 @@ if opt.check:
         paths = opt.dir and [opt.dir] or git.all_packdirs()
         for path in paths:
             debug1('midx: scanning %s\n' % path)
-            midxes += glob.glob(os.path.join(path, '*.midx'))
+            midxes += glob.glob(os.path.join(path, b'*.midx'))
     for name in midxes:
         check_midx(name)
     if not saved_errors:
         log('All tests passed.\n')
 else:
     if extra:
-        do_midx(git.repo('objects/pack'), opt.output, extra, '')
+        sys.stdout.flush()
+        do_midx(git.repo(b'objects/pack'), opt.output, extra, b'',
+                byte_stream(sys.stdout))
     elif opt.auto or opt.force:
+        sys.stdout.flush()
         paths = opt.dir and [opt.dir] or git.all_packdirs()
         for path in paths:
-            debug1('midx: scanning %s\n' % path)
-            do_midx_dir(path, opt.output)
+            debug1('midx: scanning %s\n' % path_msg(path))
+            do_midx_dir(path, opt.output, byte_stream(sys.stdout))
     else:
         o.fatal("you must use -f or -a or provide input filenames")
 
