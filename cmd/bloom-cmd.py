@@ -9,9 +9,11 @@ from __future__ import absolute_import
 import glob, os, sys, tempfile
 
 from bup import options, git, bloom
-from bup.compat import hexstr
+from bup.compat import argv_bytes, hexstr
 from bup.helpers import (add_error, debug1, handle_ctrl_c, log, progress, qprogress,
                          saved_errors)
+from bup.io import path_msg
+
 
 optspec = """
 bup bloom [options...]
@@ -28,31 +30,31 @@ c,check=   check the given .idx file against the bloom filter
 def ruin_bloom(bloomfilename):
     rbloomfilename = git.repo_rel(bloomfilename)
     if not os.path.exists(bloomfilename):
-        log("%s\n" % bloomfilename)
-        add_error("bloom: %s not found to ruin\n" % rbloomfilename)
+        log(path_msg(bloomfilename) + '\n')
+        add_error('bloom: %s not found to ruin\n' % path_msg(rbloomfilename))
         return
     b = bloom.ShaBloom(bloomfilename, readwrite=True, expected=1)
-    b.map[16:16+2**b.bits] = '\0' * 2**b.bits
+    b.map[16 : 16 + 2**b.bits] = b'\0' * 2**b.bits
 
 
 def check_bloom(path, bloomfilename, idx):
     rbloomfilename = git.repo_rel(bloomfilename)
     ridx = git.repo_rel(idx)
     if not os.path.exists(bloomfilename):
-        log("bloom: %s: does not exist.\n" % rbloomfilename)
+        log('bloom: %s: does not exist.\n' % path_msg(rbloomfilename))
         return
     b = bloom.ShaBloom(bloomfilename)
     if not b.valid():
-        add_error("bloom: %r is invalid.\n" % rbloomfilename)
+        add_error('bloom: %r is invalid.\n' % path_msg(rbloomfilename))
         return
     base = os.path.basename(idx)
     if base not in b.idxnames:
-        log("bloom: %s does not contain the idx.\n" % rbloomfilename)
+        log('bloom: %s does not contain the idx.\n' % path_msg(rbloomfilename))
         return
     if base == idx:
         idx = os.path.join(path, idx)
-    log("bloom: bloom file: %s\n" % rbloomfilename)
-    log("bloom:   checking %s\n" % ridx)
+    log('bloom: bloom file: %s\n' % path_msg(rbloomfilename))
+    log('bloom:   checking %s\n' % path_msg(ridx))
     for objsha in git.open_idx(idx):
         if not b.exists(objsha):
             add_error('bloom: ERROR: object %s missing' % hexstr(objsha))
@@ -73,7 +75,7 @@ def do_bloom(path, outfilename, k):
     rest = []
     add_count = 0
     rest_count = 0
-    for i,name in enumerate(glob.glob('%s/*.idx' % path)):
+    for i, name in enumerate(glob.glob(b'%s/*.idx' % path)):
         progress('bloom: counting: %d\r' % i)
         ix = git.open_idx(name)
         ixbase = os.path.basename(name)
@@ -113,15 +115,15 @@ def do_bloom(path, outfilename, k):
 
     msg = b is None and 'creating from' or 'adding'
     if not _first: _first = path
-    dirprefix = (_first != path) and git.repo_rel(path)+': ' or ''
+    dirprefix = (_first != path) and git.repo_rel(path) + b': ' or b''
     progress('bloom: %s%s %d file%s (%d object%s).\r'
-        % (dirprefix, msg,
+        % (path_msg(dirprefix), msg,
            len(add), len(add)!=1 and 's' or '',
            add_count, add_count!=1 and 's' or ''))
 
     tfname = None
     if b is None:
-        tfname = os.path.join(path, 'bup.tmp.bloom')
+        tfname = os.path.join(path, b'bup.tmp.bloom')
         b = bloom.create(tfname, expected=add_count, k=k)
     count = 0
     icount = 0
@@ -149,15 +151,19 @@ o = options.Options(optspec)
 if extra:
     o.fatal('no positional parameters expected')
 
-git.check_repo_or_die()
-
 if not opt.check and opt.k and opt.k not in (4,5):
     o.fatal('only k values of 4 and 5 are supported')
 
-paths = opt.dir and [opt.dir] or git.all_packdirs()
+if opt.check:
+    opt.check = argv_bytes(opt.check)
+
+git.check_repo_or_die()
+
+output = argv_bytes(opt.output) if opt.output else None
+paths = opt.dir and [argv_bytes(opt.dir)] or git.all_packdirs()
 for path in paths:
-    debug1('bloom: scanning %s\n' % path)
-    outfilename = opt.output or os.path.join(path, 'bup.bloom')
+    debug1('bloom: scanning %s\n' % path_msg(path))
+    outfilename = output or os.path.join(path, b'bup.bloom')
     if opt.check:
         check_bloom(path, outfilename, opt.check)
     elif opt.ruin:
