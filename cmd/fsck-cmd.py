@@ -12,10 +12,12 @@ from subprocess import PIPE, Popen
 from tempfile import mkdtemp
 
 from bup import options, git
+from bup.compat import argv_bytes
 from bup.helpers import Sha1, chunkyreader, istty2, log, progress
+from bup.io import byte_stream
 
 par2_ok = 0
-nullf = open('/dev/null')
+nullf = open(os.devnull, 'wb+')
 
 def debug(s):
     if opt.verbose > 1:
@@ -37,7 +39,7 @@ def par2_setup():
     global par2_ok
     rv = 1
     try:
-        p = subprocess.Popen(['par2', '--help'],
+        p = subprocess.Popen([b'par2', b'--help'],
                              stdout=nullf, stderr=nullf, stdin=nullf)
         rv = p.wait()
     except OSError:
@@ -48,19 +50,19 @@ def par2_setup():
 def is_par2_parallel():
     # A true result means it definitely allows -t1; a false result is
     # technically inconclusive, but likely means no.
-    tmpdir = mkdtemp(prefix="bup-fsck")
+    tmpdir = mkdtemp(prefix=b'bup-fsck')
     try:
-        canary = tmpdir + '/canary'
-        with open(canary, 'w') as f:
-            print('canary', file=f)
-        p = subprocess.Popen(('par2', 'create', '-qq', '-t1', canary),
+        canary = tmpdir + b'/canary'
+        with open(canary, 'wb') as f:
+            f.write(b'canary\n')
+        p = subprocess.Popen((b'par2', b'create', b'-qq', b'-t1', canary),
                              stderr=PIPE, stdin=nullf)
         _, err = p.communicate()
         parallel = p.returncode == 0
         if opt.verbose:
             if err != b'Invalid option specified: -t1\n':
                 log('Unexpected par2 error output\n')
-                log(err)
+                log(repr(err))
             if parallel:
                 log('Assuming par2 supports parallel processing\n')
             else:
@@ -75,29 +77,29 @@ def par2(action, args, verb_floor=0):
     global _par2_parallel
     if _par2_parallel is None:
         _par2_parallel = is_par2_parallel()
-    cmd = ['par2', action]
+    cmd = [b'par2', action]
     if opt.verbose >= verb_floor and not istty2:
-        cmd.append('-q')
+        cmd.append(b'-q')
     else:
-        cmd.append('-qq')
+        cmd.append(b'-qq')
     if _par2_parallel:
-        cmd.append('-t1')
+        cmd.append(b'-t1')
     cmd.extend(args)
     return run(cmd)
 
 def par2_generate(base):
-    return par2('create',
-                ['-n1', '-c200', '--', base, base + '.pack', base + '.idx'],
+    return par2(b'create',
+                [b'-n1', b'-c200', b'--', base, base + b'.pack', base + b'.idx'],
                 verb_floor=2)
 
 def par2_verify(base):
-    return par2('verify', ['--', base], verb_floor=3)
+    return par2(b'verify', [b'--', base], verb_floor=3)
 
 def par2_repair(base):
-    return par2('repair', ['--', base], verb_floor=2)
+    return par2(b'repair', [b'--', base], verb_floor=2)
 
 def quick_verify(base):
-    f = open(base + '.pack', 'rb')
+    f = open(base + b'.pack', 'rb')
     f.seek(-20, 2)
     wantsum = f.read(20)
     assert(len(wantsum) == 20)
@@ -119,10 +121,10 @@ def git_verify(base):
             return 1
         return 0
     else:
-        return run(['git', 'verify-pack', '--', base])
+        return run([b'git', b'verify-pack', b'--', base])
     
     
-def do_pack(base, last, par2_exists):
+def do_pack(base, last, par2_exists, out):
     code = 0
     if par2_ok and par2_exists and (opt.repair or not opt.generate):
         vresult = par2_verify(base)
@@ -130,41 +132,41 @@ def do_pack(base, last, par2_exists):
             if opt.repair:
                 rresult = par2_repair(base)
                 if rresult != 0:
-                    action_result = 'failed'
+                    action_result = b'failed'
                     log('%s par2 repair: failed (%d)\n' % (last, rresult))
                     code = rresult
                 else:
-                    action_result = 'repaired'
+                    action_result = b'repaired'
                     log('%s par2 repair: succeeded (0)\n' % last)
                     code = 100
             else:
-                action_result = 'failed'
+                action_result = b'failed'
                 log('%s par2 verify: failed (%d)\n' % (last, vresult))
                 code = vresult
         else:
-            action_result = 'ok'
+            action_result = b'ok'
     elif not opt.generate or (par2_ok and not par2_exists):
         gresult = git_verify(base)
         if gresult != 0:
-            action_result = 'failed'
+            action_result = b'failed'
             log('%s git verify: failed (%d)\n' % (last, gresult))
             code = gresult
         else:
             if par2_ok and opt.generate:
                 presult = par2_generate(base)
                 if presult != 0:
-                    action_result = 'failed'
+                    action_result = b'failed'
                     log('%s par2 create: failed (%d)\n' % (last, presult))
                     code = presult
                 else:
-                    action_result = 'generated'
+                    action_result = b'generated'
             else:
-                action_result = 'ok'
+                action_result = b'ok'
     else:
         assert(opt.generate and (not par2_ok or par2_exists))
-        action_result = 'exists' if par2_exists else 'skipped'
+        action_result = b'exists' if par2_exists else b'skipped'
     if opt.verbose:
-        print(last, action_result)
+        out.write(last + b' ' +  action_result + b'\n')
     return code
 
 
@@ -181,6 +183,7 @@ disable-par2  ignore par2 even if it is available
 """
 o = options.Options(optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
+opt.verbose = opt.verbose or 0
 
 par2_setup()
 if opt.par2_ok:
@@ -193,36 +196,40 @@ if opt.disable_par2:
 
 git.check_repo_or_die()
 
-if not extra:
+if extra:
+    extra = [argv_byes(x) for x in extra]
+else:
     debug('fsck: No filenames given: checking all packs.\n')
-    extra = glob.glob(git.repo('objects/pack/*.pack'))
+    extra = glob.glob(git.repo(b'objects/pack/*.pack'))
 
+sys.stdout.flush()
+out = byte_stream(sys.stdout)
 code = 0
 count = 0
 outstanding = {}
 for name in extra:
-    if name.endswith('.pack'):
+    if name.endswith(b'.pack'):
         base = name[:-5]
-    elif name.endswith('.idx'):
+    elif name.endswith(b'.idx'):
         base = name[:-4]
-    elif name.endswith('.par2'):
+    elif name.endswith(b'.par2'):
         base = name[:-5]
-    elif os.path.exists(name + '.pack'):
+    elif os.path.exists(name + b'.pack'):
         base = name
     else:
-        raise Exception('%s is not a pack file!' % name)
+        raise Exception('%r is not a pack file!' % name)
     (dir,last) = os.path.split(base)
-    par2_exists = os.path.exists(base + '.par2')
-    if par2_exists and os.stat(base + '.par2').st_size == 0:
+    par2_exists = os.path.exists(base + b'.par2')
+    if par2_exists and os.stat(base + b'.par2').st_size == 0:
         par2_exists = 0
-    sys.stdout.flush()
-    debug('fsck: checking %s (%s)\n' 
+    sys.stdout.flush()  # Not sure we still need this, but it'll flush out too
+    debug('fsck: checking %r (%s)\n'
           % (last, par2_ok and par2_exists and 'par2' or 'git'))
     if not opt.verbose:
         progress('fsck (%d/%d)\r' % (count, len(extra)))
     
     if not opt.jobs:
-        nc = do_pack(base, last, par2_exists)
+        nc = do_pack(base, last, par2_exists, out)
         code = code or nc
         count += 1
     else:
@@ -238,7 +245,7 @@ for name in extra:
             outstanding[pid] = 1
         else: # child
             try:
-                sys.exit(do_pack(base, last, par2_exists))
+                sys.exit(do_pack(base, last, par2_exists, out))
             except Exception as e:
                 log('exception: %r\n' % e)
                 sys.exit(99)
