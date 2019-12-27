@@ -7,15 +7,17 @@ exec "$bup_python" "$0" ${1+"$@"}
 
 from __future__ import absolute_import, print_function
 import os, re, stat, sys, textwrap, time
+from binascii import hexlify, unhexlify
 from collections import namedtuple
 from functools import partial
 from stat import S_ISDIR
 
 from bup import git, client, helpers, vfs
-from bup.compat import hexstr, wrap_main
+from bup.compat import argv_bytes, environ, hexstr, items, wrap_main
 from bup.git import get_cat_data, parse_commit, walk_object
 from bup.helpers import add_error, debug1, handle_ctrl_c, log, saved_errors
 from bup.helpers import hostname, shstr, tty_width
+from bup.io import path_msg
 from bup.pwdgrp import userfullname, username
 from bup.repo import LocalRepo, RemoteRepo
 
@@ -105,8 +107,14 @@ def require_n_args_or_die(n, args):
     assert len(result[0]) == n
     return result
 
+Spec = namedtuple('Spec', ('method', 'src', 'dest'))
+
+def spec_msg(s):
+    if not s.dest:
+        return '--%s %s' % (s.method, path_msg(s.src))
+    return '--%s: %s %s' % (s.method, path_msg(s.src), path_msg(s.dest))
+
 def parse_args(args):
-    Spec = namedtuple('Spec', ['argopt', 'argval', 'src', 'dest', 'method'])
     class GetOpts:
         pass
     opt = GetOpts()
@@ -131,17 +139,13 @@ def parse_args(args):
         elif arg in ('--ff', '--append', '--pick', '--force-pick',
                      '--new-tag', '--replace', '--unnamed'):
             (ref,), remaining = require_n_args_or_die(1, remaining)
-            opt.target_specs.append(Spec(argopt=arg,
-                                         argval=shstr((ref,)),
-                                         src=ref, dest=None,
-                                         method=arg[2:]))
+            ref = argv_bytes(ref)
+            opt.target_specs.append(Spec(method=arg[2:], src=ref, dest=None))
         elif arg in ('--ff:', '--append:', '--pick:', '--force-pick:',
                      '--new-tag:', '--replace:'):
             (ref, dest), remaining = require_n_args_or_die(2, remaining)
-            opt.target_specs.append(Spec(argopt=arg,
-                                         argval=shstr((ref, dest)),
-                                         src=ref, dest=dest,
-                                         method=arg[2:-1]))
+            ref, dest = argv_bytes(ref), argv_bytes(dest)
+            opt.target_specs.append(Spec(method=arg[2:-1], src=ref, dest=dest))
         elif arg in ('-s', '--source'):
             (opt.source,), remaining = require_n_args_or_die(1, remaining)
         elif arg in ('-r', '--remote'):
@@ -177,8 +181,8 @@ def parse_args(args):
 # FIXME: walk_object in in git.py doesn't support opt.verbose.  Do we
 # need to adjust for that here?
 def get_random_item(name, hash, repo, writer, opt):
-    def already_seen(id):
-        return writer.exists(id.decode('hex'))
+    def already_seen(oid):
+        return writer.exists(unhexlify(oid))
     for item in walk_object(repo.cat, hash, stop_at=already_seen,
                             include_data=True):
         # already_seen ensures that writer.exists(id) is false.
@@ -188,12 +192,12 @@ def get_random_item(name, hash, repo, writer, opt):
 
 def append_commit(name, hash, parent, src_repo, writer, opt):
     now = time.time()
-    items = parse_commit(get_cat_data(src_repo.cat(hash), 'commit'))
-    tree = items.tree.decode('hex')
-    author = '%s <%s>' % (items.author_name, items.author_mail)
+    items = parse_commit(get_cat_data(src_repo.cat(hash), b'commit'))
+    tree = unhexlify(items.tree)
+    author = b'%s <%s>' % (items.author_name, items.author_mail)
     author_time = (items.author_sec, items.author_offset)
-    committer = '%s <%s@%s>' % (userfullname(), username(), hostname())
-    get_random_item(name, tree.encode('hex'), src_repo, writer, opt)
+    committer = b'%s <%s@%s>' % (userfullname(), username(), hostname())
+    get_random_item(name, hexlify(tree), src_repo, writer, opt)
     c = writer.new_commit(tree, parent,
                           author, items.author_sec, items.author_offset,
                           committer, now, None,
@@ -239,17 +243,18 @@ def find_vfs_item(name, repo):
     elif kind == vfs.FakeLink:
         # Don't have to worry about ELOOP, excepting malicious
         # remotes, since "latest" is the only FakeLink.
-        assert leaf_name == 'latest'
+        assert leaf_name == b'latest'
         res = repo.resolve(leaf_item.target, parent=res[:-1],
                            follow=False, want_meta=False)
         leaf_name, leaf_item = res[-1]
         assert leaf_item
         assert type(leaf_item) == vfs.Commit
-        name = '/'.join(x[0] for x in res)
+        name = b'/'.join(x[0] for x in res)
         kind = 'save'
     else:
-        raise Exception('unexpected resolution for %r: %r' % (name, res))
-    path = '/'.join(name for name, item in res)
+        raise Exception('unexpected resolution for %s: %r'
+                        % (path_msg(name), res))
+    path = b'/'.join(name for name, item in res)
     if hasattr(leaf_item, 'coid'):
         result = Loc(type=kind, hash=leaf_item.coid, path=path)
     elif hasattr(leaf_item, 'oid'):
@@ -263,36 +268,36 @@ Target = namedtuple('Target', ['spec', 'src', 'dest'])
 
 def loc_desc(loc):
     if loc and loc.hash:
-        loc = loc._replace(hash=loc.hash.encode('hex'))
-    return str(loc)
+        loc = loc._replace(hash=hexlify(loc.hash))
+    return repr(loc)
 
 
 # FIXME: see if resolve() means we can drop the vfs path cleanup
 
 def cleanup_vfs_path(p):
     result = os.path.normpath(p)
-    if result.startswith('/'):
+    if result.startswith(b'/'):
         return result
-    return '/' + result
+    return b'/' + result
 
 
 def validate_vfs_path(p):
-    if p.startswith('/.') \
-       and not p.startswith('/.tag/'):
-        spec_args = '%s %s' % (spec.argopt, spec.argval)
-        misuse('unsupported destination path %r in %r' % (dest.path, spec_args))
+    if p.startswith(b'/.') \
+       and not p.startswith(b'/.tag/'):
+        misuse('unsupported destination path %s in %s'
+               % (path_msg(dest.path), spec_msg(spec)))
     return p
 
 
 def resolve_src(spec, src_repo):
     src = find_vfs_item(spec.src, src_repo)
-    spec_args = '%s %s' % (spec.argopt, spec.argval)
+    spec_args = spec_msg(spec)
     if not src:
-        misuse('cannot find source for %r' % spec_args)
+        misuse('cannot find source for %s' % spec_args)
     if src.type == 'root':
-        misuse('cannot fetch entire repository for %r' % spec_args)
+        misuse('cannot fetch entire repository for %s' % spec_args)
     if src.type == 'tags':
-        misuse('cannot fetch entire /.tag directory for %r' % spec_args)
+        misuse('cannot fetch entire /.tag directory for %s' % spec_args)
     debug1('src: %s\n' % loc_desc(src))
     return src
 
@@ -303,7 +308,7 @@ def get_save_branch(repo, path):
     if not leaf_item:
         misuse('error: cannot access %r in %r' % (leaf_name, path))
     assert len(res) == 3
-    res_path = '/'.join(name for name, item in res[:-1])
+    res_path = b'/'.join(name for name, item in res[:-1])
     return res_path
 
 
@@ -315,26 +320,26 @@ def resolve_branch_dest(spec, src, src_repo, dest_repo):
             spec = spec._replace(dest=spec.src)
         elif src.type == 'save':
             spec = spec._replace(dest=get_save_branch(src_repo, spec.src))
-        elif src.path.startswith('/.tag/'):  # Dest defaults to the same.
+        elif src.path.startswith(b'/.tag/'):  # Dest defaults to the same.
             spec = spec._replace(dest=spec.src)
 
-    spec_args = '%s %s' % (spec.argopt, spec.argval)
+    spec_args = spec_msg(spec)
     if not spec.dest:
-        misuse('no destination (implicit or explicit) for %r', spec_args)
+        misuse('no destination (implicit or explicit) for %s', spec_args)
 
     dest = find_vfs_item(spec.dest, dest_repo)
     if dest:
         if dest.type == 'commit':
-            misuse('destination for %r is a tagged commit, not a branch'
+            misuse('destination for %s is a tagged commit, not a branch'
                   % spec_args)
         if dest.type != 'branch':
-            misuse('destination for %r is a %s, not a branch'
+            misuse('destination for %s is a %s, not a branch'
                   % (spec_args, dest.type))
     else:
         dest = default_loc._replace(path=cleanup_vfs_path(spec.dest))
 
-    if dest.path.startswith('/.'):
-        misuse('destination for %r must be a valid branch name' % spec_args)
+    if dest.path.startswith(b'/.'):
+        misuse('destination for %s must be a valid branch name' % spec_args)
 
     debug1('dest: %s\n' % loc_desc(dest))
     return spec, dest
@@ -342,12 +347,12 @@ def resolve_branch_dest(spec, src, src_repo, dest_repo):
 
 def resolve_ff(spec, src_repo, dest_repo):
     src = resolve_src(spec, src_repo)
-    spec_args = '%s %s' % (spec.argopt, spec.argval)
+    spec_args = spec_msg(spec)
     if src.type == 'tree':
-        misuse('%r is impossible; can only --append a tree to a branch'
+        misuse('%s is impossible; can only --append a tree to a branch'
               % spec_args)
     if src.type not in ('branch', 'save', 'commit'):
-        misuse('source for %r must be a branch, save, or commit, not %s'
+        misuse('source for %s must be a branch, save, or commit, not %s'
               % (spec_args, src.type))
     spec, dest = resolve_branch_dest(spec, src, src_repo, dest_repo)
     return Target(spec=spec, src=src, dest=dest)
@@ -356,23 +361,22 @@ def resolve_ff(spec, src_repo, dest_repo):
 def handle_ff(item, src_repo, writer, opt):
     assert item.spec.method == 'ff'
     assert item.src.type in ('branch', 'save', 'commit')
-    src_oidx = item.src.hash.encode('hex')
-    dest_oidx = item.dest.hash.encode('hex') if item.dest.hash else None
+    src_oidx = hexlify(item.src.hash)
+    dest_oidx = hexlify(item.dest.hash) if item.dest.hash else None
     if not dest_oidx or dest_oidx in src_repo.rev_list(src_oidx):
         # Can fast forward.
         get_random_item(item.spec.src, src_oidx, src_repo, writer, opt)
-        commit_items = parse_commit(get_cat_data(src_repo.cat(src_oidx), 'commit'))
-        return item.src.hash, commit_items.tree.decode('hex')
-    spec_args = '%s %s' % (item.spec.argopt, item.spec.argval)
-    misuse('destination is not an ancestor of source for %r' % spec_args)
+        commit_items = parse_commit(get_cat_data(src_repo.cat(src_oidx), b'commit'))
+        return item.src.hash, unhexlify(commit_items.tree)
+    misuse('destination is not an ancestor of source for %s'
+           % spec_msg(item.spec))
 
 
 def resolve_append(spec, src_repo, dest_repo):
     src = resolve_src(spec, src_repo)
     if src.type not in ('branch', 'save', 'commit', 'tree'):
-        spec_args = '%s %s' % (spec.argopt, spec.argval)
-        misuse('source for %r must be a branch, save, commit, or tree, not %s'
-              % (spec_args, src.type))
+        misuse('source for %s must be a branch, save, commit, or tree, not %s'
+              % (spec_msg(spec), src.type))
     spec, dest = resolve_branch_dest(spec, src, src_repo, dest_repo)
     return Target(spec=spec, src=src, dest=dest)
 
@@ -381,12 +385,12 @@ def handle_append(item, src_repo, writer, opt):
     assert item.spec.method == 'append'
     assert item.src.type in ('branch', 'save', 'commit', 'tree')
     assert item.dest.type == 'branch' or not item.dest.type
-    src_oidx = item.src.hash.encode('hex')
+    src_oidx = hexlify(item.src.hash)
     if item.src.type == 'tree':
         get_random_item(item.spec.src, src_oidx, src_repo, writer, opt)
         parent = item.dest.hash
-        msg = 'bup save\n\nGenerated by command:\n%r\n' % sys.argv
-        userline = '%s <%s@%s>' % (userfullname(), username(), hostname())
+        msg = b'bup save\n\nGenerated by command:\n%r\n' % sys.argv
+        userline = b'%s <%s@%s>' % (userfullname(), username(), hostname())
         now = time.time()
         commit = writer.new_commit(item.src.hash, parent,
                                    userline, now, None,
@@ -400,29 +404,29 @@ def handle_append(item, src_repo, writer, opt):
 
 def resolve_pick(spec, src_repo, dest_repo):
     src = resolve_src(spec, src_repo)
-    spec_args = '%s %s' % (spec.argopt, spec.argval)
+    spec_args = spec_msg(spec)
     if src.type == 'tree':
-        misuse('%r is impossible; can only --append a tree' % spec_args)
+        misuse('%s is impossible; can only --append a tree' % spec_args)
     if src.type not in ('commit', 'save'):
-        misuse('%r impossible; can only pick a commit or save, not %s'
+        misuse('%s impossible; can only pick a commit or save, not %s'
               % (spec_args, src.type))
     if not spec.dest:
-        if src.path.startswith('/.tag/'):
+        if src.path.startswith(b'/.tag/'):
             spec = spec._replace(dest=spec.src)
         elif src.type == 'save':
             spec = spec._replace(dest=get_save_branch(src_repo, spec.src))
     if not spec.dest:
-        misuse('no destination provided for %r', spec_args)
+        misuse('no destination provided for %s', spec_args)
     dest = find_vfs_item(spec.dest, dest_repo)
     if not dest:
         cp = validate_vfs_path(cleanup_vfs_path(spec.dest))
         dest = default_loc._replace(path=cp)
     else:
-        if not dest.type == 'branch' and not dest.path.startswith('/.tag/'):
-            misuse('%r destination is not a tag or branch' % spec_args)
+        if not dest.type == 'branch' and not dest.path.startswith(b'/.tag/'):
+            misuse('%s destination is not a tag or branch' % spec_args)
         if spec.method == 'pick' \
-           and dest.hash and dest.path.startswith('/.tag/'):
-            misuse('cannot overwrite existing tag for %r (requires --force-pick)'
+           and dest.hash and dest.path.startswith(b'/.tag/'):
+            misuse('cannot overwrite existing tag for %s (requires --force-pick)'
                   % spec_args)
     return Target(spec=spec, src=src, dest=dest)
 
@@ -430,7 +434,7 @@ def resolve_pick(spec, src_repo, dest_repo):
 def handle_pick(item, src_repo, writer, opt):
     assert item.spec.method in ('pick', 'force-pick')
     assert item.src.type in ('save', 'commit')
-    src_oidx = item.src.hash.encode('hex')
+    src_oidx = hexlify(item.src.hash)
     if item.dest.hash:
         return append_commit(item.spec.src, src_oidx, item.dest.hash,
                              src_repo, writer, opt)
@@ -439,75 +443,74 @@ def handle_pick(item, src_repo, writer, opt):
 
 def resolve_new_tag(spec, src_repo, dest_repo):
     src = resolve_src(spec, src_repo)
-    spec_args = '%s %s' % (spec.argopt, spec.argval)
-    if not spec.dest and src.path.startswith('/.tag/'):
+    spec_args = spec_msg(spec)
+    if not spec.dest and src.path.startswith(b'/.tag/'):
         spec = spec._replace(dest=src.path)
     if not spec.dest:
-        misuse('no destination (implicit or explicit) for %r', spec_args)
+        misuse('no destination (implicit or explicit) for %s', spec_args)
     dest = find_vfs_item(spec.dest, dest_repo)
     if not dest:
         dest = default_loc._replace(path=cleanup_vfs_path(spec.dest))
-    if not dest.path.startswith('/.tag/'):
-        misuse('destination for %r must be a VFS tag' % spec_args)
+    if not dest.path.startswith(b'/.tag/'):
+        misuse('destination for %s must be a VFS tag' % spec_args)
     if dest.hash:
-        misuse('cannot overwrite existing tag for %r (requires --replace)'
+        misuse('cannot overwrite existing tag for %s (requires --replace)'
               % spec_args)
     return Target(spec=spec, src=src, dest=dest)
 
 
 def handle_new_tag(item, src_repo, writer, opt):
     assert item.spec.method == 'new-tag'
-    assert item.dest.path.startswith('/.tag/')
-    get_random_item(item.spec.src, item.src.hash.encode('hex'),
+    assert item.dest.path.startswith(b'/.tag/')
+    get_random_item(item.spec.src, hexlify(item.src.hash),
                     src_repo, writer, opt)
     return (item.src.hash,)
 
 
 def resolve_replace(spec, src_repo, dest_repo):
     src = resolve_src(spec, src_repo)
-    spec_args = '%s %s' % (spec.argopt, spec.argval)
+    spec_args = spec_msg(spec)
     if not spec.dest:
-        if src.path.startswith('/.tag/') or src.type == 'branch':
+        if src.path.startswith(b'/.tag/') or src.type == 'branch':
             spec = spec._replace(dest=spec.src)
     if not spec.dest:
-        misuse('no destination provided for %r', spec_args)
+        misuse('no destination provided for %s', spec_args)
     dest = find_vfs_item(spec.dest, dest_repo)
     if dest:
-        if not dest.type == 'branch' and not dest.path.startswith('/.tag/'):
-            misuse('%r impossible; can only overwrite branch or tag'
+        if not dest.type == 'branch' and not dest.path.startswith(b'/.tag/'):
+            misuse('%s impossible; can only overwrite branch or tag'
                   % spec_args)
     else:
         cp = validate_vfs_path(cleanup_vfs_path(spec.dest))
         dest = default_loc._replace(path=cp)
-    if not dest.path.startswith('/.tag/') \
+    if not dest.path.startswith(b'/.tag/') \
        and not src.type in ('branch', 'save', 'commit'):
-        misuse('cannot overwrite branch with %s for %r' % (src.type, spec_args))
+        misuse('cannot overwrite branch with %s for %s' % (src.type, spec_args))
     return Target(spec=spec, src=src, dest=dest)
 
 
 def handle_replace(item, src_repo, writer, opt):
     assert(item.spec.method == 'replace')
-    if item.dest.path.startswith('/.tag/'):
-        get_random_item(item.spec.src, item.src.hash.encode('hex'),
+    if item.dest.path.startswith(b'/.tag/'):
+        get_random_item(item.spec.src, hexlify(item.src.hash),
                         src_repo, writer, opt)
         return (item.src.hash,)
     assert(item.dest.type == 'branch' or not item.dest.type)
-    src_oidx = item.src.hash.encode('hex')
+    src_oidx = hexlify(item.src.hash)
     get_random_item(item.spec.src, src_oidx, src_repo, writer, opt)
-    commit_items = parse_commit(get_cat_data(src_repo.cat(src_oidx), 'commit'))
-    return item.src.hash, commit_items.tree.decode('hex')
+    commit_items = parse_commit(get_cat_data(src_repo.cat(src_oidx), b'commit'))
+    return item.src.hash, unhexlify(commit_items.tree)
 
 
 def resolve_unnamed(spec, src_repo, dest_repo):
     if spec.dest:
-        spec_args = '%s %s' % (spec.argopt, spec.argval)
-        misuse('destination name given for %r' % spec_args)
+        misuse('destination name given for %s' % spec_msg(spec))
     src = resolve_src(spec, src_repo)
     return Target(spec=spec, src=src, dest=None)
 
 
 def handle_unnamed(item, src_repo, writer, opt):
-    get_random_item(item.spec.src, item.src.hash.encode('hex'),
+    get_random_item(item.spec.src, hexlify(item.src.hash),
                     src_repo, writer, opt)
     return (None,)
 
@@ -516,7 +519,7 @@ def resolve_targets(specs, src_repo, dest_repo):
     resolved_items = []
     common_args = src_repo, dest_repo
     for spec in specs:
-        debug1('initial-spec: %s\n' % str(spec))
+        debug1('initial-spec: %r\n' % (spec,))
         if spec.method == 'ff':
             resolved_items.append(resolve_ff(spec, *common_args))
         elif spec.method == 'append':
@@ -541,14 +544,12 @@ def resolve_targets(specs, src_repo, dest_repo):
     for item in resolved_items:
         dest_path = item.dest and item.dest.path
         if dest_path:
-            assert(dest_path.startswith('/'))
-            if dest_path.startswith('/.tag/'):
+            assert(dest_path.startswith(b'/'))
+            if dest_path.startswith(b'/.tag/'):
                 if dest_path in tags_targeted:
                     if item.spec.method not in ('replace', 'force-pick'):
-                        spec_args = '%s %s' % (item.spec.argopt,
-                                               item.spec.argval)
-                        misuse('cannot overwrite tag %r via %r' \
-                              % (dest_path, spec_args))
+                        misuse('cannot overwrite tag %s via %s' \
+                              % (path_msg(dest_path), spec_msg(item.spec)))
                 else:
                     tags_targeted.add(dest_path)
     return resolved_items
@@ -564,13 +565,13 @@ def log_item(name, type, opt, tree=None, commit=None, tag=None):
     if opt.verbose:
         last = ''
         if type in ('root', 'branch', 'save', 'commit', 'tree'):
-            if not name.endswith('/'):
+            if not name.endswith(b'/'):
                 last = '/'
-        log('%s%s\n' % (name, last))
+        log('%s%s\n' % (path_msg(name), last))
 
 def main():
     handle_ctrl_c()
-    is_reverse = os.environ.get('BUP_SERVER_REVERSE')
+    is_reverse = environ.get(b'BUP_SERVER_REVERSE')
     opt = parse_args(sys.argv)
     git.check_repo_or_die()
     src_dir = opt.source or git.repo()
@@ -607,15 +608,15 @@ def main():
                             'unnamed': handle_unnamed}
 
                 for item in target_items:
-                    debug1('get-spec: %s\n' % str(item.spec))
+                    debug1('get-spec: %r\n' % (item.spec,))
                     debug1('get-src: %s\n' % loc_desc(item.src))
                     debug1('get-dest: %s\n' % loc_desc(item.dest))
                     dest_path = item.dest and item.dest.path
                     if dest_path:
-                        if dest_path.startswith('/.tag/'):
-                            dest_ref = 'refs/tags/%s' % dest_path[6:]
+                        if dest_path.startswith(b'/.tag/'):
+                            dest_ref = b'refs/tags/%s' % dest_path[6:]
                         else:
-                            dest_ref = 'refs/heads/%s' % dest_path[1:]
+                            dest_ref = b'refs/heads/%s' % dest_path[1:]
                     else:
                         dest_ref = None
 
@@ -635,7 +636,7 @@ def main():
                         log_item(item.spec.src, item.src.type, opt)
                     else:
                         updated_refs[dest_ref] = (orig_ref, new_id)
-                        if dest_ref.startswith('refs/tags/'):
+                        if dest_ref.startswith(b'refs/tags/'):
                             log_item(item.spec.src, item.src.type, opt, tag=new_id)
                         else:
                             log_item(item.spec.src, item.src.type, opt,
@@ -644,18 +645,18 @@ def main():
         # Only update the refs at the very end, once the writer is
         # closed, so that if something goes wrong above, the old refs
         # will be undisturbed.
-        for ref_name, info in updated_refs.iteritems():
+        for ref_name, info in items(updated_refs):
             orig_ref, new_ref = info
             try:
                 dest_repo.update_ref(ref_name, new_ref, orig_ref)
                 if opt.verbose:
-                    new_hex = new_ref.encode('hex')
+                    new_hex = hexlify(new_ref)
                     if orig_ref:
-                        orig_hex = orig_ref.encode('hex')
+                        orig_hex = hexlify(orig_ref)
                         log('updated %r (%s -> %s)\n' % (ref_name, orig_hex, new_hex))
                     else:
                         log('updated %r (%s)\n' % (ref_name, new_hex))
-            except (git.GitError, client.ClientError), ex:
+            except (git.GitError, client.ClientError) as ex:
                 add_error('unable to update ref %r: %s' % (ref_name, ex))
 
     if saved_errors:
