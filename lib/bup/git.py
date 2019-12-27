@@ -5,6 +5,7 @@ interact with the Git data structures.
 
 from __future__ import absolute_import
 import errno, os, sys, zlib, time, subprocess, struct, stat, re, tempfile, glob
+from array import array
 from collections import namedtuple
 from itertools import islice
 from numbers import Integral
@@ -363,9 +364,6 @@ class PackIdx:
             return want_source and os.path.basename(self.name) or True
         return None
 
-    def __len__(self):
-        return int(self.fanout[255])
-
     def _idx_from_hash(self, hash):
         global _total_searches, _total_steps
         _total_searches += 1
@@ -394,24 +392,32 @@ class PackIdxV1(PackIdx):
         self.name = filename
         self.idxnames = [self.name]
         self.map = mmap_read(f)
-        self.fanout = list(struct.unpack('!256I', buffer(self.map, 0, 256 * 4)))
+        # Min size for 'L' is 4, which is sufficient for struct's '!I'
+        self.fanout = array('L', struct.unpack('!256I', self.map))
         self.fanout.append(0)  # entry "-1"
-        nsha = self.fanout[255]
-        self.sha_ofs = 256*4
-        self.shatable = buffer(self.map, self.sha_ofs, nsha*24)
+        self.nsha = self.fanout[255]
+        self.sha_ofs = 256 * 4
+        # Avoid slicing shatable for individual hashes (very high overhead)
+        self.shatable = buffer(self.map, self.sha_ofs, self.nsha * 24)
+
+    def __len__(self):
+        return int(self.nsha)  # int() from long for python 2
 
     def _ofs_from_idx(self, idx):
-        ofs = idx * 24
-        return struct.unpack('!I', self.shatable[ofs : ofs + 4])[0]
+        if idx >= self.nsha or idx < 0:
+            raise IndexError('invalid pack index index %d' % idx)
+        ofs = self.sha_ofs + idx * 24
+        return struct.unpack_from('!I', self.map, offset=ofs)[0]
 
     def _idx_to_hash(self, idx):
-        ofs = idx * 24 + 4
-        return self.shatable[ofs : ofs + 20]
+        if idx >= self.nsha or idx < 0:
+            raise IndexError('invalid pack index index %d' % idx)
+        ofs = self.sha_ofs + idx * 24 + 4
+        return self.map[ofs : ofs + 20]
 
     def __iter__(self):
-        count = self.fanout[255]
-        start = 256 * 4 + 4
-        for ofs in range(start, start + (24 * count), 24):
+        start = self.sha_ofs + 4
+        for ofs in range(start, start + 24 * self.nsha, 24):
             yield self.map[ofs : ofs + 20]
 
 
@@ -422,34 +428,39 @@ class PackIdxV2(PackIdx):
         self.idxnames = [self.name]
         self.map = mmap_read(f)
         assert self.map[0:8] == b'\377tOc\0\0\0\2'
-        self.fanout = list(struct.unpack('!256I',
-                                         buffer(self.map[8 : 8 + 256 * 4])))
-        self.fanout.append(0)  # entry "-1"
-        nsha = self.fanout[255]
+        # Min size for 'L' is 4, which is sufficient for struct's '!I'
+        self.fanout = array('L', struct.unpack_from('!256I', self.map, offset=8))
+        self.fanout.append(0)
+        self.nsha = self.fanout[255]
         self.sha_ofs = 8 + 256*4
-        self.shatable = buffer(self.map, self.sha_ofs, nsha*20)
-        self.ofstable = buffer(self.map,
-                               self.sha_ofs + nsha*20 + nsha*4,
-                               nsha*4)
-        self.ofs64table = buffer(self.map,
-                                 8 + 256*4 + nsha*20 + nsha*4 + nsha*4)
+        self.ofstable_ofs = self.sha_ofs + self.nsha * 20 + self.nsha * 4
+        self.ofs64table_ofs = self.ofstable_ofs + self.nsha * 4
+        # Avoid slicing this for individual hashes (very high overhead)
+        self.shatable = buffer(self.map, self.sha_ofs, self.nsha*20)
+
+    def __len__(self):
+        return int(self.nsha)  # int() from long for python 2
 
     def _ofs_from_idx(self, idx):
-        i = idx * 4
-        ofs = struct.unpack('!I', self.ofstable[i : i + 4])[0]
+        if idx >= self.nsha or idx < 0:
+            raise IndexError('invalid pack index index %d' % idx)
+        ofs_ofs = self.ofstable_ofs + idx * 4
+        ofs = struct.unpack_from('!I', self.map, offset=ofs_ofs)[0]
         if ofs & 0x80000000:
             idx64 = ofs & 0x7fffffff
-            idx64_i = idx64 * 8
-            ofs = struct.unpack('!Q', self.ofs64table[idx64_i : idx64_i + 8])[0]
+            ofs64_ofs = self.ofs64table_ofs + idx64 * 8
+            ofs = struct.unpack_from('!Q', self.map, offset=ofs64_ofs)[0]
         return ofs
 
     def _idx_to_hash(self, idx):
-        return self.shatable[idx * 20 : (idx + 1) * 20]
+        if idx >= self.nsha or idx < 0:
+            raise IndexError('invalid pack index index %d' % idx)
+        ofs = self.sha_ofs + idx * 20
+        return self.map[ofs : ofs + 20]
 
     def __iter__(self):
-        count = self.fanout[255]
-        start = 8 + 256 * 4
-        for ofs in range(start, start + (20 * count), 20):
+        start = self.sha_ofs
+        for ofs in range(start, start + 20 * self.nsha, 20):
             yield self.map[ofs : ofs + 20]
 
 

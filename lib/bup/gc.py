@@ -160,8 +160,7 @@ def sweep(live_objects, existing_count, cat_pipe, threshold, compression,
         idx = git.open_idx(idx_name)
 
         idx_live_count = 0
-        for i in range(0, len(idx)):
-            sha = idx.shatable[i * 20 : (i + 1) * 20]
+        for sha in idx:
             if live_objects.exists(sha):
                 idx_live_count += 1
 
@@ -184,8 +183,7 @@ def sweep(live_objects, existing_count, cat_pipe, threshold, compression,
         if verbosity:
             log('rewriting %s (%.2f%% live)\n' % (basename(idx_name),
                                                   live_frac * 100))
-        for i in range(0, len(idx)):
-            sha = idx.shatable[i * 20 : (i + 1) * 20]
+        for sha in idx:
             if live_objects.exists(sha):
                 item_it = cat_pipe.get(sha.encode('hex'))
                 _, typ, _ = next(item_it)
