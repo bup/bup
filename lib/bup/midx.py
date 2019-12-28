@@ -1,10 +1,11 @@
 
-from __future__ import absolute_import
+from __future__ import absolute_import, print_function
 import glob, mmap, os, struct
 
 from bup import _helpers
 from bup.compat import range
 from bup.helpers import log, mmap_read
+from bup.io import path_msg
 
 
 MIDX_VERSION = 4
@@ -24,21 +25,22 @@ class PackMidx:
         self.name = filename
         self.force_keep = False
         self.map = None
-        assert(filename.endswith('.midx'))
+        assert(filename.endswith(b'.midx'))
         self.map = mmap_read(open(filename))
-        if str(self.map[0:4]) != 'MIDX':
-            log('Warning: skipping: invalid MIDX header in %r\n' % filename)
+        if self.map[0:4] != b'MIDX':
+            log('Warning: skipping: invalid MIDX header in %r\n'
+                % path_msg(filename))
             self.force_keep = True
             return self._init_failed()
         ver = struct.unpack('!I', self.map[4:8])[0]
         if ver < MIDX_VERSION:
             log('Warning: ignoring old-style (v%d) midx %r\n' 
-                % (ver, filename))
+                % (ver, path_msg(filename)))
             self.force_keep = False  # old stuff is boring  
             return self._init_failed()
         if ver > MIDX_VERSION:
             log('Warning: ignoring too-new (v%d) midx %r\n'
-                % (ver, filename))
+                % (ver, path_msg(filename)))
             self.force_keep = True  # new stuff is exciting
             return self._init_failed()
 
@@ -84,6 +86,7 @@ class PackMidx:
 
     def close(self):
         if self.map is not None:
+            self.fanout = self.shatable = self.whichlist = self.idxnames = None
             self.map.close()
             self.map = None
 
@@ -91,7 +94,7 @@ class PackMidx:
         """Return nonempty if the object exists in the index files."""
         global _total_searches, _total_steps
         _total_searches += 1
-        want = str(hash)
+        want = hash
         el = extract_bits(want, self.bits)
         if el:
             start = self._fanget(el-1)
@@ -107,7 +110,7 @@ class PackMidx:
         while start < end:
             _total_steps += 1
             #print '! %08x %08x %08x   %d - %d' % (startv, hashv, endv, start, end)
-            mid = start + (hashv-startv)*(end-start-1)/(endv-startv)
+            mid = start + (hashv - startv) * (end - start - 1) // (endv - startv)
             #print '  %08x %08x %08x   %d %d %d' % (startv, hashv, endv, start, mid, end)
             v = self._get(mid)
             #print '    %08x' % self._num(v)
@@ -131,5 +134,5 @@ class PackMidx:
 
 
 def clear_midxes(dir=None):
-    for midx in glob.glob(os.path.join(dir, '*.midx')):
+    for midx in glob.glob(os.path.join(dir, b'*.midx')):
         os.unlink(midx)
