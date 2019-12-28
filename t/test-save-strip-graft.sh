@@ -155,7 +155,7 @@ WVPASS bup init
 WVPASS mkdir -p src/x/1 src/y/1
 WVPASS bup index -u src
 WVFAIL bup save --strip -n foo src/x src/y 2> tmp-err.log
-WVPASS grep -F "error: ignoring duplicate path '1' in '/'" tmp-err.log
+WVPASS grep -F "error: ignoring duplicate path 1 in /" tmp-err.log
 
 
 WVPASS rm -rf "$tmpdir"
