@@ -56,6 +56,9 @@ if py3:
     def bytes_from_uint(i):
         return bytes((i,))
 
+    def bytes_from_byte(b):  # python > 2: b[3] returns ord('x'), not b'x'
+        return bytes((b,))
+
     byte_int = lambda x: x
 
     def buffer(object, offset=None, size=None):
@@ -129,6 +132,9 @@ else:  # Python 2
 
     def bytes_from_uint(i):
         return chr(i)
+
+    def bytes_from_byte(b):
+        return b
 
     byte_int = ord
 

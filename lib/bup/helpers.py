@@ -4,6 +4,7 @@ from __future__ import absolute_import, division
 from collections import namedtuple
 from contextlib import contextmanager
 from ctypes import sizeof, c_void_p
+from math import floor
 from os import environ
 from pipes import quote
 from subprocess import PIPE, Popen
@@ -12,6 +13,8 @@ import hashlib, heapq, math, operator, time, grp, tempfile
 
 from bup import _helpers
 from bup import compat
+from bup.compat import byte_int
+from bup.io import path_msg
 # This function should really be in helpers, not in bup.options.  But we
 # want options.py to be standalone so people can include it in other projects.
 from bup.options import _tty_width as tty_width
@@ -37,17 +40,17 @@ def last(iterable):
 
 
 def atoi(s):
-    """Convert the string 's' to an integer. Return 0 if s is not a number."""
+    """Convert s (ascii bytes) to an integer. Return 0 if s is not a number."""
     try:
-        return int(s or '0')
+        return int(s or b'0')
     except ValueError:
         return 0
 
 
 def atof(s):
-    """Convert the string 's' to a float. Return 0 if s is not a number."""
+    """Convert s (ascii bytes) to a float. Return 0 if s is not a number."""
     try:
-        return float(s or '0')
+        return float(s or b'0')
     except ValueError:
         return 0
 
@@ -290,7 +293,7 @@ def exo(cmd,
     out, err = p.communicate(input)
     if check and p.returncode != 0:
         raise Exception('subprocess %r failed with status %d, stderr: %r'
-                        % (' '.join(map(quote, cmd)), p.returncode, err))
+                        % (b' '.join(map(quote, cmd)), p.returncode, err))
     return out, err, p
 
 def readpipe(argv, preexec_fn=None, shell=False):
@@ -300,7 +303,7 @@ def readpipe(argv, preexec_fn=None, shell=False):
     out, err = p.communicate()
     if p.returncode != 0:
         raise Exception('subprocess %r failed with status %d'
-                        % (' '.join(argv), p.returncode))
+                        % (b' '.join(argv), p.returncode))
     return out
 
 
@@ -399,7 +402,7 @@ def hostname():
     """Get the FQDN of this machine."""
     global _hostname
     if not _hostname:
-        _hostname = socket.getfqdn()
+        _hostname = socket.getfqdn().encode('iso-8859-1')
     return _hostname
 
 
@@ -690,8 +693,9 @@ def atomically_replaced_file(name, mode='w', buffering=-1):
 
 def slashappend(s):
     """Append "/" to 's' if it doesn't aleady end in "/"."""
-    if s and not s.endswith('/'):
-        return s + '/'
+    assert isinstance(s, bytes)
+    if s and not s.endswith(b'/'):
+        return s + b'/'
     else:
         return s
 
@@ -805,13 +809,17 @@ throw a ValueError that may contain additional information."""
 
 
 def parse_num(s):
-    """Parse data size information into a float number.
+    """Parse string or bytes as a possibly unit suffixed number.
 
-    Here are some examples of conversions:
+    For example:
         199.2k means 203981 bytes
         1GB means 1073741824 bytes
         2.1 tb means 2199023255552 bytes
     """
+    if isinstance(s, bytes):
+        # FIXME: should this raise a ValueError for UnicodeDecodeError
+        # (perhaps with the latter as the context).
+        s = s.decode('ascii')
     g = re.match(r'([-+\d.e]+)\s*(\w*)', str(s))
     if not g:
         raise ValueError("can't parse %r as a number" % s)
@@ -987,16 +995,16 @@ def path_components(path):
     full_path_to_name).  Path must start with '/'.
     Example:
       '/home/foo' -> [('', '/'), ('home', '/home'), ('foo', '/home/foo')]"""
-    if not path.startswith('/'):
-        raise Exception('path must start with "/": %s' % path)
+    if not path.startswith(b'/'):
+        raise Exception('path must start with "/": %s' % path_msg(path))
     # Since we assume path startswith('/'), we can skip the first element.
-    result = [('', '/')]
+    result = [(b'', b'/')]
     norm_path = os.path.abspath(path)
-    if norm_path == '/':
+    if norm_path == b'/':
         return result
-    full_path = ''
-    for p in norm_path.split('/')[1:]:
-        full_path += '/' + p
+    full_path = b''
+    for p in norm_path.split(b'/')[1:]:
+        full_path += b'/' + p
         result.append((p, full_path))
     return result
 
@@ -1010,14 +1018,14 @@ def stripped_path_components(path, strip_prefixes):
     sorted_strip_prefixes = sorted(strip_prefixes, key=len, reverse=True)
     for bp in sorted_strip_prefixes:
         normalized_bp = os.path.abspath(bp)
-        if normalized_bp == '/':
+        if normalized_bp == b'/':
             continue
         if normalized_path.startswith(normalized_bp):
             prefix = normalized_path[:len(normalized_bp)]
             result = []
-            for p in normalized_path[len(normalized_bp):].split('/'):
+            for p in normalized_path[len(normalized_bp):].split(b'/'):
                 if p: # not root
-                    prefix += '/'
+                    prefix += b'/'
                 prefix += p
                 result.append((p, prefix))
             return result
@@ -1048,21 +1056,21 @@ def grafted_path_components(graft_points, path):
         new_prefix = os.path.normpath(new_prefix)
         if clean_path.startswith(old_prefix):
             escaped_prefix = re.escape(old_prefix)
-            grafted_path = re.sub(r'^' + escaped_prefix, new_prefix, clean_path)
+            grafted_path = re.sub(br'^' + escaped_prefix, new_prefix, clean_path)
             # Handle /foo=/ (at least) -- which produces //whatever.
-            grafted_path = '/' + grafted_path.lstrip('/')
+            grafted_path = b'/' + grafted_path.lstrip(b'/')
             clean_path_components = path_components(clean_path)
             # Count the components that were stripped.
-            strip_count = 0 if old_prefix == '/' else old_prefix.count('/')
-            new_prefix_parts = new_prefix.split('/')
-            result_prefix = grafted_path.split('/')[:new_prefix.count('/')]
+            strip_count = 0 if old_prefix == b'/' else old_prefix.count(b'/')
+            new_prefix_parts = new_prefix.split(b'/')
+            result_prefix = grafted_path.split(b'/')[:new_prefix.count(b'/')]
             result = [(p, None) for p in result_prefix] \
                 + clean_path_components[strip_count:]
             # Now set the graft point name to match the end of new_prefix.
             graft_point = len(result_prefix)
             result[graft_point] = \
                 (new_prefix_parts[-1], clean_path_components[strip_count][1])
-            if new_prefix == '/': # --graft ...=/ is a special case.
+            if new_prefix == b'/': # --graft ...=/ is a special case.
                 return result[1:]
             return result
     return path_components(clean_path)
@@ -1085,7 +1093,7 @@ if _localtime:
 # module, which doesn't appear willing to ignore the extra items.
 if _localtime:
     def localtime(time):
-        return bup_time(*_helpers.localtime(time))
+        return bup_time(*_helpers.localtime(floor(time)))
     def utc_offset_str(t):
         """Return the local offset from UTC as "+hhmm" or "-hhmm" for time t.
         If the current UTC offset does not represent an integer number
@@ -1095,7 +1103,7 @@ if _localtime:
         offmin = abs(off) // 60
         m = offmin % 60
         h = (offmin - m) // 60
-        return "%+03d%02d" % (-h if off < 0 else h, m)
+        return b'%+03d%02d' % (-h if off < 0 else h, m)
     def to_py_time(x):
         if isinstance(x, time.struct_time):
             return x
@@ -1103,26 +1111,26 @@ if _localtime:
 else:
     localtime = time.localtime
     def utc_offset_str(t):
-        return time.strftime('%z', localtime(t))
+        return time.strftime(b'%z', localtime(t))
     def to_py_time(x):
         return x
 
 
-_some_invalid_save_parts_rx = re.compile(r'[\[ ~^:?*\\]|\.\.|//|@{')
+_some_invalid_save_parts_rx = re.compile(br'[\[ ~^:?*\\]|\.\.|//|@{')
 
 def valid_save_name(name):
     # Enforce a superset of the restrictions in git-check-ref-format(1)
-    if name == '@' \
-       or name.startswith('/') or name.endswith('/') \
-       or name.endswith('.'):
+    if name == b'@' \
+       or name.startswith(b'/') or name.endswith(b'/') \
+       or name.endswith(b'.'):
         return False
     if _some_invalid_save_parts_rx.search(name):
         return False
     for c in name:
-        if ord(c) < 0x20 or ord(c) == 0x7f:
+        if byte_int(c) < 0x20 or byte_int(c) == 0x7f:
             return False
-    for part in name.split('/'):
-        if part.startswith('.') or part.endswith('.lock'):
+    for part in name.split(b'/'):
+        if part.startswith(b'.') or part.endswith(b'.lock'):
             return False
     return True
 
