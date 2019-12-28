@@ -6,17 +6,20 @@ exec "$bup_python" "$0" ${1+"$@"}
 # end of bup preamble
 
 from __future__ import absolute_import, print_function
+from binascii import hexlify
 from errno import EACCES
 from io import BytesIO
 import os, sys, stat, time, math
 
 from bup import hashsplit, git, options, index, client, metadata, hlinkdb
+from bup.compat import argv_bytes, environ
 from bup.hashsplit import GIT_MODE_TREE, GIT_MODE_FILE, GIT_MODE_SYMLINK
 from bup.helpers import (add_error, grafted_path_components, handle_ctrl_c,
                          hostname, istty2, log, parse_date_or_fatal, parse_num,
                          path_components, progress, qprogress, resolve_parent,
                          saved_errors, stripped_path_components,
                          valid_save_name)
+from bup.io import byte_stream, path_msg
 from bup.pwdgrp import userfullname, username
 
 
@@ -41,11 +44,22 @@ graft=     a graft point *old_path*=*new_path* (can be used more than once)
 o = options.Options(optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
 
+if opt.indexfile:
+    opt.indexfile = argv_bytes(opt.indexfile)
+if opt.name:
+    opt.name = argv_bytes(opt.name)
+if opt.remote:
+    opt.remote = argv_bytes(opt.remote)
+if opt.strip_path:
+    opt.strip_path = argv_bytes(opt.strip_path)
+
 git.check_repo_or_die()
 if not (opt.tree or opt.commit or opt.name):
     o.fatal("use one or more of -t, -c, -n")
 if not extra:
     o.fatal("no filenames given")
+
+extra = [argv_bytes(x) for x in extra]
 
 opt.progress = (istty2 and not opt.quiet)
 opt.smaller = parse_num(opt.smaller or 0)
@@ -70,7 +84,8 @@ if opt.graft:
 
     for (option, parameter) in flags:
         if option == "--graft":
-            splitted_parameter = parameter.split('=')
+            parameter = argv_bytes(parameter)
+            splitted_parameter = parameter.split(b'=')
             if len(splitted_parameter) != 2:
                 o.fatal("a graft point must be of the form old_path=new_path")
             old_path, new_path = splitted_parameter
@@ -79,13 +94,14 @@ if opt.graft:
             graft_points.append((resolve_parent(old_path),
                                  resolve_parent(new_path)))
 
-is_reverse = os.environ.get('BUP_SERVER_REVERSE')
+is_reverse = environ.get(b'BUP_SERVER_REVERSE')
 if is_reverse and opt.remote:
     o.fatal("don't use -r in reverse mode; it's automatic")
 
-if opt.name and not valid_save_name(opt.name):
-    o.fatal("'%s' is not a valid branch name" % opt.name)
-refname = opt.name and 'refs/heads/%s' % opt.name or None
+name = opt.name
+if name and not valid_save_name(name):
+    o.fatal("'%s' is not a valid branch name" % path_msg(name))
+refname = name and b'refs/heads/%s' % name or None
 if opt.remote or is_reverse:
     try:
         cli = client.Client(opt.remote)
@@ -103,7 +119,7 @@ handle_ctrl_c()
 
 
 def eatslash(dir):
-    if dir.endswith('/'):
+    if dir.endswith(b'/'):
         return dir[:-1]
     else:
         return dir
@@ -134,7 +150,7 @@ def _push(part, metadata):
     # Enter a new archive directory -- make it the current directory.
     parts.append(part)
     shalists.append([])
-    metalists.append([('', metadata)]) # This dir's metadata (no name).
+    metalists.append([(b'', metadata)]) # This dir's metadata (no name).
 
 
 def _pop(force_tree, dir_metadata=None):
@@ -145,14 +161,14 @@ def _pop(force_tree, dir_metadata=None):
     metalist = metalists.pop()
     if metalist and not force_tree:
         if dir_metadata: # Override the original metadata pushed for this dir.
-            metalist = [('', dir_metadata)] + metalist[1:]
+            metalist = [(b'', dir_metadata)] + metalist[1:]
         sorted_metalist = sorted(metalist, key = lambda x : x[0])
-        metadata = ''.join([m[1].encode() for m in sorted_metalist])
+        metadata = b''.join([m[1].encode() for m in sorted_metalist])
         metadata_f = BytesIO(metadata)
         mode, id = hashsplit.split_to_blob_or_tree(w.new_blob, w.new_tree,
                                                    [metadata_f],
                                                    keep_boundaries=False)
-        shalist.append((mode, '.bupm', id))
+        shalist.append((mode, b'.bupm', id))
     # FIXME: only test if collision is possible (i.e. given --strip, etc.)?
     if force_tree:
         tree = force_tree
@@ -162,9 +178,9 @@ def _pop(force_tree, dir_metadata=None):
         for x in shalist:
             name = x[1]
             if name in names_seen:
-                parent_path = '/'.join(parts) + '/'
-                add_error('error: ignoring duplicate path %r in %r'
-                          % (name, parent_path))
+                parent_path = b'/'.join(parts) + b'/'
+                add_error('error: ignoring duplicate path %s in %s'
+                          % (path_msg(name), path_msg(parent_path)))
             else:
                 names_seen.add(name)
                 clean_list.append(x)
@@ -216,16 +232,17 @@ def progress_report(n):
                  remainstr, kpsstr))
 
 
-indexfile = opt.indexfile or git.repo('bupindex')
+indexfile = opt.indexfile or git.repo(b'bupindex')
 r = index.Reader(indexfile)
 try:
-    msr = index.MetaStoreReader(indexfile + '.meta')
+    msr = index.MetaStoreReader(indexfile + b'.meta')
 except IOError as ex:
     if ex.errno != EACCES:
         raise
-    log('error: cannot access %r; have you run bup index?' % indexfile)
+    log('error: cannot access %r; have you run bup index?'
+        % path_msg(indexfile))
     sys.exit(1)
-hlink_db = hlinkdb.HLinkDB(indexfile + '.hlink')
+hlink_db = hlinkdb.HLinkDB(indexfile + b'.hlink')
 
 def already_saved(ent):
     return ent.is_valid() and w.exists(ent.sha) and ent.sha
@@ -273,7 +290,7 @@ root_collision = None
 tstart = time.time()
 count = subcount = fcount = 0
 lastskip_name = None
-lastdir = ''
+lastdir = b''
 for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse_during):
     (dir, file) = os.path.split(ent.name)
     exists = (ent.flags & index.IX_EXISTS)
@@ -291,10 +308,10 @@ for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse_during):
         else:
             status = ' '
         if opt.verbose >= 2:
-            log('%s %-70s\n' % (status, ent.name))
+            log('%s %-70s\n' % (status, path_msg(ent.name)))
         elif not stat.S_ISDIR(ent.mode) and lastdir != dir:
             if not lastdir.startswith(dir):
-                log('%s %-70s\n' % (status, os.path.join(dir, '')))
+                log('%s %-70s\n' % (status, path_msg(os.path.join(dir, b''))))
             lastdir = dir
 
     if opt.progress:
@@ -306,11 +323,11 @@ for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse_during):
     if opt.smaller and ent.size >= opt.smaller:
         if exists and not hashvalid:
             if opt.verbose:
-                log('skipping large file "%s"\n' % ent.name)
+                log('skipping large file "%s"\n' % path_msg(ent.name))
             lastskip_name = ent.name
         continue
 
-    assert(dir.startswith('/'))
+    assert(dir.startswith(b'/'))
     if opt.strip:
         dirp = stripped_path_components(dir, extra)
     elif opt.strip_path:
@@ -415,7 +432,7 @@ for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse_during):
                 # Everything else should be fully described by its
                 # metadata, so just record an empty blob, so the paths
                 # in the tree and .bupm will match up.
-                (mode, id) = (GIT_MODE_FILE, w.new_blob(""))
+                (mode, id) = (GIT_MODE_FILE, w.new_blob(b''))
 
         if id:
             ent.validate(mode, id)
@@ -454,15 +471,21 @@ tree = _pop(force_tree = None,
             # When there's a collision, use empty metadata for the root.
             dir_metadata = metadata.Metadata() if root_collision else None)
 
+sys.stdout.flush()
+out = byte_stream(sys.stdout)
+
 if opt.tree:
-    print(tree.encode('hex'))
-if opt.commit or opt.name:
-    msg = 'bup save\n\nGenerated by command:\n%r\n' % sys.argv
-    userline = '%s <%s@%s>' % (userfullname(), username(), hostname())
+    out.write(hexlify(tree))
+    out.write(b'\n')
+if opt.commit or name:
+    msg = (b'bup save\n\nGenerated by command:\n%r\n'
+           % [argv_bytes(x) for x in sys.argv])
+    userline = (b'%s <%s@%s>' % (userfullname(), username(), hostname()))
     commit = w.new_commit(tree, oldref, userline, date, None,
                           userline, date, None, msg)
     if opt.commit:
-        print(commit.encode('hex'))
+        out.write(hexlify(commit))
+        out.write(b'\n')
 
 msr.close()
 w.close()  # must close before we can update the ref

@@ -1,8 +1,14 @@
 
 from __future__ import absolute_import
-import cPickle, errno, os, tempfile
+import errno, os, tempfile
 
 from bup import compat
+
+if compat.py_maj > 2:
+    import pickle
+else:
+    import cPickle as pickle
+
 
 class Error(Exception):
     pass
@@ -18,7 +24,7 @@ class HLinkDB:
         self._tmpname = None
         f = None
         try:
-            f = open(filename, 'r')
+            f = open(filename, 'rb')
         except IOError as e:
             if e.errno == errno.ENOENT:
                 pass
@@ -26,7 +32,7 @@ class HLinkDB:
                 raise
         if f:
             try:
-                self._node_paths = cPickle.load(f)
+                self._node_paths = pickle.load(f)
             finally:
                 f.close()
                 f = None
@@ -42,7 +48,7 @@ class HLinkDB:
             raise Error('save of %r already in progress' % self._filename)
         if self._node_paths:
             (dir, name) = os.path.split(self._filename)
-            (ffd, self._tmpname) = tempfile.mkstemp('.tmp', name, dir)
+            (ffd, self._tmpname) = tempfile.mkstemp(b'.tmp', name, dir)
             try:
                 try:
                     f = os.fdopen(ffd, 'wb', 65536)
@@ -50,7 +56,7 @@ class HLinkDB:
                     os.close(ffd)
                     raise
                 try:
-                    cPickle.dump(self._node_paths, f, 2)
+                    pickle.dump(self._node_paths, f, 2)
                 finally:
                     f.close()
                     f = None
