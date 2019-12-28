@@ -3,7 +3,7 @@ from __future__ import absolute_import, print_function
 from array import array
 from binascii import hexlify
 from traceback import print_exception
-import sys
+import os, sys
 
 # Please see CODINGSTYLE for important exception handling guidelines
 # and the rationale behind add_ex_tb(), add_ex_ctx(), etc.
@@ -34,6 +34,9 @@ if py3:
     def hexstr(b):
         """Return hex string (not bytes as with hexlify) representation of b."""
         return b.hex()
+
+    def reraise(ex):
+        raise ex.with_traceback(sys.exc_info()[2])
 
     def add_ex_tb(ex):
         """Do nothing (already handled by Python 3 infrastructure)."""
@@ -77,11 +80,17 @@ else:  # Python 2
 
     from pipes import quote
     from os import environ
+
+    from bup.py2raise import py2_raise
+
     range = xrange
     str_type = basestring
     int_types = (int, long)
 
     hexstr = hexlify
+
+    def reraise(ex):
+        py2raise(ex, None, sys.exc_info()[2])
 
     def add_ex_tb(ex):
         """Add a traceback to ex if it doesn't already have one.  Return ex.
