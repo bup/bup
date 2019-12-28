@@ -6,14 +6,16 @@ exec "$bup_python" "$0" ${1+"$@"}
 # end of bup preamble
 
 from __future__ import absolute_import, print_function
+from binascii import hexlify
 import sys, stat, time, os, errno, re
 
 from bup import metadata, options, git, index, drecurse, hlinkdb
+from bup.compat import argv_bytes, bytes_from_byte
 from bup.drecurse import recursive_dirlist
 from bup.hashsplit import GIT_MODE_TREE, GIT_MODE_FILE
 from bup.helpers import (add_error, handle_ctrl_c, log, parse_excludes, parse_rx_excludes,
                          progress, qprogress, saved_errors)
-
+from bup.io import byte_stream, path_msg
 
 class IterHelper:
     def __init__(self, l):
@@ -21,10 +23,11 @@ class IterHelper:
         self.cur = None
         self.next()
 
-    def next(self):
+    def __next__(self):
         self.cur = next(self.i, None)
         return self.cur
 
+    next = __next__
 
 def check_index(reader):
     try:
@@ -35,9 +38,9 @@ def check_index(reader):
             if e.children_n:
                 if opt.verbose:
                     log('%08x+%-4d %r\n' % (e.children_ofs, e.children_n,
-                                            e.name))
+                                            path_msg(e.name)))
                 assert(e.children_ofs)
-                assert e.name[-1] == b'/'
+                assert e.name.endswith(b'/')
                 assert(not d.get(e.children_ofs))
                 d[e.children_ofs] = 1
             if e.flags & index.IX_HASHVALID:
@@ -57,28 +60,28 @@ def check_index(reader):
 
 
 def clear_index(indexfile):
-    indexfiles = [indexfile, indexfile + '.meta', indexfile + '.hlink']
+    indexfiles = [indexfile, indexfile + b'.meta', indexfile + b'.hlink']
     for indexfile in indexfiles:
         path = git.repo(indexfile)
         try:
             os.remove(path)
             if opt.verbose:
-                log('clear: removed %s\n' % path)
+                log('clear: removed %s\n' % path_msg(path))
         except OSError as e:
             if e.errno != errno.ENOENT:
                 raise
 
 
-def update_index(top, excluded_paths, exclude_rxs, xdev_exceptions):
+def update_index(top, excluded_paths, exclude_rxs, xdev_exceptions, out=None):
     # tmax and start must be epoch nanoseconds.
     tmax = (time.time() - 1) * 10**9
     ri = index.Reader(indexfile)
-    msw = index.MetaStoreWriter(indexfile + '.meta')
+    msw = index.MetaStoreWriter(indexfile + b'.meta')
     wi = index.Writer(indexfile, msw, tmax)
     rig = IterHelper(ri.iter(name=top))
     tstart = int(time.time()) * 10**9
 
-    hlinks = hlinkdb.HLinkDB(indexfile + '.hlink')
+    hlinks = hlinkdb.HLinkDB(indexfile + b'.hlink')
 
     fake_hash = None
     if opt.fake_valid:
@@ -95,8 +98,8 @@ def update_index(top, excluded_paths, exclude_rxs, xdev_exceptions):
                                        exclude_rxs=exclude_rxs,
                                        xdev_exceptions=xdev_exceptions):
         if opt.verbose>=2 or (opt.verbose==1 and stat.S_ISDIR(pst.st_mode)):
-            sys.stdout.write('%s\n' % path)
-            sys.stdout.flush()
+            out.write(b'%s\n' % path)
+            out.flush()
             elapsed = time.time() - index_start
             paths_per_sec = total / elapsed if elapsed else 0
             qprogress('Indexing: %d (%d paths/s)\r' % (total, paths_per_sec))
@@ -250,9 +253,16 @@ tick_start = time.time()
 time.sleep(1 - (tick_start - int(tick_start)))
 
 git.check_repo_or_die()
-indexfile = opt.indexfile or git.repo('bupindex')
 
 handle_ctrl_c()
+
+if opt.verbose is None:
+    opt.verbose = 0
+
+if opt.indexfile:
+    indexfile = argv_bytes(opt.indexfile)
+else:
+    indexfile = git.repo(b'bupindex')
 
 if opt.check:
     log('check: starting initial check.\n')
@@ -262,36 +272,42 @@ if opt.clear:
     log('clear: clearing index.\n')
     clear_index(indexfile)
 
+sys.stdout.flush()
+out = byte_stream(sys.stdout)
+
 if opt.update:
     if not extra:
         o.fatal('update mode (-u) requested but no paths given')
+    extra = [argv_bytes(x) for x in extra]
     excluded_paths = parse_excludes(flags, o.fatal)
     exclude_rxs = parse_rx_excludes(flags, o.fatal)
     xexcept = index.unique_resolved_paths(extra)
     for rp, path in index.reduce_paths(extra):
-        update_index(rp, excluded_paths, exclude_rxs, xdev_exceptions=xexcept)
+        update_index(rp, excluded_paths, exclude_rxs, xdev_exceptions=xexcept,
+                     out=out)
 
 if opt['print'] or opt.status or opt.modified:
-    for (name, ent) in index.Reader(indexfile).filter(extra or ['']):
+    extra = [argv_bytes(x) for x in extra]
+    for name, ent in index.Reader(indexfile).filter(extra or [b'']):
         if (opt.modified 
             and (ent.is_valid() or ent.is_deleted() or not ent.mode)):
             continue
-        line = ''
+        line = b''
         if opt.status:
             if ent.is_deleted():
-                line += 'D '
+                line += b'D '
             elif not ent.is_valid():
                 if ent.sha == index.EMPTY_SHA:
-                    line += 'A '
+                    line += b'A '
                 else:
-                    line += 'M '
+                    line += b'M '
             else:
-                line += '  '
+                line += b'  '
         if opt.hash:
-            line += ent.sha.encode('hex') + ' '
+            line += hexlify(ent) + b' '
         if opt.long:
-            line += "%7s %7s " % (oct(ent.mode), oct(ent.gitmode))
-        print(line + (name or './'))
+            line += b'%7s %7s ' % (oct(ent.mode), oct(ent.gitmode))
+        out.write(line + (name or b'./') + b'\n')
 
 if opt.check and (opt['print'] or opt.status or opt.modified or opt.update):
     log('check: starting final check.\n')
