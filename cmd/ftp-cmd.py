@@ -9,6 +9,7 @@ from __future__ import absolute_import, print_function
 import sys, os, stat, fnmatch
 
 from bup import options, git, shquote, ls, vfs
+from bup.io import byte_stream
 from bup.helpers import chunkyreader, handle_ctrl_c, log
 from bup.repo import LocalRepo
 
@@ -19,13 +20,13 @@ class OptionError(Exception):
     pass
 
 
-def do_ls(repo, args):
+def do_ls(repo, args, out):
     try:
         opt = ls.opts_from_cmdline(args, onabort=OptionError)
     except OptionError as e:
         log('error: %s' % e)
         return
-    return ls.within_repo(repo, opt)
+    return ls.within_repo(repo, opt, out)
 
 
 def write_to_file(inf, outf):
@@ -103,6 +104,8 @@ o = options.Options(optspec)
 
 git.check_repo_or_die()
 
+sys.stdout.flush()
+out = byte_stream(sys.stdout)
 repo = LocalRepo()
 pwd = vfs.resolve(repo, '/')
 rv = 0
@@ -134,7 +137,8 @@ for line in lines:
     try:
         if cmd == 'ls':
             # FIXME: respect pwd (perhaps via ls accepting resolve path/parent)
-            do_ls(repo, words[1:])
+            sys.stdout.flush()  # FIXME: remove when we finish py3 support
+            do_ls(repo, words[1:], out)
         elif cmd == 'cd':
             np = pwd
             for parm in words[1:]:

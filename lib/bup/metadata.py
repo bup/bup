@@ -6,6 +6,7 @@
 # Public License as described in the bup LICENSE file.
 
 from __future__ import absolute_import, print_function
+from binascii import hexlify
 from copy import deepcopy
 from errno import EACCES, EINVAL, ENOTTY, ENOSYS, EOPNOTSUPP
 from io import BytesIO
@@ -15,6 +16,7 @@ import errno, os, sys, stat, time, pwd, grp, socket, struct
 from bup import vint, xstat
 from bup.drecurse import recursive_dirlist
 from bup.helpers import add_error, mkdirp, log, is_superuser, format_filesize
+from bup.io import path_msg
 from bup.pwdgrp import pwd_from_uid, pwd_from_name, grp_from_gid, grp_from_name
 from bup.xstat import utime, lutime
 
@@ -125,59 +127,59 @@ def _clean_up_path_for_archive(p):
     result = p
 
     # Take everything after any '/../'.
-    pos = result.rfind('/../')
+    pos = result.rfind(b'/../')
     if pos != -1:
-        result = result[result.rfind('/../') + 4:]
+        result = result[result.rfind(b'/../') + 4:]
 
     # Take everything after any remaining '../'.
-    if result.startswith("../"):
+    if result.startswith(b"../"):
         result = result[3:]
 
     # Remove any '/./' sequences.
-    pos = result.find('/./')
+    pos = result.find(b'/./')
     while pos != -1:
-        result = result[0:pos] + '/' + result[pos + 3:]
-        pos = result.find('/./')
+        result = result[0:pos] + b'/' + result[pos + 3:]
+        pos = result.find(b'/./')
 
     # Remove any leading '/'s.
-    result = result.lstrip('/')
+    result = result.lstrip(b'/')
 
     # Replace '//' with '/' everywhere.
-    pos = result.find('//')
+    pos = result.find(b'//')
     while pos != -1:
-        result = result[0:pos] + '/' + result[pos + 2:]
-        pos = result.find('//')
+        result = result[0:pos] + b'/' + result[pos + 2:]
+        pos = result.find(b'//')
 
     # Take everything after any remaining './'.
-    if result.startswith('./'):
+    if result.startswith(b'./'):
         result = result[2:]
 
     # Take everything before any remaining '/.'.
-    if result.endswith('/.'):
+    if result.endswith(b'/.'):
         result = result[:-2]
 
-    if result == '' or result.endswith('/..'):
-        result = '.'
+    if result == b'' or result.endswith(b'/..'):
+        result = b'.'
 
     return result
 
 
 def _risky_path(p):
-    if p.startswith('/'):
+    if p.startswith(b'/'):
         return True
-    if p.find('/../') != -1:
+    if p.find(b'/../') != -1:
         return True
-    if p.startswith('../'):
+    if p.startswith(b'../'):
         return True
-    if p.endswith('/..'):
+    if p.endswith(b'/..'):
         return True
     return False
 
 
 def _clean_up_extract_path(p):
-    result = p.lstrip('/')
-    if result == '':
-        return '.'
+    result = p.lstrip(b'/')
+    if result == b'':
+        return b'.'
     elif _risky_path(result):
         return None
     else:
@@ -234,7 +236,7 @@ class Metadata:
         self.atime = st.st_atime
         self.mtime = st.st_mtime
         self.ctime = st.st_ctime
-        self.user = self.group = ''
+        self.user = self.group = b''
         entry = pwd_from_uid(st.st_uid)
         if entry:
             self.user = entry.pw_name
@@ -325,7 +327,8 @@ class Metadata:
 
     def _create_via_common_rec(self, path, create_symlinks=True):
         if not self.mode:
-            raise ApplyError('no metadata - cannot create path ' + path)
+            raise ApplyError('no metadata - cannot create path '
+                             + path_msg(path))
 
         # If the path already exists and is a dir, try rmdir.
         # If the path already exists and is anything else, try unlink.
@@ -341,8 +344,8 @@ class Metadata:
                     os.rmdir(path)
                 except OSError as e:
                     if e.errno in (errno.ENOTEMPTY, errno.EEXIST):
-                        msg = 'refusing to overwrite non-empty dir ' + path
-                        raise Exception(msg)
+                        raise Exception('refusing to overwrite non-empty dir '
+                                        + path_msg(path))
                     raise
             else:
                 os.unlink(path)
@@ -387,11 +390,11 @@ class Metadata:
         else:
             assert(not self._recognized_file_type())
             add_error('not creating "%s" with unrecognized mode "0x%x"\n'
-                      % (path, self.mode))
+                      % (path_msg(path), self.mode))
 
     def _apply_common_rec(self, path, restore_numeric_ids=False):
         if not self.mode:
-            raise ApplyError('no metadata - cannot apply to ' + path)
+            raise ApplyError('no metadata - cannot apply to ' + path_msg(path))
 
         # FIXME: S_ISDOOR, S_IFMPB, S_IFCMP, S_IFNWK, ... see stat(2).
         # EACCES errors at this stage are fatal for the current path.
@@ -446,7 +449,7 @@ class Metadata:
                 elif sys.platform.startswith('cygwin') \
                    and e.errno == errno.EINVAL:
                     add_error('lchown: unknown uid/gid (%d/%d) for %s'
-                              %  (uid, gid, path))
+                              %  (uid, gid, path_msg(path)))
                 else:
                     raise
 
@@ -535,11 +538,11 @@ class Metadata:
             if acls:
                 txt_flags = posix1e.TEXT_ABBREVIATE
                 num_flags = posix1e.TEXT_ABBREVIATE | posix1e.TEXT_NUMERIC_IDS
-                acl_rep = [acls[0].to_any_text('', '\n', txt_flags),
-                           acls[1].to_any_text('', '\n', num_flags)]
+                acl_rep = [acls[0].to_any_text(b'', b'\n', txt_flags),
+                           acls[1].to_any_text(b'', b'\n', num_flags)]
                 if def_acls:
-                    acl_rep.append(def_acls[0].to_any_text('', '\n', txt_flags))
-                    acl_rep.append(def_acls[1].to_any_text('', '\n', num_flags))
+                    acl_rep.append(def_acls[0].to_any_text(b'', b'\n', txt_flags))
+                    acl_rep.append(def_acls[1].to_any_text(b'', b'\n', num_flags))
                 self.posix1e_acl = acl_rep
 
     def _same_posix1e_acl(self, other):
@@ -551,14 +554,14 @@ class Metadata:
         if self.posix1e_acl:
             acls = self.posix1e_acl
             if len(acls) == 2:
-                acls.extend(['', ''])
+                acls.extend([b'', b''])
             return vint.pack('ssss', acls[0], acls[1], acls[2], acls[3])
         else:
             return None
 
     def _load_posix1e_acl_rec(self, port):
         acl_rep = vint.unpack('ssss', vint.read_bvec(port))
-        if acl_rep[2] == '':
+        if acl_rep[2] == b'':
             acl_rep = acl_rep[:2]
         self.posix1e_acl = acl_rep
 
@@ -572,7 +575,7 @@ class Metadata:
                     # set to 0 if a group referred to by the ACL rep
                     # doesn't exist on the current system.
                     raise ApplyError("POSIX1e ACL: can't create %r for %r"
-                                     % (acl_rep, path))
+                                     % (acl_rep, path_msg(path)))
                 else:
                     raise
             try:
@@ -586,7 +589,7 @@ class Metadata:
         if not posix1e:
             if self.posix1e_acl:
                 add_error("%s: can't restore ACLs; posix1e support missing.\n"
-                          % path)
+                          % path_msg(path))
             return
         if self.posix1e_acl:
             acls = self.posix1e_acl
@@ -622,7 +625,7 @@ class Metadata:
                     if not _warned_about_attr_einval:
                         log("Ignoring attr EINVAL;"
                             + " if you're not using ntfs-3g, please report: "
-                            + repr(path) + '\n')
+                            + path_msg(path) + '\n')
                         _warned_about_attr_einval = True
                     return
                 else:
@@ -647,7 +650,7 @@ class Metadata:
             check_linux_file_attr_api()
             if not set_linux_file_attr:
                 add_error("%s: can't restore linuxattrs: "
-                          "linuxattr support missing.\n" % path)
+                          "linuxattr support missing.\n" % path_msg(path))
                 return
             try:
                 set_linux_file_attr(path, self.linux_attr)
@@ -700,7 +703,7 @@ class Metadata:
         if not xattr:
             if self.linux_xattr:
                 add_error("%s: can't restore xattr; xattr support missing.\n"
-                          % path)
+                          % path_msg(path))
             return
         if not self.linux_xattr:
             return
@@ -708,7 +711,7 @@ class Metadata:
             existing_xattrs = set(xattr.list(path, nofollow=True))
         except IOError as e:
             if e.errno == errno.EACCES:
-                raise ApplyError('xattr.set %r: %s' % (path, e))
+                raise ApplyError('xattr.set %r: %s' % (path_msg(path), e))
             else:
                 raise
         for k, v in self.linux_xattr:
@@ -719,7 +722,7 @@ class Metadata:
                 except IOError as e:
                     if e.errno == errno.EPERM \
                             or e.errno == errno.EOPNOTSUPP:
-                        raise ApplyError('xattr.set %r: %s' % (path, e))
+                        raise ApplyError('xattr.set %r: %s' % (path_msg(path), e))
                     else:
                         raise
             existing_xattrs -= frozenset([k])
@@ -728,7 +731,7 @@ class Metadata:
                 xattr.remove(path, k, nofollow=True)
             except IOError as e:
                 if e.errno in (errno.EPERM, errno.EACCES):
-                    raise ApplyError('xattr.remove %r: %s' % (path, e))
+                    raise ApplyError('xattr.remove %r: %s' % (path_msg(path), e))
                 else:
                     raise
 
@@ -786,8 +789,7 @@ class Metadata:
         if self.path is not None:
             result += ' path:' + repr(self.path)
         if self.mode is not None:
-            result += ' mode:' + repr(xstat.mode_str(self.mode)
-                                      + '(%s)' % oct(self.mode))
+            result += ' mode: %o (%s)' % (self.mode, xstat.mode_str(self.mode))
         if self.uid is not None:
             result += ' uid:' + str(self.uid)
         if self.gid is not None:
@@ -886,7 +888,7 @@ class Metadata:
         if not path:
             raise Exception('Metadata.apply_to_path() called with no path')
         if not self._recognized_file_type():
-            add_error('not applying metadata to "%s"' % path
+            add_error('not applying metadata to "%s"' % path_msg(path)
                       + ' with unrecognized mode "0x%x"\n' % self.mode)
             return
         num_ids = restore_numeric_ids
@@ -944,14 +946,15 @@ def save_tree(output_file, paths,
     for path in paths:
         safe_path = _clean_up_path_for_archive(path)
         if safe_path != path:
-            log('archiving "%s" as "%s"\n' % (path, safe_path))
+            log('archiving "%s" as "%s"\n'
+                % (path_msg(path), path_msg(safe_path)))
 
     if not recurse:
         for p in paths:
             safe_path = _clean_up_path_for_archive(p)
             st = xstat.lstat(p)
             if stat.S_ISDIR(st.st_mode):
-                safe_path += '/'
+                safe_path += b'/'
             m = from_path(p, statinfo=st, archive_path=safe_path,
                           save_symlinks=save_symlinks)
             if verbose:
@@ -1003,60 +1006,61 @@ all_fields = frozenset(['path',
                         'posix1e-acl'])
 
 
-def summary_str(meta, numeric_ids = False, classification = None,
-                human_readable = False):
-
-    """Return a string containing the "ls -l" style listing for meta.
+def summary_bytes(meta, numeric_ids = False, classification = None,
+                  human_readable = False):
+    """Return bytes containing the "ls -l" style listing for meta.
     Classification may be "all", "type", or None."""
     user_str = group_str = size_or_dev_str = '?'
     symlink_target = None
     if meta:
         name = meta.path
-        mode_str = xstat.mode_str(meta.mode)
+        mode_str = xstat.mode_str(meta.mode).encode('ascii')
         symlink_target = meta.symlink_target
         mtime_secs = xstat.fstime_floor_secs(meta.mtime)
-        mtime_str = strftime('%Y-%m-%d %H:%M', time.localtime(mtime_secs))
+        mtime_str = strftime('%Y-%m-%d %H:%M',
+                             time.localtime(mtime_secs)).encode('ascii')
         if meta.user and not numeric_ids:
             user_str = meta.user
         elif meta.uid != None:
-            user_str = str(meta.uid)
+            user_str = str(meta.uid).encode()
         if meta.group and not numeric_ids:
             group_str = meta.group
         elif meta.gid != None:
-            group_str = str(meta.gid)
+            group_str = str(meta.gid).encode()
         if stat.S_ISCHR(meta.mode) or stat.S_ISBLK(meta.mode):
             if meta.rdev:
-                size_or_dev_str = '%d,%d' % (os.major(meta.rdev),
-                                             os.minor(meta.rdev))
+                size_or_dev_str = ('%d,%d' % (os.major(meta.rdev),
+                                              os.minor(meta.rdev))).encode()
         elif meta.size != None:
             if human_readable:
-                size_or_dev_str = format_filesize(meta.size)
+                size_or_dev_str = format_filesize(meta.size).encode()
             else:
-                size_or_dev_str = str(meta.size)
+                size_or_dev_str = str(meta.size).encode()
         else:
-            size_or_dev_str = '-'
+            size_or_dev_str = b'-'
         if classification:
             classification_str = \
-                xstat.classification_str(meta.mode, classification == 'all')
+                xstat.classification_str(meta.mode,
+                                         classification == 'all').encode()
     else:
-        mode_str = '?' * 10
-        mtime_str = '????-??-?? ??:??'
-        classification_str = '?'
+        mode_str = b'?' * 10
+        mtime_str = b'????-??-?? ??:??'
+        classification_str = b'?'
 
-    name = name or ''
+    name = name or b''
     if classification:
         name += classification_str
     if symlink_target:
-        name += ' -> ' + meta.symlink_target
+        name += b' -> ' + meta.symlink_target
 
-    return '%-10s %-11s %11s %16s %s' % (mode_str,
-                                         user_str + "/" + group_str,
-                                         size_or_dev_str,
-                                         mtime_str,
-                                         name)
+    return b'%-10s %-11s %11s %16s %s' % (mode_str,
+                                          user_str + b'/' + group_str,
+                                          size_or_dev_str,
+                                          mtime_str,
+                                          name)
 
 
-def detailed_str(meta, fields = None):
+def detailed_bytes(meta, fields = None):
     # FIXME: should optional fields be omitted, or empty i.e. "rdev:
     # 0", "link-target:", etc.
     if not fields:
@@ -1064,29 +1068,29 @@ def detailed_str(meta, fields = None):
 
     result = []
     if 'path' in fields:
-        path = meta.path or ''
-        result.append('path: ' + path)
+        path = meta.path or b''
+        result.append(b'path: ' + path)
     if 'mode' in fields:
-        result.append('mode: %s (%s)' % (oct(meta.mode),
-                                         xstat.mode_str(meta.mode)))
+        result.append(b'mode: %o (%s)'
+                      % (meta.mode, xstat.mode_str(meta.mode).encode('ascii')))
     if 'link-target' in fields and stat.S_ISLNK(meta.mode):
-        result.append('link-target: ' + meta.symlink_target)
+        result.append(b'link-target: ' + meta.symlink_target)
     if 'rdev' in fields:
         if meta.rdev:
-            result.append('rdev: %d,%d' % (os.major(meta.rdev),
-                                           os.minor(meta.rdev)))
+            result.append(b'rdev: %d,%d' % (os.major(meta.rdev),
+                                            os.minor(meta.rdev)))
         else:
-            result.append('rdev: 0')
+            result.append(b'rdev: 0')
     if 'size' in fields and meta.size is not None:
-        result.append('size: ' + str(meta.size))
+        result.append(b'size: %d' % meta.size)
     if 'uid' in fields:
-        result.append('uid: ' + str(meta.uid))
+        result.append(b'uid: %d' % meta.uid)
     if 'gid' in fields:
-        result.append('gid: ' + str(meta.gid))
+        result.append(b'gid: %d' % meta.gid)
     if 'user' in fields:
-        result.append('user: ' + meta.user)
+        result.append(b'user: ' + meta.user)
     if 'group' in fields:
-        result.append('group: ' + meta.group)
+        result.append(b'group: ' + meta.group)
     if 'atime' in fields:
         # If we don't have xstat.lutime, that means we have to use
         # utime(), and utime() has no way to set the mtime/atime of a
@@ -1094,36 +1098,38 @@ def detailed_str(meta, fields = None):
         # so let's not report it.  (That way scripts comparing
         # before/after won't trigger.)
         if xstat.lutime or not stat.S_ISLNK(meta.mode):
-            result.append('atime: ' + xstat.fstime_to_sec_str(meta.atime))
+            result.append(b'atime: ' + xstat.fstime_to_sec_bytes(meta.atime))
         else:
-            result.append('atime: 0')
+            result.append(b'atime: 0')
     if 'mtime' in fields:
         if xstat.lutime or not stat.S_ISLNK(meta.mode):
-            result.append('mtime: ' + xstat.fstime_to_sec_str(meta.mtime))
+            result.append(b'mtime: ' + xstat.fstime_to_sec_bytes(meta.mtime))
         else:
-            result.append('mtime: 0')
+            result.append(b'mtime: 0')
     if 'ctime' in fields:
-        result.append('ctime: ' + xstat.fstime_to_sec_str(meta.ctime))
+        result.append(b'ctime: ' + xstat.fstime_to_sec_bytes(meta.ctime))
     if 'linux-attr' in fields and meta.linux_attr:
-        result.append('linux-attr: ' + hex(meta.linux_attr))
+        result.append(b'linux-attr: %x' % meta.linux_attr)
     if 'linux-xattr' in fields and meta.linux_xattr:
         for name, value in meta.linux_xattr:
-            result.append('linux-xattr: %s -> %s' % (name, repr(value)))
+            result.append(b'linux-xattr: %s -> %s' % (name, value))
     if 'posix1e-acl' in fields and meta.posix1e_acl:
         acl = meta.posix1e_acl[0]
-        result.append('posix1e-acl: ' + acl + '\n')
+        result.append(b'posix1e-acl: ' + acl + b'\n')
         if stat.S_ISDIR(meta.mode):
             def_acl = meta.posix1e_acl[2]
-            result.append('posix1e-acl-default: ' + def_acl + '\n')
-    return '\n'.join(result)
+            result.append(b'posix1e-acl-default: ' + def_acl + b'\n')
+    return b'\n'.join(result)
 
 
 class _ArchiveIterator:
-    def next(self):
+    def __next__(self):
         try:
             return Metadata.read(self._file)
         except EOFError:
             raise StopIteration()
+
+    next = __next__
 
     def __iter__(self):
         return self
@@ -1132,24 +1138,27 @@ class _ArchiveIterator:
         self._file = file
 
 
-def display_archive(file):
+def display_archive(file, out):
     if verbose > 1:
         first_item = True
         for meta in _ArchiveIterator(file):
             if not first_item:
-                print()
-            print(detailed_str(meta))
+                out.write(b'\n')
+            out.write(detailed_bytes(meta))
+            out.write(b'\n')
             first_item = False
     elif verbose > 0:
         for meta in _ArchiveIterator(file):
-            print(summary_str(meta))
+            out.write(summary_bytes(meta))
+            out.write(b'\n')
     elif verbose == 0:
         for meta in _ArchiveIterator(file):
             if not meta.path:
-                print('bup: no metadata path, but asked to only display path'
-                     '(increase verbosity?)')
+                log('bup: no metadata path, but asked to only display path'
+                    ' (increase verbosity?)')
                 sys.exit(1)
-            print(meta.path)
+            out.write(meta.path)
+            out.write(b'\n')
 
 
 def start_extract(file, create_symlinks=True):
@@ -1157,10 +1166,11 @@ def start_extract(file, create_symlinks=True):
         if not meta: # Hit end record.
             break
         if verbose:
-            print(meta.path, file=sys.stderr)
+            print(path_msg(meta.path), file=sys.stderr)
         xpath = _clean_up_extract_path(meta.path)
         if not xpath:
-            add_error(Exception('skipping risky path "%s"' % meta.path))
+            add_error(Exception('skipping risky path "%s"'
+                                % path_msg(meta.path)))
         else:
             meta.path = xpath
             _set_up_path(meta, create_symlinks=create_symlinks)
@@ -1173,13 +1183,14 @@ def finish_extract(file, restore_numeric_ids=False):
             break
         xpath = _clean_up_extract_path(meta.path)
         if not xpath:
-            add_error(Exception('skipping risky path "%s"' % dir.path))
+            add_error(Exception('skipping risky path "%s"'
+                                % path_msg(dir.path)))
         else:
             if os.path.isdir(meta.path):
                 all_dirs.append(meta)
             else:
                 if verbose:
-                    print(meta.path, file=sys.stderr)
+                    print(path_msg(meta.path), file=sys.stderr)
                 meta.apply_to_path(path=xpath,
                                    restore_numeric_ids=restore_numeric_ids)
     all_dirs.sort(key = lambda x : len(x.path), reverse=True)
@@ -1187,7 +1198,7 @@ def finish_extract(file, restore_numeric_ids=False):
         # Don't need to check xpath -- won't be in all_dirs if not OK.
         xpath = _clean_up_extract_path(dir.path)
         if verbose:
-            print(dir.path, file=sys.stderr)
+            print(path_msg(dir.path), file=sys.stderr)
         dir.apply_to_path(path=xpath, restore_numeric_ids=restore_numeric_ids)
 
 
@@ -1200,24 +1211,25 @@ def extract(file, restore_numeric_ids=False, create_symlinks=True):
             break
         xpath = _clean_up_extract_path(meta.path)
         if not xpath:
-            add_error(Exception('skipping risky path "%s"' % meta.path))
+            add_error(Exception('skipping risky path "%s"'
+                                % path_msg(meta.path)))
         else:
             meta.path = xpath
             if verbose:
-                print('+', meta.path, file=sys.stderr)
+                print('+', path_msg(meta.path), file=sys.stderr)
             _set_up_path(meta, create_symlinks=create_symlinks)
             if os.path.isdir(meta.path):
                 all_dirs.append(meta)
             else:
                 if verbose:
-                    print('=', meta.path, file=sys.stderr)
+                    print('=', path_msg(meta.path), file=sys.stderr)
                 meta.apply_to_path(restore_numeric_ids=restore_numeric_ids)
     all_dirs.sort(key = lambda x : len(x.path), reverse=True)
     for dir in all_dirs:
         # Don't need to check xpath -- won't be in all_dirs if not OK.
         xpath = _clean_up_extract_path(dir.path)
         if verbose:
-            print('=', xpath, file=sys.stderr)
+            print('=', path_msg(xpath), file=sys.stderr)
         # Shouldn't have to check for risky paths here (omitted above).
         dir.apply_to_path(path=dir.path,
                           restore_numeric_ids=restore_numeric_ids)

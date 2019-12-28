@@ -14,8 +14,10 @@ from __future__ import absolute_import, print_function
 import sys, stat, errno
 
 from bup import metadata, options, xstat
+from bup.compat import argv_bytes
 from bup.helpers import add_error, handle_ctrl_c, parse_timestamp, saved_errors, \
     add_error, log
+from bup.io import byte_stream
 
 
 def parse_timestamp_arg(field, value):
@@ -46,7 +48,7 @@ mtime-resolution=  limit s, ms, us, ns, 10ns (value must be a power of 10) [ns]
 ctime-resolution=  limit s, ms, us, ns, 10ns (value must be a power of 10) [ns]
 """
 
-target_filename = ''
+target_filename = b''
 active_fields = metadata.all_fields
 
 handle_ctrl_c()
@@ -82,8 +84,12 @@ opt.verbose = opt.verbose or 0
 opt.quiet = opt.quiet or 0
 metadata.verbose = opt.verbose - opt.quiet
 
+sys.stdout.flush()
+out = byte_stream(sys.stdout)
+
 first_path = True
 for path in remainder:
+    path = argv_bytes(path)
     try:
         m = metadata.from_path(path, archive_path = path)
     except (OSError,IOError) as e:
@@ -94,14 +100,15 @@ for path in remainder:
             raise
     if metadata.verbose >= 0:
         if not first_path:
-            print()
+            out.write(b'\n')
         if atime_resolution != 1:
             m.atime = (m.atime / atime_resolution) * atime_resolution
         if mtime_resolution != 1:
             m.mtime = (m.mtime / mtime_resolution) * mtime_resolution
         if ctime_resolution != 1:
             m.ctime = (m.ctime / ctime_resolution) * ctime_resolution
-        print(metadata.detailed_str(m, active_fields))
+        out.write(metadata.detailed_bytes(m, active_fields))
+        out.write(b'\n')
         first_path = False
 
 if saved_errors:
