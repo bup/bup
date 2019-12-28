@@ -16,19 +16,22 @@ from __future__ import absolute_import
 import sys
 from bup import metadata
 from bup import options
+from bup.compat import argv_bytes
+from bup.io import byte_stream
 from bup.helpers import handle_ctrl_c, log, saved_errors
 
 
 def open_input(name):
-    if not name or name == '-':
-        return sys.stdin
-    return open(name, 'r')
+    if not name or name == b'-':
+        return byte_stream(sys.stdin)
+    return open(name, 'rb')
 
 
 def open_output(name):
-    if not name or name == '-':
-        return sys.stdout
-    return open(name, 'w')
+    if not name or name == b'-':
+        sys.stdout.flush()
+        return byte_stream(sys.stdout)
+    return open(name, 'wb')
 
 
 optspec = """
@@ -70,6 +73,7 @@ o = options.Options(optspec)
 opt.verbose = opt.verbose or 0
 opt.quiet = opt.quiet or 0
 metadata.verbose = opt.verbose - opt.quiet
+opt.file = argv_bytes(opt.file) if opt.file else None
 
 action_count = sum([bool(x) for x in [opt.create, opt.list, opt.extract,
                                       opt.start_extract, opt.finish_extract,
@@ -84,7 +88,7 @@ if opt.create:
         o.fatal("no paths specified for create")
     output_file = open_output(opt.file)
     metadata.save_tree(output_file,
-                       remainder,
+                       [argv_bytes(r) for r in remainder],
                        recurse=opt.recurse,
                        write_paths=opt.paths,
                        save_symlinks=opt.symlinks,
@@ -93,7 +97,7 @@ elif opt.list:
     if len(remainder) > 0:
         o.fatal("cannot specify paths for --list")
     src = open_input(opt.file)
-    metadata.display_archive(src)
+    metadata.display_archive(src, open_output(b'-'))
 elif opt.start_extract:
     if len(remainder) > 0:
         o.fatal("cannot specify paths for --start-extract")
@@ -129,7 +133,7 @@ elif opt.edit:
             unset_group = True
 
     for path in remainder:
-        f = open(path, 'r')
+        f = open(argv_bytes(path), 'rb')
         try:
             for m in metadata._ArchiveIterator(f):
                 if opt.set_uid is not None:
@@ -145,14 +149,14 @@ elif opt.edit:
                         o.fatal("gid must be an integer")
 
                 if unset_user:
-                    m.user = ''
+                    m.user = b''
                 elif opt.set_user is not None:
-                    m.user = opt.set_user
+                    m.user = argv_bytes(opt.set_user)
 
                 if unset_group:
-                    m.group = ''
+                    m.group = b''
                 elif opt.set_group is not None:
-                    m.group = opt.set_group
+                    m.group = argv_bytes(opt.set_group)
 
                 m.write(output_file)
         finally:
