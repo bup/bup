@@ -955,8 +955,6 @@ static PyObject *write_idx(PyObject *self, PyObject *args)
     char *filename = NULL;
     PyObject *py_total, *idx = NULL;
     PyObject *part;
-    unsigned char *fmap = NULL;
-    Py_ssize_t flen = 0;
     unsigned int total = 0;
     uint32_t count;
     int i, j, ofs64_count;
@@ -964,21 +962,27 @@ static PyObject *write_idx(PyObject *self, PyObject *args)
     uint64_t *ofs64_ptr;
     struct sha *sha_ptr;
 
-    if (!PyArg_ParseTuple(args, "sw#OO",
-                          &filename, &fmap, &flen, &idx, &py_total))
+    Py_buffer fmap;
+    if (!PyArg_ParseTuple(args, cstr_argf wbuf_argf "OO",
+                          &filename, &fmap, &idx, &py_total))
 	return NULL;
 
+    PyObject *result = NULL;
+
     if (!bup_uint_from_py(&total, py_total, "total"))
-        return NULL;
+        goto clean_and_return;
 
     if (PyList_Size (idx) != FAN_ENTRIES) // Check for list of the right length.
-        return PyErr_Format (PyExc_TypeError, "idx must contain %d entries",
-                             FAN_ENTRIES);
+    {
+        result = PyErr_Format (PyExc_TypeError, "idx must contain %d entries",
+                               FAN_ENTRIES);
+        goto clean_and_return;
+    }
 
     const char idx_header[] = "\377tOc\0\0\0\002";
-    memcpy (fmap, idx_header, sizeof(idx_header) - 1);
+    memcpy (fmap.buf, idx_header, sizeof(idx_header) - 1);
 
-    fan_ptr = (uint32_t *)&fmap[sizeof(idx_header) - 1];
+    fan_ptr = (uint32_t *)&((unsigned char *)fmap.buf)[sizeof(idx_header) - 1];
     sha_ptr = (struct sha *)&fan_ptr[FAN_ENTRIES];
     crc_ptr = (uint32_t *)&sha_ptr[total];
     ofs_ptr = (uint32_t *)&crc_ptr[total];
@@ -1002,18 +1006,18 @@ static PyObject *write_idx(PyObject *self, PyObject *args)
 	    unsigned int crc;
             unsigned PY_LONG_LONG ofs_ull;
 	    uint64_t ofs;
-	    if (!PyArg_ParseTuple(PyList_GET_ITEM(part, j), "t#OO",
+	    if (!PyArg_ParseTuple(PyList_GET_ITEM(part, j), rbuf_argf "OO",
 				  &sha, &sha_len, &crc_py, &ofs_py))
-		return NULL;
+                goto clean_and_return;
             if(!bup_uint_from_py(&crc, crc_py, "crc"))
-                return NULL;
+                goto clean_and_return;
             if(!bup_ullong_from_py(&ofs_ull, ofs_py, "ofs"))
-                return NULL;
+                goto clean_and_return;
             assert(crc <= UINT32_MAX);
             assert(ofs_ull <= UINT64_MAX);
 	    ofs = ofs_ull;
 	    if (sha_len != sizeof(struct sha))
-		return NULL;
+                goto clean_and_return;
 	    memcpy(sha_ptr++, sha, sizeof(struct sha));
 	    *crc_ptr++ = htonl(crc);
 	    if (ofs > 0x7fffffff)
@@ -1025,11 +1029,18 @@ static PyObject *write_idx(PyObject *self, PyObject *args)
 	}
     }
 
-    int rc = msync(fmap, flen, MS_ASYNC);
+    int rc = msync(fmap.buf, fmap.len, MS_ASYNC);
     if (rc != 0)
-	return PyErr_SetFromErrnoWithFilename(PyExc_IOError, filename);
+    {
+        result = PyErr_SetFromErrnoWithFilename(PyExc_IOError, filename);
+        goto clean_and_return;
+    }
 
-    return PyLong_FromUnsignedLong(count);
+    result = PyLong_FromUnsignedLong(count);
+
+ clean_and_return:
+    PyBuffer_Release(&fmap);
+    return result;
 }
 
 
