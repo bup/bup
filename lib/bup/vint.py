@@ -36,6 +36,7 @@ def read_vuint(port):
     c = port.read(1)
     if not c:
         raise EOFError('encountered EOF while reading vuint')
+    assert type(c) == bytes
     if ord(c) == 0:
         return 0
     result = 0
@@ -79,6 +80,7 @@ def read_vint(port):
     c = port.read(1)
     if not c:
         raise EOFError('encountered EOF while reading vint')
+    assert type(c) == bytes
     negative = False
     result = 0
     offset = 0
