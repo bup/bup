@@ -60,10 +60,10 @@ def _group_from_py(py):
                  tuple(x.encode('iso-8859-1') for x in py.gr_mem))
 
 def getgrgid(uid):
-    return _group_from_py(pwd.getgrgid(uid))
+    return _group_from_py(grp.getgrgid(uid))
 
 def getgrnam(name):
-    return _group_from_py(pwd.getgrnam(name))
+    return _group_from_py(grp.getgrnam(name))
 
 
 _uid_to_pwd_cache = {}
@@ -99,7 +99,7 @@ def grp_from_gid(gid):
     Return None if no entry is found.
     """
     global _gid_to_grp_cache, _name_to_grp_cache
-    entry, cached = cache_key_value(grp.getgrgid, gid, _gid_to_grp_cache)
+    entry, cached = cache_key_value(getgrgid, gid, _gid_to_grp_cache)
     if entry and not cached:
         _name_to_grp_cache[entry.gr_name] = entry
     return entry
@@ -111,7 +111,7 @@ def grp_from_name(name):
     """
     assert type(name) == bytes
     global _gid_to_grp_cache, _name_to_grp_cache
-    entry, cached = cache_key_value(grp.getgrnam, name, _name_to_grp_cache)
+    entry, cached = cache_key_value(getgrnam, name, _name_to_grp_cache)
     if entry and not cached:
         _gid_to_grp_cache[entry.gr_gid] = entry
     return entry
