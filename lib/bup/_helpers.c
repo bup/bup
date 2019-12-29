@@ -1150,7 +1150,7 @@ static PyObject *open_noatime(PyObject *self, PyObject *args)
 {
     char *filename = NULL;
     int fd;
-    if (!PyArg_ParseTuple(args, "s", &filename))
+    if (!PyArg_ParseTuple(args, cstr_argf, &filename))
 	return NULL;
     fd = _open_noatime(filename, 0);
     if (fd < 0)
@@ -1197,7 +1197,7 @@ static PyObject *bup_get_linux_file_attr(PyObject *self, PyObject *args)
     char *path;
     int fd;
 
-    if (!PyArg_ParseTuple(args, "s", &path))
+    if (!PyArg_ParseTuple(args, cstr_argf, &path))
         return NULL;
 
     fd = _open_noatime(path, O_NONBLOCK);
