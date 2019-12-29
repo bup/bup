@@ -617,7 +617,7 @@ static PyObject *firstword(PyObject *self, PyObject *args)
     Py_ssize_t len = 0;
     uint32_t v;
 
-    if (!PyArg_ParseTuple(args, "t#", &buf, &len))
+    if (!PyArg_ParseTuple(args, rbuf_argf, &buf, &len))
 	return NULL;
     
     if (len < 4)
@@ -795,7 +795,7 @@ static PyObject *extract_bits(PyObject *self, PyObject *args)
     Py_ssize_t len = 0;
     int nbits = 0;
 
-    if (!PyArg_ParseTuple(args, "t#i", &buf, &len, &nbits))
+    if (!PyArg_ParseTuple(args, rbuf_argf "i", &buf, &len, &nbits))
 	return NULL;
     
     if (len < 4)
