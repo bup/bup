@@ -1,5 +1,6 @@
 
 from __future__ import absolute_import
+from time import tzset
 import helpers, math, os, os.path, stat, subprocess
 
 from wvtest import *
@@ -167,33 +168,42 @@ def test_atomically_replaced_file():
                 WVPASSEQ(f.mode, 'wb')
 
 
+def set_tz(tz):
+    if not tz:
+        del environ[b'TZ']
+    else:
+        environ[b'TZ'] = tz
+    tzset()
+
+
 @wvtest
 def test_utc_offset_str():
     with no_lingering_errors():
         tz = environ.get(b'TZ')
+        tzset()
         try:
-            environ[b'TZ'] = b'FOO+0:00'
+            set_tz(b'FOO+0:00')
             WVPASSEQ(utc_offset_str(0), b'+0000')
-            environ[b'TZ'] = b'FOO+1:00'
+            set_tz(b'FOO+1:00')
             WVPASSEQ(utc_offset_str(0), b'-0100')
-            environ[b'TZ'] = b'FOO-1:00'
+            set_tz(b'FOO-1:00')
             WVPASSEQ(utc_offset_str(0), b'+0100')
-            environ[b'TZ'] = b'FOO+3:3'
+            set_tz(b'FOO+3:3')
             WVPASSEQ(utc_offset_str(0), b'-0303')
-            environ[b'TZ'] = b'FOO-3:3'
+            set_tz(b'FOO-3:3')
             WVPASSEQ(utc_offset_str(0), b'+0303')
             # Offset is not an integer number of minutes
-            environ[b'TZ'] = b'FOO+3:3:3'
+            set_tz(b'FOO+3:3:3')
             WVPASSEQ(utc_offset_str(1), b'-0303')
-            environ[b'TZ'] = b'FOO-3:3:3'
+            set_tz(b'FOO-3:3:3')
             WVPASSEQ(utc_offset_str(1), b'+0303')
             WVPASSEQ(utc_offset_str(314159), b'+0303')
         finally:
             if tz:
-                environ[b'TZ'] = tz
+                set_tz(tz)
             else:
                 try:
-                    del environ[b'TZ']
+                    set_tz(None)
                 except KeyError:
                     pass
 
