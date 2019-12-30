@@ -47,6 +47,7 @@ item.coid.
 """
 
 from __future__ import absolute_import, print_function
+from binascii import hexlify, unhexlify
 from collections import namedtuple
 from errno import EINVAL, ELOOP, ENOENT, ENOTDIR
 from itertools import chain, dropwhile, groupby, tee
@@ -59,6 +60,7 @@ from bup import git, metadata, vint
 from bup.compat import hexstr, range
 from bup.git import BUP_CHUNKED, cp, get_commit_items, parse_commit, tree_decode
 from bup.helpers import debug2, last
+from bup.io import path_msg
 from bup.metadata import Metadata
 from bup.vint import read_bvec, write_bvec
 from bup.vint import read_vint, write_vint
@@ -81,12 +83,12 @@ def write_ioerror(port, ex):
     assert isinstance(ex, IOError)
     write_vuint(port,
                 (1 if ex.errno is not None else 0)
-                | (2 if ex.message is not None else 0)
+                | (2 if ex.strerror is not None else 0)
                 | (4 if ex.terminus is not None else 0))
     if ex.errno is not None:
         write_vint(port, ex.errno)
-    if ex.message is not None:
-        write_bvec(port, ex.message.encode('utf-8'))
+    if str(ex.strerror is not None):
+        write_bvec(port, ex.strerror.encode('utf-8'))
     if ex.terminus is not None:
         write_resolution(port, ex.terminus)
 
@@ -114,13 +116,13 @@ def _default_mode_for_gitmode(gitmode):
 def _normal_or_chunked_file_size(repo, oid):
     """Return the size of the normal or chunked file indicated by oid."""
     # FIXME: --batch-format CatPipe?
-    it = repo.cat(oid.encode('hex'))
+    it = repo.cat(hexlify(oid))
     _, obj_t, size = next(it)
     ofs = 0
-    while obj_t == 'tree':
-        mode, name, last_oid = last(tree_decode(''.join(it)))
+    while obj_t == b'tree':
+        mode, name, last_oid = last(tree_decode(b''.join(it)))
         ofs += int(name, 16)
-        it = repo.cat(last_oid.encode('hex'))
+        it = repo.cat(hexlify(last_oid))
         _, obj_t, size = next(it)
     return ofs + sum(len(b) for b in it)
 
@@ -147,23 +149,23 @@ def _tree_chunks(repo, tree, startofs):
         skipmore = startofs - ofs
         if skipmore < 0:
             skipmore = 0
-        it = repo.cat(oid.encode('hex'))
+        it = repo.cat(hexlify(oid))
         _, obj_t, size = next(it)
-        data = ''.join(it)            
+        data = b''.join(it)
         if S_ISDIR(mode):
-            assert obj_t == 'tree'
+            assert obj_t == b'tree'
             for b in _tree_chunks(repo, tree_decode(data), skipmore):
                 yield b
         else:
-            assert obj_t == 'blob'
+            assert obj_t == b'blob'
             yield data[skipmore:]
 
 class _ChunkReader:
     def __init__(self, repo, oid, startofs):
-        it = repo.cat(oid.encode('hex'))
+        it = repo.cat(hexlify(oid))
         _, obj_t, size = next(it)
-        isdir = obj_t == 'tree'
-        data = ''.join(it)
+        isdir = obj_t == b'tree'
+        data = b''.join(it)
         if isdir:
             self.it = _tree_chunks(repo, tree_decode(data), startofs)
             self.blob = None
@@ -173,11 +175,11 @@ class _ChunkReader:
         self.ofs = startofs
 
     def next(self, size):
-        out = ''
+        out = b''
         while len(out) < size:
             if self.it and not self.blob:
                 try:
-                    self.blob = self.it.next()
+                    self.blob = next(self.it)
                 except StopIteration:
                     self.it = None
             if self.blob:
@@ -215,7 +217,7 @@ class _FileReader(object):
     def read(self, count=-1):
         size = self._compute_size()
         if self.ofs >= size:
-            return ''
+            return b''
         if count < 0:
             count = size - self.ofs
         if not self.reader or self.reader.ofs != self.ofs:
@@ -237,7 +239,7 @@ class _FileReader(object):
         self.close()
         return False
 
-_multiple_slashes_rx = re.compile(r'//+')
+_multiple_slashes_rx = re.compile(br'//+')
 
 def _decompose_path(path):
     """Return a boolean indicating whether the path is absolute, and a
@@ -246,18 +248,18 @@ def _decompose_path(path):
     effectively '/' or '.', return an empty list.
 
     """
-    path = re.sub(_multiple_slashes_rx, '/', path)
-    if path == '/':
+    path = re.sub(_multiple_slashes_rx, b'/', path)
+    if path == b'/':
         return True, True, []
     is_absolute = must_be_dir = False
-    if path.startswith('/'):
+    if path.startswith(b'/'):
         is_absolute = True
         path = path[1:]
-    for suffix in ('/', '/.'):
+    for suffix in (b'/', b'/.'):
         if path.endswith(suffix):
             must_be_dir = True
             path = path[:-len(suffix)]
-    parts = [x for x in path.split('/') if x != '.']
+    parts = [x for x in path.split(b'/') if x != b'.']
     parts.reverse()
     if not parts:
         must_be_dir = True  # e.g. path was effectively '.' or '/', etc.
@@ -277,7 +279,7 @@ real_tree_types = frozenset((Item, Commit))
 
 def write_item(port, item):
     kind = type(item)
-    name = bytes(kind.__name__)
+    name = bytes(kind.__name__.encode('ascii'))
     meta = item.meta
     has_meta = 1 if isinstance(meta, Metadata) else 0
     if kind in (Item, Chunky, RevList):
@@ -345,10 +347,10 @@ def write_resolution(port, resolution):
     for name, item in resolution:
         write_bvec(port, name)
         if item:
-            port.write(b'\1')
+            port.write(b'\x01')
             write_item(port, item)
         else:
-            port.write(b'\0')
+            port.write(b'\x00')
 
 def read_resolution(port):
     n = read_vuint(port)
@@ -393,9 +395,9 @@ def is_valid_cache_key(x):
     x_t = type(x)
     if x_t is bytes:
         tag = x[:4]
-        if tag in ('itm:', 'rvl:') and len(x) == 24:
+        if tag in (b'itm:', b'rvl:') and len(x) == 24:
             return True
-        if tag == 'res:':
+        if tag == b'res:':
             return True
 
 def cache_get(key):
@@ -434,7 +436,7 @@ def cache_get_commit_item(oid, need_meta=True):
             return item
     entries = cache_get(b'rvl:' + oid)
     if entries:
-        return entries['.']
+        return entries[b'.']
 
 def cache_get_revlist_item(oid, need_meta=True):
     commit = cache_get_commit_item(oid, need_meta=need_meta)
@@ -475,21 +477,21 @@ def tree_data_and_bupm(repo, oid):
 
     """    
     assert len(oid) == 20
-    it = repo.cat(oid.encode('hex'))
+    it = repo.cat(hexlify(oid))
     _, item_t, size = next(it)
-    data = ''.join(it)
-    if item_t == 'commit':
+    data = b''.join(it)
+    if item_t == b'commit':
         commit = parse_commit(data)
         it = repo.cat(commit.tree)
         _, item_t, size = next(it)
-        data = ''.join(it)
-        assert item_t == 'tree'
-    elif item_t != 'tree':
+        data = b''.join(it)
+        assert item_t == b'tree'
+    elif item_t != b'tree':
         raise Exception('%s is not a tree or commit' % hexstr(oid))
     for _, mangled_name, sub_oid in tree_decode(data):
-        if mangled_name == '.bupm':
+        if mangled_name == b'.bupm':
             return data, sub_oid
-        if mangled_name > '.bupm':
+        if mangled_name > b'.bupm':
             break
     return data, None
 
@@ -505,7 +507,7 @@ def _find_treeish_oid_metadata(repo, oid):
     return None
 
 def _readlink(repo, oid):
-    return ''.join(repo.join(oid.encode('hex')))
+    return b''.join(repo.join(hexlify(oid)))
 
 def readlink(repo, item):
     """Return the link target of item, which must be a symlink.  Reads the
@@ -551,17 +553,17 @@ def fopen(repo, item):
 def _commit_item_from_data(oid, data):
     info = parse_commit(data)
     return Commit(meta=default_dir_mode,
-                  oid=info.tree.decode('hex'),
+                  oid=unhexlify(info.tree),
                   coid=oid)
 
 def _commit_item_from_oid(repo, oid, require_meta):
     commit = cache_get_commit_item(oid, need_meta=require_meta)
     if commit and ((not require_meta) or isinstance(commit.meta, Metadata)):
         return commit
-    it = repo.cat(oid.encode('hex'))
+    it = repo.cat(hexlify(oid))
     _, typ, size = next(it)
-    assert typ == 'commit'
-    commit = _commit_item_from_data(oid, ''.join(it))
+    assert typ == b'commit'
+    commit = _commit_item_from_data(oid, b''.join(it))
     if require_meta:
         meta = _find_treeish_oid_metadata(repo, commit.oid)
         if meta:
@@ -584,31 +586,31 @@ def root_items(repo, names=None, want_meta=True):
 
     global _root, _tags
     if not names:
-        yield '.', _root
-        yield '.tag', _tags
+        yield b'.', _root
+        yield b'.tag', _tags
         # FIXME: maybe eventually support repo.clone() or something
         # and pass in two repos, so we can drop the tuple() and stream
         # in parallel (i.e. meta vs refs).
         for name, oid in tuple(repo.refs([], limit_to_heads=True)):
-            assert(name.startswith('refs/heads/'))
+            assert(name.startswith(b'refs/heads/'))
             yield name[11:], _revlist_item_from_oid(repo, oid, want_meta)
         return
 
-    if '.' in names:
-        yield '.', _root
-    if '.tag' in names:
-        yield '.tag', _tags
+    if b'.' in names:
+        yield b'.', _root
+    if b'.tag' in names:
+        yield b'.tag', _tags
     for ref in names:
-        if ref in ('.', '.tag'):
+        if ref in (b'.', b'.tag'):
             continue
-        it = repo.cat('refs/heads/' + ref)
+        it = repo.cat(b'refs/heads/' + ref)
         oidx, typ, size = next(it)
         if not oidx:
             for _ in it: pass
             continue
-        assert typ == 'commit'
-        commit = parse_commit(''.join(it))
-        yield ref, _revlist_item_from_oid(repo, oidx.decode('hex'), want_meta)
+        assert typ == b'commit'
+        commit = parse_commit(b''.join(it))
+        yield ref, _revlist_item_from_oid(repo, unhexlify(oidx), want_meta)
 
 def ordered_tree_entries(tree_data, bupm=None):
     """Yields (name, mangled_name, kind, gitmode, oid) for each item in
@@ -649,12 +651,12 @@ def tree_items(oid, tree_data, names=frozenset(), bupm=None):
     assert len(oid) == 20
     if not names:
         dot_meta = _read_dir_meta(bupm) if bupm else default_dir_mode
-        yield '.', Item(oid=oid, meta=dot_meta)
+        yield b'.', Item(oid=oid, meta=dot_meta)
         tree_entries = ordered_tree_entries(tree_data, bupm)
         for name, mangled_name, kind, gitmode, ent_oid in tree_entries:
-            if mangled_name == '.bupm':
+            if mangled_name == b'.bupm':
                 continue
-            assert name != '.'
+            assert name != b'.'
             yield name, tree_item(ent_oid, kind, gitmode)
         return
 
@@ -665,20 +667,20 @@ def tree_items(oid, tree_data, names=frozenset(), bupm=None):
     remaining = len(names)
 
     # Account for the bupm sort order issue (cf. ordered_tree_entries above)
-    last_name = max(names) if bupm else max(names) + '/'
+    last_name = max(names) if bupm else max(names) + b'/'
 
-    if '.' in names:
+    if b'.' in names:
         dot_meta = _read_dir_meta(bupm) if bupm else default_dir_mode
-        yield '.', Item(oid=oid, meta=dot_meta)
+        yield b'.', Item(oid=oid, meta=dot_meta)
         if remaining == 1:
             return
         remaining -= 1
 
     tree_entries = ordered_tree_entries(tree_data, bupm)
     for name, mangled_name, kind, gitmode, ent_oid in tree_entries:
-        if mangled_name == '.bupm':
+        if mangled_name == b'.bupm':
             continue
-        assert name != '.'
+        assert name != b'.'
         if name not in names:
             if name > last_name:
                 break  # given bupm sort order, we're finished
@@ -697,15 +699,15 @@ def tree_items_with_meta(repo, oid, tree_data, names):
     assert len(oid) == 20
     bupm = None
     for _, mangled_name, sub_oid in tree_decode(tree_data):
-        if mangled_name == '.bupm':
+        if mangled_name == b'.bupm':
             bupm = _FileReader(repo, sub_oid)
             break
-        if mangled_name > '.bupm':
+        if mangled_name > b'.bupm':
             break
     for item in tree_items(oid, tree_data, names, bupm):
         yield item
 
-_save_name_rx = re.compile(r'^\d\d\d\d-\d\d-\d\d-\d{6}(-\d+)?$')
+_save_name_rx = re.compile(br'^\d\d\d\d-\d\d-\d\d-\d{6}(-\d+)?$')
         
 def _reverse_suffix_duplicates(strs):
     """Yields the elements of strs, with any runs of duplicate values
@@ -719,7 +721,7 @@ def _reverse_suffix_duplicates(strs):
             yield name
         else:
             ndig = len(str(ndup - 1))
-            fmt = '%s-' + '%0' + str(ndig) + 'd'
+            fmt = b'%s-' + b'%0' + (b'%d' % ndig) + b'd'
             for i in range(ndup - 1, -1, -1):
                 yield fmt % (name, i)
 
@@ -727,15 +729,15 @@ def parse_rev(f):
     items = f.readline().split(None)
     assert len(items) == 2
     tree, auth_sec = items
-    return tree.decode('hex'), int(auth_sec)
+    return unhexlify(tree), int(auth_sec)
 
 def _name_for_rev(rev):
     commit_oidx, (tree_oid, utc) = rev
-    return strftime('%Y-%m-%d-%H%M%S', localtime(utc))
+    return strftime('%Y-%m-%d-%H%M%S', localtime(utc)).encode('ascii')
 
 def _item_for_rev(rev):
     commit_oidx, (tree_oid, utc) = rev
-    coid = commit_oidx.decode('hex')
+    coid = unhexlify(commit_oidx)
     item = cache_get_commit_item(coid, need_meta=False)
     if item:
         return item
@@ -751,8 +753,8 @@ def cache_commit(repo, oid):
     """
     # For now, always cache with full metadata
     entries = {}
-    entries['.'] = _revlist_item_from_oid(repo, oid, True)
-    revs = repo.rev_list((oid.encode('hex'),), format='%T %at',
+    entries[b'.'] = _revlist_item_from_oid(repo, oid, True)
+    revs = repo.rev_list((hexlify(oid),), format=b'%T %at',
                          parse=parse_rev)
     rev_items, rev_names = tee(revs)
     revs = None  # Don't disturb the tees
@@ -763,7 +765,7 @@ def cache_commit(repo, oid):
         name = next(rev_names)
         tip = tip or (name, item)
         entries[name] = item
-    entries['latest'] = FakeLink(meta=default_symlink_mode, target=tip[0])
+    entries[b'latest'] = FakeLink(meta=default_symlink_mode, target=tip[0])
     revlist_key = b'rvl:' + tip[1].coid
     cache_notice(revlist_key, entries)
     return entries
@@ -773,8 +775,8 @@ def revlist_items(repo, oid, names):
 
     # Special case '.' instead of caching the whole history since it's
     # the only way to get the metadata for the commit.
-    if names and all(x == '.' for x in names):
-        yield '.', _revlist_item_from_oid(repo, oid, True)
+    if names and all(x == b'.' for x in names):
+        yield b'.', _revlist_item_from_oid(repo, oid, True)
         return
 
     # For now, don't worry about the possibility of the contents being
@@ -790,11 +792,11 @@ def revlist_items(repo, oid, names):
         return
 
     names = frozenset(name for name in names
-                      if _save_name_rx.match(name) or name in ('.', 'latest'))
+                      if _save_name_rx.match(name) or name in (b'.', b'latest'))
 
-    if '.' in names:
-        yield '.', entries['.']
-    for name in (n for n in names if n != '.'):
+    if b'.' in names:
+        yield b'.', entries[b'.']
+    for name in (n for n in names if n != b'.'):
         commit = entries.get(name)
         if commit:
             yield name, commit
@@ -804,24 +806,25 @@ def tags_items(repo, names):
 
     def tag_item(oid):
         assert len(oid) == 20
-        oidx = oid.encode('hex')
+        oidx = hexlify(oid)
         it = repo.cat(oidx)
         _, typ, size = next(it)
-        if typ == 'commit':
+        if typ == b'commit':
             return cache_get_commit_item(oid, need_meta=False) \
-                or _commit_item_from_data(oid, ''.join(it))
+                or _commit_item_from_data(oid, b''.join(it))
         for _ in it: pass
-        if typ == 'blob':
+        if typ == b'blob':
             return Item(meta=default_file_mode, oid=oid)
-        elif typ == 'tree':
+        elif typ == b'tree':
             return Item(meta=default_dir_mode, oid=oid)
-        raise Exception('unexpected tag type ' + typ + ' for tag ' + name)
+        raise Exception('unexpected tag type ' + typ.decode('ascii')
+                        + ' for tag ' + path_msg(name))
 
     if not names:
-        yield '.', _tags
+        yield b'.', _tags
         # We have to pull these all into ram because tag_item calls cat()
         for name, oid in tuple(repo.refs(names, limit_to_tags=True)):
-            assert(name.startswith('refs/tags/'))
+            assert(name.startswith(b'refs/tags/'))
             name = name[10:]
             yield name, tag_item(oid)
         return
@@ -831,14 +834,14 @@ def tags_items(repo, names):
         names = frozenset(names)
     remaining = len(names)
     last_name = max(names)
-    if '.' in names:
-        yield '.', _tags
+    if b'.' in names:
+        yield b'.', _tags
         if remaining == 1:
             return
         remaining -= 1
 
     for name, oid in repo.refs(names, limit_to_tags=True):
-        assert(name.startswith('refs/tags/'))
+        assert(name.startswith(b'refs/tags/'))
         name = name[10:]
         if name > last_name:
             return
@@ -876,14 +879,14 @@ def contents(repo, item, names=None, want_meta=True):
     assert S_ISDIR(item_mode(item))
     item_t = type(item)
     if item_t in real_tree_types:
-        it = repo.cat(item.oid.encode('hex'))
+        it = repo.cat(hexlify(item.oid))
         _, obj_t, size = next(it)
-        data = ''.join(it)
-        if obj_t != 'tree':
+        data = b''.join(it)
+        if obj_t != b'tree':
             for _ in it: pass
             # Note: it shouldn't be possible to see an Item with type
             # 'commit' since a 'commit' should always produce a Commit.
-            raise Exception('unexpected git ' + obj_t)
+            raise Exception('unexpected git ' + obj_t.decode('ascii'))
         if want_meta:
             item_gen = tree_items_with_meta(repo, item.oid, data, names)
         else:
@@ -902,8 +905,8 @@ def contents(repo, item, names=None, want_meta=True):
 def _resolve_path(repo, path, parent=None, want_meta=True, follow=True):
     cache_key = b'res:%d%d%d:%s\0%s' \
                 % (bool(want_meta), bool(follow), repo.id(),
-                   ('/'.join(x[0] for x in parent) if parent else ''),
-                   '/'.join(path))
+                   (b'/'.join(x[0] for x in parent) if parent else b''),
+                   path)
     resolution = cache_get(cache_key)
     if resolution:
         return resolution
@@ -914,7 +917,7 @@ def _resolve_path(repo, path, parent=None, want_meta=True, follow=True):
 
     def raise_dir_required_but_not_dir(path, parent, past):
         raise IOError(ENOTDIR,
-                      "path %r%s resolves to non-directory %r"
+                      "path %s%s resolves to non-directory %r"
                       % (path,
                          ' (relative to %r)' % parent if parent else '',
                          past),
@@ -937,14 +940,14 @@ def _resolve_path(repo, path, parent=None, want_meta=True, follow=True):
         follow = True
     if not future:  # path was effectively '.' or '/'
         if is_absolute:
-            return notice_resolution((('', _root),))
+            return notice_resolution(((b'', _root),))
         if parent:
             return notice_resolution(tuple(parent))
-        return notice_resolution((('', _root),))
+        return notice_resolution(((b'', _root),))
     if is_absolute:
-        past = [('', _root)]
+        past = [(b'', _root)]
     else:
-        past = list(parent) if parent else [('', _root)]
+        past = list(parent) if parent else [(b'', _root)]
     hops = 0
     while True:
         if not future:
@@ -952,14 +955,14 @@ def _resolve_path(repo, path, parent=None, want_meta=True, follow=True):
                 raise_dir_required_but_not_dir(path, parent, past)
             return notice_resolution(tuple(past))
         segment = future.pop()
-        if segment == '..':
+        if segment == b'..':
             assert len(past) > 0
             if len(past) > 1:  # .. from / is /
                 assert S_ISDIR(item_mode(past[-1][1]))
                 past.pop()
         else:
             parent_name, parent_item = past[-1]
-            wanted = (segment,) if not want_meta else ('.', segment)
+            wanted = (segment,) if not want_meta else (b'.', segment)
             items = tuple(contents(repo, parent_item, names=wanted,
                                    want_meta=want_meta))
             if not want_meta:
@@ -967,7 +970,7 @@ def _resolve_path(repo, path, parent=None, want_meta=True, follow=True):
             else:  # First item will be '.' and have the metadata
                 item = items[1][1] if len(items) == 2 else None
                 dot, dot_item = items[0]
-                assert dot == '.'
+                assert dot == b'.'
                 past[-1] = parent_name, parent_item
             if not item:
                 past.append((segment, None),)
@@ -1005,8 +1008,8 @@ def _resolve_path(repo, path, parent=None, want_meta=True, follow=True):
                 is_absolute, _, target_future = _decompose_path(target)
                 if is_absolute:
                     if not target_future:  # path was effectively '/'
-                        return notice_resolution((('', _root),))
-                    past = [('', _root)]
+                        return notice_resolution(((b'', _root),))
+                    past = [(b'', _root)]
                     future = target_future
                 else:
                     future.extend(target_future)
@@ -1129,9 +1132,9 @@ def fill_in_metadata_if_dir(repo, item):
 
     """
     if S_ISDIR(item_mode(item)) and not isinstance(item.meta, Metadata):
-        items = tuple(contents(repo, item, ('.',), want_meta=True))
+        items = tuple(contents(repo, item, (b'.',), want_meta=True))
         assert len(items) == 1
-        assert items[0][0] == '.'
+        assert items[0][0] == b'.'
         item = items[0][1]
     return item
 
