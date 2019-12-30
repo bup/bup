@@ -1278,7 +1278,7 @@ static PyObject *bup_set_linux_file_attr(PyObject *self, PyObject *args)
     PyObject *py_attr;
     int fd;
 
-    if (!PyArg_ParseTuple(args, "sO", &path, &py_attr))
+    if (!PyArg_ParseTuple(args, cstr_argf "O", &path, &py_attr))
         return NULL;
 
     if (!bup_uint_from_py(&attr, py_attr, "attr"))
