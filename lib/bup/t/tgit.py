@@ -1,12 +1,13 @@
 
 from __future__ import absolute_import, print_function
+from binascii import hexlify, unhexlify
 from subprocess import check_call
 import struct, os, time
 
 from wvtest import *
 
 from bup import git, path
-from bup.compat import range
+from bup.compat import bytes_from_byte, environ, range
 from bup.helpers import localtime, log, mkdirp, readpipe
 from buptest import no_lingering_errors, test_tempdir
 
@@ -15,14 +16,12 @@ bup_exe = path.exe()
 
 
 def exc(*cmd):
-    cmd_str = ' '.join(cmd)
-    print(cmd_str, file=sys.stderr)
+    print(repr(cmd), file=sys.stderr)
     check_call(cmd)
 
 
 def exo(*cmd):
-    cmd_str = ' '.join(cmd)
-    print(cmd_str, file=sys.stderr)
+    print(repr(cmd), file=sys.stderr)
     return readpipe(cmd)
 
 
@@ -34,59 +33,59 @@ def testmangle():
         alink  = 0o120000
         adir   = 0o040000
         adir2  = 0o040777
-        WVPASSEQ(git.mangle_name("a", adir2, adir), "a")
-        WVPASSEQ(git.mangle_name(".bup", adir2, adir), ".bup.bupl")
-        WVPASSEQ(git.mangle_name("a.bupa", adir2, adir), "a.bupa.bupl")
-        WVPASSEQ(git.mangle_name("b.bup", alink, alink), "b.bup.bupl")
-        WVPASSEQ(git.mangle_name("b.bu", alink, alink), "b.bu")
-        WVPASSEQ(git.mangle_name("f", afile, afile2), "f")
-        WVPASSEQ(git.mangle_name("f.bup", afile, afile2), "f.bup.bupl")
-        WVPASSEQ(git.mangle_name("f.bup", afile, adir), "f.bup.bup")
-        WVPASSEQ(git.mangle_name("f", afile, adir), "f.bup")
+        WVPASSEQ(git.mangle_name(b'a', adir2, adir), b'a')
+        WVPASSEQ(git.mangle_name(b'.bup', adir2, adir), b'.bup.bupl')
+        WVPASSEQ(git.mangle_name(b'a.bupa', adir2, adir), b'a.bupa.bupl')
+        WVPASSEQ(git.mangle_name(b'b.bup', alink, alink), b'b.bup.bupl')
+        WVPASSEQ(git.mangle_name(b'b.bu', alink, alink), b'b.bu')
+        WVPASSEQ(git.mangle_name(b'f', afile, afile2), b'f')
+        WVPASSEQ(git.mangle_name(b'f.bup', afile, afile2), b'f.bup.bupl')
+        WVPASSEQ(git.mangle_name(b'f.bup', afile, adir), b'f.bup.bup')
+        WVPASSEQ(git.mangle_name(b'f', afile, adir), b'f.bup')
 
-        WVPASSEQ(git.demangle_name("f.bup", afile), ("f", git.BUP_CHUNKED))
-        WVPASSEQ(git.demangle_name("f.bupl", afile), ("f", git.BUP_NORMAL))
-        WVPASSEQ(git.demangle_name("f.bup.bupl", afile), ("f.bup", git.BUP_NORMAL))
+        WVPASSEQ(git.demangle_name(b'f.bup', afile), (b'f', git.BUP_CHUNKED))
+        WVPASSEQ(git.demangle_name(b'f.bupl', afile), (b'f', git.BUP_NORMAL))
+        WVPASSEQ(git.demangle_name(b'f.bup.bupl', afile), (b'f.bup', git.BUP_NORMAL))
 
-        WVPASSEQ(git.demangle_name(".bupm", afile), ('', git.BUP_NORMAL))
-        WVPASSEQ(git.demangle_name(".bupm", adir), ('', git.BUP_CHUNKED))
+        WVPASSEQ(git.demangle_name(b'.bupm', afile), (b'', git.BUP_NORMAL))
+        WVPASSEQ(git.demangle_name(b'.bupm', adir), (b'', git.BUP_CHUNKED))
 
         # for safety, we ignore .bup? suffixes we don't recognize.  Future
         # versions might implement a .bup[a-z] extension as something other
         # than BUP_NORMAL.
-        WVPASSEQ(git.demangle_name("f.bupa", afile), ("f.bupa", git.BUP_NORMAL))
+        WVPASSEQ(git.demangle_name(b'f.bupa', afile), (b'f.bupa', git.BUP_NORMAL))
 
 
 @wvtest
 def testencode():
     with no_lingering_errors():
-        s = 'hello world'
-        looseb = ''.join(git._encode_looseobj('blob', s))
-        looset = ''.join(git._encode_looseobj('tree', s))
-        loosec = ''.join(git._encode_looseobj('commit', s))
-        packb = ''.join(git._encode_packobj('blob', s))
-        packt = ''.join(git._encode_packobj('tree', s))
-        packc = ''.join(git._encode_packobj('commit', s))
-        WVPASSEQ(git._decode_looseobj(looseb), ('blob', s))
-        WVPASSEQ(git._decode_looseobj(looset), ('tree', s))
-        WVPASSEQ(git._decode_looseobj(loosec), ('commit', s))
-        WVPASSEQ(git._decode_packobj(packb), ('blob', s))
-        WVPASSEQ(git._decode_packobj(packt), ('tree', s))
-        WVPASSEQ(git._decode_packobj(packc), ('commit', s))
+        s = b'hello world'
+        looseb = b''.join(git._encode_looseobj(b'blob', s))
+        looset = b''.join(git._encode_looseobj(b'tree', s))
+        loosec = b''.join(git._encode_looseobj(b'commit', s))
+        packb = b''.join(git._encode_packobj(b'blob', s))
+        packt = b''.join(git._encode_packobj(b'tree', s))
+        packc = b''.join(git._encode_packobj(b'commit', s))
+        WVPASSEQ(git._decode_looseobj(looseb), (b'blob', s))
+        WVPASSEQ(git._decode_looseobj(looset), (b'tree', s))
+        WVPASSEQ(git._decode_looseobj(loosec), (b'commit', s))
+        WVPASSEQ(git._decode_packobj(packb), (b'blob', s))
+        WVPASSEQ(git._decode_packobj(packt), (b'tree', s))
+        WVPASSEQ(git._decode_packobj(packc), (b'commit', s))
         for i in range(10):
-            WVPASS(git._encode_looseobj('blob', s, compression_level=i))
+            WVPASS(git._encode_looseobj(b'blob', s, compression_level=i))
         def encode_pobj(n):
-            return ''.join(git._encode_packobj('blob', s, compression_level=n))
+            return b''.join(git._encode_packobj(b'blob', s, compression_level=n))
         WVEXCEPT(ValueError, encode_pobj, -1)
         WVEXCEPT(ValueError, encode_pobj, 10)
-        WVEXCEPT(ValueError, encode_pobj, 'x')
+        WVEXCEPT(ValueError, encode_pobj, b'x')
 
 
 @wvtest
 def testpacks():
     with no_lingering_errors():
-        with test_tempdir('bup-tgit-') as tmpdir:
-            os.environ['BUP_DIR'] = bupdir = tmpdir + "/bup"
+        with test_tempdir(b'bup-tgit-') as tmpdir:
+            environ[b'BUP_DIR'] = bupdir = tmpdir + b'/bup'
             git.init_repo(bupdir)
             git.verbose = 1
 
@@ -99,41 +98,41 @@ def testpacks():
             hashes = []
             nobj = 1000
             for i in range(nobj):
-                hashes.append(w.new_blob(str(i)))
+                hashes.append(w.new_blob(b'%d' % i))
             log('\n')
             nameprefix = w.close()
             print(repr(nameprefix))
-            WVPASS(os.path.exists(nameprefix + '.pack'))
-            WVPASS(os.path.exists(nameprefix + '.idx'))
+            WVPASS(os.path.exists(nameprefix + b'.pack'))
+            WVPASS(os.path.exists(nameprefix + b'.idx'))
 
-            r = git.open_idx(nameprefix + '.idx')
+            r = git.open_idx(nameprefix + b'.idx')
             print(repr(r.fanout))
 
             for i in range(nobj):
                 WVPASS(r.find_offset(hashes[i]) > 0)
             WVPASS(r.exists(hashes[99]))
-            WVFAIL(r.exists('\0'*20))
+            WVFAIL(r.exists(b'\0'*20))
 
             pi = iter(r)
             for h in sorted(hashes):
-                WVPASSEQ(str(next(pi)).encode('hex'), h.encode('hex'))
+                WVPASSEQ(hexlify(next(pi)), hexlify(h))
 
-            WVFAIL(r.find_offset('\0'*20))
+            WVFAIL(r.find_offset(b'\0'*20))
 
-            r = git.PackIdxList(bupdir + '/objects/pack')
+            r = git.PackIdxList(bupdir + b'/objects/pack')
             WVPASS(r.exists(hashes[5]))
             WVPASS(r.exists(hashes[6]))
-            WVFAIL(r.exists('\0'*20))
+            WVFAIL(r.exists(b'\0'*20))
 
 
 @wvtest
 def test_pack_name_lookup():
     with no_lingering_errors():
-        with test_tempdir('bup-tgit-') as tmpdir:
-            os.environ['BUP_DIR'] = bupdir = tmpdir + "/bup"
+        with test_tempdir(b'bup-tgit-') as tmpdir:
+            environ[b'BUP_DIR'] = bupdir = tmpdir + b'/bup'
             git.init_repo(bupdir)
             git.verbose = 1
-            packdir = git.repo('objects/pack')
+            packdir = git.repo(b'objects/pack')
 
             idxnames = []
             hashes = []
@@ -141,22 +140,22 @@ def test_pack_name_lookup():
             for start in range(0,28,2):
                 w = git.PackWriter()
                 for i in range(start, start+2):
-                    hashes.append(w.new_blob(str(i)))
+                    hashes.append(w.new_blob(b'%d' % i))
                 log('\n')
-                idxnames.append(os.path.basename(w.close() + '.idx'))
+                idxnames.append(os.path.basename(w.close() + b'.idx'))
 
             r = git.PackIdxList(packdir)
             WVPASSEQ(len(r.packs), 2)
             for e,idxname in enumerate(idxnames):
                 for i in range(e*2, (e+1)*2):
-                    WVPASSEQ(r.exists(hashes[i], want_source=True), idxname)
+                    WVPASSEQ(idxname, r.exists(hashes[i], want_source=True))
 
 
 @wvtest
 def test_long_index():
     with no_lingering_errors():
-        with test_tempdir('bup-tgit-') as tmpdir:
-            os.environ['BUP_DIR'] = bupdir = tmpdir + "/bup"
+        with test_tempdir(b'bup-tgit-') as tmpdir:
+            environ[b'BUP_DIR'] = bupdir = tmpdir + b'/bup'
             git.init_repo(bupdir)
             w = git.PackWriter()
             obj_bin = struct.pack('!IIIII',
@@ -172,7 +171,7 @@ def test_long_index():
             idx[0x11].append((obj2_bin, 2, 0xffffffffff))
             idx[0x22].append((obj3_bin, 3, 0xff))
             w.count = 3
-            name = tmpdir + '/tmp.idx'
+            name = tmpdir + b'/tmp.idx'
             r = w._write_pack_idx_v2(name, idx, pack_bin)
             i = git.PackIdxV2(name, open(name, 'rb'))
             WVPASSEQ(i.find_offset(obj_bin), 0xfffffffff)
@@ -183,8 +182,8 @@ def test_long_index():
 @wvtest
 def test_check_repo_or_die():
     with no_lingering_errors():
-        with test_tempdir('bup-tgit-') as tmpdir:
-            os.environ['BUP_DIR'] = bupdir = tmpdir + "/bup"
+        with test_tempdir(b'bup-tgit-') as tmpdir:
+            environ[b'BUP_DIR'] = bupdir = tmpdir + b'/bup'
             orig_cwd = os.getcwd()
             try:
                 os.chdir(tmpdir)
@@ -193,21 +192,21 @@ def test_check_repo_or_die():
                 # if we reach this point the call above passed
                 WVPASS('check_repo_or_die')
 
-                os.rename(bupdir + '/objects/pack',
-                          bupdir + '/objects/pack.tmp')
-                open(bupdir + '/objects/pack', 'w').close()
+                os.rename(bupdir + b'/objects/pack',
+                          bupdir + b'/objects/pack.tmp')
+                open(bupdir + b'/objects/pack', 'w').close()
                 try:
                     git.check_repo_or_die()
                 except SystemExit as e:
                     WVPASSEQ(e.code, 14)
                 else:
                     WVFAIL()
-                os.unlink(bupdir + '/objects/pack')
-                os.rename(bupdir + '/objects/pack.tmp',
-                          bupdir + '/objects/pack')
+                os.unlink(bupdir + b'/objects/pack')
+                os.rename(bupdir + b'/objects/pack.tmp',
+                          bupdir + b'/objects/pack')
 
                 try:
-                    git.check_repo_or_die('nonexistantbup.tmp')
+                    git.check_repo_or_die(b'nonexistantbup.tmp')
                 except SystemExit as e:
                     WVPASSEQ(e.code, 15)
                 else:
@@ -221,117 +220,117 @@ def test_commit_parsing():
 
     def restore_env_var(name, val):
         if val is None:
-            del os.environ[name]
+            del environ[name]
         else:
-            os.environ[name] = val
+            environ[name] = val
 
     def showval(commit, val):
-        return readpipe(['git', 'show', '-s',
-                         '--pretty=format:%s' % val, commit]).strip()
+        return readpipe([b'git', b'show', b'-s',
+                         b'--pretty=format:%s' % val, commit]).strip()
 
     with no_lingering_errors():
-        with test_tempdir('bup-tgit-') as tmpdir:
+        with test_tempdir(b'bup-tgit-') as tmpdir:
             orig_cwd = os.getcwd()
-            workdir = tmpdir + "/work"
-            repodir = workdir + '/.git'
-            orig_author_name = os.environ.get('GIT_AUTHOR_NAME')
-            orig_author_email = os.environ.get('GIT_AUTHOR_EMAIL')
-            orig_committer_name = os.environ.get('GIT_COMMITTER_NAME')
-            orig_committer_email = os.environ.get('GIT_COMMITTER_EMAIL')
-            os.environ['GIT_AUTHOR_NAME'] = 'bup test'
-            os.environ['GIT_COMMITTER_NAME'] = os.environ['GIT_AUTHOR_NAME']
-            os.environ['GIT_AUTHOR_EMAIL'] = 'bup@a425bc70a02811e49bdf73ee56450e6f'
-            os.environ['GIT_COMMITTER_EMAIL'] = os.environ['GIT_AUTHOR_EMAIL']
+            workdir = tmpdir + b'/work'
+            repodir = workdir + b'/.git'
+            orig_author_name = environ.get(b'GIT_AUTHOR_NAME')
+            orig_author_email = environ.get(b'GIT_AUTHOR_EMAIL')
+            orig_committer_name = environ.get(b'GIT_COMMITTER_NAME')
+            orig_committer_email = environ.get(b'GIT_COMMITTER_EMAIL')
+            environ[b'GIT_AUTHOR_NAME'] = b'bup test'
+            environ[b'GIT_COMMITTER_NAME'] = environ[b'GIT_AUTHOR_NAME']
+            environ[b'GIT_AUTHOR_EMAIL'] = b'bup@a425bc70a02811e49bdf73ee56450e6f'
+            environ[b'GIT_COMMITTER_EMAIL'] = environ[b'GIT_AUTHOR_EMAIL']
             try:
-                readpipe(['git', 'init', workdir])
-                os.environ['GIT_DIR'] = os.environ['BUP_DIR'] = repodir
+                readpipe([b'git', b'init', workdir])
+                environ[b'GIT_DIR'] = environ[b'BUP_DIR'] = repodir
                 git.check_repo_or_die(repodir)
                 os.chdir(workdir)
                 with open('foo', 'w') as f:
                     print('bar', file=f)
-                readpipe(['git', 'add', '.'])
-                readpipe(['git', 'commit', '-am', 'Do something',
-                          '--author', 'Someone <someone@somewhere>',
-                          '--date', 'Sat Oct 3 19:48:49 2009 -0400'])
-                commit = readpipe(['git', 'show-ref', '-s', 'master']).strip()
-                parents = showval(commit, '%P')
-                tree = showval(commit, '%T')
-                cname = showval(commit, '%cn')
-                cmail = showval(commit, '%ce')
-                cdate = showval(commit, '%ct')
-                coffs = showval(commit, '%ci')
+                readpipe([b'git', b'add', b'.'])
+                readpipe([b'git', b'commit', b'-am', b'Do something',
+                          b'--author', b'Someone <someone@somewhere>',
+                          b'--date', b'Sat Oct 3 19:48:49 2009 -0400'])
+                commit = readpipe([b'git', b'show-ref', b'-s', b'master']).strip()
+                parents = showval(commit, b'%P')
+                tree = showval(commit, b'%T')
+                cname = showval(commit, b'%cn')
+                cmail = showval(commit, b'%ce')
+                cdate = showval(commit, b'%ct')
+                coffs = showval(commit, b'%ci')
                 coffs = coffs[-5:]
                 coff = (int(coffs[-4:-2]) * 60 * 60) + (int(coffs[-2:]) * 60)
-                if coffs[-5] == '-':
+                if bytes_from_byte(coffs[-5]) == b'-':
                     coff = - coff
                 commit_items = git.get_commit_items(commit, git.cp())
                 WVPASSEQ(commit_items.parents, [])
                 WVPASSEQ(commit_items.tree, tree)
-                WVPASSEQ(commit_items.author_name, 'Someone')
-                WVPASSEQ(commit_items.author_mail, 'someone@somewhere')
+                WVPASSEQ(commit_items.author_name, b'Someone')
+                WVPASSEQ(commit_items.author_mail, b'someone@somewhere')
                 WVPASSEQ(commit_items.author_sec, 1254613729)
                 WVPASSEQ(commit_items.author_offset, -(4 * 60 * 60))
                 WVPASSEQ(commit_items.committer_name, cname)
                 WVPASSEQ(commit_items.committer_mail, cmail)
                 WVPASSEQ(commit_items.committer_sec, int(cdate))
                 WVPASSEQ(commit_items.committer_offset, coff)
-                WVPASSEQ(commit_items.message, 'Do something\n')
-                with open('bar', 'w') as f:
-                    print('baz', file=f)
-                readpipe(['git', 'add', '.'])
-                readpipe(['git', 'commit', '-am', 'Do something else'])
-                child = readpipe(['git', 'show-ref', '-s', 'master']).strip()
-                parents = showval(child, '%P')
+                WVPASSEQ(commit_items.message, b'Do something\n')
+                with open(b'bar', 'wb') as f:
+                    f.write(b'baz\n')
+                readpipe([b'git', b'add', '.'])
+                readpipe([b'git', b'commit', b'-am', b'Do something else'])
+                child = readpipe([b'git', b'show-ref', b'-s', b'master']).strip()
+                parents = showval(child, b'%P')
                 commit_items = git.get_commit_items(child, git.cp())
                 WVPASSEQ(commit_items.parents, [commit])
             finally:
                 os.chdir(orig_cwd)
-                restore_env_var('GIT_AUTHOR_NAME', orig_author_name)
-                restore_env_var('GIT_AUTHOR_EMAIL', orig_author_email)
-                restore_env_var('GIT_COMMITTER_NAME', orig_committer_name)
-                restore_env_var('GIT_COMMITTER_EMAIL', orig_committer_email)
+                restore_env_var(b'GIT_AUTHOR_NAME', orig_author_name)
+                restore_env_var(b'GIT_AUTHOR_EMAIL', orig_author_email)
+                restore_env_var(b'GIT_COMMITTER_NAME', orig_committer_name)
+                restore_env_var(b'GIT_COMMITTER_EMAIL', orig_committer_email)
 
 
 @wvtest
 def test_new_commit():
     with no_lingering_errors():
-        with test_tempdir('bup-tgit-') as tmpdir:
-            os.environ['BUP_DIR'] = bupdir = tmpdir + "/bup"
+        with test_tempdir(b'bup-tgit-') as tmpdir:
+            environ[b'BUP_DIR'] = bupdir = tmpdir + b'/bup'
             git.init_repo(bupdir)
             git.verbose = 1
 
             w = git.PackWriter()
             tree = os.urandom(20)
             parent = os.urandom(20)
-            author_name = 'Author'
-            author_mail = 'author@somewhere'
+            author_name = b'Author'
+            author_mail = b'author@somewhere'
             adate_sec = 1439657836
             cdate_sec = adate_sec + 1
-            committer_name = 'Committer'
-            committer_mail = 'committer@somewhere'
+            committer_name = b'Committer'
+            committer_mail = b'committer@somewhere'
             adate_tz_sec = cdate_tz_sec = None
             commit = w.new_commit(tree, parent,
-                                  '%s <%s>' % (author_name, author_mail),
+                                  b'%s <%s>' % (author_name, author_mail),
                                   adate_sec, adate_tz_sec,
-                                  '%s <%s>' % (committer_name, committer_mail),
+                                  b'%s <%s>' % (committer_name, committer_mail),
                                   cdate_sec, cdate_tz_sec,
-                                  'There is a small mailbox here')
+                                  b'There is a small mailbox here')
             adate_tz_sec = -60 * 60
             cdate_tz_sec = 120 * 60
             commit_off = w.new_commit(tree, parent,
-                                      '%s <%s>' % (author_name, author_mail),
+                                      b'%s <%s>' % (author_name, author_mail),
                                       adate_sec, adate_tz_sec,
-                                      '%s <%s>' % (committer_name, committer_mail),
+                                      b'%s <%s>' % (committer_name, committer_mail),
                                       cdate_sec, cdate_tz_sec,
-                                      'There is a small mailbox here')
+                                      b'There is a small mailbox here')
             w.close()
 
-            commit_items = git.get_commit_items(commit.encode('hex'), git.cp())
+            commit_items = git.get_commit_items(hexlify(commit), git.cp())
             local_author_offset = localtime(adate_sec).tm_gmtoff
             local_committer_offset = localtime(cdate_sec).tm_gmtoff
-            WVPASSEQ(tree, commit_items.tree.decode('hex'))
+            WVPASSEQ(tree, unhexlify(commit_items.tree))
             WVPASSEQ(1, len(commit_items.parents))
-            WVPASSEQ(parent, commit_items.parents[0].decode('hex'))
+            WVPASSEQ(parent, unhexlify(commit_items.parents[0]))
             WVPASSEQ(author_name, commit_items.author_name)
             WVPASSEQ(author_mail, commit_items.author_mail)
             WVPASSEQ(adate_sec, commit_items.author_sec)
@@ -341,10 +340,10 @@ def test_new_commit():
             WVPASSEQ(cdate_sec, commit_items.committer_sec)
             WVPASSEQ(local_committer_offset, commit_items.committer_offset)
 
-            commit_items = git.get_commit_items(commit_off.encode('hex'), git.cp())
-            WVPASSEQ(tree, commit_items.tree.decode('hex'))
+            commit_items = git.get_commit_items(hexlify(commit_off), git.cp())
+            WVPASSEQ(tree, unhexlify(commit_items.tree))
             WVPASSEQ(1, len(commit_items.parents))
-            WVPASSEQ(parent, commit_items.parents[0].decode('hex'))
+            WVPASSEQ(parent, unhexlify(commit_items.parents[0]))
             WVPASSEQ(author_name, commit_items.author_name)
             WVPASSEQ(author_mail, commit_items.author_mail)
             WVPASSEQ(adate_sec, commit_items.author_sec)
@@ -358,48 +357,50 @@ def test_new_commit():
 @wvtest
 def test_list_refs():
     with no_lingering_errors():
-        with test_tempdir('bup-tgit-') as tmpdir:
-            os.environ['BUP_DIR'] = bupdir = tmpdir + "/bup"
-            src = tmpdir + '/src'
+        with test_tempdir(b'bup-tgit-') as tmpdir:
+            environ[b'BUP_DIR'] = bupdir = tmpdir + b'/bup'
+            src = tmpdir + b'/src'
             mkdirp(src)
-            with open(src + '/1', 'w+') as f:
-                print('something', file=f)
-            with open(src + '/2', 'w+') as f:
-                print('something else', file=f)
+            with open(src + b'/1', 'wb+') as f:
+                f.write(b'something\n')
+            with open(src + b'/2', 'wb+') as f:
+                f.write(b'something else\n')
             git.init_repo(bupdir)
             emptyset = frozenset()
             WVPASSEQ(frozenset(git.list_refs()), emptyset)
             WVPASSEQ(frozenset(git.list_refs(limit_to_tags=True)), emptyset)
             WVPASSEQ(frozenset(git.list_refs(limit_to_heads=True)), emptyset)
-            exc(bup_exe, 'index', src)
-            exc(bup_exe, 'save', '-n', 'src', '--strip', src)
-            src_hash = exo('git', '--git-dir', bupdir,
-                           'rev-parse', 'src').strip().split('\n')
+            exc(bup_exe, b'index', src)
+            exc(bup_exe, b'save', b'-n', b'src', b'--strip', src)
+            src_hash = exo(b'git', b'--git-dir', bupdir,
+                           b'rev-parse', b'src').strip().split(b'\n')
             assert(len(src_hash) == 1)
-            src_hash = src_hash[0].decode('hex')
-            tree_hash = exo('git', '--git-dir', bupdir,
-                           'rev-parse', 'src:').strip().split('\n')[0].decode('hex')
-            blob_hash = exo('git', '--git-dir', bupdir,
-                           'rev-parse', 'src:1').strip().split('\n')[0].decode('hex')
+            src_hash = unhexlify(src_hash[0])
+            tree_hash = unhexlify(exo(b'git', b'--git-dir', bupdir,
+                                      b'rev-parse',
+                                      b'src:').strip().split(b'\n')[0])
+            blob_hash = unhexlify(exo(b'git', b'--git-dir', bupdir,
+                                      b'rev-parse',
+                                      b'src:1').strip().split(b'\n')[0])
             WVPASSEQ(frozenset(git.list_refs()),
-                     frozenset([('refs/heads/src', src_hash)]))
+                     frozenset([(b'refs/heads/src', src_hash)]))
             WVPASSEQ(frozenset(git.list_refs(limit_to_tags=True)), emptyset)
             WVPASSEQ(frozenset(git.list_refs(limit_to_heads=True)),
-                     frozenset([('refs/heads/src', src_hash)]))
-            exc('git', '--git-dir', bupdir, 'tag', 'commit-tag', 'src')
+                     frozenset([(b'refs/heads/src', src_hash)]))
+            exc(b'git', b'--git-dir', bupdir, b'tag', b'commit-tag', b'src')
             WVPASSEQ(frozenset(git.list_refs()),
-                     frozenset([('refs/heads/src', src_hash),
-                                ('refs/tags/commit-tag', src_hash)]))
+                     frozenset([(b'refs/heads/src', src_hash),
+                                (b'refs/tags/commit-tag', src_hash)]))
             WVPASSEQ(frozenset(git.list_refs(limit_to_tags=True)),
-                     frozenset([('refs/tags/commit-tag', src_hash)]))
+                     frozenset([(b'refs/tags/commit-tag', src_hash)]))
             WVPASSEQ(frozenset(git.list_refs(limit_to_heads=True)),
-                     frozenset([('refs/heads/src', src_hash)]))
-            exc('git', '--git-dir', bupdir, 'tag', 'tree-tag', 'src:')
-            exc('git', '--git-dir', bupdir, 'tag', 'blob-tag', 'src:1')
-            os.unlink(bupdir + '/refs/heads/src')
-            expected_tags = frozenset([('refs/tags/commit-tag', src_hash),
-                                       ('refs/tags/tree-tag', tree_hash),
-                                       ('refs/tags/blob-tag', blob_hash)])
+                     frozenset([(b'refs/heads/src', src_hash)]))
+            exc(b'git', b'--git-dir', bupdir, b'tag', b'tree-tag', b'src:')
+            exc(b'git', b'--git-dir', bupdir, b'tag', b'blob-tag', b'src:1')
+            os.unlink(bupdir + b'/refs/heads/src')
+            expected_tags = frozenset([(b'refs/tags/commit-tag', src_hash),
+                                       (b'refs/tags/tree-tag', tree_hash),
+                                       (b'refs/tags/blob-tag', blob_hash)])
             WVPASSEQ(frozenset(git.list_refs()), expected_tags)
             WVPASSEQ(frozenset(git.list_refs(limit_to_heads=True)), frozenset([]))
             WVPASSEQ(frozenset(git.list_refs(limit_to_tags=True)), expected_tags)
@@ -408,31 +409,32 @@ def test_list_refs():
 @wvtest
 def test__git_date_str():
     with no_lingering_errors():
-        WVPASSEQ('0 +0000', git._git_date_str(0, 0))
-        WVPASSEQ('0 -0130', git._git_date_str(0, -90 * 60))
-        WVPASSEQ('0 +0130', git._git_date_str(0, 90 * 60))
+        WVPASSEQ(b'0 +0000', git._git_date_str(0, 0))
+        WVPASSEQ(b'0 -0130', git._git_date_str(0, -90 * 60))
+        WVPASSEQ(b'0 +0130', git._git_date_str(0, 90 * 60))
 
 
 @wvtest
 def test_cat_pipe():
     with no_lingering_errors():
-        with test_tempdir('bup-tgit-') as tmpdir:
-            os.environ['BUP_DIR'] = bupdir = tmpdir + "/bup"
-            src = tmpdir + '/src'
+        with test_tempdir(b'bup-tgit-') as tmpdir:
+            environ[b'BUP_DIR'] = bupdir = tmpdir + b'/bup'
+            src = tmpdir + b'/src'
             mkdirp(src)
-            with open(src + '/1', 'w+') as f:
-                print('something', file=f)
-            with open(src + '/2', 'w+') as f:
-                print('something else', file=f)
+            with open(src + b'/1', 'wb+') as f:
+                f.write(b'something\n')
+            with open(src + b'/2', 'wb+') as f:
+                f.write(b'something else\n')
             git.init_repo(bupdir)
-            exc(bup_exe, 'index', src)
-            oidx = exo(bup_exe, 'save', '-cn', 'src', '--strip', src).strip()
-            typ = exo('git', '--git-dir', bupdir,
-                      'cat-file', '-t', 'src').strip()
-            size = int(exo('git', '--git-dir', bupdir,
-                               'cat-file', '-s', 'src'))
-            it = git.cp().get('src')
-            get_info = it.next()
-            for buf in it.next():
+            exc(bup_exe, b'index', src)
+            oidx = exo(bup_exe, b'save', b'-cn', b'src', b'--strip',
+                       src).strip()
+            typ = exo(b'git', b'--git-dir', bupdir,
+                      b'cat-file', b'-t', b'src').strip()
+            size = int(exo(b'git', b'--git-dir', bupdir,
+                               b'cat-file', b'-s', b'src'))
+            it = git.cp().get(b'src')
+            get_info = next(it)
+            for buf in next(it):
                 pass
             WVPASSEQ((oidx, typ, size), get_info)
