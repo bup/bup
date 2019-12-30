@@ -489,7 +489,7 @@ static PyObject *bup_write_sparsely(PyObject *self, PyObject *args)
     unsigned char *buf = NULL;
     Py_ssize_t sbuf_len;
     PyObject *py_min_sparse_len, *py_prev_sparse_len;
-    if (!PyArg_ParseTuple(args, "it#OO",
+    if (!PyArg_ParseTuple(args, "i" rbuf_argf "OO",
                           &fd, &buf, &sbuf_len,
                           &py_min_sparse_len, &py_prev_sparse_len))
 	return NULL;
@@ -607,7 +607,7 @@ static PyObject *bitmatch(PyObject *self, PyObject *args)
     Py_ssize_t byte;
     int bit;
 
-    if (!PyArg_ParseTuple(args, "t#t#", &buf1, &len1, &buf2, &len2))
+    if (!PyArg_ParseTuple(args, rbuf_argf rbuf_argf, &buf1, &len1, &buf2, &len2))
 	return NULL;
     
     bit = 0;
