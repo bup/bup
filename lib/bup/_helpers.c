@@ -89,6 +89,31 @@ static state_t state;
 #endif // PY_MAJOR_VERSION >= 3
 
 
+static void *checked_malloc(size_t n, size_t size)
+{
+    size_t total;
+    if (__builtin_mul_overflow(n, size, &total))
+    {
+        PyErr_Format(PyExc_OverflowError,
+                     "request to allocate %lu items of size %lu is too large",
+                     n, size);
+        return NULL;
+    }
+    void *result = malloc(total);
+    if (!result)
+        return PyErr_NoMemory();
+    return result;
+}
+
+static void *checked_calloc(size_t n, size_t size)
+{
+    void *result = calloc(n, size);
+    if (!result)
+        PyErr_NoMemory();
+    return result;
+}
+
+
 #ifndef htonll
 // This function should technically be macro'd out if it's going to be used
 // more than ocasionally.  As of this writing, it'll actually never be called
@@ -824,7 +849,7 @@ struct idx {
     int name_base;
 };
 
-static void _fix_idx_order(struct idx **idxs, int *last_i)
+static void _fix_idx_order(struct idx **idxs, Py_ssize_t *last_i)
 {
     struct idx *idx;
     int low, mid, high, c = 0;
@@ -874,36 +899,51 @@ static uint32_t _get_idx_i(struct idx *idx)
 
 static PyObject *merge_into(PyObject *self, PyObject *args)
 {
-    PyObject *py_total, *ilist = NULL;
-    unsigned char *fmap = NULL;
     struct sha *sha_ptr, *sha_start = NULL;
     uint32_t *table_ptr, *name_ptr, *name_start;
-    struct idx **idxs = NULL;
-    Py_ssize_t flen = 0;
-    int bits = 0, i;
+    int i;
     unsigned int total;
     uint32_t count, prefix;
-    int num_i;
-    int last_i;
 
-    if (!PyArg_ParseTuple(args, "w#iOO",
-                          &fmap, &flen, &bits, &py_total, &ilist))
+
+    Py_buffer fmap;
+    int bits;;
+    PyObject *py_total, *ilist = NULL;
+    if (!PyArg_ParseTuple(args, wbuf_argf "iOO",
+                          &fmap, &bits, &py_total, &ilist))
 	return NULL;
 
+    PyObject *result = NULL;
+    struct idx **idxs = NULL;
+    Py_ssize_t num_i = 0;
+    int *idx_buf_init = NULL;
+    Py_buffer *idx_buf = NULL;
+
     if (!bup_uint_from_py(&total, py_total, "total"))
-        return NULL;
+        goto clean_and_return;
 
     num_i = PyList_Size(ilist);
-    idxs = (struct idx **)PyMem_Malloc(num_i * sizeof(struct idx *));
+
+    if (!(idxs = checked_malloc(num_i, sizeof(struct idx *))))
+        goto clean_and_return;
+    if (!(idx_buf_init = checked_calloc(num_i, sizeof(int))))
+        goto clean_and_return;
+    if (!(idx_buf = checked_malloc(num_i, sizeof(Py_buffer))))
+        goto clean_and_return;
 
     for (i = 0; i < num_i; i++)
     {
 	long len, sha_ofs, name_map_ofs;
-	idxs[i] = (struct idx *)PyMem_Malloc(sizeof(struct idx));
+	if (!(idxs[i] = checked_malloc(1, sizeof(struct idx))))
+            goto clean_and_return;
 	PyObject *itup = PyList_GetItem(ilist, i);
-	if (!PyArg_ParseTuple(itup, "t#llli", &idxs[i]->map, &idxs[i]->bytes,
-		    &len, &sha_ofs, &name_map_ofs, &idxs[i]->name_base))
+	if (!PyArg_ParseTuple(itup, wbuf_argf "llli",
+                              &(idx_buf[i]), &len, &sha_ofs, &name_map_ofs,
+                              &idxs[i]->name_base))
 	    return NULL;
+        idx_buf_init[i] = 1;
+        idxs[i]->map = idx_buf[i].buf;
+        idxs[i]->bytes = idx_buf[i].len;
 	idxs[i]->cur = (struct sha *)&idxs[i]->map[sha_ofs];
 	idxs[i]->end = &idxs[i]->cur[len];
 	if (name_map_ofs)
@@ -911,11 +951,11 @@ static PyObject *merge_into(PyObject *self, PyObject *args)
 	else
 	    idxs[i]->cur_name = NULL;
     }
-    table_ptr = (uint32_t *)&fmap[MIDX4_HEADERLEN];
+    table_ptr = (uint32_t *) &((unsigned char *) fmap.buf)[MIDX4_HEADERLEN];
     sha_start = sha_ptr = (struct sha *)&table_ptr[1<<bits];
     name_start = name_ptr = (uint32_t *)&sha_ptr[total];
 
-    last_i = num_i-1;
+    Py_ssize_t last_i = num_i - 1;
     count = 0;
     prefix = 0;
     while (last_i >= 0)
@@ -944,8 +984,25 @@ static PyObject *merge_into(PyObject *self, PyObject *args)
     assert(sha_ptr == sha_start+count);
     assert(name_ptr == name_start+count);
 
-    PyMem_Free(idxs);
-    return PyLong_FromUnsignedLong(count);
+    result = PyLong_FromUnsignedLong(count);
+
+ clean_and_return:
+    if (idx_buf_init)
+    {
+        for (i = 0; i < num_i; i++)
+            if (idx_buf_init[i])
+                PyBuffer_Release(&(idx_buf[i]));
+        free(idx_buf_init);
+        free(idx_buf);
+    }
+    if (idxs)
+    {
+        for (i = 0; i < num_i; i++)
+            free(idxs[i]);
+        free(idxs);
+    }
+    PyBuffer_Release(&fmap);
+    return result;
 }
 
 #define FAN_ENTRIES 256
@@ -1690,6 +1747,7 @@ static void test_integral_assignment_fits(void)
     assert(sizeof(signed short) < sizeof(unsigned long long));
     assert(sizeof(unsigned short) < sizeof(signed long long));
     assert(sizeof(unsigned short) < sizeof(unsigned long long));
+    assert(sizeof(Py_ssize_t) <= sizeof(size_t));
     {
         signed short ss, ssmin = SHRT_MIN, ssmax = SHRT_MAX;
         unsigned short us, usmax = USHRT_MAX;
