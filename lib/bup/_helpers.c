@@ -121,13 +121,6 @@ static uint64_t htonll(uint64_t value)
 #endif
 
 
-#ifdef __clang__
-#define INTEGRAL_ASSIGNMENT_FITS(dest, src)                             \
-    ({                                                                  \
-        *(dest) = (src);                                                \
-        *(dest) == (src) && (*(dest) < 1) == ((src) < 1);               \
-    })
-#else
 // Disabling sign-compare here should be fine since we're explicitly
 // checking for a sign mismatch, i.e. if the signs don't match, then
 // it doesn't matter what the value comparison says.
@@ -137,10 +130,10 @@ static uint64_t htonll(uint64_t value)
         _Pragma("GCC diagnostic push");                                 \
         _Pragma("GCC diagnostic ignored \"-Wsign-compare\"");           \
         *(dest) = (src);                                                \
-        *(dest) == (src) && (*(dest) < 1) == ((src) < 1);               \
+        int result = *(dest) == (src) && (*(dest) < 1) == ((src) < 1);  \
         _Pragma("GCC diagnostic pop");                                  \
+        result;                                                         \
     })
-#endif
 
 
 // At the moment any code that calls INTEGER_TO_PY() will have to
