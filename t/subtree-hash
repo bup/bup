@@ -5,10 +5,12 @@ exec "$bup_python" "$0" ${1+"$@"}
 """
 # end of bup preamble
 
-from __future__ import absolute_import
-import os, sys
+from __future__ import absolute_import, print_function
+import sys
 
+from bup.compat import argv_bytes
 from bup.helpers import handle_ctrl_c, readpipe
+from bup.io import byte_stream
 from bup import options
 
 
@@ -25,22 +27,23 @@ o = options.Options(optspec)
 if len(extra) < 1:
     o.fatal('must specify a root hash')
 
-tree_hash = extra[0]
-path = extra[1:]
+tree_hash = argv_bytes(extra[0])
+path = [argv_bytes(x) for x in extra[1:]]
 
 while path:
     target_name = path[0]
-    subtree_items = readpipe(['git', 'ls-tree', '-z', tree_hash])
+    subtree_items = readpipe([b'git', b'ls-tree', b'-z', tree_hash])
     target_hash = None
-    for entry in subtree_items.split('\0'):
+    for entry in subtree_items.split(b'\0'):
         if not entry:
             break
-        info, name = entry.split('\t', 1)
+        info, name = entry.split(b'\t', 1)
         if name == target_name:
-            _, _, target_hash = info.split(' ')
+            _, _, target_hash = info.split(b' ')
             break
     if not target_hash:
-        print >> sys.stderr, "Can't find %r in %s" % (target_name, tree_hash)
+        print("Can't find %r in %s" % (target_name, tree_hash.decode('ascii')),
+              file=sys.stderr)
         break
     tree_hash = target_hash
     path = path[1:]
@@ -48,4 +51,6 @@ while path:
 if path:
     sys.exit(1)
 
-print tree_hash
+sys.stdout.flush()
+out = byte_stream(sys.stdout)
+out.write(tree_hash + b'\n')
