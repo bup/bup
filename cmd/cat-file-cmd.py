@@ -9,7 +9,9 @@ from __future__ import absolute_import
 import re, stat, sys
 
 from bup import options, git, vfs
+from bup.compat import argv_bytes
 from bup.helpers import chunkyreader, handle_ctrl_c, log, saved_errors
+from bup.io import byte_stream
 from bup.repo import LocalRepo
 
 optspec = """
@@ -33,9 +35,9 @@ if len(extra) > 1:
 if opt.bupm and opt.meta:
     o.fatal('--meta and --bupm are incompatible')
     
-target = extra[0]
+target = argv_bytes(extra[0])
 
-if not re.match(r'/*[^/]+/[^/]+', target):
+if not re.match(br'/*[^/]+/[^/]+', target):
     o.fatal("path %r doesn't include a branch and revision" % target)
 
 repo = LocalRepo()
@@ -48,21 +50,24 @@ if not leaf_item:
 
 mode = vfs.item_mode(leaf_item)
 
+sys.stdout.flush()
+out = byte_stream(sys.stdout)
+
 if opt.bupm:
     if not stat.S_ISDIR(mode):
         o.fatal('%r is not a directory' % target)
     _, bupm_oid = vfs.tree_data_and_bupm(repo, leaf_item.oid)
     if bupm_oid:
         with vfs.tree_data_reader(repo, bupm_oid) as meta_stream:
-            sys.stdout.write(meta_stream.read())
+            out.write(meta_stream.read())
 elif opt.meta:
     augmented = vfs.augment_item_meta(repo, leaf_item, include_size=True)
-    sys.stdout.write(augmented.meta.encode())
+    out.write(augmented.meta.encode())
 else:
     if stat.S_ISREG(mode):
         with vfs.fopen(repo, leaf_item) as f:
             for b in chunkyreader(f):
-                sys.stdout.write(b)
+                out.write(b)
     else:
         o.fatal('%r is not a plain file' % target)
 
