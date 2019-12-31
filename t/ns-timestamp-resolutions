@@ -8,9 +8,11 @@ exec "$bup_python" "$0" ${1+"$@"}
 from __future__ import absolute_import
 import os, sys
 
-import bup.xstat as xstat
+from bup.compat import argv_bytes
 from bup.helpers import handle_ctrl_c, saved_errors
+from bup.io import byte_stream
 from bup import metadata, options
+import bup.xstat as xstat
 
 
 optspec = """
@@ -23,10 +25,13 @@ handle_ctrl_c()
 o = options.Options(optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
 
+sys.stdout.flush()
+out = byte_stream(sys.stdout)
+
 if len(extra) != 1:
     o.fatal('must specify a test file name')
 
-target = extra[0]
+target = argv_bytes(extra[0])
 
 open(target, 'w').close()
 xstat.utime(target, (123456789, 123456789))
@@ -39,7 +44,8 @@ def ns_resolution(x):
         n *= 10
     return n
 
-print ns_resolution(meta.atime), ns_resolution(meta.mtime)
+out.write(b'%d %d\n' % (ns_resolution(meta.atime),
+                        ns_resolution(meta.mtime)))
 
 if saved_errors:
     log('warning: %d errors encountered\n' % len(saved_errors))
