@@ -927,8 +927,11 @@ def columnate(l, prefix):
     The number of columns is determined automatically based on the string
     lengths.
     """
+    binary = isinstance(prefix, bytes)
+    nothing = b'' if binary else ''
+    nl = b'\n' if binary else '\n'
     if not l:
-        return ""
+        return nothing
     l = l[:]
     clen = max(len(s) for s in l)
     ncols = (tty_width() - len(prefix)) // (clen + 2)
@@ -937,13 +940,14 @@ def columnate(l, prefix):
         clen = 0
     cols = []
     while len(l) % ncols:
-        l.append('')
+        l.append(nothing)
     rows = len(l) // ncols
     for s in compat.range(0, len(l), rows):
         cols.append(l[s:s+rows])
-    out = ''
+    out = nothing
+    fmt = b'%-*s' if binary else '%-*s'
     for row in zip(*cols):
-        out += prefix + ''.join(('%-*s' % (clen+2, s)) for s in row) + '\n'
+        out += prefix + nothing.join((fmt % (clen+2, s)) for s in row) + nl
     return out
 
 
