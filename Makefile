@@ -167,11 +167,14 @@ runtests-python: all t/tmp
 	  ./wvtest.py  $(python_tests) 2>&1 \
 	    | tee -a t/tmp/test-log/$$$$.log
 
-cmdline_tests :=
+cmdline_tests := \
+  t/test-argv \
+  t/test-compression.sh \
+  t/test-index-clear.sh \
+  t/test-tz.sh
 
 ifeq "2" "$(bup_python_majver)"
   cmdline_tests += \
-    t/test-argv \
     t/test-ftp \
     t/test-save-restore \
     t/test-packsizelimit \
@@ -186,13 +189,10 @@ ifeq "2" "$(bup_python_majver)"
     t/test-fuse.sh \
     t/test-drecurse.sh \
     t/test-cat-file.sh \
-    t/test-compression.sh \
     t/test-fsck.sh \
-    t/test-index-clear.sh \
     t/test-index-check-device.sh \
     t/test-ls \
     t/test-ls-remote \
-    t/test-tz.sh \
     t/test-meta.sh \
     t/test-on.sh \
     t/test-restore-map-owner.sh \
