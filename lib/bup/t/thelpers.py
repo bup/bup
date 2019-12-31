@@ -9,6 +9,7 @@ from bup.compat import bytes_from_byte, bytes_from_uint, environ
 from bup.helpers import (atomically_replaced_file, batchpipe, detect_fakeroot,
                          grafted_path_components, mkdirp, parse_num,
                          path_components, readpipe, stripped_path_components,
+                         shstr,
                          utc_offset_str)
 from buptest import no_lingering_errors, test_tempdir
 import bup._helpers as _helpers
@@ -100,6 +101,28 @@ def test_grafted_path_components():
                  [(b'', None), (b'a', None), (b'b', None), (b'c', b'/'),
                   (b'foo', b'/foo'), (b'bar', b'/foo/bar')])
         WVEXCEPT(Exception, grafted_path_components, b'foo', [])
+
+
+@wvtest
+def test_shstr():
+    with no_lingering_errors():
+        # Do nothing for strings and bytes
+        WVPASSEQ(shstr(b''), b'')
+        WVPASSEQ(shstr(b'1'), b'1')
+        WVPASSEQ(shstr(b'1 2'), b'1 2')
+        WVPASSEQ(shstr(b"1'2"), b"1'2")
+        WVPASSEQ(shstr(''), '')
+        WVPASSEQ(shstr('1'), '1')
+        WVPASSEQ(shstr('1 2'), '1 2')
+        WVPASSEQ(shstr("1'2"), "1'2")
+
+        # Escape parts of sequences
+        WVPASSEQ(shstr((b'1 2', b'3')), b"'1 2' 3")
+        WVPASSEQ(shstr((b"1'2", b'3')), b"'1'\"'\"'2' 3")
+        WVPASSEQ(shstr((b"'1", b'3')), b"''\"'\"'1' 3")
+        WVPASSEQ(shstr(('1 2', '3')), "'1 2' 3")
+        WVPASSEQ(shstr(("1'2", '3')), "'1'\"'\"'2' 3")
+        WVPASSEQ(shstr(("'1", '3')), "''\"'\"'1' 3")
 
 
 @wvtest
