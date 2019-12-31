@@ -51,10 +51,10 @@ WVPASS bup save -n src -d 242312160 --strip src
 WVPASS bup tag some-tag src
 
 uid="$(WVPASS id -u)" || exit $?
-gid="$(WVPASS bup-python -c 'import os; print os.stat("src").st_gid')" || exit $?
+gid="$(WVPASS bup-python -c 'import os; print(os.stat("src").st_gid)')" || exit $?
 user="$(WVPASS id -un)" || exit $?
 group="$(WVPASS bup-python -c 'import grp, os;
-print grp.getgrgid(os.stat("src").st_gid)[0]')" || exit $?
+print(grp.getgrgid(os.stat("src").st_gid)[0])')" || exit $?
 src_commit_hash=$(git log --format=%H -n1 src)
 src_tree_hash=$(git log --format=%T -n1 src)
 
@@ -170,7 +170,7 @@ test "$bad_symlink_date" || exit 1
 
 if test "$(uname -s)" != NetBSD; then
     bad_symlink_size="$(WVPASS bup-python -c "import os
-print os.lstat('src/bad-symlink').st_size")" || exit $?
+print(os.lstat('src/bad-symlink').st_size)")" || exit $?
 else
     # NetBSD appears to return varying sizes, so for now, just ignore it.
     bad_symlink_size="$(WVPASS echo "$bad_symlink_bup_info" \
@@ -191,7 +191,7 @@ test "$symlink_date" || exit 1
 
 if test "$(uname -s)" != NetBSD; then
     symlink_size="$(WVPASS bup-python -c "import os
-print os.lstat('src/symlink').st_size")" || exit $?
+print(os.lstat('src/symlink').st_size)")" || exit $?
 else
     # NetBSD appears to return varying sizes, so for now, just ignore it.
     symlink_size="$(WVPASS echo "$symlink_bup_info" \
