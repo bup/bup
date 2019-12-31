@@ -24,12 +24,12 @@ def tree_items(repo, oid):
         m = maybe_meta()
         if m and m.size is None:
             m.size = 0
-        yield TreeDictValue(name='.', oid=oid, meta=m)
+        yield TreeDictValue(name=b'.', oid=oid, meta=m)
         tree_ents = vfs.ordered_tree_entries(tree_data, bupm=True)
         for name, mangled_name, kind, gitmode, sub_oid in tree_ents:
-            if mangled_name == '.bupm':
+            if mangled_name == b'.bupm':
                 continue
-            assert name != '.'
+            assert name != b'.'
             if S_ISDIR(gitmode):
                 if kind == BUP_CHUNKED:
                     yield TreeDictValue(name=name, oid=sub_oid,
