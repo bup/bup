@@ -112,7 +112,7 @@ def lines_until_sentinel(f, sentinel, ex_type):
     # sentinel must end with \n and must contain only one \n
     while True:
         line = f.readline()
-        if not (line and line.endswith('\n')):
+        if not (line and line.endswith(b'\n')):
             raise ex_type('Hit EOF while reading line')
         if line == sentinel:
             return
@@ -485,23 +485,23 @@ class BaseConn:
 
     def ok(self):
         """Indicate end of output from last sent command."""
-        self.write('\nok\n')
+        self.write(b'\nok\n')
 
     def error(self, s):
         """Indicate server error to the client."""
-        s = re.sub(r'\s+', ' ', str(s))
-        self.write('\nerror %s\n' % s)
+        s = re.sub(br'\s+', b' ', s)
+        self.write(b'\nerror %s\n' % s)
 
     def _check_ok(self, onempty):
         self.outp.flush()
-        rl = ''
+        rl = b''
         for rl in linereader(self):
             #log('%d got line: %r\n' % (os.getpid(), rl))
             if not rl:  # empty line
                 continue
-            elif rl == 'ok':
+            elif rl == b'ok':
                 return None
-            elif rl.startswith('error '):
+            elif rl.startswith(b'error '):
                 #log('client: error: %s\n' % rl[6:])
                 return NotOk(rl[6:])
             else:
