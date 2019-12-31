@@ -5,14 +5,15 @@ import sys, os, stat, time, random, subprocess, glob
 from wvtest import *
 
 from bup import client, git, path
+from bup.compat import bytes_from_uint, environ, range
 from bup.helpers import mkdirp
 from buptest import no_lingering_errors, test_tempdir
 
 
 def randbytes(sz):
-    s = ''
-    for i in xrange(sz):
-        s += chr(random.randrange(0,256))
+    s = b''
+    for i in range(sz):
+        s += bytes_from_uint(random.randrange(0,256))
     return s
 
 
@@ -20,14 +21,14 @@ s1 = randbytes(10000)
 s2 = randbytes(10000)
 s3 = randbytes(10000)
 
-IDX_PAT = '/*.idx'
+IDX_PAT = b'/*.idx'
     
 
 @wvtest
 def test_server_split_with_indexes():
     with no_lingering_errors():
-        with test_tempdir('bup-tclient-') as tmpdir:
-            os.environ['BUP_DIR'] = bupdir = tmpdir
+        with test_tempdir(b'bup-tclient-') as tmpdir:
+            environ[b'BUP_DIR'] = bupdir = tmpdir
             git.init_repo(bupdir)
             lw = git.PackWriter()
             c = client.Client(bupdir, create=True)
@@ -45,8 +46,8 @@ def test_server_split_with_indexes():
 @wvtest
 def test_multiple_suggestions():
     with no_lingering_errors():
-        with test_tempdir('bup-tclient-') as tmpdir:
-            os.environ['BUP_DIR'] = bupdir = tmpdir
+        with test_tempdir(b'bup-tclient-') as tmpdir:
+            environ[b'BUP_DIR'] = bupdir = tmpdir
             git.init_repo(bupdir)
 
             lw = git.PackWriter()
@@ -55,7 +56,7 @@ def test_multiple_suggestions():
             lw = git.PackWriter()
             lw.new_blob(s2)
             lw.close()
-            WVPASSEQ(len(glob.glob(git.repo('objects/pack'+IDX_PAT))), 2)
+            WVPASSEQ(len(glob.glob(git.repo(b'objects/pack'+IDX_PAT))), 2)
 
             c = client.Client(bupdir, create=True)
             WVPASSEQ(len(glob.glob(c.cachedir+IDX_PAT)), 0)
@@ -80,10 +81,10 @@ def test_multiple_suggestions():
 @wvtest
 def test_dumb_client_server():
     with no_lingering_errors():
-        with test_tempdir('bup-tclient-') as tmpdir:
-            os.environ['BUP_DIR'] = bupdir = tmpdir
+        with test_tempdir(b'bup-tclient-') as tmpdir:
+            environ[b'BUP_DIR'] = bupdir = tmpdir
             git.init_repo(bupdir)
-            open(git.repo('bup-dumb-server'), 'w').close()
+            open(git.repo(b'bup-dumb-server'), 'w').close()
 
             lw = git.PackWriter()
             lw.new_blob(s1)
@@ -102,8 +103,8 @@ def test_dumb_client_server():
 @wvtest
 def test_midx_refreshing():
     with no_lingering_errors():
-        with test_tempdir('bup-tclient-') as tmpdir:
-            os.environ['BUP_DIR'] = bupdir = tmpdir
+        with test_tempdir(b'bup-tclient-') as tmpdir:
+            environ[b'BUP_DIR'] = bupdir = tmpdir
             git.init_repo(bupdir)
             c = client.Client(bupdir, create=True)
             rw = c.new_packwriter()
@@ -116,7 +117,7 @@ def test_midx_refreshing():
             p2name = os.path.join(c.cachedir, p2base)
             del rw
 
-            pi = git.PackIdxList(bupdir + '/objects/pack')
+            pi = git.PackIdxList(bupdir + b'/objects/pack')
             WVPASSEQ(len(pi.packs), 2)
             pi.refresh()
             WVPASSEQ(len(pi.packs), 2)
@@ -129,7 +130,7 @@ def test_midx_refreshing():
             WVFAIL(p2.exists(s1sha))
             WVPASS(p2.exists(s2sha))
 
-            subprocess.call([path.exe(), 'midx', '-f'])
+            subprocess.call([path.exe(), b'midx', b'-f'])
             pi.refresh()
             WVPASSEQ(len(pi.packs), 1)
             pi.refresh(skip_midx=True)
@@ -142,18 +143,18 @@ def test_midx_refreshing():
 def test_remote_parsing():
     with no_lingering_errors():
         tests = (
-            (':/bup', ('file', None, None, '/bup')),
-            ('file:///bup', ('file', None, None, '/bup')),
-            ('192.168.1.1:/bup', ('ssh', '192.168.1.1', None, '/bup')),
-            ('ssh://192.168.1.1:2222/bup', ('ssh', '192.168.1.1', '2222', '/bup')),
-            ('ssh://[ff:fe::1]:2222/bup', ('ssh', 'ff:fe::1', '2222', '/bup')),
-            ('bup://foo.com:1950', ('bup', 'foo.com', '1950', None)),
-            ('bup://foo.com:1950/bup', ('bup', 'foo.com', '1950', '/bup')),
-            ('bup://[ff:fe::1]/bup', ('bup', 'ff:fe::1', None, '/bup')),)
+            (b':/bup', (b'file', None, None, b'/bup')),
+            (b'file:///bup', (b'file', None, None, b'/bup')),
+            (b'192.168.1.1:/bup', (b'ssh', b'192.168.1.1', None, b'/bup')),
+            (b'ssh://192.168.1.1:2222/bup', (b'ssh', b'192.168.1.1', b'2222', b'/bup')),
+            (b'ssh://[ff:fe::1]:2222/bup', (b'ssh', b'ff:fe::1', b'2222', b'/bup')),
+            (b'bup://foo.com:1950', (b'bup', b'foo.com', b'1950', None)),
+            (b'bup://foo.com:1950/bup', (b'bup', b'foo.com', b'1950', b'/bup')),
+            (b'bup://[ff:fe::1]/bup', (b'bup', b'ff:fe::1', None, b'/bup')),)
         for remote, values in tests:
             WVPASSEQ(client.parse_remote(remote), values)
         try:
-            client.parse_remote('http://asdf.com/bup')
+            client.parse_remote(b'http://asdf.com/bup')
             WVFAIL()
         except client.ClientError:
             WVPASS()

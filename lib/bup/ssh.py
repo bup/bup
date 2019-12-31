@@ -4,17 +4,18 @@ Connect to a remote host via SSH and execute a command on the host.
 
 from __future__ import absolute_import, print_function
 import sys, os, re, subprocess
-from bup import helpers, path
 
+from bup import helpers, path
+from bup.compat import environ
 
 def connect(rhost, port, subcmd, stderr=None):
     """Connect to 'rhost' and execute the bup subcommand 'subcmd' on it."""
-    assert(not re.search(r'[^\w-]', subcmd))
-    nicedir = re.sub(r':', "_", path.exedir())
-    if rhost == '-':
+    assert not re.search(br'[^\w-]', subcmd)
+    nicedir = re.sub(b':', b'_', path.exedir())
+    if rhost == b'-':
         rhost = None
     if not rhost:
-        argv = ['bup', subcmd]
+        argv = [b'bup', subcmd]
     else:
         # WARNING: shell quoting security holes are possible here, so we
         # have to be super careful.  We have to use 'sh -c' because
@@ -23,23 +24,23 @@ def connect(rhost, port, subcmd, stderr=None):
         # can't exec *safely* using argv, because *both* ssh and 'sh -c'
         # allow shellquoting.  So we end up having to double-shellquote
         # stuff here.
-        escapedir = re.sub(r'([^\w/])', r'\\\\\\\1', nicedir)
-        buglvl = helpers.atoi(os.environ.get('BUP_DEBUG'))
-        force_tty = helpers.atoi(os.environ.get('BUP_FORCE_TTY'))
-        cmd = r"""
+        escapedir = re.sub(br'([^\w/])', br'\\\\\\\1', nicedir)
+        buglvl = helpers.atoi(environ.get(b'BUP_DEBUG'))
+        force_tty = helpers.atoi(environ.get(b'BUP_FORCE_TTY'))
+        cmd = b"""
                    sh -c PATH=%s:'$PATH BUP_DEBUG=%s BUP_FORCE_TTY=%s bup %s'
                """ % (escapedir, buglvl, force_tty, subcmd)
-        argv = ['ssh']
+        argv = [b'ssh']
         if port:
-            argv.extend(('-p', port))
-        argv.extend((rhost, '--', cmd.strip()))
+            argv.extend((b'-p', port))
+        argv.extend((rhost, b'--', cmd.strip()))
         #helpers.log('argv is: %r\n' % argv)
     if rhost:
-        env = os.environ
+        env = environ
     else:
-        envpath = os.environ.get('PATH')
-        env = os.environ.copy()
-        env['PATH'] = nicedir if not envpath else nicedir + ':' + envpath
+        envpath = environ.get(b'PATH')
+        env = environ.copy()
+        env[b'PATH'] = nicedir if not envpath else nicedir + b':' + envpath
     if sys.version_info[0] < 3:
         return subprocess.Popen(argv,
                                 stdin=subprocess.PIPE, stdout=subprocess.PIPE,

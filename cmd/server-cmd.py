@@ -6,13 +6,15 @@ exec "$bup_python" "$0" ${1+"$@"}
 # end of bup preamble
 
 from __future__ import absolute_import
+from binascii import hexlify, unhexlify
 import os, sys, struct, subprocess
 
 from bup import options, git, vfs, vint
-from bup.compat import hexstr
+from bup.compat import environ, hexstr
 from bup.git import MissingObject
 from bup.helpers import (Conn, debug1, debug2, linereader, lines_until_sentinel,
                          log)
+from bup.io import byte_stream, path_msg
 from bup.repo import LocalRepo
 
 
@@ -21,13 +23,13 @@ dumb_server_mode = False
 repo = None
 
 def do_help(conn, junk):
-    conn.write('Commands:\n    %s\n' % '\n    '.join(sorted(commands)))
+    conn.write(b'Commands:\n    %s\n' % b'\n    '.join(sorted(commands)))
     conn.ok()
 
 
 def _set_mode():
     global dumb_server_mode
-    dumb_server_mode = os.path.exists(git.repo('bup-dumb-server'))
+    dumb_server_mode = os.path.exists(git.repo(b'bup-dumb-server'))
     debug1('bup server: serving in %s mode\n' 
            % (dumb_server_mode and 'dumb' or 'smart'))
 
@@ -44,14 +46,14 @@ def _init_session(reinit_with_new_repopath=None):
     repo = LocalRepo()
     # OK. we now know the path is a proper repository. Record this path in the
     # environment so that subprocesses inherit it and know where to operate.
-    os.environ['BUP_DIR'] = git.repodir
-    debug1('bup server: bupdir is %r\n' % git.repodir)
+    environ[b'BUP_DIR'] = git.repodir
+    debug1('bup server: bupdir is %s\n' % path_msg(git.repodir))
     _set_mode()
 
 
 def init_dir(conn, arg):
     git.init_repo(arg)
-    debug1('bup server: bupdir initialized: %r\n' % git.repodir)
+    debug1('bup server: bupdir initialized: %s\n' % path_msg(git.repodir))
     _init_session(arg)
     conn.ok()
 
@@ -63,20 +65,20 @@ def set_dir(conn, arg):
     
 def list_indexes(conn, junk):
     _init_session()
-    suffix = ''
+    suffix = b''
     if dumb_server_mode:
-        suffix = ' load'
-    for f in os.listdir(git.repo('objects/pack')):
-        if f.endswith('.idx'):
-            conn.write('%s%s\n' % (f, suffix))
+        suffix = b' load'
+    for f in os.listdir(git.repo(b'objects/pack')):
+        if f.endswith(b'.idx'):
+            conn.write(b'%s%s\n' % (f, suffix))
     conn.ok()
 
 
 def send_index(conn, name):
     _init_session()
-    assert(name.find('/') < 0)
-    assert(name.endswith('.idx'))
-    idx = git.open_idx(git.repo('objects/pack/%s' % name))
+    assert name.find(b'/') < 0
+    assert name.endswith(b'.idx')
+    idx = git.open_idx(git.repo(b'objects/pack/%s' % name))
     conn.write(struct.pack('!I', len(idx.map)))
     conn.write(idx.map)
     conn.ok()
@@ -107,7 +109,7 @@ def receive_objects_v2(conn, junk):
             fullpath = w.close(run_midx=not dumb_server_mode)
             if fullpath:
                 (dir, name) = os.path.split(fullpath)
-                conn.write('%s.idx\n' % name)
+                conn.write(b'%s.idx\n' % name)
             conn.ok()
             return
         elif n == 0xffffffff:
@@ -126,14 +128,14 @@ def receive_objects_v2(conn, junk):
             oldpack = w.exists(shar, want_source=True)
             if oldpack:
                 assert(not oldpack == True)
-                assert(oldpack.endswith('.idx'))
+                assert(oldpack.endswith(b'.idx'))
                 (dir,name) = os.path.split(oldpack)
                 if not (name in suggested):
                     debug1("bup server: suggesting index %s\n"
-                           % git.shorten_hash(name))
+                           % git.shorten_hash(name).decode('ascii'))
                     debug1("bup server:   because of object %s\n"
                            % hexstr(shar))
-                    conn.write('index %s\n' % name)
+                    conn.write(b'index %s\n' % name)
                     suggested.add(name)
                 continue
         nw, crc = w._raw_write((buf,), sha=shar)
@@ -150,7 +152,7 @@ def _check(w, expected, actual, msg):
 def read_ref(conn, refname):
     _init_session()
     r = git.read_ref(refname)
-    conn.write('%s\n' % (r or '').encode('hex'))
+    conn.write(b'%s\n' % hexlify(r) if r else b'')
     conn.ok()
 
 
@@ -158,7 +160,7 @@ def update_ref(conn, refname):
     _init_session()
     newval = conn.readline().strip()
     oldval = conn.readline().strip()
-    git.update_ref(refname, newval.decode('hex'), oldval.decode('hex'))
+    git.update_ref(refname, unhexlify(newval), unhexlify(oldval))
     conn.ok()
 
 def join(conn, id):
@@ -169,42 +171,42 @@ def join(conn, id):
             conn.write(blob)
     except KeyError as e:
         log('server: error: %s\n' % e)
-        conn.write('\0\0\0\0')
+        conn.write(b'\0\0\0\0')
         conn.error(e)
     else:
-        conn.write('\0\0\0\0')
+        conn.write(b'\0\0\0\0')
         conn.ok()
 
 def cat_batch(conn, dummy):
     _init_session()
     cat_pipe = git.cp()
     # For now, avoid potential deadlock by just reading them all
-    for ref in tuple(lines_until_sentinel(conn, '\n', Exception)):
+    for ref in tuple(lines_until_sentinel(conn, b'\n', Exception)):
         ref = ref[:-1]
         it = cat_pipe.get(ref)
         info = next(it)
         if not info[0]:
-            conn.write('missing\n')
+            conn.write(b'missing\n')
             continue
-        conn.write('%s %s %d\n' % info)
+        conn.write(b'%s %s %d\n' % info)
         for buf in it:
             conn.write(buf)
     conn.ok()
 
 def refs(conn, args):
     limit_to_heads, limit_to_tags = args.split()
-    assert limit_to_heads in ('0', '1')
-    assert limit_to_tags in ('0', '1')
+    assert limit_to_heads in (b'0', b'1')
+    assert limit_to_tags in (b'0', b'1')
     limit_to_heads = int(limit_to_heads)
     limit_to_tags = int(limit_to_tags)
     _init_session()
-    patterns = tuple(x[:-1] for x in lines_until_sentinel(conn, '\n', Exception))
+    patterns = tuple(x[:-1] for x in lines_until_sentinel(conn, b'\n', Exception))
     for name, oid in git.list_refs(patterns=patterns,
                                    limit_to_heads=limit_to_heads,
                                    limit_to_tags=limit_to_tags):
-        assert '\n' not in name
-        conn.write('%s %s\n' % (oid.encode('hex'), name))
-    conn.write('\n')
+        assert b'\n' not in name
+        conn.write(b'%s %s\n' % (hexlify(oid), name))
+    conn.write(b'\n')
     conn.ok()
 
 def rev_list(conn, _):
@@ -212,12 +214,12 @@ def rev_list(conn, _):
     count = conn.readline()
     if not count:
         raise Exception('Unexpected EOF while reading rev-list count')
-    count = None if count == '\n' else int(count)
+    count = None if count == b'\n' else int(count)
     fmt = conn.readline()
     if not fmt:
         raise Exception('Unexpected EOF while reading rev-list format')
-    fmt = None if fmt == '\n' else fmt[:-1]
-    refs = tuple(x[:-1] for x in lines_until_sentinel(conn, '\n', Exception))
+    fmt = None if fmt == b'\n' else fmt[:-1]
+    refs = tuple(x[:-1] for x in lines_until_sentinel(conn, b'\n', Exception))
     args = git.rev_list_invocation(refs, count=count, format=fmt)
     p = subprocess.Popen(git.rev_list_invocation(refs, count=count, format=fmt),
                          env=git._gitenv(git.repodir),
@@ -227,7 +229,7 @@ def rev_list(conn, _):
         if not out:
             break
         conn.write(out)
-    conn.write('\n')
+    conn.write(b'\n')
     rv = p.wait()  # not fatal
     if rv:
         msg = 'git rev-list returned error %d' % rv
@@ -252,10 +254,10 @@ def resolve(conn, args):
     except vfs.IOError as ex:
         res = ex
     if isinstance(res, vfs.IOError):
-        conn.write(b'\0')  # error
+        conn.write(b'\x00')  # error
         vfs.write_ioerror(conn, res)
     else:
-        conn.write(b'\1')  # success
+        conn.write(b'\x01')  # success
         vfs.write_resolution(conn, res)
     conn.ok()
 
@@ -271,36 +273,37 @@ if extra:
 debug2('bup server: reading from stdin.\n')
 
 commands = {
-    'quit': None,
-    'help': do_help,
-    'init-dir': init_dir,
-    'set-dir': set_dir,
-    'list-indexes': list_indexes,
-    'send-index': send_index,
-    'receive-objects-v2': receive_objects_v2,
-    'read-ref': read_ref,
-    'update-ref': update_ref,
-    'join': join,
-    'cat': join,  # apocryphal alias
-    'cat-batch' : cat_batch,
-    'refs': refs,
-    'rev-list': rev_list,
-    'resolve': resolve
+    b'quit': None,
+    b'help': do_help,
+    b'init-dir': init_dir,
+    b'set-dir': set_dir,
+    b'list-indexes': list_indexes,
+    b'send-index': send_index,
+    b'receive-objects-v2': receive_objects_v2,
+    b'read-ref': read_ref,
+    b'update-ref': update_ref,
+    b'join': join,
+    b'cat': join,  # apocryphal alias
+    b'cat-batch' : cat_batch,
+    b'refs': refs,
+    b'rev-list': rev_list,
+    b'resolve': resolve
 }
 
 # FIXME: this protocol is totally lame and not at all future-proof.
 # (Especially since we abort completely as soon as *anything* bad happens)
-conn = Conn(sys.stdin, sys.stdout)
+sys.stdout.flush()
+conn = Conn(byte_stream(sys.stdin), byte_stream(sys.stdout))
 lr = linereader(conn)
 for _line in lr:
     line = _line.strip()
     if not line:
         continue
     debug1('bup server: command: %r\n' % line)
-    words = line.split(' ', 1)
+    words = line.split(b' ', 1)
     cmd = words[0]
-    rest = len(words)>1 and words[1] or ''
-    if cmd == 'quit':
+    rest = len(words)>1 and words[1] or b''
+    if cmd == b'quit':
         break
     else:
         cmd = commands.get(cmd)
