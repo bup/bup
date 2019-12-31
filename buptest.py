@@ -11,6 +11,8 @@ import errno, os, subprocess, sys, tempfile
 from wvtest import WVPASSEQ, wvfailure_count
 
 from bup import helpers
+from bup.compat import str_type
+from bup.io import byte_stream
 
 
 @contextmanager
@@ -67,15 +69,18 @@ def run(cmd, check=True, input=None, **kwargs):
     out, err = p.communicate(input=input)
     if check and p.returncode != 0:
         raise Exception('subprocess %r failed with status %d%s'
-                        % (' '.join(map(quote, cmd)), p.returncode,
+                        % (cmd, p.returncode,
                            (', stderr: %r' % err) if err else ''))
     return ex_res(out=out, err=err, proc=p, rc=p.returncode)
 
 def logcmd(cmd):
-    if isinstance(cmd, basestring):
-        print(cmd, file=sys.stderr)
+    s = helpers.shstr(cmd)
+    if isinstance(cmd, str_type):
+        print(s, file=sys.stderr)
     else:
-        print(' '.join(map(quote, cmd)), file=sys.stderr)
+        # bytes - for now just continue to pass it through given
+        # bup-python wrapper
+        print(s.decode('iso-8859-1'), file=sys.stderr)
 
 def ex(cmd, **kwargs):
     """Print cmd to stderr and then run it as per ex(...).
@@ -85,7 +90,8 @@ def ex(cmd, **kwargs):
     logcmd(cmd)
     result = run(cmd, **kwargs)
     if result.err:
-        sys.stderr.write(result.err)
+        sys.stderr.flush()
+        byte_stream(sys.stderr).write(result.err)
     return result
 
 def exo(cmd, **kwargs):
