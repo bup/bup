@@ -14,15 +14,15 @@ from buptest import no_lingering_errors, test_tempdir
 import bup.helpers as helpers
 
 
-top_dir = '../../..'
-bup_tmp = os.path.realpath('../../../t/tmp')
-bup_path = top_dir + '/bup'
+top_dir = b'../../..'
+bup_tmp = os.path.realpath(b'../../../t/tmp')
+bup_path = top_dir + b'/bup'
 start_dir = os.getcwd()
 
 
 def ex(*cmd):
     try:
-        cmd_str = ' '.join(cmd)
+        cmd_str = b' '.join(cmd)
         print(cmd_str, file=sys.stderr)
         rc = subprocess.call(cmd)
         if rc < 0:
@@ -39,131 +39,131 @@ def ex(*cmd):
 def setup_testfs():
     assert(sys.platform.startswith('linux'))
     # Set up testfs with user_xattr, etc.
-    if subprocess.call(['modprobe', 'loop']) != 0:
+    if subprocess.call([b'modprobe', b'loop']) != 0:
         return False
-    subprocess.call(['umount', 'testfs'])
-    ex('dd', 'if=/dev/zero', 'of=testfs.img', 'bs=1M', 'count=32')
-    ex('mke2fs', '-F', '-j', '-m', '0', 'testfs.img')
-    ex('rm', '-rf', 'testfs')
-    os.mkdir('testfs')
-    ex('mount', '-o', 'loop,acl,user_xattr', 'testfs.img', 'testfs')
+    subprocess.call([b'umount', b'testfs'])
+    ex(b'dd', b'if=/dev/zero', b'of=testfs.img', b'bs=1M', b'count=32')
+    ex(b'mke2fs', b'-F', b'-j', b'-m', b'0', b'testfs.img')
+    ex(b'rm', b'-rf', b'testfs')
+    os.mkdir(b'testfs')
+    ex(b'mount', b'-o', b'loop,acl,user_xattr', b'testfs.img', b'testfs')
     # Hide, so that tests can't create risks.
-    os.chown('testfs', 0, 0)
-    os.chmod('testfs', 0o700)
+    os.chown(b'testfs', 0, 0)
+    os.chmod(b'testfs', 0o700)
     return True
 
 
 def cleanup_testfs():
-    subprocess.call(['umount', 'testfs'])
-    helpers.unlink('testfs.img')
+    subprocess.call([b'umount', b'testfs'])
+    helpers.unlink(b'testfs.img')
 
 
 @wvtest
 def test_clean_up_archive_path():
     with no_lingering_errors():
         cleanup = metadata._clean_up_path_for_archive
-        WVPASSEQ(cleanup('foo'), 'foo')
-        WVPASSEQ(cleanup('/foo'), 'foo')
-        WVPASSEQ(cleanup('///foo'), 'foo')
-        WVPASSEQ(cleanup('/foo/bar'), 'foo/bar')
-        WVPASSEQ(cleanup('foo/./bar'), 'foo/bar')
-        WVPASSEQ(cleanup('/foo/./bar'), 'foo/bar')
-        WVPASSEQ(cleanup('/foo/./bar/././baz'), 'foo/bar/baz')
-        WVPASSEQ(cleanup('/foo/./bar///././baz'), 'foo/bar/baz')
-        WVPASSEQ(cleanup('//./foo/./bar///././baz/.///'), 'foo/bar/baz/')
-        WVPASSEQ(cleanup('./foo/./.bar'), 'foo/.bar')
-        WVPASSEQ(cleanup('./foo/.'), 'foo')
-        WVPASSEQ(cleanup('./foo/..'), '.')
-        WVPASSEQ(cleanup('//./..//.../..//.'), '.')
-        WVPASSEQ(cleanup('//./..//..././/.'), '...')
-        WVPASSEQ(cleanup('/////.'), '.')
-        WVPASSEQ(cleanup('/../'), '.')
-        WVPASSEQ(cleanup(''), '.')
+        WVPASSEQ(cleanup(b'foo'), b'foo')
+        WVPASSEQ(cleanup(b'/foo'), b'foo')
+        WVPASSEQ(cleanup(b'///foo'), b'foo')
+        WVPASSEQ(cleanup(b'/foo/bar'), b'foo/bar')
+        WVPASSEQ(cleanup(b'foo/./bar'), b'foo/bar')
+        WVPASSEQ(cleanup(b'/foo/./bar'), b'foo/bar')
+        WVPASSEQ(cleanup(b'/foo/./bar/././baz'), b'foo/bar/baz')
+        WVPASSEQ(cleanup(b'/foo/./bar///././baz'), b'foo/bar/baz')
+        WVPASSEQ(cleanup(b'//./foo/./bar///././baz/.///'), b'foo/bar/baz/')
+        WVPASSEQ(cleanup(b'./foo/./.bar'), b'foo/.bar')
+        WVPASSEQ(cleanup(b'./foo/.'), b'foo')
+        WVPASSEQ(cleanup(b'./foo/..'), b'.')
+        WVPASSEQ(cleanup(b'//./..//.../..//.'), b'.')
+        WVPASSEQ(cleanup(b'//./..//..././/.'), b'...')
+        WVPASSEQ(cleanup(b'/////.'), b'.')
+        WVPASSEQ(cleanup(b'/../'), b'.')
+        WVPASSEQ(cleanup(b''), b'.')
 
 
 @wvtest
 def test_risky_path():
     with no_lingering_errors():
         risky = metadata._risky_path
-        WVPASS(risky('/foo'))
-        WVPASS(risky('///foo'))
-        WVPASS(risky('/../foo'))
-        WVPASS(risky('../foo'))
-        WVPASS(risky('foo/..'))
-        WVPASS(risky('foo/../'))
-        WVPASS(risky('foo/../bar'))
-        WVFAIL(risky('foo'))
-        WVFAIL(risky('foo/'))
-        WVFAIL(risky('foo///'))
-        WVFAIL(risky('./foo'))
-        WVFAIL(risky('foo/.'))
-        WVFAIL(risky('./foo/.'))
-        WVFAIL(risky('foo/bar'))
-        WVFAIL(risky('foo/./bar'))
+        WVPASS(risky(b'/foo'))
+        WVPASS(risky(b'///foo'))
+        WVPASS(risky(b'/../foo'))
+        WVPASS(risky(b'../foo'))
+        WVPASS(risky(b'foo/..'))
+        WVPASS(risky(b'foo/../'))
+        WVPASS(risky(b'foo/../bar'))
+        WVFAIL(risky(b'foo'))
+        WVFAIL(risky(b'foo/'))
+        WVFAIL(risky(b'foo///'))
+        WVFAIL(risky(b'./foo'))
+        WVFAIL(risky(b'foo/.'))
+        WVFAIL(risky(b'./foo/.'))
+        WVFAIL(risky(b'foo/bar'))
+        WVFAIL(risky(b'foo/./bar'))
 
 
 @wvtest
 def test_clean_up_extract_path():
     with no_lingering_errors():
         cleanup = metadata._clean_up_extract_path
-        WVPASSEQ(cleanup('/foo'), 'foo')
-        WVPASSEQ(cleanup('///foo'), 'foo')
-        WVFAIL(cleanup('/../foo'))
-        WVFAIL(cleanup('../foo'))
-        WVFAIL(cleanup('foo/..'))
-        WVFAIL(cleanup('foo/../'))
-        WVFAIL(cleanup('foo/../bar'))
-        WVPASSEQ(cleanup('foo'), 'foo')
-        WVPASSEQ(cleanup('foo/'), 'foo/')
-        WVPASSEQ(cleanup('foo///'), 'foo///')
-        WVPASSEQ(cleanup('./foo'), './foo')
-        WVPASSEQ(cleanup('foo/.'), 'foo/.')
-        WVPASSEQ(cleanup('./foo/.'), './foo/.')
-        WVPASSEQ(cleanup('foo/bar'), 'foo/bar')
-        WVPASSEQ(cleanup('foo/./bar'), 'foo/./bar')
-        WVPASSEQ(cleanup('/'), '.')
-        WVPASSEQ(cleanup('./'), './')
-        WVPASSEQ(cleanup('///foo/bar'), 'foo/bar')
-        WVPASSEQ(cleanup('///foo/bar'), 'foo/bar')
+        WVPASSEQ(cleanup(b'/foo'), b'foo')
+        WVPASSEQ(cleanup(b'///foo'), b'foo')
+        WVFAIL(cleanup(b'/../foo'))
+        WVFAIL(cleanup(b'../foo'))
+        WVFAIL(cleanup(b'foo/..'))
+        WVFAIL(cleanup(b'foo/../'))
+        WVFAIL(cleanup(b'foo/../bar'))
+        WVPASSEQ(cleanup(b'foo'), b'foo')
+        WVPASSEQ(cleanup(b'foo/'), b'foo/')
+        WVPASSEQ(cleanup(b'foo///'), b'foo///')
+        WVPASSEQ(cleanup(b'./foo'), b'./foo')
+        WVPASSEQ(cleanup(b'foo/.'), b'foo/.')
+        WVPASSEQ(cleanup(b'./foo/.'), b'./foo/.')
+        WVPASSEQ(cleanup(b'foo/bar'), b'foo/bar')
+        WVPASSEQ(cleanup(b'foo/./bar'), b'foo/./bar')
+        WVPASSEQ(cleanup(b'/'), b'.')
+        WVPASSEQ(cleanup(b'./'), b'./')
+        WVPASSEQ(cleanup(b'///foo/bar'), b'foo/bar')
+        WVPASSEQ(cleanup(b'///foo/bar'), b'foo/bar')
 
 
 @wvtest
 def test_metadata_method():
     with no_lingering_errors():
-        with test_tempdir('bup-tmetadata-') as tmpdir:
-            bup_dir = tmpdir + '/bup'
-            data_path = tmpdir + '/foo'
+        with test_tempdir(b'bup-tmetadata-') as tmpdir:
+            bup_dir = tmpdir + b'/bup'
+            data_path = tmpdir + b'/foo'
             os.mkdir(data_path)
-            ex('touch', data_path + '/file')
-            ex('ln', '-s', 'file', data_path + '/symlink')
+            ex(b'touch', data_path + b'/file')
+            ex(b'ln', b'-s', b'file', data_path + b'/symlink')
             test_time1 = 13 * 1000000000
             test_time2 = 42 * 1000000000
-            utime(data_path + '/file', (0, test_time1))
-            lutime(data_path + '/symlink', (0, 0))
+            utime(data_path + b'/file', (0, test_time1))
+            lutime(data_path + b'/symlink', (0, 0))
             utime(data_path, (0, test_time2))
-            ex(bup_path, '-d', bup_dir, 'init')
-            ex(bup_path, '-d', bup_dir, 'index', '-v', data_path)
-            ex(bup_path, '-d', bup_dir, 'save', '-tvvn', 'test', data_path)
+            ex(bup_path, b'-d', bup_dir, b'init')
+            ex(bup_path, b'-d', bup_dir, b'index', b'-v', data_path)
+            ex(bup_path, b'-d', bup_dir, b'save', b'-tvvn', b'test', data_path)
             git.check_repo_or_die(bup_dir)
             repo = LocalRepo()
             resolved = vfs.resolve(repo,
-                                   '/test/latest' + resolve_parent(data_path),
+                                   b'/test/latest' + resolve_parent(data_path),
                                    follow=False)
             leaf_name, leaf_item = resolved[-1]
             m = leaf_item.meta
             WVPASS(m.mtime == test_time2)
-            WVPASS(leaf_name == 'foo')
+            WVPASS(leaf_name == b'foo')
             contents = tuple(vfs.contents(repo, leaf_item))
             WVPASS(len(contents) == 3)
             WVPASSEQ(frozenset(name for name, item in contents),
-                     frozenset(('.', 'file', 'symlink')))
+                     frozenset((b'.', b'file', b'symlink')))
             for name, item in contents:
-                if name == 'file':
+                if name == b'file':
                     m = item.meta
                     WVPASS(m.mtime == test_time1)
-                elif name == 'symlink':
+                elif name == b'symlink':
                     m = item.meta
-                    WVPASSEQ(m.symlink_target, 'file')
+                    WVPASSEQ(m.symlink_target, b'file')
                     WVPASSEQ(m.size, 4)
                     WVPASSEQ(m.mtime, 0)
 
@@ -179,8 +179,8 @@ def test_from_path_error():
     if is_superuser() or detect_fakeroot():
         return
     with no_lingering_errors():
-        with test_tempdir('bup-tmetadata-') as tmpdir:
-            path = tmpdir + '/foo'
+        with test_tempdir(b'bup-tmetadata-') as tmpdir:
+            path = tmpdir + b'/foo'
             os.mkdir(path)
             m = metadata.from_path(path, archive_path=path, save_symlinks=True)
             WVPASSEQ(m.path, path)
@@ -215,9 +215,9 @@ def test_apply_to_path_restricted_access():
     if sys.platform.startswith('cygwin'):
         return # chmod 000 isn't effective.
     with no_lingering_errors():
-        with test_tempdir('bup-tmetadata-') as tmpdir:
-            parent = tmpdir + '/foo'
-            path = parent + '/bar'
+        with test_tempdir(b'bup-tmetadata-') as tmpdir:
+            parent = tmpdir + b'/foo'
+            path = parent + b'/bar'
             os.mkdir(parent)
             os.mkdir(path)
             clear_errors()
@@ -240,8 +240,8 @@ def test_apply_to_path_restricted_access():
 @wvtest
 def test_restore_over_existing_target():
     with no_lingering_errors():
-        with test_tempdir('bup-tmetadata-') as tmpdir:
-            path = tmpdir + '/foo'
+        with test_tempdir(b'bup-tmetadata-') as tmpdir:
+            path = tmpdir + b'/foo'
             os.mkdir(path)
             dir_m = metadata.from_path(path, archive_path=path, save_symlinks=True)
             os.rmdir(path)
@@ -262,11 +262,11 @@ def test_restore_over_existing_target():
             # Restore file over non-empty dir.
             os.remove(path)
             os.mkdir(path)
-            open(path + '/bar', 'w').close()
+            open(path + b'/bar', 'w').close()
             WVEXCEPT(Exception, file_m.create_path, path, create_symlinks=True)
             # Restore dir over non-empty dir.
-            os.remove(path + '/bar')
-            os.mkdir(path + '/bar')
+            os.remove(path + b'/bar')
+            os.mkdir(path + b'/bar')
             WVEXCEPT(Exception, dir_m.create_path, path, create_symlinks=True)
 
 
@@ -287,23 +287,23 @@ if xattr:
         if not setup_testfs():
             WVMSG('unable to load loop module; skipping dependent tests')
             return
-        for f in glob.glob('testfs/*'):
-            ex('rm', '-rf', f)
-        path = 'testfs/foo'
+        for f in glob.glob(b'testfs/*'):
+            ex(b'rm', b'-rf', f)
+        path = b'testfs/foo'
         open(path, 'w').close()
-        xattr.set(path, 'foo', 'bar', namespace=xattr.NS_USER)
+        xattr.set(path, b'foo', b'bar', namespace=xattr.NS_USER)
         m = metadata.from_path(path, archive_path=path, save_symlinks=True)
-        xattr.set(path, 'baz', 'bax', namespace=xattr.NS_USER)
+        xattr.set(path, b'baz', b'bax', namespace=xattr.NS_USER)
         m.apply_to_path(path, restore_numeric_ids=False)
-        WVPASSEQ(xattr.list(path), ['user.foo'])
-        WVPASSEQ(xattr.get(path, 'user.foo'), 'bar')
-        xattr.set(path, 'foo', 'baz', namespace=xattr.NS_USER)
+        WVPASSEQ(xattr.list(path), [b'user.foo'])
+        WVPASSEQ(xattr.get(path, b'user.foo'), b'bar')
+        xattr.set(path, b'foo', b'baz', namespace=xattr.NS_USER)
         m.apply_to_path(path, restore_numeric_ids=False)
-        WVPASSEQ(xattr.list(path), ['user.foo'])
-        WVPASSEQ(xattr.get(path, 'user.foo'), 'bar')
-        xattr.remove(path, 'foo', namespace=xattr.NS_USER)
+        WVPASSEQ(xattr.list(path), [b'user.foo'])
+        WVPASSEQ(xattr.get(path, b'user.foo'), b'bar')
+        xattr.remove(path, b'foo', namespace=xattr.NS_USER)
         m.apply_to_path(path, restore_numeric_ids=False)
-        WVPASSEQ(xattr.list(path), ['user.foo'])
-        WVPASSEQ(xattr.get(path, 'user.foo'), 'bar')
+        WVPASSEQ(xattr.list(path), [b'user.foo'])
+        WVPASSEQ(xattr.get(path, b'user.foo'), b'bar')
         os.chdir(start_dir)
         cleanup_testfs()

@@ -149,6 +149,7 @@ python_tests := \
   lib/bup/t/thashsplit.py \
   lib/bup/t/thelpers.py \
   lib/bup/t/tindex.py \
+  lib/bup/t/tmetadata.py \
   lib/bup/t/toptions.py \
   lib/bup/t/tshquote.py \
   lib/bup/t/tvint.py \
@@ -157,7 +158,6 @@ python_tests := \
 ifeq "2" "$(bup_python_majver)"
   python_tests += \
     lib/bup/t/tclient.py \
-    lib/bup/t/tmetadata.py \
     lib/bup/t/tresolve.py \
     lib/bup/t/tvfs.py
 endif
