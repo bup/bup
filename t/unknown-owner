@@ -5,14 +5,14 @@ exec "$bup_python" "$0" ${1+"$@"}
 """
 # end of bup preamble
 
-from __future__ import absolute_import
+from __future__ import absolute_import, print_function
 
 import grp
 import pwd
 import sys
 
 def usage():
-    print >> sys.stderr, "Usage: unknown-owner (--user | --group)"
+    print("Usage: unknown-owner (--user | --group)", file=sys.stderr)
 
 if len(sys.argv) != 2:
     usage()
@@ -26,4 +26,4 @@ else:
     usage()
     sys.exit(1)
 
-print 'x' * (max_name_len + 1)
+print('x' * (max_name_len + 1))
