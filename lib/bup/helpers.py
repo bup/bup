@@ -6,7 +6,6 @@ from contextlib import contextmanager
 from ctypes import sizeof, c_void_p
 from math import floor
 from os import environ
-from pipes import quote
 from subprocess import PIPE, Popen
 import sys, os, pwd, subprocess, errno, socket, select, mmap, stat, re, struct
 import hashlib, heapq, math, operator, time, grp, tempfile
@@ -268,11 +267,49 @@ def unlink(f):
             raise
 
 
+_bq_simple_id_rx = re.compile(br'^[-_./a-zA-Z0-9]+$')
+_sq_simple_id_rx = re.compile(r'^[-_./a-zA-Z0-9]+$')
+
+def bquote(x):
+    if x == b'':
+        return b"''"
+    if _bq_simple_id_rx.match(x):
+        return x
+    return b"'%s'" % x.replace(b"'", b"'\"'\"'")
+
+def squote(x):
+    if x == '':
+        return "''"
+    if _sq_simple_id_rx.match(x):
+        return x
+    return "'%s'" % x.replace("'", "'\"'\"'")
+
+def quote(x):
+    if isinstance(x, bytes):
+        return bquote(x)
+    if isinstance(cmd, compat.str_type):
+        return squote(x)
+    assert False
+
 def shstr(cmd):
+    """Return a shell quoted string for cmd if it's a sequence, else cmd.
+
+    cmd must be a string, bytes, or a sequence of one or the other,
+    and the assumption is that if cmd is a string or bytes, then it's
+    already quoted (because it's what's actually being passed to
+    call() and friends.  e.g. log(shstr(cmd)); call(cmd)
+
+    """
+    if isinstance(cmd, bytes):
+        return cmd
     if isinstance(cmd, compat.str_type):
         return cmd
-    else:
-        return ' '.join(map(quote, cmd))
+    elif all(isinstance(x, bytes) for x in cmd):
+        return b' '.join(map(bquote, cmd))
+    elif all(isinstance(x, compat.str_type) for x in cmd):
+        return ' '.join(map(squote, cmd))
+    raise TypeError('unsupported shstr argument: ' + repr(cmd))
+
 
 exc = subprocess.check_call
 
