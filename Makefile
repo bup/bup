@@ -170,6 +170,7 @@ runtests-python: all t/tmp
 cmdline_tests := \
   t/test-argv \
   t/test-compression.sh \
+  t/test-drecurse.sh \
   t/test-fsck.sh \
   t/test-index-clear.sh \
   t/test-ls \
@@ -190,7 +191,6 @@ ifeq "2" "$(bup_python_majver)"
     t/test-index.sh \
     t/test-split-join.sh \
     t/test-fuse.sh \
-    t/test-drecurse.sh \
     t/test-cat-file.sh \
     t/test-index-check-device.sh \
     t/test-meta.sh \
