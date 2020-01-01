@@ -178,6 +178,7 @@ cmdline_tests := \
   t/test-list-idx.sh \
   t/test-ls \
   t/test-ls-remote \
+  t/test-packsizelimit \
   t/test-split-join.sh \
   t/test-tz.sh
 
@@ -185,7 +186,6 @@ ifeq "2" "$(bup_python_majver)"
   cmdline_tests += \
     t/test-ftp \
     t/test-save-restore \
-    t/test-packsizelimit \
     t/test-prune-older \
     t/test-web.sh \
     t/test-rm.sh \
