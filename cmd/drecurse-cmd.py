@@ -10,7 +10,9 @@ from os.path import relpath
 import sys
 
 from bup import options, drecurse
+from bup.compat import argv_bytes
 from bup.helpers import log, parse_excludes, parse_rx_excludes, saved_errors
+from bup.io import byte_stream
 
 
 optspec = """
@@ -30,9 +32,9 @@ o = options.Options(optspec)
 if len(extra) != 1:
     o.fatal("exactly one filename expected")
 
-drecurse_top = extra[0]
+drecurse_top = argv_bytes(extra[0])
 excluded_paths = parse_excludes(flags, o.fatal)
-if not drecurse_top.startswith('/'):
+if not drecurse_top.startswith(b'/'):
     excluded_paths = [relpath(x) for x in excluded_paths]
 exclude_rxs = parse_rx_excludes(flags, o.fatal)
 it = drecurse.recursive_dirlist([drecurse_top], opt.xdev,
@@ -49,8 +51,10 @@ else:
         for i in it:
             pass
     else:
+        sys.stdout.flush()
+        out = byte_stream(sys.stdout)
         for (name,st) in it:
-            print(name)
+            out.write(name + b'\n')
 
 if saved_errors:
     log('WARNING: %d errors encountered.\n' % len(saved_errors))

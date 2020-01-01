@@ -12,7 +12,7 @@ import hashlib, heapq, math, operator, time, grp, tempfile
 
 from bup import _helpers
 from bup import compat
-from bup.compat import byte_int
+from bup.compat import argv_bytes, byte_int
 from bup.io import path_msg
 # This function should really be in helpers, not in bup.options.  But we
 # want options.py to be standalone so people can include it in other projects.
@@ -969,12 +969,12 @@ def parse_excludes(options, fatal):
     for flag in options:
         (option, parameter) = flag
         if option == '--exclude':
-            excluded_paths.append(resolve_parent(parameter))
+            excluded_paths.append(resolve_parent(argv_bytes(parameter)))
         elif option == '--exclude-from':
             try:
-                f = open(resolve_parent(parameter))
+                f = open(resolve_parent(argv_bytes(parameter)), 'rb')
             except IOError as e:
-                raise fatal("couldn't read %s" % parameter)
+                raise fatal("couldn't read %r" % parameter)
             for exclude_path in f.readlines():
                 # FIXME: perhaps this should be rstrip('\n')
                 exclude_path = resolve_parent(exclude_path.strip())
@@ -992,22 +992,22 @@ def parse_rx_excludes(options, fatal):
         (option, parameter) = flag
         if option == '--exclude-rx':
             try:
-                excluded_patterns.append(re.compile(parameter))
+                excluded_patterns.append(re.compile(argv_bytes(parameter)))
             except re.error as ex:
-                fatal('invalid --exclude-rx pattern (%s): %s' % (parameter, ex))
+                fatal('invalid --exclude-rx pattern (%r): %s' % (parameter, ex))
         elif option == '--exclude-rx-from':
             try:
-                f = open(resolve_parent(parameter))
+                f = open(resolve_parent(parameter), 'rb')
             except IOError as e:
-                raise fatal("couldn't read %s" % parameter)
+                raise fatal("couldn't read %r" % parameter)
             for pattern in f.readlines():
-                spattern = pattern.rstrip('\n')
+                spattern = pattern.rstrip(b'\n')
                 if not spattern:
                     continue
                 try:
                     excluded_patterns.append(re.compile(spattern))
                 except re.error as ex:
-                    fatal('invalid --exclude-rx pattern (%s): %s' % (spattern, ex))
+                    fatal('invalid --exclude-rx pattern (%r): %s' % (spattern, ex))
     return excluded_patterns
 
 
