@@ -13,7 +13,7 @@ import hashlib, heapq, math, operator, time, grp, tempfile
 from bup import _helpers
 from bup import compat
 from bup.compat import argv_bytes, byte_int
-from bup.io import path_msg
+from bup.io import byte_stream, path_msg
 # This function should really be in helpers, not in bup.options.  But we
 # want options.py to be standalone so people can include it in other projects.
 from bup.options import _tty_width as tty_width
@@ -574,13 +574,13 @@ class DemuxConn(BaseConn):
         BaseConn.__init__(self, outp)
         # Anything that comes through before the sync string was not
         # multiplexed and can be assumed to be debug/log before mux init.
-        tail = ''
-        while tail != 'BUPMUX':
+        tail = b''
+        while tail != b'BUPMUX':
             b = os.read(infd, (len(tail) < 6) and (6-len(tail)) or 1)
             if not b:
                 raise IOError('demux: unexpected EOF during initialization')
             tail += b
-            sys.stderr.write(tail[:-6])  # pre-mux log messages
+            byte_stream(sys.stderr).write(tail[:-6])  # pre-mux log messages
             tail = tail[-6:]
         self.infd = infd
         self.reader = None
@@ -596,14 +596,14 @@ class DemuxConn(BaseConn):
         rl, wl, xl = select.select([self.infd], [], [], timeout)
         if not rl: return False
         assert(rl[0] == self.infd)
-        ns = ''.join(checked_reader(self.infd, 5))
+        ns = b''.join(checked_reader(self.infd, 5))
         n, fdw = struct.unpack('!IB', ns)
         assert(n <= MAX_PACKET)
         if fdw == 1:
             self.reader = checked_reader(self.infd, n)
         elif fdw == 2:
             for buf in checked_reader(self.infd, n):
-                sys.stderr.write(buf)
+                byte_stream(sys.stderr).write(buf)
         elif fdw == 3:
             self.closed = True
             debug2("DemuxConn: marked closed\n")
@@ -640,10 +640,10 @@ class DemuxConn(BaseConn):
     def _readline(self):
         def find_eol(buf):
             try:
-                return buf.index('\n')+1
+                return buf.index(b'\n')+1
             except ValueError:
                 return None
-        return ''.join(self._read_parts(find_eol))
+        return b''.join(self._read_parts(find_eol))
 
     def _read(self, size):
         csize = [size]
@@ -653,7 +653,7 @@ class DemuxConn(BaseConn):
                 return None
             else:
                 return csize[0]
-        return ''.join(self._read_parts(until_size))
+        return b''.join(self._read_parts(until_size))
 
     def has_input(self):
         return self._load_buf(0)
