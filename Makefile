@@ -185,6 +185,10 @@ cmdline_tests := \
   t/test-restore-single-file.sh \
   t/test-rm-between-index-and-save.sh \
   t/test-save-creates-no-unrefs.sh \
+  t/test-save-restore \
+  t/test-save-restore-excludes.sh \
+  t/test-save-strip-graft.sh \
+  t/test-save-with-valid-parent.sh \
   t/test-sparse-files.sh \
   t/test-split-join.sh \
   t/test-tz.sh
@@ -192,7 +196,6 @@ cmdline_tests := \
 ifeq "2" "$(bup_python_majver)"
   cmdline_tests += \
     t/test-ftp \
-    t/test-save-restore \
     t/test-prune-older \
     t/test-web.sh \
     t/test-rm.sh \
@@ -202,9 +205,6 @@ ifeq "2" "$(bup_python_majver)"
     t/test-index-check-device.sh \
     t/test-on.sh \
     t/test-restore-map-owner.sh \
-    t/test-save-with-valid-parent.sh \
-    t/test-save-restore-excludes.sh \
-    t/test-save-strip-graft.sh \
     t/test-import-duplicity.sh \
     t/test-import-rdiff-backup.sh \
     t/test-xdev.sh \
