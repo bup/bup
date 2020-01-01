@@ -5,16 +5,17 @@ exec "$bup_python" "$0" ${1+"$@"}
 """
 # end of bup preamble
 
-from __future__ import absolute_import, print_function
+from __future__ import absolute_import
 from stat import S_ISDIR
 import copy, errno, os, sys, stat, re
 
 from bup import options, git, metadata, vfs
 from bup._helpers import write_sparsely
-from bup.compat import wrap_main
+from bup.compat import argv_bytes, fsencode, wrap_main
 from bup.helpers import (add_error, chunkyreader, die_if_errors, handle_ctrl_c,
                          log, mkdirp, parse_rx_excludes, progress, qprogress,
                          saved_errors, should_rx_exclude_path, unlink)
+from bup.io import byte_stream
 from bup.repo import LocalRepo, RemoteRepo
 
 
@@ -38,30 +39,34 @@ q,quiet     don't show progress meter
 total_restored = 0
 
 # stdout should be flushed after each line, even when not connected to a tty
+stdoutfd = sys.stdout.fileno()
 sys.stdout.flush()
-sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 1)
+sys.stdout = os.fdopen(stdoutfd, 'w', 1)
+out = byte_stream(sys.stdout)
 
 def valid_restore_path(path):
     path = os.path.normpath(path)
-    if path.startswith('/'):
+    if path.startswith(b'/'):
         path = path[1:]
-    if '/' in path:
+    if b'/' in path:
         return True
 
 def parse_owner_mappings(type, options, fatal):
     """Traverse the options and parse all --map-TYPEs, or call Option.fatal()."""
     opt_name = '--map-' + type
-    value_rx = r'^([^=]+)=([^=]*)$'
     if type in ('uid', 'gid'):
-        value_rx = r'^(-?[0-9]+)=(-?[0-9]+)$'
+        value_rx = re.compile(br'^(-?[0-9]+)=(-?[0-9]+)$')
+    else:
+        value_rx = re.compile(br'^([^=]+)=([^=]*)$')
     owner_map = {}
     for flag in options:
         (option, parameter) = flag
         if option != opt_name:
             continue
-        match = re.match(value_rx, parameter)
+        parameter = argv_bytes(parameter)
+        match = value_rx.match(parameter)
         if not match:
-            raise fatal("couldn't parse %s as %s mapping" % (parameter, type))
+            raise fatal("couldn't parse %r as %s mapping" % (parameter, type))
         old_id, new_id = match.groups()
         if type in ('uid', 'gid'):
             old_id = int(old_id)
@@ -114,7 +119,7 @@ def hardlink_if_possible(fullname, item, top, hardlinks):
 
     target = item.meta.hardlink_target
     assert(target)
-    assert(fullname.startswith('/'))
+    assert(fullname.startswith(b'/'))
     target_versions = hardlinks.get(target)
     if target_versions:
         # Check every path in the set that we've written so far for a match.
@@ -155,9 +160,9 @@ def restore(repo, parent_path, name, item, top, sparse, numeric_ids, owner_map,
     global total_restored
     mode = vfs.item_mode(item)
     treeish = S_ISDIR(mode)
-    fullname = parent_path + '/' + name
+    fullname = parent_path + b'/' + name
     # Match behavior of index --exclude-rx with respect to paths.
-    if should_rx_exclude_path(fullname + ('/' if treeish else ''),
+    if should_rx_exclude_path(fullname + (b'/' if treeish else b''),
                               exclude_rxs):
         return
 
@@ -169,14 +174,14 @@ def restore(repo, parent_path, name, item, top, sparse, numeric_ids, owner_map,
 
     if stat.S_ISDIR(mode):
         if verbosity >= 1:
-            print('%s/' % fullname)
+            out.write(b'%s/\n' % fullname)
     elif stat.S_ISLNK(mode):
         assert(meta.symlink_target)
         if verbosity >= 2:
-            print('%s@ -> %s' % (fullname, meta.symlink_target))
+            out.write(b'%s@ -> %s\n' % (fullname, meta.symlink_target))
     else:
         if verbosity >= 2:
-            print(fullname)
+            out.write(fullname + '\n')
 
     orig_cwd = os.getcwd()
     try:
@@ -184,7 +189,7 @@ def restore(repo, parent_path, name, item, top, sparse, numeric_ids, owner_map,
             # Assumes contents() returns '.' with the full metadata first
             sub_items = vfs.contents(repo, item, want_meta=True)
             dot, item = next(sub_items, None)
-            assert(dot == '.')
+            assert(dot == b'.')
             item = vfs.augment_item_meta(repo, item, include_size=True)
             meta = item.meta
             meta.create_path(name)
@@ -196,7 +201,7 @@ def restore(repo, parent_path, name, item, top, sparse, numeric_ids, owner_map,
                 restore(repo, fullname, sub_name, sub_item, top, sparse,
                         numeric_ids, owner_map, exclude_rxs, verbosity,
                         hardlinks)
-            os.chdir('..')
+            os.chdir(b'..')
             apply_metadata(meta, name, numeric_ids, owner_map)
         else:
             created_hardlink = False
@@ -221,7 +226,11 @@ def restore(repo, parent_path, name, item, top, sparse, numeric_ids, owner_map,
 def main():
     o = options.Options(optspec)
     opt, flags, extra = o.parse(sys.argv[1:])
-    verbosity = opt.verbose if not opt.quiet else -1
+    verbosity = (opt.verbose or 0) if not opt.quiet else -1
+    if opt.remote:
+        opt.remote = argv_bytes(opt.remote)
+    if opt.outdir:
+        opt.outdir = argv_bytes(opt.outdir)
     
     git.check_repo_or_die()
 
@@ -239,9 +248,9 @@ def main():
         os.chdir(opt.outdir)
 
     repo = RemoteRepo(opt.remote) if opt.remote else LocalRepo()
-    top = os.getcwd()
+    top = fsencode(os.getcwd())
     hardlinks = {}
-    for path in extra:
+    for path in [argv_bytes(x) for x in extra]:
         if not valid_restore_path(path):
             add_error("path %r doesn't include a branch and revision" % path)
             continue
@@ -250,16 +259,16 @@ def main():
         except vfs.IOError as e:
             add_error(e)
             continue
-        if len(resolved) == 3 and resolved[2][0] == 'latest':
+        if len(resolved) == 3 and resolved[2][0] == b'latest':
             # Follow latest symlink to the actual save
             try:
-                resolved = vfs.resolve(repo, 'latest', parent=resolved[:-1],
+                resolved = vfs.resolve(repo, b'latest', parent=resolved[:-1],
                                        want_meta=True)
             except vfs.IOError as e:
                 add_error(e)
                 continue
             # Rename it back to 'latest'
-            resolved = tuple(elt if i != 2 else ('latest',) + elt[1:]
+            resolved = tuple(elt if i != 2 else (b'latest',) + elt[1:]
                              for i, elt in enumerate(resolved))
         path_parent, path_name = os.path.split(path)
         leaf_name, leaf_item = resolved[-1]
@@ -268,7 +277,7 @@ def main():
                       % ('/'.join(name for name, item in resolved),
                          path))
             continue
-        if not path_name or path_name == '.':
+        if not path_name or path_name == b'.':
             # Source is /foo/what/ever/ or /foo/what/ever/. -- extract
             # what/ever/* to the current directory, and if name == '.'
             # (i.e. /foo/what/ever/.), then also restore what/ever's
@@ -279,18 +288,18 @@ def main():
             else:
                 items = vfs.contents(repo, leaf_item, want_meta=True)
                 dot, leaf_item = next(items, None)
-                assert(dot == '.')
+                assert dot == b'.'
                 for sub_name, sub_item in items:
-                    restore(repo, '', sub_name, sub_item, top,
+                    restore(repo, b'', sub_name, sub_item, top,
                             opt.sparse, opt.numeric_ids, owner_map,
                             exclude_rxs, verbosity, hardlinks)
-                if path_name == '.':
+                if path_name == b'.':
                     leaf_item = vfs.augment_item_meta(repo, leaf_item,
                                                       include_size=True)
-                    apply_metadata(leaf_item.meta, '.',
+                    apply_metadata(leaf_item.meta, b'.',
                                    opt.numeric_ids, owner_map)
         else:
-            restore(repo, '', leaf_name, leaf_item, top,
+            restore(repo, b'', leaf_name, leaf_item, top,
                     opt.sparse, opt.numeric_ids, owner_map,
                     exclude_rxs, verbosity, hardlinks)
 

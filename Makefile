@@ -178,6 +178,7 @@ cmdline_tests := \
   t/test-list-idx.sh \
   t/test-ls \
   t/test-ls-remote \
+  t/test-meta.sh \
   t/test-packsizelimit \
   t/test-split-join.sh \
   t/test-tz.sh
@@ -194,7 +195,6 @@ ifeq "2" "$(bup_python_majver)"
     t/test-index.sh \
     t/test-fuse.sh \
     t/test-index-check-device.sh \
-    t/test-meta.sh \
     t/test-on.sh \
     t/test-restore-map-owner.sh \
     t/test-restore-single-file.sh \
