@@ -5,7 +5,7 @@ exec "$bup_python" "$0" ${1+"$@"}
 """
 # end of bup preamble
 
-from __future__ import absolute_import
+from __future__ import absolute_import, print_function
 
 from os.path import getsize, isdir
 from sys import argv, stderr
@@ -15,7 +15,7 @@ def listdir_failure(ex):
     raise ex
 
 def usage():
-    print >> stderr, "Usage: data-size PATH ..."
+    print('Usage: data-size PATH ...', file=sys.stderr)
 
 total = 0
 for path in argv[1:]:
@@ -25,4 +25,4 @@ for path in argv[1:]:
     else:
         total += getsize(path)
 
-print total
+print(total)
