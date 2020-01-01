@@ -175,6 +175,7 @@ cmdline_tests := \
   t/test-drecurse.sh \
   t/test-fsck.sh \
   t/test-index-clear.sh \
+  t/test-list-idx.sh \
   t/test-ls \
   t/test-ls-remote \
   t/test-tz.sh
@@ -189,7 +190,6 @@ ifeq "2" "$(bup_python_majver)"
     t/test-rm.sh \
     t/test-gc.sh \
     t/test-main.sh \
-    t/test-list-idx.sh \
     t/test-index.sh \
     t/test-split-join.sh \
     t/test-fuse.sh \
