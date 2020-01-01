@@ -182,6 +182,8 @@ cmdline_tests := \
   t/test-meta.sh \
   t/test-packsizelimit \
   t/test-redundant-saves.sh \
+  t/test-restore-single-file.sh \
+  t/test-save-creates-no-unrefs.sh \
   t/test-sparse-files.sh \
   t/test-split-join.sh \
   t/test-tz.sh
@@ -199,10 +201,8 @@ ifeq "2" "$(bup_python_majver)"
     t/test-index-check-device.sh \
     t/test-on.sh \
     t/test-restore-map-owner.sh \
-    t/test-restore-single-file.sh \
     t/test-rm-between-index-and-save.sh \
     t/test-save-with-valid-parent.sh \
-    t/test-save-creates-no-unrefs.sh \
     t/test-save-restore-excludes.sh \
     t/test-save-strip-graft.sh \
     t/test-import-duplicity.sh \
