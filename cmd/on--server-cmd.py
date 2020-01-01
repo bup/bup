@@ -7,7 +7,10 @@ exec "$bup_python" "$0" ${1+"$@"}
 
 from __future__ import absolute_import
 import sys, os, struct
+
 from bup import options, helpers
+from bup.compat import environ, py_maj
+from bup.io import byte_stream
 
 optspec = """
 bup on--server
@@ -23,14 +26,17 @@ if extra:
 # Normally we could just pass this on the command line, but since we'll often
 # be getting called on the other end of an ssh pipe, which tends to mangle
 # argv (by sending it via the shell), this way is much safer.
-buf = sys.stdin.read(4)
+
+stdin = byte_stream(sys.stdin)
+buf = stdin.read(4)
 sz = struct.unpack('!I', buf)[0]
 assert(sz > 0)
 assert(sz < 1000000)
-buf = sys.stdin.read(sz)
+buf = stdin.read(sz)
 assert(len(buf) == sz)
-argv = buf.split('\0')
-argv = [argv[0], 'mux', '--'] + argv
+argv = buf.split(b'\0')
+argv = [argv[0], b'mux', b'--'] + argv
+
 
 # stdin/stdout are supposedly connected to 'bup server' that the caller
 # started for us (often on the other end of an ssh tunnel), so we don't want
@@ -49,10 +55,10 @@ argv = [argv[0], 'mux', '--'] + argv
 os.dup2(0, 3)
 os.dup2(1, 4)
 os.dup2(2, 1)
-fd = os.open('/dev/null', os.O_RDONLY)
+fd = os.open(os.devnull, os.O_RDONLY)
 os.dup2(fd, 0)
 os.close(fd)
 
-os.environ['BUP_SERVER_REVERSE'] = helpers.hostname()
+environ[b'BUP_SERVER_REVERSE'] = helpers.hostname()
 os.execvp(argv[0], argv)
 sys.exit(99)

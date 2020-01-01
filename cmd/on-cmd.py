@@ -6,11 +6,13 @@ exec "$bup_python" "$0" ${1+"$@"}
 # end of bup preamble
 
 from __future__ import absolute_import
+from subprocess import PIPE
 import sys, os, struct, getopt, subprocess, signal
 
-from subprocess import PIPE
 from bup import options, ssh, path
+from bup.compat import argv_bytes
 from bup.helpers import DemuxConn, log
+from bup.io import byte_stream
 
 
 optspec = """
@@ -34,31 +36,34 @@ def handler(signum, frame):
 signal.signal(signal.SIGTERM, handler)
 signal.signal(signal.SIGINT, handler)
 
+sys.stdout.flush()
+out = byte_stream(sys.stdout)
+
 try:
     sp = None
     p = None
     ret = 99
 
-    hp = extra[0].split(':')
+    hp = argv_bytes(extra[0]).split(b':')
     if len(hp) == 1:
         (hostname, port) = (hp[0], None)
     else:
         (hostname, port) = hp
-    argv = extra[1:]
-    p = ssh.connect(hostname, port, 'on--server', stderr=PIPE)
+    argv = [argv_bytes(x) for x in extra[1:]]
+    p = ssh.connect(hostname, port, b'on--server', stderr=PIPE)
 
     try:
-        argvs = '\0'.join(['bup'] + argv)
+        argvs = b'\0'.join([b'bup'] + argv)
         p.stdin.write(struct.pack('!I', len(argvs)) + argvs)
         p.stdin.flush()
-        sp = subprocess.Popen([path.exe(), 'server'],
+        sp = subprocess.Popen([path.exe(), b'server'],
                               stdin=p.stdout, stdout=p.stdin)
         p.stdin.close()
         p.stdout.close()
         # Demultiplex remote client's stderr (back to stdout/stderr).
-        dmc = DemuxConn(p.stderr.fileno(), open(os.devnull, "w"))
-        for line in iter(dmc.readline, ""):
-            sys.stdout.write(line)
+        dmc = DemuxConn(p.stderr.fileno(), open(os.devnull, "wb"))
+        for line in iter(dmc.readline, b''):
+            out.write(line)
     finally:
         while 1:
             # if we get a signal while waiting, we have to keep waiting, just
