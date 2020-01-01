@@ -5,11 +5,12 @@ exec "$bup_python" "$0" ${1+"$@"}
 """
 # end of bup preamble
 
-from __future__ import absolute_import, print_function
+from __future__ import absolute_import
 import sys, struct, math
 
 from bup import options, git, _helpers
 from bup.helpers import log
+from bup.io import byte_stream
 
 POPULATION_OF_EARTH=6.7e9  # as of September, 2010
 
@@ -27,29 +28,33 @@ if extra:
 
 git.check_repo_or_die()
 
-mi = git.PackIdxList(git.repo('objects/pack'), ignore_midx=opt.ignore_midx)
+mi = git.PackIdxList(git.repo(b'objects/pack'), ignore_midx=opt.ignore_midx)
 
-def do_predict(ix):
+def do_predict(ix, out):
     total = len(ix)
     maxdiff = 0
     for count,i in enumerate(ix):
         prefix = struct.unpack('!Q', i[:8])[0]
-        expected = prefix * total / (1<<64)
+        expected = prefix * total // (1 << 64)
         diff = count - expected
         maxdiff = max(maxdiff, abs(diff))
-    print('%d of %d (%.3f%%) ' % (maxdiff, len(ix), maxdiff*100.0/len(ix)))
-    sys.stdout.flush()
+    out.write(b'%d of %d (%.3f%%) '
+              % (maxdiff, len(ix), maxdiff * 100.0 / len(ix)))
+    out.flush()
     assert(count+1 == len(ix))
+
+sys.stdout.flush()
+out = byte_stream(sys.stdout)
 
 if opt.predict:
     if opt.ignore_midx:
         for pack in mi.packs:
-            do_predict(pack)
+            do_predict(pack, out)
     else:
-        do_predict(mi)
+        do_predict(mi, out)
 else:
     # default mode: find longest matching prefix
-    last = '\0'*20
+    last = b'\0'*20
     longmatch = 0
     for i in mi:
         if i == last:
@@ -58,7 +63,7 @@ else:
         pm = _helpers.bitmatch(last, i)
         longmatch = max(longmatch, pm)
         last = i
-    print(longmatch)
+    out.write(b'%d\n' % longmatch)
     log('%d matching prefix bits\n' % longmatch)
     doublings = math.log(len(mi), 2)
     bpd = longmatch / doublings

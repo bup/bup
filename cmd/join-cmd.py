@@ -9,7 +9,9 @@ from __future__ import absolute_import
 import sys
 
 from bup import git, options
+from bup.compat import argv_bytes
 from bup.helpers import linereader, log
+from bup.io import byte_stream
 from bup.repo import LocalRepo, RemoteRepo
 
 
@@ -21,11 +23,15 @@ o=         output filename
 """
 o = options.Options(optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
+if opt.remote:
+    opt.remote = argv_bytes(opt.remote)
 
 git.check_repo_or_die()
 
+stdin = byte_stream(sys.stdin)
+
 if not extra:
-    extra = linereader(sys.stdin)
+    extra = linereader(stdin)
 
 ret = 0
 repo = RemoteRepo(opt.remote) if opt.remote else LocalRepo()
@@ -33,9 +39,10 @@ repo = RemoteRepo(opt.remote) if opt.remote else LocalRepo()
 if opt.o:
     outfile = open(opt.o, 'wb')
 else:
-    outfile = sys.stdout
+    sys.stdout.flush()
+    outfile = byte_stream(sys.stdout)
 
-for ref in extra:
+for ref in [argv_bytes(x) for x in extra]:
     try:
         for blob in repo.join(ref):
             outfile.write(blob)
