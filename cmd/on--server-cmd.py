@@ -8,7 +8,7 @@ exec "$bup_python" "$0" ${1+"$@"}
 from __future__ import absolute_import
 import sys, os, struct
 
-from bup import options, helpers
+from bup import options, helpers, path
 from bup.compat import environ, py_maj
 from bup.io import byte_stream
 
@@ -35,6 +35,7 @@ assert(sz < 1000000)
 buf = stdin.read(sz)
 assert(len(buf) == sz)
 argv = buf.split(b'\0')
+argv[0] = path.exe()
 argv = [argv[0], b'mux', b'--'] + argv
 
 
