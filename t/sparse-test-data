@@ -4,10 +4,12 @@ bup_python="$(dirname "$0")/../cmd/bup-python" || exit $?
 exec "$bup_python" "$0" ${1+"$@"}
 """
 
+from __future__ import absolute_import, print_function
 from random import randint
 from sys import stderr, stdout
 import sys
 
+from bup.io import byte_stream
 
 def smaller_region(max_offset):
     start = randint(0, max_offset)
@@ -44,13 +46,14 @@ def random_region():
     global generators
     return generators[randint(0, len(generators) - 1)]()
 
-
-out = stdout
-
+if len(sys.argv) == 0:
+    stdout.flush()
+    out = byte_stream(stdout)
 if len(sys.argv) == 2:
     out = open(sys.argv[1], 'wb')
-elif len(sys.argv):
-    print >> stderr, "Usage: sparse-test-data [FILE]"
+else:
+    print('Usage: sparse-test-data [FILE]', file=stderr)
+    sys.exit(2)
 
 bup_read_size = 2 ** 16
 bup_min_sparse_len = 512
@@ -81,14 +84,14 @@ if sparse[1][1] != out_size:
     sparse_offsets.append(out_size)
 
 # Now sparse_offsets indicates where to start/stop zero runs
-data = 'x'
+data = b'x'
 pos = 0
-print >> stderr, 'offsets:', sparse_offsets
+print('offsets:', sparse_offsets, file=stderr)
 for offset in sparse_offsets:
     count = offset - pos
-    print >> stderr, 'write:', 'x' if data == 'x' else '0', count
+    print('write:', 'x' if data == 'x' else '0', count, file=stderr)
     out.write(data * (offset - pos))
     pos += count
-    data = '\0' if data == 'x' else 'x'
+    data = b'\0' if data == b'x' else b'x'
 
 out.close()
