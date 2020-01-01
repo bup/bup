@@ -7,7 +7,9 @@ exec "$bup_python" "$0" ${1+"$@"}
 
 from __future__ import absolute_import
 import sys, os, struct
-from bup import options, helpers
+
+from bup import options, helpers, path
+
 
 optspec = """
 bup on--server
@@ -30,6 +32,7 @@ assert(sz < 1000000)
 buf = sys.stdin.read(sz)
 assert(len(buf) == sz)
 argv = buf.split('\0')
+argv[0] = path.exe()
 argv = [argv[0], 'mux', '--'] + argv
 
 # stdin/stdout are supposedly connected to 'bup server' that the caller
