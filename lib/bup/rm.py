@@ -1,5 +1,6 @@
 
 from __future__ import absolute_import
+from binascii import hexlify, unhexlify
 import sys
 
 from bup import compat, git, vfs
@@ -7,13 +8,13 @@ from bup.client import ClientError
 from bup.compat import hexstr
 from bup.git import get_commit_items
 from bup.helpers import add_error, die_if_errors, log, saved_errors
-
+from bup.io import path_msg
 
 def append_commit(hash, parent, cp, writer):
     ci = get_commit_items(hash, cp)
-    tree = ci.tree.decode('hex')
-    author = '%s <%s>' % (ci.author_name, ci.author_mail)
-    committer = '%s <%s>' % (ci.committer_name, ci.committer_mail)
+    tree = unhexlify(ci.tree)
+    author = b'%s <%s>' % (ci.author_name, ci.author_mail)
+    committer = b'%s <%s>' % (ci.committer_name, ci.committer_mail)
     c = writer.new_commit(tree, parent,
                           author, ci.author_sec, ci.author_offset,
                           committer, ci.committer_sec, ci.committer_offset,
@@ -23,7 +24,7 @@ def append_commit(hash, parent, cp, writer):
 
 def filter_branch(tip_commit_hex, exclude, writer):
     # May return None if everything is excluded.
-    commits = [x.decode('hex') for x in git.rev_list(tip_commit_hex)]
+    commits = [unhexlify(x) for x in git.rev_list(tip_commit_hex)]
     commits.reverse()
     last_c, tree = None, None
     # Rather than assert that we always find an exclusion here, we'll
@@ -31,13 +32,12 @@ def filter_branch(tip_commit_hex, exclude, writer):
     first_exclusion = next(i for i, c in enumerate(commits) if exclude(c))
     if first_exclusion != 0:
         last_c = commits[first_exclusion - 1]
-        tree = get_commit_items(last_c.encode('hex'),
-                                git.cp()).tree.decode('hex')
+        tree = unhexlify(get_commit_items(hexlify(last_c), git.cp()).tree)
         commits = commits[first_exclusion:]
     for c in commits:
         if exclude(c):
             continue
-        last_c, tree = append_commit(c.encode('hex'), last_c, git.cp(), writer)
+        last_c, tree = append_commit(hexlify(c), last_c, git.cp(), writer)
     return last_c
 
 def commit_oid(item):
@@ -53,7 +53,7 @@ def rm_saves(saves, writer):
         assert(branch == first_branch_item)
     rm_commits = frozenset([commit_oid(save) for save, branch in saves])
     orig_tip = commit_oid(first_branch_item)
-    new_tip = filter_branch(orig_tip.encode('hex'),
+    new_tip = filter_branch(hexlify(orig_tip),
                             lambda x: x in rm_commits,
                             writer)
     assert(orig_tip)
@@ -76,16 +76,16 @@ def dead_items(repo, paths):
         else:
             leaf_name, leaf_item = resolved[-1]
             if not leaf_item:
-                add_error('error: cannot access %r in %r'
-                          % ('/'.join(name for name, item in resolved),
-                             path))
+                add_error('error: cannot access %s in %s'
+                          % (path_msg(b'/'.join(name for name, item in resolved)),
+                             path_msg(path)))
                 continue
             if isinstance(leaf_item, vfs.RevList):  # rm /foo
                 branchname = leaf_name
                 dead_branches[branchname] = leaf_item
                 dead_saves.pop(branchname, None)  # rm /foo obviates rm /foo/bar
             elif isinstance(leaf_item, vfs.Commit):  # rm /foo/bar
-                if leaf_name == 'latest':
+                if leaf_name == b'latest':
                     add_error("error: cannot delete 'latest' symlink")
                 else:
                     branchname, branchitem = resolved[-2]
@@ -93,7 +93,7 @@ def dead_items(repo, paths):
                         dead = leaf_item, branchitem
                         dead_saves.setdefault(branchname, []).append(dead)
             else:
-                add_error("don't know how to remove %r yet" % path)
+                add_error("don't know how to remove %s yet" % path_msg(path))
     if saved_errors:
         return None, None
     return dead_branches, dead_saves
@@ -106,7 +106,7 @@ def bup_rm(repo, paths, compression=6, verbosity=None):
     updated_refs = {}  # ref_name -> (original_ref, tip_commit(bin))
 
     for branchname, branchitem in compat.items(dead_branches):
-        ref = 'refs/heads/' + branchname
+        ref = b'refs/heads/' + branchname
         assert(not ref in updated_refs)
         updated_refs[ref] = (branchitem.oid, None)
 
@@ -115,7 +115,7 @@ def bup_rm(repo, paths, compression=6, verbosity=None):
         try:
             for branch, saves in compat.items(dead_saves):
                 assert(saves)
-                updated_refs['refs/heads/' + branch] = rm_saves(saves, writer)
+                updated_refs[b'refs/heads/' + branch] = rm_saves(saves, writer)
         except:
             if writer:
                 writer.abort()
@@ -132,18 +132,18 @@ def bup_rm(repo, paths, compression=6, verbosity=None):
         orig_ref, new_ref = info
         try:
             if not new_ref:
-                git.delete_ref(ref_name, orig_ref.encode('hex'))
+                git.delete_ref(ref_name, hexlify(orig_ref))
             else:
                 git.update_ref(ref_name, new_ref, orig_ref)
                 if verbosity:
-                    log('updated %r (%s%s)\n'
-                        % (ref_name,
+                    log('updated %s (%s%s)\n'
+                        % (path_msg(ref_name),
                            hexstr(orig_ref) + ' -> ' if orig_ref else '',
                            hexstr(new_ref)))
         except (git.GitError, ClientError) as ex:
             if new_ref:
-                add_error('while trying to update %r (%s%s): %s'
-                          % (ref_name,
+                add_error('while trying to update %s (%s%s): %s'
+                          % (path_msg(ref_name),
                              hexstr(orig_ref) + ' -> ' if orig_ref else '',
                              hexstr(new_ref),
                              ex))

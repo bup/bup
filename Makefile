@@ -183,6 +183,7 @@ cmdline_tests := \
   t/test-packsizelimit \
   t/test-redundant-saves.sh \
   t/test-restore-single-file.sh \
+  t/test-rm.sh \
   t/test-rm-between-index-and-save.sh \
   t/test-save-creates-no-unrefs.sh \
   t/test-save-restore \
@@ -198,7 +199,6 @@ ifeq "2" "$(bup_python_majver)"
     t/test-ftp \
     t/test-prune-older \
     t/test-web.sh \
-    t/test-rm.sh \
     t/test-gc.sh \
     t/test-main.sh \
     t/test-fuse.sh \

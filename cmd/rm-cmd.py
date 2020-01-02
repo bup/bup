@@ -8,6 +8,7 @@ exec "$bup_python" "$0" ${1+"$@"}
 from __future__ import absolute_import
 import sys
 
+from bup.compat import argv_bytes
 from bup.git import check_repo_or_die
 from bup.options import Options
 from bup.helpers import die_if_errors, handle_ctrl_c, log
@@ -35,5 +36,6 @@ if len(extra) < 1:
 
 check_repo_or_die()
 repo = LocalRepo()
-bup_rm(repo, extra, compression=opt.compress, verbosity=opt.verbose)
+bup_rm(repo, [argv_bytes(x) for x in extra],
+       compression=opt.compress, verbosity=opt.verbose)
 die_if_errors()
