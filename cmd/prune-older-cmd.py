@@ -6,6 +6,7 @@ exec "$bup_python" "$0" ${1+"$@"}
 # end of bup preamble
 
 from __future__ import absolute_import, print_function
+from binascii import hexlify, unhexlify
 from collections import defaultdict
 from itertools import groupby
 from sys import stderr
@@ -13,20 +14,22 @@ from time import localtime, strftime, time
 import re, sys
 
 from bup import git, options
-from bup.compat import int_types
+from bup.compat import argv_bytes, int_types
 from bup.gc import bup_gc
 from bup.helpers import die_if_errors, log, partition, period_as_secs
+from bup.io import byte_stream
 from bup.repo import LocalRepo
 from bup.rm import bup_rm
 
 
-def branches(refnames=()):
-    return ((name[11:], sha.encode('hex')) for (name,sha)
-            in git.list_refs(patterns=('refs/heads/' + n for n in refnames),
+def branches(refnames=tuple()):
+    return ((name[11:], hexlify(sha)) for (name,sha)
+            in git.list_refs(patterns=(b'refs/heads/' + n for n in refnames),
                              limit_to_heads=True))
 
 def save_name(branch, utc):
-    return branch + '/' + strftime('%Y-%m-%d-%H%M%S', localtime(utc))
+    return branch + b'/' \
+            + strftime('%Y-%m-%d-%H%M%S', localtime(utc)).encode('ascii')
 
 def classify_saves(saves, period_start):
     """For each (utc, id) in saves, yield (True, (utc, id)) if the save
@@ -82,6 +85,7 @@ unsafe        use the command even though it may be DANGEROUS
 
 o = options.Options(optspec)
 opt, flags, roots = o.parse(sys.argv[1:])
+roots = [argv_bytes(x) for x in roots]
 
 if not opt.unsafe:
     o.fatal('refusing to run dangerous, experimental command without --unsafe')
@@ -96,7 +100,7 @@ for period, extent in (('all', opt.keep_all_for),
                        ('monthlies', opt.keep_monthlies_for),
                        ('yearlies', opt.keep_yearlies_for)):
     if extent:
-        secs = period_as_secs(extent)
+        secs = period_as_secs(extent.encode('ascii'))
         if not secs:
             o.fatal('%r is not a valid period' % extent)
         period_start[period] = now - secs
@@ -136,16 +140,20 @@ def parse_info(f):
     author_secs = f.readline().strip()
     return int(author_secs)
 
+sys.stdout.flush()
+out = byte_stream(sys.stdout)
+
 removals = []
 for branch, branch_id in branches(roots):
     die_if_errors()
-    saves = ((utc, oidx.decode('hex')) for (oidx, utc) in
-             git.rev_list(branch_id, format='%at', parse=parse_info))
+    saves = ((utc, unhexlify(oidx)) for (oidx, utc) in
+             git.rev_list(branch_id, format=b'%at', parse=parse_info))
     for keep_save, (utc, id) in classify_saves(saves, period_start):
         assert(keep_save in (False, True))
         # FIXME: base removals on hashes
         if opt.pretend:
-            print('+' if keep_save else '-', save_name(branch, utc))
+            out.write(b'+ ' if keep_save else b'- '
+                      + save_name(branch, utc) + b'\n')
         elif not keep_save:
             removals.append(save_name(branch, utc))
 

@@ -186,6 +186,7 @@ cmdline_tests := \
   t/test-meta.sh \
   t/test-on.sh \
   t/test-packsizelimit \
+  t/test-prune-older \
   t/test-redundant-saves.sh \
   t/test-restore-single-file.sh \
   t/test-rm.sh \
@@ -202,7 +203,6 @@ cmdline_tests := \
 ifeq "2" "$(bup_python_majver)"
   cmdline_tests += \
     t/test-ftp \
-    t/test-prune-older \
     t/test-web.sh \
     t/test-fuse.sh \
     t/test-index-check-device.sh \
