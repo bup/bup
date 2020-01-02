@@ -181,6 +181,7 @@ cmdline_tests := \
   t/test-list-idx.sh \
   t/test-ls \
   t/test-ls-remote \
+  t/test-main.sh \
   t/test-meta.sh \
   t/test-packsizelimit \
   t/test-redundant-saves.sh \
@@ -201,7 +202,6 @@ ifeq "2" "$(bup_python_majver)"
     t/test-ftp \
     t/test-prune-older \
     t/test-web.sh \
-    t/test-main.sh \
     t/test-fuse.sh \
     t/test-index-check-device.sh \
     t/test-on.sh \
