@@ -11,6 +11,7 @@ import sys, re, struct, time, resource
 from bup import git, bloom, midx, options, _helpers
 from bup.compat import range
 from bup.helpers import handle_ctrl_c
+from bup.io import byte_stream
 
 
 handle_ctrl_c()
@@ -22,7 +23,7 @@ def linux_memstat():
     #fields = ['VmSize', 'VmRSS', 'VmData', 'VmStk', 'ms']
     d = {}
     try:
-        f = open('/proc/self/status')
+        f = open(b'/proc/self/status', 'rb')
     except IOError as e:
         if not _linux_warned:
             log('Warning: %s\n' % e)
@@ -33,7 +34,7 @@ def linux_memstat():
         # happens, this split() might not return two elements.  We don't
         # really need to care about the binary format since this output
         # isn't used for much and report() can deal with missing entries.
-        t = re.split(r':\s*', line.strip(), 1)
+        t = re.split(br':\s*', line.strip(), 1)
         if len(t) == 2:
             k,v = t
             d[k] = v
@@ -41,14 +42,14 @@ def linux_memstat():
 
 
 last = last_u = last_s = start = 0
-def report(count):
+def report(count, out):
     global last, last_u, last_s, start
     headers = ['RSS', 'MajFlt', 'user', 'sys', 'ms']
     ru = resource.getrusage(resource.RUSAGE_SELF)
     now = time.time()
-    rss = int(ru.ru_maxrss/1024)
+    rss = int(ru.ru_maxrss // 1024)
     if not rss:
-        rss = linux_memstat().get('VmRSS', '??')
+        rss = linux_memstat().get(b'VmRSS', b'??')
     fields = [rss,
               ru.ru_majflt,
               int((ru.ru_utime - last_u) * 1000),
@@ -56,11 +57,12 @@ def report(count):
               int((now - last) * 1000)]
     fmt = '%9s  ' + ('%10s ' * len(fields))
     if count >= 0:
-        print(fmt % tuple([count] + fields))
+        line = fmt % tuple([count] + fields)
+        out.write(line.encode('ascii') + b'\n')
     else:
         start = now
-        print(fmt % tuple([''] + headers))
-    sys.stdout.flush()
+        out.write((fmt % tuple([''] + headers)).encode('ascii') + b'\n')
+    out.flush()
 
     # don't include time to run report() in usage counts
     ru = resource.getrusage(resource.RUSAGE_SELF)
@@ -84,11 +86,14 @@ if extra:
     o.fatal('no arguments expected')
 
 git.check_repo_or_die()
-m = git.PackIdxList(git.repo('objects/pack'), ignore_midx=opt.ignore_midx)
+m = git.PackIdxList(git.repo(b'objects/pack'), ignore_midx=opt.ignore_midx)
 
-report(-1)
+sys.stdout.flush()
+out = byte_stream(sys.stdout)
+
+report(-1, out)
 _helpers.random_sha()
-report(0)
+report(0, out)
 
 if opt.existing:
     def foreverit(mi):
@@ -110,18 +115,18 @@ for c in range(opt.cycles):
             # a collision in sha-1 by accident, which is so unlikely that
             # we don't care.
             assert(not m.exists(bin))
-    report((c+1)*opt.number)
+    report((c+1)*opt.number, out)
 
 if bloom._total_searches:
-    print('bloom: %d objects searched in %d steps: avg %.3f steps/object'
-          % (bloom._total_searches, bloom._total_steps,
-             bloom._total_steps*1.0/bloom._total_searches))
+    out.write(b'bloom: %d objects searched in %d steps: avg %.3f steps/object\n'
+              % (bloom._total_searches, bloom._total_steps,
+                 bloom._total_steps*1.0/bloom._total_searches))
 if midx._total_searches:
-    print('midx: %d objects searched in %d steps: avg %.3f steps/object'
-          % (midx._total_searches, midx._total_steps,
-             midx._total_steps*1.0/midx._total_searches))
+    out.write(b'midx: %d objects searched in %d steps: avg %.3f steps/object\n'
+              % (midx._total_searches, midx._total_steps,
+                 midx._total_steps*1.0/midx._total_searches))
 if git._total_searches:
-    print('idx: %d objects searched in %d steps: avg %.3f steps/object'
-          % (git._total_searches, git._total_steps,
-             git._total_steps*1.0/git._total_searches))
-print('Total time: %.3fs' % (time.time() - start))
+    out.write(b'idx: %d objects searched in %d steps: avg %.3f steps/object\n'
+              % (git._total_searches, git._total_steps,
+                 git._total_steps*1.0/git._total_searches))
+out.write(b'Total time: %.3fs\n' % (time.time() - start))

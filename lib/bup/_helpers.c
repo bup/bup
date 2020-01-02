@@ -1156,7 +1156,7 @@ static PyObject *random_sha(PyObject *self, PyObject *args)
     memset(shabuf, 0, sizeof(shabuf));
     for (i=0; i < 20/4; i++)
 	shabuf[i] = random();
-    return Py_BuildValue("s#", shabuf, 20);
+    return Py_BuildValue(rbuf_argf, shabuf, 20);
 }
 
 
