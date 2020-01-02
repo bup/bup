@@ -184,6 +184,7 @@ cmdline_tests := \
   t/test-ls-remote \
   t/test-main.sh \
   t/test-meta.sh \
+  t/test-on.sh \
   t/test-packsizelimit \
   t/test-redundant-saves.sh \
   t/test-restore-single-file.sh \
@@ -205,7 +206,6 @@ ifeq "2" "$(bup_python_majver)"
     t/test-web.sh \
     t/test-fuse.sh \
     t/test-index-check-device.sh \
-    t/test-on.sh \
     t/test-restore-map-owner.sh \
     t/test-xdev.sh \
     t/test.sh
