@@ -174,6 +174,7 @@ cmdline_tests := \
   t/test-compression.sh \
   t/test-drecurse.sh \
   t/test-fsck.sh \
+  t/test-ftp \
   t/test-gc.sh \
   t/test-import-duplicity.sh \
   t/test-import-rdiff-backup.sh \
@@ -202,7 +203,6 @@ cmdline_tests := \
 
 ifeq "2" "$(bup_python_majver)"
   cmdline_tests += \
-    t/test-ftp \
     t/test-web.sh \
     t/test-fuse.sh \
     t/test-index-check-device.sh \

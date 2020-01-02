@@ -5,12 +5,18 @@ exec "$bup_python" "$0" ${1+"$@"}
 """
 # end of bup preamble
 
+# For now, this completely relies on the assumption that the current
+# encoding (LC_CTYPE, etc.) is ASCII compatible, and that it returns
+# the exact same bytes from a decode/encode round-trip (or the reverse
+# (e.g. ISO-8859-1).
+
 from __future__ import absolute_import, print_function
 import sys, os, stat, fnmatch
 
 from bup import options, git, shquote, ls, vfs
-from bup.io import byte_stream
+from bup.compat import argv_bytes, input
 from bup.helpers import chunkyreader, handle_ctrl_c, log
+from bup.io import byte_stream, path_msg
 from bup.repo import LocalRepo
 
 handle_ctrl_c()
@@ -18,6 +24,10 @@ handle_ctrl_c()
 
 class OptionError(Exception):
     pass
+
+
+def input_bytes(s):
+    return s.encode('iso-8859-1')
 
 
 def do_ls(repo, args, out):
@@ -38,7 +48,7 @@ def inputiter():
     if os.isatty(sys.stdin.fileno()):
         while 1:
             try:
-                yield raw_input('bup> ')
+                yield input('bup> ')
             except EOFError:
                 print()  # Clear the line for the terminal's next prompt
                 break
@@ -49,16 +59,16 @@ def inputiter():
 
 def _completer_get_subs(repo, line):
     (qtype, lastword) = shquote.unfinished_word(line)
-    (dir,name) = os.path.split(lastword)
-    dir_path = vfs.resolve(repo, dir or '/')
+    dir, name = os.path.split(lastword.encode('iso-8859-1'))
+    dir_path = vfs.resolve(repo, dir or b'/')
     _, dir_item = dir_path[-1]
     if not dir_item:
         subs = tuple()
     else:
         subs = tuple(dir_path + (entry,)
                      for entry in vfs.contents(repo, dir_item)
-                     if (entry[0] != '.' and entry[0].startswith(name)))
-    return dir, name, qtype, lastword, subs
+                     if (entry[0] != b'.' and entry[0].startswith(name)))
+    return qtype, lastword, subs
 
 
 _last_line = None
@@ -72,7 +82,7 @@ def completer(text, iteration):
         if _last_line != line:
             _last_res = _completer_get_subs(repo, line)
             _last_line = line
-        (dir, name, qtype, lastword, subs) = _last_res
+        qtype, lastword, subs = _last_res
         if iteration < len(subs):
             path = subs[iteration]
             leaf_name, leaf_item = path[-1]
@@ -80,11 +90,13 @@ def completer(text, iteration):
             leaf_name, leaf_item = res[-1]
             fullname = os.path.join(*(name for name, item in res))
             if stat.S_ISDIR(vfs.item_mode(leaf_item)):
-                ret = shquote.what_to_add(qtype, lastword, fullname+'/',
+                ret = shquote.what_to_add(qtype, lastword,
+                                          fullname.decode('iso-8859-1') + '/',
                                           terminate=False)
             else:
-                ret = shquote.what_to_add(qtype, lastword, fullname,
-                                          terminate=True) + ' '
+                ret = shquote.what_to_add(qtype, lastword,
+                                          fullname.decode('iso-8859-1'),
+                                          terminate=True) + b' '
             return text + ret
     except Exception as e:
         log('\n')
@@ -107,7 +119,7 @@ git.check_repo_or_die()
 sys.stdout.flush()
 out = byte_stream(sys.stdout)
 repo = LocalRepo()
-pwd = vfs.resolve(repo, '/')
+pwd = vfs.resolve(repo, b'/')
 rv = 0
 
 if extra:
@@ -137,72 +149,73 @@ for line in lines:
     try:
         if cmd == 'ls':
             # FIXME: respect pwd (perhaps via ls accepting resolve path/parent)
-            sys.stdout.flush()  # FIXME: remove when we finish py3 support
             do_ls(repo, words[1:], out)
         elif cmd == 'cd':
             np = pwd
             for parm in words[1:]:
-                res = vfs.resolve(repo, parm, parent=np)
+                res = vfs.resolve(repo, input_bytes(parm), parent=np)
                 _, leaf_item = res[-1]
                 if not leaf_item:
-                    raise Exception('%r does not exist'
-                                    % '/'.join(name for name, item in res))
+                    raise Exception('%s does not exist'
+                                    % path_msg(b'/'.join(name for name, item
+                                                         in res)))
                 if not stat.S_ISDIR(vfs.item_mode(leaf_item)):
-                    raise Exception('%r is not a directory' % parm)
+                    raise Exception('%s is not a directory' % path_msg(parm))
                 np = res
             pwd = np
         elif cmd == 'pwd':
             if len(pwd) == 1:
-                sys.stdout.write('/')
-            print('/'.join(name for name, item in pwd))
+                out.write(b'/')
+            out.write(b'/'.join(name for name, item in pwd) + b'\n')
         elif cmd == 'cat':
             for parm in words[1:]:
-                res = vfs.resolve(repo, parm, parent=pwd)
+                res = vfs.resolve(repo, input_bytes(parm), parent=pwd)
                 _, leaf_item = res[-1]
                 if not leaf_item:
-                    raise Exception('%r does not exist' %
-                                    '/'.join(name for name, item in res))
+                    raise Exception('%s does not exist' %
+                                    path_msg(b'/'.join(name for name, item
+                                                       in res)))
                 with vfs.fopen(repo, leaf_item) as srcfile:
-                    write_to_file(srcfile, sys.stdout)
+                    write_to_file(srcfile, out)
         elif cmd == 'get':
             if len(words) not in [2,3]:
                 rv = 1
                 raise Exception('Usage: get <filename> [localname]')
-            rname = words[1]
+            rname = input_bytes(words[1])
             (dir,base) = os.path.split(rname)
-            lname = len(words)>2 and words[2] or base
+            lname = input_bytes(len(words) > 2 and words[2] or base)
             res = vfs.resolve(repo, rname, parent=pwd)
             _, leaf_item = res[-1]
             if not leaf_item:
-                raise Exception('%r does not exist' %
-                                '/'.join(name for name, item in res))
+                raise Exception('%s does not exist' %
+                                path_msg(b'/'.join(name for name, item in res)))
             with vfs.fopen(repo, leaf_item) as srcfile:
                 with open(lname, 'wb') as destfile:
-                    log('Saving %r\n' % lname)
+                    log('Saving %s\n' % path_msg(lname))
                     write_to_file(srcfile, destfile)
         elif cmd == 'mget':
             for parm in words[1:]:
-                (dir,base) = os.path.split(parm)
+                dir, base = os.path.split(input_bytes(parm))
 
                 res = vfs.resolve(repo, dir, parent=pwd)
                 _, dir_item = res[-1]
                 if not dir_item:
-                    raise Exception('%r does not exist' % dir)
+                    raise Exception('%s does not exist' % path_msg(dir))
                 for name, item in vfs.contents(repo, dir_item):
-                    if name == '.':
+                    if name == b'.':
                         continue
                     if fnmatch.fnmatch(name, base):
                         if stat.S_ISLNK(vfs.item_mode(item)):
                             deref = vfs.resolve(repo, name, parent=res)
                             deref_name, deref_item = deref[-1]
                             if not deref_item:
-                                raise Exception('%r does not exist' %
-                                                '/'.join(name for name, item
-                                                         in deref))
+                                raise Exception('%s does not exist' %
+                                                path_msg('/'.join(name for name, item
+                                                                  in deref)))
                             item = deref_item
                         with vfs.fopen(repo, item) as srcfile:
                             with open(name, 'wb') as destfile:
-                                log('Saving %r\n' % name)
+                                log('Saving %s\n' % path_msg(name))
                                 write_to_file(srcfile, destfile)
         elif cmd == 'help' or cmd == '?':
             # FIXME: move to stdout
