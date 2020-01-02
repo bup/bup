@@ -1173,20 +1173,20 @@ def valid_save_name(name):
     return True
 
 
-_period_rx = re.compile(r'^([0-9]+)(s|min|h|d|w|m|y)$')
+_period_rx = re.compile(br'^([0-9]+)(s|min|h|d|w|m|y)$')
 
 def period_as_secs(s):
-    if s == 'forever':
+    if s == b'forever':
         return float('inf')
     match = _period_rx.match(s)
     if not match:
         return None
     mag = int(match.group(1))
     scale = match.group(2)
-    return mag * {'s': 1,
-                  'min': 60,
-                  'h': 60 * 60,
-                  'd': 60 * 60 * 24,
-                  'w': 60 * 60 * 24 * 7,
-                  'm': 60 * 60 * 24 * 31,
-                  'y': 60 * 60 * 24 * 366}[scale]
+    return mag * {b's': 1,
+                  b'min': 60,
+                  b'h': 60 * 60,
+                  b'd': 60 * 60 * 24,
+                  b'w': 60 * 60 * 24 * 7,
+                  b'm': 60 * 60 * 24 * 31,
+                  b'y': 60 * 60 * 24 * 366}[scale]
