@@ -5,23 +5,43 @@ exec "$bup_python" "$0" ${1+"$@"}
 """
 # end of bup preamble
 
-from __future__ import absolute_import
+from __future__ import absolute_import, print_function
 import sys, os, errno
 
 try:
     import fuse
 except ImportError:
-    log('error: cannot find the python "fuse" module; please install it\n')
-    sys.exit(1)
+    print('error: cannot find the python "fuse" module; please install it',
+          file=sys.stderr)
+    sys.exit(2)
 if not hasattr(fuse, '__version__'):
-    raise RuntimeError('your fuse module is too old for fuse.__version__')
+    print('error: fuse module is too old for fuse.__version__', file=sys.stderr)
+    sys.exit(2)
 fuse.fuse_python_api = (0, 2)
 
+if sys.version_info[0] > 2:
+    try:
+        fuse_ver = fuse.__version__.split('.')
+        fuse_ver_maj = int(fuse_ver[0])
+    except:
+        log('error: cannot determine the fuse major version; please report',
+            file=sys.stderr)
+        sys.exit(2)
+    if len(fuse_ver) < 3 or fuse_ver_maj < 1:
+        print("error: fuse module can't handle binary data; please upgrade to 1.0+\n",
+              file=sys.stderr)
+        sys.exit(2)
+
 from bup import options, git, vfs, xstat
+from bup.compat import argv_bytes, fsdecode, py_maj
 from bup.helpers import log
 from bup.repo import LocalRepo
 
+
 # FIXME: self.meta and want_meta?
+
+# The path handling is just wrong, but the current fuse module can't
+# handle bytes paths.
 
 class BupFs(fuse.Fuse):
     def __init__(self, repo, verbose=0, fake_metadata=False):
@@ -31,6 +51,7 @@ class BupFs(fuse.Fuse):
         self.fake_metadata = fake_metadata
     
     def getattr(self, path):
+        path = argv_bytes(path)
         global opt
         if self.verbose > 0:
             log('--getattr(%r)\n' % path)
@@ -56,6 +77,7 @@ class BupFs(fuse.Fuse):
         return st
 
     def readdir(self, path, offset):
+        path = argv_bytes(path)
         assert not offset  # We don't return offsets, so offset should be unused
         res = vfs.resolve(self.repo, path, follow=False)
         dir_name, dir_item = res[-1]
@@ -64,18 +86,21 @@ class BupFs(fuse.Fuse):
         yield fuse.Direntry('..')
         # FIXME: make sure want_meta=False is being completely respected
         for ent_name, ent_item in vfs.contents(repo, dir_item, want_meta=False):
-            yield fuse.Direntry(ent_name.replace('/', '-'))
+            fusename = fsdecode(ent_name.replace(b'/', b'-'))
+            yield fuse.Direntry(fusename)
 
     def readlink(self, path):
+        path = argv_bytes(path)
         if self.verbose > 0:
             log('--readlink(%r)\n' % path)
         res = vfs.resolve(self.repo, path, follow=False)
         name, item = res[-1]
         if not item:
             return -errno.ENOENT
-        return vfs.readlink(repo, item)
+        return fsdecode(vfs.readlink(repo, item))
 
     def open(self, path, flags):
+        path = argv_bytes(path)
         if self.verbose > 0:
             log('--open(%r)\n' % path)
         res = vfs.resolve(self.repo, path, follow=False)
@@ -90,6 +115,7 @@ class BupFs(fuse.Fuse):
         #return vfs.fopen(repo, item)
 
     def read(self, path, size, offset):
+        path = argv_bytes(path)
         if self.verbose > 0:
             log('--read(%r)\n' % path)
         res = vfs.resolve(self.repo, path, follow=False)
@@ -99,6 +125,7 @@ class BupFs(fuse.Fuse):
         with vfs.fopen(repo, item) as f:
             f.seek(offset)
             return f.read(size)
+
 
 optspec = """
 bup fuse [-d] [-f] <mountpoint>
@@ -111,6 +138,14 @@ v,verbose     increase log output (can be used more than once)
 """
 o = options.Options(optspec)
 opt, flags, extra = o.parse(sys.argv[1:])
+if not opt.verbose:
+    opt.verbose = 0
+
+# Set stderr to be line buffered, even if it's not connected to the console
+# so that we'll be able to see diagnostics in a timely fashion.
+errfd = sys.stderr.fileno()
+sys.stderr.flush()
+sys.stderr = os.fdopen(errfd, 'w', 1)
 
 if len(extra) != 1:
     o.fatal('only one mount point argument expected')
@@ -118,7 +153,10 @@ if len(extra) != 1:
 git.check_repo_or_die()
 repo = LocalRepo()
 f = BupFs(repo=repo, verbose=opt.verbose, fake_metadata=(not opt.meta))
+
+# This is likely wrong, but the fuse module doesn't currently accept bytes
 f.fuse_args.mountpoint = extra[0]
+
 if opt.debug:
     f.fuse_args.add('debug')
 if opt.foreground:

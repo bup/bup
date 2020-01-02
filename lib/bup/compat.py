@@ -25,7 +25,7 @@ if py3:
               file=sys.stderr)
         sys.exit(2)
 
-    from os import fsencode
+    from os import fsdecode, fsencode
     from shlex import quote
     input = input
     range = range
@@ -75,6 +75,9 @@ if py3:
         return b''.join(items)
 
 else:  # Python 2
+
+    def fsdecode(x):
+        return x
 
     def fsencode(x):
         return x
