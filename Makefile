@@ -175,6 +175,7 @@ cmdline_tests := \
   t/test-drecurse.sh \
   t/test-fsck.sh \
   t/test-gc.sh \
+  t/test-import-duplicity.sh \
   t/test-index.sh \
   t/test-index-clear.sh \
   t/test-list-idx.sh \
@@ -205,7 +206,6 @@ ifeq "2" "$(bup_python_majver)"
     t/test-index-check-device.sh \
     t/test-on.sh \
     t/test-restore-map-owner.sh \
-    t/test-import-duplicity.sh \
     t/test-import-rdiff-backup.sh \
     t/test-xdev.sh \
     t/test.sh
