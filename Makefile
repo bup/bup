@@ -174,6 +174,7 @@ cmdline_tests := \
   t/test-compression.sh \
   t/test-drecurse.sh \
   t/test-fsck.sh \
+  t/test-gc.sh \
   t/test-index.sh \
   t/test-index-clear.sh \
   t/test-list-idx.sh \
@@ -199,7 +200,6 @@ ifeq "2" "$(bup_python_majver)"
     t/test-ftp \
     t/test-prune-older \
     t/test-web.sh \
-    t/test-gc.sh \
     t/test-main.sh \
     t/test-fuse.sh \
     t/test-index-check-device.sh \
