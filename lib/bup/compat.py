@@ -27,6 +27,7 @@ if py3:
 
     from os import fsencode
     from shlex import quote
+    input = input
     range = range
     str_type = str
     int_types = (int,)
@@ -83,6 +84,7 @@ else:  # Python 2
 
     from bup.py2raise import py2_raise
 
+    input = raw_input
     range = xrange
     str_type = basestring
     int_types = (int, long)
