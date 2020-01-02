@@ -10,11 +10,18 @@ from calendar import timegm
 from pipes import quote
 from subprocess import check_call
 from time import strftime, strptime
+import os
 import sys
 import tempfile
 
 from bup import git, options
-from bup.helpers import handle_ctrl_c, log, readpipe, saved_errors, unlink
+from bup.compat import argv_bytes, str_type
+from bup.helpers import (handle_ctrl_c,
+                         log,
+                         readpipe,
+                         shstr,
+                         saved_errors,
+                         unlink)
 import bup.path
 
 optspec = """
@@ -23,13 +30,8 @@ bup import-duplicity [-n] <duplicity-source-url> <bup-save-name>
 n,dry-run  don't do anything; just print what would be done
 """
 
-
 def logcmd(cmd):
-    if isinstance(cmd, basestring):
-        log(cmd + '\n')
-    else:
-        log(' '.join(map(quote, cmd)) + '\n')
-
+    log(shstr(cmd).decode('iso-8859-1', errors='replace') + '\n')
 
 def exc(cmd, shell=False):
     global opt
@@ -37,11 +39,16 @@ def exc(cmd, shell=False):
     if not opt.dry_run:
         check_call(cmd, shell=shell)
 
-def exo(cmd, shell=False):
+def exo(cmd, shell=False, preexec_fn=None, close_fds=True):
     global opt
     logcmd(cmd)
     if not opt.dry_run:
-        return readpipe(cmd, shell=shell)
+        return readpipe(cmd, shell=shell, preexec_fn=preexec_fn,
+                        close_fds=close_fds)
+
+def redirect_dup_output():
+    os.dup2(1, 3)
+    os.dup2(1, 2)
 
 
 handle_ctrl_c()
@@ -59,39 +66,42 @@ if len(extra) > 2:
     o.fatal('too many arguments')
 
 source_url, save_name = extra
+source_url = argv_bytes(source_url)
+save_name = argv_bytes(save_name)
 bup = bup.path.exe()
 
 git.check_repo_or_die()
 
-tmpdir = tempfile.mkdtemp(prefix='bup-import-dup-')
+tmpdir = tempfile.mkdtemp(prefix=b'bup-import-dup-')
 try:
-    dup = ['duplicity', '--archive-dir', tmpdir + '/dup-cache']
-    restoredir = tmpdir + '/restore'
-    tmpidx = tmpdir + '/index'
+    dup = [b'duplicity', b'--archive-dir', tmpdir + b'/dup-cache']
+    restoredir = tmpdir + b'/restore'
+    tmpidx = tmpdir + b'/index'
+
     collection_status = \
-        exo(' '.join(map(quote, dup))
-            + ' collection-status --log-fd=3 %s 3>&1 1>&2' % quote(source_url),
-            shell=True)
+        exo(dup + [b'collection-status', b'--log-fd=3', source_url],
+            close_fds=False, preexec_fn=redirect_dup_output)  # i.e. 3>&1 1>&2
     # Duplicity output lines of interest look like this (one leading space):
     #  full 20150222T073111Z 1 noenc
     #  inc 20150222T073233Z 1 noenc
     dup_timestamps = []
     for line in collection_status.splitlines():
-        if line.startswith(' inc '):
-            assert(len(line) >= len(' inc 20150222T073233Z'))
+        if line.startswith(b' inc '):
+            assert(len(line) >= len(b' inc 20150222T073233Z'))
             dup_timestamps.append(line[5:21])
-        elif line.startswith(' full '):
-            assert(len(line) >= len(' full 20150222T073233Z'))
+        elif line.startswith(b' full '):
+            assert(len(line) >= len(b' full 20150222T073233Z'))
             dup_timestamps.append(line[6:22])
     for i, dup_ts in enumerate(dup_timestamps):
-        tm = strptime(dup_ts, '%Y%m%dT%H%M%SZ')
-        exc(['rm', '-rf', restoredir])
-        exc(dup + ['restore', '-t', dup_ts, source_url, restoredir])
-        exc([bup, 'index', '-uxf', tmpidx, restoredir])
-        exc([bup, 'save', '--strip', '--date', str(timegm(tm)), '-f', tmpidx,
-             '-n', save_name, restoredir])
+        tm = strptime(dup_ts.decode('ascii'), '%Y%m%dT%H%M%SZ')
+        exc([b'rm', b'-rf', restoredir])
+        exc(dup + [b'restore', b'-t', dup_ts, source_url, restoredir])
+        exc([bup, b'index', b'-uxf', tmpidx, restoredir])
+        exc([bup, b'save', b'--strip', b'--date', b'%d' % timegm(tm),
+             b'-f', tmpidx, b'-n', save_name, restoredir])
+    sys.stderr.flush()
 finally:
-    exc(['rm', '-rf', tmpdir])
+    exc([b'rm', b'-rf', tmpdir])
 
 if saved_errors:
     log('warning: %d errors encountered\n' % len(saved_errors))
