@@ -44,6 +44,8 @@ savename()
        print strftime('%Y-%m-%d-%H%M%S', localtime($secs))"
 }
 
+export TZ=UTC
+
 WVPASS bup init
 WVPASS cd "$tmpdir"
 
@@ -93,12 +95,12 @@ WVPASS fusermount -uz mnt
 
 WVSTART "extended metadata"
 WVPASS bup fuse --meta mnt
-result=$(TZ=UTC LC_ALL=C WVPASS ls -l mnt/src/latest/) || exit $?
 readonly user=$(WVPASS id -un) || $?
 readonly group=$(WVPASS id -gn) || $?
-WVPASSEQ "$result" "total 1
--rw-r--r-- 1 $user $group 8 Nov 11  2011 foo
--rw-r--r-- 1 $user $group 8 Jan  1  1970 pre-epoch"
+result="$(stat --format='%A %U %G %x' mnt/src/latest/foo)"
+WVPASSEQ "$result" "-rw-r--r-- $user $group 2011-11-11 11:11:00.000000000 +0000"
+result="$(stat --format='%A %U %G %x' mnt/src/latest/pre-epoch)"
+WVPASSEQ "$result" "-rw-r--r-- $user $group 1970-01-01 00:00:00.000000000 +0000"
 
 WVPASS fusermount -uz mnt
 WVPASS rm -rf "$tmpdir"
