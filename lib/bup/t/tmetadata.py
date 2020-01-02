@@ -279,6 +279,10 @@ if not posix1e:
 
 from bup.metadata import xattr
 if xattr:
+    def remove_selinux(attrs):
+        return list(filter(lambda i: not i in (b'security.selinux', ),
+                           attrs))
+
     @wvtest
     def test_handling_of_incorrect_existing_linux_xattrs():
         if not is_superuser() or detect_fakeroot():
@@ -295,15 +299,15 @@ if xattr:
         m = metadata.from_path(path, archive_path=path, save_symlinks=True)
         xattr.set(path, b'baz', b'bax', namespace=xattr.NS_USER)
         m.apply_to_path(path, restore_numeric_ids=False)
-        WVPASSEQ(xattr.list(path), [b'user.foo'])
+        WVPASSEQ(remove_selinux(xattr.list(path)), [b'user.foo'])
         WVPASSEQ(xattr.get(path, b'user.foo'), b'bar')
         xattr.set(path, b'foo', b'baz', namespace=xattr.NS_USER)
         m.apply_to_path(path, restore_numeric_ids=False)
-        WVPASSEQ(xattr.list(path), [b'user.foo'])
+        WVPASSEQ(remove_selinux(xattr.list(path)), [b'user.foo'])
         WVPASSEQ(xattr.get(path, b'user.foo'), b'bar')
         xattr.remove(path, b'foo', namespace=xattr.NS_USER)
         m.apply_to_path(path, restore_numeric_ids=False)
-        WVPASSEQ(xattr.list(path), [b'user.foo'])
+        WVPASSEQ(remove_selinux(xattr.list(path)), [b'user.foo'])
         WVPASSEQ(xattr.get(path, b'user.foo'), b'bar')
         os.chdir(start_dir)
         cleanup_testfs()
