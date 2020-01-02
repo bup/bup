@@ -168,6 +168,7 @@ runtests-python: all t/tmp
 	    | tee -a t/tmp/test-log/$$$$.log
 
 cmdline_tests := \
+  t/test.sh \
   t/test-argv \
   t/test-cat-file.sh \
   t/test-command-without-init-fails.sh \
@@ -207,8 +208,7 @@ ifeq "2" "$(bup_python_majver)"
     t/test-fuse.sh \
     t/test-index-check-device.sh \
     t/test-restore-map-owner.sh \
-    t/test-xdev.sh \
-    t/test.sh
+    t/test-xdev.sh
 endif
 
 tmp-target-run-test-get-%: all t/tmp
