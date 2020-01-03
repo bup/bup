@@ -131,15 +131,15 @@ class LocalRepo:
             raise git.GitError('git rev-list returned error %d' % rv)
 
 
-def make_repo(address):
-    return RemoteRepo(address)
+def make_repo(address, create=False):
+    return RemoteRepo(address, create=create)
 
 class RemoteRepo:
-    def __init__(self, address):
+    def __init__(self, address, create=False):
         # if client.Client() raises an exception, have a client
         # anyway to avoid follow-up exceptions from __del__
         self.client = None
-        self.client = client.Client(address)
+        self.client = client.Client(address, create=create)
         self.new_packwriter = self.client.new_packwriter
         self.update_ref = self.client.update_ref
         self.rev_list = self.client.rev_list
@@ -151,10 +151,6 @@ class RemoteRepo:
         self.refs = self.client.refs
         self.resolve = self.client.resolve
         self._id = _repo_id(address)
-
-    @classmethod
-    def create(self, address):
-        client.Client(address, create=True).close()
 
     def close(self):
         if self.client:
