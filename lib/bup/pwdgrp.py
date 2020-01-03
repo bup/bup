@@ -37,7 +37,9 @@ def getpwuid(uid):
     return _passwd_from_py(pwd.getpwuid(uid))
 
 def getpwnam(name):
-    return _passwd_from_py(pwd.getpwnam(name))
+    assert type(name) == bytes
+    return _passwd_from_py(pwd.getpwnam(name.decode('iso-8859-1') if py_maj > 2
+                                        else name))
 
 
 class Group:
@@ -63,7 +65,9 @@ def getgrgid(uid):
     return _group_from_py(grp.getgrgid(uid))
 
 def getgrnam(name):
-    return _group_from_py(grp.getgrnam(name))
+    assert type(name) == bytes
+    return _group_from_py(grp.getgrnam(name.decode('iso-8859-1') if py_maj > 2
+                                       else name))
 
 
 _uid_to_pwd_cache = {}
