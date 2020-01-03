@@ -181,6 +181,7 @@ cmdline_tests := \
   t/test-import-duplicity.sh \
   t/test-import-rdiff-backup.sh \
   t/test-index.sh \
+  t/test-index-check-device.sh \
   t/test-index-clear.sh \
   t/test-list-idx.sh \
   t/test-ls \
@@ -201,14 +202,13 @@ cmdline_tests := \
   t/test-save-with-valid-parent.sh \
   t/test-sparse-files.sh \
   t/test-split-join.sh \
-  t/test-tz.sh
+  t/test-tz.sh \
+  t/test-xdev.sh
 
 ifeq "2" "$(bup_python_majver)"
   cmdline_tests += \
     t/test-web.sh \
-    t/test-index-check-device.sh \
-    t/test-restore-map-owner.sh \
-    t/test-xdev.sh
+    t/test-restore-map-owner.sh
 endif
 
 tmp-target-run-test-get-%: all t/tmp
