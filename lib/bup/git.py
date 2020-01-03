@@ -662,6 +662,28 @@ def idxmerge(idxlist, final_progress=True):
     return merge_iter(idxlist, 10024, pfunc, pfinal)
 
 
+def create_commit_blob(tree, parent,
+                       author, adate_sec, adate_tz,
+                       committer, cdate_sec, cdate_tz,
+                       msg):
+    if adate_tz:
+        adate_str = _git_date_str(adate_sec, adate_tz)
+    else:
+        adate_str = _local_git_date_str(adate_sec)
+    if cdate_tz:
+        cdate_str = _git_date_str(cdate_sec, cdate_tz)
+    else:
+        cdate_str = _local_git_date_str(cdate_sec)
+    l = []
+    if tree: l.append(b'tree %s' % hexlify(tree))
+    if parent: l.append(b'parent %s' % hexlify(parent))
+    if author: l.append(b'author %s %s' % (author, adate_str))
+    if committer: l.append(b'committer %s %s' % (committer, cdate_str))
+    l.append(b'')
+    l.append(msg)
+    return b'\n'.join(l)
+
+
 def _make_objcache(repo_dir):
     return PackIdxList(repo(b'objects/pack', repo_dir=repo_dir))
 
@@ -815,22 +837,11 @@ class PackWriter:
                    msg):
         """Create a commit object in the pack.  The date_sec values must be
         epoch-seconds, and if a tz is None, the local timezone is assumed."""
-        if adate_tz:
-            adate_str = _git_date_str(adate_sec, adate_tz)
-        else:
-            adate_str = _local_git_date_str(adate_sec)
-        if cdate_tz:
-            cdate_str = _git_date_str(cdate_sec, cdate_tz)
-        else:
-            cdate_str = _local_git_date_str(cdate_sec)
-        l = []
-        if tree: l.append(b'tree %s' % hexlify(tree))
-        if parent: l.append(b'parent %s' % hexlify(parent))
-        if author: l.append(b'author %s %s' % (author, adate_str))
-        if committer: l.append(b'committer %s %s' % (committer, cdate_str))
-        l.append(b'')
-        l.append(msg)
-        return self.maybe_write(b'commit', b'\n'.join(l))
+        content = create_commit_blob(tree, parent,
+                                     author, adate_sec, adate_tz,
+                                     committer, cdate_sec, cdate_tz,
+                                     msg)
+        return self.maybe_write(b'commit', content)
 
     def abort(self):
         """Remove the pack file from disk."""
