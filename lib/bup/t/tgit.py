@@ -158,7 +158,7 @@ def test_long_index():
         with test_tempdir(b'bup-tgit-') as tmpdir:
             environ[b'BUP_DIR'] = bupdir = tmpdir + b'/bup'
             git.init_repo(bupdir)
-            w = git.PackWriter()
+            idx = git.PackIdxV2Writer()
             obj_bin = struct.pack('!IIIII',
                     0x00112233, 0x44556677, 0x88990011, 0x22334455, 0x66778899)
             obj2_bin = struct.pack('!IIIII',
@@ -167,13 +167,11 @@ def test_long_index():
                     0x22334455, 0x66778899, 0x00112233, 0x44556677, 0x88990011)
             pack_bin = struct.pack('!IIIII',
                     0x99887766, 0x55443322, 0x11009988, 0x77665544, 0x33221100)
-            idx = list(list() for i in range(256))
-            idx[0].append((obj_bin, 1, 0xfffffffff))
-            idx[0x11].append((obj2_bin, 2, 0xffffffffff))
-            idx[0x22].append((obj3_bin, 3, 0xff))
-            w.count = 3
+            idx.add(obj_bin, 1, 0xfffffffff)
+            idx.add(obj2_bin, 2, 0xffffffffff)
+            idx.add(obj3_bin, 3, 0xff)
             name = tmpdir + b'/tmp.idx'
-            r = w._write_pack_idx_v2(name, idx, pack_bin)
+            r = idx.write(name, pack_bin)
             i = git.PackIdxV2(name, open(name, 'rb'))
             WVPASSEQ(i.find_offset(obj_bin), 0xfffffffff)
             WVPASSEQ(i.find_offset(obj2_bin), 0xffffffffff)

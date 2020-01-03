@@ -725,7 +725,7 @@ class PackWriter:
             assert name.endswith(b'.pack')
             self.filename = name[:-5]
             self.file.write(b'PACK\0\0\0\2\0\0\0\0')
-            self.idx = list(list() for i in range(256))
+            self.idx = PackIdxV2Writer()
 
     def _raw_write(self, datalist, sha):
         self._open()
@@ -750,8 +750,7 @@ class PackWriter:
     def _update_idx(self, sha, crc, size):
         assert(sha)
         if self.idx:
-            self.idx[byte_int(sha[0])].append((sha, crc,
-                                               self.file.tell() - size))
+            self.idx.add(sha, crc, self.file.tell() - size)
 
     def _write(self, sha, type, content):
         if verbose:
@@ -876,8 +875,7 @@ class PackWriter:
         finally:
             f.close()
 
-        obj_list_sha = self._write_pack_idx_v2(self.filename + b'.idx', idx,
-                                               packbin)
+        obj_list_sha = idx.write(self.filename + b'.idx', packbin)
         nameprefix = os.path.join(self.repo_dir,
                                   b'objects/pack/pack-' +  obj_list_sha)
         if os.path.exists(self.filename + b'.map'):
@@ -901,9 +899,20 @@ class PackWriter:
         """Close the pack file and move it to its definitive path."""
         return self._end(run_midx=run_midx)
 
-    def _write_pack_idx_v2(self, filename, idx, packbin):
+
+class PackIdxV2Writer:
+    def __init__(self):
+        self.idx = list(list() for i in range(256))
+        self.count = 0
+
+    def add(self, sha, crc, offs):
+        assert(sha)
+        self.count += 1
+        self.idx[byte_int(sha[0])].append((sha, crc, offs))
+
+    def write(self, filename, packbin):
         ofs64_count = 0
-        for section in idx:
+        for section in self.idx:
             for entry in section:
                 if entry[2] >= 2**31:
                     ofs64_count += 1
@@ -917,7 +926,8 @@ class PackWriter:
             fdatasync(idx_f.fileno())
             idx_map = mmap_readwrite(idx_f, close=False)
             try:
-                count = _helpers.write_idx(filename, idx_map, idx, self.count)
+                count = _helpers.write_idx(filename, idx_map, self.idx,
+                                           self.count)
                 assert(count == self.count)
                 idx_map.flush()
             finally:
@@ -934,7 +944,7 @@ class PackWriter:
             idx_sum.update(b)
 
             obj_list_sum = Sha1()
-            for b in chunkyreader(idx_f, 20*self.count):
+            for b in chunkyreader(idx_f, 20 * self.count):
                 idx_sum.update(b)
                 obj_list_sum.update(b)
             namebase = hexlify(obj_list_sum.digest())
