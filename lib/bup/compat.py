@@ -70,10 +70,6 @@ if py3:
             return memoryview(object)[offset:]
         return memoryview(object)
 
-    def join_bytes(*items):
-        """Return the concatenated bytes or memoryview arguments as bytes."""
-        return b''.join(items)
-
     def getcwd():
         return fsencode(os.getcwd())
 
@@ -150,17 +146,6 @@ else:  # Python 2
     byte_int = ord
 
     buffer = buffer
-
-    def join_bytes(x, y):
-        """Return the concatenated bytes or buffer arguments as bytes."""
-        if type(x) == buffer:
-            assert type(y) in (bytes, buffer)
-            return x + y
-        assert type(x) == bytes
-        if type(y) == bytes:
-            return b''.join((x, y))
-        assert type(y) in (bytes, buffer)
-        return buffer(x) + y
 
 
 def restore_lc_env():
