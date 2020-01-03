@@ -273,6 +273,49 @@ static PyObject *bup_bytescmp(PyObject *self, PyObject *args)
 }
 
 
+static PyObject *bup_cat_bytes(PyObject *self, PyObject *args)
+{
+    unsigned char *bufx = NULL, *bufy = NULL;
+    Py_ssize_t bufx_len, bufx_ofs, bufx_n;
+    Py_ssize_t bufy_len, bufy_ofs, bufy_n;
+    if (!PyArg_ParseTuple(args,
+                          rbuf_argf "nn"
+                          rbuf_argf "nn",
+                          &bufx, &bufx_len, &bufx_ofs, &bufx_n,
+                          &bufy, &bufy_len, &bufy_ofs, &bufy_n))
+	return NULL;
+    if (bufx_ofs < 0)
+        return PyErr_Format(PyExc_ValueError, "negative x offset");
+    if (bufx_n < 0)
+        return PyErr_Format(PyExc_ValueError, "negative x extent");
+    if (bufx_ofs > bufx_len)
+        return PyErr_Format(PyExc_ValueError, "x offset greater than length");
+    if (bufx_n > bufx_len - bufx_ofs)
+        return PyErr_Format(PyExc_ValueError, "x extent past end of buffer");
+
+    if (bufy_ofs < 0)
+        return PyErr_Format(PyExc_ValueError, "negative y offset");
+    if (bufy_n < 0)
+        return PyErr_Format(PyExc_ValueError, "negative y extent");
+    if (bufy_ofs > bufy_len)
+        return PyErr_Format(PyExc_ValueError, "y offset greater than length");
+    if (bufy_n > bufy_len - bufy_ofs)
+        return PyErr_Format(PyExc_ValueError, "y extent past end of buffer");
+
+    if (bufy_n > PY_SSIZE_T_MAX - bufx_n)
+        return PyErr_Format(PyExc_OverflowError, "result length too long");
+
+    PyObject *result = PyBytes_FromStringAndSize(NULL, bufx_n + bufy_n);
+    if (!result)
+        return PyErr_NoMemory();
+    char *buf = PyBytes_AS_STRING(result);
+    memcpy(buf, bufx + bufx_ofs, bufx_n);
+    memcpy(buf + bufx_n, bufy + bufy_ofs, bufy_n);
+    return result;
+}
+
+
+
 // Probably we should use autoconf or something and set HAVE_PY_GETARGCARGV...
 #if __WIN32__ || __CYGWIN__
 
@@ -1725,6 +1768,8 @@ static PyMethodDef helper_methods[] = {
 #endif
     { "bytescmp", bup_bytescmp, METH_VARARGS,
       "Return a negative value if x < y, zero if equal, positive otherwise."},
+    { "cat_bytes", bup_cat_bytes, METH_VARARGS,
+      "For (x_bytes, x_ofs, x_n, y_bytes, y_ofs, y_n) arguments, return their concatenation."},
 #ifdef BUP_MINCORE_BUF_TYPE
     { "mincore", bup_mincore, METH_VARARGS,
       "For mincore(src, src_n, src_off, dest, dest_off)"
