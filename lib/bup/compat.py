@@ -74,6 +74,9 @@ if py3:
         """Return the concatenated bytes or memoryview arguments as bytes."""
         return b''.join(items)
 
+    def getcwd():
+        return fsencode(os.getcwd())
+
 else:  # Python 2
 
     def fsdecode(x):
@@ -83,7 +86,7 @@ else:  # Python 2
         return x
 
     from pipes import quote
-    from os import environ
+    from os import environ, getcwd
 
     from bup.py2raise import py2_raise
 
