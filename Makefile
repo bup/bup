@@ -215,18 +215,14 @@ tmp-target-run-test-get-%: all t/tmp
 	$(pf); cd $$(pwd -P); TMPDIR="$(test_tmp)" \
 	  t/test-get $* 2>&1 | tee -a t/tmp/test-log/$$$$.log
 
-test_get_targets :=
-
-ifeq "2" "$(bup_python_majver)"
-  test_get_targets += \
-    tmp-target-run-test-get-replace \
-    tmp-target-run-test-get-universal \
-    tmp-target-run-test-get-ff \
-    tmp-target-run-test-get-append \
-    tmp-target-run-test-get-pick \
-    tmp-target-run-test-get-new-tag \
-    tmp-target-run-test-get-unnamed
-endif
+test_get_targets += \
+  tmp-target-run-test-get-replace \
+  tmp-target-run-test-get-universal \
+  tmp-target-run-test-get-ff \
+  tmp-target-run-test-get-append \
+  tmp-target-run-test-get-pick \
+  tmp-target-run-test-get-new-tag \
+  tmp-target-run-test-get-unnamed
 
 # For parallel runs.
 # The "pwd -P" here may not be appropriate in the long run, but we
