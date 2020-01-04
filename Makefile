@@ -192,6 +192,7 @@ cmdline_tests := \
   t/test-packsizelimit \
   t/test-prune-older \
   t/test-redundant-saves.sh \
+  t/test-restore-map-owner.sh \
   t/test-restore-single-file.sh \
   t/test-rm.sh \
   t/test-rm-between-index-and-save.sh \
@@ -207,8 +208,7 @@ cmdline_tests := \
 
 ifeq "2" "$(bup_python_majver)"
   cmdline_tests += \
-    t/test-web.sh \
-    t/test-restore-map-owner.sh
+    t/test-web.sh
 endif
 
 tmp-target-run-test-get-%: all t/tmp
