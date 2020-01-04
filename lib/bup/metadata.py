@@ -13,7 +13,8 @@ from io import BytesIO
 from time import gmtime, strftime
 import errno, os, sys, stat, time, pwd, grp, socket, struct
 
-from bup import vint, xstat
+from bup import compat, vint, xstat
+from bup.compat import py_maj
 from bup.drecurse import recursive_dirlist
 from bup.helpers import add_error, mkdirp, log, is_superuser, format_filesize
 from bup.io import path_msg
@@ -530,7 +531,8 @@ class Metadata:
                     acl = posix1e.ACL(file=path)
                     acls = [acl, acl] # txt and num are the same
                     if stat.S_ISDIR(st.st_mode):
-                        def_acl = posix1e.ACL(filedef=path)
+                        def_acl = posix1e.ACL(filedef=(path if py_maj < 3
+                                                       else path.decode('iso-8859-1')))
                         def_acls = [def_acl, def_acl]
             except EnvironmentError as e:
                 if e.errno not in (errno.EOPNOTSUPP, errno.ENOSYS):
@@ -538,11 +540,11 @@ class Metadata:
             if acls:
                 txt_flags = posix1e.TEXT_ABBREVIATE
                 num_flags = posix1e.TEXT_ABBREVIATE | posix1e.TEXT_NUMERIC_IDS
-                acl_rep = [acls[0].to_any_text(b'', b'\n', txt_flags),
-                           acls[1].to_any_text(b'', b'\n', num_flags)]
+                acl_rep = [acls[0].to_any_text('', b'\n', txt_flags),
+                           acls[1].to_any_text('', b'\n', num_flags)]
                 if def_acls:
-                    acl_rep.append(def_acls[0].to_any_text(b'', b'\n', txt_flags))
-                    acl_rep.append(def_acls[1].to_any_text(b'', b'\n', num_flags))
+                    acl_rep.append(def_acls[0].to_any_text('', b'\n', txt_flags))
+                    acl_rep.append(def_acls[1].to_any_text('', b'\n', num_flags))
                 self.posix1e_acl = acl_rep
 
     def _same_posix1e_acl(self, other):
@@ -568,7 +570,7 @@ class Metadata:
     def _apply_posix1e_acl_rec(self, path, restore_numeric_ids=False):
         def apply_acl(acl_rep, kind):
             try:
-                acl = posix1e.ACL(text = acl_rep)
+                acl = posix1e.ACL(text=acl_rep.decode('ascii'))
             except IOError as e:
                 if e.errno == 0:
                     # pylibacl appears to return an IOError with errno
