@@ -87,10 +87,10 @@ import grp, pwd
 try:
   pwd.getpwuid(0)
   grp.getgrgid(0)
-  print 'yes'
-except KeyError, ex:
+  print('yes')
+except KeyError as ex:
   pass
-" 2>/dev/null) || exit $?
+") || exit $?
 if [ "$has_uid_gid_0" == yes ]
 then
     WVSTART "restore --map-user/group/uid/gid (zero uid/gid trumps all)"
