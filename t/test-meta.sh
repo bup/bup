@@ -438,10 +438,11 @@ src/foo/3"
 
     tmpdir="$(WVPASS wvmktempdir)" || exit $?    
 
+    # FIXME: binary groups
     first_group="$(WVPASS bup-python -c 'import os,grp; \
-      print grp.getgrgid(os.getgroups()[0])[0]')" || exit $?
+      print(grp.getgrgid(os.getgroups()[0])[0])')" || exit $?
     last_group="$(bup-python -c 'import os,grp; \
-      print grp.getgrgid(os.getgroups()[-1])[0]')" || exit $?
+      print(grp.getgrgid(os.getgroups()[-1])[0])')" || exit $?
     last_group_erx="$(escape-erx "$last_group")"
 
     WVSTART 'metadata (restoration of ownership)'
@@ -679,8 +680,8 @@ if [ "$root_status" = root ]; then
             WVPASS touch "$testfs"/src/bar
             WVPASS bup-python -c "from bup import xstat; \
                 x = xstat.timespec_to_nsecs((42, 0));\
-                xstat.utime('$testfs/src/foo', (x, x));\
-                xstat.utime('$testfs/src/bar', (x, x));"
+                xstat.utime(b'$testfs/src/foo', (x, x));\
+                xstat.utime(b'$testfs/src/bar', (x, x));"
             WVPASS cd "$testfs"
             WVPASS bup meta -v --create --recurse --file src.meta src
             WVPASS bup meta -tvf src.meta
@@ -741,7 +742,7 @@ if [ "$root_status" = root ]; then
             WVPASS cd "$testfs_limited"/src-restore
             WVFAIL bup meta --extract --file "$testfs"/src.meta
             WVFAIL bup meta --extract --file "$testfs"/src.meta 2>&1 \
-                | WVPASS grep -e "^xattr\.set '" \
+                | WVPASS grep -e "^xattr\.set u\?'" \
                 | WVPASS bup-python -c \
                 'import sys; exit(not len(sys.stdin.readlines()) == 2)'
         ) || exit $?
