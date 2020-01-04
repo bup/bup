@@ -207,6 +207,8 @@ cmdline_tests := \
   t/test-xdev.sh
 
 ifeq "2" "$(bup_python_majver)"
+  # unresolved
+  #   web: needs more careful attention, path bytes round-trips, reprs, etc.
   cmdline_tests += \
     t/test-web.sh
 endif
