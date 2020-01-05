@@ -389,11 +389,23 @@ class PackIdx:
             return self._ofs_from_idx(idx)
         return None
 
-    def exists(self, hash, want_source=False):
-        """Return nonempty if the object exists in this index."""
-        if hash and (self._idx_from_hash(hash) != None):
-            return want_source and os.path.basename(self.name) or True
-        return None
+    def exists(self, hash, want_source=False, want_offs=False):
+        """Return nonempty if the object exists in this index,
+           the index name if want_source is True, the offset if
+           want_offs is True, or both (in a tuple) if both are True."""
+        if not hash:
+            return None
+        idx = self._idx_from_hash(hash)
+        if idx is None:
+            return None
+        if want_source and want_offs:
+            return (os.path.basename(self.name), self._ofs_from_idx(idx))
+        elif want_source:
+            return os.path.basename(self.name)
+        elif want_offs:
+            return self._ofs_from_idx(idx)
+        else:
+            return True
 
     def _idx_from_hash(self, hash):
         global _total_searches, _total_steps
@@ -520,7 +532,7 @@ class PackIdxList:
     def __len__(self):
         return sum(len(pack) for pack in self.packs)
 
-    def exists(self, hash, want_source=False):
+    def exists(self, hash, want_source=False, want_offs=False):
         """Return nonempty if the object exists in the index files."""
         global _total_searches
         _total_searches += 1
@@ -534,8 +546,10 @@ class PackIdxList:
                 return None
         for i in range(len(self.packs)):
             p = self.packs[i]
+            if want_offs and isinstance(p, midx.PackMidx):
+                continue
             _total_searches -= 1  # will be incremented by sub-pack
-            ix = p.exists(hash, want_source=want_source)
+            ix = p.exists(hash, want_source=want_source, want_offs=want_offs)
             if ix:
                 # reorder so most recently used packs are searched first
                 self.packs = [p] + self.packs[:i] + self.packs[i+1:]

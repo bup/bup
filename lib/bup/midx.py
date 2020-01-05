@@ -90,8 +90,9 @@ class PackMidx:
             self.map.close()
             self.map = None
 
-    def exists(self, hash, want_source=False):
+    def exists(self, hash, want_source=False, want_offs=False):
         """Return nonempty if the object exists in the index files."""
+        assert want_offs == False, "returning offset is not supported in midx"
         global _total_searches, _total_steps
         _total_searches += 1
         want = hash
