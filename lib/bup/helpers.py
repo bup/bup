@@ -53,14 +53,15 @@ def temp_dir(*args, **kwargs):
     return finalized(mkdtemp(*args, **kwargs), lambda x: rmtree(x))
 
 class ExistsResult:
-    __slots__ = ('pack', )
+    __slots__ = ('pack', 'offset')
 
-    def __init__(self, pack):
+    def __init__(self, pack, offset):
         self.pack = pack
+        self.offset = offset
 
 # singleton to avoid creating a new one
 # when we don't care where the object is
-ObjectExists = ExistsResult(None)
+ObjectExists = ExistsResult(None, None)
 
 
 sc_arg_max = os.sysconf('SC_ARG_MAX')
