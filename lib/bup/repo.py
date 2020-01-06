@@ -105,7 +105,7 @@ class LocalRepo:
         assert not next(it, None)
 
     def join(self, ref):
-        return self._cp.join(ref)
+        return vfs.join(self, ref)
 
     def refs(self, patterns=None, limit_to_heads=False, limit_to_tags=False):
         for ref in git.list_refs(patterns=patterns,
