@@ -1148,3 +1148,31 @@ def ensure_item_has_metadata(repo, item, include_size=False):
     return augment_item_meta(repo,
                              fill_in_metadata_if_dir(repo, item),
                              include_size=include_size)
+
+def join(repo, ref):
+    """Generate a list of the content of all blobs that can be reached
+    from an object.  The hash given in 'id' must point to a blob, a tree
+    or a commit. The content of all blobs that can be seen from trees or
+    commits will be added to the list.
+    """
+    def _join(it):
+        _, typ, _ = next(it)
+        if typ == b'blob':
+            for blob in it:
+                yield blob
+        elif typ == b'tree':
+            treefile = b''.join(it)
+            for (mode, name, sha) in git.tree_decode(treefile):
+                for blob in join(repo, hexlify(sha)):
+                    yield blob
+        elif typ == b'commit':
+            treeline = b''.join(it).split(b'\n')[0]
+            assert(treeline.startswith(b'tree '))
+            for blob in join(repo, treeline[5:]):
+                yield blob
+        else:
+            raise git.GitError('invalid object type %r: expected blob/tree/commit'
+                               % typ)
+
+    for d in _join(repo.cat(ref)):
+        yield d
