@@ -14,6 +14,18 @@ task:
     su -l bup -c "eatmydata make -j3 -C '$(pwd)' check"
 
 task:
+  name: debian (root)
+  container:
+    image: debian:buster
+    cpu: 2
+    memory: 8
+  script: |
+    set -xe
+    dev/prep-for-debianish-build
+    dev/system-info
+    eatmydata make -j3 check
+
+task:
   name: debian (xattr)
   container:
     image: debian:buster
