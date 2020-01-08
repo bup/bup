@@ -55,7 +55,7 @@ def parse_remote(remote):
     assert remote is not None
     url_match = _url_rx.match(remote)
     if url_match:
-        if not url_match.group(1) in (b'ssh', b'bup', b'file', b'reverse'):
+        if not url_match.group(1) in (b'ssh', b'bup', b'file', b'reverse', b'config'):
             raise ClientError('unexpected protocol: %s'
                               % url_match.group(1).decode('ascii'))
         return url_match.group(1,3,4,5)

@@ -153,6 +153,7 @@ def test_remote_parsing():
             (b'bup://[ff:fe::1]/bup', (b'bup', b'ff:fe::1', None, b'/bup')),
             (b'reverse://', (b'reverse', None, None, None)),
             (b'reverse://host/dir', (b'reverse', b'host', None, b'/dir')),
+            (b'config:///path/to/file.conf', (b'config', None, None, b'/path/to/file.conf')),
         )
         for remote, values in tests:
             WVPASSEQ(client.parse_remote(remote), values)

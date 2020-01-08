@@ -10,7 +10,7 @@ from wvtest import *
 
 from buptest import no_lingering_errors, test_tempdir
 from bup.storage import Kind, FileAlreadyExists, FileNotFound, get_storage
-from bup import git
+from bup.repo import ConfigRepo
 
 
 try:
@@ -20,6 +20,11 @@ try:
     repo_conf = os.environ['STORAGE_TEST_CONF']
 except KeyError:
     repo_conf = None
+
+
+class DummyRepo(ConfigRepo):
+    def close(self):
+        pass
 
 @contextmanager
 def create_test_config():
@@ -37,13 +42,8 @@ def create_test_config():
             wvstart("storage config from %s" % repo_conf)
             cfgfile = repo_conf
             create = False
-        class FakeRepo:
-            def config(self, k, opttype=None, default=None):
-                assert isinstance(k, bytes)
-                return git.git_config_get(k, cfg_file=cfgfile,
-                                          opttype=opttype,
-                                          default=default)
-        store = get_storage(FakeRepo(), create=create)
+        repo = DummyRepo(cfg_file=cfgfile)
+        store = get_storage(repo, create=create)
         yield tmpdir, store
         del store
 
