@@ -66,14 +66,29 @@ def _git_exo(cmd, **kwargs):
         raise GitError('%r returned %d' % (cmd, proc.returncode))
     return result
 
-def git_config_get(option, repo_dir=None):
-    cmd = (b'git', b'config', b'--get', option)
-    p = subprocess.Popen(cmd, stdout=subprocess.PIPE,
-                         env=_gitenv(repo_dir=repo_dir),
+def git_config_get(option, repo_dir=None, opttype=None):
+    cmd = [b'git', b'config', b'--null']
+    if opttype == 'int':
+        cmd.extend([b'--int'])
+    elif opttype == 'bool':
+        cmd.extend([b'--bool'])
+    else:
+        assert opttype is None
+    cmd.extend([b'--get', option])
+    env=None
+    if repo_dir:
+        env = _gitenv(repo_dir=repo_dir)
+    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, env=env,
                          close_fds=True)
-    r = p.stdout.read()
+    # with --null, git writes out a trailing \0 after the value
+    r = p.stdout.read()[:-1]
     rc = p.wait()
     if rc == 0:
+        if opttype == 'int':
+            return int(r)
+        elif opttype == 'bool':
+            # git converts to 'true' or 'false'
+            return r == b'true'
         return r
     if rc != 1:
         raise GitError('%r returned %d' % (cmd, rc))
