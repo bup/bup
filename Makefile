@@ -258,7 +258,7 @@ distcheck: all
 	./wvtest run t/test-release-archive.sh
 
 cmd/bup-python: cmd/python-cmd.sh config/config.vars Makefile
-	head -n -1 $< > "$@".$$PPID.tmp
+	sed -e '$$ d' $< > "$@".$$PPID.tmp
 	printf "exec %q \"\$$@\"\n" "$(bup_python)" >> "$@".$$PPID.tmp
 	chmod +x "$@".$$PPID.tmp
 	mv "$@".$$PPID.tmp "$@"
