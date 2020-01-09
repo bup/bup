@@ -682,9 +682,8 @@ class PackWriter:
         self.on_pack_finish = on_pack_finish
         if not max_pack_size:
             max_pack_size = git_config_get(b'pack.packSizeLimit',
-                                           repo_dir=self.repo_dir)
-            if max_pack_size is not None:
-                max_pack_size = parse_num(max_pack_size)
+                                           repo_dir=self.repo_dir,
+                                           opttype='int')
             if not max_pack_size:
                 # larger packs slow down pruning
                 max_pack_size = 1000 * 1000 * 1000
