@@ -103,7 +103,7 @@ static uint64_t htonll(uint64_t value)
     })
 
 
-// At the moment any code that calls INTGER_TO_PY() will have to
+// At the moment any code that calls INTEGER_TO_PY() will have to
 // disable -Wtautological-compare for clang.  See below.
 
 #define INTEGER_TO_PY(x) \
@@ -1384,7 +1384,7 @@ static PyObject *stat_struct_to_py(const struct stat *st,
     // compile time, but not (easily) the unspecified types, so handle
     // those via INTEGER_TO_PY().  Assumes ns values will fit in a
     // long.
-    return Py_BuildValue("OKOOOOOL(Ol)(Ol)(Ol)",
+    return Py_BuildValue("NKNNNNNL(Nl)(Nl)(Nl)",
                          INTEGER_TO_PY(st->st_mode),
                          (unsigned PY_LONG_LONG) st->st_ino,
                          INTEGER_TO_PY(st->st_dev),
