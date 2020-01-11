@@ -702,7 +702,8 @@ static PyObject *bloom_add(PyObject *self, PyObject *args)
         if (nbits > 29)
             goto clean_and_return;
         unsigned char *cur = sha.buf;
-        for (unsigned char *end = cur + sha.len; cur < end; cur += 20/k)
+        unsigned char *end;
+        for (end = cur + sha.len; cur < end; cur += 20/k)
             bloom_set_bit5(bloom.buf, cur, nbits);
     }
     else if (k == 4)
