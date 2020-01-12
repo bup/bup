@@ -1,18 +1,15 @@
 
-from __future__ import print_function
-
-from __future__ import absolute_import
 from binascii import hexlify, unhexlify
 import os, re, struct, time, zlib
 import socket
 
-from bup import git, ssh, vfs
+from bup import git, ssh, vfs, vint
 from bup.compat import environ, pending_raise
 from bup.helpers import (Conn, atomically_replaced_file, chunkyreader, debug1,
                          debug2, linereader, lines_until_sentinel,
                          mkdirp, nullcontext_if_not, progress, qprogress, DemuxConn)
 from bup.io import path_msg
-from bup.vint import write_bvec
+from bup.vint import read_vint, read_vuint, read_bvec, write_bvec
 
 
 bwlimit = None
@@ -503,6 +500,36 @@ class Client:
             raise result
         return result
 
+    def config_get(self, name, opttype=None):
+        assert isinstance(name, bytes)
+        assert opttype in ('int', 'bool', None)
+        self._require_command(b'config-get')
+        self.check_busy()
+        self._busy = b'config'
+        conn = self.conn
+        conn.write(b'config-get\n')
+        vint.send(conn, 'ss', name, opttype.encode('ascii') if opttype else b'')
+        kind = read_vuint(conn)
+        if kind == 0:
+            val = None
+        elif kind == 1:
+            val = True
+        elif kind == 2:
+            val = False
+        elif kind == 3:
+            val = read_vint(conn)
+        elif kind == 4:
+            val = read_bvec(conn)
+        elif kind == 5:
+            raise PermissionError(f'config-get does not allow remote access to {name}')
+        else:
+            raise TypeError(f'Unrecognized result type {kind}')
+        # FIXME: confusing
+        not_ok = self.check_ok()
+        if not_ok:
+            raise not_ok
+        self._not_busy()
+        return val
 
 # FIXME: disentangle this (stop inheriting) from PackWriter
 class PackWriter_Remote(git.PackWriter):

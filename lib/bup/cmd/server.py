@@ -10,6 +10,7 @@ from bup.helpers \
             log)
 from bup.io import byte_stream, path_msg
 from bup.repo import LocalRepo
+from bup.vint import write_vuint
 
 
 suspended_w = None
@@ -266,6 +267,27 @@ def resolve(conn, args):
         vfs.write_resolution(conn, res)
     conn.ok()
 
+def config_get(conn, args):
+    _init_session()
+    assert not args
+    key, opttype = vint.recv(conn, 'ss')
+    if key in (b'bup.split-trees',):
+        opttype = None if not len(opttype) else opttype.decode('ascii')
+        val = repo.config_get(key, opttype=opttype)
+        if val is None:
+            write_vuint(conn, 0)
+        elif isinstance(val, bool):
+            write_vuint(conn, 1 if val else 2)
+        elif isinstance(val, int):
+            vint.send(conn, 'Vv', 3, val)
+        elif isinstance(val, bytes):
+            vint.send(conn, 'Vs', 4, val)
+        else:
+            raise TypeError(f'Unrecognized result type {type(val)}')
+    else:
+        write_vuint(conn, 5)
+    conn.ok()
+
 optspec = """
 bup server
 """
@@ -275,6 +297,7 @@ commands = {
     b'help': do_help,
     b'init-dir': init_dir,
     b'set-dir': set_dir,
+    b'config-get': config_get,
     b'list-indexes': list_indexes,
     b'send-index': send_index,
     b'receive-objects-v2': receive_objects_v2,
