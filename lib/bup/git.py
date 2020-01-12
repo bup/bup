@@ -1153,7 +1153,11 @@ def ver():
         m = re.match(br'git version (\S+.\S+)', gvs)
         if not m:
             raise GitError('git --version weird output: %r' % gvs)
-        _ver = tuple(int(x) for x in m.group(1).split(b'.'))
+        def rc(x):
+            if x.startswith(b'rc'):
+                return -100000 + int(x[2:])
+            return x
+        _ver = tuple(int(rc(x)) for x in m.group(1).split(b'.'))
     needed = (1, 5, 3, 1)
     if _ver < needed:
         raise GitError('git version %s or higher is required; you have %s'
