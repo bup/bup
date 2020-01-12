@@ -319,14 +319,16 @@ def exo(cmd,
         stderr=None,
         shell=False,
         check=True,
-        preexec_fn=None):
+        preexec_fn=None,
+        close_fds=True):
     if input:
         assert stdin in (None, PIPE)
         stdin = PIPE
     p = Popen(cmd,
               stdin=stdin, stdout=PIPE, stderr=stderr,
               shell=shell,
-              preexec_fn=preexec_fn)
+              preexec_fn=preexec_fn,
+              close_fds=close_fds)
     out, err = p.communicate(input)
     if check and p.returncode != 0:
         raise Exception('subprocess %r failed with status %d%s'
@@ -334,15 +336,9 @@ def exo(cmd,
                            ', stderr: %r' % err if err else ''))
     return out, err, p
 
-def readpipe(argv, preexec_fn=None, shell=False):
+def readpipe(argv, preexec_fn=None, shell=False, close_fds=True):
     """Run a subprocess and return its output."""
-    p = subprocess.Popen(argv, stdout=subprocess.PIPE, preexec_fn=preexec_fn,
-                         shell=shell)
-    out, err = p.communicate()
-    if p.returncode != 0:
-        raise Exception('subprocess %r failed with status %d'
-                        % (b' '.join(argv), p.returncode))
-    return out
+    return exo(argv, preexec_fn=preexec_fn, shell=shell, close_fds=close_fds)[0]
 
 
 def _argmax_base(command):
@@ -358,7 +354,8 @@ def _argmax_args_size(args):
     return sum(len(x) + 1 + sizeof(c_void_p) for x in args)
 
 
-def batchpipe(command, args, preexec_fn=None, arg_max=sc_arg_max):
+def batchpipe(command, args, preexec_fn=None, arg_max=sc_arg_max,
+              close_fds=True):
     """If args is not empty, yield the output produced by calling the
 command list with args as a sequence of strings (It may be necessary
 to return multiple strings in order to respect ARG_MAX)."""
@@ -377,7 +374,8 @@ to return multiple strings in order to respect ARG_MAX)."""
         sub_args = args[:i]
         args = args[i:]
         assert(len(sub_args))
-        yield readpipe(command + sub_args, preexec_fn=preexec_fn)
+        yield readpipe(command + sub_args, preexec_fn=preexec_fn,
+                       close_fds=close_fds)
 
 
 def resolve_parent(p):

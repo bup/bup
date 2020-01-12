@@ -133,11 +133,9 @@ def test_readpipe():
         try:
             readpipe([b'bash', b'-c', b'exit 42'])
         except Exception as ex:
-            if not re.match("^subprocess b?'bash -c exit 42' failed with status 42$",
-                            str(ex)):
-                WVPASSEQ(str(ex),
-                         "^subprocess b?'bash -c exit 42' failed with status 42$")
-
+            rx = '^subprocess b?"bash -c \'exit 42\'" failed with status 42$'
+            if not re.match(rx, str(ex)):
+                WVPASSEQ(str(ex), rx)
 
 
 @wvtest
