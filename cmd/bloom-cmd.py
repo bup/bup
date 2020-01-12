@@ -59,8 +59,9 @@ def check_bloom(path, bloomfilename, idx):
 
 
 _first = None
-def do_bloom(path, outfilename):
+def do_bloom(path, outfilename, k):
     global _first
+    assert k in (None, 4, 5)
     b = None
     if os.path.exists(outfilename) and not opt.force:
         b = bloom.ShaBloom(outfilename)
@@ -82,7 +83,6 @@ def do_bloom(path, outfilename):
         else:
             add.append(name)
             add_count += len(ix)
-    total = add_count + rest_count
 
     if not add:
         debug1("bloom: nothing to do.\n")
@@ -93,7 +93,11 @@ def do_bloom(path, outfilename):
             debug1("bloom: size %d != idx total %d, regenerating\n"
                    % (len(b), rest_count))
             b = None
-        elif (b.bits < bloom.MAX_BLOOM_BITS and
+        elif k is not None and k != b.k:
+            debug1("bloom: new k %d != existing k %d, regenerating\n"
+                   % (k, b.k))
+            b = None
+        elif (b.bits < bloom.MAX_BLOOM_BITS[b.k] and
               b.pfalse_positive(add_count) > bloom.MAX_PFALSE_POSITIVE):
             debug1("bloom: regenerating: adding %d entries gives "
                    "%.2f%% false positives.\n"
@@ -118,7 +122,7 @@ def do_bloom(path, outfilename):
     tfname = None
     if b is None:
         tfname = os.path.join(path, 'bup.tmp.bloom')
-        b = bloom.create(tfname, expected=add_count, k=opt.k)
+        b = bloom.create(tfname, expected=add_count, k=k)
     count = 0
     icount = 0
     for name in add:
@@ -159,7 +163,7 @@ for path in paths:
     elif opt.ruin:
         ruin_bloom(outfilename)
     else:
-        do_bloom(path, outfilename)
+        do_bloom(path, outfilename, opt.k)
 
 if saved_errors:
     log('WARNING: %d errors encountered during bloom.\n' % len(saved_errors))
