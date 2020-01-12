@@ -478,6 +478,26 @@ class Client:
             raise result
         return result
 
+    def config(self, name, opttype=None):
+        # if the server doesn't support this, it can't be set
+        if not 'config' in self._available_commands:
+            return None
+        self.check_busy()
+        if opttype is None:
+            opttype = b'string'
+        # name is last so it can contain spaces
+        self.conn.write(b'config %s %s\n' % (opttype, name))
+        # strip \n (only, not all whitespace)
+        val = self.conn.readline()[:-1]
+        self.check_ok()
+        if val == b'\x00':
+            return None
+        if opttype == b'int':
+            return int(val)
+        if opttype == b'bool':
+            return val == b'1'
+        return val
+
 
 class PackWriter_Remote(git.PackWriter):
     def __init__(self, conn, objcache_maker, suggest_packs,

@@ -24,6 +24,7 @@ class LocalRepo:
         self._cp = git.cp(self.repo_dir)
         self.update_ref = partial(git.update_ref, repo_dir=self.repo_dir)
         self.rev_list = partial(git.rev_list, repo_dir=self.repo_dir)
+        self.config = partial(git.git_config_get, repo_dir=self.repo_dir)
         self._id = _repo_id(self.repo_dir)
 
     def close(self):
@@ -92,6 +93,7 @@ class RemoteRepo:
         self.new_packwriter = self.client.new_packwriter
         self.update_ref = self.client.update_ref
         self.rev_list = self.client.rev_list
+        self.config = self.client.config
         self._id = _repo_id(self.address)
 
     def close(self):
