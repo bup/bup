@@ -258,7 +258,7 @@ distcheck: all
 	./wvtest run t/test-release-archive.sh
 
 cmd/bup-python: cmd/python-cmd.sh config/config.var/bup-python
-	dev/replace -l '@bup_python@' \
+	"$$(cat config/config.var/bup-python)" dev/replace -l '@bup_python@' \
 	  "$$(dev/shquote < config/config.var/bup-python)" \
 	  < "$<" > "$@".$$PPID.tmp
 	chmod +x "$@".$$PPID.tmp
