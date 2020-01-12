@@ -32,10 +32,13 @@ if sys.platform.startswith('linux'):
     if xattr and getattr(xattr, 'get_all', None) is None:
         try:
             from xattr import pyxattr_compat as xattr
+            if not isinstance(xattr.NS_USER, bytes):
+                xattr = None
         except ImportError:
+            xattr = None
+        if xattr is None:
             log('Warning: python-xattr module is too old; '
                 'upgrade or install python-pyxattr instead.\n')
-            xattr = None
 
 posix1e = None
 if not (sys.platform.startswith('cygwin') \
