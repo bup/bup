@@ -327,8 +327,9 @@ def exo(cmd,
               preexec_fn=preexec_fn)
     out, err = p.communicate(input)
     if check and p.returncode != 0:
-        raise Exception('subprocess %r failed with status %d, stderr: %r'
-                        % (b' '.join(map(quote, cmd)), p.returncode, err))
+        raise Exception('subprocess %r failed with status %d%s'
+                        % (b' '.join(map(quote, cmd)), p.returncode,
+                           ', stderr: %r' % err if err else ''))
     return out, err, p
 
 def readpipe(argv, preexec_fn=None, shell=False):
