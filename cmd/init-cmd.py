@@ -10,6 +10,7 @@ import sys
 
 from bup import git, options, client
 from bup.helpers import log, saved_errors
+from bup.compat import argv_bytes
 
 
 optspec = """
@@ -32,5 +33,5 @@ except git.GitError as e:
 
 if opt.remote:
     git.check_repo_or_die()
-    cli = client.Client(opt.remote, create=True)
+    cli = client.Client(argv_bytes(opt.remote), create=True)
     cli.close()
