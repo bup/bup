@@ -225,7 +225,7 @@ def _run_get(disposition, method, what):
         get_cmd = (bup_cmd, b'-d', b'get-dest',
                    b'get', b'-vvct', b'--print-tags', b'-s', b'get-src')
     elif disposition == 'get-on':
-        get_cmd = (bup_cmd, '-d', 'get-dest',
+        get_cmd = (bup_cmd, b'-d', b'get-dest',
                    b'on', b'-', b'get', b'-vvct', b'--print-tags', b'-s', b'get-src')
     elif disposition == 'get-to':
         get_cmd = (bup_cmd, b'-d', b'get-dest',
