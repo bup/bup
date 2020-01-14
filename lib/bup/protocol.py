@@ -83,12 +83,12 @@ def write_ioerror(port, ex):
     assert isinstance(ex, vfs.IOError)
     write_vuint(port,
                 (1 if ex.errno is not None else 0)
-                | (2 if ex.message is not None else 0)
+                | (2 if ex.strerror is not None else 0)
                 | (4 if ex.terminus is not None else 0))
     if ex.errno is not None:
         write_vint(port, ex.errno)
-    if ex.message is not None:
-        write_bvec(port, ex.message.encode('utf-8'))
+    if ex.strerror is not None:
+        write_bvec(port, ex.strerror.encode('utf-8'))
     if ex.terminus is not None:
         write_resolution(port, ex.terminus)
 
