@@ -21,7 +21,7 @@ from bup.pwdgrp import userfullname, username
 
 
 optspec = """
-bup save [-tc] [-n name] <filenames...>
+bup save [-tc] -n <name> <filenames...>
 --
 r,remote=  hostname:/path/to/repo of remote repository
 t,tree     output a tree id
