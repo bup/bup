@@ -63,7 +63,7 @@ def _git_capture(argv):
     _git_wait(argv, p)
     return r
 
-def git_config_get(option, repo_dir=None, opttype=None, cfg_file=None):
+def git_config_get(option, repo_dir=None, opttype=None, cfg_file=None, default=None):
     assert not (repo_dir and cfg_file), "repo_dir and cfg_file cannot both be used"
     cmd = [b'git', b'config', b'--null']
     if cfg_file:
@@ -91,7 +91,7 @@ def git_config_get(option, repo_dir=None, opttype=None, cfg_file=None):
         return r
     if rc != 1:
         raise GitError('%r returned %d' % (cmd, rc))
-    return None
+    return default
 
 
 def parse_tz_offset(s):
