@@ -23,19 +23,10 @@ class RemoteRepo(BaseRepo):
         self._packwriter = None
 
     def close(self):
-        self.finish_writing()
+        super(RemoteRepo, self).close()
         if self.client:
             self.client.close()
             self.client = None
-
-    def __del__(self):
-        self.close()
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, type, value, traceback):
-        self.close()
 
     def update_ref(self, refname, newval, oldval):
         self.finish_writing()
@@ -49,11 +40,6 @@ class RemoteRepo(BaseRepo):
         return True
 
     def cat(self, ref):
-        """If ref does not exist, yield (None, None, None).  Otherwise yield
-        (oidx, type, size), and then all of the data associated with
-        ref.
-
-        """
         # Yield all the data here so that we don't finish the
         # cat_batch iterator (triggering its cleanup) until all of the
         # data has been read.  Otherwise we'd be out of sync with the
@@ -81,14 +67,6 @@ class RemoteRepo(BaseRepo):
         return self._packwriter.new_tree(shalist=shalist, content=content)
 
     def write_data(self, data):
-        self._ensure_packwriter()
-        return self._packwriter.new_blob(data)
-
-    def write_symlink(self, target):
-        self._ensure_packwriter()
-        return self._packwriter.new_blob(target)
-
-    def write_bupm(self, data):
         self._ensure_packwriter()
         return self._packwriter.new_blob(data)
 

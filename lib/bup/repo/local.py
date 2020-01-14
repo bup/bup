@@ -31,27 +31,12 @@ class LocalRepo(BaseRepo):
         git.init_repo(repo_dir)
         git.check_repo_or_die(repo_dir)
 
-    def close(self):
-        self.finish_writing()
-
-    def __del__(self):
-        self.close()
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, type, value, traceback):
-        self.close()
-
     @property
     def dumb_server_mode(self):
         if self._dumb_server_mode is None:
             self._dumb_server_mode = os.path.exists(git.repo(b'bup-dumb-server',
                                                              repo_dir=self.repo_dir))
         return self._dumb_server_mode
-
-    def is_remote(self):
-        return False
 
     def list_indexes(self):
         for f in os.listdir(git.repo(b'objects/pack',
@@ -74,11 +59,6 @@ class LocalRepo(BaseRepo):
         return git.update_ref(refname, newval, oldval, repo_dir=self.repo_dir)
 
     def cat(self, ref):
-        """If ref does not exist, yield (None, None, None).  Otherwise yield
-        (oidx, type, size), and then all of the data associated with
-        ref.
-
-        """
         it = self._cp.get(ref)
         oidx, typ, size = info = next(it)
         yield info
@@ -87,9 +67,6 @@ class LocalRepo(BaseRepo):
                 yield data
         assert not next(it, None)
 
-    def join(self, ref):
-        return vfs.join(self, ref)
-
     def refs(self, patterns=None, limit_to_heads=False, limit_to_tags=False):
         for ref in git.list_refs(patterns=patterns,
                                  limit_to_heads=limit_to_heads,
@@ -97,7 +74,6 @@ class LocalRepo(BaseRepo):
                                  repo_dir=self.repo_dir):
             yield ref
 
-    ## Of course, the vfs better not call this...
     def resolve(self, path, parent=None, want_meta=True, follow=True):
         ## FIXME: mode_only=?
         return vfs.resolve(self, path,
@@ -137,14 +113,6 @@ class LocalRepo(BaseRepo):
         return self._packwriter.new_tree(shalist=shalist, content=content)
 
     def write_data(self, data):
-        self._ensure_packwriter()
-        return self._packwriter.new_blob(data)
-
-    def write_symlink(self, target):
-        self._ensure_packwriter()
-        return self._packwriter.new_blob(target)
-
-    def write_bupm(self, data):
         self._ensure_packwriter()
         return self._packwriter.new_blob(data)
 
