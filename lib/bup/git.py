@@ -529,6 +529,8 @@ class PackIdxList:
         The instance variable 'ignore_midx' can force this function to
         always act as if skip_midx was True.
         """
+        if self.bloom is not None:
+            self.bloom.close()
         self.bloom = None # Always reopen the bloom as it may have been relaced
         self.do_bloom = False
         skip_midx = skip_midx or self.ignore_midx
@@ -537,11 +539,22 @@ class PackIdxList:
         if os.path.exists(self.dir):
             if not skip_midx:
                 midxl = []
+                midxes = set(glob.glob(os.path.join(self.dir, b'*.midx')))
+                # remove any *.midx files from our list that no longer exist
+                for ix in list(d.values()):
+                    if not isinstance(ix, midx.PackMidx):
+                        continue
+                    if ix.name in midxes:
+                        continue
+                    # remove the midx
+                    del d[ix.name]
+                    ix.close()
+                    self.packs.remove(ix)
                 for ix in self.packs:
                     if isinstance(ix, midx.PackMidx):
                         for name in ix.idxnames:
                             d[os.path.join(self.dir, name)] = ix
-                for full in glob.glob(os.path.join(self.dir,b'*.midx')):
+                for full in midxes:
                     if not d.get(full):
                         mx = midx.PackMidx(full)
                         (mxd, mxf) = os.path.split(mx.name)
