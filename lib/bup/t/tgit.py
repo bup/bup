@@ -478,3 +478,70 @@ def test_cat_pipe():
             for buf in next(it):
                 pass
             WVPASSEQ((oidx, typ, size), get_info)
+
+def _create_idx(d, i):
+    idx = git.PackIdxV2Writer()
+    # add 255 vaguely reasonable entries
+    for s in range(255):
+        idx.add(struct.pack('18xBB', i, s), s, 100 * s)
+    packbin = struct.pack('B19x', i)
+    packname = os.path.join(d, b'pack-%s.idx' % hexlify(packbin))
+    idx.write(packname, packbin)
+
+@wvtest
+def test_midx_close():
+    fddir = b'/proc/self/fd'
+    try:
+        os.listdir(fddir)
+    except Exception:
+        # not supported, not Linux, I guess
+        return
+
+    def openfiles():
+        for fd in os.listdir(fddir):
+            try:
+                yield os.readlink(os.path.join(fddir, fd))
+            except OSError:
+                pass
+
+    def force_midx(objdir):
+        args = [path.exe(), b'midx', b'--auto', b'--dir', objdir]
+        check_call(args)
+
+    with no_lingering_errors(), \
+         test_tempdir(b'bup-tgit-') as tmpdir:
+        environ[b'BUP_DIR'] = bupdir = tmpdir + b'/bup'
+        git.init_repo(bupdir)
+        # create a few dummy idxes
+        for i in range(10):
+            _create_idx(tmpdir, i)
+        git.auto_midx(tmpdir)
+        l = git.PackIdxList(tmpdir)
+        # this doesn't exist (yet)
+        WVPASSEQ(None, l.exists(struct.pack('18xBB', 10, 0)))
+        for i in range(10, 15):
+            _create_idx(tmpdir, i)
+        # delete the midx ...
+        # TODO: why do we need to? git.auto_midx() below doesn't?!
+        for fn in os.listdir(tmpdir):
+            if fn.endswith(b'.midx'):
+                os.unlink(os.path.join(tmpdir, fn))
+        # and make a new one
+        git.auto_midx(tmpdir)
+        # check it still doesn't exist - we haven't refreshed
+        WVPASSEQ(None, l.exists(struct.pack('18xBB', 10, 0)))
+        # check that we still have the midx open, this really
+        # just checks more for the kernel API ('deleted' string)
+        for fn in openfiles():
+            if not b'midx-' in fn:
+                continue
+            WVPASSEQ(True, b'deleted' in fn)
+        # refresh the PackIdxList
+        l.refresh()
+        # and check that an object in pack 10 exists now
+        WVPASSEQ(True, l.exists(struct.pack('18xBB', 10, 0)))
+        for fn in openfiles():
+            if not b'midx-' in fn:
+                continue
+            # check that we don't have it open anymore
+            WVPASSEQ(False, b'deleted' in fn)
