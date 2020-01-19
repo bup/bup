@@ -779,11 +779,11 @@ class PackWriter:
                    msg):
         """Create a commit object in the pack.  The date_sec values must be
         epoch-seconds, and if a tz is None, the local timezone is assumed."""
-        if adate_tz:
+        if adate_tz is not None:
             adate_str = _git_date_str(adate_sec, adate_tz)
         else:
             adate_str = _local_git_date_str(adate_sec)
-        if cdate_tz:
+        if cdate_tz is not None:
             cdate_str = _git_date_str(cdate_sec, cdate_tz)
         else:
             cdate_str = _local_git_date_str(cdate_sec)
