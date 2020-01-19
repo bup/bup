@@ -14,11 +14,11 @@ class Passwd:
     __slots__ = ('pw_name', 'pw_passwd', 'pw_uid', 'pw_gid', 'pw_gecos',
                  'pw_dir', 'pw_shell')
     def __init__(self, name, passwd, uid, gid, gecos, dir, shell):
-        assert type(name) == bytes
-        assert type(passwd) == bytes
-        assert type(gecos) == bytes
-        assert type(dir) == bytes
-        assert type(shell) == bytes
+        assert isinstance(name, bytes)
+        assert isinstance(passwd, bytes)
+        assert isinstance(gecos, bytes)
+        assert isinstance(dir, bytes)
+        assert isinstance(shell, bytes)
         (self.pw_name, self.pw_passwd, self.pw_uid, self.pw_gid,
          self.pw_gecos, self.pw_dir, self.pw_shell) = \
              name, passwd, uid, gid, gecos, dir, shell
@@ -46,10 +46,10 @@ class Group:
     """Drop in replacement for grp's structure with bytes instead of strings."""
     __slots__ = 'gr_name', 'gr_passwd', 'gr_gid', 'gr_mem'
     def __init__(self, name, passwd, gid, mem):
-        assert type(name) == bytes
-        assert type(passwd) == bytes
+        assert isinstance(name, bytes)
+        assert isinstance(passwd, bytes)
         for m in mem:
-            assert type(m) == bytes
+            assert isinstance(m, bytes)
         self.gr_name, self.gr_passwd, self.gr_gid, self.gr_mem = \
             name, passwd, gid, mem
 
@@ -87,7 +87,7 @@ def pwd_from_name(name):
     """Return password database entry for name (may be a cached value).
     Return None if no entry is found.
     """
-    assert type(name) == bytes
+    assert isinstance(name, bytes)
     global _uid_to_pwd_cache, _name_to_pwd_cache
     entry, cached = cache_key_value(getpwnam, name, _name_to_pwd_cache)
     if entry and not cached:
@@ -113,7 +113,7 @@ def grp_from_name(name):
     """Return password database entry for name (may be a cached value).
     Return None if no entry is found.
     """
-    assert type(name) == bytes
+    assert isinstance(name, bytes)
     global _gid_to_grp_cache, _name_to_grp_cache
     entry, cached = cache_key_value(getgrnam, name, _name_to_grp_cache)
     if entry and not cached:
