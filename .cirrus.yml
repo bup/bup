@@ -1,6 +1,6 @@
 
 task:
-  name: debian
+  name: debian (long)
   container:
     image: debian:buster
     cpu: 2
@@ -11,7 +11,7 @@ task:
     dev/system-info
     adduser --disabled-password --gecos '' bup
     chown -R bup:bup .
-    su -l bup -c "eatmydata make -j3 -C '$(pwd)' check"
+    su -l bup -c "eatmydata make -j3 -C '$(pwd)' long-check"
 
 task:
   name: debian (root)
