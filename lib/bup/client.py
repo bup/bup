@@ -315,7 +315,7 @@ class Client:
         self.check_ok()
         if r:
             assert(len(r) == 40)   # hexified sha
-            return r.decode('hex')
+            return unhexlify(r)
         else:
             return None   # nonexistent ref
 
