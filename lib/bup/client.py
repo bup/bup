@@ -75,13 +75,15 @@ class Client:
             assert(not remote)
             remote = b'%s:' % is_reverse
         (self.protocol, self.host, self.port, self.dir) = parse_remote(remote)
+        # The b'None' here matches python2's behavior of b'%s' % None == 'None',
+        # python3 will (as of version 3.7.5) do the same for str ('%s' % None),
+        # but crashes instead when doing b'%s' % None.
+        cachehost = b'None' if self.host is None else self.host
+        cachedir = b'None' if self.dir is None else self.dir
         self.cachedir = git.repo(b'index-cache/%s'
                                  % re.sub(br'[^@\w]',
                                           b'_',
-                                          # FIXME: the Nones just
-                                          # match python 2's behavior
-                                          b'%s:%s' % (self.host or b'None',
-                                                      self.dir or b'None')))
+                                          b'%s:%s' % (cachehost, cachedir)))
         if is_reverse:
             self.pout = os.fdopen(3, 'rb')
             self.pin = os.fdopen(4, 'wb')
