@@ -1,4 +1,6 @@
 
+import sys
+
 # This file exists because the raise syntax is completely incompatible
 # with Python 3.
 
