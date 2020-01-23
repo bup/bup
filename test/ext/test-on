@@ -55,4 +55,17 @@ for idx in "$tmpdir"/bup/objects/pack/*.idx ; do
     WVPASS cmp "$idx" "$cachedidx"
 done
 
+WVSTART "suggest packs"
+# we need to write a large object here, otherwise the
+# buffering in the local connection on the client will
+# kill the test - if everything is buffered then we get
+# the index suggestions only at the end when we finish,
+# not inbetween, and then don't exercise the suspend
+# pack writing code path ...
+WVPASS seq 100000 > "$tmpdir/longfile"
+WVPASS bup on - split -ctn large "$tmpdir/longfile"
+WVPASS rm -rf "$tmpdir"/bup/index-cache/
+WVPASS bup on - split -ctn large "$tmpdir/longfile"
+WVPASS test -f $(ls "$tmpdir"/bup/index-cache/*/*.idx | head -1)
+
 WVPASS rm -rf "$tmpdir"
