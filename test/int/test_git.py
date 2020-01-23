@@ -114,7 +114,7 @@ def test_encode():
     WVPASSEQ(git._decode_packobj(packlb), (b'blob', s * 200))
     def encode_pobj(n):
         return b''.join(git._encode_packobj(b'blob', s, compression_level=n))
-    WVEXCEPT(ValueError, encode_pobj, -1)
+    WVEXCEPT(ValueError, encode_pobj, -2)
     WVEXCEPT(ValueError, encode_pobj, 10)
     WVEXCEPT(ValueError, encode_pobj, b'x')
 

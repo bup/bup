@@ -89,6 +89,16 @@ bup.split.trees
     splitting will have to be re-read and its related hashes
     recalculated.
 
+core.compression
+:   The default pack file compression level if `core.compression`
+    isn't set.  If this isn't set either, the default is 1 (unlike
+    git, which defaults to -1).  A compression level given on the
+    command-line overrides this. See also `git-config`(1).
+
+pack.compression
+:   The default pack file compression level.  If not given, falls back
+    to `core.compression`. See also `git-config`(1).
+
 pack.packSizeLimit
 :   Limits the maximum pack size (see `git-config`(1)) when writing
     pack files (e.g. via `bup save`). A value set in the destination

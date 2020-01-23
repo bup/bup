@@ -387,7 +387,9 @@ class Server:
         # git is case-insensitve, and the client sends lower-case
         if key in (b'bup.split.trees',
                    b'bup.split.files',
-                   b'pack.packsizelimit'):
+                   b'pack.packsizelimit',
+                   b'core.compression',
+                   b'pack.compression'):
             opttype = None if not len(opttype) else opttype.decode('ascii')
             val = self.repo.config_get(key, opttype=opttype)
             if val is None:

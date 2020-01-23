@@ -63,6 +63,10 @@ General
   The default for new repositories will eventually be raised. See
   `bup-config`(5) for additional information.
 
+* The default pack compression level can now be configured via either
+  `pack.compression` or `core.compression`.  See `bup-config`(5) for
+  additional information.
+
 * `bup web` has been improved.  It should better preserve page
   settings while navigating, and has added settings to toggle the
   display of various types of information, including path sizes,

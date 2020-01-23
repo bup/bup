@@ -340,7 +340,7 @@ def tree_decode(buf):
 
 
 def _encode_packobj(type, content, compression_level=1):
-    if compression_level not in (0, 1, 2, 3, 4, 5, 6, 7, 8, 9):
+    if compression_level not in range(-1, 10):
         raise ValueError('invalid compression level %s' % compression_level)
     szout = b''
     sz = len(content)

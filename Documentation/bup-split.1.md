@@ -155,9 +155,10 @@ being the most likely choice.
     1024\*1024, 1024\*1024\*1024 respectively.
 
 -*#*, \--compress=*#*
-:   set the compression level to # (a value from 0-9, where
-    9 is the highest and 0 is no compression).  The default
-    is 1 (fast, loose compression)
+:   set the compression level to # (a value from 0-9, where 9 is the
+    highest and 0 is no compression). Defaults to a configured
+    pack.compression or core.compression, or 1 (fast, loose
+    compression).
 
 
 # EXAMPLES

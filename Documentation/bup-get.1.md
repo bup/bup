@@ -138,9 +138,10 @@ used to help test before/after results.)
     1024, 1024\*1024, 1024\*1024\*1024 respectively.
 
 -*#*, \--compress=*#*
-:   set the compression level to # (a value from 0-9, where
-    9 is the highest and 0 is no compression).  The default
-    is 1 (fast, loose compression)
+:   set the compression level to # (a value from 0-9, where 9 is the
+    highest and 0 is no compression). Defaults to a configured
+    pack.compression or core.compression, or 1 (fast, loose
+    compression).
 
 \--ignore-missing
 :   ignore missing objects encountered during a transfer.  Currently
