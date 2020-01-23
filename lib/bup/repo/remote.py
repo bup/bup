@@ -6,15 +6,16 @@ from bup import client
 class RemoteRepo(BaseRepo):
     def __init__(self, address, create=False, compression_level=None,
                  max_pack_size=None, max_pack_objects=None):
+        self.closed = True # in case Client instantiation fails
+        self.client = client.Client(address, create=create)
+        self.closed = False
+        self.config_get = self.client.config_get
+        # init the superclass only afterwards so it can access self.config_get()
         super(RemoteRepo, self).__init__(address,
                                          compression_level=compression_level,
                                          max_pack_size=max_pack_size,
                                          max_pack_objects=max_pack_objects)
-        self.closed = True # in case Client instantiation fails
-        self.client = client.Client(address, create=create)
-        self.closed = False
         self.rev_list = self.client.rev_list
-        self.config_get = self.client.config_get
         self.list_indexes = self.client.list_indexes
         self.read_ref = self.client.read_ref
         self.send_index = self.client.send_index

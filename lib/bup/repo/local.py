@@ -13,13 +13,14 @@ class LocalRepo(BaseRepo):
                  server=False):
         self._packwriter = None
         self.repo_dir = realpath(repo_dir or git.guess_repo())
+        self.config_get = partial(git.git_config_get, repo_dir=self.repo_dir)
+        # init the superclass only afterwards so it can access self.config_get()
         super(LocalRepo, self).__init__(self.repo_dir,
                                         compression_level=compression_level,
                                         max_pack_size=max_pack_size,
                                         max_pack_objects=max_pack_objects)
         self._cp = git.cp(self.repo_dir)
         self.rev_list = partial(git.rev_list, repo_dir=self.repo_dir)
-        self.config_get = partial(git.git_config_get, repo_dir=self.repo_dir)
         self.dumb_server_mode = os.path.exists(git.repo(b'bup-dumb-server',
                                                         repo_dir=self.repo_dir))
         if server and self.dumb_server_mode:
