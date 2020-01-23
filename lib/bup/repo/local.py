@@ -15,7 +15,6 @@ class LocalRepo(RepoProtocol):
                  server=False):
         self.closed = True
         self.compression_level = compression_level
-        self.max_pack_size = max_pack_size
         self.max_pack_objects = max_pack_objects
         self._packwriter = None
         self.repo_dir = realpath(repo_dir or git.guess_repo())
@@ -31,6 +30,8 @@ class LocalRepo(RepoProtocol):
         else:
             self.objcache_maker = None
             self.run_midx = True
+        self.max_pack_size = max_pack_size \
+            or self.config_get(b'pack.packSizeLimit', opttype='int')
         super()._validate_init()
         self.closed = False
 

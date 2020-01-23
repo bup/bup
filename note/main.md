@@ -38,6 +38,11 @@ May require attention
   `/etc/gitconfig` would also be consulted.  The only existing
   affected value is `pack.packSizeLimit`.
 
+* A `pack.packSizeLimit` set in the destination repository will now
+  take precedence over any value set in the local repository when both
+  are involved.  Previously the destination repository's value was
+  ignored.
+
 * `bup split --copy` now writes the split data to standard output
   instead of Python memoryview representations like
 

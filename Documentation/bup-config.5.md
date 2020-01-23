@@ -90,10 +90,14 @@ bup.split.trees
     recalculated.
 
 pack.packSizeLimit
-:   Respected when writing pack files (e.g. via `bup save ...`).
-    Currently read from the repository to which the pack files are
-    being written, excepting `bup on REMOTE...` which incorrectly
-    reads the value from the `REMOTE` repository.
+:   Limits the maximum pack size (see `git-config`(1)) when writing
+    pack files (e.g. via `bup save`). A value set in the destination
+    repository (which may be remote) takes precedence followed by a
+    value set in the local repository (where the index is). The
+    default value is 1e9 bytes, i.e. about 0.93 GiB, and `bup` may
+    exceed this limit by a chunk. However, setting it to e.g. "2g" (2
+    GiB) will still mean that all objects in the pack can be addressed
+    by a 31-bit offset, and thus need no large offset in the idx file.
 
 # SEE ALSO
 

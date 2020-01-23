@@ -7,7 +7,6 @@ class RemoteRepo(RepoProtocol):
     def __init__(self, address, create=False, compression_level=None,
                  max_pack_size=None, max_pack_objects=None):
         self.compression_level = compression_level
-        self.max_pack_size = max_pack_size
         self.max_pack_objects = max_pack_objects
         self.closed = True # in case Client instantiation fails
         self.client = client.Client(address, create=create)
@@ -23,6 +22,9 @@ class RemoteRepo(RepoProtocol):
         self.refs = self.client.refs
         self.resolve = self.client.resolve
         self._packwriter = None
+        if max_pack_size is None: # prefer the destination limit, if any
+            max_pack_size = self.config_get(b'pack.packSizeLimit', opttype='int')
+        self.max_pack_size = max_pack_size
         super()._validate_init()
 
     def close(self):
