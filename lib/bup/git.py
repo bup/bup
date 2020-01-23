@@ -318,27 +318,6 @@ def _encode_packobj(type, content, compression_level=1):
     yield z.flush()
 
 
-def _encode_looseobj(type, content, compression_level=1):
-    z = zlib.compressobj(compression_level)
-    yield z.compress(b'%s %d\0' % (type, len(content)))
-    yield z.compress(content)
-    yield z.flush()
-
-
-def _decode_looseobj(buf):
-    assert(buf);
-    s = zlib.decompress(buf)
-    i = s.find(b'\0')
-    assert(i > 0)
-    l = s[:i].split(b' ')
-    type = l[0]
-    sz = int(l[1])
-    content = s[i+1:]
-    assert(type in _typemap)
-    assert(sz == len(content))
-    return (type, content)
-
-
 def _decode_packobj(buf):
     assert(buf)
     c = byte_int(buf[0])

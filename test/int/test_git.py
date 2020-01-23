@@ -96,22 +96,14 @@ def test_mangle():
 
 def test_encode():
     s = b'hello world'
-    looseb = b''.join(git._encode_looseobj(b'blob', s))
-    looset = b''.join(git._encode_looseobj(b'tree', s))
-    loosec = b''.join(git._encode_looseobj(b'commit', s))
     packb = b''.join(git._encode_packobj(b'blob', s))
     packt = b''.join(git._encode_packobj(b'tree', s))
     packc = b''.join(git._encode_packobj(b'commit', s))
     packlb = b''.join(git._encode_packobj(b'blob', s * 200))
-    WVPASSEQ(git._decode_looseobj(looseb), (b'blob', s))
-    WVPASSEQ(git._decode_looseobj(looset), (b'tree', s))
-    WVPASSEQ(git._decode_looseobj(loosec), (b'commit', s))
     WVPASSEQ(git._decode_packobj(packb), (b'blob', s))
     WVPASSEQ(git._decode_packobj(packt), (b'tree', s))
     WVPASSEQ(git._decode_packobj(packc), (b'commit', s))
     WVPASSEQ(git._decode_packobj(packlb), (b'blob', s * 200))
-    for i in range(10):
-        WVPASS(git._encode_looseobj(b'blob', s, compression_level=i))
     def encode_pobj(n):
         return b''.join(git._encode_packobj(b'blob', s, compression_level=n))
     WVEXCEPT(ValueError, encode_pobj, -1)
