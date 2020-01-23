@@ -338,7 +338,7 @@ class Client:
             self.conn.write(b'%s\n' % ob)
         return idx
 
-    def new_packwriter(self, compression_level=1,
+    def new_packwriter(self, compression_level=None,
                        max_pack_size=None, max_pack_objects=None,
                        objcache_maker=None, run_midx=True):
         self._require_command(b'receive-objects-v2')
@@ -568,7 +568,7 @@ class PackWriter_Remote(git.PackWriter):
     def __init__(self, conn, objcache_maker, suggest_packs,
                  onopen, onclose,
                  ensure_busy,
-                 compression_level=1,
+                 compression_level=None,
                  max_pack_size=None,
                  max_pack_objects=None,
                  run_midx=True):

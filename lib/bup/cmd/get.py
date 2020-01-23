@@ -121,7 +121,7 @@ def parse_args(args):
     opt.quiet = False
     opt.print_commits = opt.print_trees = opt.print_tags = False
     opt.bwlimit = None
-    opt.compress = 1
+    opt.compress = None
     opt.source = opt.remote = None
     opt.target_specs = []
 

@@ -40,7 +40,7 @@ max-pack-size=  maximum bytes in a single pack
 max-pack-objects=  maximum number of objects in a single pack
 fanout=    average number of blobs in a single tree
 bwlimit=   maximum bytes/sec to transmit to server
-#,compress=  set compression level to # (0-9, 9 is highest) [1]
+#,compress=  set compression level to # (0-9, 9 is highest)
 """
 
 
