@@ -103,4 +103,45 @@ if ! bup ls -l "test/latest/$tmpdir/save" | grep "1970-01-01 00:00 a" ; then
     WVFAIL unexpected date for directory a
 fi
 
+
+WVSTART "duplicate entries"
+WVPASS bup index --clear
+WVPASS bup index "$tmpdir/save"
+
+cat > "$tmpdir/bup-save" << EOF
+#!$top/cmd/bup-python
+from bup import index
+
+Reader = index.Reader
+class DupReader(index.Reader):
+    def filter(self, *args, **kw):
+        for transname, ent in Reader.filter(self, *args, **kw):
+            # duplicate a file and a folder
+            if ent.name.endswith(b'/5') or ent.name.endswith(b'/a/'):
+                yield transname, ent
+            yield transname, ent
+index.Reader = DupReader
+
+exec(open("$top/cmd/bup-save", "rb").read())
+EOF
+chmod +x "$tmpdir/bup-save"
+
+# use it to save the data
+"$tmpdir/bup-save" -n test "$tmpdir/save"
+
+# this should work
+WVPASS bup ls -l "test/latest/$tmpdir/save"
+
+# check that there are no duplicates
+lsout=$(bup ls -l "test/latest/$tmpdir/save")
+WVPASSEQ "$(echo "$lsout" | sort | uniq -d)" ""
+
+# and we should get the *right* data for each entry
+for f in $(seq 9) ; do
+    if ! echo "$lsout" | grep "200${f}-01-01 00:00 $f" ; then
+        WVFAIL echo incorrect metadata for $f
+    fi
+done
+
+
 WVPASS rm -rf "$tmpdir"
