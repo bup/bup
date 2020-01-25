@@ -126,8 +126,11 @@ handle_ctrl_c()
 # Since the git tree elements are sorted according to
 # git.shalist_item_sort_key, the metalist items are accumulated as
 # (sort_key, metadata) tuples, and then sorted when the .bupm file is
-# created.  The sort_key must be computed using the element's real
-# name and mode rather than the git mode and (possibly mangled) name.
+# created.  The sort_key should have been computed using the element's
+# mangled name and git mode (after hashsplitting), but the code isn't
+# actually doing that but rather uses the element's real name and mode.
+# This makes things a bit more difficult when reading it back, see
+# vfs.ordered_tree_entries().
 
 # Maintain a stack of information representing the current location in
 # the archive being constructed.  The current path is recorded in

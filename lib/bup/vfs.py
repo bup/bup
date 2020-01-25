@@ -618,10 +618,12 @@ def ordered_tree_entries(tree_data, bupm=None):
 
     """
     # Sadly, the .bupm entries currently aren't in git tree order,
-    # i.e. they don't account for the fact that git sorts trees
-    # (including our chunked trees) as if their names ended with "/",
-    # so "fo" sorts after "fo." iff fo is a directory.  This makes
-    # streaming impossible when we need the metadata.
+    # but in unmangled name order. They _do_ account for the fact
+    # that git sorts trees (including chunked trees) as if their
+    # names ended with "/" (so "fo" sorts after "fo." iff fo is a
+    # directory), but we apply this on the unmangled names in save
+    # rather than on the mangled names.
+    # This makes streaming impossible when we need the metadata.
     def result_from_tree_entry(tree_entry):
         gitmode, mangled_name, oid = tree_entry
         name, kind = git.demangle_name(mangled_name, gitmode)
