@@ -198,6 +198,7 @@ cmdline_tests := \
   t/test-rm-between-index-and-save.sh \
   t/test-save-creates-no-unrefs.sh \
   t/test-save-restore \
+  t/test-save-errors \
   t/test-save-restore-excludes.sh \
   t/test-save-strip-graft.sh \
   t/test-save-with-valid-parent.sh \
