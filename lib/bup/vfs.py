@@ -637,9 +637,12 @@ def tree_items(oid, tree_data, names=frozenset(), bupm=None):
             # No metadata here (accessable via '.' inside ent_oid).
             return Item(meta=default_dir_mode, oid=ent_oid)
 
-        return Item(oid=ent_oid,
-                    meta=(Metadata.read(bupm) if bupm \
-                          else _default_mode_for_gitmode(gitmode)))
+        meta = Metadata.read(bupm) if bupm else None
+        # handle the case of metadata being empty/missing in bupm
+        # (or there not being bupm at all)
+        if meta is None:
+            meta = _default_mode_for_gitmode(gitmode)
+        return Item(oid=ent_oid, meta=meta)
 
     assert len(oid) == 20
     if not names:
