@@ -442,8 +442,8 @@ for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse_during):
             except (OSError, IOError) as e:
                 add_error(e)
                 lastskip_name = ent.name
-            else:
-                metalists[-1].append((sort_key, meta))
+                meta = metadata.Metadata()
+            metalists[-1].append((sort_key, meta))
 
     if exists and wasmissing:
         count += oldsize
