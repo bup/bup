@@ -158,15 +158,20 @@ def _pop(force_tree, dir_metadata=None):
     else:
         names_seen = set()
         clean_list = []
+        metaidx = 1 # entry at 0 is for the dir
         for x in shalist:
             name = x[1]
             if name in names_seen:
                 parent_path = '/'.join(parts) + '/'
                 add_error('error: ignoring duplicate path %r in %r'
                           % (name, parent_path))
+                if not stat.S_ISDIR(x[0]):
+                    del metalist[metaidx]
             else:
                 names_seen.add(name)
                 clean_list.append(x)
+                if not stat.S_ISDIR(x[0]):
+                    metaidx += 1
         tree = w.new_tree(clean_list)
     if shalists:
         shalists[-1].append((GIT_MODE_TREE,
