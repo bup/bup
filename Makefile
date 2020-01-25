@@ -153,6 +153,7 @@ runtests-python: all t/tmp
 cmdline_tests := \
   t/test-ftp \
   t/test-save-restore \
+  t/test-save-errors \
   t/test-packsizelimit \
   t/test-prune-older \
   t/test-web.sh \
