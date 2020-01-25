@@ -153,16 +153,6 @@ def _pop(force_tree, dir_metadata=None):
     part = parts.pop()
     shalist = shalists.pop()
     metalist = metalists.pop()
-    if metalist and not force_tree:
-        if dir_metadata: # Override the original metadata pushed for this dir.
-            metalist = [(b'', dir_metadata)] + metalist[1:]
-        sorted_metalist = sorted(metalist, key = lambda x : x[0])
-        metadata = b''.join([m[1].encode() for m in sorted_metalist])
-        metadata_f = BytesIO(metadata)
-        mode, id = hashsplit.split_to_blob_or_tree(w.new_blob, w.new_tree,
-                                                   [metadata_f],
-                                                   keep_boundaries=False)
-        shalist.append((mode, b'.bupm', id))
     # FIXME: only test if collision is possible (i.e. given --strip, etc.)?
     if force_tree:
         tree = force_tree
@@ -178,6 +168,17 @@ def _pop(force_tree, dir_metadata=None):
             else:
                 names_seen.add(name)
                 clean_list.append(x)
+
+        if metalist:
+            if dir_metadata: # Override the original metadata pushed for this dir.
+                metalist = [(b'', dir_metadata)] + metalist[1:]
+            sorted_metalist = sorted(metalist, key = lambda x : x[0])
+            metadata = b''.join([m[1].encode() for m in sorted_metalist])
+            metadata_f = BytesIO(metadata)
+            mode, id = hashsplit.split_to_blob_or_tree(w.new_blob, w.new_tree,
+                                                       [metadata_f],
+                                                       keep_boundaries=False)
+            clean_list.append((mode, b'.bupm', id))
         tree = w.new_tree(clean_list)
     if shalists:
         shalists[-1].append((GIT_MODE_TREE,
@@ -384,7 +385,6 @@ for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse_during):
         continue
 
     # it's not a directory
-    id = None
     if hashvalid:
         id = ent.sha
         git_name = git.mangle_name(file, ent.mode, ent.gitmode)
@@ -397,6 +397,7 @@ for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse_during):
         (meta.atime, meta.mtime, meta.ctime) = (ent.atime, ent.mtime, ent.ctime)
         metalists[-1].append((sort_key, meta))
     else:
+        id = None
         if stat.S_ISREG(ent.mode):
             try:
                 f = hashsplit.open_noatime(ent.name)
@@ -411,22 +412,21 @@ for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse_during):
                 except (IOError, OSError) as e:
                     add_error('%s: %s' % (ent.name, e))
                     lastskip_name = ent.name
-        else:
-            if stat.S_ISDIR(ent.mode):
-                assert(0)  # handled above
-            elif stat.S_ISLNK(ent.mode):
-                try:
-                    rl = os.readlink(ent.name)
-                except (OSError, IOError) as e:
-                    add_error(e)
-                    lastskip_name = ent.name
-                else:
-                    (mode, id) = (GIT_MODE_SYMLINK, w.new_blob(rl))
+        elif stat.S_ISDIR(ent.mode):
+            assert(0)  # handled above
+        elif stat.S_ISLNK(ent.mode):
+            try:
+                rl = os.readlink(ent.name)
+            except (OSError, IOError) as e:
+                add_error(e)
+                lastskip_name = ent.name
             else:
-                # Everything else should be fully described by its
-                # metadata, so just record an empty blob, so the paths
-                # in the tree and .bupm will match up.
-                (mode, id) = (GIT_MODE_FILE, w.new_blob(b''))
+                (mode, id) = (GIT_MODE_SYMLINK, w.new_blob(rl))
+        else:
+            # Everything else should be fully described by its
+            # metadata, so just record an empty blob, so the paths
+            # in the tree and .bupm will match up.
+            (mode, id) = (GIT_MODE_FILE, w.new_blob(b''))
 
         if id:
             ent.validate(mode, id)
