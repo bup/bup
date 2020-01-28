@@ -4,8 +4,8 @@ import errno, os, re, struct, sys, time, zlib
 
 from bup import git, ssh, vfs
 from bup.compat import range
-from bup.helpers import (Conn, DemuxConn,
-                         atomically_replaced_file, chunkyreader, debug1,
+from bup.helpers import (Conn, DemuxConn,                         
+                         atoi, atomically_replaced_file, chunkyreader, debug1,
                          debug2, linereader, lines_until_sentinel,
                          mkdirp, progress, qprogress)
 from bup.vint import read_bvec, read_vuint, write_bvec
