@@ -214,15 +214,15 @@ def rev_list(conn, _):
     count = conn.readline()
     if not count:
         raise Exception('Unexpected EOF while reading rev-list count')
-    count = None if count == b'\n' else int(count)
+    assert count == b'\n'
+    count = None
     fmt = conn.readline()
     if not fmt:
         raise Exception('Unexpected EOF while reading rev-list format')
     fmt = None if fmt == b'\n' else fmt[:-1]
     refs = tuple(x[:-1] for x in lines_until_sentinel(conn, b'\n', Exception))
-    args = git.rev_list_invocation(refs, count=count, format=fmt)
-    p = subprocess.Popen(git.rev_list_invocation(refs, count=count, format=fmt),
-                         env=git._gitenv(git.repodir),
+    args = git.rev_list_invocation(refs, format=fmt)
+    p = subprocess.Popen(args, env=git._gitenv(git.repodir),
                          stdout=subprocess.PIPE)
     while True:
         out = p.stdout.read(64 * 1024)

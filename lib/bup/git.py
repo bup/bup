@@ -973,16 +973,12 @@ def read_ref(refname, repo_dir = None):
         return None
 
 
-def rev_list_invocation(ref_or_refs, count=None, format=None):
+def rev_list_invocation(ref_or_refs, format=None):
     if isinstance(ref_or_refs, bytes):
         refs = (ref_or_refs,)
     else:
         refs = ref_or_refs
     argv = [b'git', b'rev-list']
-    if isinstance(count, Integral):
-        argv.extend([b'-n', b'%d' % count])
-    elif count:
-        raise ValueError('unexpected count argument %r' % count)
 
     if format:
         argv.append(b'--pretty=format:' + format)
@@ -993,7 +989,7 @@ def rev_list_invocation(ref_or_refs, count=None, format=None):
     return argv
 
 
-def rev_list(ref_or_refs, count=None, parse=None, format=None, repo_dir=None):
+def rev_list(ref_or_refs, parse=None, format=None, repo_dir=None):
     """Yield information about commits as per "git rev-list".  If a format
     is not provided, yield one hex hash at a time.  If a format is
     provided, pass it to rev-list and call parse(git_stdout) for each
@@ -1003,7 +999,7 @@ def rev_list(ref_or_refs, count=None, parse=None, format=None, repo_dir=None):
 
     """
     assert bool(parse) == bool(format)
-    p = subprocess.Popen(rev_list_invocation(ref_or_refs, count=count,
+    p = subprocess.Popen(rev_list_invocation(ref_or_refs,
                                              format=format),
                          env=_gitenv(repo_dir),
                          stdout = subprocess.PIPE)

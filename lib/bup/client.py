@@ -407,7 +407,7 @@ class Client:
             raise not_ok
         self._not_busy()
 
-    def rev_list(self, refs, count=None, parse=None, format=None):
+    def rev_list(self, refs, parse=None, format=None):
         """See git.rev_list for the general semantics, but note that with the
         current interface, the parse function must be able to handle
         (consume) any blank lines produced by the format because the
@@ -416,7 +416,6 @@ class Client:
 
         """
         self._require_command(b'rev-list')
-        assert (count is None) or (isinstance(count, Integral))
         if format:
             assert b'\n' not in format
             assert parse
@@ -427,8 +426,6 @@ class Client:
         self._busy = b'rev-list'
         conn = self.conn
         conn.write(b'rev-list\n')
-        if count is not None:
-            conn.write(b'%d' % count)
         conn.write(b'\n')
         if format:
             conn.write(format)
