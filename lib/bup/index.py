@@ -300,7 +300,7 @@ class Entry:
     def __eq__(self, other):
         return self._cmp(other) == 0
 
-    def __ne__():
+    def __ne__(self, other):
         return self._cmp(other) != 0
 
     def __lt__(self, other):
@@ -309,10 +309,10 @@ class Entry:
     def __gt__(self, other):
         return self._cmp(other) > 0
 
-    def __le__():
+    def __le__(self, other):
         return self._cmp(other) <= 0
 
-    def __ge__():
+    def __ge__(self, other):
         return self._cmp(other) >= 0
 
     def write(self, f):
