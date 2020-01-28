@@ -876,11 +876,6 @@ def parse_num(s):
     return int(num*mult)
 
 
-def count(l):
-    """Count the number of elements in an iterator. (consumes the iterator)"""
-    return reduce(lambda x,y: x+1, l)
-
-
 saved_errors = []
 def add_error(e):
     """Append an error message to the list of saved errors.
