@@ -10,6 +10,23 @@ from bup.io import path_msg
 from bup.git import shalist_item_sort_key, mangle_name
 
 
+def _write_tree(w, dir_meta, items):
+    metalist = [(b'', dir_meta)]
+    metalist += [(shalist_item_sort_key((entry.mode, entry.name, None)),
+                  entry.meta)
+                 for entry in items if entry.mode != GIT_MODE_TREE]
+    metalist.sort(key = lambda x: x[0])
+    metadata = BytesIO(b''.join(m[1].encode() for m in metalist))
+    mode, oid = split_to_blob_or_tree(w.new_blob, w.new_tree,
+                                     [metadata],
+                                     keep_boundaries=False)
+    shalist = [(mode, b'.bupm', oid)]
+    shalist += [(entry.gitmode,
+                 mangle_name(entry.name, entry.mode, entry.gitmode),
+                 entry.oid)
+                for entry in items]
+    return w.new_tree(shalist)
+
 class TreeItem:
     __slots__ = 'name', 'mode', 'gitmode', 'oid', 'meta'
 
@@ -55,23 +72,7 @@ class Stack:
         return items
 
     def _write(self, w, tree):
-        items = self._clean(tree)
-        metalist = [(b'', tree.meta)]
-        metalist += [(shalist_item_sort_key((entry.mode, entry.name, None)),
-                      entry.meta)
-                     for entry in items if entry.mode != GIT_MODE_TREE]
-        metalist.sort(key = lambda x: x[0])
-        metadata = BytesIO(b''.join(m[1].encode() for m in metalist))
-        mode, oid = split_to_blob_or_tree(w.new_blob, w.new_tree,
-                                         [metadata],
-                                         keep_boundaries=False)
-        shalist = [(mode, b'.bupm', oid)]
-        shalist += [(entry.gitmode,
-                     mangle_name(entry.name, entry.mode, entry.gitmode),
-                     entry.oid)
-                    for entry in items]
-        tree.items = items
-        return w.new_tree(shalist)
+        return _write_tree(w, tree.meta, self._clean(tree))
 
     def pop(self, w, override_tree=None, override_meta=None):
         tree = self.stack.pop()
