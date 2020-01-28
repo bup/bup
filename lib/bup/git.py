@@ -1294,11 +1294,8 @@ class CatPipe:
         or a commit. The content of all blobs that can be seen from trees or
         commits will be added to the list.
         """
-        try:
-            for d in self._join(self.get(id)):
-                yield d
-        except StopIteration:
-            log('booger!\n')
+        for d in self._join(self.get(id)):
+            yield d
 
 
 _cp = {}
