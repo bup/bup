@@ -4,6 +4,7 @@ from __future__ import print_function
 from __future__ import absolute_import
 from binascii import hexlify, unhexlify
 import errno, os, re, struct, sys, time, zlib
+import socket
 
 from bup import git, ssh, vfs
 from bup.compat import environ, range, reraise
