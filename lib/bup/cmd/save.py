@@ -16,6 +16,7 @@ from bup.helpers import (add_error, grafted_path_components, handle_ctrl_c,
                          valid_save_name)
 from bup.io import byte_stream, path_msg
 from bup.pwdgrp import userfullname, username
+from bup.tree import StackDir
 
 
 optspec = """
@@ -144,65 +145,60 @@ def main(argv):
 
     # Maintain a stack of information representing the current location in
     # the archive being constructed.  The current path is recorded in
-    # parts, which will be something like ['', 'home', 'someuser'], and
-    # the accumulated content and metadata for of the dirs in parts is
-    # stored in parallel stacks in shalists and metalists.
+    # parts, which will be something like
+    #      [StackDir(name=''), StackDir(name='home'), StackDir(name='someuser')],
+    # and the accumulated content and metadata for files in the dirs is stored
+    # in the .items member of the StackDir.
 
-    parts = [] # Current archive position (stack of dir names).
-    shalists = [] # Hashes for each dir in paths.
-    metalists = [] # Metadata for each dir in paths.
+    stack = []
 
 
     def _push(part, metadata):
         # Enter a new archive directory -- make it the current directory.
-        parts.append(part)
-        shalists.append([])
-        metalists.append([(b'', metadata)]) # This dir's metadata (no name).
+        item = StackDir(part, metadata)
+        stack.append(item)
 
 
-    def _pop(force_tree, dir_metadata=None):
+    def _pop(force_tree=None, dir_metadata=None):
         # Leave the current archive directory and add its tree to its parent.
-        assert(len(parts) >= 1)
-        part = parts.pop()
-        shalist = shalists.pop()
-        metalist = metalists.pop()
+        item = stack.pop()
         # FIXME: only test if collision is possible (i.e. given --strip, etc.)?
         if force_tree:
             tree = force_tree
         else:
             names_seen = set()
             clean_list = []
-            metaidx = 1 # entry at 0 is for the dir
-            for x in shalist:
-                name = x[1]
+            for x in item.items:
+                name = x.name
                 if name in names_seen:
-                    parent_path = b'/'.join(parts) + b'/'
+                    parent_path = b'/'.join(x.name for x in stack) + b'/'
                     add_error('error: ignoring duplicate path %s in %s'
                               % (path_msg(name), path_msg(parent_path)))
-                    if not stat.S_ISDIR(x[0]):
-                        del metalist[metaidx]
                 else:
                     names_seen.add(name)
                     clean_list.append(x)
-                    if not stat.S_ISDIR(x[0]):
-                        metaidx += 1
 
-            if dir_metadata: # Override the original metadata pushed for this dir.
-                metalist = [(b'', dir_metadata)] + metalist[1:]
-            sorted_metalist = sorted(metalist, key = lambda x : x[0])
-            metadata = b''.join([m[1].encode() for m in sorted_metalist])
-            metadata_f = BytesIO(metadata)
+            # if set, overrides the original metadata pushed for this dir.
+            if dir_metadata is None:
+                dir_metadata = item.meta
+            metalist = [(b'', dir_metadata)]
+            metalist += [(git.shalist_item_sort_key((entry.mode, entry.name, None)),
+                          entry.meta)
+                         for entry in clean_list if entry.mode != GIT_MODE_TREE]
+            metalist.sort(key = lambda x: x[0])
+            metadata = BytesIO(b''.join(m[1].encode() for m in metalist))
             mode, id = hashsplit.split_to_blob_or_tree(w.new_blob, w.new_tree,
-                                                       [metadata_f],
+                                                       [metadata],
                                                        keep_boundaries=False)
-            clean_list.append((mode, b'.bupm', id))
+            shalist = [(mode, b'.bupm', id)]
+            shalist += [(entry.gitmode,
+                         git.mangle_name(entry.name, entry.mode, entry.gitmode),
+                         entry.oid)
+                        for entry in clean_list]
 
-            tree = w.new_tree(clean_list)
-        if shalists:
-            shalists[-1].append((GIT_MODE_TREE,
-                                 git.mangle_name(part,
-                                                 GIT_MODE_TREE, GIT_MODE_TREE),
-                                 tree))
+            tree = w.new_tree(shalist)
+        if stack:
+            stack[-1].append(item.name, GIT_MODE_TREE, GIT_MODE_TREE, tree, None)
         return tree
 
 
@@ -372,11 +368,11 @@ def main(argv):
             root_collision = True
 
         # If switching to a new sub-tree, finish the current sub-tree.
-        while parts > [x[0] for x in dirp]:
-            _pop(force_tree = None)
+        while [x.name for x in stack] > [x[0] for x in dirp]:
+            _pop()
 
         # If switching to a new sub-tree, start a new sub-tree.
-        for path_component in dirp[len(parts):]:
+        for path_component in dirp[len(stack):]:
             dir_name, fs_path = path_component
             # Not indexed, so just grab the FS metadata or use empty metadata.
             try:
@@ -389,7 +385,7 @@ def main(argv):
             _push(dir_name, meta)
 
         if not file:
-            if len(parts) == 1:
+            if len(stack) == 1:
                 continue # We're at the top level -- keep the current root dir
             # Since there's no filename, this is a subdir -- finish it.
             oldtree = already_saved(ent) # may be None
@@ -406,16 +402,11 @@ def main(argv):
 
         # it's not a directory
         if hashvalid:
-            id = ent.sha
-            git_name = git.mangle_name(file, ent.mode, ent.gitmode)
-            git_info = (ent.gitmode, git_name, id)
-            shalists[-1].append(git_info)
-            sort_key = git.shalist_item_sort_key((ent.mode, file, id))
             meta = msr.metadata_at(ent.meta_ofs)
             meta.hardlink_target = find_hardlink_target(hlink_db, ent)
             # Restore the times that were cleared to 0 in the metastore.
             (meta.atime, meta.mtime, meta.ctime) = (ent.atime, ent.mtime, ent.ctime)
-            metalists[-1].append((sort_key, meta))
+            stack[-1].append(file, ent.mode, ent.gitmode, ent.sha, meta)
         else:
             id = None
             hlink = find_hardlink_target(hlink_db, ent)
@@ -476,11 +467,7 @@ def main(argv):
             if id:
                 ent.validate(mode, id)
                 ent.repack()
-                git_name = git.mangle_name(file, ent.mode, ent.gitmode)
-                git_info = (mode, git_name, id)
-                shalists[-1].append(git_info)
-                sort_key = git.shalist_item_sort_key((ent.mode, file, id))
-                metalists[-1].append((sort_key, meta))
+                stack[-1].append(file, ent.mode, ent.gitmode, id, meta)
 
         if exists and wasmissing:
             _nonlocal['count'] += oldsize
@@ -492,15 +479,12 @@ def main(argv):
         progress('Saving: %.2f%% (%d/%dk, %d/%d files), done.    \n'
                  % (pct, _nonlocal['count']/1024, total/1024, fcount, ftotal))
 
-    while len(parts) > 1: # _pop() all the parts above the root
-        _pop(force_tree = None)
-    assert(len(shalists) == 1)
-    assert(len(metalists) == 1)
+    while len(stack) > 1: # _pop() all the parts above the root
+        _pop()
 
     # Finish the root directory.
-    tree = _pop(force_tree = None,
-                # When there's a collision, use empty metadata for the root.
-                dir_metadata = metadata.Metadata() if root_collision else None)
+    # When there's a collision, use empty metadata for the root.
+    tree = _pop(dir_metadata = metadata.Metadata() if root_collision else None)
 
     sys.stdout.flush()
     out = byte_stream(sys.stdout)
