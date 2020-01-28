@@ -2,7 +2,6 @@
 from __future__ import absolute_import, print_function
 from binascii import hexlify
 from errno import ENOENT
-from io import BytesIO
 import math, os, stat, sys, time
 
 from bup import hashsplit, git, options, index, client, metadata
@@ -16,7 +15,7 @@ from bup.helpers import (add_error, grafted_path_components, handle_ctrl_c,
                          valid_save_name)
 from bup.io import byte_stream, path_msg
 from bup.pwdgrp import userfullname, username
-from bup.tree import StackDir
+from bup.tree import Stack
 
 
 optspec = """
@@ -125,62 +124,8 @@ def save_tree(opt, reader, hlink_db, msr, w):
     # vfs.ordered_tree_entries().
 
     # Maintain a stack of information representing the current location in
-    # the archive being constructed.  The current path is recorded in
-    # parts, which will be something like
-    #      [StackDir(name=''), StackDir(name='home'), StackDir(name='someuser')],
-    # and the accumulated content and metadata for files in the dirs is stored
-    # in the .items member of the StackDir.
 
-    stack = []
-
-    def _push(part, metadata):
-        # Enter a new archive directory -- make it the current directory.
-        item = StackDir(part, metadata)
-        stack.append(item)
-
-
-    def _pop(force_tree=None, dir_metadata=None):
-        # Leave the current archive directory and add its tree to its parent.
-        item = stack.pop()
-        # FIXME: only test if collision is possible (i.e. given --strip, etc.)?
-        if force_tree:
-            tree = force_tree
-        else:
-            names_seen = set()
-            clean_list = []
-            for x in item.items:
-                name = x.name
-                if name in names_seen:
-                    parent_path = b'/'.join(x.name for x in stack) + b'/'
-                    add_error('error: ignoring duplicate path %s in %s'
-                              % (path_msg(name), path_msg(parent_path)))
-                else:
-                    names_seen.add(name)
-                    clean_list.append(x)
-
-            # if set, overrides the original metadata pushed for this dir.
-            if dir_metadata is None:
-                dir_metadata = item.meta
-            metalist = [(b'', dir_metadata)]
-            metalist += [(git.shalist_item_sort_key((entry.mode, entry.name, None)),
-                          entry.meta)
-                         for entry in clean_list if entry.mode != GIT_MODE_TREE]
-            metalist.sort(key = lambda x: x[0])
-            metadata = BytesIO(b''.join(m[1].encode() for m in metalist))
-            mode, id = hashsplit.split_to_blob_or_tree(w.new_blob, w.new_tree,
-                                                       [metadata],
-                                                       keep_boundaries=False)
-            shalist = [(mode, b'.bupm', id)]
-            shalist += [(entry.gitmode,
-                         git.mangle_name(entry.name, entry.mode, entry.gitmode),
-                         entry.oid)
-                        for entry in clean_list]
-
-            tree = w.new_tree(shalist)
-        if stack:
-            stack[-1].append(item.name, GIT_MODE_TREE, GIT_MODE_TREE, tree, None)
-        return tree
-
+    stack = Stack()
 
     # Hack around lack of nonlocal vars in python 2
     _nonlocal = {}
@@ -341,8 +286,8 @@ def save_tree(opt, reader, hlink_db, msr, w):
             root_collision = True
 
         # If switching to a new sub-tree, finish the current sub-tree.
-        while [x.name for x in stack] > [x[0] for x in dirp]:
-            _pop()
+        while stack.path() > [x[0] for x in dirp]:
+            _ = stack.pop(w)
 
         # If switching to a new sub-tree, start a new sub-tree.
         for path_component in dirp[len(stack):]:
@@ -355,14 +300,14 @@ def save_tree(opt, reader, hlink_db, msr, w):
                 add_error(e)
                 lastskip_name = dir_name
                 meta = metadata.Metadata()
-            _push(dir_name, meta)
+            stack.push(dir_name, meta)
 
         if not file:
             if len(stack) == 1:
                 continue # We're at the top level -- keep the current root dir
             # Since there's no filename, this is a subdir -- finish it.
             oldtree = already_saved(ent) # may be None
-            newtree = _pop(force_tree = oldtree)
+            newtree = stack.pop(w, override_tree=oldtree)
             if not oldtree:
                 if lastskip_name and lastskip_name.startswith(ent.name):
                     ent.invalidate()
@@ -379,7 +324,7 @@ def save_tree(opt, reader, hlink_db, msr, w):
             meta.hardlink_target = find_hardlink_target(hlink_db, ent)
             # Restore the times that were cleared to 0 in the metastore.
             (meta.atime, meta.mtime, meta.ctime) = (ent.atime, ent.mtime, ent.ctime)
-            stack[-1].append(file, ent.mode, ent.gitmode, ent.sha, meta)
+            stack.append_to_current(file, ent.mode, ent.gitmode, ent.sha, meta)
         else:
             id = None
             hlink = find_hardlink_target(hlink_db, ent)
@@ -440,7 +385,7 @@ def save_tree(opt, reader, hlink_db, msr, w):
             if id:
                 ent.validate(mode, id)
                 ent.repack()
-                stack[-1].append(file, ent.mode, ent.gitmode, id, meta)
+                stack.append_to_current(file, ent.mode, ent.gitmode, id, meta)
 
         if exists and wasmissing:
             _nonlocal['count'] += oldsize
@@ -452,12 +397,14 @@ def save_tree(opt, reader, hlink_db, msr, w):
         progress('Saving: %.2f%% (%d/%dk, %d/%d files), done.    \n'
                  % (pct, _nonlocal['count']/1024, total/1024, fcount, ftotal))
 
-    while len(stack) > 1: # _pop() all the parts above the root
-        _pop()
+    # pop all parts above the root folder
+    while len(stack) > 1:
+        stack.pop(w)
 
     # Finish the root directory.
     # When there's a collision, use empty metadata for the root.
-    tree = _pop(dir_metadata = metadata.Metadata() if root_collision else None)
+    root_meta = metadata.Metadata() if root_collision else None
+    tree = stack.pop(w, override_meta=root_meta)
 
     return tree
 
