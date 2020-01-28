@@ -118,12 +118,6 @@ else:
 handle_ctrl_c()
 
 
-def eatslash(dir):
-    if dir.endswith(b'/'):
-        return dir[:-1]
-    else:
-        return dir
-
 # Metadata is stored in a file named .bupm in each directory.  The
 # first metadata entry will be the metadata for the current directory.
 # The remaining entries will be for each of the other directory
