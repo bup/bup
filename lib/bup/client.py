@@ -9,7 +9,7 @@ from bup import git, ssh, vfs
 from bup.compat import environ, range, reraise
 from bup.helpers import (Conn, atomically_replaced_file, chunkyreader, debug1,
                          debug2, linereader, lines_until_sentinel,
-                         mkdirp, progress, qprogress)
+                         mkdirp, progress, qprogress, DemuxConn)
 from bup.io import path_msg
 from bup.vint import read_bvec, read_vuint, write_bvec
 
