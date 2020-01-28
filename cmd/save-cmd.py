@@ -177,16 +177,16 @@ def _pop(force_tree, dir_metadata=None):
                 if not stat.S_ISDIR(x[0]):
                     metaidx += 1
 
-        if metalist:
-            if dir_metadata: # Override the original metadata pushed for this dir.
-                metalist = [(b'', dir_metadata)] + metalist[1:]
-            sorted_metalist = sorted(metalist, key = lambda x : x[0])
-            metadata = b''.join([m[1].encode() for m in sorted_metalist])
-            metadata_f = BytesIO(metadata)
-            mode, id = hashsplit.split_to_blob_or_tree(w.new_blob, w.new_tree,
-                                                       [metadata_f],
-                                                       keep_boundaries=False)
-            clean_list.append((mode, b'.bupm', id))
+        if dir_metadata: # Override the original metadata pushed for this dir.
+            metalist = [(b'', dir_metadata)] + metalist[1:]
+        sorted_metalist = sorted(metalist, key = lambda x : x[0])
+        metadata = b''.join([m[1].encode() for m in sorted_metalist])
+        metadata_f = BytesIO(metadata)
+        mode, id = hashsplit.split_to_blob_or_tree(w.new_blob, w.new_tree,
+                                                   [metadata_f],
+                                                   keep_boundaries=False)
+        clean_list.append((mode, b'.bupm', id))
+
         tree = w.new_tree(clean_list)
     if shalists:
         shalists[-1].append((GIT_MODE_TREE,
