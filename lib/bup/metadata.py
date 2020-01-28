@@ -1186,7 +1186,7 @@ def finish_extract(file, restore_numeric_ids=False):
         xpath = _clean_up_extract_path(meta.path)
         if not xpath:
             add_error(Exception('skipping risky path "%s"'
-                                % path_msg(dir.path)))
+                                % path_msg(meta.path)))
         else:
             if os.path.isdir(meta.path):
                 all_dirs.append(meta)
