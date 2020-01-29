@@ -61,6 +61,8 @@ if test -n "$run_test"; then
 
     WVPASS curl --unix-socket ./socket \
            'http://localhost/%C2%A1excitement%21/latest/data' > result
+    WVPASSEQ "$(curl --unix-socket ./socket http://localhost/static/styles.css)" \
+             "$(cat "$TOP/lib/web/static/styles.css")"
 
     WVPASSEQ '¡excitement!' "$(cat result)"
     WVPASS kill -s TERM "$web_pid"
