@@ -438,11 +438,6 @@ def cache_get_commit_item(oid, need_meta=True):
     if entries:
         return entries[b'.']
 
-def cache_get_revlist_item(oid, need_meta=True):
-    commit = cache_get_commit_item(oid, need_meta=need_meta)
-    if commit:
-        return RevList(oid=oid, meta=commit.meta)
-
 def copy_item(item):
     """Return a completely independent copy of item, such that
     modifications will not affect the original.
