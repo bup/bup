@@ -85,18 +85,17 @@ def read_vint(port):
     result = 0
     offset = 0
     # Handle first byte with sign bit specially.
-    if c:
-        b = ord(c)
-        if b & 0x40:
-            negative = True
-        result |= (b & 0x3f)
-        if b & 0x80:
-            offset += 6
-            c = port.read(1)
-        elif negative:
-            return -result
-        else:
-            return result
+    b = ord(c)
+    if b & 0x40:
+        negative = True
+    result |= (b & 0x3f)
+    if b & 0x80:
+        offset += 6
+        c = port.read(1)
+    elif negative:
+        return -result
+    else:
+        return result
     while True:
         b = ord(c)
         if b & 0x80:
