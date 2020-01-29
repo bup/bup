@@ -38,6 +38,7 @@ def test_vint():
         for x in [-x for x in values]:
             WVPASSEQ(encode_and_decode_vint(x), x)
         WVEXCEPT(EOFError, vint.read_vint, BytesIO())
+        WVEXCEPT(EOFError, vint.read_vint, BytesIO(b"\x80\x80"))
 
 
 def encode_and_decode_bvec(x):
