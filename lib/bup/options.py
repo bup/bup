@@ -129,13 +129,6 @@ def _intify(v):
     return v
 
 
-def _atoi(v):
-    try:
-        return int(v or 0)
-    except ValueError:
-        return 0
-
-
 if not fcntl and termios:
     def _tty_width():
         return 70
