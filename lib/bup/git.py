@@ -57,12 +57,6 @@ def _git_wait(cmd, p):
     if rv != 0:
         raise GitError('%r returned %d' % (cmd, rv))
 
-def _git_capture(argv):
-    p = subprocess.Popen(argv, stdout=subprocess.PIPE, env=_gitenv())
-    r = p.stdout.read()
-    _git_wait(argv, p)
-    return r
-
 def git_config_get(option, repo_dir=None):
     cmd = (b'git', b'config', b'--get', option)
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE,
