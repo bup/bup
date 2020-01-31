@@ -12,25 +12,32 @@ from io import BytesIO
 import sys
 
 from bup import compat
+from bup import _helpers
 
 
 def write_vuint(port, x):
-    write = port.write
-    bytes_from_uint = compat.bytes_from_uint
-    if x < 0:
-        raise Exception("vuints must not be negative")
-    elif x == 0:
-        write(bytes_from_uint(0))
-    else:
+    port.write(encode_vuint(x))
+
+
+def encode_vuint(x):
+    try:
+        return _helpers.vuint_encode(x)
+    except OverflowError:
+        ret = b''
+        bytes_from_uint = compat.bytes_from_uint
+        if x < 0:
+            raise Exception("vuints must not be negative")
+        assert x, "the C version should have picked this up"
+
         while True:
             seven_bits = x & 0x7f
             x >>= 7
             if x:
-                write(bytes_from_uint(0x80 | seven_bits))
+                ret += bytes_from_uint(0x80 | seven_bits)
             else:
-                write(bytes_from_uint(seven_bits))
+                ret += bytes_from_uint(seven_bits)
                 break
-
+        return ret
 
 def read_vuint(port):
     c = port.read(1)
@@ -58,22 +65,23 @@ def read_vuint(port):
 def write_vint(port, x):
     # Sign is handled with the second bit of the first byte.  All else
     # matches vuint.
-    write = port.write
-    bytes_from_uint = compat.bytes_from_uint
-    if x == 0:
-        write(bytes_from_uint(0))
-    else:
+    port.write(encode_vint(x))
+
+
+def encode_vint(x):
+    try:
+        return _helpers.vint_encode(x)
+    except OverflowError:
+        bytes_from_uint = compat.bytes_from_uint
+        assert x != 0, "the C version should have picked this up"
         if x < 0:
             x = -x
             sign_and_six_bits = (x & 0x3f) | 0x40
         else:
             sign_and_six_bits = x & 0x3f
         x >>= 6
-        if x:
-            write(bytes_from_uint(0x80 | sign_and_six_bits))
-            write_vuint(port, x)
-        else:
-            write(bytes_from_uint(sign_and_six_bits))
+        assert x, "the C version should have picked this up"
+        return bytes_from_uint(0x80 | sign_and_six_bits) + encode_vuint(x)
 
 
 def read_vint(port):

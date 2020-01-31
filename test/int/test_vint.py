@@ -14,7 +14,7 @@ def encode_and_decode_vuint(x):
 
 
 def test_vuint():
-        for x in (0, 1, 42, 128, 10**16):
+        for x in (0, 1, 42, 128, 10**16, 10**100):
             WVPASSEQ(encode_and_decode_vuint(x), x)
         WVEXCEPT(Exception, vint.write_vuint, BytesIO(), -1)
         WVEXCEPT(EOFError, vint.read_vuint, BytesIO())
@@ -27,7 +27,7 @@ def encode_and_decode_vint(x):
 
 
 def test_vint():
-    values = (0, 1, 42, 64, 10**16)
+    values = (0, 1, 42, 64, 10**16, 10**100)
     for x in values:
         WVPASSEQ(encode_and_decode_vint(x), x)
     for x in [-x for x in values]:
