@@ -134,8 +134,7 @@ else:  # Python 2
         """Return the original bytes passed to main() for an argv argument."""
         return x
 
-    def bytes_from_uint(i):
-        return chr(i)
+    bytes_from_uint = chr
 
     def bytes_from_byte(b):
         return b
