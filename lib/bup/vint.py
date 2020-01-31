@@ -131,6 +131,10 @@ def read_bvec(port):
     return port.read(n)
 
 
+def encode_bvec(x):
+    return _helpers.vuint_encode(len(x)) + x
+
+
 def skip_bvec(port):
     port.read(read_vuint(port))
 
@@ -161,9 +165,19 @@ def recv(port, types):
     return result
 
 def pack(types, *args):
-    port = BytesIO()
-    send(port, types, *args)
-    return port.getvalue()
+    if len(types) != len(args):
+        raise Exception('number of arguments does not match format string')
+    ret = []
+    for (type, value) in zip(types, args):
+        if type == 'V':
+            ret.append(encode_vuint(value))
+        elif type == 'v':
+            ret.append(encode_vint(value))
+        elif type == 's':
+            ret.append(encode_bvec(value))
+        else:
+            raise Exception('unknown xpack format string item "' + type + '"')
+    return b''.join(ret)
 
 def unpack(types, data):
     port = BytesIO(data)
