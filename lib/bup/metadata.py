@@ -782,6 +782,10 @@ class Metadata:
         return ''.join(result)
 
     def write(self, port, include_path=True):
+        port.write(self.encode(include_path=include_path))
+
+    def encode(self, include_path=True):
+        ret = []
         records = include_path and [(_rec_tag_path, self._encode_path())] or []
         records.extend([(_rec_tag_common_v3, self._encode_common()),
                         (_rec_tag_symlink_target,
@@ -793,14 +797,10 @@ class Metadata:
                         (_rec_tag_linux_xattr, self._encode_linux_xattr())])
         for tag, data in records:
             if data:
-                vint.write_vuint(port, tag)
-                vint.write_bvec(port, data)
-        vint.write_vuint(port, _rec_tag_end)
-
-    def encode(self, include_path=True):
-        port = BytesIO()
-        self.write(port, include_path)
-        return port.getvalue()
+                ret.extend((vint.encode_vuint(tag),
+                            vint.encode_bvec(data)))
+        ret.append(vint.encode_vuint(_rec_tag_end))
+        return b''.join(ret)
 
     def copy(self):
         return deepcopy(self)
