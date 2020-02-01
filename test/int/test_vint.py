@@ -75,7 +75,12 @@ def test_pack_and_unpack():
              ('v', [0]),
              ('vs', [0, b'foo']),
              ('vV', [0, 1]),
-             ('vv', [0, -1])]
+             ('vv', [0, -1]),
+             ('vv', [0, -1]),
+             # and a few things that aren't done in C
+             ('vv', [10**100, 10**100]),
+             ('s', [b'foo'*10]),
+            ]
     for test in tests:
         (types, values) = test
         WVPASSEQ(pack_and_unpack(types, *values), values)

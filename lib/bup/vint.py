@@ -165,19 +165,21 @@ def recv(port, types):
     return result
 
 def pack(types, *args):
-    if len(types) != len(args):
-        raise Exception('number of arguments does not match format string')
-    ret = []
-    for (type, value) in zip(types, args):
-        if type == 'V':
-            ret.append(encode_vuint(value))
-        elif type == 'v':
-            ret.append(encode_vint(value))
-        elif type == 's':
-            ret.append(encode_bvec(value))
-        else:
-            raise Exception('unknown xpack format string item "' + type + '"')
-    return b''.join(ret)
+    try:
+        return _helpers.limited_vint_pack(types, args)
+    except OverflowError:
+        assert len(types) == len(args)
+        ret = []
+        for typ, value in zip(types, args):
+            if typ == 'V':
+                ret.append(encode_vuint(value))
+            elif typ == 'v':
+                ret.append(encode_vint(value))
+            elif typ == 's':
+                ret.append(encode_bvec(value))
+            else:
+                assert False
+        return b''.join(ret)
 
 def unpack(types, data):
     port = BytesIO(data)
