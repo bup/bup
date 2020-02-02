@@ -247,6 +247,27 @@ class BaseServer:
             vfs.write_resolution(self.conn, res)
         self.conn.ok()
 
+    def config_get(self, args):
+        self._init_session()
+        assert not args
+        key, opttype = vint.recv(self.conn, 'ss')
+        if key in (b'bup.split-trees',):
+            opttype = None if not len(opttype) else opttype.decode('ascii')
+            val = self._config_get(key, opttype=opttype)
+            if val is None:
+                write_vuint(self.conn, 0)
+            elif isinstance(val, bool):
+                write_vuint(self.conn, 1 if val else 2)
+            elif isinstance(val, int):
+                vint.send(self.conn, 'Vv', 3, val)
+            elif isinstance(val, bytes):
+                vint.send(self.conn, 'Vs', 4, val)
+            else:
+                raise TypeError(f'Unrecognized result type {type(val)}')
+        else:
+            write_vuint(self.conn, 5)
+        self.conn.ok()
+
     def handle(self):
         commands = self._commands
 
@@ -418,26 +439,8 @@ class BupServer(BaseServer):
         return vfs.resolve(self.repo, path, parent=parent, want_meta=want_meta,
                            follow=follow)
 
-    def config_get(self, args):
-        self._init_session()
-        assert not args
-        key, opttype = vint.recv(self.conn, 'ss')
-        if key in (b'bup.split-trees',):
-            opttype = None if not len(opttype) else opttype.decode('ascii')
-            val = self.repo.config_get(key, opttype=opttype)
-            if val is None:
-                write_vuint(self.conn, 0)
-            elif isinstance(val, bool):
-                write_vuint(self.conn, 1 if val else 2)
-            elif isinstance(val, int):
-                vint.send(self.conn, 'Vv', 3, val)
-            elif isinstance(val, bytes):
-                vint.send(self.conn, 'Vs', 4, val)
-            else:
-                raise TypeError(f'Unrecognized result type {type(val)}')
-        else:
-            write_vuint(self.conn, 5)
-        self.conn.ok()
+    def _config_get(self, key, opttype):
+        return git.git_config_get(key, opttype=opttype)
 
     def __enter__(self):
         return self
