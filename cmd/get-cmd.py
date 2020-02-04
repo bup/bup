@@ -574,6 +574,8 @@ def main():
     is_reverse = environ.get(b'BUP_SERVER_REVERSE')
     opt = parse_args(sys.argv)
     git.check_repo_or_die()
+    if opt.source:
+        opt.source = argv_bytes(opt.source)
     src_dir = opt.source or git.repo()
     if opt.bwlimit:
         client.bwlimit = parse_num(opt.bwlimit)
