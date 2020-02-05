@@ -406,11 +406,13 @@ def cache_get(key):
         raise Exception('invalid cache key: ' + repr(key))
     return _cache.get(key)
 
-def cache_notice(key, value):
+def cache_notice(key, value, overwrite=False):
     global _cache, _cache_keys, _cache_max_items
     if not is_valid_cache_key(key):
         raise Exception('invalid cache key: ' + repr(key))
     if key in _cache:
+        if overwrite:
+            _cache[key] = value
         return
     if len(_cache) < _cache_max_items:
         _cache_keys.append(key)
@@ -422,6 +424,13 @@ def cache_notice(key, value):
     _cache_keys[victim_i] = key
     _cache[key] = value
 
+def _has_metadata_if_needed(item, need_meta):
+    if not need_meta:
+        return True
+    if isinstance(item.meta, Metadata):
+        return True
+    return False
+
 def cache_get_commit_item(oid, need_meta=True):
     """Return the requested tree item if it can be found in the cache.
     When need_meta is true don't return a cached item that only has a
@@ -430,13 +439,14 @@ def cache_get_commit_item(oid, need_meta=True):
     commit_key = b'itm:' + oid
     item = cache_get(commit_key)
     if item:
-        if not need_meta:
-            return item
-        if isinstance(item.meta, Metadata):
+        if _has_metadata_if_needed(item, need_meta):
             return item
     entries = cache_get(b'rvl:' + oid)
     if entries:
-        return entries[b'.']
+        item = entries[b'.']
+        if _has_metadata_if_needed(item, need_meta):
+            return item
+    return None
 
 def copy_item(item):
     """Return a completely independent copy of item, such that
@@ -746,14 +756,16 @@ def _item_for_rev(rev):
     cache_notice(commit_key, item)
     return item
 
-def cache_commit(repo, oid):
+# non-string singleton
+_HAS_META_ENTRY = object()
+
+def cache_commit(repo, oid, require_meta=True):
     """Build, cache, and return a "name -> commit_item" dict of the entire
     commit rev-list.
 
     """
-    # For now, always cache with full metadata
     entries = {}
-    entries[b'.'] = _revlist_item_from_oid(repo, oid, True)
+    entries[b'.'] = _revlist_item_from_oid(repo, oid, require_meta)
     revs = repo.rev_list((hexlify(oid),), format=b'%T %at',
                          parse=parse_rev)
     rev_items, rev_names = tee(revs)
@@ -767,27 +779,30 @@ def cache_commit(repo, oid):
         entries[name] = item
     entries[b'latest'] = FakeLink(meta=default_symlink_mode, target=tip[0])
     revlist_key = b'rvl:' + tip[1].coid
-    cache_notice(revlist_key, entries)
+    entries[_HAS_META_ENTRY] = require_meta
+    cache_notice(revlist_key, entries, overwrite=True)
     return entries
 
-def revlist_items(repo, oid, names):
+def revlist_items(repo, oid, names, require_meta=True):
     assert len(oid) == 20
 
     # Special case '.' instead of caching the whole history since it's
     # the only way to get the metadata for the commit.
     if names and all(x == b'.' for x in names):
-        yield b'.', _revlist_item_from_oid(repo, oid, True)
+        yield b'.', _revlist_item_from_oid(repo, oid, require_meta)
         return
 
     # For now, don't worry about the possibility of the contents being
     # "too big" for the cache.
     revlist_key = b'rvl:' + oid
     entries = cache_get(revlist_key)
+    if entries and require_meta and not entries[_HAS_META_ENTRY]:
+        entries = None
     if not entries:
-        entries = cache_commit(repo, oid)
+        entries = cache_commit(repo, oid, require_meta)
 
     if not names:
-        for name in sorted(entries.keys()):
+        for name in sorted((n for n in entries.keys() if n != _HAS_META_ENTRY)):
             yield name, entries[name]
         return
 
@@ -797,6 +812,8 @@ def revlist_items(repo, oid, names):
     if b'.' in names:
         yield b'.', entries[b'.']
     for name in (n for n in names if n != b'.'):
+        if name == _HAS_META_ENTRY:
+            continue
         commit = entries.get(name)
         if commit:
             yield name, commit
@@ -892,7 +909,8 @@ def contents(repo, item, names=None, want_meta=True):
         else:
             item_gen = tree_items(item.oid, data, names)
     elif item_t == RevList:
-        item_gen = revlist_items(repo, item.oid, names)
+        item_gen = revlist_items(repo, item.oid, names,
+                                 require_meta=want_meta)
     elif item_t == Root:
         item_gen = root_items(repo, names, want_meta)
     elif item_t == Tags:
