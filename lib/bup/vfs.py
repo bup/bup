@@ -1112,7 +1112,8 @@ def augment_item_meta(repo, item, include_size=False):
     # m is mode
     meta = Metadata()
     meta.mode = m
-    meta.uid = meta.gid = meta.atime = meta.mtime = meta.ctime = 0
+    meta.uid = meta.gid = None
+    meta.atime = meta.mtime = meta.ctime = 0
     if S_ISLNK(m):
         if isinstance(item, FakeLink):
             target = item.target

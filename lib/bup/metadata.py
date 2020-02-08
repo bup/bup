@@ -418,8 +418,10 @@ class Metadata:
 
         uid = gid = -1 # By default, do nothing.
         if is_superuser():
-            uid = self.uid
-            gid = self.gid
+            if self.uid is not None:
+                uid = self.uid
+            if self.gid is not None:
+                gid = self.gid
             if not restore_numeric_ids:
                 if self.uid != 0 and self.user:
                     entry = pwd_from_name(self.user)
@@ -1012,7 +1014,7 @@ def summary_bytes(meta, numeric_ids = False, classification = None,
                   human_readable = False):
     """Return bytes containing the "ls -l" style listing for meta.
     Classification may be "all", "type", or None."""
-    user_str = group_str = size_or_dev_str = '?'
+    user_str = group_str = size_or_dev_str = b'?'
     symlink_target = None
     if meta:
         name = meta.path

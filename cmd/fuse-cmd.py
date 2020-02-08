@@ -69,8 +69,8 @@ class BupFs(fuse.Fuse):
         # FIXME: do we want/need to do anything more with nlink?
         st = fuse.Stat(st_mode=meta.mode, st_nlink=1, st_size=meta.size)
         st.st_mode = meta.mode
-        st.st_uid = meta.uid
-        st.st_gid = meta.gid
+        st.st_uid = meta.uid or 0
+        st.st_gid = meta.gid or 0
         st.st_atime = max(0, xstat.fstime_floor_secs(meta.atime))
         st.st_mtime = max(0, xstat.fstime_floor_secs(meta.mtime))
         st.st_ctime = max(0, xstat.fstime_floor_secs(meta.ctime))
