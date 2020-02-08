@@ -24,7 +24,7 @@ bup()
 
 get-time()
 {
-    python -c 'import time; print time.time()'
+    python -c 'import time; print(time.time())'
 }
 
 rm -rf "$BUP_DIR"
@@ -53,11 +53,11 @@ all_finish="$(get-time)"
 set +x
 cat <<EOS
 
-init: $(python -c "print $init_finish - $init_start")
-index: $(python -c "print $index_finish - $index_start")
-save: $(python -c "print $save_finish - $save_start")
-restore: $(python -c "print $restore_finish - $restore_start")
-all: $(python -c "print $all_finish - $all_start")
+init: $(python -c "print($init_finish - $init_start)")
+index: $(python -c "print($index_finish - $index_start)")
+save: $(python -c "print($save_finish - $save_start)")
+restore: $(python -c "print($restore_finish - $restore_start)")
+all: $(python -c "print($all_finish - $all_start)")
 EOS
 
 cd "$top"
