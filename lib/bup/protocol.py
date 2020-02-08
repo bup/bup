@@ -241,9 +241,9 @@ class BupProtocolServer:
             #debug2('read %d bytes\n' % n)
             self._check(n, len(buf), 'object read: expected %d bytes, got %d\n')
             if not self.repo.dumb_server_mode:
-                oldpack = self.repo.exists(shar, want_source=True)
-                if oldpack:
-                    assert(not oldpack == True)
+                result = self.repo.exists(shar, want_source=True)
+                if result:
+                    oldpack = result.pack
                     assert(oldpack.endswith(b'.idx'))
                     (dir,name) = os.path.split(oldpack)
                     if not (name in suggested):

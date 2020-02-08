@@ -4,7 +4,7 @@ import glob, os, struct
 
 from bup import _helpers
 from bup.compat import pending_raise
-from bup.helpers import log, mmap_read
+from bup.helpers import log, mmap_read, ExistsResult, ObjectExists
 from bup.io import path_msg
 
 
@@ -133,7 +133,9 @@ class PackMidx:
                 end = mid
                 endv = _helpers.firstword(v)
             else: # got it!
-                return want_source and self._get_idxname(mid) or True
+                if want_source:
+                    return ExistsResult(self._get_idxname(mid))
+                return ObjectExists
         return None
 
     def __iter__(self):

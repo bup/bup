@@ -52,6 +52,17 @@ def temp_dir(*args, **kwargs):
     # https://github.com/python/cpython/issues/88458
     return finalized(mkdtemp(*args, **kwargs), lambda x: rmtree(x))
 
+class ExistsResult:
+    __slots__ = ('pack', )
+
+    def __init__(self, pack):
+        self.pack = pack
+
+# singleton to avoid creating a new one
+# when we don't care where the object is
+ObjectExists = ExistsResult(None)
+
+
 sc_arg_max = os.sysconf('SC_ARG_MAX')
 if sc_arg_max == -1:  # "no definite limit" - let's choose 2M
     sc_arg_max = 2 * 1024 * 1024

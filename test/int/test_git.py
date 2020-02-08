@@ -11,7 +11,7 @@ from wvpytest import *
 
 from bup import git, path
 from bup.compat import bytes_from_byte, environ
-from bup.helpers import localtime, log, mkdirp, readpipe
+from bup.helpers import localtime, log, mkdirp, readpipe, ObjectExists
 
 
 bup_exe = path.exe()
@@ -173,7 +173,7 @@ def test_pack_name_lookup(tmpdir):
         WVPASSEQ(len(r.packs), 2)
         for e,idxname in enumerate(idxnames):
             for i in range(e*2, (e+1)*2):
-                WVPASSEQ(idxname, r.exists(hashes[i], want_source=True))
+                WVPASSEQ(idxname, r.exists(hashes[i], want_source=True).pack)
 
 
 def test_long_index(tmpdir):
@@ -534,7 +534,7 @@ def test_midx_close(tmpdir):
         # refresh the PackIdxList
         l.refresh()
         # and check that an object in pack 10 exists now
-        WVPASSEQ(True, l.exists(struct.pack('18xBB', 10, 0)))
+        WVPASSEQ(ObjectExists, l.exists(struct.pack('18xBB', 10, 0)))
         for fn in openfiles():
             if not b'midx-' in fn:
                 continue
