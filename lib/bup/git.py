@@ -20,6 +20,7 @@ from bup.compat import (buffer,
                         reraise)
 from bup.io import path_msg
 from bup.helpers import (Sha1, add_error, chunkyreader, debug1, debug2,
+                         exo,
                          fdatasync,
                          hostname, localtime, log,
                          merge_dict,
@@ -56,6 +57,14 @@ def _git_wait(cmd, p):
     rv = p.wait()
     if rv != 0:
         raise GitError('%r returned %d' % (cmd, rv))
+
+def _git_exo(cmd, **kwargs):
+    kwargs['check'] = False
+    result = exo(cmd, **kwargs)
+    _, _, proc = result
+    if proc.returncode != 0:
+        raise GitError('%r returned %d' % (cmd, proc.returncode))
+    return result
 
 def git_config_get(option, repo_dir=None):
     cmd = (b'git', b'config', b'--get', option)
@@ -1138,31 +1147,54 @@ def check_repo_or_die(path=None):
     sys.exit(14)
 
 
-_ver = None
-def ver():
-    """Get Git's version and ensure a usable version is installed.
+def is_suitable_git(ver_str):
+    if not ver_str.startswith(b'git version '):
+        return 'unrecognized'
+    ver_str = ver_str[len(b'git version '):]
+    if ver_str.startswith(b'0.'):
+        return 'insufficient'
+    if ver_str.startswith(b'1.'):
+        if re.match(br'1\.[012345]rc', ver_str):
+            return 'insufficient'
+        if re.match(br'1\.[01234]\.', ver_str):
+            return 'insufficient'
+        if re.match(br'1\.5\.[012345]($|\.)', ver_str):
+            return 'insufficient'
+        if re.match(br'1\.5\.6-rc', ver_str):
+            return 'insufficient'
+        return 'suitable'
+    if re.match(br'[0-9]+(\.|$)?', ver_str):
+        return 'suitable'
+    sys.exit(13)
 
-    The returned version is formatted as an ordered tuple with each position
-    representing a digit in the version tag. For example, the following tuple
-    would represent version 1.6.6.9:
+_git_great = None
 
-        (1, 6, 6, 9)
+def require_suitable_git(ver_str=None):
+    """Raise GitError if the version of git isn't suitable.
+
+    Rely on ver_str when provided, rather than invoking the git in the
+    path.
+
     """
-    global _ver
-    if not _ver:
-        p = subprocess.Popen([b'git', b'--version'], stdout=subprocess.PIPE)
-        gvs = p.stdout.read()
-        _git_wait('git --version', p)
-        m = re.match(br'git version (\S+.\S+)', gvs)
-        if not m:
-            raise GitError('git --version weird output: %r' % gvs)
-        _ver = tuple(int(x) for x in m.group(1).split(b'.'))
-    needed = (1, 5, 3, 1)
-    if _ver < needed:
-        raise GitError('git version %s or higher is required; you have %s'
-                       % ('.'.join(str(x) for x in needed),
-                          '.'.join(str(x) for x in _ver)))
-    return _ver
+    global _git_great
+    if _git_great is not None:
+        return
+    if environ.get(b'BUP_GIT_VERSION_IS_FINE', b'').lower() \
+       in (b'yes', b'true', b'1'):
+        _git_great = True
+        return
+    if not ver_str:
+        ver_str, _, _ = _git_exo([b'git', b'--version'])
+    status = is_suitable_git(ver_str)
+    if status == 'unrecognized':
+        raise GitError('Unexpected git --version output: %r' % ver_str)
+    if status == 'insufficient':
+        log('error: git version must be at least 1.5.6\n')
+        sys.exit(1)
+    if status == 'suitable':
+        _git_great = True
+        return
+    assert False
 
 
 class _AbortableIter:
@@ -1200,11 +1232,8 @@ class _AbortableIter:
 class CatPipe:
     """Link to 'git cat-file' that is used to retrieve blob data."""
     def __init__(self, repo_dir = None):
+        require_suitable_git()
         self.repo_dir = repo_dir
-        wanted = (1, 5, 6)
-        if ver() < wanted:
-            log('error: git version must be at least 1.5.6\n')
-            sys.exit(1)
         self.p = self.inprogress = None
 
     def _abort(self):
