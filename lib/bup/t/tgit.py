@@ -1,5 +1,6 @@
 
 from __future__ import absolute_import
+from os import environ
 from subprocess import check_call
 import struct, os, time
 
@@ -25,6 +26,46 @@ def exo(*cmd):
     cmd_str = ' '.join(cmd)
     print >> sys.stderr, cmd_str
     return readpipe(cmd)
+
+
+@wvtest
+def test_git_version_detection():
+    with no_lingering_errors():
+        # Test version types from git's tag history
+        for expected, ver in \
+            (('insufficient', b'git version 0.99'),
+             ('insufficient', b'git version 0.99.1'),
+             ('insufficient', b'git version 0.99.7a'),
+             ('insufficient', b'git version 1.0rc1'),
+             ('insufficient', b'git version 1.0.1'),
+             ('insufficient', b'git version 1.4.2.1'),
+             ('insufficient', b'git version 1.5.5'),
+             ('insufficient', b'git version 1.5.6-rc0'),
+             ('suitable', b'git version 1.5.6'),
+             ('suitable', b'git version 1.5.6.1'),
+             ('suitable', b'git version 2.14.0-rc0'),
+             ('suitable', b'git version 2.14.0 (something ...)'),
+             ('suitable', b'git version 111.222.333.444-rc555'),
+             ('unrecognized', b'huh?')):
+            WVMSG('Checking version validation: %r' % ver)
+            WVPASSEQ(expected, git.is_suitable_git(ver_str=ver))
+            try:
+                if expected == 'insufficient':
+                    WVEXCEPT(SystemExit, git.require_suitable_git, ver)
+                elif expected == 'suitable':
+                    git.require_suitable_git(ver_str=ver)
+                elif expected == 'unrecognized':
+                    WVEXCEPT(git.GitError, git.require_suitable_git, ver)
+                else:
+                    WVPASS(False)
+            finally:
+                git._git_great = None
+            try:
+                environ[b'BUP_GIT_VERSION_IS_FINE'] = b'true'
+                git.require_suitable_git(ver_str=ver)
+            finally:
+                del environ[b'BUP_GIT_VERSION_IS_FINE']
+                git._git_great = None
 
 
 @wvtest
