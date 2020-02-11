@@ -112,6 +112,13 @@ pages.
 :   Report the version number of your copy of bup.
 
 
+# ENVIRONMENT
+
+`BUP_ASSUME_GIT_VERSION_IS_FINE`
+:   If set to `true`, `yes`, or `1`, assume the version of `git`
+    in the path is acceptable.
+
+
 # SEE ALSO
 
 `git`(1) and the *README* file from the bup distribution.
