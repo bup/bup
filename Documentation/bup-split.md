@@ -152,7 +152,7 @@ being the most likely choice.
     to the server.  This is good for making your backups
     not suck up all your network bandwidth.  Use a suffix
     like k, M, or G to specify multiples of 1024,
-    1024*1024, 1024*1024*1024 respectively.
+    1024\*1024, 1024\*1024\*1024 respectively.
 
 -*#*, \--compress=*#*
 :   set the compression level to # (a value from 0-9, where

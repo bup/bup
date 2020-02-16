@@ -82,7 +82,7 @@ handling of metadata.
     over large ones (like virtual machine images) which
     take longer.  Then you can back up the large files
     less frequently.  Use a suffix like k, M, or G to
-    specify multiples of 1024, 1024*1024, 1024*1024*1024
+    specify multiples of 1024, 1024\*1024, 1024\*1024\*1024
     respectively.
     
 \--bwlimit=*bytes/sec*
@@ -90,7 +90,7 @@ handling of metadata.
     to the server.  This is good for making your backups
     not suck up all your network bandwidth.  Use a suffix
     like k, M, or G to specify multiples of 1024,
-    1024*1024, 1024*1024*1024 respectively.
+    1024\*1024, 1024\*1024\*1024 respectively.
     
 \--strip
 :   strips the path that is given from all files and directories.
