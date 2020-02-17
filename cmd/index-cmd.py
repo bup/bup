@@ -146,7 +146,8 @@ def update_index(top, excluded_paths, exclude_rxs, xdev_exceptions):
                 need_repack = True
             if not (rig.cur.flags & index.IX_HASHVALID):
                 if fake_hash:
-                    rig.cur.gitmode, rig.cur.sha = fake_hash(path)
+                    if rig.cur.sha == index.EMPTY_SHA:
+                        rig.cur.gitmode, rig.cur.sha = fake_hash(path)
                     rig.cur.flags |= index.IX_HASHVALID
                     need_repack = True
             if opt.fake_invalid:
