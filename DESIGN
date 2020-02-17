@@ -587,9 +587,10 @@ repository.  What that means is you've chosen not to backup the latest
 version of that file; instead, your new backup set just contains the
 most-recently-known valid version of that file.  This is a good trick if you
 want to do frequent backups of smallish files and infrequent backups of
-large ones (as in 'bup save --smaller').  Each of your backups will be
-"complete," in that they contain all the small files and the large ones, but
-intermediate ones will just contain out-of-date copies of the large files.
+large ones.  Each of your backups will be "complete," in that they contain
+all the small files and the large ones, but intermediate ones will just
+contain out-of-date copies of the large files. Note that this isn't done
+right now, and 'bup save --smaller' doesn't store bigger files _at all_.
 
 A final game we can play with the bupindex involves restoring: when you
 restore a directory from a previous backup, you can update the bupindex
