@@ -42,4 +42,16 @@ WVFAIL test -f "$tmpdir/restore2/big1"
 # and not the new one either
 WVFAIL test -f "$tmpdir/restore2/big2"
 
+WVSTART "index --fake-valid / save"
+WVPASS echo bigbigbigbigbig02 > "$tmpdir/save/big1"
+WVPASS echo bigbigbigbigbig03 > "$tmpdir/save/big2"
+WVPASS bup index "$tmpdir/save"
+WVPASS bup index --fake-valid "$tmpdir/save/big1" "$tmpdir/save/big2"
+WVPASS bup save -vv -n test "$tmpdir/save"
+WVPASS mkdir "$tmpdir/restore3"
+WVPASS bup restore -v --outdir="$tmpdir/restore3/" "/test/latest$tmpdir/save/"
+WVPASS cmp "$tmpdir/restore3/small" "$tmpdir/save/small"
+WVPASSEQ "$(sha1sum < "$tmpdir/restore3/big1")" "$big1sha"
+WVPASS cmp "$tmpdir/restore3/big2" "$tmpdir/save/big2"
+
 WVPASS rm -rf "$tmpdir"
