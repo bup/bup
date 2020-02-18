@@ -18,6 +18,7 @@ from bup.io import byte_stream
 
 
 par2_ok = 0
+par2_parallel = None
 nullf = open(os.devnull, 'wb+')
 
 def debug(s):
@@ -38,6 +39,7 @@ def run(argv):
 
 def par2_setup():
     global par2_ok
+    global par2_parallel
     rv = 1
     try:
         p = subprocess.Popen([b'par2', b'--help'],
@@ -47,6 +49,8 @@ def par2_setup():
         log('fsck: warning: par2 not found; disabling recovery features.\n')
     else:
         par2_ok = 1
+        # Determine multithreading support
+        par2_parallel = is_par2_parallel()
 
 def is_par2_parallel():
     # A true result means it definitely allows -t1; a false result is
@@ -72,18 +76,13 @@ def is_par2_parallel():
     finally:
         rmtree(tmpdir)
 
-_par2_parallel = None
-
 def par2(action, args, verb_floor=0):
-    global _par2_parallel
-    if _par2_parallel is None:
-        _par2_parallel = is_par2_parallel()
     cmd = [b'par2', action]
     if opt.verbose >= verb_floor and not istty2:
         cmd.append(b'-q')
     else:
         cmd.append(b'-qq')
-    if _par2_parallel:
+    if par2_parallel:
         cmd.append(b'-t1')
     cmd.extend(args)
     return run(cmd)
