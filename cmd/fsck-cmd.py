@@ -61,7 +61,7 @@ def is_par2_parallel():
         _, err = p.communicate()
         parallel = p.returncode == 0
         if opt.verbose:
-            if err != b'Invalid option specified: -t1\n':
+            if len(err) > 0 and err != b'Invalid option specified: -t1\n':
                 log('Unexpected par2 error output\n')
                 log(repr(err))
             if parallel:
