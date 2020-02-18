@@ -63,7 +63,7 @@ def is_par2_parallel():
         if opt.verbose:
             if len(err) > 0 and err != b'Invalid option specified: -t1\n':
                 log('Unexpected par2 error output\n')
-                log(repr(err))
+                log(repr(err) + '\n')
             if parallel:
                 log('Assuming par2 supports parallel processing\n')
             else:
