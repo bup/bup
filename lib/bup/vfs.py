@@ -574,7 +574,7 @@ def _commit_item_from_oid(repo, oid, require_meta):
         if meta:
             commit = commit._replace(meta=meta)
     commit_key = b'itm:' + oid
-    cache_notice(commit_key, commit)
+    cache_notice(commit_key, commit, overwrite=True)
     return commit
 
 def _revlist_item_from_oid(repo, oid, require_meta):
