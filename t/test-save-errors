@@ -33,7 +33,7 @@ WVPASS bup index "$tmpdir/save"
 # essentially, we create a bup-save command for ourselves
 # that gets an error for the .../5 file in metadata.from_path()
 cat > "$tmpdir/bup-save" << EOF
-#!$top/cmd/bup-python
+#!/usr/bin/env $top/cmd/bup-python
 from bup import metadata
 orig_from_path = metadata.from_path
 def from_path(path, *args, **kw):
@@ -69,7 +69,7 @@ WVPASS bup index --clear
 WVPASS bup index "$tmpdir/save"
 
 cat > "$tmpdir/bup-save" << EOF
-#!$top/cmd/bup-python
+#!/usr/bin/env $top/cmd/bup-python
 from bup import metadata
 orig_from_path = metadata.from_path
 def from_path(path, *args, **kw):
@@ -101,7 +101,7 @@ WVPASS bup index --clear
 WVPASS bup index "$tmpdir/save"
 
 cat > "$tmpdir/bup-save" << EOF
-#!$top/cmd/bup-python
+#!/usr/bin/env $top/cmd/bup-python
 from bup import index
 
 Reader = index.Reader
