@@ -78,6 +78,7 @@ class PackMidx:
 
     def close(self):
         if self.map is not None:
+            self.fanout = self.shatable = self.whichlist = self.idxnames = None
             self.map.close()
             self.map = None
 
