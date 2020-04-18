@@ -10,6 +10,7 @@ import sys, os, glob, subprocess
 from shutil import rmtree
 from subprocess import PIPE, Popen
 from tempfile import mkdtemp
+from binascii import hexlify
 
 from bup import options, git
 from bup.compat import argv_bytes
@@ -109,7 +110,7 @@ def quick_verify(base):
     for b in chunkyreader(f, os.fstat(f.fileno()).st_size - 20):
         sum.update(b)
     if sum.digest() != wantsum:
-        raise ValueError('expected %r, got %r' % (wantsum.encode('hex'),
+        raise ValueError('expected %r, got %r' % (hexlify(wantsum),
                                                   sum.hexdigest()))
         
 
