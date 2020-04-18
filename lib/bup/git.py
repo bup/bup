@@ -1353,7 +1353,7 @@ def tags(repo_dir = None):
 class MissingObject(KeyError):
     def __init__(self, oid):
         self.oid = oid
-        KeyError.__init__(self, 'object %r is missing' % oid.encode('hex'))
+        KeyError.__init__(self, 'object %r is missing' % hexlify(oid))
 
 
 WalkItem = namedtuple('WalkItem', ['oid', 'type', 'mode',
