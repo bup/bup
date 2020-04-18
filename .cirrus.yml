@@ -16,7 +16,7 @@ task:
 task:
   name: freebsd
   freebsd_instance:
-    image: freebsd-11-2-release-amd64
+    image: freebsd-12-1-release-amd64
     cpu: 2
     memory: 8
   script: |
