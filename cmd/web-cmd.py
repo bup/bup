@@ -269,7 +269,7 @@ else:
         try:
             port = int(port)
         except (TypeError, ValueError) as ex:
-            o.fatal('port must be an integer, not %r', port)
+            o.fatal('port must be an integer, not %r' % port)
         address = InetAddress(host=host, port=port)
 
 git.check_repo_or_die()
