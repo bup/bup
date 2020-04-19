@@ -89,6 +89,20 @@ static state_t state;
 #endif // PY_MAJOR_VERSION >= 3
 
 
+static void *checked_calloc(size_t n, size_t size)
+{
+    void *result = calloc(n, size);
+    if (!result)
+        PyErr_NoMemory();
+    return result;
+}
+
+#ifndef BUP_HAVE_BUILTIN_MUL_OVERFLOW
+
+#define checked_malloc checked_calloc
+
+#else // defined BUP_HAVE_BUILTIN_MUL_OVERFLOW
+
 static void *checked_malloc(size_t n, size_t size)
 {
     size_t total;
@@ -105,13 +119,7 @@ static void *checked_malloc(size_t n, size_t size)
     return result;
 }
 
-static void *checked_calloc(size_t n, size_t size)
-{
-    void *result = calloc(n, size);
-    if (!result)
-        PyErr_NoMemory();
-    return result;
-}
+#endif // defined BUP_HAVE_BUILTIN_MUL_OVERFLOW
 
 
 #ifndef htonll
