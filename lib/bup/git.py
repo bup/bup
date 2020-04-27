@@ -631,6 +631,22 @@ class PackIdxList:
         self.do_bloom = True
         return None
 
+    def close_temps(self):
+        '''
+        Close all the temporary files (bloom/midx) so that you can safely call
+        auto_midx() without potentially deleting files that are open/mapped.
+        Note that you should call refresh() again afterwards to reload any new
+        ones, otherwise performance will suffer.
+        '''
+        if self.bloom is not None:
+            self.bloom.close()
+            self.bloom = None
+        for ix in list(self.packs):
+            if not isinstance(ix, midx.PackMidx):
+                continue
+            ix.close()
+            self.packs.remove(ix)
+
     def refresh(self, skip_midx = False):
         """Refresh the index list.
         This method verifies if .midx files were superseded (e.g. all of its

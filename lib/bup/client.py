@@ -647,6 +647,7 @@ class PackWriter_Remote(git.PackWriter):
         self.count += 1
 
         if self.file.has_input():
+            self.objcache.close_temps()
             self.suggest_packs()
             self.objcache.refresh()
 
