@@ -29,7 +29,10 @@ class Buf:
         self.start = 0
 
     def put(self, s):
-        if s:
+        if not self.data:
+            self.data = s
+            self.start = 0
+        elif s:
             remaining = len(self.data) - self.start
             self.data = cat_bytes(self.data, self.start, remaining,
                                   s, 0, len(s))
