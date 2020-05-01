@@ -66,6 +66,7 @@
 
 #include "bupsplit.h"
 #include "bup/intprops.h"
+#include "_hashsplit.h"
 
 #if defined(FS_IOC_GETFLAGS) && defined(FS_IOC_SETFLAGS)
 #define BUP_HAVE_FILE_ATTRS 1
@@ -229,48 +230,6 @@ static PyObject *bup_bytescmp(PyObject *self, PyObject *args)
     if (s1_len == s2_len)
         return PyLong_FromLong(0);;
     return PyLong_FromLong((s1_len < s2_len) ? -1 : 1);
-}
-
-
-static PyObject *bup_cat_bytes(PyObject *self, PyObject *args)
-{
-    unsigned char *bufx = NULL, *bufy = NULL;
-    Py_ssize_t bufx_len, bufx_ofs, bufx_n;
-    Py_ssize_t bufy_len, bufy_ofs, bufy_n;
-    if (!PyArg_ParseTuple(args,
-                          rbuf_argf "nn"
-                          rbuf_argf "nn",
-                          &bufx, &bufx_len, &bufx_ofs, &bufx_n,
-                          &bufy, &bufy_len, &bufy_ofs, &bufy_n))
-	return NULL;
-    if (bufx_ofs < 0)
-        return PyErr_Format(PyExc_ValueError, "negative x offset");
-    if (bufx_n < 0)
-        return PyErr_Format(PyExc_ValueError, "negative x extent");
-    if (bufx_ofs > bufx_len)
-        return PyErr_Format(PyExc_ValueError, "x offset greater than length");
-    if (bufx_n > bufx_len - bufx_ofs)
-        return PyErr_Format(PyExc_ValueError, "x extent past end of buffer");
-
-    if (bufy_ofs < 0)
-        return PyErr_Format(PyExc_ValueError, "negative y offset");
-    if (bufy_n < 0)
-        return PyErr_Format(PyExc_ValueError, "negative y extent");
-    if (bufy_ofs > bufy_len)
-        return PyErr_Format(PyExc_ValueError, "y offset greater than length");
-    if (bufy_n > bufy_len - bufy_ofs)
-        return PyErr_Format(PyExc_ValueError, "y extent past end of buffer");
-
-    if (bufy_n > PY_SSIZE_T_MAX - bufx_n)
-        return PyErr_Format(PyExc_OverflowError, "result length too long");
-
-    PyObject *result = PyBytes_FromStringAndSize(NULL, bufx_n + bufy_n);
-    if (!result)
-        return PyErr_NoMemory();
-    char *buf = PyBytes_AS_STRING(result);
-    memcpy(buf, bufx + bufx_ofs, bufx_n);
-    memcpy(buf + bufx_n, bufy + bufy_ofs, bufy_n);
-    return result;
 }
 
 
@@ -509,25 +468,15 @@ static PyObject *selftest(PyObject *self, PyObject *args)
 }
 
 
-static PyObject *blobbits(PyObject *self, PyObject *args)
+static PyObject *rollsum(PyObject *self, PyObject *args)
 {
-    if (!PyArg_ParseTuple(args, ""))
-	return NULL;
-    return Py_BuildValue("i", BUP_BLOBBITS);
-}
-
-
-static PyObject *splitbuf(PyObject *self, PyObject *args)
-{
-    int out = 0, bits = -1;
     Py_buffer buf;
     if (!PyArg_ParseTuple(args, "y*", &buf))
         return NULL;
-    assert(buf.len <= INT_MAX);
-    out = bupsplit_find_ofs(buf.buf, buf.len, &bits);
+
+    const unsigned long sum = rollsum_sum(buf.buf, 0, buf.len);
     PyBuffer_Release(&buf);
-    if (out) assert(bits >= BUP_BLOBBITS);
-    return Py_BuildValue("ii", out, bits);
+    return Py_BuildValue("k", sum);
 }
 
 
@@ -1151,26 +1100,6 @@ static PyObject *open_noatime(PyObject *self, PyObject *args)
 }
 
 
-static PyObject *fadvise_done(PyObject *self, PyObject *args)
-{
-    int fd = -1;
-    long long llofs, lllen = 0;
-    if (!PyArg_ParseTuple(args, "iLL", &fd, &llofs, &lllen))
-	return NULL;
-    off_t ofs, len;
-    if (!INTEGRAL_ASSIGNMENT_FITS(&ofs, llofs))
-        return PyErr_Format(PyExc_OverflowError,
-                            "fadvise offset overflows off_t");
-    if (!INTEGRAL_ASSIGNMENT_FITS(&len, lllen))
-        return PyErr_Format(PyExc_OverflowError,
-                            "fadvise length overflows off_t");
-#ifdef POSIX_FADV_DONTNEED
-    posix_fadvise(fd, ofs, len, POSIX_FADV_DONTNEED);
-#endif    
-    return Py_BuildValue("");
-}
-
-
 // Currently the Linux kernel and FUSE disagree over the type for
 // FS_IOC_GETFLAGS and FS_IOC_SETFLAGS.  The kernel actually uses int,
 // but FUSE chose long (matching the declaration in linux/fs.h).  So
@@ -1542,66 +1471,6 @@ static PyObject *bup_localtime(PyObject *self, PyObject *args)
 }
 #endif /* def HAVE_TM_TM_GMTOFF */
 
-
-#ifdef BUP_MINCORE_BUF_TYPE
-static PyObject *bup_mincore(PyObject *self, PyObject *args)
-{
-    Py_buffer src, dest;
-    PyObject *py_src_n, *py_src_off, *py_dest_off;
-
-    if (!PyArg_ParseTuple(args, cstr_argf "*OOw*O",
-                          &src, &py_src_n, &py_src_off,
-                          &dest, &py_dest_off))
-	return NULL;
-
-    PyObject *result = NULL;
-
-    unsigned long long src_n, src_off, dest_off;
-    if (!(bup_ullong_from_py(&src_n, py_src_n, "src_n")
-          && bup_ullong_from_py(&src_off, py_src_off, "src_off")
-          && bup_ullong_from_py(&dest_off, py_dest_off, "dest_off")))
-        goto clean_and_return;
-
-    unsigned long long src_region_end;
-    if (!uadd(&src_region_end, src_off, src_n)) {
-        result = PyErr_Format(PyExc_OverflowError, "(src_off + src_n) too large");
-        goto clean_and_return;
-    }
-    assert(src.len >= 0);
-    if (src_region_end > (unsigned long long) src.len) {
-        result = PyErr_Format(PyExc_OverflowError, "region runs off end of src");
-        goto clean_and_return;
-    }
-
-    unsigned long long dest_size;
-    if (!INTEGRAL_ASSIGNMENT_FITS(&dest_size, dest.len)) {
-        result = PyErr_Format(PyExc_OverflowError, "invalid dest size");
-        goto clean_and_return;
-    }
-    if (dest_off > dest_size) {
-        result = PyErr_Format(PyExc_OverflowError, "region runs off end of dest");
-        goto clean_and_return;
-    }
-
-    size_t length;
-    if (!INTEGRAL_ASSIGNMENT_FITS(&length, src_n)) {
-        result = PyErr_Format(PyExc_OverflowError, "src_n overflows size_t");
-        goto clean_and_return;
-    }
-    int rc = mincore((void *)(src.buf + src_off), length,
-                     (BUP_MINCORE_BUF_TYPE *) (dest.buf + dest_off));
-    if (rc != 0) {
-        result = PyErr_SetFromErrno(PyExc_OSError);
-        goto clean_and_return;
-    }
-    result = Py_BuildValue("O", Py_None);
-
- clean_and_return:
-    PyBuffer_Release(&src);
-    PyBuffer_Release(&dest);
-    return result;
-}
-#endif /* def BUP_MINCORE_BUF_TYPE */
 
 static unsigned int vuint_encode(long long val, char *buf)
 {
@@ -2273,10 +2142,8 @@ static PyMethodDef helper_methods[] = {
       "Write buf excepting zeros at the end. Return trailing zero count." },
     { "selftest", selftest, METH_VARARGS,
 	"Check that the rolling checksum rolls correctly (for unit tests)." },
-    { "blobbits", blobbits, METH_VARARGS,
-	"Return the number of bits in the rolling checksum." },
-    { "splitbuf", splitbuf, METH_VARARGS,
-	"Split a list of strings based on a rolling checksum." },
+    { "rollsum", rollsum, METH_VARARGS,
+       "Return the rolling checksum for the given string." },
     { "bitmatch", bitmatch, METH_VARARGS,
 	"Count the number of matching prefix bits between two strings." },
     { "firstword", firstword, METH_VARARGS,
@@ -2297,8 +2164,6 @@ static PyMethodDef helper_methods[] = {
         "Return a random 20-byte string" },
     { "open_noatime", open_noatime, METH_VARARGS,
 	"open() the given filename for read with O_NOATIME if possible" },
-    { "fadvise_done", fadvise_done, METH_VARARGS,
-	"Inform the kernel that we're finished with earlier parts of a file" },
 #ifdef BUP_HAVE_FILE_ATTRS
     { "get_linux_file_attr", bup_get_linux_file_attr, METH_VARARGS,
       "Return the Linux attributes for the given file." },
@@ -2336,13 +2201,6 @@ static PyMethodDef helper_methods[] = {
 #endif
     { "bytescmp", bup_bytescmp, METH_VARARGS,
       "Return a negative value if x < y, zero if equal, positive otherwise."},
-    { "cat_bytes", bup_cat_bytes, METH_VARARGS,
-      "For (x_bytes, x_ofs, x_n, y_bytes, y_ofs, y_n) arguments, return their concatenation."},
-#ifdef BUP_MINCORE_BUF_TYPE
-    { "mincore", bup_mincore, METH_VARARGS,
-      "For mincore(src, src_n, src_off, dest, dest_off)"
-      " call the system mincore(src + src_off, src_n, &dest[dest_off])." },
-#endif
     { "getpwuid", bup_getpwuid, METH_VARARGS,
       "Return the password database entry for the given numeric user id,"
       " as a tuple with all C strings as bytes(), or None if the user does"
@@ -2439,6 +2297,9 @@ static int setup_module(PyObject *m)
     // At least for INTEGER_TO_PY
     assert(sizeof(intmax_t) <= sizeof(long long));
     assert(sizeof(uintmax_t) <= sizeof(unsigned long long));
+    // This should be guaranteed by the C standard, but it's cheap to
+    // double-check, and we depend on it.
+    assert(sizeof(unsigned long) >= sizeof(uint32_t));
 
     test_integral_assignment_fits();
 
@@ -2509,7 +2370,12 @@ static struct PyModuleDef helpers_def = {
 
 PyMODINIT_FUNC PyInit__helpers(void)
 {
-    PyObject *module = PyModule_Create(&helpers_def);
+    PyObject *module;
+
+    if (hashsplit_init())
+        return NULL;
+
+    module = PyModule_Create(&helpers_def);
     if (module == NULL)
         return NULL;
     if (!setup_module(module))
@@ -2517,5 +2383,15 @@ PyMODINIT_FUNC PyInit__helpers(void)
         Py_DECREF(module);
         return NULL;
     }
+
+    Py_INCREF(&HashSplitterType);
+    if (PyModule_AddObject(module, "HashSplitter",
+                           (PyObject *) &HashSplitterType) < 0)
+    {
+        Py_DECREF(&HashSplitterType);
+        Py_DECREF(module);
+        return NULL;
+    }
+
     return module;
 }

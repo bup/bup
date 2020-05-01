@@ -34,7 +34,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-static uint32_t rollsum_sum(uint8_t *buf, size_t ofs, size_t len)
+uint32_t rollsum_sum(uint8_t *buf, size_t ofs, size_t len)
 {
     size_t count;
     Rollsum r;
@@ -42,31 +42,6 @@ static uint32_t rollsum_sum(uint8_t *buf, size_t ofs, size_t len)
     for (count = ofs; count < len; count++)
 	rollsum_roll(&r, buf[count]);
     return rollsum_digest(&r);
-}
-
-
-int bupsplit_find_ofs(const unsigned char *buf, int len, int *bits)
-{
-    Rollsum r;
-    int count;
-    
-    rollsum_init(&r);
-    for (count = 0; count < len; count++)
-    {
-	rollsum_roll(&r, buf[count]);
-	if ((r.s2 & (BUP_BLOBSIZE-1)) == ((~0) & (BUP_BLOBSIZE-1)))
-	{
-	    if (bits)
-	    {
-		unsigned rsum = rollsum_digest(&r);
-		rsum >>= BUP_BLOBBITS;
-		for (*bits = BUP_BLOBBITS; (rsum >>= 1) & 1; (*bits)++)
-		    ;
-	    }
-	    return count+1;
-	}
-    }
-    return 0;
 }
 
 

@@ -52,9 +52,6 @@ def temp_dir(*args, **kwargs):
     # https://github.com/python/cpython/issues/88458
     return finalized(mkdtemp(*args, **kwargs), lambda x: rmtree(x))
 
-sc_page_size = os.sysconf('SC_PAGE_SIZE')
-assert(sc_page_size > 0)
-
 sc_arg_max = os.sysconf('SC_ARG_MAX')
 if sc_arg_max == -1:  # "no definite limit" - let's choose 2M
     sc_arg_max = 2 * 1024 * 1024
@@ -821,53 +818,6 @@ def mmap_readwrite_private(f, sz = 0, close=True):
     """
     return _mmap_do(f, sz, mmap.MAP_PRIVATE, mmap.PROT_READ|mmap.PROT_WRITE,
                     close)
-
-
-_mincore = getattr(_helpers, 'mincore', None)
-if _mincore:
-    # ./configure ensures that we're on Linux if MINCORE_INCORE isn't defined.
-    MINCORE_INCORE = getattr(_helpers, 'MINCORE_INCORE', 1)
-
-    _fmincore_chunk_size = None
-    def _set_fmincore_chunk_size():
-        global _fmincore_chunk_size
-        pref_chunk_size = 64 * 1024 * 1024
-        chunk_size = sc_page_size
-        if (sc_page_size < pref_chunk_size):
-            chunk_size = sc_page_size * (pref_chunk_size // sc_page_size)
-        _fmincore_chunk_size = chunk_size
-
-    def fmincore(fd):
-        """Return the mincore() data for fd as a bytearray whose values can be
-        tested via MINCORE_INCORE, or None if fd does not fully
-        support the operation."""
-        st = os.fstat(fd)
-        if (st.st_size == 0):
-            return bytearray(0)
-        if not _fmincore_chunk_size:
-            _set_fmincore_chunk_size()
-        pages_per_chunk = _fmincore_chunk_size // sc_page_size;
-        page_count = (st.st_size + sc_page_size - 1) // sc_page_size;
-        chunk_count = (st.st_size + _fmincore_chunk_size - 1) // _fmincore_chunk_size
-        result = bytearray(page_count)
-        for ci in range(chunk_count):
-            pos = _fmincore_chunk_size * ci;
-            msize = min(_fmincore_chunk_size, st.st_size - pos)
-            try:
-                m = io.mmap(fd, msize, mmap.MAP_PRIVATE, 0, 0, pos)
-            except mmap.error as ex:
-                if ex.errno in (errno.EINVAL, errno.ENODEV):
-                    # Perhaps the file was a pipe, i.e. "... | bup split ..."
-                    return None
-                raise ex
-            with m:
-                try:
-                    _mincore(m, msize, 0, result, ci * pages_per_chunk)
-                except OSError as ex:
-                    if ex.errno == errno.ENOSYS:
-                        return None
-                    raise
-        return result
 
 
 def parse_timestamp(epoch_str):

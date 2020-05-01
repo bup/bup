@@ -33,8 +33,6 @@
 #include <string.h>
 #include <stdint.h>
 
-#define BUP_BLOBBITS (13)
-#define BUP_BLOBSIZE (1<<BUP_BLOBBITS)
 #define BUP_WINDOWBITS (6)
 #define BUP_WINDOWSIZE (1<<BUP_WINDOWBITS)
 
@@ -80,7 +78,7 @@ static inline uint32_t rollsum_digest(Rollsum *r)
     return (r->s1 << 16) | (r->s2 & 0xffff);
 }
     
-int bupsplit_find_ofs(const unsigned char *buf, int len, int *bits);
+uint32_t rollsum_sum(uint8_t *buf, size_t ofs, size_t len);
 int bupsplit_selftest(void);
 
 #endif /* __BUPSPLIT_H */
