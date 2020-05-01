@@ -179,7 +179,7 @@ the blocks in the new backup would be different from the previous ones, and
 you'd have to store the same data all over again.  But with hashsplitting,
 no matter how much data you add, modify, or remove in the middle of the
 file, all the chunks *before* and *after* the affected chunk are absolutely
-the same.  All that matters to the hashsplitting algorithm is the 32-byte
+the same.  All that matters to the hashsplitting algorithm is the
 "separator" sequence, and a single change can only affect, at most, one
 separator sequence or the bytes between two separator sequences.  And
 because of rollsum, about one in 8192 possible 64-byte sequences is a
@@ -212,12 +212,17 @@ special tools.
 
 What we do instead is we extend the hashsplit algorithm a little further
 using what we call "fanout." Instead of checking just the last 13 bits of
-the checksum, we use additional checksum bits to produce additional splits. 
-For example, let's say we use a 4-bit fanout.  That means we'll break a
-series of chunks into its own tree object whenever the last 13+4 = 17 bits
-of the rolling checksum are 1.  Naturally, whenever the lowest 17 bits are
-1, the lowest 13 bits are *also* 1, so the boundary of a chunk group is
-always also the boundary of a particular chunk.
+the checksum, we use additional checksum bits to produce additional splits.
+Note that (most likely due to an implementation bug), the next higher bit
+after the 13 bits (marked 'x'):
+
+  ...... '..x1'1111'1111'1111
+
+is actually ignored next. Now, let's say we use a 4-bit fanout. That means
+we'll break a series of chunks into its own tree object whenever the next
+4 bits of the rolling checksum are 1, in addition to the 13 lowest ones.
+Since the 13 lowest bits already have to be 1, the boundary of a group of
+chunks is necessarily also always the boundary of a particular chunk.
 
 And so on.  Eventually you'll have too many chunk groups, but you can group
 them into supergroups by using another 4 bits, and continue from there.
