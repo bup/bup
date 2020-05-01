@@ -827,9 +827,7 @@ if _mincore:
             _set_fmincore_chunk_size()
         pages_per_chunk = _fmincore_chunk_size // sc_page_size;
         page_count = (st.st_size + sc_page_size - 1) // sc_page_size;
-        chunk_count = page_count // _fmincore_chunk_size
-        if chunk_count < 1:
-            chunk_count = 1
+        chunk_count = (st.st_size + _fmincore_chunk_size - 1) // _fmincore_chunk_size
         result = bytearray(page_count)
         for ci in compat.range(chunk_count):
             pos = _fmincore_chunk_size * ci;
