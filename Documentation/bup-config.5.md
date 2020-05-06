@@ -13,6 +13,31 @@ The following options may be set in the relevant `git` config
 
 # OPTIONS
 
+bup.split.files
+:   This setting determines the number of fixed bits in the hash-split
+    algorithm that lead to a chunk boundary, and thus the average size
+    of objects. This represents a trade-off between the efficiency of
+    the deduplication (fewer bits means better deduplication) and the
+    amount of metadata to keep on disk and RAM usage during repo
+    operations (more bits means fewer objects, means less metadata
+    space and RAM use).  The expected average block size is 2^bits (1
+    << bits), a sufficiently small change in a file would cause that
+    much new data to be saved (plus tree metadata). The maximum blob
+    size is 4x that. The default of this setting is 13 for backward
+    compatibility, but it is recommended to change this to a higher
+    value (e.g. 16) on all but very small repos.
+
+    *NOTE:* Changing this value in an existing repository will
+    duplicate data because it causes the split boundaries to change,
+    so subsequent saves will not deduplicate against the existing
+    data; they will just store the data again.
+
+    *NOTE:* As with `bup.split.trees` below (see NOTE), using the same
+    index for repositories with different `bup.split.files` settings
+    will result in the index optimizations not working correctly, and
+    so `bup save` will have to completely re-read files that haven't
+    been modified, which is expensive.
+
 bup.split.trees
 :   When this boolean option is set to true, `bup` will attempt to
     split trees (directories) when writing to the repository during,

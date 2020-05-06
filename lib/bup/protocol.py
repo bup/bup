@@ -379,7 +379,8 @@ class Server:
         self.init_session()
         assert not args
         key, opttype = vint.recv(self.conn, 'ss')
-        if key in (b'bup.split.trees',):
+        if key in (b'bup.split.trees',
+                   b'bup.split.files'):
             opttype = None if not len(opttype) else opttype.decode('ascii')
             val = self.repo.config_get(key, opttype=opttype)
             if val is None:

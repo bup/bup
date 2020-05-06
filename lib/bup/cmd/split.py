@@ -1,6 +1,6 @@
 
 from binascii import hexlify
-import sys, time
+import os, sys, time
 
 from bup import compat, hashsplit, git, options, client
 from bup.compat import argv_bytes, environ
@@ -54,6 +54,8 @@ class NoOpRepo:
         self.closed = True
     def __del__(self):
         assert self.closed
+    def config_get(self, opt, *, opttype=None):
+        return git.git_config_get(os.devnull, opt, opttype=None)
     def write_data(self, content):
         return git.calc_hash(b'blob', content)
     def write_tree(self, shalist):
@@ -123,7 +125,7 @@ def split(opt, files, parent, out, repo):
     if opt.blobs:
         shalist = hashsplit.split_to_blobs(new_blob, files,
                                            keep_boundaries=opt.keep_boundaries,
-                                           progress=prog)
+                                           progress=prog, blobbits=opt.blobbits)
         for sha, size, level in shalist:
             out.write(hexlify(sha) + b'\n')
             reprogress()
@@ -132,20 +134,20 @@ def split(opt, files, parent, out, repo):
             mode, sha = \
                 hashsplit.split_to_blob_or_tree(new_blob, new_tree, files,
                                                 keep_boundaries=opt.keep_boundaries,
-                                                progress=prog)
+                                                progress=prog, blobbits=opt.blobbits)
             splitfile_name = git.mangle_name(b'data', hashsplit.GIT_MODE_FILE, mode)
             shalist = [(mode, splitfile_name, sha)]
         else:
             shalist = \
                 hashsplit.split_to_shalist(new_blob, new_tree, files,
                                            keep_boundaries=opt.keep_boundaries,
-                                           progress=prog)
+                                           progress=prog, blobbits=opt.blobbits)
         tree = new_tree(shalist)
     else:
         last = 0
         for blob, level in HashSplitter(files, progress=prog,
                                         keep_boundaries=opt.keep_boundaries,
-                                        bits=hashsplit.BUP_BLOBBITS,
+                                        bits=opt.blobbits,
                                         fanbits=hashsplit.fanbits()):
             hashsplit.total_split += len(blob)
             if opt.copy:
@@ -255,6 +257,8 @@ def main(argv):
 
     # repo creation must be last nontrivial command in each if clause above
     with repo:
+        opt.blobbits = repo.config_get(b'bup.split.files', opttype='int') \
+            or hashsplit.BUP_BLOBBITS
         if opt.name and writing:
             refname = opt.name and b'refs/heads/%s' % opt.name
             oldref = repo.read_ref(refname)
