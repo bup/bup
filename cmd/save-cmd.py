@@ -395,18 +395,13 @@ for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse_during):
     else:
         if stat.S_ISREG(ent.mode):
             try:
-                f = hashsplit.open_noatime(ent.name)
-            except (IOError, OSError) as e:
-                add_error(e)
-                lastskip_name = ent.name
-            else:
-                try:
+                with hashsplit.open_noatime(ent.name) as f:
                     (mode, id) = hashsplit.split_to_blob_or_tree(
                                             w.new_blob, w.new_tree, [f],
                                             keep_boundaries=False)
-                except (IOError, OSError) as e:
-                    add_error('%s: %s' % (ent.name, e))
-                    lastskip_name = ent.name
+            except (IOError, OSError) as e:
+                add_error('%s: %s' % (ent.name, e))
+                lastskip_name = ent.name
         else:
             if stat.S_ISDIR(ent.mode):
                 assert(0)  # handled above
