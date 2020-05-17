@@ -31,6 +31,11 @@
                 {% else %}
                     <a href=".{{ amend_query(params, hash=1) }}">Show hashes</a>
                 {% end %}
+                {% if params.get('human') %}
+                    <a href=".{{ amend_query(params, human=0) }}">Show sizes as bytes</a>
+                {% else %}
+                    <a href=".{{ amend_query(params, human=1) }}">Show readable sizes</a>
+                {% end %}
             </div>
             <table>
                 <tr>

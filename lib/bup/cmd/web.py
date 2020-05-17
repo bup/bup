@@ -131,7 +131,6 @@ def _dir_contents(repo, resolution, params, param_info):
     """Yield the display information for the contents of dir_item."""
 
     def display_info(name, item, resolved_item, display_name=None, omitsize=False):
-        global opt
         link = parse.quote(name)
         # link should be based on fully resolved type to avoid extra
         # HTTP redirect.
@@ -140,7 +139,7 @@ def _dir_contents(repo, resolution, params, param_info):
 
         if not omitsize:
             size = vfs.item_size(repo, item)
-            if opt.human_readable:
+            if params.get('human'):
                 display_size = format_filesize(size)
             else:
                 display_size = size
@@ -181,12 +180,16 @@ def _dir_contents(repo, resolution, params, param_info):
 
 class BupRequestHandler(tornado.web.RequestHandler):
 
-    def initialize(self, repo=None):
+    def initialize(self, repo=None, human=None):
         self.repo = repo
         default_false_param = ParamInfo(default=0, from_req=from_req_bool,
                                         normalize=normalize_bool)
+        human_param = ParamInfo(default=1 if human else 0,
+                                from_req=from_req_bool,
+                                normalize=normalize_bool)
         self.bup_param_info = dict(hash=default_false_param,
                                    hidden=default_false_param,
+                                   human=human_param,
                                    meta=default_false_param)
 
     def decode_argument(self, value, name=None):
@@ -327,7 +330,6 @@ browser           show repository in default browser (incompatible with unix://)
 opt = None
 
 def main(argv):
-    global opt
     signal.signal(signal.SIGTERM, handle_sigterm)
 
     UnixAddress = namedtuple('UnixAddress', ['path'])
@@ -373,7 +375,8 @@ def main(argv):
         sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
 
     with LocalRepo() as repo:
-        handlers = [ (r"(?P<path>/.*)", BupRequestHandler, dict(repo=repo))]
+        handlers = [ (r"(?P<path>/.*)", BupRequestHandler,
+                      dict(repo=repo, human=opt.human_readable))]
         application = tornado.web.Application(handlers, **settings)
 
         http_server = HTTPServer(application)
