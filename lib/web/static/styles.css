@@ -27,6 +27,6 @@ td.dir-size, td.dir-meta-uid, td.dir-meta-gid {
     text-align: right;
 }
 
-td.dir-meta-mode {
+td.dir-meta-mode, td.dir-hash {
     font-family: monospace;
 }

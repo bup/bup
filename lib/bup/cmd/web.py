@@ -162,7 +162,9 @@ def _dir_contents(repo, resolution, params, param_info):
         meta = resolved_item.meta
         if not isinstance(meta, Metadata):
             meta = None
-        return path_msg(display_name), link + query, display_size, meta
+        oidx = getattr(resolved_item, 'oid', None)
+        if oidx: oidx = hexlify(oidx)
+        return path_msg(display_name), link + query, display_size, meta, oidx
 
     dir_item = resolution[-1][1]
     for name, item in vfs.contents(repo, dir_item):
@@ -183,7 +185,8 @@ class BupRequestHandler(tornado.web.RequestHandler):
         self.repo = repo
         default_false_param = ParamInfo(default=0, from_req=from_req_bool,
                                         normalize=normalize_bool)
-        self.bup_param_info = dict(hidden=default_false_param,
+        self.bup_param_info = dict(hash=default_false_param,
+                                   hidden=default_false_param,
                                    meta=default_false_param)
 
     def decode_argument(self, value, name=None):

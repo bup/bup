@@ -26,9 +26,17 @@
                 {% else %}
                     <a href=".{{ amend_query(params, meta=1) }}">Show metadata</a>
                 {% end %}
+                {% if params.get('hash') %}
+                    <a href=".{{ amend_query(params, hash=0) }}">Hide hashes</a>
+                {% else %}
+                    <a href=".{{ amend_query(params, hash=1) }}">Show hashes</a>
+                {% end %}
             </div>
             <table>
                 <tr>
+                    {% if params.get('hash') %}
+                        <th class="dir-hash">Hash</th>
+                    {% end %}
                     {% if params.get('meta') %}
                         <th class="dir-meta-mode">Mode</th>
                         <th class="dir-meta-owner" colspan="2">Owner</th>
@@ -40,8 +48,11 @@
                     {% end %}
                     <th class="dir-name">Name</th>
                 </tr>
-                {% for (display, link, size, meta) in dir_contents %}
+                {% for (display, link, size, meta, oidx) in dir_contents %}
                 <tr>
+                    {% if params.get('hash') %}
+                        <td class="dir-hash">{{ oidx if oidx else '' }}</td>
+                    {% end %}
                     {% if params.get('meta') and meta is not None%}
                         <td class="dir-meta-mode">{{ mode_str(meta.mode) }}</td>
                         <td class="dir-meta-owner">{{ '' if meta.user is None else meta.user }}</td>
