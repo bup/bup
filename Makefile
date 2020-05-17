@@ -191,6 +191,7 @@ cmdline_tests := \
   t/test-fsck.sh \
   t/test-fuse.sh \
   t/test-ftp \
+  t/test-web.sh \
   t/test-gc.sh \
   t/test-import-duplicity.sh \
   t/test-import-rdiff-backup.sh \
@@ -220,13 +221,6 @@ cmdline_tests := \
   t/test-split-join.sh \
   t/test-tz.sh \
   t/test-xdev.sh
-
-ifeq "2" "$(bup_python_majver)"
-  # unresolved
-  #   web: needs more careful attention, path bytes round-trips, reprs, etc.
-  cmdline_tests += \
-    t/test-web.sh
-endif
 
 tmp-target-run-test-get-%: all t/tmp
 	$(pf); cd $$(pwd -P); TMPDIR="$(test_tmp)" \
