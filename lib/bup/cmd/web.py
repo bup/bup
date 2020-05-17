@@ -103,7 +103,8 @@ def _compute_breadcrumbs(path, params, param_info):
     """Returns a list of breadcrumb objects for a path."""
     breadcrumbs = []
     full_path = '/'
-    breadcrumbs.append(('[root]', full_path))
+    query = encode_query(params, param_info)
+    breadcrumbs.append(('[root]', full_path + query))
     path_parts = path.split(b'/')[1:-1]
     for part in path_parts:
         full_path += parse.quote(part) + '/'
