@@ -251,6 +251,16 @@ class BupRequestHandler(tornado.web.RequestHandler):
             dir_contents=_dir_contents(self.repo, resolution, params, param_info))
         return None
 
+    def _set_header(self, path, file_item):
+        meta = file_item.meta
+        ctype = self._guess_type(path)
+        assert len(file_item.oid) == 20
+        if meta.mtime is not None:
+            self.set_header("Last-Modified", http_date_from_utc_ns(meta.mtime))
+        self.set_header("Content-Type", ctype)
+        self.set_header("Etag", hexlify(file_item.oid))
+        self.set_header("Content-Length", str(meta.size))
+
     @gen.coroutine
     def _get_file(self, repo, path, resolved):
         """Process a request on a file.
@@ -258,21 +268,27 @@ class BupRequestHandler(tornado.web.RequestHandler):
         Return value is either a file object, or None (indicating an error).
         In either case, the headers are sent.
         """
-        file_item = resolved[-1][1]
-        file_item = vfs.augment_item_meta(repo, file_item, include_size=True)
-        meta = file_item.meta
-        ctype = self._guess_type(path)
-        self.set_header("Last-Modified", http_date_from_utc_ns(meta.mtime))
-        self.set_header("Content-Type", ctype)
+        try:
+            file_item = resolved[-1][1]
+            file_item = vfs.augment_item_meta(repo, file_item, include_size=True)
 
-        self.set_header("Content-Length", str(meta.size))
-        assert len(file_item.oid) == 20
-        self.set_header("Etag", hexlify(file_item.oid))
-        if self.request.method != 'HEAD':
-            with vfs.fopen(self.repo, file_item) as f:
-                it = chunkyreader(f)
-                for blob in chunkyreader(f):
-                    self.write(blob)
+            # Defer the set_header() calls until after we start
+            # writing so we can still generate a 500 failure if
+            # something fails.
+            if self.request.method == 'HEAD':
+                self._set_header(path, file_item)
+            else:
+                set_header = False
+                with vfs.fopen(self.repo, file_item) as f:
+                    for blob in chunkyreader(f):
+                        if not set_header:
+                            self._set_header(path, file_item)
+                            set_header = True
+                        self.write(blob)
+        except Exception as e:
+            self.set_status(500)
+            self.write("<h1>Server Error</h1>\n")
+            self.write("%s: %s\n" % (e.__class__.__name__, str(e)))
         raise gen.Return()
 
     def _guess_type(self, path):
