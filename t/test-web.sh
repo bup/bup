@@ -49,6 +49,7 @@ WVSTART 'web'
 WVPASS bup init
 WVPASS mkdir src
 WVPASS echo '¡excitement!' > src/data
+WVPASS echo -e 'whee \x80\x90\xff' > "$(echo -ne 'src/whee \x80\x90\xff')"
 WVPASS bup index src
 WVPASS bup save -n '¡excitement!' --strip src
 
@@ -58,10 +59,13 @@ wait-for-server-start
 
 WVPASS curl --unix-socket ./socket \
        'http://localhost/%C2%A1excitement%21/latest/data' > result
+WVPASS curl --unix-socket ./socket \
+       'http://localhost/%C2%A1excitement%21/latest/whee%20%80%90%ff' > result2
 WVPASSEQ "$(curl --unix-socket ./socket http://localhost/static/styles.css)" \
          "$(cat "$TOP/lib/web/static/styles.css")"
 
 WVPASSEQ '¡excitement!' "$(cat result)"
+WVPASS cmp "$(echo -ne 'src/whee \x80\x90\xff')" result2
 WVPASS kill -s TERM "$web_pid"
 WVPASS wait "$web_pid"
 
