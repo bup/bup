@@ -445,7 +445,7 @@ def format_filesize(size):
         return "%d" % (size)
     exponent = int(math.log(size) // math.log(unit))
     size_prefix = "KMGTPE"[exponent - 1]
-    return "%.1f%s" % (size // math.pow(unit, exponent), size_prefix)
+    return "%.1f%s" % (size / math.pow(unit, exponent), size_prefix)
 
 
 class NotOk(Exception):
