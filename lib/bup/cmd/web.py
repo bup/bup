@@ -1,6 +1,8 @@
 
 from binascii import hexlify
-from collections import namedtuple
+from collections import ChainMap, namedtuple
+from urllib import parse
+from urllib.parse import urlencode
 import mimetypes, os, posixpath, signal, stat, sys, time, webbrowser
 
 from bup import options, git, vfs
@@ -34,18 +36,79 @@ def http_date_from_utc_ns(utc_ns):
     return time.strftime('%a, %d %b %Y %H:%M:%S', time.gmtime(utc_ns / 10**9))
 
 
-def _compute_breadcrumbs(path, show_hidden=False):
+def normalize_bool(k, v):
+    return 1 if v else 0
+
+
+def from_req_bool(k, v):
+    if v == '0': return 0
+    if v == '1': return 1
+    raise ValueError(f'Request {k} parameter not 0 or 1')
+
+
+class ParamInfo:
+    """The default indicates the value that will be assumed if the
+    parameter is missing.  from_req(k, v) converts from a request
+    value to the param value, e.g. perhaps from '100' to 100 for an
+    integer param.  normalize(k, v) converts a proposed change to the
+    canonical form, e.g. perhaps 100 to 1 for a boolean parameter.
+    from_req must produce a subset of normalize's values.
+
+    """
+    __slots__ = 'default', 'from_req', 'normalize'
+    def __init__(self, **kw):
+        for k, v in kw.items():
+            setattr(self, k, v)
+
+
+def request_params(req):
+    """Fully vet the incoming request arguments via the bup_param_info
+    and return a dictionary of the query parameters..
+
+    """
+    param_info = req.bup_param_info
+    params = {}
+    for k in req.request.arguments.keys():
+        info = param_info.get(k)
+        if not info:
+            # FIXME: eventually raise proper http error.
+            raise ValueError(f'Unexpected request parameter {k!r}')
+        v = req.get_argument(k, None)
+        params[k] = info.from_req(k, v)
+    return params
+
+
+def encode_query(params, param_info):
+    """Return a properly encoded query fragment (including a leading
+    ?) representing the given params.
+
+    """
+    result = {}
+    for k, v in params.items():
+        info = param_info.get(k)
+        if not info:
+            # FIXME: eventually raise proper http error.
+            raise ValueError(f'Unexpected request parameter {k!r}')
+        v = info.normalize(k, v)
+        if v == info.default:
+            result.pop(k, None)
+        else:
+            result[k] = v
+    if not result:
+        return ''
+    return '?' + urlencode(result)
+
+
+def _compute_breadcrumbs(path, params, param_info):
     """Returns a list of breadcrumb objects for a path."""
     breadcrumbs = []
-    breadcrumbs.append((b'[root]', b'/'))
+    full_path = '/'
+    breadcrumbs.append(('[root]', full_path))
     path_parts = path.split(b'/')[1:-1]
-    full_path = b'/'
     for part in path_parts:
-        full_path += part + b"/"
-        url_append = b""
-        if show_hidden:
-            url_append = b'?hidden=1'
-        breadcrumbs.append((part, full_path+url_append))
+        full_path += parse.quote(part) + '/'
+        query = encode_query(params, param_info)
+        breadcrumbs.append((path_msg(part), full_path + query))
     return breadcrumbs
 
 
@@ -62,19 +125,16 @@ def _contains_hidden_files(repo, dir_item):
     return False
 
 
-def _dir_contents(repo, resolution, show_hidden=False):
+def _dir_contents(repo, resolution, params, param_info):
     """Yield the display information for the contents of dir_item."""
-
-    url_query = b'?hidden=1' if show_hidden else b''
 
     def display_info(name, item, resolved_item, display_name=None, omitsize=False):
         global opt
+        link = parse.quote(name)
         # link should be based on fully resolved type to avoid extra
         # HTTP redirect.
-        link = tornado.escape.url_escape(name, plus=False)
         if stat.S_ISDIR(vfs.item_mode(resolved_item)):
             link += '/'
-        link = link.encode('ascii')
 
         if not omitsize:
             size = vfs.item_size(repo, item)
@@ -96,11 +156,12 @@ def _dir_contents(repo, resolution, show_hidden=False):
             else:
                 display_name = name
 
-        return display_name, link + url_query, display_size
+        query = encode_query(params, param_info)
+        return path_msg(display_name), link + query, display_size
 
     dir_item = resolution[-1][1]
     for name, item in vfs.contents(repo, dir_item):
-        if not show_hidden:
+        if not params.get('hidden'):
             if (name not in (b'.', b'..')) and name.startswith(b'.'):
                 continue
         if name == b'.':
@@ -115,6 +176,9 @@ class BupRequestHandler(tornado.web.RequestHandler):
 
     def initialize(self, repo=None):
         self.repo = repo
+        default_false_param = ParamInfo(default=0, from_req=from_req_bool,
+                                        normalize=normalize_bool)
+        self.bup_param_info = dict(hidden=default_false_param)
 
     def decode_argument(self, value, name=None):
         if name == 'path':
@@ -153,20 +217,22 @@ class BupRequestHandler(tornado.web.RequestHandler):
             print('Redirecting from %s to %s' % (path_msg(path), path_msg(path + b'/')))
             return self.redirect(path + b'/', permanent=True)
 
-        hidden_arg = self.request.arguments.get('hidden', [0])[-1]
-        try:
-            show_hidden = int(hidden_arg)
-        except ValueError as e:
-            show_hidden = False
+        param_info = self.bup_param_info
+        params = request_params(self)
+
+        def amend_query(params, **changes):
+            # The changes allow us to easily avoid double curly braces in
+            # templates, e.g. {**params, **{'hidden': 1}}
+            return encode_query(ChainMap(changes, params), param_info)
 
         self.render(
             'list-directory.html',
             path=path,
-            breadcrumbs=_compute_breadcrumbs(path, show_hidden),
+            breadcrumbs=_compute_breadcrumbs(path, params, param_info),
             files_hidden=_contains_hidden_files(self.repo, resolution[-1][1]),
-            hidden_shown=show_hidden,
-            dir_contents=_dir_contents(self.repo, resolution,
-                                       show_hidden=show_hidden))
+            params=params,
+            amend_query=amend_query,
+            dir_contents=_dir_contents(self.repo, resolution, params, param_info))
         return None
 
     @gen.coroutine
