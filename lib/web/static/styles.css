@@ -13,6 +13,11 @@ body {
 
 table {
     width: auto;
+    border-collapse: collapse;
+}
+
+tr:nth-child(even) {
+    background-color: #e0e0e0;
 }
 
 th {
