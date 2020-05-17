@@ -28,45 +28,41 @@ wait-for-server-start()
 WVPASS cd "$tmpdir"
 
 # FIXME: add WVSKIP
-run_test=true
-
 if test -z "$(type -p curl)"; then
     WVSTART 'curl does not appear to be installed; skipping  test'
-    run_test=''
+    exit 0
 fi
     
 WVPASS bup-python -c "import socket as s; s.socket(s.AF_UNIX).bind('socket')"
 curl -s --unix-socket ./socket http://localhost/foo
 if test $? -ne 7; then
     WVSTART 'curl does not appear to support --unix-socket; skipping test'
-    run_test=''
+    exit 0
 fi
 
 if ! bup-python -c 'import tornado' 2> /dev/null; then
     WVSTART 'unable to import tornado; skipping test'
-    run_test=''
+    exit 0
 fi
 
-if test -n "$run_test"; then
-    WVSTART 'web'
-    WVPASS bup init
-    WVPASS mkdir src
-    WVPASS echo '¡excitement!' > src/data
-    WVPASS bup index src
-    WVPASS bup save -n '¡excitement!' --strip src
+WVSTART 'web'
+WVPASS bup init
+WVPASS mkdir src
+WVPASS echo '¡excitement!' > src/data
+WVPASS bup index src
+WVPASS bup save -n '¡excitement!' --strip src
 
-    "$TOP/bup" web unix://socket &
-    web_pid=$!
-    wait-for-server-start
+"$TOP/bup" web unix://socket &
+web_pid=$!
+wait-for-server-start
 
-    WVPASS curl --unix-socket ./socket \
-           'http://localhost/%C2%A1excitement%21/latest/data' > result
-    WVPASSEQ "$(curl --unix-socket ./socket http://localhost/static/styles.css)" \
-             "$(cat "$TOP/lib/web/static/styles.css")"
+WVPASS curl --unix-socket ./socket \
+       'http://localhost/%C2%A1excitement%21/latest/data' > result
+WVPASSEQ "$(curl --unix-socket ./socket http://localhost/static/styles.css)" \
+         "$(cat "$TOP/lib/web/static/styles.css")"
 
-    WVPASSEQ '¡excitement!' "$(cat result)"
-    WVPASS kill -s TERM "$web_pid"
-    WVPASS wait "$web_pid"
-fi
+WVPASSEQ '¡excitement!' "$(cat result)"
+WVPASS kill -s TERM "$web_pid"
+WVPASS wait "$web_pid"
 
 WVPASS rm -r "$tmpdir"
