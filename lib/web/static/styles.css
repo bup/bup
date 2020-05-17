@@ -19,6 +19,10 @@ th {
     text-align: left;
 }
 
-.dir-size {
+th, td {
     padding-left:15px;
+}
+
+td.dir-size {
+    text-align: right;
 }

@@ -24,15 +24,15 @@
             {% end %}
             <table>
                 <tr>
-                    <th class="dir-name">Name</th>
                     <th class="dir-size">Size</th>
+                    <th class="dir-name">Name</th>
                 </tr>
                 {% for (display, link, size) in dir_contents %}
                 <tr>
+                    <td class="dir-size">{{ '' if size is None else size }}</td>
                     <td class="dir-name">
                       <a href="{% raw link %}">{{ display }}</a>
                     </td>
-                    <td class="dir-size">{% if size is not None %}{{ size }}{% else %}&nbsp;{% end %}</td>
                 </tr>
                 {% end %}
             </table>
