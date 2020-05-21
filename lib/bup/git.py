@@ -414,6 +414,12 @@ class PackIdxV1(PackIdx):
         # Avoid slicing shatable for individual hashes (very high overhead)
         self.shatable = buffer(self.map, self.sha_ofs, self.nsha * 24)
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        self.close()
+
     def __len__(self):
         return int(self.nsha)  # int() from long for python 2
 
@@ -434,6 +440,12 @@ class PackIdxV1(PackIdx):
         for ofs in range(start, start + 24 * self.nsha, 24):
             yield self.map[ofs : ofs + 20]
 
+    def close(self):
+        if self.map is not None:
+            self.shatable = None
+            self.map.close()
+            self.map = None
+
 
 class PackIdxV2(PackIdx):
     """Object representation of a Git pack index (version 2) file."""
@@ -451,6 +463,12 @@ class PackIdxV2(PackIdx):
         self.ofs64table_ofs = self.ofstable_ofs + self.nsha * 4
         # Avoid slicing this for individual hashes (very high overhead)
         self.shatable = buffer(self.map, self.sha_ofs, self.nsha*20)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        self.close()
 
     def __len__(self):
         return int(self.nsha)  # int() from long for python 2
@@ -476,6 +494,12 @@ class PackIdxV2(PackIdx):
         start = self.sha_ofs
         for ofs in range(start, start + 20 * self.nsha, 20):
             yield self.map[ofs : ofs + 20]
+
+    def close(self):
+        if self.map is not None:
+            self.shatable = None
+            self.map.close()
+            self.map = None
 
 
 _mpi_count = 0
