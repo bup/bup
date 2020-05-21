@@ -404,6 +404,12 @@ class PackIdxV1(PackIdx):
         self.sha_ofs = 256*4
         self.shatable = buffer(self.map, self.sha_ofs, nsha*24)
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        self.close()
+
     def _ofs_from_idx(self, idx):
         return struct.unpack('!I', str(self.shatable[idx*24 : idx*24+4]))[0]
 
@@ -413,6 +419,12 @@ class PackIdxV1(PackIdx):
     def __iter__(self):
         for i in range(self.fanout[255]):
             yield buffer(self.map, 256*4 + 24*i + 4, 20)
+
+    def close(self):
+        if self.map is not None:
+            self.shatable = None
+            self.map.close()
+            self.map = None
 
 
 class PackIdxV2(PackIdx):
@@ -433,6 +445,11 @@ class PackIdxV2(PackIdx):
                                nsha*4)
         self.ofs64table = buffer(self.map,
                                  8 + 256*4 + nsha*20 + nsha*4 + nsha*4)
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        self.close()
 
     def _ofs_from_idx(self, idx):
         ofs = struct.unpack('!I', str(buffer(self.ofstable, idx*4, 4)))[0]
@@ -448,6 +465,12 @@ class PackIdxV2(PackIdx):
     def __iter__(self):
         for i in range(self.fanout[255]):
             yield buffer(self.map, 8 + 256*4 + 20*i, 20)
+
+    def close(self):
+        if self.map is not None:
+            self.shatable = None
+            self.map.close()
+            self.map = None
 
 
 _mpi_count = 0

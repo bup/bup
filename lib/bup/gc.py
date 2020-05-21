@@ -157,42 +157,41 @@ def sweep(live_objects, existing_count, cat_pipe, threshold, compression,
         if verbosity:
             qprogress('preserving live data (%d%% complete)\r'
                       % ((float(collect_count) / existing_count) * 100))
-        idx = git.open_idx(idx_name)
+        with git.open_idx(idx_name) as idx:
+            idx_live_count = 0
+            for i in range(0, len(idx)):
+                sha = idx.shatable[i * 20 : (i + 1) * 20]
+                if live_objects.exists(sha):
+                    idx_live_count += 1
 
-        idx_live_count = 0
-        for i in range(0, len(idx)):
-            sha = idx.shatable[i * 20 : (i + 1) * 20]
-            if live_objects.exists(sha):
-                idx_live_count += 1
+            collect_count += idx_live_count
+            if idx_live_count == 0:
+                if verbosity:
+                    log('deleting %s\n'
+                        % git.repo_rel(basename(idx_name)))
+                ns.stale_files.append(idx_name)
+                ns.stale_files.append(idx_name[:-3] + 'pack')
+                continue
 
-        collect_count += idx_live_count
-        if idx_live_count == 0:
+            live_frac = idx_live_count / float(len(idx))
+            if live_frac > ((100 - threshold) / 100.0):
+                if verbosity:
+                    log('keeping %s (%d%% live)\n' % (git.repo_rel(basename(idx_name)),
+                                                      live_frac * 100))
+                continue
+
             if verbosity:
-                log('deleting %s\n'
-                    % git.repo_rel(basename(idx_name)))
+                log('rewriting %s (%.2f%% live)\n' % (basename(idx_name),
+                                                      live_frac * 100))
+            for i in range(0, len(idx)):
+                sha = idx.shatable[i * 20 : (i + 1) * 20]
+                if live_objects.exists(sha):
+                    item_it = cat_pipe.get(sha.encode('hex'))
+                    _, typ, _ = next(item_it)
+                    writer.just_write(sha, typ, ''.join(item_it))
+
             ns.stale_files.append(idx_name)
             ns.stale_files.append(idx_name[:-3] + 'pack')
-            continue
-
-        live_frac = idx_live_count / float(len(idx))
-        if live_frac > ((100 - threshold) / 100.0):
-            if verbosity:
-                log('keeping %s (%d%% live)\n' % (git.repo_rel(basename(idx_name)),
-                                                  live_frac * 100))
-            continue
-
-        if verbosity:
-            log('rewriting %s (%.2f%% live)\n' % (basename(idx_name),
-                                                  live_frac * 100))
-        for i in range(0, len(idx)):
-            sha = idx.shatable[i * 20 : (i + 1) * 20]
-            if live_objects.exists(sha):
-                item_it = cat_pipe.get(sha.encode('hex'))
-                _, typ, _ = next(item_it)
-                writer.just_write(sha, typ, ''.join(item_it))
-
-        ns.stale_files.append(idx_name)
-        ns.stale_files.append(idx_name[:-3] + 'pack')
 
     if verbosity:
         progress('preserving live data (%d%% complete)\n'
