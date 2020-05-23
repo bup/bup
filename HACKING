@@ -19,14 +19,9 @@ via email.
 Current Trajectory
 ==================
 
-Now that we've finished the 0.30 release, we're working on 0.31, and
-although we're not certain which new features will be included, here
-are likely candidates:
-
-  - Accommodation for the upcoming demise of Python 2, most likely via
-    support for Python 3.
-
-and these are also under consideration:
+Now that we've finished the 0.30.1 release, we're working on 0.31, and
+although we're not certain which new features will be included, we've
+nearly finished adding support for Python 3, and are also considering:
 
   - Better VFS performance for large repositories (i.e. fuse, ls,
     web...).
