@@ -5,8 +5,8 @@
   <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <meta name="author" content="Rob Browning rlb@defaultvalue.org" />
-  <meta name="dcterms.date" content="2019-09-28" />
-  <title>bup-prune-older(1) bup 0.30 | bup 0.30</title>
+  <meta name="dcterms.date" content="2020-05-23" />
+  <title>bup-prune-older(1) bup 0.30.1 | bup 0.30.1</title>
   <style type="text/css">
       code{white-space: pre-wrap;}
       span.smallcaps{font-variant: small-caps;}
@@ -16,9 +16,9 @@
 </head>
 <body>
 <header id="title-block-header">
-<h1 class="title">bup-prune-older(1) bup 0.30 | bup 0.30</h1>
+<h1 class="title">bup-prune-older(1) bup 0.30.1 | bup 0.30.1</h1>
 <p class="author">Rob Browning <a href="mailto:rlb@defaultvalue.org" class="email">rlb@defaultvalue.org</a></p>
-<p class="date">2019-09-28</p>
+<p class="date">2020-05-23</p>
 </header>
 <h1 id="name">NAME</h1>
 <p>bup-prune-older - remove older saves (CAUTION: EXPERIMENTAL)</p>
@@ -42,28 +42,28 @@
 <p>As indicated, the PERIODS are computed with respect to the current time, or the <code>--wrt</code> value if specified, and do not respect any calendar, so <code>--keep-dailies-for 5d</code> means a period starting exactly 5 * 24 * 60 * 60 seconds before the starting point.</p>
 <h1 id="options">OPTIONS</h1>
 <dl>
-<dt>–keep-all-for PERIOD</dt>
-<dd>when no smaller time scale –keep option applies, retain all saves within the given period.
+<dt>--keep-all-for PERIOD</dt>
+<dd>when no smaller time scale <code>--keep</code> option applies, retain all saves within the given period.
 </dd>
-<dt>–keep-dailies-for PERIOD</dt>
-<dd>when no smaller time scale –keep option applies, retain the newest save for any day within the given period.
+<dt>--keep-dailies-for PERIOD</dt>
+<dd>when no smaller time scale <code>--keep</code> option applies, retain the newest save for any day within the given period.
 </dd>
-<dt>–keep-monthlies-for PERIOD</dt>
-<dd>when no smaller time scale –keep option applies, retain the newest save for any month within the given period.
+<dt>--keep-monthlies-for PERIOD</dt>
+<dd>when no smaller time scale <code>--keep</code> option applies, retain the newest save for any month within the given period.
 </dd>
-<dt>–keep-yearlies-for PERIOD</dt>
-<dd>when no smaller time scale –keep option applies, retain the newest save for any year within the given period.
+<dt>--keep-yearlies-for PERIOD</dt>
+<dd>when no smaller time scale <code>--keep</code> option applies, retain the newest save for any year within the given period.
 </dd>
-<dt>–wrt UTC_SECONDS</dt>
+<dt>--wrt UTC_SECONDS</dt>
 <dd>when computing a keep period, place the most recent end of the range at UTC_SECONDS, and any saves newer than this will be kept.
 </dd>
-<dt>–pretend</dt>
+<dt>--pretend</dt>
 <dd><p>don’t do anything, just list the actions that would be taken to standard output, one action per line like this:</p>
 <pre><code>- SAVE
 + SAVE
 ...</code></pre>
 </dd>
-<dt>–gc</dt>
+<dt>--gc</dt>
 <dd>garbage collect the repository after removing the relevant saves. This is the default behavior, but it can be avoided with <code>--no-gc</code>.
 </dd>
 <dt>--gc-threshold N</dt>
