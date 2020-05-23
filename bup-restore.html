@@ -15,9 +15,9 @@
   </style>
 </head>
 <body>
-<header>
+<header id="title-block-header">
 <h1 class="title">bup-restore(1) Bup 0.30</h1>
-<p class="author">Avery Pennarun <a href="mailto:apenwarr@gmail.com">apenwarr@gmail.com</a></p>
+<p class="author">Avery Pennarun <a href="mailto:apenwarr@gmail.com" class="email">apenwarr@gmail.com</a></p>
 <p class="date">2019-09-28</p>
 </header>
 <h1 id="name">NAME</h1>
@@ -41,7 +41,7 @@
 <p>If <em>some/where</em> names a directory, <code>bup restore</code> will restore that directory and then recursively restore its contents.</p>
 <p>If <em>some/where</em> names a directory and ends with a slash (ie. path/to/dir/), <code>bup restore</code> will restore the children of that directory directly to the current directory (or the <code>--outdir</code>). If <em>some/where</em> does not end in a slash, the children will be restored to a subdirectory of the current directory.</p>
 <p>If <em>some/where</em> names a directory and ends in ‘/.’ (ie. path/to/dir/.), <code>bup restore</code> will do exactly what it would have done for path/to/dir, and then restore <em>dir</em>’s metadata to the current directory (or the <code>--outdir</code>). See the EXAMPLES section.</p>
-<p>As a special case, if <em>some/where</em> names the “latest” symlink, e.g. <code>bup restore /foo/latest</code>, then bup will act exactly as if the save that “latest” points to had been specified, and restore that, rather than the “latest” symlink itself.</p>
+<p>As a special case, if <em>some/where</em> names the “latest” symlink, e.g. <code>bup restore /foo/latest</code>, then bup will act exactly as if the save that “latest” points to had been specified, and restore that, rather than the “latest” symlink itself.</p>
 <p>Whenever path metadata is available, <code>bup restore</code> will attempt to restore it. When restoring ownership, bup implements tar/rsync-like semantics. It will normally prefer user and group names to uids and gids when they’re available, but it will not try to restore the user unless running as root, and it will fall back to the numeric uid or gid whenever the metadata contains a user or group name that doesn’t exist on the current system. The use of user and group names can be disabled via <code>--numeric-ids</code> (which can be important when restoring a chroot, for example), and as a special case, a uid or gid of 0 will never be remapped by name. Additionally, some systems don’t allow setting a uid/gid that doesn’t correspond with a known user/group. On those systems, bup will log an error for each relevant path.</p>
 <p>The <code>--map-user</code>, <code>--map-group</code>, <code>--map-uid</code>, <code>--map-gid</code> options may be used to adjust the available ownership information before any of the rules above are applied, but note that due to those rules, <code>--map-uid</code> and <code>--map-gid</code> will have no effect whenever a path has a valid user or group. In those cases, either <code>--numeric-ids</code> must be specified, or the user or group must be cleared by a suitable <code>--map-user foo=</code> or <code>--map-group foo=</code>.</p>
 <p>Hardlinks will also be restored when possible, but at least currently, no links will be made to targets outside the restore tree, and if the restore tree spans a different arrangement of filesystems from the save tree, some hardlink sets may not be completely restored.</p>
@@ -76,10 +76,10 @@
 <dd>write output data sparsely when reasonable. Currently, reasonable just means “at least whenever there are 512 or more consecutive zeroes”.
 </dd>
 <dt>--map-user <em>old</em>=<em>new</em></dt>
-<dd>for every path, restore the <em>old</em> (saved) user name as <em>new</em>. Specifying &quot;&quot; for <em>new</em> will clear the user. For example “–map-user foo=” will allow the uid to take effect for any path that originally had a user of “foo”, unless countermanded by a subsequent “–map-user foo=…” specification. See DESCRIPTION above for further information.
+<dd>for every path, restore the <em>old</em> (saved) user name as <em>new</em>. Specifying "" for <em>new</em> will clear the user. For example “–map-user foo=” will allow the uid to take effect for any path that originally had a user of “foo”, unless countermanded by a subsequent “–map-user foo=…” specification. See DESCRIPTION above for further information.
 </dd>
 <dt>--map-group <em>old</em>=<em>new</em></dt>
-<dd>for every path, restore the <em>old</em> (saved) group name as <em>new</em>. Specifying &quot;&quot; for <em>new</em> will clear the group. For example “–map-group foo=” will allow the gid to take effect for any path that originally had a group of “foo”, unless countermanded by a subsequent “–map-group foo=…” specification. See DESCRIPTION above for further information.
+<dd>for every path, restore the <em>old</em> (saved) group name as <em>new</em>. Specifying "" for <em>new</em> will clear the group. For example “–map-group foo=” will allow the gid to take effect for any path that originally had a group of “foo”, unless countermanded by a subsequent “–map-group foo=…” specification. See DESCRIPTION above for further information.
 </dd>
 <dt>--map-uid <em>old</em>=<em>new</em></dt>
 <dd>for every path, restore the <em>old</em> (saved) uid as <em>new</em>, unless countermanded by a subsequent “–map-uid <em>old</em>=…” option. Note that the uid will only be relevant for paths with no user. See DESCRIPTION above for further information.
