@@ -18,6 +18,8 @@ from __future__ import absolute_import, division, print_function
 from binascii import hexlify
 import os, sys, time
 
+sys.path[:0] = [os.path.dirname(os.path.realpath(__file__)) + '/..']
+
 from bup import compat, hashsplit, git, options, client
 from bup.compat import argv_bytes, environ
 from bup.helpers import (add_error, handle_ctrl_c, hostname, log, parse_num,

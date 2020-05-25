@@ -15,11 +15,13 @@ exec "$bup_python" "$0"
 # end of bup preamble
 
 from __future__ import absolute_import, print_function
-import sys, os, glob, subprocess
+import os, glob, subprocess, sys
 from shutil import rmtree
 from subprocess import PIPE, Popen
 from tempfile import mkdtemp
 from binascii import hexlify
+
+sys.path[:0] = [os.path.dirname(os.path.realpath(__file__)) + '/..']
 
 from bup import compat, options, git
 from bup.compat import argv_bytes

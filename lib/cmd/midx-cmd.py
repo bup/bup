@@ -18,6 +18,8 @@ from __future__ import absolute_import, print_function
 from binascii import hexlify
 import glob, math, os, resource, struct, sys, tempfile
 
+sys.path[:0] = [os.path.dirname(os.path.realpath(__file__)) + '/..']
+
 from bup import compat, options, git, midx, _helpers, xstat
 from bup.compat import argv_bytes, hexstr, range
 from bup.helpers import (Sha1, add_error, atomically_replaced_file, debug1, fdatasync,

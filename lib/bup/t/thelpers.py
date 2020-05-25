@@ -1,7 +1,7 @@
 
 from __future__ import absolute_import
 from time import tzset
-import helpers, math, os, os.path, re, subprocess
+import helpers, math, os, re, subprocess
 
 from wvtest import *
 

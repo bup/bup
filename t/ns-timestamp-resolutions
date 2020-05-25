@@ -14,7 +14,9 @@ exec "$bup_python" "$0"
 # end of bup preamble
 
 from __future__ import absolute_import
-import os, sys
+import os.path, sys
+
+sys.path[:0] = [os.path.dirname(os.path.realpath(__file__)) + '/../lib']
 
 from bup.compat import argv_bytes
 from bup.helpers import handle_ctrl_c, saved_errors

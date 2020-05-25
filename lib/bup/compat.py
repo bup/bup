@@ -14,17 +14,6 @@ py3 = py_maj >= 3
 if py3:
 
     from os import environb as environ
-
-    lc_ctype = environ.get(b'LC_CTYPE')
-    if lc_ctype and lc_ctype.lower() != b'iso-8859-1':
-        # Because of argv, options.py, pwd, grp, and any number of other issues
-        print('error: bup currently only works with ISO-8859-1, not LC_CTYPE=%s'
-              % lc_ctype.decode(),
-              file=sys.stderr)
-        print('error: this should already have been arranged, so indicates a bug',
-              file=sys.stderr)
-        sys.exit(2)
-
     from os import fsdecode, fsencode
     from shlex import quote
     input = input
@@ -178,24 +167,6 @@ def _configure_argv():
 
 _configure_argv()
 
-
-def restore_lc_env():
-    # Once we're up and running with iso-8859-1, undo the bup-python
-    # LC_CTYPE hackery, so we don't affect unrelated subprocesses.
-    bup_lc_all = environ.get(b'BUP_LC_ALL')
-    if bup_lc_all:
-        del environ[b'LC_COLLATE']
-        del environ[b'LC_CTYPE']
-        del environ[b'LC_MONETARY']
-        del environ[b'LC_NUMERIC']
-        del environ[b'LC_TIME']
-        del environ[b'LC_MESSAGES']
-        del environ[b'LC_MESSAGES']
-        environ[b'LC_ALL'] = bup_lc_all
-        return
-    bup_lc_ctype = environ.get(b'BUP_LC_CTYPE')
-    if bup_lc_ctype:
-        environ[b'LC_CTYPE'] = bup_lc_ctype
 
 def wrap_main(main):
     """Run main() and raise a SystemExit with the return value if it

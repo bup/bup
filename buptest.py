@@ -11,7 +11,7 @@ import errno, os, subprocess, sys, tempfile
 from wvtest import WVPASSEQ, wvfailure_count
 
 from bup import helpers
-from bup.compat import str_type
+from bup.compat import fsencode, str_type
 from bup.io import byte_stream
 
 
@@ -35,7 +35,7 @@ def no_lingering_errors():
 
 
 # Assumes (of course) this file is at the top-level of the source tree
-_bup_tmp = realpath(dirname(__file__.encode('iso-8859-1')) + b'/t/tmp')
+_bup_tmp = realpath(dirname(fsencode(__file__))) + b'/t/tmp'
 try:
     os.makedirs(_bup_tmp)
 except OSError as e:
@@ -78,9 +78,8 @@ def logcmd(cmd):
     if isinstance(cmd, str_type):
         print(s, file=sys.stderr)
     else:
-        # bytes - for now just continue to pass it through given
-        # bup-python wrapper
-        print(s.decode('iso-8859-1'), file=sys.stderr)
+        # bytes - for now just escape it
+        print(s.decode(errors='backslashreplace'), file=sys.stderr)
 
 def ex(cmd, **kwargs):
     """Print cmd to stderr and then run it as per ex(...).

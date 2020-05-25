@@ -23,6 +23,8 @@ import os, re, sys
 
 # For buptest, wvtest, ...
 sys.path[:0] = (abspath(os.path.dirname(__file__) + '/..'),)
+sys.path[:0] = [os.path.dirname(os.path.realpath(__file__)) + '/../lib']
+
 
 from bup import compat, path
 from bup.compat import environ, getcwd, items

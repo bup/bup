@@ -80,6 +80,10 @@ Reasons you might want to avoid bup
    Solaris, or Windows (with Cygwin, and maybe with WSL).  Patches to
    support other platforms are welcome.
 
+ - Until resolved, a [glibc bug](https://sourceware.org/bugzilla/show_bug.cgi?id=26034)
+   might cause bup to crash on startup for some (unusual) command line
+   argument values, when bup is configured to use Python 3.
+
  - Any items in "Things that are stupid" below.
 
 

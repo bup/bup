@@ -14,6 +14,7 @@ import os, sys
 
 # For buptest, wvtest, ...
 sys.path[:0] = (abspath(os.path.dirname(__file__) + '/..'),)
+sys.path[:0] = [os.path.dirname(os.path.realpath(__file__)) + '/../lib']
 
 from buptest import ex, exo, logcmd, test_tempdir
 from wvtest import wvfail, wvpass, wvpasseq, wvpassne, wvstart

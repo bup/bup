@@ -1,0 +1,37 @@
+#!/bin/sh
+"""": # -*-python-*-
+exec env LC_CTYPE=iso-8859-1 python "$0" ${1+"$@"}
+"""
+
+from __future__ import absolute_import, print_function
+from tempfile import NamedTemporaryFile
+import os, shutil, sys
+
+if sys.version_info[0] >= 3:
+    from shlex import quote
+else:
+    from pipes import quote
+
+src_path, dest_path = sys.argv[1:]
+
+with open(b'config/config.var/bup-python', 'rb') as src:
+    python = src.read()
+
+with NamedTemporaryFile() as tmp:
+    # Replace the section between "Here to end..." and the end of the
+    # preamble with the correct 'exec PYTHON "$0"'.
+    with open(src_path, 'rb') as src:
+        for line in src:
+            if line.startswith(b'# Here to end of preamble replaced during install'):
+                break
+            tmp.write(line)
+        for line in src:
+            if line == b'"""\n':
+                break
+        tmp.write(b'exec %s "$0"\n' % python)
+        tmp.write(b'"""\n')
+        for line in src:
+            tmp.write(line)
+    tmp.flush()
+    shutil.copy(tmp.name, dest_path)
+    os.chmod(dest_path, 0o755)

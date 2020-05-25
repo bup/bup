@@ -34,7 +34,10 @@ WVPASS bup index "$tmpdir/save"
 # that gets an error for the .../5 file in metadata.from_path()
 cat > "$tmpdir/bup-save" << EOF
 #!/usr/bin/env $top/cmd/bup-python
+import os.path, sys
+sys.path[:0] = [os.path.dirname(os.path.realpath(__file__)) + '/../../../lib']
 from bup import metadata
+
 orig_from_path = metadata.from_path
 def from_path(path, *args, **kw):
     if path.endswith(b'/5'):
@@ -70,7 +73,10 @@ WVPASS bup index "$tmpdir/save"
 
 cat > "$tmpdir/bup-save" << EOF
 #!/usr/bin/env $top/cmd/bup-python
+import os.path, sys
+sys.path[:0] = [os.path.dirname(os.path.realpath(__file__)) + '/../../../lib']
 from bup import metadata
+
 orig_from_path = metadata.from_path
 def from_path(path, *args, **kw):
     if path.endswith(b'/a'):
@@ -102,6 +108,8 @@ WVPASS bup index "$tmpdir/save"
 
 cat > "$tmpdir/bup-save" << EOF
 #!/usr/bin/env $top/cmd/bup-python
+import os.path, sys
+sys.path[:0] = [os.path.dirname(os.path.realpath(__file__)) + '/../../../lib']
 from bup import index
 
 Reader = index.Reader

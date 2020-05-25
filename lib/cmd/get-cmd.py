@@ -21,6 +21,8 @@ from collections import namedtuple
 from functools import partial
 from stat import S_ISDIR
 
+sys.path[:0] = [os.path.dirname(os.path.realpath(__file__)) + '/..']
+
 from bup import compat, git, client, helpers, vfs
 from bup.compat import argv_bytes, environ, hexstr, items, wrap_main
 from bup.git import get_cat_data, parse_commit, walk_object

@@ -13,12 +13,6 @@ else:
 
 
 def path_msg(x):
-    """Return a string representation of a path.
-
-    For now, assume that the destination encoding is going to be
-    ISO-8859-1, which it should be, for the primary current
-    destination, stderr, given the current bup-python.
-
-    """
+    """Return a string representation of a path."""
     # FIXME: configurability (might git-config quotePath be involved?)
-    return x.decode(encoding='iso-8859-1')
+    return x.decode(errors='backslashreplace')

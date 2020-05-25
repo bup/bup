@@ -19,6 +19,8 @@ from collections import namedtuple
 import mimetypes, os, posixpath, signal, stat, sys, time, urllib, webbrowser
 from binascii import hexlify
 
+sys.path[:0] = [os.path.dirname(os.path.realpath(__file__)) + '/..']
+
 from bup import compat, options, git, vfs
 from bup.helpers import (chunkyreader, debug1, format_filesize, handle_ctrl_c,
                          log, saved_errors)

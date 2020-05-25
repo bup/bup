@@ -51,7 +51,7 @@ def item_info(item, name,
         if classification:
             cls = xstat.classification_str(vfs.item_mode(item),
                                            classification == 'all')
-            result += cls.encode('iso-8859-1')
+            result += cls.encode('ascii')
     return result
 
 

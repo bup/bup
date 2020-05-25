@@ -7,7 +7,9 @@ exec "$bup_python" "$0" ${1+"$@"}
 from __future__ import absolute_import, print_function
 from random import randint
 from sys import stderr, stdout
-import sys
+import os, sys
+
+sys.path[:0] = [os.path.dirname(os.path.realpath(__file__)) + '/../lib']
 
 from bup.io import byte_stream
 

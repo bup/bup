@@ -47,7 +47,7 @@ WVSTART "index-cache"
 # the 'a-zA-Z0-9_' is '\w' from python,
 # the trailing _ is because there's no dir specified
 # and that should thus be empty
-hostname=$(bup python -c "from bup import helpers ; print(helpers.hostname().decode('iso8859-1'))")
+hostname=$(uname -n)
 idxcache=$(echo "$hostname" | sed 's/[^@a-zA-Z0-9_]/_/g')_
 # there should be an index-cache now
 for idx in "$tmpdir"/bup/objects/pack/*.idx ; do

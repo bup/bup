@@ -15,7 +15,9 @@ exec "$bup_python" "$0"
 # end of bup preamble
 
 from __future__ import absolute_import, print_function
-import sys, re, struct, time, resource
+import os.path, re, resource, struct, sys, time
+
+sys.path[:0] = [os.path.dirname(os.path.realpath(__file__)) + '/..']
 
 from bup import compat, git, bloom, midx, options, _helpers
 from bup.compat import range

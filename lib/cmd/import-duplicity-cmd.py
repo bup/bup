@@ -20,8 +20,11 @@ from pipes import quote
 from subprocess import check_call
 from time import strftime, strptime
 import os
+import os.path
 import sys
 import tempfile
+
+sys.path[:0] = [os.path.dirname(os.path.realpath(__file__)) + '/..']
 
 from bup import compat, git, helpers, options
 from bup.compat import argv_bytes, str_type
@@ -40,7 +43,7 @@ n,dry-run  don't do anything; just print what would be done
 """
 
 def logcmd(cmd):
-    log(shstr(cmd).decode('iso-8859-1', errors='replace') + '\n')
+    log(shstr(cmd).decode(errors='backslashreplace') + '\n')
 
 def exc(cmd, shell=False):
     global opt

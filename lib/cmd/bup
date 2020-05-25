@@ -26,10 +26,14 @@ exec "$script_home/bup-python" "$0"
 # end of bup preamble
 
 from __future__ import absolute_import, print_function
+
+import os, sys
+sys.path[:0] = [os.path.dirname(os.path.realpath(__file__)) + '/..']
+
 import errno, getopt, os, re, select, signal, subprocess, sys
 from subprocess import PIPE
 
-from bup.compat import environ, restore_lc_env
+from bup.compat import environ, fsdecode
 from bup.io import path_msg
 
 if sys.version_info[0] != 2 \
@@ -37,8 +41,6 @@ if sys.version_info[0] != 2 \
     print('error: bup may crash with python versions other than 2, or eat your data',
           file=sys.stderr)
     sys.exit(2)
-
-restore_lc_env()
 
 from bup import compat, path, helpers
 from bup.compat import add_ex_tb, add_ex_ctx, argv_bytes, wrap_main
@@ -76,7 +78,7 @@ def usage(msg=""):
     cmds = []
     for c in sorted(os.listdir(cmdpath)):
         if c.startswith(b'bup-') and c.find(b'.') < 0:
-            cname = c[4:].decode('iso-8859-1')
+            cname = fsdecode(c[4:])
             if cname not in common:
                 cmds.append(c[4:].decode(errors='backslashreplace'))
     log(columnate(cmds, '    '))

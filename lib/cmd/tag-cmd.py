@@ -18,6 +18,8 @@ from __future__ import absolute_import
 from binascii import hexlify
 import os, sys
 
+sys.path[:0] = [os.path.dirname(os.path.realpath(__file__)) + '/..']
+
 from bup import compat, git, options
 from bup.compat import argv_bytes
 from bup.helpers import debug1, handle_ctrl_c, log

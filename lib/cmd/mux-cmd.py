@@ -15,7 +15,9 @@ exec "$bup_python" "$0"
 # end of bup preamble
 
 from __future__ import absolute_import
-import os, sys, subprocess, struct
+import os, struct, subprocess, sys
+
+sys.path[:0] = [os.path.dirname(os.path.realpath(__file__)) + '/..']
 
 from bup import compat, options
 from bup.helpers import debug1, debug2, mux

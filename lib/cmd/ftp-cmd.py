@@ -20,7 +20,9 @@ exec "$bup_python" "$0"
 # (e.g. ISO-8859-1).
 
 from __future__ import absolute_import, print_function
-import sys, os, stat, fnmatch
+import os, fnmatch, stat, sys
+
+sys.path[:0] = [os.path.dirname(os.path.realpath(__file__)) + '/..']
 
 from bup import _helpers, compat, options, git, shquote, ls, vfs
 from bup.compat import argv_bytes

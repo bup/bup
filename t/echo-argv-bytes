@@ -27,3 +27,4 @@ from bup import compat
 for arg in compat.argvb:
     os.write(stdout.fileno(), arg)
     os.write(stdout.fileno(), b'\0\n')
+    stdout.flush()

@@ -72,15 +72,6 @@ all: $(bup_deps) Documentation/all $(current_sampledata)
 $(current_sampledata):
 	t/configure-sampledata --setup
 
-
-bup_libdir="$script_home/../lib"  # bup_libdir will be adjusted during install
-
-define install-bup-python
-  set -e; \
-  sed -e 's|.*# bup_libdir will be adjusted during install|bup_libdir="$$script_home/.."|' $1 > $2; \
-  chmod 0755 $2;
-endef
-
 PANDOC ?= $(shell type -p pandoc)
 
 ifeq (,$(PANDOC))
@@ -113,9 +104,11 @@ install: all
 	test -z "$(man_roff)" || $(INSTALL) -m 0644 $(man_roff) $(dest_mandir)/man1
 	test -z "$(man_html)" || install -d $(dest_docdir)
 	test -z "$(man_html)" || $(INSTALL) -m 0644 $(man_html) $(dest_docdir)
-	$(INSTALL) -pm 0755 cmd/bup $(dest_libdir)/cmd/
-	$(INSTALL) -pm 0755 cmd/bup-* $(dest_libdir)/cmd/
-	$(call install-bup-python,cmd/bup-python,"$(dest_libdir)/cmd/bup-python")
+	dev/install-python-script lib/cmd/bup "$(dest_libdir)/cmd/bup"
+	set -e; \
+	for cmd in $$(ls cmd/bup-* | grep -v cmd/bup-python); do \
+	  dev/install-python-script "$$cmd" "$(dest_libdir)/$$cmd"; \
+	done
 	cd "$(dest_bindir)" && \
 	  ln -sf "$$($(bup_python) -c 'import os; print(os.path.relpath("$(abspath $(dest_libdir))/cmd/bup"))')"
 	set -e; \
@@ -260,12 +253,8 @@ check: test
 distcheck: all
 	./wvtest run t/test-release-archive.sh
 
-cmd/bup-python: cmd/python-cmd.sh config/config.var/bup-python
-	"$$(cat config/config.var/bup-python)" dev/replace -l '@bup_python@' \
-	  "$$(dev/shquote < config/config.var/bup-python)" \
-	  < "$<" > "$@".$$PPID.tmp
-	chmod +x "$@".$$PPID.tmp
-	mv "$@".$$PPID.tmp "$@"
+cmd/bup-python: config/config.var/bup-python
+	cd cmd && ln -sf "$$(< $(CURDIR)/config/config.var/bup-python)" bup-python
 
 long-test: export BUP_TEST_LEVEL=11
 long-test: test

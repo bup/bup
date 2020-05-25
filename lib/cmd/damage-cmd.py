@@ -15,7 +15,9 @@ exec "$bup_python" "$0"
 # end of bup preamble
 
 from __future__ import absolute_import
-import sys, os, random
+import os, random, sys
+
+sys.path[:0] = [os.path.dirname(os.path.realpath(__file__)) + '/..']
 
 from bup import compat, options
 from bup.compat import argv_bytes, bytes_from_uint, range

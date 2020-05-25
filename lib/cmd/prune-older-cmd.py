@@ -20,7 +20,9 @@ from collections import defaultdict
 from itertools import groupby
 from sys import stderr
 from time import localtime, strftime, time
-import re, sys
+import os.path, re, sys
+
+sys.path[:0] = [os.path.dirname(os.path.realpath(__file__)) + '/..']
 
 from bup import compat, git, options
 from bup.compat import argv_bytes, int_types

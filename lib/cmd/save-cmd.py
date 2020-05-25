@@ -18,7 +18,9 @@ from __future__ import absolute_import, print_function
 from binascii import hexlify
 from errno import EACCES
 from io import BytesIO
-import os, sys, stat, time, math
+import math, os, stat, sys, time
+
+sys.path[:0] = [os.path.dirname(os.path.realpath(__file__)) + '/..']
 
 from bup import compat, hashsplit, git, options, index, client, metadata
 from bup import hlinkdb

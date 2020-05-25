@@ -17,6 +17,8 @@ exec "$bup_python" "$0"
 from __future__ import absolute_import
 import glob, os, sys, tempfile
 
+sys.path[:0] = [os.path.dirname(os.path.realpath(__file__)) + '/..']
+
 from bup import compat, options, git, bloom
 from bup.compat import argv_bytes, hexstr
 from bup.helpers import (add_error, debug1, handle_ctrl_c, log, progress, qprogress,
