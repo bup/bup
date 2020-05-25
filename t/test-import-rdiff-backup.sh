@@ -22,7 +22,7 @@ WVSTART "import-rdiff-backup"
 WVPASS bup init
 WVPASS cd "$tmpdir"
 WVPASS mkdir rdiff-backup
-WVPASS rdiff-backup "$top/cmd" rdiff-backup
+WVPASS rdiff-backup "$top/lib/cmd" rdiff-backup
 WVPASS bup tick
 WVPASS rdiff-backup "$top/Documentation" rdiff-backup
 WVPASS bup import-rdiff-backup rdiff-backup import-rdiff-backup

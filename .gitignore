@@ -1,4 +1,5 @@
-/cmd/bup-*
+\#*#
+.#*
 randomgen
 memtest
 *.o
@@ -12,6 +13,7 @@ memtest
 /build
 *.swp
 nbproject
+/lib/cmd/bup-*
 /t/sampledata/var/
 /t/tmp/
 /lib/bup/_checkout.py

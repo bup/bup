@@ -13,7 +13,7 @@ done
 script_home="$(cd "$(dirname "$cmdpath")" && pwd -P)"
 cd "$top"
 
-bup_libdir="$script_home/../lib"  # bup_libdir will be adjusted during install
+bup_libdir="$script_home/.."  # bup_libdir will be adjusted during install
 export PYTHONPATH="$bup_libdir${PYTHONPATH:+:$PYTHONPATH}"
 
 # Force python to use ISO-8859-1 (aka Latin 1), a single-byte
