@@ -221,6 +221,13 @@ def test_apply_to_path_restricted_access():
             os.mkdir(parent)
             os.mkdir(path)
             clear_errors()
+            if metadata.xattr:
+                try:
+                    metadata.xattr.set(path, b'user.buptest', b'bup')
+                except:
+                    print("failed to set test xattr")
+                    # ignore any failures here - maybe FS cannot do it
+                    pass
             m = metadata.from_path(path, archive_path=path, save_symlinks=True)
             WVPASSEQ(m.path, path)
             os.chmod(parent, 0o000)
@@ -230,7 +237,7 @@ def test_apply_to_path_restricted_access():
             if m.linux_attr and _linux_attr_supported(tmpdir):
                 expected_errors.append('Linux chattr: ')
             if metadata.xattr and m.linux_xattr:
-                expected_errors.append("xattr.set '")
+                expected_errors.append("xattr.set ")
             WVPASS(len(helpers.saved_errors) == len(expected_errors))
             for i in range(len(expected_errors)):
                 WVPASS(str(helpers.saved_errors[i]).startswith(expected_errors[i]))
