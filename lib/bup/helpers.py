@@ -1128,7 +1128,7 @@ if _localtime:
 # module, which doesn't appear willing to ignore the extra items.
 if _localtime:
     def localtime(time):
-        return bup_time(*_helpers.localtime(floor(time)))
+        return bup_time(*_helpers.localtime(int(floor(time))))
     def utc_offset_str(t):
         """Return the local offset from UTC as "+hhmm" or "-hhmm" for time t.
         If the current UTC offset does not represent an integer number
