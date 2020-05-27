@@ -132,7 +132,7 @@ def save_tree(opt, reader, hlink_db, msr, repo, split_trees, split_cfg):
     prog_subcount = 0
     prog_lastremain = None
 
-    def progress_report(n):
+    def progress_report(file_, n):
         nonlocal prog_count, prog_subcount, prog_lastremain
         prog_subcount += n
         cc = prog_count + prog_subcount
@@ -187,6 +187,9 @@ def save_tree(opt, reader, hlink_db, msr, repo, split_trees, split_cfg):
 
     total = ftotal = 0
     if opt.progress:
+        assert 'progress' not in split_cfg
+        split_cfg['progress'] = progress_report
+
         for transname, ent in reader.filter(opt.sources,
                                             wantrecurse=wantrecurse_pre):
             if not (ftotal % 10024):
@@ -199,7 +202,6 @@ def save_tree(opt, reader, hlink_db, msr, repo, split_trees, split_cfg):
                     total += ent.size
             ftotal += 1
         progress('Reading index: %d, done.\n' % ftotal)
-        hashsplit.progress_callback = progress_report
 
     # Root collisions occur when strip or graft options map more than one
     # path to the same directory (paths which originally had separate
@@ -243,7 +245,7 @@ def save_tree(opt, reader, hlink_db, msr, repo, split_trees, split_cfg):
                 lastdir = dir
 
         if opt.progress:
-            progress_report(0)
+            progress_report(None, 0)
         fcount += 1
 
         if not exists:
