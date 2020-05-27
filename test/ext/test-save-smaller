@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+. wvtest.sh
+. wvtest-bup.sh
+. dev/lib.sh
+
+set -o pipefail
+
+top="$(WVPASS pwd)" || exit $?
+tmpdir="$(WVPASS wvmktempdir)" || exit $?
+export BUP_DIR="$tmpdir/bup"
+
+bup() { "$top/bup" "$@"; }
+
+WVPASS cd "$tmpdir"
+
+WVSTART "init"
+WVPASS bup init
+
+WVPASS mkdir "$tmpdir/save"
+WVPASS echo small0 > "$tmpdir/save/small"
+WVPASS echo bigbigbigbigbig01 > "$tmpdir/save/big1"
+big1sha="$(sha1sum < "$tmpdir/save/big1")"
+WVPASS bup index "$tmpdir/save"
+WVPASS bup save -vv -n test "$tmpdir/save"
+WVPASS mkdir "$tmpdir/restore1"
+WVPASS bup restore -v --outdir="$tmpdir/restore1/" "/test/latest$tmpdir/save/"
+WVPASS cmp "$tmpdir/restore1/small" "$tmpdir/save/small"
+WVPASS cmp "$tmpdir/restore1/big1" "$tmpdir/save/big1"
+
+WVSTART "save --smaller"
+WVPASS echo bigbigbigbigbig02 > "$tmpdir/save/big1"
+WVPASS echo bigbigbigbigbig03 > "$tmpdir/save/big2"
+WVPASS bup index "$tmpdir/save"
+WVPASS bup save -vv -n test --smaller=10 "$tmpdir/save"
+WVPASS mkdir "$tmpdir/restore2"
+WVPASS bup restore -v --outdir="$tmpdir/restore2/" "/test/latest$tmpdir/save/"
+WVPASS cmp "$tmpdir/restore2/small" "$tmpdir/save/small"
+# (per the original DESIGN document, we should've had the old version
+# of the modified large file, but really that isn't implemented)
+# must _not_ have this file at all
+WVFAIL test -f "$tmpdir/restore2/big1"
+# and not the new one either
+WVFAIL test -f "$tmpdir/restore2/big2"
+
+WVSTART "index --fake-valid / save"
+WVPASS echo bigbigbigbigbig02 > "$tmpdir/save/big1"
+WVPASS echo bigbigbigbigbig03 > "$tmpdir/save/big2"
+WVPASS bup index "$tmpdir/save"
+WVPASS bup index --fake-valid "$tmpdir/save/big1" "$tmpdir/save/big2"
+WVPASS bup save -vv -n test "$tmpdir/save"
+WVPASS mkdir "$tmpdir/restore3"
+WVPASS bup restore -v --outdir="$tmpdir/restore3/" "/test/latest$tmpdir/save/"
+WVPASS cmp "$tmpdir/restore3/small" "$tmpdir/save/small"
+WVPASSEQ "$(sha1sum < "$tmpdir/restore3/big1")" "$big1sha"
+WVPASS cmp "$tmpdir/restore3/big2" "$tmpdir/save/big2"
+
+WVPASS rm -rf "$tmpdir"

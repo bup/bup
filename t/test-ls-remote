@@ -1,3 +1,0 @@
-#!/usr/bin/env bash
-
-BUP_TEST_REMOTE_REPO=t t/test-ls

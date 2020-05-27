@@ -60,7 +60,7 @@ WARNING: This is one of the few bup commands that can modify your
 archives in intentionally destructive ways.  Though if an attempt to
 join or restore the data you still care about succeeds after you've
 run this command, then that's a fairly encouraging sign that it worked
-correctly.  (The t/compare-trees command in the source tree can be
+correctly.  (The dev/compare-trees command in the source tree can be
 used to help test before/after results.)
 
 # METHODS

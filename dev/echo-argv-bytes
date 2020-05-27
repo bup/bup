@@ -1,0 +1,30 @@
+#!/bin/sh
+"""": # -*-python-*-
+# https://sourceware.org/bugzilla/show_bug.cgi?id=26034
+export "BUP_ARGV_0"="$0"
+arg_i=1
+for arg in "$@"; do
+    export "BUP_ARGV_${arg_i}"="$arg"
+    shift
+    arg_i=$((arg_i + 1))
+done
+bup_python="$(dirname "$0")/../config/bin/python" || exit $?
+exec "$bup_python" "$0"
+"""
+# end of bup preamble
+
+from __future__ import absolute_import, print_function
+
+from os.path import abspath, dirname
+from sys import stdout
+import os, sys
+
+script_home = abspath(dirname(__file__))
+sys.path[:0] = [abspath(script_home + '/../lib'), abspath(script_home + '/..')]
+
+from bup import compat
+
+for arg in compat.argvb:
+    os.write(stdout.fileno(), arg)
+    os.write(stdout.fileno(), b'\0\n')
+    stdout.flush()

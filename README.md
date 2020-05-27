@@ -453,16 +453,16 @@ Notes on NetBSD/pkgsrc
    cycle and error out, so "ls -R" and "find" will not work.
 
  - There is no support for ACLs.  If/when some enterprising person
-   fixes this, adjust t/compare-trees.
+   fixes this, adjust dev/compare-trees.
 
 
 Notes on Cygwin
 ---------------
 
  - There is no support for ACLs.  If/when some enterprising person
-   fixes this, adjust t/compare-trees.
+   fixes this, adjust dev/compare-trees.
 
- - In t/test.sh, two tests have been disabled.  These tests check to
+ - In test/ext/test.sh, two tests have been disabled.  These tests check to
    see that repeated saves produce identical trees and that an
    intervening index doesn't change the SHA1.  Apparently Cygwin has
    some unusual behaviors with respect to access times (that probably
@@ -474,7 +474,7 @@ Notes on OS X
 -------------
 
  - There is no support for ACLs.  If/when some enterprising person
-   fixes this, adjust t/compare-trees.
+   fixes this, adjust dev/compare-trees.
 
 
 How it works

@@ -1,0 +1,97 @@
+#!/bin/sh
+"""": # -*-python-*-
+bup_python="$(dirname "$0")/bup-python" || exit $?
+exec "$bup_python" "$0" ${1+"$@"}
+"""
+
+from __future__ import absolute_import, print_function
+from random import randint
+from sys import stderr, stdout
+import os, sys
+
+from bup.io import byte_stream
+
+def smaller_region(max_offset):
+    start = randint(0, max_offset)
+    return (start, min(max_offset, randint(start + 1, start + 5)))
+
+
+def possibly_larger_region(max_offset, min_sparse_len):
+    start = randint(0, max_offset)
+    return (start, min(max_offset, randint(start + 1,
+                                           start + 3 * min_sparse_len)))
+
+
+def initial_region(max_offset, min_sparse_len):
+    start = 0
+    return (start, min(max_offset, randint(start + 1,
+                                           start + 3 * min_sparse_len)))
+
+
+def final_region(max_offset, min_sparse_len):
+    start = max(0, randint(max_offset - 3 * min_sparse_len,
+                           max_offset - 1))
+    return (start, max_offset)
+
+
+def region_around_min_len(max_offset, min_sparse_len):
+    start = randint(0, max_offset)
+    return (start, min(max_offset, randint(start + min_sparse_len - 5,
+                                           start + min_sparse_len + 5)))
+
+
+generators = []
+
+def random_region():
+    global generators
+    return generators[randint(0, len(generators) - 1)]()
+
+if len(sys.argv) == 0:
+    stdout.flush()
+    out = byte_stream(stdout)
+if len(sys.argv) == 2:
+    out = open(sys.argv[1], 'wb')
+else:
+    print('Usage: sparse-test-data [FILE]', file=stderr)
+    sys.exit(2)
+
+bup_read_size = 2 ** 16
+bup_min_sparse_len = 512
+out_size = randint(0, bup_read_size * 10)
+
+generators = (lambda : smaller_region(out_size),
+              lambda : possibly_larger_region(out_size, bup_min_sparse_len),
+              lambda : initial_region(out_size, bup_min_sparse_len),
+              lambda : final_region(out_size, bup_min_sparse_len),
+              lambda : region_around_min_len(out_size, bup_min_sparse_len))
+
+sparse = []
+sparse.append(random_region())
+sparse.append(random_region())
+
+# Handle overlaps
+if sparse[1][0] < sparse[0][0]:
+    sparse[0], sparse[1] = sparse[1], sparse[0]
+
+sparse_offsets = []
+sparse_offsets.append(sparse[0][0])
+if sparse[1][0] <= sparse[0][1]:
+    sparse_offsets.append(max(sparse[0][1], sparse[1][1]))
+else:
+    sparse_offsets.extend((sparse[0][1], sparse[1][0], sparse[1][1]))
+
+if sparse[1][1] != out_size:
+    sparse_offsets.append(out_size)
+
+# Now sparse_offsets indicates where to start/stop zero runs
+data = b'x'
+pos = 0
+print('offsets:', sparse_offsets, file=stderr)
+for offset in sparse_offsets:
+    count = offset - pos
+    print('write:', 'x' if data == 'x' else '0', count, file=stderr)
+    out.write(data * (offset - pos))
+    pos += count
+    data = b'\0' if data == b'x' else b'x'
+
+out.close()

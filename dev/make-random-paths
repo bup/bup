@@ -1,0 +1,53 @@
+#!/bin/sh
+"""": # -*-python-*-
+bup_python="$(dirname "$0")//bup-python" || exit $?
+exec "$bup_python" "$0" ${1+"$@"}
+"""
+# end of bup preamble
+
+from __future__ import absolute_import, print_function
+
+from os.path import abspath, dirname
+from random import randint
+from sys import argv, exit, stderr, stdout
+import errno, re, sys
+
+from bup.compat import fsencode, range
+
+
+def usage(out=stdout):
+    print('Usage:', argv[0], 'NUM', 'DEST_DIR', file=out)
+
+def misuse():
+    usage(stderr)
+    exit(2)
+
+if sys.version_info[0] >= 3:
+    def bytes_from_ints(ints):
+        return bytes(ints)
+else:
+    def bytes_from_ints(ints):
+        return ''.join([chr(x) for x in ints])
+
+invalid_fragments = re.compile(br'(\x00|[./]|\.\.)')
+
+def random_filename():
+    n = randint(1, 32)
+    def random_candidate():
+        return invalid_fragments.sub(b'', bytes_from_ints([randint(1, 255)
+                                                           for x in range(n)]))
+    candidate = random_candidate()
+    while not candidate:
+        candidate = random_candidate()
+    return candidate
+
+if len(argv) != 3:
+    misuse()
+
+count, dest = argv[1:]
+count = int(count)
+
+i = 0
+while i < count:
+    with open(fsencode(dest) + b'/' + random_filename(), 'w') as _:
+        i += 1

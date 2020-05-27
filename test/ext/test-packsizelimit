@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+. wvtest-bup.sh || exit $?
+. dev/lib.sh || exit $?
+
+set -o pipefail
+
+top="$(WVPASS pwd)" || exit $?
+tmpdir="$(WVPASS wvmktempdir)" || exit $?
+export BUP_DIR="$tmpdir/bup"
+export GIT_DIR="$tmpdir/bup"
+
+bup() { "$top/bup" "$@"; }
+
+WVPASS cd "$tmpdir"
+
+WVSTART 'pack size limit'
+
+WVPASS bup init
+WVPASSEQ $(WVPASS find "$BUP_DIR"/objects/pack -name "*.pack" | wc -l) 0
+WVPASS bup random 50k | WVPASS bup split -n foo
+WVPASSEQ 1 $(WVPASS find "$BUP_DIR"/objects/pack/*.pack | wc -l)
+
+rm -rf "$BUP_DIR"
+WVPASS bup init
+WVPASS git config pack.packSizeLimit 10k
+WVPASSEQ $(WVPASS find "$BUP_DIR"/objects/pack -name "*.pack" | wc -l) 0
+WVPASS bup random 50k | WVPASS bup split -n foo
+WVPASS test $(WVPASS find "$BUP_DIR"/objects/pack/*.pack | wc -l) -gt 2
+
+WVPASS rm -r "$tmpdir"

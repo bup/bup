@@ -22,6 +22,8 @@ import re
 import sys
 import traceback
 
+sys.path[:0] = [os.path.realpath('test/lib')]
+
 _start_dir = os.getcwd()
 
 # NOTE

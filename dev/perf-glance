@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+
+set -ueo pipefail
+
+if test $# -lt 1; then
+    echo "Usage: perf-glance SRC_DATA_PATH..." 1>&2
+    exit 1
+fi
+set -x
+src_data=("$@")
+
+top="$(pwd)"
+script_name="$(basename $0)"
+
+mkdir -p "$top/test/tmp"
+tmpdir="$(mktemp -d "$top/test/tmp/$script_name-XXXXXXX")"
+
+export BUP_DIR="$tmpdir/bup"
+
+bup()
+{
+    "$top/bup" "$@"
+}
+
+get-time()
+{
+    python -c 'import time; print(time.time())'
+}
+
+rm -rf "$BUP_DIR"
+
+all_start="$(get-time)"
+
+init_start="$(get-time)"
+bup init
+init_finish="$(get-time)"
+
+index_start="$(get-time)"
+bup index "${src_data[@]}"
+index_finish="$(get-time)"
+
+save_start="$(get-time)"
+bup save -t -n data "${src_data[@]}"
+save_finish="$(get-time)"
+
+mkdir "$tmpdir/restore"
+restore_start="$(get-time)"
+bup restore -C "$tmpdir/restore" "/data/latest/"
+restore_finish="$(get-time)"
+
+all_finish="$(get-time)"
+
+set +x
+cat <<EOS
+
+init: $(python -c "print($init_finish - $init_start)")
+index: $(python -c "print($index_finish - $index_start)")
+save: $(python -c "print($save_finish - $save_start)")
+restore: $(python -c "print($restore_finish - $restore_start)")
+all: $(python -c "print($all_finish - $all_start)")
+EOS
+
+cd "$top"
+rm -r "$tmpdir"
