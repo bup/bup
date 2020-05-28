@@ -65,8 +65,6 @@ class BupSubprocTestFile(pytest.File):
             yield BupSubprocTestRunner('', self)
 
 def pytest_collect_file(parent, path):
-    # Disabled until the upcoming changes that rely on it are in place.
-    return None
     base = path.basename
     if base.startswith('test-') and not base.endswith('~'):
         try:

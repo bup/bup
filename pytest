@@ -6,4 +6,4 @@ script_home="$(cd "$(dirname "$0")" && pwd -P)"
 testlibdir="$script_home/test/lib"
 
 export PYTHONPATH="$testlibdir${PYTHONPATH:+:$PYTHONPATH}"
-exec dev/bup-python -m pytest -v "$@"
+exec dev/bup-python -m pytest -v -m 'not release' "$@"

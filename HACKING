@@ -60,26 +60,24 @@ We also love a good "Tested-by:" -- the more the merrier.
 Testing
 =======
 
-You can run the test suite much more quickly via "make -j test" (as
-compared to "make test"), at the expense of slightly more confusing
-output (interleaved parallel test output), and inaccurate intermediate
-success/failure counts, but the final counts displayed should be
-correct.
+Individual tests can be run via
 
-Individual non-Python tests can be run via
+    ./pytest TEST
 
-    ./wvtest run test/ext/TEST
+For example:
 
-and if you'd like to see all of the test output, you can omit the
-wvtest run wrapper: `test/ext/TEST`.  Individual Python tests can be
-run via
-
-    ./pytest test/int/test_something.py
+    ./pytest test/int/test_git.py
+    ./pytest test/ext/test-ftp
 
 Internal tests that test bup's code directly are located in test/int,
 and external tests that test bup from the outside, typically by
 running the executable, are located in test/ext.
 
+Currently, all pytests must be located in either test/ext or test/int.
+Internal test filenames must match test_*.py, and external tests must
+be located in text/ext and their filenames must match test-* (see
+test/ext/conftest.py for the handling of the latter).  Any paths
+matching those criteria will be automatically collected by pytest.
 
 Some aspects of the environment are automatically restored after each
 test via fixtures in conftest.py, including the state of the
