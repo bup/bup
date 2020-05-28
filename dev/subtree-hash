@@ -8,6 +8,8 @@ exec "$bup_python" "$0" ${1+"$@"}
 from __future__ import absolute_import, print_function
 import os.path, sys
 
+sys.path[:0] = [os.path.dirname(os.path.realpath(__file__)) + '/../lib']
+
 from bup.compat import argv_bytes
 from bup.helpers import handle_ctrl_c, readpipe
 from bup.io import byte_stream

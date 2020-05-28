@@ -1,39 +1,26 @@
-#!/bin/sh
-"""": # -*-python-*-
-bup_python="$(dirname "$0")/../../dev/bup-python" || exit $?
-exec "$bup_python" "$0" ${1+"$@"}
-"""
-# end of bup preamble
 
 from __future__ import absolute_import, print_function
 from collections import defaultdict
 from itertools import chain, dropwhile, groupby, takewhile
 from os import chdir
-from os.path import abspath, dirname
 from random import choice, randint
 from shutil import copytree, rmtree
 from subprocess import PIPE
 from sys import stderr
-from time import localtime, strftime, time
-import os, random, sys
+from time import localtime, strftime, time, tzset
+import random, sys
 
 if sys.version_info[:2] >= (3, 5):
     from difflib import diff_bytes, unified_diff
 else:
     from difflib import unified_diff
 
-# For buptest, wvtest, ...
-sys.path[:0] = (abspath(os.path.dirname(__file__) + '/../..'),)
-sys.path[:0] = (abspath(os.path.dirname(__file__) + '/../../test/lib'),)
-sys.path[:0] = [os.path.dirname(os.path.realpath(__file__)) + '/../../lib']
-
-from buptest import ex, exo, test_tempdir
-from wvtest import wvfail, wvpass, wvpasseq, wvpassne, wvstart
-
 from bup import compat
 from bup.compat import environ
 from bup.helpers import partition, period_as_secs, readpipe
 from bup.io import byte_stream
+from buptest import ex, exo
+from wvpytest import wvfail, wvpass, wvpasseq, wvpassne, wvstart
 import bup.path
 
 if sys.version_info[:2] < (3, 5):
@@ -149,22 +136,22 @@ def check_prune_result(expected):
     wvpass(expected == actual)
 
 
-environ[b'GIT_AUTHOR_NAME'] = b'bup test'
-environ[b'GIT_COMMITTER_NAME'] = b'bup test'
-environ[b'GIT_AUTHOR_EMAIL'] = b'bup@a425bc70a02811e49bdf73ee56450e6f'
-environ[b'GIT_COMMITTER_EMAIL'] = b'bup@a425bc70a02811e49bdf73ee56450e6f'
+def test_prune_older(tmpdir):
+    environ[b'GIT_AUTHOR_NAME'] = b'bup test'
+    environ[b'GIT_COMMITTER_NAME'] = b'bup test'
+    environ[b'GIT_AUTHOR_EMAIL'] = b'bup@a425bc70a02811e49bdf73ee56450e6f'
+    environ[b'GIT_COMMITTER_EMAIL'] = b'bup@a425bc70a02811e49bdf73ee56450e6f'
 
-seed = int(environ.get(b'BUP_TEST_SEED', time()))
-random.seed(seed)
-print('random seed:', seed, file=stderr)
+    seed = int(environ.get(b'BUP_TEST_SEED', time()))
+    random.seed(seed)
+    print('random seed:', seed, file=stderr)
 
-save_population = int(environ.get(b'BUP_TEST_PRUNE_OLDER_SAVES', 2000))
-prune_cycles = int(environ.get(b'BUP_TEST_PRUNE_OLDER_CYCLES', 20))
-prune_gc_cycles = int(environ.get(b'BUP_TEST_PRUNE_OLDER_GC_CYCLES', 10))
+    save_population = int(environ.get(b'BUP_TEST_PRUNE_OLDER_SAVES', 2000))
+    prune_cycles = int(environ.get(b'BUP_TEST_PRUNE_OLDER_CYCLES', 20))
+    prune_gc_cycles = int(environ.get(b'BUP_TEST_PRUNE_OLDER_GC_CYCLES', 10))
 
-bup_cmd = bup.path.exe()
+    bup_cmd = bup.path.exe()
 
-with test_tempdir(b'prune-older-') as tmpdir:
     environ[b'BUP_DIR'] = tmpdir + b'/work/.git'
     environ[b'GIT_DIR'] = tmpdir + b'/work/.git'
     now = int(time())

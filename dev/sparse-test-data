@@ -9,6 +9,8 @@ from random import randint
 from sys import stderr, stdout
 import os, sys
 
+sys.path[:0] = [os.path.dirname(os.path.realpath(__file__)) + '/../lib']
+
 from bup.io import byte_stream
 
 def smaller_region(max_offset):

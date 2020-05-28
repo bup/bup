@@ -8,30 +8,9 @@ from subprocess import PIPE, Popen
 from traceback import extract_stack
 import errno, os, subprocess, sys, tempfile
 
-from wvtest import WVPASSEQ, wvfailure_count
-
 from bup import helpers
 from bup.compat import fsencode, str_type
 from bup.io import byte_stream
-
-
-# Assumes (of course) this file is at the top-level of the source tree
-_bup_tmp = realpath(dirname(fsencode(__file__))) + b'/test/tmp'
-try:
-    os.makedirs(_bup_tmp)
-except OSError as e:
-    if e.errno != errno.EEXIST:
-        raise
-
-
-@contextmanager
-def test_tempdir(prefix):
-    initial_failures = wvfailure_count()
-    tmpdir = tempfile.mkdtemp(dir=_bup_tmp, prefix=prefix)
-    yield tmpdir
-    if wvfailure_count() == initial_failures:
-        subprocess.call(['chmod', '-R', 'u+rwX', tmpdir])
-        subprocess.call(['rm', '-rf', tmpdir])
 
 
 ex_res = namedtuple('SubprocResult', ['out', 'err', 'proc', 'rc'])

@@ -166,14 +166,12 @@ runtests-python: all test/tmp
 
 cmdline_tests := \
   test/ext/test.sh \
-  test/ext/test-argv \
   test/ext/test-cat-file.sh \
   test/ext/test-command-without-init-fails.sh \
   test/ext/test-compression.sh \
   test/ext/test-drecurse.sh \
   test/ext/test-fsck.sh \
   test/ext/test-fuse.sh \
-  test/ext/test-ftp \
   test/ext/test-help \
   test/ext/test-web.sh \
   test/ext/test-gc.sh \
@@ -189,7 +187,6 @@ cmdline_tests := \
   test/ext/test-meta.sh \
   test/ext/test-on.sh \
   test/ext/test-packsizelimit \
-  test/ext/test-prune-older \
   test/ext/test-redundant-saves.sh \
   test/ext/test-restore-map-owner.sh \
   test/ext/test-restore-single-file.sh \
@@ -206,19 +203,6 @@ cmdline_tests := \
   test/ext/test-tz.sh \
   test/ext/test-xdev.sh
 
-tmp-target-run-test-get-%: all test/tmp
-	$(pf); cd $$(pwd -P); TMPDIR="$(test_tmp)" \
-	  test/ext/test-get $* 2>&1 | tee -a test/tmp/test-log/$$$$.log
-
-test_get_targets += \
-  tmp-target-run-test-get-replace \
-  tmp-target-run-test-get-universal \
-  tmp-target-run-test-get-ff \
-  tmp-target-run-test-get-append \
-  tmp-target-run-test-get-pick \
-  tmp-target-run-test-get-new-tag \
-  tmp-target-run-test-get-unnamed
-
 # For parallel runs.
 # The "pwd -P" here may not be appropriate in the long run, but we
 # need it until we settle the relevant drecurse/exclusion questions:
@@ -227,7 +211,7 @@ tmp-target-run-test%: all test/tmp
 	$(pf); cd $$(pwd -P); TMPDIR="$(test_tmp)" \
 	  test/ext/test$* 2>&1 | tee -a test/tmp/test-log/$$$$.log
 
-runtests-cmdline: $(test_get_targets) $(subst test/ext/test,tmp-target-run-test,$(cmdline_tests))
+runtests-cmdline: $(subst test/ext/test,tmp-target-run-test,$(cmdline_tests))
 
 stupid:
 	PATH=/bin:/usr/bin $(MAKE) test

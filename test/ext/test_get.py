@@ -1,38 +1,20 @@
-#!/bin/sh
-"""": # -*-python-*-
-# https://sourceware.org/bugzilla/show_bug.cgi?id=26034
-export "BUP_ARGV_0"="$0"
-arg_i=1
-for arg in "$@"; do
-    export "BUP_ARGV_${arg_i}"="$arg"
-    shift
-    arg_i=$((arg_i + 1))
-done
-bup_python="$(dirname "$0")/../../dev/bup-python" || exit $?
-exec "$bup_python" "$0"
-"""
-# end of bup preamble
 
 from __future__ import print_function
 from errno import ENOENT
+from itertools import product
 from os import chdir, mkdir, rename
-from os.path import abspath, dirname
 from shutil import rmtree
 from subprocess import PIPE
-import os, re, sys
-
-# For buptest, wvtest, ...
-sys.path[:0] = (abspath(os.path.dirname(__file__) + '/../..'),)
-sys.path[:0] = (abspath(os.path.dirname(__file__) + '/../../test/lib'),)
-sys.path[:0] = [os.path.dirname(os.path.realpath(__file__)) + '/../../lib']
+import pytest, re, sys
 
 from bup import compat, path
 from bup.compat import environ, getcwd, items
 from bup.helpers import bquote, merge_dict, unlink
 from bup.io import byte_stream
-from buptest import ex, exo, test_tempdir
-from wvtest import wvcheck, wvfail, wvmsg, wvpass, wvpasseq, wvpassne, wvstart
+from buptest import ex, exo
+from wvpytest import wvcheck, wvfail, wvmsg, wvpass, wvpasseq, wvpassne, wvstart
 import bup.path
+
 
 sys.stdout.flush()
 stdout = byte_stream(sys.stdout)
@@ -225,8 +207,6 @@ def validate_new_tagged_commit(tag_name, commit_id, tree_id, get_out):
     validate_tree(tree_id, tag_name + b':')
 
 
-get_cases_tested = 0
-
 def _run_get(disposition, method, what):
     print('run_get:', repr((disposition, method, what)), file=sys.stderr)
     global bup_cmd
@@ -244,7 +224,6 @@ def _run_get(disposition, method, what):
     else:
         raise Exception('error: unexpected get disposition ' + repr(disposition))
     
-    global get_cases_tested
     if isinstance(what, bytes):
         cmd = get_cmd + (method, what)
     else:
@@ -255,7 +234,6 @@ def _run_get(disposition, method, what):
         src, dest = what
         cmd = get_cmd + (method, src, dest)
     result = exo(cmd, check=False, stderr=PIPE)
-    get_cases_tested += 1
     fsck = ex((bup_cmd, b'-d', b'get-dest', b'fsck'), check=False)
     wvpasseq(0, fsck.rc)
     return result
@@ -271,7 +249,7 @@ def run_get(disposition, method, what=None, given=None):
         assert not exr.rc
     return _run_get(disposition, method, what)
 
-def test_universal_behaviors(get_disposition):
+def _test_universal(get_disposition, src_info):
     methods = (b'--ff', b'--append', b'--pick', b'--force-pick', b'--new-tag',
                b'--replace', b'--unnamed')
     for method in methods:
@@ -313,7 +291,7 @@ def verify_only_refs(**kwargs):
             wvpasseq(1, exr.rc)
             wvpasseq(b'', exr.out.strip())
 
-def test_replace(get_disposition, src_info):
+def _test_replace(get_disposition, src_info):
     print('blarg:', repr(src_info), file=sys.stderr)
 
     wvstart(get_disposition + ' --replace to root fails')
@@ -405,7 +383,7 @@ def test_replace(get_disposition, src_info):
                              commit_2_id, tree_2_id, b'src-2', exr.out)
         verify_only_refs(heads=[], tags=(b'commit-2',))
 
-def test_ff(get_disposition, src_info):
+def _test_ff(get_disposition, src_info):
 
     wvstart(get_disposition + ' --ff to root fails')
     tinyfile_path = src_info['tinyfile-path']
@@ -494,7 +472,7 @@ def test_ff(get_disposition, src_info):
         wvpassne(0, exr.rc)
         verify_rx(br'destination is not an ancestor of source', exr.err)
 
-def test_append(get_disposition, src_info):
+def _test_append(get_disposition, src_info):
     tinyfile_path = src_info['tinyfile-path']
     subtree_vfs_path = src_info['subtree-vfs-path']
 
@@ -589,7 +567,7 @@ def test_append(get_disposition, src_info):
                           b'src-2', exr.out)
         verify_only_refs(heads=(b'src',), tags=[])
 
-def test_pick(get_disposition, src_info, force=False):
+def _test_pick_common(get_disposition, src_info, force=False):
     flavor = b'--force-pick' if force else b'--pick'
     flavormsg = flavor.decode('ascii')
     tinyfile_path = src_info['tinyfile-path']
@@ -717,7 +695,13 @@ def test_pick(get_disposition, src_info, force=False):
                       commit_2_id, tree_2_id, b'src-2', exr.out)
     verify_only_refs(heads=(b'src',), tags=[])
 
-def test_new_tag(get_disposition, src_info):
+def _test_pick_force(get_disposition, src_info):
+    _test_pick_common(get_disposition, src_info, force=True)
+
+def _test_pick_noforce(get_disposition, src_info):
+    _test_pick_common(get_disposition, src_info, force=False)
+
+def _test_new_tag(get_disposition, src_info):
     tinyfile_id = src_info['tinyfile-id']
     tinyfile_path = src_info['tinyfile-path']
     commit_2_id = src_info['commit-2-id']
@@ -805,7 +789,7 @@ def test_new_tag(get_disposition, src_info):
                          b'src-2', exr.out)
     verify_only_refs(heads=[], tags=(b'commit-2',))
 
-def test_unnamed(get_disposition, src_info):
+def _test_unnamed(get_disposition, src_info):
     tinyfile_id = src_info['tinyfile-id']
     tinyfile_path = src_info['tinyfile-path']
     subtree_vfs_path = src_info['subtree-vfs-path']
@@ -972,39 +956,13 @@ dispositions_to_test = ('get',)
 if int(environ.get(b'BUP_TEST_LEVEL', b'0')) >= 11:
     dispositions_to_test += ('get-on', 'get-to')
 
-if len(compat.argv) == 1:
-    categories = ('replace', 'universal', 'ff', 'append', 'pick', 'new-tag',
-             'unnamed')
-else:
-    categories = compat.argv[1:]
-    
-with test_tempdir(b'get-') as tmpdir:
+categories = ('replace', 'universal', 'ff', 'append', 'pick_force', 'pick_noforce', 'new_tag', 'unnamed')
+
+@pytest.mark.parametrize("disposition,category", product(dispositions_to_test, categories))
+def test_get(tmpdir, disposition, category):
     chdir(tmpdir)
     try:
         src_info = create_get_src()
-        for category in categories:
-            for disposition in dispositions_to_test:
-                # given=FOO depends on --replace, so test it early
-                if category == 'replace':
-                    test_replace(disposition, src_info)
-                elif category == 'universal':
-                    test_universal_behaviors(disposition)
-                elif category == 'ff':
-                    test_ff(disposition, src_info)
-                elif category == 'append':
-                    test_append(disposition, src_info)
-                elif category == 'pick':
-                    test_pick(disposition, src_info, force=False)
-                    test_pick(disposition, src_info, force=True)
-                elif category == 'new-tag':
-                    test_new_tag(disposition, src_info)
-                elif category == 'unnamed':
-                    test_unnamed(disposition, src_info)
-                else:
-                    raise Exception('unrecognized get test category')
-    except Exception as ex:
+        globals().get('_test_' + category)(disposition, src_info)
+    finally:
         chdir(top)
-        raise
-    chdir(top)
-
-wvmsg('checked %d cases' % get_cases_tested)

@@ -20,7 +20,7 @@ from sys import stdout
 import os, sys
 
 script_home = abspath(dirname(__file__))
-sys.path[:0] = [abspath(script_home + '/../lib'), abspath(script_home + '/..')]
+sys.path[:0] = [abspath(script_home + '/../../lib'), abspath(script_home + '/../..')]
 
 from bup import compat
 

@@ -1,27 +1,13 @@
-#!/bin/sh
-"""": # -*-python-*-
-bup_python="$(dirname "$0")/../../dev/bup-python" || exit $?
-exec "$bup_python" "$0" ${1+"$@"}
-"""
-# end of bup preamble
 
 from __future__ import absolute_import, print_function
 from os import chdir, mkdir, symlink, unlink
-from os.path import abspath, dirname
 from subprocess import PIPE
 from time import localtime, strftime, tzset
-import os, sys
-
-# For buptest, wvtest, ...
-sys.path[:0] = (abspath(os.path.dirname(__file__) + '/../..'),)
-sys.path[:0] = (abspath(os.path.dirname(__file__) + '/../../test/lib'),)
-sys.path[:0] = [os.path.dirname(os.path.realpath(__file__)) + '/../../lib']
-
-from buptest import ex, exo, logcmd, test_tempdir
-from wvtest import wvfail, wvpass, wvpasseq, wvpassne, wvstart
 
 from bup.compat import environ
 from bup.helpers import unlink as unlink_if_exists
+from buptest import ex, exo
+from wvpytest import wvfail, wvpass, wvpasseq, wvpassne, wvstart
 import bup.path
 
 bup_cmd = bup.path.exe()
@@ -39,7 +25,9 @@ environ[b'GIT_COMMITTER_NAME'] = b'bup test'
 environ[b'GIT_AUTHOR_EMAIL'] = b'bup@a425bc70a02811e49bdf73ee56450e6f'
 environ[b'GIT_COMMITTER_EMAIL'] = b'bup@a425bc70a02811e49bdf73ee56450e6f'
 
-with test_tempdir(b'ftp-') as tmpdir:
+import subprocess
+
+def test_ftp(tmpdir):
     environ[b'BUP_DIR'] = tmpdir + b'/repo'
     environ[b'GIT_DIR'] = tmpdir + b'/repo'
     environ[b'TZ'] = b'UTC'
