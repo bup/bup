@@ -5,8 +5,7 @@ set -o pipefail
 # NOTE: any relevant changes to var/ must be accompanied by an
 # increment to the revision.
 
-revision=2
-readonly revision
+revision=3
 
 top="$(pwd)" || exit $?
 
@@ -49,6 +48,8 @@ case "$1" in
             cp -pP "$top"/cmd/*.py cmd/ || exit $?
             cp -pP "$top"/Documentation/*.md doc/ || exit $?
             cp -pP "$top"/lib/bup/*.py lib/bup || exit $?
+            mkdir path-zoo || exit $?
+            "$top"/t/make-random-paths 3000 path-zoo || exit $?
             # The "v" ensures that if "configure-sampledata
             # --revision" and/or the setup above fails somehow,
             # callers like make will be looking for a file that won't
