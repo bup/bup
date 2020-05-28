@@ -15,25 +15,6 @@ from bup.compat import fsencode, str_type
 from bup.io import byte_stream
 
 
-@contextmanager
-def no_lingering_errors():
-    def fail_if_errors():
-        if helpers.saved_errors:
-            bt = extract_stack()
-            src_file, src_line, src_func, src_txt = bt[-4]
-            msg = 'saved_errors ' + repr(helpers.saved_errors)
-            print('! %-70s %s' % ('%s:%-4d %s' % (basename(src_file),
-                                                  src_line,
-                                                  msg),
-                                  'FAILED'))
-            sys.stdout.flush()
-    fail_if_errors()
-    helpers.clear_errors()
-    yield
-    fail_if_errors()
-    helpers.clear_errors()
-
-
 # Assumes (of course) this file is at the top-level of the source tree
 _bup_tmp = realpath(dirname(fsencode(__file__))) + b'/test/tmp'
 try:

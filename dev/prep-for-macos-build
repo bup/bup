@@ -20,8 +20,15 @@ brew link --force readline
 # "brew unlink readline" will undo this hack
 
 case "$pyver" in
-    python2) ;;
-    python3) brew install python ;;
+    python2)
+        easy_install-2.7 --user pip
+        /Users/anka/Library/Python/2.7/bin/pip install --user pytest
+        ;;
+    python3)
+        brew install python
+        easy_install --user pip
+        pip3 install --user pytest
+        ;;
     *)
         usage 1>&2
         exit 2

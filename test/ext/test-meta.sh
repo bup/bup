@@ -7,7 +7,7 @@ set -o pipefail
 root_status="$(dev/root-status)" || exit $?
 
 TOP="$(WVPASS pwd)" || exit $?
-export PATH="$TOP/test/ext/bin:$PATH"
+export PATH="$TOP/test/bin:$PATH"
 tmpdir="$(WVPASS wvmktempdir)" || exit $?
 export BUP_DIR="$tmpdir/bup"
 

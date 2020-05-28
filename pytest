@@ -1,0 +1,9 @@
+#!/bin/sh
+
+set -eu
+
+script_home="$(cd "$(dirname "$0")" && pwd -P)"
+testlibdir="$script_home/test/lib"
+
+export PYTHONPATH="$testlibdir${PYTHONPATH:+:$PYTHONPATH}"
+exec dev/bup-python -m pytest -v "$@"

@@ -66,13 +66,15 @@ output (interleaved parallel test output), and inaccurate intermediate
 success/failure counts, but the final counts displayed should be
 correct.
 
-Individual non-Python tests can be run via "./wvtest run test/TEST" and
-if you'd like to see all of the test output, you can omit the wvtest
-run wrapper: "test/TEST"
+Individual non-Python tests can be run via
 
-Individual Python tests can be run via "./wvtest run ./wvtest.py
-test/int/TEST", and as above, you can see all the output by omitting
-the wvtest run wrapper like this: "./wvtest.py test/TEST"
+    ./wvtest run test/ext/TEST
+
+and if you'd like to see all of the test output, you can omit the
+wvtest run wrapper: `test/ext/TEST`.  Individual Python tests can be
+run via
+
+    ./pytest test/int/test_something.py
 
 Internal tests that test bup's code directly are located in test/int,
 and external tests that test bup from the outside, typically by

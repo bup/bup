@@ -1,38 +1,35 @@
 
 from __future__ import absolute_import
 
-from wvtest import *
+from wvpytest import *
 
 from bup import options
-from buptest import no_lingering_errors
 
 
-@wvtest
 def test_optdict():
-    with no_lingering_errors():
-        d = options.OptDict({
-            'x': ('x', False),
-            'y': ('y', False),
-            'z': ('z', False),
-            'other_thing': ('other_thing', False),
-            'no_other_thing': ('other_thing', True),
-            'no_z': ('z', True),
-            'no_smart': ('smart', True),
-            'smart': ('smart', False),
-            'stupid': ('smart', True),
-            'no_smart': ('smart', False),
-        })
-        WVPASS('foo')
-        d['x'] = 5
-        d['y'] = 4
-        d['z'] = 99
-        d['no_other_thing'] = 5
-        WVPASSEQ(d.x, 5)
-        WVPASSEQ(d.y, 4)
-        WVPASSEQ(d.z, 99)
-        WVPASSEQ(d.no_z, False)
-        WVPASSEQ(d.no_other_thing, True)
-        WVEXCEPT(KeyError, lambda: d.p)
+    d = options.OptDict({
+        'x': ('x', False),
+        'y': ('y', False),
+        'z': ('z', False),
+        'other_thing': ('other_thing', False),
+        'no_other_thing': ('other_thing', True),
+        'no_z': ('z', True),
+        'no_smart': ('smart', True),
+        'smart': ('smart', False),
+        'stupid': ('smart', True),
+        'no_smart': ('smart', False),
+    })
+    WVPASS('foo')
+    d['x'] = 5
+    d['y'] = 4
+    d['z'] = 99
+    d['no_other_thing'] = 5
+    WVPASSEQ(d.x, 5)
+    WVPASSEQ(d.y, 4)
+    WVPASSEQ(d.z, 99)
+    WVPASSEQ(d.no_z, False)
+    WVPASSEQ(d.no_other_thing, True)
+    WVEXCEPT(KeyError, lambda: d.p)
 
 
 invalid_optspec0 = """
@@ -50,12 +47,10 @@ x,y
 """
 
 
-@wvtest
 def test_invalid_optspec():
-    with no_lingering_errors():
-        WVPASS(options.Options(invalid_optspec0).parse([]))
-        WVPASS(options.Options(invalid_optspec1).parse([]))
-        WVPASS(options.Options(invalid_optspec2).parse([]))
+    WVPASS(options.Options(invalid_optspec0).parse([]))
+    WVPASS(options.Options(invalid_optspec1).parse([]))
+    WVPASS(options.Options(invalid_optspec2).parse([]))
 
 
 optspec = """
@@ -78,34 +73,32 @@ x,extended,no-simple   extended mode [2]
 #,compress=  set compression level [5]
 """
 
-@wvtest
 def test_options():
-    with no_lingering_errors():
-        o = options.Options(optspec)
-        (opt,flags,extra) = o.parse(['-tttqp', 7, '--longoption', '19',
-                                     'hanky', '--onlylong', '-7'])
-        WVPASSEQ(flags[0], ('-t', ''))
-        WVPASSEQ(flags[1], ('-t', ''))
-        WVPASSEQ(flags[2], ('-t', ''))
-        WVPASSEQ(flags[3], ('-q', ''))
-        WVPASSEQ(flags[4], ('-p', 7))
-        WVPASSEQ(flags[5], ('--longoption', '19'))
-        WVPASSEQ(extra, ['hanky'])
-        WVPASSEQ((opt.t, opt.q, opt.p, opt.l, opt.onlylong,
-                  opt.neveropt), (3,1,7,19,1,None))
-        WVPASSEQ((opt.deftest1, opt.deftest2, opt.deftest3, opt.deftest4,
-                  opt.deftest5), (1,2,None,None,'[square'))
-        WVPASSEQ((opt.stupid, opt.no_stupid), (True, None))
-        WVPASSEQ((opt.smart, opt.no_smart), (None, True))
-        WVPASSEQ((opt.x, opt.extended, opt.no_simple), (2,2,2))
-        WVPASSEQ((opt.no_x, opt.no_extended, opt.simple), (False,False,False))
-        WVPASSEQ(opt['#'], 7)
-        WVPASSEQ(opt.compress, 7)
+    o = options.Options(optspec)
+    (opt,flags,extra) = o.parse(['-tttqp', 7, '--longoption', '19',
+                                 'hanky', '--onlylong', '-7'])
+    WVPASSEQ(flags[0], ('-t', ''))
+    WVPASSEQ(flags[1], ('-t', ''))
+    WVPASSEQ(flags[2], ('-t', ''))
+    WVPASSEQ(flags[3], ('-q', ''))
+    WVPASSEQ(flags[4], ('-p', 7))
+    WVPASSEQ(flags[5], ('--longoption', '19'))
+    WVPASSEQ(extra, ['hanky'])
+    WVPASSEQ((opt.t, opt.q, opt.p, opt.l, opt.onlylong,
+              opt.neveropt), (3,1,7,19,1,None))
+    WVPASSEQ((opt.deftest1, opt.deftest2, opt.deftest3, opt.deftest4,
+              opt.deftest5), (1,2,None,None,'[square'))
+    WVPASSEQ((opt.stupid, opt.no_stupid), (True, None))
+    WVPASSEQ((opt.smart, opt.no_smart), (None, True))
+    WVPASSEQ((opt.x, opt.extended, opt.no_simple), (2,2,2))
+    WVPASSEQ((opt.no_x, opt.no_extended, opt.simple), (False,False,False))
+    WVPASSEQ(opt['#'], 7)
+    WVPASSEQ(opt.compress, 7)
 
-        (opt,flags,extra) = o.parse(['--onlylong', '-t', '--no-onlylong',
-                                     '--smart', '--simple'])
-        WVPASSEQ((opt.t, opt.q, opt.onlylong), (1, None, 0))
-        WVPASSEQ((opt.stupid, opt.no_stupid), (False, True))
-        WVPASSEQ((opt.smart, opt.no_smart), (True, False))
-        WVPASSEQ((opt.x, opt.extended, opt.no_simple), (0,0,0))
-        WVPASSEQ((opt.no_x, opt.no_extended, opt.simple), (True,True,True))
+    (opt,flags,extra) = o.parse(['--onlylong', '-t', '--no-onlylong',
+                                 '--smart', '--simple'])
+    WVPASSEQ((opt.t, opt.q, opt.onlylong), (1, None, 0))
+    WVPASSEQ((opt.stupid, opt.no_stupid), (False, True))
+    WVPASSEQ((opt.smart, opt.no_smart), (True, False))
+    WVPASSEQ((opt.x, opt.extended, opt.no_simple), (0,0,0))
+    WVPASSEQ((opt.no_x, opt.no_extended, opt.simple), (True,True,True))

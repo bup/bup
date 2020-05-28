@@ -161,31 +161,8 @@ test/tmp:
 
 runtests: runtests-python runtests-cmdline
 
-python_tests := \
-  test/int/test_bloom.py \
-  test/int/test_client.py \
-  test/int/test_compat.py \
-  test/int/test_git.py \
-  test/int/test_hashsplit.py \
-  test/int/test_helpers.py \
-  test/int/test_index.py \
-  test/int/test_metadata.py \
-  test/int/test_options.py \
-  test/int/test_resolve.py \
-  test/int/test_shquote.py \
-  test/int/test_vfs.py \
-  test/int/test_vint.py \
-  test/int/test_xstat.py
-
-
-# The "pwd -P" here may not be appropriate in the long run, but we
-# need it until we settle the relevant drecurse/exclusion questions:
-# https://groups.google.com/forum/#!topic/bup-list/9ke-Mbp10Q0
 runtests-python: all test/tmp
-	mkdir -p test/tmp/test-log
-	$(pf); cd $$(pwd -P); TMPDIR="$(test_tmp)" \
-	  ./wvtest.py  $(python_tests) 2>&1 \
-	    | tee -a test/tmp/test-log/$$$$.log
+	./pytest
 
 cmdline_tests := \
   test/ext/test.sh \
@@ -258,8 +235,9 @@ stupid:
 test: all
 	if test -e test/tmp/test-log; then rm -r test/tmp/test-log; fi
 	mkdir -p test/tmp/test-log
+	$(MAKE) runtests-python
 	./wvtest watch --no-counts \
-	  $(MAKE) runtests 2>test/tmp/test-log/$$$$.log
+	  $(MAKE) runtests-cmdline 2>test/tmp/test-log/$$$$.log
 	./wvtest report test/tmp/test-log/*.log
 
 check: test
