@@ -7,10 +7,12 @@
 //   http://docs.python.org/2/c-api/intro.html#include-files
 #include <Python.h>
 
+#include <arpa/inet.h>
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <arpa/inet.h>
+#include <grp.h>
+#include <pwd.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -1712,6 +1714,154 @@ static PyObject *bup_mincore(PyObject *self, PyObject *args)
 #endif /* def BUP_MINCORE_BUF_TYPE */
 
 
+static PyObject *tuple_from_cstrs(char **cstrs)
+{
+    // Assumes list is null terminated
+    size_t n = 0;
+    while(cstrs[n] != NULL)
+        n++;
+
+    Py_ssize_t sn;
+    if (!INTEGRAL_ASSIGNMENT_FITS(&sn, n))
+        return PyErr_Format(PyExc_OverflowError, "string array too large");
+
+    PyObject *result = PyTuple_New(sn);
+    Py_ssize_t i = 0;
+    for (i = 0; i < sn; i++)
+    {
+        PyObject *gname = Py_BuildValue(cstr_argf, cstrs[i]);
+        if (gname == NULL)
+        {
+            Py_DECREF(result);
+            return NULL;
+        }
+        PyTuple_SET_ITEM(result, i, gname);
+    }
+    return result;
+}
+
+static long getpw_buf_size;
+
+static PyObject *pwd_struct_to_py(const struct passwd *pwd, int rc)
+{
+    // We can check the known (via POSIX) signed and unsigned types at
+    // compile time, but not (easily) the unspecified types, so handle
+    // those via INTEGER_TO_PY().
+    if (pwd != NULL)
+        return Py_BuildValue(cstr_argf cstr_argf "OO"
+                             cstr_argf cstr_argf cstr_argf,
+                             pwd->pw_name,
+                             pwd->pw_passwd,
+                             INTEGER_TO_PY(pwd->pw_uid),
+                             INTEGER_TO_PY(pwd->pw_gid),
+                             pwd->pw_gecos,
+                             pwd->pw_dir,
+                             pwd->pw_shell);
+    if (rc == 0)
+        return Py_BuildValue("O", Py_None);
+    if (rc == EIO || rc == EMFILE || rc == ENFILE)
+        return PyErr_SetFromErrno(PyExc_IOError);
+    if (rc < 0)
+        return PyErr_SetFromErrno(PyExc_OSError);
+    assert(0);
+}
+
+static PyObject *bup_getpwuid(PyObject *self, PyObject *args)
+{
+    unsigned long uid;
+    if (!PyArg_ParseTuple(args, "k", &uid))
+	return NULL;
+
+    struct passwd pwd, *result_pwd;
+    char *buf = PyMem_Malloc(getpw_buf_size);
+    if (buf == NULL)
+        return NULL;
+
+    int rc = getpwuid_r(uid, &pwd, buf, getpw_buf_size, &result_pwd);
+    PyObject *result = pwd_struct_to_py(result_pwd, rc);
+    PyMem_Free(buf);
+    return result;
+}
+
+static PyObject *bup_getpwnam(PyObject *self, PyObject *args)
+{
+    PyObject *py_name;
+    if (!PyArg_ParseTuple(args, "S", &py_name))
+	return NULL;
+
+    struct passwd pwd, *result_pwd;
+    char *buf = PyMem_Malloc(getpw_buf_size);
+    if (buf == NULL)
+        return NULL;
+
+    char *name = PyBytes_AS_STRING(py_name);
+    int rc = getpwnam_r(name, &pwd, buf, getpw_buf_size, &result_pwd);
+    PyObject *result = pwd_struct_to_py(result_pwd, rc);
+    PyMem_Free(buf);
+    return result;
+}
+
+static long getgr_buf_size;
+
+static PyObject *grp_struct_to_py(const struct group *grp, int rc)
+{
+    // We can check the known (via POSIX) signed and unsigned types at
+    // compile time, but not (easily) the unspecified types, so handle
+    // those via INTEGER_TO_PY().
+    if (grp != NULL) {
+        PyObject *members = tuple_from_cstrs(grp->gr_mem);
+        if (members == NULL)
+            return NULL;
+        return Py_BuildValue(cstr_argf cstr_argf "OO",
+                             grp->gr_name,
+                             grp->gr_passwd,
+                             INTEGER_TO_PY(grp->gr_gid),
+                             members);
+    }
+    if (rc == 0)
+        return Py_BuildValue("O", Py_None);
+    if (rc == EIO || rc == EMFILE || rc == ENFILE)
+        return PyErr_SetFromErrno(PyExc_IOError);
+    if (rc < 0)
+        return PyErr_SetFromErrno(PyExc_OSError);
+    assert (0);
+}
+
+static PyObject *bup_getgrgid(PyObject *self, PyObject *args)
+{
+    unsigned long gid;
+    if (!PyArg_ParseTuple(args, "k", &gid))
+	return NULL;
+
+    struct group grp, *result_grp;
+    char *buf = PyMem_Malloc(getgr_buf_size);
+    if (buf == NULL)
+        return NULL;
+
+    int rc = getgrgid_r(gid, &grp, buf, getgr_buf_size, &result_grp);
+    PyObject *result = grp_struct_to_py(result_grp, rc);
+    PyMem_Free(buf);
+    return result;
+}
+
+static PyObject *bup_getgrnam(PyObject *self, PyObject *args)
+{
+    PyObject *py_name;
+    if (!PyArg_ParseTuple(args, "S", &py_name))
+	return NULL;
+
+    struct group grp, *result_grp;
+    char *buf = PyMem_Malloc(getgr_buf_size);
+    if (buf == NULL)
+        return NULL;
+
+    char *name = PyBytes_AS_STRING(py_name);
+    int rc = getgrnam_r(name, &grp, buf, getgr_buf_size, &result_grp);
+    PyObject *result = grp_struct_to_py(result_grp, rc);
+    PyMem_Free(buf);
+    return result;
+}
+
 static PyMethodDef helper_methods[] = {
     { "write_sparsely", bup_write_sparsely, METH_VARARGS,
       "Write buf excepting zeros at the end. Return trailing zero count." },
@@ -1783,6 +1933,22 @@ static PyMethodDef helper_methods[] = {
       "For mincore(src, src_n, src_off, dest, dest_off)"
       " call the system mincore(src + src_off, src_n, &dest[dest_off])." },
 #endif
+    { "getpwuid", bup_getpwuid, METH_VARARGS,
+      "Return the password database entry for the given numeric user id,"
+      " as a tuple with all C strings as bytes(), or None if the user does"
+      " not exist." },
+    { "getpwnam", bup_getpwnam, METH_VARARGS,
+      "Return the password database entry for the given user name,"
+      " as a tuple with all C strings as bytes(), or None if the user does"
+      " not exist." },
+    { "getgrgid", bup_getgrgid, METH_VARARGS,
+      "Return the group database entry for the given numeric group id,"
+      " as a tuple with all C strings as bytes(), or None if the group does"
+      " not exist." },
+    { "getgrnam", bup_getgrnam, METH_VARARGS,
+      "Return the group database entry for the given group name,"
+      " as a tuple with all C strings as bytes(), or None if the group does"
+      " not exist." },
     { NULL, NULL, 0, NULL },  // sentinel
 };
 
@@ -1876,6 +2042,14 @@ static int setup_module(PyObject *m)
     }
 #endif
 #pragma clang diagnostic pop  // ignored "-Wtautological-compare"
+
+    getpw_buf_size = sysconf(_SC_GETPW_R_SIZE_MAX);
+    if (getpw_buf_size == -1)
+        getpw_buf_size = 16384;
+
+    getgr_buf_size = sysconf(_SC_GETGR_R_SIZE_MAX);
+    if (getgr_buf_size == -1)
+        getgr_buf_size = 16384;
 
     e = getenv("BUP_FORCE_TTY");
     get_state(m)->istty2 = isatty(2) || (atoi(e ? e : "0") & 2);
