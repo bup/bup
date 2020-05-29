@@ -21,10 +21,10 @@ pkg install rdiff-backup || true
 
 case "$pyver" in
     python2)
-        pkg install $common_pkgs python2 py27-tornado pytest
+        pkg install $common_pkgs python2 py27-tornado pytest pytest-xdist
         ;;
     python3)
-        pkg install $common_pkgs python3 py37-tornado pytest3
+        pkg install $common_pkgs python3 py37-tornado pytest3 pytest3-xdist
         ;;
     *)
         usage 1>&2

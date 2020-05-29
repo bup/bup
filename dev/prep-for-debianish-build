@@ -24,13 +24,15 @@ case "$pyver" in
         apt-get install -y \
                 $common_debs \
                 python2.7-dev python-fuse \
-                python-"$xattr" python-tornado python-pytest
+                python-"$xattr" python-tornado python-pytest \
+                python-pytest-xdist
         ;;
     python3)
         apt-get install -y \
                 $common_debs \
                 python3-dev python3-distutils python3-fuse \
-                python3-"$xattr" python3-tornado python3-pytest
+                python3-"$xattr" python3-tornado python3-pytest \
+                python3-pytest-xdist
         ;;
     *)
         usage 1>&2
