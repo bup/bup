@@ -8,7 +8,7 @@ for arg in "$@"; do
     shift
     arg_i=$((arg_i + 1))
 done
-bup_python="$(dirname "$0")/../lib/cmd/bup-python" || exit $?
+bup_python="$(dirname "$0")/../dev/bup-python" || exit $?
 exec "$bup_python" "$0"
 """
 # end of bup preamble

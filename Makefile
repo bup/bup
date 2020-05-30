@@ -3,9 +3,10 @@ SHELL := bash
 .DEFAULT_GOAL := all
 
 # See config/config.vars.in (sets bup_python, among other things)
-include config/config.vars
+-include config/config.vars
 
 pf := set -o pipefail
+cfg_py := $(CURDIR)/config/bin/python
 
 define isok
   && echo " ok" || echo " no"
@@ -42,7 +43,8 @@ endif
 initial_setup := $(shell ./configure-version --update $(isok))
 initial_setup := $(call shout,$(initial_setup),Version configuration failed))
 
-config/config.vars: configure config/configure config/configure.inc \
+config/config.vars: \
+  configure config/configure config/configure.inc \
   $(wildcard config/*.in)
 	MAKE="$(MAKE)" ./configure
 
@@ -61,7 +63,9 @@ readline_cflags += $(addprefix -DBUP_RL_EXPECTED_XOPEN_SOURCE=,$(readline_xopen)
 CFLAGS += $(readline_cflags)
 LDFLAGS += $(shell pkg-config readline --libs)
 
-bup_cmds := cmd/bup-python \
+config/bin/python: config/config.vars
+
+bup_cmds := \
   $(patsubst cmd/%-cmd.py,cmd/bup-%,$(wildcard cmd/*-cmd.py)) \
   $(patsubst cmd/%-cmd.sh,cmd/bup-%,$(wildcard cmd/*-cmd.sh))
 
@@ -106,7 +110,7 @@ install: all
 	test -z "$(man_html)" || $(INSTALL) -m 0644 $(man_html) $(dest_docdir)
 	dev/install-python-script lib/cmd/bup "$(dest_libdir)/cmd/bup"
 	set -e; \
-	for cmd in $$(ls cmd/bup-* | grep -v cmd/bup-python); do \
+	for cmd in $$(ls cmd/bup-*); do \
 	  dev/install-python-script "$$cmd" "$(dest_libdir)/$$cmd"; \
 	done
 	cd "$(dest_bindir)" && \
@@ -131,9 +135,9 @@ lib/bup/_helpers$(SOEXT): \
 		config/config.h lib/bup/bupsplit.h \
 		lib/bup/bupsplit.c lib/bup/_helpers.c lib/bup/csetup.py
 	@rm -f $@
-	cd lib/bup && $(bup_python) csetup.py build "$(CFLAGS)" "$(LDFLAGS)"
+	cd lib/bup && $(cfg_py) csetup.py build "$(CFLAGS)" "$(LDFLAGS)"
         # Make sure there's just the one file we expect before we copy it.
-	"$(bup_python)" -c \
+	$(cfg_py) -c \
 	  "import glob; assert(len(glob.glob('lib/bup/build/*/_helpers*$(SOEXT)')) == 1)"
 	cp lib/bup/build/*/_helpers*$(SOEXT) "$@"
 
@@ -253,9 +257,6 @@ check: test
 distcheck: all
 	./wvtest run t/test-release-archive.sh
 
-cmd/bup-python: config/config.var/bup-python
-	cd cmd && ln -sf "$$(< $(CURDIR)/config/config.var/bup-python)" bup-python
-
 long-test: export BUP_TEST_LEVEL=11
 long-test: test
 
@@ -311,10 +312,10 @@ import-docs: Documentation/clean
 	$(pf); git archive origin/html | (cd Documentation && tar -xvf -)
 	$(pf); git archive origin/man | (cd Documentation && tar -xvf -)
 
-clean: Documentation/clean cmd/bup-python
+clean: Documentation/clean config/bin/python
+	cd config && rm -rf config.var
 	cd config && rm -f *~ .*~ \
 	  ${CONFIGURE_DETRITUS} ${CONFIGURE_FILES} ${GENERATED_FILES}
-	cd config && rm -rf config.var
 	rm -f *.o lib/*/*.o *.so lib/*/*.so *.dll lib/*/*.dll *.exe \
 		.*~ *~ */*~ lib/*/*~ lib/*/*/*~ \
 		*.pyc */*.pyc lib/*/*.pyc lib/*/*/*.pyc \
@@ -334,4 +335,4 @@ clean: Documentation/clean cmd/bup-python
 	./configure-version --clean
 	t/configure-sampledata --clean
         # Remove last so that cleanup tools can depend on it
-	rm -f cmd/bup-python
+	rm -rf config/bin

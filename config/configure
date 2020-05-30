@@ -186,6 +186,11 @@ AC_CHECK_FIELD tm tm_gmtoff time.h
 
 AC_OUTPUT config.vars
 
+if test -e config.var; then rm -r config.var; fi
 mkdir -p config.var
 echo -n "$MAKE" > config.var/bup-make
 echo -n "$bup_python" > config.var/bup-python
+
+if test -e bin; then rm -r bin; fi
+mkdir -p bin
+cd bin && ln -s "$bup_python" python

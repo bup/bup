@@ -1,6 +1,6 @@
 #!/bin/sh
 """": # -*-python-*-
-bup_python="$(dirname "$0")/../cmd/bup-python" || exit $?
+bup_python="$(dirname "$0")/../config/bin/python" || exit $?
 exec "$bup_python" "$0" ${1+"$@"}
 """
 # end of bup preamble

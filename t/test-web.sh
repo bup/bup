@@ -33,7 +33,7 @@ if test -z "$(type -p curl)"; then
     exit 0
 fi
     
-WVPASS bup-python -c "import socket as s; s.socket(s.AF_UNIX).bind('socket')"
+WVPASS bup-cfg-py -c "import socket as s; s.socket(s.AF_UNIX).bind('socket')"
 curl -s --unix-socket ./socket http://localhost/foo
 if test $? -ne 7; then
     WVSTART 'curl does not appear to support --unix-socket; skipping test'

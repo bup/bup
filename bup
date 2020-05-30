@@ -1,6 +1,1 @@
-#!/bin/sh
-
-# This is just a convenience wrapper.  It's not a symlink because bup
-# finds its code relative to dirname(__file__).
-
-exec $(dirname "$0")/cmd/bup "$@"
+lib/cmd/bup

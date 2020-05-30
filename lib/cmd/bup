@@ -21,7 +21,7 @@ while test -L "$cmdpath"; do
 done
 script_home="$(cd "$(dirname "$cmdpath")" && pwd -P)"
 cd "$top"
-exec "$script_home/bup-python" "$0"
+exec "$script_home/../../config/bin/python" "$0"
 """
 # end of bup preamble
 

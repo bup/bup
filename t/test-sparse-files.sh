@@ -18,7 +18,7 @@ WVPASS cd "$tmpdir"
 
 # The 3MB guess is semi-arbitrary, but we've been informed that
 # Lustre, for example, uses 1MB, so guess higher than that, at least.
-block_size=$(bup-python -c \
+block_size=$(bup-cfg-py -c \
   "import os; print(getattr(os.stat('.'), 'st_blksize', 0)) or $mb * 3") \
     || exit $?
 data_size=$((block_size * 10))
@@ -142,7 +142,7 @@ WVPASS bup restore --sparse -C restore "src/latest/$(pwd)/"
 WVPASS "$top/t/compare-trees" -c src/ restore/src/
 
 WVSTART "sparse file restore --sparse (short zero runs around boundary)"
-WVPASS bup-python > src/foo <<EOF
+WVPASS bup-cfg-py > src/foo <<EOF
 from sys import stdout
 stdout.write("x" * 65535 + "\0")
 stdout.write("\0" + "x" * 65535)

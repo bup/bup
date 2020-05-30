@@ -82,7 +82,7 @@ WVPASS grep -qE "^uid: $other_uid\$" foo-xstat
 WVPASS grep -qE "^group: $other_group\$" foo-xstat
 WVPASS grep -qE "^gid: $other_gid\$" foo-xstat
 
-has_uid_gid_0=$(WVPASS bup-python -c "
+has_uid_gid_0=$(WVPASS bup-cfg-py -c "
 import grp, pwd
 try:
   pwd.getpwuid(0)

@@ -2,10 +2,8 @@
 
 bup_t_lib_script_home=$(cd "$(dirname $0)" && pwd) || exit $?
 
-bup-python()
-{
-    "$bup_t_lib_script_home/../cmd/bup-python" "$@"
-}
+bup-cfg-py() { "$bup_t_lib_script_home/../config/bin/python" "$@"; }
+bup-python() { "$bup_t_lib_script_home/../dev/bup-python" "$@"; }
 
 force-delete()
 {

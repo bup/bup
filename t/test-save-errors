@@ -33,9 +33,7 @@ WVPASS bup index "$tmpdir/save"
 # essentially, we create a bup-save command for ourselves
 # that gets an error for the .../5 file in metadata.from_path()
 cat > "$tmpdir/bup-save" << EOF
-#!/usr/bin/env $top/cmd/bup-python
-import os.path, sys
-sys.path[:0] = [os.path.dirname(os.path.realpath(__file__)) + '/../../../lib']
+#!/usr/bin/env $top/dev/bup-python
 from bup import metadata
 
 orig_from_path = metadata.from_path
@@ -45,7 +43,7 @@ def from_path(path, *args, **kw):
     return orig_from_path(path, *args, **kw)
 metadata.from_path = from_path
 
-exec(open("$top/cmd/bup-save", "rb").read())
+exec(open("$top/lib/cmd/bup-save", "rb").read())
 EOF
 chmod +x "$tmpdir/bup-save"
 
@@ -72,9 +70,7 @@ WVPASS bup index --clear
 WVPASS bup index "$tmpdir/save"
 
 cat > "$tmpdir/bup-save" << EOF
-#!/usr/bin/env $top/cmd/bup-python
-import os.path, sys
-sys.path[:0] = [os.path.dirname(os.path.realpath(__file__)) + '/../../../lib']
+#!/usr/bin/env $top/dev/bup-python
 from bup import metadata
 
 orig_from_path = metadata.from_path
@@ -84,7 +80,7 @@ def from_path(path, *args, **kw):
     return orig_from_path(path, *args, **kw)
 metadata.from_path = from_path
 
-exec(open("$top/cmd/bup-save", "rb").read())
+exec(open("$top/lib/cmd/bup-save", "rb").read())
 EOF
 chmod +x "$tmpdir/bup-save"
 
@@ -107,9 +103,7 @@ WVPASS bup index --clear
 WVPASS bup index "$tmpdir/save"
 
 cat > "$tmpdir/bup-save" << EOF
-#!/usr/bin/env $top/cmd/bup-python
-import os.path, sys
-sys.path[:0] = [os.path.dirname(os.path.realpath(__file__)) + '/../../../lib']
+#!/usr/bin/env $top/dev/bup-python
 from bup import index
 
 Reader = index.Reader
@@ -122,7 +116,7 @@ class DupReader(index.Reader):
             yield transname, ent
 index.Reader = DupReader
 
-exec(open("$top/cmd/bup-save", "rb").read())
+exec(open("$top/lib/cmd/bup-save", "rb").read())
 EOF
 chmod +x "$tmpdir/bup-save"
 

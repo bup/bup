@@ -43,7 +43,8 @@ id-other-than()
 genstat()
 {
     (
-        export PATH="$TOP:$PATH" # pick up bup
+        export PATH="$TOP/bin:$PATH" # pick up bup
+        bup version
         # Skip atime (test elsewhere) to avoid the observer effect.
         WVPASS find . -print0 | WVPASS sort -z \
             | WVPASS xargs -0 bup xstat \
@@ -439,9 +440,9 @@ src/foo/3"
     tmpdir="$(WVPASS wvmktempdir)" || exit $?    
 
     # FIXME: binary groups
-    first_group="$(WVPASS bup-python -c 'import os,grp; \
+    first_group="$(WVPASS bup-cfg-py -c 'import os,grp; \
       print(grp.getgrgid(os.getgroups()[0])[0])')" || exit $?
-    last_group="$(bup-python -c 'import os,grp; \
+    last_group="$(bup-cfg-py -c 'import os,grp; \
       print(grp.getgrgid(os.getgroups()[-1])[0])')" || exit $?
     last_group_erx="$(escape-erx "$last_group")"
 
@@ -719,7 +720,7 @@ if [ "$root_status" = root ]; then
                 WVPASS cd "$testfs_limited"/src-restore
                 WVFAIL bup meta --extract --file "$testfs"/src.meta 2>&1 \
                     | WVPASS grep -e '^Linux chattr:' \
-                    | WVPASS bup-python -c \
+                    | WVPASS bup-cfg-py -c \
                     'import sys; exit(not len(sys.stdin.readlines()) == 3)'
             ) || exit $?
         ) || exit $?
@@ -743,7 +744,7 @@ if [ "$root_status" = root ]; then
             WVFAIL bup meta --extract --file "$testfs"/src.meta
             WVFAIL bup meta --extract --file "$testfs"/src.meta 2>&1 \
                 | WVPASS grep -e "^xattr\.set u\?'" \
-                | WVPASS bup-python -c \
+                | WVPASS bup-cfg-py -c \
                 'import sys; exit(not len(sys.stdin.readlines()) == 2)'
         ) || exit $?
 
@@ -765,7 +766,7 @@ if [ "$root_status" = root ]; then
             WVPASS cd "$testfs_limited"/src-restore
             WVFAIL bup meta --extract --file "$testfs"/src.meta 2>&1 \
                 | WVPASS grep -e '^POSIX1e ACL applyto:' \
-                | WVPASS bup-python -c \
+                | WVPASS bup-cfg-py -c \
                 'import sys; exit(not len(sys.stdin.readlines()) == 2)'
         ) || exit $?
 
