@@ -558,7 +558,7 @@ class Metadata:
         if self.posix1e_acl:
             acls = self.posix1e_acl
             if len(acls) == 2:
-                acls.extend([b'', b''])
+                return vint.pack('ssss', acls[0], acls[1], b'', b'')
             return vint.pack('ssss', acls[0], acls[1], acls[2], acls[3])
         else:
             return None
