@@ -434,7 +434,7 @@ def hostname():
     """Get the FQDN of this machine."""
     global _hostname
     if not _hostname:
-        _hostname = socket.getfqdn().encode('iso-8859-1')
+        _hostname = _helpers.gethostname()
     return _hostname
 
 
