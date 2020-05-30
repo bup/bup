@@ -148,8 +148,8 @@ From source
 
     ```sh
     apt-get install python2.7-dev python-fuse
-    apt-get install python-pyxattr python-pylibacl
-    apt-get install linux-libc-dev
+    apt-get install python-pyxattr
+    apt-get install linux-libc-dev libacl1-dev
     apt-get install acl attr
     apt-get install libreadline-dev # optional (bup ftp)
     apt-get install python-tornado # optional (bup web)
@@ -160,15 +160,15 @@ From source
 
     ```sh
     yum groupinstall "Development Tools"
-    yum install python python-devel
-    yum install fuse-python pyxattr pylibacl
+    yum install python python-devel libacl-devel
+    yum install fuse-python pyxattr
     yum install perl-Time-HiRes
     yum install readline-devel # optional (bup ftp)
     yum install python-tornado # optional (bup web)
     ```
 
    In addition to the default CentOS repositories, you may need to add
-   RPMForge (for fuse-python) and EPEL (for pyxattr and pylibacl).
+   RPMForge (for fuse-python) and EPEL (for pyxattr).
 
    On Cygwin, install python, make, rsync, and gcc4.
 

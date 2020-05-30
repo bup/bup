@@ -62,6 +62,10 @@ readline_cflags += $(addprefix -DBUP_RL_EXPECTED_XOPEN_SOURCE=,$(readline_xopen)
 
 CFLAGS += $(readline_cflags)
 LDFLAGS += $(shell pkg-config readline --libs)
+ifeq ($(BUP_HAVE_LIBACL),yes)
+  CFLAGS += $(shell pkg-config libacl --cflags)
+  LDFLAGS += $(shell pkg-config libacl --libs)
+endif
 
 config/bin/python: config/config.vars
 

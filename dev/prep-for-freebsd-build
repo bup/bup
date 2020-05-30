@@ -7,5 +7,5 @@ export ASSUME_ALWAYS_YES=yes
 pkg update
 pkg install \
     gmake git bash rsync curl par2cmdline \
-    python2 python py27-pylibacl py27-tornado readline \
+    python2 python py27-tornado readline \
     duplicity rdiff-backup rsnapshot

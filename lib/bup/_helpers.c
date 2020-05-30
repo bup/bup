@@ -2095,6 +2095,137 @@ bup_readline(PyObject *self, PyObject *args)
 
 #endif // defined BUP_HAVE_READLINE
 
+#if defined(HAVE_SYS_ACL_H) && \
+    defined(HAVE_ACL_LIBACL_H) && \
+    defined(HAVE_ACL_EXTENDED_FILE) && \
+    defined(HAVE_ACL_GET_FILE) && \
+    defined(HAVE_ACL_TO_ANY_TEXT) && \
+    defined(HAVE_ACL_FROM_TEXT) && \
+    defined(HAVE_ACL_SET_FILE)
+#define ACL_SUPPORT 1
+#include <sys/acl.h>
+#include <acl/libacl.h>
+
+// Returns
+//   0 for success
+//  -1 for errors, with python exception set
+//  -2 for ignored errors (not supported)
+static int bup_read_acl_to_text(const char *name, acl_type_t type,
+                                char **txt, char **num)
+{
+    acl_t acl;
+
+    acl = acl_get_file(name, type);
+    if (!acl) {
+        if (errno == EOPNOTSUPP || errno == ENOSYS)
+            return -2;
+        PyErr_SetFromErrno(PyExc_IOError);
+        return -1;
+    }
+
+    *num = NULL;
+    *txt = acl_to_any_text(acl, "", '\n', TEXT_ABBREVIATE);
+    if (*txt)
+        *num = acl_to_any_text(acl, "", '\n', TEXT_ABBREVIATE | TEXT_NUMERIC_IDS);
+
+    if (*txt && *num)
+        return 0;
+
+    if (errno == ENOMEM)
+        PyErr_NoMemory();
+    else
+        PyErr_SetFromErrno(PyExc_IOError);
+
+    if (*txt)
+        acl_free((acl_t)*txt);
+    if (*num)
+        acl_free((acl_t)*num);
+
+    return -1;
+}
+
+static PyObject *bup_read_acl(PyObject *self, PyObject *args)
+{
+    char *name;
+    int isdir, rv;
+    PyObject *ret = NULL;
+    char *acl_txt = NULL, *acl_num = NULL;
+
+    if (!PyArg_ParseTuple(args, cstr_argf "i", &name, &isdir))
+	return NULL;
+
+    if (!acl_extended_file(name))
+        Py_RETURN_NONE;
+
+    rv = bup_read_acl_to_text(name, ACL_TYPE_ACCESS, &acl_txt, &acl_num);
+    if (rv)
+        goto out;
+
+    if (isdir) {
+        char *def_txt = NULL, *def_num = NULL;
+
+        rv = bup_read_acl_to_text(name, ACL_TYPE_DEFAULT, &def_txt, &def_num);
+        if (rv)
+            goto out;
+
+        ret = Py_BuildValue("[" cstr_argf cstr_argf cstr_argf cstr_argf "]",
+                            acl_txt, acl_num, def_txt, def_num);
+
+        if (def_txt)
+            acl_free((acl_t)def_txt);
+        if (def_num)
+            acl_free((acl_t)def_num);
+    } else {
+        ret = Py_BuildValue("[" cstr_argf cstr_argf "]",
+                            acl_txt, acl_num);
+    }
+
+out:
+    if (acl_txt)
+        acl_free((acl_t)acl_txt);
+    if (acl_num)
+        acl_free((acl_t)acl_num);
+    if (rv == -2)
+        Py_RETURN_NONE;
+    return ret;
+}
+
+static int bup_apply_acl_string(const char *name, const char *s)
+{
+    acl_t acl = acl_from_text(s);
+    int ret = 0;
+
+    if (!acl) {
+        PyErr_SetFromErrno(PyExc_IOError);
+        return -1;
+    }
+
+    if (acl_set_file(name, ACL_TYPE_ACCESS, acl)) {
+        PyErr_SetFromErrno(PyExc_IOError);
+        ret = -1;
+    }
+
+    acl_free(acl);
+
+    return ret;
+}
+
+static PyObject *bup_apply_acl(PyObject *self, PyObject *args)
+{
+    char *name, *acl, *def = NULL;
+
+    if (!PyArg_ParseTuple(args, cstr_argf cstr_argf "|" cstr_argf, &name, &acl, &def))
+	return NULL;
+
+    if (bup_apply_acl_string(name, acl))
+        return NULL;
+
+    if (def && bup_apply_acl_string(name, def))
+        return NULL;
+
+    Py_RETURN_NONE;
+}
+#endif
 
 static PyMethodDef helper_methods[] = {
     { "write_sparsely", bup_write_sparsely, METH_VARARGS,
@@ -2201,6 +2332,16 @@ static PyMethodDef helper_methods[] = {
     { "readline", bup_readline, METH_VARARGS,
       "Call readline(prompt)." },
 #endif // defined BUP_HAVE_READLINE
+#ifdef ACL_SUPPORT
+    { "read_acl", bup_read_acl, METH_VARARGS,
+      "read_acl(name, isdir)\n\n"
+      "Read ACLs for the given file/dirname and return the correctly encoded"
+      " list [txt, num, def_tx, def_num] (the def_* being empty bytestrings"
+      " unless the second argument 'isdir' is True)." },
+    { "apply_acl", bup_apply_acl, METH_VARARGS,
+      "apply_acl(name, acl, def=None)\n\n"
+      "Given a file/dirname (bytes) and the ACLs to restore, do that." },
+#endif /* HAVE_ACLS */
     { NULL, NULL, 0, NULL },  // sentinel
 };
 

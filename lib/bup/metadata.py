@@ -40,14 +40,14 @@ if sys.platform.startswith('linux'):
             log('Warning: python-xattr module is too old; '
                 'upgrade or install python-pyxattr instead.\n')
 
-posix1e = None
-if not (sys.platform.startswith('cygwin') \
-        or sys.platform.startswith('darwin') \
-        or sys.platform.startswith('netbsd')):
-    try:
-        import posix1e
-    except ImportError:
-        log('Warning: POSIX ACL support missing; install python-pylibacl.\n')
+try:
+    from bup._helpers import read_acl, apply_acl
+except ImportError:
+    if not (sys.platform.startswith('cygwin') or
+            sys.platform.startswith('darwin') or
+            sys.platform.startswith('netbsd')):
+        log('Warning: POSIX ACL support missing; recompile with libacl1-dev/libacl-devel.\n')
+    read_acl = apply_acl = None
 
 try:
     from bup._helpers import get_linux_file_attr, set_linux_file_attr
@@ -523,31 +523,11 @@ class Metadata:
     # The numeric/text distinction only matters when reading/restoring
     # a stored record.
     def _add_posix1e_acl(self, path, st):
-        if not posix1e or not posix1e.HAS_EXTENDED_CHECK:
+        if not read_acl:
             return
         if not stat.S_ISLNK(st.st_mode):
-            acls = None
-            def_acls = None
-            try:
-                if posix1e.has_extended(path):
-                    acl = posix1e.ACL(file=path)
-                    acls = [acl, acl] # txt and num are the same
-                    if stat.S_ISDIR(st.st_mode):
-                        def_acl = posix1e.ACL(filedef=(path if py_maj < 3
-                                                       else path.decode('iso-8859-1')))
-                        def_acls = [def_acl, def_acl]
-            except EnvironmentError as e:
-                if e.errno not in (errno.EOPNOTSUPP, errno.ENOSYS):
-                    raise
-            if acls:
-                txt_flags = posix1e.TEXT_ABBREVIATE
-                num_flags = posix1e.TEXT_ABBREVIATE | posix1e.TEXT_NUMERIC_IDS
-                acl_rep = [acls[0].to_any_text('', b'\n', txt_flags),
-                           acls[1].to_any_text('', b'\n', num_flags)]
-                if def_acls:
-                    acl_rep.append(def_acls[0].to_any_text('', b'\n', txt_flags))
-                    acl_rep.append(def_acls[1].to_any_text('', b'\n', num_flags))
-                self.posix1e_acl = acl_rep
+            isdir = 1 if stat.S_ISDIR(st.st_mode) else 0
+            self.posix1e_acl = read_acl(path, isdir)
 
     def _same_posix1e_acl(self, other):
         """Return true or false to indicate similarity in the hardlink sense."""
@@ -570,42 +550,31 @@ class Metadata:
         self.posix1e_acl = acl_rep
 
     def _apply_posix1e_acl_rec(self, path, restore_numeric_ids=False):
-        def apply_acl(acl_rep, kind):
-            try:
-                acl = posix1e.ACL(text=acl_rep.decode('ascii'))
-            except IOError as e:
-                if e.errno == 0:
-                    # pylibacl appears to return an IOError with errno
-                    # set to 0 if a group referred to by the ACL rep
-                    # doesn't exist on the current system.
-                    raise ApplyError("POSIX1e ACL: can't create %r for %r"
-                                     % (acl_rep, path_msg(path)))
-                else:
-                    raise
-            try:
-                acl.applyto(path, kind)
-            except IOError as e:
-                if e.errno == errno.EPERM or e.errno == errno.EOPNOTSUPP:
-                    raise ApplyError('POSIX1e ACL applyto: %s' % e)
-                else:
-                    raise
-
-        if not posix1e:
-            if self.posix1e_acl:
-                add_error("%s: can't restore ACLs; posix1e support missing.\n"
-                          % path_msg(path))
+        if not self.posix1e_acl:
             return
-        if self.posix1e_acl:
+
+        if not apply_acl:
+            add_error("%s: can't restore ACLs; posix1e support missing.\n"
+                      % path_msg(path))
+            return
+
+        try:
             acls = self.posix1e_acl
+            offs = 1 if restore_numeric_ids else 0
             if len(acls) > 2:
-                if restore_numeric_ids:
-                    apply_acl(acls[3], posix1e.ACL_TYPE_DEFAULT)
-                else:
-                    apply_acl(acls[2], posix1e.ACL_TYPE_DEFAULT)
-            if restore_numeric_ids:
-                apply_acl(acls[1], posix1e.ACL_TYPE_ACCESS)
+                apply_acl(path, acls[offs], acls[offs + 2])
             else:
-                apply_acl(acls[0], posix1e.ACL_TYPE_ACCESS)
+                apply_acl(path, acls[offs])
+        except IOError as e:
+            if e.errno == errno.EINVAL:
+                # libacl returns with errno set to EINVAL if a user
+                # (or group) doesn't exist
+                raise ApplyError("POSIX1e ACL: can't create %r for %r"
+                                 % (acls, path_msg(path)))
+            elif e.errno == errno.EPERM or e.errno == errno.EOPNOTSUPP:
+                raise ApplyError('POSIX1e ACL applyto: %s' % e)
+            else:
+                raise
 
 
     ## Linux attributes (lsattr(1), chattr(1))

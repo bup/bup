@@ -3,7 +3,7 @@ from __future__ import absolute_import, print_function
 
 import shlex, sys
 from distutils.core import setup, Extension
-from os import environ
+import os
 
 if len(sys.argv) != 4:
     print('Usage: csetup.py CFLAGS LDFLAGS', file=sys.stderr)

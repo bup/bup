@@ -12,7 +12,7 @@ apt-get update
 
 common_debs='gcc make linux-libc-dev git rsync eatmydata acl attr par2'
 common_debs="$common_debs duplicity rdiff-backup rsnapshot dosfstools kmod"
-common_debs="$common_debs libreadline-dev"
+common_debs="$common_debs libreadline-dev libacl1-dev"
 
 pyver="${1:-python2}"
 xattr="${2:-pyxattr}"
@@ -24,13 +24,13 @@ case "$pyver" in
         apt-get install -y \
                 $common_debs \
                 python2.7-dev python-fuse \
-                python-"$xattr" python-pylibacl python-tornado
+                python-"$xattr" python-tornado
         ;;
     python3)
         apt-get install -y \
                 $common_debs \
                 python3.7-dev python3-distutils python3-fuse \
-                python3-"$xattr" python3-pylibacl python3-tornado
+                python3-"$xattr" python3-tornado
         ;;
     *)
         usage 1>&2

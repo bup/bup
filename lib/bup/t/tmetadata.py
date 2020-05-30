@@ -270,8 +270,8 @@ def test_restore_over_existing_target():
             WVEXCEPT(Exception, dir_m.create_path, path, create_symlinks=True)
 
 
-from bup.metadata import posix1e
-if not posix1e:
+from bup.metadata import read_acl
+if not read_acl:
     @wvtest
     def POSIX1E_ACL_SUPPORT_IS_MISSING():
         pass
