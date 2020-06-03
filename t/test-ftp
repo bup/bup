@@ -63,7 +63,7 @@ with test_tempdir(b'ftp-') as tmpdir:
     
     wvstart('help')
     wvpasseq(b'Commands: ls cd pwd cat get mget help quit\n',
-             exo((bup_cmd, b'ftp'), input=b'help\n', stderr=PIPE).err)
+             exo((bup_cmd, b'ftp'), input=b'help\n', stderr=PIPE).out)
 
     wvstart('pwd/cd')
     wvpasseq(b'/\n', bup(b'ftp', input=b'pwd\n').out)

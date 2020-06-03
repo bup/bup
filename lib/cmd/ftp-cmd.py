@@ -13,8 +13,8 @@ exec "$bup_python" "$0" ${1+"$@"}
 from __future__ import absolute_import, print_function
 import sys, os, stat, fnmatch
 
-from bup import options, git, shquote, ls, vfs
-from bup.compat import argv_bytes, input
+from bup import _helpers, options, git, shquote, ls, vfs
+from bup.compat import argv_bytes
 from bup.helpers import chunkyreader, handle_ctrl_c, log
 from bup.io import byte_stream, path_msg
 from bup.repo import LocalRepo
@@ -24,10 +24,6 @@ handle_ctrl_c()
 
 class OptionError(Exception):
     pass
-
-
-def input_bytes(s):
-    return s.encode('iso-8859-1')
 
 
 def do_ls(repo, args, out):
@@ -45,21 +41,21 @@ def write_to_file(inf, outf):
 
 
 def inputiter():
-    if os.isatty(sys.stdin.fileno()):
+    if os.isatty(stdin.fileno()):
         while 1:
             try:
-                yield input('bup> ')
+                yield _helpers.readline(b'bup> ')
             except EOFError:
                 print()  # Clear the line for the terminal's next prompt
                 break
     else:
-        for line in sys.stdin:
+        for line in stdin:
             yield line
 
 
 def _completer_get_subs(repo, line):
     (qtype, lastword) = shquote.unfinished_word(line)
-    dir, name = os.path.split(lastword.encode('iso-8859-1'))
+    dir, name = os.path.split(lastword)
     dir_path = vfs.resolve(repo, dir or b'/')
     _, dir_item = dir_path[-1]
     if not dir_item:
@@ -71,14 +67,23 @@ def _completer_get_subs(repo, line):
     return qtype, lastword, subs
 
 
+_attempt_start = None
+_attempt_end = None
+def attempt_completion(text, start, end):
+    global _attempt_start, _attempt_end
+    _attempt_start = start
+    _attempt_end = end
+    return None
+
 _last_line = None
 _last_res = None
-def completer(text, iteration):
+def enter_completion(text, iteration):
     global repo
+    global _attempt_end
     global _last_line
     global _last_res
     try:
-        line = readline.get_line_buffer()[:readline.get_endidx()]
+        line = _helpers.get_line_buffer()[:_attempt_end]
         if _last_line != line:
             _last_res = _completer_get_subs(repo, line)
             _last_line = line
@@ -90,12 +95,10 @@ def completer(text, iteration):
             leaf_name, leaf_item = res[-1]
             fullname = os.path.join(*(name for name, item in res))
             if stat.S_ISDIR(vfs.item_mode(leaf_item)):
-                ret = shquote.what_to_add(qtype, lastword,
-                                          fullname.decode('iso-8859-1') + '/',
+                ret = shquote.what_to_add(qtype, lastword, fullname + b'/',
                                           terminate=False)
             else:
-                ret = shquote.what_to_add(qtype, lastword,
-                                          fullname.decode('iso-8859-1'),
+                ret = shquote.what_to_add(qtype, lastword, fullname,
                                           terminate=True) + b' '
             return text + ret
     except Exception as e:
@@ -118,26 +121,24 @@ git.check_repo_or_die()
 
 sys.stdout.flush()
 out = byte_stream(sys.stdout)
+stdin = byte_stream(sys.stdin)
 repo = LocalRepo()
 pwd = vfs.resolve(repo, b'/')
 rv = 0
 
-if extra:
-    lines = extra
-else:
-    try:
-        import readline
-    except ImportError:
-        log('* readline module not available: line editing disabled.\n')
-        readline = None
 
-    if readline:
-        readline.set_completer_delims(' \t\n\r/')
-        readline.set_completer(completer)
+
+if extra:
+    lines = (argv_bytes(arg) for arg in extra)
+else:
+    if hasattr(_helpers, 'readline'):
+        _helpers.set_completer_word_break_characters(b' \t\n\r/')
+        _helpers.set_attempted_completion_function(attempt_completion)
+        _helpers.set_completion_entry_function(enter_completion)
         if sys.platform.startswith('darwin'):
             # MacOS uses a slightly incompatible clone of libreadline
-            readline.parse_and_bind('bind ^I rl_complete')
-        readline.parse_and_bind('tab: complete')
+            _helpers.parse_and_bind(b'bind ^I rl_complete')
+        _helpers.parse_and_bind(b'tab: complete')
     lines = inputiter()
 
 for line in lines:
@@ -147,13 +148,14 @@ for line in lines:
     cmd = words[0].lower()
     #log('execute: %r %r\n' % (cmd, parm))
     try:
-        if cmd == 'ls':
+        if cmd == b'ls':
             # FIXME: respect pwd (perhaps via ls accepting resolve path/parent)
             do_ls(repo, words[1:], out)
-        elif cmd == 'cd':
+            out.flush()
+        elif cmd == b'cd':
             np = pwd
             for parm in words[1:]:
-                res = vfs.resolve(repo, input_bytes(parm), parent=np)
+                res = vfs.resolve(repo, parm, parent=np)
                 _, leaf_item = res[-1]
                 if not leaf_item:
                     raise Exception('%s does not exist'
@@ -163,13 +165,14 @@ for line in lines:
                     raise Exception('%s is not a directory' % path_msg(parm))
                 np = res
             pwd = np
-        elif cmd == 'pwd':
+        elif cmd == b'pwd':
             if len(pwd) == 1:
                 out.write(b'/')
             out.write(b'/'.join(name for name, item in pwd) + b'\n')
-        elif cmd == 'cat':
+            out.flush()
+        elif cmd == b'cat':
             for parm in words[1:]:
-                res = vfs.resolve(repo, input_bytes(parm), parent=pwd)
+                res = vfs.resolve(repo, parm, parent=pwd)
                 _, leaf_item = res[-1]
                 if not leaf_item:
                     raise Exception('%s does not exist' %
@@ -177,13 +180,14 @@ for line in lines:
                                                        in res)))
                 with vfs.fopen(repo, leaf_item) as srcfile:
                     write_to_file(srcfile, out)
-        elif cmd == 'get':
+            out.flush()
+        elif cmd == b'get':
             if len(words) not in [2,3]:
                 rv = 1
                 raise Exception('Usage: get <filename> [localname]')
-            rname = input_bytes(words[1])
+            rname = words[1]
             (dir,base) = os.path.split(rname)
-            lname = input_bytes(len(words) > 2 and words[2] or base)
+            lname = len(words) > 2 and words[2] or base
             res = vfs.resolve(repo, rname, parent=pwd)
             _, leaf_item = res[-1]
             if not leaf_item:
@@ -193,9 +197,9 @@ for line in lines:
                 with open(lname, 'wb') as destfile:
                     log('Saving %s\n' % path_msg(lname))
                     write_to_file(srcfile, destfile)
-        elif cmd == 'mget':
+        elif cmd == b'mget':
             for parm in words[1:]:
-                dir, base = os.path.split(input_bytes(parm))
+                dir, base = os.path.split(parm)
 
                 res = vfs.resolve(repo, dir, parent=pwd)
                 _, dir_item = res[-1]
@@ -217,10 +221,10 @@ for line in lines:
                             with open(name, 'wb') as destfile:
                                 log('Saving %s\n' % path_msg(name))
                                 write_to_file(srcfile, destfile)
-        elif cmd == 'help' or cmd == '?':
-            # FIXME: move to stdout
-            log('Commands: ls cd pwd cat get mget help quit\n')
-        elif cmd in ('quit', 'exit', 'bye'):
+        elif cmd == b'help' or cmd == b'?':
+            out.write(b'Commands: ls cd pwd cat get mget help quit\n')
+            out.flush()
+        elif cmd in (b'quit', b'exit', b'bye'):
             break
         else:
             rv = 1

@@ -2,8 +2,10 @@
 from __future__ import absolute_import
 import re
 
-q = "'"
-qq = '"'
+from bup.compat import bytes_from_byte
+
+q = b"'"
+qq = b'"'
 
 
 class QuoteError(Exception):
@@ -14,31 +16,31 @@ def _quotesplit(line):
     inquote = None
     inescape = None
     wordstart = 0
-    word = ''
+    word = b''
     for i in range(len(line)):
-        c = line[i]
+        c = bytes_from_byte(line[i])
         if inescape:
             if inquote == q and c != q:
-                word += '\\'  # single-q backslashes can only quote single-q
+                word += b'\\'  # single-q backslashes can only quote single-q
             word += c
             inescape = False
-        elif c == '\\':
+        elif c == b'\\':
             inescape = True
         elif c == inquote:
             inquote = None
             # this is un-sh-like, but do it for sanity when autocompleting
             yield (wordstart, word)
-            word = ''
+            word = b''
             wordstart = i+1
         elif not inquote and not word and (c == q or c == qq):
             # the 'not word' constraint on this is un-sh-like, but do it
             # for sanity when autocompleting
             inquote = c
             wordstart = i
-        elif not inquote and c in [' ', '\n', '\r', '\t']:
+        elif not inquote and c in [b' ', b'\n', b'\r', b'\t']:
             if word:
                 yield (wordstart, word)
-            word = ''
+            word = b''
             wordstart = i+1
         else:
             word += c
@@ -55,9 +57,9 @@ def quotesplit(line):
     backslash escapes.
 
     Note that this implementation isn't entirely sh-compatible.  It only
-    dequotes words that *start* with a quote character, that is, a string like
+    dequotes words that *start* with a quote character, that is, bytes like
        hello"world"
-    will not have its quotes removed, while a string like
+    will not have its quotes removed, while bytes like
        hello "world"
     will be turned into [(0, 'hello'), (6, 'world')] (ie. quotes removed).
     """
@@ -78,7 +80,7 @@ def unfinished_word(line):
     to read more bytes first.
 
     Args:
-      line: an input string
+      line: bytes
     Returns:
       quotechar,word: the initial quote char (or None), and the partial word.
     """
@@ -86,39 +88,38 @@ def unfinished_word(line):
         for (wordstart,word) in _quotesplit(line):
             pass
     except QuoteError:
-        firstchar = line[wordstart]
+        firstchar = bytes_from_byte(line[wordstart])
         if firstchar in [q, qq]:
             return (firstchar, word)
         else:
             return (None, word)
     else:
-        return (None, '')
-
+        return (None, b'')
 
 def quotify(qtype, word, terminate):
-    """Return a string corresponding to given word, quoted using qtype.
+    """Return a bytes corresponding to given word, quoted using qtype.
 
-    The resulting string is dequotable using quotesplit() and can be
-    joined with other quoted strings by adding arbitrary whitespace
+    The resulting bytes are dequotable using quotesplit() and can be
+    joined with other quoted bytes by adding arbitrary whitespace
     separators.
 
     Args:
       qtype: one of '', shquote.qq, or shquote.q
-      word: the string to quote.  May contain arbitrary characters.
+      word: the bytes to quote.  May contain arbitrary characters.
       terminate: include the trailing quote character, if any.
     Returns:
-      The quoted string.
+      The quoted bytes.
     """
     if qtype == qq:
-        return qq + word.replace(qq, '\\"') + (terminate and qq or '')
+        return qq + word.replace(qq, b'\\"') + (terminate and qq or b'')
     elif qtype == q:
-        return q + word.replace(q, "\\'") + (terminate and q or '')
+        return q + word.replace(q, b"\\'") + (terminate and q or b'')
     else:
-        return re.sub(r'([\"\' \t\n\r])', r'\\\1', word)
+        return re.sub(br'([\"\' \t\n\r])', br'\\\1', word)
 
 
 def quotify_list(words):
-  """Return a minimally-quoted string produced by quoting each word.
+  """Return minimally-quoted bytes produced by quoting each word.
 
   This calculates the qtype for each word depending on whether the word
   already includes singlequote characters, doublequote characters, both,
@@ -127,17 +128,17 @@ def quotify_list(words):
   Args:
     words: the list of words to quote.
   Returns:
-    The resulting string, with quoted words separated by ' '.
+    The resulting bytes, with quoted words separated by ' '.
   """
   wordout = []
   for word in words:
     qtype = q
-    if word and not re.search(r'[\s\"\']', word):
-      qtype = ''
+    if word and not re.search(br'[\s\"\']', word):
+      qtype = b''
     elif q in word and qq not in word:
       qtype = qq
     wordout.append(quotify(qtype, word, True))
-  return ' '.join(wordout)
+  return b' '.join(wordout)
 
 
 def what_to_add(qtype, origword, newword, terminate):
@@ -148,7 +149,7 @@ def what_to_add(qtype, origword, newword, terminate):
        terminate=False: 'ston'
        terminate=True:  'ston\"'
 
-    This is useful when calculating tab completion strings for readline.
+    This is useful when calculating tab completions for readline.
 
     Args:
       qtype: the type of quoting to use (ie. the first character of origword)
@@ -157,10 +158,10 @@ def what_to_add(qtype, origword, newword, terminate):
         origword.
       terminate: true if we should add the actual quote character at the end.
     Returns:
-      The string to append to origword to produce (quoted) newword.
+      The bytes to append to origword to produce (quoted) newword.
     """
     if not newword.startswith(origword):
-        return ''
+        return b''
     else:
         qold = quotify(qtype, origword, terminate=False)
         return quotify(qtype, newword, terminate=terminate)[len(qold):]
