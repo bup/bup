@@ -68,7 +68,7 @@ def usage(msg=""):
         if c.startswith(b'bup-') and c.find(b'.') < 0:
             cname = c[4:].decode('iso-8859-1')
             if cname not in common:
-                cmds.append(c[4:])
+                cmds.append(c[4:].decode(errors='backslashreplace'))
     log(columnate(cmds, '    '))
     log('\n')
     
