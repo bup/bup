@@ -223,13 +223,13 @@ def save_tree(opt, reader, hlink_db, msr, repo, split_trees):
                                         wantrecurse=wantrecurse_during):
         (dir, file) = os.path.split(ent.name)
         exists = (ent.flags & index.IX_EXISTS)
-        hashvalid = already_saved(ent)
+        already_saved_oid = already_saved(ent)
         wasmissing = ent.sha_missing()
         oldsize = ent.size
         if opt.verbose:
             if not exists:
                 status = 'D'
-            elif not hashvalid:
+            elif not already_saved_oid:
                 if ent.sha == index.EMPTY_SHA:
                     status = 'A'
                 else:
@@ -250,7 +250,7 @@ def save_tree(opt, reader, hlink_db, msr, repo, split_trees):
         if not exists:
             continue
         if opt.smaller and ent.size >= opt.smaller:
-            if exists and not hashvalid:
+            if exists and not already_saved_oid:
                 if opt.verbose:
                     log('skipping large file "%s"\n' % path_msg(ent.name))
                 lastskip_name = ent.name
@@ -306,7 +306,7 @@ def save_tree(opt, reader, hlink_db, msr, repo, split_trees):
             if len(stack) == 1:
                 continue # We're at the top level -- keep the current root dir
             # Since there's no filename, this is a subdir -- finish it.
-            oldtree = already_saved(ent) # may be None
+            oldtree = already_saved_oid # may be False
             newtree = stack.pop(repo, override_tree=oldtree)
             if not oldtree:
                 if lastskip_name and lastskip_name.startswith(ent.name):
@@ -319,7 +319,7 @@ def save_tree(opt, reader, hlink_db, msr, repo, split_trees):
             continue
 
         # it's not a directory
-        if hashvalid:
+        if already_saved_oid:
             meta = msr.metadata_at(ent.meta_ofs)
             meta.hardlink_target = find_hardlink_target(hlink_db, ent)
             # Restore the times that were cleared to 0 in the metastore.
@@ -343,7 +343,7 @@ def save_tree(opt, reader, hlink_db, msr, repo, split_trees):
                 #    something else (a device, socket, FIFO or symlink, etc.)
                 #    and _read_ from it when we shouldn't.
                 # 2) We then record it as valid, but don't update the index
-                #    metadata, and on a subsequent save it has 'hashvalid'
+                #    metadata, and on a subsequent save it has 'already_saved_oid'
                 #    but is recorded as the file type from the index, when
                 #    the content is something else ...
                 # Avoid all of these consistency issues by just skipping such
