@@ -1,7 +1,16 @@
 #!/bin/sh
 """": # -*-python-*-
+# https://sourceware.org/bugzilla/show_bug.cgi?id=26034
+export "BUP_ARGV_0"="$0"
+arg_i=1
+for arg in "$@"; do
+    export "BUP_ARGV_${arg_i}"="$arg"
+    shift
+    arg_i=$((arg_i + 1))
+done
+# Here to end of preamble replaced during install
 bup_python="$(dirname "$0")/bup-python" || exit $?
-exec "$bup_python" "$0" ${1+"$@"}
+exec "$bup_python" "$0"
 """
 # end of bup preamble
 
@@ -14,7 +23,7 @@ import os
 import sys
 import tempfile
 
-from bup import git, helpers, options
+from bup import compat, git, helpers, options
 from bup.compat import argv_bytes, str_type
 from bup.helpers import (handle_ctrl_c,
                          log,
@@ -56,7 +65,7 @@ handle_ctrl_c()
 log('\nbup: import-duplicity is EXPERIMENTAL (proceed with caution)\n\n')
 
 o = options.Options(optspec)
-opt, flags, extra = o.parse(sys.argv[1:])
+opt, flags, extra = o.parse(compat.argv[1:])
 
 if len(extra) < 1 or not extra[0]:
     o.fatal('duplicity source URL required')

@@ -1,7 +1,16 @@
 #!/bin/sh
 """": # -*-python-*-
+# https://sourceware.org/bugzilla/show_bug.cgi?id=26034
+export "BUP_ARGV_0"="$0"
+arg_i=1
+for arg in "$@"; do
+    export "BUP_ARGV_${arg_i}"="$arg"
+    shift
+    arg_i=$((arg_i + 1))
+done
+# Here to end of preamble replaced during install
 bup_python="$(dirname "$0")/bup-python" || exit $?
-exec "$bup_python" "$0" ${1+"$@"}
+exec "$bup_python" "$0"
 """
 # end of bup preamble
 
@@ -11,7 +20,8 @@ from errno import EACCES
 from io import BytesIO
 import os, sys, stat, time, math
 
-from bup import hashsplit, git, options, index, client, metadata, hlinkdb
+from bup import compat, hashsplit, git, options, index, client, metadata
+from bup import hlinkdb
 from bup.compat import argv_bytes, environ
 from bup.hashsplit import GIT_MODE_TREE, GIT_MODE_FILE, GIT_MODE_SYMLINK
 from bup.helpers import (add_error, grafted_path_components, handle_ctrl_c,
@@ -42,7 +52,7 @@ graft=     a graft point *old_path*=*new_path* (can be used more than once)
 #,compress=  set compression level to # (0-9, 9 is highest) [1]
 """
 o = options.Options(optspec)
-(opt, flags, extra) = o.parse(sys.argv[1:])
+opt, flags, extra = o.parse(compat.argv[1:])
 
 if opt.indexfile:
     opt.indexfile = argv_bytes(opt.indexfile)

@@ -13,7 +13,7 @@ from subprocess import check_output
 from sys import stderr, stdout
 import sys
 
-script_home = abspath(dirname(sys.argv[0] or '.'))
+script_home = abspath(dirname(__file__))
 sys.path[:0] = [abspath(script_home + '/../lib'), abspath(script_home + '/..')]
 
 from wvtest import wvcheck, wvfail, wvmsg, wvpass, wvpasseq, wvpassne, wvstart

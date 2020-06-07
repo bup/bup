@@ -1,13 +1,23 @@
 #!/bin/sh
 """": # -*-python-*-
+# https://sourceware.org/bugzilla/show_bug.cgi?id=26034
+export "BUP_ARGV_0"="$0"
+arg_i=1
+for arg in "$@"; do
+    export "BUP_ARGV_${arg_i}"="$arg"
+    shift
+    arg_i=$((arg_i + 1))
+done
+# Here to end of preamble replaced during install
 bup_python="$(dirname "$0")/bup-python" || exit $?
-exec "$bup_python" "$0" ${1+"$@"}
+exec "$bup_python" "$0"
 """
 # end of bup preamble
 
 from __future__ import absolute_import
 import sys, getopt, socket, subprocess, fcntl
-from bup import options, path
+
+from bup import compat, options, path
 from bup.helpers import *
 
 optspec = """
@@ -17,7 +27,7 @@ l,listen  ip address to listen on, defaults to *
 p,port    port to listen on, defaults to 1982
 """
 o = options.Options(optspec, optfunc=getopt.getopt)
-(opt, flags, extra) = o.parse(sys.argv[1:])
+opt, flags, extra = o.parse(compat.argv[1:])
 
 host = opt.listen
 port = opt.port and int(opt.port) or 1982

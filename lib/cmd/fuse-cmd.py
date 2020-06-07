@@ -1,7 +1,16 @@
 #!/bin/sh
 """": # -*-python-*-
+# https://sourceware.org/bugzilla/show_bug.cgi?id=26034
+export "BUP_ARGV_0"="$0"
+arg_i=1
+for arg in "$@"; do
+    export "BUP_ARGV_${arg_i}"="$arg"
+    shift
+    arg_i=$((arg_i + 1))
+done
+# Here to end of preamble replaced during install
 bup_python="$(dirname "$0")/bup-python" || exit $?
-exec "$bup_python" "$0" ${1+"$@"}
+exec "$bup_python" "$0"
 """
 # end of bup preamble
 
@@ -32,7 +41,7 @@ if sys.version_info[0] > 2:
               file=sys.stderr)
         sys.exit(2)
 
-from bup import options, git, vfs, xstat
+from bup import compat, options, git, vfs, xstat
 from bup.compat import argv_bytes, fsdecode, py_maj
 from bup.helpers import log
 from bup.repo import LocalRepo
@@ -137,7 +146,7 @@ meta          report original metadata for paths when available
 v,verbose     increase log output (can be used more than once)
 """
 o = options.Options(optspec)
-opt, flags, extra = o.parse(sys.argv[1:])
+opt, flags, extra = o.parse(compat.argv[1:])
 if not opt.verbose:
     opt.verbose = 0
 

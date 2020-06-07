@@ -1,13 +1,23 @@
 #!/bin/sh
 """": # -*-python-*-
+# https://sourceware.org/bugzilla/show_bug.cgi?id=26034
+export "BUP_ARGV_0"="$0"
+arg_i=1
+for arg in "$@"; do
+    export "BUP_ARGV_${arg_i}"="$arg"
+    shift
+    arg_i=$((arg_i + 1))
+done
+# Here to end of preamble replaced during install
 bup_python="$(dirname "$0")/bup-python" || exit $?
-exec "$bup_python" "$0" ${1+"$@"}
+exec "$bup_python" "$0"
 """
 # end of bup preamble
 
 from __future__ import absolute_import
 import sys
 
+from bup import compat
 from bup.compat import argv_bytes
 from bup.git import check_repo_or_die
 from bup.options import Options
@@ -26,7 +36,7 @@ unsafe       use the command even though it may be DANGEROUS
 handle_ctrl_c()
 
 o = Options(optspec)
-opt, flags, extra = o.parse(sys.argv[1:])
+opt, flags, extra = o.parse(compat.argv[1:])
 
 if not opt.unsafe:
     o.fatal('refusing to run dangerous, experimental command without --unsafe')

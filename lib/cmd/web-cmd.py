@@ -1,7 +1,16 @@
 #!/bin/sh
 """": # -*-python-*-
+# https://sourceware.org/bugzilla/show_bug.cgi?id=26034
+export "BUP_ARGV_0"="$0"
+arg_i=1
+for arg in "$@"; do
+    export "BUP_ARGV_${arg_i}"="$arg"
+    shift
+    arg_i=$((arg_i + 1))
+done
+# Here to end of preamble replaced during install
 bup_python="$(dirname "$0")/bup-python" || exit $?
-exec "$bup_python" "$0" ${1+"$@"}
+exec "$bup_python" "$0"
 """
 # end of bup preamble
 
@@ -10,7 +19,7 @@ from collections import namedtuple
 import mimetypes, os, posixpath, signal, stat, sys, time, urllib, webbrowser
 from binascii import hexlify
 
-from bup import options, git, vfs
+from bup import compat, options, git, vfs
 from bup.helpers import (chunkyreader, debug1, format_filesize, handle_ctrl_c,
                          log, saved_errors)
 from bup.metadata import Metadata
@@ -250,7 +259,7 @@ human-readable    display human readable file sizes (i.e. 3.9K, 4.7M)
 browser           show repository in default browser (incompatible with unix://)
 """
 o = options.Options(optspec)
-(opt, flags, extra) = o.parse(sys.argv[1:])
+opt, flags, extra = o.parse(compat.argv[1:])
 
 if len(extra) > 1:
     o.fatal("at most one argument expected")

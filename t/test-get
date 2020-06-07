@@ -1,7 +1,15 @@
 #!/bin/sh
 """": # -*-python-*-
-bup_python="$(dirname "$0")/../cmd/bup-python" || exit $?
-exec "$bup_python" "$0" ${1+"$@"}
+# https://sourceware.org/bugzilla/show_bug.cgi?id=26034
+export "BUP_ARGV_0"="$0"
+arg_i=1
+for arg in "$@"; do
+    export "BUP_ARGV_${arg_i}"="$arg"
+    shift
+    arg_i=$((arg_i + 1))
+done
+bup_python="$(dirname "$0")/../lib/cmd/bup-python" || exit $?
+exec "$bup_python" "$0"
 """
 # end of bup preamble
 
@@ -962,11 +970,11 @@ dispositions_to_test = ('get',)
 if int(environ.get(b'BUP_TEST_LEVEL', b'0')) >= 11:
     dispositions_to_test += ('get-on', 'get-to')
 
-if len(sys.argv) == 1:
+if len(compat.argv) == 1:
     categories = ('replace', 'universal', 'ff', 'append', 'pick', 'new-tag',
              'unnamed')
 else:
-    categories = sys.argv[1:]
+    categories = compat.argv[1:]
     
 with test_tempdir(b'get-') as tmpdir:
     chdir(tmpdir)

@@ -1,7 +1,16 @@
 #!/bin/sh
 """": # -*-python-*-
+# https://sourceware.org/bugzilla/show_bug.cgi?id=26034
+export "BUP_ARGV_0"="$0"
+arg_i=1
+for arg in "$@"; do
+    export "BUP_ARGV_${arg_i}"="$arg"
+    shift
+    arg_i=$((arg_i + 1))
+done
+# Here to end of preamble replaced during install
 bup_python="$(dirname "$0")/bup-python" || exit $?
-exec "$bup_python" "$0" ${1+"$@"}
+exec "$bup_python" "$0"
 """
 # end of bup preamble
 
@@ -12,7 +21,7 @@ from subprocess import PIPE, Popen
 from tempfile import mkdtemp
 from binascii import hexlify
 
-from bup import options, git
+from bup import compat, options, git
 from bup.compat import argv_bytes
 from bup.helpers import Sha1, chunkyreader, istty2, log, progress
 from bup.io import byte_stream
@@ -184,7 +193,7 @@ par2-ok     immediately return 0 if par2 is ok, 1 if not
 disable-par2  ignore par2 even if it is available
 """
 o = options.Options(optspec)
-(opt, flags, extra) = o.parse(sys.argv[1:])
+opt, flags, extra = o.parse(compat.argv[1:])
 opt.verbose = opt.verbose or 0
 
 par2_setup()

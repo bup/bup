@@ -1,7 +1,16 @@
 #!/bin/sh
 """": # -*-python-*-
+# https://sourceware.org/bugzilla/show_bug.cgi?id=26034
+export "BUP_ARGV_0"="$0"
+arg_i=1
+for arg in "$@"; do
+    export "BUP_ARGV_${arg_i}"="$arg"
+    shift
+    arg_i=$((arg_i + 1))
+done
+# Here to end of preamble replaced during install
 bup_python="$(dirname "$0")/bup-python" || exit $?
-exec "$bup_python" "$0" ${1+"$@"}
+exec "$bup_python" "$0"
 """
 # end of bup preamble
 
@@ -13,7 +22,7 @@ from sys import stderr
 from time import localtime, strftime, time
 import re, sys
 
-from bup import git, options
+from bup import compat, git, options
 from bup.compat import argv_bytes, int_types
 from bup.gc import bup_gc
 from bup.helpers import die_if_errors, log, partition, period_as_secs
@@ -84,7 +93,7 @@ unsafe        use the command even though it may be DANGEROUS
 """
 
 o = options.Options(optspec)
-opt, flags, roots = o.parse(sys.argv[1:])
+opt, flags, roots = o.parse(compat.argv[1:])
 roots = [argv_bytes(x) for x in roots]
 
 if not opt.unsafe:

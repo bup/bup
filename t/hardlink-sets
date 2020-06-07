@@ -1,14 +1,22 @@
 #!/bin/sh
 """": # -*-python-*-
-bup_python="$(dirname "$0")/../cmd/bup-python" || exit $?
-exec "$bup_python" "$0" ${1+"$@"}
+# https://sourceware.org/bugzilla/show_bug.cgi?id=26034
+export "BUP_ARGV_0"="$0"
+arg_i=1
+for arg in "$@"; do
+    export "BUP_ARGV_${arg_i}"="$arg"
+    shift
+    arg_i=$((arg_i + 1))
+done
+bup_python="$(dirname "$0")/../lib/cmd/bup-python" || exit $?
+exec "$bup_python" "$0"
 """
 # end of bup preamble
 
 from __future__ import absolute_import, print_function
 import os, stat, sys
 
-from bup.compat import argv_bytes
+from bup import compat
 from bup.io import byte_stream
 
 
@@ -19,7 +27,7 @@ from bup.io import byte_stream
 def usage():
     print("Usage: hardlink-sets <paths ...>", file=sys.stderr)
 
-if len(sys.argv) < 2:
+if len(compat.argv) < 2:
     usage()
     sys.exit(1)
 
@@ -31,7 +39,7 @@ out = byte_stream(sys.stdout)
 
 hardlink_set = {}
 
-for p in (argv_bytes(x) for x in sys.argv[1:]):
+for p in compat.argvb[1:]:
   for root, dirs, files in os.walk(p, onerror = on_walk_error):
       for filename in files:
           full_path = os.path.join(root, filename)

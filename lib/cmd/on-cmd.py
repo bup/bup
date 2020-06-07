@@ -1,7 +1,16 @@
 #!/bin/sh
 """": # -*-python-*-
+# https://sourceware.org/bugzilla/show_bug.cgi?id=26034
+export "BUP_ARGV_0"="$0"
+arg_i=1
+for arg in "$@"; do
+    export "BUP_ARGV_${arg_i}"="$arg"
+    shift
+    arg_i=$((arg_i + 1))
+done
+# Here to end of preamble replaced during install
 bup_python="$(dirname "$0")/bup-python" || exit $?
-exec "$bup_python" "$0" ${1+"$@"}
+exec "$bup_python" "$0"
 """
 # end of bup preamble
 
@@ -9,7 +18,7 @@ from __future__ import absolute_import
 from subprocess import PIPE
 import sys, os, struct, getopt, subprocess, signal
 
-from bup import options, ssh, path
+from bup import compat, options, ssh, path
 from bup.compat import argv_bytes
 from bup.helpers import DemuxConn, log
 from bup.io import byte_stream
@@ -22,7 +31,7 @@ bup on <hostname> split ...
 bup on <hostname> get ...
 """
 o = options.Options(optspec, optfunc=getopt.getopt)
-(opt, flags, extra) = o.parse(sys.argv[1:])
+opt, flags, extra = o.parse(compat.argv[1:])
 if len(extra) < 2:
     o.fatal('arguments expected')
 

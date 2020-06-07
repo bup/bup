@@ -1,7 +1,16 @@
 #!/bin/sh
 """": # -*-python-*-
+# https://sourceware.org/bugzilla/show_bug.cgi?id=26034
+export "BUP_ARGV_0"="$0"
+arg_i=1
+for arg in "$@"; do
+    export "BUP_ARGV_${arg_i}"="$arg"
+    shift
+    arg_i=$((arg_i + 1))
+done
+# Here to end of preamble replaced during install
 bup_python="$(dirname "$0")/bup-python" || exit $?
-exec "$bup_python" "$0" ${1+"$@"}
+exec "$bup_python" "$0"
 """
 # end of bup preamble
 
@@ -9,7 +18,7 @@ from __future__ import absolute_import
 from stat import S_ISDIR
 import copy, errno, os, sys, stat, re
 
-from bup import options, git, metadata, vfs
+from bup import compat, options, git, metadata, vfs
 from bup._helpers import write_sparsely
 from bup.compat import argv_bytes, fsencode, wrap_main
 from bup.helpers import (add_error, chunkyreader, die_if_errors, handle_ctrl_c,
@@ -225,7 +234,7 @@ def restore(repo, parent_path, name, item, top, sparse, numeric_ids, owner_map,
 
 def main():
     o = options.Options(optspec)
-    opt, flags, extra = o.parse(sys.argv[1:])
+    opt, flags, extra = o.parse(compat.argv[1:])
     verbosity = (opt.verbose or 0) if not opt.quiet else -1
     if opt.remote:
         opt.remote = argv_bytes(opt.remote)
