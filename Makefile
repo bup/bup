@@ -46,6 +46,21 @@ config/config.vars: configure config/configure config/configure.inc \
   $(wildcard config/*.in)
 	MAKE="$(MAKE)" ./configure
 
+# On some platforms, Python.h and readline.h fight over the
+# _XOPEN_SOURCE version, i.e. -Werror crashes on a mismatch, so for
+# now, we're just going to let Python's version win.
+readline_cflags += $(shell pkg-config readline --cflags)
+readline_xopen := $(filter -D_XOPEN_SOURCE=%,$(readline_cflags))
+readline_xopen := $(subst -D_XOPEN_SOURCE=,,$(readline_xopen))
+ifneq ($(readline_xopen),600)
+  $(error "Unexpected pkg-config readline _XOPEN_SOURCE --cflags $(readline_cflags)")
+endif
+readline_cflags := $(filter-out -D_XOPEN_SOURCE=%,$(readline_cflags))
+readline_cflags += $(addprefix -DBUP_RL_EXPECTED_XOPEN_SOURCE=,$(readline_xopen))
+
+CFLAGS += $(readline_cflags)
+LDFLAGS += $(shell pkg-config readline --libs)
+
 bup_cmds := cmd/bup-python \
   $(patsubst cmd/%-cmd.py,cmd/bup-%,$(wildcard cmd/*-cmd.py)) \
   $(patsubst cmd/%-cmd.sh,cmd/bup-%,$(wildcard cmd/*-cmd.sh))

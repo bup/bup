@@ -147,7 +147,8 @@ From source
     apt-get install python-pyxattr python-pylibacl
     apt-get install linux-libc-dev
     apt-get install acl attr
-    apt-get install python-tornado # optional
+    apt-get install libreadline-dev # optional (bup ftp)
+    apt-get install python-tornado # optional (bup web)
     ```
 
    On CentOS (for CentOS 6, at least), this should be sufficient (run
@@ -158,6 +159,8 @@ From source
     yum install python python-devel
     yum install fuse-python pyxattr pylibacl
     yum install perl-Time-HiRes
+    yum install readline-devel # optional (bup ftp)
+    yum install python-tornado # optional (bup web)
     ```
 
    In addition to the default CentOS repositories, you may need to add

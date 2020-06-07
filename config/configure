@@ -166,6 +166,13 @@ if test "$ac_defined_HAVE_MINCORE"; then
     fi
 fi
 
+TLOGN "checking for readline"
+if pkg-config readline; then
+    AC_DEFINE BUP_HAVE_READLINE 1
+    TLOG ' (yes)'
+else
+    TLOG ' (no)'
+fi
 
 AC_CHECK_FIELD stat st_atim sys/types.h sys/stat.h unistd.h
 AC_CHECK_FIELD stat st_mtim sys/types.h sys/stat.h unistd.h

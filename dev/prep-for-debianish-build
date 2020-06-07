@@ -12,6 +12,7 @@ apt-get update
 
 common_debs='gcc make linux-libc-dev git rsync eatmydata acl attr par2'
 common_debs="$common_debs duplicity rdiff-backup rsnapshot dosfstools kmod"
+common_debs="$common_debs libreadline-dev"
 
 pyver="${1:-python2}"
 xattr="${2:-pyxattr}"
