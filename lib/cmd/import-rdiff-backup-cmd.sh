@@ -68,7 +68,7 @@ while read timestamp type; do
     echo 1>&2
 
     echo "Importing into bup..." 1>&2
-    TMPIDX=$(must mktemp -u import-rdiff-backup-idx-XXXXXXX) || exit $?
+    tmpidx=$(must mktemp -u import-rdiff-backup-idx-XXXXXXX) || exit $?
     must bup index -ux -f "$tmpidx" "$tmpdir"
     must bup save --strip --date="$timestamp" -f "$tmpidx" -n "$branch" "$tmpdir"
     must rm -f "$tmpidx"
