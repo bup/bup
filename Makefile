@@ -264,10 +264,8 @@ long-check: check
 
 .PHONY: check-both
 check-both:
-	$(MAKE) clean \
-	  && PYTHON=python3 BUP_ALLOW_UNEXPECTED_PYTHON_VERSION=true $(MAKE) check
-	$(MAKE) clean \
-	  && PYTHON=python2 $(MAKE) check
+	$(MAKE) clean && PYTHON=python3 $(MAKE) check
+	$(MAKE) clean && PYTHON=python2 $(MAKE) check
 
 cmd/bup-%: cmd/%-cmd.py
 	rm -f $@

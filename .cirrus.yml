@@ -77,6 +77,4 @@ task:
     dev/system-info
     adduser --disabled-password --gecos '' bup
     chown -R bup:bup .
-    testcmd='BUP_ALLOW_UNEXPECTED_PYTHON_VERSION=true PYTHON=python3'
-    testcmd="$testcmd eatmydata make -j3 -C '$(pwd)' check"
-    su -l bup -c "$testcmd"
+    su -l bup -c "PYTHON=python3 eatmydata make -j3 -C '$(pwd)' check"

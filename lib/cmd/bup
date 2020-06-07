@@ -35,13 +35,6 @@ from subprocess import PIPE
 
 from bup.compat import environ, fsdecode
 from bup.io import path_msg
-
-if sys.version_info[0] != 2 \
-   and not environ.get(b'BUP_ALLOW_UNEXPECTED_PYTHON_VERSION') == b'true':
-    print('error: bup may crash with python versions other than 2, or eat your data',
-          file=sys.stderr)
-    sys.exit(2)
-
 from bup import compat, path, helpers
 from bup.compat import add_ex_tb, add_ex_ctx, argv_bytes, wrap_main
 from bup.helpers import atoi, columnate, debug1, log, merge_dict, tty_width
