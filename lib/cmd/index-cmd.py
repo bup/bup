@@ -319,7 +319,8 @@ if opt['print'] or opt.status or opt.modified:
         if opt.hash:
             line += hexlify(ent.sha) + b' '
         if opt.long:
-            line += b'%7s %7s ' % (oct(ent.mode), oct(ent.gitmode))
+            line += b'%7s %7s ' % (oct(ent.mode).encode('ascii'),
+                                   oct(ent.gitmode).encode('ascii'))
         out.write(line + (name or b'./') + b'\n')
 
 if opt.check and (opt['print'] or opt.status or opt.modified or opt.update):
