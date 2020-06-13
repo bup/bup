@@ -34,7 +34,7 @@ if len(extra) == 0:
 elif len(extra) == 1:
     docname = (extra[0]=='bup' and 'bup' or ('bup-%s' % extra[0]))
     manpath = os.path.join(path.exedir(),
-                           'Documentation/' + docname + '.[1-9]')
+                           '../../Documentation/' + docname + '.[1-9]')
     g = glob.glob(manpath)
     try:
         if g:
