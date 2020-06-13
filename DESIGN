@@ -644,11 +644,11 @@ Handling Python 3's insistence on strings
 =========================================
 
 In Python 2 strings were bytes, and bup used them for all kinds of
-data.  Python 3 made a pervasive backward-incompatible change to make
-all strings Unicode, i.e. in Python 2 'foo' and b'foo' were the same
-thing, while u'foo' was a Unicode string.  In Python 3 'foo' became
-synonymous with u'foo', completely changing the type and potential
-content, depending on the locale.
+data.  Python 3 made a pervasive backward-incompatible change to treat
+all strings as Unicode, i.e. in Python 2 'foo' and b'foo' were the
+same thing, while u'foo' was a Unicode string.  In Python 3 'foo'
+became synonymous with u'foo', completely changing the type and
+potential content, depending on the locale.
 
 In addition, and particularly bad for bup, Python 3 also (initially)
 insisted that all kinds of things were strings that just aren't (at
@@ -656,26 +656,41 @@ least not on many platforms), i.e. user names, groups, filesystem
 paths, etc.  There's no guarantee that any of those are always
 representable in Unicode.
 
-Over the years, Python 3 has gradually backed off from that initial
-aggressive stance, adding alternate interfaces like os.environb or
-allowing bytes arguments to many functions like open(b'foo'...), so
-that in those cases it's at least possible to accurately
-retrieve the system data.
+Over the years, Python 3 has gradually backed away from that initial
+position, adding alternate interfaces like os.environb or allowing
+bytes arguments to many functions like open(b'foo'...), so that in
+those cases it's at least possible to accurately retrieve the system
+data.
 
-After a while, they devised the concept of [byte smuggling](https://www.python.org/dev/peps/pep-0383/)
-as a more comprehensive solution, though at least currently, we've
-found that it doesn't always work (see below), and at least for bulk
-data, it's more expensive, converting the data back and forth when you
-just wanted the original bytes, exactly as provided by the system
-APIs.
+After a while, they devised the concept of
+[bytesmuggling](https://www.python.org/dev/peps/pep-0383/) as a more
+comprehensive solution.  In theory, this might be sufficient, but our
+initial randomized testing discovered that some binary arguments would
+crash Python during startup[1].  Eventually Johannes Berg tracked down
+the [cause](https://sourceware.org/bugzilla/show_bug.cgi?id=26034),
+and we hope that the problem will be fixed eventually in glibc or
+worked around by Python, but in either case, it will be a long time
+before any fix is widely available.
 
-At least one case where we've found that the byte smuggling approach
-it doesn't work is with respect to sys.argv (initially discovered in
-Python 3.7).  The claim is that we should be able to retrieve the
-original bytes via fsdecode(sys.argv[n]), but after adding some
-randomized argument testing, we quickly discovered that this isn't
-true with (at least) the default UTF-8 environment.  The interpreter
-just crashes while starting up with some random binary arguments:
+Before we tracked down that bug we were pursuing an approach that
+would let us side step the issue entirely by manipulating the
+LC_CTYPE, but that approach was somewhat complicated, and once we
+understood what was causing the crashes, we decided to just let Python
+3 operate "normally", and work around the issues.
+
+Consequently, we've had to wrap a number of things ourselves that
+incorrectly return Unicode strings (libacl, libreadline, hostname,
+etc.)  and we've had to come up with a way to avoid the fatal crashes
+caused by some command line arguments (sys.argv) described above.  To
+fix the latter, for the time being, we just use a trivial sh wrapper
+to redirect all of the command line arguments through the environment
+in BUP_ARGV_{0,1,2,...} variables, since the variables are unaffected,
+and we can access them directly in Python 3 via environb.
+
+[1] Our randomized argv testing found that the byte smuggling approach
+    was not working correctly for some values (initially discovered in
+    Python 3.7, and observed in other versions).  The interpreter
+    would just crash while starting up like this:
 
     Fatal Python error: _PyMainInterpreterConfig_Read: memory allocation failed
     ValueError: character U+134bd2 is not in range [U+0000; U+10ffff]
@@ -688,34 +703,6 @@ just crashes while starting up with some random binary arguments:
         **kwargs).stdout
       File "/usr/lib/python3.7/subprocess.py", line 487, in run
         output=stdout, stderr=stderr)
-
-To fix that, at least for now, the plan is to *always* force the
-LC_CTYPE to ISO-8859-1 before launching Python, which does "fix" the
-problem.
-
-The reason we want to require ISO-8859-1 is that it's a (common)
-8-byte encoding, which means that there are no invalid byte sequences
-with respect to encoding/decoding, and so the mapping between it and
-Unicode is one-to-one.  i.e. any sequence of bytes is a valid
-ISO-8859-1 string and has a valid representation in Unicode.  Whether
-or not the end result in Unicode represents what was originally
-intended is another question entirely, but the key thing is that the
-round-trips between ISO-8859-1 bytes and Unicode should be completely
-safe.
-
-We're requiring this encoding so that *hopefully* Python 3 will then
-allow us to get the unmangled bytes from os interfaces where it
-doesn't provide an explicit or implicit binary version like environb
-or open(b'foo', ...).
-
-In the longer run we might consider wrapping these APIs ourselves in
-C, and have them just return Py_bytes objects to begin with, which
-would be more efficient and make the process completely independent of
-the system encoding, and/or less potentially fragile with respect to
-whatever the Python upstream might decide to try next.
-
-But for now, this approach will hopefully save us some work.
-
 
 We hope you'll enjoy bup.  Looking forward to your patches!
 
