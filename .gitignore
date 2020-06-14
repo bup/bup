@@ -11,6 +11,7 @@ memtest
 *.tmp
 *.tmp.meta
 /build
+/config/bin/
 *.swp
 nbproject
 /lib/cmd/bup-*
