@@ -1829,11 +1829,10 @@ static PyObject *grp_struct_to_py(const struct group *grp, int rc)
     }
     if (rc == 0)
         return Py_BuildValue("O", Py_None);
+    errno = rc;
     if (rc == EIO || rc == EMFILE || rc == ENFILE)
         return PyErr_SetFromErrno(PyExc_IOError);
-    if (rc < 0)
-        return PyErr_SetFromErrno(PyExc_OSError);
-    assert (0);
+    return PyErr_SetFromErrno(PyExc_OSError);
 }
 
 static PyObject *bup_getgrgid(PyObject *self, PyObject *args)
