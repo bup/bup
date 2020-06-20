@@ -149,7 +149,7 @@ From source
     ```sh
     apt-get install python2.7-dev python-fuse
     apt-get install python-pyxattr
-    apt-get install linux-libc-dev libacl1-dev
+    apt-get install pkg-config linux-libc-dev libacl1-dev
     apt-get install acl attr
     apt-get install libreadline-dev # optional (bup ftp)
     apt-get install python-tornado # optional (bup web)

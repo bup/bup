@@ -168,11 +168,26 @@ fi
 
 TLOGN "checking for readline"
 if pkg-config readline; then
+    bup_readline_cflags="$(pkg-config readline --cflags)" || exit $?
+    bup_readline_ldflags="$(pkg-config readline --libs)" || exit $?
+    bup_have_readline=1
+    AC_DEFINE BUP_HAVE_READLINE 1
+    TLOG ' (yes, pkg-config)'
+elif bup_try_c_code '#include <readline/readline.h>'; then
+    bup_readline_cflags=''
+    bup_readline_ldflags=-lreadline
+    bup_have_readline=1
     AC_DEFINE BUP_HAVE_READLINE 1
     TLOG ' (yes)'
 else
+    bup_readline_cflags=''
+    bup_readline_ldflags=''
+    bup_have_readline=''
     TLOG ' (no)'
 fi
+AC_SUB bup_readline_cflags "$bup_readline_cflags"
+AC_SUB bup_readline_ldflags "$bup_readline_ldflags"
+AC_SUB bup_have_readline "$bup_have_readline"
 
 AC_CHECK_FIELD stat st_atim sys/types.h sys/stat.h unistd.h
 AC_CHECK_FIELD stat st_mtim sys/types.h sys/stat.h unistd.h
@@ -185,28 +200,42 @@ AC_CHECK_FIELD stat st_ctimensec sys/types.h sys/stat.h unistd.h
 AC_CHECK_FIELD tm tm_gmtoff time.h
 
 
+orig_ac_cc="$AC_CC"
+orig_libs="$LIBS"
 TLOGN "checking for libacl"
 if pkg-config libacl; then
-    AC_DEFINE BUP_HAVE_READLINE 1
-    TLOG ' (yes)'
-    LIBS=-lacl
-    AC_CHECK_HEADERS sys/acl.h
-    AC_CHECK_HEADERS acl/libacl.h
-    AC_CHECK_FUNCS acl_get_file
-    AC_CHECK_FUNCS acl_from_text
-    AC_CHECK_FUNCS acl_set_file
-    # Note: These are linux specific, but we need them (for now?)
-    AC_CHECK_FUNCS acl_extended_file
-    AC_CHECK_FUNCS acl_to_any_text
-    LIBS=
-    if test "$ac_defined_HAVE_ACL_EXTENDED_FILE"; then
-        AC_SUB BUP_HAVE_LIBACL yes
-    else
-        AC_SUB BUP_HAVE_LIBACL no
-    fi
+    bup_libacl_cflags="$(pkg-config libacl --cflags)"
+    bup_libacl_ldflags="$(pkg-config libacl --libs)"
+    TLOG ' (yes, pkg-config)'
 else
+    bup_libacl_cflags=
+    bup_libacl_ldflags='-lacl'
+    TLOG ' (yes)'
+fi
+AC_CC="$AC_CC${bup_libacl_cflags:+ $bup_libacl_cflags}"
+LIBS="$bup_libacl_ldflags"
+AC_CHECK_HEADERS sys/acl.h
+AC_CHECK_HEADERS acl/libacl.h
+AC_CHECK_FUNCS acl_get_file
+AC_CHECK_FUNCS acl_from_text
+AC_CHECK_FUNCS acl_set_file
+# Note: These are linux specific, but we need them (for now?)
+AC_CHECK_FUNCS acl_extended_file
+AC_CHECK_FUNCS acl_to_any_text
+TLOGN "checking for complete acl support"
+if test "$ac_defined_HAVE_ACL_EXTENDED_FILE"; then
+    bup_have_libacl=1
+    AC_SUB bup_libacl_cflags "$bup_libacl_cflags"
+    AC_SUB bup_libacl_ldflags "$bup_libacl_ldflags"
+    TLOG ' (yes)'
+else
+    bup_have_libacl=
+    AC_SUB bup_have_libacl ''
     TLOG ' (no)'
 fi
+AC_SUB bup_have_libacl "$bup_have_libacl"
+AC_CC="$orig_ac_cc"
+LIBS="$orig_libs"
 
 
 AC_OUTPUT config.vars

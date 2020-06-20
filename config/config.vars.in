@@ -1,6 +1,14 @@
-BUP_HAVE_LIBACL=@BUP_HAVE_LIBACL@
 CONFIGURE_FILES=@CONFIGURE_FILES@
 GENERATED_FILES=@GENERATED_FILES@
+
 bup_make=@bup_make@
 bup_python=@bup_python@
 bup_python_majver=@bup_python_majver@
+
+bup_have_libacl=@bup_have_libacl@
+bup_libacl_cflags=@bup_libacl_cflags@
+bup_libacl_ldflags=@bup_libacl_ldflags@
+
+bup_have_readline=@bup_have_readline@
+bup_readline_cflags=@bup_readline_cflags@
+bup_readline_ldflags=@bup_readline_ldflags@

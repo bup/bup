@@ -5,4 +5,4 @@ set -ex
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)"
 
 brew update
-brew install par2 readline rsync
+brew install par2 readline rsync pkg-config

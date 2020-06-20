@@ -1,4 +1,6 @@
 
+MAKEFLAGS += --warn-undefined-variables
+
 SHELL := bash
 .DEFAULT_GOAL := all
 
@@ -51,20 +53,21 @@ config/config.vars: \
 # On some platforms, Python.h and readline.h fight over the
 # _XOPEN_SOURCE version, i.e. -Werror crashes on a mismatch, so for
 # now, we're just going to let Python's version win.
-readline_cflags += $(shell pkg-config readline --cflags)
-readline_xopen := $(filter -D_XOPEN_SOURCE=%,$(readline_cflags))
-readline_xopen := $(subst -D_XOPEN_SOURCE=,,$(readline_xopen))
-ifneq ($(readline_xopen),600)
-  $(error "Unexpected pkg-config readline _XOPEN_SOURCE --cflags $(readline_cflags)")
-endif
-readline_cflags := $(filter-out -D_XOPEN_SOURCE=%,$(readline_cflags))
-readline_cflags += $(addprefix -DBUP_RL_EXPECTED_XOPEN_SOURCE=,$(readline_xopen))
 
-CFLAGS += $(readline_cflags)
-LDFLAGS += $(shell pkg-config readline --libs)
-ifeq ($(BUP_HAVE_LIBACL),yes)
-  CFLAGS += $(shell pkg-config libacl --cflags)
-  LDFLAGS += $(shell pkg-config libacl --libs)
+ifneq ($(strip $(bup_readline_cflags)),)
+  readline_cflags += $(bup_readline_cflags)
+  readline_xopen := $(filter -D_XOPEN_SOURCE=%,$(readline_cflags))
+  readline_xopen := $(subst -D_XOPEN_SOURCE=,,$(readline_xopen))
+  readline_cflags := $(filter-out -D_XOPEN_SOURCE=%,$(readline_cflags))
+  readline_cflags += $(addprefix -DBUP_RL_EXPECTED_XOPEN_SOURCE=,$(readline_xopen))
+  CFLAGS += $(readline_cflags)
+endif
+
+LDFLAGS += $(bup_readline_ldflags)
+
+ifeq ($(bup_have_libacl),1)
+  CFLAGS += $(bup_libacl_cflags)
+  LDFLAGS += $(bup_libacl_ldflags)
 endif
 
 config/bin/python: config/config.vars
