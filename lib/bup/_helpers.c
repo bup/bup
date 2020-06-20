@@ -157,8 +157,11 @@ static uint64_t htonll(uint64_t value)
     ({                                                                  \
         _Pragma("GCC diagnostic push");                                 \
         _Pragma("GCC diagnostic ignored \"-Wsign-compare\"");           \
+        _Pragma("clang diagnostic push");                               \
+        _Pragma("clang diagnostic ignored \"-Wshorten-64-to-32\"");     \
         *(dest) = (src);                                                \
         int result = *(dest) == (src) && (*(dest) < 1) == ((src) < 1);  \
+        _Pragma("clang diagnostic pop");                                \
         _Pragma("GCC diagnostic pop");                                  \
         result;                                                         \
     })
@@ -233,7 +236,7 @@ static int bup_uint_from_py(unsigned int *x, PyObject *py, const char *name)
         PyErr_Format(PyExc_OverflowError, "%s too big for unsigned int", name);
         return 0;
     }
-    *x = tmp;
+    *x = (unsigned int) tmp;
     return 1;
 }
 
@@ -657,7 +660,7 @@ static PyObject *splitbuf(PyObject *self, PyObject *args)
         if (!PyArg_ParseTuple(args, "t#", &buf, &len))
             return NULL;
         assert(len <= INT_MAX);
-        out = bupsplit_find_ofs(buf, len, &bits);
+        out = bupsplit_find_ofs(buf, (int) len, &bits);
     }
     if (out) assert(bits >= BUP_BLOBBITS);
     return Py_BuildValue("ii", out, bits);
@@ -908,7 +911,8 @@ struct idx {
 static void _fix_idx_order(struct idx **idxs, Py_ssize_t *last_i)
 {
     struct idx *idx;
-    int low, mid, high, c = 0;
+    Py_ssize_t low, mid, high;
+    int c = 0;
 
     idx = idxs[*last_i];
     if (idxs[*last_i]->cur >= idxs[*last_i]->end)
@@ -1105,13 +1109,17 @@ static PyObject *write_idx(PyObject *self, PyObject *args)
     ofs64_count = 0;
     for (i = 0; i < FAN_ENTRIES; ++i)
     {
-	int plen;
+	Py_ssize_t plen;
 	part = PyList_GET_ITEM(idx, i);
 	PyList_Sort(part);
 	plen = PyList_GET_SIZE(part);
-	count += plen;
+        if (plen > UINT32_MAX || UINT32_MAX - count < plen) {
+            PyErr_Format(PyExc_OverflowError, "too many objects in index part");
+            goto clean_and_return;
+        }
+        count += (uint32_t) plen;
 	*fan_ptr++ = htonl(count);
-	for (j = 0; j < plen; ++j)
+        for (j = 0; j < plen; ++j)
 	{
 	    unsigned char *sha = NULL;
 	    Py_ssize_t sha_len = 0;
@@ -1179,7 +1187,7 @@ static PyObject *write_random(PyObject *self, PyObject *args)
     {
 	unsigned i;
 	for (i = 0; i < sizeof(buf)/sizeof(buf[0]); i++)
-	    buf[i] = random();
+	    buf[i] = (uint32_t) random();
 	ret = write(fd, buf, sizeof(buf));
 	if (ret < 0)
 	    ret = 0;
@@ -1195,7 +1203,7 @@ static PyObject *write_random(PyObject *self, PyObject *args)
     {
 	unsigned i;
 	for (i = 0; i < sizeof(buf)/sizeof(buf[0]); i++)
-	    buf[i] = random();
+	    buf[i] = (uint32_t) random();
 	ret = write(fd, buf, len % 1024);
 	if (ret < 0)
 	    ret = 0;
@@ -1217,7 +1225,7 @@ static PyObject *random_sha(PyObject *self, PyObject *args)
     if (!seeded)
     {
 	assert(sizeof(shabuf) == 20);
-	srandom(time(NULL));
+	srandom((unsigned int) time(NULL));
 	seeded = 1;
     }
     
@@ -1226,7 +1234,7 @@ static PyObject *random_sha(PyObject *self, PyObject *args)
     
     memset(shabuf, 0, sizeof(shabuf));
     for (i=0; i < 20/4; i++)
-	shabuf[i] = random();
+	shabuf[i] = (uint32_t) random();
     return Py_BuildValue(rbuf_argf, shabuf, 20);
 }
 
@@ -1779,9 +1787,12 @@ static PyObject *pwd_struct_to_py(const struct passwd *pwd, int rc)
 
 static PyObject *bup_getpwuid(PyObject *self, PyObject *args)
 {
-    unsigned long uid;
-    if (!PyArg_ParseTuple(args, "k", &uid))
+    unsigned long long py_uid;
+    if (!PyArg_ParseTuple(args, "K", &py_uid))
 	return NULL;
+    uid_t uid;
+    if (!INTEGRAL_ASSIGNMENT_FITS(&uid, py_uid))
+        return PyErr_Format(PyExc_OverflowError, "uid too large for uid_t");
 
     struct passwd pwd, *result_pwd;
     char *buf = PyMem_Malloc(getpw_buf_size);
@@ -1839,9 +1850,12 @@ static PyObject *grp_struct_to_py(const struct group *grp, int rc)
 
 static PyObject *bup_getgrgid(PyObject *self, PyObject *args)
 {
-    unsigned long gid;
-    if (!PyArg_ParseTuple(args, "k", &gid))
+    unsigned long long py_gid;
+    if (!PyArg_ParseTuple(args, "K", &py_gid))
 	return NULL;
+    gid_t gid;
+    if (!INTEGRAL_ASSIGNMENT_FITS(&gid, py_gid))
+        return PyErr_Format(PyExc_OverflowError, "gid too large for gid_t");
 
     struct group grp, *result_grp;
     char *buf = PyMem_Malloc(getgr_buf_size);
