@@ -62,6 +62,7 @@ task:
   script: |
     set -xe
     dev/prep-for-macos-build
+    export PKG_CONFIG_PATH=/usr/local/opt/readline/lib/pkgconfig
     dev/system-info
     make -j3 check
 

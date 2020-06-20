@@ -6,3 +6,8 @@ set -ex
 
 brew update
 brew install par2 readline rsync pkg-config
+
+# This avoid's macos interference, i.e. without this it looks like we
+# won't actually be able to use the readline we just installed above.
+brew link --force readline
+# "brew unlink readline" will undo this hack
