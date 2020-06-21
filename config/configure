@@ -71,7 +71,8 @@ else
            "$("$bup_python" -c 'import sys; print(sys.version_info[0])')"
 fi
 
-if test -z "$(bup_find_prog git '')"; then
+bup_git="$(bup_find_prog git '')"
+if test -z "$bup_git"; then
     AC_FAIL "ERROR: unable to find git"
 fi
 
@@ -248,3 +249,25 @@ echo -n "$bup_python" > config.var/bup-python
 if test -e bin; then rm -r bin; fi
 mkdir -p bin
 cd bin && ln -s "$bup_python" python
+
+printf "
+found: python (%q, $("$bup_python" --version 2>&1))
+found: git (%q, ($("$bup_git" --version))
+" \
+       "$bup_python" \
+       "$bup_git" \
+       1>&5
+
+summarize()
+{
+    local found="$1"
+    shift
+    if test "$found"; then
+        TLOG found: "$@"
+    else
+        TLOG not found: "$@"
+    fi
+}
+summarize "$bup_have_readline" 'readline support (e.g. bup ftp)'
+summarize "$bup_have_libacl" 'POSIX ACL support'
+TLOG
