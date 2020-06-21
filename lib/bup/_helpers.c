@@ -46,10 +46,12 @@
 #include <time.h>
 #endif
 
-#ifdef BUP_HAVE_READLINE
-#if ! defined(_XOPEN_SOURCE) || _XOPEN_SOURCE < BUP_RL_EXPECTED_XOPEN_SOURCE
-# warning "_XOPEN_SOURCE version is too low for readline"
+#if defined(BUP_RL_EXPECTED_XOPEN_SOURCE) \
+    && (!defined(_XOPEN_SOURCE) || _XOPEN_SOURCE < BUP_RL_EXPECTED_XOPEN_SOURCE)
+# warning "_XOPEN_SOURCE version is incorrect for readline"
 #endif
+
+#ifdef BUP_HAVE_READLINE
 #include <readline/readline.h>
 #include <readline/history.h>
 #endif
