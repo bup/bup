@@ -49,7 +49,9 @@ case "$1" in
             cp -pP "$top"/Documentation/*.md doc/ || exit $?
             cp -pP "$top"/lib/bup/*.py lib/bup || exit $?
             mkdir path-zoo || exit $?
-            "$top"/t/make-random-paths 3000 path-zoo || exit $?
+            if test "$BUP_TEST_RANDOMIZED_SAMPLEDATA_PATHS"; then
+                "$top"/t/make-random-paths 3000 path-zoo || exit $?
+            fi
             # The "v" ensures that if "configure-sampledata
             # --revision" and/or the setup above fails somehow,
             # callers like make will be looking for a file that won't
