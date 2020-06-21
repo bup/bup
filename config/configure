@@ -14,13 +14,20 @@ bup_find_prog()
 
 bup_try_c_code()
 {
-    local code="$1" tmpdir rc
+    local code="$1" tmpdir rc cflags=''
     if test -z "$code"; then
         AC_FAIL "No code provided to test compile"
     fi
+    case "$#" in
+        1) ;;
+        2) cflags="$2" ;;
+        *)
+            AC_FAIL "Invald call to bup_try_c_code" "$@"
+            ;;
+    esac
     tmpdir="$(mktemp -d "bup-try-c-compile-XXXXXXX")" || exit $?
     echo "$code" > "$tmpdir/test.c" || exit $?
-    $AC_CC -Wall -Werror -c -o "$tmpdir/test" "$tmpdir/test.c"
+    $AC_CC -Wall -Werror $cflags -c -o "$tmpdir/test" "$tmpdir/test.c"
     rc=$?
     rm -r "$tmpdir" || exit $?
     return $rc
@@ -167,28 +174,59 @@ if test "$ac_defined_HAVE_MINCORE"; then
     fi
 fi
 
+
 TLOGN "checking for readline"
+bup_have_readline=''
+bup_readline_includes_in_subdir=''
+bup_readline_via_pkg_config=''
 if pkg-config readline; then
     bup_readline_cflags="$(pkg-config readline --cflags)" || exit $?
     bup_readline_ldflags="$(pkg-config readline --libs)" || exit $?
-    bup_have_readline=1
-    AC_DEFINE BUP_HAVE_READLINE 1
-    TLOG ' (yes, pkg-config)'
-elif bup_try_c_code '#include <readline/readline.h>'; then
-    bup_readline_cflags=''
-    bup_readline_ldflags=-lreadline
-    bup_have_readline=1
-    AC_DEFINE BUP_HAVE_READLINE 1
-    TLOG ' (yes)'
-else
-    bup_readline_cflags=''
-    bup_readline_ldflags=''
-    bup_have_readline=''
-    TLOG ' (no)'
+    # It looks like it's not uncommon for pkg-config to provide a -I
+    # that doesn't support the documentation's specified #include
+    # <readline/readline.h>.  See what's really going on.
+    if bup_try_c_code '#include <readline/readline.h>' "$bup_readline_cflags"
+    then
+        bup_have_readline=1
+        bup_readline_includes_in_subdir=1
+    elif bup_try_c_code '#include <readline.h>' "$bup_readline_cflags"
+    then
+        bup_have_readline=1
+    fi
+    if test "$bup_have_readline"; then
+        bup_readline_via_pkg_config=1
+    else
+        bup_readline_cflags=''
+        bup_readline_ldflags=''
+    fi
 fi
+if ! test "$bup_have_readline"; then
+    if bup_try_c_code '#include <readline/readline.h>'; then
+        bup_readline_ldflags=-lreadline
+        bup_have_readline=1
+        bup_readline_includes_in_subdir=1
+    elif bup_try_c_code '#include <readline.h>'; then
+        bup_readline_ldflags=-lreadline
+        bup_have_readline=1
+    fi
+fi
+if test "$bup_have_readline"; then
+    AC_DEFINE BUP_HAVE_READLINE 1
+    if test "$bup_readline_includes_in_subdir"; then
+        AC_DEFINE BUP_READLINE_INCLUDES_IN_SUBDIR 1
+    fi
+    if test "$bup_readline_via_pkg_config"; then
+        TLOG ' (yes, pkg-config)'
+    else
+        TLOG ' (yes)'
+    fi
+fi
+
+
 AC_SUB bup_readline_cflags "$bup_readline_cflags"
 AC_SUB bup_readline_ldflags "$bup_readline_ldflags"
 AC_SUB bup_have_readline "$bup_have_readline"
+
 
 AC_CHECK_FIELD stat st_atim sys/types.h sys/stat.h unistd.h
 AC_CHECK_FIELD stat st_mtim sys/types.h sys/stat.h unistd.h

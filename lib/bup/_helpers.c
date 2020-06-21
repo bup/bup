@@ -54,8 +54,13 @@
 #ifdef BUP_HAVE_READLINE
 # pragma GCC diagnostic push
 # pragma GCC diagnostic ignored "-Wstrict-prototypes"
-# include <readline/readline.h>
-# include <readline/history.h>
+# ifdef BUP_READLINE_INCLUDES_IN_SUBDIR
+#   include <readline/readline.h>
+#   include <readline/history.h>
+# else
+#   include <readline.h>
+#   include <history.h>
+# endif
 # pragma GCC diagnostic pop
 #endif
 
