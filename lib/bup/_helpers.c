@@ -52,8 +52,11 @@
 #endif
 
 #ifdef BUP_HAVE_READLINE
-#include <readline/readline.h>
-#include <readline/history.h>
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wstrict-prototypes"
+# include <readline/readline.h>
+# include <readline/history.h>
+# pragma GCC diagnostic pop
 #endif
 
 #include "bupsplit.h"
