@@ -179,17 +179,26 @@ TLOGN "checking for readline"
 bup_have_readline=''
 bup_readline_includes_in_subdir=''
 bup_readline_via_pkg_config=''
+# We test this specific thing because it should work everywhere and it was
+# a particulary problem on macos (we'd get the wrong includes if we just
+# tested that the includes work).
+readline_test_code='
+  static char *on_completion_entry(const char *text, int state) { return NULL; }
+  void bup_test(void) { rl_completion_entry_function = on_completion_entry; }
+'
 if pkg-config readline; then
     bup_readline_cflags="$(pkg-config readline --cflags)" || exit $?
     bup_readline_ldflags="$(pkg-config readline --libs)" || exit $?
     # It looks like it's not uncommon for pkg-config to provide a -I
     # that doesn't support the documentation's specified #include
     # <readline/readline.h>.  See what's really going on.
-    if bup_try_c_code '#include <readline/readline.h>' "$bup_readline_cflags"
+    if bup_try_c_code "#include <readline/readline.h> $readline_test_code" \
+                      "$bup_readline_cflags"
     then
         bup_have_readline=1
         bup_readline_includes_in_subdir=1
-    elif bup_try_c_code '#include <readline.h>' "$bup_readline_cflags"
+    elif bup_try_c_code "#include <readline.h> $readline_test_code" \
+                        "$bup_readline_cflags"
     then
         bup_have_readline=1
     fi
@@ -201,11 +210,11 @@ if pkg-config readline; then
     fi
 fi
 if ! test "$bup_have_readline"; then
-    if bup_try_c_code '#include <readline/readline.h>'; then
+    if bup_try_c_code "#include <readline/readline.h> $readline_test_code"; then
         bup_readline_ldflags=-lreadline
         bup_have_readline=1
         bup_readline_includes_in_subdir=1
-    elif bup_try_c_code '#include <readline.h>'; then
+    elif bup_try_c_code "#include <readline.h> $readline_test_code"; then
         bup_readline_ldflags=-lreadline
         bup_have_readline=1
     fi
