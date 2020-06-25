@@ -7,6 +7,7 @@ set -o pipefail
 root_status="$(t/root-status)" || exit $?
 
 TOP="$(WVPASS pwd)" || exit $?
+export PATH="$TOP/t/bin:$PATH"
 tmpdir="$(WVPASS wvmktempdir)" || exit $?
 export BUP_DIR="$tmpdir/bup"
 
@@ -46,7 +47,7 @@ genstat()
         export PATH="$TOP/bin:$PATH" # pick up bup
         bup version
         # Skip atime (test elsewhere) to avoid the observer effect.
-        WVPASS find . -print0 | WVPASS sort -z \
+        WVPASS find . -print0 | WVPASS sort-z \
             | WVPASS xargs -0 bup xstat \
             --mtime-resolution "$mtime_resolution"ns \
             --exclude-fields ctime,atime,size

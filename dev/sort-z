@@ -1,0 +1,9 @@
+#!/bin/sh
+
+set -e
+
+if test "$(uname -s)" = NetBSD; then
+    exec sort -R 000 "$@"
+fi
+
+exec sort -z "$@"
