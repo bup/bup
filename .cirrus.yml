@@ -1,81 +1,131 @@
 
 task:
-  name: debian (long)
+  name: debian (py2)
   container:
     image: debian:buster
-    cpu: 2
-    memory: 8
+    cpu: 4
+    memory: 2
   script: |
     set -xe
-    dev/prep-for-debianish-build
+    dev/prep-for-debianish-build python2
+    dev/system-info
+    eatmydata make -j6 PYTHON=python2 check
+
+task:
+  name: debian (long py2)
+  container:
+    image: debian:buster
+    cpu: 4
+    memory: 2
+  script: |
+    set -xe
+    dev/prep-for-debianish-build python2
     dev/system-info
     adduser --disabled-password --gecos '' bup
     chown -R bup:bup .
-    su -l bup -c "eatmydata make -j3 -C '$(pwd)' long-check"
+    su -l bup -c "eatmydata make -j6 -C '$(pwd)' PYTHON=python2 long-check"
 
 task:
-  name: debian (root)
+  name: debian (root py2)
   container:
     image: debian:buster
-    cpu: 2
-    memory: 8
+    cpu: 4
+    memory: 2
   script: |
     set -xe
-    dev/prep-for-debianish-build
-    dev/system-info
-    eatmydata make -j3 check
-
-task:
-  name: debian (xattr)
-  container:
-    image: debian:buster
-    cpu: 2
-    memory: 8
-  script: |
-    set -xe
-    dev/prep-for-debianish-build python2 xattr
+    dev/prep-for-debianish-build python2
     dev/system-info
     adduser --disabled-password --gecos '' bup
     chown -R bup:bup .
-    su -l bup -c "eatmydata make -j3 -C '$(pwd)' check"
+    su -l bup -c "eatmydata make -j6 -C '$(pwd)' PYTHON=python2 check"
 
 task:
-  name: freebsd
-  freebsd_instance:
-    image: freebsd-12-1-release-amd64
-    cpu: 2
-    memory: 8
-  script: |
-    set -xe
-    dev/prep-for-freebsd-build
-    dev/system-info
-    gmake -j3 check
-    # It looks like su might not work here...
-    #pw useradd -n bup -s /bin/sh -m -w no
-    #chown -R bup .
-    #su -l bup -c "gmake -j3 -C '$PWD' check"
-
-task:
-  name: macos
-  osx_instance:
-    image: mojave-xcode-10.2
-  script: |
-    set -xe
-    dev/prep-for-macos-build
-    export PKG_CONFIG_PATH=/usr/local/opt/readline/lib/pkgconfig
-    dev/system-info
-    make -j3 check
-
-task:
-  name: debian (python 3 - under construction)
+  name: debian (py3)
   container:
     image: debian:buster
-    cpu: 2
-    memory: 8
+    cpu: 4
+    memory: 2
+  script: |
+    set -xe
+    dev/prep-for-debianish-build python3
+    dev/system-info
+    eatmydata make -j6 PYTHON=python3 check
+
+task:
+  name: debian (long py3)
+  container:
+    image: debian:buster
+    cpu: 4
+    memory: 2
   script: |
     set -xe
     dev/prep-for-debianish-build python3
     dev/system-info
     adduser --disabled-password --gecos '' bup
     chown -R bup:bup .
-    su -l bup -c "PYTHON=python3 eatmydata make -j3 -C '$(pwd)' check"
+    su -l bup -c "eatmydata make -j6 -C '$(pwd)' PYTHON=python3 long-check"
+
+task:
+  name: debian (root py3)
+  container:
+    image: debian:buster
+    cpu: 4
+    memory: 2
+  script: |
+    set -xe
+    dev/prep-for-debianish-build python3
+    dev/system-info
+    adduser --disabled-password --gecos '' bup
+    chown -R bup:bup .
+    su -l bup -c "eatmydata make -j6 -C '$(pwd)' PYTHON=python3 check"
+
+task:
+  name: freebsd (py2)
+  freebsd_instance:
+    image: freebsd-12-1-release-amd64
+    cpu: 4
+    memory: 4
+  script: |
+    set -xe
+    dev/prep-for-freebsd-build python2
+    dev/system-info
+    gmake -j6 PYTHON=python2 check
+    # It looks like su might not work here...
+    #pw useradd -n bup -s /bin/sh -m -w no
+    #chown -R bup .
+    #su -l bup -c "gmake -j3 -C '$PWD' check"
+
+task:
+  name: freebsd (py3)
+  freebsd_instance:
+    image: freebsd-12-1-release-amd64
+    cpu: 4
+    memory: 4
+  script: |
+    set -xe
+    dev/prep-for-freebsd-build python3
+    dev/system-info
+    gmake -j6 PYTHON=python3 check
+
+task:
+  name: macos (py2)
+  osx_instance:
+    image: mojave-xcode-10.2
+  script: |
+    set -xe
+    dev/prep-for-macos-build python2
+    export PKG_CONFIG_PATH=/usr/local/opt/readline/lib/pkgconfig
+    dev/system-info
+    make -j4 PYTHON=python2 check
+
+task:
+  name: macos (py3)
+  osx_instance:
+    image: mojave-xcode-10.2
+  script: |
+    set -xe
+    dev/prep-for-macos-build python3
+    export PKG_CONFIG_PATH=/usr/local/opt/readline/lib/pkgconfig
+    export PYTHON=python3
+    dev/system-info
+    make -j4 PYTHON=python3 check

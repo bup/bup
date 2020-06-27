@@ -1,6 +1,13 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
-set -ex
+set -exu
+
+usage()
+{
+    echo "Usage: prep-for-macos-build [python2|python3]"
+}
+
+pyver="${1:-python2}"
 
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)"
 
@@ -11,3 +18,12 @@ brew install par2 readline rsync pkg-config
 # won't actually be able to use the readline we just installed above.
 brew link --force readline
 # "brew unlink readline" will undo this hack
+
+case "$pyver" in
+    python2) ;;
+    python3) brew install python ;;
+    *)
+        usage 1>&2
+        exit 2
+        ;;
+esac
