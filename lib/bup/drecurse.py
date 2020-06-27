@@ -37,8 +37,6 @@ class OsFile:
     def stat(self):
         return xstat.fstat(self.fd)
 
-
-_IFMT = stat.S_IFMT(0xffffffff)  # avoid function call in inner loop
 def _dirlist():
     l = []
     for n in os.listdir(b'.'):
@@ -47,12 +45,11 @@ def _dirlist():
         except OSError as e:
             add_error(Exception('%s: %s' % (resolve_parent(n), str(e))))
             continue
-        if (st.st_mode & _IFMT) == stat.S_IFDIR:
+        if stat.S_ISDIR(st.st_mode):
             n += b'/'
         l.append((n,st))
     l.sort(reverse=True)
     return l
-
 
 def _recursive_dirlist(prepend, xdev, bup_dir=None,
                        excluded_paths=None,
