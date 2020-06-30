@@ -1766,31 +1766,38 @@ static PyObject *tuple_from_cstrs(char **cstrs)
     return result;
 }
 
+static PyObject *appropriate_errno_ex(void)
+{
+    switch (errno) {
+    case ENOMEM:
+        return PyErr_NoMemory();
+    case EIO:
+    case EMFILE:
+    case ENFILE:
+        // In 3.3 IOError was merged into OSError.
+        return PyErr_SetFromErrno(PyExc_IOError);
+    default:
+        return PyErr_SetFromErrno(PyExc_OSError);
+    }
+}
 
-static long getpw_buf_size;
 
-static PyObject *pwd_struct_to_py(const struct passwd *pwd, int rc)
+static PyObject *pwd_struct_to_py(const struct passwd *pwd)
 {
     // We can check the known (via POSIX) signed and unsigned types at
     // compile time, but not (easily) the unspecified types, so handle
     // those via INTEGER_TO_PY().
-    if (pwd != NULL)
-        return Py_BuildValue(cstr_argf cstr_argf "OO"
-                             cstr_argf cstr_argf cstr_argf,
-                             pwd->pw_name,
-                             pwd->pw_passwd,
-                             INTEGER_TO_PY(pwd->pw_uid),
-                             INTEGER_TO_PY(pwd->pw_gid),
-                             pwd->pw_gecos,
-                             pwd->pw_dir,
-                             pwd->pw_shell);
-    if (rc == 0)
-        return Py_BuildValue("O", Py_None);
-    if (rc == EIO || rc == EMFILE || rc == ENFILE)
-        return PyErr_SetFromErrno(PyExc_IOError);
-    if (rc < 0)
-        return PyErr_SetFromErrno(PyExc_OSError);
-    assert(0);
+    if (pwd == NULL)
+        Py_RETURN_NONE;
+    return Py_BuildValue(cstr_argf cstr_argf "OO"
+                         cstr_argf cstr_argf cstr_argf,
+                         pwd->pw_name,
+                         pwd->pw_passwd,
+                         INTEGER_TO_PY(pwd->pw_uid),
+                         INTEGER_TO_PY(pwd->pw_gid),
+                         pwd->pw_gecos,
+                         pwd->pw_dir,
+                         pwd->pw_shell);
 }
 
 static PyObject *bup_getpwuid(PyObject *self, PyObject *args)
@@ -1802,15 +1809,11 @@ static PyObject *bup_getpwuid(PyObject *self, PyObject *args)
     if (!INTEGRAL_ASSIGNMENT_FITS(&uid, py_uid))
         return PyErr_Format(PyExc_OverflowError, "uid too large for uid_t");
 
-    struct passwd pwd, *result_pwd;
-    char *buf = PyMem_Malloc(getpw_buf_size);
-    if (buf == NULL)
-        return NULL;
-
-    int rc = getpwuid_r(uid, &pwd, buf, getpw_buf_size, &result_pwd);
-    PyObject *result = pwd_struct_to_py(result_pwd, rc);
-    PyMem_Free(buf);
-    return result;
+    errno = 0;
+    struct passwd *pwd = getpwuid(uid);
+    if (!pwd && errno)
+        return appropriate_errno_ex();
+    return pwd_struct_to_py(pwd);
 }
 
 static PyObject *bup_getpwnam(PyObject *self, PyObject *args)
@@ -1819,41 +1822,30 @@ static PyObject *bup_getpwnam(PyObject *self, PyObject *args)
     if (!PyArg_ParseTuple(args, "S", &py_name))
 	return NULL;
 
-    struct passwd pwd, *result_pwd;
-    char *buf = PyMem_Malloc(getpw_buf_size);
-    if (buf == NULL)
-        return NULL;
-
     char *name = PyBytes_AS_STRING(py_name);
-    int rc = getpwnam_r(name, &pwd, buf, getpw_buf_size, &result_pwd);
-    PyObject *result = pwd_struct_to_py(result_pwd, rc);
-    PyMem_Free(buf);
-    return result;
+    errno = 0;
+    struct passwd *pwd = getpwnam(name);
+    if (!pwd && errno)
+        return appropriate_errno_ex();
+    return pwd_struct_to_py(pwd);
 }
 
-static long getgr_buf_size;
-
-static PyObject *grp_struct_to_py(const struct group *grp, int rc)
+static PyObject *grp_struct_to_py(const struct group *grp)
 {
     // We can check the known (via POSIX) signed and unsigned types at
     // compile time, but not (easily) the unspecified types, so handle
     // those via INTEGER_TO_PY().
-    if (grp != NULL) {
-        PyObject *members = tuple_from_cstrs(grp->gr_mem);
-        if (members == NULL)
-            return NULL;
-        return Py_BuildValue(cstr_argf cstr_argf "OO",
-                             grp->gr_name,
-                             grp->gr_passwd,
-                             INTEGER_TO_PY(grp->gr_gid),
-                             members);
-    }
-    if (rc == 0)
-        return Py_BuildValue("O", Py_None);
-    errno = rc;
-    if (rc == EIO || rc == EMFILE || rc == ENFILE)
-        return PyErr_SetFromErrno(PyExc_IOError);
-    return PyErr_SetFromErrno(PyExc_OSError);
+    if (grp == NULL)
+        Py_RETURN_NONE;
+
+    PyObject *members = tuple_from_cstrs(grp->gr_mem);
+    if (members == NULL)
+        return NULL;
+    return Py_BuildValue(cstr_argf cstr_argf "OO",
+                         grp->gr_name,
+                         grp->gr_passwd,
+                         INTEGER_TO_PY(grp->gr_gid),
+                         members);
 }
 
 static PyObject *bup_getgrgid(PyObject *self, PyObject *args)
@@ -1865,15 +1857,11 @@ static PyObject *bup_getgrgid(PyObject *self, PyObject *args)
     if (!INTEGRAL_ASSIGNMENT_FITS(&gid, py_gid))
         return PyErr_Format(PyExc_OverflowError, "gid too large for gid_t");
 
-    struct group grp, *result_grp;
-    char *buf = PyMem_Malloc(getgr_buf_size);
-    if (buf == NULL)
-        return NULL;
-
-    int rc = getgrgid_r(gid, &grp, buf, getgr_buf_size, &result_grp);
-    PyObject *result = grp_struct_to_py(result_grp, rc);
-    PyMem_Free(buf);
-    return result;
+    errno = 0;
+    struct group *grp = getgrgid(gid);
+    if (!grp && errno)
+        return appropriate_errno_ex();
+    return grp_struct_to_py(grp);
 }
 
 static PyObject *bup_getgrnam(PyObject *self, PyObject *args)
@@ -1882,17 +1870,14 @@ static PyObject *bup_getgrnam(PyObject *self, PyObject *args)
     if (!PyArg_ParseTuple(args, "S", &py_name))
 	return NULL;
 
-    struct group grp, *result_grp;
-    char *buf = PyMem_Malloc(getgr_buf_size);
-    if (buf == NULL)
-        return NULL;
-
     char *name = PyBytes_AS_STRING(py_name);
-    int rc = getgrnam_r(name, &grp, buf, getgr_buf_size, &result_grp);
-    PyObject *result = grp_struct_to_py(result_grp, rc);
-    PyMem_Free(buf);
-    return result;
+    errno = 0;
+    struct group *grp = getgrnam(name);
+    if (!grp && errno)
+        return appropriate_errno_ex();
+    return grp_struct_to_py(grp);
 }
+
 
 static PyObject *bup_gethostname(PyObject *mod, PyObject *ignore)
 {
@@ -2458,14 +2443,6 @@ static int setup_module(PyObject *m)
     }
 #endif
 #pragma clang diagnostic pop  // ignored "-Wtautological-compare"
-
-    getpw_buf_size = sysconf(_SC_GETPW_R_SIZE_MAX);
-    if (getpw_buf_size == -1)
-        getpw_buf_size = 16384;
-
-    getgr_buf_size = sysconf(_SC_GETGR_R_SIZE_MAX);
-    if (getgr_buf_size == -1)
-        getgr_buf_size = 16384;
 
     e = getenv("BUP_FORCE_TTY");
     get_state(m)->istty2 = isatty(2) || (atoi(e ? e : "0") & 2);
