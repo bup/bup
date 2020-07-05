@@ -1,0 +1,31 @@
+
+[0.31 has not been released yet, so these notes are incomplete.]
+
+Notable changes in 0.31
+=======================
+
+May require attention
+---------------------
+
+* `bup version --tag` has been removed.  It was actually a synonym for
+  `bup version`, which still works fine.  The fact that the version
+  may have a corresponding git tag is no longer relevant to the
+  command.
+
+General
+-------
+
+Bugs
+----
+
+* It should no longer be posible for the content of archives generated
+  by `git archive` (including releases retrieved from github) to vary
+  based on the current set of repository refs (tags, branches, etc.).
+
+Build system
+------------
+
+Thanks to (at least)
+====================
+
+Greg Troxel

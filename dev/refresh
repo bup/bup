@@ -1,0 +1,68 @@
+#!/usr/bin/env bash
+
+set -ueo pipefail
+
+# Related: https://joeyh.name/code/moreutils/ sponge
+
+usage()
+{
+    echo 'Usage: refresh [-a] [-v] DEST'
+    echo '       refresh [-a] [-v] -- DEST'
+}
+
+append=''
+verbose=''
+
+while test $# -gt 0; do
+    case $1 in
+        -a) append=true; shift;;
+        -v) verbose=true; shift;;
+        --)
+            if test "$#" -ne 2; then
+                usage 1>&2
+                exit 2
+            fi
+            dest="$2"
+            shift 2
+            ;;
+        -*)
+            usage 1>&2
+            exit 2
+            ;;
+        *)
+            if test "$#" -ne 1; then
+                usage 1>&2
+                exit 2
+            fi
+            dest="$1"
+            shift
+            ;;
+    esac
+done
+
+tmpfile="$(mktemp "$dest.sponge-XXXXXXX")"
+
+clean-up()
+{
+    rm -f "$tmpfile"
+}
+
+trap clean-up EXIT
+
+# Inefficient, but should clone the permissions
+if test -e "$dest"; then
+   cp -Lp "$dest" "$tmpfile"
+fi
+
+if test "$append"; then
+    cat >> "$tmpfile"
+else
+    cat > "$tmpfile"
+fi
+
+if ! cmp -s "$tmpfile" "$dest"; then
+    if test "$verbose"; then
+        echo "Refreshed $dest" 1>&2
+    fi
+    mv "$tmpfile" "$dest"
+fi

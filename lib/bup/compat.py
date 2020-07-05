@@ -16,6 +16,7 @@ if py3:
     from os import environb as environ
     from os import fsdecode, fsencode
     from shlex import quote
+    ModuleNotFoundError = ModuleNotFoundError
     input = input
     range = range
     str_type = str
@@ -63,6 +64,8 @@ if py3:
         return fsencode(os.getcwd())
 
 else:  # Python 2
+
+    ModuleNotFoundError = ImportError
 
     def fsdecode(x):
         return x

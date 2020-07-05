@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+top="$(pwd)"
+
+usage() { echo 'Usage: update-checkout-info DEST'; }
+
+if test "$#" -ne 1; then
+    usage 1>&2; exit 1
+fi
+
+dest="$1"
+
+if ! test -f lib/bup/bupsplit.c; then
+    echo 'error: cannot find bup source tree' 1>&2
+    exit 1
+fi
+
+git_top=$(git rev-parse --show-toplevel) || true
+if test "$git_top" != "$top"; then
+    # Not a checkout, or perhaps we're building from an archive dir
+    # unpacked somewhere in the source tree.
+    rm -f "$dest"
+    exit 0
+fi
+
+local_changes=$(git status --porcelain -uno)
+
+(git log -1 --pretty="commit='%H'%ndate='%ci'"
+ echo -n 'modified='
+ if test "$local_changes"; then echo True; else echo False; fi) \
+    | dev/refresh -v -- "$dest"

@@ -42,8 +42,8 @@ else
   test_tmp := $(CURDIR)/t/tmp
 endif
 
-initial_setup := $(shell ./configure-version --update $(isok))
-initial_setup := $(call shout,$(initial_setup),Version configuration failed))
+initial_setup := $(shell dev/update-checkout-info lib/bup/checkout_info.py $(isok))
+initial_setup := $(call shout,$(initial_setup),update-checkout-info failed))
 
 config/config.vars: \
   configure config/configure config/configure.inc \
@@ -76,7 +76,7 @@ bup_cmds := \
   $(patsubst cmd/%-cmd.py,cmd/bup-%,$(wildcard cmd/*-cmd.py)) \
   $(patsubst cmd/%-cmd.sh,cmd/bup-%,$(wildcard cmd/*-cmd.sh))
 
-bup_deps := lib/bup/_checkout.py lib/bup/_helpers$(SOEXT) $(bup_cmds)
+bup_deps := lib/bup/_helpers$(SOEXT) $(bup_cmds)
 
 all: $(bup_deps) Documentation/all $(current_sampledata)
 
@@ -135,6 +135,16 @@ install: all
 	$(INSTALL) -pm 0644 \
 		lib/web/*.html \
 		$(dest_libdir)/web/
+	if test -e lib/bup/checkout_info.py; then \
+	    $(INSTALL) -pm 0644 lib/bup/checkout_info.py \
+	        $(dest_libdir)/bup/source_info.py; \
+	else \
+	    ! grep -qF '$$Format' lib/bup/source_info.py; \
+	    $(INSTALL) -pm 0644 lib/bup/source_info.py $(dest_libdir)/bup/; \
+	fi
+
+
+	    $(INSTALL) -pm 0644 lib/bup/checkout_info.py $(dest_libdir)/bup/; \
 
 config/config.h: config/config.vars
 
@@ -147,14 +157,6 @@ lib/bup/_helpers$(SOEXT): \
 	$(cfg_py) -c \
 	  "import glob; assert(len(glob.glob('lib/bup/build/*/_helpers*$(SOEXT)')) == 1)"
 	cp lib/bup/build/*/_helpers*$(SOEXT) "$@"
-
-lib/bup/_checkout.py:
-	@if grep -F '$Format' lib/bup/_release.py \
-	    && ! test -e lib/bup/_checkout.py; then \
-	  echo "Something has gone wrong; $@ should already exist."; \
-	  echo 'Check "./configure-version --update"'; \
-	  false; \
-	fi
 
 t/tmp:
 	mkdir t/tmp
@@ -287,7 +289,7 @@ cmd/bup-%: cmd/%-cmd.sh
 Documentation/all: $(man_roff) $(man_html)
 
 Documentation/substvars: $(bup_deps)
-	echo "s,%BUP_VERSION%,$$(./bup version --tag),g" > $@
+	echo "s,%BUP_VERSION%,$$(./bup version),g" > $@
 	echo "s,%BUP_DATE%,$$(./bup version --date),g" >> $@
 
 Documentation/%.1: Documentation/%.md Documentation/substvars
@@ -326,6 +328,7 @@ clean: Documentation/clean config/bin/python
 	rm -f *.o lib/*/*.o *.so lib/*/*.so *.dll lib/*/*.dll *.exe \
 		.*~ *~ */*~ lib/*/*~ lib/*/*/*~ \
 		*.pyc */*.pyc lib/*/*.pyc lib/*/*/*.pyc \
+		lib/bup/checkout_info.py \
 		randomgen memtest \
 		testfs.img lib/bup/t/testfs.img
 	for x in $$(ls cmd/*-cmd.py cmd/*-cmd.sh | grep -vF python-cmd.sh | cut -b 5-); do \
@@ -339,7 +342,6 @@ clean: Documentation/clean config/bin/python
 	  then umount lib/bup/t/testfs || true; fi
 	rm -rf *.tmp *.tmp.meta t/*.tmp lib/*/*/*.tmp build lib/bup/build lib/bup/t/testfs
 	if test -e t/tmp; then t/force-delete t/tmp; fi
-	./configure-version --clean
 	t/configure-sampledata --clean
         # Remove last so that cleanup tools can depend on it
 	rm -rf config/bin

@@ -12,9 +12,9 @@ memtest
 *.tmp.meta
 /build
 /config/bin/
+/lib/bup/checkout_info.py
 *.swp
 nbproject
 /lib/cmd/bup-*
 /t/sampledata/var/
 /t/tmp/
-/lib/bup/_checkout.py
