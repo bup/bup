@@ -295,7 +295,7 @@ echo -n "$bup_python" > config.var/bup-python
 
 if test -e bin; then rm -r bin; fi
 mkdir -p bin
-cd bin && ln -s "$bup_python" python
+(cd bin && ln -s "$bup_python" python)
 
 printf "
 found: python (%q, $("$bup_python" --version 2>&1))
