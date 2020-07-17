@@ -85,13 +85,12 @@ def clear_index(indexfile):
 
 
 def update_index(top, excluded_paths, exclude_rxs, xdev_exceptions, out=None):
-    # tmax and start must be epoch nanoseconds.
+    # tmax must be epoch nanoseconds.
     tmax = (time.time() - 1) * 10**9
     ri = index.Reader(indexfile)
     msw = index.MetaStoreWriter(indexfile + b'.meta')
     wi = index.Writer(indexfile, msw, tmax)
     rig = IterHelper(ri.iter(name=top))
-    tstart = int(time.time()) * 10**9
 
     hlinks = hlinkdb.HLinkDB(indexfile + b'.hlink')
 
@@ -131,7 +130,7 @@ def update_index(top, excluded_paths, exclude_rxs, xdev_exceptions, out=None):
 
         if rig.cur and rig.cur.name == path:    # paths that already existed
             need_repack = False
-            if(rig.cur.stale(pst, tstart, check_device=opt.check_device)):
+            if(rig.cur.stale(pst, check_device=opt.check_device)):
                 try:
                     meta = metadata.from_path(path, statinfo=pst)
                 except (OSError, IOError) as e:

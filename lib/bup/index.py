@@ -200,7 +200,7 @@ class Entry:
             log('pack error: %s (%r)\n' % (e, self))
             raise
 
-    def stale(self, st, tstart, check_device=True):
+    def stale(self, st, check_device=True):
         if self.size != st.st_size:
             return True
         if self.mtime != st.st_mtime:
@@ -218,10 +218,6 @@ class Entry:
         if not (self.flags & IX_EXISTS):
             return True
         if check_device and (self.dev != st.st_dev):
-            return True
-        # Check that the ctime's "second" is at or after tstart's.
-        ctime_sec_in_ns = xstat.fstime_floor_secs(st.st_ctime) * 10**9
-        if ctime_sec_in_ns >= tstart:
             return True
         return False
 
