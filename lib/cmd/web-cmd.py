@@ -118,8 +118,7 @@ def _dir_contents(repo, resolution, show_hidden=False):
             parent_item = resolution[-2][1] if len(resolution) > 1 else dir_item
             yield display_info(b'..', parent_item, parent_item, b'..')
             continue
-        res = vfs.try_resolve(repo, name, parent=resolution, want_meta=False)
-        res_name, res_item = res[-1]
+        res_item = vfs.ensure_item_has_metadata(repo, item, include_size=True)
         yield display_info(name, item, res_item)
 
 
