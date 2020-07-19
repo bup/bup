@@ -4,6 +4,10 @@
 Notable changes in 0.31
 =======================
 
+* `bup features` has been added.  It reports information about bup
+  itself, including the current availability of features like readline
+  and support for POSIX ACLs.
+
 May require attention
 ---------------------
 

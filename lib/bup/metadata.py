@@ -43,10 +43,6 @@ if sys.platform.startswith('linux'):
 try:
     from bup._helpers import read_acl, apply_acl
 except ImportError:
-    if not (sys.platform.startswith('cygwin') or
-            sys.platform.startswith('darwin') or
-            sys.platform.startswith('netbsd')):
-        log('Warning: POSIX ACL support missing; recompile with libacl1-dev/libacl-devel.\n')
     read_acl = apply_acl = None
 
 try:
