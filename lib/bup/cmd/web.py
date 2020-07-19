@@ -214,12 +214,14 @@ class BupRequestHandler(tornado.web.RequestHandler):
         Return value is either a file object, or None (indicating an
         error).  In either case, the headers are sent.
         """
-        if not path.endswith(b'/') and len(path) > 0:
-            print('Redirecting from %s to %s' % (path_msg(path), path_msg(path + b'/')))
-            return self.redirect(path + b'/', permanent=True)
-
         param_info = self.bup_param_info
         params = request_params(self)
+
+        if not path.endswith(b'/') and len(path) > 0:
+            print('Redirecting from %s to %s' % (path_msg(path), path_msg(path + b'/')))
+            query = encode_query(params, param_info)
+            return self.redirect(''.join((parse.quote(path), '/', query)),
+                                 permanent=True)
 
         def amend_query(params, **changes):
             # The changes allow us to easily avoid double curly braces in
