@@ -109,7 +109,7 @@ def run_augment_item_meta_tests(repo,
         wvpass(item is not file_item)
         wvpass(isinstance(meta, Metadata))
         wvpasseq(vfs.default_file_mode, meta.mode)
-        wvpasseq((None, None, 0, 0, 0),
+        wvpasseq((None, None, None, None, None),
                  (meta.uid, meta.gid, meta.atime, meta.mtime, meta.ctime))
     wvpass(augmented.meta.size is None)
     wvpasseq(file_size, augmented_w_size.meta.size)

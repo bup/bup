@@ -136,23 +136,23 @@ WVPASSEQ "$(WVPASS bup-ls -l / | tr -s ' ' ' ')" \
 "drwx------ $user/$group 0 2009-10-03 23:48 src"
 
 WVPASSEQ "$(WVPASS bup-ls -lA / | tr -s ' ' ' ')" \
-"drwxr-xr-x ?/? 0 1970-01-01 00:00 .tag
+"drwxr-xr-x ?/? 0 ????-??-?? ??:?? .tag
 drwx------ $user/$group 0 2009-10-03 23:48 src"
 
 WVPASSEQ "$(WVPASS bup-ls -lAF / | tr -s ' ' ' ')" \
-"drwxr-xr-x ?/? 0 1970-01-01 00:00 .tag/
+"drwxr-xr-x ?/? 0 ????-??-?? ??:?? .tag/
 drwx------ $user/$group 0 2009-10-03 23:48 src/"
 
 WVPASSEQ "$(WVPASS bup-ls -la / | tr -s ' ' ' ')" \
-"drwxr-xr-x ?/? 0 1970-01-01 00:00 .
-drwxr-xr-x ?/? 0 1970-01-01 00:00 ..
-drwxr-xr-x ?/? 0 1970-01-01 00:00 .tag
+"drwxr-xr-x ?/? 0 ????-??-?? ??:?? .
+drwxr-xr-x ?/? 0 ????-??-?? ??:?? ..
+drwxr-xr-x ?/? 0 ????-??-?? ??:?? .tag
 drwx------ $user/$group 0 2009-10-03 23:48 src"
 
 WVPASSEQ "$(WVPASS bup-ls -laF / | tr -s ' ' ' ')" \
-"drwxr-xr-x ?/? 0 1970-01-01 00:00 ./
-drwxr-xr-x ?/? 0 1970-01-01 00:00 ../
-drwxr-xr-x ?/? 0 1970-01-01 00:00 .tag/
+"drwxr-xr-x ?/? 0 ????-??-?? ??:?? ./
+drwxr-xr-x ?/? 0 ????-??-?? ??:?? ../
+drwxr-xr-x ?/? 0 ????-??-?? ??:?? .tag/
 drwx------ $user/$group 0 2009-10-03 23:48 src/"
 
 socket_mode="$(WVPASS ls -l src/socket | cut -b -10)" || exit $?
@@ -252,7 +252,7 @@ $socket_mode $uid/$gid 0 2009-10-03 23:48 socket
 $symlink_mode $uid/$gid $symlink_size $symlink_date symlink -> file"
 
 WVPASSEQ "$(bup-ls -ld "src/latest" | tr -s ' ' ' ')" \
-"lrwxr-xr-x ?/? 17 1970-01-01 00:00 src/latest -> 1977-09-05-125600"
+"lrwxr-xr-x ?/? 17 ????-??-?? ??:?? src/latest -> 1977-09-05-125600"
 
 
 WVSTART "$ls_cmd_desc (backup set - long)"
