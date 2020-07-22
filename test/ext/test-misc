@@ -60,15 +60,19 @@ WVSTART "save/git-fsck"
 ) || exit $?
 
 
-WVSTART "pack name same as git"
+WVSTART "pack name and idx same as git"
 (
     # reuse packs from previous test
     WVPASS cd "$BUP_DIR"/objects/pack/
     WVPASS ls *.pack
     for pack in *.pack ; do
+       bup_idx_sha=$(sha1sum $(basename $pack .pack).idx) || exit $?
        gitname=$(git index-pack $pack) || exit $?
        # make sure we named it correctly (like git)
        WVPASSEQ pack-$gitname.pack $pack
+       # make sure we wrote the index correctly
+       git_idx_sha=$(sha1sum $(basename $pack .pack).idx) || exit $?
+       WVPASSEQ "$bup_idx_sha" "$git_idx_sha"
     done
 ) || exit $?
 
