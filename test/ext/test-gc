@@ -230,12 +230,15 @@ WVPASS echo 1 > src/1
 WVPASS bup index src
 WVPASS bup save -n src-1 src
 
-packs_before="$(ls "$BUP_DIR/objects/pack/"*.pack)" || exit $?
+pack_contents_before="$(git show-index < "$BUP_DIR/objects/pack/"*.idx | cut -d' ' -f2- | sort)" || exit $?
 WVPASS bup gc -v $GC_OPTS --threshold 0 2>&1 | tee gc.log
-packs_after="$(ls "$BUP_DIR/objects/pack/"*.pack)" || exit $?
-# Check that the pack was rewritten, but not removed (since the
-# result-pack is equal to the source pack)
+pack_contents_after="$(git show-index < "$BUP_DIR/objects/pack/"*.idx | cut -d' ' -f2- | sort)" || exit $?
+# Check that the pack was rewritten or a new pack written, but
+# with the same objects. Note that the name of the pack will
+# likely change as the *order* of objects is different. The
+# "git show-index | cut | sort" ignores the offsets but checks
+# the object and their crc.
 WVPASSEQ 1 "$(grep -cE '^rewriting ' gc.log)"
-WVPASSEQ "$packs_before" "$packs_after"
+WVPASSEQ "$pack_contents_before" "$pack_contents_after"
 
 WVPASS rm -rf "$tmpdir"

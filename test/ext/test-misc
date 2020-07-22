@@ -60,6 +60,19 @@ WVSTART "save/git-fsck"
 ) || exit $?
 
 
+WVSTART "pack name same as git"
+(
+    # reuse packs from previous test
+    WVPASS cd "$BUP_DIR"/objects/pack/
+    WVPASS ls *.pack
+    for pack in *.pack ; do
+       gitname=$(git index-pack $pack) || exit $?
+       # make sure we named it correctly (like git)
+       WVPASSEQ pack-$gitname.pack $pack
+    done
+) || exit $?
+
+
 WVSTART "ftp"
 WVPASS bup ftp "cat /master/latest/$tmpdir/$D/b" >$D/b.new
 WVPASS bup ftp "cat /master/latest/$tmpdir/$D/f" >$D/f.new

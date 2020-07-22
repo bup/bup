@@ -879,9 +879,9 @@ class PackWriter:
         finally:
             f.close()
 
-        obj_list_sha = idx.write(self.filename + b'.idx', packbin)
+        idx.write(self.filename + b'.idx', packbin)
         nameprefix = os.path.join(self.repo_dir,
-                                  b'objects/pack/pack-' +  obj_list_sha)
+                                  b'objects/pack/pack-' +  hexlify(packbin))
         if os.path.exists(self.filename + b'.map'):
             os.unlink(self.filename + b'.map')
         os.rename(self.filename + b'.pack', nameprefix + b'.pack')
@@ -947,17 +947,13 @@ class PackIdxV2Writer:
             b = idx_f.read(8 + 4*256)
             idx_sum.update(b)
 
-            obj_list_sum = Sha1()
             for b in chunkyreader(idx_f, 20 * self.count):
                 idx_sum.update(b)
-                obj_list_sum.update(b)
-            namebase = hexlify(obj_list_sum.digest())
 
             for b in chunkyreader(idx_f):
                 idx_sum.update(b)
             idx_f.write(idx_sum.digest())
             fdatasync(idx_f.fileno())
-            return namebase
         finally:
             idx_f.close()
 
