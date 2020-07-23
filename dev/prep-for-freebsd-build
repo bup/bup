@@ -8,13 +8,16 @@ usage()
 }
 
 common_pkgs='gmake git bash rsync curl par2cmdline readline duplicity'
-common_pkgs="$common_pkgs rdiff-backup rsnapshot"
+common_pkgs="$common_pkgs rsnapshot"
 
 pyver="${1:-python2}"
 
 # Install build deps
 export ASSUME_ALWAYS_YES=yes
 pkg update
+
+# https://reviews.freebsd.org/D24816
+pkg install rdiff-backup || true
 
 case "$pyver" in
     python2)
