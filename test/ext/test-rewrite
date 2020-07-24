@@ -1,0 +1,148 @@
+#!/usr/bin/env bash
+. wvtest.sh
+. wvtest-bup.sh
+. dev/lib.sh
+
+set -o pipefail
+
+top="$(WVPASS pwd)" || exit $?
+top="$(WVPASS realpath "$top")" || exit $?
+tmpdir="$(WVPASS wvmktempdir)" || exit $?
+export BUP_DIR="$tmpdir/bup"
+export BUP_DIR2="$tmpdir/bup2"
+export BUP_DIR3="$tmpdir/bup3"
+export BUP_DIR4="$tmpdir/bup4"
+export BUP_DIR5="$tmpdir/bup5"
+
+bup() { "$top/bup" "$@"; }
+
+WVPASS cd "$tmpdir"
+
+WVPASS bup init
+WVPASS bup -d "$BUP_DIR2" init
+WVPASS bup -d "$BUP_DIR3" init
+WVPASS bup -d "$BUP_DIR4" init
+
+WVPASS git config -f "$BUP_DIR4/config" bup.split.trees true
+WVPASS git config -f "$BUP_DIR4/config" bup.split.files legacy:14
+
+extract_all() {
+    WVPASSEQ $# 3
+    local repo="$1" ref="$2" dest="$3"
+    saves=$(bup -d "$repo" ls "$ref" | grep ^2) # good for another ~1000 years
+    for save in $saves ; do
+	bup -d "$repo" restore -q -C "$tmpdir/restore/$dest" "$ref/$save"
+    done
+}
+
+compare() {
+    WVPASSEQ $# 4
+    local src="$1" src_ref="$2" dst="$3" dst_ref="$4"
+    WVPASS extract_all "$src" "$src_ref" orig
+    WVPASS extract_all "$dst" "$dst_ref" new
+    touch -r "$tmpdir/restore/orig/" "$tmpdir/restore/new/"
+    WVPASS "$top/dev/compare-trees" \
+           "$tmpdir/restore/orig/" "$tmpdir/restore/new/"
+    WVPASS rm -rf "$tmpdir/restore"
+}
+
+WVSTART split and rewrite
+WVPASS bup split -n split < "$top/test/testfile1"
+WVPASS bup -d "$BUP_DIR2" rewrite --work-db "$tmpdir/db" -s "$BUP_DIR" split:test
+WVPASS compare "$BUP_DIR" split "$BUP_DIR2" test
+
+WVSTART make multiple saves
+WVPASS bup index "$top/test/sampledata"
+WVPASS bup save -n save --strip-path="$top" "$top/test/sampledata"
+WVPASS bup save -n save --strip-path="$top" "$top/test/sampledata"
+WVPASS bup save -n save --strip-path="$top" "$top/test/sampledata"
+WVPASS bup save -n save --strip-path="$top" "$top/test/sampledata"
+
+WVSTART rewrite to different split
+WVPASS bup -d "$BUP_DIR4" rewrite --work-db "$tmpdir/db" -s "$BUP_DIR" save
+WVPASS compare "$BUP_DIR" save "$BUP_DIR4" save
+
+WVSTART "rewrite unchanged (to remote)"
+WVPASS bup rewrite -r ":$BUP_DIR3" --work-db "$tmpdir/db" -s "$BUP_DIR" save
+WVPASS compare "$BUP_DIR" save "$BUP_DIR3" save
+WVPASSEQ "$(GIT_DIR=$BUP_DIR WVPASS git rev-parse save)" \
+	 "$(GIT_DIR=$BUP_DIR3 WVPASS git rev-parse save)"
+
+WVSTART rewrite after size not stored
+# now do a hack to save without saving the size in metadata ...
+WVPASS mkdir -p "$tmpdir/mod"
+cat > "$tmpdir/mod/metadata_encode_no_size.py" << EOF
+from bup import metadata, vfs
+
+_orig_encode_common = metadata.Metadata._encode_common
+def _new_encode_common(self):
+    self.size = None
+    print("encoding common with self.size None")
+    return _orig_encode_common(self)
+metadata.Metadata._encode_common = _new_encode_common
+
+vfs._compute_item_size = lambda repo, item: -1122334455
+EOF
+
+bup+()
+{
+    PYTHONPATH="$tmpdir/mod" bup --import-py-module metadata_encode_no_size "$@"
+}
+
+# force a re-save of the testfile1 to get it w/o size
+WVPASS bup index --fake-invalid "$top/test/sampledata/y/testfile1"
+WVPASS bup+ -d "$BUP_DIR" save -n save --strip-path="$top" \
+       "$top/test/sampledata"
+
+# check that we get the "unknown" size out
+WVPASS bup+ -d "$BUP_DIR" ls -l save/latest/test/sampledata/y/testfile1 |
+    WVPASS grep -- -1122334455
+# and that augmentation worked
+WVPASS bup -d "$BUP_DIR" ls -l save/latest/test/sampledata/y/testfile1 |
+    WVPASS grep -- 158664
+
+# now rewrite again - and then the size should be correct even without augmentation
+WVPASS bup -d "$BUP_DIR4" rewrite --work-db "$tmpdir/db" -s "$BUP_DIR" save:save2
+WVPASS bup+ -d "$BUP_DIR4" ls -l save/latest/test/sampledata/y/testfile1 |
+    WVPASS grep -- 158664
+
+# and again for the other kind of splitting
+WVPASS bup -d "$BUP_DIR3" rewrite --work-db "$tmpdir/db" -s "$BUP_DIR" save:save2
+WVPASS bup+ -d "$BUP_DIR3" ls -l save/latest/test/sampledata/y/testfile1 |
+    WVPASS grep -- 158664
+
+WVSTART rewrite with excluded files
+WVPASS bup -d "$BUP_DIR5" init
+WVPASS bup -d "$BUP_DIR5" rewrite --work-db "$tmpdir/db2" -s "$BUP_DIR4" \
+    --exclude-rx ^/test/sampledata/y/ save
+WVPASS extract_all "$BUP_DIR4" "save" "orig"
+WVPASS extract_all "$BUP_DIR5" "save" "new"
+rm -rf "$tmpdir/restore/orig/"*"/test/sampledata/y/"
+# that rm -rf changed timestamps - just ignore them
+touch -r "$tmpdir/restore/orig/" "$tmpdir/restore/orig/"*"/test/sampledata/"
+touch -r "$tmpdir/restore/orig/" "$tmpdir/restore/new/"*"/test/sampledata/"
+touch -r "$tmpdir/restore/orig/" "$tmpdir/restore/new/"
+WVPASS "$top/dev/compare-trees" "$tmpdir/restore/orig/" "$tmpdir/restore/new/"
+WVPASS rm -rf "$tmpdir/restore"
+
+WVSTART "rewrite with excluded files (in repo)"
+WVPASS git config -f "$BUP_DIR/config" bup.split.trees true
+WVPASS git config -f "$BUP_DIR/config" bup.split.files legacy:14
+WVPASS bup -d "$BUP_DIR" rewrite --work-db "$tmpdir/db3" -s "$BUP_DIR" \
+    --exclude-rx ^/test/sampledata/y/ save:save-new
+WVPASS extract_all "$BUP_DIR" "save" "orig"
+WVPASS extract_all "$BUP_DIR" "save-new" "new"
+rm -rf "$tmpdir/restore/orig/"*"/test/sampledata/y/"
+# that rm -rf changed timestamps - just ignore them
+touch -r "$tmpdir/restore/orig/" "$tmpdir/restore/orig/"*"/test/sampledata/"
+touch -r "$tmpdir/restore/orig/" "$tmpdir/restore/new/"*"/test/sampledata/"
+touch -r "$tmpdir/restore/orig/" "$tmpdir/restore/new/"
+WVPASS "$top/dev/compare-trees" "$tmpdir/restore/orig/" "$tmpdir/restore/new/"
+WVPASS rm -rf "$tmpdir/restore"
+GIT_DIR="$BUP_DIR" WVPASS git ls-tree -r save^ > "$tmpdir/o"
+GIT_DIR="$BUP_DIR" WVPASS git ls-tree -r save-new^ > "$tmpdir/n"
+# FIXME: analyse the diff properly
+diff -u "$tmpdir/o" "$tmpdir/n"
+
+
+WVPASS rm -rf "$tmpdir"
