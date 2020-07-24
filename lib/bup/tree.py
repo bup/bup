@@ -8,7 +8,7 @@ from bup.hashsplit import \
      GIT_MODE_FILE,
      split_to_blob_or_tree)
 from bup.helpers import add_error
-from bup.metadata import MetadataRO
+from bup.metadata import Metadata, MetadataRO
 from bup.io import path_msg
 from bup.git import shalist_item_sort_key, mangle_name
 from bup._helpers import RecordHashSplitter
@@ -123,7 +123,11 @@ class Stack:
 
     def _write_tree(self, dir_meta, items, add_meta=True):
         shalist = []
-        if add_meta:
+        # This might be False if doing a 'bup rewrite' where the original is
+        # from an old repo without metadata, or created by 'bup split'.
+        meta_ok = all(isinstance(entry.meta, Metadata)
+                      for entry in items if entry.mode != GIT_MODE_TREE)
+        if add_meta and meta_ok:
             metalist = [(b'', _empty_metadata if dir_meta is None else dir_meta)]
             metalist += [(shalist_item_sort_key((entry.mode, entry.name, None)),
                           entry.meta)
