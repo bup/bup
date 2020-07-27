@@ -6,8 +6,11 @@ from bup import compat
 
 if compat.py_maj > 2:
     import pickle
+    def pickle_load(f):
+        return pickle.load(f, encoding='bytes')
 else:
     import cPickle as pickle
+    pickle_load = pickle.load
 
 
 class Error(Exception):
@@ -32,7 +35,7 @@ class HLinkDB:
                 raise
         if f:
             try:
-                self._node_paths = pickle.load(f)
+                self._node_paths = pickle_load(f)
             finally:
                 f.close()
                 f = None
@@ -94,7 +97,7 @@ class HLinkDB:
 
     def add_path(self, path, dev, ino):
         # Assume path is new.
-        node = '%s:%s' % (dev, ino)
+        node = b'%d:%d' % (dev, ino)
         self._path_node[path] = node
         link_paths = self._node_paths.get(node)
         if link_paths and path not in link_paths:
@@ -122,5 +125,5 @@ class HLinkDB:
             del self._path_node[path]
 
     def node_paths(self, dev, ino):
-        node = '%s:%s' % (dev, ino)
+        node = b'%d:%d' % (dev, ino)
         return self._node_paths[node]
