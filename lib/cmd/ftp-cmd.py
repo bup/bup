@@ -55,11 +55,20 @@ def write_to_file(inf, outf):
 def inputiter():
     if os.isatty(stdin.fileno()):
         while 1:
-            try:
-                yield _helpers.readline(b'bup> ')
-            except EOFError:
-                print()  # Clear the line for the terminal's next prompt
-                break
+            if hasattr(_helpers, 'readline'):
+                try:
+                    yield _helpers.readline(b'bup> ')
+                except EOFError:
+                    print()  # Clear the line for the terminal's next prompt
+                    break
+            else:
+                out.write(b'bup> ')
+                out.flush()
+                read_line = stdin.readline()
+                if not read_line:
+                    print('')
+                    break
+                yield read_line
     else:
         for line in stdin:
             yield line
