@@ -115,9 +115,13 @@ def within_repo(repo, opt, out, pwd=b''):
 
     ret = 0
     pending = []
-    for path in opt.paths:
-        path = posixpath.join(pwd, path)
+    last_n = len(opt.paths) - 1
+    for n, printpath in enumerate(opt.paths):
+        path = posixpath.join(pwd, printpath)
         try:
+            if last_n > 0:
+                out.write(b'%s:\n' % printpath)
+
             if opt.directory:
                 resolved = vfs.resolve(repo, path, follow=False)
             else:
@@ -167,8 +171,12 @@ def within_repo(repo, opt, out, pwd=b''):
             log('bup: %s\n' % ex)
             ret = 1
 
-    if pending:
-        out.write(columnate(pending, b''))
+        if pending:
+            out.write(columnate(pending, b''))
+            pending = []
+
+        if n < last_n:
+            out.write(b'\n')
 
     return ret
 
