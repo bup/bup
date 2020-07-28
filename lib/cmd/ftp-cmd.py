@@ -25,7 +25,7 @@ import os, fnmatch, stat, sys
 sys.path[:0] = [os.path.dirname(os.path.realpath(__file__)) + '/..']
 
 from bup import _helpers, compat, options, git, shquote, ls, vfs
-from bup.compat import argv_bytes
+from bup.compat import argv_bytes, fsdecode
 from bup.helpers import chunkyreader, handle_ctrl_c, log
 from bup.io import byte_stream, path_msg
 from bup.repo import LocalRepo
@@ -39,7 +39,8 @@ class OptionError(Exception):
 
 def do_ls(repo, args, out):
     try:
-        opt = ls.opts_from_cmdline(args, onabort=OptionError)
+        opt = ls.opts_from_cmdline([fsdecode(arg) for arg in args],
+                                   onabort=OptionError)
     except OptionError as e:
         log('error: %s' % e)
         return
