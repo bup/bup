@@ -35,28 +35,6 @@ def write_to_file(inf, outf):
         outf.write(blob)
 
 
-def inputiter(f):
-    if os.isatty(f.fileno()):
-        while 1:
-            if hasattr(_helpers, 'readline'):
-                try:
-                    yield _helpers.readline(b'bup> ')
-                except EOFError:
-                    print()  # Clear the line for the terminal's next prompt
-                    break
-            else:
-                out.write(b'bup> ')
-                out.flush()
-                read_line = f.readline()
-                if not read_line:
-                    print('')
-                    break
-                yield read_line
-    else:
-        for line in f:
-            yield line
-
-
 def _completer_get_subs(repo, line):
     (qtype, lastword) = shquote.unfinished_word(line)
     dir, name = os.path.split(lastword)
@@ -133,6 +111,29 @@ def main(argv):
     repo = LocalRepo()
     pwd = vfs.resolve(repo, b'/')
     rv = 0
+
+    def inputiter(f):
+        if os.isatty(f.fileno()):
+            while 1:
+                prompt = b'bup %s> ' % (b'/'.join(name for name, item in pwd) or b'/', )
+                if hasattr(_helpers, 'readline'):
+                    try:
+                        yield _helpers.readline(prompt)
+                    except EOFError:
+                        print()  # Clear the line for the terminal's next prompt
+                        break
+                else:
+                    out.write(prompt)
+                    out.flush()
+                    read_line = f.readline()
+                    if not read_line:
+                        print('')
+                        break
+                    yield read_line
+        else:
+            for line in f:
+                yield line
+
 
     if extra:
         lines = (argv_bytes(arg) for arg in extra)
