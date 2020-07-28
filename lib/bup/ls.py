@@ -5,6 +5,7 @@ from binascii import hexlify
 from itertools import chain
 from stat import S_ISDIR, S_ISLNK
 import copy, locale, os.path, stat, sys
+import posixpath
 
 from bup import metadata, options, vfs, xstat
 from bup.compat import argv_bytes
@@ -71,7 +72,7 @@ human-readable    print human readable file sizes (i.e. 3.9K, 4.7M)
 n,numeric-ids list numeric IDs (user, group, etc.) rather than names
 """
 
-def opts_from_cmdline(args, onabort=None):
+def opts_from_cmdline(args, onabort=None, pwd=b'/'):
     """Parse ls command line arguments and return a dictionary of ls
     options, agumented with "classification", "long_listing",
     "paths", and "show_hidden".
@@ -82,7 +83,7 @@ def opts_from_cmdline(args, onabort=None):
     else:
         opt, flags, extra = Options(optspec).parse_bytes(args)
 
-    opt.paths = [argv_bytes(x) for x in extra] or (b'/',)
+    opt.paths = [argv_bytes(x) for x in extra] or (pwd,)
     opt.long_listing = opt.l
     opt.classification = None
     opt.show_hidden = None
@@ -98,7 +99,7 @@ def opts_from_cmdline(args, onabort=None):
             opt.show_hidden = 'almost'
     return opt
 
-def within_repo(repo, opt, out):
+def within_repo(repo, opt, out, pwd=b''):
 
     if opt.commit_hash:
         opt.hash = True
@@ -115,6 +116,7 @@ def within_repo(repo, opt, out):
     ret = 0
     pending = []
     for path in opt.paths:
+        path = posixpath.join(pwd, path)
         try:
             if opt.directory:
                 resolved = vfs.resolve(repo, path, follow=False)
