@@ -15,7 +15,7 @@ exec "$bup_python" "$0"
 # end of bup preamble
 
 from __future__ import absolute_import, print_function
-import os.path, sys
+import os.path, sys, platform
 
 sys.path[:0] = [os.path.dirname(os.path.realpath(__file__)) + '/..']
 
@@ -43,6 +43,7 @@ have_readline = getattr(_helpers, 'readline', None)
 have_libacl = getattr(_helpers, 'read_acl', None)
 have_xattr = metadata.xattr
 
+out.write(b'    Python: %s\n' % platform.python_version().encode('ascii'))
 show_support(out, have_readline, b'Command line editing (e.g. bup ftp)')
 show_support(out, have_libacl, b'Saving and restoring POSIX ACLs')
 show_support(out, have_xattr, b'Saving and restoring extended attributes (xattrs)')
