@@ -20,6 +20,7 @@ import os, glob, sys
 sys.path[:0] = [os.path.dirname(os.path.realpath(__file__)) + '/..']
 
 from bup import compat, options, path
+from bup.compat import argv_bytes
 
 
 optspec = """
@@ -30,11 +31,11 @@ opt, flags, extra = o.parse(compat.argv[1:])
 
 if len(extra) == 0:
     # the wrapper program provides the default usage string
-    os.execvp(path.exe(), ['bup'])
+    os.execvp(path.exe(), [b'bup'])
 elif len(extra) == 1:
-    docname = (extra[0]=='bup' and 'bup' or ('bup-%s' % extra[0]))
+    docname = (extra[0]=='bup' and b'bup' or (b'bup-%s' % argv_bytes(extra[0])))
     manpath = os.path.join(path.exedir(),
-                           '../../Documentation/' + docname + '.[1-9]')
+                           b'../../Documentation/' + docname + b'.[1-9]')
     g = glob.glob(manpath)
     try:
         if g:
