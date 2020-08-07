@@ -718,9 +718,6 @@ class PackWriter:
         self.max_pack_objects = max_pack_objects if max_pack_objects \
                                 else max(1, self.max_pack_size // 5000)
 
-    def __del__(self):
-        self.close()
-
     def __enter__(self):
         return self
 
