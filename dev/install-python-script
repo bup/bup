@@ -1,6 +1,7 @@
 #!/bin/sh
 """": # -*-python-*-
-exec env LC_CTYPE=iso-8859-1 python "$0" ${1+"$@"}
+export LC_CTYPE=iso-8859-1
+exec "$(dirname "$0")/../config/bin/python" "$0" "$@"
 """
 
 from __future__ import absolute_import, print_function
