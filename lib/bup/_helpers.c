@@ -1724,7 +1724,7 @@ static PyObject *bup_mincore(PyObject *self, PyObject *args)
         result = PyErr_Format(PyExc_OverflowError, "src_n overflows size_t");
         goto clean_and_return;
     }
-    int rc = mincore((void *)(src.buf + src_off), src_n,
+    int rc = mincore((void *)(src.buf + src_off), length,
                      (BUP_MINCORE_BUF_TYPE *) (dest.buf + dest_off));
     if (rc != 0) {
         result = PyErr_SetFromErrno(PyExc_OSError);
