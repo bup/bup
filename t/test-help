@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+. ./wvtest-bup.sh
+
+set -o pipefail
+
+top="$(WVPASS pwd)" || exit $?
+tmpdir="$(WVPASS wvmktempdir)" || exit $?
+export BUP_DIR="$tmpdir/bup"
+export GIT_DIR="$tmpdir/bup"
+
+bup() { "$top/bup" "$@"; }
+
+# FIXME: send help to stdout if requested (exit 0), stderr on error
+# (exit nonzero)
+
+bup -?
+rc=$?
+WVPASSEQ 99 "$rc"
+
+bup --help
+rc=$?
+WVPASSEQ 99 "$rc"
+
+WVPASS bup help save
+WVPASS bup save --help
+WVPASSEQ 1 $(bup help save | head -1 | grep -cF 'bup-save(1)')
+WVPASSEQ 1 $(bup save --help | head -1 | grep -cF 'bup-save(1)')
+
+WVPASS rm -rf "$tmpdir"
