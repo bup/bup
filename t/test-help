@@ -21,6 +21,15 @@ bup --help
 rc=$?
 WVPASSEQ 99 "$rc"
 
+if ! test -e Documentation/bup-save.1; then
+    WVPASS rm -rf "$tmpdir"
+    exit 0
+fi
+
+mkdir -p "$tmpdir/man"
+(cd "$tmpdir/man" && ln -s "$top/Documentation" man1)
+export MANPATH="$tmpdir/man"
+
 WVPASS bup help save
 WVPASS bup save --help
 WVPASSEQ 1 $(bup help save | head -1 | grep -cF 'bup-save(1)')
