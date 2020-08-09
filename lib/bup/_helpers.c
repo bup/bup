@@ -129,7 +129,7 @@ static void *checked_malloc(size_t n, size_t size)
     if (__builtin_mul_overflow(n, size, &total))
     {
         PyErr_Format(PyExc_OverflowError,
-                     "request to allocate %lu items of size %lu is too large",
+                     "request to allocate %zu items of size %zu is too large",
                      n, size);
         return NULL;
     }
