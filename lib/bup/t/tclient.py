@@ -64,11 +64,39 @@ def test_multiple_suggestions():
             s1sha = rw.new_blob(s1)
             WVPASS(rw.exists(s1sha))
             s2sha = rw.new_blob(s2)
+
             # This is a little hacky, but ensures that we test the
-            # code under test
+            # code under test. First, flush to ensure that we've
+            # actually sent all the command ('receive-objects-v2')
+            # and their data to the server. This may be needed if
+            # the output buffer size is bigger than the data (both
+            # command and objects) we're writing. To see the need
+            # for this, change the object sizes at the beginning
+            # of this file to be very small (e.g. 10 instead of 10k)
+            c.conn.outp.flush()
+
+            # Then, check if we've already received the idx files.
+            # This may happen if we're preempted just after writing
+            # the data, then the server runs and suggests, and only
+            # then we continue in PackWriter_Remote::_raw_write()
+            # and check the has_input(), in that case we'll receive
+            # the idx still in the rw.new_blob() calls above.
+            #
+            # In most cases though, that doesn't happen, and we'll
+            # get past the has_input() check before the server has
+            # a chance to respond - it has to actually hash the new
+            # object here, so it takes some time. So also break out
+            # of the loop if the server has sent something on the
+            # connection.
+            #
+            # Finally, abort this after a little while (about one
+            # second) just in case something's actually broken.
+            n = 0
             while (len(glob.glob(c.cachedir+IDX_PAT)) < 2 and
-                   not c.conn.has_input()):
-                pass
+                   not c.conn.has_input() and n < 10):
+                time.sleep(0.1)
+                n += 1
+            WVPASS(len(glob.glob(c.cachedir+IDX_PAT)) == 2 or c.conn.has_input())
             rw.new_blob(s2)
             WVPASS(rw.objcache.exists(s1sha))
             WVPASS(rw.objcache.exists(s2sha))
