@@ -122,4 +122,11 @@ WVPASSEQ "$(bup ls -F buptest/latest/)" "a/
 c/"
 
 
+WVSTART features
+expect_py_ver=$(LC_CTYPE=C "$top/config/bin/python" \
+                        -c 'import platform; print(platform.python_version())') \
+    || exit $?
+actual_py_ver=$(bup features | grep Python: | sed -Ee 's/ +Python: //') || exit $?
+WVPASSEQ "$expect_py_ver" "$actual_py_ver"
+
 WVPASS rm -rf "$tmpdir"
