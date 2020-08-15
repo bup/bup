@@ -25,6 +25,7 @@ WVPASS bup save -n fsck-test src/var/doc
 WVPASS bup save -n fsck-test src/var/lib
 WVPASS bup save -n fsck-test src/y
 WVPASS bup fsck
+WVPASS bup fsck "$BUP_DIR"/objects/pack/pack-*.pack
 WVPASS bup fsck --quick
 if bup fsck --par2-ok; then
     WVSTART "fsck (par2)"
