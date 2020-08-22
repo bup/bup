@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <meta name="author" content="Rob Browning rlb@defaultvalue.org" />
+  <meta name="dcterms.date" content="2020-08-22" />
+  <title>bup-features(1) Bup 0.31</title>
+  <style type="text/css">
+      code{white-space: pre-wrap;}
+      span.smallcaps{font-variant: small-caps;}
+      span.underline{text-decoration: underline;}
+      div.column{display: inline-block; vertical-align: top; width: 50%;}
+  </style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">bup-features(1) Bup 0.31</h1>
+<p class="author">Rob Browning <a href="mailto:rlb@defaultvalue.org" class="email">rlb@defaultvalue.org</a></p>
+<p class="date">2020-08-22</p>
+</header>
+<h1 id="name">NAME</h1>
+<p>bup-features - report the current status and capabilities of bup itself</p>
+<h1 id="synopsis">SYNOPSIS</h1>
+<p>bup features</p>
+<h1 id="description">DESCRIPTION</h1>
+<p><code>bup features</code> reports information about the current bup installation, for example, which version of the Python interpreter is used, whether command line editing is supported by <code>bup ftp</code>, or POSIX ACLs can be saved and restored.</p>
+<h1 id="examples">EXAMPLES</h1>
+<pre><code>$ bup features
+bup 0.31~a7ff2d5b8c12b24b97858aad1251d28c18f8c1e1
+source a7ff2d5b8c12b24b97858aad1251d28c18f8c1e1 2020-07-05 14:54:06 -0500
+    Python: 3.7.3
+    Command line editing (e.g. bup ftp): yes
+    Saving and restoring POSIX ACLs: yes
+....</code></pre>
+<h1 id="see-also">SEE ALSO</h1>
+<p><code>bup-version</code>(1)</p>
+<h1 id="bup">BUP</h1>
+<p>Part of the <code>bup</code>(1) suite.</p>
+</body>
+</html>
