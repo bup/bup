@@ -5,8 +5,8 @@
   <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <meta name="author" content="Rob Browning rlb@defaultvalue.org" />
-  <meta name="dcterms.date" content="2020-05-23" />
-  <title>bup-rm(1) Bup 0.30.1</title>
+  <meta name="dcterms.date" content="2020-08-22" />
+  <title>bup-rm(1) Bup 0.31</title>
   <style type="text/css">
       code{white-space: pre-wrap;}
       span.smallcaps{font-variant: small-caps;}
@@ -16,18 +16,18 @@
 </head>
 <body>
 <header id="title-block-header">
-<h1 class="title">bup-rm(1) Bup 0.30.1</h1>
+<h1 class="title">bup-rm(1) Bup 0.31</h1>
 <p class="author">Rob Browning <a href="mailto:rlb@defaultvalue.org" class="email">rlb@defaultvalue.org</a></p>
-<p class="date">2020-05-23</p>
+<p class="date">2020-08-22</p>
 </header>
 <h1 id="name">NAME</h1>
-<p>bup-rm - remove references to archive content (CAUTION: EXPERIMENTAL)</p>
+<p>bup-rm - remove references to archive content</p>
 <h1 id="synopsis">SYNOPSIS</h1>
 <p>bup rm [-#|--verbose] &lt;<em>branch</em>|<em>save</em>…&gt;</p>
 <h1 id="description">DESCRIPTION</h1>
 <p><code>bup rm</code> removes the indicated <em>branch</em>es (backup sets) and <em>save</em>s. By itself, this command does not delete any actual data (nor recover any storage space), but it may make it very difficult or impossible to refer to the deleted items, unless there are other references to them (e.g. tags).</p>
 <p>A subsequent garbage collection, either by a <code>bup gc</code>, or by a normal <code>git gc</code>, may permanently delete data that is no longer reachable from the remaining branches or tags, and reclaim the related storage space.</p>
-<p>NOTE: This is one of the few bup commands that modifies your archive in intentionally destructive ways.</p>
+<p>WARNING: This is one of the few bup commands that modifies your archive in intentionally destructive ways.</p>
 <h1 id="options">OPTIONS</h1>
 <dl>
 <dt>-v, --verbose</dt>
