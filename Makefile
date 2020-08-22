@@ -143,9 +143,6 @@ install: all
 	    $(INSTALL) -pm 0644 lib/bup/source_info.py $(dest_libdir)/bup/; \
 	fi
 
-
-	    $(INSTALL) -pm 0644 lib/bup/checkout_info.py $(dest_libdir)/bup/; \
-
 config/config.h: config/config.vars
 
 lib/bup/_helpers$(SOEXT): \
