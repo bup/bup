@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-top="$(pwd)"
+top="$(pwd -P)"
 
 usage() { echo 'Usage: update-checkout-info DEST'; }
 
