@@ -19,9 +19,9 @@ via email.
 Current Trajectory
 ==================
 
-Now that we've finished the 0.30.1 release, we're working on 0.31, and
-although we're not certain which new features will be included, we've
-nearly finished adding support for Python 3, and are also considering:
+Now that we've finished the 0.31 release, we're working on 0.32, and
+although we're not certain which new features will be included, we're
+considering:
 
   - Better VFS performance for large repositories (i.e. fuse, ls,
     web...).
@@ -33,6 +33,10 @@ nearly finished adding support for Python 3, and are also considering:
   - Incremental indexing via inotify.
 
   - Smarter (and quieter) handling of cross-filesystem metadata.
+
+  - Encryption.
+
+  - Support for alternate remote storage APIs.
 
 If you have the time and inclination, please help review patches
 posted to the list, or post your own.  (See "ways to help" below.)

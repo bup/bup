@@ -90,6 +90,7 @@ Reasons you might want to avoid bup
 Notable changes introduced by a release
 =======================================
 
+ - <a href="note/0.31-from-0.30.1.md">Changes in 0.31 as compared to 0.30.1</a>
  - <a href="note/0.30.1-from-0.30.md">Changes in 0.30.1 as compared to 0.30</a>
  - <a href="note/0.30-from-0.29.3.md">Changes in 0.30 as compared to 0.29.3</a>
  - <a href="note/0.29.3-from-0.29.2.md">Changes in 0.29.3 as compared to 0.29.2</a>
