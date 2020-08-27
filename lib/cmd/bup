@@ -39,6 +39,7 @@ from bup import compat, path, helpers
 from bup.compat import add_ex_tb, add_ex_ctx, argv_bytes, wrap_main
 from bup.helpers import atoi, columnate, debug1, log, merge_dict, tty_width
 from bup.io import byte_stream, path_msg
+from bup.options import _tty_width
 
 cmdpath = path.cmddir()
 
@@ -154,7 +155,8 @@ if fix_stdout or fix_stderr:
     tty_env = merge_dict(environ,
                          {b'BUP_FORCE_TTY': (b'%d'
                                              % ((fix_stdout and 1 or 0)
-                                                + (fix_stderr and 2 or 0)))})
+                                                + (fix_stderr and 2 or 0))),
+                          b'BUP_TTY_WIDTH': b'%d' % _tty_width(), })
 else:
     tty_env = environ
 

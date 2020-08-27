@@ -16,9 +16,10 @@ def connect(rhost, port, subcmd, stderr=None):
     else:
         buglvl = helpers.atoi(environ.get(b'BUP_DEBUG'))
         force_tty = helpers.atoi(environ.get(b'BUP_FORCE_TTY'))
+        tty_width = helpers.atoi(environ.get(b'BUP_TTY_WIDTH'))
         cmd = b"""
-                   sh -c 'BUP_DEBUG=%d BUP_FORCE_TTY=%d bup %s'
-               """ % (buglvl, force_tty, subcmd)
+                   sh -c 'BUP_DEBUG=%d BUP_FORCE_TTY=%d BUP_TTY_WIDTH=%d bup %s'
+               """ % (buglvl, force_tty, tty_width, subcmd)
         argv = [b'ssh']
         if port:
             argv.extend((b'-p', port))

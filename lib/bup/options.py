@@ -134,6 +134,9 @@ if not fcntl and termios:
         return 70
 else:
     def _tty_width():
+        forced = os.environ.get('BUP_TTY_WIDTH', None)
+        if forced:
+            return int(forced)
         s = struct.pack("HHHH", 0, 0, 0, 0)
         try:
             s = fcntl.ioctl(sys.stderr.fileno(), termios.TIOCGWINSZ, s)
