@@ -51,7 +51,7 @@ WVSTART "save/git-fsck"
     #git prune
     WVPASS bup random 4k | WVPASS bup split -b
     (WVPASS cd "$top/t/sampledata" && WVPASS bup save -vvn master /) || exit $?
-    result="$(git fsck --full --strict 2>&1)" || exit $?
+    result="$(LC_ALL=C git fsck --full --strict 2>&1)" || exit $?
     n=$(echo "$result" |
         WVFAIL egrep -v 'dangling (commit|tree|blob)' |
         WVPASS tee -a /dev/stderr |
