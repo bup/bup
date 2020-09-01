@@ -8,6 +8,7 @@ set -o pipefail
 top="$(WVPASS pwd)" || exit $?
 tmpdir="$(WVPASS wvmktempdir)" || exit $?
 export BUP_DIR="$tmpdir/bup"
+export LANGUAGE=en
 
 bup() { "$top/bup" "$@"; }
 
