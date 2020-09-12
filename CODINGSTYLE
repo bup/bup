@@ -67,5 +67,6 @@ of the new exception This can be accomplished via
       except ... as ex2:
           add_ex_tb(ex2)
           raise add_ex_ctx(ex2, ex)
+      raise
 
 See the end of ``lib/bup/compat.py`` for a functional example.
