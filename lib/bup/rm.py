@@ -5,7 +5,7 @@ import sys
 
 from bup import compat, git, vfs
 from bup.client import ClientError
-from bup.compat import hexstr
+from bup.compat import add_ex_ctx, add_ex_tb, hexstr, pending_raise
 from bup.git import get_commit_items
 from bup.helpers import add_error, die_if_errors, log, saved_errors
 from bup.io import path_msg
@@ -116,14 +116,13 @@ def bup_rm(repo, paths, compression=6, verbosity=None):
             for branch, saves in compat.items(dead_saves):
                 assert(saves)
                 updated_refs[b'refs/heads/' + branch] = rm_saves(saves, writer)
-        except:
+        except BaseException as ex:
             if writer:
-                writer.abort()
-            raise
-        else:
-            if writer:
-                # Must close before we can update the ref(s) below.
-                writer.close()
+                with pending_raise(ex):
+                    writer.abort()
+        if writer:
+            # Must close before we can update the ref(s) below.
+            writer.close()
 
     # Only update the refs here, at the very end, so that if something
     # goes wrong above, the old refs will be undisturbed.  Make an attempt
