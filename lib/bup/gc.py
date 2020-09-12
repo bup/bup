@@ -5,7 +5,7 @@ from os.path import basename
 import glob, os, subprocess, sys, tempfile
 
 from bup import bloom, git, midx
-from bup.compat import hexstr, range
+from bup.compat import hexstr, pending_raise, range
 from bup.git import MissingObject, walk_object
 from bup.helpers import Nonlocal, log, progress, qprogress
 from bup.io import path_msg
@@ -156,59 +156,64 @@ def sweep(live_objects, existing_count, cat_pipe, threshold, compression,
                             compression_level=compression,
                             run_midx=False,
                             on_pack_finish=remove_stale_files)
+    try:
+        # FIXME: sanity check .idx names vs .pack names?
+        collect_count = 0
+        for idx_name in glob.glob(os.path.join(git.repo(b'objects/pack'), b'*.idx')):
+            if verbosity:
+                qprogress('preserving live data (%d%% complete)\r'
+                          % ((float(collect_count) / existing_count) * 100))
+            with git.open_idx(idx_name) as idx:
+                idx_live_count = 0
+                for sha in idx:
+                    if live_objects.exists(sha):
+                        idx_live_count += 1
 
-    # FIXME: sanity check .idx names vs .pack names?
-    collect_count = 0
-    for idx_name in glob.glob(os.path.join(git.repo(b'objects/pack'), b'*.idx')):
-        if verbosity:
-            qprogress('preserving live data (%d%% complete)\r'
-                      % ((float(collect_count) / existing_count) * 100))
-        with git.open_idx(idx_name) as idx:
-            idx_live_count = 0
-            for sha in idx:
-                if live_objects.exists(sha):
-                    idx_live_count += 1
+                collect_count += idx_live_count
+                if idx_live_count == 0:
+                    if verbosity:
+                        log('deleting %s\n'
+                            % path_msg(git.repo_rel(basename(idx_name))))
+                    ns.stale_files.append(idx_name)
+                    ns.stale_files.append(idx_name[:-3] + b'pack')
+                    continue
 
-            collect_count += idx_live_count
-            if idx_live_count == 0:
+                live_frac = idx_live_count / float(len(idx))
+                if live_frac > ((100 - threshold) / 100.0):
+                    if verbosity:
+                        log('keeping %s (%d%% live)\n' % (git.repo_rel(basename(idx_name)),
+                                                        live_frac * 100))
+                    continue
+
                 if verbosity:
-                    log('deleting %s\n'
-                        % path_msg(git.repo_rel(basename(idx_name))))
+                    log('rewriting %s (%.2f%% live)\n' % (basename(idx_name),
+                                                        live_frac * 100))
+                for sha in idx:
+                    if live_objects.exists(sha):
+                        item_it = cat_pipe.get(hexlify(sha))
+                        _, typ, _ = next(item_it)
+                        writer.just_write(sha, typ, b''.join(item_it))
+
                 ns.stale_files.append(idx_name)
                 ns.stale_files.append(idx_name[:-3] + b'pack')
-                continue
 
-            live_frac = idx_live_count / float(len(idx))
-            if live_frac > ((100 - threshold) / 100.0):
-                if verbosity:
-                    log('keeping %s (%d%% live)\n' % (git.repo_rel(basename(idx_name)),
-                                                    live_frac * 100))
-                continue
+        if verbosity:
+            progress('preserving live data (%d%% complete)\n'
+                     % ((float(collect_count) / existing_count) * 100))
 
-            if verbosity:
-                log('rewriting %s (%.2f%% live)\n' % (basename(idx_name),
-                                                    live_frac * 100))
-            for sha in idx:
-                if live_objects.exists(sha):
-                    item_it = cat_pipe.get(hexlify(sha))
-                    _, typ, _ = next(item_it)
-                    writer.just_write(sha, typ, b''.join(item_it))
+        # Nothing should have recreated midx/bloom yet.
+        pack_dir = git.repo(b'objects/pack')
+        assert(not os.path.exists(os.path.join(pack_dir, b'bup.bloom')))
+        assert(not glob.glob(os.path.join(pack_dir, b'*.midx')))
 
-            ns.stale_files.append(idx_name)
-            ns.stale_files.append(idx_name[:-3] + b'pack')
+    except BaseException as ex:
+        with pending_raise(ex):
+            writer.abort()
 
-    if verbosity:
-        progress('preserving live data (%d%% complete)\n'
-                 % ((float(collect_count) / existing_count) * 100))
-
-    # Nothing should have recreated midx/bloom yet.
-    pack_dir = git.repo(b'objects/pack')
-    assert(not os.path.exists(os.path.join(pack_dir, b'bup.bloom')))
-    assert(not glob.glob(os.path.join(pack_dir, b'*.midx')))
-
-    # try/catch should call writer.abort()?
     # This will finally run midx.
-    writer.close()  # Can only change refs (if needed) after this.
+    # Can only change refs (if needed) after this.
+    writer.close()
+
     remove_stale_files(None)  # In case we didn't write to the writer.
 
     if verbosity:
