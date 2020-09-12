@@ -37,6 +37,20 @@ if py3:
         """Do nothing (already handled by Python 3 infrastructure)."""
         return ex
 
+    class pending_raise:
+        """Rethrow either the provided ex, or any exception raised by the with
+        statement body.  (Supports Python 2 compatibility.)
+
+        """
+        def __init__(self, ex):
+            self.ex = ex
+        def __enter__(self):
+            return None
+        def __exit__(self, exc_type, exc_value, traceback):
+            if not exc_type:
+                raise self.ex
+            return None
+
     def items(x):
         return x.items()
 
@@ -102,6 +116,26 @@ else:  # Python 2
             if not getattr(ex, '__context__', None):
                 ex.__context__ = context_ex
         return ex
+
+    class pending_raise:
+        """Rethrow either the provided ex, or any exception raised by the with
+        statement body, after making ex the __context__ of the newer
+        exception (assuming there's no existing __context__).  Ensure
+        the exceptions have __tracebacks__.  (Supports Python 2
+        compatibility.)
+
+        """
+        def __init__(self, ex):
+            self.ex = ex
+        def __enter__(self):
+            add_ex_tb(self.ex)
+            return None
+        def __exit__(self, exc_type, exc_value, traceback):
+            if not exc_type:
+                raise self.ex
+            add_ex_tb(exc_value)
+            add_ex_ctx(exc_value, self.ex)
+            return None
 
     def dump_traceback(ex):
         stack = [ex]

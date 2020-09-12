@@ -163,6 +163,7 @@ runtests: runtests-python runtests-cmdline
 python_tests := \
   lib/bup/t/tbloom.py \
   lib/bup/t/tclient.py \
+  lib/bup/t/tcompat.py \
   lib/bup/t/tgit.py \
   lib/bup/t/thashsplit.py \
   lib/bup/t/thelpers.py \
