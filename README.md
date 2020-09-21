@@ -161,7 +161,7 @@ From source
 
     ```sh
     yum groupinstall "Development Tools"
-    yum install python python-devel libacl-devel
+    yum install python2 python2-devel libacl-devel pylibacl
     yum install fuse-python pyxattr
     yum install perl-Time-HiRes
     yum install readline-devel # optional (bup ftp)
