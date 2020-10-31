@@ -356,7 +356,7 @@ static void unpythonize_argv(void) { }
 #else // not __WIN32__
 
 // For some reason this isn't declared in Python.h
-extern void Py_GetArgcArgv(int *argc, char ***argv);
+extern void Py_GetArgcArgv(int *argc, wchar_t ***argv);
 
 static void unpythonize_argv(void)
 {
