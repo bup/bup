@@ -162,20 +162,20 @@ test/tmp:
 runtests: runtests-python runtests-cmdline
 
 python_tests := \
-  test/int/tbloom.py \
-  test/int/tclient.py \
-  test/int/tcompat.py \
-  test/int/tgit.py \
-  test/int/thashsplit.py \
-  test/int/thelpers.py \
-  test/int/tindex.py \
-  test/int/tmetadata.py \
-  test/int/toptions.py \
-  test/int/tresolve.py \
-  test/int/tshquote.py \
-  test/int/tvfs.py \
-  test/int/tvint.py \
-  test/int/txstat.py
+  test/int/test_bloom.py \
+  test/int/test_client.py \
+  test/int/test_compat.py \
+  test/int/test_git.py \
+  test/int/test_hashsplit.py \
+  test/int/test_helpers.py \
+  test/int/test_index.py \
+  test/int/test_metadata.py \
+  test/int/test_options.py \
+  test/int/test_resolve.py \
+  test/int/test_shquote.py \
+  test/int/test_vfs.py \
+  test/int/test_vint.py \
+  test/int/test_xstat.py
 
 
 # The "pwd -P" here may not be appropriate in the long run, but we

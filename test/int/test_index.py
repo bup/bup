@@ -36,7 +36,7 @@ def index_writer():
             try:
                 os.chdir(tmpdir)
                 ds = xstat.stat(b'.')
-                fs = xstat.stat(lib_t_dir + b'/tindex.py')
+                fs = xstat.stat(lib_t_dir + b'/test_index.py')
                 ms = index.MetaStoreWriter(b'index.meta.tmp');
                 tmax = (time.time() - 1) * 10**9
                 w = index.Writer(b'index.tmp', ms, tmax)
@@ -107,7 +107,7 @@ def index_dirty():
                 meta_ofs3 = ms3.store(default_meta)
 
                 ds = xstat.stat(lib_t_dir)
-                fs = xstat.stat(lib_t_dir + b'/tindex.py')
+                fs = xstat.stat(lib_t_dir + b'/test_index.py')
                 tmax = (time.time() - 1) * 10**9
 
                 w1 = index.Writer(b'index.tmp', ms1, tmax)
