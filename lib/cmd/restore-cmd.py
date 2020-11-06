@@ -192,7 +192,7 @@ def restore(repo, parent_path, name, item, top, sparse, numeric_ids, owner_map,
             out.write(b'%s@ -> %s\n' % (fullname, meta.symlink_target))
     else:
         if verbosity >= 2:
-            out.write(fullname + '\n')
+            out.write(fullname + b'\n')
 
     orig_cwd = os.getcwd()
     try:
