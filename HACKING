@@ -69,6 +69,11 @@ For example:
     ./pytest test/int/test_git.py
     ./pytest test/ext/test-ftp
 
+If you have the xdist module installed, then you can specify its `-n`
+option to run the tests in parallel (e.g. `./pytest -nauto ...`), or
+you can specify `-j` to make, which will be translated to xdist with
+`-j` becoming `-nauto` and `-jN` becoming `-nN`.
+
 Internal tests that test bup's code directly are located in test/int,
 and external tests that test bup from the outside, typically by
 running the executable, are located in test/ext.

@@ -159,8 +159,18 @@ lib/bup/_helpers$(SOEXT): \
 test/tmp:
 	mkdir test/tmp
 
+ifeq (yes,$(shell config/bin/python -c "import xdist; print('yes')" 2>/dev/null))
+  # MAKEFLAGS must not be in an immediate := assignment
+  parallel_opt = $(lastword $(filter -j%,$(MAKEFLAGS)))
+  get_parallel_n = $(patsubst -j%,%,$(parallel_opt))
+  maybe_specific_n = $(if $(filter -j%,$(parallel_opt)),-n$(get_parallel_n))
+  xdist_opt = $(if $(filter -j,$(parallel_opt)),-nauto,$(maybe_specific_n))
+else
+  xdist_opt =
+endif
+
 test: all test/tmp
-	./pytest
+	./pytest $(xdist_opt)
 
 stupid:
 	PATH=/bin:/usr/bin $(MAKE) test
@@ -168,7 +178,7 @@ stupid:
 check: test
 
 distcheck: all
-	./pytest -m release
+	./pytest $(xdist_opt) -m release
 
 long-test: export BUP_TEST_LEVEL=11
 long-test: test

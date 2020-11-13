@@ -152,6 +152,7 @@ From source
     apt-get install python-pyxattr
     apt-get install pkg-config linux-libc-dev libacl1-dev
     apt-get install acl attr
+    apt-get isntall python-pytest-xdist # optional (parallel tests)
     apt-get install libreadline-dev # optional (bup ftp)
     apt-get install python-tornado # optional (bup web)
     ```
@@ -198,6 +199,14 @@ From source
     make check
     ```
  	
+    If you have the Python xdist module installed, then you can
+    probably run the tests faster by adding the make -j option (see <a
+    href="HACKING">./HACKING</a> for additional information):
+
+    ```sh
+    make -j check
+    ```
+
     The tests should pass.  If they don't pass for you, stop here and
     send an email to bup-list@googlegroups.com.  Though if there are
     symbolic links along the current working directory path, the tests
