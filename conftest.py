@@ -21,6 +21,15 @@ _bup_src_top = realpath(dirname(fsencode(__file__)))
 # https://groups.google.com/forum/#!topic/bup-list/9ke-Mbp10Q0
 os.chdir(realpath(os.getcwd()))
 
+def bup_test_sort_order(item):
+    # Pull some slower tests forward to speed parallel runs
+    if item.fspath.basename in ('test_get.py', 'test-index.sh'):
+        return (0, str(item.fspath))
+    return (1, str(item.fspath))
+
+def pytest_collection_modifyitems(session, config, items):
+    items.sort(key=bup_test_sort_order)
+
 @pytest.fixture(autouse=True)
 def no_lingering_errors():
     def fail_if_errors():
