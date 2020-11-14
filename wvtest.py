@@ -14,10 +14,17 @@ exec "$bup_python" "$0" ${1+"$@"}
 #
 
 from __future__ import absolute_import, print_function
+
+import os
+import random
+
+_wvtest_random_seed = os.environ.get('BUP_TEST_SEED')
+if _wvtest_random_seed:
+    random.seed(int(_wvtest_random_seed))
+
 from os.path import relpath
 import atexit
 import inspect
-import os
 import re
 import sys
 import traceback
