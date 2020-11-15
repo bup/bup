@@ -7,7 +7,6 @@ exec "$bup_python" "$0" ${1+"$@"}
 
 from __future__ import absolute_import, print_function
 from collections import defaultdict
-from difflib import unified_diff
 from itertools import chain, dropwhile, groupby, takewhile
 from os import chdir
 from os.path import abspath, dirname
@@ -17,6 +16,11 @@ from subprocess import PIPE
 from sys import stderr
 from time import localtime, strftime, time
 import os, random, sys
+
+if sys.version_info[:2] >= (3, 5):
+    from difflib import diff_bytes, unified_diff
+else:
+    from difflib import unified_diff
 
 # For buptest, wvtest, ...
 sys.path[:0] = (abspath(os.path.dirname(__file__) + '/../..'),)
@@ -29,8 +33,12 @@ from wvtest import wvfail, wvpass, wvpasseq, wvpassne, wvstart
 from bup import compat
 from bup.compat import environ
 from bup.helpers import partition, period_as_secs, readpipe
+from bup.io import byte_stream
 import bup.path
 
+if sys.version_info[:2] < (3, 5):
+    def diff_bytes(_, *args):
+        return unified_diff(*args)
 
 def create_older_random_saves(n, start_utc, end_utc):
     with open(b'foo', 'wb') as f:
@@ -127,14 +135,17 @@ def check_prune_result(expected):
     actual = sorted([int(x)
                      for x in exo([b'git', b'log',
                                    b'--pretty=format:%at']).out.splitlines()])
+
     if expected != actual:
         for x in expected:
             print('ex:', x, strftime('%Y-%m-%d-%H%M%S', localtime(x)),
                   file=stderr)
-        for line in unified_diff([result_diffline(x) for x in expected],
-                                 [result_diffline(x) for x in actual],
-                                 fromfile='expected', tofile='actual'):
-            sys.stderr.write(line)
+        for line in diff_bytes(unified_diff,
+                               [result_diffline(x) for x in expected],
+                               [result_diffline(x) for x in actual],
+                               fromfile=b'expected', tofile=b'actual'):
+            sys.stderr.flush()
+            byte_stream(sys.stderr).write(line)
     wvpass(expected == actual)
 
 
