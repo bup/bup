@@ -1,4 +1,5 @@
 
+from __future__ import absolute_import
 from os.path import dirname, realpath
 from time import tzset
 import os
@@ -12,6 +13,11 @@ from bup.compat import environ, fsencode
 
 
 _bup_src_top = realpath(dirname(fsencode(__file__)))
+
+# The "pwd -P" here may not be appropriate in the long run, but we
+# need it until we settle the relevant drecurse/exclusion questions:
+# https://groups.google.com/forum/#!topic/bup-list/9ke-Mbp10Q0
+os.chdir(realpath(os.getcwd()))
 
 @pytest.fixture(autouse=True)
 def ephemeral_env_changes():
