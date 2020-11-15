@@ -71,6 +71,6 @@ def pytest_collect_file(parent, path):
             item = BupSubprocTestFile.from_parent(parent, fspath=path)
         except AttributeError:
             item = BupSubprocTestFile(path, parent)
-        if base == 'test-release-archive.sh':
+        if base == 'test-release-archive':
             item.add_marker(pytest.mark.release)
         return item
