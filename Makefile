@@ -165,7 +165,6 @@ runtests-python: all test/tmp
 	./pytest
 
 cmdline_tests := \
-  test/ext/test.sh \
   test/ext/test-cat-file.sh \
   test/ext/test-command-without-init-fails.sh \
   test/ext/test-compression.sh \
@@ -185,6 +184,7 @@ cmdline_tests := \
   test/ext/test-ls-remote \
   test/ext/test-main.sh \
   test/ext/test-meta.sh \
+  test/ext/test-misc \
   test/ext/test-on.sh \
   test/ext/test-packsizelimit \
   test/ext/test-redundant-saves.sh \
