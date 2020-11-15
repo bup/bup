@@ -9,7 +9,7 @@ from __future__ import absolute_import, print_function
 from os import chdir, mkdir, symlink, unlink
 from os.path import abspath, dirname
 from subprocess import PIPE
-from time import localtime, strftime
+from time import localtime, strftime, tzset
 import os, sys
 
 # For buptest, wvtest, ...
@@ -42,6 +42,8 @@ environ[b'GIT_COMMITTER_EMAIL'] = b'bup@a425bc70a02811e49bdf73ee56450e6f'
 with test_tempdir(b'ftp-') as tmpdir:
     environ[b'BUP_DIR'] = tmpdir + b'/repo'
     environ[b'GIT_DIR'] = tmpdir + b'/repo'
+    environ[b'TZ'] = b'UTC'
+    tzset()
 
     chdir(tmpdir)
     mkdir(b'src')
