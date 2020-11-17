@@ -21,6 +21,15 @@ _bup_src_top = realpath(dirname(fsencode(__file__)))
 # https://groups.google.com/forum/#!topic/bup-list/9ke-Mbp10Q0
 os.chdir(realpath(os.getcwd()))
 
+# Make the test results available to fixtures
+@pytest.hookimpl(tryfirst=True, hookwrapper=True)
+def pytest_runtest_makereport(item, call):
+    other_hooks = yield
+    report = other_hooks.get_result()
+    bup = item.__dict__.setdefault('bup', {})
+    bup[report.when + '_report'] = report  # setup, call, teardown
+    item.bup = bup
+
 def bup_test_sort_order(item):
     # Pull some slower tests forward to speed parallel runs
     if item.fspath.basename in ('test_get.py', 'test-index.sh'):
