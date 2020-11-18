@@ -175,12 +175,17 @@ static uint64_t htonll(uint64_t value)
     })
 
 
-// At the moment any code that calls INTEGER_TO_PY() will have to
-// disable -Wtautological-compare for clang.  See below.
-
-#define INTEGER_TO_PY(x) \
-    (((x) >= 0) ? PyLong_FromUnsignedLongLong(x) : PyLong_FromLongLong(x))
-
+#define INTEGER_TO_PY(x)                                                \
+    ({                                                                  \
+        _Pragma("GCC diagnostic push");                                 \
+        _Pragma("GCC diagnostic ignored \"-Wtype-limits\"");   \
+        _Pragma("clang diagnostic push");                               \
+        _Pragma("clang diagnostic ignored \"-Wtautological-compare\""); \
+        PyObject *result = ((x) >= 0) ? PyLong_FromUnsignedLongLong(x) : PyLong_FromLongLong(x); \
+        _Pragma("clang diagnostic pop");                                \
+        _Pragma("GCC diagnostic pop");                                  \
+        result;                                                         \
+    })
 
 
 #if PY_MAJOR_VERSION < 3
@@ -1577,9 +1582,6 @@ static PyObject *bup_lutimes(PyObject *self, PyObject *args)
 #endif
 
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wtautological-compare" // For INTEGER_TO_PY().
-
 static PyObject *stat_struct_to_py(const struct stat *st,
                                    const char *filename,
                                    int fd)
@@ -1605,7 +1607,6 @@ static PyObject *stat_struct_to_py(const struct stat *st,
                          (long) BUP_STAT_CTIME_NS(st));
 }
 
-#pragma clang diagnostic pop  // ignored "-Wtautological-compare"
 
 static PyObject *bup_stat(PyObject *self, PyObject *args)
 {
@@ -2409,8 +2410,6 @@ static int setup_module(PyObject *m)
     }
 
     char *e;
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wtautological-compare" // For INTEGER_TO_PY().
     {
         PyObject *value;
         value = INTEGER_TO_PY(INT_MAX);
@@ -2442,7 +2441,6 @@ static int setup_module(PyObject *m)
         Py_DECREF(value);
     }
 #endif
-#pragma clang diagnostic pop  // ignored "-Wtautological-compare"
 
     e = getenv("BUP_FORCE_TTY");
     get_state(m)->istty2 = isatty(2) || (atoi(e ? e : "0") & 2);
