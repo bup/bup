@@ -36,12 +36,13 @@ WVPASS bup restore -C restore/ import-duplicity/latest/
 WVFAIL "$top/t/compare-trees" src/ restore/ > tmp-compare-trees
 WVPASSEQ $(cat tmp-compare-trees | wc -l) 4
 # Note: OS X rsync itemize output is currently only 9 chars, not 11.
+# FreeBSD may output 12 chars instead - accept 9-12
 # Expect something like this (without the leading spaces):
 #   .d..t...... ./
 #   .L..t...... abs-symlink -> /home/foo/bup/t/sampledata/var/abs-symlink-target
 #   .L..t...... b -> a
 #   .L..t...... c -> b
-expected_diff_rx='^\.d\.\.t.\.\.\.\.?\.? \./$|^\.L\.\.t.\.\.\.\.?\.? '
+expected_diff_rx='^\.d\.\.t\.{4,7} \./$|^\.L\.\.t\.{4,7} '
 if ! grep -qE "$expected_diff_rx" tmp-compare-trees; then
     echo -n 'tmp-compare-trees: ' 1>&2
     cat tmp-compare-trees 1>&2
