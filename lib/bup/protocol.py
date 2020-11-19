@@ -385,7 +385,8 @@ class Server:
         assert not args
         key, opttype = vint.recv(self.conn, 'ss')
         # git is case-insensitve, and the client sends lower-case
-        if key in (b'bup.split.trees',
+        if key in (b'bup.repo.id',
+                   b'bup.split.trees',
                    b'bup.split.files',
                    b'pack.packsizelimit',
                    b'core.compression',

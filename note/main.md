@@ -56,6 +56,11 @@ General
   creation, or when run again on an existing repository. See
   `bup-config`(5) for more information.
 
+* The REMOTE directory name in the client index cache (typically
+  `~/.bup/index-cache/REMOTE`) is now the `bup.repo.id` when the
+  remote repository provides, one and existing directories will be
+  renamed when appropriate and possible.
+
 * `bup init DIRECTORY` is now supported, and places the repository in
   the given `DIRECTORY` which takes precedence over `-d` and
   `BUP_DIR`.

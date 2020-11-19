@@ -3,9 +3,9 @@ from binascii import hexlify, unhexlify
 from contextlib import closing
 from functools import partial
 import os, re, struct, sys, time, zlib
-import socket
+import socket, shutil
 
-from bup import git, ssh, vint, protocol, path
+from bup import git, ssh, vint, protocol
 from bup.git import PackWriter
 from bup.helpers import \
     (Conn,
@@ -23,6 +23,7 @@ from bup.helpers import \
      qprogress,
      DemuxConn)
 from bup.io import path_msg
+from bup.path import indexcache
 from bup.vint import read_vint, read_vuint, read_bvec, write_bvec
 
 
@@ -241,6 +242,31 @@ class Client:
                  closing(self._sockw):
                 pass
 
+    def _prep_cache(self, host, port, path):
+        # Set up the index-cache directory, prefer repo-id derived
+        # dirs when the remote repo has one (that can be accessed).
+        repo_id = None
+        if b'config-get' in self._available_commands:
+            try:
+                repo_id = self.config_get(b'bup.repo.id')
+            except PermissionError:
+                pass
+        # The b'None' here matches python2's behavior of b'%s' % None == 'None',
+        # python3 will (as of version 3.7.5) do the same for str ('%s' % None),
+        # but crashes instead when doing b'%s' % None.
+        legacy = indexcache(b':'.join((b'None' if host is None else host,
+                                       b'None' if path is None else path)))
+        if repo_id is None:
+            return legacy
+        # legacy ids can't include -, so avoid aliasing with an id--
+        # prefix, and terminate with double-dash to leave some future
+        # flexibility.
+        new = indexcache(b'id--' + repo_id)
+        # upgrade path - if we have the old but not the new name, move it
+        if os.path.exists(legacy) and not os.path.exists(new):
+            shutil.move(legacy, new)
+        return new
+
     def __init__(self, remote, create=False):
         # only hand over to __del__ -> close() if complete, which
         # means it's fine to initialize attrs incrementally.
@@ -249,14 +275,6 @@ class Client:
             self._call = partial(_TypicalCall, self)
             self._line_based_call = partial(_LineBasedCall, self)
             self.protocol, self.host, self.port, self.dir = parse_remote(remote)
-            # The b'None' here matches python2's behavior of b'%s' % None == 'None',
-            # python3 will (as of version 3.7.5) do the same for str ('%s' % None),
-            # but crashes instead when doing b'%s' % None.
-            cachehost = b'None' if self.host is None else self.host
-            cachedir = b'None' if self.dir is None else self.dir
-            self.cachedir = path.indexcache(re.sub(br'[^@\w]',
-                                                   b'_',
-                                                   b'%s:%s' % (cachehost, cachedir)))
             self._busy = None
             if self.protocol == b'bup-rev':
                 self._transport = Client.ViaBupRev()
@@ -276,6 +294,7 @@ class Client:
                 else:
                     self.conn.write(b'set-dir %s\n' % self.dir)
                 self.check_ok()
+            self.cachedir = self._prep_cache(self.host, self.port, self.dir)
             self.sync_indexes()
             ctx.pop_all()
         self.closed = False

@@ -48,7 +48,7 @@ WVSTART "index-cache"
 # the trailing _ is because there's no dir specified
 # and that should thus be empty
 hostname=$(uname -n)
-idxcache=$(echo "$hostname" | sed 's/[^@a-zA-Z0-9_]/_/g')_
+idxcache="id--$(git config --file "$tmpdir"/bup/config bup.repo.id)"
 # there should be an index-cache now
 for idx in "$tmpdir"/bup/objects/pack/*.idx ; do
     cachedidx="$tmpdir/bup/index-cache/$idxcache/$(basename "$idx")"
