@@ -482,28 +482,28 @@ src/foo/3"
 
     # Test --numeric-ids (gid).
     WVPASS rm -rf src
-    current_gidx=$(bup meta -tvvf ../src.meta | grep -e '^gid:') || exit $?
+    current_gidx=$(bup meta -tvvf ../src.meta | grep -ae '^gid:') || exit $?
     WVPASS bup meta --edit --set-group "$last_group" ../src.meta \
         | WVPASS bup meta -x --numeric-ids
-    new_gidx=$(bup xstat src | grep -e '^gid:') || exit $?
+    new_gidx=$(bup xstat src | grep -ae '^gid:') || exit $?
     WVPASSEQ "$current_gidx" "$new_gidx"
 
     # Test that restoring an unknown user works.
     unknown_user=$("$TOP"/t/unknown-owner --user) || exit $?
     WVPASS rm -rf src
-    current_uidx=$(bup meta -tvvf ../src.meta | grep -e '^uid:') || exit $?
+    current_uidx=$(bup meta -tvvf ../src.meta | grep -ae '^uid:') || exit $?
     WVPASS bup meta --edit --set-user "$unknown_user" ../src.meta \
         | WVPASS bup meta -x
-    new_uidx=$(bup xstat src | grep -e '^uid:') || exit $?
+    new_uidx=$(bup xstat src | grep -ae '^uid:') || exit $?
     WVPASSEQ "$current_uidx" "$new_uidx"
 
     # Test that restoring an unknown group works.
     unknown_group=$("$TOP"/t/unknown-owner --group) || exit $?
     WVPASS rm -rf src
-    current_gidx=$(bup meta -tvvf ../src.meta | grep -e '^gid:') || exit $?
+    current_gidx=$(bup meta -tvvf ../src.meta | grep -ae '^gid:') || exit $?
     WVPASS bup meta --edit --set-group "$unknown_group" ../src.meta \
         | WVPASS bup meta -x
-    new_gidx=$(bup xstat src | grep -e '^gid:') || exit $?
+    new_gidx=$(bup xstat src | grep -ae '^gid:') || exit $?
     WVPASSEQ "$current_gidx" "$new_gidx"
 
     WVPASS rm -r "$tmpdir"
