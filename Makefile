@@ -28,7 +28,8 @@ current_sampledata := t/sampledata/var/rev/v$(sampledata_rev)
 os := $(shell ($(pf); uname | sed 's/[-_].*//') $(isok))
 os := $(call shout,$(os),Unable to determine OS)
 
-CFLAGS := -Wall -Wformat=2 -O2 -Werror -Wno-unknown-pragmas $(CFLAGS)
+CFLAGS := -O2 -Wall -Werror -Wformat=2 $(CFLAGS)
+CFLAGS := -Wno-unknown-pragmas -Wsign-compare $(CFLAGS)
 CFLAGS := -D_FILE_OFFSET_BITS=64 $(PYINCLUDE) $(CFLAGS)
 SOEXT:=.so
 

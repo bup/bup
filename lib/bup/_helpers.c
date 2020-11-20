@@ -1087,7 +1087,7 @@ static PyObject *write_idx(PyObject *self, PyObject *args)
     PyObject *part;
     unsigned int total = 0;
     uint32_t count;
-    int i, j, ofs64_count;
+    int i, ofs64_count;
     uint32_t *fan_ptr, *crc_ptr, *ofs_ptr;
     uint64_t *ofs64_ptr;
     struct sha *sha_ptr;
@@ -1122,16 +1122,17 @@ static PyObject *write_idx(PyObject *self, PyObject *args)
     ofs64_count = 0;
     for (i = 0; i < FAN_ENTRIES; ++i)
     {
-	Py_ssize_t plen;
 	part = PyList_GET_ITEM(idx, i);
 	PyList_Sort(part);
-	plen = PyList_GET_SIZE(part);
-        if (plen > UINT32_MAX || UINT32_MAX - count < plen) {
+        uint32_t plen;
+        if (!INTEGRAL_ASSIGNMENT_FITS(&plen, PyList_GET_SIZE(part))
+            || UINT32_MAX - count < plen) {
             PyErr_Format(PyExc_OverflowError, "too many objects in index part");
             goto clean_and_return;
         }
-        count += (uint32_t) plen;
+        count += plen;
 	*fan_ptr++ = htonl(count);
+        uint32_t j;
         for (j = 0; j < plen; ++j)
 	{
 	    unsigned char *sha = NULL;
