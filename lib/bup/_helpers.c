@@ -1087,7 +1087,7 @@ static PyObject *write_idx(PyObject *self, PyObject *args)
     PyObject *part;
     unsigned int total = 0;
     uint32_t count;
-    int i, ofs64_count;
+    int i;
     uint32_t *fan_ptr, *crc_ptr, *ofs_ptr;
     uint64_t *ofs64_ptr;
     struct sha *sha_ptr;
@@ -1119,7 +1119,7 @@ static PyObject *write_idx(PyObject *self, PyObject *args)
     ofs64_ptr = (uint64_t *)&ofs_ptr[total];
 
     count = 0;
-    ofs64_count = 0;
+    uint32_t ofs64_count = 0;
     for (i = 0; i < FAN_ENTRIES; ++i)
     {
 	part = PyList_GET_ITEM(idx, i);
