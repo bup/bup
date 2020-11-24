@@ -70,6 +70,7 @@
 #define BUP_HAVE_FILE_ATTRS 1
 #endif
 
+#ifndef BUP_USE_PYTHON_UTIME // just for Python 2 now
 /*
  * Check for incomplete UTIMENSAT support (NetBSD 6), and if so,
  * pretend we don't have it.
@@ -77,6 +78,7 @@
 #if !defined(AT_FDCWD) || !defined(AT_SYMLINK_NOFOLLOW)
 #undef HAVE_UTIMENSAT
 #endif
+#endif // defined BUP_USE_PYTHON_UTIME
 
 #ifndef FS_NOCOW_FL
 // Of course, this assumes it's a bitfield value.
@@ -1406,6 +1408,7 @@ static PyObject *bup_set_linux_file_attr(PyObject *self, PyObject *args)
 #endif /* def BUP_HAVE_FILE_ATTRS */
 
 
+#ifndef BUP_USE_PYTHON_UTIME // just for Python 2 now
 #ifndef HAVE_UTIMENSAT
 #ifndef HAVE_UTIMES
 #error "cannot find utimensat or utimes()"
@@ -1414,6 +1417,7 @@ static PyObject *bup_set_linux_file_attr(PyObject *self, PyObject *args)
 #error "cannot find utimensat or lutimes()"
 #endif
 #endif
+#endif // defined BUP_USE_PYTHON_UTIME
 
 #define ASSIGN_PYLONG_TO_INTEGRAL(dest, pylong, overflow) \
     ({                                                     \
@@ -1450,6 +1454,7 @@ static PyObject *bup_set_linux_file_attr(PyObject *self, PyObject *args)
         })
 
 
+#ifndef BUP_USE_PYTHON_UTIME // just for Python 2 now
 #ifdef HAVE_UTIMENSAT
 
 static PyObject *bup_utimensat(PyObject *self, PyObject *args)
@@ -1566,6 +1571,8 @@ static PyObject *bup_lutimes(PyObject *self, PyObject *args)
     return Py_BuildValue("O", Py_None);
 }
 #endif /* def HAVE_LUTIMES */
+
+#endif // defined BUP_USE_PYTHON_UTIME
 
 
 #ifdef HAVE_STAT_ST_ATIM
@@ -2276,6 +2283,8 @@ static PyMethodDef helper_methods[] = {
     { "set_linux_file_attr", bup_set_linux_file_attr, METH_VARARGS,
       "Set the Linux attributes for the given file." },
 #endif
+
+#ifndef BUP_USE_PYTHON_UTIME // just for Python 2 now
 #ifdef HAVE_UTIMENSAT
     { "bup_utimensat", bup_utimensat, METH_VARARGS,
       "Change path timestamps with nanosecond precision (POSIX)." },
@@ -2289,6 +2298,8 @@ static PyMethodDef helper_methods[] = {
       "Change path timestamps with microsecond precision;"
       " don't follow symlinks." },
 #endif
+#endif // defined BUP_USE_PYTHON_UTIME
+
     { "stat", bup_stat, METH_VARARGS,
       "Extended version of stat." },
     { "lstat", bup_lstat, METH_VARARGS,
@@ -2420,6 +2431,8 @@ static int setup_module(PyObject *m)
         PyObject_SetAttrString(m, "UINT_MAX", value);
         Py_DECREF(value);
     }
+
+#ifndef BUP_USE_PYTHON_UTIME // just for Python 2 now
 #ifdef HAVE_UTIMENSAT
     {
         PyObject *value;
@@ -2434,6 +2447,8 @@ static int setup_module(PyObject *m)
         Py_DECREF(value);
     }
 #endif
+#endif // defined BUP_USE_PYTHON_UTIME
+
 #ifdef BUP_HAVE_MINCORE_INCORE
     {
         PyObject *value;

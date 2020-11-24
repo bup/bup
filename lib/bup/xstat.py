@@ -20,6 +20,9 @@ try:
 except AttributeError as e:
     _bup_lutimes = False
 
+assert sys.version_info[0] < 3 \
+    or not (_bup_utimensat or _bup_utimes or _bup_lutimes)
+
 
 def timespec_to_nsecs(ts):
     ts_s, ts_ns = ts
@@ -58,8 +61,14 @@ def fstime_to_sec_bytes(fstime):
     else:
         return b'%d.%09d' % (s, ns)
 
-
-if _bup_utimensat:
+if sys.version_info[0] > 2:
+    def utime(path, times):
+        """Times must be provided as (atime_ns, mtime_ns)."""
+        os.utime(path, ns=times)
+    def lutime(path, times):
+        """Times must be provided as (atime_ns, mtime_ns)."""
+        os.utime(path, ns=times, follow_symlinks=False)
+elif _bup_utimensat:
     def utime(path, times):
         """Times must be provided as (atime_ns, mtime_ns)."""
         atime = nsecs_to_timespec(times[0])

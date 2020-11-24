@@ -78,8 +78,16 @@ if test -z "$bup_python"; then
     AC_FAIL "ERROR: unable to find python"
 else
     AC_SUB bup_python "$bup_python"
-    AC_SUB bup_python_majver \
-           "$("$bup_python" -c 'import sys; print(sys.version_info[0])')"
+    bup_python_majver=$("$bup_python" -c 'import sys; print(sys.version_info[0])')
+    bup_python_minver=$("$bup_python" -c 'import sys; print(sys.version_info[1])')
+    AC_SUB bup_python_majver "$bup_python_majver"
+fi
+
+# May not be correct yet, i.e. actual requirement may be higher.
+if test "$bup_python_majver" -gt 2 -a "$bup_python_minver" -lt 3; then
+    # utime follow_symlinks >= 3.3
+    bup_version_str=$("$bup_python" --version 2>&1)
+    AC_FAIL "ERROR: found $bup_version_str (must be >= 3.3 if >= 3)"
 fi
 
 bup_git="$(bup_find_prog git '')"
@@ -101,13 +109,16 @@ AC_CHECK_HEADERS sys/mman.h
 AC_CHECK_HEADERS linux/fs.h
 AC_CHECK_HEADERS sys/ioctl.h
 
-# On GNU/kFreeBSD utimensat is defined in GNU libc, but won't work.
-if [ -z "$OS_GNU_KFREEBSD" ]; then
-    AC_CHECK_FUNCS utimensat
+if test "$bup_python_majver" -gt 2; then
+    AC_DEFINE BUP_USE_PYTHON_UTIME 1
+else # Python 2
+    # On GNU/kFreeBSD utimensat is defined in GNU libc, but won't work.
+    if [ -z "$OS_GNU_KFREEBSD" ]; then
+        AC_CHECK_FUNCS utimensat
+    fi
+    AC_CHECK_FUNCS utimes
+    AC_CHECK_FUNCS lutimes
 fi
-AC_CHECK_FUNCS utimes
-AC_CHECK_FUNCS lutimes
-
 
 builtin_mul_overflow_code="
 #include <stddef.h>
