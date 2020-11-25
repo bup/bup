@@ -109,6 +109,7 @@ task:
 
 task:
   name: macos (py2)
+  allow_failures: true
   osx_instance:
     image: catalina-base
   script: |
