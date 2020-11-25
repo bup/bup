@@ -110,7 +110,7 @@ task:
 task:
   name: macos (py2)
   osx_instance:
-    image: mojave-xcode-10.2
+    image: catalina-base
   script: |
     set -xe
     dev/prep-for-macos-build python2
@@ -121,7 +121,7 @@ task:
 task:
   name: macos (py3)
   osx_instance:
-    image: mojave-xcode-10.2
+    image: catalina-base
   script: |
     set -xe
     dev/prep-for-macos-build python3
