@@ -2,6 +2,8 @@
 
 set -e
 
+uname -a
+
 case "$OSTYPE" in
     linux*)
         cat /proc/cpuinfo
