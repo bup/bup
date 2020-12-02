@@ -257,7 +257,13 @@ def filter_output(src_out, src_err, dest_out, dest_err):
 def run_subcmd(module, args):
 
     if module:
-        return module.main(args)
+        if do_profile:
+            import cProfile
+            f = compile('module.main(args)', __file__, 'exec')
+            cProfile.runctx(f, globals(), locals())
+        else:
+            module.main(args)
+        return
 
     c = (do_profile and [sys.executable, b'-m', b'cProfile'] or []) + args
     if not (fix_stdout or fix_stderr):
