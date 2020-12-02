@@ -44,10 +44,19 @@ from bup.compat import (
     fsdecode,
     wrap_main
 )
-from bup.helpers import columnate, debug1, log, merge_dict, tty_width
+from bup.compat import add_ex_tb, add_ex_ctx, argv_bytes, wrap_main
+from bup.helpers import (
+    columnate,
+    debug1,
+    handle_ctrl_c,
+    log,
+    merge_dict,
+    tty_width
+)
 from bup.io import byte_stream, path_msg
 from bup.options import _tty_width
 
+handle_ctrl_c()
 
 cmdpath = path.cmddir()
 
