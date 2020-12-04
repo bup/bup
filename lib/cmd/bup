@@ -56,6 +56,21 @@ from bup.helpers import (
 from bup.io import byte_stream, path_msg
 from bup.options import _tty_width
 
+def maybe_import_early(argv):
+    """Scan argv and import any modules specified by --import-py-module."""
+    while argv:
+        if argv[0] != '--import-py-module':
+            argv = argv[1:]
+            continue
+        if len(argv) < 2:
+            log("bup: --import-py-module must have an argument\n")
+            exit(2)
+        mod = argv[1]
+        import_module(mod)
+        argv = argv[2:]
+
+maybe_import_early(compat.argv)
+
 handle_ctrl_c()
 
 cmdpath = path.cmddir()
@@ -110,7 +125,8 @@ if len(argv) < 2:
 
 # Handle global options.
 try:
-    optspec = ['help', 'version', 'debug', 'profile', 'bup-dir=']
+    optspec = ['help', 'version', 'debug', 'profile', 'bup-dir=',
+               'import-py-module=']
     global_args, subcmd = getopt.getopt(argv[1:], '?VDd:', optspec)
 except getopt.GetoptError as ex:
     usage('error: %s' % ex.msg)
@@ -132,6 +148,8 @@ for opt in global_args:
         do_profile = True
     elif opt[0] in ['-d', '--bup-dir']:
         bup_dir = argv_bytes(opt[1])
+    elif opt[0] == '--import-py-module':
+        pass
     else:
         usage('error: unexpected option "%s"' % opt[0])
 
