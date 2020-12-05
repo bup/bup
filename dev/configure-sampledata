@@ -45,7 +45,7 @@ case "$1" in
             ln -sf "$(pwd)/abs-symlink-target" abs-symlink || exit $?
             mkfifo fifo
             mkdir -p cmd doc lib/bup || exit $?
-            cp -pP "$top"/cmd/*.py cmd/ || exit $?
+            cp -pP "$top"/lib/bup/*.py lib/bup/ || exit $?
             cp -pP "$top"/Documentation/*.md doc/ || exit $?
             cp -pP "$top"/lib/bup/*.py lib/bup || exit $?
             mkdir path-zoo || exit $?
