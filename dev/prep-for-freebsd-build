@@ -7,9 +7,6 @@ usage()
     echo "Usage: prep-for-freebsd-build [python2|python3]"
 }
 
-common_pkgs='gmake git bash rsync curl par2cmdline readline duplicity'
-common_pkgs="$common_pkgs rsnapshot"
-
 pyver="${1:-python2}"
 
 # Install build deps
@@ -19,12 +16,18 @@ pkg update
 # https://reviews.freebsd.org/D24816
 pkg install rdiff-backup || true
 
+pkgs='gmake git bash rsync curl par2cmdline readline duplicity'
+pkgs="$pkgs rsnapshot"
+
 case "$pyver" in
     python2)
-        pkg install $common_pkgs python2 py27-tornado
+        pkgs="$pkgs python2 py27-tornado py27-pip"
+        pkg install $pkgs
+        pip-2.7 install --user pytest pytest-xdist
         ;;
     python3)
-        pkg install $common_pkgs python3 py37-tornado
+        pkgs="$pkgs python37 py37-tornado py37-pytest py37-pytest-xdist"
+        pkg install $pkgs
         ;;
     *)
         usage 1>&2

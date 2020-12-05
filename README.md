@@ -152,6 +152,7 @@ From source
     apt-get install python-pyxattr
     apt-get install pkg-config linux-libc-dev libacl1-dev
     apt-get install acl attr
+    apt-get isntall python-pytest-xdist # optional (parallel tests)
     apt-get install libreadline-dev # optional (bup ftp)
     apt-get install python-tornado # optional (bup web)
     ```
@@ -198,6 +199,14 @@ From source
     make check
     ```
  	
+    If you have the Python xdist module installed, then you can
+    probably run the tests faster by adding the make -j option (see <a
+    href="HACKING">./HACKING</a> for additional information):
+
+    ```sh
+    make -j check
+    ```
+
     The tests should pass.  If they don't pass for you, stop here and
     send an email to bup-list@googlegroups.com.  Though if there are
     symbolic links along the current working directory path, the tests
@@ -453,20 +462,20 @@ Notes on NetBSD/pkgsrc
    cycle and error out, so "ls -R" and "find" will not work.
 
  - There is no support for ACLs.  If/when some enterprising person
-   fixes this, adjust t/compare-trees.
+   fixes this, adjust dev/compare-trees.
 
 
 Notes on Cygwin
 ---------------
 
  - There is no support for ACLs.  If/when some enterprising person
-   fixes this, adjust t/compare-trees.
+   fixes this, adjust dev/compare-trees.
 
- - In t/test.sh, two tests have been disabled.  These tests check to
-   see that repeated saves produce identical trees and that an
-   intervening index doesn't change the SHA1.  Apparently Cygwin has
-   some unusual behaviors with respect to access times (that probably
-   warrant further investigation).  Possibly related:
+ - In test/ext/test-misc, two tests have been disabled.  These tests
+   check to see that repeated saves produce identical trees and that
+   an intervening index doesn't change the SHA1.  Apparently Cygwin
+   has some unusual behaviors with respect to access times (that
+   probably warrant further investigation).  Possibly related:
    http://cygwin.com/ml/cygwin/2007-06/msg00436.html
 
 
@@ -474,7 +483,7 @@ Notes on OS X
 -------------
 
  - There is no support for ACLs.  If/when some enterprising person
-   fixes this, adjust t/compare-trees.
+   fixes this, adjust dev/compare-trees.
 
 
 How it works

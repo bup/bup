@@ -16,5 +16,5 @@ memtest
 *.swp
 nbproject
 /lib/cmd/bup-*
-/t/sampledata/var/
-/t/tmp/
+/test/sampledata/var/
+/test/tmp/

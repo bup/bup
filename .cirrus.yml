@@ -105,7 +105,7 @@ task:
     set -xe
     dev/prep-for-freebsd-build python3
     dev/system-info
-    gmake -j6 PYTHON=python3 check
+    gmake -j6 PYTHON=python3.7 check
 
 task:
   name: macos (py2)

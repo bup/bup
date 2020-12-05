@@ -21,7 +21,7 @@ WARNING: This is one of the few bup commands that modifies your
 archive in intentionally destructive ways.  Though if an attempt to
 `join` or `restore` the data you still care about after a
 `prune-older` succeeds, that's a fairly encouraging sign that the
-commands worked correctly.  (The `t/compare-trees` command in the
+commands worked correctly.  (The `dev/compare-trees` command in the
 source tree can be used to help test before/after results.)
 
 # KEEP PERIODS
