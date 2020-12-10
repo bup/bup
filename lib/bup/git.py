@@ -69,7 +69,8 @@ def _git_exo(cmd, **kwargs):
 def git_config_get(option, repo_dir=None):
     cmd = (b'git', b'config', b'--get', option)
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE,
-                         env=_gitenv(repo_dir=repo_dir))
+                         env=_gitenv(repo_dir=repo_dir),
+                         close_fds=True)
     r = p.stdout.read()
     rc = p.wait()
     if rc == 0:
@@ -994,7 +995,8 @@ def list_refs(patterns=None, repo_dir=None,
     argv.append(b'--')
     if patterns:
         argv.extend(patterns)
-    p = subprocess.Popen(argv, env=_gitenv(repo_dir), stdout=subprocess.PIPE)
+    p = subprocess.Popen(argv, env=_gitenv(repo_dir), stdout=subprocess.PIPE,
+                         close_fds=True)
     out = p.stdout.read().strip()
     rv = p.wait()  # not fatal
     if rv:
@@ -1045,7 +1047,8 @@ def rev_list(ref_or_refs, parse=None, format=None, repo_dir=None):
     p = subprocess.Popen(rev_list_invocation(ref_or_refs,
                                              format=format),
                          env=_gitenv(repo_dir),
-                         stdout = subprocess.PIPE)
+                         stdout = subprocess.PIPE,
+                         close_fds=True)
     if not format:
         for line in p.stdout:
             yield line.strip()
@@ -1111,7 +1114,8 @@ def update_ref(refname, newval, oldval, repo_dir=None):
         or refname.startswith(b'refs/tags/')
     p = subprocess.Popen([b'git', b'update-ref', refname,
                           hexlify(newval), hexlify(oldval)],
-                         env=_gitenv(repo_dir))
+                         env=_gitenv(repo_dir),
+                         close_fds=True)
     _git_wait(b'git update-ref', p)
 
 
@@ -1120,7 +1124,8 @@ def delete_ref(refname, oldvalue=None):
     assert refname.startswith(b'refs/')
     oldvalue = [] if not oldvalue else [oldvalue]
     p = subprocess.Popen([b'git', b'update-ref', b'-d', refname] + oldvalue,
-                         env=_gitenv())
+                         env=_gitenv(),
+                         close_fds=True)
     _git_wait('git update-ref', p)
 
 
@@ -1151,16 +1156,17 @@ def init_repo(path=None):
     if os.path.exists(d) and not os.path.isdir(os.path.join(d, b'.')):
         raise GitError('"%s" exists but is not a directory\n' % path_msg(d))
     p = subprocess.Popen([b'git', b'--bare', b'init'], stdout=sys.stderr,
-                         env=_gitenv())
+                         env=_gitenv(),
+                         close_fds=True)
     _git_wait('git init', p)
     # Force the index version configuration in order to ensure bup works
     # regardless of the version of the installed Git binary.
     p = subprocess.Popen([b'git', b'config', b'pack.indexVersion', '2'],
-                         stdout=sys.stderr, env=_gitenv())
+                         stdout=sys.stderr, env=_gitenv(), close_fds=True)
     _git_wait('git config', p)
     # Enable the reflog
     p = subprocess.Popen([b'git', b'config', b'core.logAllRefUpdates', b'true'],
-                         stdout=sys.stderr, env=_gitenv())
+                         stdout=sys.stderr, env=_gitenv(), close_fds=True)
     _git_wait('git config', p)
 
 
