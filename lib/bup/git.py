@@ -1276,15 +1276,19 @@ class CatPipe:
         self.repo_dir = repo_dir
         self.p = self.inprogress = None
 
-    def _abort(self):
-        if self.p:
-            self.p.stdout.close()
-            self.p.stdin.close()
+    def close(self, wait=False):
+        p = self.p
+        if p:
+            p.stdout.close()
+            p.stdin.close()
         self.p = None
         self.inprogress = None
+        if wait:
+            p.wait()
+            return p.returncode
 
     def restart(self):
-        self._abort()
+        self.close()
         self.p = subprocess.Popen([b'git', b'cat-file', b'--batch'],
                                   stdin=subprocess.PIPE,
                                   stdout=subprocess.PIPE,
@@ -1322,7 +1326,7 @@ class CatPipe:
         oidx, typ, size = info
         size = int(size)
         it = _AbortableIter(chunkyreader(self.p.stdout, size),
-                            onabort=self._abort)
+                            onabort=self.close)
         try:
             yield oidx, typ, size
             for blob in it:
@@ -1376,6 +1380,13 @@ def cp(repo_dir=None):
         cp = CatPipe(repo_dir)
         _cp[repo_dir] = cp
     return cp
+
+
+def close_catpipes():
+    # FIXME: chain exceptions
+    while _cp:
+        _, cp = _cp.popitem()
+        cp.close(wait=True)
 
 
 def tags(repo_dir = None):
