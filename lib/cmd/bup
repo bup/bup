@@ -42,6 +42,7 @@ from bup.compat import (
     argv_bytes,
     environ,
     fsdecode,
+    int_types,
     wrap_main
 )
 from bup.compat import add_ex_tb, add_ex_ctx, argv_bytes, wrap_main
@@ -229,29 +230,29 @@ def print_clean_line(dest, content, width, sep=None):
     if sep:
         os.write(dest, sep)
 
-def filter_output(src_out, src_err, dest_out, dest_err):
-    """Transfer data from src_out to dest_out and src_err to dest_err via
-    print_clean_line until src_out and src_err close."""
+def filter_output(srcs, dests):
+    """Transfer data from file descriptors in srcs to the corresponding
+    file descriptors in dests print_clean_line until all of the srcs
+    have closed.
+
+    """
     global sep_rx
-    assert not isinstance(src_out, bool)
-    assert not isinstance(src_err, bool)
-    assert not isinstance(dest_out, bool)
-    assert not isinstance(dest_err, bool)
-    assert src_out is not None or src_err is not None
-    assert (src_out is None) == (dest_out is None)
-    assert (src_err is None) == (dest_err is None)
+    assert all(type(x) in int_types for x in srcs)
+    assert all(type(x) in int_types for x in srcs)
+    assert len(srcs) == len(dests)
+    srcs = tuple(srcs)
+    dest_for = dict(zip(srcs, dests))
     pending = {}
     pending_ex = None
     try:
-        fds = tuple([x for x in (src_out, src_err) if x is not None])
-        while fds:
-            ready_fds, _, _ = select.select(fds, [], [])
+        while srcs:
+            ready_fds, _, _ = select.select(srcs, [], [])
             width = tty_width()
             for fd in ready_fds:
                 buf = os.read(fd, 4096)
-                dest = dest_out if fd == src_out else dest_err
+                dest = dest_for[fd]
                 if not buf:
-                    fds = tuple([x for x in fds if x is not fd])
+                    srcs = tuple([x for x in srcs if x is not fd])
                     print_clean_line(dest, pending.pop(fd, []), width)
                 else:
                     split = sep_rx.split(buf)
@@ -262,7 +263,7 @@ def filter_output(src_out, src_err, dest_out, dest_err):
                                          pending.pop(fd, []) + [content],
                                          width,
                                          sep)
-                    assert(len(split) == 1)
+                    assert len(split) == 1
                     if split[0]:
                         pending.setdefault(fd, []).extend(split)
     except BaseException as ex:
@@ -270,7 +271,8 @@ def filter_output(src_out, src_err, dest_out, dest_err):
     try:
         # Try to finish each of the streams
         for fd, pending_items in compat.items(pending):
-            dest = dest_out if fd == src_out else dest_err
+            dest = dest_for[fd]
+            width = tty_width()
             try:
                 print_clean_line(dest, pending_items, width)
             except (EnvironmentError, EOFError) as ex:
@@ -311,10 +313,15 @@ def run_subcmd(module, args):
         for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGQUIT):
             signal.signal(sig, signal.SIG_IGN)
 
-        filter_output(fix_stdout and p.stdout.fileno() or None,
-                      fix_stderr and p.stderr.fileno() or None,
-                      fix_stdout and out.fileno() or None,
-                      fix_stderr and err.fileno() or None)
+        srcs = []
+        dests = []
+        if fix_stdout:
+            srcs.append(p.stdout.fileno())
+            dests.append(out.fileno())
+        if fix_stderr:
+            srcs.append(p.stderr.fileno())
+            dests.append(err.fileno())
+        filter_output(srcs, dests)
         return p.wait()
     except BaseException as ex:
         add_ex_tb(ex)
