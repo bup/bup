@@ -31,6 +31,7 @@ import os, sys
 sys.path[:0] = [os.path.dirname(os.path.realpath(__file__)) + '/..']
 
 from importlib import import_module
+from pkgutil import iter_modules
 from subprocess import PIPE
 from threading import Thread
 import errno, getopt, os, re, select, signal, subprocess, sys
@@ -58,6 +59,7 @@ from bup.helpers import (
 from bup.git import close_catpipes
 from bup.io import byte_stream, path_msg
 from bup.options import _tty_width
+import bup.cmd
 
 def maybe_import_early(argv):
     """Scan argv and import any modules specified by --import-py-module."""
@@ -107,13 +109,19 @@ def usage(msg=""):
     log('\n')
     
     log('Other available commands:\n')
-    cmds = []
+    cmds = set()
     for c in sorted(os.listdir(cmdpath)):
         if c.startswith(b'bup-') and c.find(b'.') < 0:
             cname = fsdecode(c[4:])
             if cname not in common:
-                cmds.append(c[4:].decode(errors='backslashreplace'))
-    log(columnate(cmds, '    '))
+                cmds.add(c[4:].decode(errors='backslashreplace'))
+    # built-in commands take precedence
+    for _, name, _ in iter_modules(path=bup.cmd.__path__):
+        name = name.replace('_','-')
+        if name not in common:
+            cmds.add(name)
+
+    log(columnate(sorted(cmds), '    '))
     log('\n')
     
     log("See 'bup help COMMAND' for more information on " +
