@@ -71,13 +71,11 @@ ifeq ($(bup_have_libacl),1)
   LDFLAGS += $(bup_libacl_ldflags)
 endif
 
+bup_ext_cmds := lib/cmd/bup-import-rdiff-backup lib/cmd/bup-import-rsnapshot
+
 config/bin/python: config/config.vars
 
-bup_cmds := \
-  $(patsubst cmd/%-cmd.py,cmd/bup-%,$(wildcard cmd/*-cmd.py)) \
-  $(patsubst cmd/%-cmd.sh,cmd/bup-%,$(wildcard cmd/*-cmd.sh))
-
-bup_deps := lib/bup/_helpers$(SOEXT) $(bup_cmds)
+bup_deps := lib/bup/_helpers$(SOEXT)
 
 all: $(bup_deps) Documentation/all $(current_sampledata)
 
@@ -109,24 +107,19 @@ dest_bindir := $(DESTDIR)$(BINDIR)
 dest_libdir := $(DESTDIR)$(LIBDIR)
 
 install: all
-	$(INSTALL) -d $(dest_bindir) \
-		$(dest_libdir)/bup $(dest_libdir)/cmd \
-		$(dest_libdir)/web $(dest_libdir)/web/static
+	$(INSTALL) -d $(dest_bindir) $(dest_libdir)/bup/cmd $(dest_libdir)/cmd \
+	  $(dest_libdir)/web/static
 	test -z "$(man_roff)" || install -d $(dest_mandir)/man1
 	test -z "$(man_roff)" || $(INSTALL) -m 0644 $(man_roff) $(dest_mandir)/man1
 	test -z "$(man_html)" || install -d $(dest_docdir)
 	test -z "$(man_html)" || $(INSTALL) -m 0644 $(man_html) $(dest_docdir)
 	dev/install-python-script lib/cmd/bup "$(dest_libdir)/cmd/bup"
-	set -e; \
-	for cmd in $$(ls cmd/bup-*); do \
-	  dev/install-python-script "$$cmd" "$(dest_libdir)/$$cmd"; \
-	done
+	$(INSTALL) -pm 0755 $(bup_ext_cmds) "$(dest_libdir)/cmd/"
 	cd "$(dest_bindir)" && \
 	  ln -sf "$$($(bup_python) -c 'import os; print(os.path.relpath("$(abspath $(dest_libdir))/cmd/bup"))')"
 	set -e; \
-	$(INSTALL) -pm 0644 \
-		lib/bup/*.py \
-		$(dest_libdir)/bup
+	$(INSTALL) -pm 0644 lib/bup/*.py $(dest_libdir)/bup/
+	$(INSTALL) -pm 0644 lib/bup/cmd/*.py $(dest_libdir)/bup/cmd/
 	$(INSTALL) -pm 0755 \
 		lib/bup/*$(SOEXT) \
 		$(dest_libdir)/bup
@@ -191,14 +184,6 @@ check-both:
 	$(MAKE) clean && PYTHON=python3 $(MAKE) check
 	$(MAKE) clean && PYTHON=python2 $(MAKE) check
 
-cmd/bup-%: cmd/%-cmd.py
-	rm -f $@
-	ln -s $*-cmd.py $@
-
-cmd/bup-%: cmd/%-cmd.sh
-	rm -f $@
-	ln -s $*-cmd.sh $@
-
 .PHONY: Documentation/all
 Documentation/all: $(man_roff) $(man_html)
 
@@ -248,9 +233,6 @@ clean: Documentation/clean config/bin/python
 		lib/bup/checkout_info.py \
 		randomgen memtest \
 		testfs.img test/int/testfs.img
-	for x in $$(ls cmd/*-cmd.py cmd/*-cmd.sh | grep -vF python-cmd.sh | cut -b 5-); do \
-	    echo "cmd/bup-$${x%-cmd.*}"; \
-	done | xargs -t rm -f
 	if test -e test/mnt; then dev/cleanup-mounts-under test/mnt; fi
 	if test -e test/mnt; then rm -r test/mnt; fi
 	if test -e test/tmp; then dev/cleanup-mounts-under test/tmp; fi
