@@ -251,6 +251,8 @@ Binary packages of bup are known to be built for the following OSes:
     https://www.archlinux.org/packages/?sort=&q=bup
  - Fedora:
     https://apps.fedoraproject.org/packages/bup
+ - macOS (Homebrew):
+    https://formulae.brew.sh/formula/bup
 
 
 Using bup
