@@ -77,8 +77,8 @@ Reasons you might want to avoid bup
    of corruption.
  
  - It currently only works on Linux, FreeBSD, NetBSD, OS X >= 10.4,
-   Solaris, or Windows (with Cygwin, and maybe with WSL).  Patches to
-   support other platforms are welcome.
+   Solaris, or Windows (with Cygwin, and WSL).  Patches to support
+   other platforms are welcome.
 
  - Until resolved, a [glibc bug](https://sourceware.org/bugzilla/show_bug.cgi?id=26034)
    might cause bup to crash on startup for some (unusual) command line
