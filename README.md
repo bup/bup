@@ -71,10 +71,12 @@ Reasons you might want to avoid bup
    more likely to eat your data.  It's also missing some
    probably-critical features, though fewer than it used to be.
    
- - It requires python >= 2.6, a C compiler, and an installed git
-   version >= 1.5.6.  It also requires par2 if you want fsck to be
-   able to generate the information needed to recover from some types
-   of corruption.
+ - It requires python 3.7 or newer (or 2.7 for a bit longer), a C
+   compiler, and an installed git version >= 1.5.6.  It also requires
+   par2 if you want fsck to be able to generate the information needed
+   to recover from some types of corruption.  While python 2.7 is
+   still supported, please make plans to upgrade.  Python 2 upstream
+   support ended on 2020-01-01, and we plan to drop support soon too.
  
  - It currently only works on Linux, FreeBSD, NetBSD, OS X >= 10.4,
    Solaris, or Windows (with Cygwin, and WSL).  Patches to support
@@ -85,7 +87,6 @@ Reasons you might want to avoid bup
    argument values, when bup is configured to use Python 3.
 
  - Any items in "Things that are stupid" below.
-
 
 Notable changes introduced by a release
 =======================================
@@ -128,7 +129,7 @@ From source
    bup, please check out the latest stable release like this:
 
     ```sh
-    git checkout 0.29.1
+    git checkout 0.31
     ```
 
    You can see the latest stable release here:
@@ -144,15 +145,29 @@ From source
     apt-get build-dep bup
     ```
 
-   Otherwise try this (substitute python2.6-dev if you have an older
-   system):
+   Otherwise try this:
+
+    ```sh
+    apt-get install python3.7-dev python3-fuse
+    apt-get install python3-pyxattr python3-pytest
+    apt-get install python3-distutils
+    apt-get install pkg-config linux-libc-dev libacl1-dev
+    apt-get install gcc make acl attr rsync
+    apt-get isntall python3-pytest-xdist # optional (parallel tests)
+    apt-get install par2 # optional (error correction)
+    apt-get install libreadline-dev # optional (bup ftp)
+    apt-get install python3-tornado # optional (bup web)
+
+    ```
+   Or, if you can't yet migrate to Python 3 (please try to soon):
 
     ```sh
     apt-get install python2.7-dev python-fuse
-    apt-get install python-pyxattr
+    apt-get install python-pyxattr python-pytest
     apt-get install pkg-config linux-libc-dev libacl1-dev
-    apt-get install acl attr
+    apt-get install gcc make acl attr rsync
     apt-get isntall python-pytest-xdist # optional (parallel tests)
+    apt-get install par2 # optional (error correction)
     apt-get install libreadline-dev # optional (bup ftp)
     apt-get install python-tornado # optional (bup web)
     ```
