@@ -10,7 +10,7 @@ from bup import git, ssh, vfs
 from bup.compat import environ, range, reraise
 from bup.helpers import (Conn, atomically_replaced_file, chunkyreader, debug1,
                          debug2, linereader, lines_until_sentinel,
-                         mkdirp, progress, qprogress, DemuxConn, atoi)
+                         mkdirp, progress, qprogress, DemuxConn)
 from bup.io import path_msg
 from bup.vint import read_bvec, read_vuint, write_bvec
 
@@ -101,7 +101,8 @@ class Client:
                     reraise(ClientError('connect: %s' % e))
             elif self.protocol == b'bup':
                 self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                self.sock.connect((self.host, atoi(self.port) or 1982))
+                self.sock.connect((self.host,
+                                   1982 if self.port is None else int(self.port)))
                 self.sockw = self.sock.makefile('wb')
                 self.conn = DemuxConn(self.sock.fileno(), self.sockw)
         self._available_commands = self._get_available_commands()

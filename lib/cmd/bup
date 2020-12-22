@@ -37,7 +37,7 @@ from bup.compat import environ, fsdecode
 from bup.io import path_msg
 from bup import compat, path, helpers
 from bup.compat import add_ex_tb, add_ex_ctx, argv_bytes, wrap_main
-from bup.helpers import atoi, columnate, debug1, log, merge_dict, tty_width
+from bup.helpers import columnate, debug1, log, merge_dict, tty_width
 from bup.io import byte_stream, path_msg
 from bup.options import _tty_width
 
@@ -145,7 +145,7 @@ subcmd[0] = subpath(subcmd_name)
 if not os.path.exists(subcmd[0]):
     usage('error: unknown command "%s"' % path_msg(subcmd_name))
 
-already_fixed = atoi(environ.get(b'BUP_FORCE_TTY'))
+already_fixed = int(environ.get(b'BUP_FORCE_TTY', 0))
 if subcmd_name in [b'mux', b'ftp', b'help']:
     already_fixed = True
 fix_stdout = not already_fixed and os.isatty(1)

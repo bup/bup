@@ -20,7 +20,7 @@ import os, sys
 sys.path[:0] = [os.path.dirname(os.path.realpath(__file__)) + '/..']
 
 from bup import compat, options, _helpers
-from bup.helpers import atoi, handle_ctrl_c, log, parse_num
+from bup.helpers import handle_ctrl_c, log, parse_num
 
 
 optspec = """
@@ -41,7 +41,7 @@ total = parse_num(extra[0])
 handle_ctrl_c()
 
 if opt.force or (not os.isatty(1) and
-                 not atoi(os.environ.get('BUP_FORCE_TTY')) & 1):
+                 not int(os.environ.get('BUP_FORCE_TTY', 0)) & 1):
     _helpers.write_random(sys.stdout.fileno(), total, opt.seed,
                           opt.verbose and 1 or 0)
 else:

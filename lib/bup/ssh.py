@@ -14,11 +14,11 @@ def connect(rhost, port, subcmd, stderr=None):
     if rhost is None or rhost == b'-':
         argv = [path.exe(), subcmd]
     else:
-        buglvl = helpers.atoi(environ.get(b'BUP_DEBUG'))
-        force_tty = helpers.atoi(environ.get(b'BUP_FORCE_TTY'))
+        buglvl = int(environ.get(b'BUP_DEBUG', 0))
+        force_tty = int(environ.get(b'BUP_FORCE_TTY', 0))
         tty_width = environ.get(b'BUP_TTY_WIDTH', None)
         if tty_width is not None:
-            tty_width = b'BUP_TTY_WIDTH=%d' % helpers.atoi(tty_width)
+            tty_width = b'BUP_TTY_WIDTH=%d' % int(tty_width)
         else:
             tty_width = b''
         cmd = b"""

@@ -19,6 +19,9 @@ from bup.io import byte_stream, path_msg
 from bup.options import _tty_width as tty_width
 
 
+buglvl = int(os.environ.get('BUP_DEBUG', 0))
+
+
 class Nonlocal:
     """Helper to deal with Python scoping issues"""
     pass
@@ -36,26 +39,6 @@ def last(iterable):
     for result in iterable:
         pass
     return result
-
-
-def atoi(s):
-    """Convert s (ascii bytes) to an integer. Return 0 if s is not a number."""
-    try:
-        return int(s or b'0')
-    except ValueError:
-        return 0
-
-
-def atof(s):
-    """Convert s (ascii bytes) to a float. Return 0 if s is not a number."""
-    try:
-        return float(s or b'0')
-    except ValueError:
-        return 0
-
-
-buglvl = atoi(os.environ.get('BUP_DEBUG', 0))
-
 
 try:
     _fdatasync = os.fdatasync
@@ -165,8 +148,8 @@ def debug2(s):
         log(s)
 
 
-istty1 = os.isatty(1) or (atoi(os.environ.get('BUP_FORCE_TTY')) & 1)
-istty2 = os.isatty(2) or (atoi(os.environ.get('BUP_FORCE_TTY')) & 2)
+istty1 = os.isatty(1) or (int(os.environ.get('BUP_FORCE_TTY', 0)) & 1)
+istty2 = os.isatty(2) or (int(os.environ.get('BUP_FORCE_TTY', 0)) & 2)
 _last_progress = ''
 def progress(s):
     """Calls log() if stderr is a TTY.  Does nothing otherwise."""
