@@ -1041,17 +1041,6 @@ def rev_list(ref_or_refs, parse=None, format=None, repo_dir=None):
         raise GitError('git rev-list returned error %d' % rv)
 
 
-def get_commit_dates(refs, repo_dir=None):
-    """Get the dates for the specified commit refs.  For now, every unique
-       string in refs must resolve to a different commit or this
-       function will fail."""
-    result = []
-    for ref in refs:
-        commit = get_commit_items(ref, cp(repo_dir))
-        result.append(commit.author_sec)
-    return result
-
-
 def rev_parse(committish, repo_dir=None):
     """Resolve the full hash for 'committish', if it exists.
 
