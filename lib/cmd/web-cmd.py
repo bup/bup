@@ -308,7 +308,7 @@ io_loop_pending = IOLoop.instance()
 if isinstance(address, InetAddress):
     sockets = tornado.netutil.bind_sockets(address.port, address.host)
     http_server.add_sockets(sockets)
-    print('Serving HTTP on %s:%d...' % sockets[0].getsockname())
+    print('Serving HTTP on %s:%d...' % sockets[0].getsockname()[0:2])
     if opt.browser:
         browser_addr = 'http://' + address[0] + ':' + str(address[1])
         io_loop_pending.add_callback(lambda : webbrowser.open(browser_addr))
