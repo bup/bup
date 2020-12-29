@@ -98,6 +98,9 @@ General
   they've been worth the cost. Our hope is to handle any issues that
   still arise in some simpler way.
 
+* A local repository should no longer be required to run `bup index
+  -f` or a remote `save`.
+
 Bugs
 ----
 

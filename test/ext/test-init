@@ -13,9 +13,9 @@ WVPASS cd "$tmpdir"
 
 WVSTART 'command without init fails'
 WVPASS mkdir foo
-bup -d nope index foo
+bup -d nope save -t foo
 rc=$?
-WVPASSEQ "$rc" "15"
+WVPASSEQ 2 "$rc"
 WVPASS rmdir foo
 
 WVSTART '-d repo argument'

@@ -3,7 +3,7 @@ from binascii import hexlify
 from errno import ENOENT
 import math, os, stat, sys, time
 
-from bup import hashsplit, git, options, index, client, metadata
+from bup import hashsplit, options, index, client, metadata
 from bup import hlinkdb
 from bup.compat import argv_bytes
 from bup.config import ConfigError, derive_repo_addr
@@ -12,12 +12,14 @@ from bup.hashsplit import \
      GIT_MODE_FILE,
      GIT_MODE_SYMLINK,
      split_to_blob_or_tree)
-from bup.helpers import (add_error, grafted_path_components, handle_ctrl_c,
+from bup.helpers import (EXIT_FAILURE,
+                         add_error, grafted_path_components, handle_ctrl_c,
                          hostname, istty2, log, parse_date_or_fatal, parse_num,
                          path_components, progress, qprogress, resolve_parent,
                          saved_errors, stripped_path_components,
                          valid_save_name)
 from bup.io import byte_stream, path_msg
+from bup.path import default_fsindex
 from bup.pwdgrp import userfullname, username
 from bup.tree import Stack
 from bup.repo import make_repo
@@ -425,7 +427,6 @@ def main(argv):
     opt_parser = options.Options(optspec)
     opt = opts_from_cmdline(opt_parser, argv)
     client.bwlimit = opt.bwlimit
-    git.check_repo_or_die()
 
     if opt.repo.startswith(b'file://'):
         repo = make_repo(opt.repo, compression_level=opt.compress)
@@ -452,7 +453,7 @@ def main(argv):
         else:
             refname = parent = None
 
-        indexfile = opt.indexfile or git.repo(b'bupindex')
+        indexfile = opt.indexfile or default_fsindex()
         try:
             msr = index.MetaStoreReader(indexfile + b'.meta')
         except IOError as ex:
@@ -460,7 +461,7 @@ def main(argv):
                 raise
             log('error: cannot access %r; have you run bup index?'
                 % path_msg(indexfile))
-            sys.exit(1)
+            sys.exit(EXIT_FAILURE)
         with msr, \
              hlinkdb.HLinkDB(indexfile + b'.hlink') as hlink_db, \
              index.Reader(indexfile) as reader:

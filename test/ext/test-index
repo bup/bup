@@ -13,8 +13,6 @@ bup() { "$top/bup" "$@"; }
 
 WVPASS cd "$tmpdir"
 
-WVPASS bup init
-
 WVSTART "index"
 D=bupdata.tmp
 WVPASS force-delete $D
@@ -87,6 +85,9 @@ d/
 a
 ./"
 WVPASSEQ "$(cd $D && bup index -s .)" "$(cd $D && bup index -s .)"
+
+# now we actually need a repo
+WVPASS bup init
 
 WVFAIL bup save -t $D/doesnt-exist-filename
 

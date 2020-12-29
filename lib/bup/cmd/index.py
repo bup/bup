@@ -2,13 +2,14 @@
 from binascii import hexlify
 import errno, os, stat, sys, time
 
-from bup import metadata, options, git, index, hlinkdb
+from bup import metadata, options, index, hlinkdb
 from bup.compat import argv_bytes
 from bup.drecurse import recursive_dirlist
 from bup.hashsplit import GIT_MODE_FILE
 from bup.helpers import (add_error, handle_ctrl_c, log, parse_excludes, parse_rx_excludes,
                          progress, qprogress, saved_errors)
 from bup.io import byte_stream, path_msg
+from bup.path import default_fsindex, defaultrepo
 
 
 class IterHelper:
@@ -86,7 +87,7 @@ def update_index(top, excluded_paths, exclude_rxs, indexfile,
                 return (GIT_MODE_FILE, index.FAKE_SHA)
 
         total = 0
-        bup_dir = os.path.abspath(git.repo())
+        bup_dir = os.path.abspath(defaultrepo())
         index_start = time.time()
         for path, pst in recursive_dirlist([top],
                                            xdev=xdev,
@@ -239,6 +240,7 @@ def main(argv):
         o.fatal('--fake-valid is incompatible with --fake-invalid')
     if opt.clear and opt.indexfile:
         o.fatal('cannot clear an external index (via -f)')
+    if opt.indexfile: opt.indexfile = argv_bytes(opt.indexfile)
 
     # FIXME: remove this once we account for timestamp races, i.e. index;
     # touch new-file; index.  It's possible for this to happen quickly
@@ -247,17 +249,12 @@ def main(argv):
     tick_start = time.time()
     time.sleep(1 - (tick_start - int(tick_start)))
 
-    git.check_repo_or_die()
-
     handle_ctrl_c()
 
     if opt.verbose is None:
         opt.verbose = 0
 
-    if opt.indexfile:
-        indexfile = argv_bytes(opt.indexfile)
-    else:
-        indexfile = git.repo(b'bupindex')
+    indexfile = opt.indexfile or default_fsindex()
 
     if opt.check:
         log('check: starting initial check.\n')
