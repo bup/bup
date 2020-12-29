@@ -587,7 +587,6 @@ def main():
     git.check_repo_or_die()
     if opt.source:
         opt.source = argv_bytes(opt.source)
-    src_dir = opt.source or git.repo()
     if opt.bwlimit:
         client.bwlimit = parse_num(opt.bwlimit)
     if is_reverse and opt.remote:
@@ -600,7 +599,7 @@ def main():
         dest_repo = LocalRepo()
 
     with dest_repo as dest_repo:
-        with LocalRepo(repo_dir=src_dir) as src_repo:
+        with LocalRepo(repo_dir=opt.source) as src_repo:
             with dest_repo.new_packwriter(compression_level=opt.compress) as writer:
                 # Resolve and validate all sources and destinations,
                 # implicit or explicit, and do it up-front, so we can
