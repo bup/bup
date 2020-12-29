@@ -131,6 +131,7 @@ class Server:
         self._commands = self._get_commands()
         self.suspended = False
         self.repo = None
+        self._deduplicate_writes = True
 
     def _get_commands(self):
         commands = []
@@ -153,17 +154,19 @@ class Server:
         self.conn.ok()
 
     def init_session(self, repo_dir=None):
-        if self.repo and repo_dir:
-            self.repo.close()
-            self.repo = None
-            self.suspended = False
-        if not self.repo:
+        if self.repo:
+            if repo_dir:
+                self.repo.close()
+                self.repo = None
+                self.suspended = False
+        else:
             self.repo = self._backend(repo_dir, server=True)
             msgdir = path_msg(self.repo.repo_dir)
-            if self.repo.dumb_server_mode:
-                debug1('bup server: (%s mode) serving %s\n'
-                       % (self.repo.dumb_server_mode and 'dumb' or 'smart',
-                          path_msg(self.repo.repo_dir)))
+            dw = self.repo.config_get(b'bup.server.deduplicate-writes', opttype='bool')
+            self._deduplicate_writes = True if dw is None else dw
+            debug1('bup server: (%sdeduplicating) serving %s\n'
+                   % ('' if self._deduplicate_writes else 'not ',
+                      path_msg(self.repo.repo_dir)))
 
     @_command
     def init_dir(self, arg):
@@ -178,8 +181,9 @@ class Server:
 
     @_command
     def list_indexes(self, junk):
+        assert self._deduplicate_writes is not None
         self.init_session()
-        suffix = b' load' if self.repo.dumb_server_mode else b''
+        suffix = b'' if self._deduplicate_writes else b' load'
         for f in self.repo.list_indexes():
             # must end with .idx to not confuse everything, so filter
             # here ... even if the subclass might not yield anything
@@ -243,7 +247,8 @@ class Server:
             buf = self.conn.read(n)  # object sizes in bup are reasonably small
             #debug2('read %d bytes\n' % n)
             self._check(n, len(buf), 'object read: expected %d bytes, got %d\n')
-            if not self.repo.dumb_server_mode:
+            assert self._deduplicate_writes is not None
+            if self._deduplicate_writes:
                 result = self.repo.exists(shar, want_source=True)
                 if result:
                     oldpack = result.pack

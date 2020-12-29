@@ -19,33 +19,20 @@ server` to receive the transmitted objects.
 
 There is normally no reason to run `bup server` yourself.
 
-# MODES
-
-smart
-:   In this mode, the server checks each incoming object
-    against the idx files in its repository.  If any object
-    already exists, it tells the client about the idx file
-    it was found in, allowing the client to download that
-    idx and avoid sending duplicate data.  This is
-    `bup-server`'s default mode.
-
-dumb
-:   In this mode, the server will not check its local index
-    before writing an object.  To avoid writing duplicate
-    objects, the server will tell the client to download all
-    of its `.idx` files at the start of the session.  This
-    mode is useful on low powered server hardware (ie
-    router/slow NAS).
+The server's resource usage can be limited by setting
+`bup.server.deduplicate-writes` to `false`.  See the description in
+`bup-config(5)` for additional information.
 
 # FILES
 
 $BUP_DIR/bup-dumb-server
-:   Activate dumb server mode, as discussed above.  This file is not created by
-    default in new repositories.
+:   When this file exists, `bup` will act as if
+    `bup.server.deduplicate-writes` is set to `false` in the
+    configuration, unless the configuration already specifies a value.
 
 # SEE ALSO
 
-`bup-save`(1), `bup-split`(1)
+`bup-save`(1), `bup-split`(1), `bup-config`(1)
 
 # BUP
 

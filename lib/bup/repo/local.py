@@ -1,9 +1,11 @@
 
 import os, subprocess
+from os import path
 from os.path import realpath
 from functools import partial
 
 from bup import git, vfs
+from bup.config import ConfigError
 from bup.repo.base import RepoProtocol
 
 
@@ -17,15 +19,13 @@ class LocalRepo(RepoProtocol):
         self.max_pack_objects = max_pack_objects
         self._packwriter = None
         self.repo_dir = realpath(repo_dir or git.guess_repo())
-        self.config_get = partial(git.git_config_get, git.repo_config_file(self.repo_dir))
         self.write_symlink = self.write_data
         self.write_bupm = self.write_data
         self._cp = git.cp(self.repo_dir)
         self.rev_list = partial(git.rev_list, repo_dir=self.repo_dir)
-        self.dumb_server_mode = os.path.exists(git.repo(b'bup-dumb-server',
-                                                        repo_dir=self.repo_dir))
-        if server and self.dumb_server_mode:
-            # don't make midx files in dumb server mode
+        deduplicate = self.config_get(b'bup.server.deduplicate-writes', opttype='bool')
+        if server and deduplicate == False:
+            # don't make midx files
             self.objcache_maker = lambda _: None
             self.run_midx = False
         else:
@@ -51,6 +51,18 @@ class LocalRepo(RepoProtocol):
         # be able to call the constructor instead?
         git.init_repo(repo_dir)
         git.check_repo_or_die(repo_dir)
+
+    def config_get(self, name, *, opttype=None):
+        cfg = git.git_config_get(git.repo_config_file(self.repo_dir),
+                                 name, opttype=opttype)
+        if name != b'bup.server.deduplicate-writes':
+            return cfg
+        assert opttype == 'bool'
+        if path.exists(git.repo(b'bup-dumb-server', repo_dir=self.repo_dir)):
+            if not cfg: # whether None or False
+                return False
+            raise ConfigError('bup-dumb-server exists and bup.server.deduplicate-writes is true')
+        return cfg
 
     def list_indexes(self):
         yield from os.listdir(git.repo(b'objects/pack', repo_dir=self.repo_dir))

@@ -4,6 +4,8 @@ import pytest
 
 from bup import client, git, path
 from bup.compat import bytes_from_uint, environ
+from bup.config import ConfigError
+from bup.repo import LocalRepo
 from buptest import ex
 
 def randbytes(sz):
@@ -90,10 +92,31 @@ def test_multiple_suggestions(tmpdir):
     assert len(glob.glob(c.cachedir+IDX_PAT)) == 3
 
 
-def test_dumb_client_server(tmpdir):
+def test_dumb_client_server_conflict(tmpdir):
+    environ[b'GIT_DIR'] = bupdir = tmpdir
     environ[b'BUP_DIR'] = bupdir = tmpdir
     git.init_repo(bupdir)
     open(git.repo(b'bup-dumb-server'), 'w').close()
+    ex((b'git', b'config', b'bup.server.deduplicate-writes', b'true'))
+    # FIXME: propagate server ConfigError to Client()
+    with pytest.raises(ConfigError) as ex_info, \
+         LocalRepo() as repo:
+        repo.config_get(b'bup.server.deduplicate-writes', opttype='bool')
+    assert str(ex_info.value) \
+        == 'bup-dumb-server exists and bup.server.deduplicate-writes is true'
+
+
+@pytest.mark.parametrize("deduplicate_mode", ('file', 'config'))
+def test_server_deduplicate_writes(deduplicate_mode, tmpdir):
+    environ[b'GIT_DIR'] = bupdir = tmpdir
+    environ[b'BUP_DIR'] = bupdir = tmpdir
+    git.init_repo(bupdir)
+    if deduplicate_mode == 'file':
+        open(git.repo(b'bup-dumb-server'), 'w').close()
+    elif deduplicate_mode == 'config':
+        ex((b'git', b'config', b'bup.server.deduplicate-writes', b'false'))
+    else:
+        assert False
 
     with git.PackWriter() as lw:
         lw.new_blob(s1)

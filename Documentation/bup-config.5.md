@@ -13,6 +13,21 @@ The following options may be set in the relevant `git` config
 
 # OPTIONS
 
+bup.server.deduplicate-writes (default `true`)
+:   When `true` `bup-server`(1) checks each incoming object against its
+    local index, and if the object already exists, the server suggests
+    to the client that it download the `*.idx` file that the object
+    was found in so that it can avoid sending duplicate data.
+
+    When false the server does not check its local index before
+    writing objects.  To avoid writing duplicate objects, the server
+    tells the client to download all of its `*.idx` files at the start
+    of the session.  This mode is useful on more limited server
+    hardware (i.e. routers, slow NAS devices, etc.).
+
+    If no value is set, and a `$BUP_DIR/dumb-server-mode` file exists,
+    then `bup` will act as if this setting were `false`.
+
 bup.split.files (default `legacy:13`)
 :   Method used to split data for deduplication, for example by `bup
     save` or `bup split`. This determines the "granularity" of the

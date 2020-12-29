@@ -12,7 +12,6 @@ class RepoProtocol:
     def _validate_init(self):
         """Ensures instance is sound; should be called by all subclasses."""
         hasattr(self, 'compression_level')
-        hasattr(self, 'dumb_server_mode')
         hasattr(self, 'max_pack_objects')
         hasattr(self, 'max_pack_size')
 

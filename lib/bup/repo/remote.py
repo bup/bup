@@ -6,7 +6,6 @@ from bup.repo.base import RepoProtocol
 class RemoteRepo(RepoProtocol):
     def __init__(self, address, create=False, compression_level=None,
                  max_pack_size=None, max_pack_objects=None):
-        self.dumb_server_mode = False
         self.compression_level = compression_level
         self.max_pack_size = max_pack_size
         self.max_pack_objects = max_pack_objects
