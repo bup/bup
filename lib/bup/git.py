@@ -1262,12 +1262,10 @@ def guess_repo():
     not be calling this function but using check_repo_or_die().
 
     """
+    # previously set?
     if repodir:
         return repodir
-    repo = environ.get(b'BUP_DIR')
-    if not repo:
-        repo = os.path.expanduser(b'~/.bup')
-    return repo
+    return path.defaultrepo()
 
 
 def init_repo(path=None):

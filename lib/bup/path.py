@@ -1,5 +1,8 @@
 
+from os import environb as environ
 import os
+
+from bup.compat import environ
 
 # Eventually, if we physically move the source tree cmd/ to lib/, then
 # we could use realpath here and save some stats...
@@ -25,3 +28,17 @@ def libdir():
 
 def resource_path(subdir=b''):
     return os.path.join(_resdir, subdir)
+
+def defaultrepo():
+    repo = environ.get(b'BUP_DIR')
+    if repo:
+        return repo
+    return os.path.expanduser(b'~/.bup')
+
+def cached(*what):
+    """Return the cache path to what (path joined). Currently just a
+    defaultrepo() subdir."""
+    return os.path.join(defaultrepo(), *what)
+
+def indexcache(identifier):
+    return cached(b'index-cache', identifier)
