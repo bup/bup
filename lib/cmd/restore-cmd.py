@@ -285,7 +285,7 @@ def main():
         leaf_name, leaf_item = resolved[-1]
         if not leaf_item:
             add_error('error: cannot access %r in %r'
-                      % ('/'.join(name for name, item in resolved),
+                      % (b'/'.join(name for name, item in resolved),
                          path))
             continue
         if not path_name or path_name == b'.':
