@@ -163,7 +163,7 @@ for branch, branch_id in branches(roots):
         assert(keep_save in (False, True))
         # FIXME: base removals on hashes
         if opt.pretend:
-            out.write(b'+ ' if keep_save else b'- '
+            out.write((b'+ ' if keep_save else b'- ')
                       + save_name(branch, utc) + b'\n')
         elif not keep_save:
             removals.append(save_name(branch, utc))
