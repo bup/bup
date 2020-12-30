@@ -192,12 +192,6 @@ def repo_rel(path):
     return shorten_hash(path)
 
 
-def all_packdirs():
-    paths = [repo(b'objects/pack')]
-    paths += glob.glob(repo(b'index-cache/*/.'))
-    return paths
-
-
 def auto_midx(objdir):
     args = [path.exe(), b'midx', b'--auto', b'--dir', objdir]
     try:

@@ -268,11 +268,9 @@ def main(argv):
         if extra:
             midxes = extra
         else:
-            midxes = []
-            paths = opt.dir and [opt.dir] or git.all_packdirs()
-            for path in paths:
-                debug1('midx: scanning %s\n' % path)
-                midxes += glob.glob(os.path.join(path, b'*.midx'))
+            path = opt.dir or git.repo(b'objects/pack')
+            debug1('midx: scanning %s\n' % path)
+            midxes = glob.glob(os.path.join(path, b'*.midx'))
         for name in midxes:
             check_midx(name)
         if not saved_errors:
@@ -285,12 +283,11 @@ def main(argv):
                     print_names=opt.print)
         elif opt.auto or opt.force:
             sys.stdout.flush()
-            paths = opt.dir and [opt.dir] or git.all_packdirs()
-            for path in paths:
-                debug1('midx: scanning %s\n' % path_msg(path))
-                do_midx_dir(path, opt.output, byte_stream(sys.stdout),
-                            auto=opt.auto, force=opt.force,
-                            max_files=opt.max_files)
+            path = opt.dir or git.repo(b'objects/pack')
+            debug1('midx: scanning %s\n' % path_msg(path))
+            do_midx_dir(path, opt.output, byte_stream(sys.stdout),
+                        auto=opt.auto, force=opt.force,
+                        max_files=opt.max_files)
         else:
             o.fatal("you must use -f or -a or provide input filenames")
 
