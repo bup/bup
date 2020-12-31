@@ -479,6 +479,9 @@ class Metadata:
         try:
             if stat.S_ISLNK(st.st_mode):
                 self.symlink_target = os.readlink(path)
+                # might have read a different link than the
+                # one that was in place when we did stat()
+                self.size = len(self.symlink_target)
         except OSError as e:
             add_error('readlink: %s' % e)
 
