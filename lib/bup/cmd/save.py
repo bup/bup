@@ -434,9 +434,20 @@ def main(argv):
                 continue
             if stat.S_ISREG(ent.mode):
                 try:
+                    # If the file changes while we're reading it, then our reading
+                    # may stop at some point, but the stat() above may have gotten
+                    # a different size already. Recalculate the meta size so that
+                    # the repository records the accurate size in the metadata, even
+                    # if the other stat() data might be slightly older than the file
+                    # content (which we can't fix, this is inherently racy, but we
+                    # can prevent the size mismatch.)
+                    meta.size = 0
+                    def new_blob(data):
+                        meta.size += len(data)
+                        return w.new_blob(data)
                     with hashsplit.open_noatime(ent.name) as f:
                         (mode, id) = hashsplit.split_to_blob_or_tree(
-                                                w.new_blob, w.new_tree, [f],
+                                                new_blob, w.new_tree, [f],
                                                 keep_boundaries=False)
                 except (IOError, OSError) as e:
                     add_error('%s: %s' % (ent.name, e))
