@@ -444,13 +444,7 @@ def main(argv):
             elif stat.S_ISDIR(ent.mode):
                 assert(0)  # handled above
             elif stat.S_ISLNK(ent.mode):
-                try:
-                    rl = os.readlink(ent.name)
-                except (OSError, IOError) as e:
-                    add_error(e)
-                    lastskip_name = ent.name
-                else:
-                    (mode, id) = (GIT_MODE_SYMLINK, w.new_blob(rl))
+                mode, id = (GIT_MODE_SYMLINK, w.new_blob(meta.symlink_target))
             else:
                 # Everything else should be fully described by its
                 # metadata, so just record an empty blob, so the paths
