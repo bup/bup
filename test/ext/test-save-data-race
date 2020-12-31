@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+. wvtest.sh
+. wvtest-bup.sh
+. dev/lib.sh
+
+set -o pipefail
+
+top="$(WVPASS pwd)" || exit $?
+tmpdir="$(WVPASS wvmktempdir)" || exit $?
+export BUP_DIR="$tmpdir/bup"
+
+bup() { "$top/bup" "$@"; }
+
+# Inject code to coordinate test
+
+WVPASS rm -rf "$tmpdir/mod"
+WVPASS mkdir -p "$tmpdir/mod"
+cat > "$tmpdir/mod/pause_file_save.py" << EOF
+
+import os, time
+import bup.cmd.save
+
+def test_save_data_race_pause_save(name):
+    if name == b'$tmpdir/save/data':
+        with open('$tmpdir/waiting-to-save', 'w') as f:
+             pass
+        while os.path.exists('$tmpdir/block-save'):
+           time.sleep(0.01)
+
+bup.cmd.save.before_saving_regular_file = test_save_data_race_pause_save
+
+EOF
+
+instrumented-bup()
+{
+    PYTHONPATH="$tmpdir/mod" bup --import-py-module pause_file_save "$@"
+}
+
+WVPASS cd "$tmpdir"
+WVPASS bup init
+WVPASS mkdir "$tmpdir/save"
+WVPASS echo "some random file content" > "$tmpdir/save/data"
+WVPASS bup index "$tmpdir/save"
+WVPASS touch "$tmpdir/block-save"
+
+(
+    set -e
+    while ! test -e "$tmpdir/waiting-to-save"; do
+        "$top/dev/python" -c 'import time; time.sleep(0.01)'
+    done
+    echo 'truncated' > "$tmpdir/save/data"
+    rm "$tmpdir/block-save"
+) &
+truncator=$!
+trap "kill $truncator" EXIT
+
+WVPASS instrumented-bup save -n test "$tmpdir/save"
+
+meta_size=$(WVPASS bup ls -nl "test/latest/$tmpdir/save/data" |
+                sed 's/[^ ]* [^ ]* *\([^ ]*\).*/\1/')
+data_size=$(git -C "$BUP_DIR" show $(WVPASS bup ls -ls "test/latest/$tmpdir/save/data" |
+                                         sed 's/ .*//') | wc -c)
+WVPASSEQ 10 $meta_size
+WVPASSEQ 10 $data_size
+
+WVPASS rm -rf "$tmpdir"

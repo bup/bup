@@ -37,6 +37,10 @@ graft=     a graft point *old_path*=*new_path* (can be used more than once)
 #,compress=  set compression level to # (0-9, 9 is highest) [1]
 """
 
+# Test hook
+def before_saving_regular_file(name):
+    return
+
 def main(argv):
 
     # Hack around lack of nonlocal vars in python 2
@@ -445,6 +449,7 @@ def main(argv):
                     def new_blob(data):
                         meta.size += len(data)
                         return w.new_blob(data)
+                    before_saving_regular_file(ent.name)
                     with hashsplit.open_noatime(ent.name) as f:
                         (mode, id) = hashsplit.split_to_blob_or_tree(
                                                 new_blob, w.new_tree, [f],
