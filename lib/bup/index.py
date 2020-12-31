@@ -90,7 +90,7 @@ class MetaStoreWriter:
             except EOFError:
                 pass
             except:
-                log('index metadata in %r appears to be corrupt' % filename)
+                log('index metadata in %r appears to be corrupt\n' % filename)
                 raise
         finally:
             m_file.close()
