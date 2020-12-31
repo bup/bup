@@ -887,7 +887,7 @@ class Metadata:
 
 def from_path(path, statinfo=None, archive_path=None,
               save_symlinks=True, hardlink_target=None,
-              normalized=False):
+              normalized=False, after_stat=None):
     # This function is also a test hook; see test-save-errors
     """Return the metadata associated with the path.  When normalized is
     true, return the metadata appropriate for a typical save, which
@@ -895,6 +895,8 @@ def from_path(path, statinfo=None, archive_path=None,
     result = Metadata()
     result.path = archive_path
     st = statinfo or xstat.lstat(path)
+    if after_stat:
+        after_stat(path)
     result._add_common(path, st)
     if save_symlinks:
         result._add_symlink_target(path, st)

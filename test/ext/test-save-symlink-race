@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+. wvtest.sh
+. wvtest-bup.sh
+. dev/lib.sh
+
+set -o pipefail
+
+top="$(WVPASS pwd)" || exit $?
+tmpdir="$(WVPASS wvmktempdir)" || exit $?
+export BUP_DIR="$tmpdir/bup"
+
+bup() { "$top/bup" "$@"; }
+
+# Inject code to coordinate test
+
+WVPASS rm -rf "$tmpdir/mod"
+WVPASS mkdir -p "$tmpdir/mod"
+cat > "$tmpdir/mod/pause_after_save_stat.py" << EOF
+
+import os, time
+import bup.cmd.save
+
+import sys
+
+def test_save_symlink_race_pause_save(name):
+    if name == b'$tmpdir/save/link':
+        with open('$tmpdir/waiting-after-save-stat', 'w') as f:
+             pass
+        while os.path.exists('$tmpdir/block-save'):
+           time.sleep(0.01)
+
+bup.cmd.save.after_nondir_metadata_stat = test_save_symlink_race_pause_save
+
+EOF
+
+instrumented-bup()
+{
+    PYTHONPATH="$tmpdir/mod" bup --import-py-module pause_after_save_stat "$@"
+}
+
+WVPASS cd "$tmpdir"
+WVPASS bup init
+WVPASS mkdir "$tmpdir/save"
+
+WVSTART "symlink metadata vs. content race"
+WVPASS ln -sf a "$tmpdir/save/link"
+WVPASS bup index "$tmpdir/save"
+WVPASS touch "$tmpdir/block-save"
+
+(
+    set -e
+    while ! test -e "$tmpdir/waiting-after-save-stat"; do
+        "$top/dev/python" -c 'import time; time.sleep(0.01)'
+    done
+    ln -sf abc "$tmpdir/save/link"
+    rm "$tmpdir/block-save"
+) &
+truncator=$!
+trap "kill $truncator" EXIT
+
+WVPASS instrumented-bup save -n test "$tmpdir/save"
+
+meta_tgt=$(WVPASS bup ls -ls "test/latest/$tmpdir/save/link" |
+               sed 's/.* -> //')
+data_tgt=$(git -C "$BUP_DIR" show $(WVPASS bup ls -ls "test/latest/$tmpdir/save/link" |
+                                        sed 's/ .*//'))
+WVPASSEQ abc $meta_tgt
+WVPASSEQ abc $data_tgt
+
+WVPASS rm -rf "$tmpdir"

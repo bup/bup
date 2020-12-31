@@ -37,9 +37,14 @@ graft=     a graft point *old_path*=*new_path* (can be used more than once)
 #,compress=  set compression level to # (0-9, 9 is highest) [1]
 """
 
-# Test hook
+
+### Test hooks
+
+after_nondir_metadata_stat = None
+
 def before_saving_regular_file(name):
     return
+
 
 def main(argv):
 
@@ -416,7 +421,8 @@ def main(argv):
             hlink = find_hardlink_target(hlink_db, ent)
             try:
                 meta = metadata.from_path(ent.name, hardlink_target=hlink,
-                                          normalized=True)
+                                          normalized=True,
+                                          after_stat=after_nondir_metadata_stat)
             except (OSError, IOError) as e:
                 add_error(e)
                 lastskip_name = ent.name
