@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+. wvtest.sh
+. wvtest-bup.sh
+. dev/lib.sh
+
+set -o pipefail
+
+top="$(WVPASS pwd)" || exit $?
+tmpdir="$(WVPASS wvmktempdir)" || exit $?
+export BUP_DIR="$tmpdir/bup"
+
+bup() { "$top/bup" "$@"; }
+
+WVPASS cd "$tmpdir"
+
+WVPASS bup init
+WVPASS mkdir "$tmpdir/save"
+
+WVSTART "index vs. save file type change"
+
+# index a (dead) symlink
+WVPASS ln -s asdf "$tmpdir/save/test"
+WVPASS bup index "$tmpdir/save"
+
+WVPASS rm -f "$tmpdir/save/test"
+WVPASS echo now-a-regular-file > "$tmpdir/save/test"
+
+# this should now log an error
+WVFAIL bup save -n test "$tmpdir/save"
+
+# can list the folder but it's empty
+WVPASS bup ls -ls "test/latest/$tmpdir/save/"
+WVPASSEQ "$(bup ls -ls "test/latest/$tmpdir/save/")" ""
+
+WVPASS rm -rf "$tmpdir"
