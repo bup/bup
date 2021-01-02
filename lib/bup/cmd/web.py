@@ -130,14 +130,15 @@ def _contains_hidden_files(repo, dir_item):
 def _dir_contents(repo, resolution, params, param_info):
     """Yield the display information for the contents of dir_item."""
 
-    def display_info(name, item, resolved_item, display_name=None, omitsize=False):
+    def item_info(name, item, resolved_item, display_name=None,
+                  include_size=False):
         link = parse.quote(name)
         # link should be based on fully resolved type to avoid extra
         # HTTP redirect.
         if stat.S_ISDIR(vfs.item_mode(resolved_item)):
             link += '/'
 
-        if not omitsize:
+        if include_size:
             size = vfs.item_size(repo, item)
             if params.get('human'):
                 display_size = format_filesize(size)
@@ -172,10 +173,11 @@ def _dir_contents(repo, resolution, params, param_info):
                 continue
         if name == b'.':
             parent_item = resolution[-2][1] if len(resolution) > 1 else dir_item
-            yield display_info(b'..', parent_item, parent_item, b'..', omitsize=True)
+            yield item_info(b'..', parent_item, parent_item, b'..')
             continue
-        res_item = vfs.ensure_item_has_metadata(repo, item, include_size=True)
-        yield display_info(name, item, res_item)
+        mp = params.get('meta')
+        res_item = vfs.ensure_item_has_metadata(repo, item, include_size=mp)
+        yield item_info(name, item, res_item, include_size=mp)
 
 
 class BupRequestHandler(tornado.web.RequestHandler):
