@@ -409,6 +409,29 @@ def main(argv):
             metalists[-1].append((sort_key, meta))
         else:
             id = None
+            hlink = find_hardlink_target(hlink_db, ent)
+            try:
+                meta = metadata.from_path(ent.name, hardlink_target=hlink,
+                                          normalized=True)
+            except (OSError, IOError) as e:
+                add_error(e)
+                lastskip_name = ent.name
+                continue
+            if stat.S_IFMT(ent.mode) != stat.S_IFMT(meta.mode):
+                # The mode changed since we indexed the file, this is bad.
+                # This can cause two issues:
+                # 1) We e.g. think the file is a regular file, but now it's
+                #    something else (a device, socket, FIFO or symlink, etc.)
+                #    and _read_ from it when we shouldn't.
+                # 2) We then record it as valid, but don't update the index
+                #    metadata, and on a subsequent save it has 'hashvalid'
+                #    but is recorded as the file type from the index, when
+                #    the content is something else ...
+                # Avoid all of these consistency issues by just skipping such
+                # things - it really ought to not happen anyway.
+                add_error("%s: mode changed since indexing, skipping." % path_msg(ent.name))
+                lastskip_name = ent.name
+                continue
             if stat.S_ISREG(ent.mode):
                 try:
                     with hashsplit.open_noatime(ent.name) as f:
@@ -441,14 +464,6 @@ def main(argv):
                 git_info = (mode, git_name, id)
                 shalists[-1].append(git_info)
                 sort_key = git.shalist_item_sort_key((ent.mode, file, id))
-                hlink = find_hardlink_target(hlink_db, ent)
-                try:
-                    meta = metadata.from_path(ent.name, hardlink_target=hlink,
-                                              normalized=True)
-                except (OSError, IOError) as e:
-                    add_error(e)
-                    lastskip_name = ent.name
-                    meta = metadata.Metadata()
                 metalists[-1].append((sort_key, meta))
 
         if exists and wasmissing:
