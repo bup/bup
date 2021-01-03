@@ -23,6 +23,10 @@ th, td {
     padding-left:15px;
 }
 
-td.dir-size {
+td.dir-size, td.dir-meta-uid, td.dir-meta-gid {
     text-align: right;
+}
+
+td.dir-meta-mode {
+    font-family: monospace;
 }

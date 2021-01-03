@@ -13,23 +13,46 @@
                 <a href="{{ part_path }}">{{ display }}</a> /
                 {% end %}
             </div>
-            {% if files_hidden %}
             <div id="message">
+                {% if files_hidden %}
                 {% if params.get('hidden') %}
                     <a href=".{{ amend_query(params, hidden=0) }}">Hide hidden files</a>
                 {% else %}
                     <a href=".{{ amend_query(params, hidden=1) }}">Show hidden files</a>
                 {% end %}
+                {% end %}
+                {% if params.get('meta') %}
+                    <a href=".{{ amend_query(params, meta=0) }}">Hide metadata</a>
+                {% else %}
+                    <a href=".{{ amend_query(params, meta=1) }}">Show metadata</a>
+                {% end %}
             </div>
-            {% end %}
             <table>
                 <tr>
+                    {% if params.get('meta') %}
+                        <th class="dir-meta-mode">Mode</th>
+                        <th class="dir-meta-owner" colspan="2">Owner</th>
+                        <th class="dir-meta-group" colspan="2">Group</th>
+                    {% end %}
                     <th class="dir-size">Size</th>
+                    {% if params.get('meta') %}
+                        <th class="dir-meta-mtime">Last modified</th>
+                    {% end %}
                     <th class="dir-name">Name</th>
                 </tr>
-                {% for (display, link, size) in dir_contents %}
+                {% for (display, link, size, meta) in dir_contents %}
                 <tr>
+                    {% if params.get('meta') and meta is not None%}
+                        <td class="dir-meta-mode">{{ mode_str(meta.mode) }}</td>
+                        <td class="dir-meta-owner">{{ '' if meta.user is None else meta.user }}</td>
+                        <td class="dir-meta-uid">{{ '' if meta.uid is None else meta.uid }}</td>
+                        <td class="dir-meta-group">{{ '' if meta.group is None else meta.group }}</td>
+                        <td class="dir-meta-gid">{{ '' if meta.gid is None else meta.gid }}</td>
+                    {% end %}
                     <td class="dir-size">{{ '' if size is None else size }}</td>
+                    {% if params.get('meta') and meta %}
+                      <td class="dir-meta-mtime"> {{ local_time_str(meta.mtime) or '' }}</td>
+                    {% end %}
                     <td class="dir-name">
                       <a href="{% raw link %}">{{ display }}</a>
                     </td>

@@ -5,7 +5,7 @@ from urllib import parse
 from urllib.parse import urlencode
 import mimetypes, os, posixpath, signal, stat, sys, time, webbrowser
 
-from bup import options, git, vfs
+from bup import options, git, vfs, xstat
 from bup.helpers \
     import (EXIT_FAILURE,
             chunkyreader,
@@ -14,6 +14,7 @@ from bup.helpers \
             log,
             saved_errors)
 from bup.io import path_msg
+from bup.metadata import Metadata
 from bup.path import resource_path
 from bup.repo import LocalRepo
 
@@ -158,7 +159,10 @@ def _dir_contents(repo, resolution, params, param_info):
                 display_name = name
 
         query = encode_query(params, param_info)
-        return path_msg(display_name), link + query, display_size
+        meta = resolved_item.meta
+        if not isinstance(meta, Metadata):
+            meta = None
+        return path_msg(display_name), link + query, display_size, meta
 
     dir_item = resolution[-1][1]
     for name, item in vfs.contents(repo, dir_item):
@@ -179,7 +183,8 @@ class BupRequestHandler(tornado.web.RequestHandler):
         self.repo = repo
         default_false_param = ParamInfo(default=0, from_req=from_req_bool,
                                         normalize=normalize_bool)
-        self.bup_param_info = dict(hidden=default_false_param)
+        self.bup_param_info = dict(hidden=default_false_param,
+                                   meta=default_false_param)
 
     def decode_argument(self, value, name=None):
         if name == 'path':
@@ -233,6 +238,8 @@ class BupRequestHandler(tornado.web.RequestHandler):
             path=path,
             breadcrumbs=_compute_breadcrumbs(path, params, param_info),
             files_hidden=_contains_hidden_files(self.repo, resolution[-1][1]),
+            local_time_str=xstat.local_time_str,
+            mode_str=xstat.mode_str,
             params=params,
             amend_query=amend_query,
             dir_contents=_dir_contents(self.repo, resolution, params, param_info))

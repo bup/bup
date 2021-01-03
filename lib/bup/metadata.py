@@ -5,12 +5,11 @@
 # This code is covered under the terms of the GNU Library General
 # Public License as described in the bup LICENSE file.
 
-from __future__ import absolute_import, print_function
 from copy import deepcopy
 from errno import EACCES, EINVAL, ENOTTY, ENOSYS, EOPNOTSUPP
 from io import BytesIO
 from time import gmtime, strftime
-import errno, os, sys, stat, time, socket, struct
+import errno, os, sys, stat, socket, struct
 
 from bup import vint, xstat
 from bup.drecurse import recursive_dirlist
@@ -1048,9 +1047,7 @@ def summary_bytes(meta, numeric_ids = False, classification = None,
         mode_str = xstat.mode_str(meta.mode).encode('ascii')
         symlink_target = meta.symlink_target
         if meta.mtime is not None:
-            mtime_secs = xstat.fstime_floor_secs(meta.mtime)
-            mtime_str = strftime('%Y-%m-%d %H:%M',
-                                 time.localtime(mtime_secs)).encode('ascii')
+            mtime_str = xstat.local_time_str(meta.mtime).encode('ascii')
         if meta.user and not numeric_ids:
             user_str = meta.user
         elif meta.uid != None:
