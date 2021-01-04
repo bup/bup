@@ -71,6 +71,9 @@
                     {% end %}
                     <td class="dir-name">
                       <a href="{% raw link %}">{{ name }}</a>
+                      {% if params.get('meta') and meta and meta.symlink_target %}
+                        → {{ meta.symlink_target }}
+                      {% end %}
                     </td>
                 </tr>
                 {% end %}
