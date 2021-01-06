@@ -689,3 +689,9 @@ requests), how we handle branches, etc.
 Have fun,
 
 Avery
+
+<!--
+Local Variables:
+mode: markdown
+End:
+-->
