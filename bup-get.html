@@ -5,8 +5,8 @@
   <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <meta name="author" content="Rob Browning rlb@defaultvalue.org" />
-  <meta name="dcterms.date" content="2020-08-22" />
-  <title>bup-get(1) Bup 0.31</title>
+  <meta name="dcterms.date" content="2021-01-09" />
+  <title>bup-get(1) Bup 0.32</title>
   <style type="text/css">
       code{white-space: pre-wrap;}
       span.smallcaps{font-variant: small-caps;}
@@ -16,9 +16,9 @@
 </head>
 <body>
 <header id="title-block-header">
-<h1 class="title">bup-get(1) Bup 0.31</h1>
+<h1 class="title">bup-get(1) Bup 0.32</h1>
 <p class="author">Rob Browning <a href="mailto:rlb@defaultvalue.org" class="email">rlb@defaultvalue.org</a></p>
-<p class="date">2020-08-22</p>
+<p class="date">2021-01-09</p>
 </header>
 <h1 id="name">NAME</h1>
 <p>bup-get - copy repository items (CAUTION: EXPERIMENTAL)</p>
@@ -36,7 +36,7 @@ bup get -s /source/repo --pick: foo/2010-10-10-101010 .tag/bar</code></pre>
 <p>When a new commit is created (i.e. via <code>--append</code>, <code>--pick</code>, etc.), it will have the same author, author date, and message as the original, but a committer and committer date corresponding to the current user and time.</p>
 <p>If requested by the appropriate options, bup will print the commit, tree, or tag hash for each destination reference updated. When relevant, the tree hash will be printed before the commit hash.</p>
 <p>Local <em>ref</em>s can be pushed to a remote repository with the <code>--remote</code> option, and remote <em>ref</em>s can be pulled into a local repository via “bup on HOST get …”. See <code>bup-on</code>(1) and the EXAMPLES below for further information.</p>
-<p>WARNING: This is one of the few bup commands that can modify your archives in intentionally destructive ways. Though if an attempt to join or restore the data you still care about succeeds after you’ve run this command, then that’s a fairly encouraging sign that it worked correctly. (The t/compare-trees command in the source tree can be used to help test before/after results.)</p>
+<p>WARNING: This is one of the few bup commands that can modify your archives in intentionally destructive ways. Though if an attempt to join or restore the data you still care about succeeds after you’ve run this command, then that’s a fairly encouraging sign that it worked correctly. (The dev/compare-trees command in the source tree can be used to help test before/after results.)</p>
 <h1 id="methods">METHODS</h1>
 <dl>
 <dt>--ff <em>ref</em>, --ff: <em>ref</em> <em>dest</em></dt>

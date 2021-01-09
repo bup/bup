@@ -5,8 +5,8 @@
   <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <meta name="author" content="Rob Browning rlb@defaultvalue.org" />
-  <meta name="dcterms.date" content="2020-08-22" />
-  <title>bup-gc(1) Bup 0.31</title>
+  <meta name="dcterms.date" content="2021-01-09" />
+  <title>bup-gc(1) Bup 0.32</title>
   <style type="text/css">
       code{white-space: pre-wrap;}
       span.smallcaps{font-variant: small-caps;}
@@ -16,9 +16,9 @@
 </head>
 <body>
 <header id="title-block-header">
-<h1 class="title">bup-gc(1) Bup 0.31</h1>
+<h1 class="title">bup-gc(1) Bup 0.32</h1>
 <p class="author">Rob Browning <a href="mailto:rlb@defaultvalue.org" class="email">rlb@defaultvalue.org</a></p>
-<p class="date">2020-08-22</p>
+<p class="date">2021-01-09</p>
 </header>
 <h1 id="name">NAME</h1>
 <p>bup-gc - remove unreferenced, unneeded data</p>
@@ -28,7 +28,7 @@
 <p><code>bup gc</code> removes (permanently deletes) unreachable data from the repository, data that isn’t referred to directly or indirectly by the current set of branches (backup sets) and tags. But bear in mind that given deduplication, deleting a save and running the garbage collector might or might not actually delete anything (or reclaim any space).</p>
 <p>With the current, proababilistic implementation, some fraction of the unreachable data may be retained. In exchange, the garbage collection should require much less RAM than might by some more precise approaches.</p>
 <p>Typically, the garbage collector would be invoked after some set of invocations of <code>bup rm</code>.</p>
-<p>WARNING: This is one of the few bup commands that modifies your archive in intentionally destructive ways. Though if an attempt to <code>join</code> or <code>restore</code> the data you still care about after a <code>gc</code> succeeds, that’s a fairly encouraging sign that the commands worked correctly. (The <code>t/compare-trees</code> command in the source tree can be used to help test before/after results.)</p>
+<p>WARNING: This is one of the few bup commands that modifies your archive in intentionally destructive ways. Though if an attempt to <code>join</code> or <code>restore</code> the data you still care about after a <code>gc</code> succeeds, that’s a fairly encouraging sign that the commands worked correctly. (The <code>dev/compare-trees</code> command in the source tree can be used to help test before/after results.)</p>
 <h1 id="options">OPTIONS</h1>
 <dl>
 <dt>--threshold=N</dt>
