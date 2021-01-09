@@ -19,7 +19,7 @@ via email.
 Current Trajectory
 ==================
 
-Now that we've finished the 0.31 release, we're working on 0.32, and
+Now that we've finished the 0.32 release, we're working on 0.33, and
 although we're not certain which new features will be included, we're
 considering:
 
@@ -38,6 +38,8 @@ considering:
 
   - Support for alternate remote storage APIs.
 
+  - Discontinuing Python 2 work, excepting perhaps some bugfixes.
+
 If you have the time and inclination, please help review patches
 posted to the list, or post your own.  (See "ways to help" below.)
 
@@ -45,7 +47,7 @@ posted to the list, or post your own.  (See "ways to help" below.)
 More specific ways to help
 ==========================
 
-Testing -- yes please.  
+Testing -- yes please.
 
 With respect to patches, bup development is handled via the mailing
 list, and all patches should be sent to the list for review (see
@@ -140,3 +142,9 @@ ideas here aren't altogether terrible:
 
 In particular, we've been paying at least some attention to the bits
 regarding Acked-by:, Reported-by:, Tested-by: and Reviewed-by:.
+
+<!--
+Local Variables:
+mode: markdown
+End:
+-->
