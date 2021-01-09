@@ -5,8 +5,8 @@
   <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <meta name="author" content="Rob Browning rlb@defaultvalue.org" />
-  <meta name="dcterms.date" content="2020-08-22" />
-  <title>bup-prune-older(1) bup 0.31 | bup 0.31</title>
+  <meta name="dcterms.date" content="2021-01-09" />
+  <title>bup-prune-older(1) bup 0.32 | bup 0.32</title>
   <style type="text/css">
       code{white-space: pre-wrap;}
       span.smallcaps{font-variant: small-caps;}
@@ -16,9 +16,9 @@
 </head>
 <body>
 <header id="title-block-header">
-<h1 class="title">bup-prune-older(1) bup 0.31 | bup 0.31</h1>
+<h1 class="title">bup-prune-older(1) bup 0.32 | bup 0.32</h1>
 <p class="author">Rob Browning <a href="mailto:rlb@defaultvalue.org" class="email">rlb@defaultvalue.org</a></p>
-<p class="date">2020-08-22</p>
+<p class="date">2021-01-09</p>
 </header>
 <h1 id="name">NAME</h1>
 <p>bup-prune-older - remove older saves</p>
@@ -26,7 +26,7 @@
 <p>bup prune-older [options…] &lt;<em>branch</em>…&gt;</p>
 <h1 id="description">DESCRIPTION</h1>
 <p><code>bup prune-older</code> removes (permanently deletes) all saves except those preserved by the various keep arguments detailed below. At least one keep argument must be specified. This command is equivalent to a suitable <code>bup rm</code> invocation followed by <code>bup gc</code>.</p>
-<p>WARNING: This is one of the few bup commands that modifies your archive in intentionally destructive ways. Though if an attempt to <code>join</code> or <code>restore</code> the data you still care about after a <code>prune-older</code> succeeds, that’s a fairly encouraging sign that the commands worked correctly. (The <code>t/compare-trees</code> command in the source tree can be used to help test before/after results.)</p>
+<p>WARNING: This is one of the few bup commands that modifies your archive in intentionally destructive ways. Though if an attempt to <code>join</code> or <code>restore</code> the data you still care about after a <code>prune-older</code> succeeds, that’s a fairly encouraging sign that the commands worked correctly. (The <code>dev/compare-trees</code> command in the source tree can be used to help test before/after results.)</p>
 <h1 id="keep-periods">KEEP PERIODS</h1>
 <p>A <code>--keep</code> PERIOD (as required below) must be an integer followed by a scale, or “forever”. For example, 12y specifies a PERIOD of twelve years. Here are the valid scales:</p>
 <ul>
