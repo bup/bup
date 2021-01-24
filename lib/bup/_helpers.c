@@ -1938,15 +1938,11 @@ bup_set_completer_word_break_characters(PyObject *self, PyObject *args)
 static PyObject *
 bup_get_completer_word_break_characters(PyObject *self, PyObject *args)
 {
-    if (!PyArg_ParseTuple(args, ""))
-	return NULL;
     return PyBytes_FromString(rl_completer_word_break_characters);
 }
 
 static PyObject *bup_get_line_buffer(PyObject *self, PyObject *args)
 {
-    if (!PyArg_ParseTuple(args, ""))
-	return NULL;
     return PyBytes_FromString(rl_line_buffer);
 }
 
