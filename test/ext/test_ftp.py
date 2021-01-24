@@ -1,8 +1,8 @@
 
-from __future__ import absolute_import, print_function
 from os import chdir, mkdir, symlink, unlink
 from subprocess import PIPE
 from time import localtime, strftime, tzset
+import re
 
 from bup.compat import environ
 from bup.helpers import unlink as unlink_if_exists
@@ -20,12 +20,17 @@ def bup(*args, **kwargs):
 def jl(*lines):
     return b''.join(line + b'\n' for line in lines)
 
+def match_rx_grp(rx, expected, src):
+    match = re.fullmatch(rx, src)
+    wvpass(match, 're.fullmatch(%r, %r)' % (rx, src))
+    if not match:
+        return
+    wvpasseq(expected, match.groups())
+
 environ[b'GIT_AUTHOR_NAME'] = b'bup test'
 environ[b'GIT_COMMITTER_NAME'] = b'bup test'
 environ[b'GIT_AUTHOR_EMAIL'] = b'bup@a425bc70a02811e49bdf73ee56450e6f'
 environ[b'GIT_COMMITTER_EMAIL'] = b'bup@a425bc70a02811e49bdf73ee56450e6f'
-
-import subprocess
 
 def test_ftp(tmpdir):
     environ[b'BUP_DIR'] = tmpdir + b'/repo'
@@ -70,12 +75,14 @@ def test_ftp(tmpdir):
              bup(b'ftp', input=jl(b'cd src/latest/dir-symlink', b'pwd')).out)
     wvpasseq(b'/src/%s/dir\n' % save_name,
              bup(b'ftp', input=jl(b'cd src latest dir-symlink', b'pwd')).out)
-    wvpassne(0, bup(b'ftp',
-                    input=jl(b'cd src/latest/bad-symlink', b'pwd'),
-                    check=False, stdout=None).rc)
-    wvpassne(0, bup(b'ftp',
-                    input=jl(b'cd src/latest/not-there', b'pwd'),
-                    check=False, stdout=None).rc)
+
+    match_rx_grp(br'(error: path does not exist: /src/)[0-9-]+(/not-there\n/\n)',
+                 (b'error: path does not exist: /src/', b'/not-there\n/\n'),
+                 bup(b'ftp', input=jl(b'cd src/latest/bad-symlink', b'pwd')).out)
+
+    match_rx_grp(br'(error: path does not exist: /src/)[0-9-]+(/not-there\n/\n)',
+                 (b'error: path does not exist: /src/', b'/not-there\n/\n'),
+                 bup(b'ftp', input=jl(b'cd src/latest/not-there', b'pwd')).out)
 
     wvstart('ls')
     # FIXME: elaborate
@@ -99,13 +106,15 @@ def test_ftp(tmpdir):
     with open(b'dest', 'rb') as f:
         wvpasseq(b'excitement!\n', f.read())
     unlink(b'dest')
-    wvpassne(0, bup(b'ftp',
-                    input=jl(b'get src/latest/bad-symlink dest'),
-                    check=False, stdout=None).rc)
-    wvpassne(0, bup(b'ftp',
-                    input=jl(b'get src/latest/not-there'),
-                    check=False, stdout=None).rc)
-    
+
+    match_rx_grp(br'(error: path does not exist: /src/)[0-9-]+(/not-there\n)',
+                 (b'error: path does not exist: /src/', b'/not-there\n'),
+                 bup(b'ftp', input=jl(b'get src/latest/bad-symlink dest')).out)
+
+    match_rx_grp(br'(error: path does not exist: /src/)[0-9-]+(/not-there\n)',
+                 (b'error: path does not exist: /src/', b'/not-there\n'),
+                 bup(b'ftp', input=jl(b'get src/latest/not-there dest')).out)
+
     wvstart('mget')
     unlink_if_exists(b'file-1')
     bup(b'ftp', input=jl(b'mget src/latest/file-1'))
@@ -122,8 +131,5 @@ def test_ftp(tmpdir):
     bup(b'ftp', input=jl(b'mget src/latest/file-symlink'))
     with open(b'file-symlink', 'rb') as f:
         wvpasseq(b'excitement!\n', f.read())
-    wvpassne(0, bup(b'ftp',
-                    input=jl(b'mget src/latest/bad-symlink dest'),
-                    check=False, stdout=None).rc)
     # bup mget currently always does pattern matching
     bup(b'ftp', input=b'mget src/latest/not-there\n')

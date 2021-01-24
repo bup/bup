@@ -16,6 +16,10 @@ from bup.repo import LocalRepo
 
 repo = None
 
+
+class CommandError(Exception):
+    pass
+
 class OptionError(Exception):
     pass
 
@@ -25,7 +29,6 @@ def do_ls(repo, pwd, args, out):
     try:
         opt = ls.opts_from_cmdline(args, onabort=OptionError, pwd=pwd_str)
     except OptionError as e:
-        log('error: %s' % e)
         return None
     return ls.within_repo(repo, opt, out, pwd_str)
 
@@ -117,6 +120,9 @@ def inputiter(f, pwd, out):
         for line in f:
             yield line
 
+def rpath_msg(res):
+    """Return a path_msg for the resolved path res."""
+    return path_msg(b'/'.join(name for name, item in res))
 
 def present_interface(stdin, out, extra, repo):
     pwd = vfs.resolve(repo, b'/')
@@ -150,11 +156,9 @@ def present_interface(stdin, out, extra, repo):
                     res = vfs.resolve(repo, parm, parent=np)
                     _, leaf_item = res[-1]
                     if not leaf_item:
-                        raise Exception('%s does not exist'
-                                        % path_msg(b'/'.join(name for name, item
-                                                             in res)))
+                        raise CommandError('path does not exist: ' + rpath_msg(res))
                     if not stat.S_ISDIR(vfs.item_mode(leaf_item)):
-                        raise Exception('%s is not a directory' % path_msg(parm))
+                        raise CommandError('path is not a directory: ' + path_msg(parm))
                     np = res
                 pwd = np
             elif cmd == b'pwd':
@@ -167,23 +171,20 @@ def present_interface(stdin, out, extra, repo):
                     res = vfs.resolve(repo, parm, parent=pwd)
                     _, leaf_item = res[-1]
                     if not leaf_item:
-                        raise Exception('%s does not exist' %
-                                        path_msg(b'/'.join(name for name, item
-                                                           in res)))
+                        raise CommandError('path does not exist: ' + rpath_msg(res))
                     with vfs.fopen(repo, leaf_item) as srcfile:
                         write_to_file(srcfile, out)
                 out.flush()
             elif cmd == b'get':
                 if len(words) not in [2,3]:
-                    raise Exception('Usage: get <filename> [localname]')
+                    raise CommandError('Usage: get <filename> [localname]')
                 rname = words[1]
                 (dir,base) = os.path.split(rname)
                 lname = len(words) > 2 and words[2] or base
                 res = vfs.resolve(repo, rname, parent=pwd)
                 _, leaf_item = res[-1]
                 if not leaf_item:
-                    raise Exception('%s does not exist' %
-                                    path_msg(b'/'.join(name for name, item in res)))
+                    raise CommandError('path does not exist: ' + rpath_msg(res))
                 with vfs.fopen(repo, leaf_item) as srcfile:
                     with open(lname, 'wb') as destfile:
                         log('Saving %s\n' % path_msg(lname))
@@ -195,7 +196,7 @@ def present_interface(stdin, out, extra, repo):
                     res = vfs.resolve(repo, dir, parent=pwd)
                     _, dir_item = res[-1]
                     if not dir_item:
-                        raise Exception('%s does not exist' % path_msg(dir))
+                        raise CommandError('path does not exist: ' + path_msg(dir))
                     for name, item in vfs.contents(repo, dir_item):
                         if name == b'.':
                             continue
@@ -204,9 +205,8 @@ def present_interface(stdin, out, extra, repo):
                                 deref = vfs.resolve(repo, name, parent=res)
                                 deref_name, deref_item = deref[-1]
                                 if not deref_item:
-                                    raise Exception('%s does not exist' %
-                                                    path_msg('/'.join(name for name, item
-                                                                      in deref)))
+                                    raise CommandError('path does not exist: '
+                                                       + rpath_msg(res))
                                 item = deref_item
                             with vfs.fopen(repo, item) as srcfile:
                                 with open(name, 'wb') as destfile:
@@ -218,10 +218,11 @@ def present_interface(stdin, out, extra, repo):
             elif cmd in (b'quit', b'exit', b'bye'):
                 break
             else:
-                raise Exception('no such command %r' % cmd)
-        except Exception as e:
-            log('error: %s\n' % e)
-            raise
+                raise CommandError('no such command: '
+                                   + cmd.encode(errors='backslashreplace'))
+        except CommandError as ex:
+            out.write(b'error: %s\n' % str(ex).encode(errors='backslashreplace'))
+            out.flush()
 
 def main(argv):
     global repo
