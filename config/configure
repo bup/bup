@@ -236,12 +236,16 @@ if pkg-config readline; then
     # It looks like it's not uncommon for pkg-config to provide a -I
     # that doesn't support the documentation's specified #include
     # <readline/readline.h>.  See what's really going on.
-    if bup_try_c_code "#include <readline/readline.h> $readline_test_code" \
+    if bup_try_c_code "#include <stdio.h> // required by unpatched readline
+#include <readline/readline.h>
+$readline_test_code" \
                       "$bup_readline_cflags"
     then
         bup_have_readline=1
         bup_readline_includes_in_subdir=1
-    elif bup_try_c_code "#include <readline.h> $readline_test_code" \
+    elif bup_try_c_code "#include <stdio.h> // required by unpatched readline
+#include <readline.h>
+$readline_test_code" \
                         "$bup_readline_cflags"
     then
         bup_have_readline=1
