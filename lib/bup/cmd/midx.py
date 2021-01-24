@@ -49,7 +49,7 @@ def check_midx(name):
     try:
         ix = git.open_idx(name)
     except git.GitError as e:
-        add_error('%s: %s' % (pathmsg(name), e))
+        add_error('%s: %s' % (path_msg(name), e))
         return
     for count,subname in enumerate(ix.idxnames):
         sub = git.open_idx(os.path.join(os.path.dirname(name), subname))
