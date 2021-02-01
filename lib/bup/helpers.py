@@ -590,7 +590,13 @@ class DemuxConn(BaseConn):
         assert(rl[0] == self.infd)
         ns = b''.join(checked_reader(self.infd, 5))
         n, fdw = struct.unpack('!IB', ns)
-        assert(n <= MAX_PACKET)
+        if n > MAX_PACKET:
+            # assume that something went wrong and print stuff
+            ns += os.read(self.infd, 1024)
+            stderr = byte_stream(sys.stderr)
+            stderr.write(ns)
+            stderr.flush()
+            raise Exception("Connection broken")
         if fdw == 1:
             self.reader = checked_reader(self.infd, n)
         elif fdw == 2:
