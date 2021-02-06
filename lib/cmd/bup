@@ -126,9 +126,6 @@ for opt in global_args:
     else:
         usage('error: unexpected option "%s"' % opt[0])
 
-if bup_dir:
-    bup_dir = argv_bytes(bup_dir)
-
 # Make BUP_DIR absolute, so we aren't affected by chdir (i.e. save -C, etc.).
 if bup_dir:
     environ[b'BUP_DIR'] = os.path.abspath(bup_dir)
