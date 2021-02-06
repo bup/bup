@@ -186,7 +186,8 @@ if not subcmd_name:
 
 try:
     if subcmd_name not in (b'cat-file',
-                           b'ls'):
+                           b'ls',
+                           b'meta'):
         raise ModuleNotFoundError()
     cmd_module = import_module('bup.cmd.'
                                + subcmd_name.decode('ascii').replace('-', '_'))
