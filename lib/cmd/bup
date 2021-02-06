@@ -188,6 +188,7 @@ try:
     if subcmd_name not in (b'cat-file',
                            b'ls',
                            b'meta',
+                           b'version',
                            b'xstat'):
         raise ModuleNotFoundError()
     cmd_module = import_module('bup.cmd.'
