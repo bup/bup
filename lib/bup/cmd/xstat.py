@@ -1,19 +1,3 @@
-#!/bin/sh
-"""": # -*-python-*-
-# https://sourceware.org/bugzilla/show_bug.cgi?id=26034
-export "BUP_ARGV_0"="$0"
-arg_i=1
-for arg in "$@"; do
-    export "BUP_ARGV_${arg_i}"="$arg"
-    shift
-    arg_i=$((arg_i + 1))
-done
-# Here to end of preamble replaced during install
-bup_python="$(dirname "$0")/../../../config/bin/python" || exit $?
-exec "$bup_python" "$0"
-"""
-# end of bup preamble
-
 # Copyright (C) 2010 Rob Browning
 #
 # This code is covered under the terms of the GNU Library General
@@ -21,11 +5,7 @@ exec "$bup_python" "$0"
 
 from __future__ import absolute_import, print_function
 
-# Intentionally replace the dirname "$0" that python prepends
-import os, sys
-sys.path[0] = os.path.dirname(os.path.realpath(__file__)) + '/../..'
-
-import errno, os.path, stat
+import errno, stat, sys
 
 from bup import compat, metadata, options, xstat
 from bup.compat import argv_bytes
@@ -62,71 +42,71 @@ mtime-resolution=  limit s, ms, us, ns, 10ns (value must be a power of 10) [ns]
 ctime-resolution=  limit s, ms, us, ns, 10ns (value must be a power of 10) [ns]
 """
 
-target_filename = b''
-active_fields = metadata.all_fields
+def main(argv):
 
-handle_ctrl_c()
+    target_filename = b''
+    active_fields = metadata.all_fields
 
-o = options.Options(optspec)
-(opt, flags, remainder) = o.parse(compat.argv[1:])
+    o = options.Options(optspec)
+    (opt, flags, remainder) = o.parse_bytes(argv[1:])
 
-atime_resolution = parse_timestamp_arg('atime', opt.atime_resolution)
-mtime_resolution = parse_timestamp_arg('mtime', opt.mtime_resolution)
-ctime_resolution = parse_timestamp_arg('ctime', opt.ctime_resolution)
+    atime_resolution = parse_timestamp_arg('atime', opt.atime_resolution)
+    mtime_resolution = parse_timestamp_arg('mtime', opt.mtime_resolution)
+    ctime_resolution = parse_timestamp_arg('ctime', opt.ctime_resolution)
 
-treat_include_fields_as_definitive = True
-for flag, value in flags:
-    if flag == '--exclude-fields':
-        exclude_fields = frozenset(value.split(','))
-        for f in exclude_fields:
-            if not f in metadata.all_fields:
-                o.fatal(f + ' is not a valid field name')
-        active_fields = active_fields - exclude_fields
-        treat_include_fields_as_definitive = False
-    elif flag == '--include-fields':
-        include_fields = frozenset(value.split(','))
-        for f in include_fields:
-            if not f in metadata.all_fields:
-                o.fatal(f + ' is not a valid field name')
-        if treat_include_fields_as_definitive:
-            active_fields = include_fields
+    treat_include_fields_as_definitive = True
+    for flag, value in flags:
+        if flag == '--exclude-fields':
+            exclude_fields = frozenset(value.split(','))
+            for f in exclude_fields:
+                if not f in metadata.all_fields:
+                    o.fatal(f + ' is not a valid field name')
+            active_fields = active_fields - exclude_fields
             treat_include_fields_as_definitive = False
-        else:
-            active_fields = active_fields | include_fields
+        elif flag == '--include-fields':
+            include_fields = frozenset(value.split(','))
+            for f in include_fields:
+                if not f in metadata.all_fields:
+                    o.fatal(f + ' is not a valid field name')
+            if treat_include_fields_as_definitive:
+                active_fields = include_fields
+                treat_include_fields_as_definitive = False
+            else:
+                active_fields = active_fields | include_fields
 
-opt.verbose = opt.verbose or 0
-opt.quiet = opt.quiet or 0
-metadata.verbose = opt.verbose - opt.quiet
+    opt.verbose = opt.verbose or 0
+    opt.quiet = opt.quiet or 0
+    metadata.verbose = opt.verbose - opt.quiet
 
-sys.stdout.flush()
-out = byte_stream(sys.stdout)
+    sys.stdout.flush()
+    out = byte_stream(sys.stdout)
 
-first_path = True
-for path in remainder:
-    path = argv_bytes(path)
-    try:
-        m = metadata.from_path(path, archive_path = path)
-    except (OSError,IOError) as e:
-        if e.errno == errno.ENOENT:
-            add_error(e)
-            continue
-        else:
-            raise
-    if metadata.verbose >= 0:
-        if not first_path:
+    first_path = True
+    for path in remainder:
+        path = argv_bytes(path)
+        try:
+            m = metadata.from_path(path, archive_path = path)
+        except (OSError,IOError) as e:
+            if e.errno == errno.ENOENT:
+                add_error(e)
+                continue
+            else:
+                raise
+        if metadata.verbose >= 0:
+            if not first_path:
+                out.write(b'\n')
+            if atime_resolution != 1:
+                m.atime = (m.atime / atime_resolution) * atime_resolution
+            if mtime_resolution != 1:
+                m.mtime = (m.mtime / mtime_resolution) * mtime_resolution
+            if ctime_resolution != 1:
+                m.ctime = (m.ctime / ctime_resolution) * ctime_resolution
+            out.write(metadata.detailed_bytes(m, active_fields))
             out.write(b'\n')
-        if atime_resolution != 1:
-            m.atime = (m.atime / atime_resolution) * atime_resolution
-        if mtime_resolution != 1:
-            m.mtime = (m.mtime / mtime_resolution) * mtime_resolution
-        if ctime_resolution != 1:
-            m.ctime = (m.ctime / ctime_resolution) * ctime_resolution
-        out.write(metadata.detailed_bytes(m, active_fields))
-        out.write(b'\n')
-        first_path = False
+            first_path = False
 
-if saved_errors:
-    log('WARNING: %d errors encountered.\n' % len(saved_errors))
-    sys.exit(1)
-else:
-    sys.exit(0)
+    if saved_errors:
+        log('WARNING: %d errors encountered.\n' % len(saved_errors))
+        sys.exit(1)
+    else:
+        sys.exit(0)
