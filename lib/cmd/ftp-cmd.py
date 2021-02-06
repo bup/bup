@@ -42,8 +42,7 @@ class OptionError(Exception):
 
 def do_ls(repo, args, out):
     try:
-        opt = ls.opts_from_cmdline([fsdecode(arg) for arg in args],
-                                   onabort=OptionError)
+        opt = ls.opts_from_cmdline(args, onabort=OptionError)
     except OptionError as e:
         log('error: %s' % e)
         return
