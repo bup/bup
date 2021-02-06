@@ -9,7 +9,7 @@ for arg in "$@"; do
     arg_i=$((arg_i + 1))
 done
 # Here to end of preamble replaced during install
-bup_python="$(dirname "$0")/../../config/bin/python" || exit $?
+bup_python="$(dirname "$0")/../../../config/bin/python" || exit $?
 exec "$bup_python" "$0"
 """
 # end of bup preamble
@@ -18,7 +18,7 @@ from __future__ import absolute_import
 
 # Intentionally replace the dirname "$0" that python prepends
 import os, sys
-sys.path[0] = os.path.dirname(os.path.realpath(__file__)) + '/..'
+sys.path[0] = os.path.dirname(os.path.realpath(__file__)) + '/../..'
 
 import os.path, re, stat
 
@@ -48,7 +48,7 @@ if len(extra) > 1:
     o.fatal('only one target file allowed')
 if opt.bupm and opt.meta:
     o.fatal('--meta and --bupm are incompatible')
-    
+
 target = argv_bytes(extra[0])
 
 if not re.match(br'/*[^/]+/[^/]+', target):
