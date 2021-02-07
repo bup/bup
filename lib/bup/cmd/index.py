@@ -1,27 +1,7 @@
-#!/bin/sh
-"""": # -*-python-*-
-# https://sourceware.org/bugzilla/show_bug.cgi?id=26034
-export "BUP_ARGV_0"="$0"
-arg_i=1
-for arg in "$@"; do
-    export "BUP_ARGV_${arg_i}"="$arg"
-    shift
-    arg_i=$((arg_i + 1))
-done
-# Here to end of preamble replaced during install
-bup_python="$(dirname "$0")/../../../config/bin/python" || exit $?
-exec "$bup_python" "$0"
-"""
-# end of bup preamble
-
 from __future__ import absolute_import, print_function
 
-# Intentionally replace the dirname "$0" that python prepends
-import os, sys
-sys.path[0] = os.path.dirname(os.path.realpath(__file__)) + '/../..'
-
 from binascii import hexlify
-import errno, re, stat, time
+import errno, os, stat, sys, time
 
 from bup import compat, metadata, options, git, index, drecurse, hlinkdb
 from bup.compat import argv_bytes
@@ -44,14 +24,14 @@ class IterHelper:
 
     next = __next__
 
-def check_index(reader):
+def check_index(reader, verbose):
     try:
         log('check: checking forward iteration...\n')
         e = None
         d = {}
         for e in reader.forward_iter():
             if e.children_n:
-                if opt.verbose:
+                if verbose:
                     log('%08x+%-4d %r\n' % (e.children_ofs, e.children_n,
                                             path_msg(e.name)))
                 assert(e.children_ofs)
@@ -74,19 +54,23 @@ def check_index(reader):
     log('check: passed.\n')
 
 
-def clear_index(indexfile):
+def clear_index(indexfile, verbose):
     indexfiles = [indexfile, indexfile + b'.meta', indexfile + b'.hlink']
     for indexfile in indexfiles:
         try:
             os.remove(indexfile)
-            if opt.verbose:
+            if verbose:
                 log('clear: removed %s\n' % path_msg(indexfile))
         except OSError as e:
             if e.errno != errno.ENOENT:
                 raise
 
 
-def update_index(top, excluded_paths, exclude_rxs, xdev_exceptions, out=None):
+def update_index(top, excluded_paths, exclude_rxs, indexfile,
+                 check=False, check_device=True,
+                 xdev=False, xdev_exceptions=frozenset(),
+                 fake_valid=False, fake_invalid=False,
+                 out=None, verbose=0):
     # tmax must be epoch nanoseconds.
     tmax = (time.time() - 1) * 10**9
     ri = index.Reader(indexfile)
@@ -97,7 +81,7 @@ def update_index(top, excluded_paths, exclude_rxs, xdev_exceptions, out=None):
     hlinks = hlinkdb.HLinkDB(indexfile + b'.hlink')
 
     fake_hash = None
-    if opt.fake_valid:
+    if fake_valid:
         def fake_hash(name):
             return (GIT_MODE_FILE, index.FAKE_SHA)
 
@@ -105,12 +89,12 @@ def update_index(top, excluded_paths, exclude_rxs, xdev_exceptions, out=None):
     bup_dir = os.path.abspath(git.repo())
     index_start = time.time()
     for path, pst in recursive_dirlist([top],
-                                       xdev=opt.xdev,
+                                       xdev=xdev,
                                        bup_dir=bup_dir,
                                        excluded_paths=excluded_paths,
                                        exclude_rxs=exclude_rxs,
                                        xdev_exceptions=xdev_exceptions):
-        if opt.verbose>=2 or (opt.verbose==1 and stat.S_ISDIR(pst.st_mode)):
+        if verbose>=2 or (verbose == 1 and stat.S_ISDIR(pst.st_mode)):
             out.write(b'%s\n' % path)
             out.flush()
             elapsed = time.time() - index_start
@@ -132,7 +116,7 @@ def update_index(top, excluded_paths, exclude_rxs, xdev_exceptions, out=None):
 
         if rig.cur and rig.cur.name == path:    # paths that already existed
             need_repack = False
-            if(rig.cur.stale(pst, check_device=opt.check_device)):
+            if(rig.cur.stale(pst, check_device=check_device)):
                 try:
                     meta = metadata.from_path(path, statinfo=pst)
                 except (OSError, IOError) as e:
@@ -166,7 +150,7 @@ def update_index(top, excluded_paths, exclude_rxs, xdev_exceptions, out=None):
                         rig.cur.gitmode, rig.cur.sha = fake_hash(path)
                     rig.cur.flags |= index.IX_HASHVALID
                     need_repack = True
-            if opt.fake_invalid:
+            if fake_invalid:
                 rig.cur.invalidate()
                 need_repack = True
             if need_repack:
@@ -196,11 +180,11 @@ def update_index(top, excluded_paths, exclude_rxs, xdev_exceptions, out=None):
         wi.flush()
         if wi.count:
             wr = wi.new_reader()
-            if opt.check:
+            if check:
                 log('check: before merging: oldfile\n')
-                check_index(ri)
+                check_index(ri, verbose)
                 log('check: before merging: newfile\n')
-                check_index(wr)
+                check_index(wr, verbose)
             mi = index.Writer(indexfile, msw, tmax)
 
             for e in index.merge(ri, wr):
@@ -242,92 +226,98 @@ exclude-rx-from= skip --exclude-rx patterns in file (may be repeated)
 v,verbose  increase log output (can be used more than once)
 x,xdev,one-file-system  don't cross filesystem boundaries
 """
-o = options.Options(optspec)
-opt, flags, extra = o.parse(compat.argv[1:])
 
-if not (opt.modified or \
-        opt['print'] or \
-        opt.status or \
-        opt.update or \
-        opt.check or \
-        opt.clear):
-    opt.update = 1
-if (opt.fake_valid or opt.fake_invalid) and not opt.update:
-    o.fatal('--fake-{in,}valid are meaningless without -u')
-if opt.fake_valid and opt.fake_invalid:
-    o.fatal('--fake-valid is incompatible with --fake-invalid')
-if opt.clear and opt.indexfile:
-    o.fatal('cannot clear an external index (via -f)')
+def main(argv):
+    o = options.Options(optspec)
+    opt, flags, extra = o.parse_bytes(argv[1:])
 
-# FIXME: remove this once we account for timestamp races, i.e. index;
-# touch new-file; index.  It's possible for this to happen quickly
-# enough that new-file ends up with the same timestamp as the first
-# index, and then bup will ignore it.
-tick_start = time.time()
-time.sleep(1 - (tick_start - int(tick_start)))
+    if not (opt.modified or \
+            opt['print'] or \
+            opt.status or \
+            opt.update or \
+            opt.check or \
+            opt.clear):
+        opt.update = 1
+    if (opt.fake_valid or opt.fake_invalid) and not opt.update:
+        o.fatal('--fake-{in,}valid are meaningless without -u')
+    if opt.fake_valid and opt.fake_invalid:
+        o.fatal('--fake-valid is incompatible with --fake-invalid')
+    if opt.clear and opt.indexfile:
+        o.fatal('cannot clear an external index (via -f)')
 
-git.check_repo_or_die()
+    # FIXME: remove this once we account for timestamp races, i.e. index;
+    # touch new-file; index.  It's possible for this to happen quickly
+    # enough that new-file ends up with the same timestamp as the first
+    # index, and then bup will ignore it.
+    tick_start = time.time()
+    time.sleep(1 - (tick_start - int(tick_start)))
 
-handle_ctrl_c()
+    git.check_repo_or_die()
 
-if opt.verbose is None:
-    opt.verbose = 0
+    handle_ctrl_c()
 
-if opt.indexfile:
-    indexfile = argv_bytes(opt.indexfile)
-else:
-    indexfile = git.repo(b'bupindex')
+    if opt.verbose is None:
+        opt.verbose = 0
 
-if opt.check:
-    log('check: starting initial check.\n')
-    check_index(index.Reader(indexfile))
+    if opt.indexfile:
+        indexfile = argv_bytes(opt.indexfile)
+    else:
+        indexfile = git.repo(b'bupindex')
 
-if opt.clear:
-    log('clear: clearing index.\n')
-    clear_index(indexfile)
+    if opt.check:
+        log('check: starting initial check.\n')
+        check_index(index.Reader(indexfile), opt.verbose)
 
-sys.stdout.flush()
-out = byte_stream(sys.stdout)
+    if opt.clear:
+        log('clear: clearing index.\n')
+        clear_index(indexfile, opt.verbose)
 
-if opt.update:
-    if not extra:
-        o.fatal('update mode (-u) requested but no paths given')
-    extra = [argv_bytes(x) for x in extra]
-    excluded_paths = parse_excludes(flags, o.fatal)
-    exclude_rxs = parse_rx_excludes(flags, o.fatal)
-    xexcept = index.unique_resolved_paths(extra)
-    for rp, path in index.reduce_paths(extra):
-        update_index(rp, excluded_paths, exclude_rxs, xdev_exceptions=xexcept,
-                     out=out)
+    sys.stdout.flush()
+    out = byte_stream(sys.stdout)
 
-if opt['print'] or opt.status or opt.modified:
-    extra = [argv_bytes(x) for x in extra]
-    for name, ent in index.Reader(indexfile).filter(extra or [b'']):
-        if (opt.modified 
-            and (ent.is_valid() or ent.is_deleted() or not ent.mode)):
-            continue
-        line = b''
-        if opt.status:
-            if ent.is_deleted():
-                line += b'D '
-            elif not ent.is_valid():
-                if ent.sha == index.EMPTY_SHA:
-                    line += b'A '
+    if opt.update:
+        if not extra:
+            o.fatal('update mode (-u) requested but no paths given')
+        extra = [argv_bytes(x) for x in extra]
+        excluded_paths = parse_excludes(flags, o.fatal)
+        exclude_rxs = parse_rx_excludes(flags, o.fatal)
+        xexcept = index.unique_resolved_paths(extra)
+        for rp, path in index.reduce_paths(extra):
+            update_index(rp, excluded_paths, exclude_rxs, indexfile,
+                         check=opt.check, check_device=opt.check_device,
+                         xdev=opt.xdev, xdev_exceptions=xexcept,
+                         fake_valid=opt.fake_valid,
+                         fake_invalid=opt.fake_invalid,
+                         out=out, verbose=opt.verbose)
+
+    if opt['print'] or opt.status or opt.modified:
+        extra = [argv_bytes(x) for x in extra]
+        for name, ent in index.Reader(indexfile).filter(extra or [b'']):
+            if (opt.modified
+                and (ent.is_valid() or ent.is_deleted() or not ent.mode)):
+                continue
+            line = b''
+            if opt.status:
+                if ent.is_deleted():
+                    line += b'D '
+                elif not ent.is_valid():
+                    if ent.sha == index.EMPTY_SHA:
+                        line += b'A '
+                    else:
+                        line += b'M '
                 else:
-                    line += b'M '
-            else:
-                line += b'  '
-        if opt.hash:
-            line += hexlify(ent.sha) + b' '
-        if opt.long:
-            line += b'%7s %7s ' % (oct(ent.mode).encode('ascii'),
-                                   oct(ent.gitmode).encode('ascii'))
-        out.write(line + (name or b'./') + b'\n')
+                    line += b'  '
+            if opt.hash:
+                line += hexlify(ent.sha) + b' '
+            if opt.long:
+                line += b'%7s %7s ' % (oct(ent.mode).encode('ascii'),
+                                       oct(ent.gitmode).encode('ascii'))
+            out.write(line + (name or b'./') + b'\n')
 
-if opt.check and (opt['print'] or opt.status or opt.modified or opt.update):
-    log('check: starting final check.\n')
-    check_index(index.Reader(indexfile))
+    if opt.check and (opt['print'] or opt.status or opt.modified or opt.update):
+        log('check: starting final check.\n')
+        check_index(index.Reader(indexfile), opt.verbose)
 
-if saved_errors:
-    log('WARNING: %d errors encountered.\n' % len(saved_errors))
-    sys.exit(1)
+    if saved_errors:
+        log('WARNING: %d errors encountered.\n' % len(saved_errors))
+        sys.exit(1)
