@@ -1,26 +1,7 @@
-#!/bin/sh
-"""": # -*-python-*-
-# https://sourceware.org/bugzilla/show_bug.cgi?id=26034
-export "BUP_ARGV_0"="$0"
-arg_i=1
-for arg in "$@"; do
-    export "BUP_ARGV_${arg_i}"="$arg"
-    shift
-    arg_i=$((arg_i + 1))
-done
-# Here to end of preamble replaced during install
-bup_python="$(dirname "$0")/../../../config/bin/python" || exit $?
-exec "$bup_python" "$0"
-"""
-# end of bup preamble
 
 from __future__ import absolute_import
 
-# Intentionally replace the dirname "$0" that python prepends
-import os, sys
-sys.path[0] = os.path.dirname(os.path.realpath(__file__)) + '/../..'
-
-import glob, tempfile
+import os, glob, tempfile
 
 from bup import compat, options, git, bloom
 from bup.compat import argv_bytes, hexstr
@@ -75,11 +56,11 @@ def check_bloom(path, bloomfilename, idx):
 
 
 _first = None
-def do_bloom(path, outfilename, k):
+def do_bloom(path, outfilename, k, force):
     global _first
     assert k in (None, 4, 5)
     b = None
-    if os.path.exists(outfilename) and not opt.force:
+    if os.path.exists(outfilename) and not force:
         b = bloom.ShaBloom(outfilename)
         if not b.valid():
             debug1("bloom: Existing invalid bloom found, regenerating.\n")
@@ -157,36 +138,35 @@ def do_bloom(path, outfilename, k):
         os.rename(tfname, outfilename)
 
 
-handle_ctrl_c()
+def main(argv):
+    o = options.Options(optspec)
+    opt, flags, extra = o.parse_bytes(argv[1:])
 
-o = options.Options(optspec)
-opt, flags, extra = o.parse(compat.argv[1:])
+    if extra:
+        o.fatal('no positional parameters expected')
 
-if extra:
-    o.fatal('no positional parameters expected')
+    if not opt.check and opt.k and opt.k not in (4,5):
+        o.fatal('only k values of 4 and 5 are supported')
 
-if not opt.check and opt.k and opt.k not in (4,5):
-    o.fatal('only k values of 4 and 5 are supported')
-
-if opt.check:
-    opt.check = argv_bytes(opt.check)
-
-git.check_repo_or_die()
-
-output = argv_bytes(opt.output) if opt.output else None
-paths = opt.dir and [argv_bytes(opt.dir)] or git.all_packdirs()
-for path in paths:
-    debug1('bloom: scanning %s\n' % path_msg(path))
-    outfilename = output or os.path.join(path, b'bup.bloom')
     if opt.check:
-        check_bloom(path, outfilename, opt.check)
-    elif opt.ruin:
-        ruin_bloom(outfilename)
-    else:
-        do_bloom(path, outfilename, opt.k)
+        opt.check = argv_bytes(opt.check)
 
-if saved_errors:
-    log('WARNING: %d errors encountered during bloom.\n' % len(saved_errors))
-    sys.exit(1)
-elif opt.check:
-    log('All tests passed.\n')
+    git.check_repo_or_die()
+
+    output = argv_bytes(opt.output) if opt.output else None
+    paths = opt.dir and [argv_bytes(opt.dir)] or git.all_packdirs()
+    for path in paths:
+        debug1('bloom: scanning %s\n' % path_msg(path))
+        outfilename = output or os.path.join(path, b'bup.bloom')
+        if opt.check:
+            check_bloom(path, outfilename, opt.check)
+        elif opt.ruin:
+            ruin_bloom(outfilename)
+        else:
+            do_bloom(path, outfilename, opt.k, opt.force)
+
+    if saved_errors:
+        log('WARNING: %d errors encountered during bloom.\n' % len(saved_errors))
+        sys.exit(1)
+    elif opt.check:
+        log('All tests passed.\n')
