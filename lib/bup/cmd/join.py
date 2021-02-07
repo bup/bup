@@ -9,7 +9,7 @@ for arg in "$@"; do
     arg_i=$((arg_i + 1))
 done
 # Here to end of preamble replaced during install
-bup_python="$(dirname "$0")/../../config/bin/python" || exit $?
+bup_python="$(dirname "$0")/../../../config/bin/python" || exit $?
 exec "$bup_python" "$0"
 """
 # end of bup preamble
