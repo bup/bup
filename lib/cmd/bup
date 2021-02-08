@@ -195,6 +195,7 @@ try:
                            b'ls',
                            b'meta',
                            b'rm',
+                           b'split',
                            b'version',
                            b'xstat'):
         raise ModuleNotFoundError()
