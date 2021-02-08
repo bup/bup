@@ -190,6 +190,7 @@ try:
                            b'gc',
                            b'help',
                            b'index',
+                           b'init',
                            b'join',
                            b'ls',
                            b'meta',
