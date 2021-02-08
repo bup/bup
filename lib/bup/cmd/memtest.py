@@ -1,34 +1,11 @@
-#!/bin/sh
-"""": # -*-python-*-
-# https://sourceware.org/bugzilla/show_bug.cgi?id=26034
-export "BUP_ARGV_0"="$0"
-arg_i=1
-for arg in "$@"; do
-    export "BUP_ARGV_${arg_i}"="$arg"
-    shift
-    arg_i=$((arg_i + 1))
-done
-# Here to end of preamble replaced during install
-bup_python="$(dirname "$0")/../../../config/bin/python" || exit $?
-exec "$bup_python" "$0"
-"""
-# end of bup preamble
 
 from __future__ import absolute_import, print_function
+import re, resource, sys, time
 
-# Intentionally replace the dirname "$0" that python prepends
-import os, sys
-sys.path[0] = os.path.dirname(os.path.realpath(__file__)) + '/../..'
-
-import re, resource, struct, time
-
-from bup import compat, git, bloom, midx, options, _helpers
+from bup import git, bloom, midx, options, _helpers
 from bup.compat import range
 from bup.helpers import handle_ctrl_c
 from bup.io import byte_stream
-
-
-handle_ctrl_c()
 
 
 _linux_warned = 0
@@ -93,54 +70,56 @@ c,cycles=  number of cycles to run [100]
 ignore-midx  ignore .midx files, use only .idx files
 existing   test with existing objects instead of fake ones
 """
-o = options.Options(optspec)
-opt, flags, extra = o.parse(compat.argv[1:])
 
-if extra:
-    o.fatal('no arguments expected')
+def main(argv):
+    o = options.Options(optspec)
+    opt, flags, extra = o.parse_bytes(argv[1:])
 
-git.check_repo_or_die()
-m = git.PackIdxList(git.repo(b'objects/pack'), ignore_midx=opt.ignore_midx)
+    if extra:
+        o.fatal('no arguments expected')
 
-sys.stdout.flush()
-out = byte_stream(sys.stdout)
+    git.check_repo_or_die()
+    m = git.PackIdxList(git.repo(b'objects/pack'), ignore_midx=opt.ignore_midx)
 
-report(-1, out)
-_helpers.random_sha()
-report(0, out)
+    sys.stdout.flush()
+    out = byte_stream(sys.stdout)
 
-if opt.existing:
-    def foreverit(mi):
-        while 1:
-            for e in mi:
-                yield e
-    objit = iter(foreverit(m))
+    report(-1, out)
+    _helpers.random_sha()
+    report(0, out)
 
-for c in range(opt.cycles):
-    for n in range(opt.number):
-        if opt.existing:
-            bin = next(objit)
-            assert(m.exists(bin))
-        else:
-            bin = _helpers.random_sha()
+    if opt.existing:
+        def foreverit(mi):
+            while 1:
+                for e in mi:
+                    yield e
+        objit = iter(foreverit(m))
 
-            # technically, a randomly generated object id might exist.
-            # but the likelihood of that is the likelihood of finding
-            # a collision in sha-1 by accident, which is so unlikely that
-            # we don't care.
-            assert(not m.exists(bin))
-    report((c+1)*opt.number, out)
+    for c in range(opt.cycles):
+        for n in range(opt.number):
+            if opt.existing:
+                bin = next(objit)
+                assert(m.exists(bin))
+            else:
+                bin = _helpers.random_sha()
 
-if bloom._total_searches:
-    out.write(b'bloom: %d objects searched in %d steps: avg %.3f steps/object\n'
-              % (bloom._total_searches, bloom._total_steps,
-                 bloom._total_steps*1.0/bloom._total_searches))
-if midx._total_searches:
-    out.write(b'midx: %d objects searched in %d steps: avg %.3f steps/object\n'
-              % (midx._total_searches, midx._total_steps,
-                 midx._total_steps*1.0/midx._total_searches))
-if git._total_searches:
-    out.write(b'idx: %d objects searched in %d steps: avg %.3f steps/object\n'
-              % (git._total_searches, git._total_steps,
-                 git._total_steps*1.0/git._total_searches))
-out.write(b'Total time: %.3fs\n' % (time.time() - start))
+                # technically, a randomly generated object id might exist.
+                # but the likelihood of that is the likelihood of finding
+                # a collision in sha-1 by accident, which is so unlikely that
+                # we don't care.
+                assert(not m.exists(bin))
+        report((c+1)*opt.number, out)
+
+    if bloom._total_searches:
+        out.write(b'bloom: %d objects searched in %d steps: avg %.3f steps/object\n'
+                  % (bloom._total_searches, bloom._total_steps,
+                     bloom._total_steps*1.0/bloom._total_searches))
+    if midx._total_searches:
+        out.write(b'midx: %d objects searched in %d steps: avg %.3f steps/object\n'
+                  % (midx._total_searches, midx._total_steps,
+                     midx._total_steps*1.0/midx._total_searches))
+    if git._total_searches:
+        out.write(b'idx: %d objects searched in %d steps: avg %.3f steps/object\n'
+                  % (git._total_searches, git._total_steps,
+                     git._total_steps*1.0/git._total_searches))
+    out.write(b'Total time: %.3fs\n' % (time.time() - start))
