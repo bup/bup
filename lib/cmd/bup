@@ -192,6 +192,7 @@ try:
                            b'join',
                            b'ls',
                            b'meta',
+                           b'rm',
                            b'version',
                            b'xstat'):
         raise ModuleNotFoundError()
