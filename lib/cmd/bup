@@ -194,6 +194,7 @@ try:
                            b'init',
                            b'join',
                            b'ls',
+                           b'margin',
                            b'meta',
                            b'rm',
                            b'split',
