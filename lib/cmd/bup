@@ -187,6 +187,7 @@ if not subcmd_name:
 try:
     if subcmd_name not in (b'bloom',
                            b'cat-file',
+                           b'gc',
                            b'help',
                            b'index',
                            b'join',
