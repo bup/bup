@@ -15,9 +15,12 @@ exec "$bup_python" "$0"
 # end of bup preamble
 
 from __future__ import absolute_import
-import os, sys, getopt, socket, subprocess, fcntl
 
-sys.path[:0] = [os.path.dirname(os.path.realpath(__file__)) + '/..']
+# Intentionally replace the dirname "$0" that python prepends
+import os, sys
+sys.path[0] = os.path.dirname(os.path.realpath(__file__)) + '/..'
+
+import getopt, socket, subprocess, fcntl
 
 from bup import compat, options, path
 from bup.helpers import *

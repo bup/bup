@@ -15,14 +15,17 @@ exec "$bup_python" "$0"
 # end of bup preamble
 
 from __future__ import absolute_import, print_function
+
+# Intentionally replace the dirname "$0" that python prepends
+import os, sys
+sys.path[0] = os.path.dirname(os.path.realpath(__file__)) + '/..'
+
 from binascii import hexlify, unhexlify
 from collections import defaultdict
 from itertools import groupby
 from sys import stderr
 from time import localtime, strftime, time
-import os.path, re, sys
-
-sys.path[:0] = [os.path.dirname(os.path.realpath(__file__)) + '/..']
+import re
 
 from bup import compat, git, options
 from bup.compat import argv_bytes, int_types

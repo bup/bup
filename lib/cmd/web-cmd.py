@@ -15,11 +15,14 @@ exec "$bup_python" "$0"
 # end of bup preamble
 
 from __future__ import absolute_import, print_function
-from collections import namedtuple
-import mimetypes, os, posixpath, signal, stat, sys, time, urllib, webbrowser
-from binascii import hexlify
 
-sys.path[:0] = [os.path.dirname(os.path.realpath(__file__)) + '/..']
+# Intentionally replace the dirname "$0" that python prepends
+import os, sys
+sys.path[0] = os.path.dirname(os.path.realpath(__file__)) + '/..'
+
+from collections import namedtuple
+import mimetypes, posixpath, signal, stat, time, urllib, webbrowser
+from binascii import hexlify
 
 from bup import compat, options, git, vfs
 from bup.helpers import (chunkyreader, debug1, format_filesize, handle_ctrl_c,

@@ -20,9 +20,12 @@ exec "$bup_python" "$0"
 # Public License as described in the bup LICENSE file.
 
 from __future__ import absolute_import, print_function
-import errno, os.path, sys, stat
 
-sys.path[:0] = [os.path.dirname(os.path.realpath(__file__)) + '/..']
+# Intentionally replace the dirname "$0" that python prepends
+import os, sys
+sys.path[0] = os.path.dirname(os.path.realpath(__file__)) + '/..'
+
+import errno, os.path, stat
 
 from bup import compat, metadata, options, xstat
 from bup.compat import argv_bytes

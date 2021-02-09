@@ -22,9 +22,10 @@ exec "$bup_python" "$0"
 # TODO: Add tar-like -C option.
 
 from __future__ import absolute_import
-import os, sys
 
-sys.path[:0] = [os.path.dirname(os.path.realpath(__file__)) + '/..']
+# Intentionally replace the dirname "$0" that python prepends
+import os, sys
+sys.path[0] = os.path.dirname(os.path.realpath(__file__)) + '/..'
 
 from bup import compat, metadata
 from bup import options

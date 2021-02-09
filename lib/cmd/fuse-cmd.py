@@ -15,7 +15,12 @@ exec "$bup_python" "$0"
 # end of bup preamble
 
 from __future__ import absolute_import, print_function
-import errno, os, sys
+
+# Intentionally replace the dirname "$0" that python prepends
+import os, sys
+sys.path[0] = os.path.dirname(os.path.realpath(__file__)) + '/..'
+
+import errno
 
 try:
     import fuse
@@ -40,8 +45,6 @@ if sys.version_info[0] > 2:
         print("error: fuse module can't handle binary data; please upgrade to 1.0+\n",
               file=sys.stderr)
         sys.exit(2)
-
-sys.path[:0] = [os.path.dirname(os.path.realpath(__file__)) + '/..']
 
 from bup import compat, options, git, vfs, xstat
 from bup.compat import argv_bytes, fsdecode, py_maj
