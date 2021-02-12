@@ -9,7 +9,7 @@ for arg in "$@"; do
     arg_i=$((arg_i + 1))
 done
 # Here to end of preamble replaced during install
-bup_python="$(dirname "$0")/../../config/bin/python" || exit $?
+bup_python="$(dirname "$0")/../../../config/bin/python" || exit $?
 exec "$bup_python" "$0"
 """
 # end of bup preamble
@@ -20,11 +20,11 @@ from __future__ import absolute_import, print_function
 import os, sys
 sys.path[0] = os.path.dirname(os.path.realpath(__file__)) + '/..'
 
-import re, stat, textwrap, time
 from binascii import hexlify, unhexlify
 from collections import namedtuple
 from functools import partial
 from stat import S_ISDIR
+import textwrap, time
 
 from bup import compat, git, client, helpers, vfs
 from bup.compat import argv_bytes, environ, hexstr, items, wrap_main
