@@ -202,6 +202,7 @@ try:
                            b'rm',
                            b'split',
                            b'tag',
+                           b'tick',
                            b'version',
                            b'xstat'):
         raise ModuleNotFoundError()
