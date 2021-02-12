@@ -1,30 +1,11 @@
-#!/bin/sh
-"""": # -*-python-*-
-# https://sourceware.org/bugzilla/show_bug.cgi?id=26034
-export "BUP_ARGV_0"="$0"
-arg_i=1
-for arg in "$@"; do
-    export "BUP_ARGV_${arg_i}"="$arg"
-    shift
-    arg_i=$((arg_i + 1))
-done
-# Here to end of preamble replaced during install
-bup_python="$(dirname "$0")/../../../config/bin/python" || exit $?
-exec "$bup_python" "$0"
-"""
-# end of bup preamble
 
 from __future__ import absolute_import, print_function
-
-# Intentionally replace the dirname "$0" that python prepends
-import os, sys
-sys.path[0] = os.path.dirname(os.path.realpath(__file__)) + '/..'
-
 from collections import namedtuple
-import mimetypes, posixpath, signal, stat, time, urllib, webbrowser
+import mimetypes, os, posixpath, signal, stat, sys, time, urllib, webbrowser
 from binascii import hexlify
 
-from bup import compat, options, git, vfs
+
+from bup import options, git, vfs
 from bup.helpers import (chunkyreader, debug1, format_filesize, handle_ctrl_c,
                          log, saved_errors)
 from bup.metadata import Metadata
@@ -45,8 +26,6 @@ except ImportError:
 
 # FIXME: right now the way hidden files are handled causes every
 # directory to be traversed twice.
-
-handle_ctrl_c()
 
 
 def http_date_from_utc_ns(utc_ns):
@@ -87,6 +66,7 @@ def _dir_contents(repo, resolution, show_hidden=False):
     url_query = b'?hidden=1' if show_hidden else b''
 
     def display_info(name, item, resolved_item, display_name=None):
+        global opt
         # link should be based on fully resolved type to avoid extra
         # HTTP redirect.
         link = tornado.escape.url_escape(name, plus=False)
@@ -250,11 +230,6 @@ def handle_sigterm(signum, frame):
     io_loop.stop()
 
 
-signal.signal(signal.SIGTERM, handle_sigterm)
-
-UnixAddress = namedtuple('UnixAddress', ['path'])
-InetAddress = namedtuple('InetAddress', ['host', 'port'])
-
 optspec = """
 bup web [[hostname]:port]
 bup web unix://path
@@ -262,70 +237,80 @@ bup web unix://path
 human-readable    display human readable file sizes (i.e. 3.9K, 4.7M)
 browser           show repository in default browser (incompatible with unix://)
 """
-o = options.Options(optspec)
-opt, flags, extra = o.parse(compat.argv[1:])
 
-if len(extra) > 1:
-    o.fatal("at most one argument expected")
+opt = None
 
-if len(extra) == 0:
-    address = InetAddress(host='127.0.0.1', port=8080)
-else:
-    bind_url = extra[0]
-    if bind_url.startswith('unix://'):
-        address = UnixAddress(path=bind_url[len('unix://'):])
+def main(argv):
+    global opt
+    signal.signal(signal.SIGTERM, handle_sigterm)
+
+    UnixAddress = namedtuple('UnixAddress', ['path'])
+    InetAddress = namedtuple('InetAddress', ['host', 'port'])
+
+    o = options.Options(optspec)
+    opt, flags, extra = o.parse_bytes(argv[1:])
+
+    if len(extra) > 1:
+        o.fatal("at most one argument expected")
+
+    if len(extra) == 0:
+        address = InetAddress(host='127.0.0.1', port=8080)
     else:
-        addr_parts = extra[0].split(':', 1)
-        if len(addr_parts) == 1:
-            host = '127.0.0.1'
-            port = addr_parts[0]
+        bind_url = extra[0]
+        if bind_url.startswith('unix://'):
+            address = UnixAddress(path=bind_url[len('unix://'):])
         else:
-            host, port = addr_parts
-        try:
-            port = int(port)
-        except (TypeError, ValueError) as ex:
-            o.fatal('port must be an integer, not %r' % port)
-        address = InetAddress(host=host, port=port)
+            addr_parts = extra[0].split(':', 1)
+            if len(addr_parts) == 1:
+                host = '127.0.0.1'
+                port = addr_parts[0]
+            else:
+                host, port = addr_parts
+            try:
+                port = int(port)
+            except (TypeError, ValueError) as ex:
+                o.fatal('port must be an integer, not %r' % port)
+            address = InetAddress(host=host, port=port)
 
-git.check_repo_or_die()
+    git.check_repo_or_die()
 
-settings = dict(
-    debug = 1,
-    template_path = resource_path(b'web').decode('utf-8'),
-    static_path = resource_path(b'web/static').decode('utf-8'),
-)
+    settings = dict(
+        debug = 1,
+        template_path = resource_path(b'web').decode('utf-8'),
+        static_path = resource_path(b'web/static').decode('utf-8'),
+    )
 
-# Disable buffering on stdout, for debug messages
-try:
-    sys.stdout._line_buffering = True
-except AttributeError:
-    sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
+    # Disable buffering on stdout, for debug messages
+    try:
+        sys.stdout._line_buffering = True
+    except AttributeError:
+        sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
 
-application = tornado.web.Application([
-    (r"(?P<path>/.*)", BupRequestHandler, dict(repo=LocalRepo())),
-], **settings)
+    application = tornado.web.Application([
+        (r"(?P<path>/.*)", BupRequestHandler, dict(repo=LocalRepo())),
+    ], **settings)
 
-http_server = HTTPServer(application)
-io_loop_pending = IOLoop.instance()
+    http_server = HTTPServer(application)
+    io_loop_pending = IOLoop.instance()
 
-if isinstance(address, InetAddress):
-    sockets = tornado.netutil.bind_sockets(address.port, address.host)
-    http_server.add_sockets(sockets)
-    print('Serving HTTP on %s:%d...' % sockets[0].getsockname()[0:2])
-    if opt.browser:
-        browser_addr = 'http://' + address[0] + ':' + str(address[1])
-        io_loop_pending.add_callback(lambda : webbrowser.open(browser_addr))
-elif isinstance(address, UnixAddress):
-    unix_socket = bind_unix_socket(address.path)
-    http_server.add_socket(unix_socket)
-    print('Serving HTTP on filesystem socket %r' % address.path)
-else:
-    log('error: unexpected address %r', address)
-    sys.exit(1)
+    if isinstance(address, InetAddress):
+        sockets = tornado.netutil.bind_sockets(address.port, address.host)
+        http_server.add_sockets(sockets)
+        print('Serving HTTP on %s:%d...' % sockets[0].getsockname()[0:2])
+        if opt.browser:
+            browser_addr = 'http://' + address[0] + ':' + str(address[1])
+            io_loop_pending.add_callback(lambda : webbrowser.open(browser_addr))
+    elif isinstance(address, UnixAddress):
+        unix_socket = bind_unix_socket(address.path)
+        http_server.add_socket(unix_socket)
+        print('Serving HTTP on filesystem socket %r' % address.path)
+    else:
+        log('error: unexpected address %r', address)
+        sys.exit(1)
 
-io_loop = io_loop_pending
-io_loop.start()
+    io_loop = io_loop_pending
+    io_loop.start()
 
-if saved_errors:
-    log('WARNING: %d errors encountered while saving.\n' % len(saved_errors))
-    sys.exit(1)
+    if saved_errors:
+        log('WARNING: %d errors encountered while saving.\n' % len(saved_errors))
+        sys.exit(1)
