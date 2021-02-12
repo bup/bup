@@ -1,29 +1,9 @@
-#!/bin/sh
-"""": # -*-python-*-
-# https://sourceware.org/bugzilla/show_bug.cgi?id=26034
-export "BUP_ARGV_0"="$0"
-arg_i=1
-for arg in "$@"; do
-    export "BUP_ARGV_${arg_i}"="$arg"
-    shift
-    arg_i=$((arg_i + 1))
-done
-# Here to end of preamble replaced during install
-bup_python="$(dirname "$0")/../../../config/bin/python" || exit $?
-exec "$bup_python" "$0"
-"""
-# end of bup preamble
 
 from __future__ import absolute_import, print_function
-
-# Intentionally replace the dirname "$0" that python prepends
-import os, sys
-sys.path[0] = os.path.dirname(os.path.realpath(__file__)) + '/../..'
-
 from binascii import hexlify
-import glob, math, resource, struct, tempfile
+import glob, os, math, resource, struct, sys, tempfile
 
-from bup import compat, options, git, midx, _helpers, xstat
+from bup import options, git, midx, _helpers, xstat
 from bup.compat import argv_bytes, hexstr, range
 from bup.helpers import (Sha1, add_error, atomically_replaced_file, debug1, fdatasync,
                          handle_ctrl_c, log, mmap_readwrite, qprogress,
@@ -100,7 +80,8 @@ def check_midx(name):
 
 
 _first = None
-def _do_midx(outdir, outfilename, infilenames, prefixstr):
+def _do_midx(outdir, outfilename, infilenames, prefixstr,
+             auto=False, force=False):
     global _first
     if not outfilename:
         assert(outdir)
@@ -131,9 +112,9 @@ def _do_midx(outdir, outfilename, infilenames, prefixstr):
         dirprefix = (_first != outdir) and git.repo_rel(outdir) + b': ' or b''
         debug1('midx: %s%screating from %d files (%d objects).\n'
                % (dirprefix, prefixstr, len(infilenames), total))
-        if (opt.auto and (total < 1024 and len(infilenames) < 3)) \
-           or ((opt.auto or opt.force) and len(infilenames) < 2) \
-           or (opt.force and not total):
+        if (auto and (total < 1024 and len(infilenames) < 3)) \
+           or ((auto or force) and len(infilenames) < 2) \
+           or (force and not total):
             debug1('midx: nothing to do.\n')
             return
 
@@ -179,16 +160,19 @@ def _do_midx(outdir, outfilename, infilenames, prefixstr):
     return total, outfilename
 
 
-def do_midx(outdir, outfilename, infilenames, prefixstr, prout):
-    rv = _do_midx(outdir, outfilename, infilenames, prefixstr)
-    if rv and opt['print']:
+def do_midx(outdir, outfilename, infilenames, prefixstr, prout,
+            auto=False, force=False, print_names=False):
+    rv = _do_midx(outdir, outfilename, infilenames, prefixstr,
+                  auto=auto, force=force)
+    if rv and print_names:
         prout.write(rv[1] + b'\n')
 
 
-def do_midx_dir(path, outfilename, prout):
+def do_midx_dir(path, outfilename, prout, auto=False, force=False,
+                max_files=-1, print_names=False):
     already = {}
     sizes = {}
-    if opt.force and not opt.auto:
+    if force and not auto:
         midxs = []   # don't use existing midx files
     else:
         midxs = glob.glob(b'%s/*.midx' % path)
@@ -223,8 +207,8 @@ def do_midx_dir(path, outfilename, prout):
     all = [(sizes[n],n) for n in (midxs + idxs)]
     
     # FIXME: what are the optimal values?  Does this make sense?
-    DESIRED_HWM = opt.force and 1 or 5
-    DESIRED_LWM = opt.force and 1 or 2
+    DESIRED_HWM = force and 1 or 5
+    DESIRED_LWM = force and 1 or 2
     existed = dict((name,1) for sz,name in all)
     debug1('midx: %d indexes; want no more than %d.\n' 
            % (len(all), DESIRED_HWM))
@@ -234,76 +218,82 @@ def do_midx_dir(path, outfilename, prout):
         all.sort()
         part1 = [name for sz,name in all[:len(all)-DESIRED_LWM+1]]
         part2 = all[len(all)-DESIRED_LWM+1:]
-        all = list(do_midx_group(path, outfilename, part1)) + part2
+        all = list(do_midx_group(path, outfilename, part1,
+                                 auto=auto, force=force, max_files=max_files)) \
+                                 + part2
         if len(all) > DESIRED_HWM:
             debug1('\nStill too many indexes (%d > %d).  Merging again.\n'
                    % (len(all), DESIRED_HWM))
 
-    if opt['print']:
+    if print_names:
         for sz,name in all:
             if not existed.get(name):
                 prout.write(name + b'\n')
 
 
-def do_midx_group(outdir, outfilename, infiles):
-    groups = list(_group(infiles, opt.max_files))
+def do_midx_group(outdir, outfilename, infiles, auto=False, force=False,
+                  max_files=-1):
+    groups = list(_group(infiles, max_files))
     gprefix = ''
     for n,sublist in enumerate(groups):
         if len(groups) != 1:
             gprefix = 'Group %d: ' % (n+1)
-        rv = _do_midx(outdir, outfilename, sublist, gprefix)
+        rv = _do_midx(outdir, outfilename, sublist, gprefix,
+                      auto=auto, force=force)
         if rv:
             yield rv
 
 
-handle_ctrl_c()
+def main(argv):
+    o = options.Options(optspec)
+    opt, flags, extra = o.parse_bytes(argv[1:])
+    opt.dir = argv_bytes(opt.dir) if opt.dir else None
+    opt.output = argv_bytes(opt.output) if opt.output else None
 
-o = options.Options(optspec)
-opt, flags, extra = o.parse(compat.argv[1:])
-opt.dir = argv_bytes(opt.dir) if opt.dir else None
-opt.output = argv_bytes(opt.output) if opt.output else None
+    if extra and (opt.auto or opt.force):
+        o.fatal("you can't use -f/-a and also provide filenames")
+    if opt.check and (not extra and not opt.auto):
+        o.fatal("if using --check, you must provide filenames or -a")
 
-if extra and (opt.auto or opt.force):
-    o.fatal("you can't use -f/-a and also provide filenames")
-if opt.check and (not extra and not opt.auto):
-    o.fatal("if using --check, you must provide filenames or -a")
+    git.check_repo_or_die()
 
-git.check_repo_or_die()
+    if opt.max_files < 0:
+        opt.max_files = max_files()
+    assert(opt.max_files >= 5)
 
-if opt.max_files < 0:
-    opt.max_files = max_files()
-assert(opt.max_files >= 5)
+    extra = [argv_bytes(x) for x in extra]
 
-extra = [argv_bytes(x) for x in extra]
-
-if opt.check:
-    # check existing midx files
-    if extra:
-        midxes = extra
+    if opt.check:
+        # check existing midx files
+        if extra:
+            midxes = extra
+        else:
+            midxes = []
+            paths = opt.dir and [opt.dir] or git.all_packdirs()
+            for path in paths:
+                debug1('midx: scanning %s\n' % path)
+                midxes += glob.glob(os.path.join(path, b'*.midx'))
+        for name in midxes:
+            check_midx(name)
+        if not saved_errors:
+            log('All tests passed.\n')
     else:
-        midxes = []
-        paths = opt.dir and [opt.dir] or git.all_packdirs()
-        for path in paths:
-            debug1('midx: scanning %s\n' % path)
-            midxes += glob.glob(os.path.join(path, b'*.midx'))
-    for name in midxes:
-        check_midx(name)
-    if not saved_errors:
-        log('All tests passed.\n')
-else:
-    if extra:
-        sys.stdout.flush()
-        do_midx(git.repo(b'objects/pack'), opt.output, extra, b'',
-                byte_stream(sys.stdout))
-    elif opt.auto or opt.force:
-        sys.stdout.flush()
-        paths = opt.dir and [opt.dir] or git.all_packdirs()
-        for path in paths:
-            debug1('midx: scanning %s\n' % path_msg(path))
-            do_midx_dir(path, opt.output, byte_stream(sys.stdout))
-    else:
-        o.fatal("you must use -f or -a or provide input filenames")
+        if extra:
+            sys.stdout.flush()
+            do_midx(git.repo(b'objects/pack'), opt.output, extra, b'',
+                    byte_stream(sys.stdout), auto=opt.auto, force=opt.force,
+                    print_names=opt.print)
+        elif opt.auto or opt.force:
+            sys.stdout.flush()
+            paths = opt.dir and [opt.dir] or git.all_packdirs()
+            for path in paths:
+                debug1('midx: scanning %s\n' % path_msg(path))
+                do_midx_dir(path, opt.output, byte_stream(sys.stdout),
+                            auto=opt.auto, force=opt.force,
+                            max_files=opt.max_files)
+        else:
+            o.fatal("you must use -f or -a or provide input filenames")
 
-if saved_errors:
-    log('WARNING: %d errors encountered.\n' % len(saved_errors))
-    sys.exit(1)
+    if saved_errors:
+        log('WARNING: %d errors encountered.\n' % len(saved_errors))
+        sys.exit(1)

@@ -197,6 +197,7 @@ try:
                            b'margin',
                            b'memtest',
                            b'meta',
+                           b'midx',
                            b'random',
                            b'rm',
                            b'split',
