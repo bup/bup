@@ -197,6 +197,7 @@ try:
                            b'index',
                            b'init',
                            b'join',
+                           b'list-idx',
                            b'ls',
                            b'margin',
                            b'memtest',
