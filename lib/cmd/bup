@@ -201,6 +201,7 @@ try:
                            b'random',
                            b'rm',
                            b'split',
+                           b'tag',
                            b'version',
                            b'xstat'):
         raise ModuleNotFoundError()
