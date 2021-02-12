@@ -188,6 +188,7 @@ try:
     if subcmd_name not in (b'bloom',
                            b'cat-file',
                            b'daemon',
+                           b'drecurse',
                            b'damage',
                            b'features',
                            b'ftp',
