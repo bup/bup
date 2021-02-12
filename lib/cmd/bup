@@ -207,6 +207,7 @@ try:
                            b'prune-older',
                            b'random',
                            b'rm',
+                           b'server',
                            b'split',
                            b'tag',
                            b'tick',

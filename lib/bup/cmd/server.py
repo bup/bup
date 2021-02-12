@@ -1,29 +1,9 @@
-#!/bin/sh
-"""": # -*-python-*-
-# https://sourceware.org/bugzilla/show_bug.cgi?id=26034
-export "BUP_ARGV_0"="$0"
-arg_i=1
-for arg in "$@"; do
-    export "BUP_ARGV_${arg_i}"="$arg"
-    shift
-    arg_i=$((arg_i + 1))
-done
-# Here to end of preamble replaced during install
-bup_python="$(dirname "$0")/../../../config/bin/python" || exit $?
-exec "$bup_python" "$0"
-"""
-# end of bup preamble
 
 from __future__ import absolute_import
-
-# Intentionally replace the dirname "$0" that python prepends
-import os, sys
-sys.path[0] = os.path.dirname(os.path.realpath(__file__)) + '/../..'
-
 from binascii import hexlify, unhexlify
-import struct, subprocess
+import os, struct, subprocess, sys
 
-from bup import compat, options, git, vfs, vint
+from bup import options, git, vfs, vint
 from bup.compat import environ, hexstr
 from bup.git import MissingObject
 from bup.helpers import (Conn, debug1, debug2, linereader, lines_until_sentinel,
@@ -35,6 +15,7 @@ from bup.repo import LocalRepo
 suspended_w = None
 dumb_server_mode = False
 repo = None
+
 
 def do_help(conn, junk):
     conn.write(b'Commands:\n    %s\n' % b'\n    '.join(sorted(commands)))
@@ -278,13 +259,6 @@ def resolve(conn, args):
 optspec = """
 bup server
 """
-o = options.Options(optspec)
-(opt, flags, extra) = o.parse(compat.argv[1:])
-
-if extra:
-    o.fatal('no arguments expected')
-
-debug2('bup server: reading from stdin.\n')
 
 commands = {
     b'quit': None,
@@ -304,26 +278,35 @@ commands = {
     b'resolve': resolve
 }
 
-# FIXME: this protocol is totally lame and not at all future-proof.
-# (Especially since we abort completely as soon as *anything* bad happens)
-sys.stdout.flush()
-conn = Conn(byte_stream(sys.stdin), byte_stream(sys.stdout))
-lr = linereader(conn)
-for _line in lr:
-    line = _line.strip()
-    if not line:
-        continue
-    debug1('bup server: command: %r\n' % line)
-    words = line.split(b' ', 1)
-    cmd = words[0]
-    rest = len(words)>1 and words[1] or b''
-    if cmd == b'quit':
-        break
-    else:
-        cmd = commands.get(cmd)
-        if cmd:
-            cmd(conn, rest)
-        else:
-            raise Exception('unknown server command: %r\n' % line)
+def main(argv):
+    o = options.Options(optspec)
+    opt, flags, extra = o.parse_bytes(argv[1:])
 
-debug1('bup server: done\n')
+    if extra:
+        o.fatal('no arguments expected')
+
+    debug2('bup server: reading from stdin.\n')
+
+    # FIXME: this protocol is totally lame and not at all future-proof.
+    # (Especially since we abort completely as soon as *anything* bad happens)
+    sys.stdout.flush()
+    conn = Conn(byte_stream(sys.stdin), byte_stream(sys.stdout))
+    lr = linereader(conn)
+    for _line in lr:
+        line = _line.strip()
+        if not line:
+            continue
+        debug1('bup server: command: %r\n' % line)
+        words = line.split(b' ', 1)
+        cmd = words[0]
+        rest = len(words)>1 and words[1] or b''
+        if cmd == b'quit':
+            break
+        else:
+            cmd = commands.get(cmd)
+            if cmd:
+                cmd(conn, rest)
+            else:
+                raise Exception('unknown server command: %r\n' % line)
+
+    debug1('bup server: done\n')
