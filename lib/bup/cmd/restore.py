@@ -1,29 +1,9 @@
-#!/bin/sh
-"""": # -*-python-*-
-# https://sourceware.org/bugzilla/show_bug.cgi?id=26034
-export "BUP_ARGV_0"="$0"
-arg_i=1
-for arg in "$@"; do
-    export "BUP_ARGV_${arg_i}"="$arg"
-    shift
-    arg_i=$((arg_i + 1))
-done
-# Here to end of preamble replaced during install
-bup_python="$(dirname "$0")/../../../config/bin/python" || exit $?
-exec "$bup_python" "$0"
-"""
-# end of bup preamble
 
 from __future__ import absolute_import
-
-# Intentionally replace the dirname "$0" that python prepends
-import os, sys
-sys.path[0] = os.path.dirname(os.path.realpath(__file__)) + '/../..'
-
 from stat import S_ISDIR
-import copy, errno, re, stat
+import copy, errno, os, re, stat, sys
 
-from bup import compat, options, git, metadata, vfs
+from bup import options, git, metadata, vfs
 from bup._helpers import write_sparsely
 from bup.compat import argv_bytes, fsencode, wrap_main
 from bup.helpers import (add_error, chunkyreader, die_if_errors, handle_ctrl_c,
@@ -237,9 +217,9 @@ def restore(repo, parent_path, name, item, top, sparse, numeric_ids, owner_map,
     finally:
         os.chdir(orig_cwd)
 
-def main():
+def main(argv):
     o = options.Options(optspec)
-    opt, flags, extra = o.parse(compat.argv[1:])
+    opt, flags, extra = o.parse_bytes(argv[1:])
     verbosity = (opt.verbose or 0) if not opt.quiet else -1
     if opt.remote:
         opt.remote = argv_bytes(opt.remote)
@@ -320,5 +300,3 @@ def main():
     if verbosity >= 0:
         progress('Restoring: %d, done.\n' % total_restored)
     die_if_errors()
-
-wrap_main(main)

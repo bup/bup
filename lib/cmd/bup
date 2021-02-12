@@ -209,6 +209,7 @@ try:
                            b'on--server',
                            b'prune-older',
                            b'random',
+                           b'restore',
                            b'rm',
                            b'save',
                            b'server',
