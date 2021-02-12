@@ -1,18 +1,3 @@
-#!/bin/sh
-"""": # -*-python-*-
-# https://sourceware.org/bugzilla/show_bug.cgi?id=26034
-export "BUP_ARGV_0"="$0"
-arg_i=1
-for arg in "$@"; do
-    export "BUP_ARGV_${arg_i}"="$arg"
-    shift
-    arg_i=$((arg_i + 1))
-done
-# Here to end of preamble replaced during install
-bup_python="$(dirname "$0")/../../../config/bin/python" || exit $?
-exec "$bup_python" "$0"
-"""
-# end of bup preamble
 
 # For now, this completely relies on the assumption that the current
 # encoding (LC_CTYPE, etc.) is ASCII compatible, and that it returns
@@ -20,20 +5,13 @@ exec "$bup_python" "$0"
 # (e.g. ISO-8859-1).
 
 from __future__ import absolute_import, print_function
+import os, fnmatch, stat, sys
 
-# Intentionally replace the dirname "$0" that python prepends
-import os, sys
-sys.path[0] = os.path.dirname(os.path.realpath(__file__)) + '/..'
-
-import fnmatch, stat
-
-from bup import _helpers, compat, options, git, shquote, ls, vfs
+from bup import _helpers, options, git, shquote, ls, vfs
 from bup.compat import argv_bytes, fsdecode
 from bup.helpers import chunkyreader, handle_ctrl_c, log
 from bup.io import byte_stream, path_msg
 from bup.repo import LocalRepo
-
-handle_ctrl_c()
 
 
 class OptionError(Exception):
@@ -54,8 +32,8 @@ def write_to_file(inf, outf):
         outf.write(blob)
 
 
-def inputiter():
-    if os.isatty(stdin.fileno()):
+def inputiter(f):
+    if os.isatty(f.fileno()):
         while 1:
             if hasattr(_helpers, 'readline'):
                 try:
@@ -66,13 +44,13 @@ def inputiter():
             else:
                 out.write(b'bup> ')
                 out.flush()
-                read_line = stdin.readline()
+                read_line = f.readline()
                 if not read_line:
                     print('')
                     break
                 yield read_line
     else:
-        for line in stdin:
+        for line in f:
             yield line
 
 
@@ -137,124 +115,124 @@ def enter_completion(text, iteration):
 optspec = """
 bup ftp [commands...]
 """
-o = options.Options(optspec)
-opt, flags, extra = o.parse(compat.argv[1:])
 
-git.check_repo_or_die()
+def main(argv):
+    o = options.Options(optspec)
+    opt, flags, extra = o.parse_bytes(argv[1:])
 
-sys.stdout.flush()
-out = byte_stream(sys.stdout)
-stdin = byte_stream(sys.stdin)
-repo = LocalRepo()
-pwd = vfs.resolve(repo, b'/')
-rv = 0
+    git.check_repo_or_die()
 
+    sys.stdout.flush()
+    out = byte_stream(sys.stdout)
+    stdin = byte_stream(sys.stdin)
+    repo = LocalRepo()
+    pwd = vfs.resolve(repo, b'/')
+    rv = 0
 
+    if extra:
+        lines = (argv_bytes(arg) for arg in extra)
+    else:
+        if hasattr(_helpers, 'readline'):
+            _helpers.set_completer_word_break_characters(b' \t\n\r/')
+            _helpers.set_attempted_completion_function(attempt_completion)
+            _helpers.set_completion_entry_function(enter_completion)
+            if sys.platform.startswith('darwin'):
+                # MacOS uses a slightly incompatible clone of libreadline
+                _helpers.parse_and_bind(b'bind ^I rl_complete')
+            _helpers.parse_and_bind(b'tab: complete')
+        lines = inputiter(stdin)
 
-if extra:
-    lines = (argv_bytes(arg) for arg in extra)
-else:
-    if hasattr(_helpers, 'readline'):
-        _helpers.set_completer_word_break_characters(b' \t\n\r/')
-        _helpers.set_attempted_completion_function(attempt_completion)
-        _helpers.set_completion_entry_function(enter_completion)
-        if sys.platform.startswith('darwin'):
-            # MacOS uses a slightly incompatible clone of libreadline
-            _helpers.parse_and_bind(b'bind ^I rl_complete')
-        _helpers.parse_and_bind(b'tab: complete')
-    lines = inputiter()
-
-for line in lines:
-    if not line.strip():
-        continue
-    words = [word for (wordstart,word) in shquote.quotesplit(line)]
-    cmd = words[0].lower()
-    #log('execute: %r %r\n' % (cmd, parm))
-    try:
-        if cmd == b'ls':
-            # FIXME: respect pwd (perhaps via ls accepting resolve path/parent)
-            do_ls(repo, words[1:], out)
-            out.flush()
-        elif cmd == b'cd':
-            np = pwd
-            for parm in words[1:]:
-                res = vfs.resolve(repo, parm, parent=np)
-                _, leaf_item = res[-1]
-                if not leaf_item:
-                    raise Exception('%s does not exist'
-                                    % path_msg(b'/'.join(name for name, item
-                                                         in res)))
-                if not stat.S_ISDIR(vfs.item_mode(leaf_item)):
-                    raise Exception('%s is not a directory' % path_msg(parm))
-                np = res
-            pwd = np
-        elif cmd == b'pwd':
-            if len(pwd) == 1:
-                out.write(b'/')
-            out.write(b'/'.join(name for name, item in pwd) + b'\n')
-            out.flush()
-        elif cmd == b'cat':
-            for parm in words[1:]:
-                res = vfs.resolve(repo, parm, parent=pwd)
+    for line in lines:
+        if not line.strip():
+            continue
+        words = [word for (wordstart,word) in shquote.quotesplit(line)]
+        cmd = words[0].lower()
+        #log('execute: %r %r\n' % (cmd, parm))
+        try:
+            if cmd == b'ls':
+                # FIXME: respect pwd (perhaps via ls accepting resolve path/parent)
+                do_ls(repo, words[1:], out)
+                out.flush()
+            elif cmd == b'cd':
+                np = pwd
+                for parm in words[1:]:
+                    res = vfs.resolve(repo, parm, parent=np)
+                    _, leaf_item = res[-1]
+                    if not leaf_item:
+                        raise Exception('%s does not exist'
+                                        % path_msg(b'/'.join(name for name, item
+                                                             in res)))
+                    if not stat.S_ISDIR(vfs.item_mode(leaf_item)):
+                        raise Exception('%s is not a directory' % path_msg(parm))
+                    np = res
+                pwd = np
+            elif cmd == b'pwd':
+                if len(pwd) == 1:
+                    out.write(b'/')
+                out.write(b'/'.join(name for name, item in pwd) + b'\n')
+                out.flush()
+            elif cmd == b'cat':
+                for parm in words[1:]:
+                    res = vfs.resolve(repo, parm, parent=pwd)
+                    _, leaf_item = res[-1]
+                    if not leaf_item:
+                        raise Exception('%s does not exist' %
+                                        path_msg(b'/'.join(name for name, item
+                                                           in res)))
+                    with vfs.fopen(repo, leaf_item) as srcfile:
+                        write_to_file(srcfile, out)
+                out.flush()
+            elif cmd == b'get':
+                if len(words) not in [2,3]:
+                    rv = 1
+                    raise Exception('Usage: get <filename> [localname]')
+                rname = words[1]
+                (dir,base) = os.path.split(rname)
+                lname = len(words) > 2 and words[2] or base
+                res = vfs.resolve(repo, rname, parent=pwd)
                 _, leaf_item = res[-1]
                 if not leaf_item:
                     raise Exception('%s does not exist' %
-                                    path_msg(b'/'.join(name for name, item
-                                                       in res)))
+                                    path_msg(b'/'.join(name for name, item in res)))
                 with vfs.fopen(repo, leaf_item) as srcfile:
-                    write_to_file(srcfile, out)
-            out.flush()
-        elif cmd == b'get':
-            if len(words) not in [2,3]:
+                    with open(lname, 'wb') as destfile:
+                        log('Saving %s\n' % path_msg(lname))
+                        write_to_file(srcfile, destfile)
+            elif cmd == b'mget':
+                for parm in words[1:]:
+                    dir, base = os.path.split(parm)
+
+                    res = vfs.resolve(repo, dir, parent=pwd)
+                    _, dir_item = res[-1]
+                    if not dir_item:
+                        raise Exception('%s does not exist' % path_msg(dir))
+                    for name, item in vfs.contents(repo, dir_item):
+                        if name == b'.':
+                            continue
+                        if fnmatch.fnmatch(name, base):
+                            if stat.S_ISLNK(vfs.item_mode(item)):
+                                deref = vfs.resolve(repo, name, parent=res)
+                                deref_name, deref_item = deref[-1]
+                                if not deref_item:
+                                    raise Exception('%s does not exist' %
+                                                    path_msg('/'.join(name for name, item
+                                                                      in deref)))
+                                item = deref_item
+                            with vfs.fopen(repo, item) as srcfile:
+                                with open(name, 'wb') as destfile:
+                                    log('Saving %s\n' % path_msg(name))
+                                    write_to_file(srcfile, destfile)
+            elif cmd == b'help' or cmd == b'?':
+                out.write(b'Commands: ls cd pwd cat get mget help quit\n')
+                out.flush()
+            elif cmd in (b'quit', b'exit', b'bye'):
+                break
+            else:
                 rv = 1
-                raise Exception('Usage: get <filename> [localname]')
-            rname = words[1]
-            (dir,base) = os.path.split(rname)
-            lname = len(words) > 2 and words[2] or base
-            res = vfs.resolve(repo, rname, parent=pwd)
-            _, leaf_item = res[-1]
-            if not leaf_item:
-                raise Exception('%s does not exist' %
-                                path_msg(b'/'.join(name for name, item in res)))
-            with vfs.fopen(repo, leaf_item) as srcfile:
-                with open(lname, 'wb') as destfile:
-                    log('Saving %s\n' % path_msg(lname))
-                    write_to_file(srcfile, destfile)
-        elif cmd == b'mget':
-            for parm in words[1:]:
-                dir, base = os.path.split(parm)
-
-                res = vfs.resolve(repo, dir, parent=pwd)
-                _, dir_item = res[-1]
-                if not dir_item:
-                    raise Exception('%s does not exist' % path_msg(dir))
-                for name, item in vfs.contents(repo, dir_item):
-                    if name == b'.':
-                        continue
-                    if fnmatch.fnmatch(name, base):
-                        if stat.S_ISLNK(vfs.item_mode(item)):
-                            deref = vfs.resolve(repo, name, parent=res)
-                            deref_name, deref_item = deref[-1]
-                            if not deref_item:
-                                raise Exception('%s does not exist' %
-                                                path_msg('/'.join(name for name, item
-                                                                  in deref)))
-                            item = deref_item
-                        with vfs.fopen(repo, item) as srcfile:
-                            with open(name, 'wb') as destfile:
-                                log('Saving %s\n' % path_msg(name))
-                                write_to_file(srcfile, destfile)
-        elif cmd == b'help' or cmd == b'?':
-            out.write(b'Commands: ls cd pwd cat get mget help quit\n')
-            out.flush()
-        elif cmd in (b'quit', b'exit', b'bye'):
-            break
-        else:
+                raise Exception('no such command %r' % cmd)
+        except Exception as e:
             rv = 1
-            raise Exception('no such command %r' % cmd)
-    except Exception as e:
-        rv = 1
-        log('error: %s\n' % e)
-        raise
+            log('error: %s\n' % e)
+            raise
 
-sys.exit(rv)
+    sys.exit(rv)

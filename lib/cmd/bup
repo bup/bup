@@ -189,6 +189,7 @@ try:
                            b'cat-file',
                            b'daemon',
                            b'features',
+                           b'ftp',
                            b'gc',
                            b'help',
                            b'index',
