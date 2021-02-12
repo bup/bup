@@ -204,6 +204,7 @@ try:
                            b'meta',
                            b'midx',
                            b'mux',
+                           b'prune-older',
                            b'random',
                            b'rm',
                            b'split',

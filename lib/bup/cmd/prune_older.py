@@ -1,32 +1,13 @@
-#!/bin/sh
-"""": # -*-python-*-
-# https://sourceware.org/bugzilla/show_bug.cgi?id=26034
-export "BUP_ARGV_0"="$0"
-arg_i=1
-for arg in "$@"; do
-    export "BUP_ARGV_${arg_i}"="$arg"
-    shift
-    arg_i=$((arg_i + 1))
-done
-# Here to end of preamble replaced during install
-bup_python="$(dirname "$0")/../../../config/bin/python" || exit $?
-exec "$bup_python" "$0"
-"""
-# end of bup preamble
 
 from __future__ import absolute_import, print_function
-
-# Intentionally replace the dirname "$0" that python prepends
-import os, sys
-sys.path[0] = os.path.dirname(os.path.realpath(__file__)) + '/../..'
-
 from binascii import hexlify, unhexlify
 from collections import defaultdict
 from itertools import groupby
 from sys import stderr
 from time import localtime, strftime, time
+import sys
 
-from bup import compat, git, options
+from bup import git, options
 from bup.compat import argv_bytes, int_types
 from bup.gc import bup_gc
 from bup.helpers import die_if_errors, log, partition, period_as_secs
@@ -96,88 +77,89 @@ v,verbose     increase log output (can be used more than once)
 unsafe        use the command even though it may be DANGEROUS
 """
 
-o = options.Options(optspec)
-opt, flags, roots = o.parse(compat.argv[1:])
-roots = [argv_bytes(x) for x in roots]
+def main(argv):
+    o = options.Options(optspec)
+    opt, flags, roots = o.parse_bytes(argv[1:])
+    roots = [argv_bytes(x) for x in roots]
 
-if not opt.unsafe:
-    o.fatal('refusing to run dangerous, experimental command without --unsafe')
+    if not opt.unsafe:
+        o.fatal('refusing to run dangerous, experimental command without --unsafe')
 
-now = int(time()) if opt.wrt is None else opt.wrt
-if not isinstance(now, int_types):
-    o.fatal('--wrt value ' + str(now) + ' is not an integer')
+    now = int(time()) if opt.wrt is None else opt.wrt
+    if not isinstance(now, int_types):
+        o.fatal('--wrt value ' + str(now) + ' is not an integer')
 
-period_start = {}
-for period, extent in (('all', opt.keep_all_for),
-                       ('dailies', opt.keep_dailies_for),
-                       ('monthlies', opt.keep_monthlies_for),
-                       ('yearlies', opt.keep_yearlies_for)):
-    if extent:
-        secs = period_as_secs(extent.encode('ascii'))
-        if not secs:
-            o.fatal('%r is not a valid period' % extent)
-        period_start[period] = now - secs
+    period_start = {}
+    for period, extent in (('all', opt.keep_all_for),
+                           ('dailies', opt.keep_dailies_for),
+                           ('monthlies', opt.keep_monthlies_for),
+                           ('yearlies', opt.keep_yearlies_for)):
+        if extent:
+            secs = period_as_secs(extent.encode('ascii'))
+            if not secs:
+                o.fatal('%r is not a valid period' % extent)
+            period_start[period] = now - secs
 
-if not period_start:
-    o.fatal('at least one keep argument is required')
+    if not period_start:
+        o.fatal('at least one keep argument is required')
 
-period_start = defaultdict(lambda: float('inf'), period_start)
+    period_start = defaultdict(lambda: float('inf'), period_start)
 
-if opt.verbose:
-    epoch_ymd = strftime('%Y-%m-%d-%H%M%S', localtime(0))
-    for kind in ['all', 'dailies', 'monthlies', 'yearlies']:
-        period_utc = period_start[kind]
-        if period_utc != float('inf'):
-            if not (period_utc > float('-inf')):
-                log('keeping all ' + kind)
-            else:
-                try:
-                    when = strftime('%Y-%m-%d-%H%M%S', localtime(period_utc))
-                    log('keeping ' + kind + ' since ' + when + '\n')
-                except ValueError as ex:
-                    if period_utc < 0:
-                        log('keeping %s since %d seconds before %s\n'
-                            %(kind, abs(period_utc), epoch_ymd))
-                    elif period_utc > 0:
-                        log('keeping %s since %d seconds after %s\n'
-                            %(kind, period_utc, epoch_ymd))
-                    else:
-                        log('keeping %s since %s\n' % (kind, epoch_ymd))
+    if opt.verbose:
+        epoch_ymd = strftime('%Y-%m-%d-%H%M%S', localtime(0))
+        for kind in ['all', 'dailies', 'monthlies', 'yearlies']:
+            period_utc = period_start[kind]
+            if period_utc != float('inf'):
+                if not (period_utc > float('-inf')):
+                    log('keeping all ' + kind)
+                else:
+                    try:
+                        when = strftime('%Y-%m-%d-%H%M%S', localtime(period_utc))
+                        log('keeping ' + kind + ' since ' + when + '\n')
+                    except ValueError as ex:
+                        if period_utc < 0:
+                            log('keeping %s since %d seconds before %s\n'
+                                %(kind, abs(period_utc), epoch_ymd))
+                        elif period_utc > 0:
+                            log('keeping %s since %d seconds after %s\n'
+                                %(kind, period_utc, epoch_ymd))
+                        else:
+                            log('keeping %s since %s\n' % (kind, epoch_ymd))
 
-git.check_repo_or_die()
+    git.check_repo_or_die()
 
-# This could be more efficient, but for now just build the whole list
-# in memory and let bup_rm() do some redundant work.
+    # This could be more efficient, but for now just build the whole list
+    # in memory and let bup_rm() do some redundant work.
 
-def parse_info(f):
-    author_secs = f.readline().strip()
-    return int(author_secs)
+    def parse_info(f):
+        author_secs = f.readline().strip()
+        return int(author_secs)
 
-sys.stdout.flush()
-out = byte_stream(sys.stdout)
+    sys.stdout.flush()
+    out = byte_stream(sys.stdout)
 
-removals = []
-for branch, branch_id in branches(roots):
-    die_if_errors()
-    saves = ((utc, unhexlify(oidx)) for (oidx, utc) in
-             git.rev_list(branch_id, format=b'%at', parse=parse_info))
-    for keep_save, (utc, id) in classify_saves(saves, period_start):
-        assert(keep_save in (False, True))
-        # FIXME: base removals on hashes
-        if opt.pretend:
-            out.write((b'+ ' if keep_save else b'- ')
-                      + save_name(branch, utc) + b'\n')
-        elif not keep_save:
-            removals.append(save_name(branch, utc))
-
-if not opt.pretend:
-    die_if_errors()
-    repo = LocalRepo()
-    bup_rm(repo, removals, compression=opt.compress, verbosity=opt.verbose)
-    if opt.gc:
+    removals = []
+    for branch, branch_id in branches(roots):
         die_if_errors()
-        bup_gc(threshold=opt.gc_threshold,
-               compression=opt.compress,
-               verbosity=opt.verbose)
+        saves = ((utc, unhexlify(oidx)) for (oidx, utc) in
+                 git.rev_list(branch_id, format=b'%at', parse=parse_info))
+        for keep_save, (utc, id) in classify_saves(saves, period_start):
+            assert(keep_save in (False, True))
+            # FIXME: base removals on hashes
+            if opt.pretend:
+                out.write((b'+ ' if keep_save else b'- ')
+                          + save_name(branch, utc) + b'\n')
+            elif not keep_save:
+                removals.append(save_name(branch, utc))
 
-die_if_errors()
+    if not opt.pretend:
+        die_if_errors()
+        repo = LocalRepo()
+        bup_rm(repo, removals, compression=opt.compress, verbosity=opt.verbose)
+        if opt.gc:
+            die_if_errors()
+            bup_gc(threshold=opt.gc_threshold,
+                   compression=opt.compress,
+                   verbosity=opt.verbose)
+
+    die_if_errors()
