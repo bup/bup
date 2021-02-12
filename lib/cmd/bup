@@ -203,6 +203,7 @@ try:
                            b'memtest',
                            b'meta',
                            b'midx',
+                           b'mux',
                            b'random',
                            b'rm',
                            b'split',
