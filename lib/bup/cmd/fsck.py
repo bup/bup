@@ -9,7 +9,7 @@ for arg in "$@"; do
     arg_i=$((arg_i + 1))
 done
 # Here to end of preamble replaced during install
-bup_python="$(dirname "$0")/../../config/bin/python" || exit $?
+bup_python="$(dirname "$0")/../../../config/bin/python" || exit $?
 exec "$bup_python" "$0"
 """
 # end of bup preamble
@@ -18,13 +18,13 @@ from __future__ import absolute_import, print_function
 
 # Intentionally replace the dirname "$0" that python prepends
 import os, sys
-sys.path[0] = os.path.dirname(os.path.realpath(__file__)) + '/..'
+sys.path[0] = os.path.dirname(os.path.realpath(__file__)) + '/../..'
 
-import glob, subprocess
 from shutil import rmtree
 from subprocess import PIPE, Popen
 from tempfile import mkdtemp
 from binascii import hexlify
+import glob, subprocess
 
 from bup import compat, options, git
 from bup.compat import argv_bytes
