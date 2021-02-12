@@ -206,6 +206,7 @@ try:
                            b'midx',
                            b'mux',
                            b'on',
+                           b'on--server',
                            b'prune-older',
                            b'random',
                            b'rm',
