@@ -43,7 +43,7 @@ def from_path(path, *args, **kw):
     return orig_from_path(path, *args, **kw)
 metadata.from_path = from_path
 
-exec(open("$top/lib/cmd/bup-save", "rb").read())
+exec(open("$top/lib/bup/cmd/save.py", "rb").read())
 EOF
 chmod +x "$tmpdir/bup-save"
 
@@ -80,7 +80,7 @@ def from_path(path, *args, **kw):
     return orig_from_path(path, *args, **kw)
 metadata.from_path = from_path
 
-exec(open("$top/lib/cmd/bup-save", "rb").read())
+exec(open("$top/lib/bup/cmd/save.py", "rb").read())
 EOF
 chmod +x "$tmpdir/bup-save"
 
@@ -116,7 +116,7 @@ class DupReader(index.Reader):
             yield transname, ent
 index.Reader = DupReader
 
-exec(open("$top/lib/cmd/bup-save", "rb").read())
+exec(open("$top/lib/bup/cmd/save.py", "rb").read())
 EOF
 chmod +x "$tmpdir/bup-save"
 
