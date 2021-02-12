@@ -1,32 +1,12 @@
-#!/bin/sh
-"""": # -*-python-*-
-# https://sourceware.org/bugzilla/show_bug.cgi?id=26034
-export "BUP_ARGV_0"="$0"
-arg_i=1
-for arg in "$@"; do
-    export "BUP_ARGV_${arg_i}"="$arg"
-    shift
-    arg_i=$((arg_i + 1))
-done
-# Here to end of preamble replaced during install
-bup_python="$(dirname "$0")/../../../config/bin/python" || exit $?
-exec "$bup_python" "$0"
-"""
-# end of bup preamble
 
 from __future__ import absolute_import, print_function
-
-# Intentionally replace the dirname "$0" that python prepends
-import os, sys
-sys.path[0] = os.path.dirname(os.path.realpath(__file__)) + '/../..'
-
 from shutil import rmtree
 from subprocess import PIPE, Popen
 from tempfile import mkdtemp
 from binascii import hexlify
-import glob, subprocess
+import glob, os, subprocess, sys
 
-from bup import compat, options, git
+from bup import options, git
 from bup.compat import argv_bytes
 from bup.helpers import Sha1, chunkyreader, istty2, log, progress
 from bup.io import byte_stream
@@ -34,6 +14,7 @@ from bup.io import byte_stream
 
 par2_ok = 0
 nullf = open(os.devnull, 'wb+')
+opt = None
 
 def debug(s):
     if opt.verbose > 1:
@@ -197,85 +178,89 @@ j,jobs=     run 'n' jobs in parallel
 par2-ok     immediately return 0 if par2 is ok, 1 if not
 disable-par2  ignore par2 even if it is available
 """
-o = options.Options(optspec)
-opt, flags, extra = o.parse(compat.argv[1:])
-opt.verbose = opt.verbose or 0
 
-par2_setup()
-if opt.par2_ok:
-    if par2_ok:
-        sys.exit(0)  # 'true' in sh
+def main(argv):
+    global opt, par2_ok
+
+    o = options.Options(optspec)
+    opt, flags, extra = o.parse_bytes(argv[1:])
+    opt.verbose = opt.verbose or 0
+
+    par2_setup()
+    if opt.par2_ok:
+        if par2_ok:
+            sys.exit(0)  # 'true' in sh
+        else:
+            sys.exit(1)
+    if opt.disable_par2:
+        par2_ok = 0
+
+    git.check_repo_or_die()
+
+    if extra:
+        extra = [argv_bytes(x) for x in extra]
     else:
-        sys.exit(1)
-if opt.disable_par2:
-    par2_ok = 0
+        debug('fsck: No filenames given: checking all packs.\n')
+        extra = glob.glob(git.repo(b'objects/pack/*.pack'))
 
-git.check_repo_or_die()
+    sys.stdout.flush()
+    out = byte_stream(sys.stdout)
+    code = 0
+    count = 0
+    outstanding = {}
+    for name in extra:
+        if name.endswith(b'.pack'):
+            base = name[:-5]
+        elif name.endswith(b'.idx'):
+            base = name[:-4]
+        elif name.endswith(b'.par2'):
+            base = name[:-5]
+        elif os.path.exists(name + b'.pack'):
+            base = name
+        else:
+            raise Exception('%r is not a pack file!' % name)
+        (dir,last) = os.path.split(base)
+        par2_exists = os.path.exists(base + b'.par2')
+        if par2_exists and os.stat(base + b'.par2').st_size == 0:
+            par2_exists = 0
+        sys.stdout.flush()  # Not sure we still need this, but it'll flush out too
+        debug('fsck: checking %r (%s)\n'
+              % (last, par2_ok and par2_exists and 'par2' or 'git'))
+        if not opt.verbose:
+            progress('fsck (%d/%d)\r' % (count, len(extra)))
 
-if extra:
-    extra = [argv_bytes(x) for x in extra]
-else:
-    debug('fsck: No filenames given: checking all packs.\n')
-    extra = glob.glob(git.repo(b'objects/pack/*.pack'))
+        if not opt.jobs:
+            nc = do_pack(base, last, par2_exists, out)
+            code = code or nc
+            count += 1
+        else:
+            while len(outstanding) >= opt.jobs:
+                (pid,nc) = os.wait()
+                nc >>= 8
+                if pid in outstanding:
+                    del outstanding[pid]
+                    code = code or nc
+                    count += 1
+            pid = os.fork()
+            if pid:  # parent
+                outstanding[pid] = 1
+            else: # child
+                try:
+                    sys.exit(do_pack(base, last, par2_exists, out))
+                except Exception as e:
+                    log('exception: %r\n' % e)
+                    sys.exit(99)
 
-sys.stdout.flush()
-out = byte_stream(sys.stdout)
-code = 0
-count = 0
-outstanding = {}
-for name in extra:
-    if name.endswith(b'.pack'):
-        base = name[:-5]
-    elif name.endswith(b'.idx'):
-        base = name[:-4]
-    elif name.endswith(b'.par2'):
-        base = name[:-5]
-    elif os.path.exists(name + b'.pack'):
-        base = name
-    else:
-        raise Exception('%r is not a pack file!' % name)
-    (dir,last) = os.path.split(base)
-    par2_exists = os.path.exists(base + b'.par2')
-    if par2_exists and os.stat(base + b'.par2').st_size == 0:
-        par2_exists = 0
-    sys.stdout.flush()  # Not sure we still need this, but it'll flush out too
-    debug('fsck: checking %r (%s)\n'
-          % (last, par2_ok and par2_exists and 'par2' or 'git'))
-    if not opt.verbose:
-        progress('fsck (%d/%d)\r' % (count, len(extra)))
-    
-    if not opt.jobs:
-        nc = do_pack(base, last, par2_exists, out)
-        code = code or nc
-        count += 1
-    else:
-        while len(outstanding) >= opt.jobs:
-            (pid,nc) = os.wait()
-            nc >>= 8
-            if pid in outstanding:
-                del outstanding[pid]
-                code = code or nc
-                count += 1
-        pid = os.fork()
-        if pid:  # parent
-            outstanding[pid] = 1
-        else: # child
-            try:
-                sys.exit(do_pack(base, last, par2_exists, out))
-            except Exception as e:
-                log('exception: %r\n' % e)
-                sys.exit(99)
-                
-while len(outstanding):
-    (pid,nc) = os.wait()
-    nc >>= 8
-    if pid in outstanding:
-        del outstanding[pid]
-        code = code or nc
-        count += 1
-    if not opt.verbose:
-        progress('fsck (%d/%d)\r' % (count, len(extra)))
+    while len(outstanding):
+        (pid,nc) = os.wait()
+        nc >>= 8
+        if pid in outstanding:
+            del outstanding[pid]
+            code = code or nc
+            count += 1
+        if not opt.verbose:
+            progress('fsck (%d/%d)\r' % (count, len(extra)))
 
-if istty2:
-    debug('fsck done.           \n')
-sys.exit(code)
+    if istty2:
+        debug('fsck done.           \n')
+    sys.exit(code)

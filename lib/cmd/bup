@@ -192,6 +192,7 @@ try:
                            b'damage',
                            b'features',
                            b'ftp',
+                           b'fsck',
                            b'gc',
                            b'get',
                            b'help',
