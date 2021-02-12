@@ -1,26 +1,6 @@
-#!/bin/sh
-"""": # -*-python-*-
-# https://sourceware.org/bugzilla/show_bug.cgi?id=26034
-export "BUP_ARGV_0"="$0"
-arg_i=1
-for arg in "$@"; do
-    export "BUP_ARGV_${arg_i}"="$arg"
-    shift
-    arg_i=$((arg_i + 1))
-done
-# Here to end of preamble replaced during install
-bup_python="$(dirname "$0")/../../../config/bin/python" || exit $?
-exec "$bup_python" "$0"
-"""
-# end of bup preamble
 
 from __future__ import absolute_import, print_function
-
-# Intentionally replace the dirname "$0" that python prepends
-import os, sys
-sys.path[0] = os.path.dirname(os.path.realpath(__file__)) + '/../..'
-
-import errno
+import errno, os, sys
 
 try:
     import fuse
@@ -46,7 +26,7 @@ if sys.version_info[0] > 2:
               file=sys.stderr)
         sys.exit(2)
 
-from bup import compat, options, git, vfs, xstat
+from bup import options, git, vfs, xstat
 from bup.compat import argv_bytes, fsdecode, py_maj
 from bup.helpers import log
 from bup.repo import LocalRepo
@@ -66,7 +46,6 @@ class BupFs(fuse.Fuse):
     
     def getattr(self, path):
         path = argv_bytes(path)
-        global opt
         if self.verbose > 0:
             log('--getattr(%r)\n' % path)
         res = vfs.resolve(self.repo, path, want_meta=(not self.fake_metadata),
@@ -99,7 +78,7 @@ class BupFs(fuse.Fuse):
             yield -errno.ENOENT
         yield fuse.Direntry('..')
         # FIXME: make sure want_meta=False is being completely respected
-        for ent_name, ent_item in vfs.contents(repo, dir_item, want_meta=False):
+        for ent_name, ent_item in vfs.contents(self.repo, dir_item, want_meta=False):
             fusename = fsdecode(ent_name.replace(b'/', b'-'))
             yield fuse.Direntry(fusename)
 
@@ -111,7 +90,7 @@ class BupFs(fuse.Fuse):
         name, item = res[-1]
         if not item:
             return -errno.ENOENT
-        return fsdecode(vfs.readlink(repo, item))
+        return fsdecode(vfs.readlink(self.repo, item))
 
     def open(self, path, flags):
         path = argv_bytes(path)
@@ -136,7 +115,7 @@ class BupFs(fuse.Fuse):
         name, item = res[-1]
         if not item:
             return -errno.ENOENT
-        with vfs.fopen(repo, item) as f:
+        with vfs.fopen(self.repo, item) as f:
             f.seek(offset)
             return f.read(size)
 
@@ -150,32 +129,34 @@ o,allow-other allow other users to access the filesystem
 meta          report original metadata for paths when available
 v,verbose     increase log output (can be used more than once)
 """
-o = options.Options(optspec)
-opt, flags, extra = o.parse(compat.argv[1:])
-if not opt.verbose:
-    opt.verbose = 0
 
-# Set stderr to be line buffered, even if it's not connected to the console
-# so that we'll be able to see diagnostics in a timely fashion.
-errfd = sys.stderr.fileno()
-sys.stderr.flush()
-sys.stderr = os.fdopen(errfd, 'w', 1)
+def main(argv):
+    o = options.Options(optspec)
+    opt, flags, extra = o.parse_bytes(argv[1:])
+    if not opt.verbose:
+        opt.verbose = 0
 
-if len(extra) != 1:
-    o.fatal('only one mount point argument expected')
+    # Set stderr to be line buffered, even if it's not connected to the console
+    # so that we'll be able to see diagnostics in a timely fashion.
+    errfd = sys.stderr.fileno()
+    sys.stderr.flush()
+    sys.stderr = os.fdopen(errfd, 'w', 1)
 
-git.check_repo_or_die()
-repo = LocalRepo()
-f = BupFs(repo=repo, verbose=opt.verbose, fake_metadata=(not opt.meta))
+    if len(extra) != 1:
+        o.fatal('only one mount point argument expected')
 
-# This is likely wrong, but the fuse module doesn't currently accept bytes
-f.fuse_args.mountpoint = extra[0]
+    git.check_repo_or_die()
+    repo = LocalRepo()
+    f = BupFs(repo=repo, verbose=opt.verbose, fake_metadata=(not opt.meta))
 
-if opt.debug:
-    f.fuse_args.add('debug')
-if opt.foreground:
-    f.fuse_args.setmod('foreground')
-f.multithreaded = False
-if opt.allow_other:
-    f.fuse_args.add('allow_other')
-f.main()
+    # This is likely wrong, but the fuse module doesn't currently accept bytes
+    f.fuse_args.mountpoint = extra[0]
+
+    if opt.debug:
+        f.fuse_args.add('debug')
+    if opt.foreground:
+        f.fuse_args.setmod('foreground')
+    f.multithreaded = False
+    if opt.allow_other:
+        f.fuse_args.add('allow_other')
+    f.main()
