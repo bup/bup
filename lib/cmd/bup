@@ -194,6 +194,7 @@ try:
                            b'ftp',
                            b'gc',
                            b'help',
+                           b'import-duplicity',
                            b'index',
                            b'init',
                            b'join',
