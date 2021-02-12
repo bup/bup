@@ -193,6 +193,7 @@ try:
                            b'features',
                            b'ftp',
                            b'gc',
+                           b'get',
                            b'help',
                            b'import-duplicity',
                            b'index',

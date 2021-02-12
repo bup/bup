@@ -1,33 +1,20 @@
-#!/bin/sh
-"""": # -*-python-*-
-# https://sourceware.org/bugzilla/show_bug.cgi?id=26034
-export "BUP_ARGV_0"="$0"
-arg_i=1
-for arg in "$@"; do
-    export "BUP_ARGV_${arg_i}"="$arg"
-    shift
-    arg_i=$((arg_i + 1))
-done
-# Here to end of preamble replaced during install
-bup_python="$(dirname "$0")/../../../config/bin/python" || exit $?
-exec "$bup_python" "$0"
-"""
-# end of bup preamble
 
 from __future__ import absolute_import, print_function
-
-# Intentionally replace the dirname "$0" that python prepends
-import os, sys
-sys.path[0] = os.path.dirname(os.path.realpath(__file__)) + '/..'
-
 from binascii import hexlify, unhexlify
 from collections import namedtuple
 from functools import partial
 from stat import S_ISDIR
-import textwrap, time
+import os, sys, textwrap, time
 
 from bup import compat, git, client, helpers, vfs
-from bup.compat import argv_bytes, environ, hexstr, items, wrap_main
+from bup.compat import (
+    argv_bytes,
+    bytes_from_byte,
+    environ,
+    hexstr,
+    items,
+    wrap_main
+)
 from bup.git import get_cat_data, parse_commit, walk_object
 from bup.helpers import add_error, debug1, handle_ctrl_c, log, saved_errors
 from bup.helpers import hostname, shstr, tty_width
@@ -144,46 +131,47 @@ def parse_args(args):
     remaining = args[1:]  # Skip argv[0]
     while remaining:
         arg = remaining[0]
-        if arg in ('-h', '--help'):
+        if arg in (b'-h', b'--help'):
             sys.stdout.write(usage(argspec))
             sys.exit(0)
-        elif arg in ('-v', '--verbose'):
+        elif arg in (b'-v', b'--verbose'):
             opt.verbose += 1
             remaining = remaining[1:]
-        elif arg in ('--ff', '--append', '--pick', '--force-pick',
-                     '--new-tag', '--replace', '--unnamed'):
+        elif arg in (b'--ff', b'--append', b'--pick', b'--force-pick',
+                     b'--new-tag', b'--replace', b'--unnamed'):
             (ref,), remaining = require_n_args_or_die(1, remaining)
-            ref = argv_bytes(ref)
-            opt.target_specs.append(Spec(method=arg[2:], src=ref, dest=None))
-        elif arg in ('--ff:', '--append:', '--pick:', '--force-pick:',
-                     '--new-tag:', '--replace:'):
+            opt.target_specs.append(Spec(method=arg[2:].decode('ascii'),
+                                         src=ref, dest=None))
+        elif arg in (b'--ff:', b'--append:', b'--pick:', b'--force-pick:',
+                     b'--new-tag:', b'--replace:'):
             (ref, dest), remaining = require_n_args_or_die(2, remaining)
-            ref, dest = argv_bytes(ref), argv_bytes(dest)
-            opt.target_specs.append(Spec(method=arg[2:-1], src=ref, dest=dest))
-        elif arg in ('-s', '--source'):
+            opt.target_specs.append(Spec(method=arg[2:-1].decode('ascii'),
+                                         src=ref, dest=dest))
+        elif arg in (b'-s', b'--source'):
             (opt.source,), remaining = require_n_args_or_die(1, remaining)
-        elif arg in ('-r', '--remote'):
+        elif arg in (b'-r', b'--remote'):
             (opt.remote,), remaining = require_n_args_or_die(1, remaining)
-        elif arg in ('-c', '--print-commits'):
+        elif arg in (b'-c', b'--print-commits'):
             opt.print_commits, remaining = True, remaining[1:]
-        elif arg in ('-t', '--print-trees'):
+        elif arg in (b'-t', b'--print-trees'):
             opt.print_trees, remaining = True, remaining[1:]
-        elif arg == '--print-tags':
+        elif arg == b'--print-tags':
             opt.print_tags, remaining = True, remaining[1:]
-        elif arg in ('-0', '-1', '-2', '-3', '-4', '-5', '-6', '-7', '-8', '-9'):
+        elif arg in (b'-0', b'-1', b'-2', b'-3', b'-4', b'-5', b'-6', b'-7',
+                     b'-8', b'-9'):
             opt.compress = int(arg[1:])
             remaining = remaining[1:]
-        elif arg == '--compress':
+        elif arg == b'--compress':
             (opt.compress,), remaining = require_n_args_or_die(1, remaining)
             opt.compress = int(opt.compress)
-        elif arg == '--bwlimit':
+        elif arg == b'--bwlimit':
             (opt.bwlimit,), remaining = require_n_args_or_die(1, remaining)
             opt.bwlimit = long(opt.bwlimit)
-        elif arg.startswith('-') and len(arg) > 2 and arg[1] != '-':
+        elif arg.startswith(b'-') and len(arg) > 2 and arg[1] != b'-':
             # Try to interpret this as -xyz, i.e. "-xyz -> -x -y -z".
             # We do this last so that --foo -bar is valid if --foo
             # requires a value.
-            remaining[0:1] = ('-' + c for c in arg[1:])
+            remaining[0:1] = (b'-' + bytes_from_byte(c) for c in arg[1:])
             # FIXME
             continue
         else:
@@ -583,10 +571,9 @@ def log_item(name, type, opt, tree=None, commit=None, tag=None):
                 last = '/'
         log('%s%s\n' % (path_msg(name), last))
 
-def main():
-    handle_ctrl_c()
+def main(argv):
     is_reverse = environ.get(b'BUP_SERVER_REVERSE')
-    opt = parse_args(compat.argv)
+    opt = parse_args(argv)
     git.check_repo_or_die()
     if opt.source:
         opt.source = argv_bytes(opt.source)
@@ -594,8 +581,6 @@ def main():
         client.bwlimit = parse_num(opt.bwlimit)
     if is_reverse and opt.remote:
         misuse("don't use -r in reverse mode; it's automatic")
-    if opt.remote:
-        opt.remote = argv_bytes(opt.remote)
     if opt.remote or is_reverse:
         dest_repo = RemoteRepo(opt.remote)
     else:
@@ -677,5 +662,3 @@ def main():
     if saved_errors:
         log('WARNING: %d errors encountered while saving.\n' % len(saved_errors))
         sys.exit(1)
-
-wrap_main(main)
