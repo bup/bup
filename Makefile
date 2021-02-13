@@ -4,11 +4,12 @@ MAKEFLAGS += --warn-undefined-variables
 SHELL := bash
 .DEFAULT_GOAL := all
 
-# See config/config.vars.in (sets bup_python, among other things)
--include config/config.vars
+clean_paths :=
+
+# See config/config.vars.in (sets bup_python_config, among other things)
+include config/config.vars
 
 pf := set -o pipefail
-cfg_py := $(CURDIR)/config/bin/python
 
 define isok
   && echo " ok" || echo " no"
@@ -30,7 +31,7 @@ os := $(call shout,$(os),Unable to determine OS)
 
 CFLAGS := -O2 -Wall -Werror -Wformat=2 $(CFLAGS)
 CFLAGS := -Wno-unknown-pragmas -Wsign-compare $(CFLAGS)
-CFLAGS := -D_FILE_OFFSET_BITS=64 $(PYINCLUDE) $(CFLAGS)
+CFLAGS := -D_FILE_OFFSET_BITS=64 $(CFLAGS)
 SOEXT:=.so
 
 ifeq ($(os),CYGWIN)
@@ -45,6 +46,7 @@ endif
 
 initial_setup := $(shell dev/update-checkout-info lib/bup/checkout_info.py $(isok))
 initial_setup := $(call shout,$(initial_setup),update-checkout-info failed))
+clean_paths += lib/bup/checkout_info.py
 
 config/config.vars: \
   configure config/configure config/configure.inc \
@@ -73,11 +75,10 @@ endif
 
 bup_ext_cmds := lib/cmd/bup-import-rdiff-backup lib/cmd/bup-import-rsnapshot
 
-config/bin/python: config/config.vars
+bup_deps := lib/bup/_helpers$(SOEXT) lib/cmd/bup
 
-bup_deps := lib/bup/_helpers$(SOEXT)
-
-all: $(bup_deps) Documentation/all $(current_sampledata)
+all: dev/bup-exec dev/bup-python dev/python $(bup_deps) Documentation/all \
+  $(current_sampledata)
 
 $(current_sampledata):
 	dev/configure-sampledata --setup
@@ -113,7 +114,7 @@ install: all
 	test -z "$(man_roff)" || $(INSTALL) -m 0644 $(man_roff) $(dest_mandir)/man1
 	test -z "$(man_html)" || install -d $(dest_docdir)
 	test -z "$(man_html)" || $(INSTALL) -m 0644 $(man_html) $(dest_docdir)
-	dev/install-python-script lib/cmd/bup "$(dest_libdir)/cmd/bup"
+	$(INSTALL) -pm 0755 lib/cmd/bup "$(dest_libdir)/cmd/bup"
 	$(INSTALL) -pm 0755 $(bup_ext_cmds) "$(dest_libdir)/cmd/"
 	cd "$(dest_bindir)" && \
 	  ln -sf "$$($(bup_python) -c 'import os; print(os.path.relpath("$(abspath $(dest_libdir))/cmd/bup"))')"
@@ -138,32 +139,51 @@ install: all
 	fi
 
 config/config.h: config/config.vars
+clean_paths += config/config.h.tmp
 
-lib/bup/_helpers$(SOEXT): \
-		config/config.h lib/bup/bupsplit.h \
-		lib/bup/bupsplit.c lib/bup/_helpers.c lib/bup/csetup.py
-	@rm -f $@
-	cd lib/bup && $(cfg_py) csetup.py build "$(CFLAGS)" "$(LDFLAGS)"
-        # Make sure there's just the one file we expect before we copy it.
-	$(cfg_py) -c \
-	  "import glob; assert(len(glob.glob('lib/bup/build/*/_helpers*$(SOEXT)')) == 1)"
-	cp lib/bup/build/*/_helpers*$(SOEXT) "$@"
+dev/python: dev/python.c config/config.h
+	$(CC) $(bup_python_cflags_embed) $< $(bup_python_ldflags_embed) -o $@-proposed
+	dev/validate-python $@-proposed
+	mv $@-proposed $@
+# Do not add to clean_paths - want it available until the very end
+
+dev/bup-exec: lib/cmd/bup.c config/config.h
+	$(CC) $(bup_python_cflags_embed) $< $(bup_python_ldflags_embed) -fPIC \
+	  -D BUP_DEV_BUP_EXEC=1 -o $@
+clean_paths += dev/bup-exec
+
+dev/bup-python: lib/cmd/bup.c config/config.h
+	$(CC) $(bup_python_cflags_embed) $< $(bup_python_ldflags_embed) -fPIC \
+	  -D BUP_DEV_BUP_PYTHON=1 -o $@
+clean_paths += dev/bup-python
+
+lib/cmd/bup: lib/cmd/bup.c config/config.h
+	$(CC) $(bup_python_cflags_embed) $< $(bup_python_ldflags_embed) -fPIC -o $@
+clean_paths += lib/cmd/bup
+
+helper_src := config/config.h lib/bup/bupsplit.h lib/bup/bupsplit.c
+helper_src += lib/bup/_helpers.c
+
+lib/bup/_helpers$(SOEXT): dev/python $(helper_src)
+	$(CC) $(bup_python_cflags) $(CFLAGS) -shared -fPIC $(helper_src) \
+	  $(bup_python_ldflags) $(LDFLAGS) -o $@
+clean_paths += lib/bup/_helpers$(SOEXT)
 
 test/tmp:
 	mkdir test/tmp
 
-ifeq (yes,$(shell config/bin/python -c "import xdist; print('yes')" 2>/dev/null))
-  # MAKEFLAGS must not be in an immediate := assignment
-  parallel_opt = $(lastword $(filter -j%,$(MAKEFLAGS)))
-  get_parallel_n = $(patsubst -j%,%,$(parallel_opt))
-  maybe_specific_n = $(if $(filter -j%,$(parallel_opt)),-n$(get_parallel_n))
-  xdist_opt = $(if $(filter -j,$(parallel_opt)),-nauto,$(maybe_specific_n))
-else
-  xdist_opt =
-endif
+# MAKEFLAGS must not be in an immediate := assignment
+parallel_opt = $(lastword $(filter -j%,$(MAKEFLAGS)))
+get_parallel_n = $(patsubst -j%,%,$(parallel_opt))
+maybe_specific_n = $(if $(filter -j%,$(parallel_opt)),-n$(get_parallel_n))
+xdist_opt = $(if $(filter -j,$(parallel_opt)),-nauto,$(maybe_specific_n))
 
-test: all test/tmp
-	./pytest $(xdist_opt)
+test: all test/tmp dev/python
+	if test yes = $$(dev/python -c "import xdist; print('yes')" 2>/dev/null); then \
+	  (set -x; ./pytest $(xdist_opt);) \
+	else \
+	  (set-x; ./pytest;) \
+	fi
 
 stupid:
 	PATH=/bin:/usr/bin $(MAKE) test
@@ -171,7 +191,11 @@ stupid:
 check: test
 
 distcheck: all
-	./pytest $(xdist_opt) -m release
+	if test yes = $$(dev/python -c "import xdist; print('yes')" 2>/dev/null); then \
+	  (set -x; ./pytest $(xdist_opt) -m release;) \
+	else \
+	  (set -x; ./pytest -m release;) \
+	fi
 
 long-test: export BUP_TEST_LEVEL=11
 long-test: test
@@ -181,8 +205,8 @@ long-check: check
 
 .PHONY: check-both
 check-both:
-	$(MAKE) clean && PYTHON=python3 $(MAKE) check
-	$(MAKE) clean && PYTHON=python2 $(MAKE) check
+	$(MAKE) clean && BUP_PYTHON_CONFIG=python3-config $(MAKE) check
+	$(MAKE) clean && BUP_PYTHON_CONFIG=python2.7-config $(MAKE) check
 
 .PHONY: Documentation/all
 Documentation/all: $(man_roff) $(man_html)
@@ -223,24 +247,20 @@ import-docs: Documentation/clean
 	$(pf); git archive origin/html | (cd Documentation && tar -xvf -)
 	$(pf); git archive origin/man | (cd Documentation && tar -xvf -)
 
-clean: Documentation/clean config/bin/python
+clean: Documentation/clean dev/python
 	cd config && rm -rf config.var
-	cd config && rm -f *~ .*~ \
+	cd config && rm -f \
 	  ${CONFIGURE_DETRITUS} ${CONFIGURE_FILES} ${GENERATED_FILES}
-	rm -f *.o lib/*/*.o *.so lib/*/*.so *.dll lib/*/*.dll *.exe \
-		.*~ *~ */*~ lib/*/*~ lib/*/*/*~ \
-		*.pyc */*.pyc lib/*/*.pyc lib/*/*/*.pyc \
-		lib/bup/checkout_info.py \
-		randomgen memtest \
-		testfs.img test/int/testfs.img
+	rm -rf $(clean_paths) .pytest_cache
+	find . -name __pycache__ -exec rm -rf {} +
 	if test -e test/mnt; then dev/cleanup-mounts-under test/mnt; fi
 	if test -e test/mnt; then rm -r test/mnt; fi
 	if test -e test/tmp; then dev/cleanup-mounts-under test/tmp; fi
         # FIXME: migrate these to test/mnt/
 	if test -e test/int/testfs; \
 	  then umount test/int/testfs || true; fi
-	rm -rf *.tmp *.tmp.meta test/*.tmp lib/*/*/*.tmp build lib/bup/build test/int/testfs
+	rm -rf test/int/testfs test/int/testfs.img testfs.img
 	if test -e test/tmp; then dev/force-delete test/tmp; fi
 	dev/configure-sampledata --clean
         # Remove last so that cleanup tools can depend on it
-	rm -rf config/bin
+	rm -f dev/python

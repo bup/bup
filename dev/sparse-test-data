@@ -1,7 +1,7 @@
 #!/bin/sh
 """": # -*-python-*-
-bup_python="$(dirname "$0")/bup-python" || exit $?
-exec "$bup_python" "$0" ${1+"$@"}
+bup_exec="$(dirname "$0")/bup-exec" || exit $?
+exec "$bup_exec" "$0" ${1+"$@"}
 """
 
 from __future__ import absolute_import, print_function
@@ -9,8 +9,7 @@ from random import randint
 from sys import stderr, stdout
 import os, sys
 
-sys.path[:0] = [os.path.dirname(os.path.realpath(__file__)) + '/../lib']
-
+from bup.compat import get_argvb
 from bup.io import byte_stream
 
 def smaller_region(max_offset):
@@ -48,11 +47,13 @@ def random_region():
     global generators
     return generators[randint(0, len(generators) - 1)]()
 
-if len(sys.argv) == 0:
+argv = get_argvb()
+
+if len(argv) == 0:
     stdout.flush()
     out = byte_stream(stdout)
-if len(sys.argv) == 2:
-    out = open(sys.argv[1], 'wb')
+if len(argv) == 2:
+    out = open(argv[1], 'wb')
 else:
     print('Usage: sparse-test-data [FILE]', file=stderr)
     sys.exit(2)

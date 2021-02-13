@@ -5,6 +5,7 @@
 
 // According to Python, its header has to go first:
 //   http://docs.python.org/2/c-api/intro.html#include-files
+//   http://docs.python.org/3/c-api/intro.html#include-files
 #include <Python.h>
 
 #include <arpa/inet.h>
@@ -68,6 +69,10 @@
 
 #if defined(FS_IOC_GETFLAGS) && defined(FS_IOC_SETFLAGS)
 #define BUP_HAVE_FILE_ATTRS 1
+#endif
+
+#if PY_MAJOR_VERSION > 2
+# define BUP_USE_PYTHON_UTIME 1
 #endif
 
 #ifndef BUP_USE_PYTHON_UTIME // just for Python 2 now
@@ -351,58 +356,6 @@ static PyObject *bup_cat_bytes(PyObject *self, PyObject *args)
     memcpy(buf + bufx_n, bufy + bufy_ofs, bufy_n);
     return result;
 }
-
-
-
-// Probably we should use autoconf or something and set HAVE_PY_GETARGCARGV...
-#if __WIN32__ || __CYGWIN__ || PY_VERSION_HEX >= 0x03090000
-
-// There's no 'ps' on win32 anyway, and Py_GetArgcArgv() isn't available.
-static void unpythonize_argv(void) { }
-
-#else // not __WIN32__
-
-// For some reason this isn't declared in Python.h
-extern void Py_GetArgcArgv(int *argc, char ***argv);
-
-static void unpythonize_argv(void)
-{
-    int argc, i;
-    char **argv, *arge;
-    
-    Py_GetArgcArgv(&argc, &argv);
-    
-    for (i = 0; i < argc-1; i++)
-    {
-	if (argv[i] + strlen(argv[i]) + 1 != argv[i+1])
-	{
-	    // The argv block doesn't work the way we expected; it's unsafe
-	    // to mess with it.
-	    return;
-	}
-    }
-    
-    arge = argv[argc-1] + strlen(argv[argc-1]) + 1;
-    
-    if (strstr(argv[0], "python") && argv[1] == argv[0] + strlen(argv[0]) + 1)
-    {
-	char *p;
-	size_t len, diff;
-	p = strrchr(argv[1], '/');
-	if (p)
-	{
-	    p++;
-	    diff = p - argv[0];
-	    len = arge - p;
-	    memmove(argv[0], p, len);
-	    memset(arge - diff, 0, diff);
-	    for (i = 0; i < argc; i++)
-		argv[i] = argv[i+1] ? argv[i+1]-diff : NULL;
-	}
-    }
-}
-
-#endif // not __WIN32__ or __CYGWIN__
 
 
 static int write_all(int fd, const void *buf, const size_t count)
@@ -2460,7 +2413,6 @@ static int setup_module(PyObject *m)
 
     e = getenv("BUP_FORCE_TTY");
     get_state(m)->istty2 = isatty(2) || (atoi(e ? e : "0") & 2);
-    unpythonize_argv();
     return 1;
 }
 
@@ -2470,11 +2422,13 @@ static int setup_module(PyObject *m)
 PyMODINIT_FUNC init_helpers(void)
 {
     PyObject *m = Py_InitModule("_helpers", helper_methods);
-    if (m == NULL)
+    if (m == NULL) {
+        PyErr_SetString(PyExc_RuntimeError, "bup._helpers init failed");
         return;
-
+    }
     if (!setup_module(m))
     {
+        PyErr_SetString(PyExc_RuntimeError, "bup._helpers set up failed");
         Py_DECREF(m);
         return;
     }

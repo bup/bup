@@ -1,15 +1,17 @@
 #!/bin/sh
 """": # -*-python-*-
-bup_python="$(dirname "$0")/../config/bin/python" || exit $?
-exec "$bup_python" "$0" ${1+"$@"}
+bup_exec="$(dirname "$0")/bup-exec" || exit $?
+exec "$bup_exec" "$0" ${1+"$@"}
 """
-# end of bup preamble
 
 from __future__ import absolute_import, print_function
 
 from os.path import getsize, isdir
-from sys import argv, stderr
+from sys import stderr
 import os
+
+from bup.compat import get_argvb
+
 
 def listdir_failure(ex):
     raise ex
@@ -18,7 +20,7 @@ def usage():
     print('Usage: data-size PATH ...', file=sys.stderr)
 
 total = 0
-for path in argv[1:]:
+for path in get_argvb()[1:]:
     if isdir(path):
         for root, dirs, files in os.walk(path, onerror=listdir_failure):
             total += sum(getsize(os.path.join(root, name)) for name in files)

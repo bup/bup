@@ -123,7 +123,7 @@ c/"
 
 
 WVSTART features
-expect_py_ver=$(LC_CTYPE=C "$top/config/bin/python" \
+expect_py_ver=$(LC_CTYPE=C "$top/dev/python" \
                         -c 'import platform; print(platform.python_version())') \
     || exit $?
 actual_py_ver=$(bup features | grep Python: | sed -Ee 's/ +Python: //') || exit $?

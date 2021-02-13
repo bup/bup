@@ -1,9 +1,8 @@
 #!/bin/sh
 """": # -*-python-*-
-bup_python="$(dirname "$0")/../config/bin/python" || exit $?
-exec "$bup_python" "$0" ${1+"$@"}
+python="$(dirname "$0")/python" || exit $?
+exec "$python" "$0" ${1+"$@"}
 """
-# end of bup preamble
 
 from __future__ import absolute_import, print_function
 

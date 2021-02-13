@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+
+set -ueo pipefail
+
+die () { echo "Usage: validate-python PYTHON_EXECUTABLE"; }
+
+test $# -eq 1 || { usage 1>&2 ; exit 2; }
+python="$1"
+
+majver=$("$python" -c 'import sys; print(sys.version_info[0])')
+minver=$("$python" -c 'import sys; print(sys.version_info[1])')
+
+# May not be correct yet, i.e. actual requirement may be higher.
+if test "$majver" -gt 2 -a "$minver" -lt 3; then
+    # utime follow_symlinks >= 3.3
+    bup_version_str=$("$python" --version 2>&1)
+    echo "ERROR: found $bup_version_str (must be >= 3.3 if >= 3)" 1>&2
+    exit 2
+fi

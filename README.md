@@ -197,7 +197,7 @@ From source
     pip install tornado
     ```
 
- - Build the python module and symlinks:
+ - Build:
 
     ```sh
     make
@@ -244,12 +244,13 @@ From source
     make install DESTDIR=/opt/bup PREFIX=''
     ```
 
- - The Python executable that bup will use is chosen by ./configure,
-   which will search for a reasonable version unless PYTHON is set in
-   the environment, in which case, bup will use that path.  You can
-   see which Python executable was chosen by looking at the
-   configure output, or examining cmd/python-cmd.sh, and you can
-   change the selection by re-running ./configure.
+ - The Python version that bup will use is determined by the
+   `python-config` program chosen by `./configure`, which will search
+   for a reasonable version unless `BUP_PYTHON_CONFIG` is set in the
+   environment.  You can see which Python executable was chosen by
+   looking at the configure output, or examining
+   `config/config.var/bup-python-config`, and you can change the
+   selection by re-running `./configure`.
 
 From binary packages
 --------------------
