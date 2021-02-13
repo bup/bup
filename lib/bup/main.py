@@ -50,9 +50,6 @@ handle_ctrl_c()
 
 cmdpath = path.cmddir()
 
-# Remove once we finish the internal command transition
-transition_cmdpath = path.libdir() + b'/bup/cmd'
-
 # We manipulate the subcmds here as strings, but they must be ASCII
 # compatible, since we're going to be looking for exactly
 # b'bup-SUBCMD' to exec.
@@ -155,44 +152,6 @@ if not subcmd_name:
     usage()
 
 try:
-    if subcmd_name not in (b'bloom',
-                           b'cat-file',
-                           b'daemon',
-                           b'drecurse',
-                           b'damage',
-                           b'features',
-                           b'ftp',
-                           b'fsck',
-                           b'fuse',
-                           b'gc',
-                           b'get',
-                           b'help',
-                           b'import-duplicity',
-                           b'index',
-                           b'init',
-                           b'join',
-                           b'list-idx',
-                           b'ls',
-                           b'margin',
-                           b'memtest',
-                           b'meta',
-                           b'midx',
-                           b'mux',
-                           b'on',
-                           b'on--server',
-                           b'prune-older',
-                           b'random',
-                           b'restore',
-                           b'rm',
-                           b'save',
-                           b'server',
-                           b'split',
-                           b'tag',
-                           b'tick',
-                           b'version',
-                           b'web',
-                           b'xstat'):
-        raise ModuleNotFoundError()
     cmd_module = import_module('bup.cmd.'
                                + subcmd_name.decode('ascii').replace('-', '_'))
 except ModuleNotFoundError as ex:
@@ -200,9 +159,6 @@ except ModuleNotFoundError as ex:
 
 if not cmd_module:
     subcmd[0] = os.path.join(cmdpath, b'bup-' + subcmd_name)
-    if not os.path.exists(subcmd[0]):
-        subcmd[0] = b'%s/%s.py' % (transition_cmdpath,
-                                   subcmd_name.replace(b'-', b'_'))
     if not os.path.exists(subcmd[0]):
         usage('error: unknown command "%s"' % path_msg(subcmd_name))
 
