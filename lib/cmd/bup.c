@@ -37,6 +37,7 @@ die(int exit_status, const char * const msg, ...)
 
 static int prog_argc = 0;
 static char **prog_argv = NULL;
+static char *orig_env_pythonpath = NULL;
 
 static PyObject*
 get_argv(PyObject *self, PyObject *args)
@@ -62,6 +63,16 @@ static PyMethodDef bup_main_methods[] = {
 
 static int setup_module(PyObject *mod)
 {
+    if (!orig_env_pythonpath) {
+        PyObject_SetAttrString(mod, "env_pythonpath", Py_None);
+    } else {
+        PyObject *py_p = PyBytes_FromString(orig_env_pythonpath);
+        if (!py_p)
+            die(2, "cannot convert PYTHONPATH to bytes: %s\n",
+                orig_env_pythonpath);
+        PyObject_SetAttrString(mod, "env_pythonpath", py_p);
+        Py_DECREF(py_p);
+    }
     return 1;
 }
 
@@ -106,8 +117,12 @@ void PyInit_bup_main(void)
 #endif // PY_MAJOR_VERSION < 3
 
 static void
-setup_bup_main_module(void)
-{
+setup_bup_main_module(void) {
+
+    char *path = getenv("PYTHONPATH");
+    if (path)
+        orig_env_pythonpath = strdup(path);
+
     if (PyImport_AppendInittab("bup_main", PyInit_bup_main) == -1)
         die(2, "unable to register bup_main module\n");
 }

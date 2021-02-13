@@ -1,10 +1,20 @@
 
 from __future__ import absolute_import, print_function
+
+import bup_main, os, sys
+if bup_main.env_pythonpath:
+    if sys.version_info[0] < 3:
+        os.environ['PYTHONPATH'] = bup_main.env_pythonpath
+    else:
+        os.environb[b'PYTHONPATH'] = bup_main.env_pythonpath
+else:
+    del os.environ['PYTHONPATH']
+
 from importlib import import_module
 from pkgutil import iter_modules
 from subprocess import PIPE
 from threading import Thread
-import errno, getopt, os, re, select, signal, subprocess, sys
+import errno, getopt, re, select, signal, subprocess
 
 from bup import compat, path, helpers
 from bup.compat import (
