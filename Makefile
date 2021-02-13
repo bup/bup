@@ -203,8 +203,11 @@ cmd/bup-%: cmd/%-cmd.sh
 Documentation/all: $(man_roff) $(man_html)
 
 Documentation/substvars: $(bup_deps)
-	echo "s,%BUP_VERSION%,$$(./bup version),g" > $@
-	echo "s,%BUP_DATE%,$$(./bup version --date),g" >> $@
+        # FIXME: real temp file
+	set -e; bup_ver=$$(./bup version); \
+	echo "s,%BUP_VERSION%,$$bup_ver,g" > $@.tmp; \
+	echo "s,%BUP_DATE%,$$bup_ver,g" >> $@.tmp
+	mv $@.tmp $@
 
 Documentation/%.1: Documentation/%.md Documentation/substvars
 	$(pf); sed -f Documentation/substvars $< \
