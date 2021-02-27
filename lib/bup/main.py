@@ -14,7 +14,7 @@ from importlib import import_module
 from pkgutil import iter_modules
 from subprocess import PIPE
 from threading import Thread
-import errno, getopt, re, select, signal, subprocess
+import errno, re, select, signal, subprocess
 
 from bup import compat, path, helpers
 from bup.compat import (
@@ -107,39 +107,44 @@ def usage(msg=""):
         log("\n%s\n" % msg)
     sys.exit(99)
 
-argv = compat.get_argv()
-if len(argv) < 2:
+args = compat.get_argvb()
+if len(args) < 2:
     usage()
 
-# Handle global options.
-try:
-    optspec = ['help', 'version', 'debug', 'profile', 'bup-dir=',
-               'import-py-module=']
-    global_args, subcmd = getopt.getopt(argv[1:], '?VDd:', optspec)
-except getopt.GetoptError as ex:
-    usage('error: %s' % ex.msg)
-
-subcmd = [argv_bytes(x) for x in subcmd]
+## Parse global options
 help_requested = None
 do_profile = False
 bup_dir = None
-
-for opt in global_args:
-    if opt[0] in ['-?', '--help']:
+args = args[1:]
+while args:
+    arg = args[0]
+    if arg in (b'-?', b'--help'):
         help_requested = True
-    elif opt[0] in ['-V', '--version']:
+        args = args[1:]
+    elif arg in (b'-V', b'--version'):
         subcmd = [b'version']
-    elif opt[0] in ['-D', '--debug']:
+        args = args[1:]
+    elif arg in (b'-D', b'--debug'):
         helpers.buglvl += 1
         environ[b'BUP_DEBUG'] = b'%d' % helpers.buglvl
-    elif opt[0] in ['--profile']:
+        args = args[1:]
+    elif arg == b'--profile':
         do_profile = True
-    elif opt[0] in ['-d', '--bup-dir']:
-        bup_dir = argv_bytes(opt[1])
-    elif opt[0] == '--import-py-module':
-        pass
+        args = args[1:]
+    elif arg in (b'-d', b'--bup-dir'):
+        if len(args) < 2:
+            usage('error: no path provided for %s option' % arg)
+        bup_dir = args[1]
+        args = args[2:]
+    elif arg == b'--import-py-module':
+        args = args[2:]
+    elif arg.startswith(b'-'):
+        usage('error: unexpected option "%s"'
+              % arg.decode('ascii', 'backslashescape'))
     else:
-        usage('error: unexpected option "%s"' % opt[0])
+        break
+
+subcmd = args
 
 # Make BUP_DIR absolute, so we aren't affected by chdir (i.e. save -C, etc.).
 if bup_dir:
