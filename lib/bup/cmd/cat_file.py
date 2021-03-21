@@ -39,7 +39,7 @@ def main(argv):
     leaf_name, leaf_item = resolved[-1]
     if not leaf_item:
         log('error: cannot access %r in %r\n'
-            % ('/'.join(name for name, item in resolved), path))
+            % (b'/'.join(name for name, item in resolved), target))
         sys.exit(1)
 
     mode = vfs.item_mode(leaf_item)
