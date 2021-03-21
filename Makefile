@@ -145,7 +145,7 @@ dev/python: dev/python.c config/config.h
 	$(CC) $(bup_python_cflags_embed) $< $(bup_python_ldflags_embed) -o $@-proposed
 	dev/validate-python $@-proposed
 	mv $@-proposed $@
-# Do not add to clean_paths - want it available until the very end
+clean_paths += dev/python dev/python-proposed
 
 dev/bup-exec: lib/cmd/bup.c config/config.h
 	$(CC) $(bup_python_cflags_embed) $< $(bup_python_ldflags_embed) -fPIC \
@@ -247,7 +247,7 @@ import-docs: Documentation/clean
 	$(pf); git archive origin/html | (cd Documentation && tar -xvf -)
 	$(pf); git archive origin/man | (cd Documentation && tar -xvf -)
 
-clean: Documentation/clean dev/python
+clean: Documentation/clean
 	cd config && rm -rf config.var
 	cd config && rm -f \
 	  ${CONFIGURE_DETRITUS} ${CONFIGURE_FILES} ${GENERATED_FILES}
@@ -262,5 +262,3 @@ clean: Documentation/clean dev/python
 	rm -rf test/int/testfs test/int/testfs.img testfs.img
 	if test -e test/tmp; then dev/force-delete test/tmp; fi
 	dev/configure-sampledata --clean
-        # Remove last so that cleanup tools can depend on it
-	rm -f dev/python
