@@ -179,11 +179,11 @@ maybe_specific_n = $(if $(filter -j%,$(parallel_opt)),-n$(get_parallel_n))
 xdist_opt = $(if $(filter -j,$(parallel_opt)),-nauto,$(maybe_specific_n))
 
 test: all test/tmp dev/python
-	if test yes = $$(dev/python -c "import xdist; print('yes')" 2>/dev/null); then \
-	  (set -x; ./pytest $(xdist_opt);) \
-	else \
-	  (set-x; ./pytest;) \
-	fi
+	 if test yes = "$$(dev/python -c 'import xdist; print("yes")' 2>/dev/null)"; then \
+	   (set -x; ./pytest $(xdist_opt);) \
+	 else \
+	   (set -x; ./pytest;) \
+	 fi
 
 stupid:
 	PATH=/bin:/usr/bin $(MAKE) test
