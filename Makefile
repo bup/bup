@@ -158,11 +158,11 @@ config/config.h: config/config.vars
 clean_paths += config/config.h.tmp
 
 cc_bin = $(CC) $(embed_cflags) $(CFLAGS) $^ $(embed_ldflags) $(LDFLAGS) -fPIE \
-  $(OUTPUT_OPTION)
+  -I src $(OUTPUT_OPTION)
 
 clean_paths += dev/python-proposed
 generated_dependencies += dev/python-proposed.d
-dev/python-proposed: dev/python.c
+dev/python-proposed: dev/python.c src/bup/compat.c src/bup/io.c
 	rm -f dev/python
 	$(cc_bin)
 
@@ -174,18 +174,18 @@ dev/python: dev/python-proposed
 clean_paths += dev/bup-exec
 generated_dependencies += dev/bup-exec.d
 dev/bup-exec: CFLAGS += -D BUP_DEV_BUP_EXEC=1
-dev/bup-exec: lib/cmd/bup.c src/bup/io.c
+dev/bup-exec: lib/cmd/bup.c src/bup/compat.c src/bup/io.c
 	$(cc_bin)
 
 clean_paths += dev/bup-python
 generated_dependencies += dev/bup-python.d
 dev/bup-python: CFLAGS += -D BUP_DEV_BUP_PYTHON=1
-dev/bup-python: lib/cmd/bup.c src/bup/io.c
+dev/bup-python: lib/cmd/bup.c src/bup/compat.c src/bup/io.c
 	$(cc_bin)
 
 clean_paths += lib/cmd/bup
 generated_dependencies += lib/cmd/bup.d
-lib/cmd/bup: lib/cmd/bup.c src/bup/io.c
+lib/cmd/bup: lib/cmd/bup.c src/bup/compat.c src/bup/io.c
 	$(cc_bin)
 
 clean_paths += lib/bup/_helpers$(soext)

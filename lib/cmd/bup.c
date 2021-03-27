@@ -21,6 +21,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include "bup/compat.h"
 #include "bup/io.h"
 
 static int prog_argc = 0;
@@ -311,10 +312,12 @@ prepend_lib_to_pythonpath(const char * const exec_path,
     free(parent);
 }
 
-#if PY_MAJOR_VERSION > 2
-#define bup_py_main Py_BytesMain
-# else
-#define bup_py_main Py_Main
+#if PY_MAJOR_VERSION == 3 && PY_MINOR_VERSION < 8
+# define bup_py_main bup_py_bytes_main
+#elif PY_MAJOR_VERSION > 2
+# define bup_py_main Py_BytesMain
+#else
+# define bup_py_main Py_Main
 #endif
 
 #if defined(BUP_DEV_BUP_PYTHON) && defined(BUP_DEV_BUP_EXEC)
