@@ -58,9 +58,8 @@ initial_setup := $(shell dev/update-checkout-info lib/bup/checkout_info.py $(iso
 initial_setup := $(call shout,$(initial_setup),update-checkout-info failed))
 clean_paths += lib/bup/checkout_info.py
 
-config/config.vars: \
-  configure config/configure config/configure.inc \
-  $(wildcard config/*.in)
+# Dependency changes here should be mirrored in Makefile
+config/config.vars: configure config/configure config/configure.inc config/*.in
 	MAKE="$(MAKE)" ./configure
 
 # On some platforms, Python.h and readline.h fight over the
@@ -273,7 +272,7 @@ import-docs: Documentation/clean
 	$(pf); git archive origin/man | (cd Documentation && tar -xvf -)
 
 clean: Documentation/clean
-	cd config && rm -rf config.var
+	cd config && rm -rf finished bin config.var
 	cd config && rm -f \
 	  ${CONFIGURE_DETRITUS} ${CONFIGURE_FILES} ${GENERATED_FILES}
 	rm -rf $(clean_paths) .pytest_cache
