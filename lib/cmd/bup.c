@@ -21,19 +21,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-__attribute__ ((format(printf, 2, 3)))
-static void
-die(int exit_status, const char * const msg, ...)
-{
-    if (fputs("bup: ", stderr) == EOF)
-        exit(3);
-    va_list ap;
-    va_start(ap, msg);;
-    if (vfprintf(stderr, msg, ap) < 0)
-        exit(3);
-    va_end(ap);
-    exit(exit_status);
-}
+#include "bup/io.h"
 
 static int prog_argc = 0;
 static char **prog_argv = NULL;

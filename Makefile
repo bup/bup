@@ -151,7 +151,7 @@ install: all
 	    $(INSTALL) -pm 0644 lib/bup/source_info.py $(dest_libdir)/bup/; \
 	fi
 
-embed_cflags := $(bup_python_cflags_embed) $(bup_shared_cflags)
+embed_cflags := $(bup_python_cflags_embed) $(bup_shared_cflags) -I$(CURDIR)/src
 embed_ldflags := $(bup_python_ldflags_embed) $(bup_shared_ldflags)
 
 config/config.h: config/config.vars
@@ -174,18 +174,18 @@ dev/python: dev/python-proposed
 clean_paths += dev/bup-exec
 generated_dependencies += dev/bup-exec.d
 dev/bup-exec: CFLAGS += -D BUP_DEV_BUP_EXEC=1
-dev/bup-exec: lib/cmd/bup.c
+dev/bup-exec: lib/cmd/bup.c src/bup/io.c
 	$(cc_bin)
 
 clean_paths += dev/bup-python
 generated_dependencies += dev/bup-python.d
 dev/bup-python: CFLAGS += -D BUP_DEV_BUP_PYTHON=1
-dev/bup-python: lib/cmd/bup.c
+dev/bup-python: lib/cmd/bup.c src/bup/io.c
 	$(cc_bin)
 
 clean_paths += lib/cmd/bup
 generated_dependencies += lib/cmd/bup.d
-lib/cmd/bup: lib/cmd/bup.c
+lib/cmd/bup: lib/cmd/bup.c src/bup/io.c
 	$(cc_bin)
 
 clean_paths += lib/bup/_helpers$(soext)
