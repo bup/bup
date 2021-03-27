@@ -1,13 +1,16 @@
 
 MAKEFLAGS += --warn-undefined-variables
+OUTPUT_OPTION = -MMD -MP -o $@
 
 SHELL := bash
 .DEFAULT_GOAL := all
 
 clean_paths :=
+generated_dependencies :=
 
 # See config/config.vars.in (sets bup_python_config, among other things)
 include config/config.vars
+-include $(generated_dependencies)
 
 pf := set -o pipefail
 
@@ -158,7 +161,8 @@ cc_bin = $(CC) $(embed_cflags) $(CFLAGS) $^ $(embed_ldflags) $(LDFLAGS) -fPIE \
   $(OUTPUT_OPTION)
 
 clean_paths += dev/python-proposed
-dev/python-proposed: dev/python.c config/config.h
+generated_dependencies += dev/python-proposed.d
+dev/python-proposed: dev/python.c
 	rm -f dev/python
 	$(cc_bin)
 
@@ -168,20 +172,24 @@ dev/python: dev/python-proposed
 	ln $@-proposed $@
 
 clean_paths += dev/bup-exec
+generated_dependencies += dev/bup-exec.d
 dev/bup-exec: CFLAGS += -D BUP_DEV_BUP_EXEC=1
-dev/bup-exec: lib/cmd/bup.c config/config.h
+dev/bup-exec: lib/cmd/bup.c
 	$(cc_bin)
 
 clean_paths += dev/bup-python
+generated_dependencies += dev/bup-python.d
 dev/bup-python: CFLAGS += -D BUP_DEV_BUP_PYTHON=1
-dev/bup-python: lib/cmd/bup.c config/config.h
+dev/bup-python: lib/cmd/bup.c
 	$(cc_bin)
 
 clean_paths += lib/cmd/bup
-lib/cmd/bup: lib/cmd/bup.c config/config.h
+generated_dependencies += lib/cmd/bup.d
+lib/cmd/bup: lib/cmd/bup.c
 	$(cc_bin)
 
 clean_paths += lib/bup/_helpers$(soext)
+generated_dependencies += lib/bup/_helpers.d
 lib/bup/_helpers$(soext): lib/bup/_helpers.c lib/bup/bupsplit.c
 	$(CC) $(helpers_cflags) $(CFLAGS) -shared -fPIC $^ \
 	  $(helpers_ldflags) $(LDFLAGS) $(OUTPUT_OPTION)
@@ -269,6 +277,7 @@ clean: Documentation/clean
 	cd config && rm -f \
 	  ${CONFIGURE_DETRITUS} ${CONFIGURE_FILES} ${GENERATED_FILES}
 	rm -rf $(clean_paths) .pytest_cache
+	rm -f $(generated_dependencies)
 	find . -name __pycache__ -exec rm -rf {} +
 	if test -e test/mnt; then dev/cleanup-mounts-under test/mnt; fi
 	if test -e test/mnt; then rm -r test/mnt; fi
