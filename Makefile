@@ -29,13 +29,20 @@ current_sampledata := test/sampledata/var/rev/v$(sampledata_rev)
 os := $(shell ($(pf); uname | sed 's/[-_].*//') $(isok))
 os := $(call shout,$(os),Unable to determine OS)
 
-CFLAGS := -O2 -Wall -Werror -Wformat=2 $(CFLAGS)
-CFLAGS := -Wno-unknown-pragmas -Wsign-compare $(CFLAGS)
-CFLAGS := -D_FILE_OFFSET_BITS=64 $(CFLAGS)
-SOEXT:=.so
+# Satisfy --warn-undefined-variables
+CFLAGS ?=
+CPPFLAGS ?=
+LDFLAGS ?=
+TARGET_ARCH ?=
 
+bup_shared_cflags := -O2 -Wall -Werror -Wformat=2
+bup_shared_cflags := -Wno-unused-command-line-argument $(bup_shared_cflags)
+bup_shared_cflags := -Wno-unknown-pragmas -Wsign-compare $(bup_shared_cflags)
+bup_shared_cflags := -D_FILE_OFFSET_BITS=64 $(bup_shared_cflags)
+
+soext := .so
 ifeq ($(os),CYGWIN)
-  SOEXT:=.dll
+  soext := .dll
 endif
 
 ifdef TMPDIR
@@ -57,25 +64,28 @@ config/config.vars: \
 # _XOPEN_SOURCE version, i.e. -Werror crashes on a mismatch, so for
 # now, we're just going to let Python's version win.
 
+helpers_cflags := $(bup_python_cflags) $(bup_shared_cflags)
+helpers_ldflags := $(bup_python_ldflags) $(bup_shared_ldflags)
+
 ifneq ($(strip $(bup_readline_cflags)),)
   readline_cflags += $(bup_readline_cflags)
   readline_xopen := $(filter -D_XOPEN_SOURCE=%,$(readline_cflags))
   readline_xopen := $(subst -D_XOPEN_SOURCE=,,$(readline_xopen))
   readline_cflags := $(filter-out -D_XOPEN_SOURCE=%,$(readline_cflags))
   readline_cflags += $(addprefix -DBUP_RL_EXPECTED_XOPEN_SOURCE=,$(readline_xopen))
-  CFLAGS += $(readline_cflags)
+  helpers_cflags += $(readline_cflags)
 endif
 
-LDFLAGS += $(bup_readline_ldflags)
+helpers_ldflags += $(bup_readline_ldflags)
 
 ifeq ($(bup_have_libacl),1)
-  CFLAGS += $(bup_libacl_cflags)
-  LDFLAGS += $(bup_libacl_ldflags)
+  helpers_cflags += $(bup_libacl_cflags)
+  helpers_ldflags += $(bup_libacl_ldflags)
 endif
 
 bup_ext_cmds := lib/cmd/bup-import-rdiff-backup lib/cmd/bup-import-rsnapshot
 
-bup_deps := lib/bup/_helpers$(SOEXT) lib/cmd/bup
+bup_deps := lib/bup/_helpers$(soext) lib/cmd/bup
 
 all: dev/bup-exec dev/bup-python dev/python $(bup_deps) Documentation/all \
   $(current_sampledata)
@@ -122,7 +132,7 @@ install: all
 	$(INSTALL) -pm 0644 lib/bup/*.py $(dest_libdir)/bup/
 	$(INSTALL) -pm 0644 lib/bup/cmd/*.py $(dest_libdir)/bup/cmd/
 	$(INSTALL) -pm 0755 \
-		lib/bup/*$(SOEXT) \
+		lib/bup/*$(soext) \
 		$(dest_libdir)/bup
 	$(INSTALL) -pm 0644 \
 		lib/web/static/* \
@@ -138,36 +148,43 @@ install: all
 	    $(INSTALL) -pm 0644 lib/bup/source_info.py $(dest_libdir)/bup/; \
 	fi
 
+embed_cflags := $(bup_python_cflags_embed) $(bup_shared_cflags)
+embed_ldflags := $(bup_python_ldflags_embed) $(bup_shared_ldflags)
+
 config/config.h: config/config.vars
 clean_paths += config/config.h.tmp
 
-dev/python: dev/python.c config/config.h
-	$(CC) $(bup_python_cflags_embed) $< $(bup_python_ldflags_embed) -o $@-proposed
+cc_bin = $(CC) $(embed_cflags) $(CFLAGS) $^ $(embed_ldflags) $(LDFLAGS) -fPIE \
+  $(OUTPUT_OPTION)
+
+clean_paths += dev/python-proposed
+dev/python-proposed: dev/python.c config/config.h
+	rm -f dev/python
+	$(cc_bin)
+
+clean_paths += dev/python
+dev/python: dev/python-proposed
 	dev/validate-python $@-proposed
-	mv $@-proposed $@
-clean_paths += dev/python dev/python-proposed
+	ln $@-proposed $@
 
-dev/bup-exec: lib/cmd/bup.c config/config.h
-	$(CC) $(bup_python_cflags_embed) $< $(bup_python_ldflags_embed) -fPIC \
-	  -D BUP_DEV_BUP_EXEC=1 -o $@
 clean_paths += dev/bup-exec
+dev/bup-exec: CFLAGS += -D BUP_DEV_BUP_EXEC=1
+dev/bup-exec: lib/cmd/bup.c config/config.h
+	$(cc_bin)
 
-dev/bup-python: lib/cmd/bup.c config/config.h
-	$(CC) $(bup_python_cflags_embed) $< $(bup_python_ldflags_embed) -fPIC \
-	  -D BUP_DEV_BUP_PYTHON=1 -o $@
 clean_paths += dev/bup-python
+dev/bup-python: CFLAGS += -D BUP_DEV_BUP_PYTHON=1
+dev/bup-python: lib/cmd/bup.c config/config.h
+	$(cc_bin)
 
-lib/cmd/bup: lib/cmd/bup.c config/config.h
-	$(CC) $(bup_python_cflags_embed) $< $(bup_python_ldflags_embed) -fPIC -o $@
 clean_paths += lib/cmd/bup
+lib/cmd/bup: lib/cmd/bup.c config/config.h
+	$(cc_bin)
 
-helper_src := config/config.h lib/bup/bupsplit.h lib/bup/bupsplit.c
-helper_src += lib/bup/_helpers.c
-
-lib/bup/_helpers$(SOEXT): dev/python $(helper_src)
-	$(CC) $(bup_python_cflags) $(CFLAGS) -shared -fPIC $(helper_src) \
-	  $(bup_python_ldflags) $(LDFLAGS) -o $@
-clean_paths += lib/bup/_helpers$(SOEXT)
+clean_paths += lib/bup/_helpers$(soext)
+lib/bup/_helpers$(soext): lib/bup/_helpers.c lib/bup/bupsplit.c
+	$(CC) $(helpers_cflags) $(CFLAGS) -shared -fPIC $^ \
+	  $(helpers_ldflags) $(LDFLAGS) $(OUTPUT_OPTION)
 
 test/tmp:
 	mkdir test/tmp
