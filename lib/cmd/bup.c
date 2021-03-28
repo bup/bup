@@ -119,15 +119,23 @@ setup_bup_main_module(void) {
 #if defined(__APPLE__) && defined(__MACH__)
 
 static char *exe_parent_dir(const char * const argv_0) {
-    char path[4096];  // FIXME
-    uint32_t size = sizeof(path);
-    if(_NSGetExecutablePath(path, &size) !=0)
-        die(2, "unable to find executable path\n");
-    char * abs_exe = realpath(path, NULL);
+    char *mpath = NULL;
+    char spath[2048];
+    uint32_t size = sizeof(spath);
+    int rc = _NSGetExecutablePath(spath, &size);
+    if (rc == -1) {
+        mpath = malloc(size);
+        if (!mpath) die(2, "unable to allocate memory for executable path\n");
+        rc = _NSGetExecutablePath(mpath, &size);
+    }
+    if(rc != 0) die(2, "unable to find executable path\n");
+    char *path = mpath ? mpath : spath;
+    char *abs_exe = realpath(path, NULL);
     if (!abs_exe)
         die(2, "cannot resolve path (%s): %s\n", strerror(errno), path);
     char * const abs_parent = strdup(dirname(abs_exe));
     assert(abs_parent);
+    if (mpath) free(mpath);
     free(abs_exe);
     return abs_parent;
 }
