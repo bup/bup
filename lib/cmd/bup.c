@@ -259,23 +259,37 @@ static char *find_exe_parent(const char * const argv_0)
 static char *exe_parent_dir(const char * const argv_0)
 {
     if (PROC_SELF_EXE != NULL) {
-        char path[4096];  // FIXME
-        int len = readlink(PROC_SELF_EXE, path, sizeof(path));
-        if (len == sizeof(path))
-            die(2, "unable to resolve symlink %s: %s\n",
-                PROC_SELF_EXE, strerror(errno));
+        char sbuf[2048];
+        char *path = sbuf;
+        size_t path_n = sizeof(sbuf);
+        ssize_t len;
+        while (1) {
+            len = readlink(PROC_SELF_EXE, path, path_n);
+            if (len == -1 || (size_t) len != path_n)
+                break;
+            path_n *= 2;
+            if (path != sbuf) free(path);
+            path = malloc(path_n);
+            if (!path)
+                die(2, "unable to allocate memory for executable path\n");
+        }
         if (len != -1) {
             path[len] = '\0';
-            return strdup(dirname(path));
+            char *result = strdup(dirname(path));
+            if (path != sbuf)
+                free(path);
+            return result;
         }
         switch (errno) {
-            case ENOENT: case EACCES: case EINVAL: case ELOOP: case ENOTDIR:
-            case ENAMETOOLONG:
-                break;
-            default:
-                die(2, "cannot resolve %s: %s\n", path, strerror(errno));
-                break;
+        case ENOENT: case EACCES: case EINVAL: case ELOOP: case ENOTDIR:
+        case ENAMETOOLONG:
+            break;
+        default:
+            die(2, "cannot resolve %s: %s\n", path, strerror(errno));
+            break;
         }
+        if (path != sbuf)
+            free(path);
     }
     return find_exe_parent(argv_0);
 }
