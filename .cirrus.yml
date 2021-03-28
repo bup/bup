@@ -108,18 +108,6 @@ task:
     gmake -j6 PYTHON=python3.7 check
 
 task:
-  name: macos (py2)
-  allow_failures: true
-  osx_instance:
-    image: catalina-base
-  script: |
-    set -xe
-    dev/prep-for-macos-build python2
-    export PKG_CONFIG_PATH=/usr/local/opt/readline/lib/pkgconfig
-    dev/system-info
-    make -j4 PYTHON=python2 check
-
-task:
   name: macos (py3)
   osx_instance:
     image: catalina-base
