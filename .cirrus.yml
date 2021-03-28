@@ -80,22 +80,6 @@ task:
     su -l bup -c "eatmydata make -j6 -C '$(pwd)' PYTHON=python3 check"
 
 task:
-  name: freebsd (py2)
-  freebsd_instance:
-    image: freebsd-12-1-release-amd64
-    cpu: 4
-    memory: 4
-  script: |
-    set -xe
-    dev/prep-for-freebsd-build python2
-    dev/system-info
-    gmake -j6 PYTHON=python2 check
-    # It looks like su might not work here...
-    #pw useradd -n bup -s /bin/sh -m -w no
-    #chown -R bup .
-    #su -l bup -c "gmake -j3 -C '$PWD' check"
-
-task:
   name: freebsd (py3)
   freebsd_instance:
     image: freebsd-12-1-release-amd64
