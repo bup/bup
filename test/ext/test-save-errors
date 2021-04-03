@@ -29,11 +29,10 @@ touch -t 199901010000 "$tmpdir/save/a/1"
 WVSTART "metadata read error for a file"
 WVPASS bup index "$tmpdir/save"
 
-# now do a hack to inject save errors while reading metadata
-# essentially, we create a bup-save command for ourselves
-# that gets an error for the .../5 file in metadata.from_path()
-cat > "$tmpdir/bup-save" << EOF
-#!/usr/bin/env $top/dev/bup-python
+# Inject save errors while reading metadata via --import-py-module.
+WVPASS rm -rf "$tmpdir/mod"
+WVPASS mkdir -p "$tmpdir/mod"
+cat > "$tmpdir/mod/bup_fail_on_5.py" << EOF
 from bup import metadata
 
 orig_from_path = metadata.from_path
@@ -42,13 +41,10 @@ def from_path(path, *args, **kw):
         raise IOError('intentionally failing metadata read for .../5')
     return orig_from_path(path, *args, **kw)
 metadata.from_path = from_path
-
-exec(open("$top/lib/cmd/bup-save", "rb").read())
 EOF
-chmod +x "$tmpdir/bup-save"
 
-# use it to save the data
-"$tmpdir/bup-save" -n test "$tmpdir/save"
+PYTHONPATH="$tmpdir/mod" \
+          bup --import-py-module bup_fail_on_5 save -n test "$tmpdir/save"
 
 # this should work anyway
 WVPASS bup ls -l "test/latest/$tmpdir/save"
@@ -69,8 +65,10 @@ WVSTART "metadata read error for a folder"
 WVPASS bup index --clear
 WVPASS bup index "$tmpdir/save"
 
-cat > "$tmpdir/bup-save" << EOF
-#!/usr/bin/env $top/dev/bup-python
+# Inject save errors while reading metadata via --import-py-module.
+WVPASS rm -rf "$tmpdir/mod"
+WVPASS mkdir -p "$tmpdir/mod"
+cat > "$tmpdir/mod/bup_fail_on_a.py" << EOF
 from bup import metadata
 
 orig_from_path = metadata.from_path
@@ -79,13 +77,10 @@ def from_path(path, *args, **kw):
         raise IOError('intentionally failing metadata read for .../a')
     return orig_from_path(path, *args, **kw)
 metadata.from_path = from_path
-
-exec(open("$top/lib/cmd/bup-save", "rb").read())
 EOF
-chmod +x "$tmpdir/bup-save"
 
-# use it to save the data
-"$tmpdir/bup-save" -n test "$tmpdir/save"
+PYTHONPATH="$tmpdir/mod" \
+          bup --import-py-module bup_fail_on_a save -n test "$tmpdir/save"
 
 # this should work anyway
 WVPASS bup ls -l "test/latest/$tmpdir/save"
@@ -102,8 +97,10 @@ WVSTART "duplicate entries"
 WVPASS bup index --clear
 WVPASS bup index "$tmpdir/save"
 
-cat > "$tmpdir/bup-save" << EOF
-#!/usr/bin/env $top/dev/bup-python
+# Inject save errors while reading metadata via --import-py-module.
+WVPASS rm -rf "$tmpdir/mod"
+WVPASS mkdir -p "$tmpdir/mod"
+cat > "$tmpdir/mod/bup_dup_reader_path.py" << EOF
 from bup import index
 
 Reader = index.Reader
@@ -115,13 +112,10 @@ class DupReader(index.Reader):
                 yield transname, ent
             yield transname, ent
 index.Reader = DupReader
-
-exec(open("$top/lib/cmd/bup-save", "rb").read())
 EOF
-chmod +x "$tmpdir/bup-save"
 
-# use it to save the data
-"$tmpdir/bup-save" -n test "$tmpdir/save"
+PYTHONPATH="$tmpdir/mod" \
+          bup --import-py-module bup_dup_reader_path save -n test "$tmpdir/save"
 
 # this should work
 WVPASS bup ls -l "test/latest/$tmpdir/save"

@@ -285,3 +285,8 @@ class Options:
                     v = _intify(v)
             opt[k] = _invert(v, invert)
         return (opt,flags,extra)
+
+    def parse_bytes(self, args):
+        if sys.version_info[0] > 2:
+            args = [x.decode(errors='surrogateescape') for x in args]
+        return self.parse(args)

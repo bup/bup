@@ -1,19 +1,19 @@
 #!/bin/sh
 """": # -*-python-*-
-bup_python="$(dirname "$0")//bup-python" || exit $?
-exec "$bup_python" "$0" ${1+"$@"}
+bup_exec="$(dirname "$0")/bup-exec" || exit $?
+exec "$bup_exec" "$0" ${1+"$@"}
 """
-# end of bup preamble
 
 from __future__ import absolute_import, print_function
 
 from os.path import abspath, dirname
 from random import randint
-from sys import argv, exit, stderr, stdout
+from sys import stderr, stdout
 import errno, re, sys
 
-from bup.compat import fsencode, range
+from bup.compat import fsencode, get_argv, get_argvb, range
 
+argv = get_argv()
 
 def usage(out=stdout):
     print('Usage:', argv[0], 'NUM', 'DEST_DIR', file=out)
@@ -44,10 +44,10 @@ def random_filename():
 if len(argv) != 3:
     misuse()
 
-count, dest = argv[1:]
+count, dest = get_argvb()[1:]
 count = int(count)
 
 i = 0
 while i < count:
-    with open(fsencode(dest) + b'/' + random_filename(), 'w') as _:
+    with open(dest + b'/' + random_filename(), 'w') as _:
         i += 1

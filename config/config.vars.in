@@ -2,8 +2,12 @@ CONFIGURE_FILES=@CONFIGURE_FILES@
 GENERATED_FILES=@GENERATED_FILES@
 
 bup_make=@bup_make@
-bup_python=@bup_python@
-bup_python_majver=@bup_python_majver@
+
+bup_python_config=@bup_python_config@
+bup_python_cflags=@bup_python_cflags@
+bup_python_ldflags=@bup_python_ldflags@
+bup_python_cflags_embed=@bup_python_cflags_embed@
+bup_python_ldflags_embed=@bup_python_ldflags_embed@
 
 bup_have_libacl=@bup_have_libacl@
 bup_libacl_cflags=@bup_libacl_cflags@

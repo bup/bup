@@ -1,13 +1,13 @@
 #!/bin/sh
 """": # -*-python-*-
-bup_python="$(dirname "$0")/../config/bin/python" || exit $?
-exec "$bup_python" "$0" ${1+"$@"}
+bup_exec="$(dirname "$0")/bup-exec" || exit $?
+exec "$bup_exec" "$0" ${1+"$@"}
 """
-# end of bup preamble
 
 from __future__ import absolute_import
-
 import socket, sys
 
+from bup.compat import get_argvb
+
 s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM, 0)
-s.bind(sys.argv[1])
+s.bind(get_argvb()[1])

@@ -37,6 +37,9 @@ TARGET=bup
 
 . ./configure.inc
 
+# FIXME: real tmpdir
+rm -rf finished config/bin config.var config.var.tmp config.vars
+
 AC_INIT $TARGET
 
 if ! AC_PROG_CC; then
@@ -44,17 +47,17 @@ if ! AC_PROG_CC; then
     exit 1
 fi
 
-MAKE="$(bup_find_prog make "$MAKE")"
-if test -z "$MAKE"; then
-    MAKE="$(bup_find_prog gmake "$GMAKE")"
-fi
+for make_candidate in make gmake; do
+    found_make="$(bup_find_prog "$make_candidate" "$MAKE")"
+    if test "$found_make" \
+            && ("$found_make" --version | grep "GNU Make"); then
+        MAKE="$found_make"
+        break;
+    fi
+done
 
-if test -z "$MAKE"; then
-    AC_FAIL "ERROR: unable to find make"
-fi
-
-if ! ($MAKE --version | grep "GNU Make"); then
-    AC_FAIL "ERROR: $MAKE is not GNU Make"
+if ! test "$MAKE"; then
+    AC_FAIL "ERROR: unable to find GNU make as make or gmake"
 fi
 
 MAKE_VERSION=`$MAKE --version | grep "GNU Make" | awk '{print $3}'`
@@ -65,30 +68,47 @@ expr "$MAKE_VERSION" '>=' '3.81' || AC_FAIL "ERROR: $MAKE must be >= version 3.8
 
 AC_SUB bup_make "$MAKE"
 
-bup_python="$(type -p "$PYTHON")"
-test -z "$bup_python" && bup_python="$(bup_find_prog python3.8 '')"
-test -z "$bup_python" && bup_python="$(bup_find_prog python3.7 '')"
-test -z "$bup_python" && bup_python="$(bup_find_prog python3.6 '')"
-test -z "$bup_python" && bup_python="$(bup_find_prog python3 '')"
-test -z "$bup_python" && bup_python="$(bup_find_prog python2.7 '')"
-test -z "$bup_python" && bup_python="$(bup_find_prog python2.6 '')"
-test -z "$bup_python" && bup_python="$(bup_find_prog python2 '')"
-test -z "$bup_python" && bup_python="$(bup_find_prog python '')"
-if test -z "$bup_python"; then
-    AC_FAIL "ERROR: unable to find python"
+
+# Haven't seen a documented way to determine the python version via
+# python-config right now, so we'll defer version checking until
+# later.
+
+if test "$BUP_PYTHON_CONFIG"; then
+    bup_python_config="$(type -p "$BUP_PYTHON_CONFIG")"
+    if test -z "$bup_python_config"; then
+        AC_FAIL $(printf "ERROR: BUP_PYTHON_CONFIG value %q appears invalid" \
+                         "$BUP_PYTHON_CONFIG")
+    fi
 else
-    AC_SUB bup_python "$bup_python"
-    bup_python_majver=$("$bup_python" -c 'import sys; print(sys.version_info[0])')
-    bup_python_minver=$("$bup_python" -c 'import sys; print(sys.version_info[1])')
-    AC_SUB bup_python_majver "$bup_python_majver"
+    for py_maj_ver in 9 8 7 6; do
+        bup_python_config="$(bup_find_prog "python3.$py_maj_ver-config" '')"
+        test -z "$bup_python_config" || break
+    done
+    test -z "$bup_python_config" \
+        && bup_python_config="$(bup_find_prog python3-config '')"
+    test -z "$bup_python_config" \
+        && bup_python_config="$(bup_find_prog python2.7-config '')"
+    if test -z "$bup_python_config"; then
+        AC_FAIL "ERROR: unable to find a suitable python-config"
+    fi
 fi
 
-# May not be correct yet, i.e. actual requirement may be higher.
-if test "$bup_python_majver" -gt 2 -a "$bup_python_minver" -lt 3; then
-    # utime follow_symlinks >= 3.3
-    bup_version_str=$("$bup_python" --version 2>&1)
-    AC_FAIL "ERROR: found $bup_version_str (must be >= 3.3 if >= 3)"
+
+bup_python_cflags=$("$bup_python_config" --cflags) || exit $?
+bup_python_ldflags=$("$bup_python_config" --ldflags) || exit $?
+bup_python_cflags_embed=$("$bup_python_config" --cflags --embed)
+if test $? -eq 0; then
+    bup_python_ldflags_embed=$("$bup_python_config" --ldflags --embed) || exit $?
+else  # Earlier versions didn't support --embed
+    bup_python_cflags_embed=$("$bup_python_config" --cflags) || exit $?
+    bup_python_ldflags_embed=$("$bup_python_config" --ldflags) || exit $?
 fi
+AC_SUB bup_python_config "$bup_python_config"
+AC_SUB bup_python_cflags "$bup_python_cflags"
+AC_SUB bup_python_ldflags "$bup_python_ldflags"
+AC_SUB bup_python_cflags_embed "$bup_python_cflags_embed"
+AC_SUB bup_python_ldflags_embed "$bup_python_ldflags_embed"
+
 
 bup_git="$(bup_find_prog git '')"
 if test -z "$bup_git"; then
@@ -109,16 +129,12 @@ AC_CHECK_HEADERS sys/mman.h
 AC_CHECK_HEADERS linux/fs.h
 AC_CHECK_HEADERS sys/ioctl.h
 
-if test "$bup_python_majver" -gt 2; then
-    AC_DEFINE BUP_USE_PYTHON_UTIME 1
-else # Python 2
-    # On GNU/kFreeBSD utimensat is defined in GNU libc, but won't work.
-    if [ -z "$OS_GNU_KFREEBSD" ]; then
-        AC_CHECK_FUNCS utimensat
-    fi
-    AC_CHECK_FUNCS utimes
-    AC_CHECK_FUNCS lutimes
+# On GNU/kFreeBSD utimensat is defined in GNU libc, but won't work.
+if [ -z "$OS_GNU_KFREEBSD" ]; then
+    AC_CHECK_FUNCS utimensat
 fi
+AC_CHECK_FUNCS utimes
+AC_CHECK_FUNCS lutimes
 
 builtin_mul_overflow_code="
 #include <stddef.h>
@@ -300,23 +316,27 @@ AC_SUB bup_have_libacl "$bup_have_libacl"
 AC_CC="$orig_ac_cc"
 LIBS="$orig_libs"
 
-
 AC_OUTPUT config.vars
 
-if test -e config.var; then rm -r config.var; fi
-mkdir -p config.var
-echo -n "$MAKE" > config.var/bup-make
-echo -n "$bup_python" > config.var/bup-python
+set -euo pipefail
+
+# FIXME: real tmpdir
+mkdir -p config.var.tmp
+echo -n "$MAKE" > config.var.tmp/bup-make
+echo -n "$bup_python_config" > config.var.tmp/bup-python-config
+mv config.var.tmp config.var
 
 if test -e bin; then rm -r bin; fi
 mkdir -p bin
-(cd bin && ln -s "$bup_python" python)
+(cd bin && ln -s "$MAKE" make)
+
+touch finished
 
 printf "
-found: python (%q, $("$bup_python" --version 2>&1))
+found: python-config (%q)
 found: git (%q, ($("$bup_git" --version))
 " \
-       "$bup_python" \
+       "$bup_python_config" \
        "$bup_git" \
        1>&5
 

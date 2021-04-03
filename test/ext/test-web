@@ -56,7 +56,7 @@ WVPASS bup save -n '¡excitement!' --strip src
 "$TOP/bup" web unix://socket </dev/null >bup-web.log 2>&1 &
 web_pid=$!
 # output the log if something fails
-trap cat bup-web.log EXIT
+trap 'cat bup-web.log' EXIT
 wait-for-server-start
 
 WVPASS curl --unix-socket ./socket \

@@ -1,12 +1,8 @@
 #!/bin/sh
 """": # -*-python-*-
-bup_python="$(dirname "$0")/../config/bin/python" || exit $?
-exec "$bup_python" "$0" ${1+"$@"}
+bup_exec="$(dirname "$0")/bup-exec" || exit $?
+exec "$bup_exec" "$0" ${1+"$@"}
 """
-# end of bup preamble
-
-# Note: this currently relies on bup-python to handle arbitrary binary
-# user/group names.
 
 from __future__ import absolute_import, print_function
 
@@ -14,11 +10,15 @@ import grp
 import pwd
 import sys
 
+from bup.compat import get_argv, get_argvb
+
 def usage():
     print('Usage: id-other-than <--user|--group> ID [ID ...]',
           file=sys.stderr)
 
-if len(sys.argv) < 2:
+argvb = get_argvb()
+
+if len(argvb) < 2:
     usage()
     sys.exit(1)
 
@@ -29,17 +29,17 @@ def is_integer(x):
     except ValueError as e:
         return False
 
-excluded_ids = set(int(x) for x in sys.argv[2:] if is_integer(x))
-excluded_names = (x for x in sys.argv[2:] if not is_integer(x))
+excluded_ids = set(int(x) for x in argvb[2:] if is_integer(x))
+excluded_names = (x for x in get_argv()[2:] if not is_integer(x))
 
-if sys.argv[1] == '--user':
+if argvb[1] == b'--user':
     for x in excluded_names:
         excluded_ids.add(pwd.getpwnam(x).pw_uid)
     for x in pwd.getpwall():
         if x.pw_uid not in excluded_ids:
             print(x.pw_name + ':' + str(x.pw_uid))
             sys.exit(0)
-elif sys.argv[1] == '--group':
+elif argvb[1] == b'--group':
     for x in excluded_names:
         excluded_ids.add(grp.getgrnam(x).gr_gid)
     for x in grp.getgrall():

@@ -78,9 +78,9 @@ def opts_from_cmdline(args, onabort=None):
 
     """
     if onabort:
-        opt, flags, extra = Options(optspec, onabort=onabort).parse(args)
+        opt, flags, extra = Options(optspec, onabort=onabort).parse_bytes(args)
     else:
-        opt, flags, extra = Options(optspec).parse(args)
+        opt, flags, extra = Options(optspec).parse_bytes(args)
 
     opt.paths = [argv_bytes(x) for x in extra] or (b'/',)
     opt.long_listing = opt.l

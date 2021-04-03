@@ -27,7 +27,6 @@ case "$pyver" in
         ;;
     python3)
         brew install python
-        easy_install --user pip
         pip3 install --user pytest pytest-xdist
         ;;
     *)

@@ -18,17 +18,41 @@ source code to follow along and see what we're talking about.  bup's code is
 written primarily in python with a bit of C code in speed-sensitive places. 
 Here are the most important things to know:
 
- - bup (symlinked to main.py) is the main program that runs when you type
-   'bup'.
- 
- - cmd/bup-* (mostly symlinked to cmd/*-cmd.py) are the individual
-   subcommands, in a way similar to how git breaks all its subcommands into
-   separate programs.  Not all the programs have to be written in python;
-   they could be in any language, as long as they end up named cmd/bup-*. 
-   We might end up re-coding large parts of bup in C eventually so that it
-   can be even faster and (perhaps) more portable.
+ - The main program is a fairly small C program that mostly just
+   initializes the correct Python interpreter and then runs
+   bup.main.main().  This arrangement was chosen in order to give us
+   more flexibility.  For example:
 
- - lib/bup/*.py are python library files used by the cmd/*.py commands. 
+     - It allows us to avoid
+       [crashing on some Unicode-unfriendly command line arguments](https://bugs.python.org/issue35883)
+       which is critical, given that paths can be arbitrary byte
+       sequences.
+
+     - It allows more flexibility in dealing with upstream changes
+       like the breakage of our ability to manipulate the
+       processes arguement list on platforms that support it during
+       the Python 3.9 series.
+
+     - It means that we'll no longer be affected by any changes to the
+       `#!/...` path, i.e. if `/usr/bin/python`, or
+       `/usr/bin/python3`, or whatever we'd previously selected during
+       `./configure` were to change from 2 to 3, or 3.5 to 3.20.
+
+   The version of python bup uses is determined by the `python-config`
+   program selected by `./configure`.  It tries to find a suitable
+   default unless `BUP_PYTHON_CONFIG` is set in the environment.
+
+ - bup supports both internal and external subcommands.  The former
+   are the most common, and are all located in lib/bup/cmd/.  They
+   must be python modules named lib/bup/cmd/COMMAND.py, and must
+   contain a `main(argv)` function that will be passed the *binary*
+   command line arguments (bytes, not strings).  The filename must
+   have underscores for any dashes in the subcommand name.  The
+   external subcommands are in lib/cmd/.
+
+ - The python code is all in lib/bup.
+
+ - lib/bup/\*.py contains the python code (modules) that bup depends on.
    That directory name seems a little silly (and worse, redundant) but there
    seemed to be no better way to let programs write "from bup import
    index" and have it work.  Putting bup in the top level conflicted with

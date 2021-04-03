@@ -1,24 +1,13 @@
 #!/bin/sh
 """": # -*-python-*-
-# https://sourceware.org/bugzilla/show_bug.cgi?id=26034
-export "BUP_ARGV_0"="$0"
-arg_i=1
-for arg in "$@"; do
-    export "BUP_ARGV_${arg_i}"="$arg"
-    shift
-    arg_i=$((arg_i + 1))
-done
-bup_python="$(dirname "$0")/bup-python" || exit $?
-exec "$bup_python" "$0"
+bup_exec="$(dirname "$0")/bup-exec" || exit $?
+exec "$bup_exec" "$0" ${1+"$@"}
 """
-# end of bup preamble
 
 from __future__ import absolute_import
 import os.path, sys
 
-sys.path[:0] = [os.path.dirname(os.path.realpath(__file__)) + '/../../lib']
-
-from bup.compat import argv_bytes
+from bup.compat import argv_bytes, get_argvb
 from bup.helpers import handle_ctrl_c, saved_errors
 from bup.io import byte_stream
 from bup import compat, metadata, options
@@ -33,7 +22,7 @@ ns-timestamp-resolutions TEST_FILE_NAME
 handle_ctrl_c()
 
 o = options.Options(optspec)
-opt, flags, extra = o.parse(compat.argv[1:])
+opt, flags, extra = o.parse_bytes(get_argvb()[1:])
 
 sys.stdout.flush()
 out = byte_stream(sys.stdout)
