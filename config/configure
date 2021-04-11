@@ -104,13 +104,15 @@ else  # Earlier versions didn't support --embed
     bup_python_ldflags_embed=$("$bup_python_config" --ldflags) || exit $?
 fi
 
+bup_python_cflags="$bup_python_cflags -fPIC"
+
 case "$OSTYPE" in
     darwin*)
         # For at least 10.3+ (2003+)
         bup_python_ldflags="$bup_python_ldflags -bundle -undefined dynamic_lookup"
         ;;
     *)
-        bup_python_ldflags="$bup_python_ldflags -shared -fPIC"
+        bup_python_ldflags="$bup_python_ldflags -shared"
         ;;
 esac
 

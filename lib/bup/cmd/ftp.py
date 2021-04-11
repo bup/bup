@@ -14,6 +14,8 @@ from bup.io import byte_stream, path_msg
 from bup.repo import LocalRepo
 
 
+repo = None
+
 class OptionError(Exception):
     pass
 
@@ -121,6 +123,8 @@ def main(argv):
     opt, flags, extra = o.parse_bytes(argv[1:])
 
     git.check_repo_or_die()
+
+    global repo
 
     sys.stdout.flush()
     out = byte_stream(sys.stdout)
