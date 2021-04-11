@@ -190,7 +190,7 @@ lib/cmd/bup: lib/cmd/bup.c src/bup/compat.c src/bup/io.c
 clean_paths += lib/bup/_helpers$(soext)
 generated_dependencies += lib/bup/_helpers.d
 lib/bup/_helpers$(soext): lib/bup/_helpers.c lib/bup/bupsplit.c
-	$(CC) $(helpers_cflags) $(CFLAGS) -shared -fPIC $^ \
+	$(CC) $(helpers_cflags) $(CFLAGS) $^ \
 	  $(helpers_ldflags) $(LDFLAGS) $(OUTPUT_OPTION)
 
 test/tmp:
