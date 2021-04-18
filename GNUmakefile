@@ -34,6 +34,7 @@ os := $(call shout,$(os),Unable to determine OS)
 
 # Satisfy --warn-undefined-variables
 CFLAGS ?=
+DESTDIR ?=
 CPPFLAGS ?=
 LDFLAGS ?=
 TARGET_ARCH ?=
@@ -42,6 +43,8 @@ bup_shared_cflags := -O2 -Wall -Werror -Wformat=2
 bup_shared_cflags := -Wno-unused-command-line-argument $(bup_shared_cflags)
 bup_shared_cflags := -Wno-unknown-pragmas -Wsign-compare $(bup_shared_cflags)
 bup_shared_cflags := -D_FILE_OFFSET_BITS=64 $(bup_shared_cflags)
+
+bup_shared_ldflags :=
 
 soext := .so
 ifeq ($(os),CYGWIN)
