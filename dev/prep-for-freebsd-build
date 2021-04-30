@@ -16,7 +16,7 @@ pkg update
 # https://reviews.freebsd.org/D24816
 pkg install rdiff-backup || true
 
-pkgs='gmake git bash rsync curl par2cmdline readline duplicity'
+pkgs='gmake git bash coreutils rsync curl par2cmdline readline duplicity'
 pkgs="$pkgs rsnapshot"
 
 case "$pyver" in
