@@ -1,7 +1,7 @@
 
 from __future__ import absolute_import
 
-import os, glob, tempfile
+import os, glob, sys
 
 from bup import compat, options, git, bloom
 from bup.compat import argv_bytes, hexstr
