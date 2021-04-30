@@ -885,6 +885,7 @@ class Metadata:
 def from_path(path, statinfo=None, archive_path=None,
               save_symlinks=True, hardlink_target=None,
               normalized=False):
+    # This function is also a test hook; see test-save-errors
     """Return the metadata associated with the path.  When normalized is
     true, return the metadata appropriate for a typical save, which
     may or may not be all of it."""
