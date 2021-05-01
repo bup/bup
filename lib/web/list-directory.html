@@ -9,10 +9,9 @@
     <body>
         <div id="wrapper">
             <div id="breadcrumb">
-                {% for (display, part_path) in breadcrumbs[:-1] %}
+                {% for (display, part_path) in breadcrumbs %}
                 <a href="{{ part_path }}">{{ display }}</a> /
                 {% end %}
-                <strong>{{ breadcrumbs[-1][0] }}</strong>
             </div>
             {% if files_hidden %}
             <div id="message">
