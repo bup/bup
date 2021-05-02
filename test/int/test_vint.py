@@ -1,6 +1,7 @@
 
 from __future__ import absolute_import
 from io import BytesIO
+from itertools import combinations_with_replacement
 
 from wvpytest import *
 
@@ -63,27 +64,23 @@ def pack_and_unpack(types, *values):
 
 
 def test_pack_and_unpack():
-    tests = [('', []),
-             ('s', [b'foo']),
-             ('ss', [b'foo', b'bar']),
-             ('sV', [b'foo', 0]),
-             ('sv', [b'foo', -1]),
-             ('V', [0]),
-             ('Vs', [0, b'foo']),
-             ('VV', [0, 1]),
-             ('Vv', [0, -1]),
-             ('v', [0]),
-             ('vs', [0, b'foo']),
-             ('vV', [0, 1]),
-             ('vv', [0, -1]),
-             ('vv', [0, -1]),
-             # and a few things that aren't done in C
-             ('vv', [10**100, 10**100]),
-             ('s', [b'foo'*10]),
-            ]
-    for test in tests:
-        (types, values) = test
-        WVPASSEQ(pack_and_unpack(types, *values), values)
+    candidates = (('s', b''),
+                  ('s', b'x'),
+                  ('s', b'foo'),
+                  ('s', b'foo' * 10),
+                  ('v', -10**100),
+                  ('v', -1),
+                  ('v', 0),
+                  ('v', 1),
+                  ('v', -10**100),
+                  ('V', 0),
+                  ('V', 1),
+                  ('V', 10**100))
+    WVPASSEQ(pack_and_unpack(''), [])
+    for f, v in candidates:
+        WVPASSEQ(pack_and_unpack(f, v), [v])
+    for (f1, v1), (f2, v2) in combinations_with_replacement(candidates, r=2):
+        WVPASSEQ(pack_and_unpack(f1 + f2, v1, v2), [v1, v2])
     WVEXCEPT(Exception, vint.pack, 's')
     WVEXCEPT(Exception, vint.pack, 's', 'foo', 'bar')
     WVEXCEPT(Exception, vint.pack, 'x', 1)
