@@ -132,7 +132,8 @@ install: all
 	$(INSTALL) -pm 0755 lib/cmd/bup "$(dest_libdir)/cmd/bup"
 	$(INSTALL) -pm 0755 $(bup_ext_cmds) "$(dest_libdir)/cmd/"
 	cd "$(dest_bindir)" && \
-	  ln -sf "$$($(bup_python) -c 'import os; print(os.path.relpath("$(abspath $(dest_libdir))/cmd/bup"))')"
+	  ln -sf "$$($(CURDIR)/dev/python -c 'import os; print(os.path.relpath("$(abspath $(dest_libdir))/cmd/bup"))')" \
+	    .
 	set -e; \
 	$(INSTALL) -pm 0644 lib/bup/*.py $(dest_libdir)/bup/
 	$(INSTALL) -pm 0644 lib/bup/cmd/*.py $(dest_libdir)/bup/cmd/
