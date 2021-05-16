@@ -32,7 +32,7 @@ done
 
 test "$kind" || misuse
 
-src=/dev/stdin
+src=''
 case $# in
     0) ;;
     1) src="$1" ;;
@@ -44,10 +44,18 @@ esac
 # is compatible with the FreeBSD version.
 
 if command -v "$kind"sum > /dev/null; then
-    result=$("$kind"sum "$src")
+    if test "$src"; then
+        result=$("$kind"sum "$src")
+    else
+        result=$("$kind"sum)
+    fi
     echo "${result%% *}"
 elif command -v "$kind" > /dev/null; then
-    "$kind" -q "$src"
+    if test "$src"; then
+        "$kind" -q "$src"
+    else
+        "$kind" -q
+    fi
 else
     echo "Can't find sha1sum or sha1" 1>&2
     exit 2
