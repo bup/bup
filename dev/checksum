@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+
+set -ueo pipefail
+
+usage() { echo "Usage: checksum -t <sha1|sha256> [--] [PATH]"; }
+
+misuse() { usage 1>&2; exit 2; }
+
+kind=''
+while test $# -gt 0; do
+    case "$1" in
+        --)
+            shift
+            break
+            ;;
+        -t)
+            shift
+            test $# -gt 0 || misuse
+            kind="$1"
+            case "$kind" in
+                sha1|sha256) ;;
+                *) misuse ;;
+            esac
+            shift
+            ;;
+        -*)
+            misuse ;;
+        *)
+            break ;;
+    esac
+done
+
+test "$kind" || misuse
+
+src=/dev/stdin
+case $# in
+    0) ;;
+    1) src="$1" ;;
+    *) misuse ;;
+esac
+
+# Use KINDsum if available, else KIND (e.g. sha1sum or sha1).  Assumes
+# the former is compatible with the coreutils version, and the latter
+# is compatible with the FreeBSD version.
+
+if command -v "$kind"sum > /dev/null; then
+    result=$("$kind"sum "$src")
+    echo "${result%% *}"
+elif command -v "$kind" > /dev/null; then
+    "$kind" -q "$src"
+else
+    echo "Can't find sha1sum or sha1" 1>&2
+    exit 2
+fi

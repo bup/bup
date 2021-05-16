@@ -10,6 +10,7 @@ tmpdir="$(WVPASS wvmktempdir)" || exit $?
 export BUP_DIR="$tmpdir/bup"
 
 bup() { "$top/bup" "$@"; }
+sha1sum() { "$top/dev/checksum" -t sha1 "$@"; }
 
 WVPASS cd "$tmpdir"
 
