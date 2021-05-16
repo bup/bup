@@ -2294,7 +2294,7 @@ static PyObject *bup_limited_vint_pack(PyObject *self, PyObject *args)
     // vint/vuint we can encode is anyway 10 bytes, so this gives us
     // some headroom for a few strings before we need to realloc ...
     bufsz = sz * 20;
-    buf = PyMem_RawMalloc(bufsz);
+    buf = malloc(bufsz);
     if (!buf)
         return PyErr_NoMemory();
 
@@ -2347,13 +2347,13 @@ static PyObject *bup_limited_vint_pack(PyObject *self, PyObject *args)
     }
 
     result = PyBytes_FromStringAndSize(buf, pos - buf);
-    PyMem_RawFree(buf);
+    free(buf);
     return result;
 
  overflow:
     PyErr_SetString(PyExc_OverflowError, "buffer (potentially) overflowed");
  error:
-    PyMem_RawFree(buf);
+    free(buf);
     return NULL;
 }
 
