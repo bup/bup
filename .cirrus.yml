@@ -82,7 +82,7 @@ task:
 task:
   name: freebsd (py3)
   freebsd_instance:
-    image: freebsd-12-1-release-amd64
+    image: freebsd-12-2-release-amd64
     cpu: 4
     memory: 4
   script: |
