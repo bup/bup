@@ -8,15 +8,17 @@ TOP="$(WVPASS pwd)" || exit $?
 tmpdir="$(WVPASS wvmktempdir)" || exit $?
 export BUP_DIR="$tmpdir/bup"
 
-bup()
-{
-    "$TOP/bup" "$@"
-}
+bup() { "$TOP/bup" "$@"; }
+
+WVPASS cd "$tmpdir"
 
 WVSTART 'main'
 
 bup
 rc=$?
 WVPASSEQ "$rc" 99
+
+# Check --x=y handling
+WVPASS bup --bup-dir=repo init
 
 WVPASS rm -r "$tmpdir"

@@ -107,6 +107,24 @@ def usage(msg=""):
         log("\n%s\n" % msg)
     sys.exit(99)
 
+def extract_argval(args):
+    """Assume args (all elements bytes) starts with a -x, --x, or --x=,
+argument that requires a value and return that value and the remaining
+args.  Exit with an errror if the value is missing.
+
+    """
+    # Assumes that first arg is a valid arg
+    arg = args[0]
+    if b'=' in arg:
+        val = arg.split(b'=')[1]
+        if not val:
+            usage('error: no value provided for %s option' % arg)
+        return val, args[1:]
+    if len(args) < 2:
+        usage('error: no value provided for %s option' % arg)
+    return args[1], args[2:]
+
+
 args = compat.get_argvb()
 if len(args) < 2:
     usage()
@@ -118,6 +136,7 @@ bup_dir = None
 args = args[1:]
 while args:
     arg = args[0]
+    print('arg:', arg, file=sys.stderr)
     if arg in (b'-?', b'--help'):
         help_requested = True
         args = args[1:]
@@ -131,13 +150,11 @@ while args:
     elif arg == b'--profile':
         do_profile = True
         args = args[1:]
-    elif arg in (b'-d', b'--bup-dir'):
-        if len(args) < 2:
-            usage('error: no path provided for %s option' % arg)
-        bup_dir = args[1]
-        args = args[2:]
-    elif arg == b'--import-py-module':
-        args = args[2:]
+    elif arg in (b'-d', b'--bup-dir') or arg.startswith(b'--bup-dir='):
+        bup_dir, args = extract_argval(args)
+    elif arg == b'--import-py-module' or arg.startswith(b'--import-py-module='):
+        # Just need to skip it here
+        _, args = extract_argval(args)
     elif arg.startswith(b'-'):
         usage('error: unexpected option "%s"'
               % arg.decode('ascii', 'backslashescape'))
