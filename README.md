@@ -673,7 +673,7 @@ How you can help
 
 bup is a work in progress and there are many ways it can still be improved.
 If you'd like to contribute patches, ideas, or bug reports, please join the
-bup mailing list.
+<a href="mailto:bup-list@googlegroups.com">bup mailing list</a>:
 
 You can find the mailing list archives here:
 
@@ -683,9 +683,10 @@ and you can subscribe by sending a message to:
 
 	bup-list+subscribe@googlegroups.com
 
-You can also reach us via IRC at [libera.chat](https://libera.chat/)
-in the [#bup channel](ircs://irc.libera.chat:6697/bup) which is also
-available [on the web](https://web.libera.chat/?channels=bup).
+You can also reach us via the <a
+href="ircs://irc.libera.chat:6697/bup">\#bup IRC channel</a> at
+[libera.chat](https://libera.chat/) or via this
+[web intergface](https://web.libera.chat/?channels=bup).
 
 Please see <a href="HACKING">./HACKING</a> for
 additional information, i.e. how to submit patches (hint - no pull
