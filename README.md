@@ -683,6 +683,10 @@ and you can subscribe by sending a message to:
 
 	bup-list+subscribe@googlegroups.com
 
+You can also reach us via IRC at [libera.chat](https://libera.chat/)
+in the [#bup channel](ircs://irc.libera.chat:6697/bup) which is also
+available [on the web](https://web.libera.chat/?channels=bup).
+
 Please see <a href="HACKING">./HACKING</a> for
 additional information, i.e. how to submit patches (hint - no pull
 requests), how we handle branches, etc.
