@@ -12,7 +12,7 @@ import hashlib, heapq, math, operator, time, grp, tempfile
 
 from bup import _helpers
 from bup import compat
-from bup.compat import argv_bytes, byte_int
+from bup.compat import argv_bytes, byte_int, pending_raise
 from bup.io import byte_stream, path_msg
 # This function should really be in helpers, not in bup.options.  But we
 # want options.py to be standalone so people can include it in other projects.
@@ -561,13 +561,19 @@ class DemuxConn(BaseConn):
         # Anything that comes through before the sync string was not
         # multiplexed and can be assumed to be debug/log before mux init.
         tail = b''
+        stderr = byte_stream(sys.stderr)
         while tail != b'BUPMUX':
+            # Make sure to write all pre-BUPMUX output to stderr
             b = os.read(infd, (len(tail) < 6) and (6-len(tail)) or 1)
             if not b:
-                raise IOError('demux: unexpected EOF during initialization')
+                ex = IOError('demux: unexpected EOF during initialization')
+                with pending_raise(ex):
+                    stderr.write(tail)
+                    stderr.flush()
             tail += b
-            byte_stream(sys.stderr).write(tail[:-6])  # pre-mux log messages
+            stderr.write(tail[:-6])
             tail = tail[-6:]
+        stderr.flush()
         self.infd = infd
         self.reader = None
         self.buf = None
