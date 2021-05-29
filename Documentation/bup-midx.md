@@ -37,8 +37,7 @@ commands.
 
 \--dir=*packdir*
 :   specify the directory containing the `.idx`/`.midx` files
-    to work with.  The default is $BUP_DIR/objects/pack and
-    $BUP_DIR/indexcache/*.
+    to work with.  The default is `$BUP_DIR/objects/pack`.
 
 \--max-files
 :   maximum number of `.idx` files to open at a time.  You
