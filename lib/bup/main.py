@@ -136,7 +136,6 @@ bup_dir = None
 args = args[1:]
 while args:
     arg = args[0]
-    print('arg:', arg, file=sys.stderr)
     if arg in (b'-?', b'--help'):
         help_requested = True
         args = args[1:]
