@@ -35,7 +35,8 @@ get_argv(PyObject *self, PyObject *args)
 	return NULL;
 
     PyObject *result = PyList_New(prog_argc);
-    for (int i = 0; i < prog_argc; i++) {
+    int i;
+    for (i = 0; i < prog_argc; i++) {
         PyObject *s = PyBytes_FromString(prog_argv[i]);
         if (!s)
             die(2, "cannot convert argument to bytes: %s\n", prog_argv[i]);
