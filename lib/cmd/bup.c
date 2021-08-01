@@ -22,6 +22,7 @@
 #include <unistd.h>
 
 #include "bup/compat.h"
+#include "bup/intprops.h"
 #include "bup/io.h"
 
 static int prog_argc = 0;
@@ -268,6 +269,8 @@ static char *exe_parent_dir(const char * const argv_0)
             len = readlink(PROC_SELF_EXE, path, path_n);
             if (len == -1 || (size_t) len != path_n)
                 break;
+            if (!INT_MULTIPLY_OK(path_n, 2, &path_n))
+                die(2, "memory buffer for executable path would be too big\n");
             path_n *= 2;
             if (path != sbuf) free(path);
             path = malloc(path_n);
@@ -362,6 +365,7 @@ int main(int argc, char **argv)
 
 int main(int argc, char **argv)
 {
+    assert(argc > 0);
     prog_argc = argc - 1;
     prog_argv = argv + 1;
     setup_bup_main_module();
