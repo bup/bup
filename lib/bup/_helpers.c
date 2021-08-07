@@ -66,6 +66,7 @@
 #endif
 
 #include "bupsplit.h"
+#include "bup/intprops.h"
 
 #if defined(FS_IOC_GETFLAGS) && defined(FS_IOC_SETFLAGS)
 #define BUP_HAVE_FILE_ATTRS 1
@@ -163,37 +164,10 @@ static uint64_t htonll(uint64_t value)
 }
 #endif
 
+#define INTEGRAL_ASSIGNMENT_FITS(dest, src) INT_ADD_OK(src, 0, dest)
 
-// Disabling sign-compare here should be fine since we're explicitly
-// checking for a sign mismatch, i.e. if the signs don't match, then
-// it doesn't matter what the value comparison says.
-// FIXME: ... so should we reverse the order?
-#define INTEGRAL_ASSIGNMENT_FITS(dest, src)                             \
-    ({                                                                  \
-        _Pragma("GCC diagnostic push");                                 \
-        _Pragma("GCC diagnostic ignored \"-Wsign-compare\"");           \
-        _Pragma("clang diagnostic push");                               \
-        _Pragma("clang diagnostic ignored \"-Wshorten-64-to-32\"");     \
-        *(dest) = (src);                                                \
-        int result = *(dest) == (src) && (*(dest) < 1) == ((src) < 1);  \
-        _Pragma("clang diagnostic pop");                                \
-        _Pragma("GCC diagnostic pop");                                  \
-        result;                                                         \
-    })
-
-
-#define INTEGER_TO_PY(x)                                                \
-    ({                                                                  \
-        _Pragma("GCC diagnostic push");                                 \
-        _Pragma("GCC diagnostic ignored \"-Wtype-limits\"");   \
-        _Pragma("clang diagnostic push");                               \
-        _Pragma("clang diagnostic ignored \"-Wtautological-compare\""); \
-        PyObject *result = ((x) >= 0) ? PyLong_FromUnsignedLongLong(x) : PyLong_FromLongLong(x); \
-        _Pragma("clang diagnostic pop");                                \
-        _Pragma("GCC diagnostic pop");                                  \
-        result;                                                         \
-    })
-
+#define INTEGER_TO_PY(x) \
+    EXPR_SIGNED(x) ? PyLong_FromLongLong(x) : PyLong_FromUnsignedLongLong(x)
 
 #if PY_MAJOR_VERSION < 3
 static int bup_ulong_from_pyint(unsigned long *x, PyObject *py,
@@ -372,15 +346,11 @@ static int write_all(int fd, const void *buf, const size_t count)
 }
 
 
-static int uadd(unsigned long long *dest,
-                const unsigned long long x,
-                const unsigned long long y)
+static inline int uadd(unsigned long long *dest,
+                       const unsigned long long x,
+                       const unsigned long long y)
 {
-    const unsigned long long result = x + y;
-    if (result < x || result < y)
-        return 0;
-    *dest = result;
-    return 1;
+    return INT_ADD_OK(x, y, dest);
 }
 
 
@@ -2525,6 +2495,9 @@ static int setup_module(PyObject *m)
     // Just be sure (relevant when passing timestamps back to Python above).
     assert(sizeof(PY_LONG_LONG) <= sizeof(long long));
     assert(sizeof(unsigned PY_LONG_LONG) <= sizeof(unsigned long long));
+    // At least for INTEGER_TO_PY
+    assert(sizeof(intmax_t) <= sizeof(long long));
+    assert(sizeof(uintmax_t) <= sizeof(unsigned long long));
 
     test_integral_assignment_fits();
 
