@@ -69,7 +69,7 @@ config/config.vars: configure config/configure config/configure.inc config/*.in
 # _XOPEN_SOURCE version, i.e. -Werror crashes on a mismatch, so for
 # now, we're just going to let Python's version win.
 
-helpers_cflags := $(bup_python_cflags) $(bup_shared_cflags)
+helpers_cflags := $(bup_python_cflags) $(bup_shared_cflags) -I$(CURDIR)/src
 helpers_ldflags := $(bup_python_ldflags) $(bup_shared_ldflags)
 
 ifneq ($(strip $(bup_readline_cflags)),)
