@@ -32,7 +32,7 @@ def _quotesplit(line):
             yield (wordstart, word)
             word = b''
             wordstart = i+1
-        elif not inquote and not word and (c == q or c == qq):
+        elif not inquote and not word and c in (q, qq):
             # the 'not word' constraint on this is un-sh-like, but do it
             # for sanity when autocompleting
             inquote = c

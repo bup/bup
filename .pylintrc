@@ -3,6 +3,7 @@
 [MESSAGES CONTROL]
 disable=all
 enable=
+  consider-using-in,
   return-in-init,
   trailing-whitespace,
   unused-import,

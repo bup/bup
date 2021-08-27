@@ -226,7 +226,7 @@ def main(argv):
                                 with open(name, 'wb') as destfile:
                                     log('Saving %s\n' % path_msg(name))
                                     write_to_file(srcfile, destfile)
-            elif cmd == b'help' or cmd == b'?':
+            elif cmd in (b'help', b'?'):
                 out.write(b'Commands: ls cd pwd cat get mget help quit\n')
                 out.flush()
             elif cmd in (b'quit', b'exit', b'bye'):
