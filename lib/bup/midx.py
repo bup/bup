@@ -1,6 +1,6 @@
 
 from __future__ import absolute_import, print_function
-import glob, mmap, os, struct
+import glob, os, struct
 
 from bup import _helpers
 from bup.compat import range

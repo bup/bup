@@ -81,7 +81,7 @@ Brandon Low <lostlogic@lostlogicx.com> 2011-02-04
 """
 
 from __future__ import absolute_import
-import sys, os, math, mmap, struct
+import os, math, struct
 
 from bup import _helpers
 from bup.helpers import (debug1, debug2, log, mmap_read, mmap_readwrite,

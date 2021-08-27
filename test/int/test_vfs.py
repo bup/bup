@@ -1,8 +1,6 @@
 
 from __future__ import absolute_import, print_function
 from binascii import unhexlify
-from collections import namedtuple
-from errno import ELOOP, ENOTDIR
 from io import BytesIO
 from os import symlink
 from random import Random, randint
@@ -17,7 +15,6 @@ from wvpytest import *
 from bup._helpers import write_random
 from bup import git, metadata, vfs
 from bup.compat import environ, fsencode, items, range
-from bup.git import BUP_CHUNKED
 from bup.helpers import exc, shstr
 from bup.metadata import Metadata
 from bup.repo import LocalRepo

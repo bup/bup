@@ -3,10 +3,10 @@ from __future__ import absolute_import, print_function
 from binascii import hexlify
 import errno, os, stat, sys, time
 
-from bup import compat, metadata, options, git, index, drecurse, hlinkdb
+from bup import metadata, options, git, index, hlinkdb
 from bup.compat import argv_bytes
 from bup.drecurse import recursive_dirlist
-from bup.hashsplit import GIT_MODE_TREE, GIT_MODE_FILE
+from bup.hashsplit import GIT_MODE_FILE
 from bup.helpers import (add_error, handle_ctrl_c, log, parse_excludes, parse_rx_excludes,
                          progress, qprogress, saved_errors)
 from bup.io import byte_stream, path_msg

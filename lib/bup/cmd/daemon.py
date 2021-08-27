@@ -1,9 +1,9 @@
 
 from __future__ import absolute_import
-import fcntl, getopt, os, socket, subprocess, sys
+import fcntl, getopt, os, socket, subprocess, sys, select
 
 from bup import options, path
-from bup.helpers import *
+from bup.helpers import log, debug1
 
 
 optspec = """

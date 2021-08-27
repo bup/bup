@@ -6,15 +6,13 @@
 # Public License as described in the bup LICENSE file.
 
 from __future__ import absolute_import, print_function
-from binascii import hexlify
 from copy import deepcopy
 from errno import EACCES, EINVAL, ENOTTY, ENOSYS, EOPNOTSUPP
 from io import BytesIO
 from time import gmtime, strftime
-import errno, os, sys, stat, time, pwd, grp, socket, struct
+import errno, os, sys, stat, time, socket, struct
 
-from bup import compat, vint, xstat
-from bup.compat import py_maj
+from bup import vint, xstat
 from bup.drecurse import recursive_dirlist
 from bup.helpers import add_error, mkdirp, log, is_superuser, format_filesize
 from bup.io import path_msg

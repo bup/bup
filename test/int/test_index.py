@@ -6,7 +6,7 @@ from wvpytest import *
 
 from bup import index, metadata
 from bup.compat import fsencode
-from bup.helpers import mkdirp, resolve_parent
+from bup.helpers import resolve_parent
 import bup.xstat as xstat
 
 

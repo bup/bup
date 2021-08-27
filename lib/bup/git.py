@@ -4,14 +4,13 @@ interact with the Git data structures.
 """
 
 from __future__ import absolute_import, print_function
-import errno, os, sys, zlib, time, subprocess, struct, stat, re, tempfile, glob
+import os, sys, zlib, subprocess, struct, stat, re, tempfile, glob
 from array import array
 from binascii import hexlify, unhexlify
 from collections import namedtuple
 from itertools import islice
-from numbers import Integral
 
-from bup import _helpers, compat, hashsplit, path, midx, bloom, xstat
+from bup import _helpers, hashsplit, path, midx, bloom, xstat
 from bup.compat import (buffer,
                         byte_int, bytes_from_byte, bytes_from_uint,
                         environ,
@@ -22,15 +21,13 @@ from bup.io import path_msg
 from bup.helpers import (Sha1, add_error, chunkyreader, debug1, debug2,
                          exo,
                          fdatasync,
-                         hostname, localtime, log,
+                         log,
                          merge_dict,
                          merge_iter,
                          mmap_read, mmap_readwrite,
-                         parse_num,
                          progress, qprogress, stat_if_exists,
                          unlink,
                          utc_offset_str)
-from bup.pwdgrp import username, userfullname
 
 
 verbose = 0

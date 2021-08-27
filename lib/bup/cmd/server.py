@@ -5,7 +5,6 @@ import os, struct, subprocess, sys
 
 from bup import options, git, vfs, vint
 from bup.compat import environ, hexstr
-from bup.git import MissingObject
 from bup.helpers import (Conn, debug1, debug2, linereader, lines_until_sentinel,
                          log)
 from bup.io import byte_stream, path_msg

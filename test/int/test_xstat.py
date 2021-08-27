@@ -1,6 +1,5 @@
 
 from __future__ import absolute_import
-import math, tempfile, subprocess
 
 from wvpytest import *
 

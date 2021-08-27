@@ -4,7 +4,7 @@ from __future__ import absolute_import
 from bup.compat import argv_bytes
 from bup.git import check_repo_or_die
 from bup.options import Options
-from bup.helpers import die_if_errors, handle_ctrl_c, log
+from bup.helpers import die_if_errors
 from bup.repo import LocalRepo
 from bup.rm import bup_rm
 

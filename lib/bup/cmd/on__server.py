@@ -3,7 +3,7 @@ from __future__ import absolute_import
 import os, struct, sys
 
 from bup import options, helpers, path
-from bup.compat import environ, py_maj
+from bup.compat import environ
 from bup.io import byte_stream
 
 optspec = """

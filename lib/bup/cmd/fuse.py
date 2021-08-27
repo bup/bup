@@ -27,7 +27,7 @@ if sys.version_info[0] > 2:
         sys.exit(2)
 
 from bup import options, git, vfs, xstat
-from bup.compat import argv_bytes, fsdecode, py_maj
+from bup.compat import argv_bytes, fsdecode
 from bup.helpers import log
 from bup.repo import LocalRepo
 

@@ -3,9 +3,9 @@ from __future__ import absolute_import
 
 import os, glob, sys
 
-from bup import compat, options, git, bloom
+from bup import options, git, bloom
 from bup.compat import argv_bytes, hexstr
-from bup.helpers import (add_error, debug1, handle_ctrl_c, log, progress, qprogress,
+from bup.helpers import (add_error, debug1, log, progress, qprogress,
                          saved_errors)
 from bup.io import path_msg
 

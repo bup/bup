@@ -5,7 +5,6 @@ import errno, platform, tempfile
 import logging
 
 from bup import bloom
-from bup.helpers import mkdirp
 
 def test_bloom(tmpdir):
     hashes = [os.urandom(20) for i in range(100)]

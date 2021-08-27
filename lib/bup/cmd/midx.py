@@ -1,12 +1,12 @@
 
 from __future__ import absolute_import, print_function
 from binascii import hexlify
-import glob, os, math, resource, struct, sys, tempfile
+import glob, os, math, resource, struct, sys
 
 from bup import options, git, midx, _helpers, xstat
 from bup.compat import argv_bytes, hexstr, range
 from bup.helpers import (Sha1, add_error, atomically_replaced_file, debug1, fdatasync,
-                         handle_ctrl_c, log, mmap_readwrite, qprogress,
+                         log, mmap_readwrite, qprogress,
                          saved_errors, unlink)
 from bup.io import byte_stream, path_msg
 

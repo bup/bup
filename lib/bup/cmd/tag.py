@@ -1,11 +1,11 @@
 
 from __future__ import absolute_import
 from binascii import hexlify
-import os, sys
+import sys
 
 from bup import git, options
 from bup.compat import argv_bytes
-from bup.helpers import debug1, handle_ctrl_c, log
+from bup.helpers import debug1, log
 from bup.io import byte_stream, path_msg
 
 

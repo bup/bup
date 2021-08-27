@@ -49,16 +49,16 @@ item.coid.
 from __future__ import absolute_import, print_function
 from binascii import hexlify, unhexlify
 from collections import namedtuple
-from errno import EINVAL, ELOOP, ENOENT, ENOTDIR
-from itertools import chain, dropwhile, groupby, tee
+from errno import EINVAL, ELOOP, ENOTDIR
+from itertools import chain, groupby, tee
 from random import randrange
 from stat import S_IFDIR, S_IFLNK, S_IFREG, S_ISDIR, S_ISLNK, S_ISREG
 from time import localtime, strftime
 import re, sys
 
-from bup import git, metadata, vint
+from bup import git, vint
 from bup.compat import hexstr, range
-from bup.git import BUP_CHUNKED, cp, get_commit_items, parse_commit, tree_decode
+from bup.git import BUP_CHUNKED, parse_commit, tree_decode
 from bup.helpers import debug2, last
 from bup.io import path_msg
 from bup.metadata import Metadata

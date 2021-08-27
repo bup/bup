@@ -1,6 +1,6 @@
 
 from __future__ import absolute_import
-import os, random, sys
+import os, random
 
 from bup import options
 from bup.compat import argv_bytes, bytes_from_uint, range

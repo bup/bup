@@ -1,0 +1,20 @@
+#!/bin/sh
+
+# Changes here might also be appropriate for ./pytest
+
+set -eu
+
+script_home="$(cd "$(dirname "$0")" && pwd -P)"
+testlibdir="$script_home/test/lib"
+
+export PYTHONPATH="$testlibdir${PYTHONPATH:+:$PYTHONPATH}"
+
+if test "$#" -eq 0; then
+    set -x
+    dev/bup-python -m pylint lib
+    # unused-wildcard-import: we always "import * from wvpytest"
+    dev/bup-python -m pylint -d unused-wildcard-import test/lib test/int
+else
+    set -x
+    exec dev/bup-python -m pylint "$@"
+fi

@@ -1,19 +1,15 @@
 
 from __future__ import absolute_import
 from calendar import timegm
-from pipes import quote
 from subprocess import check_call
-from time import strftime, strptime
+from time import strptime
 import os, sys, tempfile
 
 from bup import git, helpers, options
-from bup.compat import argv_bytes, str_type
-from bup.helpers import (handle_ctrl_c,
-                         log,
-                         readpipe,
+from bup.compat import argv_bytes
+from bup.helpers import (log,
                          shstr,
-                         saved_errors,
-                         unlink)
+                         saved_errors)
 import bup.path
 
 

@@ -1,6 +1,6 @@
 
 from __future__ import absolute_import, print_function
-import os, pwd, grp
+import os
 
 from bup import _helpers
 from bup.helpers import cache_key_value

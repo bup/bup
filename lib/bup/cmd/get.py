@@ -2,22 +2,20 @@
 from __future__ import absolute_import, print_function
 from binascii import hexlify, unhexlify
 from collections import namedtuple
-from functools import partial
 from stat import S_ISDIR
 import os, sys, textwrap, time
 
-from bup import compat, git, client, helpers, vfs
+from bup import compat, git, client, vfs
 from bup.compat import (
     argv_bytes,
     bytes_from_byte,
     environ,
     hexstr,
     items,
-    wrap_main
 )
 from bup.git import get_cat_data, parse_commit, walk_object
-from bup.helpers import add_error, debug1, handle_ctrl_c, log, saved_errors
-from bup.helpers import hostname, shstr, tty_width
+from bup.helpers import add_error, debug1, log, saved_errors
+from bup.helpers import hostname, tty_width
 from bup.io import path_msg
 from bup.pwdgrp import userfullname, username
 from bup.repo import LocalRepo, RemoteRepo

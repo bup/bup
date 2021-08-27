@@ -2,9 +2,9 @@
 from __future__ import absolute_import
 import io, math, os
 
-from bup import _helpers, compat, helpers
+from bup import _helpers, helpers
 from bup._helpers import cat_bytes
-from bup.compat import buffer, py_maj
+from bup.compat import buffer
 from bup.helpers import sc_page_size
 
 

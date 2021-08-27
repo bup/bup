@@ -3,16 +3,16 @@
 from __future__ import absolute_import
 from binascii import hexlify
 from itertools import chain
-from stat import S_ISDIR, S_ISLNK
-import copy, locale, os.path, stat, sys
+from stat import S_ISDIR
+import os.path
 import posixpath
 
-from bup import metadata, options, vfs, xstat
+from bup import metadata, vfs, xstat
 from bup.compat import argv_bytes
 from bup.io import path_msg
 from bup.options import Options
 from bup.repo import LocalRepo, RemoteRepo
-from bup.helpers import columnate, istty1, last, log
+from bup.helpers import columnate, istty1, log
 
 def item_hash(item, tree_for_commit):
     """If the item is a Commit, return its commit oid, otherwise return

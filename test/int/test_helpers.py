@@ -1,18 +1,17 @@
 
 from __future__ import absolute_import
 from time import tzset
-import math, os, os.path, re, subprocess
+import os, os.path, re
 from bup import helpers
 
 from wvpytest import *
 
 from bup.compat import bytes_from_byte, bytes_from_uint, environ
 from bup.helpers import (atomically_replaced_file, batchpipe, detect_fakeroot,
-                         grafted_path_components, mkdirp, parse_num,
+                         grafted_path_components, parse_num,
                          path_components, readpipe, stripped_path_components,
                          shstr,
                          utc_offset_str)
-import bup._helpers as _helpers
 
 
 def test_parse_num():

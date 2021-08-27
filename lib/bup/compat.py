@@ -1,6 +1,5 @@
 
 from __future__ import absolute_import, print_function
-from array import array
 from binascii import hexlify
 from traceback import print_exception
 import os, sys
@@ -13,6 +12,7 @@ py3 = py_maj >= 3
 
 if py3:
 
+    # pylint: disable=unused-import
     from os import environb as environ
     from os import fsdecode, fsencode
     from shlex import quote
@@ -88,8 +88,10 @@ else:  # Python 2
         return x
 
     from pipes import quote
+    # pylint: disable=unused-import
     from os import environ, getcwd
 
+    # pylint: disable=unused-import
     from bup.py2raise import reraise
 
     input = raw_input

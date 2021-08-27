@@ -3,7 +3,7 @@ from __future__ import absolute_import
 
 from bup import git, options
 from bup.gc import bup_gc
-from bup.helpers import die_if_errors, handle_ctrl_c, log
+from bup.helpers import die_if_errors
 
 
 optspec = """

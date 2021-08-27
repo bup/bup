@@ -3,7 +3,7 @@ from __future__ import absolute_import
 import sys
 
 from bup import git, options, client
-from bup.helpers import log, saved_errors
+from bup.helpers import log
 from bup.compat import argv_bytes
 
 

@@ -4,7 +4,7 @@ import sys
 from binascii import hexlify, unhexlify
 from subprocess import check_call
 from functools import partial
-import struct, os, time
+import struct, os
 import pytest
 
 from wvpytest import *

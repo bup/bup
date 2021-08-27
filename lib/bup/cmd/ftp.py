@@ -8,8 +8,8 @@ from __future__ import absolute_import, print_function
 import os, fnmatch, stat, sys
 
 from bup import _helpers, options, git, shquote, ls, vfs
-from bup.compat import argv_bytes, fsdecode
-from bup.helpers import chunkyreader, handle_ctrl_c, log
+from bup.compat import argv_bytes
+from bup.helpers import chunkyreader, log
 from bup.io import byte_stream, path_msg
 from bup.repo import LocalRepo
 

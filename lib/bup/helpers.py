@@ -7,8 +7,8 @@ from ctypes import sizeof, c_void_p
 from math import floor
 from os import environ
 from subprocess import PIPE, Popen
-import sys, os, pwd, subprocess, errno, socket, select, mmap, stat, re, struct
-import hashlib, heapq, math, operator, time, grp, tempfile
+import sys, os, subprocess, errno, select, mmap, stat, re, struct
+import hashlib, heapq, math, operator, time, tempfile
 
 from bup import _helpers
 from bup import compat

@@ -1,11 +1,10 @@
 
 from __future__ import absolute_import
-import sys, os, stat, time, random, subprocess, glob
+import os, time, random, subprocess, glob
 import pytest
 
 from bup import client, git, path
 from bup.compat import bytes_from_uint, environ, range
-from bup.helpers import mkdirp
 
 def randbytes(sz):
     s = b''

@@ -1,8 +1,8 @@
 
 from __future__ import absolute_import, print_function
-import os.path, sys
+import sys
 
-from bup import compat, git, ls
+from bup import git, ls
 from bup.io import byte_stream
 
 def main(argv):

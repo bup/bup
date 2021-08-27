@@ -1,8 +1,6 @@
 
 from __future__ import absolute_import, print_function
 
-from bup.hashsplit import GIT_MODE_TREE, GIT_MODE_FILE, GIT_MODE_SYMLINK
-
 
 class TreeItem:
     __slots__ = 'name', 'mode', 'gitmode', 'oid', 'meta'

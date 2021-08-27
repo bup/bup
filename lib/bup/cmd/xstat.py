@@ -5,11 +5,11 @@
 
 from __future__ import absolute_import, print_function
 
-import errno, stat, sys
+import errno, sys
 
-from bup import compat, metadata, options, xstat
+from bup import metadata, options
 from bup.compat import argv_bytes
-from bup.helpers import add_error, handle_ctrl_c, parse_timestamp, saved_errors, \
+from bup.helpers import add_error, parse_timestamp, saved_errors, \
     add_error, log
 from bup.io import byte_stream
 

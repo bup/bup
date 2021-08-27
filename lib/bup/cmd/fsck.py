@@ -1,7 +1,7 @@
 
 from __future__ import absolute_import, print_function
 from shutil import rmtree
-from subprocess import PIPE, Popen
+from subprocess import PIPE
 from tempfile import mkdtemp
 from binascii import hexlify
 import glob, os, subprocess, sys

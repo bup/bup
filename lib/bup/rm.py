@@ -1,11 +1,10 @@
 
 from __future__ import absolute_import
 from binascii import hexlify, unhexlify
-import sys
 
 from bup import compat, git, vfs
 from bup.client import ClientError
-from bup.compat import add_ex_ctx, add_ex_tb, hexstr, pending_raise
+from bup.compat import hexstr, pending_raise
 from bup.git import get_commit_items
 from bup.helpers import add_error, die_if_errors, log, saved_errors
 from bup.io import path_msg

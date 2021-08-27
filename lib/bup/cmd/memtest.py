@@ -4,7 +4,6 @@ import re, resource, sys, time
 
 from bup import git, bloom, midx, options, _helpers
 from bup.compat import range
-from bup.helpers import handle_ctrl_c
 from bup.io import byte_stream
 
 

@@ -3,12 +3,12 @@ from __future__ import absolute_import
 from stat import S_ISDIR
 import copy, errno, os, re, stat, sys
 
-from bup import options, git, metadata, vfs
+from bup import options, git, vfs
 from bup._helpers import write_sparsely
-from bup.compat import argv_bytes, fsencode, wrap_main
-from bup.helpers import (add_error, chunkyreader, die_if_errors, handle_ctrl_c,
-                         log, mkdirp, parse_rx_excludes, progress, qprogress,
-                         saved_errors, should_rx_exclude_path, unlink)
+from bup.compat import argv_bytes, fsencode
+from bup.helpers import (add_error, chunkyreader, die_if_errors,
+                         mkdirp, parse_rx_excludes, progress, qprogress,
+                         should_rx_exclude_path)
 from bup.io import byte_stream
 from bup.repo import LocalRepo, RemoteRepo
 

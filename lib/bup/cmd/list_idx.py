@@ -1,7 +1,7 @@
 
 from __future__ import absolute_import, print_function
 from binascii import hexlify, unhexlify
-import os, sys
+import sys
 
 from bup import git, options
 from bup.compat import argv_bytes

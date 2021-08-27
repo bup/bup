@@ -2,7 +2,7 @@
 from __future__ import absolute_import, print_function
 import re, sys
 
-from bup import compat, options, version
+from bup import options, version
 from bup.io import byte_stream
 
 version_rx = re.compile(r'^[0-9]+\.[0-9]+(\.[0-9]+)?(-[0-9]+-g[0-9abcdef]+)?$')

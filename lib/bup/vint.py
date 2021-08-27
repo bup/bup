@@ -9,7 +9,6 @@
 
 from __future__ import absolute_import
 from io import BytesIO
-import sys
 
 from bup import compat
 from bup import _helpers

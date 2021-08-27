@@ -5,7 +5,7 @@ import re, stat, sys
 
 from bup import options, git, vfs
 from bup.compat import argv_bytes
-from bup.helpers import chunkyreader, handle_ctrl_c, log, saved_errors
+from bup.helpers import chunkyreader, log, saved_errors
 from bup.io import byte_stream
 from bup.repo import LocalRepo
 

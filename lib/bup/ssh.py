@@ -5,7 +5,7 @@ Connect to a remote host via SSH and execute a command on the host.
 from __future__ import absolute_import, print_function
 import sys, os, re, subprocess
 
-from bup import helpers, path
+from bup import path
 from bup.compat import environ
 
 def connect(rhost, port, subcmd, stderr=None):

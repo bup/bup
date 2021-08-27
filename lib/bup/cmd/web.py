@@ -1,14 +1,13 @@
 
 from __future__ import absolute_import, print_function
 from collections import namedtuple
-import mimetypes, os, posixpath, signal, stat, sys, time, urllib, webbrowser
+import mimetypes, os, posixpath, signal, stat, sys, time, webbrowser
 from binascii import hexlify
 
 
 from bup import options, git, vfs
-from bup.helpers import (chunkyreader, debug1, format_filesize, handle_ctrl_c,
+from bup.helpers import (chunkyreader, debug1, format_filesize,
                          log, saved_errors)
-from bup.metadata import Metadata
 from bup.path import resource_path
 from bup.repo import LocalRepo
 from bup.io import path_msg

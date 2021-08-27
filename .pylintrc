@@ -1,0 +1,5 @@
+# -*-conf-*-
+
+[MESSAGES CONTROL]
+disable=all
+enable=unused-import,unused-wildcard-import

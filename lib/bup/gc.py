@@ -5,7 +5,7 @@ from os.path import basename
 import glob, os, subprocess, sys, tempfile
 
 from bup import bloom, git, midx
-from bup.compat import hexstr, pending_raise, range
+from bup.compat import hexstr, pending_raise
 from bup.git import MissingObject, walk_object
 from bup.helpers import Nonlocal, log, progress, qprogress
 from bup.io import path_msg

@@ -8,11 +8,11 @@
 from __future__ import absolute_import
 import sys
 
-from bup import compat, metadata
+from bup import metadata
 from bup import options
 from bup.compat import argv_bytes
 from bup.io import byte_stream
-from bup.helpers import handle_ctrl_c, log, saved_errors
+from bup.helpers import log, saved_errors
 
 
 def open_input(name):

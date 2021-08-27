@@ -1,6 +1,6 @@
 
 from __future__ import absolute_import
-import os, struct, subprocess, sys
+import os, subprocess, sys
 
 from bup import options
 from bup.helpers import debug1, debug2, mux

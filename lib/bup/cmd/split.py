@@ -5,7 +5,7 @@ import sys, time
 
 from bup import compat, hashsplit, git, options, client
 from bup.compat import argv_bytes, environ
-from bup.helpers import (add_error, handle_ctrl_c, hostname, log, parse_num,
+from bup.helpers import (add_error, hostname, log, parse_num,
                          qprogress, reprogress, saved_errors,
                          valid_save_name,
                          parse_date_or_fatal)

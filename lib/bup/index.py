@@ -2,7 +2,7 @@
 from __future__ import absolute_import, print_function
 import errno, os, stat, struct, tempfile
 
-from bup import compat, metadata, xstat
+from bup import metadata, xstat
 from bup._helpers import UINT_MAX, bytescmp
 from bup.compat import range
 from bup.helpers import (add_error, log, merge_iter, mmap_readwrite,

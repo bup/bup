@@ -14,23 +14,21 @@ from importlib import import_module
 from pkgutil import iter_modules
 from subprocess import PIPE
 from threading import Thread
-import errno, re, select, signal, subprocess
+import re, select, signal, subprocess
 
 from bup import compat, path, helpers
 from bup.compat import (
     ModuleNotFoundError,
     add_ex_ctx,
     add_ex_tb,
-    argv_bytes,
     environ,
     fsdecode,
     int_types,
     wrap_main
 )
-from bup.compat import add_ex_tb, add_ex_ctx, argv_bytes, wrap_main
+from bup.compat import add_ex_tb, add_ex_ctx, wrap_main
 from bup.helpers import (
     columnate,
-    debug1,
     handle_ctrl_c,
     log,
     merge_dict,

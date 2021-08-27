@@ -4,7 +4,6 @@ from binascii import unhexlify
 from errno import ELOOP, ENOTDIR
 from os import symlink
 from stat import S_IFDIR
-from sys import stderr
 import os
 from time import localtime, strftime
 
@@ -12,8 +11,6 @@ from wvpytest import *
 
 from bup import git, path, vfs
 from bup.compat import environ
-from bup.io import path_msg
-from bup.metadata import Metadata
 from bup.repo import LocalRepo, RemoteRepo
 from buptest import ex, exo
 from buptest.vfs import tree_dict

@@ -1,6 +1,6 @@
 
 from __future__ import absolute_import, print_function
-import errno, glob, grp, pwd, stat, tempfile, subprocess
+import errno, glob, stat, subprocess
 import os, sys
 import pytest
 
@@ -262,8 +262,6 @@ def test_restore_over_existing_target(tmpdir):
     os.mkdir(path + b'/bar')
     WVEXCEPT(Exception, dir_m.create_path, path, create_symlinks=True)
 
-
-from bup.metadata import read_acl
 
 from bup.metadata import xattr
 if xattr:
