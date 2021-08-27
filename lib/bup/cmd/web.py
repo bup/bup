@@ -159,6 +159,7 @@ class BupRequestHandler(tornado.web.RequestHandler):
             hidden_shown=show_hidden,
             dir_contents=_dir_contents(self.repo, resolution,
                                        show_hidden=show_hidden))
+        return None
 
     @gen.coroutine
     def _get_file(self, repo, path, resolved):

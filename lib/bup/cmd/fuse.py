@@ -106,6 +106,7 @@ class BupFs(fuse.Fuse):
         # Return None since read doesn't need the file atm...
         # If we *do* return the file, it'll show up as the last argument
         #return vfs.fopen(repo, item)
+        return None
 
     def read(self, path, size, offset):
         path = argv_bytes(path)

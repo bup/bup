@@ -263,8 +263,7 @@ def demangle_name(name, mode):
     elif name.endswith(b'.bupm'):
         return (name[:-5],
                 BUP_CHUNKED if stat.S_ISDIR(mode) else BUP_NORMAL)
-    else:
-        return (name, BUP_NORMAL)
+    return (name, BUP_NORMAL)
 
 
 def calc_hash(type, content):
@@ -1269,6 +1268,7 @@ class CatPipe:
         if wait:
             p.wait()
             return p.returncode
+        return None
 
     def restart(self):
         self.close()

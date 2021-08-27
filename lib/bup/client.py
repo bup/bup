@@ -158,6 +158,8 @@ class Client:
             return self.conn.check_ok()
         except Exception as e:
             reraise(ClientError(e))
+            # reraise doesn't return
+            return None
 
     def check_busy(self):
         if self._busy:
@@ -515,6 +517,7 @@ class PackWriter_Remote(git.PackWriter):
             self.onclose() # Unbusy
             self.objcache = None
             return self.suggest_packs() # Returns last idx received
+        return None
 
     def close(self):
         id = self._end()

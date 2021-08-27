@@ -44,6 +44,7 @@ def valid_restore_path(path):
         path = path[1:]
     if b'/' in path:
         return True
+    return False
 
 def parse_owner_mappings(type, options, fatal):
     """Traverse the options and parse all --map-TYPEs, or call Option.fatal()."""

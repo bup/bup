@@ -273,6 +273,8 @@ def quote(x):
     if isinstance(x, compat.str_type):
         return squote(x)
     assert False
+    # some versions of pylint get confused
+    return None
 
 def shstr(cmd):
     """Return a shell quoted string for cmd if it's a sequence, else cmd.
@@ -908,7 +910,7 @@ def handle_ctrl_c():
         if exctype == KeyboardInterrupt:
             log('\nInterrupted.\n')
         else:
-            return oldhook(exctype, value, traceback)
+            oldhook(exctype, value, traceback)
     sys.excepthook = newhook
 
 

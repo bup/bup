@@ -60,6 +60,7 @@ def eget(l, ename):
     for e in l:
         if e.name == ename:
             return e
+    return None
 
 def test_index_negative_timestamps(tmpdir):
     # Makes 'foo' exist

@@ -116,7 +116,7 @@ def _do_midx(outdir, outfilename, infilenames, prefixstr,
            or ((auto or force) and len(infilenames) < 2) \
            or (force and not total):
             debug1('midx: nothing to do.\n')
-            return
+            return None
 
         pages = int(total/SHA_PER_PAGE) or 1
         bits = int(math.ceil(math.log(pages, 2)))

@@ -31,9 +31,10 @@ def exc(cmd, shell=False):
 
 def exo(cmd, shell=False, preexec_fn=None, close_fds=True):
     logcmd(cmd)
-    if not dry_run:
-        return helpers.exo(cmd, shell=shell, preexec_fn=preexec_fn,
-                           close_fds=close_fds)[0]
+    if dry_run:
+        return b''
+    return helpers.exo(cmd, shell=shell, preexec_fn=preexec_fn,
+                       close_fds=close_fds)[0]
 
 def redirect_dup_output():
     os.dup2(1, 3)

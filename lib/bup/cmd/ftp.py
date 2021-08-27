@@ -26,7 +26,7 @@ def do_ls(repo, pwd, args, out):
         opt = ls.opts_from_cmdline(args, onabort=OptionError, pwd=pwd_str)
     except OptionError as e:
         log('error: %s' % e)
-        return
+        return None
     return ls.within_repo(repo, opt, out, pwd_str)
 
 
@@ -90,6 +90,7 @@ def enter_completion(text, iteration):
         except Exception as e2:
             log('Error printing traceback: %s\n' % e2)
         log('\nError in completion: %s\n' % e)
+    return None
 
 
 optspec = """

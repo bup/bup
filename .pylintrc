@@ -5,6 +5,7 @@ disable=all
 enable=
   catching-non-exception,
   consider-using-in,
+  inconsistent-return-statements,
   return-in-init,
   trailing-whitespace,
   undefined-variable,

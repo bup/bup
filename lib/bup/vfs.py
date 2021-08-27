@@ -398,6 +398,7 @@ def is_valid_cache_key(x):
             return True
         if tag == b'res:':
             return True
+    return False
 
 def cache_get(key):
     global _cache

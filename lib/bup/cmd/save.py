@@ -269,6 +269,7 @@ def main(argv):
             link_paths = hlink_db.node_paths(ent.dev, ent.ino)
             if link_paths:
                 return link_paths[0]
+        return None
 
     total = ftotal = 0
     if opt.progress:
