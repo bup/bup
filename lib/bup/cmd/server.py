@@ -228,7 +228,7 @@ def rev_list(conn, _):
     if rv:
         msg = 'git rev-list returned error %d' % rv
         conn.error(msg)
-        raise GitError(msg)
+        raise git.GitError(msg)
     conn.ok()
 
 def resolve(conn, args):

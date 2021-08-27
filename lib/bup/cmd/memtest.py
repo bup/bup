@@ -5,6 +5,7 @@ import re, resource, sys, time
 from bup import git, bloom, midx, options, _helpers
 from bup.compat import range
 from bup.io import byte_stream
+from bup.helpers import log
 
 
 _linux_warned = 0

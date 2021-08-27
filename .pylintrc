@@ -6,6 +6,7 @@ enable=
   consider-using-in,
   return-in-init,
   trailing-whitespace,
+  undefined-variable,
   unidiomatic-typecheck,
   unused-import,
   unused-wildcard-import,

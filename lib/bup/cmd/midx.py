@@ -147,15 +147,15 @@ def _do_midx(outdir, outfilename, infilenames, prefixstr,
 
 
     # This is just for testing (if you enable this, don't clear inp above)
-    if 0:
-        p = midx.PackMidx(outfilename)
-        assert(len(p.idxnames) == len(infilenames))
-        log(repr(p.idxnames) + '\n')
-        assert(len(p) == total)
-        for pe, e in p, git.idxmerge(inp, final_progress=False):
-            pin = next(pi)
-            assert(i == pin)
-            assert(p.exists(i))
+    # if 0:
+    #     p = midx.PackMidx(outfilename)
+    #     assert(len(p.idxnames) == len(infilenames))
+    #     log(repr(p.idxnames) + '\n')
+    #     assert(len(p) == total)
+    #     for pe, e in p, git.idxmerge(inp, final_progress=False):
+    #         pin = next(pi)
+    #         assert(i == pin)
+    #         assert(p.exists(i))
 
     return total, outfilename
 

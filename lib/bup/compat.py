@@ -16,6 +16,8 @@ if py3:
     from os import environb as environ
     from os import fsdecode, fsencode
     from shlex import quote
+    # pylint: disable=undefined-variable
+    # (for python2 looking here)
     ModuleNotFoundError = ModuleNotFoundError
     input = input
     range = range
@@ -93,9 +95,14 @@ else:  # Python 2
     # pylint: disable=unused-import
     from bup.py2raise import reraise
 
+    # on py3 this causes errors, obviously
+    # pylint: disable=undefined-variable
     input = raw_input
+    # pylint: disable=undefined-variable
     range = xrange
+    # pylint: disable=undefined-variable
     str_type = basestring
+    # pylint: disable=undefined-variable
     int_types = (int, long)
 
     hexstr = hexlify

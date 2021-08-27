@@ -15,7 +15,7 @@ from bup.compat import (
 )
 from bup.git import get_cat_data, parse_commit, walk_object
 from bup.helpers import add_error, debug1, log, saved_errors
-from bup.helpers import hostname, tty_width
+from bup.helpers import hostname, tty_width, parse_num
 from bup.io import path_msg
 from bup.pwdgrp import userfullname, username
 from bup.repo import LocalRepo, RemoteRepo
@@ -164,7 +164,7 @@ def parse_args(args):
             opt.compress = int(opt.compress)
         elif arg == b'--bwlimit':
             (opt.bwlimit,), remaining = require_n_args_or_die(1, remaining)
-            opt.bwlimit = long(opt.bwlimit)
+            opt.bwlimit = int(opt.bwlimit)
         elif arg.startswith(b'-') and len(arg) > 2 and arg[1] != b'-':
             # Try to interpret this as -xyz, i.e. "-xyz -> -x -y -z".
             # We do this last so that --foo -bar is valid if --foo
@@ -281,11 +281,11 @@ def cleanup_vfs_path(p):
     return b'/' + result
 
 
-def validate_vfs_path(p):
+def validate_vfs_path(p, spec):
     if p.startswith(b'/.') \
        and not p.startswith(b'/.tag/'):
         misuse('unsupported destination path %s in %s'
-               % (path_msg(dest.path), spec_msg(spec)))
+               % (path_msg(p), spec_msg(spec)))
     return p
 
 
@@ -419,7 +419,7 @@ def resolve_pick(spec, src_repo, dest_repo):
         misuse('no destination provided for %s', spec_args)
     dest = find_vfs_item(spec.dest, dest_repo)
     if not dest:
-        cp = validate_vfs_path(cleanup_vfs_path(spec.dest))
+        cp = validate_vfs_path(cleanup_vfs_path(spec.dest), spec)
         dest = default_loc._replace(path=cp)
     else:
         if not dest.type == 'branch' and not dest.path.startswith(b'/.tag/'):
@@ -481,7 +481,7 @@ def resolve_replace(spec, src_repo, dest_repo):
             misuse('%s impossible; can only overwrite branch or tag'
                   % spec_args)
     else:
-        cp = validate_vfs_path(cleanup_vfs_path(spec.dest))
+        cp = validate_vfs_path(cleanup_vfs_path(spec.dest), spec)
         dest = default_loc._replace(path=cp)
     if not dest.path.startswith(b'/.tag/') \
        and not src.type in ('branch', 'save', 'commit'):

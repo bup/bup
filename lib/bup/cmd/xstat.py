@@ -14,7 +14,7 @@ from bup.helpers import add_error, parse_timestamp, saved_errors, \
 from bup.io import byte_stream
 
 
-def parse_timestamp_arg(field, value):
+def parse_timestamp_arg(o, field, value):
     res = str(value) # Undo autoconversion.
     try:
         res = parse_timestamp(res)
@@ -50,9 +50,9 @@ def main(argv):
     o = options.Options(optspec)
     (opt, flags, remainder) = o.parse_bytes(argv[1:])
 
-    atime_resolution = parse_timestamp_arg('atime', opt.atime_resolution)
-    mtime_resolution = parse_timestamp_arg('mtime', opt.mtime_resolution)
-    ctime_resolution = parse_timestamp_arg('ctime', opt.ctime_resolution)
+    atime_resolution = parse_timestamp_arg(o, 'atime', opt.atime_resolution)
+    mtime_resolution = parse_timestamp_arg(o, 'mtime', opt.mtime_resolution)
+    ctime_resolution = parse_timestamp_arg(o, 'ctime', opt.ctime_resolution)
 
     treat_include_fields_as_definitive = True
     for flag, value in flags:
