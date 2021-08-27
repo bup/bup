@@ -165,8 +165,8 @@ def _golevel(level, f, ename, newentry, metastore, tmax):
 
 class Entry:
     def __init__(self, basename, name, meta_ofs, tmax):
-        assert basename is None or type(basename) == bytes
-        assert name is None or type(name) == bytes
+        assert basename is None or isinstance(basename, bytes)
+        assert name is None or isinstance(name, bytes)
         self.basename = basename
         self.name = name
         self.meta_ofs = meta_ofs

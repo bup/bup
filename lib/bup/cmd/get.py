@@ -229,7 +229,7 @@ def find_vfs_item(name, repo):
     elif kind == vfs.RevList:
         kind = 'branch'
     elif kind == vfs.Commit:
-        if len(res) > 1 and type(res[-2][1]) == vfs.RevList:
+        if len(res) > 1 and isinstance(res[-2][1], vfs.RevList):
             kind = 'save'
         else:
             kind = 'commit'
@@ -248,7 +248,7 @@ def find_vfs_item(name, repo):
                            follow=False, want_meta=False)
         leaf_name, leaf_item = res[-1]
         assert leaf_item
-        assert type(leaf_item) == vfs.Commit
+        assert isinstance(leaf_item, vfs.Commit)
         name = b'/'.join(x[0] for x in res)
         kind = 'save'
     else:

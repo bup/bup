@@ -57,7 +57,7 @@ from time import localtime, strftime
 import re, sys
 
 from bup import git, vint
-from bup.compat import hexstr, range
+from bup.compat import hexstr, range, str_type
 from bup.git import BUP_CHUNKED, parse_commit, tree_decode
 from bup.helpers import debug2, last
 from bup.io import path_msg
@@ -274,8 +274,8 @@ Tags = namedtuple('Tags', ('meta'))
 RevList = namedtuple('RevList', ('meta', 'oid'))
 Commit = namedtuple('Commit', ('meta', 'oid', 'coid'))
 
-item_types = frozenset((Item, Chunky, Root, Tags, RevList, Commit))
-real_tree_types = frozenset((Item, Commit))
+item_types = (Item, Chunky, Root, Tags, RevList, Commit)
+real_tree_types = (Item, Commit)
 
 def write_item(port, item):
     kind = type(item)
@@ -392,8 +392,7 @@ def is_valid_cache_key(x):
       rvl:OID -> {'.', commit, '2012...', next_commit, ...}
     """
     # Suspect we may eventually add "(container_oid, name) -> ...", and others.
-    x_t = type(x)
-    if x_t is bytes:
+    if isinstance(x, bytes):
         tag = x[:4]
         if tag in (b'itm:', b'rvl:') and len(x) == 24:
             return True
@@ -672,7 +671,7 @@ def tree_items(oid, tree_data, names=frozenset(), bupm=None):
 
     # Assumes the tree is properly formed, i.e. there are no
     # duplicates, and entries will be in git tree order.
-    if type(names) not in (frozenset, set):
+    if isinstance(names, (frozenset, set)):
         names = frozenset(names)
     remaining = len(names)
 
@@ -847,7 +846,7 @@ def tags_items(repo, names):
         return
 
     # Assumes no duplicate refs
-    if type(names) not in (frozenset, set):
+    if isinstance(names, (frozenset, set)):
         names = frozenset(names)
     remaining = len(names)
     last_name = max(names)
@@ -894,8 +893,7 @@ def contents(repo, item, names=None, want_meta=True):
     global _root, _tags
     assert repo
     assert S_ISDIR(item_mode(item))
-    item_t = type(item)
-    if item_t in real_tree_types:
+    if isinstance(item, real_tree_types):
         it = repo.cat(hexlify(item.oid))
         _, obj_t, size = next(it)
         data = b''.join(it)
@@ -908,12 +906,12 @@ def contents(repo, item, names=None, want_meta=True):
             item_gen = tree_items_with_meta(repo, item.oid, data, names)
         else:
             item_gen = tree_items(item.oid, data, names)
-    elif item_t == RevList:
+    elif isinstance(item, RevList):
         item_gen = revlist_items(repo, item.oid, names,
                                  require_meta=want_meta)
-    elif item_t == Root:
+    elif isinstance(item, Root):
         item_gen = root_items(repo, names, want_meta)
-    elif item_t == Tags:
+    elif isinstance(item, Tags):
         item_gen = tags_items(repo, names)
     else:
         raise Exception('unexpected VFS item ' + str(item))
@@ -946,8 +944,8 @@ def _resolve_path(repo, path, parent=None, want_meta=True, follow=True):
     if parent:
         for x in parent:
             assert len(x) == 2
-            assert type(x[0]) in (bytes, str)
-            assert type(x[1]) in item_types
+            assert isinstance(x[0], (bytes, str_type))
+            assert isinstance(x[1], item_types)
         assert parent[0][1] == _root
         if not S_ISDIR(item_mode(parent[-1][1])):
             raise IOError(ENOTDIR,
@@ -1008,7 +1006,7 @@ def _resolve_path(repo, path, parent=None, want_meta=True, follow=True):
                         raise_dir_required_but_not_dir(path, parent, past)
                     return notice_resolution(tuple(past))
                 # It's treeish
-                if want_meta and type(item) in real_tree_types:
+                if want_meta and isinstance(item, real_tree_types):
                     dir_meta = _find_treeish_oid_metadata(repo, item.oid)
                     if dir_meta:
                         item = item._replace(meta=dir_meta)

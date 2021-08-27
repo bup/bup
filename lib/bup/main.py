@@ -238,8 +238,7 @@ def filter_output(srcs, dests):
 
     """
     global sep_rx
-    assert all(type(x) in int_types for x in srcs)
-    assert all(type(x) in int_types for x in srcs)
+    assert all(isinstance(x, int_types) for x in srcs)
     assert len(srcs) == len(dests)
     srcs = tuple(srcs)
     dest_for = dict(zip(srcs, dests))
