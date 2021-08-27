@@ -55,7 +55,6 @@ def attempt_completion(text, start, end):
     global _attempt_start, _attempt_end
     _attempt_start = start
     _attempt_end = end
-    return None
 
 _last_line = None
 _last_res = None

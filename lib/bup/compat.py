@@ -49,7 +49,6 @@ if py3:
         def __exit__(self, exc_type, exc_value, traceback):
             if not exc_type:
                 raise self.ex
-            return None
 
     def items(x):
         return x.items()
@@ -131,13 +130,11 @@ else:  # Python 2
             self.ex = ex
         def __enter__(self):
             add_ex_tb(self.ex)
-            return None
         def __exit__(self, exc_type, exc_value, traceback):
             if not exc_type:
                 raise self.ex
             add_ex_tb(exc_value)
             add_ex_ctx(exc_value, self.ex)
-            return None
 
     def dump_traceback(ex):
         stack = [ex]

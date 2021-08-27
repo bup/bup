@@ -6,4 +6,5 @@ enable=
   return-in-init,
   trailing-whitespace,
   unused-import,
-  unused-wildcard-import
+  unused-wildcard-import,
+  useless-return
