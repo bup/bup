@@ -3,6 +3,7 @@
 [MESSAGES CONTROL]
 disable=all
 enable=
+  catching-non-exception,
   consider-using-in,
   return-in-init,
   trailing-whitespace,
