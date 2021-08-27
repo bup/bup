@@ -127,7 +127,7 @@ class Level:
         (ofs,n) = (f.tell(), len(self.list))
         if self.list:
             count = len(self.list)
-            #log('popping %r with %d entries\n' 
+            #log('popping %r with %d entries\n'
             #    % (''.join(self.ename), count))
             for e in self.list:
                 e.write(f)
@@ -402,7 +402,7 @@ class ExistingEntry(Entry):
 
     def __iter__(self):
         return self.iter()
-            
+
 
 class Reader:
     def __init__(self, filename):
@@ -557,7 +557,7 @@ class Writer:
 
     def _add(self, ename, entry):
         if self.lastfile and self.lastfile <= ename:
-            raise Error('%r must come before %r' 
+            raise Error('%r must come before %r'
                              % (''.join(ename), ''.join(self.lastfile)))
         self.lastfile = ename
         self.level = _golevel(self.level, self.f, ename, entry,
@@ -634,7 +634,7 @@ def reduce_paths(paths):
     paths = []
     prev = None
     for (rp, p) in xpaths:
-        if prev and (prev == rp 
+        if prev and (prev == rp
                      or (prev.endswith(b'/') and rp.startswith(prev))):
             continue # already superceded by previous path
         paths.append((rp, p))

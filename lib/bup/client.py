@@ -162,11 +162,11 @@ class Client:
     def check_busy(self):
         if self._busy:
             raise ClientError('already busy with command %r' % self._busy)
-        
+
     def ensure_busy(self):
         if not self._busy:
             raise ClientError('expected to be busy, but not busy?!')
-        
+
     def _not_busy(self):
         self._busy = None
 

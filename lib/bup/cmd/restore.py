@@ -75,7 +75,7 @@ def apply_metadata(meta, name, restore_numeric_ids, owner_map):
     m.uid = owner_map['uid'].get(m.uid, m.uid)
     m.gid = owner_map['gid'].get(m.gid, m.gid)
     m.apply_to_path(name, restore_numeric_ids = restore_numeric_ids)
-    
+
 def hardlink_compatible(prev_path, prev_item, new_item, top):
     prev_candidate = top + prev_path
     if not os.path.exists(prev_candidate):
@@ -101,7 +101,7 @@ def hardlink_if_possible(fullname, item, top, hardlinks):
 
     # FIXME: we can probably replace the target_vfs_path with the
     # relevant vfs item
-    
+
     # hardlinks tracks a list of (restore_path, vfs_path, meta)
     # triples for each path we've written for a given hardlink_target.
     # This allows us to handle the case where we restore a set of
@@ -148,7 +148,7 @@ def write_file_content_sparsely(repo, dest_path, vfs_file):
             os.ftruncate(outfd, pos)
         finally:
             os.close(outfd)
-            
+
 def restore(repo, parent_path, name, item, top, sparse, numeric_ids, owner_map,
             exclude_rxs, verbosity, hardlinks):
     global total_restored
@@ -225,7 +225,7 @@ def main(argv):
         opt.remote = argv_bytes(opt.remote)
     if opt.outdir:
         opt.outdir = argv_bytes(opt.outdir)
-    
+
     git.check_repo_or_die()
 
     if not extra:

@@ -24,7 +24,7 @@ class OsFile:
     def __init__(self, path):
         self.fd = None
         self.fd = os.open(path, os.O_RDONLY|O_LARGEFILE|O_NOFOLLOW|os.O_NDELAY)
-        
+
     def __del__(self):
         if self.fd:
             fd = self.fd

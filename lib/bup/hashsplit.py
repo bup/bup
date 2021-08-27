@@ -37,12 +37,12 @@ class Buf:
             self.data = cat_bytes(self.data, self.start, remaining,
                                   s, 0, len(s))
             self.start = 0
-            
+
     def peek(self, count):
         if count <= 256:
             return self.data[self.start : self.start + count]
         return buffer(self.data, self.start, count)
-    
+
     def eat(self, count):
         self.start += count
 

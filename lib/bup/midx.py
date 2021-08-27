@@ -34,9 +34,9 @@ class PackMidx:
             return self._init_failed()
         ver = struct.unpack('!I', self.map[4:8])[0]
         if ver < MIDX_VERSION:
-            log('Warning: ignoring old-style (v%d) midx %r\n' 
+            log('Warning: ignoring old-style (v%d) midx %r\n'
                 % (ver, path_msg(filename)))
-            self.force_keep = False  # old stuff is boring  
+            self.force_keep = False  # old stuff is boring
             return self._init_failed()
         if ver > MIDX_VERSION:
             log('Warning: ignoring too-new (v%d) midx %r\n'

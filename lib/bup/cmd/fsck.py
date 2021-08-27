@@ -107,7 +107,7 @@ def quick_verify(base):
     if sum.digest() != wantsum:
         raise ValueError('expected %r, got %r' % (hexlify(wantsum),
                                                   sum.hexdigest()))
-        
+
 
 def git_verify(base):
     if opt.quick:
@@ -119,8 +119,8 @@ def git_verify(base):
         return 0
     else:
         return run([b'git', b'verify-pack', b'--', base])
-    
-    
+
+
 def do_pack(base, last, par2_exists, out):
     code = 0
     if par2_ok and par2_exists and (opt.repair or not opt.generate):

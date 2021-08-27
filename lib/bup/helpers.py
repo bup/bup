@@ -161,7 +161,7 @@ def progress(s):
 
 def qprogress(s):
     """Calls progress() only if we haven't printed progress in a while.
-    
+
     This avoids overloading the stderr buffer with excess junk.
     """
     global _last_prog

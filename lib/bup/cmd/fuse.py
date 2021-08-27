@@ -43,7 +43,7 @@ class BupFs(fuse.Fuse):
         self.repo = repo
         self.verbose = verbose
         self.fake_metadata = fake_metadata
-    
+
     def getattr(self, path):
         path = argv_bytes(path)
         if self.verbose > 0:

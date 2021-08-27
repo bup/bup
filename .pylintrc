@@ -2,4 +2,7 @@
 
 [MESSAGES CONTROL]
 disable=all
-enable=unused-import,unused-wildcard-import
+enable=
+  trailing-whitespace,
+  unused-import,
+  unused-wildcard-import

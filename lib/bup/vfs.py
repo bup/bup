@@ -205,7 +205,7 @@ class _FileReader(object):
         if not self._size:
             self._size = _normal_or_chunked_file_size(self._repo, self.oid)
         return self._size
-        
+
     def seek(self, ofs):
         if ofs < 0 or ofs > self._compute_size():
             raise IOError(EINVAL, 'Invalid seek offset: %d' % ofs)
@@ -264,7 +264,7 @@ def _decompose_path(path):
     if not parts:
         must_be_dir = True  # e.g. path was effectively '.' or '/', etc.
     return is_absolute, must_be_dir, parts
-    
+
 
 Item = namedtuple('Item', ('meta', 'oid'))
 Chunky = namedtuple('Chunky', ('meta', 'oid'))
@@ -480,7 +480,7 @@ def tree_data_and_bupm(repo, oid):
     """Return (tree_bytes, bupm_oid) where bupm_oid will be None if the
     tree has no metadata (i.e. older bup save, or non-bup tree).
 
-    """    
+    """
     assert len(oid) == 20
     it = repo.cat(hexlify(oid))
     _, item_t, size = next(it)
@@ -639,7 +639,7 @@ def ordered_tree_entries(tree_data, bupm=None):
         tree_ents = sorted(tree_ents, key=lambda x: x[0])
     for ent in tree_ents:
         yield ent
-    
+
 def tree_items(oid, tree_data, names=frozenset(), bupm=None):
 
     def tree_item(ent_oid, kind, gitmode):
@@ -718,7 +718,7 @@ def tree_items_with_meta(repo, oid, tree_data, names):
         yield item
 
 _save_name_rx = re.compile(br'^\d\d\d\d-\d\d-\d\d-\d{6}(-\d+)?$')
-        
+
 def _reverse_suffix_duplicates(strs):
     """Yields the elements of strs, with any runs of duplicate values
     suffixed with -N suffixes, where the zero padded integer N
@@ -1032,7 +1032,7 @@ def _resolve_path(repo, path, parent=None, want_meta=True, follow=True):
                 else:
                     future.extend(target_future)
                 hops += 1
-                
+
 def resolve(repo, path, parent=None, want_meta=True, follow=True):
     """Follow the path in the virtual filesystem and return a tuple
     representing the location, if any, denoted by the path.  Each

@@ -124,7 +124,7 @@ def do_bloom(path, outfilename, k, force):
     icount = 0
     for name in add:
         ix = git.open_idx(name)
-        qprogress('bloom: writing %.2f%% (%d/%d objects)\r' 
+        qprogress('bloom: writing %.2f%% (%d/%d objects)\r'
                   % (icount*100.0/add_count, icount, add_count))
         b.add_idx(ix)
         count += 1

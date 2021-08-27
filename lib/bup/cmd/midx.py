@@ -55,7 +55,7 @@ def check_midx(name):
         sub = git.open_idx(os.path.join(os.path.dirname(name), subname))
         for ecount,e in enumerate(sub):
             if not (ecount % 1234):
-                qprogress('  %d/%d: %s %d/%d\r' 
+                qprogress('  %d/%d: %s %d/%d\r'
                           % (count, len(ix.idxnames),
                              git.shorten_hash(subname).decode('ascii'),
                              ecount, len(sub)))
@@ -87,7 +87,7 @@ def _do_midx(outdir, outfilename, infilenames, prefixstr,
         assert(outdir)
         sum = hexlify(Sha1(b'\0'.join(infilenames)).digest())
         outfilename = b'%s/midx-%s.midx' % (outdir, sum)
-    
+
     inp = []
     total = 0
     allfilenames = []
@@ -181,11 +181,11 @@ def do_midx_dir(path, outfilename, prout, auto=False, force=False,
             m = git.open_idx(mname)
             contents[mname] = [(b'%s/%s' % (path,i)) for i in m.idxnames]
             sizes[mname] = len(m)
-                    
+
         # sort the biggest+newest midxes first, so that we can eliminate
         # smaller (or older) redundant ones that come later in the list
         midxs.sort(key=lambda ix: (-sizes[ix], -xstat.stat(ix).st_mtime))
-        
+
         for mname in midxs:
             any = 0
             for iname in contents[mname]:
@@ -205,12 +205,12 @@ def do_midx_dir(path, outfilename, prout, auto=False, force=False,
         sizes[iname] = len(i)
 
     all = [(sizes[n],n) for n in (midxs + idxs)]
-    
+
     # FIXME: what are the optimal values?  Does this make sense?
     DESIRED_HWM = force and 1 or 5
     DESIRED_LWM = force and 1 or 2
     existed = dict((name,1) for sz,name in all)
-    debug1('midx: %d indexes; want no more than %d.\n' 
+    debug1('midx: %d indexes; want no more than %d.\n'
            % (len(all), DESIRED_HWM))
     if len(all) <= DESIRED_HWM:
         debug1('midx: nothing to do.\n')

@@ -148,7 +148,7 @@ class ShaBloom:
             return self._init_failed()
         ver = struct.unpack('!I', self.map[4:8])[0]
         if ver < BLOOM_VERSION:
-            log('Warning: ignoring old-style (v%d) bloom %r\n' 
+            log('Warning: ignoring old-style (v%d) bloom %r\n'
                 % (ver, filename))
             return self._init_failed()
         if ver > BLOOM_VERSION:
