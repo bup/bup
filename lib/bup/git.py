@@ -372,10 +372,7 @@ def _decode_packobj(buf):
     return (type, zlib.decompress(buf[i+1:]))
 
 
-class PackIdx:
-    def __init__(self):
-        assert(0)
-
+class PackIdx(object):
     def find_offset(self, hash):
         """Get the offset of an object inside the index file."""
         idx = self._idx_from_hash(hash)
@@ -414,6 +411,7 @@ class PackIdx:
 class PackIdxV1(PackIdx):
     """Object representation of a Git pack index (version 1) file."""
     def __init__(self, filename, f):
+        super(PackIdxV1, self).__init__()
         self.closed = False
         self.name = filename
         self.idxnames = [self.name]
@@ -467,6 +465,7 @@ class PackIdxV1(PackIdx):
 class PackIdxV2(PackIdx):
     """Object representation of a Git pack index (version 2) file."""
     def __init__(self, filename, f):
+        super(PackIdxV2, self).__init__()
         self.closed = False
         self.name = filename
         self.idxnames = [self.name]

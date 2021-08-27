@@ -15,4 +15,5 @@ enable=
   unidiomatic-typecheck,
   unused-import,
   unused-wildcard-import,
-  useless-return
+  useless-return,
+  super-init-not-called
