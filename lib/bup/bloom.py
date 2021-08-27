@@ -145,16 +145,19 @@ class ShaBloom:
         got = self.map[0:4]
         if got != b'BLOM':
             log('Warning: invalid BLOM header (%r) in %r\n' % (got, filename))
-            return self._init_failed()
+            self._init_failed()
+            return
         ver = struct.unpack('!I', self.map[4:8])[0]
         if ver < BLOOM_VERSION:
             log('Warning: ignoring old-style (v%d) bloom %r\n'
                 % (ver, filename))
-            return self._init_failed()
+            self._init_failed()
+            return
         if ver > BLOOM_VERSION:
             log('Warning: ignoring too-new (v%d) bloom %r\n'
                 % (ver, filename))
-            return self._init_failed()
+            self._init_failed()
+            return
 
         self.bits, self.k, self.entries = struct.unpack('!HHI', self.map[8:16])
         idxnamestr = self.map[16 + 2**self.bits:]

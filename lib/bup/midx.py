@@ -31,18 +31,21 @@ class PackMidx:
             log('Warning: skipping: invalid MIDX header in %r\n'
                 % path_msg(filename))
             self.force_keep = True
-            return self._init_failed()
+            self._init_failed()
+            return
         ver = struct.unpack('!I', self.map[4:8])[0]
         if ver < MIDX_VERSION:
             log('Warning: ignoring old-style (v%d) midx %r\n'
                 % (ver, path_msg(filename)))
             self.force_keep = False  # old stuff is boring
-            return self._init_failed()
+            self._init_failed()
+            return
         if ver > MIDX_VERSION:
             log('Warning: ignoring too-new (v%d) midx %r\n'
                 % (ver, path_msg(filename)))
             self.force_keep = True  # new stuff is exciting
-            return self._init_failed()
+            self._init_failed()
+            return
 
         self.bits = _helpers.firstword(self.map[8:12])
         self.entries = 2**self.bits
