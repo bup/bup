@@ -271,7 +271,6 @@ static char *exe_parent_dir(const char * const argv_0)
                 break;
             if (!INT_MULTIPLY_OK(path_n, 2, &path_n))
                 die(2, "memory buffer for executable path would be too big\n");
-            path_n *= 2;
             if (path != sbuf) free(path);
             path = malloc(path_n);
             if (!path)
