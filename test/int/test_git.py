@@ -255,8 +255,9 @@ def test_commit_parsing(tmpdir):
     environ[b'GIT_AUTHOR_EMAIL'] = b'bup@a425bc70a02811e49bdf73ee56450e6f'
     environ[b'GIT_COMMITTER_EMAIL'] = environ[b'GIT_AUTHOR_EMAIL']
     try:
-        readpipe([b'git', b'init', workdir])
         environ[b'GIT_DIR'] = environ[b'BUP_DIR'] = repodir
+        readpipe([b'git', b'init', workdir])
+        exc(b'git', b'symbolic-ref', b'HEAD', b'refs/heads/main')
         git.check_repo_or_die(repodir)
         os.chdir(workdir)
         with open('foo', 'w') as f:
@@ -265,7 +266,7 @@ def test_commit_parsing(tmpdir):
         readpipe([b'git', b'commit', b'-am', b'Do something',
                   b'--author', b'Someone <someone@somewhere>',
                   b'--date', b'Sat Oct 3 19:48:49 2009 -0400'])
-        commit = readpipe([b'git', b'show-ref', b'-s', b'master']).strip()
+        commit = readpipe([b'git', b'show-ref', b'-s', b'main']).strip()
         parents = showval(commit, b'%P')
         tree = showval(commit, b'%T')
         cname = showval(commit, b'%cn')
@@ -292,7 +293,7 @@ def test_commit_parsing(tmpdir):
             f.write(b'baz\n')
         readpipe([b'git', b'add', '.'])
         readpipe([b'git', b'commit', b'-am', b'Do something else'])
-        child = readpipe([b'git', b'show-ref', b'-s', b'master']).strip()
+        child = readpipe([b'git', b'show-ref', b'-s', b'main']).strip()
         parents = showval(child, b'%P')
         commit_items = git.get_commit_items(child, git.cp())
         WVPASSEQ(commit_items.parents, [commit])
