@@ -158,14 +158,15 @@ def test_prune_older(tmpdir):
     three_years_ago = now - (60 * 60 * 24 * 366 * 3)
     chdir(tmpdir)
     ex([b'git', b'init', b'work'])
+    ex([b'git', b'symbolic-ref', b'HEAD', b'refs/heads/main'])
     ex([b'git', b'config', b'gc.autoDetach', b'false'])
 
     wvstart('generating ' + str(save_population) + ' random saves')
     chdir(tmpdir + b'/work')
     save_utcs = create_older_random_saves(save_population, three_years_ago, now)
     chdir(tmpdir)
-    test_set_hash = exo([b'git', b'show-ref', b'-s', b'master']).out.rstrip()
-    ls_saves = exo((bup_cmd, b'ls', b'master')).out.splitlines()
+    test_set_hash = exo([b'git', b'show-ref', b'-s', b'main']).out.rstrip()
+    ls_saves = exo((bup_cmd, b'ls', b'main')).out.splitlines()
     wvpasseq(save_population + 1, len(ls_saves))
 
     wvstart('ensure everything kept, if no keep arguments')
@@ -173,7 +174,7 @@ def test_prune_older(tmpdir):
     proc = ex((bup_cmd,
                b'prune-older', b'-v', b'--unsafe', b'--no-gc',
                b'--wrt', b'%d' % now) \
-              + (b'master',),
+              + (b'main',),
               stdout=None, stderr=PIPE, check=False)
     wvpassne(proc.rc, 0)
     wvpass(b'at least one keep argument is required' in proc.err)
@@ -193,7 +194,7 @@ def test_prune_older(tmpdir):
             b'prune-older', b'-v', b'--unsafe', b'--no-gc', b'--wrt',
             b'%d' % now) \
            + period_spec_to_period_args(spec) \
-           + (b'master',))
+           + (b'main',))
         check_prune_result(expected)
 
 
@@ -213,5 +214,5 @@ def test_prune_older(tmpdir):
         ex((bup_cmd,
             b'prune-older', b'-v', b'--unsafe', b'--wrt', b'%d' % now) \
            + period_spec_to_period_args(spec) \
-           + (b'master',))
+           + (b'main',))
         check_prune_result(expected)
