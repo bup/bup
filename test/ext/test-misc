@@ -16,6 +16,8 @@ WVPASS cd "$tmpdir"
 
 WVSTART "init"
 WVPASS bup init
+# Be independent of git defaults or a configured defaultBranch
+git --git-dir "$BUP_DIR" symbolic-ref HEAD refs/heads/main
 D=bupdata.tmp
 WVPASS force-delete $D
 WVPASS mkdir $D
@@ -51,7 +53,7 @@ WVSTART "save/git-fsck"
     #git repack -Ad
     #git prune
     WVPASS bup random 4k | WVPASS bup split -b
-    (WVPASS cd "$top/test/sampledata" && WVPASS bup save -vvn master /) || exit $?
+    (WVPASS cd "$top/test/sampledata" && WVPASS bup save -vvn main /) || exit $?
     result="$(LC_ALL=C git fsck --full --strict 2>&1)" || exit $?
     n=$(echo "$result" |
         WVFAIL egrep -v 'dangling (commit|tree|blob)' |
@@ -79,10 +81,10 @@ WVSTART "pack name and idx same as git"
 
 
 WVSTART "ftp"
-WVPASS bup ftp "cat /master/latest/$tmpdir/$D/b" >$D/b.new
-WVPASS bup ftp "cat /master/latest/$tmpdir/$D/f" >$D/f.new
-WVPASS bup ftp "cat /master/latest/$tmpdir/$D/f"{,} >$D/f2.new
-WVPASS bup ftp "cat /master/latest/$tmpdir/$D/a" >$D/a.new
+WVPASS bup ftp "cat /main/latest/$tmpdir/$D/b" >$D/b.new
+WVPASS bup ftp "cat /main/latest/$tmpdir/$D/f" >$D/f.new
+WVPASS bup ftp "cat /main/latest/$tmpdir/$D/f"{,} >$D/f2.new
+WVPASS bup ftp "cat /main/latest/$tmpdir/$D/a" >$D/a.new
 WVPASSEQ "$(sha1sum <$D/b)" "$(sha1sum <$D/b.new)"
 WVPASSEQ "$(sha1sum <$D/f)" "$(sha1sum <$D/f.new)"
 WVPASSEQ "$(cat $D/f.new{,} | sha1sum)" "$(sha1sum <$D/f2.new)"
@@ -93,10 +95,10 @@ WVSTART "tag"
 WVFAIL bup tag -d v0.n 2>/dev/null
 WVFAIL bup tag v0.n non-existant 2>/dev/null
 WVPASSEQ "$(bup tag)" ""
-WVPASS bup tag v0.1 master
+WVPASS bup tag v0.1 main
 WVPASSEQ "$(bup tag)" "v0.1"
-WVFAIL bup tag v0.1 master
-WVPASS bup tag -f v0.1 master
+WVFAIL bup tag v0.1 main
+WVPASS bup tag -f v0.1 main
 WVPASS bup tag -d v0.1
 WVPASS bup tag -f -d v0.1
 WVFAIL bup tag -d v0.1
