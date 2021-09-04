@@ -27,6 +27,8 @@ WVPASS cd "$tmpdir"
 
 WVSTART "init"
 WVPASS bup init
+# Be independent of git defaults or a configured defaultBranch
+git --git-dir "$BUP_DIR" symbolic-ref HEAD refs/heads/main
 D=bupdata.tmp
 WVPASS force-delete $D
 WVPASS mkdir $D
@@ -45,11 +47,11 @@ WVPASS force-delete buprestore.tmp
 WVFAIL bup restore boink
 WVPASS touch "$tmpdir/$D/$D"
 WVPASS bup index -u "$tmpdir/$D"
-WVPASS bup save -n master /
-WVPASS bup restore -C buprestore.tmp "/master/latest/$tmpdir/$D"
+WVPASS bup save -n main /
+WVPASS bup restore -C buprestore.tmp "/main/latest/$tmpdir/$D"
 WVPASSEQ "$(ls buprestore.tmp)" "bupdata.tmp"
 WVPASS force-delete buprestore.tmp
-WVPASS bup restore -C buprestore.tmp "/master/latest/$tmpdir/$D/"
+WVPASS bup restore -C buprestore.tmp "/main/latest/$tmpdir/$D/"
 WVPASS touch $D/non-existent-file buprestore.tmp/non-existent-file # else diff fails
 WVPASS diff -ur $D/ buprestore.tmp/
 WVPASS force-delete buprestore.tmp
