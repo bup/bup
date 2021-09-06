@@ -14,8 +14,17 @@ case "$OSTYPE" in
     ;;
 esac
 
+set -x
+
+git --version
 rsync --version
 
 # Older versions of par2 don't support -V, but it'll still show the
 # version when it fails.
 if command -v par2; then par2 -V || true; fi
+
+df -h
+mount
+
+id
+pwd
