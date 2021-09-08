@@ -9,7 +9,7 @@ task:
     set -xe
     dev/prep-for-debianish-build python2
     dev/system-info
-    eatmydata make -j6 PYTHON=python2 check
+    make -j6 BUP_PYTHON_CONFIG=python2.7-config check
 
 task:
   name: debian (py2 long-check)
@@ -23,7 +23,8 @@ task:
     dev/system-info
     adduser --disabled-password --gecos '' bup
     chown -R bup:bup .
-    su -l bup -c "eatmydata make -j6 -C '$(pwd)' PYTHON=python2 long-check"
+    printf "make -j6 -C %q BUP_PYTHON_CONFIG=python2.7-config long-check" \
+      "$(pwd)" | su -l bup
 
 task:
   name: debian (py2 check)
@@ -37,7 +38,8 @@ task:
     dev/system-info
     adduser --disabled-password --gecos '' bup
     chown -R bup:bup .
-    su -l bup -c "eatmydata make -j6 -C '$(pwd)' PYTHON=python2 check"
+    printf "make -j6 -C %q BUP_PYTHON_CONFIG=python2.7-config check" \
+      "$(pwd)" | su -l bup
 
 task:
   name: debian (py3 check root)
@@ -49,7 +51,7 @@ task:
     set -xe
     dev/prep-for-debianish-build python3
     dev/system-info
-    eatmydata make -j6 PYTHON=python3 check
+    make -j6 BUP_PYTHON_CONFIG=python3-config check
 
 task:
   name: debian (py3 long-check)
@@ -63,7 +65,8 @@ task:
     dev/system-info
     adduser --disabled-password --gecos '' bup
     chown -R bup:bup .
-    su -l bup -c "eatmydata make -j6 -C '$(pwd)' PYTHON=python3 long-check"
+    printf "make -j6 -C %q BUP_PYTHON_CONFIG=python3-config long-check" \
+      "$(pwd)" | su -l bup
 
 task:
   name: debian (py3 check)
@@ -77,7 +80,8 @@ task:
     dev/system-info
     adduser --disabled-password --gecos '' bup
     chown -R bup:bup .
-    su -l bup -c "eatmydata make -j6 -C '$(pwd)' PYTHON=python3 check"
+    printf "make -j6 -C %q BUP_PYTHON_CONFIG=python3-config check" \
+      "$(pwd)" | su -l bup
 
 task:
   name: freebsd (py3 check)
@@ -89,7 +93,7 @@ task:
     set -xe
     dev/prep-for-freebsd-build python3
     dev/system-info
-    gmake -j6 PYTHON=python3.7 check
+    BUP_PYTHON_CONFIG=python3.8-config make -j6 check
 
 task:
   name: macos (py3 check)
@@ -99,6 +103,5 @@ task:
     set -xe
     dev/prep-for-macos-build python3
     export PKG_CONFIG_PATH=/usr/local/opt/readline/lib/pkgconfig
-    export PYTHON=python3
     dev/system-info
-    make -j4 PYTHON=python3 check
+    make -j6 BUP_PYTHON_CONFIG=python3-config LDFLAGS=-L/usr/local/lib check
