@@ -1,6 +1,6 @@
 
 task:
-  name: debian (py2)
+  name: debian (py2 check root)
   container:
     image: debian:buster
     cpu: 4
@@ -12,7 +12,7 @@ task:
     eatmydata make -j6 PYTHON=python2 check
 
 task:
-  name: debian (long py2)
+  name: debian (py2 long-check)
   container:
     image: debian:buster
     cpu: 4
@@ -26,7 +26,7 @@ task:
     su -l bup -c "eatmydata make -j6 -C '$(pwd)' PYTHON=python2 long-check"
 
 task:
-  name: debian (root py2)
+  name: debian (py2 check)
   container:
     image: debian:buster
     cpu: 4
@@ -40,7 +40,7 @@ task:
     su -l bup -c "eatmydata make -j6 -C '$(pwd)' PYTHON=python2 check"
 
 task:
-  name: debian (py3)
+  name: debian (py3 check root)
   container:
     image: debian:buster
     cpu: 4
@@ -52,7 +52,7 @@ task:
     eatmydata make -j6 PYTHON=python3 check
 
 task:
-  name: debian (long py3)
+  name: debian (py3 long-check)
   container:
     image: debian:buster
     cpu: 4
@@ -66,7 +66,7 @@ task:
     su -l bup -c "eatmydata make -j6 -C '$(pwd)' PYTHON=python3 long-check"
 
 task:
-  name: debian (root py3)
+  name: debian (py3 check)
   container:
     image: debian:buster
     cpu: 4
@@ -80,7 +80,7 @@ task:
     su -l bup -c "eatmydata make -j6 -C '$(pwd)' PYTHON=python3 check"
 
 task:
-  name: freebsd (py3)
+  name: freebsd (py3 check)
   freebsd_instance:
     image: freebsd-12-2-release-amd64
     cpu: 4
@@ -92,7 +92,7 @@ task:
     gmake -j6 PYTHON=python3.7 check
 
 task:
-  name: macos (py3)
+  name: macos (py3 check)
   osx_instance:
     image: catalina-base
   script: |
