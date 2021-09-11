@@ -1,6 +1,6 @@
 
 task:
-  name: debian (py2 check root)
+  name: debian (py2 check/lint root)
   container:
     image: debian:buster
     cpu: 4
@@ -9,7 +9,8 @@ task:
     set -xe
     dev/prep-for-debianish-build python2
     dev/system-info
-    make -j6 BUP_PYTHON_CONFIG=python2.7-config check
+    BUP_PYTHON_CONFIG=python2.7-config ./configure --with-pylint=yes
+    make -j6 check
 
 task:
   name: debian (py2 long-check)
@@ -42,7 +43,7 @@ task:
       "$(pwd)" | su -l bup
 
 task:
-  name: debian (py3 check root)
+  name: debian (py3 check/lint root)
   container:
     image: debian:buster
     cpu: 4
@@ -51,7 +52,8 @@ task:
     set -xe
     dev/prep-for-debianish-build python3
     dev/system-info
-    make -j6 BUP_PYTHON_CONFIG=python3-config check
+    BUP_PYTHON_CONFIG=python3-config ./configure --with-pylint=yes
+    make -j6 check
 
 task:
   name: debian (py3 long-check)
