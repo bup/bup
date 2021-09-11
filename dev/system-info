@@ -8,10 +8,14 @@ case "$OSTYPE" in
     linux*)
         cat /proc/cpuinfo
         cat /proc/meminfo
-    ;;
+        ;;
+    freebsd*)
+        sysctl hw.machine hw.machine_arch hw.model hw.ncpu
+        sysctl hw.{phys,user,real}mem
+        ;;
     darwin*)
         system_profiler SPHardwareDataType
-    ;;
+        ;;
 esac
 
 set -x
