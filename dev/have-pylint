@@ -1,0 +1,17 @@
+#!/bin/sh
+"""": # -*-python-*-
+bup_exec="$(dirname "$0")/bup-exec" || exit $?
+exec "$bup_exec" "$0" ${1+"$@"}
+"""
+
+from __future__ import absolute_import, print_function
+
+import sys
+
+try:
+    import pylint
+except ImportError as ex:
+    sys.exit(1)
+except BaseException as ex:
+    print(ex, file=sys.stderr)
+    sys.exit(2)

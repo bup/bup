@@ -1,8 +1,35 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
 # Changes here might also be appropriate for ./pytest
 
 set -eu
+
+with_pylint=$(cat config/config.var/with-pylint)
+
+case "$with_pylint" in
+    yes) ;;
+    no)
+        echo "./pylint: doing nothing given ./configure --with-pylint=no" 1>&2
+        exit 0
+        ;;
+    maybe)
+        rc=0
+        dev/have-pylint || rc=$?
+        case "$rc" in
+            0) ;;
+            1)
+                echo "./pylint: doing nothing (pylint not found)" 1>&2
+                exit 0
+                ;;
+            *) exit "$rc" ;;
+        esac
+        ;;
+    *)
+        printf "./pylint: unexpected config/config.var/with-pylint value %q\n" \
+               "$with_pylint" 1>&2
+        exit 2
+        ;;
+esac
 
 script_home="$(cd "$(dirname "$0")" && pwd -P)"
 testlibdir="$script_home/test/lib"

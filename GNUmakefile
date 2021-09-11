@@ -206,7 +206,7 @@ get_parallel_n = $(patsubst -j%,%,$(parallel_opt))
 maybe_specific_n = $(if $(filter -j%,$(parallel_opt)),-n$(get_parallel_n))
 xdist_opt = $(if $(filter -j,$(parallel_opt)),-nauto,$(maybe_specific_n))
 
-lint: dev/bup-python
+lint: dev/bup-exec dev/bup-python
 	./pylint
 
 test: all test/tmp dev/python lint

@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+ac_help="--with-pylint[=yes|no|maybe]  require and run pylint (maybe)"
+
 bup_find_prog()
 {
     # Prints prog path to stdout or nothing.
@@ -34,6 +36,20 @@ bup_try_c_code()
 }
 
 TARGET=bup
+
+argv=()
+with_pylint=maybe
+while test $# -gt 0; do
+    case "$1" in
+        --with-pylint=yes) with_pylint=yes; shift;;
+        --with-pylint=maybe) with_pylint=maybe; shift;;
+        --with-pylint=no) with_pylint=no; shift;;
+        *) argv+=("$1"); shift;;
+    esac
+done
+
+# Set $@ to the adjusted args
+set - "${argv[@]}"
 
 . ./configure.inc
 
@@ -341,6 +357,7 @@ set -euo pipefail
 mkdir -p config.var.tmp
 echo -n "$MAKE" > config.var.tmp/bup-make
 echo -n "$bup_python_config" > config.var.tmp/bup-python-config
+echo -n "$with_pylint" > config.var.tmp/with-pylint
 mv config.var.tmp config.var
 
 if test -e bin; then rm -r bin; fi

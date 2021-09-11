@@ -1,9 +1,6 @@
 #!/bin/sh
 
-if test "$#" -gt 0; then
-    echo "Usage: configure" 1>&2
-    exit 1
-fi
+set -e
 
-cd config &&
+cd config
 exec ./configure "$@"
