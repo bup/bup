@@ -210,11 +210,12 @@ lint: dev/bup-python
 	./pylint
 
 test: all test/tmp dev/python lint
-	 if test yes = "$$(dev/python -c 'import xdist; print("yes")' 2>/dev/null)"; then \
+	./bup features
+	if test yes = "$$(dev/python -c 'import xdist; print("yes")' 2>/dev/null)"; then \
 	   (set -x; ./pytest $(xdist_opt);) \
-	 else \
-	   (set -x; ./pytest;) \
-	 fi
+	else \
+	  (set -x; ./pytest;) \
+	fi
 
 stupid:
 	PATH=/bin:/usr/bin $(MAKE) test
