@@ -88,6 +88,7 @@ Reasons you might want to avoid bup
 
  - Any items in "Things that are stupid" below.
 
+
 Notable changes introduced by a release
 =======================================
 
@@ -107,11 +108,9 @@ Notable changes introduced by a release
 Test status
 ===========
 
-| branch | Debian                                                                                                                                         | FreeBSD                                                                                                                                          | macOS                                                                                                                                        |
-|--------|------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------|
-| master | [![Debian test status](https://api.cirrus-ci.com/github/bup/bup.svg?branch=master&task=debian)](https://cirrus-ci.com/github/bup/bup) | [![FreeBSD test status](https://api.cirrus-ci.com/github/bup/bup.svg?branch=master&task=freebsd)](https://cirrus-ci.com/github/bup/bup) | [![macOS test status](https://api.cirrus-ci.com/github/bup/bup.svg?branch=master&task=macos)](https://cirrus-ci.com/github/bup/bup) |
-| 0.30.x | [![Debian test status](https://api.cirrus-ci.com/github/bup/bup.svg?branch=0.30.x&task=debian)](https://cirrus-ci.com/github/bup/bup) | [![FreeBSD test status](https://api.cirrus-ci.com/github/bup/bup.svg?branch=0.30.x&task=freebsd)](https://cirrus-ci.com/github/bup/bup) | [![macOS test status](https://api.cirrus-ci.com/github/bup/bup.svg?branch=0.30.x&task=macos)](https://cirrus-ci.com/github/bup/bup) |
-| 0.29.x | [![Debian test status](https://api.cirrus-ci.com/github/bup/bup.svg?branch=0.29.x&task=debian)](https://cirrus-ci.com/github/bup/bup) | [![FreeBSD test status](https://api.cirrus-ci.com/github/bup/bup.svg?branch=0.29.x&task=freebsd)](https://cirrus-ci.com/github/bup/bup) | [![macOS test status](https://api.cirrus-ci.com/github/bup/bup.svg?branch=0.29.x&task=macos)](https://cirrus-ci.com/github/bup/bup) |
+| master | 0.30.x | 0.29.x |
+|--------|--------|--------|
+| [![master branch test status](https://api.cirrus-ci.com/github/bup/bup.svg?branch=master)](https://cirrus-ci.com/github/bup/bup) | [![0.30 branch test status](https://api.cirrus-ci.com/github/bup/bup.svg?branch=0.30.x)](https://cirrus-ci.com/github/bup/bup) | [![0.29 branch test status](https://api.cirrus-ci.com/github/bup/bup.svg?branch=0.29.x)](https://cirrus-ci.com/github/bup/bup) |
 
 Getting started
 ===============
