@@ -50,7 +50,8 @@ WVPASS chmod 0700 "$tmpmnt1"
 
 # Create trivial content.
 WVPASS date > "$tmpmnt1/foo"
-WVPASS umount "$tmpmnt1"
+# A non-lazy umount was reported to fail on some systems
+WVPASS umount -l "$tmpmnt1"
 
 # Mount twice, so we'll have the same content with different devices.
 WVPASS cp -pP testfs.img testfs2.img
