@@ -252,11 +252,11 @@ Documentation/substvars: $(bup_deps)
 
 Documentation/%.1: Documentation/%.md Documentation/substvars
 	$(pf); sed -f Documentation/substvars $< \
-	  | $(PANDOC) -s -r markdown -w man -o $@
+	  | "$(PANDOC)" -s -r markdown -w man -o $@
 
 Documentation/%.html: Documentation/%.md Documentation/substvars
 	$(pf); sed -f Documentation/substvars $< \
-	  | $(PANDOC) -s -r markdown -w html -o $@
+	  | "$(PANDOC)" -s -r markdown -w html -o $@
 
 .PHONY: Documentation/clean
 Documentation/clean:
