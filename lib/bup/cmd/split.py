@@ -56,10 +56,11 @@ class NoOpPackWriter:
     def new_tree(self, shalist):
         return git.calc_hash(b'tree', git.tree_encode(shalist))
 
-
-def main(argv):
+def opts_from_cmdline(argv):
     o = options.Options(optspec)
     opt, flags, extra = o.parse_bytes(argv[1:])
+    opt.sources = extra
+
     if opt.name: opt.name = argv_bytes(opt.name)
     if opt.remote: opt.remote = argv_bytes(opt.remote)
     if opt.verbose is None: opt.verbose = 0
@@ -75,29 +76,32 @@ def main(argv):
         o.fatal('-b is incompatible with -t, -c, -n')
     if extra and opt.git_ids:
         o.fatal("don't provide filenames when using --git-ids")
-
     if opt.verbose >= 2:
         git.verbose = opt.verbose - 1
         opt.bench = 1
-
-    max_pack_size = None
     if opt.max_pack_size:
-        max_pack_size = parse_num(opt.max_pack_size)
-    max_pack_objects = None
+        opt.max_pack_size = parse_num(opt.max_pack_size)
     if opt.max_pack_objects:
-        max_pack_objects = parse_num(opt.max_pack_objects)
-
+        opt.max_pack_objects = parse_num(opt.max_pack_objects)
     if opt.fanout:
-        hashsplit.fanout = parse_num(opt.fanout)
-    if opt.blobs:
-        hashsplit.fanout = 0
+        opt.fanout = parse_num(opt.fanout)
     if opt.bwlimit:
-        client.bwlimit = parse_num(opt.bwlimit)
+        opt.bwlimit = parse_num(opt.bwlimit)
     if opt.date:
-        date = parse_date_or_fatal(opt.date, o.fatal)
+        opt.date = parse_date_or_fatal(opt.date, o.fatal)
     else:
-        date = time.time()
+        opt.date = time.time()
 
+    opt.is_reverse = environ.get(b'BUP_SERVER_REVERSE')
+    if opt.is_reverse and opt.remote:
+        o.fatal("don't use -r in reverse mode; it's automatic")
+
+    if opt.name and not valid_save_name(opt.name):
+        o.fatal("'%r' is not a valid branch name." % opt.name)
+
+    return opt
+
+def split(opt, files, parent, out, pack_writer):
     # Hack around lack of nonlocal vars in python 2
     total_bytes = [0]
     def prog(filenum, nbytes):
@@ -108,88 +112,13 @@ def main(argv):
         else:
             qprogress('Splitting: %d kbytes\r' % (total_bytes[0] // 1024))
 
-
-    opt.is_reverse = environ.get(b'BUP_SERVER_REVERSE')
-    if opt.is_reverse and opt.remote:
-        o.fatal("don't use -r in reverse mode; it's automatic")
-    start_time = time.time()
-
-    if opt.name and not valid_save_name(opt.name):
-        o.fatal("'%r' is not a valid branch name." % opt.name)
-    refname = opt.name and b'refs/heads/%s' % opt.name or None
-
-    writing = not (opt.noop or opt.copy)
-    remote_dest = opt.remote or opt.is_reverse
-
-    if not writing:
-        cli = pack_writer = oldref = None
-    elif remote_dest:
-        git.check_repo_or_die()
-        cli = client.Client(opt.remote)
-        oldref = refname and cli.read_ref(refname) or None
-    else:
-        git.check_repo_or_die()
-        cli = None
-        oldref = refname and git.read_ref(refname) or None
-
-    input = byte_stream(sys.stdin)
-
-    if opt.git_ids:
-        # the input is actually a series of git object ids that we should retrieve
-        # and split.
-        #
-        # This is a bit messy, but basically it converts from a series of
-        # CatPipe.get() iterators into a series of file-type objects.
-        # It would be less ugly if either CatPipe.get() returned a file-like object
-        # (not very efficient), or split_to_shalist() expected an iterator instead
-        # of a file.
-        cp = git.CatPipe()
-        class IterToFile:
-            def __init__(self, it):
-                self.it = iter(it)
-            def read(self, size):
-                v = next(self.it, None)
-                return v or b''
-        def read_ids():
-            while 1:
-                line = input.readline()
-                if not line:
-                    break
-                if line:
-                    line = line.strip()
-                try:
-                    it = cp.get(line.strip())
-                    next(it, None)  # skip the file info
-                except KeyError as e:
-                    add_error('error: %s' % e)
-                    continue
-                yield IterToFile(it)
-        files = read_ids()
-    else:
-        # the input either comes from a series of files or from stdin.
-        files = extra and (open(argv_bytes(fn), 'rb') for fn in extra) or [input]
-
-    if not writing:
-        pack_writer = NoOpPackWriter()
-    elif not remote_dest:
-        pack_writer = git.PackWriter(compression_level=opt.compress,
-                                     max_pack_size=max_pack_size,
-                                     max_pack_objects=max_pack_objects)
-    else:
-        pack_writer = cli.new_packwriter(compression_level=opt.compress,
-                                         max_pack_size=max_pack_size,
-                                         max_pack_objects=max_pack_objects)
-
-    sys.stdout.flush()
-    out = byte_stream(sys.stdout)
-
     new_blob = pack_writer.new_blob
     new_tree = pack_writer.new_tree
     if opt.blobs:
         shalist = hashsplit.split_to_blobs(new_blob, files,
                                            keep_boundaries=opt.keep_boundaries,
                                            progress=prog)
-        for (sha, size, level) in shalist:
+        for sha, size, level in shalist:
             out.write(hexlify(sha) + b'\n')
             reprogress()
     elif opt.tree or opt.commit or opt.name:
@@ -211,7 +140,7 @@ def main(argv):
         it = hashsplit.hashsplit_iter(files,
                                       keep_boundaries=opt.keep_boundaries,
                                       progress=prog)
-        for (blob, level) in it:
+        for blob, level in it:
             hashsplit.total_split += len(blob)
             if opt.copy:
                 sys.stdout.write(str(blob))
@@ -223,23 +152,112 @@ def main(argv):
         log('\n')
     if opt.tree:
         out.write(hexlify(tree) + b'\n')
+
+    commit = None
     if opt.commit or opt.name:
         msg = b'bup split\n\nGenerated by command:\n%r\n' % compat.get_argvb()
-        ref = opt.name and (b'refs/heads/%s' % opt.name) or None
         userline = b'%s <%s@%s>' % (userfullname(), username(), hostname())
-        commit = pack_writer.new_commit(tree, oldref, userline, date, None,
-                                        userline, date, None, msg)
+        commit = pack_writer.new_commit(tree, parent, userline, opt.date,
+                                        None, userline, opt.date, None, msg)
         if opt.commit:
             out.write(hexlify(commit) + b'\n')
 
-    if pack_writer:
-        pack_writer.close()  # must close before we can update the ref
+    return commit
 
-    if opt.name:
-        if cli:
-            cli.update_ref(refname, commit, oldref)
+def main(argv):
+    opt = opts_from_cmdline(argv)
+    if opt.verbose >= 2:
+        git.verbose = opt.verbose - 1
+    if opt.fanout:
+        hashsplit.fanout = opt.fanout
+    if opt.blobs:
+        hashsplit.fanout = 0
+    if opt.bwlimit:
+        client.bwlimit = opt.bwlimit
+
+    start_time = time.time()
+
+    sys.stdout.flush()
+    out = byte_stream(sys.stdout)
+    stdin = byte_stream(sys.stdin)
+
+    if opt.git_ids:
+        # the input is actually a series of git object ids that we should retrieve
+        # and split.
+        #
+        # This is a bit messy, but basically it converts from a series of
+        # CatPipe.get() iterators into a series of file-type objects.
+        # It would be less ugly if either CatPipe.get() returned a file-like object
+        # (not very efficient), or split_to_shalist() expected an iterator instead
+        # of a file.
+        cp = git.CatPipe()
+        class IterToFile:
+            def __init__(self, it):
+                self.it = iter(it)
+            def read(self, size):
+                v = next(self.it, None)
+                return v or b''
+        def read_ids():
+            while 1:
+                line = stdin.readline()
+                if not line:
+                    break
+                if line:
+                    line = line.strip()
+                try:
+                    it = cp.get(line.strip())
+                    next(it, None)  # skip the file info
+                except KeyError as e:
+                    add_error('error: %s' % e)
+                    continue
+                yield IterToFile(it)
+        files = read_ids()
+    else:
+        # the input either comes from a series of files or from stdin.
+        if opt.sources:
+            files = (open(argv_bytes(fn), 'rb') for fn in opt.sources)
         else:
-            git.update_ref(refname, commit, oldref)
+            files = [stdin]
+
+    writing = not (opt.noop or opt.copy)
+    remote_dest = opt.remote or opt.is_reverse
+
+    if writing:
+        git.check_repo_or_die()
+
+    if not writing:
+        cli = None
+    elif remote_dest:
+        cli = repo = client.Client(opt.remote)
+    else:
+        cli = None
+        repo = git
+
+    if opt.name and writing:
+        refname = opt.name and b'refs/heads/%s' % opt.name
+        oldref = repo.read_ref(refname)
+    else:
+        refname = oldref = None
+
+    if not writing:
+        pack_writer = NoOpPackWriter()
+    elif not remote_dest:
+        pack_writer = git.PackWriter(compression_level=opt.compress,
+                                     max_pack_size=opt.max_pack_size,
+                                     max_pack_objects=opt.max_pack_objects)
+    else:
+        pack_writer = cli.new_packwriter(compression_level=opt.compress,
+                                         max_pack_size=opt.max_pack_size,
+                                         max_pack_objects=opt.max_pack_objects)
+
+    commit = split(opt, files, oldref, out, pack_writer)
+
+    if pack_writer:
+        pack_writer.close()
+
+    # pack_writer must be closed before we can update the ref
+    if refname:
+        repo.update_ref(refname, commit, oldref)
 
     if cli:
         cli.close()
