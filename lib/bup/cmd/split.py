@@ -41,6 +41,22 @@ bwlimit=   maximum bytes/sec to transmit to server
 #,compress=  set compression level to # (0-9, 9 is highest) [1]
 """
 
+
+class NoOpPackWriter:
+    def __init__(self):
+        pass
+    def __enter__(self):
+        return self
+    def __exit__(self, type, value, traceback):
+        return None  # since close() does nothing
+    def close(self):
+        return None
+    def new_blob(self, content):
+        return git.calc_hash(b'blob', content)
+    def new_tree(self, shalist):
+        return git.calc_hash(b'tree', git.tree_encode(shalist))
+
+
 def main(argv):
     o = options.Options(optspec)
     opt, flags, extra = o.parse_bytes(argv[1:])
@@ -93,8 +109,8 @@ def main(argv):
             qprogress('Splitting: %d kbytes\r' % (total_bytes[0] // 1024))
 
 
-    is_reverse = environ.get(b'BUP_SERVER_REVERSE')
-    if is_reverse and opt.remote:
+    opt.is_reverse = environ.get(b'BUP_SERVER_REVERSE')
+    if opt.is_reverse and opt.remote:
         o.fatal("don't use -r in reverse mode; it's automatic")
     start_time = time.time()
 
@@ -102,22 +118,19 @@ def main(argv):
         o.fatal("'%r' is not a valid branch name." % opt.name)
     refname = opt.name and b'refs/heads/%s' % opt.name or None
 
-    if opt.noop or opt.copy:
+    writing = not (opt.noop or opt.copy)
+    remote_dest = opt.remote or opt.is_reverse
+
+    if not writing:
         cli = pack_writer = oldref = None
-    elif opt.remote or is_reverse:
+    elif remote_dest:
         git.check_repo_or_die()
         cli = client.Client(opt.remote)
         oldref = refname and cli.read_ref(refname) or None
-        pack_writer = cli.new_packwriter(compression_level=opt.compress,
-                                         max_pack_size=max_pack_size,
-                                         max_pack_objects=max_pack_objects)
     else:
         git.check_repo_or_die()
         cli = None
         oldref = refname and git.read_ref(refname) or None
-        pack_writer = git.PackWriter(compression_level=opt.compress,
-                                     max_pack_size=max_pack_size,
-                                     max_pack_objects=max_pack_objects)
 
     input = byte_stream(sys.stdin)
 
@@ -156,17 +169,22 @@ def main(argv):
         # the input either comes from a series of files or from stdin.
         files = extra and (open(argv_bytes(fn), 'rb') for fn in extra) or [input]
 
-    if pack_writer:
-        new_blob = pack_writer.new_blob
-        new_tree = pack_writer.new_tree
-    elif opt.blobs or opt.tree:
-        # --noop mode
-        new_blob = lambda content: git.calc_hash(b'blob', content)
-        new_tree = lambda shalist: git.calc_hash(b'tree', git.tree_encode(shalist))
+    if not writing:
+        pack_writer = NoOpPackWriter()
+    elif not remote_dest:
+        pack_writer = git.PackWriter(compression_level=opt.compress,
+                                     max_pack_size=max_pack_size,
+                                     max_pack_objects=max_pack_objects)
+    else:
+        pack_writer = cli.new_packwriter(compression_level=opt.compress,
+                                         max_pack_size=max_pack_size,
+                                         max_pack_objects=max_pack_objects)
 
     sys.stdout.flush()
     out = byte_stream(sys.stdout)
 
+    new_blob = pack_writer.new_blob
+    new_tree = pack_writer.new_tree
     if opt.blobs:
         shalist = hashsplit.split_to_blobs(new_blob, files,
                                            keep_boundaries=opt.keep_boundaries,
@@ -183,9 +201,10 @@ def main(argv):
             splitfile_name = git.mangle_name(b'data', hashsplit.GIT_MODE_FILE, mode)
             shalist = [(mode, splitfile_name, sha)]
         else:
-            shalist = hashsplit.split_to_shalist(
-                          new_blob, new_tree, files,
-                          keep_boundaries=opt.keep_boundaries, progress=prog)
+            shalist = \
+                hashsplit.split_to_shalist(new_blob, new_tree, files,
+                                           keep_boundaries=opt.keep_boundaries,
+                                           progress=prog)
         tree = new_tree(shalist)
     else:
         last = 0
