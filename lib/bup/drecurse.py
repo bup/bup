@@ -3,10 +3,18 @@ from __future__ import absolute_import
 import stat, os
 
 from bup.compat import str_type
-from bup.helpers import add_error, should_rx_exclude_path, debug1, resolve_parent
+from bup.helpers \
+    import (add_error,
+            debug1,
+            finalized,
+            resolve_parent,
+            should_rx_exclude_path)
 from bup.io import path_msg
 import bup.xstat as xstat
 
+# the use of fchdir() and lstat() is for two reasons:
+#  - help out the kernel by not making it repeatedly look up the absolute path
+#  - avoid race conditions caused by doing listdir() on a changing symlink
 
 try:
     O_LARGEFILE = os.O_LARGEFILE
@@ -18,25 +26,10 @@ except AttributeError:
     O_NOFOLLOW = 0
 
 
-# the use of fchdir() and lstat() is for two reasons:
-#  - help out the kernel by not making it repeatedly look up the absolute path
-#  - avoid race conditions caused by doing listdir() on a changing symlink
-class OsFile:
-    def __init__(self, path):
-        self.fd = None
-        self.fd = os.open(path, os.O_RDONLY|O_LARGEFILE|O_NOFOLLOW|os.O_NDELAY)
+def finalized_fd(path):
+    fd = os.open(path, os.O_RDONLY|O_LARGEFILE|O_NOFOLLOW|os.O_NDELAY)
+    return finalized(fd, lambda x: os.close(x))
 
-    def __del__(self):
-        if self.fd:
-            fd = self.fd
-            self.fd = None
-            os.close(fd)
-
-    def fchdir(self):
-        os.fchdir(self.fd)
-
-    def stat(self):
-        return xstat.fstat(self.fd)
 
 def _dirlist():
     l = []
@@ -75,7 +68,8 @@ def _recursive_dirlist(prepend, xdev, bup_dir=None,
                        % path_msg(path))
             else:
                 try:
-                    OsFile(name).fchdir()
+                    with finalized_fd(name) as fd:
+                        os.fchdir(fd)
                 except OSError as e:
                     add_error('%s: %s' % (prepend, e))
                 else:
@@ -93,44 +87,45 @@ def recursive_dirlist(paths, xdev, bup_dir=None,
                       excluded_paths=None,
                       exclude_rxs=None,
                       xdev_exceptions=frozenset()):
-    startdir = OsFile(b'.')
-    try:
-        assert not isinstance(paths, str_type)
-        for path in paths:
-            try:
-                pst = xstat.lstat(path)
-                if stat.S_ISLNK(pst.st_mode):
-                    yield (path, pst)
-                    continue
-            except OSError as e:
-                add_error('recursive_dirlist: %s' % e)
-                continue
-            try:
-                pfile = OsFile(path)
-            except OSError as e:
-                add_error(e)
-                continue
-            pst = pfile.stat()
-            if xdev:
-                xdev = pst.st_dev
-            else:
-                xdev = None
-            if stat.S_ISDIR(pst.st_mode):
-                pfile.fchdir()
-                prepend = os.path.join(path, b'')
-                for i in _recursive_dirlist(prepend=prepend, xdev=xdev,
-                                            bup_dir=bup_dir,
-                                            excluded_paths=excluded_paths,
-                                            exclude_rxs=exclude_rxs,
-                                            xdev_exceptions=xdev_exceptions):
-                    yield i
-                startdir.fchdir()
-            else:
-                prepend = path
-            yield (prepend,pst)
-    except:
+    with finalized_fd(b'.') as startdir:
         try:
-            startdir.fchdir()
+            assert not isinstance(paths, str_type)
+            for path in paths:
+                try:
+                    pst = xstat.lstat(path)
+                    if stat.S_ISLNK(pst.st_mode):
+                        yield (path, pst)
+                        continue
+                except OSError as e:
+                    add_error('recursive_dirlist: %s' % e)
+                    continue
+                try:
+                    opened_pfile = finalized_fd(path)
+                except OSError as e:
+                    add_error(e)
+                    continue
+                with opened_pfile as pfile:
+                    pst = xstat.fstat(pfile)
+                    if xdev:
+                        xdev = pst.st_dev
+                    else:
+                        xdev = None
+                    if stat.S_ISDIR(pst.st_mode):
+                        os.fchdir(pfile)
+                        prepend = os.path.join(path, b'')
+                        for i in _recursive_dirlist(prepend=prepend, xdev=xdev,
+                                                    bup_dir=bup_dir,
+                                                    excluded_paths=excluded_paths,
+                                                    exclude_rxs=exclude_rxs,
+                                                    xdev_exceptions=xdev_exceptions):
+                            yield i
+                        os.fchdir(startdir)
+                    else:
+                        prepend = path
+                yield (prepend,pst)
         except:
-            pass
-        raise
+            try:
+                os.fchdir(startdir)
+            except:
+                pass
+            raise
