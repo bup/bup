@@ -31,14 +31,13 @@ def test_index_writer(tmpdir):
         os.chdir(tmpdir)
         ds = xstat.stat(b'.')
         fs = xstat.stat(lib_t_dir + b'/test_index.py')
-        ms = index.MetaStoreWriter(b'index.meta.tmp');
-        tmax = (time.time() - 1) * 10**9
-        w = index.Writer(b'index.tmp', ms, tmax)
-        w.add(b'/var/tmp/sporky', fs, 0)
-        w.add(b'/etc/passwd', fs, 0)
-        w.add(b'/etc/', ds, 0)
-        w.add(b'/', ds, 0)
-        ms.close()
+        with index.MetaStoreWriter(b'index.meta.tmp') as ms:
+            tmax = (time.time() - 1) * 10**9
+            w = index.Writer(b'index.tmp', ms, tmax)
+            w.add(b'/var/tmp/sporky', fs, 0)
+            w.add(b'/etc/passwd', fs, 0)
+            w.add(b'/etc/', ds, 0)
+            w.add(b'/', ds, 0)
         w.close()
     finally:
         os.chdir(orig_cwd)
@@ -88,86 +87,88 @@ def test_index_dirty(tmpdir):
     try:
         os.chdir(tmpdir)
         default_meta = metadata.Metadata()
-        ms1 = index.MetaStoreWriter(b'index.meta.tmp')
-        ms2 = index.MetaStoreWriter(b'index2.meta.tmp')
-        ms3 = index.MetaStoreWriter(b'index3.meta.tmp')
-        meta_ofs1 = ms1.store(default_meta)
-        meta_ofs2 = ms2.store(default_meta)
-        meta_ofs3 = ms3.store(default_meta)
 
-        ds = xstat.stat(lib_t_dir)
-        fs = xstat.stat(lib_t_dir + b'/test_index.py')
-        tmax = (time.time() - 1) * 10**9
+        with index.MetaStoreWriter(b'index.meta.tmp') as ms1, \
+             index.MetaStoreWriter(b'index2.meta.tmp') as ms2, \
+             index.MetaStoreWriter(b'index3.meta.tmp') as ms3:
 
-        w1 = index.Writer(b'index.tmp', ms1, tmax)
-        w1.add(b'/a/b/x', fs, meta_ofs1)
-        w1.add(b'/a/b/c', fs, meta_ofs1)
-        w1.add(b'/a/b/', ds, meta_ofs1)
-        w1.add(b'/a/', ds, meta_ofs1)
-        #w1.close()
-        WVPASS()
+            meta_ofs1 = ms1.store(default_meta)
+            meta_ofs2 = ms2.store(default_meta)
+            meta_ofs3 = ms3.store(default_meta)
 
-        w2 = index.Writer(b'index2.tmp', ms2, tmax)
-        w2.add(b'/a/b/n/2', fs, meta_ofs2)
-        #w2.close()
-        WVPASS()
+            ds = xstat.stat(lib_t_dir)
+            fs = xstat.stat(lib_t_dir + b'/test_index.py')
+            tmax = (time.time() - 1) * 10**9
 
-        w3 = index.Writer(b'index3.tmp', ms3, tmax)
-        w3.add(b'/a/c/n/3', fs, meta_ofs3)
-        #w3.close()
-        WVPASS()
+            w1 = index.Writer(b'index.tmp', ms1, tmax)
+            w1.add(b'/a/b/x', fs, meta_ofs1)
+            w1.add(b'/a/b/c', fs, meta_ofs1)
+            w1.add(b'/a/b/', ds, meta_ofs1)
+            w1.add(b'/a/', ds, meta_ofs1)
+            #w1.close()
+            WVPASS()
 
-        r1 = w1.new_reader()
-        r2 = w2.new_reader()
-        r3 = w3.new_reader()
-        WVPASS()
+            w2 = index.Writer(b'index2.tmp', ms2, tmax)
+            w2.add(b'/a/b/n/2', fs, meta_ofs2)
+            #w2.close()
+            WVPASS()
 
-        r1all = [e.name for e in r1]
-        WVPASSEQ(r1all,
-                 [b'/a/b/x', b'/a/b/c', b'/a/b/', b'/a/', b'/'])
-        r2all = [e.name for e in r2]
-        WVPASSEQ(r2all,
-                 [b'/a/b/n/2', b'/a/b/n/', b'/a/b/', b'/a/', b'/'])
-        r3all = [e.name for e in r3]
-        WVPASSEQ(r3all,
-                 [b'/a/c/n/3', b'/a/c/n/', b'/a/c/', b'/a/', b'/'])
-        all = [e.name for e in index.merge(r2, r1, r3)]
-        WVPASSEQ(all,
-                 [b'/a/c/n/3', b'/a/c/n/', b'/a/c/',
-                  b'/a/b/x', b'/a/b/n/2', b'/a/b/n/', b'/a/b/c',
-                  b'/a/b/', b'/a/', b'/'])
-        fake_validate(r1)
-        dump(r1)
+            w3 = index.Writer(b'index3.tmp', ms3, tmax)
+            w3.add(b'/a/c/n/3', fs, meta_ofs3)
+            #w3.close()
+            WVPASS()
 
-        print([hex(e.flags) for e in r1])
-        WVPASSEQ([e.name for e in r1 if e.is_valid()], r1all)
-        WVPASSEQ([e.name for e in r1 if not e.is_valid()], [])
-        WVPASSEQ([e.name for e in index.merge(r2, r1, r3) if not e.is_valid()],
-                 [b'/a/c/n/3', b'/a/c/n/', b'/a/c/',
-                  b'/a/b/n/2', b'/a/b/n/', b'/a/b/', b'/a/', b'/'])
+            r1 = w1.new_reader()
+            r2 = w2.new_reader()
+            r3 = w3.new_reader()
+            WVPASS()
 
-        expect_invalid = [b'/'] + r2all + r3all
-        expect_real = (set(r1all) - set(r2all) - set(r3all)) \
-                        | set([b'/a/b/n/2', b'/a/c/n/3'])
-        dump(index.merge(r2, r1, r3))
-        for e in index.merge(r2, r1, r3):
-            print(e.name, hex(e.flags), e.ctime)
-            eiv = e.name in expect_invalid
-            er  = e.name in expect_real
-            WVPASSEQ(eiv, not e.is_valid())
-            WVPASSEQ(er, e.is_real())
-        fake_validate(r2, r3)
-        dump(index.merge(r2, r1, r3))
-        WVPASSEQ([e.name for e in index.merge(r2, r1, r3) if not e.is_valid()], [])
+            r1all = [e.name for e in r1]
+            WVPASSEQ(r1all,
+                     [b'/a/b/x', b'/a/b/c', b'/a/b/', b'/a/', b'/'])
+            r2all = [e.name for e in r2]
+            WVPASSEQ(r2all,
+                     [b'/a/b/n/2', b'/a/b/n/', b'/a/b/', b'/a/', b'/'])
+            r3all = [e.name for e in r3]
+            WVPASSEQ(r3all,
+                     [b'/a/c/n/3', b'/a/c/n/', b'/a/c/', b'/a/', b'/'])
+            all = [e.name for e in index.merge(r2, r1, r3)]
+            WVPASSEQ(all,
+                     [b'/a/c/n/3', b'/a/c/n/', b'/a/c/',
+                      b'/a/b/x', b'/a/b/n/2', b'/a/b/n/', b'/a/b/c',
+                      b'/a/b/', b'/a/', b'/'])
+            fake_validate(r1)
+            dump(r1)
 
-        e = eget(index.merge(r2, r1, r3), b'/a/b/c')
-        e.invalidate()
-        e.repack()
-        dump(index.merge(r2, r1, r3))
-        WVPASSEQ([e.name for e in index.merge(r2, r1, r3) if not e.is_valid()],
-                 [b'/a/b/c', b'/a/b/', b'/a/', b'/'])
-        w1.close()
-        w2.close()
-        w3.close()
+            print([hex(e.flags) for e in r1])
+            WVPASSEQ([e.name for e in r1 if e.is_valid()], r1all)
+            WVPASSEQ([e.name for e in r1 if not e.is_valid()], [])
+            WVPASSEQ([e.name for e in index.merge(r2, r1, r3) if not e.is_valid()],
+                     [b'/a/c/n/3', b'/a/c/n/', b'/a/c/',
+                      b'/a/b/n/2', b'/a/b/n/', b'/a/b/', b'/a/', b'/'])
+
+            expect_invalid = [b'/'] + r2all + r3all
+            expect_real = (set(r1all) - set(r2all) - set(r3all)) \
+                            | set([b'/a/b/n/2', b'/a/c/n/3'])
+            dump(index.merge(r2, r1, r3))
+            for e in index.merge(r2, r1, r3):
+                print(e.name, hex(e.flags), e.ctime)
+                eiv = e.name in expect_invalid
+                er  = e.name in expect_real
+                WVPASSEQ(eiv, not e.is_valid())
+                WVPASSEQ(er, e.is_real())
+            fake_validate(r2, r3)
+            dump(index.merge(r2, r1, r3))
+            WVPASSEQ([e.name for e in index.merge(r2, r1, r3) if not e.is_valid()], [])
+
+            e = eget(index.merge(r2, r1, r3), b'/a/b/c')
+            e.invalidate()
+            e.repack()
+            dump(index.merge(r2, r1, r3))
+            WVPASSEQ([e.name for e in index.merge(r2, r1, r3) if not e.is_valid()],
+                     [b'/a/b/c', b'/a/b/', b'/a/', b'/'])
+            w1.close()
+            w2.close()
+            w3.close()
     finally:
         os.chdir(orig_cwd)

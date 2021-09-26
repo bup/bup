@@ -105,9 +105,12 @@ class MetaStoreWriter:
             self._file.close()
             self._file = None
 
-    def __del__(self):
-        # Be optimistic.
-        self.close()
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        with pending_raise(value, rethrow=False):
+            self.close()
 
     def store(self, metadata):
         meta_encoded = metadata.encode(include_path=False)

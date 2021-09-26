@@ -74,11 +74,12 @@ def update_index(top, excluded_paths, exclude_rxs, indexfile,
     # tmax must be epoch nanoseconds.
     tmax = (time.time() - 1) * 10**9
     ri = index.Reader(indexfile)
-    msw = index.MetaStoreWriter(indexfile + b'.meta')
-    wi = index.Writer(indexfile, msw, tmax)
     rig = IterHelper(ri.iter(name=top))
 
-    with hlinkdb.HLinkDB(indexfile + b'.hlink') as hlinks:
+    with index.MetaStoreWriter(indexfile + b'.meta') as msw, \
+         hlinkdb.HLinkDB(indexfile + b'.hlink') as hlinks:
+
+        wi = index.Writer(indexfile, msw, tmax)
 
         fake_hash = None
         if fake_valid:
@@ -199,7 +200,6 @@ def update_index(top, excluded_paths, exclude_rxs, indexfile,
         else:
             wi.close()
 
-        msw.close()
         hlinks.commit_save()
 
 

@@ -459,7 +459,6 @@ def save_tree(opt, indexfile, hlink_db, msr, w):
     # When there's a collision, use empty metadata for the root.
     tree = _pop(dir_metadata = metadata.Metadata() if root_collision else None)
 
-    msr.close()
     return tree
 
 
