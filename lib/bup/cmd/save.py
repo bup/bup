@@ -109,7 +109,7 @@ def opts_from_cmdline(argv):
 
     return opt
 
-def save_tree(opt, w):
+def save_tree(opt, indexfile, hlink_db, w):
     # Metadata is stored in a file named .bupm in each directory.  The
     # first metadata entry will be the metadata for the current directory.
     # The remaining entries will be for each of the other directory
@@ -225,7 +225,6 @@ def save_tree(opt, w):
                      remainstr, kpsstr))
 
 
-    indexfile = opt.indexfile or git.repo(b'bupindex')
     r = index.Reader(indexfile)
     try:
         msr = index.MetaStoreReader(indexfile + b'.meta')
@@ -235,7 +234,6 @@ def save_tree(opt, w):
         log('error: cannot access %r; have you run bup index?'
             % path_msg(indexfile))
         sys.exit(1)
-    hlink_db = hlinkdb.HLinkDB(indexfile + b'.hlink')
 
     def already_saved(ent):
         return ent.is_valid() and w.exists(ent.sha) and ent.sha
@@ -521,7 +519,9 @@ def main(argv):
             else:
                 refname = parent = None
 
-            tree = save_tree(opt, w)
+            indexfile = opt.indexfile or git.repo(b'bupindex')
+            with hlinkdb.HLinkDB(indexfile + b'.hlink') as hlink_db:
+                tree = save_tree(opt, indexfile, hlink_db, w)
             if opt.tree:
                 out.write(hexlify(tree))
                 out.write(b'\n')

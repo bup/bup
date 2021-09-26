@@ -3,6 +3,7 @@ from __future__ import absolute_import
 import errno, os, tempfile
 
 from bup import compat
+from bup.compat import pending_raise
 
 if compat.py_maj > 2:
     import pickle
@@ -92,8 +93,12 @@ class HLinkDB:
             os.unlink(self._tmpname)
             self._tmpname = None
 
-    def __del__(self):
-        self.abort_save()
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        with pending_raise(value, rethrow=True):
+            self.abort_save()
 
     def add_path(self, path, dev, ino):
         # Assume path is new.

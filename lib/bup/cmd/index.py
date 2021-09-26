@@ -78,128 +78,129 @@ def update_index(top, excluded_paths, exclude_rxs, indexfile,
     wi = index.Writer(indexfile, msw, tmax)
     rig = IterHelper(ri.iter(name=top))
 
-    hlinks = hlinkdb.HLinkDB(indexfile + b'.hlink')
+    with hlinkdb.HLinkDB(indexfile + b'.hlink') as hlinks:
 
-    fake_hash = None
-    if fake_valid:
-        def fake_hash(name):
-            return (GIT_MODE_FILE, index.FAKE_SHA)
+        fake_hash = None
+        if fake_valid:
+            def fake_hash(name):
+                return (GIT_MODE_FILE, index.FAKE_SHA)
 
-    total = 0
-    bup_dir = os.path.abspath(git.repo())
-    index_start = time.time()
-    for path, pst in recursive_dirlist([top],
-                                       xdev=xdev,
-                                       bup_dir=bup_dir,
-                                       excluded_paths=excluded_paths,
-                                       exclude_rxs=exclude_rxs,
-                                       xdev_exceptions=xdev_exceptions):
-        if verbose>=2 or (verbose == 1 and stat.S_ISDIR(pst.st_mode)):
-            out.write(b'%s\n' % path)
-            out.flush()
-            elapsed = time.time() - index_start
-            paths_per_sec = total / elapsed if elapsed else 0
-            qprogress('Indexing: %d (%d paths/s)\r' % (total, paths_per_sec))
-        elif not (total % 128):
-            elapsed = time.time() - index_start
-            paths_per_sec = total / elapsed if elapsed else 0
-            qprogress('Indexing: %d (%d paths/s)\r' % (total, paths_per_sec))
-        total += 1
+        total = 0
+        bup_dir = os.path.abspath(git.repo())
+        index_start = time.time()
+        for path, pst in recursive_dirlist([top],
+                                           xdev=xdev,
+                                           bup_dir=bup_dir,
+                                           excluded_paths=excluded_paths,
+                                           exclude_rxs=exclude_rxs,
+                                           xdev_exceptions=xdev_exceptions):
+            if verbose>=2 or (verbose == 1 and stat.S_ISDIR(pst.st_mode)):
+                out.write(b'%s\n' % path)
+                out.flush()
+                elapsed = time.time() - index_start
+                paths_per_sec = total / elapsed if elapsed else 0
+                qprogress('Indexing: %d (%d paths/s)\r' % (total, paths_per_sec))
+            elif not (total % 128):
+                elapsed = time.time() - index_start
+                paths_per_sec = total / elapsed if elapsed else 0
+                qprogress('Indexing: %d (%d paths/s)\r' % (total, paths_per_sec))
+            total += 1
 
-        while rig.cur and rig.cur.name > path:  # deleted paths
-            if rig.cur.exists():
-                rig.cur.set_deleted()
-                rig.cur.repack()
-                if rig.cur.nlink > 1 and not stat.S_ISDIR(rig.cur.mode):
-                    hlinks.del_path(rig.cur.name)
-            rig.next()
+            while rig.cur and rig.cur.name > path:  # deleted paths
+                if rig.cur.exists():
+                    rig.cur.set_deleted()
+                    rig.cur.repack()
+                    if rig.cur.nlink > 1 and not stat.S_ISDIR(rig.cur.mode):
+                        hlinks.del_path(rig.cur.name)
+                rig.next()
 
-        if rig.cur and rig.cur.name == path:    # paths that already existed
-            need_repack = False
-            if(rig.cur.stale(pst, check_device=check_device)):
+            if rig.cur and rig.cur.name == path:    # paths that already existed
+                need_repack = False
+                if(rig.cur.stale(pst, check_device=check_device)):
+                    try:
+                        meta = metadata.from_path(path, statinfo=pst)
+                    except (OSError, IOError) as e:
+                        add_error(e)
+                        rig.next()
+                        continue
+                    if not stat.S_ISDIR(rig.cur.mode) and rig.cur.nlink > 1:
+                        hlinks.del_path(rig.cur.name)
+                    if not stat.S_ISDIR(pst.st_mode) and pst.st_nlink > 1:
+                        hlinks.add_path(path, pst.st_dev, pst.st_ino)
+                    # Clear these so they don't bloat the store -- they're
+                    # already in the index (since they vary a lot and they're
+                    # fixed length).  If you've noticed "tmax", you might
+                    # wonder why it's OK to do this, since that code may
+                    # adjust (mangle) the index mtime and ctime -- producing
+                    # fake values which must not end up in a .bupm.  However,
+                    # it looks like that shouldn't be possible:  (1) When
+                    # "save" validates the index entry, it always reads the
+                    # metadata from the filesytem. (2) Metadata is only
+                    # read/used from the index if hashvalid is true. (3)
+                    # "faked" entries will be stale(), and so we'll invalidate
+                    # them below.
+                    meta.ctime = meta.mtime = meta.atime = 0
+                    meta_ofs = msw.store(meta)
+                    rig.cur.update_from_stat(pst, meta_ofs)
+                    rig.cur.invalidate()
+                    need_repack = True
+                if not (rig.cur.flags & index.IX_HASHVALID):
+                    if fake_hash:
+                        if rig.cur.sha == index.EMPTY_SHA:
+                            rig.cur.gitmode, rig.cur.sha = fake_hash(path)
+                        rig.cur.flags |= index.IX_HASHVALID
+                        need_repack = True
+                if fake_invalid:
+                    rig.cur.invalidate()
+                    need_repack = True
+                if need_repack:
+                    rig.cur.repack()
+                rig.next()
+            else:  # new paths
                 try:
                     meta = metadata.from_path(path, statinfo=pst)
                 except (OSError, IOError) as e:
                     add_error(e)
-                    rig.next()
                     continue
-                if not stat.S_ISDIR(rig.cur.mode) and rig.cur.nlink > 1:
-                    hlinks.del_path(rig.cur.name)
+                # See same assignment to 0, above, for rationale.
+                meta.atime = meta.mtime = meta.ctime = 0
+                meta_ofs = msw.store(meta)
+                wi.add(path, pst, meta_ofs, hashgen=fake_hash)
                 if not stat.S_ISDIR(pst.st_mode) and pst.st_nlink > 1:
                     hlinks.add_path(path, pst.st_dev, pst.st_ino)
-                # Clear these so they don't bloat the store -- they're
-                # already in the index (since they vary a lot and they're
-                # fixed length).  If you've noticed "tmax", you might
-                # wonder why it's OK to do this, since that code may
-                # adjust (mangle) the index mtime and ctime -- producing
-                # fake values which must not end up in a .bupm.  However,
-                # it looks like that shouldn't be possible:  (1) When
-                # "save" validates the index entry, it always reads the
-                # metadata from the filesytem. (2) Metadata is only
-                # read/used from the index if hashvalid is true. (3)
-                # "faked" entries will be stale(), and so we'll invalidate
-                # them below.
-                meta.ctime = meta.mtime = meta.atime = 0
-                meta_ofs = msw.store(meta)
-                rig.cur.update_from_stat(pst, meta_ofs)
-                rig.cur.invalidate()
-                need_repack = True
-            if not (rig.cur.flags & index.IX_HASHVALID):
-                if fake_hash:
-                    if rig.cur.sha == index.EMPTY_SHA:
-                        rig.cur.gitmode, rig.cur.sha = fake_hash(path)
-                    rig.cur.flags |= index.IX_HASHVALID
-                    need_repack = True
-            if fake_invalid:
-                rig.cur.invalidate()
-                need_repack = True
-            if need_repack:
-                rig.cur.repack()
-            rig.next()
-        else:  # new paths
-            try:
-                meta = metadata.from_path(path, statinfo=pst)
-            except (OSError, IOError) as e:
-                add_error(e)
-                continue
-            # See same assignment to 0, above, for rationale.
-            meta.atime = meta.mtime = meta.ctime = 0
-            meta_ofs = msw.store(meta)
-            wi.add(path, pst, meta_ofs, hashgen=fake_hash)
-            if not stat.S_ISDIR(pst.st_mode) and pst.st_nlink > 1:
-                hlinks.add_path(path, pst.st_dev, pst.st_ino)
 
-    elapsed = time.time() - index_start
-    paths_per_sec = total / elapsed if elapsed else 0
-    progress('Indexing: %d, done (%d paths/s).\n' % (total, paths_per_sec))
+        elapsed = time.time() - index_start
+        paths_per_sec = total / elapsed if elapsed else 0
+        progress('Indexing: %d, done (%d paths/s).\n' % (total, paths_per_sec))
 
-    hlinks.prepare_save()
+        hlinks.prepare_save()
 
-    if ri.exists():
-        ri.save()
-        wi.flush()
-        if wi.count:
-            wr = wi.new_reader()
-            if check:
-                log('check: before merging: oldfile\n')
-                check_index(ri, verbose)
-                log('check: before merging: newfile\n')
-                check_index(wr, verbose)
-            mi = index.Writer(indexfile, msw, tmax)
+        if ri.exists():
+            ri.save()
+            wi.flush()
+            if wi.count:
+                wr = wi.new_reader()
+                if check:
+                    log('check: before merging: oldfile\n')
+                    check_index(ri, verbose)
+                    log('check: before merging: newfile\n')
+                    check_index(wr, verbose)
+                mi = index.Writer(indexfile, msw, tmax)
 
-            for e in index.merge(ri, wr):
-                # FIXME: shouldn't we remove deleted entries eventually?  When?
-                mi.add_ixentry(e)
+                for e in index.merge(ri, wr):
+                    # FIXME: shouldn't we remove deleted entries
+                    # eventually?  When?
+                    mi.add_ixentry(e)
 
-            ri.close()
-            mi.close()
-            wr.close()
-        wi.abort()
-    else:
-        wi.close()
+                ri.close()
+                mi.close()
+                wr.close()
+            wi.abort()
+        else:
+            wi.close()
 
-    msw.close()
-    hlinks.commit_save()
+        msw.close()
+        hlinks.commit_save()
 
 
 optspec = """
