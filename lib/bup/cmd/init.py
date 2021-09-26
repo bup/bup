@@ -28,5 +28,5 @@ def main(argv):
 
     if opt.remote:
         git.check_repo_or_die()
-        cli = client.Client(argv_bytes(opt.remote), create=True)
-        cli.close()
+        with client.Client(argv_bytes(opt.remote), create=True):
+            pass

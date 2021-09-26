@@ -24,16 +24,16 @@ def test_server_split_with_indexes(tmpdir):
     environ[b'BUP_DIR'] = bupdir = tmpdir
     git.init_repo(bupdir)
     lw = git.PackWriter()
-    c = client.Client(bupdir, create=True)
-    rw = c.new_packwriter()
+    with client.Client(bupdir, create=True) as c:
+        rw = c.new_packwriter()
 
-    lw.new_blob(s1)
-    lw.close()
+        lw.new_blob(s1)
+        lw.close()
 
-    rw.new_blob(s2)
-    rw.breakpoint()
-    rw.new_blob(s1)
-    rw.close()
+        rw.new_blob(s2)
+        rw.breakpoint()
+        rw.new_blob(s1)
+        rw.close()
 
 
 def test_multiple_suggestions(tmpdir):
@@ -48,52 +48,52 @@ def test_multiple_suggestions(tmpdir):
     lw.close()
     assert len(glob.glob(git.repo(b'objects/pack'+IDX_PAT))) == 2
 
-    c = client.Client(bupdir, create=True)
-    assert len(glob.glob(c.cachedir+IDX_PAT)) == 0
-    rw = c.new_packwriter()
-    s1sha = rw.new_blob(s1)
-    assert rw.exists(s1sha)
-    s2sha = rw.new_blob(s2)
+    with client.Client(bupdir, create=True) as c:
+        assert len(glob.glob(c.cachedir+IDX_PAT)) == 0
+        rw = c.new_packwriter()
+        s1sha = rw.new_blob(s1)
+        assert rw.exists(s1sha)
+        s2sha = rw.new_blob(s2)
 
-    # This is a little hacky, but ensures that we test the
-    # code under test. First, flush to ensure that we've
-    # actually sent all the command ('receive-objects-v2')
-    # and their data to the server. This may be needed if
-    # the output buffer size is bigger than the data (both
-    # command and objects) we're writing. To see the need
-    # for this, change the object sizes at the beginning
-    # of this file to be very small (e.g. 10 instead of 10k)
-    c.conn.outp.flush()
+        # This is a little hacky, but ensures that we test the
+        # code under test. First, flush to ensure that we've
+        # actually sent all the command ('receive-objects-v2')
+        # and their data to the server. This may be needed if
+        # the output buffer size is bigger than the data (both
+        # command and objects) we're writing. To see the need
+        # for this, change the object sizes at the beginning
+        # of this file to be very small (e.g. 10 instead of 10k)
+        c.conn.outp.flush()
 
-    # Then, check if we've already received the idx files.
-    # This may happen if we're preempted just after writing
-    # the data, then the server runs and suggests, and only
-    # then we continue in PackWriter_Remote::_raw_write()
-    # and check the has_input(), in that case we'll receive
-    # the idx still in the rw.new_blob() calls above.
-    #
-    # In most cases though, that doesn't happen, and we'll
-    # get past the has_input() check before the server has
-    # a chance to respond - it has to actually hash the new
-    # object here, so it takes some time. So also break out
-    # of the loop if the server has sent something on the
-    # connection.
-    #
-    # Finally, abort this after a little while (about one
-    # second) just in case something's actually broken.
-    n = 0
-    while (len(glob.glob(c.cachedir+IDX_PAT)) < 2 and
-           not c.conn.has_input() and n < 10):
-        time.sleep(0.1)
-        n += 1
-    assert len(glob.glob(c.cachedir+IDX_PAT)) == 2 or c.conn.has_input()
-    rw.new_blob(s2)
-    assert rw.objcache.exists(s1sha)
-    assert rw.objcache.exists(s2sha)
-    rw.new_blob(s3)
-    assert len(glob.glob(c.cachedir+IDX_PAT)) == 2
-    rw.close()
-    assert len(glob.glob(c.cachedir+IDX_PAT)) == 3
+        # Then, check if we've already received the idx files.
+        # This may happen if we're preempted just after writing
+        # the data, then the server runs and suggests, and only
+        # then we continue in PackWriter_Remote::_raw_write()
+        # and check the has_input(), in that case we'll receive
+        # the idx still in the rw.new_blob() calls above.
+        #
+        # In most cases though, that doesn't happen, and we'll
+        # get past the has_input() check before the server has
+        # a chance to respond - it has to actually hash the new
+        # object here, so it takes some time. So also break out
+        # of the loop if the server has sent something on the
+        # connection.
+        #
+        # Finally, abort this after a little while (about one
+        # second) just in case something's actually broken.
+        n = 0
+        while (len(glob.glob(c.cachedir+IDX_PAT)) < 2 and
+               not c.conn.has_input() and n < 10):
+            time.sleep(0.1)
+            n += 1
+        assert len(glob.glob(c.cachedir+IDX_PAT)) == 2 or c.conn.has_input()
+        rw.new_blob(s2)
+        assert rw.objcache.exists(s1sha)
+        assert rw.objcache.exists(s2sha)
+        rw.new_blob(s3)
+        assert len(glob.glob(c.cachedir+IDX_PAT)) == 2
+        rw.close()
+        assert len(glob.glob(c.cachedir+IDX_PAT)) == 3
 
 
 def test_dumb_client_server(tmpdir):
@@ -105,29 +105,29 @@ def test_dumb_client_server(tmpdir):
     lw.new_blob(s1)
     lw.close()
 
-    c = client.Client(bupdir, create=True)
-    rw = c.new_packwriter()
-    assert len(glob.glob(c.cachedir+IDX_PAT)) == 1
-    rw.new_blob(s1)
-    assert len(glob.glob(c.cachedir+IDX_PAT)) == 1
-    rw.new_blob(s2)
-    rw.close()
-    assert len(glob.glob(c.cachedir+IDX_PAT)) == 2
+    with client.Client(bupdir, create=True) as c:
+        rw = c.new_packwriter()
+        assert len(glob.glob(c.cachedir+IDX_PAT)) == 1
+        rw.new_blob(s1)
+        assert len(glob.glob(c.cachedir+IDX_PAT)) == 1
+        rw.new_blob(s2)
+        rw.close()
+        assert len(glob.glob(c.cachedir+IDX_PAT)) == 2
 
 
 def test_midx_refreshing(tmpdir):
     environ[b'BUP_DIR'] = bupdir = tmpdir
     git.init_repo(bupdir)
-    c = client.Client(bupdir, create=True)
-    rw = c.new_packwriter()
-    rw.new_blob(s1)
-    p1base = rw.breakpoint()
-    p1name = os.path.join(c.cachedir, p1base)
-    s1sha = rw.new_blob(s1)  # should not be written; it's already in p1
-    s2sha = rw.new_blob(s2)
-    p2base = rw.close()
-    p2name = os.path.join(c.cachedir, p2base)
-    del rw
+    with client.Client(bupdir, create=True) as c:
+        rw = c.new_packwriter()
+        rw.new_blob(s1)
+        p1base = rw.breakpoint()
+        p1name = os.path.join(c.cachedir, p1base)
+        s1sha = rw.new_blob(s1)  # should not be written; it's already in p1
+        s2sha = rw.new_blob(s2)
+        p2base = rw.close()
+        p2name = os.path.join(c.cachedir, p2base)
+        del rw
 
     pi = git.PackIdxList(bupdir + b'/objects/pack')
     assert len(pi.packs) == 2

@@ -4,7 +4,7 @@ from binascii import hexlify
 import sys, time
 
 from bup import compat, hashsplit, git, options, client
-from bup.compat import argv_bytes, environ
+from bup.compat import argv_bytes, environ, nullcontext
 from bup.helpers import (add_error, hostname, log, parse_num,
                          qprogress, reprogress, saved_errors,
                          valid_save_name,
@@ -225,42 +225,39 @@ def main(argv):
     if writing:
         git.check_repo_or_die()
 
-    if not writing:
-        cli = None
-    elif remote_dest:
+    if remote_dest and writing:
         cli = repo = client.Client(opt.remote)
     else:
-        cli = None
+        cli = nullcontext()
         repo = git
 
-    if opt.name and writing:
-        refname = opt.name and b'refs/heads/%s' % opt.name
-        oldref = repo.read_ref(refname)
-    else:
-        refname = oldref = None
+    # cli creation must be last nontrivial command in each if clause above
+    with cli:
+        if opt.name and writing:
+            refname = opt.name and b'refs/heads/%s' % opt.name
+            oldref = repo.read_ref(refname)
+        else:
+            refname = oldref = None
 
-    if not writing:
-        pack_writer = NoOpPackWriter()
-    elif not remote_dest:
-        pack_writer = git.PackWriter(compression_level=opt.compress,
-                                     max_pack_size=opt.max_pack_size,
-                                     max_pack_objects=opt.max_pack_objects)
-    else:
-        pack_writer = cli.new_packwriter(compression_level=opt.compress,
+        if not writing:
+            pack_writer = NoOpPackWriter()
+        elif not remote_dest:
+            pack_writer = git.PackWriter(compression_level=opt.compress,
                                          max_pack_size=opt.max_pack_size,
                                          max_pack_objects=opt.max_pack_objects)
+        else:
+            pack_writer = cli.new_packwriter(compression_level=opt.compress,
+                                             max_pack_size=opt.max_pack_size,
+                                             max_pack_objects=opt.max_pack_objects)
 
-    commit = split(opt, files, oldref, out, pack_writer)
+        commit = split(opt, files, oldref, out, pack_writer)
 
-    if pack_writer:
-        pack_writer.close()
+        if pack_writer:
+            pack_writer.close()
 
-    # pack_writer must be closed before we can update the ref
-    if refname:
-        repo.update_ref(refname, commit, oldref)
-
-    if cli:
-        cli.close()
+        # pack_writer must be closed before we can update the ref
+        if refname:
+            repo.update_ref(refname, commit, oldref)
 
     secs = time.time() - start_time
     size = hashsplit.total_split

@@ -3,11 +3,11 @@ from __future__ import print_function
 
 from __future__ import absolute_import
 from binascii import hexlify, unhexlify
-import errno, os, re, struct, time, zlib
+import os, re, struct, time, zlib
 import socket
 
 from bup import git, ssh, vfs
-from bup.compat import environ, range, reraise
+from bup.compat import environ, pending_raise, range, reraise
 from bup.helpers import (Conn, atomically_replaced_file, chunkyreader, debug1,
                          debug2, linereader, lines_until_sentinel,
                          mkdirp, progress, qprogress, DemuxConn)
@@ -117,14 +117,12 @@ class Client:
             self.check_ok()
         self.sync_indexes()
 
-    def __del__(self):
-        try:
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        with pending_raise(value, rethrow=False):
             self.close()
-        except IOError as e:
-            if e.errno == errno.EPIPE:
-                pass
-            else:
-                raise
 
     def close(self):
         if self.conn and not self._busy:

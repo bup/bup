@@ -7,7 +7,7 @@ import math, os, stat, sys, time
 
 from bup import compat, hashsplit, git, options, index, client, metadata
 from bup import hlinkdb
-from bup.compat import argv_bytes, environ
+from bup.compat import argv_bytes, environ, nullcontext
 from bup.hashsplit import GIT_MODE_TREE, GIT_MODE_FILE, GIT_MODE_SYMLINK
 from bup.helpers import (add_error, grafted_path_components, handle_ctrl_c,
                          hostname, istty2, log, parse_date_or_fatal, parse_num,
@@ -496,43 +496,45 @@ def main(argv):
     remote_dest = opt.remote or opt.is_reverse
     if not remote_dest:
         repo = git
-        cli = None
-        w = git.PackWriter(compression_level=opt.compress)
+        cli = nullcontext()
     else:
         try:
             cli = repo = client.Client(opt.remote)
         except client.ClientError as e:
             log('error: %s' % e)
             sys.exit(1)
-        w = cli.new_packwriter(compression_level=opt.compress)
 
-    sys.stdout.flush()
-    out = byte_stream(sys.stdout)
+    # cli creation must be last nontrivial command in each if clause above
+    with cli:
+        if not remote_dest:
+            w = git.PackWriter(compression_level=opt.compress)
+        else:
+            w = cli.new_packwriter(compression_level=opt.compress)
 
-    if opt.name:
-        refname = b'refs/heads/%s' % opt.name
-        parent = repo.read_ref(refname)
-    else:
-        refname = parent = None
+        sys.stdout.flush()
+        out = byte_stream(sys.stdout)
 
-    tree = save_tree(opt, w)
-    if opt.tree:
-        out.write(hexlify(tree))
-        out.write(b'\n')
-    if opt.commit or opt.name:
-        commit = commit_tree(tree, parent, opt.date, argv, w)
-        if opt.commit:
-            out.write(hexlify(commit))
+        if opt.name:
+            refname = b'refs/heads/%s' % opt.name
+            parent = repo.read_ref(refname)
+        else:
+            refname = parent = None
+
+        tree = save_tree(opt, w)
+        if opt.tree:
+            out.write(hexlify(tree))
             out.write(b'\n')
+        if opt.commit or opt.name:
+            commit = commit_tree(tree, parent, opt.date, argv, w)
+            if opt.commit:
+                out.write(hexlify(commit))
+                out.write(b'\n')
 
-    w.close()
+        w.close()
 
-    # packwriter must be closed before we can update the ref
-    if opt.name:
-        repo.update_ref(refname, commit, parent)
-
-    if cli:
-        cli.close()
+        # packwriter must be closed before we can update the ref
+        if opt.name:
+            repo.update_ref(refname, commit, parent)
 
     if saved_errors:
         log('WARNING: %d errors encountered while saving.\n' % len(saved_errors))

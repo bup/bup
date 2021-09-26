@@ -13,6 +13,7 @@ py3 = py_maj >= 3
 if py3:
 
     # pylint: disable=unused-import
+    from contextlib import nullcontext
     from os import environb as environ
     from os import fsdecode, fsencode
     from shlex import quote
@@ -82,6 +83,8 @@ if py3:
 
 else:  # Python 2
 
+    from contextlib import contextmanager
+
     ModuleNotFoundError = ImportError
 
     def fsdecode(x):
@@ -96,6 +99,10 @@ else:  # Python 2
 
     # pylint: disable=unused-import
     from bup.py2raise import reraise
+
+    @contextmanager
+    def nullcontext(enter_result=None):
+        yield enter_result
 
     # on py3 this causes errors, obviously
     # pylint: disable=undefined-variable
