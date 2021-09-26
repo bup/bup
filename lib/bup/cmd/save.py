@@ -109,7 +109,7 @@ def opts_from_cmdline(argv):
 
     return opt
 
-def save_tree(opt, indexfile, hlink_db, msr, w):
+def save_tree(opt, reader, hlink_db, msr, w):
     # Metadata is stored in a file named .bupm in each directory.  The
     # first metadata entry will be the metadata for the current directory.
     # The remaining entries will be for each of the other directory
@@ -241,11 +241,10 @@ def save_tree(opt, indexfile, hlink_db, msr, w):
                 return link_paths[0]
         return None
 
-    r = index.Reader(indexfile)
     total = ftotal = 0
     if opt.progress:
-        for transname, ent in r.filter(opt.sources,
-                                       wantrecurse=wantrecurse_pre):
+        for transname, ent in reader.filter(opt.sources,
+                                            wantrecurse=wantrecurse_pre):
             if not (ftotal % 10024):
                 qprogress('Reading index: %d\r' % ftotal)
             exists = ent.exists()
@@ -275,7 +274,8 @@ def save_tree(opt, indexfile, hlink_db, msr, w):
     fcount = 0
     lastskip_name = None
     lastdir = b''
-    for transname, ent in r.filter(opt.sources, wantrecurse=wantrecurse_during):
+    for transname, ent in reader.filter(opt.sources,
+                                        wantrecurse=wantrecurse_during):
         (dir, file) = os.path.split(ent.name)
         exists = (ent.flags & index.IX_EXISTS)
         hashvalid = already_saved(ent)
@@ -518,8 +518,10 @@ def main(argv):
                 log('error: cannot access %r; have you run bup index?'
                     % path_msg(indexfile))
                 sys.exit(1)
-            with msr, hlinkdb.HLinkDB(indexfile + b'.hlink') as hlink_db:
-                tree = save_tree(opt, indexfile, hlink_db, msr, w)
+            with msr, \
+                 hlinkdb.HLinkDB(indexfile + b'.hlink') as hlink_db, \
+                 index.Reader(indexfile) as reader:
+                tree = save_tree(opt, reader, hlink_db, msr, w)
             if opt.tree:
                 out.write(hexlify(tree))
                 out.write(b'\n')

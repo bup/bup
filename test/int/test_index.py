@@ -118,57 +118,54 @@ def test_index_dirty(tmpdir):
             #w3.close()
             WVPASS()
 
-            r1 = w1.new_reader()
-            r2 = w2.new_reader()
-            r3 = w3.new_reader()
-            WVPASS()
+            with w1.new_reader() as r1, \
+                 w2.new_reader() as r2, \
+                 w3.new_reader() as r3:
+                WVPASS()
 
-            r1all = [e.name for e in r1]
-            WVPASSEQ(r1all,
-                     [b'/a/b/x', b'/a/b/c', b'/a/b/', b'/a/', b'/'])
-            r2all = [e.name for e in r2]
-            WVPASSEQ(r2all,
-                     [b'/a/b/n/2', b'/a/b/n/', b'/a/b/', b'/a/', b'/'])
-            r3all = [e.name for e in r3]
-            WVPASSEQ(r3all,
-                     [b'/a/c/n/3', b'/a/c/n/', b'/a/c/', b'/a/', b'/'])
-            all = [e.name for e in index.merge(r2, r1, r3)]
-            WVPASSEQ(all,
-                     [b'/a/c/n/3', b'/a/c/n/', b'/a/c/',
-                      b'/a/b/x', b'/a/b/n/2', b'/a/b/n/', b'/a/b/c',
-                      b'/a/b/', b'/a/', b'/'])
-            fake_validate(r1)
-            dump(r1)
+                r1all = [e.name for e in r1]
+                WVPASSEQ(r1all,
+                         [b'/a/b/x', b'/a/b/c', b'/a/b/', b'/a/', b'/'])
+                r2all = [e.name for e in r2]
+                WVPASSEQ(r2all,
+                         [b'/a/b/n/2', b'/a/b/n/', b'/a/b/', b'/a/', b'/'])
+                r3all = [e.name for e in r3]
+                WVPASSEQ(r3all,
+                         [b'/a/c/n/3', b'/a/c/n/', b'/a/c/', b'/a/', b'/'])
+                all = [e.name for e in index.merge(r2, r1, r3)]
+                WVPASSEQ(all,
+                         [b'/a/c/n/3', b'/a/c/n/', b'/a/c/',
+                          b'/a/b/x', b'/a/b/n/2', b'/a/b/n/', b'/a/b/c',
+                          b'/a/b/', b'/a/', b'/'])
+                fake_validate(r1)
+                dump(r1)
 
-            print([hex(e.flags) for e in r1])
-            WVPASSEQ([e.name for e in r1 if e.is_valid()], r1all)
-            WVPASSEQ([e.name for e in r1 if not e.is_valid()], [])
-            WVPASSEQ([e.name for e in index.merge(r2, r1, r3) if not e.is_valid()],
-                     [b'/a/c/n/3', b'/a/c/n/', b'/a/c/',
-                      b'/a/b/n/2', b'/a/b/n/', b'/a/b/', b'/a/', b'/'])
+                print([hex(e.flags) for e in r1])
+                WVPASSEQ([e.name for e in r1 if e.is_valid()], r1all)
+                WVPASSEQ([e.name for e in r1 if not e.is_valid()], [])
+                WVPASSEQ([e.name for e in index.merge(r2, r1, r3) if not e.is_valid()],
+                         [b'/a/c/n/3', b'/a/c/n/', b'/a/c/',
+                          b'/a/b/n/2', b'/a/b/n/', b'/a/b/', b'/a/', b'/'])
 
-            expect_invalid = [b'/'] + r2all + r3all
-            expect_real = (set(r1all) - set(r2all) - set(r3all)) \
-                            | set([b'/a/b/n/2', b'/a/c/n/3'])
-            dump(index.merge(r2, r1, r3))
-            for e in index.merge(r2, r1, r3):
-                print(e.name, hex(e.flags), e.ctime)
-                eiv = e.name in expect_invalid
-                er  = e.name in expect_real
-                WVPASSEQ(eiv, not e.is_valid())
-                WVPASSEQ(er, e.is_real())
-            fake_validate(r2, r3)
-            dump(index.merge(r2, r1, r3))
-            WVPASSEQ([e.name for e in index.merge(r2, r1, r3) if not e.is_valid()], [])
+                expect_invalid = [b'/'] + r2all + r3all
+                expect_real = (set(r1all) - set(r2all) - set(r3all)) \
+                                | set([b'/a/b/n/2', b'/a/c/n/3'])
+                dump(index.merge(r2, r1, r3))
+                for e in index.merge(r2, r1, r3):
+                    print(e.name, hex(e.flags), e.ctime)
+                    eiv = e.name in expect_invalid
+                    er  = e.name in expect_real
+                    WVPASSEQ(eiv, not e.is_valid())
+                    WVPASSEQ(er, e.is_real())
+                fake_validate(r2, r3)
+                dump(index.merge(r2, r1, r3))
+                WVPASSEQ([e.name for e in index.merge(r2, r1, r3) if not e.is_valid()], [])
 
-            e = eget(index.merge(r2, r1, r3), b'/a/b/c')
-            e.invalidate()
-            e.repack()
-            dump(index.merge(r2, r1, r3))
-            WVPASSEQ([e.name for e in index.merge(r2, r1, r3) if not e.is_valid()],
-                     [b'/a/b/c', b'/a/b/', b'/a/', b'/'])
-            w1.close()
-            w2.close()
-            w3.close()
+                e = eget(index.merge(r2, r1, r3), b'/a/b/c')
+                e.invalidate()
+                e.repack()
+                dump(index.merge(r2, r1, r3))
+                WVPASSEQ([e.name for e in index.merge(r2, r1, r3) if not e.is_valid()],
+                         [b'/a/b/c', b'/a/b/', b'/a/', b'/'])
     finally:
         os.chdir(orig_cwd)

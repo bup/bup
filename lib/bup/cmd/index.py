@@ -73,12 +73,12 @@ def update_index(top, excluded_paths, exclude_rxs, indexfile,
                  out=None, verbose=0):
     # tmax must be epoch nanoseconds.
     tmax = (time.time() - 1) * 10**9
-    ri = index.Reader(indexfile)
-    rig = IterHelper(ri.iter(name=top))
 
     with index.MetaStoreWriter(indexfile + b'.meta') as msw, \
-         hlinkdb.HLinkDB(indexfile + b'.hlink') as hlinks:
+         hlinkdb.HLinkDB(indexfile + b'.hlink') as hlinks, \
+         index.Reader(indexfile) as ri:
 
+        rig = IterHelper(ri.iter(name=top))
         wi = index.Writer(indexfile, msw, tmax)
 
         fake_hash = None
@@ -180,22 +180,20 @@ def update_index(top, excluded_paths, exclude_rxs, indexfile,
             ri.save()
             wi.flush()
             if wi.count:
-                wr = wi.new_reader()
-                if check:
-                    log('check: before merging: oldfile\n')
-                    check_index(ri, verbose)
-                    log('check: before merging: newfile\n')
-                    check_index(wr, verbose)
-                mi = index.Writer(indexfile, msw, tmax)
+                with wi.new_reader() as wr:
+                    if check:
+                        log('check: before merging: oldfile\n')
+                        check_index(ri, verbose)
+                        log('check: before merging: newfile\n')
+                        check_index(wr, verbose)
+                    mi = index.Writer(indexfile, msw, tmax)
 
-                for e in index.merge(ri, wr):
-                    # FIXME: shouldn't we remove deleted entries
-                    # eventually?  When?
-                    mi.add_ixentry(e)
+                    for e in index.merge(ri, wr):
+                        # FIXME: shouldn't we remove deleted entries
+                        # eventually?  When?
+                        mi.add_ixentry(e)
 
-                ri.close()
-                mi.close()
-                wr.close()
+                    mi.close()
             wi.abort()
         else:
             wi.close()
@@ -267,7 +265,8 @@ def main(argv):
 
     if opt.check:
         log('check: starting initial check.\n')
-        check_index(index.Reader(indexfile), opt.verbose)
+        with index.Reader(indexfile) as reader:
+            check_index(reader, opt.verbose)
 
     if opt.clear:
         log('clear: clearing index.\n')
@@ -293,31 +292,33 @@ def main(argv):
 
     if opt['print'] or opt.status or opt.modified:
         extra = [argv_bytes(x) for x in extra]
-        for name, ent in index.Reader(indexfile).filter(extra or [b'']):
-            if (opt.modified
-                and (ent.is_valid() or ent.is_deleted() or not ent.mode)):
-                continue
-            line = b''
-            if opt.status:
-                if ent.is_deleted():
-                    line += b'D '
-                elif not ent.is_valid():
-                    if ent.sha == index.EMPTY_SHA:
-                        line += b'A '
+        with index.Reader(indexfile) as reader:
+            for name, ent in reader.filter(extra or [b'']):
+                if (opt.modified
+                    and (ent.is_valid() or ent.is_deleted() or not ent.mode)):
+                    continue
+                line = b''
+                if opt.status:
+                    if ent.is_deleted():
+                        line += b'D '
+                    elif not ent.is_valid():
+                        if ent.sha == index.EMPTY_SHA:
+                            line += b'A '
+                        else:
+                            line += b'M '
                     else:
-                        line += b'M '
-                else:
-                    line += b'  '
-            if opt.hash:
-                line += hexlify(ent.sha) + b' '
-            if opt.long:
-                line += b'%7s %7s ' % (oct(ent.mode).encode('ascii'),
-                                       oct(ent.gitmode).encode('ascii'))
-            out.write(line + (name or b'./') + b'\n')
+                        line += b'  '
+                if opt.hash:
+                    line += hexlify(ent.sha) + b' '
+                if opt.long:
+                    line += b'%7s %7s ' % (oct(ent.mode).encode('ascii'),
+                                           oct(ent.gitmode).encode('ascii'))
+                out.write(line + (name or b'./') + b'\n')
 
     if opt.check and (opt['print'] or opt.status or opt.modified or opt.update):
         log('check: starting final check.\n')
-        check_index(index.Reader(indexfile), opt.verbose)
+        with index.Reader(indexfile) as reader:
+            check_index(reader, opt.verbose)
 
     if saved_errors:
         log('WARNING: %d errors encountered.\n' % len(saved_errors))

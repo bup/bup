@@ -439,8 +439,12 @@ class Reader:
                                                self.m[st.st_size - FOOTLEN
                                                       : st.st_size])[0]
 
-    def __del__(self):
-        self.close()
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        with pending_raise(value, rethrow=False):
+            self.close()
 
     def __len__(self):
         return int(self.count)
