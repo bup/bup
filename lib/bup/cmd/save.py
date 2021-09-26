@@ -109,7 +109,7 @@ def opts_from_cmdline(argv):
 
     return opt
 
-def save_tree(opt, indexfile, hlink_db, w):
+def save_tree(opt, indexfile, hlink_db, msr, w):
     # Metadata is stored in a file named .bupm in each directory.  The
     # first metadata entry will be the metadata for the current directory.
     # The remaining entries will be for each of the other directory
@@ -225,16 +225,6 @@ def save_tree(opt, indexfile, hlink_db, w):
                      remainstr, kpsstr))
 
 
-    r = index.Reader(indexfile)
-    try:
-        msr = index.MetaStoreReader(indexfile + b'.meta')
-    except IOError as ex:
-        if ex.errno != EACCES:
-            raise
-        log('error: cannot access %r; have you run bup index?'
-            % path_msg(indexfile))
-        sys.exit(1)
-
     def already_saved(ent):
         return ent.is_valid() and w.exists(ent.sha) and ent.sha
 
@@ -251,6 +241,7 @@ def save_tree(opt, indexfile, hlink_db, w):
                 return link_paths[0]
         return None
 
+    r = index.Reader(indexfile)
     total = ftotal = 0
     if opt.progress:
         for transname, ent in r.filter(opt.sources,
@@ -520,8 +511,16 @@ def main(argv):
                 refname = parent = None
 
             indexfile = opt.indexfile or git.repo(b'bupindex')
-            with hlinkdb.HLinkDB(indexfile + b'.hlink') as hlink_db:
-                tree = save_tree(opt, indexfile, hlink_db, w)
+            try:
+                msr = index.MetaStoreReader(indexfile + b'.meta')
+            except IOError as ex:
+                if ex.errno != EACCES:
+                    raise
+                log('error: cannot access %r; have you run bup index?'
+                    % path_msg(indexfile))
+                sys.exit(1)
+            with msr, hlinkdb.HLinkDB(indexfile + b'.hlink') as hlink_db:
+                tree = save_tree(opt, indexfile, hlink_db, msr, w)
             if opt.tree:
                 out.write(hexlify(tree))
                 out.write(b'\n')

@@ -4,7 +4,7 @@ import errno, os, stat, struct, tempfile
 
 from bup import metadata, xstat
 from bup._helpers import UINT_MAX, bytescmp
-from bup.compat import range
+from bup.compat import pending_raise, range
 from bup.helpers import (add_error, log, merge_iter, mmap_readwrite,
                          progress, qprogress, resolve_parent, slashappend)
 
@@ -58,8 +58,12 @@ class MetaStoreReader:
             self._file.close()
             self._file = None
 
-    def __del__(self):
-        self.close()
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        with pending_raise(value, rethrow=True):
+            self.close()
 
     def metadata_at(self, ofs):
         self._file.seek(ofs)
