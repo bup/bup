@@ -47,11 +47,7 @@ def before_saving_regular_file(name):
     return
 
 
-def main(argv):
-
-    # Hack around lack of nonlocal vars in python 2
-    _nonlocal = {}
-
+def opts_from_cmdline(argv):
     o = options.Options(optspec)
     opt, flags, extra = o.parse_bytes(argv[1:])
 
@@ -63,29 +59,27 @@ def main(argv):
         opt.remote = argv_bytes(opt.remote)
     if opt.strip_path:
         opt.strip_path = argv_bytes(opt.strip_path)
-
-    git.check_repo_or_die()
     if not (opt.tree or opt.commit or opt.name):
         o.fatal("use one or more of -t, -c, -n")
     if not extra:
         o.fatal("no filenames given")
-
-    extra = [argv_bytes(x) for x in extra]
+    if opt.date:
+        opt.date = parse_date_or_fatal(opt.date, o.fatal)
+    else:
+        opt.date = time.time()
 
     opt.progress = (istty2 and not opt.quiet)
     opt.smaller = parse_num(opt.smaller or 0)
-    if opt.bwlimit:
-        client.bwlimit = parse_num(opt.bwlimit)
 
-    if opt.date:
-        date = parse_date_or_fatal(opt.date, o.fatal)
-    else:
-        date = time.time()
+    if opt.bwlimit:
+        opt.bwlimit = parse_num(opt.bwlimit)
 
     if opt.strip and opt.strip_path:
         o.fatal("--strip is incompatible with --strip-path")
 
-    graft_points = []
+    opt.sources = [argv_bytes(x) for x in extra]
+
+    grafts = []
     if opt.graft:
         if opt.strip:
             o.fatal("--strip is incompatible with --graft")
@@ -102,33 +96,20 @@ def main(argv):
                 old_path, new_path = splitted_parameter
                 if not (old_path and new_path):
                     o.fatal("a graft point cannot be empty")
-                graft_points.append((resolve_parent(old_path),
-                                     resolve_parent(new_path)))
+                grafts.append((resolve_parent(old_path),
+                               resolve_parent(new_path)))
+    opt.grafts = grafts
 
-    is_reverse = environ.get(b'BUP_SERVER_REVERSE')
-    if is_reverse and opt.remote:
+    opt.is_reverse = environ.get(b'BUP_SERVER_REVERSE')
+    if opt.is_reverse and opt.remote:
         o.fatal("don't use -r in reverse mode; it's automatic")
 
-    name = opt.name
-    if name and not valid_save_name(name):
-        o.fatal("'%s' is not a valid branch name" % path_msg(name))
-    refname = name and b'refs/heads/%s' % name or None
-    if opt.remote or is_reverse:
-        try:
-            cli = client.Client(opt.remote)
-        except client.ClientError as e:
-            log('error: %s' % e)
-            sys.exit(1)
-        oldref = refname and cli.read_ref(refname) or None
-        w = cli.new_packwriter(compression_level=opt.compress)
-    else:
-        cli = None
-        oldref = refname and git.read_ref(refname) or None
-        w = git.PackWriter(compression_level=opt.compress)
+    if opt.name and not valid_save_name(opt.name):
+        o.fatal("'%s' is not a valid branch name" % path_msg(opt.name))
 
-    handle_ctrl_c()
+    return opt
 
-
+def save_tree(opt, w):
     # Metadata is stored in a file named .bupm in each directory.  The
     # first metadata entry will be the metadata for the current directory.
     # The remaining entries will be for each of the other directory
@@ -151,7 +132,6 @@ def main(argv):
     # in the .items member of the StackDir.
 
     stack = []
-
 
     def _push(part, metadata):
         # Enter a new archive directory -- make it the current directory.
@@ -202,6 +182,8 @@ def main(argv):
         return tree
 
 
+    # Hack around lack of nonlocal vars in python 2
+    _nonlocal = {}
     _nonlocal['count'] = 0
     _nonlocal['subcount'] = 0
     _nonlocal['lastremain'] = None
@@ -273,7 +255,8 @@ def main(argv):
 
     total = ftotal = 0
     if opt.progress:
-        for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse_pre):
+        for transname, ent in r.filter(opt.sources,
+                                       wantrecurse=wantrecurse_pre):
             if not (ftotal % 10024):
                 qprogress('Reading index: %d\r' % ftotal)
             exists = ent.exists()
@@ -303,7 +286,7 @@ def main(argv):
     fcount = 0
     lastskip_name = None
     lastdir = b''
-    for (transname,ent) in r.filter(extra, wantrecurse=wantrecurse_during):
+    for transname, ent in r.filter(opt.sources, wantrecurse=wantrecurse_during):
         (dir, file) = os.path.split(ent.name)
         exists = (ent.flags & index.IX_EXISTS)
         hashvalid = already_saved(ent)
@@ -341,11 +324,11 @@ def main(argv):
 
         assert(dir.startswith(b'/'))
         if opt.strip:
-            dirp = stripped_path_components(dir, extra)
+            dirp = stripped_path_components(dir, opt.sources)
         elif opt.strip_path:
             dirp = stripped_path_components(dir, [opt.strip_path])
-        elif graft_points:
-            dirp = grafted_path_components(graft_points, dir)
+        elif opt.grafts:
+            dirp = grafted_path_components(opt.grafts, dir)
         else:
             dirp = path_components(dir)
 
@@ -487,35 +470,66 @@ def main(argv):
     # When there's a collision, use empty metadata for the root.
     tree = _pop(dir_metadata = metadata.Metadata() if root_collision else None)
 
+    msr.close()
+    return tree
+
+
+def commit_tree(tree, parent, date, argv, writer):
+    if compat.py_maj > 2:
+        # Strip b prefix from python 3 bytes reprs to preserve previous format
+         msgcmd = b'[%s]' % b', '.join([repr(argv_bytes(x))[1:].encode('ascii')
+                                       for x in argv])
+    else:
+        msgcmd = repr(argv)
+    msg = b'bup save\n\nGenerated by command:\n%s\n' % msgcmd
+    userline = (b'%s <%s@%s>' % (userfullname(), username(), hostname()))
+    return writer.new_commit(tree, parent, userline, date, None,
+                             userline, date, None, msg)
+
+
+def main(argv):
+    handle_ctrl_c()
+    opt = opts_from_cmdline(argv)
+    client.bwlimit = opt.bwlimit
+    git.check_repo_or_die()
+
+    remote_dest = opt.remote or opt.is_reverse
+    if not remote_dest:
+        repo = git
+        cli = None
+        w = git.PackWriter(compression_level=opt.compress)
+    else:
+        try:
+            cli = repo = client.Client(opt.remote)
+        except client.ClientError as e:
+            log('error: %s' % e)
+            sys.exit(1)
+        w = cli.new_packwriter(compression_level=opt.compress)
+
     sys.stdout.flush()
     out = byte_stream(sys.stdout)
 
+    if opt.name:
+        refname = b'refs/heads/%s' % opt.name
+        parent = repo.read_ref(refname)
+    else:
+        refname = parent = None
+
+    tree = save_tree(opt, w)
     if opt.tree:
         out.write(hexlify(tree))
         out.write(b'\n')
-    if opt.commit or name:
-        if compat.py_maj > 2:
-            # Strip b prefix from python 3 bytes reprs to preserve previous format
-             msgcmd = b'[%s]' % b', '.join([repr(argv_bytes(x))[1:].encode('ascii')
-                                           for x in argv])
-        else:
-            msgcmd = repr(argv)
-        msg = b'bup save\n\nGenerated by command:\n%s\n' % msgcmd
-        userline = (b'%s <%s@%s>' % (userfullname(), username(), hostname()))
-        commit = w.new_commit(tree, oldref, userline, date, None,
-                              userline, date, None, msg)
+    if opt.commit or opt.name:
+        commit = commit_tree(tree, parent, opt.date, argv, w)
         if opt.commit:
             out.write(hexlify(commit))
             out.write(b'\n')
 
-    msr.close()
-    w.close()  # must close before we can update the ref
+    w.close()
 
+    # packwriter must be closed before we can update the ref
     if opt.name:
-        if cli:
-            cli.update_ref(refname, commit, oldref)
-        else:
-            git.update_ref(refname, commit, oldref)
+        repo.update_ref(refname, commit, parent)
 
     if cli:
         cli.close()
