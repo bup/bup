@@ -537,8 +537,12 @@ class Writer:
         self.f = os.fdopen(ffd, 'wb', 65536)
         self.f.write(INDEX_HDR)
 
-    def __del__(self):
-        self.abort()
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        with pending_raise(value, rethrow=False):
+            self.abort()
 
     def abort(self):
         f = self.f

@@ -76,10 +76,10 @@ def update_index(top, excluded_paths, exclude_rxs, indexfile,
 
     with index.MetaStoreWriter(indexfile + b'.meta') as msw, \
          hlinkdb.HLinkDB(indexfile + b'.hlink') as hlinks, \
+         index.Writer(indexfile, msw, tmax) as wi, \
          index.Reader(indexfile) as ri:
 
         rig = IterHelper(ri.iter(name=top))
-        wi = index.Writer(indexfile, msw, tmax)
 
         fake_hash = None
         if fake_valid:
@@ -176,7 +176,9 @@ def update_index(top, excluded_paths, exclude_rxs, indexfile,
 
         hlinks.prepare_save()
 
-        if ri.exists():
+        if not ri.exists():
+            wi.close()
+        else:
             ri.save()
             wi.flush()
             if wi.count:
@@ -186,17 +188,12 @@ def update_index(top, excluded_paths, exclude_rxs, indexfile,
                         check_index(ri, verbose)
                         log('check: before merging: newfile\n')
                         check_index(wr, verbose)
-                    mi = index.Writer(indexfile, msw, tmax)
-
-                    for e in index.merge(ri, wr):
-                        # FIXME: shouldn't we remove deleted entries
-                        # eventually?  When?
-                        mi.add_ixentry(e)
-
-                    mi.close()
-            wi.abort()
-        else:
-            wi.close()
+                    with index.Writer(indexfile, msw, tmax) as mi:
+                        for e in index.merge(ri, wr):
+                            # FIXME: shouldn't we remove deleted entries
+                            # eventually?  When?
+                            mi.add_ixentry(e)
+                        mi.close()
 
         hlinks.commit_save()
 
