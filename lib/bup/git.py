@@ -1236,38 +1236,6 @@ def require_suitable_git(ver_str=None):
     assert False
 
 
-class _AbortableIter:
-    def __init__(self, it, onabort = None):
-        self.it = it
-        self.onabort = onabort
-        self.done = None
-
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        try:
-            return next(self.it)
-        except StopIteration as e:
-            self.done = True
-            raise
-        except:
-            self.abort()
-            raise
-
-    next = __next__
-
-    def abort(self):
-        """Abort iteration and call the abortion callback, if needed."""
-        if not self.done:
-            self.done = True
-            if self.onabort:
-                self.onabort()
-
-    def __del__(self):
-        self.abort()
-
-
 class CatPipe:
     """Link to 'git cat-file' that is used to retrieve blob data."""
     def __init__(self, repo_dir = None):
@@ -1276,12 +1244,15 @@ class CatPipe:
         self.p = self.inprogress = None
 
     def close(self, wait=False):
-        p = self.p
-        if p:
-            p.stdout.close()
-            p.stdin.close()
-        self.p = None
+        self.p, p = None, self.p
         self.inprogress = None
+        if p:
+            try:
+                p.stdout.close()
+            finally:
+                # This will handle pending exceptions correctly once
+                # we drop py2
+                p.stdin.close()
         if wait:
             p.wait()
             return p.returncode
@@ -1328,18 +1299,17 @@ class CatPipe:
             raise GitError('expected object (id, type, size), got %r' % info)
         oidx, typ, size = info
         size = int(size)
-        it = _AbortableIter(chunkyreader(self.p.stdout, size),
-                            onabort=self.close)
         try:
+            it = chunkyreader(self.p.stdout, size)
             yield oidx, typ, size
-            for blob in it:
+            for blob in chunkyreader(self.p.stdout, size):
                 yield blob
             readline_result = self.p.stdout.readline()
             assert readline_result == b'\n'
             self.inprogress = None
-        except Exception as e:
-            it.abort()
-            raise
+        except Exception as ex:
+            with pending_raise(ex):
+                self.close()
 
     def _join(self, it):
         _, typ, _ = next(it)
