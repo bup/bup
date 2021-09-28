@@ -290,30 +290,30 @@ def main(argv):
     except AttributeError:
         sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
 
-    application = tornado.web.Application([
-        (r"(?P<path>/.*)", BupRequestHandler, dict(repo=LocalRepo())),
-    ], **settings)
+    with LocalRepo() as repo:
+        handlers = [ (r"(?P<path>/.*)", BupRequestHandler, dict(repo=repo))]
+        application = tornado.web.Application(handlers, **settings)
 
-    http_server = HTTPServer(application)
-    io_loop_pending = IOLoop.instance()
+        http_server = HTTPServer(application)
+        io_loop_pending = IOLoop.instance()
 
-    if isinstance(address, InetAddress):
-        sockets = tornado.netutil.bind_sockets(address.port, address.host)
-        http_server.add_sockets(sockets)
-        print('Serving HTTP on %s:%d...' % sockets[0].getsockname()[0:2])
-        if opt.browser:
-            browser_addr = 'http://' + address[0] + ':' + str(address[1])
-            io_loop_pending.add_callback(lambda : webbrowser.open(browser_addr))
-    elif isinstance(address, UnixAddress):
-        unix_socket = bind_unix_socket(address.path)
-        http_server.add_socket(unix_socket)
-        print('Serving HTTP on filesystem socket %r' % address.path)
-    else:
-        log('error: unexpected address %r', address)
-        sys.exit(1)
+        if isinstance(address, InetAddress):
+            sockets = tornado.netutil.bind_sockets(address.port, address.host)
+            http_server.add_sockets(sockets)
+            print('Serving HTTP on %s:%d...' % sockets[0].getsockname()[0:2])
+            if opt.browser:
+                browser_addr = 'http://' + address[0] + ':' + str(address[1])
+                io_loop_pending.add_callback(lambda : webbrowser.open(browser_addr))
+        elif isinstance(address, UnixAddress):
+            unix_socket = bind_unix_socket(address.path)
+            http_server.add_socket(unix_socket)
+            print('Serving HTTP on filesystem socket %r' % address.path)
+        else:
+            log('error: unexpected address %r', address)
+            sys.exit(1)
 
-    io_loop = io_loop_pending
-    io_loop.start()
+        io_loop = io_loop_pending
+        io_loop.start()
 
     if saved_errors:
         log('WARNING: %d errors encountered while saving.\n' % len(saved_errors))

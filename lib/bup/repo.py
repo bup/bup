@@ -6,6 +6,7 @@ from functools import partial
 from bup import client, git, vfs
 from bup.compat import pending_raise
 
+
 _next_repo_id = 0
 _repo_ids = {}
 
@@ -28,9 +29,6 @@ class LocalRepo:
 
     def close(self):
         pass
-
-    def __del__(self):
-        self.close()
 
     def __enter__(self):
         return self
@@ -99,9 +97,6 @@ class RemoteRepo:
         if self.client:
             self.client.close()
             self.client = None
-
-    def __del__(self):
-        self.close()
 
     def __enter__(self):
         return self

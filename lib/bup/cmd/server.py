@@ -289,7 +289,7 @@ commands = {
 }
 
 def main(argv):
-    global suspended_w
+    global repo, suspended_w
 
     o = options.Options(optspec)
     opt, flags, extra = o.parse_bytes(argv[1:])
@@ -303,7 +303,8 @@ def main(argv):
     sys.stdout.flush()
     conn = Conn(byte_stream(sys.stdin), byte_stream(sys.stdout))
     lr = linereader(conn)
-    with finalized(None, lambda _: suspended_w and suspended_w.close()):
+    with finalized(None, lambda _: repo and repo.close()), \
+         finalized(None, lambda _: suspended_w and suspended_w.close()):
         for _line in lr:
             line = _line.strip()
             if not line:

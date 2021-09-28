@@ -138,27 +138,27 @@ def test_metadata_method(tmpdir):
     ex(bup_path, b'-d', bup_dir, b'index', b'-v', data_path)
     ex(bup_path, b'-d', bup_dir, b'save', b'-tvvn', b'test', data_path)
     git.check_repo_or_die(bup_dir)
-    repo = LocalRepo()
-    resolved = vfs.resolve(repo,
-                           b'/test/latest' + resolve_parent(data_path),
-                           follow=False)
-    leaf_name, leaf_item = resolved[-1]
-    m = leaf_item.meta
-    WVPASS(m.mtime == test_time2)
-    WVPASS(leaf_name == b'foo')
-    contents = tuple(vfs.contents(repo, leaf_item))
-    WVPASS(len(contents) == 3)
-    WVPASSEQ(frozenset(name for name, item in contents),
-             frozenset((b'.', b'file', b'symlink')))
-    for name, item in contents:
-        if name == b'file':
-            m = item.meta
-            WVPASS(m.mtime == test_time1)
-        elif name == b'symlink':
-            m = item.meta
-            WVPASSEQ(m.symlink_target, b'file')
-            WVPASSEQ(m.size, 4)
-            WVPASSEQ(m.mtime, 0)
+    with  LocalRepo() as repo:
+        resolved = vfs.resolve(repo,
+                               b'/test/latest' + resolve_parent(data_path),
+                               follow=False)
+        leaf_name, leaf_item = resolved[-1]
+        m = leaf_item.meta
+        WVPASS(m.mtime == test_time2)
+        WVPASS(leaf_name == b'foo')
+        contents = tuple(vfs.contents(repo, leaf_item))
+        WVPASS(len(contents) == 3)
+        WVPASSEQ(frozenset(name for name, item in contents),
+                 frozenset((b'.', b'file', b'symlink')))
+        for name, item in contents:
+            if name == b'file':
+                m = item.meta
+                WVPASS(m.mtime == test_time1)
+            elif name == b'symlink':
+                m = item.meta
+                WVPASSEQ(m.symlink_target, b'file')
+                WVPASSEQ(m.size, 4)
+                WVPASSEQ(m.mtime, 0)
 
 
 def _first_err():

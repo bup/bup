@@ -161,45 +161,45 @@ def test_misc(tmpdir):
     ex((bup_path, b'index', b'-v', data_path))
     ex((bup_path, b'save', b'-d', b'100000', b'-tvvn', b'test',
         b'--strip', data_path))
-    repo = LocalRepo()
 
-    ls_tree = exo((b'git', b'ls-tree', b'test', b'symlink')).out
-    mode, typ, oidx, name = ls_tree.strip().split(None, 3)
-    assert name == b'symlink'
-    link_item = vfs.Item(oid=unhexlify(oidx), meta=int(mode, 8))
-    wvpasseq(b'file', vfs.readlink(repo, link_item))
+    with LocalRepo() as repo:
+        ls_tree = exo((b'git', b'ls-tree', b'test', b'symlink')).out
+        mode, typ, oidx, name = ls_tree.strip().split(None, 3)
+        assert name == b'symlink'
+        link_item = vfs.Item(oid=unhexlify(oidx), meta=int(mode, 8))
+        wvpasseq(b'file', vfs.readlink(repo, link_item))
 
-    ls_tree = exo((b'git', b'ls-tree', b'test', b'file')).out
-    mode, typ, oidx, name = ls_tree.strip().split(None, 3)
-    assert name == b'file'
-    file_item = vfs.Item(oid=unhexlify(oidx), meta=int(mode, 8))
-    wvexcept(Exception, vfs.readlink, repo, file_item)
+        ls_tree = exo((b'git', b'ls-tree', b'test', b'file')).out
+        mode, typ, oidx, name = ls_tree.strip().split(None, 3)
+        assert name == b'file'
+        file_item = vfs.Item(oid=unhexlify(oidx), meta=int(mode, 8))
+        wvexcept(Exception, vfs.readlink, repo, file_item)
 
-    wvpasseq(4, vfs.item_size(repo, link_item))
-    wvpasseq(7, vfs.item_size(repo, file_item))
-    meta = metadata.from_path(fsencode(__file__))
-    meta.size = 42
-    fake_item = file_item._replace(meta=meta)
-    wvpasseq(42, vfs.item_size(repo, fake_item))
+        wvpasseq(4, vfs.item_size(repo, link_item))
+        wvpasseq(7, vfs.item_size(repo, file_item))
+        meta = metadata.from_path(fsencode(__file__))
+        meta.size = 42
+        fake_item = file_item._replace(meta=meta)
+        wvpasseq(42, vfs.item_size(repo, fake_item))
 
-    _, fakelink_item = vfs.resolve(repo, b'/test/latest', follow=False)[-1]
-    wvpasseq(17, vfs.item_size(repo, fakelink_item))
+        _, fakelink_item = vfs.resolve(repo, b'/test/latest', follow=False)[-1]
+        wvpasseq(17, vfs.item_size(repo, fakelink_item))
 
-    run_augment_item_meta_tests(repo,
-                                b'/test/latest/file', 7,
-                                b'/test/latest/symlink', b'file')
+        run_augment_item_meta_tests(repo,
+                                    b'/test/latest/file', 7,
+                                    b'/test/latest/symlink', b'file')
 
-    # FIXME: this caused StopIteration
-    #_, file_item = vfs.resolve(repo, '/file')[-1]
-    _, file_item = vfs.resolve(repo, b'/test/latest/file')[-1]
-    file_copy = vfs.copy_item(file_item)
-    wvpass(file_copy is not file_item)
-    wvpass(file_copy.meta is not file_item.meta)
-    wvpass(isinstance(file_copy, tuple))
-    wvpass(file_item.meta.user)
-    wvpass(file_copy.meta.user)
-    file_copy.meta.user = None
-    wvpass(file_item.meta.user)
+        # FIXME: this caused StopIteration
+        #_, file_item = vfs.resolve(repo, '/file')[-1]
+        _, file_item = vfs.resolve(repo, b'/test/latest/file')[-1]
+        file_copy = vfs.copy_item(file_item)
+        wvpass(file_copy is not file_item)
+        wvpass(file_copy.meta is not file_item.meta)
+        wvpass(isinstance(file_copy, tuple))
+        wvpass(file_item.meta.user)
+        wvpass(file_copy.meta.user)
+        file_copy.meta.user = None
+        wvpass(file_item.meta.user)
 
 def write_sized_random_content(parent_dir, size, seed):
     verbose = 0
@@ -261,38 +261,38 @@ def test_read_and_seek(tmpdir):
     environ[b'GIT_DIR'] = bup_dir
     environ[b'BUP_DIR'] = bup_dir
     git.repodir = bup_dir
-    repo = LocalRepo()
-    data_path = tmpdir + b'/src'
-    os.mkdir(data_path)
-    seed = randint(-(1 << 31), (1 << 31) - 1)
-    rand = Random()
-    rand.seed(seed)
-    print('test_read seed:', seed, file=sys.stderr)
-    max_size = 2 * 1024 * 1024
-    sizes = set((rand.randint(1, max_size) for _ in range(5)))
-    sizes.add(1)
-    sizes.add(max_size)
-    for size in sizes:
-        write_sized_random_content(data_path, size, seed)
-    ex((bup_path, b'init'))
-    ex((bup_path, b'index', b'-v', data_path))
-    ex((bup_path, b'save', b'-d', b'100000', b'-tvvn', b'test',
-        b'--strip', data_path))
-    read_sizes = set((rand.randint(1, max_size) for _ in range(10)))
-    sizes.add(1)
-    sizes.add(max_size)
-    print('test_read src sizes:', sizes, file=sys.stderr)
-    print('test_read read sizes:', read_sizes, file=sys.stderr)
-    for size in sizes:
-        res = resolve(repo, b'/test/latest/' + str(size).encode('ascii'))
-        _, item = res[-1]
-        wvpasseq(size, vfs.item_size(repo, res[-1][1]))
-        validate_vfs_streaming_read(repo, item,
-                                    b'%s/%d' % (data_path, size),
-                                    read_sizes)
-        validate_vfs_seeking_read(repo, item,
-                                  b'%s/%d' % (data_path, size),
-                                  read_sizes)
+    with LocalRepo() as repo:
+        data_path = tmpdir + b'/src'
+        os.mkdir(data_path)
+        seed = randint(-(1 << 31), (1 << 31) - 1)
+        rand = Random()
+        rand.seed(seed)
+        print('test_read seed:', seed, file=sys.stderr)
+        max_size = 2 * 1024 * 1024
+        sizes = set((rand.randint(1, max_size) for _ in range(5)))
+        sizes.add(1)
+        sizes.add(max_size)
+        for size in sizes:
+            write_sized_random_content(data_path, size, seed)
+        ex((bup_path, b'init'))
+        ex((bup_path, b'index', b'-v', data_path))
+        ex((bup_path, b'save', b'-d', b'100000', b'-tvvn', b'test',
+            b'--strip', data_path))
+        read_sizes = set((rand.randint(1, max_size) for _ in range(10)))
+        sizes.add(1)
+        sizes.add(max_size)
+        print('test_read src sizes:', sizes, file=sys.stderr)
+        print('test_read read sizes:', read_sizes, file=sys.stderr)
+        for size in sizes:
+            res = resolve(repo, b'/test/latest/' + str(size).encode('ascii'))
+            _, item = res[-1]
+            wvpasseq(size, vfs.item_size(repo, res[-1][1]))
+            validate_vfs_streaming_read(repo, item,
+                                        b'%s/%d' % (data_path, size),
+                                        read_sizes)
+            validate_vfs_seeking_read(repo, item,
+                                      b'%s/%d' % (data_path, size),
+                                      read_sizes)
 
 def test_contents_with_mismatched_bupm_git_ordering(tmpdir):
     bup_dir = tmpdir + b'/bup'
@@ -310,26 +310,26 @@ def test_contents_with_mismatched_bupm_git_ordering(tmpdir):
     save_name = strftime('%Y-%m-%d-%H%M%S', localtime(save_utc)).encode('ascii')
     ex((bup_path, b'save', b'-tvvn', b'test', b'-d', b'%d' % save_utc,
         b'--strip', data_path))
-    repo = LocalRepo()
-    tip_sref = exo((b'git', b'show-ref', b'refs/heads/test')).out
-    tip_oidx = tip_sref.strip().split()[0]
-    tip_tree_oidx = exo((b'git', b'log', b'--pretty=%T', b'-n1',
-                         tip_oidx)).out.strip()
-    tip_tree_oid = unhexlify(tip_tree_oidx)
-    tip_tree = tree_dict(repo, tip_tree_oid)
+    with LocalRepo() as repo:
+        tip_sref = exo((b'git', b'show-ref', b'refs/heads/test')).out
+        tip_oidx = tip_sref.strip().split()[0]
+        tip_tree_oidx = exo((b'git', b'log', b'--pretty=%T', b'-n1',
+                             tip_oidx)).out.strip()
+        tip_tree_oid = unhexlify(tip_tree_oidx)
+        tip_tree = tree_dict(repo, tip_tree_oid)
 
-    name, item = vfs.resolve(repo, b'/test/latest')[2]
-    wvpasseq(save_name, name)
-    expected = frozenset((x.name, vfs.Item(oid=x.oid, meta=x.meta))
-                         for x in (tip_tree[name]
-                                   for name in (b'.', b'foo', b'foo.')))
-    contents = tuple(vfs.contents(repo, item))
-    wvpasseq(expected, frozenset(contents))
-    # Spot check, in case tree_dict shares too much code with the vfs
-    name, item = next(((n, i) for n, i in contents if n == b'foo'))
-    wvpass(S_ISDIR(item.meta))
-    name, item = next(((n, i) for n, i in contents if n == b'foo.'))
-    wvpass(S_ISREG(item.meta.mode))
+        name, item = vfs.resolve(repo, b'/test/latest')[2]
+        wvpasseq(save_name, name)
+        expected = frozenset((x.name, vfs.Item(oid=x.oid, meta=x.meta))
+                             for x in (tip_tree[name]
+                                       for name in (b'.', b'foo', b'foo.')))
+        contents = tuple(vfs.contents(repo, item))
+        wvpasseq(expected, frozenset(contents))
+        # Spot check, in case tree_dict shares too much code with the vfs
+        name, item = next(((n, i) for n, i in contents if n == b'foo'))
+        wvpass(S_ISDIR(item.meta))
+        name, item = next(((n, i) for n, i in contents if n == b'foo.'))
+        wvpass(S_ISREG(item.meta.mode))
 
 def test_duplicate_save_dates(tmpdir):
     bup_dir = tmpdir + b'/bup'
@@ -348,25 +348,25 @@ def test_duplicate_save_dates(tmpdir):
     for i in range(11):
         ex((bup_path, b'save', b'-d', b'100000', b'-n', b'test',
             data_path))
-    repo = LocalRepo()
-    res = vfs.resolve(repo, b'/test')
-    wvpasseq(2, len(res))
-    name, revlist = res[-1]
-    wvpasseq(b'test', name)
-    wvpasseq((b'.',
-              b'1970-01-02-034640-00',
-              b'1970-01-02-034640-01',
-              b'1970-01-02-034640-02',
-              b'1970-01-02-034640-03',
-              b'1970-01-02-034640-04',
-              b'1970-01-02-034640-05',
-              b'1970-01-02-034640-06',
-              b'1970-01-02-034640-07',
-              b'1970-01-02-034640-08',
-              b'1970-01-02-034640-09',
-              b'1970-01-02-034640-10',
-              b'latest'),
-             tuple(sorted(x[0] for x in vfs.contents(repo, revlist))))
+    with LocalRepo() as repo:
+        res = vfs.resolve(repo, b'/test')
+        wvpasseq(2, len(res))
+        name, revlist = res[-1]
+        wvpasseq(b'test', name)
+        wvpasseq((b'.',
+                  b'1970-01-02-034640-00',
+                  b'1970-01-02-034640-01',
+                  b'1970-01-02-034640-02',
+                  b'1970-01-02-034640-03',
+                  b'1970-01-02-034640-04',
+                  b'1970-01-02-034640-05',
+                  b'1970-01-02-034640-06',
+                  b'1970-01-02-034640-07',
+                  b'1970-01-02-034640-08',
+                  b'1970-01-02-034640-09',
+                  b'1970-01-02-034640-10',
+                  b'latest'),
+                 tuple(sorted(x[0] for x in vfs.contents(repo, revlist))))
 
 def test_item_read_write():
     x = vfs.Root(meta=13)

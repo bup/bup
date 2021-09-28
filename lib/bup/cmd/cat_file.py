@@ -34,36 +34,36 @@ def main(argv):
     if not re.match(br'/*[^/]+/[^/]+', target):
         o.fatal("path %r doesn't include a branch and revision" % target)
 
-    repo = LocalRepo()
-    resolved = vfs.resolve(repo, target, follow=False)
-    leaf_name, leaf_item = resolved[-1]
-    if not leaf_item:
-        log('error: cannot access %r in %r\n'
-            % (b'/'.join(name for name, item in resolved), target))
-        sys.exit(1)
+    with LocalRepo() as repo:
+        resolved = vfs.resolve(repo, target, follow=False)
+        leaf_name, leaf_item = resolved[-1]
+        if not leaf_item:
+            log('error: cannot access %r in %r\n'
+                % (b'/'.join(name for name, item in resolved), target))
+            sys.exit(1)
 
-    mode = vfs.item_mode(leaf_item)
+        mode = vfs.item_mode(leaf_item)
 
-    sys.stdout.flush()
-    out = byte_stream(sys.stdout)
+        sys.stdout.flush()
+        out = byte_stream(sys.stdout)
 
-    if opt.bupm:
-        if not stat.S_ISDIR(mode):
-            o.fatal('%r is not a directory' % target)
-        _, bupm_oid = vfs.tree_data_and_bupm(repo, leaf_item.oid)
-        if bupm_oid:
-            with vfs.tree_data_reader(repo, bupm_oid) as meta_stream:
-                out.write(meta_stream.read())
-    elif opt.meta:
-        augmented = vfs.augment_item_meta(repo, leaf_item, include_size=True)
-        out.write(augmented.meta.encode())
-    else:
-        if stat.S_ISREG(mode):
-            with vfs.fopen(repo, leaf_item) as f:
-                for b in chunkyreader(f):
-                    out.write(b)
+        if opt.bupm:
+            if not stat.S_ISDIR(mode):
+                o.fatal('%r is not a directory' % target)
+            _, bupm_oid = vfs.tree_data_and_bupm(repo, leaf_item.oid)
+            if bupm_oid:
+                with vfs.tree_data_reader(repo, bupm_oid) as meta_stream:
+                    out.write(meta_stream.read())
+        elif opt.meta:
+            augmented = vfs.augment_item_meta(repo, leaf_item, include_size=True)
+            out.write(augmented.meta.encode())
         else:
-            o.fatal('%r is not a plain file' % target)
+            if stat.S_ISREG(mode):
+                with vfs.fopen(repo, leaf_item) as f:
+                    for b in chunkyreader(f):
+                        out.write(b)
+            else:
+                o.fatal('%r is not a plain file' % target)
 
     if saved_errors:
         log('warning: %d errors encountered\n' % len(saved_errors))

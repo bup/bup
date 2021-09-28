@@ -27,7 +27,7 @@ def main(argv):
         o.fatal('no paths specified')
 
     check_repo_or_die()
-    repo = LocalRepo()
-    bup_rm(repo, [argv_bytes(x) for x in extra],
-           compression=opt.compress, verbosity=opt.verbose)
+    with LocalRepo() as repo:
+        bup_rm(repo, [argv_bytes(x) for x in extra],
+               compression=opt.compress, verbosity=opt.verbose)
     die_if_errors()

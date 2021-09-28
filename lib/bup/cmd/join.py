@@ -31,21 +31,21 @@ def main(argv):
         extra = linereader(stdin)
 
     ret = 0
-    repo = RemoteRepo(opt.remote) if opt.remote else LocalRepo()
+    with RemoteRepo(opt.remote) if opt.remote else LocalRepo() as repo:
 
-    if opt.o:
-        outfile = open(opt.o, 'wb')
-    else:
-        sys.stdout.flush()
-        outfile = byte_stream(sys.stdout)
+        if opt.o:
+            outfile = open(opt.o, 'wb')
+        else:
+            sys.stdout.flush()
+            outfile = byte_stream(sys.stdout)
 
-    for ref in [argv_bytes(x) for x in extra]:
-        try:
-            for blob in repo.join(ref):
-                outfile.write(blob)
-        except KeyError as e:
-            outfile.flush()
-            log('error: %s\n' % e)
-            ret = 1
+        for ref in [argv_bytes(x) for x in extra]:
+            try:
+                for blob in repo.join(ref):
+                    outfile.write(blob)
+            except KeyError as e:
+                outfile.flush()
+                log('error: %s\n' % e)
+                ret = 1
 
     sys.exit(ret)

@@ -193,5 +193,6 @@ def via_cmdline(args, out=None, onabort=None):
     """
     assert out
     opt = opts_from_cmdline(args, onabort=onabort)
-    repo = RemoteRepo(argv_bytes(opt.remote)) if opt.remote else LocalRepo()
-    return within_repo(repo, opt, out)
+    with RemoteRepo(argv_bytes(opt.remote)) if opt.remote \
+         else LocalRepo() as repo:
+        return within_repo(repo, opt, out)

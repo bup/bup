@@ -147,17 +147,17 @@ def main(argv):
         o.fatal('only one mount point argument expected')
 
     git.check_repo_or_die()
-    repo = LocalRepo()
-    f = BupFs(repo=repo, verbose=opt.verbose, fake_metadata=(not opt.meta))
+    with LocalRepo() as repo:
+        f = BupFs(repo=repo, verbose=opt.verbose, fake_metadata=(not opt.meta))
 
-    # This is likely wrong, but the fuse module doesn't currently accept bytes
-    f.fuse_args.mountpoint = extra[0]
+        # This is likely wrong, but the fuse module doesn't currently accept bytes
+        f.fuse_args.mountpoint = extra[0]
 
-    if opt.debug:
-        f.fuse_args.add('debug')
-    if opt.foreground:
-        f.fuse_args.setmod('foreground')
-    f.multithreaded = False
-    if opt.allow_other:
-        f.fuse_args.add('allow_other')
-    f.main()
+        if opt.debug:
+            f.fuse_args.add('debug')
+        if opt.foreground:
+            f.fuse_args.setmod('foreground')
+        f.multithreaded = False
+        if opt.allow_other:
+            f.fuse_args.add('allow_other')
+        f.main()

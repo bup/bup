@@ -242,61 +242,61 @@ def main(argv):
         mkdirp(opt.outdir)
         os.chdir(opt.outdir)
 
-    repo = RemoteRepo(opt.remote) if opt.remote else LocalRepo()
-    top = fsencode(os.getcwd())
-    hardlinks = {}
-    for path in [argv_bytes(x) for x in extra]:
-        if not valid_restore_path(path):
-            add_error("path %r doesn't include a branch and revision" % path)
-            continue
-        try:
-            resolved = vfs.resolve(repo, path, want_meta=True, follow=False)
-        except vfs.IOError as e:
-            add_error(e)
-            continue
-        if len(resolved) == 3 and resolved[2][0] == b'latest':
-            # Follow latest symlink to the actual save
+    with RemoteRepo(opt.remote) if opt.remote else LocalRepo() as repo:
+        top = fsencode(os.getcwd())
+        hardlinks = {}
+        for path in [argv_bytes(x) for x in extra]:
+            if not valid_restore_path(path):
+                add_error("path %r doesn't include a branch and revision" % path)
+                continue
             try:
-                resolved = vfs.resolve(repo, b'latest', parent=resolved[:-1],
-                                       want_meta=True)
+                resolved = vfs.resolve(repo, path, want_meta=True, follow=False)
             except vfs.IOError as e:
                 add_error(e)
                 continue
-            # Rename it back to 'latest'
-            resolved = tuple(elt if i != 2 else (b'latest',) + elt[1:]
-                             for i, elt in enumerate(resolved))
-        path_parent, path_name = os.path.split(path)
-        leaf_name, leaf_item = resolved[-1]
-        if not leaf_item:
-            add_error('error: cannot access %r in %r'
-                      % (b'/'.join(name for name, item in resolved),
-                         path))
-            continue
-        if not path_name or path_name == b'.':
-            # Source is /foo/what/ever/ or /foo/what/ever/. -- extract
-            # what/ever/* to the current directory, and if name == '.'
-            # (i.e. /foo/what/ever/.), then also restore what/ever's
-            # metadata to the current directory.
-            treeish = vfs.item_mode(leaf_item)
-            if not treeish:
-                add_error('%r cannot be restored as a directory' % path)
+            if len(resolved) == 3 and resolved[2][0] == b'latest':
+                # Follow latest symlink to the actual save
+                try:
+                    resolved = vfs.resolve(repo, b'latest', parent=resolved[:-1],
+                                           want_meta=True)
+                except vfs.IOError as e:
+                    add_error(e)
+                    continue
+                # Rename it back to 'latest'
+                resolved = tuple(elt if i != 2 else (b'latest',) + elt[1:]
+                                 for i, elt in enumerate(resolved))
+            path_parent, path_name = os.path.split(path)
+            leaf_name, leaf_item = resolved[-1]
+            if not leaf_item:
+                add_error('error: cannot access %r in %r'
+                          % (b'/'.join(name for name, item in resolved),
+                             path))
+                continue
+            if not path_name or path_name == b'.':
+                # Source is /foo/what/ever/ or /foo/what/ever/. -- extract
+                # what/ever/* to the current directory, and if name == '.'
+                # (i.e. /foo/what/ever/.), then also restore what/ever's
+                # metadata to the current directory.
+                treeish = vfs.item_mode(leaf_item)
+                if not treeish:
+                    add_error('%r cannot be restored as a directory' % path)
+                else:
+                    items = vfs.contents(repo, leaf_item, want_meta=True)
+                    dot, leaf_item = next(items, None)
+                    assert dot == b'.'
+                    for sub_name, sub_item in items:
+                        restore(repo, b'', sub_name, sub_item, top,
+                                opt.sparse, opt.numeric_ids, owner_map,
+                                exclude_rxs, verbosity, hardlinks)
+                    if path_name == b'.':
+                        leaf_item = vfs.augment_item_meta(repo, leaf_item,
+                                                          include_size=True)
+                        apply_metadata(leaf_item.meta, b'.',
+                                       opt.numeric_ids, owner_map)
             else:
-                items = vfs.contents(repo, leaf_item, want_meta=True)
-                dot, leaf_item = next(items, None)
-                assert dot == b'.'
-                for sub_name, sub_item in items:
-                    restore(repo, b'', sub_name, sub_item, top,
-                            opt.sparse, opt.numeric_ids, owner_map,
-                            exclude_rxs, verbosity, hardlinks)
-                if path_name == b'.':
-                    leaf_item = vfs.augment_item_meta(repo, leaf_item,
-                                                      include_size=True)
-                    apply_metadata(leaf_item.meta, b'.',
-                                   opt.numeric_ids, owner_map)
-        else:
-            restore(repo, b'', leaf_name, leaf_item, top,
-                    opt.sparse, opt.numeric_ids, owner_map,
-                    exclude_rxs, verbosity, hardlinks)
+                restore(repo, b'', leaf_name, leaf_item, top,
+                        opt.sparse, opt.numeric_ids, owner_map,
+                        exclude_rxs, verbosity, hardlinks)
 
     if verbosity >= 0:
         progress('Restoring: %d, done.\n' % total_restored)

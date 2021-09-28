@@ -9,7 +9,7 @@ import os, fnmatch, stat, sys, traceback
 
 from bup import _helpers, options, git, shquote, ls, vfs
 from bup.compat import argv_bytes
-from bup.helpers import chunkyreader, log
+from bup.helpers import chunkyreader, log, saved_errors
 from bup.io import byte_stream, path_msg
 from bup.repo import LocalRepo
 
@@ -94,43 +94,32 @@ optspec = """
 bup ftp [commands...]
 """
 
-def main(argv):
-    o = options.Options(optspec)
-    opt, flags, extra = o.parse_bytes(argv[1:])
 
-    git.check_repo_or_die()
+def inputiter(f, pwd, out):
+    if os.isatty(f.fileno()):
+        while 1:
+            prompt = b'bup %s> ' % (b'/'.join(name for name, item in pwd) or b'/', )
+            if hasattr(_helpers, 'readline'):
+                try:
+                    yield _helpers.readline(prompt)
+                except EOFError:
+                    print()  # Clear the line for the terminal's next prompt
+                    break
+            else:
+                out.write(prompt)
+                out.flush()
+                read_line = f.readline()
+                if not read_line:
+                    print('')
+                    break
+                yield read_line
+    else:
+        for line in f:
+            yield line
 
-    global repo
 
-    sys.stdout.flush()
-    out = byte_stream(sys.stdout)
-    stdin = byte_stream(sys.stdin)
-    repo = LocalRepo()
+def present_interface(stdin, out, extra, repo):
     pwd = vfs.resolve(repo, b'/')
-    rv = 0
-
-    def inputiter(f):
-        if os.isatty(f.fileno()):
-            while 1:
-                prompt = b'bup %s> ' % (b'/'.join(name for name, item in pwd) or b'/', )
-                if hasattr(_helpers, 'readline'):
-                    try:
-                        yield _helpers.readline(prompt)
-                    except EOFError:
-                        print()  # Clear the line for the terminal's next prompt
-                        break
-                else:
-                    out.write(prompt)
-                    out.flush()
-                    read_line = f.readline()
-                    if not read_line:
-                        print('')
-                        break
-                    yield read_line
-        else:
-            for line in f:
-                yield line
-
 
     if extra:
         lines = (argv_bytes(arg) for arg in extra)
@@ -143,7 +132,7 @@ def main(argv):
                 # MacOS uses a slightly incompatible clone of libreadline
                 _helpers.parse_and_bind(b'bind ^I rl_complete')
             _helpers.parse_and_bind(b'tab: complete')
-        lines = inputiter(stdin)
+        lines = inputiter(stdin, pwd, out)
 
     for line in lines:
         if not line.strip():
@@ -186,7 +175,6 @@ def main(argv):
                 out.flush()
             elif cmd == b'get':
                 if len(words) not in [2,3]:
-                    rv = 1
                     raise Exception('Usage: get <filename> [localname]')
                 rname = words[1]
                 (dir,base) = os.path.split(rname)
@@ -230,11 +218,23 @@ def main(argv):
             elif cmd in (b'quit', b'exit', b'bye'):
                 break
             else:
-                rv = 1
                 raise Exception('no such command %r' % cmd)
         except Exception as e:
-            rv = 1
             log('error: %s\n' % e)
             raise
 
-    sys.exit(rv)
+def main(argv):
+    global repo
+
+    o = options.Options(optspec)
+    opt, flags, extra = o.parse_bytes(argv[1:])
+
+    git.check_repo_or_die()
+    sys.stdout.flush()
+    out = byte_stream(sys.stdout)
+    stdin = byte_stream(sys.stdin)
+    with LocalRepo() as repo:
+        present_interface(stdin, out, extra, repo)
+    if saved_errors:
+        log('warning: %d errors encountered\n' % len(saved_errors))
+        sys.exit(1)
