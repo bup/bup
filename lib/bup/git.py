@@ -611,7 +611,6 @@ class PackIdxList:
                                 broken = True
                         if broken:
                             mx.close()
-                            del mx
                             unlink(full)
                         else:
                             midxl.append(mx)

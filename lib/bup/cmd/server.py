@@ -73,9 +73,9 @@ def send_index(conn, name):
     _init_session()
     assert name.find(b'/') < 0
     assert name.endswith(b'.idx')
-    idx = git.open_idx(git.repo(b'objects/pack/%s' % name))
-    conn.write(struct.pack('!I', len(idx.map)))
-    conn.write(idx.map)
+    with git.open_idx(git.repo(b'objects/pack/%s' % name)) as idx:
+        conn.write(struct.pack('!I', len(idx.map)))
+        conn.write(idx.map)
     conn.ok()
 
 

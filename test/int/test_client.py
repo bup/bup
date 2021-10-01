@@ -128,11 +128,11 @@ def test_midx_refreshing(tmpdir):
     assert len(pi.packs) == 2
     assert sorted([os.path.basename(i.name) for i in pi.packs]) == sorted([p1base, p2base])
 
-    p1 = git.open_idx(p1name)
-    assert p1.exists(s1sha)
-    p2 = git.open_idx(p2name)
-    assert not p2.exists(s1sha)
-    assert p2.exists(s2sha)
+    with git.open_idx(p1name) as p1, \
+         git.open_idx(p2name) as p2:
+        assert p1.exists(s1sha)
+        assert not p2.exists(s1sha)
+        assert p2.exists(s2sha)
 
     subprocess.call([path.exe(), b'midx', b'-f'])
     pi.refresh()

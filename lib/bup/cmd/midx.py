@@ -4,7 +4,7 @@ from binascii import hexlify
 import glob, os, math, resource, struct, sys
 
 from bup import options, git, midx, _helpers, xstat
-from bup.compat import argv_bytes, hexstr, range
+from bup.compat import ExitStack, argv_bytes, hexstr, range
 from bup.helpers import (Sha1, add_error, atomically_replaced_file, debug1, fdatasync,
                          log, mmap_readwrite, qprogress,
                          saved_errors, unlink)
@@ -51,32 +51,34 @@ def check_midx(name):
     except git.GitError as e:
         add_error('%s: %s' % (path_msg(name), e))
         return
-    for count,subname in enumerate(ix.idxnames):
-        sub = git.open_idx(os.path.join(os.path.dirname(name), subname))
-        for ecount,e in enumerate(sub):
+    with ix:
+        for count,subname in enumerate(ix.idxnames):
+            with git.open_idx(os.path.join(os.path.dirname(name), subname)) \
+                 as sub:
+                for ecount,e in enumerate(sub):
+                    if not (ecount % 1234):
+                        qprogress('  %d/%d: %s %d/%d\r'
+                                  % (count, len(ix.idxnames),
+                                     git.shorten_hash(subname).decode('ascii'),
+                                     ecount, len(sub)))
+                    if not sub.exists(e):
+                        add_error("%s: %s: %s missing from idx"
+                                  % (path_msg(nicename),
+                                     git.shorten_hash(subname).decode('ascii'),
+                                     hexstr(e)))
+                    if not ix.exists(e):
+                        add_error("%s: %s: %s missing from midx"
+                                  % (path_msg(nicename),
+                                     git.shorten_hash(subname).decode('ascii'),
+                                     hexstr(e)))
+        prev = None
+        for ecount,e in enumerate(ix):
             if not (ecount % 1234):
-                qprogress('  %d/%d: %s %d/%d\r'
-                          % (count, len(ix.idxnames),
-                             git.shorten_hash(subname).decode('ascii'),
-                             ecount, len(sub)))
-            if not sub.exists(e):
-                add_error("%s: %s: %s missing from idx"
-                          % (path_msg(nicename),
-                             git.shorten_hash(subname).decode('ascii'),
-                             hexstr(e)))
-            if not ix.exists(e):
-                add_error("%s: %s: %s missing from midx"
-                          % (path_msg(nicename),
-                             git.shorten_hash(subname).decode('ascii'),
-                             hexstr(e)))
-    prev = None
-    for ecount,e in enumerate(ix):
-        if not (ecount % 1234):
-            qprogress('  Ordering: %d/%d\r' % (ecount, len(ix)))
-        if e and prev and not e >= prev:
-            add_error('%s: ordering error: %s < %s'
-                      % (nicename, hexstr(e), hexstr(prev)))
-        prev = e
+                qprogress('  Ordering: %d/%d\r' % (ecount, len(ix)))
+            if e and prev and not e >= prev:
+                add_error('%s: ordering error: %s < %s'
+                          % (nicename, hexstr(e), hexstr(prev)))
+            prev = e
 
 
 _first = None
@@ -91,11 +93,10 @@ def _do_midx(outdir, outfilename, infilenames, prefixstr,
     inp = []
     total = 0
     allfilenames = []
-    midxs = []
-    try:
+    with ExitStack() as contexts:
         for name in infilenames:
             ix = git.open_idx(name)
-            midxs.append(ix)
+            contexts.enter_context(ix)
             inp.append((
                 ix.map,
                 len(ix),
@@ -133,18 +134,10 @@ def _do_midx(outdir, outfilename, infilenames, prefixstr,
             f.flush()
             fdatasync(f.fileno())
 
-            fmap = mmap_readwrite(f, close=False)
-            count = merge_into(fmap, bits, total, inp)
-            del fmap # Assume this calls msync() now.
+            with mmap_readwrite(f, close=False) as fmap:
+                count = merge_into(fmap, bits, total, inp)
             f.seek(0, os.SEEK_END)
             f.write(b'\0'.join(allfilenames))
-    finally:
-        for ix in midxs:
-            if isinstance(ix, midx.PackMidx):
-                ix.close()
-        midxs = None
-        inp = None
-
 
     # This is just for testing (if you enable this, don't clear inp above)
     # if 0:
@@ -178,9 +171,9 @@ def do_midx_dir(path, outfilename, prout, auto=False, force=False,
         midxs = glob.glob(b'%s/*.midx' % path)
         contents = {}
         for mname in midxs:
-            m = git.open_idx(mname)
-            contents[mname] = [(b'%s/%s' % (path,i)) for i in m.idxnames]
-            sizes[mname] = len(m)
+            with git.open_idx(mname) as m:
+                contents[mname] = [(b'%s/%s' % (path,i)) for i in m.idxnames]
+                sizes[mname] = len(m)
 
         # sort the biggest+newest midxes first, so that we can eliminate
         # smaller (or older) redundant ones that come later in the list
@@ -201,8 +194,8 @@ def do_midx_dir(path, outfilename, prout, auto=False, force=False,
     idxs = [k for k in glob.glob(b'%s/*.idx' % path) if not already.get(k)]
 
     for iname in idxs:
-        i = git.open_idx(iname)
-        sizes[iname] = len(i)
+        with git.open_idx(iname) as i:
+            sizes[iname] = len(i)
 
     all = [(sizes[n],n) for n in (midxs + idxs)]
 

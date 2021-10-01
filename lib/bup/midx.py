@@ -58,9 +58,6 @@ class PackMidx:
         # which len is self.nsha * 4
         self.idxnames = self.map[self.which_ofs + 4 * self.nsha:].split(b'\0')
 
-    def __del__(self):
-        self.close()
-
     def __enter__(self):
         return self
 

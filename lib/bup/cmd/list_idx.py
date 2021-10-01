@@ -47,18 +47,20 @@ def main(argv):
             ix = git.open_idx(name)
         except git.GitError as e:
             add_error('%r: %s' % (name, e))
+            ix.close()
             continue
-        if len(opt.find) == 40:
-            if ix.exists(bin):
-                out.write(b'%s %s\n' % (name, find))
-        else:
-            # slow, exhaustive search
-            for _i in ix:
-                i = hexlify(_i)
-                if i.startswith(find):
-                    out.write(b'%s %s\n' % (name, i))
-                qprogress('Searching: %d\r' % count)
-                count += 1
+        with ix:
+            if len(opt.find) == 40:
+                if ix.exists(bin):
+                    out.write(b'%s %s\n' % (name, find))
+            else:
+                # slow, exhaustive search
+                for _i in ix:
+                    i = hexlify(_i)
+                    if i.startswith(find):
+                        out.write(b'%s %s\n' % (name, i))
+                    qprogress('Searching: %d\r' % count)
+                    count += 1
 
     if saved_errors:
         log('WARNING: %d errors encountered while saving.\n' % len(saved_errors))

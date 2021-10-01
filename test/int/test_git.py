@@ -133,19 +133,19 @@ def test_packs(tmpdir):
     WVPASS(os.path.exists(nameprefix + b'.pack'))
     WVPASS(os.path.exists(nameprefix + b'.idx'))
 
-    r = git.open_idx(nameprefix + b'.idx')
-    print(repr(r.fanout))
+    with git.open_idx(nameprefix + b'.idx') as r:
+        print(repr(r.fanout))
 
-    for i in range(nobj):
-        WVPASS(r.find_offset(hashes[i]) > 0)
-    WVPASS(r.exists(hashes[99]))
-    WVFAIL(r.exists(b'\0'*20))
+        for i in range(nobj):
+            WVPASS(r.find_offset(hashes[i]) > 0)
+        WVPASS(r.exists(hashes[99]))
+        WVFAIL(r.exists(b'\0'*20))
 
-    pi = iter(r)
-    for h in sorted(hashes):
-        WVPASSEQ(hexlify(next(pi)), hexlify(h))
+        pi = iter(r)
+        for h in sorted(hashes):
+            WVPASSEQ(hexlify(next(pi)), hexlify(h))
 
-    WVFAIL(r.find_offset(b'\0'*20))
+        WVFAIL(r.find_offset(b'\0'*20))
 
     r = git.PackIdxList(bupdir + b'/objects/pack')
     WVPASS(r.exists(hashes[5]))

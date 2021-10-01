@@ -57,8 +57,8 @@ def count_objects(dir, verbosity):
             log('found %d objects (%d/%d %s)\r'
                 % (object_count, i + 1, len(indexes),
                    path_msg(basename(idx_name))))
-        idx = git.open_idx(idx_name)
-        object_count += len(idx)
+        with git.open_idx(idx_name) as idx:
+            object_count += len(idx)
     return object_count
 
 
