@@ -1299,6 +1299,9 @@ class CatPipe:
         self.p.stdin.write(ref + b'\n')
         self.p.stdin.flush()
         hdr = self.p.stdout.readline()
+        if not hdr:
+            raise GitError('unexpected cat-file EOF (last request: %r, exit: %s)'
+                           % (ref, self.p.poll() or 'none'))
         if hdr.endswith(b' missing\n'):
             self.inprogress = None
             yield None, None, None
