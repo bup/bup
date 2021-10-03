@@ -165,24 +165,6 @@ fi
 AC_CHECK_FUNCS utimes
 AC_CHECK_FUNCS lutimes
 
-builtin_mul_overflow_code="
-#include <stddef.h>
-int main(int argc, char **argv)
-{
-    size_t n = 0, size = 0, total;
-    __builtin_mul_overflow(n, size, &total);
-    return 0;
-}
-"
-
-TLOGN "checking for __builtin_mul_overflow"
-if bup_try_c_code "$builtin_mul_overflow_code"; then
-    AC_DEFINE BUP_HAVE_BUILTIN_MUL_OVERFLOW 1
-    TLOG ' (found)'
-else
-    TLOG ' (not found)'
-fi
-
 
 AC_CHECK_FUNCS mincore
 

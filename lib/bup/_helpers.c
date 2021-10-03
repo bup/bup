@@ -125,16 +125,10 @@ static void *checked_calloc(size_t n, size_t size)
     return result;
 }
 
-#ifndef BUP_HAVE_BUILTIN_MUL_OVERFLOW
-
-#define checked_malloc checked_calloc
-
-#else // defined BUP_HAVE_BUILTIN_MUL_OVERFLOW
-
 static void *checked_malloc(size_t n, size_t size)
 {
     size_t total;
-    if (__builtin_mul_overflow(n, size, &total))
+    if (!INT_MULTIPLY_OK(n, size, &total))
     {
         PyErr_Format(PyExc_OverflowError,
                      "request to allocate %zu items of size %zu is too large",
@@ -146,8 +140,6 @@ static void *checked_malloc(size_t n, size_t size)
         return PyErr_NoMemory();
     return result;
 }
-
-#endif // defined BUP_HAVE_BUILTIN_MUL_OVERFLOW
 
 
 #ifndef htonll
