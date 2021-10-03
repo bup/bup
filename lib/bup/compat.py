@@ -40,16 +40,18 @@ if py3:
         return ex
 
     class pending_raise:
-        """Rethrow either the provided ex, or any exception raised by the with
-        statement body.  (Supports Python 2 compatibility.)
+        """If rethrow is true, rethrow ex (if any), unless the body throws.
+
+        (Supports Python 2 compatibility.)
 
         """
-        def __init__(self, ex):
+        def __init__(self, ex, rethrow=True):
             self.ex = ex
+            self.rethrow = rethrow
         def __enter__(self):
             return None
         def __exit__(self, exc_type, exc_value, traceback):
-            if not exc_type:
+            if not exc_type and self.ex and self.rethrow:
                 raise self.ex
 
     def items(x):
@@ -126,22 +128,28 @@ else:  # Python 2
         return ex
 
     class pending_raise:
-        """Rethrow either the provided ex, or any exception raised by the with
-        statement body, after making ex the __context__ of the newer
-        exception (assuming there's no existing __context__).  Ensure
-        the exceptions have __tracebacks__.  (Supports Python 2
-        compatibility.)
+        """If rethrow is true, rethrow ex (if any), unless the body throws.
+
+        If the body does throw, make any provided ex the __context__
+        of the newer exception (assuming there's no existing
+        __context__).  Ensure the exceptions have __tracebacks__.
+        (Supports Python 2 compatibility.)
 
         """
-        def __init__(self, ex):
+        def __init__(self, ex, rethrow=True):
             self.ex = ex
+            self.rethrow = rethrow
         def __enter__(self):
-            add_ex_tb(self.ex)
+            if self.ex:
+                add_ex_tb(self.ex)
         def __exit__(self, exc_type, exc_value, traceback):
-            if not exc_type:
+            if exc_value:
+                if self.ex:
+                    add_ex_tb(exc_value)
+                    add_ex_ctx(exc_value, self.ex)
+                return
+            if self.rethrow and self.ex:
                 raise self.ex
-            add_ex_tb(exc_value)
-            add_ex_ctx(exc_value, self.ex)
 
     def dump_traceback(ex):
         stack = [ex]
