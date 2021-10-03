@@ -1912,10 +1912,23 @@ static char *cstr_from_bytes(PyObject *bytes)
     int rc = PyBytes_AsStringAndSize(bytes, &buf, &length);
     if (rc == -1)
         return NULL;
-    char *result = checked_malloc(length, sizeof(char));
+    size_t c_len;
+    if (!INTEGRAL_ASSIGNMENT_FITS(&c_len, length)) {
+        PyErr_Format(PyExc_OverflowError, "length will not fit in size_t");
+        return NULL;
+    }
+    if (c_len == SIZE_MAX) {
+        PyErr_Format(PyExc_OverflowError,
+                     "Cannot convert bytes object of size %zd to C string",
+                     length);
+        return NULL;
+    }
+    c_len += 1;
+    char *result = checked_malloc(c_len, sizeof(char));
     if (!result)
         return NULL;
     memcpy(result, buf, length);
+    result[length] = 0;
     return result;
 }
 
