@@ -14,6 +14,7 @@ if py3:
 
     # pylint: disable=unused-import
     from contextlib import nullcontext
+    from mmap import mmap
     from os import environb as environ
     from os import fsdecode, fsencode
     from shlex import quote
@@ -84,6 +85,7 @@ if py3:
 else:  # Python 2
 
     from contextlib import contextmanager
+    import mmap as py_mmap
 
     ModuleNotFoundError = ImportError
 
@@ -189,6 +191,16 @@ else:  # Python 2
     byte_int = ord
 
     buffer = buffer
+
+    assert not hasattr(py_mmap.mmap, '__enter__')
+    assert not hasattr(py_mmap.mmap, '__exit__')
+
+    class mmap(py_mmap.mmap):
+        def __enter__(self):
+            return self
+        def __exit__(self, type, value, traceback):
+            with pending_raise(value, rethrow=False):
+                self.close()
 
 try:
     import bup_main

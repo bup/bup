@@ -755,7 +755,7 @@ def _mmap_do(f, sz, flags, prot, close):
         # string has all the same behaviour of a zero-length map, ie. it has
         # no elements :)
         return ''
-    map = mmap.mmap(f.fileno(), sz, flags, prot)
+    map = compat.mmap(f.fileno(), sz, flags, prot)
     if close:
         f.close()  # map will persist beyond file close
     return map
@@ -817,7 +817,7 @@ if _mincore:
             pos = _fmincore_chunk_size * ci;
             msize = min(_fmincore_chunk_size, st.st_size - pos)
             try:
-                m = mmap.mmap(fd, msize, mmap.MAP_PRIVATE, 0, 0, pos)
+                m = compat.mmap(fd, msize, mmap.MAP_PRIVATE, 0, 0, pos)
             except mmap.error as ex:
                 if ex.errno == errno.EINVAL or ex.errno == errno.ENODEV:
                     # Perhaps the file was a pipe, i.e. "... | bup split ..."
