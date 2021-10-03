@@ -4,7 +4,7 @@ from os.path import realpath
 from functools import partial
 
 from bup import client, git, vfs
-
+from bup.compat import pending_raise
 
 _next_repo_id = 0
 _repo_ids = {}
@@ -36,7 +36,8 @@ class LocalRepo:
         return self
 
     def __exit__(self, type, value, traceback):
-        self.close()
+        with pending_raise(value, rethrow=False):
+            self.close()
 
     def id(self):
         """Return an identifier that differs from any other repository that
@@ -106,7 +107,8 @@ class RemoteRepo:
         return self
 
     def __exit__(self, type, value, traceback):
-        self.close()
+        with pending_raise(value, rethrow=False):
+            self.close()
 
     def id(self):
         """Return an identifier that differs from any other repository that

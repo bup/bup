@@ -15,6 +15,7 @@ from bup.compat import (buffer,
                         byte_int, bytes_from_byte, bytes_from_uint,
                         environ,
                         items,
+                        pending_raise,
                         range,
                         reraise)
 from bup.io import path_msg
@@ -425,7 +426,8 @@ class PackIdxV1(PackIdx):
         return self
 
     def __exit__(self, type, value, traceback):
-        self.close()
+        with pending_raise(value, rethrow=False):
+            self.close()
 
     def __len__(self):
         return int(self.nsha)  # int() from long for python 2
@@ -475,7 +477,8 @@ class PackIdxV2(PackIdx):
         return self
 
     def __exit__(self, type, value, traceback):
-        self.close()
+        with pending_raise(value, rethrow=False):
+            self.close()
 
     def __len__(self):
         return int(self.nsha)  # int() from long for python 2
@@ -753,7 +756,8 @@ class PackWriter:
         return self
 
     def __exit__(self, type, value, traceback):
-        self.close()
+        with pending_raise(value, rethrow=False):
+            self.close()
 
     def _open(self):
         if not self.file:

@@ -57,7 +57,7 @@ from time import localtime, strftime
 import re, sys
 
 from bup import git, vint
-from bup.compat import hexstr, range, str_type
+from bup.compat import hexstr, pending_raise, range, str_type
 from bup.git import BUP_CHUNKED, parse_commit, tree_decode
 from bup.helpers import debug2, last
 from bup.io import path_msg
@@ -236,8 +236,8 @@ class _FileReader(object):
     def __enter__(self):
         return self
     def __exit__(self, type, value, traceback):
-        self.close()
-        return False
+        with pending_raise(value, rethrow=False):
+            self.close()
 
 _multiple_slashes_rx = re.compile(br'//+')
 

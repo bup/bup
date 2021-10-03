@@ -3,7 +3,7 @@ from __future__ import absolute_import, print_function
 import glob, os, struct
 
 from bup import _helpers
-from bup.compat import range
+from bup.compat import pending_raise, range
 from bup.helpers import log, mmap_read
 from bup.io import path_msg
 
@@ -65,7 +65,8 @@ class PackMidx:
         return self
 
     def __exit__(self, type, value, traceback):
-        self.close()
+        with pending_raise(value, rethrow=False):
+            self.close()
 
     def _init_failed(self):
         self.bits = 0
