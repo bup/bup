@@ -1902,10 +1902,18 @@ static char *cstr_from_bytes(PyObject *bytes)
     int rc = PyBytes_AsStringAndSize(bytes, &buf, &length);
     if (rc == -1)
         return NULL;
-    char *result = checked_malloc(length, sizeof(char));
+    size_t c_len;
+    if (!INT_ADD_OK(length, 1, &c_len)) {
+        PyErr_Format(PyExc_OverflowError,
+                     "Cannot convert ssize_t sized bytes object (%zd) to C string",
+                     length);
+        return NULL;
+    }
+    char *result = checked_malloc(c_len, sizeof(char));
     if (!result)
         return NULL;
     memcpy(result, buf, length);
+    result[length] = 0;
     return result;
 }
 
