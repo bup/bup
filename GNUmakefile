@@ -235,10 +235,14 @@ long-test: test
 long-check: export BUP_TEST_LEVEL=11
 long-check: check
 
-.PHONY: check-both
-check-both:
+.PHONY: check-py2 check-py3 check-both
+check-py3:
 	$(MAKE) clean && BUP_PYTHON_CONFIG=python3-config $(MAKE) check
+check-py2:
 	$(MAKE) clean && BUP_PYTHON_CONFIG=python2.7-config $(MAKE) check
+check-both:
+	$(MAKE) check-py3
+	$(MAKE) check-py2
 
 .PHONY: Documentation/all
 Documentation/all: $(man_roff) $(man_html)
