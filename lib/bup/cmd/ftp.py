@@ -5,7 +5,7 @@
 # (e.g. ISO-8859-1).
 
 from __future__ import absolute_import, print_function
-import os, fnmatch, stat, sys
+import os, fnmatch, stat, sys, traceback
 
 from bup import _helpers, options, git, shquote, ls, vfs
 from bup.compat import argv_bytes
@@ -84,11 +84,8 @@ def enter_completion(text, iteration):
             return text + ret
     except Exception as e:
         log('\n')
-        try:
-            import traceback
-            traceback.print_tb(sys.exc_traceback)
-        except Exception as e2:
-            log('Error printing traceback: %s\n' % e2)
+        _, _, tb = sys.exc_info()
+        traceback.print_tb(tb)
         log('\nError in completion: %s\n' % e)
     return None
 
