@@ -305,6 +305,42 @@ def test_commit_parsing(tmpdir):
         restore_env_var(b'GIT_COMMITTER_EMAIL', orig_committer_email)
 
 
+gpgsig_example_1 = b'''tree 3fab08ade2fbbda60bef180bb8e0cc5724d6bd4d
+parent 36db87b46a95ca5079f43dfe9b72220acab7c731
+author Rob Browning <rlb@defaultvalue.org> 1633397238 -0500
+committer Rob Browning <rlb@defaultvalue.org> 1633397238 -0500
+gpgsig -----BEGIN PGP SIGNATURE-----
+ 
+ ...
+ -----END PGP SIGNATURE-----
+
+Sample signed commit.
+'''
+
+gpgsig_example_2 = b'''tree 3fab08ade2fbbda60bef180bb8e0cc5724d6bd4d
+parent 36db87b46a95ca5079f43dfe9b72220acab7c731
+author Rob Browning <rlb@defaultvalue.org> 1633397238 -0500
+committer Rob Browning <rlb@defaultvalue.org> 1633397238 -0500
+gpgsig -----BEGIN PGP SIGNATURE-----
+ 
+ ...
+ -----END PGP SIGNATURE-----
+ 
+
+Sample signed commit.
+'''
+
+def test_commit_gpgsig_parsing():
+    c = git.parse_commit(gpgsig_example_1)
+    assert c.gpgsig
+    assert c.gpgsig.startswith(b'-----BEGIN PGP SIGNATURE-----\n')
+    assert c.gpgsig.endswith(b'\n-----END PGP SIGNATURE-----\n')
+    c = git.parse_commit(gpgsig_example_2)
+    assert c.gpgsig
+    assert c.gpgsig.startswith(b'-----BEGIN PGP SIGNATURE-----')
+    assert c.gpgsig.endswith(b'\n-----END PGP SIGNATURE-----\n\n')
+
+
 def test_new_commit(tmpdir):
     environ[b'BUP_DIR'] = bupdir = tmpdir + b'/bup'
     git.init_repo(bupdir)

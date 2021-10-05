@@ -102,9 +102,26 @@ def parse_tz_offset(s):
         return - tz_off
     return tz_off
 
+def parse_commit_gpgsig(sig):
+    """Return the original signature bytes.
+
+    i.e. with the "gpgsig " header and the leading space character on
+    each continuation line removed.
+
+    """
+    if not sig:
+        return None
+    assert sig.startswith(b'gpgsig ')
+    sig = sig[7:]
+    return sig.replace(b'\n ', b'\n')
 
 # FIXME: derived from http://git.rsbx.net/Documents/Git_Data_Formats.txt
 # Make sure that's authoritative.
+
+# See also
+# https://github.com/git/git/blob/master/Documentation/technical/signature-format.txt
+# The continuation lines have only one leading space.
+
 _start_end_char = br'[^ .,:;<>"\'\0\n]'
 _content_char = br'[^\0\n<>]'
 _safe_str_rx = br'(?:%s{1,2}|(?:%s%s*%s))' \
@@ -118,7 +135,7 @@ _mergetag_rx = br'(?:\nmergetag object [abcdefABCDEF0123456789]{40}(?:\n [^\0\n]
 _commit_rx = re.compile(br'''tree (?P<tree>[abcdefABCDEF0123456789]{40})
 (?P<parents>%s*)author (?P<author_name>%s) <(?P<author_mail>%s)> (?P<asec>\d+) (?P<atz>%s)
 committer (?P<committer_name>%s) <(?P<committer_mail>%s)> (?P<csec>\d+) (?P<ctz>%s)(?P<mergetag>%s?)
-
+(?P<gpgsig>gpgsig .*\n(?: .*\n)*)?
 (?P<message>(?:.|\n)*)''' % (_parent_rx,
                              _safe_str_rx, _safe_str_rx, _tz_rx,
                              _safe_str_rx, _safe_str_rx, _tz_rx,
@@ -132,6 +149,7 @@ CommitInfo = namedtuple('CommitInfo', ['tree', 'parents',
                                        'author_sec', 'author_offset',
                                        'committer_name', 'committer_mail',
                                        'committer_sec', 'committer_offset',
+                                       'gpgsig',
                                        'message'])
 
 def parse_commit(content):
@@ -149,6 +167,7 @@ def parse_commit(content):
                       committer_mail=matches['committer_mail'],
                       committer_sec=int(matches['csec']),
                       committer_offset=parse_tz_offset(matches['ctz']),
+                      gpgsig=parse_commit_gpgsig(matches['gpgsig']),
                       message=matches['message'])
 
 
