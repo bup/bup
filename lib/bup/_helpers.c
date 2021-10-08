@@ -620,8 +620,14 @@ static PyObject *bitmatch(PyObject *self, PyObject *args)
 	}
     }
     
-    assert(byte <= (INT_MAX >> 3));
-    return Py_BuildValue("i", byte*8 + bit);
+    unsigned long long result;
+    if (!INT_MULTIPLY_OK(byte, 8, &result)
+        || !INT_ADD_OK(result, bit, &result))
+    {
+        PyErr_Format(PyExc_OverflowError, "bitmatch bit count too large");
+        return NULL;
+    }
+    return PyLong_FromUnsignedLongLong(result);
 }
 
 
