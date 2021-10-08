@@ -1,7 +1,7 @@
 
 from __future__ import absolute_import, print_function
 from binascii import hexlify
-from errno import EACCES
+from errno import ENOENT
 from io import BytesIO
 import math, os, stat, sys, time
 
@@ -513,7 +513,7 @@ def main(argv):
             try:
                 msr = index.MetaStoreReader(indexfile + b'.meta')
             except IOError as ex:
-                if ex.errno != EACCES:
+                if ex.errno != ENOENT:
                     raise
                 log('error: cannot access %r; have you run bup index?'
                     % path_msg(indexfile))
