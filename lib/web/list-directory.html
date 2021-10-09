@@ -32,7 +32,7 @@
                     <td class="dir-name">
                       <a href="{% raw link %}">{{ display }}</a>
                     </td>
-                    <td class="dir-size">{% if size != None %}{{ size }}{% else %}&nbsp;{% end %}</td>
+                    <td class="dir-size">{% if size is not None %}{{ size }}{% else %}&nbsp;{% end %}</td>
                 </tr>
                 {% end %}
             </table>
