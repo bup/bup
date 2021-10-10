@@ -1895,6 +1895,7 @@ static PyObject *bup_gethostname(PyObject *mod, PyObject *ignore)
 
     if (gethostname(buf, sizeof(buf) - 1))
         return PyErr_SetFromErrno(PyExc_IOError);
+    buf[sizeof(buf) - 1] = 0;
     return PyBytes_FromString(buf);
 }
 
