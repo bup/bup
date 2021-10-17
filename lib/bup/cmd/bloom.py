@@ -28,8 +28,8 @@ def ruin_bloom(bloomfilename):
         log(path_msg(bloomfilename) + '\n')
         add_error('bloom: %s not found to ruin\n' % path_msg(rbloomfilename))
         return
-    b = bloom.ShaBloom(bloomfilename, readwrite=True, expected=1)
-    b.map[16 : 16 + 2**b.bits] = b'\0' * 2**b.bits
+    with bloom.ShaBloom(bloomfilename, readwrite=True, expected=1) as b:
+        b.map[16 : 16 + 2**b.bits] = b'\0' * 2**b.bits
 
 
 def check_bloom(path, bloomfilename, idx):
@@ -38,21 +38,21 @@ def check_bloom(path, bloomfilename, idx):
     if not os.path.exists(bloomfilename):
         log('bloom: %s: does not exist.\n' % path_msg(rbloomfilename))
         return
-    b = bloom.ShaBloom(bloomfilename)
-    if not b.valid():
-        add_error('bloom: %r is invalid.\n' % path_msg(rbloomfilename))
-        return
-    base = os.path.basename(idx)
-    if base not in b.idxnames:
-        log('bloom: %s does not contain the idx.\n' % path_msg(rbloomfilename))
-        return
-    if base == idx:
-        idx = os.path.join(path, idx)
-    log('bloom: bloom file: %s\n' % path_msg(rbloomfilename))
-    log('bloom:   checking %s\n' % path_msg(ridx))
-    for objsha in git.open_idx(idx):
-        if not b.exists(objsha):
-            add_error('bloom: ERROR: object %s missing' % hexstr(objsha))
+    with bloom.ShaBloom(bloomfilename) as b:
+        if not b.valid():
+            add_error('bloom: %r is invalid.\n' % path_msg(rbloomfilename))
+            return
+        base = os.path.basename(idx)
+        if base not in b.idxnames:
+            log('bloom: %s does not contain the idx.\n' % path_msg(rbloomfilename))
+            return
+        if base == idx:
+            idx = os.path.join(path, idx)
+        log('bloom: bloom file: %s\n' % path_msg(rbloomfilename))
+        log('bloom:   checking %s\n' % path_msg(ridx))
+        for objsha in git.open_idx(idx):
+            if not b.exists(objsha):
+                add_error('bloom: ERROR: object %s missing' % hexstr(objsha))
 
 
 _first = None
@@ -60,79 +60,86 @@ def do_bloom(path, outfilename, k, force):
     global _first
     assert k in (None, 4, 5)
     b = None
-    if os.path.exists(outfilename) and not force:
-        b = bloom.ShaBloom(outfilename)
-        if not b.valid():
-            debug1("bloom: Existing invalid bloom found, regenerating.\n")
-            b = None
+    try:
+        if os.path.exists(outfilename) and not force:
+            b = bloom.ShaBloom(outfilename)
+            if not b.valid():
+                debug1("bloom: Existing invalid bloom found, regenerating.\n")
+                b.close()
+                b = None
 
-    add = []
-    rest = []
-    add_count = 0
-    rest_count = 0
-    for i, name in enumerate(glob.glob(b'%s/*.idx' % path)):
-        progress('bloom: counting: %d\r' % i)
-        ix = git.open_idx(name)
-        ixbase = os.path.basename(name)
-        if b and (ixbase in b.idxnames):
-            rest.append(name)
-            rest_count += len(ix)
-        else:
-            add.append(name)
-            add_count += len(ix)
+        add = []
+        rest = []
+        add_count = 0
+        rest_count = 0
+        for i, name in enumerate(glob.glob(b'%s/*.idx' % path)):
+            progress('bloom: counting: %d\r' % i)
+            ix = git.open_idx(name)
+            ixbase = os.path.basename(name)
+            if b and (ixbase in b.idxnames):
+                rest.append(name)
+                rest_count += len(ix)
+            else:
+                add.append(name)
+                add_count += len(ix)
 
-    if not add:
-        debug1("bloom: nothing to do.\n")
-        return
+        if not add:
+            debug1("bloom: nothing to do.\n")
+            return
 
-    if b:
-        if len(b) != rest_count:
-            debug1("bloom: size %d != idx total %d, regenerating\n"
-                   % (len(b), rest_count))
-            b = None
-        elif k is not None and k != b.k:
-            debug1("bloom: new k %d != existing k %d, regenerating\n"
-                   % (k, b.k))
-            b = None
-        elif (b.bits < bloom.MAX_BLOOM_BITS[b.k] and
-              b.pfalse_positive(add_count) > bloom.MAX_PFALSE_POSITIVE):
-            debug1("bloom: regenerating: adding %d entries gives "
-                   "%.2f%% false positives.\n"
-                   % (add_count, b.pfalse_positive(add_count)))
-            b = None
-        else:
-            b = bloom.ShaBloom(outfilename, readwrite=True, expected=add_count)
-    if not b: # Need all idxs to build from scratch
-        add += rest
-        add_count += rest_count
-    del rest
-    del rest_count
+        if b:
+            if len(b) != rest_count:
+                debug1("bloom: size %d != idx total %d, regenerating\n"
+                       % (len(b), rest_count))
+                b, b_tmp = None, b
+                b_tmp.close()
+            elif k is not None and k != b.k:
+                debug1("bloom: new k %d != existing k %d, regenerating\n"
+                       % (k, b.k))
+                b, b_tmp = None, b
+                b_tmp.close()
+            elif (b.bits < bloom.MAX_BLOOM_BITS[b.k] and
+                  b.pfalse_positive(add_count) > bloom.MAX_PFALSE_POSITIVE):
+                debug1("bloom: regenerating: adding %d entries gives "
+                       "%.2f%% false positives.\n"
+                       % (add_count, b.pfalse_positive(add_count)))
+                b, b_tmp = None, b
+                b_tmp.close()
+            else:
+                b = bloom.ShaBloom(outfilename, readwrite=True,
+                                   expected=add_count)
+        if not b: # Need all idxs to build from scratch
+            add += rest
+            add_count += rest_count
+        del rest
+        del rest_count
 
-    msg = b is None and 'creating from' or 'adding'
-    if not _first: _first = path
-    dirprefix = (_first != path) and git.repo_rel(path) + b': ' or b''
-    progress('bloom: %s%s %d file%s (%d object%s).\r'
-        % (path_msg(dirprefix), msg,
-           len(add), len(add)!=1 and 's' or '',
-           add_count, add_count!=1 and 's' or ''))
+        msg = b is None and 'creating from' or 'adding'
+        if not _first: _first = path
+        dirprefix = (_first != path) and git.repo_rel(path) + b': ' or b''
+        progress('bloom: %s%s %d file%s (%d object%s).\r'
+            % (path_msg(dirprefix), msg,
+               len(add), len(add)!=1 and 's' or '',
+               add_count, add_count!=1 and 's' or ''))
 
-    tfname = None
-    if b is None:
-        tfname = os.path.join(path, b'bup.tmp.bloom')
-        b = bloom.create(tfname, expected=add_count, k=k)
-    count = 0
-    icount = 0
-    for name in add:
-        ix = git.open_idx(name)
-        qprogress('bloom: writing %.2f%% (%d/%d objects)\r'
-                  % (icount*100.0/add_count, icount, add_count))
-        b.add_idx(ix)
-        count += 1
-        icount += len(ix)
+        tfname = None
+        if b is None:
+            tfname = os.path.join(path, b'bup.tmp.bloom')
+            b = bloom.create(tfname, expected=add_count, k=k)
+        count = 0
+        icount = 0
+        for name in add:
+            ix = git.open_idx(name)
+            qprogress('bloom: writing %.2f%% (%d/%d objects)\r'
+                      % (icount*100.0/add_count, icount, add_count))
+            b.add_idx(ix)
+            count += 1
+            icount += len(ix)
 
-    # Currently, there's an open file object for tfname inside b.
-    # Make sure it's closed before rename.
-    b.close()
+    finally:  # This won't handle pending exceptions correctly in py2
+        # Currently, there's an open file object for tfname inside b.
+        # Make sure it's closed before rename.
+        if b: b.close()
 
     if tfname:
         os.rename(tfname, outfilename)

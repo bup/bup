@@ -643,14 +643,22 @@ class PackIdxList:
                         continue
                     d[full] = ix
             bfull = os.path.join(self.dir, b'bup.bloom')
-            if self.bloom is None and os.path.exists(bfull):
-                self.bloom = bloom.ShaBloom(bfull)
             self.packs = list(set(d.values()))
             self.packs.sort(reverse=True, key=lambda x: len(x))
-            if self.bloom and self.bloom.valid() and len(self.bloom) >= len(self):
-                self.do_bloom = True
-            else:
-                self.bloom = None
+            if self.bloom is None and os.path.exists(bfull):
+                self.bloom = bloom.ShaBloom(bfull)
+            try:
+                if self.bloom and self.bloom.valid() and len(self.bloom) >= len(self):
+                    self.do_bloom = True
+                else:
+                    if self.bloom:
+                        self.bloom, bloom_tmp = None, self.bloom
+                        bloom_tmp.close()
+            except BaseException as ex:
+                with pending_raise(ex):
+                    if self.bloom:
+                        self.bloom.close()
+
         debug1('PackIdxList: using %d index%s.\n'
             % (len(self.packs), len(self.packs)!=1 and 'es' or ''))
 

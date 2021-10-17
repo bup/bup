@@ -236,7 +236,7 @@ def bup_gc(threshold=10, compression=1, verbosity=0):
         except MissingObject as ex:
             log('bup: missing object %r \n' % hexstr(ex.oid))
             sys.exit(1)
-        try:
+        with live_objects:
             # FIXME: just rename midxes and bloom, and restore them at the end if
             # we didn't change any packs?
             packdir = git.repo(b'objects/pack')
@@ -252,5 +252,3 @@ def bup_gc(threshold=10, compression=1, verbosity=0):
             sweep(live_objects, existing_count, cat_pipe,
                   threshold, compression,
                   verbosity)
-        finally:
-            live_objects.close()
