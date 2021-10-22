@@ -855,8 +855,7 @@ class PackWriter(object):
     def _write(self, sha, type, content):
         if verbose:
             log('>')
-        if not sha:
-            sha = calc_hash(type, content)
+        assert sha
         size, crc = self._raw_write(_encode_packobj(type, content,
                                                     self.compression_level),
                                     sha=sha)
