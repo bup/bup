@@ -209,10 +209,9 @@ def sweep(live_objects, existing_count, cat_pipe, threshold, compression,
     except BaseException as ex:
         with pending_raise(ex):
             writer.abort()
-
-    # This will finally run midx.
-    # Can only change refs (if needed) after this.
-    writer.close()
+    finally:
+        # This will finally run midx.
+        writer.close()
 
     remove_stale_files(None)  # In case we didn't write to the writer.
 

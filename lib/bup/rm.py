@@ -116,11 +116,9 @@ def bup_rm(repo, paths, compression=6, verbosity=None):
                 assert(saves)
                 updated_refs[b'refs/heads/' + branch] = rm_saves(saves, writer)
         except BaseException as ex:
-            if writer:
-                with pending_raise(ex):
-                    writer.abort()
-        if writer:
-            # Must close before we can update the ref(s) below.
+            with pending_raise(ex):
+                writer.abort()
+        finally:
             writer.close()
 
     # Only update the refs here, at the very end, so that if something

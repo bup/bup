@@ -511,26 +511,25 @@ def main(argv):
         else:
             w = cli.new_packwriter(compression_level=opt.compress)
 
-        sys.stdout.flush()
-        out = byte_stream(sys.stdout)
+        with w:
+            sys.stdout.flush()
+            out = byte_stream(sys.stdout)
 
-        if opt.name:
-            refname = b'refs/heads/%s' % opt.name
-            parent = repo.read_ref(refname)
-        else:
-            refname = parent = None
+            if opt.name:
+                refname = b'refs/heads/%s' % opt.name
+                parent = repo.read_ref(refname)
+            else:
+                refname = parent = None
 
-        tree = save_tree(opt, w)
-        if opt.tree:
-            out.write(hexlify(tree))
-            out.write(b'\n')
-        if opt.commit or opt.name:
-            commit = commit_tree(tree, parent, opt.date, argv, w)
-            if opt.commit:
-                out.write(hexlify(commit))
+            tree = save_tree(opt, w)
+            if opt.tree:
+                out.write(hexlify(tree))
                 out.write(b'\n')
-
-        w.close()
+            if opt.commit or opt.name:
+                commit = commit_tree(tree, parent, opt.date, argv, w)
+                if opt.commit:
+                    out.write(hexlify(commit))
+                    out.write(b'\n')
 
         # packwriter must be closed before we can update the ref
         if opt.name:

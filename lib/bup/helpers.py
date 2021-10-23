@@ -27,6 +27,17 @@ class Nonlocal:
     pass
 
 
+@contextmanager
+def finalized(enter_result=None, finalize=None):
+    assert finalize
+    try:
+        yield enter_result
+    except BaseException as ex:
+        with pending_raise(ex):
+            finalize(enter_result)
+    finalize(enter_result)
+
+
 sc_page_size = os.sysconf('SC_PAGE_SIZE')
 assert(sc_page_size > 0)
 

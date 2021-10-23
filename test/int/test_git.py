@@ -117,18 +117,18 @@ def test_packs(tmpdir):
     git.init_repo(bupdir)
     git.verbose = 1
 
-    w = git.PackWriter()
-    w.new_blob(os.urandom(100))
-    w.new_blob(os.urandom(100))
-    w.abort()
+    with git.PackWriter() as w:
+        w.new_blob(os.urandom(100))
+        w.new_blob(os.urandom(100))
+        w.abort()
 
-    w = git.PackWriter()
-    hashes = []
-    nobj = 1000
-    for i in range(nobj):
-        hashes.append(w.new_blob(b'%d' % i))
-    log('\n')
-    nameprefix = w.close()
+    with git.PackWriter() as w:
+        hashes = []
+        nobj = 1000
+        for i in range(nobj):
+            hashes.append(w.new_blob(b'%d' % i))
+        log('\n')
+        nameprefix = w.close()
     print(repr(nameprefix))
     WVPASS(os.path.exists(nameprefix + b'.pack'))
     WVPASS(os.path.exists(nameprefix + b'.idx'))
@@ -163,11 +163,11 @@ def test_pack_name_lookup(tmpdir):
     hashes = []
 
     for start in range(0,28,2):
-        w = git.PackWriter()
-        for i in range(start, start+2):
-            hashes.append(w.new_blob(b'%d' % i))
-        log('\n')
-        idxnames.append(os.path.basename(w.close() + b'.idx'))
+        with git.PackWriter() as w:
+            for i in range(start, start+2):
+                hashes.append(w.new_blob(b'%d' % i))
+            log('\n')
+            idxnames.append(os.path.basename(w.close() + b'.idx'))
 
     r = git.PackIdxList(packdir)
     WVPASSEQ(len(r.packs), 2)
@@ -346,31 +346,30 @@ def test_new_commit(tmpdir):
     git.init_repo(bupdir)
     git.verbose = 1
 
-    w = git.PackWriter()
-    tree = os.urandom(20)
-    parent = os.urandom(20)
-    author_name = b'Author'
-    author_mail = b'author@somewhere'
-    adate_sec = 1439657836
-    cdate_sec = adate_sec + 1
-    committer_name = b'Committer'
-    committer_mail = b'committer@somewhere'
-    adate_tz_sec = cdate_tz_sec = None
-    commit = w.new_commit(tree, parent,
-                          b'%s <%s>' % (author_name, author_mail),
-                          adate_sec, adate_tz_sec,
-                          b'%s <%s>' % (committer_name, committer_mail),
-                          cdate_sec, cdate_tz_sec,
-                          b'There is a small mailbox here')
-    adate_tz_sec = -60 * 60
-    cdate_tz_sec = 120 * 60
-    commit_off = w.new_commit(tree, parent,
+    with git.PackWriter() as w:
+        tree = os.urandom(20)
+        parent = os.urandom(20)
+        author_name = b'Author'
+        author_mail = b'author@somewhere'
+        adate_sec = 1439657836
+        cdate_sec = adate_sec + 1
+        committer_name = b'Committer'
+        committer_mail = b'committer@somewhere'
+        adate_tz_sec = cdate_tz_sec = None
+        commit = w.new_commit(tree, parent,
                               b'%s <%s>' % (author_name, author_mail),
                               adate_sec, adate_tz_sec,
                               b'%s <%s>' % (committer_name, committer_mail),
                               cdate_sec, cdate_tz_sec,
                               b'There is a small mailbox here')
-    w.close()
+        adate_tz_sec = -60 * 60
+        cdate_tz_sec = 120 * 60
+        commit_off = w.new_commit(tree, parent,
+                                  b'%s <%s>' % (author_name, author_mail),
+                                  adate_sec, adate_tz_sec,
+                                  b'%s <%s>' % (committer_name, committer_mail),
+                                  cdate_sec, cdate_tz_sec,
+                                  b'There is a small mailbox here')
 
     commit_items = git.get_commit_items(hexlify(commit), git.cp())
     local_author_offset = localtime(adate_sec).tm_gmtoff

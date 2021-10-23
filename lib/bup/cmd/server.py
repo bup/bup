@@ -4,9 +4,10 @@ from binascii import hexlify, unhexlify
 import os, struct, subprocess, sys
 
 from bup import options, git, vfs, vint
-from bup.compat import environ, hexstr
-from bup.helpers import (Conn, debug1, debug2, linereader, lines_until_sentinel,
-                         log)
+from bup.compat import environ, hexstr, pending_raise
+from bup.helpers \
+    import (Conn, debug1, debug2, finalized, linereader, lines_until_sentinel,
+            log)
 from bup.io import byte_stream, path_msg
 from bup.repo import LocalRepo
 
@@ -81,60 +82,70 @@ def send_index(conn, name):
 def receive_objects_v2(conn, junk):
     global suspended_w
     _init_session()
-    suggested = set()
     if suspended_w:
         w = suspended_w
         suspended_w = None
+    elif dumb_server_mode:
+        w = git.PackWriter(objcache_maker=None)
     else:
-        if dumb_server_mode:
-            w = git.PackWriter(objcache_maker=None)
-        else:
-            w = git.PackWriter()
-    while 1:
-        ns = conn.read(4)
-        if not ns:
-            w.abort()
-            raise Exception('object read: expected length header, got EOF\n')
-        n = struct.unpack('!I', ns)[0]
-        #debug2('expecting %d bytes\n' % n)
-        if not n:
-            debug1('bup server: received %d object%s.\n'
-                % (w.count, w.count!=1 and "s" or ''))
-            fullpath = w.close(run_midx=not dumb_server_mode)
-            if fullpath:
-                (dir, name) = os.path.split(fullpath)
-                conn.write(b'%s.idx\n' % name)
-            conn.ok()
-            return
-        elif n == 0xffffffff:
-            debug2('bup server: receive-objects suspended.\n')
-            suspended_w = w
-            conn.ok()
-            return
+        w = git.PackWriter()
+    try:
+        suggested = set()
+        while 1:
+            ns = conn.read(4)
+            if not ns:
+                w.abort()
+                raise Exception('object read: expected length header, got EOF')
+            n = struct.unpack('!I', ns)[0]
+            #debug2('expecting %d bytes\n' % n)
+            if not n:
+                debug1('bup server: received %d object%s.\n'
+                    % (w.count, w.count!=1 and "s" or ''))
+                fullpath = w.close(run_midx=not dumb_server_mode)
+                w = None
+                if fullpath:
+                    dir, name = os.path.split(fullpath)
+                    conn.write(b'%s.idx\n' % name)
+                conn.ok()
+                return
+            elif n == 0xffffffff:
+                debug2('bup server: receive-objects suspending\n')
+                conn.ok()
+                suspended_w = w
+                w = None
+                return
 
-        shar = conn.read(20)
-        crcr = struct.unpack('!I', conn.read(4))[0]
-        n -= 20 + 4
-        buf = conn.read(n)  # object sizes in bup are reasonably small
-        #debug2('read %d bytes\n' % n)
-        _check(w, n, len(buf), 'object read: expected %d bytes, got %d\n')
-        if not dumb_server_mode:
-            oldpack = w.exists(shar, want_source=True)
-            if oldpack:
-                assert(not oldpack == True)
-                assert(oldpack.endswith(b'.idx'))
-                (dir,name) = os.path.split(oldpack)
-                if not (name in suggested):
-                    debug1("bup server: suggesting index %s\n"
-                           % git.shorten_hash(name).decode('ascii'))
-                    debug1("bup server:   because of object %s\n"
-                           % hexstr(shar))
-                    conn.write(b'index %s\n' % name)
-                    suggested.add(name)
-                continue
-        nw, crc = w._raw_write((buf,), sha=shar)
-        _check(w, crcr, crc, 'object read: expected crc %d, got %d\n')
-    # NOTREACHED
+            shar = conn.read(20)
+            crcr = struct.unpack('!I', conn.read(4))[0]
+            n -= 20 + 4
+            buf = conn.read(n)  # object sizes in bup are reasonably small
+            #debug2('read %d bytes\n' % n)
+            _check(w, n, len(buf), 'object read: expected %d bytes, got %d\n')
+            if not dumb_server_mode:
+                oldpack = w.exists(shar, want_source=True)
+                if oldpack:
+                    assert(not oldpack == True)
+                    assert(oldpack.endswith(b'.idx'))
+                    (dir,name) = os.path.split(oldpack)
+                    if not (name in suggested):
+                        debug1("bup server: suggesting index %s\n"
+                               % git.shorten_hash(name).decode('ascii'))
+                        debug1("bup server:   because of object %s\n"
+                               % hexstr(shar))
+                        conn.write(b'index %s\n' % name)
+                        suggested.add(name)
+                    continue
+            nw, crc = w._raw_write((buf,), sha=shar)
+            _check(w, crcr, crc, 'object read: expected crc %d, got %d\n')
+    # py2: this clause is unneeded with py3
+    except BaseException as ex:
+        with pending_raise(ex):
+            if w:
+                w, w_tmp = None, w
+                w_tmp.close()
+    finally:
+        if w: w.close()
+    assert False  # should be unreachable
 
 
 def _check(w, expected, actual, msg):
@@ -278,9 +289,10 @@ commands = {
 }
 
 def main(argv):
+    global suspended_w
+
     o = options.Options(optspec)
     opt, flags, extra = o.parse_bytes(argv[1:])
-
     if extra:
         o.fatal('no arguments expected')
 
@@ -291,21 +303,21 @@ def main(argv):
     sys.stdout.flush()
     conn = Conn(byte_stream(sys.stdin), byte_stream(sys.stdout))
     lr = linereader(conn)
-    for _line in lr:
-        line = _line.strip()
-        if not line:
-            continue
-        debug1('bup server: command: %r\n' % line)
-        words = line.split(b' ', 1)
-        cmd = words[0]
-        rest = len(words)>1 and words[1] or b''
-        if cmd == b'quit':
-            break
-        else:
-            cmd = commands.get(cmd)
-            if cmd:
-                cmd(conn, rest)
+    with finalized(None, lambda _: suspended_w and suspended_w.close()):
+        for _line in lr:
+            line = _line.strip()
+            if not line:
+                continue
+            debug1('bup server: command: %r\n' % line)
+            words = line.split(b' ', 1)
+            cmd = words[0]
+            rest = len(words)>1 and words[1] or b''
+            if cmd == b'quit':
+                break
             else:
-                raise Exception('unknown server command: %r\n' % line)
-
+                cmd = commands.get(cmd)
+                if cmd:
+                    cmd(conn, rest)
+                else:
+                    raise Exception('unknown server command: %r\n' % line)
     debug1('bup server: done\n')

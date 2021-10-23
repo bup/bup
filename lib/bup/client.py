@@ -480,7 +480,9 @@ class Client:
         return result
 
 
+# FIXME: disentangle this (stop inheriting) from PackWriter
 class PackWriter_Remote(git.PackWriter):
+
     def __init__(self, conn, objcache_maker, suggest_packs,
                  onopen, onclose,
                  ensure_busy,
@@ -502,12 +504,16 @@ class PackWriter_Remote(git.PackWriter):
         self._bwcount = 0
         self._bwtime = time.time()
 
+    # __enter__ and __exit__ are inherited
+
     def _open(self):
         if not self._packopen:
             self.onopen()
             self._packopen = True
 
     def _end(self, run_midx=True):
+        # Called by other PackWriter methods like breakpoint().
+        # Must not close the connection (self.file)
         assert(run_midx)  # We don't support this via remote yet
         if self._packopen and self.file:
             self.file.write(b'\0\0\0\0')
@@ -518,6 +524,7 @@ class PackWriter_Remote(git.PackWriter):
         return None
 
     def close(self):
+        # Called by inherited __exit__
         id = self._end()
         self.file = None
         return id

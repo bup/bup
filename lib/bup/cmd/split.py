@@ -250,10 +250,9 @@ def main(argv):
                                              max_pack_size=opt.max_pack_size,
                                              max_pack_objects=opt.max_pack_objects)
 
-        commit = split(opt, files, oldref, out, pack_writer)
-
-        if pack_writer:
-            pack_writer.close()
+        # packwriter creation must be last command in each if clause above
+        with pack_writer:
+            commit = split(opt, files, oldref, out, pack_writer)
 
         # pack_writer must be closed before we can update the ref
         if refname:

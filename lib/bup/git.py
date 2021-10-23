@@ -22,6 +22,7 @@ from bup.io import path_msg
 from bup.helpers import (Sha1, add_error, chunkyreader, debug1, debug2,
                          exo,
                          fdatasync,
+                         finalized,
                          log,
                          merge_dict,
                          merge_iter,
@@ -818,12 +819,6 @@ class PackWriter:
             self.breakpoint()
         return sha
 
-    def breakpoint(self):
-        """Clear byte and object counts and return the last processed id."""
-        id = self._end(self.run_midx)
-        self.outbytes = self.count = 0
-        return id
-
     def _require_objcache(self):
         if self.objcache is None and self.objcache_maker:
             self.objcache = self.objcache_maker()
@@ -872,36 +867,26 @@ class PackWriter:
                                      msg)
         return self.maybe_write(b'commit', content)
 
-    def abort(self):
-        """Remove the pack file from disk."""
-        f = self.file
-        if f:
-            pfd = self.parentfd
-            self.file = None
-            self.parentfd = None
-            self.idx = None
-            try:
-                try:
-                    os.unlink(self.filename + b'.pack')
-                finally:
-                    f.close()
-            finally:
-                if pfd is not None:
-                    os.close(pfd)
+    def _end(self, run_midx=True, abort=False):
+        # Ignores run_midx during abort
+        if not self.file:
+            return None
+        self.file, f = None, self.file
+        self.idx, idx = None, self.idx
+        self.parentfd, pfd, = None, self.parentfd
+        self.objcache = None
 
-    def _end(self, run_midx=True):
-        f = self.file
-        if not f: return None
-        self.file = None
-        try:
-            self.objcache = None
-            idx = self.idx
-            self.idx = None
+        with finalized(pfd, lambda x: x is not None and os.close(x)), \
+             f:
+
+            if abort:
+                os.unlink(self.filename + b'.pack')
+                return None
 
             # update object count
             f.seek(8)
             cp = struct.pack('!i', self.count)
-            assert(len(cp) == 4)
+            assert len(cp) == 4
             f.write(cp)
 
             # calculate the pack sha1sum
@@ -911,29 +896,33 @@ class PackWriter:
                 sum.update(b)
             packbin = sum.digest()
             f.write(packbin)
+            f.flush()
             fdatasync(f.fileno())
-        finally:
             f.close()
 
-        idx.write(self.filename + b'.idx', packbin)
-        nameprefix = os.path.join(self.repo_dir,
-                                  b'objects/pack/pack-' +  hexlify(packbin))
-        if os.path.exists(self.filename + b'.map'):
-            os.unlink(self.filename + b'.map')
-        os.rename(self.filename + b'.pack', nameprefix + b'.pack')
-        os.rename(self.filename + b'.idx', nameprefix + b'.idx')
-        try:
-            os.fsync(self.parentfd)
-        finally:
-            os.close(self.parentfd)
+            idx.write(self.filename + b'.idx', packbin)
+            nameprefix = os.path.join(self.repo_dir,
+                                      b'objects/pack/pack-' +  hexlify(packbin))
+            if os.path.exists(self.filename + b'.map'):
+                os.unlink(self.filename + b'.map')
+            os.rename(self.filename + b'.pack', nameprefix + b'.pack')
+            os.rename(self.filename + b'.idx', nameprefix + b'.idx')
+            os.fsync(pfd)
+            if run_midx:
+                auto_midx(os.path.join(self.repo_dir, b'objects/pack'))
+            if self.on_pack_finish:
+                self.on_pack_finish(nameprefix)
+            return nameprefix
 
-        if run_midx:
-            auto_midx(os.path.join(self.repo_dir, b'objects/pack'))
+    def abort(self):
+        """Remove the pack file from disk."""
+        self._end(abort=True)
 
-        if self.on_pack_finish:
-            self.on_pack_finish(nameprefix)
-
-        return nameprefix
+    def breakpoint(self):
+        """Clear byte and object counts and return the last processed id."""
+        id = self._end(self.run_midx)
+        self.outbytes = self.count = 0
+        return id
 
     def close(self, run_midx=True):
         """Close the pack file and move it to its definitive path."""
