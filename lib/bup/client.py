@@ -10,7 +10,7 @@ from bup import git, ssh, vfs
 from bup.compat import environ, pending_raise, range, reraise
 from bup.helpers import (Conn, atomically_replaced_file, chunkyreader, debug1,
                          debug2, linereader, lines_until_sentinel,
-                         mkdirp, progress, qprogress, DemuxConn)
+                         mkdirp, nullcontext_if_not, progress, qprogress, DemuxConn)
 from bup.io import path_msg
 from bup.vint import write_bvec
 
@@ -515,13 +515,16 @@ class PackWriter_Remote(git.PackWriter):
         # Called by other PackWriter methods like breakpoint().
         # Must not close the connection (self.file)
         assert(run_midx)  # We don't support this via remote yet
-        if self._packopen and self.file:
+        self.objcache, objcache = None, self.objcache
+        with nullcontext_if_not(objcache):
+            if not (self._packopen and self.file):
+                return None
             self.file.write(b'\0\0\0\0')
             self._packopen = False
             self.onclose() # Unbusy
-            self.objcache = None
+            if objcache is not None:
+                objcache.close()
             return self.suggest_packs() # Returns last idx received
-        return None
 
     def close(self):
         # Called by inherited __exit__

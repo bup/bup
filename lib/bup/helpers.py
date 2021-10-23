@@ -12,7 +12,7 @@ import hashlib, heapq, math, operator, time, tempfile
 
 from bup import _helpers
 from bup import compat
-from bup.compat import argv_bytes, byte_int, pending_raise
+from bup.compat import argv_bytes, byte_int, nullcontext, pending_raise
 from bup.io import byte_stream, path_msg
 # This function should really be in helpers, not in bup.options.  But we
 # want options.py to be standalone so people can include it in other projects.
@@ -25,6 +25,10 @@ buglvl = int(os.environ.get('BUP_DEBUG', 0))
 class Nonlocal:
     """Helper to deal with Python scoping issues"""
     pass
+
+
+def nullcontext_if_not(manager):
+    return manager if manager is not None else nullcontext()
 
 
 @contextmanager

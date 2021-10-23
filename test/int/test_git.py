@@ -147,10 +147,10 @@ def test_packs(tmpdir):
 
         WVFAIL(r.find_offset(b'\0'*20))
 
-    r = git.PackIdxList(bupdir + b'/objects/pack')
-    WVPASS(r.exists(hashes[5]))
-    WVPASS(r.exists(hashes[6]))
-    WVFAIL(r.exists(b'\0'*20))
+    with git.PackIdxList(bupdir + b'/objects/pack') as r:
+        WVPASS(r.exists(hashes[5]))
+        WVPASS(r.exists(hashes[6]))
+        WVFAIL(r.exists(b'\0'*20))
 
 
 def test_pack_name_lookup(tmpdir):
@@ -169,11 +169,11 @@ def test_pack_name_lookup(tmpdir):
             log('\n')
             idxnames.append(os.path.basename(w.close() + b'.idx'))
 
-    r = git.PackIdxList(packdir)
-    WVPASSEQ(len(r.packs), 2)
-    for e,idxname in enumerate(idxnames):
-        for i in range(e*2, (e+1)*2):
-            WVPASSEQ(idxname, r.exists(hashes[i], want_source=True))
+    with git.PackIdxList(packdir) as r:
+        WVPASSEQ(len(r.packs), 2)
+        for e,idxname in enumerate(idxnames):
+            for i in range(e*2, (e+1)*2):
+                WVPASSEQ(idxname, r.exists(hashes[i], want_source=True))
 
 
 def test_long_index(tmpdir):
@@ -511,35 +511,35 @@ def test_midx_close(tmpdir):
     for i in range(10):
         _create_idx(tmpdir, i)
     git.auto_midx(tmpdir)
-    l = git.PackIdxList(tmpdir)
+    with git.PackIdxList(tmpdir) as l:
     # this doesn't exist (yet)
-    WVPASSEQ(None, l.exists(struct.pack('18xBB', 10, 0)))
-    for i in range(10, 15):
-        _create_idx(tmpdir, i)
-    # delete the midx ...
-    # TODO: why do we need to? git.auto_midx() below doesn't?!
-    for fn in os.listdir(tmpdir):
-        if fn.endswith(b'.midx'):
-            os.unlink(os.path.join(tmpdir, fn))
-    # and make a new one
-    git.auto_midx(tmpdir)
-    # check it still doesn't exist - we haven't refreshed
-    WVPASSEQ(None, l.exists(struct.pack('18xBB', 10, 0)))
-    # check that we still have the midx open, this really
-    # just checks more for the kernel API ('deleted' string)
-    for fn in openfiles():
-        if not b'midx-' in fn:
-            continue
-        WVPASSEQ(True, b'deleted' in fn)
-    # refresh the PackIdxList
-    l.refresh()
-    # and check that an object in pack 10 exists now
-    WVPASSEQ(True, l.exists(struct.pack('18xBB', 10, 0)))
-    for fn in openfiles():
-        if not b'midx-' in fn:
-            continue
-        # check that we don't have it open anymore
-        WVPASSEQ(False, b'deleted' in fn)
+        WVPASSEQ(None, l.exists(struct.pack('18xBB', 10, 0)))
+        for i in range(10, 15):
+            _create_idx(tmpdir, i)
+        # delete the midx ...
+        # TODO: why do we need to? git.auto_midx() below doesn't?!
+        for fn in os.listdir(tmpdir):
+            if fn.endswith(b'.midx'):
+                os.unlink(os.path.join(tmpdir, fn))
+        # and make a new one
+        git.auto_midx(tmpdir)
+        # check it still doesn't exist - we haven't refreshed
+        WVPASSEQ(None, l.exists(struct.pack('18xBB', 10, 0)))
+        # check that we still have the midx open, this really
+        # just checks more for the kernel API ('deleted' string)
+        for fn in openfiles():
+            if not b'midx-' in fn:
+                continue
+            WVPASSEQ(True, b'deleted' in fn)
+        # refresh the PackIdxList
+        l.refresh()
+        # and check that an object in pack 10 exists now
+        WVPASSEQ(True, l.exists(struct.pack('18xBB', 10, 0)))
+        for fn in openfiles():
+            if not b'midx-' in fn:
+                continue
+            # check that we don't have it open anymore
+            WVPASSEQ(False, b'deleted' in fn)
 
 def test_config():
     cfg_file = os.path.join(os.path.dirname(__file__), 'sample.conf')

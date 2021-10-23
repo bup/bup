@@ -79,8 +79,6 @@ def main(argv):
         o.fatal('no arguments expected')
 
     git.check_repo_or_die()
-    m = git.PackIdxList(git.repo(b'objects/pack'), ignore_midx=opt.ignore_midx)
-
     sys.stdout.flush()
     out = byte_stream(sys.stdout)
 
@@ -88,27 +86,30 @@ def main(argv):
     _helpers.random_sha()
     report(0, out)
 
-    if opt.existing:
-        def foreverit(mi):
-            while 1:
-                for e in mi:
-                    yield e
-        objit = iter(foreverit(m))
+    with git.PackIdxList(git.repo(b'objects/pack'),
+                         ignore_midx=opt.ignore_midx) as m:
 
-    for c in range(opt.cycles):
-        for n in range(opt.number):
-            if opt.existing:
-                bin = next(objit)
-                assert(m.exists(bin))
-            else:
-                bin = _helpers.random_sha()
+        if opt.existing:
+            def foreverit(mi):
+                while 1:
+                    for e in mi:
+                        yield e
+            objit = iter(foreverit(m))
 
-                # technically, a randomly generated object id might exist.
-                # but the likelihood of that is the likelihood of finding
-                # a collision in sha-1 by accident, which is so unlikely that
-                # we don't care.
-                assert(not m.exists(bin))
-        report((c+1)*opt.number, out)
+        for c in range(opt.cycles):
+            for n in range(opt.number):
+                if opt.existing:
+                    bin = next(objit)
+                    assert(m.exists(bin))
+                else:
+                    bin = _helpers.random_sha()
+
+                    # technically, a randomly generated object id might exist.
+                    # but the likelihood of that is the likelihood of finding
+                    # a collision in sha-1 by accident, which is so unlikely that
+                    # we don't care.
+                    assert(not m.exists(bin))
+            report((c+1)*opt.number, out)
 
     if bloom._total_searches:
         out.write(b'bloom: %d objects searched in %d steps: avg %.3f steps/object\n'

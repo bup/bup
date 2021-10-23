@@ -14,6 +14,7 @@ from bup import _helpers, hashsplit, path, midx, bloom, xstat
 from bup.compat import (buffer,
                         byte_int, bytes_from_byte, bytes_from_uint,
                         environ,
+                        ExitStack,
                         items,
                         pending_raise,
                         range,
@@ -27,6 +28,7 @@ from bup.helpers import (Sha1, add_error, chunkyreader, debug1, debug2,
                          merge_dict,
                          merge_iter,
                          mmap_read, mmap_readwrite,
+                         nullcontext_if_not,
                          progress, qprogress, stat_if_exists,
                          unlink,
                          utc_offset_str)
@@ -517,8 +519,10 @@ _mpi_count = 0
 class PackIdxList:
     def __init__(self, dir, ignore_midx=False):
         global _mpi_count
+        # Q: was this also intended to prevent opening multiple repos?
         assert(_mpi_count == 0) # these things suck tons of VM; don't waste it
         _mpi_count += 1
+        self.open = True
         self.dir = dir
         self.also = set()
         self.packs = []
@@ -527,10 +531,32 @@ class PackIdxList:
         self.ignore_midx = ignore_midx
         self.refresh()
 
-    def __del__(self):
+    def close(self):
         global _mpi_count
+        if not self.open:
+            assert _mpi_count == 0
+            return
         _mpi_count -= 1
-        assert(_mpi_count == 0)
+        assert _mpi_count == 0
+        self.also = None
+        self.bloom, bloom = None, self.bloom
+        self.packs, packs = None, self.packs
+        self.open = False
+        with ExitStack() as stack:
+            for pack in packs:
+                stack.enter_context(pack)
+            if bloom:
+                bloom.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        with pending_raise(value, rethrow=False):
+            self.close()
+
+    def __del__(self):
+        assert not self.open
 
     def __iter__(self):
         return iter(idxmerge(self.packs))
@@ -721,7 +747,6 @@ def create_commit_blob(tree, parent,
     l.append(msg)
     return b'\n'.join(l)
 
-
 def _make_objcache():
     return PackIdxList(repo(b'objects/pack'))
 
@@ -878,45 +903,49 @@ class PackWriter:
         self.file, f = None, self.file
         self.idx, idx = None, self.idx
         self.parentfd, pfd, = None, self.parentfd
-        self.objcache = None
 
-        with finalized(pfd, lambda x: x is not None and os.close(x)), \
-             f:
+        try:
+            with nullcontext_if_not(self.objcache), \
+                 finalized(pfd, lambda x: x is not None and os.close(x)), \
+                 f:
 
-            if abort:
-                os.unlink(self.filename + b'.pack')
-                return None
+                if abort:
+                    os.unlink(self.filename + b'.pack')
+                    return None
 
-            # update object count
-            f.seek(8)
-            cp = struct.pack('!i', self.count)
-            assert len(cp) == 4
-            f.write(cp)
+                # update object count
+                f.seek(8)
+                cp = struct.pack('!i', self.count)
+                assert len(cp) == 4
+                f.write(cp)
 
-            # calculate the pack sha1sum
-            f.seek(0)
-            sum = Sha1()
-            for b in chunkyreader(f):
-                sum.update(b)
-            packbin = sum.digest()
-            f.write(packbin)
-            f.flush()
-            fdatasync(f.fileno())
-            f.close()
+                # calculate the pack sha1sum
+                f.seek(0)
+                sum = Sha1()
+                for b in chunkyreader(f):
+                    sum.update(b)
+                packbin = sum.digest()
+                f.write(packbin)
+                f.flush()
+                fdatasync(f.fileno())
+                f.close()
 
-            idx.write(self.filename + b'.idx', packbin)
-            nameprefix = os.path.join(self.repo_dir,
-                                      b'objects/pack/pack-' +  hexlify(packbin))
-            if os.path.exists(self.filename + b'.map'):
-                os.unlink(self.filename + b'.map')
-            os.rename(self.filename + b'.pack', nameprefix + b'.pack')
-            os.rename(self.filename + b'.idx', nameprefix + b'.idx')
-            os.fsync(pfd)
-            if run_midx:
-                auto_midx(os.path.join(self.repo_dir, b'objects/pack'))
-            if self.on_pack_finish:
-                self.on_pack_finish(nameprefix)
-            return nameprefix
+                idx.write(self.filename + b'.idx', packbin)
+                nameprefix = os.path.join(self.repo_dir,
+                                          b'objects/pack/pack-' +  hexlify(packbin))
+                if os.path.exists(self.filename + b'.map'):
+                    os.unlink(self.filename + b'.map')
+                os.rename(self.filename + b'.pack', nameprefix + b'.pack')
+                os.rename(self.filename + b'.idx', nameprefix + b'.idx')
+                os.fsync(pfd)
+                if run_midx:
+                    auto_midx(os.path.join(self.repo_dir, b'objects/pack'))
+                if self.on_pack_finish:
+                    self.on_pack_finish(nameprefix)
+                return nameprefix
+        finally:
+            # Must be last -- some of the code above depends on it
+            self.objcache = None
 
     def abort(self):
         """Remove the pack file from disk."""
@@ -1090,16 +1119,15 @@ def rev_parse(committish, repo_dir=None):
         debug2("resolved from ref: commit = %s\n" % hexlify(head))
         return head
 
-    pL = PackIdxList(repo(b'objects/pack', repo_dir=repo_dir))
-
     if len(committish) == 40:
         try:
             hash = unhexlify(committish)
         except TypeError:
             return None
 
-        if pL.exists(hash):
-            return hash
+        with PackIdxList(repo(b'objects/pack', repo_dir=repo_dir)) as pL:
+            if pL.exists(hash):
+                return hash
 
     return None
 
