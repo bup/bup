@@ -48,13 +48,17 @@ if py3:
 
         """
         def __init__(self, ex, rethrow=True):
+            self.closed = False
             self.ex = ex
             self.rethrow = rethrow
         def __enter__(self):
             return None
         def __exit__(self, exc_type, exc_value, traceback):
+            self.closed = True
             if not exc_type and self.ex and self.rethrow:
                 raise self.ex
+        def __del__(self):
+            assert self.closed
 
     def items(x):
         return x.items()
@@ -146,12 +150,14 @@ else:  # Python 2
 
         """
         def __init__(self, ex, rethrow=True):
+            self.closed = False
             self.ex = ex
             self.rethrow = rethrow
         def __enter__(self):
             if self.ex:
                 add_ex_tb(self.ex)
         def __exit__(self, exc_type, exc_value, traceback):
+            self.closed = True
             if exc_value:
                 if self.ex:
                     add_ex_tb(exc_value)
@@ -159,6 +165,8 @@ else:  # Python 2
                 return
             if self.rethrow and self.ex:
                 raise self.ex
+        def __del__(self):
+            assert self.closed
 
     def dump_traceback(ex):
         stack = [ex]
@@ -217,15 +225,26 @@ else:  # Python 2
 
     buffer = buffer
 
+    assert not hasattr(py_mmap.mmap, '__del__')
     assert not hasattr(py_mmap.mmap, '__enter__')
     assert not hasattr(py_mmap.mmap, '__exit__')
 
     class mmap(py_mmap.mmap):
+        def __init__(self, *args, **kwargs):
+            self._bup_closed = False
+            # Silence deprecation warnings.  mmap's current parent is
+            # object, which accepts no params and as of at least 2.7
+            # warns about them.
+            if py_mmap.mmap.__init__ is not object.__init__:
+                super(mmap, self).__init__(self, *args, **kwargs)
         def __enter__(self):
             return self
         def __exit__(self, type, value, traceback):
+            self._bup_closed = True
             with pending_raise(value, rethrow=False):
                 self.close()
+        def __del__(self):
+            assert self._bup_closed
 
 try:
     import bup_main

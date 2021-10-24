@@ -50,7 +50,9 @@ class NoOpPackWriter:
     def __exit__(self, type, value, traceback):
         return None  # since close() does nothing
     def close(self):
-        return None
+        assert self.closed
+    def __del__(self):
+        assert self.closed
     def new_blob(self, content):
         return git.calc_hash(b'blob', content)
     def new_tree(self, shalist):

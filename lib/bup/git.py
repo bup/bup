@@ -414,6 +414,7 @@ class PackIdx:
 class PackIdxV1(PackIdx):
     """Object representation of a Git pack index (version 1) file."""
     def __init__(self, filename, f):
+        self.closed = False
         self.name = filename
         self.idxnames = [self.name]
         self.map = mmap_read(f)
@@ -453,15 +454,20 @@ class PackIdxV1(PackIdx):
             yield self.map[ofs : ofs + 20]
 
     def close(self):
+        self.closed = True
         if self.map is not None:
             self.shatable = None
             self.map.close()
             self.map = None
 
+    def __del__(self):
+        assert self.closed
+
 
 class PackIdxV2(PackIdx):
     """Object representation of a Git pack index (version 2) file."""
     def __init__(self, filename, f):
+        self.closed = False
         self.name = filename
         self.idxnames = [self.name]
         self.map = mmap_read(f)
@@ -509,10 +515,14 @@ class PackIdxV2(PackIdx):
             yield self.map[ofs : ofs + 20]
 
     def close(self):
+        self.closed = True
         if self.map is not None:
             self.shatable = None
             self.map.close()
             self.map = None
+
+    def __del__(self):
+        assert self.closed
 
 
 _mpi_count = 0
@@ -758,6 +768,7 @@ class PackWriter:
     def __init__(self, objcache_maker=_make_objcache, compression_level=1,
                  run_midx=True, on_pack_finish=None,
                  max_pack_size=None, max_pack_objects=None, repo_dir=None):
+        self.closed = False
         self.repo_dir = repo_dir or repo()
         self.file = None
         self.parentfd = None
@@ -949,6 +960,7 @@ class PackWriter:
 
     def abort(self):
         """Remove the pack file from disk."""
+        self.closed = True
         self._end(abort=True)
 
     def breakpoint(self):
@@ -959,7 +971,11 @@ class PackWriter:
 
     def close(self, run_midx=True):
         """Close the pack file and move it to its definitive path."""
+        self.closed = True
         return self._end(run_midx=run_midx)
+
+    def __del__(self):
+        assert self.closed
 
 
 class PackIdxV2Writer:

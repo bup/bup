@@ -454,10 +454,15 @@ class NotOk(Exception):
 
 class BaseConn:
     def __init__(self, outp):
+        self._base_closed = False
         self.outp = outp
 
     def close(self):
+        self._base_closed = True
         while self._read(65536): pass
+
+    def __del__(self):
+        assert self._base_closed
 
     def _read(self, size):
         raise NotImplementedError("Subclasses must implement _read")

@@ -50,13 +50,18 @@ class Error(Exception):
 
 class MetaStoreReader:
     def __init__(self, filename):
+        self._closed = False
         self._file = None
         self._file = open(filename, 'rb')
 
     def close(self):
+        self._closed = True
         if self._file:
             self._file.close()
             self._file = None
+
+    def __del__(self):
+        assert self._closed
 
     def __enter__(self):
         return self
@@ -75,6 +80,7 @@ class MetaStoreWriter:
     # truncation or corruption somewhat sensibly.
 
     def __init__(self, filename):
+        self._closed = False
         # Map metadata hashes to bupindex.meta offsets.
         self._offsets = {}
         self._filename = filename
@@ -101,9 +107,13 @@ class MetaStoreWriter:
         self._file = open(filename, 'ab')
 
     def close(self):
+        self._closed = True
         if self._file:
             self._file.close()
             self._file = None
+
+    def __del__(self):
+        assert self._closed
 
     def __enter__(self):
         return self
@@ -413,6 +423,7 @@ class ExistingEntry(Entry):
 
 class Reader:
     def __init__(self, filename):
+        self.closed = False
         self.filename = filename
         self.m = b''
         self.writable = False
@@ -488,11 +499,15 @@ class Reader:
             self.m.flush()
 
     def close(self):
+        self.closed = True
         self.save()
         if self.writable and self.m:
             self.m.close()
             self.m = None
             self.writable = False
+
+    def __del__(self):
+        assert self.closed
 
     def filter(self, prefixes, wantrecurse=None):
         for (rp, path) in reduce_paths(prefixes):
@@ -524,6 +539,7 @@ def pathsplit(p):
 
 class Writer:
     def __init__(self, filename, metastore, tmax):
+        self.closed = False
         self.rootlevel = self.level = Level([], None)
         self.f = None
         self.count = 0
@@ -545,6 +561,7 @@ class Writer:
             self.abort()
 
     def abort(self):
+        self.closed = True
         f = self.f
         self.f = None
         if f:
@@ -563,12 +580,16 @@ class Writer:
         assert(self.level == None)
 
     def close(self):
+        self.closed = True
         self.flush()
         f = self.f
         self.f = None
         if f:
             f.close()
             os.rename(self.tmpname, self.filename)
+
+    def __del__(self):
+        assert self.closed
 
     def _add(self, ename, entry):
         if self.lastfile and self.lastfile <= ename:

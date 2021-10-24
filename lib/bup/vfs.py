@@ -195,6 +195,7 @@ class _ChunkReader:
 class _FileReader(object):
     def __init__(self, repo, oid, known_size=None):
         assert len(oid) == 20
+        self.closed = False
         self.oid = oid
         self.ofs = 0
         self.reader = None
@@ -231,10 +232,14 @@ class _FileReader(object):
         return buf
 
     def close(self):
-        pass
+        self.closed = True
+
+    def __del__(self):
+        assert self.closed
 
     def __enter__(self):
         return self
+
     def __exit__(self, type, value, traceback):
         with pending_raise(value, rethrow=False):
             self.close()

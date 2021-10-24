@@ -21,6 +21,7 @@ def _repo_id(key):
 
 class LocalRepo:
     def __init__(self, repo_dir=None):
+        self.closed = False
         self.repo_dir = realpath(repo_dir or git.repo())
         self._cp = git.cp(self.repo_dir)
         self.update_ref = partial(git.update_ref, repo_dir=self.repo_dir)
@@ -28,7 +29,10 @@ class LocalRepo:
         self._id = _repo_id(self.repo_dir)
 
     def close(self):
-        pass
+        self.closed = True
+
+    def __del__(self):
+        assert self.closed
 
     def __enter__(self):
         return self
@@ -86,6 +90,7 @@ class LocalRepo:
 
 class RemoteRepo:
     def __init__(self, address):
+        self.closed = False
         self.address = address
         self.client = client.Client(address)
         self.new_packwriter = self.client.new_packwriter
@@ -94,9 +99,13 @@ class RemoteRepo:
         self._id = _repo_id(self.address)
 
     def close(self):
-        if self.client:
+        if not self.closed:
+            self.closed = True
             self.client.close()
             self.client = None
+
+    def __del__(self):
+        assert self.closed
 
     def __enter__(self):
         return self

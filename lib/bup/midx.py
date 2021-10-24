@@ -22,6 +22,7 @@ class PackMidx:
     amounts of files.
     """
     def __init__(self, filename):
+        self.closed = False
         self.name = filename
         self.force_keep = False
         self.map = None
@@ -92,10 +93,14 @@ class PackMidx:
         return self.idxnames[self._get_idx_i(i)]
 
     def close(self):
+        self.closed = True
         if self.map is not None:
             self.fanout = self.shatable = self.whichlist = self.idxnames = None
             self.map.close()
             self.map = None
+
+    def __del__(self):
+        assert self.closed
 
     def exists(self, hash, want_source=False):
         """Return nonempty if the object exists in the index files."""

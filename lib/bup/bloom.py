@@ -107,6 +107,7 @@ bloom_add = _helpers.bloom_add
 class ShaBloom:
     """Wrapper which contains data from multiple index files. """
     def __init__(self, filename, f=None, readwrite=False, expected=-1):
+        self.closed = False
         self.name = filename
         self.readwrite = readwrite
         self.file = None
@@ -183,6 +184,7 @@ class ShaBloom:
         return self.map and self.bits
 
     def close(self):
+        self.closed = True
         try:
             if self.map and self.readwrite:
                 debug2("bloom: closing with %d entries\n" % self.entries)
@@ -197,6 +199,9 @@ class ShaBloom:
                     self.file.write(b'\0'.join(self.idxnames))
         finally:  # This won't handle pending exceptions correctly in py2
             self._init_failed()
+
+    def __del__(self):
+        assert self.closed
 
     def __enter__(self):
         return self

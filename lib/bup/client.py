@@ -69,6 +69,7 @@ def parse_remote(remote):
 
 class Client:
     def __init__(self, remote, create=False):
+        self.closed = False
         self._busy = self.conn = None
         self.sock = self.p = self.pout = self.pin = None
         is_reverse = environ.get(b'BUP_SERVER_REVERSE')
@@ -117,14 +118,8 @@ class Client:
             self.check_ok()
         self.sync_indexes()
 
-    def __enter__(self):
-        return self
-
-    def __exit__(self, type, value, traceback):
-        with pending_raise(value, rethrow=False):
-            self.close()
-
     def close(self):
+        self.closed = True
         if self.conn and not self._busy:
             self.conn.write(b'quit\n')
         if self.pin:
@@ -145,6 +140,16 @@ class Client:
                 raise ClientError('server tunnel returned exit code %d' % rv)
         self.conn = None
         self.sock = self.p = self.pin = self.pout = None
+
+    def __del__(self):
+        assert self.closed
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        with pending_raise(value, rethrow=False):
+            self.close()
 
     def check_ok(self):
         if self.p:
@@ -494,6 +499,7 @@ class PackWriter_Remote(git.PackWriter):
                                 compression_level=compression_level,
                                 max_pack_size=max_pack_size,
                                 max_pack_objects=max_pack_objects)
+        self.remote_closed = False
         self.file = conn
         self.filename = b'remote socket'
         self.suggest_packs = suggest_packs
@@ -528,9 +534,14 @@ class PackWriter_Remote(git.PackWriter):
 
     def close(self):
         # Called by inherited __exit__
+        self.remote_closed = True
         id = self._end()
         self.file = None
         return id
+
+    def __del__(self):
+        assert self.remote_closed
+        super(PackWriter_Remote, self).__del__()
 
     def abort(self):
         raise ClientError("don't know how to abort remote pack writing")

@@ -19,6 +19,7 @@ class Error(Exception):
 
 class HLinkDB:
     def __init__(self, filename):
+        self.closed = False
         # Map a "dev:ino" node to a list of paths associated with that node.
         self._node_paths = {}
         # Map a path to a "dev:ino" node.
@@ -72,6 +73,7 @@ class HLinkDB:
         self._save_prepared = True
 
     def commit_save(self):
+        self.closed = True
         if not self._save_prepared:
             raise Error('cannot commit save of %r; no save prepared'
                         % self._filename)
@@ -89,6 +91,7 @@ class HLinkDB:
         self._save_prepared = None
 
     def abort_save(self):
+        self.closed = True
         if self._tmpname:
             os.unlink(self._tmpname)
             self._tmpname = None
@@ -99,6 +102,9 @@ class HLinkDB:
     def __exit__(self, type, value, traceback):
         with pending_raise(value, rethrow=True):
             self.abort_save()
+
+    def __del__(self):
+        assert self.closed
 
     def add_path(self, path, dev, ino):
         # Assume path is new.
