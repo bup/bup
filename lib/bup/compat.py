@@ -13,7 +13,7 @@ py3 = py_maj >= 3
 if py3:
 
     # pylint: disable=unused-import
-    from contextlib import nullcontext
+    from contextlib import ExitStack, nullcontext
     from mmap import mmap
     from os import environb as environ
     from os import fsdecode, fsencode
@@ -175,6 +175,31 @@ else:  # Python 2
                   file=sys.stderr)
             tb = getattr(ex, '__traceback__', None)
             print_exception(type(ex), ex, tb)
+
+    class ExitStack:
+        def __init__(self):
+            self.contexts = []
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, value_type, value, traceback):
+            init_value = value
+            for ctx in reversed(self.contexts):
+                try:
+                    ctx.__exit__(value_type, value, traceback)
+                except BaseException as ex:
+                    add_ex_tb(ex)
+                    if value:
+                        add_ex_ctx(ex, value)
+                    value_type = type(ex)
+                    value = ex
+                    traceback = ex.__traceback__
+            if value is not init_value:
+                raise value
+
+        def enter_context(self, x):
+            self.contexts.append(x)
 
     def items(x):
         return x.iteritems()
