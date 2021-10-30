@@ -35,6 +35,27 @@ bup_try_c_code()
     return $rc
 }
 
+bup_config_cflags=()
+
+bup-add-cflag-if-supported()
+{
+    local opt="$1"
+    if test -z "$opt"; then
+        AC_FAIL 'No option to check'
+    fi
+    TLOGN "checking for $AC_CC $opt support"
+    if bup_try_c_code \
+           "int main(int argc, char**argv) { return 0; }" \
+           "$opt";
+    then
+        bup_config_cflags+="$opt"
+        TLOG ' (found)'
+    else
+        TLOG ' (not found)'
+    fi
+}
+
+
 TARGET=bup
 
 argv=()
@@ -62,6 +83,8 @@ if ! AC_PROG_CC; then
     LOG " You need to have a functional C compiler to build $TARGET"
     exit 1
 fi
+
+bup-add-cflag-if-supported -Wno-unused-command-line-argument
 
 for make_candidate in make gmake; do
     found_make="$(bup_find_prog "$make_candidate" "$MAKE")"
@@ -330,6 +353,8 @@ fi
 AC_SUB bup_have_libacl "$bup_have_libacl"
 AC_CC="$orig_ac_cc"
 LIBS="$orig_libs"
+
+AC_SUB bup_config_cflags "$bup_config_cflags"
 
 AC_OUTPUT config.vars
 
