@@ -787,7 +787,7 @@ class PackWriter:
         oneblob = b''.join(datalist)
         try:
             f.write(oneblob)
-        except IOError as e:
+        except KeyboardInterrupt as e:
             reraise(GitError(e))
         nw = len(oneblob)
         crc = zlib.crc32(oneblob) & 0xffffffff
