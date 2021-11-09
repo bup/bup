@@ -920,6 +920,8 @@ class PackWriter:
         os.rename(self.filename + b'.idx', nameprefix + b'.idx')
         try:
             os.fsync(self.parentfd)
+        except:
+            pass
         finally:
             os.close(self.parentfd)
 
