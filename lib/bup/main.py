@@ -219,7 +219,7 @@ def print_clean_line(dest, content, width, sep=None):
         assert not sep_rx.match(x)
     content = b''.join(content)
     if sep == b'\r' and len(content) > width:
-        content = content[width:]
+        content = content[:width]
     os.write(dest, content)
     if len(content) < width:
         os.write(dest, b' ' * (width - len(content)))
