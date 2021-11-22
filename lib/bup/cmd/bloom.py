@@ -77,7 +77,7 @@ def do_bloom(path, outfilename, k, force):
             progress('bloom: counting: %d\r' % i)
             with git.open_idx(name) as ix:
                 ixbase = os.path.basename(name)
-                if b and (ixbase in b.idxnames):
+                if b is not None and (ixbase in b.idxnames):
                     rest.append(name)
                     rest_count += len(ix)
                 else:
@@ -88,7 +88,7 @@ def do_bloom(path, outfilename, k, force):
             debug1("bloom: nothing to do.\n")
             return
 
-        if b:
+        if b is not None:
             if len(b) != rest_count:
                 debug1("bloom: size %d != idx total %d, regenerating\n"
                        % (len(b), rest_count))
@@ -107,9 +107,11 @@ def do_bloom(path, outfilename, k, force):
                 b, b_tmp = None, b
                 b_tmp.close()
             else:
+                b, b_tmp = None, b
+                b_tmp.close()
                 b = bloom.ShaBloom(outfilename, readwrite=True,
                                    expected=add_count)
-        if not b: # Need all idxs to build from scratch
+        if b is None: # Need all idxs to build from scratch
             add += rest
             add_count += rest_count
         del rest
@@ -140,7 +142,7 @@ def do_bloom(path, outfilename, k, force):
     finally:  # This won't handle pending exceptions correctly in py2
         # Currently, there's an open file object for tfname inside b.
         # Make sure it's closed before rename.
-        if b: b.close()
+        if b is not None: b.close()
 
     if tfname:
         os.rename(tfname, outfilename)
