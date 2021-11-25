@@ -86,6 +86,7 @@ class OptDict:
     def __init__(self, aliases):
         self._opts = {}
         self._aliases = aliases
+        self._cache = {}
 
     def _unalias(self, k):
         k, reinvert = _remove_negative_kv(k, False)
@@ -95,10 +96,16 @@ class OptDict:
     def __setitem__(self, k, v):
         k, invert = self._unalias(k)
         self._opts[k] = _invert(v, invert)
+        self._cache = {}
 
     def __getitem__(self, k):
-        k, invert = self._unalias(k)
-        return _invert(self._opts[k], invert)
+        try:
+            return self._cache[k]
+        except KeyError:
+            k, invert = self._unalias(k)
+            v = _invert(self._opts[k], invert)
+            self._cache[k] = v
+            return v
 
     def __getattr__(self, k):
         return self[k]
