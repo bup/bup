@@ -539,7 +539,11 @@ class PackIdxList:
         self.do_bloom = False
         self.bloom = None
         self.ignore_midx = ignore_midx
-        self.refresh()
+        try:
+            self.refresh()
+        except BaseException as ex:
+            with pending_raise(ex):
+                self.close()
 
     def close(self):
         global _mpi_count
