@@ -682,8 +682,13 @@ class PackIdxList:
                         continue
                     d[full] = ix
             bfull = os.path.join(self.dir, b'bup.bloom')
-            self.packs = list(set(d.values()))
-            self.packs.sort(reverse=True, key=lambda x: len(x))
+            new_packs = set(d.values())
+            for p in self.packs:
+                if not p in new_packs:
+                    p.close()
+            new_packs = list(new_packs)
+            new_packs.sort(reverse=True, key=lambda x: len(x))
+            self.packs = new_packs
             if self.bloom is None and os.path.exists(bfull):
                 self.bloom = bloom.ShaBloom(bfull)
             try:
