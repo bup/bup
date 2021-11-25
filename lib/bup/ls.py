@@ -33,26 +33,28 @@ def item_info(item, name,
     item.  Classification may be "all", "type", or None.
 
     """
-    result = b''
+    result = []
     if show_hash:
         oid = item_hash(item, commit_hash)
-        result += b'%s ' % (hexlify(oid) if oid
-                            else b'0000000000000000000000000000000000000000')
+        if oid:
+            result.extend([hexlify(oid), b' '])
+        else:
+            result.append(b'0000000000000000000000000000000000000000 ')
     if long_fmt:
         meta = item.meta.copy()
         meta.path = name
         # FIXME: need some way to track fake vs real meta items?
-        result += metadata.summary_bytes(meta,
-                                         numeric_ids=numeric_ids,
-                                         classification=classification,
-                                         human_readable=human_readable)
+        result.append(metadata.summary_bytes(meta,
+                                             numeric_ids=numeric_ids,
+                                             classification=classification,
+                                             human_readable=human_readable))
     else:
-        result += name
+        result.append(name)
         if classification:
             cls = xstat.classification_str(vfs.item_mode(item),
                                            classification == 'all')
-            result += cls.encode('ascii')
-    return result
+            result.append(cls.encode('ascii'))
+    return b''.join(result)
 
 
 optspec = """
