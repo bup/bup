@@ -300,5 +300,7 @@ clean: Documentation/clean
 	rm -rf $(clean_paths) .pytest_cache
 	rm -f $(generated_dependencies)
 	find . -name __pycache__ -exec rm -rf {} +
+        # Remove this *.pyc cleanup once we drop py2
+	rm -f lib/bup/*.pyc lib/bup/cmd/*.pyc test/__init__.pyc
 	if test -e test/tmp; then dev/force-delete test/tmp; fi
 	dev/configure-sampledata --clean
