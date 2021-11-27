@@ -28,6 +28,11 @@ if ! groups | grep -q fuse && test "$root_status" != root; then
     exit 0
 fi
 
+
+clean_up() { fusermount -uz mnt || true; }
+trap clean_up EXIT
+
+
 top="$(WVPASS pwd)" || exit $?
 tmpdir="$(WVPASS wvmktempdir)" || exit $?
 
@@ -69,7 +74,12 @@ WVPASS bup save -n src -d "$savestamp1" --strip src
 
 WVSTART "basics"
 WVPASS mkdir mnt
-WVPASS bup fuse mnt
+
+bup fuse -f mnt &
+fuse_pid=$!
+while ! test -d mnt/src; do
+    sleep 0.1
+done
 
 result=$(WVPASS ls mnt) || exit $?
 WVPASSEQ src "$result"
@@ -92,9 +102,17 @@ WVPASSEQ "$result" "$savename1
 latest"
 
 WVPASS fusermount -uz mnt
+WVPASS wait "$fuse_pid"
+fuse_pid=''
 
 WVSTART "extended metadata"
-WVPASS bup fuse --meta mnt
+
+bup fuse -f --meta mnt &
+fuse_pid=$!
+while ! test -d mnt/src; do
+    sleep 0.1
+done
+
 readonly user=$(WVPASS id -un) || $?
 readonly group=$(WVPASS id -gn) || $?
 result="$(stat --format='%A %U %G %x' mnt/src/latest/foo)"
