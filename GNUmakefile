@@ -285,11 +285,8 @@ import-docs: Documentation/clean
 
 clean: Documentation/clean
 	cd config && rm -rf finished bin config.var
-	cd config && rm -f \
-	  ${CONFIGURE_DETRITUS} ${CONFIGURE_FILES} ${GENERATED_FILES}
-	rm -rf $(clean_paths) .pytest_cache
-	rm -f $(generated_dependencies)
-	find . -name __pycache__ -exec rm -rf {} +
+
+        # Clean up the mounts first, so that find, etc. won't crash later
 	if test -e test/mnt; then dev/cleanup-mounts-under test/mnt; fi
 	if test -e test/mnt; then rm -r test/mnt; fi
 	if test -e test/tmp; then dev/cleanup-mounts-under test/tmp; fi
@@ -297,5 +294,11 @@ clean: Documentation/clean
 	if test -e test/int/testfs; \
 	  then umount test/int/testfs || true; fi
 	rm -rf test/int/testfs test/int/testfs.img testfs.img
+
+	cd config && rm -f \
+	  ${CONFIGURE_DETRITUS} ${CONFIGURE_FILES} ${GENERATED_FILES}
+	rm -rf $(clean_paths) .pytest_cache
+	rm -f $(generated_dependencies)
+	find . -name __pycache__ -exec rm -rf {} +
 	if test -e test/tmp; then dev/force-delete test/tmp; fi
 	dev/configure-sampledata --clean
