@@ -1,8 +1,11 @@
 # -*-conf-*-
+[GENERAL OPTIONS]
+ignore=py2raise.py
 
 [MESSAGES CONTROL]
 disable=all
 enable=
+  syntax-error,
   catching-non-exception,
   consider-using-in,
   inconsistent-return-statements,
