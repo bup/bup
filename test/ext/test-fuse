@@ -6,10 +6,15 @@ set -o pipefail
 
 unset BLOCKSIZE BLOCK_SIZE DF_BLOCK_SIZE
 
-root_status="$(dev/root-status)" || exit $?
+top="$(WVPASS pwd)" || exit $?
+bup() { "$top/bup" "$@"; }
 
-if ! bup-python -c 'import fuse' 2> /dev/null; then
-    WVSKIP 'unable to import fuse; skipping test'
+# Note: this relies on the import checks happening first
+# before the command-line is evaluated, and us doing an
+# exit with status 2 on failures
+bup fuse -h 2>/dev/null
+if [ $? -eq 2 ]; then
+    WSKIP 'unable to import fuse/check version; skipping test'
     exit 0
 fi
 
@@ -23,8 +28,8 @@ if ! fusermount -V; then
     exit 0
 fi
 
-if ! groups | grep -q fuse && test "$root_status" != root; then
-    WVSKIP 'skipping FUSE tests: you are not root and not in the fuse group'
+if ! test -w /dev/fuse; then
+    WVSKIP 'skipping FUSE tests; no access to /dev/fuse'
     exit 0
 fi
 
@@ -38,8 +43,6 @@ tmpdir="$(WVPASS wvmktempdir)" || exit $?
 
 export BUP_DIR="$tmpdir/bup"
 export GIT_DIR="$tmpdir/bup"
-
-bup() { "$top/bup" "$@"; }
 
 # Some versions of bash's printf don't support the relevant date expansion.
 savename()
