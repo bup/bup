@@ -31,7 +31,6 @@ from bup.helpers import (
     columnate,
     handle_ctrl_c,
     log,
-    merge_dict,
     tty_width
 )
 from bup.git import close_catpipes
@@ -198,13 +197,9 @@ fix_stdout = not already_fixed and os.isatty(1)
 fix_stderr = not already_fixed and os.isatty(2)
 
 if fix_stdout or fix_stderr:
-    tty_env = merge_dict(environ,
-                         {b'BUP_FORCE_TTY': (b'%d'
-                                             % ((fix_stdout and 1 or 0)
-                                                + (fix_stderr and 2 or 0))),
-                          b'BUP_TTY_WIDTH': b'%d' % _tty_width(), })
-else:
-    tty_env = environ
+    _ttymask = (fix_stdout and 1 or 0) + (fix_stderr and 2 or 0)
+    environ[b'BUP_FORCE_TTY'] = b'%d' % _ttymask
+    environ[b'BUP_TTY_WIDTH'] = b'%d' % _tty_width()
 
 
 sep_rx = re.compile(br'([\r\n])')
@@ -382,7 +377,7 @@ def run_subproc_cmd(args):
         p = subprocess.Popen(c,
                              stdout=PIPE if fix_stdout else out,
                              stderr=PIPE if fix_stderr else err,
-                             env=tty_env, bufsize=4096, close_fds=True)
+                             bufsize=4096, close_fds=True)
         # Assume p will receive these signals and quit, which will
         # then cause us to quit.
         for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGQUIT):
