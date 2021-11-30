@@ -1,9 +1,9 @@
 
 from __future__ import absolute_import
-import os, sys
+import sys
 
 from bup import options, _helpers
-from bup.helpers import handle_ctrl_c, log, parse_num
+from bup.helpers import handle_ctrl_c, log, parse_num, istty1
 
 
 optspec = """
@@ -25,8 +25,7 @@ def main(argv):
 
     handle_ctrl_c()
 
-    if opt.force or (not os.isatty(1) and
-                     not int(os.environ.get('BUP_FORCE_TTY', 0)) & 1):
+    if opt.force or not istty1:
         _helpers.write_random(sys.stdout.fileno(), total, opt.seed,
                               opt.verbose and 1 or 0)
     else:
