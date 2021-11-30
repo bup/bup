@@ -192,9 +192,11 @@ if not cmd_module:
 
 already_fixed = int(environ.get(b'BUP_FORCE_TTY', 0))
 if subcmd_name in [b'mux', b'ftp', b'help']:
-    already_fixed = True
-fix_stdout = not already_fixed and os.isatty(1)
-fix_stderr = not already_fixed and os.isatty(2)
+    fix_stdout = False
+    fix_stderr = False
+else:
+    fix_stdout = not (already_fixed & 1) and os.isatty(1)
+    fix_stderr = not (already_fixed & 2) and os.isatty(2)
 
 if fix_stdout or fix_stderr:
     _ttymask = (fix_stdout and 1 or 0) + (fix_stderr and 2 or 0)

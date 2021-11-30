@@ -61,7 +61,7 @@ src_tree_hash=$(git log --format=%T -n1 src)
 
 WVSTART "$ls_cmd_desc (short)"
 
-(export BUP_FORCE_TTY=1; WVPASSEQ "$(WVPASS bup-ls | tr -d ' ')" src)
+(export BUP_FORCE_TTY=3; WVPASSEQ "$(WVPASS bup-ls | tr -d ' ')" src)
 
 WVPASSEQ "$(WVPASS bup-ls /)" "src"
 
