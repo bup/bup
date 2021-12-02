@@ -3,7 +3,7 @@ from binascii import hexlify
 from collections import ChainMap, namedtuple
 from urllib import parse
 from urllib.parse import urlencode
-import mimetypes, os, posixpath, signal, stat, sys, time, webbrowser
+import mimetypes, os, posixpath, signal, stat, sys, time, traceback, webbrowser
 
 from bup import options, git, vfs, xstat
 from bup.helpers \
@@ -291,6 +291,7 @@ class BupRequestHandler(tornado.web.RequestHandler):
             self.set_status(500)
             self.write("<h1>Server Error</h1>\n")
             self.write("%s: %s\n" % (e.__class__.__name__, str(e)))
+            log(traceback.format_exc())
         raise gen.Return()
 
     def _guess_type(self, path):
