@@ -145,6 +145,15 @@ WVSTART()
 }
 
 
+WVSKIP()
+{
+	local TEXT=$(_wvtextclean "$@")
+	_wvpushcall "$@"
+	_wvfind_caller
+	echo "! $WVCALLER_FILE:$WVCALLER_LINE  $TEXT  skip ok" 1>&2
+}
+
+
 WVDIE()
 {
 	local TEXT=$(_wvtextclean "$@")
