@@ -131,7 +131,7 @@ WVSTART "save disjoint top-level directories"
 
     if [ "$pwd_top" = "$tmp_top" ]; then
         echo "(running from within /$tmp_top; skipping test)" 1>&2
-        exit 0
+        exit 0 # FIXME: allow intermixed WVSKIPs
     fi
     D=bupdata.tmp
     WVPASS force-delete $D

@@ -4,8 +4,7 @@
 set -o pipefail
 
 if ! [ "$(type -p duplicity)" != "" ]; then
-    # FIXME: add WVSKIP.
-    echo "Cannot find duplicity; skipping test)" 1>&2
+    WVSKIP 'Cannot find duplicity; skipping test)'
     exit 0
 fi
 

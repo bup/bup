@@ -59,7 +59,7 @@ then
     # current filesystem may fail -- i.e. running from
     # /foo/ext4/bar/btrfs will fail when bup tries to restore linux
     # attrs above btrfs to the restore tree *inside* btrfs.
-    # FIXME: add WVSKIP
+    # FIXME: allow intermixed WVSKIPs
     echo "(running from tree with mixed filesystems; skipping test)" 1>&2
     exit 0
 else

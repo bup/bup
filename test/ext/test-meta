@@ -640,7 +640,7 @@ if [ "$root_status" = root ]; then
 
         if ! modprobe loop; then
             echo 'Unable to load loopback module; skipping dependent tests.' 1>&2
-            exit 0
+            exit 0 # FIXME: allow intermixed WVSKIPs
         fi
 
         testfs="$(WVPASS wvmkmountpt)" || exit $?

@@ -28,7 +28,12 @@ class BupSubprocTestRunner(pytest.Item):
         out = p.communicate()[0]
         sys.stdout.flush()
         byte_stream(sys.stdout).write(out)
-        failures = [line for line in out.splitlines()
+        lines = out.splitlines()
+        for line in lines:
+            if line.startswith(b'!') and line.lower().endswith(b' skip ok'):
+                pytest.skip(line.decode('ascii'))
+                return
+        failures = [line for line in lines
                     if (line.startswith(b'!')
                         and line.lower().endswith(b' failed'))]
         if failures or p.returncode != 0:

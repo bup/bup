@@ -9,22 +9,22 @@ unset BLOCKSIZE BLOCK_SIZE DF_BLOCK_SIZE
 root_status="$(dev/root-status)" || exit $?
 
 if ! bup-python -c 'import fuse' 2> /dev/null; then
-    WVSTART 'unable to import fuse; skipping test'
+    WVSKIP 'unable to import fuse; skipping test'
     exit 0
 fi
 
 if test -n "$(type -p modprobe)" && ! modprobe fuse; then
-    echo 'Unable to load fuse module; skipping dependent tests.' 1>&2
+    WVSKIP 'Unable to load fuse module; skipping dependent tests.'
     exit 0
 fi
 
 if ! fusermount -V; then
-    echo 'skipping FUSE tests: fusermount does not appear to work'
+    WVSKIP 'skipping FUSE tests: fusermount does not appear to work'
     exit 0
 fi
 
 if ! groups | grep -q fuse && test "$root_status" != root; then
-    echo 'skipping FUSE tests: you are not root and not in the fuse group'
+    WVSKIP 'skipping FUSE tests: you are not root and not in the fuse group'
     exit 0
 fi
 

@@ -12,8 +12,7 @@ export GIT_DIR="$tmpdir/bup"
 bup() { "$top/bup" "$@"; }
 
 if ! [ "$(type -p rdiff-backup)" != "" ]; then
-    # FIXME: add WVSKIP.
-    echo "Cannot find rdiff-backup; skipping test)" 1>&2
+    WVSKIP 'Cannot find rdiff-backup; skipping test)'
     exit 0
 fi
 

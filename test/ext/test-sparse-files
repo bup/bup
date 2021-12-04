@@ -27,7 +27,7 @@ readonly block_size data_size
 WVPASS dd if=/dev/zero of=test-sparse-probe seek="$data_size" bs=1 count=1
 probe_size=$(WVPASS du -k -s test-sparse-probe | WVPASS cut -f1) || exit $?
 if [ "$probe_size" -ge "$((data_size / 1024))" ]; then
-    WVSTART "no sparse support detected -- skipping tests"
+    WVSKIP "no sparse support detected -- skipping tests"
     exit 0
 fi
 

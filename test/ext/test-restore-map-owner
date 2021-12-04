@@ -5,8 +5,8 @@
 root_status="$(dev/root-status)" || exit $?
 
 if [ "$root_status" != root ]; then
-    echo 'Not root: skipping restore --map-* tests.'
-    exit 0 # FIXME: add WVSKIP.
+    WVSKIP 'Not root: skipping restore --map-* tests.'
+    exit 0
 fi
 
 top="$(WVPASS pwd)" || exit $?

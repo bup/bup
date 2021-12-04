@@ -7,23 +7,23 @@ set -o pipefail
 root_status="$(dev/root-status)" || exit $?
 
 if [ "$root_status" != root ]; then
-    echo 'Not root: skipping --check-device tests.'
-    exit 0 # FIXME: add WVSKIP.
+    WVSKIP 'Not root: skipping --check-device tests.'
+    exit 0
 fi
 
 if test -n "$(type -p modprobe)" && ! modprobe loop; then
-    echo 'Unable to load loopback module; skipping --check-device test.' 1>&2
+    WVSKIP 'Unable to load loopback module; skipping --check-device test.'
     exit 0
 fi
 
 if test -z "$(type -p losetup)"; then
-    echo 'Unable to find losetup: skipping --check-device tests.' 1>&2
-    exit 0 # FIXME: add WVSKIP.
+    WVSKIP 'Unable to find losetup: skipping --check-device tests.'
+    exit 0
 fi
 
 if test -z "$(type -p mke2fs)"; then
-    echo 'Unable to find mke2fs: skipping --check-device tests.' 1>&2
-    exit 0 # FIXME: add WVSKIP.
+    WVSKIP 'Unable to find mke2fs: skipping --check-device tests.'
+    exit 0
 fi
 
 WVSTART '--check-device'
