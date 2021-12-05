@@ -44,13 +44,13 @@ bwlimit=   maximum bytes/sec to transmit to server
 
 class NoOpPackWriter:
     def __init__(self):
-        pass
+        self.closed = False
     def __enter__(self):
         return self
     def __exit__(self, type, value, traceback):
-        return None  # since close() does nothing
+        self.close()
     def close(self):
-        assert self.closed
+        self.closed = True
     def __del__(self):
         assert self.closed
     def new_blob(self, content):
