@@ -111,7 +111,6 @@ def test_index_dirty(tmpdir):
                 #w1.close()
                 WVPASS()
 
-                w2 = index.Writer(b'index2.tmp', ms2, tmax)
                 w2.add(b'/a/b/n/2', fs, meta_ofs2)
                 #w2.close()
                 WVPASS()
