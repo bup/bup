@@ -537,6 +537,7 @@ class PackWriter_Remote(git.PackWriter):
         self.remote_closed = True
         id = self._end()
         self.file = None
+        super(PackWriter_Remote, self).close()
         return id
 
     def __del__(self):
