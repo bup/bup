@@ -522,7 +522,8 @@ class Reader:
                 # Otherwise something like "save x/y" will produce
                 # nothing if x is up to date.
                 pe = self.find(rp)
-                assert(pe)
+                if not pe:
+                    raise Exception("cannot find %r" % rp)
                 name = path + pe.name[len(rp):]
                 yield (name, pe)
 
