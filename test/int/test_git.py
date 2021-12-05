@@ -193,10 +193,10 @@ def test_long_index(tmpdir):
     idx.add(obj3_bin, 3, 0xff)
     name = tmpdir + b'/tmp.idx'
     r = idx.write(name, pack_bin)
-    i = git.PackIdxV2(name, open(name, 'rb'))
-    WVPASSEQ(i.find_offset(obj_bin), 0xfffffffff)
-    WVPASSEQ(i.find_offset(obj2_bin), 0xffffffffff)
-    WVPASSEQ(i.find_offset(obj3_bin), 0xff)
+    with git.PackIdxV2(name, open(name, 'rb')) as i:
+        WVPASSEQ(i.find_offset(obj_bin), 0xfffffffff)
+        WVPASSEQ(i.find_offset(obj2_bin), 0xffffffffff)
+        WVPASSEQ(i.find_offset(obj3_bin), 0xff)
 
 
 def test_check_repo_or_die(tmpdir):

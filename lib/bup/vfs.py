@@ -59,7 +59,7 @@ import re, sys
 from bup import git, vint
 from bup.compat import hexstr, pending_raise, range, str_type
 from bup.git import BUP_CHUNKED, parse_commit, tree_decode
-from bup.helpers import debug2, last
+from bup.helpers import debug2, last, nullcontext_if_not
 from bup.io import path_msg
 from bup.metadata import Metadata
 from bup.vint import read_bvec, write_bvec
@@ -719,8 +719,9 @@ def tree_items_with_meta(repo, oid, tree_data, names):
             break
         if mangled_name > b'.bupm':
             break
-    for item in tree_items(oid, tree_data, names, bupm):
-        yield item
+    with nullcontext_if_not(bupm):
+        for item in tree_items(oid, tree_data, names, bupm):
+            yield item
 
 _save_name_rx = re.compile(br'^\d\d\d\d-\d\d-\d\d-\d{6}(-\d+)?$')
 
