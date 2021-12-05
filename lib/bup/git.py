@@ -918,16 +918,15 @@ class PackWriter(object):
 
     def _end(self, run_midx=True, abort=False):
         # Ignores run_midx during abort
-        if not self.file:
-            return None
+        self.parentfd, pfd, = None, self.parentfd
         self.file, f = None, self.file
         self.idx, idx = None, self.idx
-        self.parentfd, pfd, = None, self.parentfd
-
         try:
             with nullcontext_if_not(self.objcache), \
                  finalized(pfd, lambda x: x is not None and os.close(x)), \
-                 f:
+                 nullcontext_if_not(f):
+                if not f:
+                    return None
 
                 if abort:
                     os.unlink(self.filename + b'.pack')
