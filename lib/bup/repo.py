@@ -103,8 +103,9 @@ class LocalRepo:
 
 class RemoteRepo:
     def __init__(self, address):
-        self.closed = False
+        self.closed = True # in case Client instantiation fails
         self.client = client.Client(address)
+        self.closed = False
         self.new_packwriter = self.client.new_packwriter
         self.update_ref = self.client.update_ref
         self.rev_list = self.client.rev_list
