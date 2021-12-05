@@ -56,9 +56,9 @@ def main(argv):
             p.stdin.close()
             p.stdout.close()
             # Demultiplex remote client's stderr (back to stdout/stderr).
-            dmc = DemuxConn(p.stderr.fileno(), open(os.devnull, "wb"))
-            for line in iter(dmc.readline, b''):
-                out.write(line)
+            with DemuxConn(p.stderr.fileno(), open(os.devnull, "wb")) as dmc:
+                for line in iter(dmc.readline, b''):
+                    out.write(line)
         finally:
             while 1:
                 # if we get a signal while waiting, we have to keep waiting, just

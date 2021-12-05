@@ -459,7 +459,13 @@ class BaseConn:
 
     def close(self):
         self._base_closed = True
-        while self._read(65536): pass
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, tb):
+        with pending_raise(exc_value, rethrow=False):
+            self.close()
 
     def __del__(self):
         assert self._base_closed
