@@ -20,7 +20,7 @@ updates or regenerates it as needed.
 
 \--ruin
 :   destroy bloom filters by setting the whole bitmask to
-    zeros.  you really want to know what you are doing if
+    zeros.  You really want to know what you are doing if you
     run this and you want to delete the resulting bloom
     when you are done with it.
 
@@ -33,12 +33,12 @@ updates or regenerates it as needed.
     Defaults to $BUP_DIR/objects/pack
 
 -o, \--outfile=*outfile*
-:   the file to write the bloom filter to.  defaults to
+:   the file to write the bloom filter to.  Defaults to
     $dir/bup.bloom
 
 -k, \--hashes=*hashes*
 :   number of hash functions to use only 4 and 5 are valid.
-    defaults to 5 for repositories < 2 TiB, or 4 otherwise.
+    Defaults to 5 for repositories < 2 TiB, or 4 otherwise.
     See comments in git.py for more on this value.
 
 -c, \--check=*idxfile*
