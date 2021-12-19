@@ -50,18 +50,16 @@ class Error(Exception):
 
 class MetaStoreReader:
     def __init__(self, filename):
-        self._closed = False
         self._file = None
         self._file = open(filename, 'rb')
 
     def close(self):
-        self._closed = True
-        if self._file:
-            self._file.close()
-            self._file = None
+        f, self._file = self._file, None
+        if f:
+            f.close()
 
     def __del__(self):
-        assert self._closed
+        assert not self._file
 
     def __enter__(self):
         return self
