@@ -115,7 +115,11 @@ class Client:
                 self.conn.write(b'init-dir %s\n' % self.dir)
             else:
                 self.conn.write(b'set-dir %s\n' % self.dir)
-            self.check_ok()
+            try:
+                self.check_ok()
+            except BaseException as ex:
+                with pending_raise(ex):
+                    self.close()
         self.sync_indexes()
 
     def close(self):
