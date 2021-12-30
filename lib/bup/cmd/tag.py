@@ -1,6 +1,5 @@
 
 from __future__ import absolute_import
-from binascii import hexlify
 import sys
 
 from bup import git, options
@@ -79,12 +78,4 @@ def main(argv):
             log("bup: error: commit %s not found.\n" % commit.decode('ascii'))
             sys.exit(2)
 
-    tag_file = git.repo(b'refs/tags/' + tag_name)
-    try:
-        tag = open(tag_file, 'wb')
-    except OSError as e:
-        log("bup: error: could not create tag '%s': %s" % (path_msg(tag_name), e))
-        sys.exit(3)
-    with tag as tag:
-        tag.write(hexlify(hash))
-        tag.write(b'\n')
+    git.update_ref(b'refs/tags/' + tag_name, hash, None, force=True)

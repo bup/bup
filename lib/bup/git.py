@@ -1156,14 +1156,24 @@ def rev_parse(committish, repo_dir=None):
     return None
 
 
-def update_ref(refname, newval, oldval, repo_dir=None):
-    """Update a repository reference."""
-    if not oldval:
-        oldval = b''
+def update_ref(refname, newval, oldval, repo_dir=None, force=False):
+    """Update a repository reference.
+
+    With force=True, don't care about the previous ref (oldval);
+    with force=False oldval must be either a sha1 or None (for an
+    entirely new branch)
+    """
+    if force:
+        assert oldval is None
+        oldarg = []
+    elif not oldval:
+        oldarg = [b'']
+    else:
+        oldarg = [hexlify(oldval)]
     assert refname.startswith(b'refs/heads/') \
         or refname.startswith(b'refs/tags/')
     p = subprocess.Popen([b'git', b'update-ref', refname,
-                          hexlify(newval), hexlify(oldval)],
+                          hexlify(newval)] + oldarg,
                          env=_gitenv(repo_dir),
                          close_fds=True)
     _git_wait(b'git update-ref', p)
