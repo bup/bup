@@ -12,6 +12,7 @@ import hashlib, heapq, math, operator, time, tempfile
 
 from bup import _helpers
 from bup import compat
+from bup import io
 from bup.compat import argv_bytes, byte_int, nullcontext, pending_raise
 from bup.io import byte_stream, path_msg
 # This function should really be in helpers, not in bup.options.  But we
@@ -770,7 +771,7 @@ def _mmap_do(f, sz, flags, prot, close):
         # string has all the same behaviour of a zero-length map, ie. it has
         # no elements :)
         return ''
-    map = compat.mmap(f.fileno(), sz, flags, prot)
+    map = io.mmap(f.fileno(), sz, flags, prot)
     if close:
         f.close()  # map will persist beyond file close
     return map
@@ -832,7 +833,7 @@ if _mincore:
             pos = _fmincore_chunk_size * ci;
             msize = min(_fmincore_chunk_size, st.st_size - pos)
             try:
-                m = compat.mmap(fd, msize, mmap.MAP_PRIVATE, 0, 0, pos)
+                m = io.mmap(fd, msize, mmap.MAP_PRIVATE, 0, 0, pos)
             except mmap.error as ex:
                 if ex.errno == errno.EINVAL or ex.errno == errno.ENODEV:
                     # Perhaps the file was a pipe, i.e. "... | bup split ..."
