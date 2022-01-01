@@ -231,16 +231,19 @@ else:  # Python 2
 
     class mmap(py_mmap.mmap):
         def __init__(self, *args, **kwargs):
-            self._bup_closed = False
+            self._bup_closed = True
             # Silence deprecation warnings.  mmap's current parent is
             # object, which accepts no params and as of at least 2.7
             # warns about them.
             if py_mmap.mmap.__init__ is not object.__init__:
                 super(mmap, self).__init__(self, *args, **kwargs)
+            self._bup_closed = False
+        def close(self):
+            self._bup_closed = True
+            super(mmap, self).close()
         def __enter__(self):
             return self
         def __exit__(self, type, value, traceback):
-            self._bup_closed = True
             with pending_raise(value, rethrow=False):
                 self.close()
         def __del__(self):
