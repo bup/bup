@@ -838,12 +838,13 @@ if _mincore:
                     # Perhaps the file was a pipe, i.e. "... | bup split ..."
                     return None
                 raise ex
-            try:
-                _mincore(m, msize, 0, result, ci * pages_per_chunk)
-            except OSError as ex:
-                if ex.errno == errno.ENOSYS:
-                    return None
-                raise
+            with m:
+                try:
+                    _mincore(m, msize, 0, result, ci * pages_per_chunk)
+                except OSError as ex:
+                    if ex.errno == errno.ENOSYS:
+                        return None
+                    raise
         return result
 
 
