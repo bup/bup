@@ -72,78 +72,95 @@ class Client:
         self.closed = False
         self._busy = self.conn = None
         self.sock = self.p = self.pout = self.pin = None
-        is_reverse = environ.get(b'BUP_SERVER_REVERSE')
-        if is_reverse:
-            assert(not remote)
-            remote = b'%s:' % is_reverse
-        (self.protocol, self.host, self.port, self.dir) = parse_remote(remote)
-        # The b'None' here matches python2's behavior of b'%s' % None == 'None',
-        # python3 will (as of version 3.7.5) do the same for str ('%s' % None),
-        # but crashes instead when doing b'%s' % None.
-        cachehost = b'None' if self.host is None else self.host
-        cachedir = b'None' if self.dir is None else self.dir
-        self.cachedir = git.repo(b'index-cache/%s'
-                                 % re.sub(br'[^@\w]',
-                                          b'_',
-                                          b'%s:%s' % (cachehost, cachedir)))
-        if is_reverse:
-            self.pout = os.fdopen(3, 'rb')
-            self.pin = os.fdopen(4, 'wb')
-            self.conn = Conn(self.pout, self.pin)
-        else:
-            if self.protocol in (b'ssh', b'file'):
-                try:
-                    # FIXME: ssh and file shouldn't use the same module
-                    self.p = ssh.connect(self.host, self.port, b'server')
-                    self.pout = self.p.stdout
-                    self.pin = self.p.stdin
-                    self.conn = Conn(self.pout, self.pin)
-                except OSError as e:
-                    reraise(ClientError('connect: %s' % e))
-            elif self.protocol == b'bup':
-                self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                self.sock.connect((self.host,
-                                   1982 if self.port is None else int(self.port)))
-                self.sockw = self.sock.makefile('wb')
-                self.conn = DemuxConn(self.sock.fileno(), self.sockw)
-        self._available_commands = self._get_available_commands()
-        self._require_command(b'init-dir')
-        self._require_command(b'set-dir')
-        if self.dir:
-            self.dir = re.sub(br'[\r\n]', ' ', self.dir)
-            if create:
-                self.conn.write(b'init-dir %s\n' % self.dir)
+        try:
+            is_reverse = environ.get(b'BUP_SERVER_REVERSE')
+            if is_reverse:
+                assert(not remote)
+                remote = b'%s:' % is_reverse
+            (self.protocol, self.host, self.port, self.dir) = parse_remote(remote)
+            # The b'None' here matches python2's behavior of b'%s' % None == 'None',
+            # python3 will (as of version 3.7.5) do the same for str ('%s' % None),
+            # but crashes instead when doing b'%s' % None.
+            cachehost = b'None' if self.host is None else self.host
+            cachedir = b'None' if self.dir is None else self.dir
+            self.cachedir = git.repo(b'index-cache/%s'
+                                     % re.sub(br'[^@\w]',
+                                              b'_',
+                                              b'%s:%s' % (cachehost, cachedir)))
+            if is_reverse:
+                self.pout = os.fdopen(3, 'rb')
+                self.pin = os.fdopen(4, 'wb')
+                self.conn = Conn(self.pout, self.pin)
             else:
-                self.conn.write(b'set-dir %s\n' % self.dir)
-            try:
+                if self.protocol in (b'ssh', b'file'):
+                    try:
+                        # FIXME: ssh and file shouldn't use the same module
+                        self.p = ssh.connect(self.host, self.port, b'server')
+                        self.pout = self.p.stdout
+                        self.pin = self.p.stdin
+                        self.conn = Conn(self.pout, self.pin)
+                    except OSError as e:
+                        reraise(ClientError('connect: %s' % e))
+                elif self.protocol == b'bup':
+                    self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    self.sock.connect((self.host,
+                                       1982 if self.port is None else int(self.port)))
+                    self.sockw = self.sock.makefile('wb')
+                    self.conn = DemuxConn(self.sock.fileno(), self.sockw)
+            self._available_commands = self._get_available_commands()
+            self._require_command(b'init-dir')
+            self._require_command(b'set-dir')
+            if self.dir:
+                self.dir = re.sub(br'[\r\n]', ' ', self.dir)
+                if create:
+                    self.conn.write(b'init-dir %s\n' % self.dir)
+                else:
+                    self.conn.write(b'set-dir %s\n' % self.dir)
                 self.check_ok()
-            except BaseException as ex:
-                with pending_raise(ex):
-                    self.close()
-        self.sync_indexes()
+            self.sync_indexes()
+        except BaseException as ex:
+            with pending_raise(ex):
+                self.close()
 
     def close(self):
+        if self.closed:
+            return
         self.closed = True
-        if self.conn and not self._busy:
-            self.conn.write(b'quit\n')
-        if self.pin:
-            self.pin.close()
-        if self.sock and self.sockw:
-            self.sockw.close()
-            self.sock.shutdown(socket.SHUT_WR)
-        if self.conn:
-            self.conn.close()
-        if self.pout:
-            self.pout.close()
-        if self.sock:
-            self.sock.close()
-        if self.p:
-            self.p.wait()
-            rv = self.p.wait()
-            if rv:
-                raise ClientError('server tunnel returned exit code %d' % rv)
-        self.conn = None
-        self.sock = self.p = self.pin = self.pout = None
+        try:
+            if self.conn and not self._busy:
+                self.conn.write(b'quit\n')
+        finally:
+            try:
+                if self.pin:
+                    self.pin.close()
+            finally:
+                try:
+                    self.pin = None
+                    if self.sock and self.sockw:
+                        self.sockw.close()
+                        self.sock.shutdown(socket.SHUT_WR)
+                finally:
+                    try:
+                        if self.conn:
+                            self.conn.close()
+                    finally:
+                        try:
+                            self.conn = None
+                            if self.pout:
+                                self.pout.close()
+                        finally:
+                            try:
+                                self.pout = None
+                                if self.sock:
+                                    self.sock.close()
+                            finally:
+                                self.sock = None
+                                if self.p:
+                                    self.p.wait()
+                                    rv = self.p.wait()
+                                    if rv:
+                                        raise ClientError('server tunnel returned exit code %d' % rv)
+                                self.p = None
 
     def __del__(self):
         assert self.closed
