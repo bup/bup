@@ -589,18 +589,18 @@ mailing list (see below) if you'd like to help.
    32-bit architectures (and 31-bit is even worse -- looking at you,
    s390).
 
-   To fix this, we might just implement a FakeMmap[1] class that uses
-   normal file IO and handles all of the mmap methods[2] that bup
+   To fix this, we might just implement a [FakeMmap][1] class that uses
+   normal file IO and handles all of the [mmap methods][2] that bup
    actually calls.  Then we'd swap in one of those whenever mmap
    fails.
 
    This would also require implementing some of the methods needed to
    support "[]" array access, probably at a minimum __getitem__,
-   __setitem__, and __setslice__ [3].
+   __setitem__, and [__setslice__][3].
 
-     [1] http://comments.gmane.org/gmane.comp.sysutils.backup.bup/613
-     [2] http://docs.python.org/2/library/mmap.html
-     [3] http://docs.python.org/2/reference/datamodel.html#emulating-container-types
+     [1]: http://comments.gmane.org/gmane.comp.sysutils.backup.bup/613 
+     [2]: http://docs.python.org/2/library/mmap.html
+     [3]: http://docs.python.org/2/reference/datamodel.html#emulating-container-types
 
  - 'bup index' is slower than it should be.
  
