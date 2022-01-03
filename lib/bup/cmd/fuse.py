@@ -9,7 +9,13 @@ except ImportError:
           file=sys.stderr)
     sys.exit(2)
 if not hasattr(fuse, '__version__'):
-    print('error: fuse module is too old for fuse.__version__', file=sys.stderr)
+    if hasattr(fuse, 'FUSE'):
+        print('error: python fuse module appears to be fusepy, not python-fuse\n'
+              '       please install https://github.com/libfuse/python-fuse',
+              file=sys.stderr)
+    else:
+        print('error: fuse module may need to be upgraded (no fuse.__version__)',
+              file=sys.stderr)
     sys.exit(2)
 fuse.fuse_python_api = (0, 2)
 
