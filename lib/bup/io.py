@@ -1,27 +1,16 @@
 
-from __future__ import absolute_import, print_function
 import mmap as py_mmap
 
-from bup import compat
 from bup.compat import pending_raise
 
 
-if compat.py_maj > 2:
-    def byte_stream(file):
-        return file.buffer
+def byte_stream(file):
+    return file.buffer
 
-    def path_msg(x):
-        """Return a string representation of a path."""
-        # FIXME: configurability (might git-config quotePath be involved?)
-        return x.decode(errors='backslashreplace')
-else:
-    def byte_stream(file):
-        return file
-
-    def path_msg(x):
-        """Return a string representation of a path."""
-        # FIXME: configurability (might git-config quotePath be involved?)
-        return x
+def path_msg(x):
+    """Return a string representation of a path."""
+    # FIXME: configurability (might git-config quotePath be involved?)
+    return x.decode(errors='backslashreplace')
 
 
 assert not hasattr(py_mmap.mmap, '__del__')

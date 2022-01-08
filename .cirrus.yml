@@ -1,49 +1,6 @@
 
 task:
-  name: debian (py2 check/lint root)
-  container:
-    image: debian:buster
-    cpu: 4
-    memory: 2
-  script: |
-    set -xe
-    dev/prep-for-debianish-build python2
-    dev/system-info
-    BUP_PYTHON_CONFIG=python2.7-config ./configure --with-pylint=yes
-    make -j6 check
-
-task:
-  name: debian (py2 long-check)
-  container:
-    image: debian:buster
-    cpu: 4
-    memory: 2
-  script: |
-    set -xe
-    dev/prep-for-debianish-build python2
-    dev/system-info
-    adduser --disabled-password --gecos '' bup
-    chown -R bup:bup .
-    printf "make -j6 -C %q BUP_PYTHON_CONFIG=python2.7-config long-check" \
-      "$(pwd)" | su -l bup
-
-task:
-  name: debian (py2 check)
-  container:
-    image: debian:buster
-    cpu: 4
-    memory: 2
-  script: |
-    set -xe
-    dev/prep-for-debianish-build python2
-    dev/system-info
-    adduser --disabled-password --gecos '' bup
-    chown -R bup:bup .
-    printf "make -j6 -C %q BUP_PYTHON_CONFIG=python2.7-config check" \
-      "$(pwd)" | su -l bup
-
-task:
-  name: debian (py3 check/lint root)
+  name: debian check/lint root
   container:
     image: debian:buster
     cpu: 4
@@ -56,7 +13,7 @@ task:
     make -j6 check
 
 task:
-  name: debian (py3 long-check)
+  name: debian long-check
   container:
     image: debian:buster
     cpu: 4
@@ -71,7 +28,7 @@ task:
       "$(pwd)" | su -l bup
 
 task:
-  name: debian (py3 check)
+  name: debian check
   container:
     image: debian:buster
     cpu: 4
@@ -86,7 +43,7 @@ task:
       "$(pwd)" | su -l bup
 
 task:
-  name: freebsd (py3 check)
+  name: freebsd check
   freebsd_instance:
     image: freebsd-12-2-release-amd64
     cpu: 4
@@ -98,7 +55,7 @@ task:
     BUP_PYTHON_CONFIG=python3.8-config make -j6 check
 
 task:
-  name: macos (py3 check)
+  name: macos check
   osx_instance:
     image: catalina-base
   script: |

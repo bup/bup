@@ -4,10 +4,10 @@ set -exu
 
 usage()
 {
-    echo "Usage: prep-for-macos-build [python2|python3]"
+    echo "Usage: prep-for-macos-build [python3]"
 }
 
-pyver="${1:-python2}"
+pyver="${1:-python3}"
 
 if ! command -v brew; then
     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
@@ -21,10 +21,6 @@ brew link --force readline
 # "brew unlink readline" will undo this hack
 
 case "$pyver" in
-    python2)
-        easy_install-2.7 --user pip
-        /Users/anka/Library/Python/2.7/bin/pip install --user pytest pytest-xdist
-        ;;
     python3)
         brew install python
         pip3 install --user pytest pytest-xdist

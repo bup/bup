@@ -4,7 +4,6 @@
 #include "../../config/config.h"
 
 // According to Python, its header has to go first:
-//   http://docs.python.org/2/c-api/intro.html#include-files
 //   http://docs.python.org/3/c-api/intro.html#include-files
 #include <Python.h>
 
@@ -103,18 +102,10 @@ typedef struct {
 // rbuf_argf: for read-only byte vectors
 // wbuf_argf: for mutable byte vectors
 
-#if PY_MAJOR_VERSION < 3
-static state_t state;
-#  define get_state(x) (&state)
-#  define cstr_argf "s"
-#  define rbuf_argf "s#"
-#  define wbuf_argf "s*"
-#else
-#  define get_state(x) ((state_t *) PyModule_GetState(x))
-#  define cstr_argf "y"
-#  define rbuf_argf "y#"
-#  define wbuf_argf "y*"
-#endif // PY_MAJOR_VERSION >= 3
+#define get_state(x) ((state_t *) PyModule_GetState(x))
+#define cstr_argf "y"
+#define rbuf_argf "y#"
+#define wbuf_argf "y*"
 
 
 static void *checked_calloc(size_t n, size_t size)
@@ -161,37 +152,9 @@ static uint64_t htonll(uint64_t value)
 #define INTEGER_TO_PY(x) \
     EXPR_SIGNED(x) ? PyLong_FromLongLong(x) : PyLong_FromUnsignedLongLong(x)
 
-#if PY_MAJOR_VERSION < 3
-static int bup_ulong_from_pyint(unsigned long *x, PyObject *py,
-                                const char *name)
-{
-    const long tmp = PyInt_AsLong(py);
-    if (tmp == -1 && PyErr_Occurred())
-    {
-        if (PyErr_ExceptionMatches(PyExc_OverflowError))
-            PyErr_Format(PyExc_OverflowError, "%s too big for unsigned long",
-                         name);
-        return 0;
-    }
-    if (tmp < 0)
-    {
-        PyErr_Format(PyExc_OverflowError,
-                     "negative %s cannot be converted to unsigned long", name);
-        return 0;
-    }
-    *x = tmp;
-    return 1;
-}
-#endif
-
 
 static int bup_ulong_from_py(unsigned long *x, PyObject *py, const char *name)
 {
-#if PY_MAJOR_VERSION < 3
-    if (PyInt_Check(py))
-        return bup_ulong_from_pyint(x, py, name);
-#endif
-
     if (!PyLong_Check(py))
     {
         PyErr_Format(PyExc_TypeError, "expected integer %s", name);
@@ -229,19 +192,6 @@ static int bup_uint_from_py(unsigned int *x, PyObject *py, const char *name)
 static int bup_ullong_from_py(unsigned PY_LONG_LONG *x, PyObject *py,
                               const char *name)
 {
-#if PY_MAJOR_VERSION < 3
-    if (PyInt_Check(py))
-    {
-        unsigned long tmp;
-        if (bup_ulong_from_pyint(&tmp, py, name))
-        {
-            *x = tmp;
-            return 1;
-        }
-        return 0;
-    }
-#endif
-
     if (!PyLong_Check(py))
     {
         PyErr_Format(PyExc_TypeError, "integer argument expected for %s", name);
@@ -569,29 +519,13 @@ static PyObject *blobbits(PyObject *self, PyObject *args)
 
 static PyObject *splitbuf(PyObject *self, PyObject *args)
 {
-    // We stick to buffers in python 2 because they appear to be
-    // substantially smaller than memoryviews, and because
-    // zlib.compress() in python 2 can't accept a memoryview
-    // (cf. hashsplit.py).
     int out = 0, bits = -1;
-    if (PY_MAJOR_VERSION > 2)
-    {
-        Py_buffer buf;
-        if (!PyArg_ParseTuple(args, "y*", &buf))
-            return NULL;
-        assert(buf.len <= INT_MAX);
-        out = bupsplit_find_ofs(buf.buf, buf.len, &bits);
-        PyBuffer_Release(&buf);
-    }
-    else
-    {
-        unsigned char *buf = NULL;
-        Py_ssize_t len = 0;
-        if (!PyArg_ParseTuple(args, "t#", &buf, &len))
-            return NULL;
-        assert(len <= INT_MAX);
-        out = bupsplit_find_ofs(buf, (int) len, &bits);
-    }
+    Py_buffer buf;
+    if (!PyArg_ParseTuple(args, "y*", &buf))
+        return NULL;
+    assert(buf.len <= INT_MAX);
+    out = bupsplit_find_ofs(buf.buf, buf.len, &bits);
+    PyBuffer_Release(&buf);
     if (out) assert(bits >= BUP_BLOBBITS);
     return Py_BuildValue("ii", out, bits);
 }
@@ -2561,25 +2495,6 @@ static int setup_module(PyObject *m)
 }
 
 
-#if PY_MAJOR_VERSION < 3
-
-PyMODINIT_FUNC init_helpers(void)
-{
-    PyObject *m = Py_InitModule("_helpers", helper_methods);
-    if (m == NULL) {
-        PyErr_SetString(PyExc_RuntimeError, "bup._helpers init failed");
-        return;
-    }
-    if (!setup_module(m))
-    {
-        PyErr_SetString(PyExc_RuntimeError, "bup._helpers set up failed");
-        Py_DECREF(m);
-        return;
-    }
-}
-
-# else // PY_MAJOR_VERSION >= 3
-
 static struct PyModuleDef helpers_def = {
     PyModuleDef_HEAD_INIT,
     "_helpers",
@@ -2604,5 +2519,3 @@ PyMODINIT_FUNC PyInit__helpers(void)
     }
     return module;
 }
-
-#endif // PY_MAJOR_VERSION >= 3

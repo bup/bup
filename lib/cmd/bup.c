@@ -4,7 +4,6 @@
 #undef NDEBUG
 
 // According to Python, its header has to go first:
-//   http://docs.python.org/2/c-api/intro.html#include-files
 //   http://docs.python.org/3/c-api/intro.html#include-files
 #include <Python.h>
 

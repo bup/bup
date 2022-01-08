@@ -1,17 +1,12 @@
 
-from __future__ import absolute_import
-import errno, os, tempfile
+import errno, os, pickle, tempfile
 
 from bup import compat
 from bup.compat import pending_raise
 
-if compat.py_maj > 2:
-    import pickle
-    def pickle_load(f):
-        return pickle.load(f, encoding='bytes')
-else:
-    import cPickle as pickle
-    pickle_load = pickle.load
+
+def pickle_load(f):
+    return pickle.load(f, encoding='bytes')
 
 
 class Error(Exception):

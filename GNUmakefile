@@ -235,14 +235,9 @@ long-test: test
 long-check: export BUP_TEST_LEVEL=11
 long-check: check
 
-.PHONY: check-py2 check-py3 check-both
+.PHONY: check-py3
 check-py3:
 	$(MAKE) clean && BUP_PYTHON_CONFIG=python3-config $(MAKE) check
-check-py2:
-	$(MAKE) clean && BUP_PYTHON_CONFIG=python2.7-config $(MAKE) check
-check-both:
-	$(MAKE) check-py3
-	$(MAKE) check-py2
 
 .PHONY: Documentation/all
 Documentation/all: $(man_roff) $(man_html)
@@ -300,7 +295,5 @@ clean: Documentation/clean
 	rm -rf $(clean_paths) .pytest_cache
 	rm -f $(generated_dependencies)
 	find . -name __pycache__ -exec rm -rf {} +
-        # Remove this *.pyc cleanup once we drop py2
-	rm -f lib/bup/*.pyc lib/bup/cmd/*.pyc test/__init__.pyc
 	if test -e test/tmp; then dev/force-delete test/tmp; fi
 	dev/configure-sampledata --clean

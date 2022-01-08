@@ -1,6 +1,5 @@
 # -*-conf-*-
 [GENERAL OPTIONS]
-ignore=py2raise.py
 
 [MESSAGES CONTROL]
 disable=all

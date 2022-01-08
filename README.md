@@ -71,12 +71,10 @@ Reasons you might want to avoid bup
    more likely to eat your data.  It's also missing some
    probably-critical features, though fewer than it used to be.
    
- - It requires python 3.7 or newer (or 2.7 for a bit longer), a C
-   compiler, and an installed git version >= 1.5.6.  It also requires
-   par2 if you want fsck to be able to generate the information needed
-   to recover from some types of corruption.  While python 2.7 is
-   still supported, please make plans to upgrade.  Python 2 upstream
-   support ended on 2020-01-01, and we plan to drop support soon too.
+ - It requires python 3.7 or newer, a C compiler, and an installed git
+   version >= 1.5.6.  It also requires par2 if you want fsck to be
+   able to generate the information needed to recover from some types
+   of corruption.
  
  - It currently only works on Linux, FreeBSD, NetBSD, OS X >= 10.4,
    Solaris, or Windows (with Cygwin, and WSL).  Patches to support
@@ -159,33 +157,6 @@ From source
     apt-get install python3-tornado # optional (bup web)
 
     ```
-   Or, if you can't yet migrate to Python 3 (please try to soon):
-
-    ```sh
-    apt-get install python2.7-dev python-fuse
-    apt-get install python-pyxattr python-pytest
-    apt-get install pkg-config linux-libc-dev libacl1-dev
-    apt-get install gcc make acl attr rsync
-    apt-get isntall python-pytest-xdist # optional (parallel tests)
-    apt-get install par2 # optional (error correction)
-    apt-get install libreadline-dev # optional (bup ftp)
-    apt-get install python-tornado # optional (bup web)
-    ```
-
-   On CentOS (for CentOS 6, at least), this should be sufficient (run
-   as root):
-
-    ```sh
-    yum groupinstall "Development Tools"
-    yum install python2 python2-devel libacl-devel pylibacl
-    yum install fuse-python pyxattr
-    yum install perl-Time-HiRes
-    yum install readline-devel # optional (bup ftp)
-    yum install python-tornado # optional (bup web)
-    ```
-
-   In addition to the default CentOS repositories, you may need to add
-   RPMForge (for fuse-python) and EPEL (for pyxattr).
 
    On Cygwin, install python, make, rsync, and gcc4.
 
@@ -599,8 +570,8 @@ mailing list (see below) if you'd like to help.
    __setitem__, and __setslice__ [3].
 
      [1] http://comments.gmane.org/gmane.comp.sysutils.backup.bup/613
-     [2] http://docs.python.org/2/library/mmap.html
-     [3] http://docs.python.org/2/reference/datamodel.html#emulating-container-types
+     [2] http://docs.python.org/3/library/mmap.html
+     [3] http://docs.python.org/3/reference/datamodel.html#emulating-container-types
 
  - 'bup index' is slower than it should be.
  

@@ -49,4 +49,4 @@ Since all invocations of duplicity use a temporary `--archive-dir`,
 
 Part of the `bup`(1) suite.
 
-[mkdtemp]: https://docs.python.org/2/library/tempfile.html#tempfile.mkdtemp
+[mkdtemp]: https://docs.python.org/3/library/tempfile.html#tempfile.mkdtemp
