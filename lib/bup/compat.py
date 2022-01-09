@@ -10,7 +10,6 @@ from os import environb as environ
 from os import fsdecode, fsencode
 from shlex import quote
 
-input = input
 range = range
 str_type = str
 int_types = (int,)
