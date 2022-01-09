@@ -2,7 +2,6 @@
 from __future__ import absolute_import
 import stat, os
 
-from bup.compat import str_type
 from bup.helpers \
     import (add_error,
             debug1,
@@ -89,7 +88,7 @@ def recursive_dirlist(paths, xdev, bup_dir=None,
                       xdev_exceptions=frozenset()):
     with finalized_fd(b'.') as startdir:
         try:
-            assert not isinstance(paths, str_type)
+            assert not isinstance(paths, str)
             for path in paths:
                 try:
                     pst = xstat.lstat(path)

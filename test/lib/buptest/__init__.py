@@ -9,7 +9,7 @@ from traceback import extract_stack
 import errno, os, subprocess, sys, tempfile
 
 from bup import helpers
-from bup.compat import fsencode, str_type
+from bup.compat import fsencode
 from bup.io import byte_stream
 
 
@@ -35,7 +35,7 @@ def run(cmd, check=True, input=None, **kwargs):
 
 def logcmd(cmd):
     s = helpers.shstr(cmd)
-    if isinstance(cmd, str_type):
+    if isinstance(cmd, str):
         print(s, file=sys.stderr)
     else:
         # bytes - for now just escape it

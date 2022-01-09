@@ -57,7 +57,7 @@ from time import localtime, strftime
 import re, sys
 
 from bup import git, vint
-from bup.compat import hexstr, pending_raise, str_type
+from bup.compat import hexstr, pending_raise
 from bup.git import BUP_CHUNKED, parse_commit, tree_decode
 from bup.helpers import debug2, last, nullcontext_if_not
 from bup.io import path_msg
@@ -951,7 +951,7 @@ def _resolve_path(repo, path, parent=None, want_meta=True, follow=True):
     if parent:
         for x in parent:
             assert len(x) == 2
-            assert isinstance(x[0], (bytes, str_type))
+            assert isinstance(x[0], (bytes, str))
             assert isinstance(x[1], item_types)
         assert parent[0][1] == _root
         if not S_ISDIR(item_mode(parent[-1][1])):

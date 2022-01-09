@@ -286,7 +286,7 @@ def squote(x):
 def quote(x):
     if isinstance(x, bytes):
         return bquote(x)
-    if isinstance(x, compat.str_type):
+    if isinstance(x, str):
         return squote(x)
     assert False
     # some versions of pylint get confused
@@ -301,11 +301,11 @@ def shstr(cmd):
     call() and friends.  e.g. log(shstr(cmd)); call(cmd)
 
     """
-    if isinstance(cmd, (bytes, compat.str_type)):
+    if isinstance(cmd, (bytes, str)):
         return cmd
     elif all(isinstance(x, bytes) for x in cmd):
         return b' '.join(map(bquote, cmd))
-    elif all(isinstance(x, compat.str_type) for x in cmd):
+    elif all(isinstance(x, str) for x in cmd):
         return ' '.join(map(squote, cmd))
     raise TypeError('unsupported shstr argument: ' + repr(cmd))
 
