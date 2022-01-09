@@ -22,7 +22,6 @@ from bup.compat import (
     add_ex_tb,
     environ,
     fsdecode,
-    int_types,
     wrap_main
 )
 from bup.compat import add_ex_tb, add_ex_ctx, wrap_main
@@ -234,7 +233,7 @@ def filter_output(srcs, dests):
 
     """
     global sep_rx
-    assert all(isinstance(x, int_types) for x in srcs)
+    assert all(isinstance(x, int) for x in srcs)
     assert len(srcs) == len(dests)
     srcs = tuple(srcs)
     dest_for = dict(zip(srcs, dests))

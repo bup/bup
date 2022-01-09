@@ -7,7 +7,7 @@ from time import localtime, strftime, time
 import sys
 
 from bup import git, options
-from bup.compat import argv_bytes, int_types
+from bup.compat import argv_bytes
 from bup.gc import bup_gc
 from bup.helpers import die_if_errors, log, partition, period_as_secs
 from bup.io import byte_stream
@@ -85,7 +85,7 @@ def main(argv):
         o.fatal('refusing to run dangerous, experimental command without --unsafe')
 
     now = int(time()) if opt.wrt is None else opt.wrt
-    if not isinstance(now, int_types):
+    if not isinstance(now, int):
         o.fatal('--wrt value ' + str(now) + ' is not an integer')
 
     period_start = {}

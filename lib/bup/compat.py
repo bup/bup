@@ -10,8 +10,6 @@ from os import environb as environ
 from os import fsdecode, fsencode
 from shlex import quote
 
-int_types = (int,)
-
 def hexstr(b):
     """Return hex string (not bytes as with hexlify) representation of b."""
     return b.hex()
