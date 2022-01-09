@@ -3,7 +3,7 @@ from __future__ import absolute_import, print_function
 import glob, os, struct
 
 from bup import _helpers
-from bup.compat import pending_raise, range
+from bup.compat import pending_raise
 from bup.helpers import log, mmap_read
 from bup.io import path_msg
 

@@ -14,7 +14,7 @@ from wvpytest import *
 
 from bup._helpers import write_random
 from bup import git, metadata, vfs
-from bup.compat import environ, fsencode, items, range
+from bup.compat import environ, fsencode, items
 from bup.helpers import exc, shstr
 from bup.metadata import Metadata
 from bup.repo import LocalRepo

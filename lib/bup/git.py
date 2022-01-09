@@ -17,7 +17,6 @@ from bup.compat import (buffer,
                         ExitStack,
                         items,
                         pending_raise,
-                        range,
                         reraise)
 from bup.io import path_msg
 from bup.helpers import (Sha1, add_error, chunkyreader, debug1, debug2,

@@ -829,7 +829,7 @@ if _mincore:
         page_count = (st.st_size + sc_page_size - 1) // sc_page_size;
         chunk_count = (st.st_size + _fmincore_chunk_size - 1) // _fmincore_chunk_size
         result = bytearray(page_count)
-        for ci in compat.range(chunk_count):
+        for ci in range(chunk_count):
             pos = _fmincore_chunk_size * ci;
             msize = min(_fmincore_chunk_size, st.st_size - pos)
             try:
@@ -963,7 +963,7 @@ def columnate(l, prefix):
     while len(l) % ncols:
         l.append(nothing)
     rows = len(l) // ncols
-    for s in compat.range(0, len(l), rows):
+    for s in range(0, len(l), rows):
         cols.append(l[s:s+rows])
     out = nothing
     fmt = b'%-*s' if binary else '%-*s'

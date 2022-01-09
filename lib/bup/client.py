@@ -7,7 +7,7 @@ import os, re, struct, time, zlib
 import socket
 
 from bup import git, ssh, vfs
-from bup.compat import environ, pending_raise, range, reraise
+from bup.compat import environ, pending_raise, reraise
 from bup.helpers import (Conn, atomically_replaced_file, chunkyreader, debug1,
                          debug2, linereader, lines_until_sentinel,
                          mkdirp, nullcontext_if_not, progress, qprogress, DemuxConn)

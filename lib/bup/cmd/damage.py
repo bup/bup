@@ -3,7 +3,7 @@ from __future__ import absolute_import
 import os, random
 
 from bup import options
-from bup.compat import argv_bytes, bytes_from_uint, range
+from bup.compat import argv_bytes, bytes_from_uint
 from bup.helpers import log
 from bup.io import path_msg
 

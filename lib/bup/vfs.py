@@ -57,7 +57,7 @@ from time import localtime, strftime
 import re, sys
 
 from bup import git, vint
-from bup.compat import hexstr, pending_raise, range, str_type
+from bup.compat import hexstr, pending_raise, str_type
 from bup.git import BUP_CHUNKED, parse_commit, tree_decode
 from bup.helpers import debug2, last, nullcontext_if_not
 from bup.io import path_msg

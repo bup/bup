@@ -10,7 +10,7 @@ import pytest
 from wvpytest import *
 
 from bup import git, path
-from bup.compat import bytes_from_byte, environ, range
+from bup.compat import bytes_from_byte, environ
 from bup.helpers import localtime, log, mkdirp, readpipe
 
 

@@ -11,7 +11,7 @@ from random import randint
 from sys import stderr, stdout
 import errno, re, sys
 
-from bup.compat import fsencode, get_argv, get_argvb, range
+from bup.compat import fsencode, get_argv, get_argvb
 
 argv = get_argv()
 

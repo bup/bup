@@ -4,7 +4,7 @@ import os, time, random, subprocess, glob
 import pytest
 
 from bup import client, git, path
-from bup.compat import bytes_from_uint, environ, range
+from bup.compat import bytes_from_uint, environ
 
 def randbytes(sz):
     s = b''

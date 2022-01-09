@@ -3,7 +3,6 @@ from __future__ import absolute_import, print_function
 import re, resource, sys, time
 
 from bup import git, bloom, midx, options, _helpers
-from bup.compat import range
 from bup.io import byte_stream
 from bup.helpers import log
 

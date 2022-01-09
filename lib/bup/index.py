@@ -4,7 +4,7 @@ import errno, os, stat, struct, tempfile
 
 from bup import metadata, xstat
 from bup._helpers import UINT_MAX, bytescmp
-from bup.compat import pending_raise, range
+from bup.compat import pending_raise
 from bup.helpers import (add_error, log, merge_iter, mmap_readwrite,
                          progress, qprogress, resolve_parent, slashappend)
 

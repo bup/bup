@@ -4,7 +4,7 @@ from binascii import hexlify
 import glob, os, math, resource, struct, sys
 
 from bup import options, git, midx, _helpers, xstat
-from bup.compat import ExitStack, argv_bytes, hexstr, range
+from bup.compat import ExitStack, argv_bytes, hexstr
 from bup.helpers import (Sha1, add_error, atomically_replaced_file, debug1, fdatasync,
                          log, mmap_readwrite, qprogress,
                          saved_errors, unlink)
