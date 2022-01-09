@@ -1,8 +1,6 @@
 
 from __future__ import absolute_import, print_function
 
-from bup.compat import ModuleNotFoundError
-
 from bup import source_info
 try:
     import bup.checkout_info as checkout_info

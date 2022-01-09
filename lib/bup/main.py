@@ -18,7 +18,6 @@ import re, select, signal, subprocess
 
 from bup import compat, path, helpers
 from bup.compat import (
-    ModuleNotFoundError,
     add_ex_ctx,
     add_ex_tb,
     environ,
