@@ -11,7 +11,6 @@ import sys, os, subprocess, errno, select, mmap, stat, re, struct
 import hashlib, heapq, math, operator, time, tempfile
 
 from bup import _helpers
-from bup import compat
 from bup import io
 from bup.compat import argv_bytes, byte_int, nullcontext, pending_raise
 from bup.io import byte_stream, path_msg
@@ -344,7 +343,7 @@ def _argmax_base(command):
     base_size = 2048
     for c in command:
         base_size += len(command) + 1
-    for k, v in compat.items(environ):
+    for k, v in environ.items():
         base_size += len(k) + len(v) + 2 + sizeof(c_void_p)
     return base_size
 

@@ -265,7 +265,7 @@ def filter_output(srcs, dests):
         pending_ex = add_ex_ctx(add_ex_tb(ex), pending_ex)
     try:
         # Try to finish each of the streams
-        for fd, pending_items in compat.items(pending):
+        for fd, pending_items in pending.items():
             dest = dest_for[fd]
             width = tty_width()
             try:

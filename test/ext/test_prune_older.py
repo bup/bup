@@ -61,7 +61,7 @@ def expected_retentions(utcs, utc_start, spec):
         return utcs
     utcs = sorted(utcs, reverse=True)
     period_start = dict(spec)
-    for kind, duration in compat.items(period_start):
+    for kind, duration in period_start.items():
         period_start[kind] = utc_start - period_as_secs(duration)
     period_start = defaultdict(lambda: float('inf'), period_start)
 

@@ -15,7 +15,6 @@ from bup.compat import (buffer,
                         byte_int, bytes_from_byte, bytes_from_uint,
                         environ,
                         ExitStack,
-                        items,
                         pending_raise,
                         reraise)
 from bup.io import path_msg
@@ -37,7 +36,7 @@ verbose = 0
 repodir = None  # The default repository, once initialized
 
 _typemap =  {b'blob': 3, b'tree': 2, b'commit': 1, b'tag': 4}
-_typermap = {v: k for k, v in items(_typemap)}
+_typermap = {v: k for k, v in _typemap.items()}
 
 
 _total_searches = 0

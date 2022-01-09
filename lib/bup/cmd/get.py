@@ -10,8 +10,7 @@ from bup.compat import (
     argv_bytes,
     bytes_from_byte,
     environ,
-    hexstr,
-    items,
+    hexstr
 )
 from bup.git import get_cat_data, parse_commit, walk_object
 from bup.helpers import add_error, debug1, log, saved_errors
@@ -645,7 +644,7 @@ def main(argv):
         # Only update the refs at the very end, once the writer is
         # closed, so that if something goes wrong above, the old refs
         # will be undisturbed.
-        for ref_name, info in items(updated_refs):
+        for ref_name, info in updated_refs.items():
             orig_ref, new_ref = info
             try:
                 dest_repo.update_ref(ref_name, new_ref, orig_ref)

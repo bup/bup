@@ -1,7 +1,6 @@
 
 import errno, os, pickle, tempfile
 
-from bup import compat
 from bup.compat import pending_raise
 
 
@@ -37,7 +36,7 @@ class HLinkDB:
                 f.close()
                 f = None
         # Set up the reverse hard link index.
-        for node, paths in compat.items(self._node_paths):
+        for node, paths in self._node_paths.items():
             for path in paths:
                 self._path_node[path] = node
 

@@ -8,7 +8,7 @@ from subprocess import PIPE
 import pytest, re, sys
 
 from bup import compat, path
-from bup.compat import environ, getcwd, items
+from bup.compat import environ, getcwd
 from bup.helpers import bquote, merge_dict, unlink
 from bup.io import byte_stream
 from buptest import ex, exo
@@ -266,7 +266,7 @@ def _test_universal(get_disposition, src_info):
         verify_rx(b'cannot fetch entire repository', exr.err)
 
 def verify_only_refs(**kwargs):
-    for kind, refs in items(kwargs):
+    for kind, refs in kwargs.items():
         if kind == 'heads':
             abs_refs = [b'refs/heads/' + ref for ref in refs]
             karg = b'--heads'
@@ -318,7 +318,7 @@ def _test_replace(get_disposition, src_info):
                       'blob' : (b'.tag/tinyfile', b'.tag/obj'),
                       'tree' : (b'.tag/tree-1', b'.tag/obj'),
                       'commit': (b'.tag/commit-1', b'.tag/obj')}
-    for ex_type, ex_ref in items(existing_items):
+    for ex_type, ex_ref in existing_items.items():
         wvstart(get_disposition + ' --replace ' + ex_type + ' with blob tag')
         for item in (b'.tag/tinyfile', b'src/latest' + tinyfile_path):
             exr = run_get(get_disposition, b'--replace', (item ,b'.tag/obj'),

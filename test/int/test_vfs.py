@@ -14,7 +14,7 @@ from wvpytest import *
 
 from bup._helpers import write_random
 from bup import git, metadata, vfs
-from bup.compat import environ, fsencode, items
+from bup.compat import environ, fsencode
 from bup.helpers import exc, shstr
 from bup.metadata import Metadata
 from bup.repo import LocalRepo
@@ -54,10 +54,10 @@ def test_cache_behavior():
         wvpasseq(frozenset([key_0, key_1]), frozenset(vfs._cache_keys))
         vfs.cache_notice(key_2, b'and also')
         wvpasseq(2, len(vfs._cache))
-        wvpass(frozenset(items(vfs._cache))
-               < frozenset(items({key_0 : b'something',
-                                  key_1 : b'something else',
-                                  key_2 : b'and also'})))
+        wvpass(frozenset(vfs._cache.items())
+               < frozenset({key_0 : b'something',
+                            key_1 : b'something else',
+                            key_2 : b'and also'}.items()))
         wvpasseq(2, len(vfs._cache_keys))
         wvpass(frozenset(vfs._cache_keys) < frozenset([key_0, key_1, key_2]))
         vfs.clear_cache()

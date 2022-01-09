@@ -2,7 +2,7 @@
 from __future__ import absolute_import
 from binascii import hexlify, unhexlify
 
-from bup import compat, git, vfs
+from bup import git, vfs
 from bup.client import ClientError
 from bup.compat import hexstr, pending_raise
 from bup.git import get_commit_items
@@ -104,7 +104,7 @@ def bup_rm(repo, paths, compression=6, verbosity=None):
 
     updated_refs = {}  # ref_name -> (original_ref, tip_commit(bin))
 
-    for branchname, branchitem in compat.items(dead_branches):
+    for branchname, branchitem in dead_branches.items():
         ref = b'refs/heads/' + branchname
         assert(not ref in updated_refs)
         updated_refs[ref] = (branchitem.oid, None)
@@ -112,7 +112,7 @@ def bup_rm(repo, paths, compression=6, verbosity=None):
     if dead_saves:
         writer = git.PackWriter(compression_level=compression)
         try:
-            for branch, saves in compat.items(dead_saves):
+            for branch, saves in dead_saves.items():
                 assert(saves)
                 updated_refs[b'refs/heads/' + branch] = rm_saves(saves, writer)
         except BaseException as ex:
@@ -124,7 +124,7 @@ def bup_rm(repo, paths, compression=6, verbosity=None):
     # Only update the refs here, at the very end, so that if something
     # goes wrong above, the old refs will be undisturbed.  Make an attempt
     # to update each ref.
-    for ref_name, info in compat.items(updated_refs):
+    for ref_name, info in updated_refs.items():
         orig_ref, new_ref = info
         try:
             if not new_ref:

@@ -10,6 +10,7 @@ from os import environb as environ
 from os import fsdecode, fsencode
 from shlex import quote
 
+
 def hexstr(b):
     """Return hex string (not bytes as with hexlify) representation of b."""
     return b.hex()
@@ -49,9 +50,6 @@ class pending_raise:
             raise self.ex
     def __del__(self):
         assert self.closed
-
-def items(x):
-    return x.items()
 
 def argv_bytes(x):
     """Return the original bytes passed to main() for an argv argument."""
