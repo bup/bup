@@ -772,7 +772,7 @@ def _make_objcache():
 # bup-gc assumes that it can disable all PackWriter activities
 # (bloom/midx/cache) via the constructor and close() arguments.
 
-class PackWriter:
+class PackWriter(object):
     """Writes Git objects inside a pack file."""
     def __init__(self, objcache_maker=_make_objcache, compression_level=1,
                  run_midx=True, on_pack_finish=None,
@@ -918,16 +918,15 @@ class PackWriter:
 
     def _end(self, run_midx=True, abort=False):
         # Ignores run_midx during abort
-        if not self.file:
-            return None
+        self.parentfd, pfd, = None, self.parentfd
         self.file, f = None, self.file
         self.idx, idx = None, self.idx
-        self.parentfd, pfd, = None, self.parentfd
-
         try:
             with nullcontext_if_not(self.objcache), \
                  finalized(pfd, lambda x: x is not None and os.close(x)), \
-                 f:
+                 nullcontext_if_not(f):
+                if not f:
+                    return None
 
                 if abort:
                     os.unlink(self.filename + b'.pack')

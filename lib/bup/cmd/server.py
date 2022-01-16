@@ -301,10 +301,10 @@ def main(argv):
     # FIXME: this protocol is totally lame and not at all future-proof.
     # (Especially since we abort completely as soon as *anything* bad happens)
     sys.stdout.flush()
-    conn = Conn(byte_stream(sys.stdin), byte_stream(sys.stdout))
-    lr = linereader(conn)
-    with finalized(None, lambda _: repo and repo.close()), \
+    with Conn(byte_stream(sys.stdin), byte_stream(sys.stdout)) as conn, \
+         finalized(None, lambda _: repo and repo.close()), \
          finalized(None, lambda _: suspended_w and suspended_w.close()):
+        lr = linereader(conn)
         for _line in lr:
             line = _line.strip()
             if not line:

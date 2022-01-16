@@ -36,6 +36,8 @@ class BupSubprocTestRunner(pytest.Item):
         failures = [line for line in lines
                     if (line.startswith(b'!')
                         and line.lower().endswith(b' failed'))]
+        if b'AssertionError' in out:
+            raise BupSubprocFailure('AssertionError detected')
         if failures or p.returncode != 0:
             raise BupSubprocFailure('%s failed (exit %d, %d failures)'
                                     % (cmd, p.returncode, len(failures)),

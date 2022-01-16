@@ -12,6 +12,7 @@ import hashlib, heapq, math, operator, time, tempfile
 
 from bup import _helpers
 from bup import compat
+from bup import io
 from bup.compat import argv_bytes, byte_int, nullcontext, pending_raise
 from bup.io import byte_stream, path_msg
 # This function should really be in helpers, not in bup.options.  But we
@@ -459,7 +460,13 @@ class BaseConn:
 
     def close(self):
         self._base_closed = True
-        while self._read(65536): pass
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, tb):
+        with pending_raise(exc_value, rethrow=False):
+            self.close()
 
     def __del__(self):
         assert self._base_closed
@@ -764,7 +771,7 @@ def _mmap_do(f, sz, flags, prot, close):
         # string has all the same behaviour of a zero-length map, ie. it has
         # no elements :)
         return ''
-    map = compat.mmap(f.fileno(), sz, flags, prot)
+    map = io.mmap(f.fileno(), sz, flags, prot)
     if close:
         f.close()  # map will persist beyond file close
     return map
@@ -826,18 +833,19 @@ if _mincore:
             pos = _fmincore_chunk_size * ci;
             msize = min(_fmincore_chunk_size, st.st_size - pos)
             try:
-                m = compat.mmap(fd, msize, mmap.MAP_PRIVATE, 0, 0, pos)
+                m = io.mmap(fd, msize, mmap.MAP_PRIVATE, 0, 0, pos)
             except mmap.error as ex:
                 if ex.errno == errno.EINVAL or ex.errno == errno.ENODEV:
                     # Perhaps the file was a pipe, i.e. "... | bup split ..."
                     return None
                 raise ex
-            try:
-                _mincore(m, msize, 0, result, ci * pages_per_chunk)
-            except OSError as ex:
-                if ex.errno == errno.ENOSYS:
-                    return None
-                raise
+            with m:
+                try:
+                    _mincore(m, msize, 0, result, ci * pages_per_chunk)
+                except OSError as ex:
+                    if ex.errno == errno.ENOSYS:
+                        return None
+                    raise
         return result
 
 
