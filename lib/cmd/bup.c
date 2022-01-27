@@ -225,7 +225,7 @@ static char *find_in_path(const char * const name, const char * const path)
 static char *find_exe_parent(const char * const argv_0)
 {
     char *candidate = NULL;
-    const char * const slash = index(argv_0, '/');
+    const char * const slash = strchr(argv_0, '/');
     if (slash) {
         candidate = strdup(argv_0);
         assert(candidate);
