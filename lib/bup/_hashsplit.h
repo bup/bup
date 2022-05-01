@@ -1,8 +1,5 @@
-#ifndef __HASHSPLIT_H
-#define __HASHSPLIT_H
+#pragma once
 
 extern PyTypeObject HashSplitterType;
 
 int hashsplit_init(void);
-
-#endif /* __HASHSPLIT_H */
