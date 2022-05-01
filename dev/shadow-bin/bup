@@ -1,0 +1,7 @@
+#!/bin/sh
+
+cat <<EOF
+error: something ran "bup"; bup imposter intentionally failing
+EOF
+
+exit 2
