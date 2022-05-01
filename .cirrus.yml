@@ -21,6 +21,9 @@ task:
   script: |
     set -xe
     dev/prep-for-debianish-build python3
+    apt install bup
+    export BUP_TEST_OTHER_BUP="$(command -v bup)"
+    "$BUP_TEST_OTHER_BUP" version
     dev/system-info
     adduser --disabled-password --gecos '' bup
     chown -R bup:bup .
@@ -61,6 +64,9 @@ task:
   script: |
     set -xe
     dev/prep-for-macos-build python3
+    brew install bup
+    export BUP_TEST_OTHER_BUP="$(command -v bup)"
+    "$BUP_TEST_OTHER_BUP" version
     export PKG_CONFIG_PATH=/usr/local/opt/readline/lib/pkgconfig
     dev/system-info
     make -j6 BUP_PYTHON_CONFIG=python3-config LDFLAGS=-L/usr/local/lib check

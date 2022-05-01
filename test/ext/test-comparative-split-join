@@ -1,0 +1,123 @@
+#!/usr/bin/env bash
+. wvtest.sh
+. wvtest-bup.sh
+. dev/lib.sh
+
+set -o pipefail
+
+if test -z "$BUP_TEST_OTHER_BUP"; then
+    WVSKIP 'Other bup not specified by BUP_TEST_OTHER_BUP; skipping test'
+    exit 0
+fi
+
+seed="${BUP_TEST_RANDOM_SEED:-$RANDOM}"
+
+WVSTART "split/join against $BUP_TEST_OTHER_BUP (random seed $seed)"
+
+top="$(WVPASS pwd)" || exit $?
+
+this_bup="${BUP_TEST_THIS_BUP:-$top/bup}"
+
+this-bup() { "$this_bup" -d "$this_bup_dir" "$@"; }
+other-bup() { "$BUP_TEST_OTHER_BUP" -d "$other_bup_dir" "$@"; }
+
+this_version="$(WVPASS this-bup version)"
+other_version="$(WVPASS other-bup version)"
+
+packname-flavor ()
+{
+    # In bb0e9cbf3900e65d2fddbe888e6cb21c59b308df the packfile name
+    # hashing was changed to match git, which itself may have changed
+    # over time.  Classify bup versions into categories based on the
+    # approach so we can know when we should expect the names to
+    # match.
+    local version="$1"
+    case "$version" in
+        # Versions are now generally 0.32 or 0.32+, but just look at
+        # the leading integers, and assume anything after indicates
+        # "newer".
+        0.?) echo 0 ;;
+
+        0.[0-9]) echo 0 ;;
+        0.[0-9][^0-9]*) echo 0 ;;
+
+        0.[12][0-9]) echo 0 ;;
+        0.[12][0-9][^0-9]*) echo 0 ;;
+
+        0.3[01]) echo 0 ;;
+        0.3[01][^0-9]*) echo 0 ;;
+
+        # Fix was added during 0.33~, but unfortunately, the
+        # base_version wasn't updated immediately after the release,
+        # so many of those commits report 0.32*.  Given that, just
+        # treat all 0.32* as "who knows".
+        0.32|0.32[^0-9]*) echo 1 ;;
+
+        *) echo 2 ;;
+    esac
+}
+
+case "$(packname-flavor "$this_version")""$(packname-flavor "$other_version")" in
+    00|22) test_packnames=true ;;
+    *) test_packnames='' ;;
+esac
+
+tmpdir="$(WVPASS wvmktempdir)" || exit $?
+
+WVPASS cd "$tmpdir"
+
+test-split-join()
+{
+    local size="$1" orig_dir
+
+    orig_dir="$(WVPASS pwd)"
+
+    WVSTART "split/join of $(($size / 1024))kb"
+
+    WVPASS mkdir split-join
+    WVPASS cd split-join
+
+    this_bup_dir="$(WVPASS pwd)/this-bup"
+    other_bup_dir="$(WVPASS pwd)/other-bup"
+
+    WVPASS this-bup init
+    WVPASS other-bup init
+
+    WVPASS this-bup random --seed "$RANDOM" "$size" > data
+
+    WVPASS other-bup split -t data > other-split-tree
+    WVPASS this-bup split -t data > this-split-tree
+    WVPASSEQ "$(<other-split-tree)" "$(<this-split-tree)"
+
+    WVPASS other-bup join "$(<this-split-tree)" > other-join.data
+    WVPASS this-bup join "$(<this-split-tree)" > this-join.data
+    WVPASS cmp other-join.data this-join.data
+
+    if ! test "$test_packnames"; then
+        # Make sure there's just one of each file in each repo and
+        # compare those via cmp, then delete them.
+        WVPASS test -f other-bup/objects/pack/pack-*.idx
+        WVPASS test -f other-bup/objects/pack/pack-*.pack
+        WVPASS test -f this-bup/objects/pack/pack-*.idx
+        WVPASS test -f this-bup/objects/pack/pack-*.pack
+        WVPASS cmp {other,this}-bup/objects/pack/pack-*.idx
+        WVPASS cmp {other,this}-bup/objects/pack/pack-*.pack
+        WVPASS rm {other,this}-bup/objects/pack/pack-*.idx
+        WVPASS rm {other,this}-bup/objects/pack/pack-*.pack
+        # The bloom filter includes the (differing) idx names
+        WVPASS rm {other,this}-bup/objects/pack/bup.bloom
+    fi
+    WVPASS "$top/dev/compare-trees" --no-times other-bup/ this-bup/
+
+    WVPASS cd "$orig_dir"
+    WVPASS rm -r split-join
+}
+
+test-split-join 0
+
+for i in {1..5}; do
+    test-split-join $(($RANDOM * 1024))
+done
+
+cd "$top"
+WVPASS rm -rf "$tmpdir"
