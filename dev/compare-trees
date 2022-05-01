@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -u
+set -euo pipefail
 
 # Test that src and dest trees are as identical as bup is capable of
 # making them.  For now, use rsync -niaHAX ...
@@ -20,22 +20,20 @@ EOF
 
 verify_content=" --checksum"
 
-while getopts "hcx" OPTION
-do
-    case "$OPTION" in
-        h) usage; exit 0;;
-        c) verify_content=" --checksum";;
-        x) verify_content="";;
-        ?) usage 1>&2; exit 1;;
+while test $# -gt 0; do
+    case "$1" in
+        -h) usage; exit 0;;
+        -c) verify_content=" --checksum"; shift;;
+        -x) verify_content=""; shift;;
+        -*) usage 1>&2; exit 2;;
+        [^-]*) break;;
     esac
 done
-
-shift $(($OPTIND - 1)) || exit $?
 
 if ! test $# -eq 2
 then
     usage 1>&2
-    exit 1
+    exit 2
 fi
 
 src="$1"
