@@ -4,6 +4,9 @@ MAKEFLAGS += --warn-undefined-variables
 SHELL := bash
 .DEFAULT_GOAL := all
 
+# So where possible we can make tests more reproducible
+export BUP_TEST_RANDOM_SEED ?= $(shell echo "$$RANDOM")
+
 # Guard against accidentally using/testing a local bup
 export PATH := $(CURDIR)/dev/shadow-bin:$(PATH)
 
