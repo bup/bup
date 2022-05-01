@@ -15,16 +15,22 @@ OPTIONS:
     Check file content (default)
   -x
     Don't check file content (rely on size/timestamps, etc.)
+  --times
+  --no-times
+    Check or don't check timestamps (checking is the default)
 EOF
 }
 
 verify_content=" --checksum"
+verify_times=' --times'
 
 while test $# -gt 0; do
     case "$1" in
         -h) usage; exit 0;;
         -c) verify_content=" --checksum"; shift;;
         -x) verify_content=""; shift;;
+        --times) verify_times=' --times'; shift;;
+        --no-times) verify_times=''; shift;;
         -*) usage 1>&2; exit 2;;
         [^-]*) break;;
     esac
@@ -42,7 +48,10 @@ dest="$2"
 tmpfile="$(mktemp /tmp/bup-test-XXXXXXX)" || exit $?
 trap "rm -rf '$tmpfile'" EXIT || exit $?
 
-rsync_opts="-niaH$verify_content --delete"
+rsync_opts="-rlpgoD" # --archive, without --times
+rsync_opts="$rsync_opts -niH --delete"
+rsync_opts="$rsync_opts$verify_content"
+rsync_opts="$rsync_opts$verify_times"
 
 rsync_version=$(rsync --version)
 if [[ ! "$rsync_version" =~ "ACLs" ]] || [[ "$rsync_version" =~ "no ACLs" ]]; then
