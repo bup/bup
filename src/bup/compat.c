@@ -14,6 +14,7 @@
 
 int bup_py_bytes_main(int argc, char **argv)
 {
+    assert(argc > 0);
     wchar_t **wargv = PyMem_RawMalloc(argc * sizeof(wchar_t *));
     if (!wargv)
         die(2, "memory insufficient to decode command line arguments");

@@ -329,6 +329,7 @@ prepend_lib_to_pythonpath(const char * const exec_path,
 
 int main(int argc, char **argv)
 {
+    assert(argc > 0);
     prog_argc = argc;
     prog_argv = argv;
     setup_bup_main_module();
@@ -356,6 +357,7 @@ int main(int argc, char **argv)
 
 int main(int argc, char **argv)
 {
+    assert(argc > 0);
     prog_argc = argc;
     prog_argv = argv;
     setup_bup_main_module();

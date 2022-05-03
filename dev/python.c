@@ -19,5 +19,6 @@
 
 int main(int argc, char **argv)
 {
+    assert(argc > 0);
     return bup_py_main (argc, argv);
 }
