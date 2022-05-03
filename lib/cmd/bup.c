@@ -66,8 +66,6 @@ static int setup_module(PyObject *mod)
     return 1;
 }
 
-#if PY_MAJOR_VERSION >= 3
-
 static struct PyModuleDef bup_main_module_def = {
     .m_base = PyModuleDef_HEAD_INIT,
     .m_name = "bup_main",
@@ -86,25 +84,6 @@ PyInit_bup_main(void) {
     }
     return mod;
 }
-
-#else // PY_MAJOR_VERSION < 3
-
-void PyInit_bup_main(void)
-{
-    PyObject *mod = Py_InitModule("bup_main", bup_main_methods);
-    if (mod == NULL) {
-        PyErr_SetString(PyExc_RuntimeError, "bup._helpers init failed");
-        return;
-    }
-    if (!setup_module(mod))
-    {
-        PyErr_SetString(PyExc_RuntimeError, "bup._helpers set up failed");
-        Py_DECREF(mod);
-        return;
-    }
-}
-
-#endif // PY_MAJOR_VERSION < 3
 
 static void
 setup_bup_main_module(void) {
@@ -338,10 +317,8 @@ prepend_lib_to_pythonpath(const char * const exec_path,
 
 #if PY_MAJOR_VERSION == 3 && PY_MINOR_VERSION < 8
 # define bup_py_main bup_py_bytes_main
-#elif PY_MAJOR_VERSION > 2
-# define bup_py_main Py_BytesMain
 #else
-# define bup_py_main Py_Main
+# define bup_py_main Py_BytesMain
 #endif
 
 #if defined(BUP_DEV_BUP_PYTHON) && defined(BUP_DEV_BUP_EXEC)
