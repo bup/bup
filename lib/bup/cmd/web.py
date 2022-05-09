@@ -403,10 +403,10 @@ def main(argv):
         if isinstance(address, InetAddress):
             sockets = tornado.netutil.bind_sockets(address.port, address.host)
             http_server.add_sockets(sockets)
-            print('Serving HTTP on %s:%d...' % sockets[0].getsockname()[0:2])
+            urlstr = f'http://{address.host}:{address.port}'
+            print(f'Serving HTTP on', urlstr)
             if opt.browser:
-                browser_addr = 'http://' + address[0] + ':' + str(address[1])
-                io_loop_pending.add_callback(lambda : webbrowser.open(browser_addr))
+                io_loop_pending.add_callback(lambda : webbrowser.open(urlstr))
         elif isinstance(address, UnixAddress):
             unix_socket = bind_unix_socket(address.path)
             http_server.add_socket(unix_socket)
