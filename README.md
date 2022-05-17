@@ -151,7 +151,7 @@ From source
     apt-get install python3-distutils
     apt-get install pkg-config linux-libc-dev libacl1-dev
     apt-get install gcc make acl attr rsync
-    apt-get isntall python3-pytest-xdist # optional (parallel tests)
+    apt-get install python3-pytest-xdist # optional (parallel tests)
     apt-get install par2 # optional (error correction)
     apt-get install libreadline-dev # optional (bup ftp)
     apt-get install python3-tornado # optional (bup web)
