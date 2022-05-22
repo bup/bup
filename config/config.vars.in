@@ -2,6 +2,10 @@ CONFIGURE_FILES=@CONFIGURE_FILES@
 GENERATED_FILES=@GENERATED_FILES@
 
 CC = @CC@
+CFLAGS = @CFLAGS@
+CPPFLAGS = @CPPFLAGS@
+LDFLAGS = @LDFLAGS@
+
 bup_config_cflags = @bup_config_cflags@
 bup_make=@bup_make@
 

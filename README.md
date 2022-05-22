@@ -222,6 +222,13 @@ From source
    `config/config.var/bup-python-config`, and you can change the
    selection by re-running `./configure`.
 
+- If you want to specify your own `CPPFLAGS`, `CFLAGS`, or `LDFLAGS`,
+  you can set them for individual `make` invocations, e.g. `make
+  CFLAGS=-O0 check`, or persistently via `./configure` with
+  `CFLAGS=-O0 ./configure`.  At the moment, `make clean` clears the
+  configuration, but we may change that at some point, perhaps by
+  adding and requiring a `make distclean` to clear the configuration.
+
 From binary packages
 --------------------
 

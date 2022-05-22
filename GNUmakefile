@@ -1,6 +1,5 @@
 
 MAKEFLAGS += --warn-undefined-variables
-OUTPUT_OPTION = -MMD -MP -o $@
 
 SHELL := bash
 .DEFAULT_GOAL := all
@@ -32,14 +31,13 @@ current_sampledata := test/sampledata/var/rev/v$(sampledata_rev)
 os := $(shell ($(pf); uname | sed 's/[-_].*//') $(isok))
 os := $(call shout,$(os),Unable to determine OS)
 
+# CFLAGS CPPFLAGS LDFLAGS are handled vis config/config.vars.in
+
 # Satisfy --warn-undefined-variables
-CFLAGS ?=
 DESTDIR ?=
-CPPFLAGS ?=
-LDFLAGS ?=
 TARGET_ARCH ?=
 
-bup_shared_cflags := -O2 -Wall -Werror -Wformat=2
+bup_shared_cflags := -O2 -Wall -Werror -Wformat=2 -MMD -MP
 bup_shared_cflags := -Wno-unknown-pragmas -Wsign-compare $(bup_shared_cflags)
 bup_shared_cflags := -D_FILE_OFFSET_BITS=64 $(bup_shared_cflags)
 bup_shared_cflags := $(bup_config_cflags) $(bup_shared_cflags)
@@ -160,8 +158,8 @@ embed_ldflags := $(bup_python_ldflags_embed) $(bup_shared_ldflags)
 config/config.h: config/config.vars
 clean_paths += config/config.h.tmp
 
-cc_bin = $(CC) $(embed_cflags) $(CFLAGS) $^ $(embed_ldflags) $(LDFLAGS) -fPIE \
-  -I src $(OUTPUT_OPTION)
+cc_bin = $(CC) $(embed_cflags) -I src $(CPPFLAGS) $(CFLAGS) $^ \
+  $(embed_ldflags) $(LDFLAGS) -fPIE -o $@
 
 clean_paths += dev/python-proposed
 generated_dependencies += dev/python-proposed.d
@@ -194,8 +192,8 @@ lib/cmd/bup: lib/cmd/bup.c src/bup/compat.c src/bup/io.c
 clean_paths += lib/bup/_helpers$(soext)
 generated_dependencies += lib/bup/_helpers.d
 lib/bup/_helpers$(soext): lib/bup/_helpers.c lib/bup/bupsplit.c
-	$(CC) $(helpers_cflags) $(CFLAGS) $^ \
-	  $(helpers_ldflags) $(LDFLAGS) $(OUTPUT_OPTION)
+	$(CC) $(helpers_cflags) $(CPPFLAGS) $(CFLAGS) $^ \
+	  $(helpers_ldflags) $(LDFLAGS) -o $@
 
 test/tmp:
 	mkdir test/tmp
