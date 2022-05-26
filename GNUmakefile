@@ -172,7 +172,7 @@ dev/python-proposed: dev/python.c src/bup/compat.c src/bup/io.c
 clean_paths += dev/python
 dev/python: dev/python-proposed
 	dev/validate-python $@-proposed
-	ln $@-proposed $@
+	cp -a $@-proposed $@
 
 clean_paths += dev/bup-exec
 generated_dependencies += dev/bup-exec.d
