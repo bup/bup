@@ -37,7 +37,8 @@ class Group:
     __slots__ = 'gr_name', 'gr_passwd', 'gr_gid', 'gr_mem'
     def __init__(self, name, passwd, gid, mem):
         assert isinstance(name, bytes)
-        assert isinstance(passwd, bytes)
+        # None was observed on Android
+        assert isinstance(passwd, bytes) or passwd is None
         for m in mem:
             assert isinstance(m, bytes)
         self.gr_name, self.gr_passwd, self.gr_gid, self.gr_mem = \
