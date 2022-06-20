@@ -168,12 +168,14 @@ checksum would be faster and/or better and/or have fewer screwy edge cases,
 we need your help!  Avery's out of control!  Join our mailing list!  Please! 
 Save us! ...  oh boy, I sure hope he doesn't read this)
 
-In any case, rollsum seems to do pretty well at its job. 
-You can find it in bupsplit.c.  Basically, it converts the last 64 bytes
-read into a 32-bit integer.  What we then do is take the lowest 13
-bits of the rollsum, and if they're all 1's, we consider that to be the end
-of a chunk.  This happens on average once every 2^13 = 8192 bytes, so the
-average chunk size is 8192 bytes.
+In any case, rollsum seems to do pretty well at its job.  You can find
+it in bupsplit.c.  Basically, it converts the last 64 bytes read into
+a 32-bit integer.  What we then do is take the lowest 13 bits of the
+rollsum, and if they're all 1's, we consider that to be the end of a
+chunk.  This happens on average once every 2^13 = 8192 bytes, so the
+average chunk size is 8192 bytes.  We also cap the maximum chunk size
+at four times the average chunk size, i.e. 4 * 2^13, to avoid having
+any arbitrarily large chunks.
 
 (Why 13 bits?  Well, we picked the number at random and... eugh.  You're
 getting the idea, right?  Join the mailing list and tell us why we're
@@ -242,25 +244,34 @@ after the 13 bits (marked 'x'):
 
   ...... '..x1'1111'1111'1111
 
-is actually ignored next. Now, let's say we use a 4-bit fanout. That means
-we'll break a series of chunks into its own tree object whenever the next
-4 bits of the rolling checksum are 1, in addition to the 13 lowest ones.
-Since the 13 lowest bits already have to be 1, the boundary of a group of
-chunks is necessarily also always the boundary of a particular chunk.
+is actually ignored (so the fanout starts just to the left of the x).
+Now, let's say we use a 4-bit fanout. That means we'll break a series
+of chunks into its own tree object whenever the next 4 bits of the
+rolling checksum are 1, in addition to the 13 lowest ones.  Since the
+13 lowest bits already have to be 1, the boundary of a group of chunks
+is necessarily also always the boundary of a particular chunk.
 
 And so on.  Eventually you'll have too many chunk groups, but you can group
-them into supergroups by using another 4 bits, and continue from there.
+them into supergroups by using another 4 bits, and continue from
+there.
 
-What you end up with is an actual tree of blobs - which git 'tree' objects
-are ideal to represent.  And if you think about it, just like the original
-list of chunks, the tree itself is pretty stable across file modifications. 
-Any one modification will only affect the chunks actually containing the
-modifications, thus only the groups containing those chunks, and so on up
-the tree.  Essentially, the number of changed git objects is O(log n)
-where n is the number of chunks.  Since log 200 GB, using a base of 16 or
-so, is not a very big number, this is pretty awesome.  Remember, any git
-object we *don't* change in a new backup is one we can reuse from last time,
-so the deduplication effect is pretty awesome.
+What you end up with is an actual tree of blobs - which git 'tree'
+objects are ideal to represent.  For example, with a fanout of 4,
+
+  ...... '1011'1111'1111' 'x1'1111'1111'1111
+
+would produce a tree two levels deep because there are 8 (two blocks
+of 4) contiguous 1 bits to the left of the ignored 14th bit.
+
+And if you think about it, just like the original list of chunks, the
+tree itself is pretty stable across file modifications.  Any one
+modification will only affect the chunks actually containing the
+modifications, thus only the groups containing those chunks, and so on
+up the tree.  Essentially, the number of changed git objects is O(log
+n) where n is the number of chunks.  Since log 200 GB, using a base of
+16 or so, is not a very big number, this is pretty awesome.  Remember,
+any git object we *don't* change in a new backup is one we can reuse
+from last time, so the deduplication effect is pretty awesome.
 
 Better still, the hashsplit-tree format is good for a) random instead of
 sequential access to data (which you can see in action with 'bup fuse'); and
