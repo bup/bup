@@ -5,6 +5,7 @@ import sys, time
 
 from bup import compat, hashsplit, git, options, client
 from bup.compat import argv_bytes, environ, nullcontext
+from bup.hashsplit import HashSplitter
 from bup.helpers import (add_error, hostname, log, parse_num,
                          qprogress, reprogress, saved_errors,
                          valid_save_name,
@@ -139,10 +140,10 @@ def split(opt, files, parent, out, pack_writer):
         tree = new_tree(shalist)
     else:
         last = 0
-        it = hashsplit.hashsplit_iter(files,
-                                      keep_boundaries=opt.keep_boundaries,
-                                      progress=prog)
-        for blob, level in it:
+        for blob, level in HashSplitter(files, progress=prog,
+                                        keep_boundaries=opt.keep_boundaries,
+                                        bits=hashsplit.BUP_BLOBBITS,
+                                        fanbits=hashsplit.fanbits()):
             hashsplit.total_split += len(blob)
             if opt.copy:
                 sys.stdout.write(str(blob))

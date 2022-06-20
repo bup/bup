@@ -14,19 +14,19 @@ GIT_MODE_FILE = 0o100644
 GIT_MODE_TREE = 0o40000
 GIT_MODE_SYMLINK = 0o120000
 
+HashSplitter = _helpers.HashSplitter
 
-def hashsplit_iter(files, keep_boundaries, progress):
-    # yield from ...
-    for buf, level in _helpers.HashSplitter(files, bits=BUP_BLOBBITS, progress=progress,
-                                            keep_boundaries=keep_boundaries,
-                                            fanbits=int(math.log(fanout or 128, 2))):
-        yield buf, level
-
+def fanbits():
+    return int(math.log(fanout or 128, 2))
 
 total_split = 0
 def split_to_blobs(makeblob, files, keep_boundaries, progress):
     global total_split
-    for (blob, level) in hashsplit_iter(files, keep_boundaries, progress):
+    for blob, level in HashSplitter(files,
+                                    keep_boundaries=keep_boundaries,
+                                    progress=progress,
+                                    bits=BUP_BLOBBITS,
+                                    fanbits=fanbits()):
         sha = makeblob(blob)
         total_split += len(blob)
         if progress_callback:

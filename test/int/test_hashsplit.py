@@ -1,21 +1,20 @@
 
 from __future__ import absolute_import
 from io import BytesIO
-import math
 from binascii import unhexlify
-import os
+import math, os
 
 from wvpytest import *
 
 from bup import hashsplit, _helpers
 from bup._helpers import HashSplitter
-from bup.hashsplit import BUP_BLOBBITS
+from bup.hashsplit import BUP_BLOBBITS, fanout
 
-# these test objects generate a # of bits per their key
-# Note that these were generated with a *fixed* algorithm
-# (there's a bug in the level decision), so we need to
-# adjust for that, but on the plus side we can use them
-# to test different bits settings
+# These test objects generate a number of least significant bits set
+# to one according to their key.  Note that these were generated with
+# a *fixed* algorithm (there's a bug in the level decision), so we
+# need to adjust for that, but on the plus side we can use them to
+# test different bits settings
 split_test_objs = {
     13: unhexlify('ded8f1fcf2f45dfadf3458'),
     14: unhexlify('f287ffeeffe1f0e1fa77b1de1837'),
@@ -37,155 +36,171 @@ split_test_objs = {
 
 def test_samples():
     for k in split_test_objs:
-        if k <= 21:
-            # First check that they have the right number of bits.
-            rsum = _helpers.rollsum(split_test_objs[k])
-            mask = (1 << (k + 1)) - 1
-            ones = (1 << k) - 1
-            WVPASSEQ(rsum & mask, ones)
 
-        # then also check that again, with the default (bits=13)
-        expected = k - 13
-        # algorithm ignores 1 bit after the split bits
-        if expected > 0:
-            expected -= 1
+        # Verify that the k least significant bits are 1 and that
+        # the next most significant bit is zero (i.e. that the
+        # rollsum of the data matched what we expect for this k).
+        rsum = _helpers.rollsum(split_test_objs[k])
+        ones = (1 << k) - 1
+        mask = (ones << 1) | 1
+        WVPASSEQ(rsum & mask, ones)
+
+        # Now check that for the test object a HashSplitter returns
+        # the right level and split blob (which by construction should
+        # be the input blob).
+        #
+        # The level should be the count of one bits more significant
+        # than the "bits" value...
+        exp_level = k - BUP_BLOBBITS
+        # ...after ignoring the bit immediately "above" the 13'th bit
+        # (quirk in the original algorithm -- see ./DESIGN).
+        if exp_level > 0:
+            exp_level -= 1
         hs = HashSplitter([BytesIO(split_test_objs[k])],
                           bits=BUP_BLOBBITS,
                           fanbits=1)
         blob, level = next(hs)
-        res = (k, len(blob), level)
-        WVPASSEQ(res, (k, len(split_test_objs[k]), expected))
+        WVPASSEQ(blob, split_test_objs[k])
+        WVPASSEQ(level, exp_level)
 
 def test_rolling_sums():
     WVPASS(_helpers.selftest())
 
 def test_fanout_behaviour():
-    old_fanout = hashsplit.fanout
+    for hashbits in 13, 14, 15:
+        def sb(pfx, level):
+            """Return tuple of split content and expected level (from table)."""
+            needed = hashbits + hashsplit.fanbits() * level
+            # internal algorithm ignores one bit after the split bits,
+            # adjust for that (if n > 0):
+            if level:
+                needed += 1
+            return b'\x00' * pfx + split_test_objs[needed], level
+        def end(n):
+            return b'\x00' * n, 0
+        # check a given sequence is handled correctly
+        def check(chunks_and_levels):
+            data = b''.join([x[0] for x in chunks_and_levels])
+            split = list(HashSplitter([BytesIO(data)], bits=hashbits,
+                                      fanbits=hashsplit.fanbits()))
+            WVPASSEQ(chunks_and_levels, split)
 
-    global hashbits
-
-    levels = lambda data: [(len(b), l) for b, l in
-        hashsplit.hashsplit_iter([BytesIO(data)], True, None)]
-    def hslevels(data):
-        global hashbits
-        return [(len(b), l) for b, l in
-            HashSplitter([BytesIO(data)], bits=hashbits,
-                         fanbits=int(math.log(hashsplit.fanout, 2)))]
-    # This is a tuple of max blob size (4 << 13 bytes) and expected level (0)
-    # Return tuple with split content and expected level (from table)
-    def sb(pfx, n):
-        needed = hashbits + int(math.log(hashsplit.fanout, 2)) * n
-        # internal algorithm ignores one bit after the split bits,
-        # adjust for that (if n > 0):
-        if n:
-            needed += 1
-        return (b'\x00' * pfx + split_test_objs[needed], n)
-    def end(n):
-        return (b'\x00' * n, 0)
-
-    # check a given sequence is handled correctly
-    def check(objs):
-        # old API allows only hashbits == 13
-        if hashbits == 13:
-            WVPASSEQ(levels(b''.join([x[0] for x in objs])), [(len(x[0]), x[1]) for x in objs])
-        WVPASSEQ(hslevels(b''.join([x[0] for x in objs])), [(len(x[0]), x[1]) for x in objs])
-
-    for hashbits in (13, 14, 15):
-        max_blob = (b'\x00' * (4 << hashbits), 0)
-        for hashsplit.fanout in (2, 4):
-            # never split - just max blobs
-            check([max_blob] * 4)
-            check([sb(0, 0)])
-            check([max_blob, sb(1, 3), max_blob])
-            check([sb(13, 1)])
-            check([sb(13, 1), end(200)])
-        hashsplit.fanout = 2
-        check([sb(0, 1), sb(30, 2), sb(20, 0), sb(10, 5)])
-        check([sb(0, 1), sb(30, 2), sb(20, 0), sb(10, 5), end(10)])
-
-    hashsplit.fanout = old_fanout
+        old_fanout = hashsplit.fanout
+        try:
+            # cf. max_blob in _hashsplit.c
+            max_blob = b'\x00' * (1 << hashbits + 2), 0
+            for hashsplit.fanout in 2, 4:
+                # never split - just max blobs
+                check([max_blob] * 4)
+                check([sb(0, 0)])
+                check([max_blob, sb(1, 3), max_blob])
+                check([sb(13, 1)])
+                check([sb(13, 1), end(200)])
+            hashsplit.fanout = 2
+            check([sb(0, 1), sb(30, 2), sb(20, 0), sb(10, 5)])
+            check([sb(0, 1), sb(30, 2), sb(20, 0), sb(10, 5), end(10)])
+        finally:
+            hashsplit.fanout = old_fanout
 
 def test_hashsplit_files(tmpdir):
-    fn = os.path.join(tmpdir, b'f1')
-    f = open(fn, 'wb')
-    sz = 0
-    for idx in range(10):
-        f.write(b'\x00' * 8192 * 4)
-        sz += 4 * 8192
-    f.close()
-    def o():
-        return open(fn, 'rb')
-    res = [(len(b), lvl) for b, lvl in HashSplitter([o(), o(), o()],
-                                                    bits=BUP_BLOBBITS)]
-    WVPASSEQ(res, [(32*1024, 0)] * 10 * 3)
+    # See HashSplitter_init for source of sizes
+    blob_size = 1 << BUP_BLOBBITS
+    max_blob_size = 1 << (BUP_BLOBBITS + 2)
+    null_path = os.path.join(tmpdir, b'nulls')
+    blobs_in_file = 10
+    max_blob = bytearray(max_blob_size)
+    with open(null_path, 'wb') as f:
+        for idx in range(blobs_in_file):
+            f.write(max_blob)
+    max_blob = None
 
-    def bio(n):
+    with open(null_path, 'rb') as z0, \
+         open(null_path, 'rb') as z1, \
+         open(null_path, 'rb') as z2:
+        res = [(len(b), lvl) for b, lvl in HashSplitter([z0, z1, z2],
+                                                        bits=BUP_BLOBBITS)]
+    WVPASSEQ(res, [(max_blob_size, 0)] * (blobs_in_file * 3))
+
+    def split_bytes(n):
         return BytesIO(split_test_objs[n])
     def ex(n):
-        return [(len(split_test_objs[n]), (n - 14) // 4)]
+        fanout_bits = math.log(fanout, 2)
+        # Add 1 because bup has always ignored one bit between the
+        # blob bits and the fanout bits.
+        return [(len(split_test_objs[n]),
+                 (n - (BUP_BLOBBITS + 1)) // fanout_bits)]
 
-    res = [(len(b), lvl) for b, lvl in HashSplitter([o(), bio(14), o()],
-                                                    bits=BUP_BLOBBITS)]
-    WVPASSEQ(res, 10 * [(32*1024, 0)] + ex(14) + 10 * [(32*1024, 0)])
+    with open(null_path, 'rb') as z0, \
+         open(null_path, 'rb') as z1:
+        res = [(len(b), lvl) for b, lvl in HashSplitter([z0, split_bytes(14), z1],
+                                                        bits=BUP_BLOBBITS)]
+    WVPASSEQ(res, (blobs_in_file * [(max_blob_size, 0)]
+                   + ex(14)
+                   + blobs_in_file * [(max_blob_size, 0)]))
 
-    res = [(len(b), lvl) for b, lvl in HashSplitter([bio(14), bio(15)],
-                                                    bits=BUP_BLOBBITS)]
+    res = [(len(b), lvl)
+           for b, lvl in HashSplitter([split_bytes(14), split_bytes(15)],
+                                      bits=BUP_BLOBBITS)]
     WVPASSEQ(res, ex(14) + ex(15))
 
-    res = [(len(b), lvl) for b, lvl in HashSplitter([bio(14), bio(27)],
-                                                    bits=BUP_BLOBBITS)]
+    res = [(len(b), lvl)
+           for b, lvl in HashSplitter([split_bytes(14), split_bytes(27)],
+                                      bits=BUP_BLOBBITS)]
     WVPASSEQ(res, ex(14) + ex(27))
+    os.remove(null_path)
 
 def test_hashsplit_boundaries():
-    # check with/without boundaries and not finding any split points
+    # See HashSplitter_init for source of sizes
+    blob_size = 1 << BUP_BLOBBITS
+    max_blob_size = 1 << (BUP_BLOBBITS + 2)
+
+    # Check keep_boundaries when the data has no split points
     def bio(s):
         return BytesIO(s)
-    hs = HashSplitter([bio(b'\x00' * 8192),
-                       bio(b'\x00' * 8192),
-                       bio(b'\x00' * 8192),
-                       bio(b'\x00' * 8192)],
+    nulls = bytearray(blob_size)
+    hs = HashSplitter([bio(nulls), bio(nulls), bio(nulls), bio(nulls)],
                       bits=BUP_BLOBBITS, keep_boundaries=False)
     res = [(len(b), lvl) for b, lvl in hs]
-    WVPASSEQ(res, [(4*8192, 0)])
+    WVPASSEQ(res, [(max_blob_size, 0)])
 
-    hs = HashSplitter([bio(b'\x00' * 8192),
-                       bio(b'\x00' * 8192),
-                       bio(b'\x00' * 8192),
-                       bio(b'\x00' * 8192)],
+    hs = HashSplitter([bio(nulls), bio(nulls), bio(nulls), bio(nulls)],
                       bits=BUP_BLOBBITS)
     res = [(len(b), lvl) for b, lvl in hs]
-    WVPASSEQ(res, 4 * [(8192, 0)])
+    WVPASSEQ(res, 4 * [(blob_size, 0)])
+    nulls = None
 
-    # check with/without boundaries with split points
-    def sbio(n):
+    # Check keep_boundaries when the data has internal split points
+    def split_bytes(n):
         return BytesIO(split_test_objs[n])
     def ex(n):
         p = n
-        if p > 13: p -= 1
-        return (len(split_test_objs[n]), (p - 13) // 4)
-
+        # Subtract 1 because bup has always ignored one bit between
+        # the blob bits and the fanout bits.
+        if p > BUP_BLOBBITS: p -= 1
+        fanout_bits = math.log(fanout, 2)
+        return (len(split_test_objs[n]), (p - BUP_BLOBBITS) // fanout_bits)
     exp = [ex(13), ex(14), ex(15)]
-    inputs = [sbio(13), sbio(14), sbio(15)]
-    hs = HashSplitter(inputs, bits=BUP_BLOBBITS)
-    res = [(len(b), lvl) for b, lvl in hs]
-    WVPASSEQ(res, exp)
-    inputs = [sbio(13), sbio(14), sbio(15)]
-    hs = HashSplitter(inputs, bits=BUP_BLOBBITS,
-                      keep_boundaries=False)
+    hs = HashSplitter([split_bytes(13), split_bytes(14), split_bytes(15)],
+                      bits=BUP_BLOBBITS)
     res = [(len(b), lvl) for b, lvl in hs]
     WVPASSEQ(res, exp)
 
-    # check with/without boundaries with found across boundary
+    hs = HashSplitter([split_bytes(13), split_bytes(14), split_bytes(15)],
+                      bits=BUP_BLOBBITS, keep_boundaries=False)
+    res = [(len(b), lvl) for b, lvl in hs]
+    WVPASSEQ(res, exp)
+
+    # Check keep_boundaries when the data has no internal split points
     data = split_test_objs[27]
     d1, d2 = data[:len(data) // 2], data[len(data) // 2:]
 
-    hs = HashSplitter([BytesIO(d1), BytesIO(d2)],
-                      bits=BUP_BLOBBITS)
+    hs = HashSplitter([bio(d1), bio(d2)], bits=BUP_BLOBBITS)
     res = [(len(b), lvl) for b, lvl in hs]
     WVPASSEQ(res, [(len(d1), 0), (len(d2), 0)])
 
-    hs = HashSplitter([BytesIO(d1), BytesIO(d2)],
-                      bits=BUP_BLOBBITS,
-                      keep_boundaries=False, fanbits=1)
+    hs = HashSplitter([bio(d1), bio(d2)],
+                      bits=BUP_BLOBBITS, keep_boundaries=False, fanbits=1)
     res = [(len(b), lvl) for b, lvl in hs]
-    WVPASSEQ(res, [(len(data), 27 - 13 - 1)])
+    # Subtract 1 because bup has always ignored one bit between the
+    # blob bits and the fanout bits.
+    WVPASSEQ(res, [(len(data), 27 - BUP_BLOBBITS - 1)])
