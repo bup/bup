@@ -22,14 +22,17 @@ class mmap(py_mmap.mmap):
     that aren't explicitly closed.
 
     '''
+    def __new__(cls, *args, **kwargs):
+        result = super().__new__(cls, *args, **kwargs)
+        result._bup_closed = True  # supports __del__
+        return result
 
     def __init__(self, *args, **kwargs):
-        self._bup_closed = True
         # Silence deprecation warnings.  mmap's current parent is
         # object, which accepts no params and as of at least 2.7
         # warns about them.
         if py_mmap.mmap.__init__ is not object.__init__:
-            super(mmap, self).__init__(self, *args, **kwargs)
+            super().__init__(self, *args, **kwargs)
         self._bup_closed = False
 
     def close(self):
