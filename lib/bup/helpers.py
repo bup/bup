@@ -2,7 +2,7 @@
 
 from __future__ import absolute_import, division
 from collections import namedtuple
-from contextlib import contextmanager
+from contextlib import ExitStack
 from ctypes import sizeof, c_void_p
 from math import floor
 from os import environ
@@ -31,15 +31,15 @@ def nullcontext_if_not(manager):
     return manager if manager is not None else nullcontext()
 
 
-@contextmanager
-def finalized(enter_result=None, finalize=None):
-    assert finalize
-    try:
-        yield enter_result
-    except BaseException as ex:
-        with pending_raise(ex):
-            finalize(enter_result)
-    finalize(enter_result)
+class finalized:
+    def __init__(self, enter_result=None, finalize=None):
+        assert finalize
+        self.finalize = finalize
+        self.enter_result = enter_result
+    def __enter__(self):
+        return self.enter_result
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.finalize(self.enter_result)
 
 
 sc_page_size = os.sysconf('SC_PAGE_SIZE')

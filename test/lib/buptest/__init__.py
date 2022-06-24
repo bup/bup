@@ -1,7 +1,6 @@
 
 from __future__ import absolute_import, print_function
 from collections import namedtuple
-from contextlib import contextmanager
 from os.path import abspath, basename, dirname, realpath
 from pipes import quote
 from subprocess import PIPE, Popen
