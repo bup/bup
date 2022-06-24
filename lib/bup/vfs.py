@@ -829,12 +829,14 @@ def tags_items(repo, names):
 
     def tag_item(oid):
         assert len(oid) == 20
+        cached = cache_get_commit_item(oid, need_meta=False)
+        if cached:
+            return cached
         oidx = hexlify(oid)
         it = repo.cat(oidx)
         _, typ, size = next(it)
         if typ == b'commit':
-            return cache_get_commit_item(oid, need_meta=False) \
-                or _commit_item_from_data(oid, b''.join(it))
+            return _commit_item_from_data(oid, b''.join(it))
         for _ in it: pass
         if typ == b'blob':
             return Item(meta=default_file_mode, oid=oid)
