@@ -1,11 +1,13 @@
 
-from __future__ import absolute_import, print_function
-import errno, os, stat, struct, tempfile
+from contextlib import ExitStack
+import errno, os, stat, struct
 
 from bup import metadata, xstat
 from bup._helpers import UINT_MAX, bytescmp
 from bup.compat import pending_raise
-from bup.helpers import (add_error, log, merge_iter, mmap_readwrite,
+from bup.helpers import (add_error,
+                         atomically_replaced_file,
+                         log, merge_iter, mmap_readwrite,
                          progress, qprogress, resolve_parent, slashappend)
 
 EMPTY_SHA = b'\0' * 20
@@ -540,6 +542,7 @@ class Writer:
     def __init__(self, filename, metastore, tmax):
         self.closed = False
         self.rootlevel = self.level = Level([], None)
+        self.pending_index = None
         self.f = None
         self.count = 0
         self.lastfile = None
@@ -548,9 +551,14 @@ class Writer:
         self.metastore = metastore
         self.tmax = tmax
         (dir,name) = os.path.split(filename)
-        ffd, self.tmpname = tempfile.mkstemp(b'.tmp', filename, dir)
-        self.f = os.fdopen(ffd, 'wb', 65536)
-        self.f.write(INDEX_HDR)
+        with ExitStack() as self.cleanup:
+            self.pending_index = atomically_replaced_file(self.filename,
+                                                          mode='wb',
+                                                          buffering=65536)
+            self.f = self.cleanup.enter_context(self.pending_index)
+            self.cleanup.enter_context(self.f)
+            self.f.write(INDEX_HDR)
+            self.cleanup = self.cleanup.pop_all()
 
     def __enter__(self):
         return self
@@ -560,12 +568,7 @@ class Writer:
             self.abort()
 
     def abort(self):
-        self.closed = True
-        f = self.f
-        self.f = None
-        if f:
-            f.close()
-            os.unlink(self.tmpname)
+        self.close(abort=True)
 
     def flush(self):
         if self.level:
@@ -578,14 +581,13 @@ class Writer:
             self.f.flush()
         assert(self.level == None)
 
-    def close(self):
+    def close(self, abort=False):
         self.closed = True
-        self.flush()
-        f = self.f
-        self.f = None
-        if f:
-            f.close()
-            os.rename(self.tmpname, self.filename)
+        with self.cleanup:
+            if abort:
+                self.pending_index.cancel()
+            else:
+                self.flush()
 
     def __del__(self):
         assert self.closed
@@ -633,7 +635,7 @@ class Writer:
 
     def new_reader(self):
         self.flush()
-        return Reader(self.tmpname)
+        return Reader(self.f.name)
 
 
 def _slashappend_or_add_error(p, caller):
