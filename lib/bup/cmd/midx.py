@@ -125,7 +125,7 @@ def _do_midx(outdir, outfilename, infilenames, prefixstr,
         debug1('midx: table size: %d (%d bits)\n' % (entries*4, bits))
 
         unlink(outfilename)
-        with atomically_replaced_file(outfilename, 'wb') as f:
+        with atomically_replaced_file(outfilename, 'w+b') as f:
             f.write(b'MIDX')
             f.write(struct.pack('!II', midx.MIDX_VERSION, bits))
             assert(f.tell() == 12)
