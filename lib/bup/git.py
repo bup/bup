@@ -4,17 +4,18 @@ interact with the Git data structures.
 """
 
 from __future__ import absolute_import, print_function
-import os, sys, zlib, subprocess, struct, stat, re, tempfile, glob
+import os, sys, zlib, subprocess, struct, stat, re, glob
 from array import array
 from binascii import hexlify, unhexlify
 from collections import namedtuple
+from contextlib import ExitStack
 from itertools import islice
+from shutil import rmtree
 
 from bup import _helpers, hashsplit, path, midx, bloom, xstat
 from bup.compat import (buffer,
                         byte_int, bytes_from_byte, bytes_from_uint,
                         environ,
-                        ExitStack,
                         pending_raise,
                         reraise)
 from bup.io import path_msg
@@ -28,6 +29,7 @@ from bup.helpers import (Sha1, add_error, chunkyreader, debug1, debug2,
                          mmap_read, mmap_readwrite,
                          nullcontext_if_not,
                          progress, qprogress, stat_if_exists,
+                         temp_dir,
                          unlink,
                          utc_offset_str)
 
@@ -780,7 +782,7 @@ class PackWriter(object):
         self.parentfd = None
         self.count = 0
         self.outbytes = 0
-        self.filename = None
+        self.tmpdir = None
         self.idx = None
         self.objcache_maker = objcache_maker
         self.objcache = None
@@ -808,24 +810,15 @@ class PackWriter(object):
 
     def _open(self):
         if not self.file:
-            objdir = dir = os.path.join(self.repo_dir, b'objects')
-            fd, name = tempfile.mkstemp(suffix=b'.pack', dir=objdir)
-            try:
-                self.file = os.fdopen(fd, 'w+b')
-            except:
-                os.close(fd)
-                raise
-            try:
-                self.parentfd = os.open(objdir, os.O_RDONLY)
-            except:
-                f = self.file
-                self.file = None
-                f.close()
-                raise
-            assert name.endswith(b'.pack')
-            self.filename = name[:-5]
-            self.file.write(b'PACK\0\0\0\2\0\0\0\0')
-            self.idx = PackIdxV2Writer()
+            with ExitStack() as err_stack:
+                objdir = dir = os.path.join(self.repo_dir, b'objects')
+                self.tmpdir = err_stack.enter_context(temp_dir(dir=objdir, prefix=b'pack-tmp-'))
+                self.file = err_stack.enter_context(open(self.tmpdir + b'/pack', 'w+b'))
+                self.parentfd = err_stack.enter_context(finalized(os.open(objdir, os.O_RDONLY),
+                                                                  lambda x: os.close(x)))
+                self.file.write(b'PACK\0\0\0\2\0\0\0\0')
+                self.idx = PackIdxV2Writer()
+                err_stack.pop_all()
 
     def _raw_write(self, datalist, sha):
         self._open()
@@ -914,6 +907,7 @@ class PackWriter(object):
 
     def _end(self, run_midx=True, abort=False):
         # Ignores run_midx during abort
+        self.tmpdir, tmpdir = None, self.tmpdir
         self.parentfd, pfd, = None, self.parentfd
         self.file, f = None, self.file
         self.idx, idx = None, self.idx
@@ -921,11 +915,7 @@ class PackWriter(object):
             with nullcontext_if_not(self.objcache), \
                  finalized(pfd, lambda x: x is not None and os.close(x)), \
                  nullcontext_if_not(f):
-                if not f:
-                    return None
-
-                if abort:
-                    os.unlink(self.filename + b'.pack')
+                if abort or not f:
                     return None
 
                 # update object count
@@ -945,13 +935,11 @@ class PackWriter(object):
                 fdatasync(f.fileno())
                 f.close()
 
-                idx.write(self.filename + b'.idx', packbin)
+                idx.write(tmpdir + b'/idx', packbin)
                 nameprefix = os.path.join(self.repo_dir,
                                           b'objects/pack/pack-' +  hexlify(packbin))
-                if os.path.exists(self.filename + b'.map'):
-                    os.unlink(self.filename + b'.map')
-                os.rename(self.filename + b'.pack', nameprefix + b'.pack')
-                os.rename(self.filename + b'.idx', nameprefix + b'.idx')
+                os.rename(tmpdir + b'/pack', nameprefix + b'.pack')
+                os.rename(tmpdir + b'/idx', nameprefix + b'.idx')
                 os.fsync(pfd)
                 if run_midx:
                     auto_midx(os.path.join(self.repo_dir, b'objects/pack'))
@@ -959,6 +947,8 @@ class PackWriter(object):
                     self.on_pack_finish(nameprefix)
                 return nameprefix
         finally:
+            if tmpdir:
+                rmtree(tmpdir)
             # Must be last -- some of the code above depends on it
             self.objcache = None
 
