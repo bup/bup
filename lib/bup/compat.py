@@ -1,15 +1,10 @@
 
-import os, sys
-
-py_maj = sys.version_info.major
-assert py_maj >= 3
-
 # pylint: disable=unused-import
 from contextlib import ExitStack, nullcontext
 from os import environb as environ
 from os import fsdecode, fsencode
 from shlex import quote
-
+import os, sys
 
 def hexstr(b):
     """Return hex string (not bytes as with hexlify) representation of b."""

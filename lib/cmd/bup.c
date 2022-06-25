@@ -7,6 +7,14 @@
 //   http://docs.python.org/3/c-api/intro.html#include-files
 #include <Python.h>
 
+#if PY_MAJOR_VERSION < 3 || (PY_MAJOR_VERSION == 3 && PY_MINOR_VERSION < 7)
+#define BUP_STR(x) #x
+#define BUP_XSTR(x) BUP_STR(x)
+#pragma message "Python versions older than 3.7 are not supported; detected X.Y " \
+    BUP_XSTR(PY_MAJOR_VERSION) "." BUP_XSTR(PY_MINOR_VERSION)
+#error "Halting"
+#endif
+
 #include <libgen.h>
 #include <limits.h>
 #include <stdarg.h>
