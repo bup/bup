@@ -1,13 +1,19 @@
 import pytest
 
-def WVPASS(cond = True):
-    assert cond
+def WVPASS(cond = True, fail_value=None):
+    if fail_value:
+        assert cond, fail_value
+    else:
+        assert cond
 
 def WVFAIL(cond = True):
     assert not cond
 
-def WVPASSEQ(a, b):
-    assert a == b
+def WVPASSEQ(a, b, fail_value=None):
+    if fail_value:
+        assert a == b, fail_value
+    else:
+        assert a == b
 
 def WVPASSNE(a, b):
     assert a != b
