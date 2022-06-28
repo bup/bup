@@ -509,6 +509,11 @@ class Client:
 # FIXME: disentangle this (stop inheriting) from PackWriter
 class PackWriter_Remote(git.PackWriter):
 
+    def __new__(cls, *args, **kwargs):
+        result = super().__new__(cls)
+        result.remote_closed = True  # supports __del__
+        return result
+
     def __init__(self, conn, objcache_maker, suggest_packs,
                  onopen, onclose,
                  ensure_busy,
