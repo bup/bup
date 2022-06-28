@@ -136,6 +136,11 @@ From source
  - Install the required python libraries (including the development
    libraries).
 
+   For `bup fuse` you will need to install
+   [python-fuse](https://github.com/libfuse/python-fuse) rather than
+   [fusepy](https://github.com/fusepy/fusepy).  For example, in
+   Debian, install python3-fuse rather than python3-fusepy.
+
    On very recent Debian/Ubuntu versions, this may be sufficient (run
    as root):
 
