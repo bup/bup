@@ -18,6 +18,7 @@ if sys.version_info[0] > 2:
         fuse_ver = fuse.__version__.split('.')
         fuse_ver_maj = int(fuse_ver[0])
     except:
+        from bup.helpers import log
         log('error: cannot determine the fuse major version; please report',
             file=sys.stderr)
         sys.exit(2)
