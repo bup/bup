@@ -30,7 +30,6 @@
  */
 #include "bupsplit.h"
 #include <stdint.h>
-#include <memory.h>
 #include <stdlib.h>
 #include <stdio.h>
 
@@ -41,10 +40,16 @@
 // slightly worse than the librsync value of 31 for my arbitrary test data.
 #define ROLLSUM_CHAR_OFFSET 31
 
+#if defined(__has_builtin)
+#if __has_builtin(__builtin_ctz)
+#define BUPSLIT_HAS_BUILTIN_CTZ 1
+#else
+#endif
+#endif
+
+
 typedef struct {
     unsigned s1, s2;
-    uint8_t window[BUP_WINDOWSIZE];
-    int wofs;
 } Rollsum;
 
 
@@ -60,19 +65,15 @@ static void rollsum_init(Rollsum *r)
 {
     r->s1 = BUP_WINDOWSIZE * ROLLSUM_CHAR_OFFSET;
     r->s2 = BUP_WINDOWSIZE * (BUP_WINDOWSIZE-1) * ROLLSUM_CHAR_OFFSET;
-    r->wofs = 0;
-    memset(r->window, 0, BUP_WINDOWSIZE);
 }
 
 
-// For some reason, gcc 4.3 (at least) optimizes badly if find_ofs()
-// is static and rollsum_roll is an inline function.  Let's use a macro
-// here instead to help out the optimizer.
-#define rollsum_roll(r, ch) do { \
-    rollsum_add((r), (r)->window[(r)->wofs], (ch)); \
-    (r)->window[(r)->wofs] = (ch); \
-    (r)->wofs = ((r)->wofs + 1) % BUP_WINDOWSIZE; \
-} while (0)
+static void rollsum_roll(Rollsum *r, const unsigned char *buf, size_t offset)
+{
+    unsigned char in = buf[offset];
+    unsigned char out = (offset >= BUP_WINDOWSIZE) ? buf[offset - BUP_WINDOWSIZE] : 0;
+    rollsum_add(r, out, in);
+}
 
 
 static uint32_t rollsum_digest(Rollsum *r)
@@ -86,9 +87,30 @@ static uint32_t rollsum_sum(uint8_t *buf, size_t ofs, size_t len)
     size_t count;
     Rollsum r;
     rollsum_init(&r);
-    for (count = ofs; count < len; count++)
-	rollsum_roll(&r, buf[count]);
+    buf += ofs;
+    len -= ofs;
+    for (count = 0; count < len; count++)
+        rollsum_roll(&r, buf, count);
     return rollsum_digest(&r);
+}
+
+static int count_digest_bits(unsigned digest)
+{
+    int bits = BUP_BLOBBITS;
+    // For compatibility with previous impl, ignore the next bit as well
+    digest >>= BUP_BLOBBITS + 1;
+
+#if defined(BUPSLIT_HAS_BUILTIN_CTZ)
+    // ~digest will never be 0, since we shift in zeros (which become ones)
+    bits += __builtin_ctz(~digest);
+#else
+    while (digest & 1) {
+        bits += 1;
+        digest >>= 1;
+    }
+#endif
+
+    return bits;
 }
 
 
@@ -98,20 +120,15 @@ int bupsplit_find_ofs(const unsigned char *buf, int len, int *bits)
     int count;
     
     rollsum_init(&r);
-    for (count = 0; count < len; count++)
-    {
-	rollsum_roll(&r, buf[count]);
-	if ((r.s2 & (BUP_BLOBSIZE-1)) == ((~0) & (BUP_BLOBSIZE-1)))
-	{
-	    if (bits)
-	    {
-		unsigned rsum = rollsum_digest(&r);
-		rsum >>= BUP_BLOBBITS;
-		for (*bits = BUP_BLOBBITS; (rsum >>= 1) & 1; (*bits)++)
-		    ;
-	    }
-	    return count+1;
-	}
+    for (count = 0; count < len; count++) {
+        rollsum_roll(&r, buf, count);
+        if ((r.s2 & (BUP_BLOBSIZE - 1)) == (BUP_BLOBSIZE - 1)) {
+            if (bits) {
+                unsigned rsum = rollsum_digest(&r);
+                *bits = count_digest_bits(rsum);
+            }
+            return count + 1;
+        }
     }
     return 0;
 }
@@ -128,12 +145,12 @@ int bupsplit_selftest()
     
     srandom(1);
     for (count = 0; count < BUP_SELFTEST_SIZE; count++)
-	buf[count] = random();
-    
+        buf[count] = random();
+
     sum1a = rollsum_sum(buf, 0, BUP_SELFTEST_SIZE);
     sum1b = rollsum_sum(buf, 1, BUP_SELFTEST_SIZE);
     sum2a = rollsum_sum(buf, BUP_SELFTEST_SIZE - BUP_WINDOWSIZE*5/2,
-			BUP_SELFTEST_SIZE - BUP_WINDOWSIZE);
+                             BUP_SELFTEST_SIZE - BUP_WINDOWSIZE);
     sum2b = rollsum_sum(buf, 0, BUP_SELFTEST_SIZE - BUP_WINDOWSIZE);
     sum3a = rollsum_sum(buf, 0, BUP_WINDOWSIZE+3);
     sum3b = rollsum_sum(buf, 3, BUP_WINDOWSIZE+3);
