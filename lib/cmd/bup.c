@@ -120,7 +120,7 @@ static char *exe_parent_dir(const char * const argv_0) {
     return abs_parent;
 }
 
-#elif defined(__FreeBSD__) || defined(__NetBSD__)
+#elif defined(__FreeBSD__)
 
 static char *exe_path ()
 {
@@ -145,7 +145,7 @@ static char *exe_parent_dir(const char * const argv_0)
     return parent;
 }
 
-#else // not defined(__FreeBSD__) || defined(__NetBSD__)
+#else // not defined(__FreeBSD__)
 
 /// Use /proc if possible, and if all else fails, search in the PATH
 
