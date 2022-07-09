@@ -968,6 +968,7 @@ AC_OUTPUT () {
     AC_SUB 'GENERATED_FILES' "$*"
     AC_SUB 'CFLAGS'  "$AC_CFLAGS"
     AC_SUB 'FCFLAGS' "$AC_FCFLAGS"
+    AC_SUB 'CPPFLAGS' "$AC_CPPFLAGS"
     AC_SUB 'CXXFLAGS' "$AC_CXXFLAGS"
     AC_SUB 'LDFLAGS' "$AC_LDFLAGS"
     AC_SUB 'srcdir'  "$AC_SRCDIR"
@@ -990,7 +991,7 @@ AC_OUTPUT () {
 	Q=\'
 	cat - > config.cmd << EOF
 #! /bin/sh
-${CXX:+CXX=${Q}${CXX}${Q}} ${CXXFLAGS:+CXXFLAGS=${Q}${CXXFLAGS}${Q}} ${FC:+FC=${Q}${FC}${Q}} ${FCFLAGS:+FCFLAGS=${Q}${FCFLAGS}${Q}} ${CC:+CC=${Q}${CC}${Q}} ${CFLAGS:+CFLAGS=${Q}${CFLAGS}${Q}} $ac_progname $ac_configure_command
+${CXX:+CXX=${Q}${CXX}${Q}} ${CPPFLAGS:+CPPFLAGS=${Q}${CPPFLAGS}${Q}} ${CXXFLAGS:+CXXFLAGS=${Q}${CXXFLAGS}${Q}} ${FC:+FC=${Q}${FC}${Q}} ${FCFLAGS:+FCFLAGS=${Q}${FCFLAGS}${Q}} ${CC:+CC=${Q}${CC}${Q}} ${CFLAGS:+CFLAGS=${Q}${CFLAGS}${Q}} $ac_progname $ac_configure_command
 EOF
 	chmod +x config.cmd
 
