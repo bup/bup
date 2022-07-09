@@ -492,7 +492,7 @@ EOF
 
 	if [ "$CFLAGS" ]; then
 	    test "$CFLAGS" && echo "validating CFLAGS=${CFLAGS}"
-	    if $AC_CC $CFLAGS -o "$__ac_tmpdir/ngc$$.o" "$__ac_tmpdir/ngc$$.c" ; then
+	    if $AC_CC $CFLAGS -o "$__ac_tmpdir/ngc$$" "$__ac_tmpdir/ngc$$.c" ; then
 		AC_CFLAGS=${CFLAGS:-"-g"}
 		test "$CFLAGS" && echo "CFLAGS=\"${CFLAGS}\" are okay"
 	    elif [ "$CFLAGS" ]; then
@@ -502,8 +502,9 @@ EOF
 	    AC_CFLAGS=-g
 	fi
 	if [ "$LDFLAGS" ]; then
-	    test "$LDFLAGS" && echo "validating LDFLAGS=${LDFLAGS}"
-	    if $AC_CC $LDFLAGS -o "$__ac_tmpdir/ngc$$" "$__ac_tmpdir/ngc$$.o"; then
+	    echo "validating LDFLAGS=${LDFLAGS}"
+            $AC_CC $AC_CFLAGS -c -o "$__ac_tmpdir/ngc$$.o" "$__ac_tmpdir/ngc$$.c"
+            if $AC_CC $AC_CFLAGS $LDFLAGS -o "$__ac_tmpdir/ngc$$" "$__ac_tmpdir/ngc$$.o"; then
 		AC_LDFLAGS=${LDFLAGS:-"-g"}
 		test "$LDFLAGS" && TLOG "LDFLAGS=\"${LDFLAGS}\" are okay"
 	    elif [ "$LDFLAGS" ]; then
