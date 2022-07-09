@@ -2,7 +2,7 @@
 task:
   name: debian check/lint root
   container:
-    image: debian:buster
+    image: debian:bullseye
     cpu: 4
     memory: 2
   script: |
@@ -15,7 +15,7 @@ task:
 task:
   name: debian long-check
   container:
-    image: debian:buster
+    image: debian:bullseye
     cpu: 4
     memory: 2
   script: |
@@ -33,7 +33,7 @@ task:
 task:
   name: debian check
   container:
-    image: debian:buster
+    image: debian:bullseye
     cpu: 4
     memory: 2
   script: |
@@ -55,12 +55,13 @@ task:
     set -xe
     dev/prep-for-freebsd-build python3
     dev/system-info
-    BUP_PYTHON_CONFIG=python3.8-config make -j6 check
+    BUP_PYTHON_CONFIG=python3.9-config make -j6 check
 
 task:
   name: macos check
-  osx_instance:
-    image: catalina-base
+  macos_instance:
+    # https://cirrus-ci.org/guide/macOS/
+    image: ghcr.io/cirruslabs/macos-monterey-base:latest
   script: |
     set -xe
     dev/prep-for-macos-build python3
