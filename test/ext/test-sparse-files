@@ -21,7 +21,7 @@ WVPASS cd "$tmpdir"
 block_size=$(bup-cfg-py -c \
   "import os; print(getattr(os.stat('.'), 'st_blksize', 0)) or $mb * 3") \
     || exit $?
-data_size=$((block_size * 10))
+data_size=$((block_size * 20))
 readonly block_size data_size
 
 WVPASS dd if=/dev/zero of=test-sparse-probe seek="$data_size" bs=1 count=1
