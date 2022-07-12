@@ -96,6 +96,46 @@ setup_bup_main_module(void) {
         die(2, "unable to register bup_main module\n");
 }
 
+/*
+ * Older realpath implementations (e.g. 4.4BSD) required the second
+ * argument to be non-NULL, and then POSIX added the option of NULL
+ * with the semantics of malloc'ing a big-enough buffer.  Define a
+ * helper function with the NULL semantics to accomodate older
+ * platforms.
+ *
+ * gnulib has a list of systems that are known to reject NULL as the
+ * 2nd argument:
+ *   https://www.gnu.org/software/gnulib/manual/html_node/realpath.html
+ */
+
+#define BUP_HAVE_POSIX_REALPATH
+
+// FreeBSD < 7: bup's FreeBSD code does not use realpath(3)
+#if defined(__NetBSD__)
+#  if !__NetBSD_Prereq__(7,0,0)
+#    undef BUP_HAVE_POSIX_REALPATH
+#  endif
+// OpenBSD: https://cvsweb.openbsd.org/cgi-bin/cvsweb/src/sys/sys/param.h.diff?r1=1.91&r2=1.92&f=h
+#elif defined(__OpenBSD__) && __OpenBSD__ < 201111
+#  undef BUP_HAVE_POSIX_REALPATH
+#endif
+
+char *
+bup_realpath(const char *pathname)
+{
+#ifdef BUP_HAVE_POSIX_REALPATH
+    return realpath(pathname, NULL);
+#else
+    char resolvedname[PATH_MAX];
+    char *ret = realpath(pathname, resolvedname);
+    if (ret != NULL) {
+        assert(ret == resolvedname);
+        ret = strdup(ret);
+    }
+    return ret;
+#endif
+}
+
 #if defined(__APPLE__) && defined(__MACH__)
 
 static char *exe_parent_dir(const char * const argv_0) {
@@ -110,7 +150,7 @@ static char *exe_parent_dir(const char * const argv_0) {
     }
     if(rc != 0) die(2, "unable to find executable path\n");
     char *path = mpath ? mpath : spath;
-    char *abs_exe = realpath(path, NULL);
+    char *abs_exe = bup_realpath(path);
     if (!abs_exe)
         die(2, "cannot resolve path (%s): %s\n", strerror(errno), path);
     char * const abs_parent = strdup(dirname(abs_exe));
@@ -215,7 +255,7 @@ static char *find_exe_parent(const char * const argv_0)
                 argv_0);
         char *path_exe = find_in_path(argv_0, env_path);
         if (path_exe) {
-            char * abs_exe = realpath(path_exe, NULL);
+            char * abs_exe = bup_realpath(path_exe);
             if (!abs_exe)
                 die(2, "cannot resolve path (%s): %s\n",
                     strerror(errno), path_exe);
@@ -226,7 +266,7 @@ static char *find_exe_parent(const char * const argv_0)
     if (!candidate)
         return NULL;
 
-    char * const abs_exe = realpath(candidate, NULL);
+    char * const abs_exe = bup_realpath(candidate);
     if (!abs_exe)
         die(2, "cannot resolve path (%s): %s\n", strerror(errno), candidate);
     free(candidate);
