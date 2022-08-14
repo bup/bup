@@ -308,8 +308,7 @@ def main(argv):
                 if opt.hash:
                     line += hexlify(ent.sha) + b' '
                 if opt.long:
-                    line += b'%7s %7s ' % (oct(ent.mode).encode('ascii'),
-                                           oct(ent.gitmode).encode('ascii'))
+                    line += f'{ent.mode:07o} {ent.gitmode:07o} '.encode('ascii')
                 out.write(line + (name or b'./') + b'\n')
 
     if opt.check and (opt['print'] or opt.status or opt.modified or opt.update):
