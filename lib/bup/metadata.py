@@ -573,7 +573,7 @@ class Metadata:
                 # (or group) doesn't exist
                 raise ApplyError("POSIX1e ACL: can't create %r for %r"
                                  % (acls, path_msg(path)))
-            elif e.errno == errno.EPERM or e.errno == errno.EOPNOTSUPP:
+            elif e.errno in (errno.EPERM, errno.EOPNOTSUPP):
                 raise ApplyError('POSIX1e ACL applyto: %s' % e)
             else:
                 raise
@@ -695,8 +695,7 @@ class Metadata:
                 try:
                     xattr.set(path, k, v, nofollow=True)
                 except IOError as e:
-                    if e.errno == errno.EPERM \
-                            or e.errno == errno.EOPNOTSUPP:
+                    if e.errno in (errno.EPERM, errno.EOPNOTSUPP):
                         raise ApplyError('xattr.set %r: %s' % (path_msg(path), e))
                     else:
                         raise

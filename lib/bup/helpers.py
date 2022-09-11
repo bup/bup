@@ -856,7 +856,7 @@ if _mincore:
             try:
                 m = io.mmap(fd, msize, mmap.MAP_PRIVATE, 0, 0, pos)
             except mmap.error as ex:
-                if ex.errno == errno.EINVAL or ex.errno == errno.ENODEV:
+                if ex.errno in (errno.EINVAL, errno.ENODEV):
                     # Perhaps the file was a pipe, i.e. "... | bup split ..."
                     return None
                 raise ex
