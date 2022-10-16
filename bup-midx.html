@@ -5,20 +5,21 @@
   <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <meta name="author" content="Avery Pennarun apenwarr@gmail.com" />
-  <meta name="dcterms.date" content="2021-01-09" />
-  <title>bup-midx(1) Bup 0.32</title>
-  <style type="text/css">
-      code{white-space: pre-wrap;}
-      span.smallcaps{font-variant: small-caps;}
-      span.underline{text-decoration: underline;}
-      div.column{display: inline-block; vertical-align: top; width: 50%;}
+  <title>bup-midx(1) Bup 0.33</title>
+  <style>
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    span.underline{text-decoration: underline;}
+    div.column{display: inline-block; vertical-align: top; width: 50%;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    ul.task-list{list-style: none;}
   </style>
 </head>
 <body>
 <header id="title-block-header">
-<h1 class="title">bup-midx(1) Bup 0.32</h1>
+<h1 class="title">bup-midx(1) Bup 0.33</h1>
 <p class="author">Avery Pennarun <a href="mailto:apenwarr@gmail.com" class="email">apenwarr@gmail.com</a></p>
-<p class="date">2021-01-09</p>
+<p class="date">0.33</p>
 </header>
 <h1 id="name">NAME</h1>
 <p>bup-midx - create a multi-index (<code>.midx</code>) file from several <code>.idx</code> files</p>
@@ -39,7 +40,7 @@
 <dd>force generation of a single new <code>.midx</code> file containing <em>all</em> your <code>.idx</code> files, even if other <code>.midx</code> files already exist. This will result in the fastest backup performance, but may take a long time to run.
 </dd>
 <dt>--dir=<em>packdir</em></dt>
-<dd>specify the directory containing the <code>.idx</code>/<code>.midx</code> files to work with. The default is $BUP_DIR/objects/pack and $BUP_DIR/indexcache/*.
+<dd>specify the directory containing the <code>.idx</code>/<code>.midx</code> files to work with. The default is <code>$BUP_DIR/objects/pack</code>.
 </dd>
 <dt>--max-files</dt>
 <dd>maximum number of <code>.idx</code> files to open at a time. You can use this if you have an especially small number of file descriptors available, so that midx can complete (though possibly non-optimally) even if it can’t open all your <code>.idx</code> files at once. The default value of this option should be fine for most people.
