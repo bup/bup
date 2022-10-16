@@ -80,16 +80,13 @@ Reasons you might want to avoid bup
    Solaris, or Windows (with Cygwin, and WSL).  Patches to support
    other platforms are welcome.
 
- - Until resolved, a [glibc bug](https://sourceware.org/bugzilla/show_bug.cgi?id=26034)
-   might cause bup to crash on startup for some (unusual) command line
-   argument values, when bup is configured to use Python 3.
-
  - Any items in "Things that are stupid" below.
 
 
 Notable changes introduced by a release
 =======================================
 
+ - <a href="note/0.33-from-0.32.md">Changes in 0.33 as compared to 0.32</a>
  - <a href="note/0.32-from-0.31.md">Changes in 0.32 as compared to 0.31</a>
  - <a href="note/0.31-from-0.30.1.md">Changes in 0.31 as compared to 0.30.1</a>
  - <a href="note/0.30.1-from-0.30.md">Changes in 0.30.1 as compared to 0.30</a>
@@ -106,9 +103,9 @@ Notable changes introduced by a release
 Test status
 ===========
 
-| master | 0.30.x | 0.29.x |
-|--------|--------|--------|
-| [![master branch test status](https://api.cirrus-ci.com/github/bup/bup.svg?branch=master)](https://cirrus-ci.com/github/bup/bup) | [![0.30 branch test status](https://api.cirrus-ci.com/github/bup/bup.svg?branch=0.30.x)](https://cirrus-ci.com/github/bup/bup) | [![0.29 branch test status](https://api.cirrus-ci.com/github/bup/bup.svg?branch=0.29.x)](https://cirrus-ci.com/github/bup/bup) |
+| master |
+|--------|
+| [![master branch test status](https://api.cirrus-ci.com/github/bup/bup.svg?branch=master)](https://cirrus-ci.com/github/bup/bup) |
 
 Getting started
 ===============
@@ -127,11 +124,11 @@ From source
    bup, please check out the latest stable release like this:
 
     ```sh
-    git checkout 0.32
+    git checkout 0.33
     ```
 
    You can see the latest stable release here:
-   https://github.com/bup/bup/releases.
+   https://github.com/bup/bup/tags
 
  - Install the required python libraries (including the development
    libraries).
@@ -151,7 +148,7 @@ From source
    Otherwise try this:
 
     ```sh
-    apt-get install python3.7-dev python3-fuse
+    apt-get install python3-dev python3-fuse
     apt-get install python3-pyxattr python3-pytest
     apt-get install python3-distutils
     apt-get install pkg-config linux-libc-dev libacl1-dev
@@ -268,9 +265,9 @@ Using bup
     ...
     ```
 
- - Initialize the default BUP_DIR (~/.bup -- you can choose another by
-   either specifying `bup -d DIR ...` or setting the `BUP_DIR`
-   environment variable for a command):
+ - Initialize the default bup repository (~/.bup -- you can choose
+   another by either specifying `bup -d DIR ...` or setting the
+   `BUP_DIR` environment variable for a command):
 
     ```sh
     bup init
@@ -427,10 +424,8 @@ That's all there is to it!
 Notes on FreeBSD
 ----------------
 
-- FreeBSD's default 'make' command doesn't like bup's Makefile. In order to
-  compile the code, run tests and install bup, you need to install GNU Make
-  from the port named 'gmake' and use its executable instead in the commands
-  seen above. (i.e. 'gmake test' runs bup's test suite)
+- In order to compile the code, run tests and install bup, you need to
+  install GNU Make from the `gmake` port.
 
 - Python's development headers are automatically installed with the 'python'
   port so there's no need to install them separately.
@@ -599,18 +594,6 @@ mailing list (see below) if you'd like to help.
     file changes, we immediately send an image of it to the server.  We could
     give the continuous-backup process a really low CPU and I/O priority so
     you wouldn't even know it was running.
-
- - bup only has experimental support for pruning old backups.
-
-   While you should now be able to drop old saves and branches with
-   `bup rm`, and reclaim the space occupied by data that's no longer
-   needed by other backups with `bup gc`, these commands are
-   experimental, and should be handled with great care.  See the
-   man pages for more information.
-
-   Unless you want to help test the new commands, one possible
-   workaround is to just start a new BUP_DIR occasionally,
-   i.e. bup-2013, bup-2014...
 
  - bup has never been tested on anything but Linux, FreeBSD, NetBSD,
    OS X, and Windows+Cygwin.
