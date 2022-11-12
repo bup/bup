@@ -1,4 +1,5 @@
 
+from pathlib import Path
 from subprocess import CalledProcessError
 import pytest, subprocess, sys
 
@@ -75,7 +76,7 @@ def pytest_collect_file(parent, path):
     base = path.basename
     if base.startswith('test-') and not base.endswith('~'):
         try:
-            item = BupSubprocTestFile.from_parent(parent, fspath=path)
+            item = BupSubprocTestFile.from_parent(parent, path=Path(path))
         except AttributeError:
             item = BupSubprocTestFile(path, parent)
         if base == 'test-release-archive':
