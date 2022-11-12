@@ -205,14 +205,40 @@ static int HashSplitter_nextfile(HashSplitter *self)
 
         int rc = 0;
         unsigned char *addr = mmap(NULL, len, PROT_NONE, MAP_PRIVATE, self->fd, pos);
-        if (addr != MAP_FAILED)
-            rc = mincore(addr, len, mcore + outoffs);
-        if ((addr == MAP_FAILED) || (rc < 0)) {
+        if (addr == MAP_FAILED) {
             free(mcore);
-            // FIXME: check for error and chain exceptions someday
-            if (addr == MAP_FAILED)
-                munmap(addr, len);
             PyEval_RestoreThread(thread_state);
+
+            if (errno == EINVAL || errno == ENODEV)
+                // Perhaps the file was a pipe, i.e. "... | bup split ..."
+                return 0;
+
+            PyErr_SetFromErrno(PyExc_IOError);
+            return -1;
+        }
+
+        rc = mincore(addr, len, mcore + outoffs);
+
+        if (rc < 0) {
+            const int mc_err = errno;
+            free(mcore);
+
+            int mu_err = 0;
+            if (munmap(addr, len) != 0)
+                mu_err = errno;
+
+            PyEval_RestoreThread(thread_state);
+
+            // FIXME: chain exceptions someday
+            if (mc_err == ENOSYS) {
+                if (!mu_err)
+                    return 0;
+                errno = mu_err;
+            } else {
+                perror("error: munmap failed after mincore failure");
+                errno = mc_err;
+            }
+
             PyErr_SetFromErrno(PyExc_IOError);
             return -1;
         }
