@@ -102,9 +102,12 @@ break anything.  It's also a comfort to know you can squeeze data out using
 git, just in case bup fails you, and as a developer, git offers some nice
 tools (like 'git rev-list' and 'git log' and 'git diff' and 'git show' and
 so on) that allow you to explore your repository and help debug when things
-go wrong.
+go wrong.  However, you will notice differences when you 'git checkout': 
+Large files apprear as folders, have different levels of subfolders, in which
+you find small files. Concatenate these and you restore your file, for example
+using 'find path/to/your/file.bup -type f | sort | xargs cat > output/file'.
 
-Now, bup does use these tools a little bit differently than plain git.  We
+So, bup uses the git builing blocks a little bit different than plain git. We
 need to do this in order to address two deficiencies in git when used for
 large backups, namely a) git bogs down and crashes if you give it really
 large files; b) git is too slow when you give it too many files; and c) git
