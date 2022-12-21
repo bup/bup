@@ -108,10 +108,19 @@ Now, bup does use these tools a little bit differently than plain git.  We
 need to do this in order to address two deficiencies in git when used for
 large backups, namely a) git bogs down and crashes if you give it really
 large files; b) git is too slow when you give it too many files; and c) git
-doesn't store detailed filesystem metadata.
+doesn't store detailed filesystem metadata.  We'll talk about each of those
+problems in turn.
 
-Let's talk about each of those problems in turn.
-
+But first, as a very quick overview, let's pretend bup has vanished from the
+face of the earth and you have to resort to a 'git checkout' to obtain a 
+large file from your backup: You would see that instead of the file, a folder
+appears at its location. Inside, within different levels of subfolders, you
+would find multiple smaller files. These contain chunks of the original file,
+so to restore your file, you need to concatenate them in order of their file
+names. (For example with a command like 
+'find path/to/your/file.bup -type f | sort | xargs cat > output/file'). This
+chunks are the product of *hashsplitting*. And now we can review this and
+other techniques how bup makes git ready for large backups.
 
 Handling large files (cmd/split, hashsplit.split_to_blob_or_tree)
 --------------------
