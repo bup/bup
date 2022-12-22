@@ -160,7 +160,14 @@ From source
 
     ```
 
-   On Cygwin, install python, make, rsync, and gcc4.
+   On Cygwin, install the gcc-core, git, python3-devel, make, and
+   rsync packages.  Optionally, install libreadline-devel and par2.
+   To generate the help pages, install pandoc (outside of Cygwin).
+
+   Installing git on Windows in Cygwin, rather than by other means,
+   has the advantage that the installation can handle the symlinks in
+   this repository.  So if you use another git installation, ensure
+   that the symlinks (e.g.  `./bup`) are not converted to text files.
 
    If you would like to use the optional bup web server on systems
    without a tornado package, you may want to try this:
