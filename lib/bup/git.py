@@ -1200,7 +1200,10 @@ def init_repo(path=None):
                        % path_msg(parent))
     if os.path.exists(d) and not os.path.isdir(os.path.join(d, b'.')):
         raise GitError('"%s" exists but is not a directory\n' % path_msg(d))
-    p = subprocess.Popen([b'git', b'--bare', b'init'], stdout=sys.stderr,
+    p = subprocess.Popen([ b'git', b'--bare',
+                           # arbitrary default branch name to suppress git msg.
+                           b'-c', b'init.defaultBranch=main', b'init'],
+                         stdout=sys.stderr,
                          env=_gitenv(),
                          close_fds=True)
     _git_wait('git init', p)
