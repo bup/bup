@@ -164,7 +164,6 @@ def _validate_save(orig_dir, save_path, commit_id, tree_id):
 def validate_save(dest_name, restore_subpath, commit_id, tree_id, orig_value,
                   get_out):
     out = get_out.splitlines()
-    print('blarg: out', repr(out), file=sys.stderr)
     wvpasseq(2, len(out))
     get_tree_id = out[0]
     get_commit_id = out[1]
@@ -292,8 +291,6 @@ def verify_only_refs(**kwargs):
             wvpasseq(b'', exr.out.strip())
 
 def _test_replace(get_disposition, src_info):
-    print('blarg:', repr(src_info), file=sys.stderr)
-
     wvstart(get_disposition + ' --replace to root fails')
     for item in (b'.tag/tinyfile',
                  b'src/latest' + src_info['tinyfile-path'],
