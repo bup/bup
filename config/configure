@@ -86,6 +86,12 @@ fi
 
 bup-add-cflag-if-supported -Wno-unused-command-line-argument
 
+# Since ./configure changes pwd, fix MAKE if it's relative
+case "$MAKE" in
+    /*) ;;
+    */*) MAKE="../../$MAKE";;
+esac
+
 for make_candidate in make gmake; do
     found_make="$(bup_find_prog "$make_candidate" "$MAKE")"
     if test "$found_make" \
