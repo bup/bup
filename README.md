@@ -113,7 +113,8 @@ Getting started
 From source
 -----------
 
- - Check out the bup source code using git:
+ - Check out the bup source code using git (for Cygwin, use a Cygwin
+   installed git so that symlinks will work by defaul):
 
     ```sh
     git clone https://github.com/bup/bup
@@ -130,44 +131,20 @@ From source
    You can see the latest stable release here:
    https://github.com/bup/bup/tags
 
- - Install the required python libraries (including the development
+ - Ensure you have a Python 3.7+ development environment available and
+   install the required python libraries (including the development
    libraries).
+
+   See the relevant [platform specific information](#platform-specific-information)
+   below, if available, and if not, refer to the [Debian notes](#notes-on-debian)
+   to get a general idea of what's required.  You might also want to
+   look at the `dev/prep-for-*` scripts.  Those include all the
+   commands used to prepare to build bup for testing on the platform.
 
    For `bup fuse` you will need to install
    [python-fuse](https://github.com/libfuse/python-fuse) rather than
    [fusepy](https://github.com/fusepy/fusepy).  For example, in
    Debian, install python3-fuse rather than python3-fusepy.
-
-   On very recent Debian/Ubuntu versions, this may be sufficient (run
-   as root):
-
-    ```sh
-    apt-get build-dep bup
-    ```
-
-   Otherwise try this:
-
-    ```sh
-    apt-get install python3-dev python3-fuse
-    apt-get install python3-pyxattr python3-pytest
-    apt-get install python3-distutils
-    apt-get install pkg-config linux-libc-dev libacl1-dev
-    apt-get install gcc make acl attr rsync
-    apt-get isntall python3-pytest-xdist # optional (parallel tests)
-    apt-get install par2 # optional (error correction)
-    apt-get install libreadline-dev # optional (bup ftp)
-    apt-get install python3-tornado # optional (bup web)
-
-    ```
-
-   On Cygwin, install the gcc-core, git, python3-devel, make, and
-   rsync packages.  Optionally, install libreadline-devel and par2.
-   To generate the help pages, install pandoc (outside of Cygwin).
-
-   Installing git on Windows in Cygwin, rather than by other means,
-   has the advantage that the installation can handle the symlinks in
-   this repository.  So if you use another git installation, ensure
-   that the symlinks (e.g.  `./bup`) are not converted to text files.
 
    If you would like to use the optional bup web server on systems
    without a tornado package, you may want to try this:
@@ -428,6 +405,33 @@ Using bup
 That's all there is to it!
 
 
+Platform specific information
+=============================
+
+Notes on Debian (and likely, on derivatives like Ubuntu)
+--------------------------------------------------------
+
+If your distribution is recent enough, or includes new enough `apt`
+sources, this may be sufficient (run as root):
+
+  ```sh
+  apt-get build-dep bup
+  ```
+
+Otherwise try this:
+
+  ```sh
+  apt-get install python3-dev python3-fuse
+  apt-get install python3-pyxattr python3-pytest
+  apt-get install python3-distutils
+  apt-get install pkg-config linux-libc-dev libacl1-dev
+  apt-get install gcc make acl attr rsync
+  apt-get isntall python3-pytest-xdist # optional (parallel tests)
+  apt-get install par2 # optional (error correction)
+  apt-get install libreadline-dev # optional (bup ftp)
+  apt-get install python3-tornado # optional (bup web)
+  ```
+
 Notes on FreeBSD
 ----------------
 
@@ -470,6 +474,15 @@ Notes on NetBSD/pkgsrc
 
 Notes on Cygwin
 ---------------
+
+- To prepare to build build bup, install the gcc-core, git,
+  python3-devel, make, and rsync packages.  Optionally, install
+  libreadline-devel (for `bup ftp`) and par2.  To generate the help
+  pages, install pandoc (outside of Cygwin).
+
+  Use a Cygwin installed git so that symlinks will work by default.
+  If you try some other git version, ensure that the symlinks (e.g.
+  `./bup`) are not converted to text files.
 
  - There is no support for ACLs.  If/when some enterprising person
    fixes this, adjust dev/compare-trees.
