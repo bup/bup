@@ -3,7 +3,6 @@ bup repositories are in Git format. This library allows us to
 interact with the Git data structures.
 """
 
-from __future__ import absolute_import, print_function
 import os, sys, zlib, subprocess, struct, stat, re, glob
 from array import array
 from binascii import hexlify, unhexlify
@@ -29,6 +28,7 @@ from bup.helpers import (Sha1, add_error, chunkyreader, debug1, debug2,
                          mmap_read, mmap_readwrite,
                          nullcontext_if_not,
                          progress, qprogress, stat_if_exists,
+                         quote,
                          temp_dir,
                          unlink,
                          utc_offset_str)
@@ -1158,21 +1158,18 @@ def update_ref(refname, newval, oldval, repo_dir=None, force=False):
         oldarg = [hexlify(oldval)]
     assert refname.startswith(b'refs/heads/') \
         or refname.startswith(b'refs/tags/')
-    p = subprocess.Popen([b'git', b'update-ref', refname,
-                          hexlify(newval)] + oldarg,
-                         env=_gitenv(repo_dir),
-                         close_fds=True)
-    _git_wait(b'git update-ref', p)
+    cmd = [b'git', b'update-ref', refname, hexlify(newval)] + oldarg
+    p = subprocess.Popen(cmd, env=_gitenv(repo_dir), close_fds=True)
+    _git_wait(b' '.join(quote(x) for x in cmd), p)
 
 
 def delete_ref(refname, oldvalue=None):
     """Delete a repository reference (see git update-ref(1))."""
     assert refname.startswith(b'refs/')
     oldvalue = [] if not oldvalue else [oldvalue]
-    p = subprocess.Popen([b'git', b'update-ref', b'-d', refname] + oldvalue,
-                         env=_gitenv(),
-                         close_fds=True)
-    _git_wait('git update-ref', p)
+    cmd = [b'git', b'update-ref', b'-d', refname] + oldvalue
+    p = subprocess.Popen(cmd, env=_gitenv(), close_fds=True)
+    _git_wait(b' '.join(quote(x) for x in cmd), p)
 
 
 def guess_repo():
