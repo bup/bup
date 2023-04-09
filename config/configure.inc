@@ -337,10 +337,10 @@ while [ "$1" ]; do
 done
 
     cat >> "$__ac_tmpdir/ngc$$.c" << EOF
+#include <stdio.h>
 int main(int argc, char **argv)
 {
-
-    $F();
+    return (void *) $F - (void *) printf;
 }
 EOF
 
