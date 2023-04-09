@@ -9,6 +9,9 @@ from bup.io import byte_stream
 # Handle all test-* files as wvtest protocol subprocesses
 # cf. https://docs.pytest.org/en/latest/example/nonpython.html
 
+# version_tuple was added in 7
+use_node_path = hasattr(pytest, 'version_tuple')
+
 class BupSubprocFailure(Exception):
     def __init__(self, msg, cmd, status, failures):
         super(BupSubprocFailure, self).__init__(msg)
@@ -68,10 +71,13 @@ class BupSubprocTestFile(pytest.File):
 def pytest_collect_file(parent, path):
     base = path.basename
     if base.startswith('test-') and not base.endswith('~'):
-        try:
+        if use_node_path:
             item = BupSubprocTestFile.from_parent(parent, path=Path(path))
-        except AttributeError:
-            item = BupSubprocTestFile(path, parent)
+        else:
+            try:
+                item = BupSubprocTestFile.from_parent(parent, fspath=path)
+            except AttributeError:
+                item = BupSubprocTestFile(path, parent)
         if base == 'test-release-archive':
             item.add_marker(pytest.mark.release)
         return item
