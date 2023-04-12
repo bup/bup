@@ -4,7 +4,7 @@
 
 # NAME
 
-bup-get - copy repository items (CAUTION: EXPERIMENTAL)
+bup-get - copy repository items (note CAUTION below)
 
 # SYNOPSIS
 
@@ -56,7 +56,7 @@ option, and remote *ref*s can be pulled into a local repository via
 "bup on HOST get ...".  See `bup-on`(1) and the EXAMPLES below for
 further information.
 
-WARNING: This is one of the few bup commands that can modify your
+CAUTION: This is one of the few bup commands that can modify your
 archives in intentionally destructive ways.  Though if an attempt to
 join or restore the data you still care about succeeds after you've
 run this command, then that's a fairly encouraging sign that it worked
