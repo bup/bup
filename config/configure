@@ -309,13 +309,17 @@ AC_SUB bup_readline_ldflags "$bup_readline_ldflags"
 AC_SUB bup_have_readline "$bup_have_readline"
 
 
-AC_CHECK_FIELD stat st_atim sys/types.h sys/stat.h unistd.h
-AC_CHECK_FIELD stat st_mtim sys/types.h sys/stat.h unistd.h
-AC_CHECK_FIELD stat st_ctim sys/types.h sys/stat.h unistd.h
+AC_CHECK_FIELD stat st_atim sys/stat.h
+AC_CHECK_FIELD stat st_mtim sys/stat.h
+AC_CHECK_FIELD stat st_ctim sys/stat.h
 
-AC_CHECK_FIELD stat st_atimensec sys/types.h sys/stat.h unistd.h
-AC_CHECK_FIELD stat st_mtimensec sys/types.h sys/stat.h unistd.h
-AC_CHECK_FIELD stat st_ctimensec sys/types.h sys/stat.h unistd.h
+AC_CHECK_FIELD stat st_atimensec sys/stat.h
+AC_CHECK_FIELD stat st_mtimensec sys/stat.h
+AC_CHECK_FIELD stat st_ctimensec sys/stat.h
+
+AC_CHECK_FIELD stat st_atimespec sys/stat.h
+AC_CHECK_FIELD stat st_mtimespec sys/stat.h
+AC_CHECK_FIELD stat st_ctimespec sys/stat.h
 
 AC_CHECK_FIELD tm tm_gmtoff time.h
 

@@ -1364,6 +1364,10 @@ static PyObject *bup_lutimes(PyObject *self, PyObject *args)
 # define BUP_STAT_MTIME_NS(st) (st)->st_mtim.tv_nsec
 # define BUP_STAT_CTIME_NS(st) (st)->st_ctim.tv_nsec
 #elif defined HAVE_STAT_ST_ATIMENSEC
+# define BUP_STAT_ATIME_NS(st) (st)->st_atimensec.tv_nsec
+# define BUP_STAT_MTIME_NS(st) (st)->st_mtimensec.tv_nsec
+# define BUP_STAT_CTIME_NS(st) (st)->st_ctimensec.tv_nsec
+#elif defined HAVE_STAT_ST_ATIMESPEC
 # define BUP_STAT_ATIME_NS(st) (st)->st_atimespec.tv_nsec
 # define BUP_STAT_MTIME_NS(st) (st)->st_mtimespec.tv_nsec
 # define BUP_STAT_CTIME_NS(st) (st)->st_ctimespec.tv_nsec
