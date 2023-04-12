@@ -348,6 +348,8 @@ static PyObject *HashSplitter_iter(PyObject *self)
     return self;
 }
 
+#ifdef HASHSPLITTER_ADVISE
+
 static int bup_py_fadvise(int fd, off_t offset, off_t len, int advice)
 {
     const int rc = posix_fadvise(fd, offset, len, advice);
@@ -367,7 +369,6 @@ static int bup_py_fadvise(int fd, off_t offset, off_t len, int advice)
     }
 }
 
-#ifdef HASHSPLITTER_ADVISE
 static int HashSplitter_uncache(HashSplitter *self, int last)
 {
     if (!self->mincore)
@@ -425,7 +426,7 @@ static int HashSplitter_uncache(HashSplitter *self, int last)
     }
     return 0;
 }
-#endif
+#endif /* defined HASHSPLITTER_ADVISE */
 
 static int HashSplitter_read(HashSplitter *self)
 {
