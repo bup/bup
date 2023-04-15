@@ -374,10 +374,6 @@ echo -n "$bup_python_config" > config.var.tmp/bup-python-config
 echo -n "$with_pylint" > config.var.tmp/with-pylint
 mv config.var.tmp config.var
 
-if test -e bin; then rm -r bin; fi
-mkdir -p bin
-(cd bin && ln -s "$MAKE" make)
-
 touch finished
 
 printf "

@@ -1,6 +1,5 @@
 *.swp
 *~
-/config/bin/make
 /config/config.h.tmp
 /config/finished
 /dev/bup-exec
