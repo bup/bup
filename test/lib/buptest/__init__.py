@@ -2,7 +2,7 @@
 from __future__ import absolute_import, print_function
 from collections import namedtuple
 from os.path import abspath, basename, dirname, realpath
-from pipes import quote
+from shlex import quote
 from subprocess import PIPE, Popen
 from traceback import extract_stack
 import errno, os, subprocess, sys, tempfile
