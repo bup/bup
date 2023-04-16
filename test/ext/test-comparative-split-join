@@ -107,6 +107,11 @@ test-split-join()
         # The bloom filter includes the (differing) idx names
         WVPASS rm {other,this}-bup/objects/pack/bup.bloom
     fi
+    WVPASS test "ref: refs/heads/main" = "$(< other-bup/HEAD)" \
+           -o "ref: refs/heads/master" = "$(< other-bup/HEAD)"
+    WVPASS test "ref: refs/heads/main" = "$(< this-bup/HEAD)" \
+           -o "ref: refs/heads/master" = "$(< this-bup/HEAD)"
+    WVPASS rm {other,this}-bup/HEAD
     WVPASS "$top/dev/compare-trees" --no-times other-bup/ this-bup/
 
     WVPASS cd "$orig_dir"
