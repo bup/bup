@@ -1,0 +1,107 @@
+#!/usr/bin/env bash
+. wvtest.sh
+. wvtest-bup.sh
+. dev/lib.sh
+
+set -o pipefail
+
+if ! command -v getfacl > /dev/null || ! command -v setfacl > /dev/null; then
+    WVSKIP "No getfacl and setfacl; skipping test-meta-acls"
+    exit 0
+fi
+
+top="$(WVPASS pwd)" || exit $?
+
+bup() { "$top/bup" "$@"; }
+compare-trees() { "$top/dev/compare-trees" "$@"; }
+id-other-than() { "$top/dev/id-other-than" "$@"; }
+
+if ! bup features | grep -qi 'posix acls: yes'; then
+    WVSKIP "bup features missing POSIX ACLs; skipping test-meta-acls"
+    exit 0
+fi
+
+if ! compare-trees --features | grep -qi 'posix acls: yes'; then
+    WVSKIP "compare-trees --features missing POSIX ACLs; skipping test-meta-acls"
+    exit 0
+fi
+
+tmpdir="$(WVPASS wvmktempdir)" || exit $?
+export BUP_DIR="$tmpdir/bup"
+
+uid=$(WVPASS id -un) || exit $?
+other_uinfo="$(id-other-than --user "$uid")" || exit $?
+other_user="${other_uinfo%%:*}"
+other_uid="${other_uinfo##*:}"
+
+gid=$(WVPASS id -gn) || exit $?
+other_ginfo="$(id-other-than --group "$gid")" || exit $?
+other_group="${other_ginfo%%:*}"
+other_gid="${other_ginfo##*:}"
+
+WVPASS cd "$tmpdir"
+
+WVPASS mkdir src
+WVPASS touch src/u-r
+
+if ! setfacl -m "u:$other_user:r" src/u-r; then
+    WVSKIP "setfacl $top/testfile failed; skipping test-meta-acls"
+    exit 0
+fi
+
+WVSTART "Basic ACL support"
+
+# file ACL_USER access acl(5)
+for perm in r rw rwx; do
+    WVPASS touch src/u-"$perm"
+    WVPASS setfacl -m "u:$other_user:$perm" src/u-"$perm"
+done
+# file ACL_GROUP access acl(5)
+for perm in r rw rwx; do
+    WVPASS touch src/g-"$perm"
+    WVPASS setfacl -m "g:$other_group:$perm" src/g-"$perm"
+done
+
+# directory ACL_USER access acl(5)
+for perm in r rw rwx; do
+    WVPASS mkdir src/d-u-"$perm"
+    WVPASS setfacl -m "u:$other_user:$perm" src/d-u-"$perm"
+done
+# directory ACL_GROUP access acl(5)
+for perm in r rw rwx; do
+    WVPASS mkdir src/d-g-"$perm"
+    WVPASS setfacl -m "g:$other_group:$perm" src/d-g-"$perm"
+done
+
+# directory ACL_USER default acl(5)
+for perm in r rw rwx; do
+    WVPASS mkdir src/d-def-u-"$perm"
+    WVPASS setfacl -d -m "u:$other_user:$perm" src/d-def-u-"$perm"
+done
+# directory ACL_GROUP default acl(5)
+for perm in r rw rwx; do
+    WVPASS mkdir src/d-def-g-"$perm"
+    WVPASS setfacl -d -m "g:$other_group:$perm" src/d-def-g-"$perm"
+done
+
+# directory ACL_USER access and default acl(5)
+for perm in r rw rwx; do
+    WVPASS mkdir src/d-both-u-"$perm"
+    WVPASS setfacl -m "u:$other_user:$perm" src/d-both-u-"$perm"
+    WVPASS setfacl -d -m "u:$other_user:$perm" src/d-both-u-"$perm"
+done
+# directory ACL_GROUP access and default acl(5)
+for perm in r rw rwx; do
+    WVPASS mkdir src/d-both-g-"$perm"
+    WVPASS setfacl -m "g:$other_group:$perm" src/d-both-g-"$perm"
+    WVPASS setfacl -d -m "g:$other_group:$perm" src/d-both-g-"$perm"
+done
+
+WVPASS bup init
+WVPASS bup index -u src
+WVPASS bup save --strip -n acls src
+WVPASS bup restore -C dest acls/latest/.
+WVPASS compare-trees src/ dest/
+
+cd "$top"
+WVPASS rm -rf "$tmpdir"
