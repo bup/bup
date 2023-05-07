@@ -2142,7 +2142,8 @@ out:
     return ret;
 }
 
-static int bup_apply_acl_string(const char *name, const char *s)
+static int
+bup_apply_acl_string(const char *name, acl_type_t type, const char *s)
 {
     acl_t acl = acl_from_text(s);
     int ret = 0;
@@ -2152,7 +2153,7 @@ static int bup_apply_acl_string(const char *name, const char *s)
         return -1;
     }
 
-    if (acl_set_file(name, ACL_TYPE_ACCESS, acl)) {
+    if (acl_set_file(name, type, acl)) {
         PyErr_SetFromErrno(PyExc_IOError);
         ret = -1;
     }
@@ -2169,10 +2170,10 @@ static PyObject *bup_apply_acl(PyObject *self, PyObject *args)
     if (!PyArg_ParseTuple(args, cstr_argf cstr_argf "|" cstr_argf, &name, &acl, &def))
 	return NULL;
 
-    if (bup_apply_acl_string(name, acl))
+    if (bup_apply_acl_string(name, ACL_TYPE_ACCESS, acl))
         return NULL;
 
-    if (def && bup_apply_acl_string(name, def))
+    if (def && bup_apply_acl_string(name, ACL_TYPE_DEFAULT, def))
         return NULL;
 
     Py_RETURN_NONE;
