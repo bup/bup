@@ -7,7 +7,10 @@ set -euo pipefail
 
 usage() {
 cat <<EOF
-Usage: compare-trees [-h] [-c] [-x] SOURCE DEST
+Usage:
+   compare-trees [-c] [-x] [--] SOURCE DEST
+   compare-trees --features
+   compare-trees -h
 OPTIONS:
   -h
     Display help
@@ -18,50 +21,58 @@ OPTIONS:
   --times
   --no-times
     Check or don't check timestamps (checking is the default)
+  --features
+    Show enabled features
+  --
+    Don't treat following arguments as options (e.g. compare-trees -- -c dest)
 EOF
 }
 
+show_features=''
 verify_content=" --checksum"
 verify_times=' --times'
 
-while test $# -gt 0; do
-    case "$1" in
-        -h) usage; exit 0;;
-        -c) verify_content=" --checksum"; shift;;
-        -x) verify_content=""; shift;;
-        --times) verify_times=' --times'; shift;;
-        --no-times) verify_times=''; shift;;
-        -*) usage 1>&2; exit 2;;
-        [^-]*) break;;
-    esac
-done
+case "$#/${1:-}" in
+    1/-h) usage; exit 0;;
+    1/--features) show_features=yes; shift;;
+    *)
+        while test $# -gt 0; do
+            case "$1" in
+                -h|--features) usage 1>&2; exit 2;;
+                -c) verify_content=" --checksum"; shift;;
+                -x) verify_content=""; shift;;
+                --times) verify_times=' --times'; shift;;
+                --no-times) verify_times=''; shift;;
+                --) shift; break;;
+                [^-]*) break;;
+            esac
+        done
+esac
 
-if ! test $# -eq 2
-then
+if test $# -ne 2 -a -z "$show_features"; then
     usage 1>&2
     exit 2
 fi
 
-src="$1"
-dest="$2"
-
-tmpfile="$(mktemp /tmp/bup-test-XXXXXXX)" || exit $?
-trap "rm -rf '$tmpfile'" EXIT || exit $?
+src="${1:-}"
+dest="${2:-}"
 
 rsync_opts="-rlpgoD" # --archive, without --times
 rsync_opts="$rsync_opts -niH --delete"
 rsync_opts="$rsync_opts$verify_content"
 rsync_opts="$rsync_opts$verify_times"
 
+comparing_acls=''
 rsync_version=$(rsync --version)
 if [[ ! "$rsync_version" =~ "ACLs" ]] || [[ "$rsync_version" =~ "no ACLs" ]]; then
     echo "Not comparing ACLs (not supported by available rsync)" 1>&2
 else
-    case $OSTYPE in
+    case "$OSTYPE" in
         cygwin|darwin|netbsd)
             echo "Not comparing ACLs (not yet supported on $OSTYPE)" 1>&2
             ;;
         *)
+            comparing_acls=yes
             rsync_opts="$rsync_opts -A"
             ;;
     esac
@@ -73,6 +84,18 @@ if [[ ! "$rsync_version" =~ "xattrs" ]] || [[ "$rsync_version" =~ "no xattrs" ]]
 else
     xattrs_available=yes
 fi
+
+if test "$show_features"; then
+    echo "POSIX ACLs: ${comparing_acls:-no}"
+    echo "Extended attributes (xattrs): ${xattrs_available:-no}"
+fi
+
+if test "$show_features"; then
+    exit 0
+fi
+
+tmpfile="$(mktemp /tmp/bup-test-XXXXXXX)" || exit $?
+trap "rm -rf '$tmpfile'" EXIT || exit $?
 
 # Even in dry-run mode, rsync may fail if -X is specified and the
 # filesystems don't support xattrs.
