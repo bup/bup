@@ -1949,9 +1949,9 @@ static int bup_read_acl_to_text(const char *name, acl_type_t type,
     }
 
     *num = NULL;
-    *txt = acl_to_any_text(acl, "", '\n', TEXT_ABBREVIATE);
+    *txt = acl_to_any_text(acl, "", ',', TEXT_ABBREVIATE);
     if (*txt)
-        *num = acl_to_any_text(acl, "", '\n', TEXT_ABBREVIATE | TEXT_NUMERIC_IDS);
+        *num = acl_to_any_text(acl, "", ',', TEXT_ABBREVIATE | TEXT_NUMERIC_IDS);
 
     if (*txt && *num)
         return 0;
