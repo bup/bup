@@ -187,13 +187,14 @@ _rec_tag_end = 0
 _rec_tag_path = 1
 _rec_tag_common_v1 = 2 # times, user, group, type, perms, etc. (legacy/broken)
 _rec_tag_symlink_target = 3
-_rec_tag_posix1e_acl = 4      # getfacl(1), setfacl(1), etc.
+_rec_tag_posix1e_acl_v1 = 4   # (broken \n delimited format, see v2 below)
 _rec_tag_nfsv4_acl = 5        # intended to supplant posix1e? (unimplemented)
 _rec_tag_linux_attr = 6       # lsattr(1) chattr(1)
 _rec_tag_linux_xattr = 7      # getfattr(1) setfattr(1)
 _rec_tag_hardlink_target = 8 # hard link target path
 _rec_tag_common_v2 = 9 # times, user, group, type, perms, etc. (current)
 _rec_tag_common_v3 = 10  # adds optional size to v2
+_rec_tag_posix1e_acl_v2 = 11     # getfacl(1), setfacl(1), etc.
 
 _warned_about_attr_einval = None
 
@@ -545,10 +546,31 @@ class Metadata:
         else:
             return None
 
-    def _load_posix1e_acl_rec(self, port):
+    @staticmethod
+    def _correct_posix1e_v1_delimiters(acls, path):
+        assert acls
+        # The v0 format had newline delimiters which are incorrect for
+        # the ACL short text format we request, and which are rejected
+        # with EINVAL by acl_from_text() on some platforms.  For now,
+        # this function assumes (potentially incorrectly) that no
+        # field name (including the user and group names) contains a
+        # newline or comma.  If any field name does, then the results
+        # may be wrong.  (Debian, at least, disallows them.)
+        for i in range(len(acls)):
+            acl = acls[i]
+            if b',' in acl:
+                add_error(f'Unexpected comma in ACL entry; ignoring {acl!r} for {path_msg(path)}\n')
+                return None
+            acls[i] = acl.replace(b'\n', b',')
+        return acls
+
+    def _load_posix1e_acl_rec(self, port, *, version):
+        assert version in (1, 2)
         acl_rep = vint.unpack('ssss', vint.read_bvec(port))
         if acl_rep[2] == b'':
             acl_rep = acl_rep[:2]
+        if version == 1:
+            acl_rep = self._correct_posix1e_v1_delimiters(acl_rep)
         self.posix1e_acl = acl_rep
 
     def _apply_posix1e_acl_rec(self, path, restore_numeric_ids=False):
@@ -800,7 +822,7 @@ class Metadata:
                          self._encode_symlink_target()),
                         (_rec_tag_hardlink_target,
                          self._encode_hardlink_target()),
-                        (_rec_tag_posix1e_acl, self._encode_posix1e_acl()),
+                        (_rec_tag_posix1e_acl_v2, self._encode_posix1e_acl()),
                         (_rec_tag_linux_attr, self._encode_linux_attr()),
                         (_rec_tag_linux_xattr, self._encode_linux_xattr())])
         for tag, data in records:
@@ -836,8 +858,10 @@ class Metadata:
                     result._load_symlink_target_rec(port)
                 elif tag == _rec_tag_hardlink_target:
                     result._load_hardlink_target_rec(port)
-                elif tag == _rec_tag_posix1e_acl:
-                    result._load_posix1e_acl_rec(port)
+                elif tag == _rec_tag_posix1e_acl_v2:
+                    result._load_posix1e_acl_rec(port, version=2)
+                elif tag == _rec_tag_posix1e_acl_v1:
+                    result._load_posix1e_acl_rec(port, version=1)
                 elif tag == _rec_tag_linux_attr:
                     result._load_linux_attr_rec(port)
                 elif tag == _rec_tag_linux_xattr:
