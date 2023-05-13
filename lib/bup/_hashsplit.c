@@ -383,7 +383,7 @@ static int HashSplitter_uncache(HashSplitter *self, int last)
     size_t pages = len / page_size;
 
     // now track where and how much to uncache
-    off_t start = self->uncached; // see assumptions (off_t <= size_t)
+    off_t start = self->uncached; // see assumptions (size_t <= off_t)
 
     // Check against overflow up front
     size_t pgstart = self->uncached / page_size;
@@ -659,7 +659,7 @@ int hashsplit_init(void)
 {
     // Assumptions the rest of the code can depend on.
     assert(sizeof(Py_ssize_t) <= sizeof(size_t));
-    assert(sizeof(off_t) <= sizeof(size_t));
+    assert(sizeof(size_t) <= sizeof(off_t));
     assert(CHAR_BIT == 8);
     assert(sizeof(Py_ssize_t) <= sizeof(size_t));
 
