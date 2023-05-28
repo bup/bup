@@ -86,6 +86,7 @@ Reasons you might want to avoid bup
 Notable changes introduced by a release
 =======================================
 
+ - <a href="note/0.33.1-from-0.33.md">Changes in 0.33.1 as compared to 0.33</a>
  - <a href="note/0.33-from-0.32.md">Changes in 0.33 as compared to 0.32</a>
  - <a href="note/0.32-from-0.31.md">Changes in 0.32 as compared to 0.31</a>
  - <a href="note/0.31-from-0.30.1.md">Changes in 0.31 as compared to 0.30.1</a>
@@ -103,9 +104,9 @@ Notable changes introduced by a release
 Test status
 ===========
 
-| master |
+| main |
 |--------|
-| [![master branch test status](https://api.cirrus-ci.com/github/bup/bup.svg?branch=master)](https://cirrus-ci.com/github/bup/bup) |
+| [![main branch test status](https://api.cirrus-ci.com/github/bup/bup.svg?branch=main)](https://cirrus-ci.com/github/bup/bup) |
 
 Getting started
 ===============
@@ -120,12 +121,12 @@ From source
     git clone https://github.com/bup/bup
     ```
 
- - This will leave you on the master branch, which is perfect if you
+ - This will leave you on the main branch, which is perfect if you
    would like to help with development, but if you'd just like to use
    bup, please check out the latest stable release like this:
 
     ```sh
-    git checkout 0.33
+    git checkout 0.33.1
     ```
 
    You can see the latest stable release here:
