@@ -86,6 +86,7 @@ Reasons you might want to avoid bup
 Notable changes introduced by a release
 =======================================
 
+ - <a href="note/0.33.2-from-0.33.1.md">Changes in 0.33.2 as compared to 0.33.1</a>
  - <a href="note/0.33.1-from-0.33.md">Changes in 0.33.1 as compared to 0.33</a>
  - <a href="note/0.33-from-0.32.md">Changes in 0.33 as compared to 0.32</a>
  - <a href="note/0.32-from-0.31.md">Changes in 0.32 as compared to 0.31</a>
@@ -125,7 +126,7 @@ From source
    bup, please check out the latest stable release like this:
 
     ```sh
-    git checkout 0.33.1
+    git checkout 0.33.2
     ```
 
    You can see the latest stable release here:
