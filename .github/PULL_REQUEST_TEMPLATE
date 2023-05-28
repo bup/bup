@@ -11,7 +11,7 @@ line in the commit message that matches the "Author" line so that
 we'll be able to include your work in the project.  See
 ./SIGNED-OFF-BY for the meaning:
 
-  https://github.com/bup/bup/blob/master/SIGNED-OFF-BY
+  https://github.com/bup/bup/blob/main/SIGNED-OFF-BY
 
 After you submit the pull request, someone will eventually redirect it
 to the list for review, and you will of course be included in the
@@ -21,5 +21,5 @@ On the other hand, if you're comfortable with "git send-email" (or the
 equivalent), please post your patches to the list as described in the
 "Submitting Patches" section in ./HACKING:
 
-  https://github.com/bup/bup/blob/master/HACKING
+  https://github.com/bup/bup/blob/main/HACKING
 

@@ -91,6 +91,7 @@ Reasons you might want to avoid bup
 Notable changes introduced by a release
 =======================================
 
+ - <a href="note/0.32.1-from-0.32.md">Changes in 0.32.1 as compared to 0.32</a>
  - <a href="note/0.32-from-0.31.md">Changes in 0.32 as compared to 0.31</a>
  - <a href="note/0.31-from-0.30.1.md">Changes in 0.31 as compared to 0.30.1</a>
  - <a href="note/0.30.1-from-0.30.md">Changes in 0.30.1 as compared to 0.30</a>
@@ -109,7 +110,7 @@ Test status
 
 | branch | Debian                                                                                                                                         | FreeBSD                                                                                                                                          | macOS                                                                                                                                        |
 |--------|------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------|
-| master | [![Debian test status](https://api.cirrus-ci.com/github/bup/bup.svg?branch=master&task=debian)](https://cirrus-ci.com/github/bup/bup) | [![FreeBSD test status](https://api.cirrus-ci.com/github/bup/bup.svg?branch=master&task=freebsd)](https://cirrus-ci.com/github/bup/bup) | [![macOS test status](https://api.cirrus-ci.com/github/bup/bup.svg?branch=master&task=macos)](https://cirrus-ci.com/github/bup/bup) |
+| main | [![Debian test status](https://api.cirrus-ci.com/github/bup/bup.svg?branch=main&task=debian)](https://cirrus-ci.com/github/bup/bup) | [![FreeBSD test status](https://api.cirrus-ci.com/github/bup/bup.svg?branch=main&task=freebsd)](https://cirrus-ci.com/github/bup/bup) | [![macOS test status](https://api.cirrus-ci.com/github/bup/bup.svg?branch=main&task=macos)](https://cirrus-ci.com/github/bup/bup) |
 | 0.30.x | [![Debian test status](https://api.cirrus-ci.com/github/bup/bup.svg?branch=0.30.x&task=debian)](https://cirrus-ci.com/github/bup/bup) | [![FreeBSD test status](https://api.cirrus-ci.com/github/bup/bup.svg?branch=0.30.x&task=freebsd)](https://cirrus-ci.com/github/bup/bup) | [![macOS test status](https://api.cirrus-ci.com/github/bup/bup.svg?branch=0.30.x&task=macos)](https://cirrus-ci.com/github/bup/bup) |
 | 0.29.x | [![Debian test status](https://api.cirrus-ci.com/github/bup/bup.svg?branch=0.29.x&task=debian)](https://cirrus-ci.com/github/bup/bup) | [![FreeBSD test status](https://api.cirrus-ci.com/github/bup/bup.svg?branch=0.29.x&task=freebsd)](https://cirrus-ci.com/github/bup/bup) | [![macOS test status](https://api.cirrus-ci.com/github/bup/bup.svg?branch=0.29.x&task=macos)](https://cirrus-ci.com/github/bup/bup) |
 
@@ -125,12 +126,12 @@ From source
     git clone https://github.com/bup/bup
     ```
 
- - This will leave you on the master branch, which is perfect if you
+ - This will leave you on the main branch, which is perfect if you
    would like to help with development, but if you'd just like to use
    bup, please check out the latest stable release like this:
 
     ```sh
-    git checkout 0.32
+    git checkout 0.32.1
     ```
 
    You can see the latest stable release here:
