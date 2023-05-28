@@ -4,8 +4,9 @@ Conventions?  Are you kidding?  OK fine.
 Code Branching Model
 ====================
 
-The master branch is what we consider the main-line of development,
-and the last, non-rc tag on master is the most recent stable release.
+The main branch is the development branch, and stable releases are
+tagged either from there, or from `VERSION.x` branches, created as
+needed, for example `0.33.x`.
 
 Any branch with a "tmp/" prefix might be rebased (often), so keep that
 in mind when using or depending on one.
@@ -64,7 +65,7 @@ list, and all patches should be sent to the list for review (see
 
 In most cases, we try to wait until we have at least one or two
 "Reviewed-by:" replies to a patch posted to the list before
-incorporating it into master, so reviews are an important way to help.
+incorporating it into main, so reviews are an important way to help.
 We also love a good "Tested-by:" -- the more the merrier.
 
 
@@ -108,9 +109,9 @@ review, and must be "signed off" by the author before official
 inclusion (see ./SIGNED-OFF-BY).  You can create a "signed off" set of
 patches in ./patches, ready for submission to the list, like this:
 
-    git format-patch -s -o patches origin/master
+    git format-patch -s -o patches origin/main
 
-which will include all of the patches since origin/master on your
+which will include all of the patches since origin/main on your
 current branch.  Then you can send them to the list like this:
 
     git send-email --to bup-list@googlegroups.com --compose patches/*
@@ -120,7 +121,7 @@ that will be sent as the first message.
 
 It's also possible to handle everything in one step:
 
-    git send-email -s --to bup-list@googlegroups.com --compose origin/master
+    git send-email -s --to bup-list@googlegroups.com --compose origin/main
 
 and you can add --annotate if you'd like to review or edit each patch
 before it's sent.
