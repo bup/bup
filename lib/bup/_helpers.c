@@ -126,64 +126,6 @@ static uint64_t htonll(uint64_t value)
 #define INTEGRAL_ASSIGNMENT_FITS(dest, src) INT_ADD_OK(src, 0, dest)
 
 
-static int bup_ulong_from_py(unsigned long *x, PyObject *py, const char *name)
-{
-    if (!PyLong_Check(py))
-    {
-        PyErr_Format(PyExc_TypeError, "expected integer %s", name);
-        return 0;
-    }
-
-    const unsigned long tmp = PyLong_AsUnsignedLong(py);
-    if (PyErr_Occurred())
-    {
-        if (PyErr_ExceptionMatches(PyExc_OverflowError))
-            PyErr_Format(PyExc_OverflowError, "%s too big for unsigned long",
-                         name);
-        return 0;
-    }
-    *x = tmp;
-    return 1;
-}
-
-
-static int bup_uint_from_py(unsigned int *x, PyObject *py, const char *name)
-{
-    unsigned long tmp;
-    if (!bup_ulong_from_py(&tmp, py, name))
-        return 0;
-
-    if (tmp > UINT_MAX)
-    {
-        PyErr_Format(PyExc_OverflowError, "%s too big for unsigned int", name);
-        return 0;
-    }
-    *x = (unsigned int) tmp;
-    return 1;
-}
-
-static int bup_ullong_from_py(unsigned PY_LONG_LONG *x, PyObject *py,
-                              const char *name)
-{
-    if (!PyLong_Check(py))
-    {
-        PyErr_Format(PyExc_TypeError, "integer argument expected for %s", name);
-        return 0;
-    }
-
-    const unsigned PY_LONG_LONG tmp = PyLong_AsUnsignedLongLong(py);
-    if (tmp == (unsigned long long) -1 && PyErr_Occurred())
-    {
-        if (PyErr_ExceptionMatches(PyExc_OverflowError))
-            PyErr_Format(PyExc_OverflowError,
-                         "%s too big for unsigned long long", name);
-        return 0;
-    }
-    *x = tmp;
-    return 1;
-}
-
-
 static PyObject *bup_bytescmp(PyObject *self, PyObject *args)
 {
     PyObject *py_s1, *py_s2;  // This is really a PyBytes/PyString
