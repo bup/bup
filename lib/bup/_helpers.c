@@ -1117,41 +1117,6 @@ static PyObject *bup_set_linux_file_attr(PyObject *self, PyObject *args)
 #endif
 #endif // defined BUP_USE_PYTHON_UTIME
 
-#define ASSIGN_PYLONG_TO_INTEGRAL(dest, pylong, overflow) \
-    ({                                                     \
-        int result = 0;                                                 \
-        *(overflow) = 0;                                                \
-        const long long lltmp = PyLong_AsLongLong(pylong);              \
-        if (lltmp == -1 && PyErr_Occurred())                            \
-        {                                                               \
-            if (PyErr_ExceptionMatches(PyExc_OverflowError))            \
-            {                                                           \
-                const unsigned long long ulltmp = PyLong_AsUnsignedLongLong(pylong); \
-                if (ulltmp == (unsigned long long) -1 && PyErr_Occurred()) \
-                {                                                       \
-                    if (PyErr_ExceptionMatches(PyExc_OverflowError))    \
-                    {                                                   \
-                        PyErr_Clear();                                  \
-                        *(overflow) = 1;                                \
-                    }                                                   \
-                }                                                       \
-                if (INTEGRAL_ASSIGNMENT_FITS((dest), ulltmp))           \
-                    result = 1;                                         \
-                else                                                    \
-                    *(overflow) = 1;                                    \
-            }                                                           \
-        }                                                               \
-        else                                                            \
-        {                                                               \
-            if (INTEGRAL_ASSIGNMENT_FITS((dest), lltmp))                \
-                result = 1;                                             \
-            else                                                        \
-                *(overflow) = 1;                                        \
-        }                                                               \
-        result;                                                         \
-        })
-
-
 #ifndef BUP_USE_PYTHON_UTIME // just for Python 2 now
 #ifdef HAVE_UTIMENSAT
 
@@ -1172,14 +1137,14 @@ static PyObject *bup_utimensat(PyObject *self, PyObject *args)
         return NULL;
 
     int overflow;
-    if (!ASSIGN_PYLONG_TO_INTEGRAL(&(ts[0].tv_sec), access_py, &overflow))
+    if (!BUP_ASSIGN_PYLONG_TO_INTEGRAL(&(ts[0].tv_sec), access_py, &overflow))
     {
         if (overflow)
             PyErr_SetString(PyExc_ValueError,
                             "unable to convert access time seconds for utimensat");
         return NULL;
     }
-    if (!ASSIGN_PYLONG_TO_INTEGRAL(&(ts[1].tv_sec), modification_py, &overflow))
+    if (!BUP_ASSIGN_PYLONG_TO_INTEGRAL(&(ts[1].tv_sec), modification_py, &overflow))
     {
         if (overflow)
             PyErr_SetString(PyExc_ValueError,
@@ -1212,7 +1177,7 @@ static int bup_parse_xutimes_args(char **path,
         return 0;
 
     int overflow;
-    if (!ASSIGN_PYLONG_TO_INTEGRAL(&(tv[0].tv_sec), access_py, &overflow))
+    if (!BUP_ASSIGN_PYLONG_TO_INTEGRAL(&(tv[0].tv_sec), access_py, &overflow))
     {
         if (overflow)
             PyErr_SetString(PyExc_ValueError, "unable to convert access time seconds to timeval");
@@ -1223,7 +1188,7 @@ static int bup_parse_xutimes_args(char **path,
         PyErr_SetString(PyExc_ValueError, "unable to convert access time nanoseconds to timeval");
         return 0;
     }
-    if (!ASSIGN_PYLONG_TO_INTEGRAL(&(tv[1].tv_sec), modification_py, &overflow))
+    if (!BUP_ASSIGN_PYLONG_TO_INTEGRAL(&(tv[1].tv_sec), modification_py, &overflow))
     {
         if (overflow)
             PyErr_SetString(PyExc_ValueError, "unable to convert modification time seconds to timeval");
