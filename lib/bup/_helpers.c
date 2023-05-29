@@ -64,8 +64,9 @@
 # pragma GCC diagnostic pop
 #endif
 
-#include "bupsplit.h"
 #include "bup/intprops.h"
+#include "bup/pyutil.h"
+#include "bupsplit.h"
 #include "_hashsplit.h"
 
 #if defined(FS_IOC_GETFLAGS) && defined(FS_IOC_SETFLAGS)
@@ -107,32 +108,6 @@ typedef struct {
 #define cstr_argf "y"
 #define rbuf_argf "y#"
 #define wbuf_argf "y*"
-
-
-static void *checked_calloc(size_t n, size_t size)
-{
-    void *result = calloc(n, size);
-    if (!result)
-        PyErr_NoMemory();
-    return result;
-}
-
-static void *checked_malloc(size_t n, size_t size)
-{
-    size_t total;
-    if (!INT_MULTIPLY_OK(n, size, &total))
-    {
-        PyErr_Format(PyExc_OverflowError,
-                     "request to allocate %zu items of size %zu is too large",
-                     n, size);
-        return NULL;
-    }
-    void *result = malloc(total);
-    if (!result)
-        return PyErr_NoMemory();
-    return result;
-}
-
 
 #ifndef htonll
 // This function should technically be macro'd out if it's going to be used
