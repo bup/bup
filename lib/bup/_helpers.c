@@ -125,9 +125,6 @@ static uint64_t htonll(uint64_t value)
 
 #define INTEGRAL_ASSIGNMENT_FITS(dest, src) INT_ADD_OK(src, 0, dest)
 
-#define INTEGER_TO_PY(x) \
-    EXPR_SIGNED(x) ? PyLong_FromLongLong(x) : PyLong_FromUnsignedLongLong(x)
-
 
 static int bup_ulong_from_py(unsigned long *x, PyObject *py, const char *name)
 {
@@ -1359,22 +1356,22 @@ static PyObject *stat_struct_to_py(const struct stat *st,
 {
     // We can check the known (via POSIX) signed and unsigned types at
     // compile time, but not (easily) the unspecified types, so handle
-    // those via INTEGER_TO_PY().  Assumes ns values will fit in a
+    // those via BUP_LONGISH_TO_PY().  Assumes ns values will fit in a
     // long.
     return Py_BuildValue("NKNNNNNL(Nl)(Nl)(Nl)",
-                         INTEGER_TO_PY(st->st_mode),
+                         BUP_LONGISH_TO_PY(st->st_mode),
                          (unsigned PY_LONG_LONG) st->st_ino,
-                         INTEGER_TO_PY(st->st_dev),
-                         INTEGER_TO_PY(st->st_nlink),
-                         INTEGER_TO_PY(st->st_uid),
-                         INTEGER_TO_PY(st->st_gid),
-                         INTEGER_TO_PY(st->st_rdev),
+                         BUP_LONGISH_TO_PY(st->st_dev),
+                         BUP_LONGISH_TO_PY(st->st_nlink),
+                         BUP_LONGISH_TO_PY(st->st_uid),
+                         BUP_LONGISH_TO_PY(st->st_gid),
+                         BUP_LONGISH_TO_PY(st->st_rdev),
                          (PY_LONG_LONG) st->st_size,
-                         INTEGER_TO_PY(st->st_atime),
+                         BUP_LONGISH_TO_PY(st->st_atime),
                          (long) BUP_STAT_ATIME_NS(st),
-                         INTEGER_TO_PY(st->st_mtime),
+                         BUP_LONGISH_TO_PY(st->st_mtime),
                          (long) BUP_STAT_MTIME_NS(st),
-                         INTEGER_TO_PY(st->st_ctime),
+                         BUP_LONGISH_TO_PY(st->st_ctime),
                          (long) BUP_STAT_CTIME_NS(st));
 }
 
@@ -1573,15 +1570,15 @@ static PyObject *pwd_struct_to_py(const struct passwd *pwd)
 {
     // We can check the known (via POSIX) signed and unsigned types at
     // compile time, but not (easily) the unspecified types, so handle
-    // those via INTEGER_TO_PY().
+    // those via BUP_LONGISH_TO_PY().
     if (pwd == NULL)
         Py_RETURN_NONE;
     return Py_BuildValue(cstr_argf cstr_argf "OO"
                          cstr_argf cstr_argf cstr_argf,
                          pwd->pw_name,
                          pwd->pw_passwd,
-                         INTEGER_TO_PY(pwd->pw_uid),
-                         INTEGER_TO_PY(pwd->pw_gid),
+                         BUP_LONGISH_TO_PY(pwd->pw_uid),
+                         BUP_LONGISH_TO_PY(pwd->pw_gid),
                          pwd->pw_gecos,
                          pwd->pw_dir,
                          pwd->pw_shell);
@@ -1621,7 +1618,7 @@ static PyObject *grp_struct_to_py(const struct group *grp)
 {
     // We can check the known (via POSIX) signed and unsigned types at
     // compile time, but not (easily) the unspecified types, so handle
-    // those via INTEGER_TO_PY().
+    // those via BUP_LONGISH_TO_PY().
     if (grp == NULL)
         Py_RETURN_NONE;
 
@@ -1631,7 +1628,7 @@ static PyObject *grp_struct_to_py(const struct group *grp)
     return Py_BuildValue(cstr_argf cstr_argf "OO",
                          grp->gr_name,
                          grp->gr_passwd,
-                         INTEGER_TO_PY(grp->gr_gid),
+                         BUP_LONGISH_TO_PY(grp->gr_gid),
                          members);
 }
 
@@ -2274,7 +2271,7 @@ static int setup_module(PyObject *m)
     // Just be sure (relevant when passing timestamps back to Python above).
     assert(sizeof(PY_LONG_LONG) <= sizeof(long long));
     assert(sizeof(unsigned PY_LONG_LONG) <= sizeof(unsigned long long));
-    // At least for INTEGER_TO_PY
+    // At least for BUP_LONGISH_TO_PY
     assert(sizeof(intmax_t) <= sizeof(long long));
     assert(sizeof(uintmax_t) <= sizeof(unsigned long long));
     // This should be guaranteed by the C standard, but it's cheap to
@@ -2296,10 +2293,10 @@ static int setup_module(PyObject *m)
     char *e;
     {
         PyObject *value;
-        value = INTEGER_TO_PY(INT_MAX);
+        value = BUP_LONGISH_TO_PY(INT_MAX);
         PyObject_SetAttrString(m, "INT_MAX", value);
         Py_DECREF(value);
-        value = INTEGER_TO_PY(UINT_MAX);
+        value = BUP_LONGISH_TO_PY(UINT_MAX);
         PyObject_SetAttrString(m, "UINT_MAX", value);
         Py_DECREF(value);
     }
@@ -2308,13 +2305,13 @@ static int setup_module(PyObject *m)
 #ifdef HAVE_UTIMENSAT
     {
         PyObject *value;
-        value = INTEGER_TO_PY(AT_FDCWD);
+        value = BUP_LONGISH_TO_PY(AT_FDCWD);
         PyObject_SetAttrString(m, "AT_FDCWD", value);
         Py_DECREF(value);
-        value = INTEGER_TO_PY(AT_SYMLINK_NOFOLLOW);
+        value = BUP_LONGISH_TO_PY(AT_SYMLINK_NOFOLLOW);
         PyObject_SetAttrString(m, "AT_SYMLINK_NOFOLLOW", value);
         Py_DECREF(value);
-        value = INTEGER_TO_PY(UTIME_NOW);
+        value = BUP_LONGISH_TO_PY(UTIME_NOW);
         PyObject_SetAttrString(m, "UTIME_NOW", value);
         Py_DECREF(value);
     }
@@ -2324,7 +2321,7 @@ static int setup_module(PyObject *m)
 #ifdef BUP_HAVE_MINCORE_INCORE
     {
         PyObject *value;
-        value = INTEGER_TO_PY(MINCORE_INCORE);
+        value = BUP_LONGISH_TO_PY(MINCORE_INCORE);
         PyObject_SetAttrString(m, "MINCORE_INCORE", value);
         Py_DECREF(value);
     }
