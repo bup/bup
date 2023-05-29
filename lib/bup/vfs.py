@@ -59,7 +59,7 @@ import re, sys
 from bup import git, vint
 from bup.compat import hexstr, pending_raise
 from bup.git import BUP_CHUNKED, parse_commit, tree_decode
-from bup.helpers import debug2, last, nullcontext_if_not
+from bup.helpers import debug2, last
 from bup.io import path_msg
 from bup.metadata import Metadata
 from bup.vint import read_bvec, write_bvec
@@ -645,7 +645,9 @@ def ordered_tree_entries(tree_data, bupm=None):
     for ent in tree_ents:
         yield ent
 
-def tree_items(oid, tree_data, names=frozenset(), bupm=None):
+def _tree_items_except_dot(oid, tree_data, names=None, bupm=None):
+    """Returns all tree items except ".", and assumes that any bupm is
+    positioned just after that entry."""
 
     def tree_item(ent_oid, kind, gitmode):
         if kind == BUP_CHUNKED:
@@ -663,10 +665,9 @@ def tree_items(oid, tree_data, names=frozenset(), bupm=None):
             meta = _default_mode_for_gitmode(gitmode)
         return Item(oid=ent_oid, meta=meta)
 
+    assert isinstance(names, (set, frozenset)) or names is None
     assert len(oid) == 20
     if not names:
-        dot_meta = _read_dir_meta(bupm) if bupm else default_dir_mode
-        yield b'.', Item(oid=oid, meta=dot_meta)
         tree_entries = ordered_tree_entries(tree_data, bupm)
         for name, mangled_name, kind, gitmode, ent_oid in tree_entries:
             if mangled_name == b'.bupm':
@@ -675,21 +676,14 @@ def tree_items(oid, tree_data, names=frozenset(), bupm=None):
             yield name, tree_item(ent_oid, kind, gitmode)
         return
 
-    # Assumes the tree is properly formed, i.e. there are no
-    # duplicates, and entries will be in git tree order.
-    if not isinstance(names, (frozenset, set)):
-        names = frozenset(names)
     remaining = len(names)
-
-    # Account for the bupm sort order issue (cf. ordered_tree_entries above)
-    last_name = max(names) if bupm else max(names) + b'/'
-
     if b'.' in names:
-        dot_meta = _read_dir_meta(bupm) if bupm else default_dir_mode
-        yield b'.', Item(oid=oid, meta=dot_meta)
         if remaining == 1:
             return
         remaining -= 1
+
+    # Account for the bupm sort order issue (cf. ordered_tree_entries above)
+    last_name = max(names) if bupm else max(names) + b'/'
 
     tree_entries = ordered_tree_entries(tree_data, bupm)
     for name, mangled_name, kind, gitmode, ent_oid in tree_entries:
@@ -707,25 +701,43 @@ def tree_items(oid, tree_data, names=frozenset(), bupm=None):
             break
         remaining -= 1
 
-def tree_items_with_meta(repo, oid, tree_data, names):
+def tree_items(repo, oid, tree_data, names, *, want_meta=True):
     # For now, the .bupm order doesn't quite match git's, and we don't
     # load the tree data incrementally anyway, so we just work in RAM
     # via tree_data.
     assert len(oid) == 20
-    bupm = None
+
+    # Assumes the tree is properly formed, i.e. there are no
+    # duplicates, and entries will be in git tree order.
+    if names is not None and not isinstance(names, (frozenset, set)):
+        names = frozenset(names)
+    dot_requested = not names or b'.' in names
+
+    bupm_oid = None
     for _, mangled_name, sub_oid in tree_decode(tree_data):
         if mangled_name == b'.bupm':
-            bupm = _FileReader(repo, sub_oid)
+            bupm_oid = sub_oid
             break
         if mangled_name > b'.bupm':
             break
-    with nullcontext_if_not(bupm):
-        for item in tree_items(oid, tree_data, names, bupm):
-            yield item
+
+    if want_meta and bupm_oid:
+        with _FileReader(repo, bupm_oid) as bupm:
+            if not dot_requested:
+                Metadata.read(bupm)
+            else:
+                yield b'.', Item(oid=oid, meta=_read_dir_meta(bupm))
+            yield from _tree_items_except_dot(oid, tree_data, names, bupm)
+        return
+
+    if dot_requested:
+        yield b'.', Item(oid=oid, meta=default_dir_mode)
+    yield from _tree_items_except_dot(oid, tree_data, names)
 
 _save_name_rx = re.compile(br'^\d\d\d\d-\d\d-\d\d-\d{6}(-\d+)?$')
 
 def _reverse_suffix_duplicates(strs):
+
     """Yields the elements of strs, with any runs of duplicate values
     suffixed with -N suffixes, where the zero padded integer N
     decreases to 0 by 1 (e.g. 10, 09, ..., 00).
@@ -911,10 +923,7 @@ def contents(repo, item, names=None, want_meta=True):
             # Note: it shouldn't be possible to see an Item with type
             # 'commit' since a 'commit' should always produce a Commit.
             raise Exception('unexpected git ' + obj_t.decode('ascii'))
-        if want_meta:
-            item_gen = tree_items_with_meta(repo, item.oid, data, names)
-        else:
-            item_gen = tree_items(item.oid, data, names)
+        item_gen = tree_items(repo, item.oid, data, names, want_meta=want_meta)
     elif isinstance(item, RevList):
         item_gen = revlist_items(repo, item.oid, names,
                                  require_meta=want_meta)
