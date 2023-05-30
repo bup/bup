@@ -31,6 +31,7 @@
 
 #include "_hashsplit.h"
 #include "bup/intprops.h"
+#include "bup/pyutil.h"
 #include "bupsplit.h"
 
 #if defined(FS_IOC_GETFLAGS) && defined(FS_IOC_SETFLAGS)
@@ -294,11 +295,11 @@ static int HashSplitter_init(HashSplitter *self, PyObject *args, PyObject *kwds)
         "fanbits",
         NULL
      };
-    PyObject *files = NULL;
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "OI|OpI", argnames,
-                                     &files, &self->bits,
+    PyObject *files = NULL, *py_bits = NULL, *py_fanbits = NULL;
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "OO|OpO", argnames,
+                                     &files, &py_bits,
                                      &self->progress, &self->boundaries,
-                                     &self->fanbits))
+                                     &py_fanbits))
         goto error;
 
     self->files = PyObject_GetIter(files);
@@ -311,6 +312,8 @@ static int HashSplitter_init(HashSplitter *self, PyObject *args, PyObject *kwds)
     else
         Py_INCREF(self->progress);
 
+    if(py_bits && !bup_uint_from_py(&self->bits, py_bits, "HashSplitter(bits)"))
+        goto error;
     if (self->bits < 13 || self->bits > max_bits) {
         PyErr_Format(PyExc_ValueError,
                      "invalid bits value %d (must be in [%d, %d])",
@@ -318,6 +321,9 @@ static int HashSplitter_init(HashSplitter *self, PyObject *args, PyObject *kwds)
         goto error;
     }
 
+    if(py_fanbits && !bup_uint_from_py(&self->fanbits, py_fanbits,
+                                       "HashSplitter(fanbits)"))
+        goto error;
     if (!self->fanbits) {
         PyErr_Format(PyExc_ValueError, "fanbits must be non-zero");
         goto error;
