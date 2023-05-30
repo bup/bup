@@ -73,20 +73,6 @@
 #define BUP_HAVE_FILE_ATTRS 1
 #endif
 
-#if PY_MAJOR_VERSION > 2
-# define BUP_USE_PYTHON_UTIME 1
-#endif
-
-#ifndef BUP_USE_PYTHON_UTIME // just for Python 2 now
-/*
- * Check for incomplete UTIMENSAT support (NetBSD 6), and if so,
- * pretend we don't have it.
- */
-#if !defined(AT_FDCWD) || !defined(AT_SYMLINK_NOFOLLOW)
-#undef HAVE_UTIMENSAT
-#endif
-#endif // defined BUP_USE_PYTHON_UTIME
-
 #ifndef FS_NOCOW_FL
 // Of course, this assumes it's a bitfield value.
 #define FS_NOCOW_FL 0
@@ -1106,138 +1092,6 @@ static PyObject *bup_set_linux_file_attr(PyObject *self, PyObject *args)
 #endif /* def BUP_HAVE_FILE_ATTRS */
 
 
-#ifndef BUP_USE_PYTHON_UTIME // just for Python 2 now
-#ifndef HAVE_UTIMENSAT
-#ifndef HAVE_UTIMES
-#error "cannot find utimensat or utimes()"
-#endif
-#ifndef HAVE_LUTIMES
-#error "cannot find utimensat or lutimes()"
-#endif
-#endif
-#endif // defined BUP_USE_PYTHON_UTIME
-
-#ifndef BUP_USE_PYTHON_UTIME // just for Python 2 now
-#ifdef HAVE_UTIMENSAT
-
-static PyObject *bup_utimensat(PyObject *self, PyObject *args)
-{
-    int rc;
-    int fd, flag;
-    char *path;
-    PyObject *access_py, *modification_py;
-    struct timespec ts[2];
-
-    if (!PyArg_ParseTuple(args, "i" cstr_argf "((Ol)(Ol))i",
-                          &fd,
-                          &path,
-                          &access_py, &(ts[0].tv_nsec),
-                          &modification_py, &(ts[1].tv_nsec),
-                          &flag))
-        return NULL;
-
-    int overflow;
-    if (!BUP_ASSIGN_PYLONG_TO_INTEGRAL(&(ts[0].tv_sec), access_py, &overflow))
-    {
-        if (overflow)
-            PyErr_SetString(PyExc_ValueError,
-                            "unable to convert access time seconds for utimensat");
-        return NULL;
-    }
-    if (!BUP_ASSIGN_PYLONG_TO_INTEGRAL(&(ts[1].tv_sec), modification_py, &overflow))
-    {
-        if (overflow)
-            PyErr_SetString(PyExc_ValueError,
-                            "unable to convert modification time seconds for utimensat");
-        return NULL;
-    }
-    rc = utimensat(fd, path, ts, flag);
-    if (rc != 0)
-        return PyErr_SetFromErrnoWithFilename(PyExc_OSError, path);
-
-    return Py_BuildValue("O", Py_None);
-}
-
-#endif /* def HAVE_UTIMENSAT */
-
-
-#if defined(HAVE_UTIMES) || defined(HAVE_LUTIMES)
-
-static int bup_parse_xutimes_args(char **path,
-                                  struct timeval tv[2],
-                                  PyObject *args)
-{
-    PyObject *access_py, *modification_py;
-    long long access_us, modification_us; // POSIX guarantees tv_usec is signed.
-
-    if (!PyArg_ParseTuple(args, cstr_argf "((OL)(OL))",
-                          path,
-                          &access_py, &access_us,
-                          &modification_py, &modification_us))
-        return 0;
-
-    int overflow;
-    if (!BUP_ASSIGN_PYLONG_TO_INTEGRAL(&(tv[0].tv_sec), access_py, &overflow))
-    {
-        if (overflow)
-            PyErr_SetString(PyExc_ValueError, "unable to convert access time seconds to timeval");
-        return 0;
-    }
-    if (!INTEGRAL_ASSIGNMENT_FITS(&(tv[0].tv_usec), access_us))
-    {
-        PyErr_SetString(PyExc_ValueError, "unable to convert access time nanoseconds to timeval");
-        return 0;
-    }
-    if (!BUP_ASSIGN_PYLONG_TO_INTEGRAL(&(tv[1].tv_sec), modification_py, &overflow))
-    {
-        if (overflow)
-            PyErr_SetString(PyExc_ValueError, "unable to convert modification time seconds to timeval");
-        return 0;
-    }
-    if (!INTEGRAL_ASSIGNMENT_FITS(&(tv[1].tv_usec), modification_us))
-    {
-        PyErr_SetString(PyExc_ValueError, "unable to convert modification time nanoseconds to timeval");
-        return 0;
-    }
-    return 1;
-}
-
-#endif /* defined(HAVE_UTIMES) || defined(HAVE_LUTIMES) */
-
-
-#ifdef HAVE_UTIMES
-static PyObject *bup_utimes(PyObject *self, PyObject *args)
-{
-    char *path;
-    struct timeval tv[2];
-    if (!bup_parse_xutimes_args(&path, tv, args))
-        return NULL;
-    int rc = utimes(path, tv);
-    if (rc != 0)
-        return PyErr_SetFromErrnoWithFilename(PyExc_OSError, path);
-    return Py_BuildValue("O", Py_None);
-}
-#endif /* def HAVE_UTIMES */
-
-
-#ifdef HAVE_LUTIMES
-static PyObject *bup_lutimes(PyObject *self, PyObject *args)
-{
-    char *path;
-    struct timeval tv[2];
-    if (!bup_parse_xutimes_args(&path, tv, args))
-        return NULL;
-    int rc = lutimes(path, tv);
-    if (rc != 0)
-        return PyErr_SetFromErrnoWithFilename(PyExc_OSError, path);
-
-    return Py_BuildValue("O", Py_None);
-}
-#endif /* def HAVE_LUTIMES */
-
-#endif // defined BUP_USE_PYTHON_UTIME
-
-
 #ifdef HAVE_STAT_ST_ATIM
 # define BUP_STAT_ATIME_NS(st) (st)->st_atim.tv_nsec
 # define BUP_STAT_MTIME_NS(st) (st)->st_mtim.tv_nsec
@@ -2056,23 +1910,6 @@ static PyMethodDef helper_methods[] = {
     { "set_linux_file_attr", bup_set_linux_file_attr, METH_VARARGS,
       "Set the Linux attributes for the given file." },
 #endif
-
-#ifndef BUP_USE_PYTHON_UTIME // just for Python 2 now
-#ifdef HAVE_UTIMENSAT
-    { "bup_utimensat", bup_utimensat, METH_VARARGS,
-      "Change path timestamps with nanosecond precision (POSIX)." },
-#endif
-#ifdef HAVE_UTIMES
-    { "bup_utimes", bup_utimes, METH_VARARGS,
-      "Change path timestamps with microsecond precision." },
-#endif
-#ifdef HAVE_LUTIMES
-    { "bup_lutimes", bup_lutimes, METH_VARARGS,
-      "Change path timestamps with microsecond precision;"
-      " don't follow symlinks." },
-#endif
-#endif // defined BUP_USE_PYTHON_UTIME
-
     { "stat", bup_stat, METH_VARARGS,
       "Extended version of stat." },
     { "lstat", bup_lstat, METH_VARARGS,
@@ -2207,23 +2044,6 @@ static int setup_module(PyObject *m)
         PyObject_SetAttrString(m, "UINT_MAX", value);
         Py_DECREF(value);
     }
-
-#ifndef BUP_USE_PYTHON_UTIME // just for Python 2 now
-#ifdef HAVE_UTIMENSAT
-    {
-        PyObject *value;
-        value = BUP_LONGISH_TO_PY(AT_FDCWD);
-        PyObject_SetAttrString(m, "AT_FDCWD", value);
-        Py_DECREF(value);
-        value = BUP_LONGISH_TO_PY(AT_SYMLINK_NOFOLLOW);
-        PyObject_SetAttrString(m, "AT_SYMLINK_NOFOLLOW", value);
-        Py_DECREF(value);
-        value = BUP_LONGISH_TO_PY(UTIME_NOW);
-        PyObject_SetAttrString(m, "UTIME_NOW", value);
-        Py_DECREF(value);
-    }
-#endif
-#endif // defined BUP_USE_PYTHON_UTIME
 
 #ifdef BUP_HAVE_MINCORE_INCORE
     {
