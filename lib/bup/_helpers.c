@@ -1347,13 +1347,16 @@ static PyObject *pwd_struct_to_py(const struct passwd *pwd)
 
 static PyObject *bup_getpwuid(PyObject *self, PyObject *args)
 {
-    unsigned long long py_uid;
-    if (!PyArg_ParseTuple(args, "K", &py_uid))
+    PyObject *py_uid = NULL;
+    if (!PyArg_ParseTuple(args, "O", &py_uid))
 	return NULL;
     uid_t uid;
-    if (!INTEGRAL_ASSIGNMENT_FITS(&uid, py_uid))
-        return PyErr_Format(PyExc_OverflowError, "uid too large for uid_t");
-
+    int overflow;
+    if (!BUP_ASSIGN_PYLONG_TO_INTEGRAL(&uid, py_uid, &overflow)) {
+        if (overflow)
+            return PyErr_Format(PyExc_OverflowError, "uid too large for uid_t");
+        return NULL;
+    }
     errno = 0;
     struct passwd *pwd = getpwuid(uid);
     if (!pwd && errno)
@@ -1395,12 +1398,16 @@ static PyObject *grp_struct_to_py(const struct group *grp)
 
 static PyObject *bup_getgrgid(PyObject *self, PyObject *args)
 {
-    unsigned long long py_gid;
-    if (!PyArg_ParseTuple(args, "K", &py_gid))
+    PyObject *py_gid = NULL;
+    if (!PyArg_ParseTuple(args, "O", &py_gid))
 	return NULL;
     gid_t gid;
-    if (!INTEGRAL_ASSIGNMENT_FITS(&gid, py_gid))
-        return PyErr_Format(PyExc_OverflowError, "gid too large for gid_t");
+    int overflow;
+    if (!BUP_ASSIGN_PYLONG_TO_INTEGRAL(&gid, py_gid, &overflow)) {
+        if (overflow)
+            return PyErr_Format(PyExc_OverflowError, "gid too large for gid_t");
+        return NULL;
+    }
 
     errno = 0;
     struct group *grp = getgrgid(gid);
