@@ -559,7 +559,12 @@ class Metadata:
         for i in range(len(acls)):
             acl = acls[i]
             if b',' in acl:
-                add_error(f'Unexpected comma in ACL entry; ignoring {acl!r} for {path_msg(path)}\n')
+                if path:
+                    msg = f'Unexpected comma in ACL entry; ignoring {acl!r}' \
+                        f' for {path_msg(path)}\n'
+                else:
+                    msg = f'Unexpected comma in ACL entry; ignoring {acl!r}\n'
+                add_error(msg)
                 return None
             acls[i] = acl.replace(b'\n', b',')
         return acls
@@ -570,7 +575,7 @@ class Metadata:
         if acl_rep[2] == b'':
             acl_rep = acl_rep[:2]
         if version == 1:
-            acl_rep = self._correct_posix1e_v1_delimiters(acl_rep)
+            acl_rep = self._correct_posix1e_v1_delimiters(acl_rep, self.path)
         self.posix1e_acl = acl_rep
 
     def _apply_posix1e_acl_rec(self, path, restore_numeric_ids=False):
