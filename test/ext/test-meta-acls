@@ -27,7 +27,8 @@ if ! compare-trees --features | grep -qi 'posix acls: yes'; then
 fi
 
 tmpdir="$(WVPASS wvmktempdir)" || exit $?
-export BUP_DIR="$tmpdir/bup"
+bup_dir="$tmpdir/bup"
+export BUP_DIR="$bup_dir"
 
 uid=$(WVPASS id -un) || exit $?
 other_uinfo="$(id-other-than --user "$uid")" || exit $?
@@ -49,7 +50,7 @@ if ! setfacl -m "u:$other_user:r" src/u-r; then
     exit 0
 fi
 
-WVSTART "Basic ACL support"
+WVSTART "Basic ACL support (setup)"
 
 # file ACL_USER access acl(5)
 for perm in r rw rwx; do
@@ -97,11 +98,27 @@ for perm in r rw rwx; do
     WVPASS setfacl -d -m "g:$other_group:$perm" src/d-both-g-"$perm"
 done
 
-WVPASS bup init
-WVPASS bup index -u src
-WVPASS bup save --strip -n acls src
-WVPASS bup restore -C dest acls/latest/.
-WVPASS compare-trees src/ dest/
+test-save-restore()
+{
+    WVPASS test "$#" -eq 2
+    local saver="$1" restorer="$2"
+    WVPASS rm -rf "$bup_dir" dest
+    WVPASS "$saver" init
+    WVPASS "$saver" index -u src
+    WVPASS "$saver" save --strip -n acls src
+    WVPASS "$restorer" restore -C dest acls/latest/.
+    WVPASS compare-trees src/ dest/
+}
+
+WVSTART "Basic ACL support (save and restore)"
+test-save-restore bup bup
+
+if test -z "$BUP_TEST_OTHER_BUP"; then
+    # FIXME: need ability to "skip", without skipping this entire file
+    WVMSG 'BUP_TEST_OTHER_BUP not set; skipping cross-version test'
+else
+    test-save-restore "$BUP_TEST_OTHER_BUP" bup
+fi
 
 cd "$top"
 WVPASS rm -rf "$tmpdir"
