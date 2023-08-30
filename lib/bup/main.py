@@ -189,7 +189,7 @@ if not cmd_module:
         usage('error: unknown command "%s"' % path_msg(subcmd_name))
 
 already_fixed = int(environ.get(b'BUP_FORCE_TTY', 0))
-if subcmd_name in [b'mux', b'ftp', b'help']:
+if subcmd_name in (b'mux', b'ftp', b'help', b'fuse'):
     fix_stdout = False
     fix_stderr = False
 else:
