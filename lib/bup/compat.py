@@ -13,19 +13,6 @@ def hexstr(b):
 def reraise(ex):
     raise ex.with_traceback(sys.exc_info()[2])
 
-# These three functions (add_ex_tb, add_ex_ctx, and pending_raise) are
-# vestigial, and code that uses them can probably be rewritten more
-# simply now that we require Python versions that automatically
-# populate the tracebacks and automatically chain pending exceptions.
-
-def add_ex_tb(ex):
-    """Do nothing (already handled by Python 3 infrastructure)."""
-    return ex
-
-def add_ex_ctx(ex, context_ex):
-    """Do nothing (already handled by Python 3 infrastructure)."""
-    return ex
-
 class pending_raise:
     """If rethrow is true, rethrow ex (if any), unless the body throws.
 

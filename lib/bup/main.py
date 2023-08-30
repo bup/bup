@@ -18,13 +18,10 @@ import re, select, signal, subprocess
 
 from bup import compat, path, helpers
 from bup.compat import (
-    add_ex_ctx,
-    add_ex_tb,
     environ,
     fsdecode,
     wrap_main
 )
-from bup.compat import add_ex_tb, add_ex_ctx, wrap_main
 from bup.helpers import (
     columnate,
     handle_ctrl_c,
@@ -238,7 +235,6 @@ def filter_output(srcs, dests):
     srcs = tuple(srcs)
     dest_for = dict(zip(srcs, dests))
     pending = {}
-    pending_ex = None
     try:
         while srcs:
             ready_fds, _, _ = select.select(srcs, [], [])
@@ -262,21 +258,19 @@ def filter_output(srcs, dests):
                     if split[0]:
                         pending.setdefault(fd, []).extend(split)
     except BaseException as ex:
-        pending_ex = add_ex_ctx(add_ex_tb(ex), pending_ex)
-    try:
+        pending_ex = ex
         # Try to finish each of the streams
-        for fd, pending_items in pending.items():
-            dest = dest_for[fd]
-            width = tty_width()
-            try:
-                print_clean_line(dest, pending_items, width)
-            except (EnvironmentError, EOFError) as ex:
-                pending_ex = add_ex_ctx(add_ex_tb(ex), pending_ex)
-    except BaseException as ex:
-        pending_ex = add_ex_ctx(add_ex_tb(ex), pending_ex)
-    if pending_ex:
-        raise pending_ex
-
+        try:
+            for fd, pending_items in pending.items():
+                dest = dest_for[fd]
+                width = tty_width()
+                try:
+                    print_clean_line(dest, pending_items, width)
+                except (EnvironmentError, EOFError) as ex:
+                    ex.__cause__ = pending_ex
+                    pending_ex = ex
+        finally:
+            raise pending_ex
 
 def import_and_run_main(module, args):
     if do_profile:
@@ -299,7 +293,6 @@ def run_module_cmd(module, args):
     dests = []
     real_out_fd = real_err_fd = stdout_pipe = stderr_pipe = None
     filter_thread = filter_thread_started = None
-    pending_ex = None
     try:
         if fix_stdout:
             sys.stdout.flush()
@@ -321,42 +314,29 @@ def run_module_cmd(module, args):
         filter_thread.start()
         filter_thread_started = True
         import_and_run_main(module, args)
-    except Exception as ex:
-        add_ex_tb(ex)
-        pending_ex = ex
-        raise
     finally:
         # Try to make sure that whatever else happens, we restore
         # stdout and stderr here, if that's possible, so that we don't
-        # risk just losing some output.
+        # risk just losing some output.  Nest the finally blocks so we
+        # try each one no matter what happens, and accumulate alll
+        # exceptions in the pending exception __context__.
         try:
-            real_out_fd is not None and os.dup2(real_out_fd, sys.stdout.fileno())
-        except Exception as ex:
-            add_ex_tb(ex)
-            add_ex_ctx(ex, pending_ex)
-        try:
-            real_err_fd is not None and os.dup2(real_err_fd, sys.stderr.fileno())
-        except Exception as ex:
-            add_ex_tb(ex)
-            add_ex_ctx(ex, pending_ex)
-        # Kick filter loose
-        try:
-            stdout_pipe is not None and os.close(stdout_pipe[1])
-        except Exception as ex:
-            add_ex_tb(ex)
-            add_ex_ctx(ex, pending_ex)
-        try:
-            stderr_pipe is not None and os.close(stderr_pipe[1])
-        except Exception as ex:
-            add_ex_tb(ex)
-            add_ex_ctx(ex, pending_ex)
-        try:
+            try:
+                try:
+                    try:
+                        real_out_fd is not None and \
+                            os.dup2(real_out_fd, sys.stdout.fileno())
+                    finally:
+                        real_err_fd is not None and \
+                            os.dup2(real_err_fd, sys.stderr.fileno())
+                finally:
+                    # Kick filter loose
+                    stdout_pipe is not None and os.close(stdout_pipe[1])
+            finally:
+                stderr_pipe is not None and os.close(stderr_pipe[1])
+        finally:
             close_catpipes()
-        except Exception as ex:
-            add_ex_tb(ex)
-            add_ex_ctx(ex, pending_ex)
-    if pending_ex:
-        raise pending_ex
+
     # There's no point in trying to join unless we finished the finally block.
     if filter_thread_started:
         filter_thread.join()
@@ -394,14 +374,10 @@ def run_subproc_cmd(args):
         filter_output(srcs, dests)
         return p.wait()
     except BaseException as ex:
-        add_ex_tb(ex)
-        try:
-            if p and p.poll() == None:
-                os.kill(p.pid, signal.SIGTERM)
-                p.wait()
-        except BaseException as kill_ex:
-            raise add_ex_ctx(add_ex_tb(kill_ex), ex)
-        raise ex
+        if p and p.poll() == None:
+            os.kill(p.pid, signal.SIGTERM)
+            p.wait()
+        raise
 
 
 def run_subcmd(module, args):
