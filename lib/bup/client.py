@@ -7,7 +7,7 @@ import os, re, struct, time, zlib
 import socket
 
 from bup import git, ssh, vfs
-from bup.compat import environ, pending_raise, reraise
+from bup.compat import environ, pending_raise
 from bup.helpers import (Conn, atomically_replaced_file, chunkyreader, debug1,
                          debug2, linereader, lines_until_sentinel,
                          mkdirp, nullcontext_if_not, progress, qprogress, DemuxConn)
@@ -100,7 +100,7 @@ class Client:
                         self.pin = self.p.stdin
                         self.conn = Conn(self.pout, self.pin)
                     except OSError as e:
-                        reraise(ClientError('connect: %s' % e))
+                        raise ClientError('connect: %s' % e) from e
                 elif self.protocol == b'bup':
                     self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                     self.sock.connect((self.host,
@@ -181,9 +181,7 @@ class Client:
         try:
             return self.conn.check_ok()
         except Exception as e:
-            reraise(ClientError(e))
-            # reraise doesn't return
-            return None
+            raise ClientError(e) from e
 
     def check_busy(self):
         if self._busy:
@@ -590,7 +588,7 @@ class PackWriter_Remote(git.PackWriter):
             (self._bwcount, self._bwtime) = _raw_write_bwlimit(
                     self.file, outbuf, self._bwcount, self._bwtime)
         except IOError as e:
-            reraise(ClientError(e))
+            raise ClientError(e) from e
         self.outbytes += len(data)
         self.count += 1
 
