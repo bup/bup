@@ -10,9 +10,6 @@ def hexstr(b):
     """Return hex string (not bytes as with hexlify) representation of b."""
     return b.hex()
 
-def reraise(ex):
-    raise ex.with_traceback(sys.exc_info()[2])
-
 class pending_raise:
     """If rethrow is true, rethrow ex (if any), unless the body throws.
 

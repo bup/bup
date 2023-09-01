@@ -15,8 +15,7 @@ from bup import _helpers, hashsplit, path, midx, bloom, xstat
 from bup.compat import (buffer,
                         byte_int, bytes_from_byte, bytes_from_uint,
                         environ,
-                        pending_raise,
-                        reraise)
+                        pending_raise)
 from bup.io import path_msg
 from bup.helpers import (Sha1, add_error, chunkyreader, debug1, debug2,
                          exo,
@@ -832,7 +831,7 @@ class PackWriter(object):
         try:
             f.write(oneblob)
         except IOError as e:
-            reraise(GitError(e))
+            raise GitError(e) from e
         nw = len(oneblob)
         crc = zlib.crc32(oneblob) & 0xffffffff
         self._update_idx(sha, crc, nw)
