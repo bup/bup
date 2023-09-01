@@ -32,7 +32,7 @@ export MANPATH="$tmpdir/man"
 
 PAGER=cat WVPASS bup help save
 PAGER=cat WVPASS bup save --help
-WVPASSEQ 1 $(bup help save | head -1 | grep -cF 'bup-save(1)')
-WVPASSEQ 1 $(bup save --help | head -1 | grep -cF 'bup-save(1)')
+WVPASSEQ 1 $(bup help save | grep -cE 'bup.save . create a new bup backup set')
+WVPASSEQ 1 $(bup save --help | grep -cE 'bup.save . create a new bup backup set')
 
 WVPASS rm -rf "$tmpdir"
