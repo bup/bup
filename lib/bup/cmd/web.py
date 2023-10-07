@@ -116,7 +116,7 @@ class BupRequestHandler(tornado.web.RequestHandler):
     def decode_argument(self, value, name=None):
         if name == 'path':
             return value
-        return super(BupRequestHandler, self).decode_argument(value, name)
+        return super().decode_argument(value, name)
 
     def get(self, path):
         return self._process_request(path)

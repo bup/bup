@@ -37,17 +37,17 @@ class mmap(py_mmap.mmap):
 
     def close(self):
         self._bup_closed = True
-        super(mmap, self).close()
+        super().close()
 
     if hasattr(py_mmap.mmap, '__enter__'):
         def __enter__(self):
-            super(mmap, self).__enter__()
+            super().__enter__()
             return self
         def __exit__(self, type, value, traceback):
             # Don't call self.close() when the parent has its own __exit__;
             # defer to it.
             self._bup_closed = True
-            result = super(mmap, self).__exit__(type, value, traceback)
+            result = super().__exit__(type, value, traceback)
             return result
     else:
         def __enter__(self):
