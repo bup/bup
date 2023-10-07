@@ -561,12 +561,12 @@ class PackWriter_Remote(git.PackWriter):
         self.remote_closed = True
         id = self._end()
         self.file = None
-        super(PackWriter_Remote, self).close()
+        super().close()
         return id
 
     def __del__(self):
         assert self.remote_closed
-        super(PackWriter_Remote, self).__del__()
+        super().__del__()
 
     def abort(self):
         raise ClientError("don't know how to abort remote pack writing")

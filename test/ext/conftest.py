@@ -14,7 +14,7 @@ use_node_path = hasattr(pytest, 'version_tuple')
 
 class BupSubprocFailure(Exception):
     def __init__(self, msg, cmd, status, failures):
-        super(BupSubprocFailure, self).__init__(msg)
+        super().__init__(msg)
         self.cmd = cmd
         self.status = status
         self.failures = failures
@@ -22,7 +22,7 @@ class BupSubprocFailure(Exception):
 class BupSubprocTestRunner(pytest.Item):
 
     def __init__(self, name, parent):
-        super(BupSubprocTestRunner, self).__init__(name, parent)
+        super().__init__(name, parent)
 
     def runtest(self):
         cmd = str(self.fspath)
