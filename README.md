@@ -161,7 +161,15 @@ From source
     ```sh
     make
     ```
- 	
+
+   At the moment the build treats compiler warnings as errors.  If the
+   build fails as a result, try this:
+
+   ```sh
+   CFLAGS=-Wno-error ./configure
+   make
+   ```
+
  - Run the tests:
 
     ```sh
