@@ -190,11 +190,12 @@ From source
     make -j check
     ```
 
-    The tests should pass.  If they don't pass for you, stop here and
-    send an email to bup-list@googlegroups.com.  Though if there are
-    symbolic links along the current working directory path, the tests
-    may fail.  Running something like this before "make test" should
-    sidestep the problem:
+    The tests should pass (with some skipped tests that weren't
+    applicable in your environment).  If they don't pass for you, stop
+    here and send an email to bup-list@googlegroups.com.  Though if
+    there are symbolic links along the current working directory path,
+    the tests may fail.  Running something like this before "make
+    test" should sidestep the problem:
 
     ```sh
     cd "$(pwd -P)"
