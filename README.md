@@ -232,19 +232,12 @@ From binary packages
 
 Binary packages of bup are known to be built for the following OSes:
 
- - Debian:
-    http://packages.debian.org/search?searchon=names&keywords=bup
- - Ubuntu:
-    http://packages.ubuntu.com/search?searchon=names&keywords=bup
- - pkgsrc (NetBSD, Dragonfly, and others)
-    http://pkgsrc.se/sysutils/bup
-    http://cvsweb.netbsd.org/bsdweb.cgi/pkgsrc/sysutils/bup/
- - Arch Linux:
-    https://www.archlinux.org/packages/?sort=&q=bup
- - Fedora:
-    https://apps.fedoraproject.org/packages/bup
- - macOS (Homebrew):
-    https://formulae.brew.sh/formula/bup
+ - [Debian](https://packages.debian.org/bup)
+ - [Ubuntu](https://packages.ubuntu.com/bup)
+ - [pkgsrc.se (NetBSD, Dragonfly, and others)](https://pkgsrc.se/sysutils/bup)
+ - [NetBSD](https://cvsweb.netbsd.org/bsdweb.cgi/pkgsrc/sysutils/bup/)
+ - [Arch Linux](https://www.archlinux.org/packages/?sort=&q=bup)
+ - [macOS (Homebrew)](https://formulae.brew.sh/formula/bup)
 
 
 Using bup
