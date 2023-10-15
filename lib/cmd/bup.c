@@ -201,8 +201,6 @@ static char *exe_parent_dir(const char * const argv_0)
 # define PROC_SELF_EXE "/proc/self/exe"
 #elif defined(__sun) || defined (sun)
 # define PROC_SELF_EXE "/proc/self/path/a.out"
-#else
-# define PROC_SELF_EXE NULL
 #endif
 
 static char *find_in_path(const char * const name, const char * const path)
@@ -286,40 +284,40 @@ static char *find_exe_parent(const char * const argv_0)
 
 static char *exe_parent_dir(const char * const argv_0)
 {
-    if (PROC_SELF_EXE != NULL) {
-        char sbuf[2048];
-        char *path = sbuf;
-        size_t path_n = sizeof(sbuf);
-        ssize_t len;
-        while (1) {
-            len = readlink(PROC_SELF_EXE, path, path_n);
-            if (len == -1 || (size_t) len != path_n)
-                break;
-            if (!INT_MULTIPLY_OK(path_n, 2, &path_n))
-                die(2, "memory buffer for executable path would be too big\n");
-            if (path != sbuf) free(path);
-            path = malloc(path_n);
-            if (!path)
-                die(2, "unable to allocate memory for executable path\n");
-        }
-        if (len != -1) {
-            path[len] = '\0';
-            char *result = strdup(dirname(path));
-            if (path != sbuf)
-                free(path);
-            return result;
-        }
-        switch (errno) {
-        case ENOENT: case EACCES: case EINVAL: case ELOOP: case ENOTDIR:
-        case ENAMETOOLONG:
+#ifdef PROC_SELF_EXE
+    char sbuf[2048];
+    char *path = sbuf;
+    size_t path_n = sizeof(sbuf);
+    ssize_t len;
+    while (1) {
+        len = readlink(PROC_SELF_EXE, path, path_n);
+        if (len == -1 || (size_t) len != path_n)
             break;
-        default:
-            die(2, "cannot resolve %s: %s\n", path, strerror(errno));
-            break;
-        }
+        if (!INT_MULTIPLY_OK(path_n, 2, &path_n))
+            die(2, "memory buffer for executable path would be too big\n");
+        if (path != sbuf) free(path);
+        path = malloc(path_n);
+        if (!path)
+            die(2, "unable to allocate memory for executable path\n");
+    }
+    if (len != -1) {
+        path[len] = '\0';
+        char *result = strdup(dirname(path));
         if (path != sbuf)
             free(path);
+        return result;
     }
+    switch (errno) {
+    case ENOENT: case EACCES: case EINVAL: case ELOOP: case ENOTDIR:
+    case ENAMETOOLONG:
+        break;
+    default:
+        die(2, "cannot resolve %s: %s\n", path, strerror(errno));
+        break;
+    }
+    if (path != sbuf)
+        free(path);
+#endif
     return find_exe_parent(argv_0);
 }
 
