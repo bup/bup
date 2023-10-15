@@ -126,6 +126,7 @@ help_requested = None
 do_profile = False
 bup_dir = None
 args = args[1:]
+subcmd = None
 while args:
     arg = args[0]
     if arg in (b'-?', b'--help'):
@@ -152,7 +153,7 @@ while args:
     else:
         break
 
-subcmd = args
+subcmd = subcmd or args
 
 # Make BUP_DIR absolute, so we aren't affected by chdir (i.e. save -C, etc.).
 if bup_dir:
