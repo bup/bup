@@ -1,10 +1,10 @@
 
 from __future__ import absolute_import, print_function
 from shutil import rmtree
-from subprocess import PIPE
+from subprocess import DEVNULL, PIPE, run
 from tempfile import mkdtemp
 from binascii import hexlify
-import glob, os, subprocess, sys
+import glob, os, sys
 
 from bup import options, git
 from bup.compat import argv_bytes
@@ -13,32 +13,16 @@ from bup.io import byte_stream
 
 
 par2_ok = 0
-nullf = open(os.devnull, 'wb+')
 opt = None
 
 def debug(s):
     if opt.verbose > 1:
         log(s)
 
-def run(argv):
-    # at least in python 2.5, using "stdout=2" or "stdout=sys.stderr" below
-    # doesn't actually work, because subprocess closes fd #2 right before
-    # execing for some reason.  So we work around it by duplicating the fd
-    # first.
-    fd = os.dup(2)  # copy stderr
-    try:
-        p = subprocess.Popen(argv, stdout=fd, close_fds=False)
-        return p.wait()
-    finally:
-        os.close(fd)
-
 def par2_setup():
     global par2_ok
-    rv = 1
     try:
-        p = subprocess.Popen([b'par2', b'--help'],
-                             stdout=nullf, stderr=nullf, stdin=nullf)
-        rv = p.wait()
+        run((b'par2', b'--help'), stdout=DEVNULL, stderr=DEVNULL, stdin=DEVNULL)
     except OSError:
         log('fsck: warning: par2 not found; disabling recovery features.\n')
     else:
@@ -52,11 +36,11 @@ def is_par2_parallel():
         canary = tmpdir + b'/canary'
         with open(canary, 'wb') as f:
             f.write(b'canary\n')
-        p = subprocess.Popen((b'par2', b'create', b'-qq', b'-t1', canary),
-                             stderr=PIPE, stdin=nullf)
-        _, err = p.communicate()
+        p = run((b'par2', b'create', b'-qq', b'-t1', canary),
+                stderr=PIPE, stdin=DEVNULL)
         parallel = p.returncode == 0
         if opt.verbose:
+            err = p.stderr
             if len(err) > 0 and err != b'Invalid option specified: -t1\n':
                 log('Unexpected par2 error output\n')
                 log(repr(err) + '\n')
@@ -82,7 +66,7 @@ def par2(action, args, verb_floor=0):
     if _par2_parallel:
         cmd.append(b'-t1')
     cmd.extend(args)
-    return run(cmd)
+    return run(cmd, stdout=2).returncode
 
 def par2_generate(base):
     return par2(b'create',
@@ -110,15 +94,14 @@ def quick_verify(base):
 
 
 def git_verify(base):
-    if opt.quick:
-        try:
-            quick_verify(base)
-        except Exception as e:
-            log('error: %s\n' % e)
-            return 1
-        return 0
-    else:
-        return run([b'git', b'verify-pack', b'--', base])
+    if not opt.quick:
+        return run([b'git', b'verify-pack', b'--', base]).returncode
+    try:
+        quick_verify(base)
+    except Exception as e:
+        log('error: %s\n' % e)
+        return 1
+    return 0
 
 
 def do_pack(base, last, par2_exists, out):
