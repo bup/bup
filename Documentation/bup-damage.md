@@ -24,6 +24,12 @@ DATA*
 of data recovery tools, to reassure yourself that the tools
 actually work.
 
+Note that the details of the current behavior may change (particularly
+the details not documented here).  For example the moment, the damage
+is strictly probabilistic, and so may or may not actually alter any
+given block.  With a block size of 1, there should be a 1/256 chance
+that the block won't actually change.  This behavior may change.
+
 # OPTIONS
 
 -n, \--num=*numblocks*
