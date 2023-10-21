@@ -46,13 +46,13 @@ def main(argv):
             else:
                 maxsize = 1
             chunks = opt.num or 10
-            chunksize = size // chunks
+            chunksize = (size // chunks) or 1
             for r in range(chunks):
                 sz = random.randrange(1, maxsize+1)
                 if sz > size:
                     sz = size
                 if opt.equal:
-                    ofs = r*chunksize
+                    ofs = (r * chunksize) % size
                 else:
                     ofs = random.randrange(0, size - sz + 1)
                 log('  %6d bytes at %d\n' % (sz, ofs))
