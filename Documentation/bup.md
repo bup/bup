@@ -21,14 +21,13 @@ very large files (such a virtual machine images).  However,
 once a backup set is created, it can still be accessed
 using git tools.
 
-The individual bup subcommands appear in their own man
-pages.
+Subcommands are described in separate man pages.  For example
+`bup-init`(1) covers `bup init`.
 
 # GLOBAL OPTIONS
 
 \--version
-:   print bup's version number.  Equivalent to
-    `bup-version`(1)
+:   print bup's version number.  Equivalent to `bup version`.
 
 -d, \--bup-dir=*BUP_DIR*
 :   use the given BUP_DIR parameter as the bup repository
