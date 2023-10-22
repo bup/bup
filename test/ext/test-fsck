@@ -45,7 +45,20 @@ WVFAIL bup fsck --quick
 WVFAIL bup fsck --quick -rvv -j99   # fails because repairs were needed
 if bup fsck --par2-ok; then
     WVPASS bup fsck -r # ok because of repairs from last time
-    WVPASS bup damage "$BUP_DIR"/objects/pack/*.pack -n202 -s1 --equal -S0
+
+    # This must do "too much" damage.  Currently par2 is invoked with
+    # -c200, which should allow up to 200 damaged "blocks", but since
+    # we don't specify the block size, it's dynamically computed.
+    # Even if we did specify a size, the actual size appears to be
+    # affected by the input file sizes, and the specific behavior
+    # doesn't appear to be documented/promised -- see par2
+    # comandline.cpp.  Also worth noting that bup damage's output is
+    # currently probabilistic, so it might not actually damage any
+    # given byte.  For now, just try to overdo it -- randomly change
+    # (or not 1/256th of the time) 600 evenly spaced bytes in each
+    # pack file.
+    WVPASS bup damage "$BUP_DIR"/objects/pack/*.pack -n600 -s1 --equal -S0
+
     WVFAIL bup fsck
     WVFAIL bup fsck -rvv   # too many errors to be repairable
     WVFAIL bup fsck -r   # too many errors to be repairable
