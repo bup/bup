@@ -270,6 +270,27 @@ static int HashSplitter_nextfile(HashSplitter *self)
     return 0;
 }
 
+static int bits_from_py_kw(unsigned int *bits, PyObject *py, const char *where)
+{
+    if(!py) {
+        PyErr_Format(PyExc_ValueError, "bits must be in [13, %d])", max_bits);
+        return 0;
+    }
+
+    unsigned int b;
+    if(!bup_uint_from_py(&b, py, where))
+        return 0;
+
+    if (b < 13 || b > max_bits) {
+        PyErr_Format(PyExc_ValueError, "bits must be in [13, %d], not %u",
+                     max_bits, b);
+        return 0;
+    }
+
+    *bits = b;
+    return 1;
+}
+
 static int HashSplitter_init(HashSplitter *self, PyObject *args, PyObject *kwds)
 {
     self->files = NULL;
@@ -312,14 +333,8 @@ static int HashSplitter_init(HashSplitter *self, PyObject *args, PyObject *kwds)
     else
         Py_INCREF(self->progress);
 
-    if(py_bits && !bup_uint_from_py(&self->bits, py_bits, "HashSplitter(bits)"))
+    if (!bits_from_py_kw(&self->bits, py_bits, "HashSplitter(bits)"))
         goto error;
-    if (self->bits < 13 || self->bits > max_bits) {
-        PyErr_Format(PyExc_ValueError,
-                     "invalid bits value %d (must be in [%d, %d])",
-                     self->bits, 13, max_bits);
-        goto error;
-    }
 
     if(py_fanbits && !bup_uint_from_py(&self->fanbits, py_fanbits,
                                        "HashSplitter(fanbits)"))
