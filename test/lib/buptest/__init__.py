@@ -41,7 +41,7 @@ def logcmd(cmd):
         print(s.decode(errors='backslashreplace'), file=sys.stderr)
 
 def ex(cmd, **kwargs):
-    """Print cmd to stderr and then run it as per ex(...).
+    """Print cmd to stderr and then run it as per run(...).
     Print the subprocess stderr to stderr if stderr=PIPE and there's
     any data.
     """
