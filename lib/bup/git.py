@@ -1289,6 +1289,8 @@ class CatPipe:
 
     def close(self, wait=False):
         self.p, p = None, self.p
+        if not p:
+            return None
         self.inprogress = None
         if p:
             try:
