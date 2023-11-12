@@ -691,8 +691,12 @@ def _make_objcache():
 class PackWriter:
     """Writes Git objects inside a pack file."""
     def __init__(self, objcache_maker=_make_objcache, compression_level=1,
-                 run_midx=True, on_pack_finish=None,
+                 on_pack_finish=None, run_midx=True,
                  max_pack_size=None, max_pack_objects=None, repo_dir=None):
+        """Create a PackWriter.  Note that on_pack_finish runs after
+        the packfile is in place and before any midx update.
+
+        """
         self.repo_dir = repo_dir or repo()
         self.file = None
         self.parentfd = None
@@ -906,11 +910,11 @@ class PackWriter:
         finally:
             os.close(self.parentfd)
 
-        if run_midx:
-            auto_midx(os.path.join(self.repo_dir, b'objects/pack'))
-
         if self.on_pack_finish:
             self.on_pack_finish(nameprefix)
+
+        if run_midx:
+            auto_midx(os.path.join(self.repo_dir, b'objects/pack'))
 
         return nameprefix
 
