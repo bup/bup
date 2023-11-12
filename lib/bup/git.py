@@ -940,10 +940,10 @@ class PackWriter(object):
                 os.rename(tmpdir + b'/pack', nameprefix + b'.pack')
                 os.rename(tmpdir + b'/idx', nameprefix + b'.idx')
                 os.fsync(pfd)
-                if run_midx:
-                    auto_midx(os.path.join(self.repo_dir, b'objects/pack'))
                 if self.on_pack_finish:
                     self.on_pack_finish(nameprefix)
+                if run_midx:
+                    auto_midx(os.path.join(self.repo_dir, b'objects/pack'))
                 return nameprefix
         finally:
             if tmpdir:
