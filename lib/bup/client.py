@@ -541,10 +541,9 @@ class PackWriter_Remote(git.PackWriter):
             self.onopen()
             self._packopen = True
 
-    def _end(self, run_midx=True):
+    def _end(self):
         # Called by other PackWriter methods like breakpoint().
         # Must not close the connection (self.file)
-        assert(run_midx)  # We don't support this via remote yet
         self.objcache, objcache = None, self.objcache
         with nullcontext_if_not(objcache):
             if not (self._packopen and self.file):

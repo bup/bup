@@ -86,7 +86,7 @@ def receive_objects_v2(conn, junk):
         w = suspended_w
         suspended_w = None
     elif dumb_server_mode:
-        w = git.PackWriter(objcache_maker=None)
+        w = git.PackWriter(objcache_maker=None, run_midx=False)
     else:
         w = git.PackWriter()
     try:
@@ -101,7 +101,7 @@ def receive_objects_v2(conn, junk):
             if not n:
                 debug1('bup server: received %d object%s.\n'
                     % (w.count, w.count!=1 and "s" or ''))
-                fullpath = w.close(run_midx=not dumb_server_mode)
+                fullpath = w.close()
                 w = None
                 if fullpath:
                     dir, name = os.path.split(fullpath)

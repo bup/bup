@@ -904,7 +904,7 @@ class PackWriter(object):
                                      msg)
         return self.maybe_write(b'commit', content)
 
-    def _end(self, run_midx=True, abort=False):
+    def _end(self, abort=False):
         # Ignores run_midx during abort
         self.tmpdir, tmpdir = None, self.tmpdir
         self.parentfd, pfd, = None, self.parentfd
@@ -942,7 +942,7 @@ class PackWriter(object):
                 os.fsync(pfd)
                 if self.on_pack_finish:
                     self.on_pack_finish(nameprefix)
-                if run_midx:
+                if self.run_midx:
                     auto_midx(os.path.join(self.repo_dir, b'objects/pack'))
                 return nameprefix
         finally:
@@ -958,14 +958,14 @@ class PackWriter(object):
 
     def breakpoint(self):
         """Clear byte and object counts and return the last processed id."""
-        id = self._end(self.run_midx)
+        id = self._end()
         self.outbytes = self.count = 0
         return id
 
-    def close(self, run_midx=True):
+    def close(self):
         """Close the pack file and move it to its definitive path."""
         self.closed = True
-        return self._end(run_midx=run_midx)
+        return self._end()
 
     def __del__(self):
         assert self.closed
