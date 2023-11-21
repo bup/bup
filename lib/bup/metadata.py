@@ -741,6 +741,7 @@ class Metadata:
                      'path', 'size', 'symlink_target', 'hardlink_target',
                      'linux_attr', 'linux_xattr', 'posix1e_acl')
         self.mode = self.uid = self.gid = self.user = self.group = None
+        self.rdev = None
         self.atime = self.mtime = self.ctime = None
         # optional members
         self.path = None
@@ -757,6 +758,7 @@ class Metadata:
         if self.mtime != other.mtime: return False
         if self.ctime != other.ctime: return False
         if self.atime != other.atime: return False
+        if self.rdev != other.rdev: return False
         if self.path != other.path: return False
         if self.uid != other.uid: return False
         if self.gid != other.gid: return False
@@ -777,6 +779,7 @@ class Metadata:
                      self.mtime,
                      self.ctime,
                      self.atime,
+                     self.rdev,
                      self.path,
                      self.uid,
                      self.gid,
@@ -802,6 +805,8 @@ class Metadata:
             result += ' user:' + repr(self.user)
         if self.group is not None:
             result += ' group:' + repr(self.group)
+        if self.rdev is not None:
+            result += ' rdev:' + repr(self.group)
         if self.size is not None:
             result += ' size:' + repr(self.size)
         for name, val in (('atime', self.atime),
