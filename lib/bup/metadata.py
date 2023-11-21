@@ -736,10 +736,12 @@ class Metadata:
                 else:
                     raise
 
+    __slots__ = ('mode', 'uid', 'gid', 'user', 'group', 'rdev',
+                 'atime', 'mtime', 'ctime', 'path',
+                 'size', 'symlink_target', 'hardlink_target',
+                 'linux_attr', 'linux_xattr', 'posix1e_acl')
+
     def __init__(self):
-        __slots__ = ('mode', 'uid', 'atime', 'mtime', 'ctime',
-                     'path', 'size', 'symlink_target', 'hardlink_target',
-                     'linux_attr', 'linux_xattr', 'posix1e_acl')
         self.mode = self.uid = self.gid = self.user = self.group = None
         self.rdev = None
         self.atime = self.mtime = self.ctime = None
