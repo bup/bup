@@ -1,5 +1,4 @@
 
-from __future__ import absolute_import, print_function
 from binascii import unhexlify
 from io import BytesIO
 from os import symlink
@@ -11,6 +10,7 @@ import sys
 from time import localtime, strftime, tzset
 
 from wvpytest import *
+import pytest
 
 from bup._helpers import write_random
 from bup import git, metadata, vfs
@@ -375,3 +375,17 @@ def test_item_read_write():
     print('stream:', repr(stream.getvalue()), stream.tell(), file=sys.stderr)
     stream.seek(0)
     wvpasseq(x, vfs.read_item(stream))
+
+def test_tree_depth_parsing():
+    assert vfs._parse_tree_depth(b'.bupd.1.bupd') == 1
+    assert vfs._parse_tree_depth(b'.bupd.42.bupd') == 42
+    assert vfs._parse_tree_depth(b'.bupd.42.something-else.bupd') == 42
+    for x in (b'.bupd..bupd',
+              b'.bupd.-1.bupd',
+              b'.bupd.?.bupd',
+              b'.bupd.???.bupd',
+              b'.bupd.???.bupx',
+              b'.bupm'):
+        with pytest.raises(Exception) as exinfo:
+            vfs._parse_tree_depth(x)
+        assert 'Could not parse split tree depth' in str(exinfo.value)

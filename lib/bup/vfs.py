@@ -46,7 +46,6 @@ item.coid.
 
 """
 
-from __future__ import absolute_import, print_function
 from binascii import hexlify, unhexlify
 from collections import namedtuple
 from errno import EINVAL, ELOOP, ENOTDIR
@@ -701,6 +700,68 @@ def _tree_items_except_dot(oid, tree_data, names=None, bupm=None):
             break
         remaining -= 1
 
+def _get_tree_object(repo, oid):
+    res = repo.cat(hexlify(oid))
+    _, kind, _ = next(res)
+    assert kind == b'tree', 'expected oid %r to be tree, not %r' % (hexlify(oid), kind)
+    return b''.join(res)
+
+def _find_bupm_oid(tree_data):
+    for _, mangled_name, sub_oid in tree_decode(tree_data):
+        if mangled_name == b'.bupm':
+            return sub_oid
+            break
+        if mangled_name > b'.bupm':
+            break
+    return None
+
+def _split_subtree_items(repo, level, oid, tree_data, names, want_meta, root=True):
+    """Traverse the "internal" nodes of a split tree, yielding all of
+    the real items (at the leaves).
+
+    """
+    assert len(oid) == 20
+    assert isinstance(level, int)
+    assert level >= 0
+    if level == 0:
+        bupm_oid = _find_bupm_oid(tree_data) if want_meta else None
+        if not bupm_oid:
+            yield from _tree_items_except_dot(oid, tree_data, names)
+        else:
+            with _FileReader(repo, bupm_oid) as bupm:
+                Metadata.read(bupm) # skip dummy entry provided for older bups
+                yield from _tree_items_except_dot(oid, tree_data, names, bupm)
+    else:
+        for _, mangled_name, sub_oid in tree_decode(tree_data):
+            if root:
+                if mangled_name == b'.bupm':
+                    continue
+                if mangled_name.endswith(b'.bupd'):
+                    continue
+            assert not mangled_name.endswith(b'.bup'), \
+                f'found {path_msg(mangled_name)} in split subtree'
+            if not mangled_name.endswith(b'.bupl'):
+                assert mangled_name[-5:-1] != b'.bup', \
+                    f'found {path_msg(mangled_name)} in split subtree'
+            yield from _split_subtree_items(repo, level - 1, sub_oid,
+                                            _get_tree_object(repo, sub_oid),
+                                            names, want_meta, False)
+
+_tree_depth_rx = re.compile(br'\.bupd\.([0-9]+)(?:\..*)?\.bupd')
+
+def _parse_tree_depth(mangled_name):
+    """Return the tree DEPTH from a mangled_name like
+    .bupd.DEPTH.bupd, but leave open the possibility of future
+    .bupd.DEPTH.*.bupd extensions.
+
+    """
+    m = _tree_depth_rx.fullmatch(mangled_name)
+    if not m:
+        raise Exception(f'Could not parse split tree depth in {mangled_name}')
+    depth = int(m.group(1))
+    assert depth > 0
+    return depth
+
 def tree_items(repo, oid, tree_data, names, *, want_meta=True):
     # For now, the .bupm order doesn't quite match git's, and we don't
     # load the tree data incrementally anyway, so we just work in RAM
@@ -713,8 +774,13 @@ def tree_items(repo, oid, tree_data, names, *, want_meta=True):
         names = frozenset(names)
     dot_requested = not names or b'.' in names
 
+    depth = None
     bupm_oid = None
     for _, mangled_name, sub_oid in tree_decode(tree_data):
+        if mangled_name.startswith(b'.bupd.'):
+            depth = _parse_tree_depth(mangled_name)
+            if not dot_requested: # all other metadata in "leaf" .bupm files
+                break
         if mangled_name == b'.bupm':
             bupm_oid = sub_oid
             break
@@ -722,22 +788,30 @@ def tree_items(repo, oid, tree_data, names, *, want_meta=True):
             break
 
     if want_meta and bupm_oid:
-        with _FileReader(repo, bupm_oid) as bupm:
-            if not dot_requested:
-                Metadata.read(bupm)
-            else:
-                yield b'.', Item(oid=oid, meta=_read_dir_meta(bupm))
-            yield from _tree_items_except_dot(oid, tree_data, names, bupm)
+        if depth is None:
+            with _FileReader(repo, bupm_oid) as bupm:
+                if not dot_requested: # skip it
+                    Metadata.read(bupm)
+                else:
+                    yield b'.', Item(oid=oid, meta=_read_dir_meta(bupm))
+                yield from _tree_items_except_dot(oid, tree_data, names, bupm)
+        else:
+            if dot_requested:
+                with _FileReader(repo, bupm_oid) as bupm:
+                    yield b'.', Item(oid=oid, meta=_read_dir_meta(bupm))
+            yield from _split_subtree_items(repo, depth, oid, tree_data, names, True)
         return
 
     if dot_requested:
         yield b'.', Item(oid=oid, meta=default_dir_mode)
-    yield from _tree_items_except_dot(oid, tree_data, names)
+    if not depth:
+        yield from _tree_items_except_dot(oid, tree_data, names)
+    else:
+        yield from _split_subtree_items(repo, depth, oid, tree_data, names, False)
 
 _save_name_rx = re.compile(br'^\d\d\d\d-\d\d-\d\d-\d{6}(-\d+)?$')
 
 def _reverse_suffix_duplicates(strs):
-
     """Yields the elements of strs, with any runs of duplicate values
     suffixed with -N suffixes, where the zero padded integer N
     decreases to 0 by 1 (e.g. 10, 09, ..., 00).
