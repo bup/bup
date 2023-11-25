@@ -677,7 +677,7 @@ def tree_items(oid, tree_data, names=frozenset(), bupm=None):
 
     # Assumes the tree is properly formed, i.e. there are no
     # duplicates, and entries will be in git tree order.
-    if isinstance(names, (frozenset, set)):
+    if not isinstance(names, (frozenset, set)):
         names = frozenset(names)
     remaining = len(names)
 
@@ -855,7 +855,7 @@ def tags_items(repo, names):
         return
 
     # Assumes no duplicate refs
-    if isinstance(names, (frozenset, set)):
+    if not isinstance(names, (frozenset, set)):
         names = frozenset(names)
     remaining = len(names)
     last_name = max(names)
