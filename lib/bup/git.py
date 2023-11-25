@@ -49,6 +49,7 @@ class GitError(Exception):
 
 
 def _gitenv(repo_dir=None):
+    # This is not always used, i.e. sometimes we just use --git-dir
     if not repo_dir:
         repo_dir = repo()
     return merge_dict(environ, {b'GIT_DIR': os.path.abspath(repo_dir)})
@@ -68,7 +69,7 @@ def _git_exo(cmd, **kwargs):
 
 def git_config_get(option, repo_dir=None, opttype=None, cfg_file=None):
     assert not (repo_dir and cfg_file), "repo_dir and cfg_file cannot both be used"
-    cmd = [b'git', b'config', b'--null']
+    cmd = [b'git', b'--git-dir', repo_dir or repo(), b'config', b'--null']
     if cfg_file:
         cmd.extend([b'--file', cfg_file])
     if opttype == 'int':
@@ -79,10 +80,7 @@ def git_config_get(option, repo_dir=None, opttype=None, cfg_file=None):
         assert opttype is None
     cmd.extend([b'--get', option])
     env=None
-    if repo_dir:
-        env = _gitenv(repo_dir=repo_dir)
-    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, env=env,
-                         close_fds=True)
+    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, close_fds=True)
     # with --null, git writes out a trailing \0 after the value
     r = p.stdout.read()[:-1]
     rc = p.wait()

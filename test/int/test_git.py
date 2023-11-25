@@ -541,7 +541,7 @@ def test_midx_close(tmpdir):
             # check that we don't have it open anymore
             WVPASSEQ(False, b'deleted' in fn)
 
-def test_config():
+def test_config(tmpdir):
     cfg_file = os.path.join(os.path.dirname(__file__), 'sample.conf')
     no_such_file = os.path.join(os.path.dirname(__file__), 'nosuch.conf')
     git_config_get = partial(git.git_config_get, cfg_file=cfg_file)
@@ -568,3 +568,10 @@ def test_config():
     WVPASSEQ(2, git_config_get(b'bup.istrue2', opttype='int'))
     WVPASSEQ(0, git_config_get(b'bup.isfalse2', opttype='int'))
     WVPASSEQ(0x777, git_config_get(b'bup.hex', opttype='int'))
+
+    # Make sure get_config respects the repo()
+    git_dir = tmpdir + b'/repo'
+    git.init_repo(git_dir)
+    git.check_repo_or_die(git_dir)
+    exc(b'git', b'--git-dir', git_dir, b'config', b'bup.foo', b'yep')
+    assert b'yep' == git.git_config_get(b'bup.foo')
