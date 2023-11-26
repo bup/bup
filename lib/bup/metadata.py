@@ -926,6 +926,18 @@ class Metadata:
             and self._same_linux_xattr(other)
 
 
+class MetadataRO(Metadata):
+    __slots__ = '_frozen',
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._frozen = True
+    def __setattr__(self, k, v):
+        if hasattr(self, '_frozen') and self._frozen and k in self.__slots__:
+            raise AttributeError('Cannot modify read-only instance',
+                                 name=k, obj=self)
+        super().__setattr__(k, v)
+
+
 def from_path(path, statinfo=None, archive_path=None,
               save_symlinks=True, hardlink_target=None,
               normalized=False, after_stat=None):
