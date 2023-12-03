@@ -621,9 +621,9 @@ def root_items(repo, names=None, want_meta=True):
         commit = parse_commit(b''.join(it))
         yield ref, _revlist_item_from_oid(repo, unhexlify(oidx), want_meta)
 
-def ordered_tree_entries(tree_data, bupm=None):
-    """Yields (name, mangled_name, kind, gitmode, oid) for each item in
-    tree, sorted by name.
+def ordered_tree_entries(entries, bupm=None):
+    """Returns [(name, mangled_name, kind, gitmode, oid) ...] for each
+    item in tree, sorted by name.
 
     """
     # Sadly, the .bupm entries currently aren't in git tree order,
@@ -638,13 +638,13 @@ def ordered_tree_entries(tree_data, bupm=None):
         name, kind = git.demangle_name(mangled_name, gitmode)
         return name, mangled_name, kind, gitmode, oid
 
-    tree_ents = (result_from_tree_entry(x) for x in tree_decode(tree_data))
+    tree_ents = [result_from_tree_entry(x) for x in entries]
     if bupm:
-        tree_ents = sorted(tree_ents, key=lambda x: x[0])
-    for ent in tree_ents:
-        yield ent
+        tree_ents.sort(key=lambda x: x[0])
+    return tree_ents
 
-def _tree_items_except_dot(oid, tree_data, names=None, bupm=None):
+
+def _tree_items_except_dot(oid, entries, names=None, bupm=None):
     """Returns all tree items except ".", and assumes that any bupm is
     positioned just after that entry."""
 
@@ -664,10 +664,11 @@ def _tree_items_except_dot(oid, tree_data, names=None, bupm=None):
             meta = _default_mode_for_gitmode(gitmode)
         return Item(oid=ent_oid, meta=meta)
 
+    tree_entries = ordered_tree_entries(entries, bupm)
+
     assert isinstance(names, (set, frozenset)) or names is None
     assert len(oid) == 20
     if not names:
-        tree_entries = ordered_tree_entries(tree_data, bupm)
         for name, mangled_name, kind, gitmode, ent_oid in tree_entries:
             if mangled_name == b'.bupm':
                 continue
@@ -684,7 +685,6 @@ def _tree_items_except_dot(oid, tree_data, names=None, bupm=None):
     # Account for the bupm sort order issue (cf. ordered_tree_entries above)
     last_name = max(names) if bupm else max(names) + b'/'
 
-    tree_entries = ordered_tree_entries(tree_data, bupm)
     for name, mangled_name, kind, gitmode, ent_oid in tree_entries:
         if mangled_name == b'.bupm':
             continue
@@ -706,8 +706,8 @@ def _get_tree_object(repo, oid):
     assert kind == b'tree', 'expected oid %r to be tree, not %r' % (hexlify(oid), kind)
     return b''.join(res)
 
-def _find_bupm_oid(tree_data):
-    for _, mangled_name, sub_oid in tree_decode(tree_data):
+def _find_bupm_oid(entries):
+    for _, mangled_name, sub_oid in entries:
         if mangled_name == b'.bupm':
             return sub_oid
             break
@@ -715,7 +715,7 @@ def _find_bupm_oid(tree_data):
             break
     return None
 
-def _split_subtree_items(repo, level, oid, tree_data, names, want_meta, root=True):
+def _split_subtree_items(repo, level, oid, entries, names, want_meta, root=True):
     """Traverse the "internal" nodes of a split tree, yielding all of
     the real items (at the leaves).
 
@@ -724,15 +724,15 @@ def _split_subtree_items(repo, level, oid, tree_data, names, want_meta, root=Tru
     assert isinstance(level, int)
     assert level >= 0
     if level == 0:
-        bupm_oid = _find_bupm_oid(tree_data) if want_meta else None
+        bupm_oid = _find_bupm_oid(entries) if want_meta else None
         if not bupm_oid:
-            yield from _tree_items_except_dot(oid, tree_data, names)
+            yield from _tree_items_except_dot(oid, entries, names)
         else:
             with _FileReader(repo, bupm_oid) as bupm:
                 Metadata.read(bupm) # skip dummy entry provided for older bups
-                yield from _tree_items_except_dot(oid, tree_data, names, bupm)
+                yield from _tree_items_except_dot(oid, entries, names, bupm)
     else:
-        for _, mangled_name, sub_oid in tree_decode(tree_data):
+        for _, mangled_name, sub_oid in entries:
             if root:
                 if mangled_name == b'.bupm':
                     continue
@@ -744,7 +744,7 @@ def _split_subtree_items(repo, level, oid, tree_data, names, want_meta, root=Tru
                 assert mangled_name[-5:-1] != b'.bup', \
                     f'found {path_msg(mangled_name)} in split subtree'
             yield from _split_subtree_items(repo, level - 1, sub_oid,
-                                            _get_tree_object(repo, sub_oid),
+                                            tree_decode(_get_tree_object(repo, sub_oid)),
                                             names, want_meta, False)
 
 _tree_depth_rx = re.compile(br'\.bupd\.([0-9]+)(?:\..*)?\.bupd')
@@ -774,9 +774,10 @@ def tree_items(repo, oid, tree_data, names, *, want_meta=True):
         names = frozenset(names)
     dot_requested = not names or b'.' in names
 
+    entries = tree_decode(tree_data)
     depth = None
     bupm_oid = None
-    for _, mangled_name, sub_oid in tree_decode(tree_data):
+    for _, mangled_name, sub_oid in entries:
         if mangled_name.startswith(b'.bupd.'):
             depth = _parse_tree_depth(mangled_name)
             if not dot_requested: # all other metadata in "leaf" .bupm files
@@ -794,20 +795,20 @@ def tree_items(repo, oid, tree_data, names, *, want_meta=True):
                     Metadata.read(bupm)
                 else:
                     yield b'.', Item(oid=oid, meta=_read_dir_meta(bupm))
-                yield from _tree_items_except_dot(oid, tree_data, names, bupm)
+                yield from _tree_items_except_dot(oid, entries, names, bupm)
         else:
             if dot_requested:
                 with _FileReader(repo, bupm_oid) as bupm:
                     yield b'.', Item(oid=oid, meta=_read_dir_meta(bupm))
-            yield from _split_subtree_items(repo, depth, oid, tree_data, names, True)
+            yield from _split_subtree_items(repo, depth, oid, entries, names, True)
         return
 
     if dot_requested:
         yield b'.', Item(oid=oid, meta=default_dir_mode)
     if not depth:
-        yield from _tree_items_except_dot(oid, tree_data, names)
+        yield from _tree_items_except_dot(oid, entries, names)
     else:
-        yield from _split_subtree_items(repo, depth, oid, tree_data, names, False)
+        yield from _split_subtree_items(repo, depth, oid, entries, names, False)
 
 _save_name_rx = re.compile(br'^\d\d\d\d-\d\d-\d\d-\d{6}(-\d+)?$')
 
