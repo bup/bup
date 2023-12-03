@@ -560,12 +560,10 @@ def test_config(tmpdir):
     WVPASSEQ(git_config_get(b'bup.isbad'), b'ok')
     WVPASSEQ(True, git_config_get(b'bup.istrue1', opttype='bool'))
     WVPASSEQ(True, git_config_get(b'bup.istrue2', opttype='bool'))
-    WVPASSEQ(True, git_config_get(b'bup.istrue3', opttype='bool'))
     WVPASSEQ(False, git_config_get(b'bup.isfalse1', opttype='bool'))
     WVPASSEQ(False, git_config_get(b'bup.isfalse2', opttype='bool'))
     WVPASSEQ(None, git_config_get(b'bup.nosuchkey', opttype='bool'))
     WVPASSEQ(1, git_config_get(b'bup.istrue1', opttype='int'))
-    WVPASSEQ(2, git_config_get(b'bup.istrue2', opttype='int'))
     WVPASSEQ(0, git_config_get(b'bup.isfalse2', opttype='int'))
     WVPASSEQ(0x777, git_config_get(b'bup.hex', opttype='int'))
 

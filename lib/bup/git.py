@@ -74,10 +74,8 @@ def git_config_get(option, repo_dir=None, opttype=None, cfg_file=None):
         cmd.extend([b'--file', cfg_file])
     if opttype == 'int':
         cmd.extend([b'--int'])
-    elif opttype == 'bool':
-        cmd.extend([b'--bool'])
     else:
-        assert opttype is None
+        assert opttype in ('bool', None)
     cmd.extend([b'--get', option])
     env=None
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, close_fds=True)
@@ -87,13 +85,18 @@ def git_config_get(option, repo_dir=None, opttype=None, cfg_file=None):
     if rc == 0:
         if opttype == 'int':
             return int(r)
-        elif opttype == 'bool':
-            # git converts to 'true' or 'false'
-            return r == b'true'
+        elif opttype == 'bool': # any positive int is true for git --bool
+            if not r:
+                return None
+            if r in (b'0', b'false'):
+                return False
+            if r in (b'1', b'true'):
+                return True
+            raise GitError(f'{cmd!r} returned invalid boolean value {r}')
         return r
-    if rc != 1:
-        raise GitError('%r returned %d' % (cmd, rc))
-    return None
+    if rc == 1:
+        return None
+    raise GitError('%r returned %d' % (cmd, rc))
 
 
 def parse_tz_offset(s):
