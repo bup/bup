@@ -67,7 +67,7 @@ task:
   name: freebsd check
   only_if: $CIRRUS_BRANCH != "master"
   freebsd_instance:
-    image: freebsd-13-2-release-amd64
+    image: freebsd-13-5-release-amd64
     cpu: 4
     memory: 4
   script: |
