@@ -63,7 +63,7 @@ task:
 task:
   name: freebsd check
   freebsd_instance:
-    image: freebsd-13-2-release-amd64
+    image: freebsd-13-5-release-amd64
     cpu: 4
     memory: 4
   script: |
