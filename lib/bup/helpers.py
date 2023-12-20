@@ -936,11 +936,11 @@ def columnate(l, prefix):
     rows = len(l) // ncols
     for s in range(0, len(l), rows):
         cols.append(l[s:s+rows])
-    out = nothing
+    out = []
     fmt = b'%-*s' if binary else '%-*s'
     for row in zip(*cols):
-        out += prefix + nothing.join((fmt % (clen+2, s)) for s in row) + nl
-    return out
+        out.append(prefix + nothing.join((fmt % (clen+2, s)) for s in row) + nl)
+    return nothing.join(out)
 
 
 def parse_date_or_fatal(str, fatal):
