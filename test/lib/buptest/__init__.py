@@ -3,13 +3,12 @@ from __future__ import absolute_import, print_function
 from collections import namedtuple
 from contextlib import contextmanager
 from os.path import abspath, basename, dirname, realpath
-from shlex import quote
 from subprocess import PIPE, Popen
 from traceback import extract_stack
 import errno, os, subprocess, sys, tempfile
 
 from bup import helpers
-from bup.compat import fsencode, str_type
+from bup.compat import fsencode, quote, str_type
 from bup.io import byte_stream
 
 
