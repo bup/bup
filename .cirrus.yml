@@ -110,19 +110,20 @@ task:
 task:
   name: macos (py2)
   allow_failures: true
-  osx_instance:
-    image: catalina-base
+  macos_instance:
+    image: ghcr.io/cirruslabs/macos-monterey-xcode:latest
   script: |
     set -xe
     dev/prep-for-macos-build python2
+    eval "$(pyenv init -)"
     export PKG_CONFIG_PATH=/usr/local/opt/readline/lib/pkgconfig
     dev/system-info
-    make -j4 PYTHON=python2 check
+    pyenv exec make -j4 PYTHON=python check
 
 task:
   name: macos (py3)
-  osx_instance:
-    image: catalina-base
+  macos_instance:
+    image: ghcr.io/cirruslabs/macos-monterey-base:latest
   script: |
     set -xe
     dev/prep-for-macos-build python3
