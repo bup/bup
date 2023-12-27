@@ -24,8 +24,8 @@ case "$pyver" in
         apt-get install -y \
                 $common_debs \
                 python2.7-dev python-fuse \
-                python-"$xattr" python-tornado python-pytest \
-                python-pytest-xdist
+                python-"$xattr" python-tornado \
+                python-pathlib python-pytest python-pytest-xdist
         ;;
     python3)
         apt-get install -y \
