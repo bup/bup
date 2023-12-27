@@ -340,7 +340,7 @@ done
 main()
 {
 
-    $F();
+    $F;
 }
 EOF
 
