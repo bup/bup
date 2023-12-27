@@ -95,6 +95,8 @@ if test -z "$bup_git"; then
     AC_FAIL "ERROR: unable to find git"
 fi
 
+AC_CHECK_HEADERS sys/time.h
+
 # For stat.
 AC_CHECK_HEADERS sys/stat.h
 AC_CHECK_HEADERS sys/types.h
@@ -116,8 +118,8 @@ else # Python 2
     if [ -z "$OS_GNU_KFREEBSD" ]; then
         AC_CHECK_FUNCS utimensat
     fi
-    AC_CHECK_FUNCS utimes
-    AC_CHECK_FUNCS lutimes
+    AC_CHECK_FUNCS utimes sys/time.h
+    AC_CHECK_FUNCS lutimes sys/time.h
 fi
 
 builtin_mul_overflow_code="
