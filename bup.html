@@ -5,7 +5,7 @@
   <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <meta name="author" content="Avery Pennarun apenwarr@gmail.com" />
-  <title>bup(1) Bup 0.33.1</title>
+  <title>bup(1) Bup 0.33.3</title>
   <style>
     html {
       line-height: 1.5;
@@ -158,10 +158,10 @@
 </head>
 <body>
 <header id="title-block-header">
-<h1 class="title">bup(1) Bup 0.33.1</h1>
+<h1 class="title">bup(1) Bup 0.33.3</h1>
 <p class="author">Avery Pennarun <a href="mailto:apenwarr@gmail.com"
 class="email">apenwarr@gmail.com</a></p>
-<p class="date">0.33.1</p>
+<p class="date">0.33.3</p>
 </header>
 <h1 id="name">NAME</h1>
 <p>bup - Backup program using rolling checksums and git file formats</p>
@@ -174,12 +174,13 @@ the git file format.</p>
 data sets including individual very large files (such a virtual machine
 images). However, once a backup set is created, it can still be accessed
 using git tools.</p>
-<p>The individual bup subcommands appear in their own man pages.</p>
+<p>Subcommands are described in separate man pages. For example
+<code>bup-init</code>(1) covers <code>bup init</code>.</p>
 <h1 id="global-options">GLOBAL OPTIONS</h1>
 <dl>
 <dt>--version</dt>
 <dd>
-print bup’s version number. Equivalent to <code>bup-version</code>(1)
+print bup’s version number. Equivalent to <code>bup version</code>.
 </dd>
 <dt>-d, --bup-dir=<em>BUP_DIR</em></dt>
 <dd>

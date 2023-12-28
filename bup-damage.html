@@ -5,7 +5,7 @@
   <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <meta name="author" content="Avery Pennarun apenwarr@gmail.com" />
-  <title>bup-damage(1) Bup 0.33.1</title>
+  <title>bup-damage(1) Bup 0.33.3</title>
   <style>
     html {
       line-height: 1.5;
@@ -158,10 +158,10 @@
 </head>
 <body>
 <header id="title-block-header">
-<h1 class="title">bup-damage(1) Bup 0.33.1</h1>
+<h1 class="title">bup-damage(1) Bup 0.33.3</h1>
 <p class="author">Avery Pennarun <a href="mailto:apenwarr@gmail.com"
 class="email">apenwarr@gmail.com</a></p>
-<p class="date">0.33.1</p>
+<p class="date">0.33.3</p>
 </header>
 <h1 id="name">NAME</h1>
 <p>bup-damage - randomly destroy blocks of a file</p>
@@ -178,6 +178,12 @@ DATA</em></p>
 <p><code>bup damage</code> is primarily useful for automated or manual
 tests of data recovery tools, to reassure yourself that the tools
 actually work.</p>
+<p>Note that the details of the current behavior may change
+(particularly the details not documented here). For example the moment,
+the damage is strictly probabilistic, and so may or may not actually
+alter any given block. With a block size of 1, there should be a 1/256
+chance that the block won’t actually change. This behavior may
+change.</p>
 <h1 id="options">OPTIONS</h1>
 <dl>
 <dt>-n, --num=<em>numblocks</em></dt>
