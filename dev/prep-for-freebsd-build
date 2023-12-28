@@ -26,7 +26,7 @@ case "$pyver" in
         pip-2.7 install --user pytest pytest-xdist
         ;;
     python3)
-        pkgs="$pkgs python37 py37-tornado py37-pytest py37-pytest-xdist"
+        pkgs="$pkgs python39 py39-tornado py39-pytest py39-pytest-xdist"
         pkg install $pkgs
         ;;
     *)

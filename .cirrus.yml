@@ -82,14 +82,14 @@ task:
 task:
   name: freebsd (py3)
   freebsd_instance:
-    image: freebsd-12-1-release-amd64
+    image: freebsd-12-4-release-amd64
     cpu: 4
     memory: 4
   script: |
     set -xe
     dev/prep-for-freebsd-build python3
     dev/system-info
-    gmake -j6 PYTHON=python3.7 check
+    gmake -j6 PYTHON=python3.9 check
 
 task:
   name: macos (py2)
