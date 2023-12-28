@@ -14,7 +14,7 @@
 . ftr VB CB
 . ftr VBI CBI
 .\}
-.TH "bup-damage" "1" "0.33.1" "Bup 0.33.1" ""
+.TH "bup-damage" "1" "0.33.3" "Bup 0.33.3" ""
 .hy
 .SH NAME
 .PP
@@ -35,6 +35,14 @@ Use \f[V]bup damage\f[R] to deliberately destroy blocks in a
 \f[V]bup damage\f[R] is primarily useful for automated or manual tests
 of data recovery tools, to reassure yourself that the tools actually
 work.
+.PP
+Note that the details of the current behavior may change (particularly
+the details not documented here).
+For example the moment, the damage is strictly probabilistic, and so may
+or may not actually alter any given block.
+With a block size of 1, there should be a 1/256 chance that the block
+won\[cq]t actually change.
+This behavior may change.
 .SH OPTIONS
 .TP
 -n, --num=\f[I]numblocks\f[R]
