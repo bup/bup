@@ -10,7 +10,7 @@ usage()
 export DEBIAN_FRONTEND=noninteractive
 apt-get update
 
-common_debs='gcc make linux-libc-dev git rsync eatmydata acl attr par2'
+common_debs='gcc make linux-libc-dev git rsync acl attr par2'
 common_debs="$common_debs duplicity rdiff-backup rsnapshot dosfstools kmod"
 common_debs="$common_debs pkg-config libreadline-dev libacl1-dev"
 

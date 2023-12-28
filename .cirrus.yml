@@ -4,80 +4,80 @@ task:
   container:
     image: debian:buster
     cpu: 4
-    memory: 2
+    memory: 4
   script: |
     set -xe
     dev/prep-for-debianish-build python2
     dev/system-info
-    eatmydata make -j6 PYTHON=python2 check
+    make -j4 PYTHON=python2 check
 
 task:
   name: debian (long py2)
   container:
     image: debian:buster
     cpu: 4
-    memory: 2
+    memory: 4
   script: |
     set -xe
     dev/prep-for-debianish-build python2
     dev/system-info
     adduser --disabled-password --gecos '' bup
     chown -R bup:bup .
-    su -l bup -c "eatmydata make -j6 -C '$(pwd)' PYTHON=python2 long-check"
+    su -l bup -c "make -j4 -C '$(pwd)' PYTHON=python2 long-check"
 
 task:
   name: debian (root py2)
   container:
     image: debian:buster
     cpu: 4
-    memory: 2
+    memory: 4
   script: |
     set -xe
     dev/prep-for-debianish-build python2
     dev/system-info
     adduser --disabled-password --gecos '' bup
     chown -R bup:bup .
-    su -l bup -c "eatmydata make -j6 -C '$(pwd)' PYTHON=python2 check"
+    su -l bup -c "make -j4 -C '$(pwd)' PYTHON=python2 check"
 
 task:
   name: debian (py3)
   container:
     image: debian:buster
     cpu: 4
-    memory: 2
+    memory: 4
   script: |
     set -xe
     dev/prep-for-debianish-build python3
     dev/system-info
-    eatmydata make -j6 PYTHON=python3 check
+    make -j4 PYTHON=python3 check
 
 task:
   name: debian (long py3)
   container:
     image: debian:buster
     cpu: 4
-    memory: 2
+    memory: 4
   script: |
     set -xe
     dev/prep-for-debianish-build python3
     dev/system-info
     adduser --disabled-password --gecos '' bup
     chown -R bup:bup .
-    su -l bup -c "eatmydata make -j6 -C '$(pwd)' PYTHON=python3 long-check"
+    su -l bup -c "make -j4 -C '$(pwd)' PYTHON=python3 long-check"
 
 task:
   name: debian (root py3)
   container:
     image: debian:buster
     cpu: 4
-    memory: 2
+    memory: 4
   script: |
     set -xe
     dev/prep-for-debianish-build python3
     dev/system-info
     adduser --disabled-password --gecos '' bup
     chown -R bup:bup .
-    su -l bup -c "eatmydata make -j6 -C '$(pwd)' PYTHON=python3 check"
+    su -l bup -c "make -j4 -C '$(pwd)' PYTHON=python3 check"
 
 task:
   name: freebsd (py3)
@@ -89,7 +89,7 @@ task:
     set -xe
     dev/prep-for-freebsd-build python3
     dev/system-info
-    gmake -j6 PYTHON=python3.9 check
+    gmake -j4 PYTHON=python3.9 check
 
 task:
   name: macos (py2)
