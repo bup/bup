@@ -743,6 +743,8 @@ We hope you'll enjoy bup.  Looking forward to your patches!
 
 -- apenwarr and the rest of the bup team
 
+<!--
 Local Variables:
 mode: markdown
 End:
+-->
