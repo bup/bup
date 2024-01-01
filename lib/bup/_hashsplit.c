@@ -331,6 +331,7 @@ static int HashSplitter_init(HashSplitter *self, PyObject *args, PyObject *kwds)
 
     if (self->bits >= (log2(sizeof(self->max_blob)) * 8) - 2) {
         PyErr_Format(PyExc_ValueError, "bits value is too large");
+        goto error;
     }
     self->max_blob = 1 << (self->bits + 2);
 
