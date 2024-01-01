@@ -691,11 +691,14 @@ typedef struct {
     PyObject_HEAD
     Rollsum r;
     unsigned int bits;
+    size_t split_size;  // bytes
+    size_t max_split_size;
 } RecordHashSplitter;
 
 static int RecordHashSplitter_init(RecordHashSplitter *self, PyObject *args, PyObject *kwds)
 {
     static char *argnames[] = { "bits", NULL };
+    self->split_size = 0;
     rollsum_init(&self->r);
 
     PyObject *py_bits = NULL;
@@ -705,7 +708,20 @@ static int RecordHashSplitter_init(RecordHashSplitter *self, PyObject *args, PyO
     if (!bits_from_py_kw(&self->bits, py_bits, "RecordHashSplitter(bits)"))
         return -1;
 
+    // Same as the file splitter's max_blob
+    if (self->bits >= (log2(sizeof(self->max_split_size)) * 8) - 2) {
+        PyErr_Format(PyExc_ValueError, "bits value is too large");
+        return -1;
+    }
+    self->max_split_size = 1 << (self->bits + 2);
+
     return 0;
+}
+
+static void reset_recordsplitter(RecordHashSplitter *splitter)
+{
+    rollsum_init(&splitter->r);
+    splitter->split_size = 0;
 }
 
 static PyObject *RecordHashSplitter_feed(RecordHashSplitter *self, PyObject *args)
@@ -720,9 +736,6 @@ static PyObject *RecordHashSplitter_feed(RecordHashSplitter *self, PyObject *arg
 
     PyBuffer_Release(&buf);
 
-    if (out) // reinit to start fresh at next record boundary if there's a split
-        rollsum_init(&self->r);
-
     unsigned long bits;
     if(!INT_ADD_OK(extrabits, self->bits, &bits))
     {
@@ -730,8 +743,20 @@ static PyObject *RecordHashSplitter_feed(RecordHashSplitter *self, PyObject *arg
         return NULL;
     }
 
+    if (out)  // split - reinitalize for next split
+        reset_recordsplitter(self);
+
+    if(!INT_ADD_OK(self->split_size, buf.len, &self->split_size)) {
+        PyErr_Format(PyExc_OverflowError, "feed() data overflows split size");
+        return NULL;
+    }
+
+    const int force_split = self->split_size > self->max_split_size;
+    if (force_split)
+        reset_recordsplitter(self);
+
     return Py_BuildValue("OO",
-                         out ? Py_True : Py_False,
+                         (out || force_split) ? Py_True : Py_False,
                          out ? BUP_LONGISH_TO_PY(bits) : Py_None);
 }
 

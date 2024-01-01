@@ -209,16 +209,9 @@ def test_hashsplitter_object():
     def _splitbuf(data):
         data = data[:]
         hs = HashSplitter([BytesIO(data)], bits=BUP_BLOBBITS, fanbits=1)
-        sz = 0
         for blob, lvl in hs:
-            # this isn't necessarily _quite_ right, but try to
-            # reconstruct from a max blob to not having split
-            if len(blob) == 4 << 13 and lvl == 0:
-                sz += len(blob)
-                continue
-            yield sz + len(blob), 13 + lvl
-            sz = 0
-    def _splitbufHS(data):
+            yield len(blob), 13 + lvl
+    def _splitbufRHS(data):
         offs = None
         fed = 0
         data = data[:]
@@ -227,14 +220,19 @@ def test_hashsplitter_object():
             while data:
                 offs, bits = s.feed(data[:1])
                 fed += 1
+                # The recordhashsplitter doesn't return bits when it
+                # hits the limit, so paper over the difference.
                 if offs:
+                    if bits is None:
+                        assert fed == 1 << (BUP_BLOBBITS + 2)
+                        bits = 13
                     yield fed, bits
                     fed = 0
                 data = data[1:]
         yield fed, 13
     data = b''.join([b'%d\n' % x for x in range(10000)])
     WVPASSEQ([x for x in _splitbuf(data)],
-             [x for x in _splitbufHS(data)])
+             [x for x in _splitbufRHS(data)])
     data = b''.join([b'%.10x\n' % x for x in range(10000)])
     WVPASSEQ([x for x in _splitbuf(data)],
-             [x for x in _splitbufHS(data)])
+             [x for x in _splitbufRHS(data)])
