@@ -220,7 +220,7 @@ class Client:
     def _require_command(self, name):
         if name not in self._available_commands:
             raise ClientError('server does not appear to provide %s command'
-                              % name.encode('ascii'))
+                              % name.decode('ascii'))
 
     def sync_indexes(self):
         self._require_command(b'list-indexes')
