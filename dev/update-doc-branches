@@ -12,7 +12,11 @@ test "$#" -eq 2
 man_ref="$1"
 html_ref="$2"
 
-git diff-index --quiet HEAD --  # no uncommitted changes
+if ! git diff-index --quiet HEAD --; then
+    echo 'error: uncommitted changes'
+    exit 2
+fi
+
 git rev-parse --verify "$man_ref"
 git rev-parse --verify "$html_ref"
 echo "$man_ref" | grep -qE '^refs/heads'
@@ -31,7 +35,7 @@ for fmt in man html; do
         base="$(basename "$f" .md)"
         if test "$fmt" = man; then
             ref="$man_ref"
-            GIT_INDEX_FILE="$tmpidx" git add -f "Documentation/$base.1"
+            GIT_INDEX_FILE="$tmpidx" git add -f "Documentation/$base"
         else
             ref="$html_ref"
             GIT_INDEX_FILE="$tmpidx" git add -f "Documentation/$base.html"
