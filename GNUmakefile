@@ -111,8 +111,8 @@ else
   man_md := $(wildcard Documentation/*.md)
 endif
 
-man_roff := $(patsubst %.md,%.1,$(man_md))
-man_html := $(patsubst %.md,%.html,$(man_md))
+man_roff := $(man_md:.md=)
+man_html := $(man_md:.md=.html)
 
 INSTALL=install
 PREFIX=/usr/local
@@ -254,13 +254,15 @@ Documentation/substvars: $(bup_deps)
 	echo "s,%BUP_DATE%,$$bup_ver,g" >> $@.tmp
 	mv $@.tmp $@
 
-Documentation/%.1: Documentation/%.md Documentation/substvars
-	$(pf); sed -f Documentation/substvars $< \
-	  | "$(PANDOC)" -s -r markdown -w man -o $@
+define render_page
+  $(pf); sed -f Documentation/substvars $< \
+    | "$(PANDOC)" -s -r markdown -w $(1) -o $(2)
+endef
 
+Documentation/%: Documentation/%.md Documentation/substvars
+	$(call render_page,man,$@)
 Documentation/%.html: Documentation/%.md Documentation/substvars
-	$(pf); sed -f Documentation/substvars $< \
-	  | "$(PANDOC)" -s -r markdown -w html -o $@
+	$(call render_page,html,$@)
 
 .PHONY: Documentation/clean
 Documentation/clean:
