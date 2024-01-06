@@ -12,8 +12,7 @@ from itertools import islice
 from shutil import rmtree
 
 from bup import _helpers, hashsplit, path, midx, bloom, xstat
-from bup.compat import (buffer,
-                        byte_int, bytes_from_byte, bytes_from_uint,
+from bup.compat import (byte_int, bytes_from_byte, bytes_from_uint,
                         environ,
                         pending_raise)
 from bup.io import path_msg
@@ -425,7 +424,9 @@ class PackIdxV1(PackIdx):
         self.nsha = self.fanout[255]
         self.sha_ofs = 256 * 4
         # Avoid slicing shatable for individual hashes (very high overhead)
-        self.shatable = buffer(self.map, self.sha_ofs, self.nsha * 24)
+        assert self.nsha
+        self.shatable = \
+            memoryview(self.map)[self.sha_ofs:self.sha_ofs + self.nsha * 24]
 
     def __enter__(self):
         return self
@@ -482,7 +483,10 @@ class PackIdxV2(PackIdx):
         self.ofstable_ofs = self.sha_ofs + self.nsha * 20 + self.nsha * 4
         self.ofs64table_ofs = self.ofstable_ofs + self.nsha * 4
         # Avoid slicing this for individual hashes (very high overhead)
-        self.shatable = buffer(self.map, self.sha_ofs, self.nsha*20)
+        assert self.nsha
+        self.shatable = \
+            memoryview(self.map)[self.sha_ofs:self.sha_ofs + self.nsha * 20]
+
 
     def __enter__(self):
         return self

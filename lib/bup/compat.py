@@ -42,14 +42,6 @@ def bytes_from_byte(b):  # python > 2: b[3] returns ord('x'), not b'x'
 
 byte_int = lambda x: x
 
-def buffer(object, offset=None, size=None):
-    if size:
-        assert offset is not None
-        return memoryview(object)[offset:offset + size]
-    if offset:
-        return memoryview(object)[offset:]
-    return memoryview(object)
-
 def getcwd():
     return fsencode(os.getcwd())
 
