@@ -63,14 +63,3 @@ else:
         raise Exception('get_argvb requires the bup_main module');
     def get_argv():
         raise Exception('get_argv requires the bup_main module');
-
-def wrap_main(main):
-    """Run main() and raise a SystemExit with the return value if it
-    returns, pass along any SystemExit it raises, convert
-    KeyboardInterrupts into exit(130), and print a Python 3 style
-    contextual backtrace for other exceptions in both Python 2 and
-    3)."""
-    try:
-        sys.exit(main())
-    except KeyboardInterrupt as ex:
-        sys.exit(130)

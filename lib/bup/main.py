@@ -1,6 +1,4 @@
 
-from __future__ import absolute_import, print_function
-
 import bup_main, os, sys
 if bup_main.env_pythonpath:
     if sys.version_info[0] < 3:
@@ -19,8 +17,7 @@ import re, select, signal, subprocess
 from bup import compat, path, helpers
 from bup.compat import (
     environ,
-    fsdecode,
-    wrap_main
+    fsdecode
 )
 from bup.helpers import (
     columnate,
@@ -388,7 +385,10 @@ def run_subcmd(module, args):
         run_subproc_cmd(args)
 
 def main():
-    wrap_main(lambda : run_subcmd(cmd_module, subcmd))
+    try:
+        sys.exit(run_subcmd(cmd_module, subcmd))
+    except KeyboardInterrupt as ex:
+        sys.exit(130)
 
 if __name__ == "__main__":
     main()
