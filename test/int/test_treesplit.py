@@ -320,12 +320,12 @@ def pruned_ls_files(parent, output):
             if not bupm_prev:
                 files.append('.bupm')
                 bupm_prev = True
-                continue
+            continue
         if b'/.bupm/' in line:
             if not bupm_prev:
                 files.append(bupm_rx.sub(rb'/.bupm', line).decode('ascii'))
                 bupm_prev = True
-                continue
+            continue
         bupm_prev = False
         files.append(line.decode('ascii'))
     return files
