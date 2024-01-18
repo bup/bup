@@ -14,7 +14,7 @@ import hashlib, heapq, math, operator, time
 
 from bup import _helpers
 from bup import io
-from bup.compat import argv_bytes, byte_int, nullcontext, pending_raise
+from bup.compat import argv_bytes, nullcontext, pending_raise
 from bup.io import byte_stream, path_msg
 # This function should really be in helpers, not in bup.options.  But we
 # want options.py to be standalone so people can include it in other projects.
@@ -1158,7 +1158,7 @@ def valid_save_name(name):
     if _some_invalid_save_parts_rx.search(name):
         return False
     for c in name:
-        if byte_int(c) < 0x20 or byte_int(c) == 0x7f:
+        if c < 0x20 or c == 0x7f:
             return False
     for part in name.split(b'/'):
         if part.startswith(b'.') or part.endswith(b'.lock'):

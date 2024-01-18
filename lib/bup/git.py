@@ -12,7 +12,7 @@ from itertools import islice
 from shutil import rmtree
 
 from bup import _helpers, hashsplit, path, midx, bloom, xstat
-from bup.compat import (byte_int, bytes_from_byte, bytes_from_uint,
+from bup.compat import (bytes_from_byte, bytes_from_uint,
                         environ,
                         pending_raise)
 from bup.io import path_msg
@@ -359,14 +359,14 @@ def _encode_packobj(type, content, compression_level=1):
 
 def _decode_packobj(buf):
     assert(buf)
-    c = byte_int(buf[0])
+    c = buf[0]
     type = _typermap[(c & 0x70) >> 4]
     sz = c & 0x0f
     shift = 4
     i = 0
     while c & 0x80:
         i += 1
-        c = byte_int(buf[i])
+        c = buf[i]
         sz |= (c & 0x7f) << shift
         shift += 7
         if not (c & 0x80):
@@ -392,7 +392,7 @@ class PackIdx(object):
         global _total_searches, _total_steps
         _total_searches += 1
         assert(len(hash) == 20)
-        b1 = byte_int(hash[0])
+        b1 = hash[0]
         start = self.fanout[b1-1] # range -1..254
         end = self.fanout[b1] # range 0..255
         want = hash
@@ -987,7 +987,7 @@ class PackIdxV2Writer:
     def add(self, sha, crc, offs):
         assert(sha)
         self.count += 1
-        self.idx[byte_int(sha[0])].append((sha, crc, offs))
+        self.idx[sha[0]].append((sha, crc, offs))
 
     def write(self, filename, packbin):
         ofs64_count = 0
