@@ -16,7 +16,7 @@ def notimplemented(fn):
         raise NotImplementedError(f'{obj.__class__.__name__}.{fn.__name__}')
     return newfn
 
-class BaseRepo(object):
+class RepoProtocol:
     def __init__(self, key, compression_level=None,
                  max_pack_size=None, max_pack_objects=None):
         self.compression_level = compression_level

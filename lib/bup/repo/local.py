@@ -5,10 +5,10 @@ from functools import partial
 
 from bup import git, vfs
 from bup.repo import base
-from bup.repo.base import BaseRepo
+from bup.repo.base import RepoProtocol
 
 
-class LocalRepo(BaseRepo):
+class LocalRepo(RepoProtocol):
     def __init__(self, repo_dir=None, compression_level=None,
                  max_pack_size=None, max_pack_objects=None,
                  server=False):
