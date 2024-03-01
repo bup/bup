@@ -1,7 +1,4 @@
 
-from bup import vfs
-
-
 _next_repo_id = 0
 _repo_ids = {}
 
@@ -38,13 +35,13 @@ class BaseRepo(object):
     def is_remote(self):
         """Return true if this is a "remote" repository."""
 
+    @notimplemented
     def join(self, ref):
-        return vfs.join(self, ref)
+        """..."""
 
+    @notimplemented
     def resolve(self, path, parent=None, want_meta=True, follow=True):
-        ## FIXME: mode_only=?
-        return vfs.resolve(self, path, parent=parent,
-                           want_meta=want_meta, follow=follow)
+        """..."""
 
     @notimplemented
     def config_get(self, name, opttype=None):
