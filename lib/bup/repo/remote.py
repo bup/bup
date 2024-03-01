@@ -1,6 +1,7 @@
 
-from bup.repo.base import BaseRepo
 from bup import client
+from bup.repo import base
+from bup.repo.base import BaseRepo
 
 
 class RemoteRepo(BaseRepo):
@@ -9,6 +10,7 @@ class RemoteRepo(BaseRepo):
         self.closed = True # in case Client instantiation fails
         self.client = client.Client(address, create=create)
         self.closed = False
+        self._id = base.repo_id(address)
         self.config_get = self.client.config_get
         # init the superclass only afterwards so it can access self.config_get()
         super(RemoteRepo, self).__init__(address,
@@ -47,8 +49,8 @@ class RemoteRepo(BaseRepo):
                                     max_pack_size=self.max_pack_size,
                                     max_pack_objects=self.max_pack_objects)
 
-    def is_remote(self):
-        return True
+    def id(self): return self._id
+    def is_remote(self): return True
 
     def cat(self, ref):
         # Yield all the data here so that we don't finish the

@@ -4,6 +4,7 @@ from os.path import realpath
 from functools import partial
 
 from bup import git
+from bup.repo import base
 from bup.repo.base import BaseRepo
 
 
@@ -14,6 +15,7 @@ class LocalRepo(BaseRepo):
         self.closed =  False
         self._packwriter = None
         self.repo_dir = realpath(repo_dir or git.guess_repo())
+        self._id = base.repo_id(self.repo_dir)
         self.config_get = partial(git.git_config_get, repo_dir=self.repo_dir)
         # init the superclass only afterwards so it can access self.config_get()
         super(LocalRepo, self).__init__(self.repo_dir,
@@ -40,6 +42,9 @@ class LocalRepo(BaseRepo):
     def __del__(self): assert self.closed
     def __enter__(self): return self
     def __exit__(self, type, value, traceback): self.close()
+
+    def id(self): return self._id
+    def is_remote(self): return False
 
     @classmethod
     def create(self, repo_dir=None):
