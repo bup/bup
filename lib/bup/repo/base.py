@@ -13,8 +13,7 @@ def repo_id(key):
 
 def notimplemented(fn):
     def newfn(obj, *args, **kwargs):
-        raise NotImplementedError("%s::%s must be implemented" % (
-                                    obj.__class__.__name__, fn.__name__))
+        raise NotImplementedError(f'{obj.__class__.__name__}.{fn.__name__}')
     return newfn
 
 class BaseRepo(object):
