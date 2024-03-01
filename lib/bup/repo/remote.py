@@ -17,6 +17,8 @@ class RemoteRepo(BaseRepo):
                                          compression_level=compression_level,
                                          max_pack_size=max_pack_size,
                                          max_pack_objects=max_pack_objects)
+        self.write_symlink = self.write_data
+        self.write_bupm = self.write_data
         self.rev_list = self.client.rev_list
         self.list_indexes = self.client.list_indexes
         self.read_ref = self.client.read_ref

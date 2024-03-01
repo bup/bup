@@ -22,6 +22,8 @@ class LocalRepo(BaseRepo):
                                         compression_level=compression_level,
                                         max_pack_size=max_pack_size,
                                         max_pack_objects=max_pack_objects)
+        self.write_symlink = self.write_data
+        self.write_bupm = self.write_data
         self._cp = git.cp(self.repo_dir)
         self.rev_list = partial(git.rev_list, repo_dir=self.repo_dir)
         self.dumb_server_mode = os.path.exists(git.repo(b'bup-dumb-server',
