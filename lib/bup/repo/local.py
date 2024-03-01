@@ -13,15 +13,13 @@ class LocalRepo(RepoProtocol):
                  max_pack_size=None, max_pack_objects=None,
                  server=False):
         self.closed =  False
+        self.compression_level = compression_level
+        self.max_pack_size = max_pack_size
+        self.max_pack_objects = max_pack_objects
         self._packwriter = None
         self.repo_dir = realpath(repo_dir or git.guess_repo())
         self._id = base.repo_id(self.repo_dir)
         self.config_get = partial(git.git_config_get, repo_dir=self.repo_dir)
-        # init the superclass only afterwards so it can access self.config_get()
-        super(LocalRepo, self).__init__(self.repo_dir,
-                                        compression_level=compression_level,
-                                        max_pack_size=max_pack_size,
-                                        max_pack_objects=max_pack_objects)
         self.write_symlink = self.write_data
         self.write_bupm = self.write_data
         self._cp = git.cp(self.repo_dir)

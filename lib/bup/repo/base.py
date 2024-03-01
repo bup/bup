@@ -17,12 +17,12 @@ def notimplemented(fn):
     return newfn
 
 class RepoProtocol:
-    def __init__(self, key, compression_level=None,
-                 max_pack_size=None, max_pack_objects=None):
-        self.compression_level = compression_level
-        self.max_pack_size = max_pack_size
-        self.max_pack_objects = max_pack_objects
-        self.dumb_server_mode = False
+
+    # Required attrs:
+    #   compression_level
+    #   dumb_server_mode
+    #   max_pack_objects
+    #   max_pack_size
 
     @notimplemented
     def id(self):

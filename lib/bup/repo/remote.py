@@ -7,16 +7,15 @@ from bup.repo.base import RepoProtocol
 class RemoteRepo(RepoProtocol):
     def __init__(self, address, create=False, compression_level=None,
                  max_pack_size=None, max_pack_objects=None):
+        self.dumb_server_mode = False
+        self.compression_level = compression_level
+        self.max_pack_size = max_pack_size
+        self.max_pack_objects = max_pack_objects
         self.closed = True # in case Client instantiation fails
         self.client = client.Client(address, create=create)
         self.closed = False
         self._id = base.repo_id(address)
         self.config_get = self.client.config_get
-        # init the superclass only afterwards so it can access self.config_get()
-        super(RemoteRepo, self).__init__(address,
-                                         compression_level=compression_level,
-                                         max_pack_size=max_pack_size,
-                                         max_pack_objects=max_pack_objects)
         self.write_symlink = self.write_data
         self.write_bupm = self.write_data
         self.rev_list = self.client.rev_list
