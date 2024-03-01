@@ -11,6 +11,7 @@ class LocalRepo(BaseRepo):
     def __init__(self, repo_dir=None, compression_level=None,
                  max_pack_size=None, max_pack_objects=None,
                  server=False):
+        self.closed =  False
         self._packwriter = None
         self.repo_dir = realpath(repo_dir or git.guess_repo())
         self.config_get = partial(git.git_config_get, repo_dir=self.repo_dir)
@@ -30,6 +31,15 @@ class LocalRepo(BaseRepo):
         else:
             self.objcache_maker = None
             self.run_midx = True
+
+    def close(self):
+        if not self.closed:
+            self.closed = True
+            self.finish_writing()
+
+    def __del__(self): assert self.closed
+    def __enter__(self): return self
+    def __exit__(self, type, value, traceback): self.close()
 
     @classmethod
     def create(self, repo_dir=None):

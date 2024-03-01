@@ -1,6 +1,5 @@
 
 from bup import vfs
-from bup.compat import pending_raise
 
 
 _next_repo_id = 0
@@ -24,26 +23,11 @@ def notimplemented(fn):
 class BaseRepo(object):
     def __init__(self, key, compression_level=None,
                  max_pack_size=None, max_pack_objects=None):
-        self.closed = False
         self._id = _repo_id(key)
         self.compression_level = compression_level
         self.max_pack_size = max_pack_size
         self.max_pack_objects = max_pack_objects
         self.dumb_server_mode = False
-
-    def close(self):
-        self.closed = True
-        self.finish_writing()
-
-    def __del__(self):
-        assert self.closed
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, type, value, traceback):
-        with pending_raise(value, rethrow=False):
-            self.close()
 
     def id(self):
         """Return an identifier that differs from any other repository that
