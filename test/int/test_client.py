@@ -154,8 +154,8 @@ def test_remote_parsing():
         (b'bup://foo.com:1950/bup', (b'bup', b'foo.com', b'1950', b'/bup')),
         (b'bup://[ff:fe::1]/bup', (b'bup', b'ff:fe::1', None, b'/bup')),
         (b'bup://[ff:fe::1]/bup', (b'bup', b'ff:fe::1', None, b'/bup')),
-        (b'reverse://', (b'reverse', None, None, b'')),
-        (b'reverse://host/dir', (b'reverse', b'host', None, b'/dir')),
+        (b'bup-rev://', (b'bup-rev', None, None, b'')),
+        (b'bup-rev://host/dir', (b'bup-rev', b'host', None, b'/dir')),
     )
     for remote, values in tests:
         assert client.parse_remote(remote) == values

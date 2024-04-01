@@ -434,7 +434,7 @@ def main(argv):
         try:
             remote = opt.remote
             if opt.is_reverse:
-                remote = b'reverse://%s' % opt.is_reverse
+                remote = b'bup-rev://' + opt.is_reverse
             cli = repo = client.Client(remote)
             split_trees = repo.config_get(b'bup.split-trees', opttype='bool')
         except client.ClientError as e:

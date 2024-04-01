@@ -234,7 +234,7 @@ def main(argv):
     if remote_dest and writing:
         remote = opt.remote
         if opt.is_reverse:
-            remote = b'reverse://%s' % opt.is_reverse
+            remote = b'bup-rev://' + opt.is_reverse
         cli = repo = client.Client(remote)
     else:
         cli = nullcontext()

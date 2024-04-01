@@ -42,7 +42,7 @@ def _raw_write_bwlimit(f, buf, bwcount, bwtime):
         return (bwcount, bwtime)
 
 
-_protocol_rs = br'([a-z]+)://'
+_protocol_rs = br'([-a-z]+)://'
 _host_rs = br'(?P<sb>\[)?((?(sb)[0-9a-f:]+|[^:/]+))(?(sb)\])'
 _port_rs = br'(?::(\d+))?'
 _path_rs = br'(/.*)?'
@@ -61,7 +61,7 @@ def parse_remote(remote):
         # This empty string was then put into the name of the index-
         # cache directory, so we need to preserve that to avoid the
         # index-cache being in a different location after updates.
-        if url_match.group(1) == b'reverse':
+        if url_match.group(1) == b'bup-rev':
             if url_match.group(5) is None:
                 return url_match.group(1, 3, 4) + (b'', )
         elif not url_match.group(1) in (b'ssh', b'bup', b'file'):
@@ -92,7 +92,7 @@ class Client:
                                      % re.sub(br'[^@\w]',
                                               b'_',
                                               b'%s:%s' % (cachehost, cachedir)))
-            if self.protocol == b'reverse':
+            if self.protocol == b'bup-rev':
                 self.pout = os.fdopen(3, 'rb')
                 self.pin = os.fdopen(4, 'wb')
                 self.conn = Conn(self.pout, self.pin)
