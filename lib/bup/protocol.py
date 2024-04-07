@@ -283,9 +283,10 @@ class BupProtocolServer:
                 self.conn.write(struct.pack('!I', len(blob)))
                 self.conn.write(blob)
         except KeyError as e:
-            log('server: error: %s\n' % str(e).encode('utf-8'))
+            msg = str(e)
+            log(f'server: error: {msg}\n')
             self.conn.write(b'\0\0\0\0')
-            self.conn.error(e)
+            self.conn.error(msg.encode('ascii', errors='backslashreplace'))
         else:
             self.conn.write(b'\0\0\0\0')
             self.conn.ok()
