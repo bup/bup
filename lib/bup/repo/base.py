@@ -94,13 +94,6 @@ class RepoProtocol:
         """
 
     @notimplemented
-    def rev_list_raw(self, refs, fmt):
-        """
-        Yield chunks of data of the raw rev-list in git format.
-        (optional, used only by bup server)
-        """
-
-    @notimplemented
     def write_commit(self, tree, parent,
                      author, adate_sec, adate_tz,
                      committer, cdate_sec, cdate_tz,

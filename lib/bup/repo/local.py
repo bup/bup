@@ -100,6 +100,10 @@ class LocalRepo(RepoProtocol):
             conn.write(idx.map)
 
     def rev_list_raw(self, refs, fmt):
+        """
+        Yield chunks of data of the raw rev-list in git format.
+        (optional, used only by bup server)
+        """
         args = git.rev_list_invocation(refs, format=fmt)
         p = subprocess.Popen(args, env=git._gitenv(self.repo_dir),
                              stdout=subprocess.PIPE)
