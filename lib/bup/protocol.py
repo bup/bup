@@ -426,8 +426,10 @@ class BupProtocolServer:
         return self
 
     def __exit__(self, type, value, traceback):
-        with pending_raise(value, rethrow=False):
-            if self.suspended:
-                self.repo.finish_writing()
-            if self.repo:
-                self.repo.close()
+        with pending_raise(value, rethrow=False): # Still needed with py3?
+            try:
+                if self.suspended:
+                    self.repo.finish_writing()
+            finally:
+                if self.repo:
+                    self.repo.close()
