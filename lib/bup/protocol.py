@@ -343,8 +343,7 @@ class BupProtocolServer:
             self.conn.write(b'\n')
             self.conn.ok()
         except git.GitError as e:
-            self.conn.write(b'\n')
-            self.conn.error(str(e).encode('ascii'))
+            self.conn.error(str(e).encode('ascii', errors='backslashreplace'))
             raise
 
     @_command
