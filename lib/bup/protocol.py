@@ -4,6 +4,7 @@ from binascii import hexlify, unhexlify
 
 from bup import git, vfs, vint
 from bup.compat import hexstr
+from bup.io import path_msg
 from bup.vint import read_bvec, write_bvec
 from bup.vint import read_vint, write_vint
 from bup.vint import read_vuint, write_vuint
@@ -158,9 +159,11 @@ class BupProtocolServer:
             self.suspended = False
         if not self.repo:
             self.repo = self._backend(repo_dir, server=True)
-            debug1('bup server: bupdir is %r\n' % self.repo.repo_dir)
-            debug1('bup server: serving in %s mode\n'
-                   % (self.repo.dumb_server_mode and 'dumb' or 'smart'))
+            msgdir = path_msg(self.repo.repo_dir)
+            if self.repo.dumb_server_mode:
+                debug1('bup server: (%s mode) serving %s\n'
+                       % (self.repo.dumb_server_mode and 'dumb' or 'smart',
+                          path_msg(self.repo.repo_dir)))
 
     @_command
     def init_dir(self, arg):
