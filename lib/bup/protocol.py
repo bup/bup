@@ -124,7 +124,7 @@ def _command(fn):
     fn.bup_server_command = True
     return fn
 
-class BupProtocolServer:
+class Server:
     def __init__(self, conn, backend):
         self.conn = conn
         self._backend = backend

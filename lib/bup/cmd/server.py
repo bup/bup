@@ -1,9 +1,8 @@
 
 import sys
 
-from bup import options, git
+from bup import options, protocol, git
 from bup.io import byte_stream
-from bup.protocol import BupProtocolServer
 from bup.repo import LocalRepo
 from bup.helpers import Conn, debug2
 
@@ -26,5 +25,5 @@ def main(argv):
             LocalRepo.__init__(self, repo_dir, server=server)
 
     with Conn(byte_stream(sys.stdin), byte_stream(sys.stdout)) as conn, \
-         BupProtocolServer(conn, ServerRepo) as server:
+         protocol.Server(conn, ServerRepo) as server:
         server.handle()
