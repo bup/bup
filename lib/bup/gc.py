@@ -1,5 +1,4 @@
 
-from __future__ import absolute_import
 from binascii import hexlify, unhexlify
 from os.path import basename
 import glob, os, subprocess, sys, tempfile
@@ -146,7 +145,7 @@ def sweep(live_objects, existing_count, cat_pipe, threshold, compression,
             if new_pack_prefix and p.startswith(new_pack_prefix):
                 continue  # Don't remove the new pack file
             if verbosity:
-                log('removing ' + path_msg(basename(p)) + '\n')
+                log(f'removing {path_msg(basename(p))}\n')
             os.unlink(p)
         if ns.stale_files:  # So git cat-pipe will close them
             cat_pipe.restart()
@@ -181,13 +180,13 @@ def sweep(live_objects, existing_count, cat_pipe, threshold, compression,
                 live_frac = idx_live_count / float(len(idx))
                 if live_frac > ((100 - threshold) / 100.0):
                     if verbosity:
-                        log('keeping %s (%d%% live)\n' % (git.repo_rel(basename(idx_name)),
-                                                        live_frac * 100))
+                        keep_path = path_msg(git.repo_rel(basename(idx_name)))
+                        log(f'keeping {keep_path} ({live_frac * 100}% live)\n')
                     continue
 
                 if verbosity:
-                    log('rewriting %s (%.2f%% live)\n' % (basename(idx_name),
-                                                        live_frac * 100))
+                    rw_path = path_msg(basename(idx_name))
+                    log(f'rewriting {rw_path} ({live_frac * 100:.2}% live)\n')
                 for sha in idx:
                     if live_objects.exists(sha):
                         item_it = cat_pipe.get(hexlify(sha))
