@@ -54,9 +54,7 @@ class LocalRepo(RepoProtocol):
         git.check_repo_or_die(repo_dir)
 
     def list_indexes(self):
-        for f in os.listdir(git.repo(b'objects/pack',
-                                     repo_dir=self.repo_dir)):
-            yield f
+        yield from os.listdir(git.repo(b'objects/pack', repo_dir=self.repo_dir))
 
     def read_ref(self, refname):
         return git.read_ref(refname, repo_dir=self.repo_dir)
@@ -78,9 +76,7 @@ class LocalRepo(RepoProtocol):
         it = self._cp.get(ref)
         oidx, typ, size = info = next(it)
         yield info
-        if oidx:
-            for data in it:
-                yield data
+        if oidx: yield from it
         assert not next(it, None)
 
     def join(self, ref):
@@ -92,11 +88,10 @@ class LocalRepo(RepoProtocol):
                            want_meta=want_meta, follow=follow)
 
     def refs(self, patterns=None, limit_to_heads=False, limit_to_tags=False):
-        for ref in git.list_refs(patterns=patterns,
+        yield from git.list_refs(patterns=patterns,
                                  limit_to_heads=limit_to_heads,
                                  limit_to_tags=limit_to_tags,
-                                 repo_dir=self.repo_dir):
-            yield ref
+                                 repo_dir=self.repo_dir)
 
     def send_index(self, name, conn, send_size):
         with git.open_idx(git.repo(b'objects/pack/%s' % name,

@@ -1158,21 +1158,17 @@ def join(repo, ref):
     def _join(it):
         _, typ, _ = next(it)
         if typ == b'blob':
-            for blob in it:
-                yield blob
+            yield from it
         elif typ == b'tree':
             treefile = b''.join(it)
             for (mode, name, sha) in git.tree_decode(treefile):
-                for blob in join(repo, hexlify(sha)):
-                    yield blob
+                yield from join(repo, hexlify(sha))
         elif typ == b'commit':
             treeline = b''.join(it).split(b'\n')[0]
             assert(treeline.startswith(b'tree '))
-            for blob in join(repo, treeline[5:]):
-                yield blob
+            yield from join(repo, treeline[5:])
         else:
             raise git.GitError('invalid object type %r: expected blob/tree/commit'
                                % typ)
 
-    for d in _join(repo.cat(ref)):
-        yield d
+    yield from _join(repo.cat(ref))

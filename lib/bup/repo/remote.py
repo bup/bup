@@ -61,9 +61,7 @@ class RemoteRepo(RepoProtocol):
         items = self.client.cat_batch((ref,))
         oidx, typ, size, it = info = next(items)
         yield info[:-1]
-        if oidx:
-            for data in it:
-                yield data
+        if oidx: yield from it
         assert not next(items, None)
 
     def write_commit(self, tree, parent,
