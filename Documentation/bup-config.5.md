@@ -23,7 +23,7 @@ bup.split-trees
     "Handling large directories" in the DESIGN in the `bup` source for
     additional information.
 
-git.packSizeLimit
+pack.packSizeLimit
 :   Respected when writing pack files (e.g. via `bup save ...`).
 
 # SEE ALSO
