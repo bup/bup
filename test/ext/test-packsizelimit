@@ -13,12 +13,16 @@ bup() { "$top/bup" "$@"; }
 
 WVPASS cd "$tmpdir"
 
-WVSTART 'pack size limit'
+
+WVSTART 'no pack size limit'
 
 WVPASS bup init
 WVPASSEQ $(WVPASS find "$BUP_DIR"/objects/pack -name "*.pack" | wc -l) 0
 WVPASS bup random 50k | WVPASS bup split -n foo
 WVPASSEQ 1 $(WVPASS find "$BUP_DIR"/objects/pack/*.pack | wc -l)
+
+
+WVSTART 'pack size limit'
 
 rm -rf "$BUP_DIR"
 WVPASS bup init
@@ -26,5 +30,41 @@ WVPASS git config pack.packSizeLimit 10k
 WVPASSEQ $(WVPASS find "$BUP_DIR"/objects/pack -name "*.pack" | wc -l) 0
 WVPASS bup random 50k | WVPASS bup split -n foo
 WVPASS test $(WVPASS find "$BUP_DIR"/objects/pack/*.pack | wc -l) -gt 2
+
+
+bup_dir2="$tmpdir/bup2"
+
+
+WVSTART 'pack size limit (-r)'
+
+rm -rf "$BUP_DIR" "$bup_dir2"
+WVPASS bup init
+WVPASS bup -d "$bup_dir2" init
+
+# FIXME: This is wrong; destination repo should determine the limit.
+WVPASS git config pack.packSizeLimit 10k
+#WVPASS git --git-dir "$bup_dir2" config pack.packSizeLimit 10k
+
+WVPASSEQ $(WVPASS find "$BUP_DIR"/objects/pack -name "*.pack" | wc -l) 0
+WVPASSEQ $(WVPASS find "$bup_dir2"/objects/pack -name "*.pack" | wc -l) 0
+WVPASS bup random 50k | WVPASS bup split -r "$bup_dir2" -n foo
+WVPASSEQ $(WVPASS find "$BUP_DIR"/objects/pack -name "*.pack" | wc -l) 0
+WVPASS test $(WVPASS find "$bup_dir2"/objects/pack/*.pack | wc -l) -gt 2
+
+
+WVSTART 'pack size limit (on)'
+
+rm -rf "$BUP_DIR" "$bup_dir2"
+WVPASS bup init
+WVPASS bup -d "$bup_dir2" init
+WVPASS git --git-dir "$bup_dir2" config pack.packSizeLimit 10k
+WVPASSEQ $(WVPASS find "$BUP_DIR"/objects/pack -name "*.pack" | wc -l) 0
+WVPASSEQ $(WVPASS find "$bup_dir2"/objects/pack -name "*.pack" | wc -l) 0
+WVPASS bup random 50k > "$tmpdir/data"
+WVPASS bup -d "$bup_dir2" on - split -n foo "$tmpdir/data"
+WVPASS bup -d "$bup_dir2" join foo > "$tmpdir/data-joined"
+WVPASS cmp -b "$tmpdir/data" "$tmpdir/data-joined"
+WVPASSEQ $(WVPASS find "$BUP_DIR"/objects/pack -name "*.pack" | wc -l) 0
+WVPASS test $(WVPASS find "$bup_dir2"/objects/pack/*.pack | wc -l) -gt 2
 
 WVPASS rm -r "$tmpdir"

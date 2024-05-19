@@ -8,9 +8,8 @@ bup-config - bup configuration options
 
 # DESCRIPTION
 
-`bup` specific options may be set in the relevant `git` config
-(`git-config(1)`), and `bup` also respects some existing `git`
-options.
+The following options may be set in the relevant `git` config
+(`git-config(1)`).
 
 # OPTIONS
 
@@ -25,6 +24,9 @@ bup.split-trees
 
 pack.packSizeLimit
 :   Respected when writing pack files (e.g. via `bup save ...`).
+    Currently read from the repository to which the pack files are
+    being written, excepting `bup on REMOTE...` which incorrectly
+    reads the value from the `REMOTE` repository.
 
 # SEE ALSO
 
