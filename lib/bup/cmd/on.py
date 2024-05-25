@@ -1,4 +1,4 @@
-from __future__ import absolute_import
+
 from subprocess import PIPE
 import getopt, os, signal, struct, subprocess, sys
 
@@ -9,17 +9,14 @@ from bup.io import byte_stream
 
 
 optspec = """
-bup on <hostname> index ...
-bup on <hostname> save ...
-bup on <hostname> split ...
-bup on <hostname> get ...
+bup on <hostname> <index|save|split|get> ...
 """
 
 def main(argv):
     o = options.Options(optspec, optfunc=getopt.getopt)
     opt, flags, extra = o.parse_bytes(argv[1:])
     if len(extra) < 2:
-        o.fatal('arguments expected')
+        o.fatal('must specify index, save, split, or get command')
 
     class SigException(Exception):
         def __init__(self, signum):
