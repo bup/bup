@@ -26,6 +26,7 @@ class RemoteRepo(RepoProtocol):
         self.refs = self.client.refs
         self.resolve = self.client.resolve
         self._packwriter = None
+        super()._validate_init()
 
     def close(self):
         if not self.closed:
