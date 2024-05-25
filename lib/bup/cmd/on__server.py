@@ -35,10 +35,11 @@ def main(argv):
     argv = [argv[0], b'mux', b'--'] + argv
 
 
-    # stdin/stdout are supposedly connected to 'bup server' that the caller
-    # started for us (often on the other end of an ssh tunnel), so we don't want
-    # to misuse them.  Move them out of the way, then replace stdout with
-    # a pointer to stderr in case our subcommand wants to do something with it.
+    # stdin/stdout should be connected to 'bup server' that the caller
+    # started for us (often on the other end of an ssh tunnel), so we
+    # don't want to misuse them.  Move them out of the way (to fds 3
+    # and 4 -- see Client()), then replace stdout with a pointer to
+    # stderr in case our subcommand wants to do something with it.
     #
     # It might be nice to do the same with stdin, but my experiments showed that
     # ssh seems to make its child's stderr a readable-but-never-reads-anything

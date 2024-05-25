@@ -61,6 +61,7 @@ WVPASS git --git-dir "$bup_dir2" config pack.packSizeLimit 10k
 WVPASSEQ $(WVPASS find "$BUP_DIR"/objects/pack -name "*.pack" | wc -l) 0
 WVPASSEQ $(WVPASS find "$bup_dir2"/objects/pack -name "*.pack" | wc -l) 0
 WVPASS bup random 50k > "$tmpdir/data"
+WVFAIL bup -d "$bup_dir2" on - split -n foo < "$tmpdir/data"
 WVPASS bup -d "$bup_dir2" on - split -n foo "$tmpdir/data"
 WVPASS bup -d "$bup_dir2" join foo > "$tmpdir/data-joined"
 WVPASS cmp -b "$tmpdir/data" "$tmpdir/data-joined"

@@ -3,7 +3,7 @@ from __future__ import print_function
 
 from __future__ import absolute_import
 from binascii import hexlify, unhexlify
-import os, re, struct, time, zlib
+import os, re, struct, sys, time, zlib
 import socket
 
 from bup import git, ssh, vfs
@@ -91,6 +91,7 @@ class Client:
                 self.pout = os.fdopen(3, 'rb')
                 self.pin = os.fdopen(4, 'wb')
                 self.conn = Conn(self.pout, self.pin)
+                sys.stdin.close()
             else:
                 if self.protocol in (b'ssh', b'file'):
                     try:

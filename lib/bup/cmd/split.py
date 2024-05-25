@@ -95,8 +95,11 @@ def opts_from_cmdline(argv):
         opt.date = time.time()
 
     opt.is_reverse = environ.get(b'BUP_SERVER_REVERSE')
-    if opt.is_reverse and opt.remote:
-        o.fatal("don't use -r in reverse mode; it's automatic")
+    if opt.is_reverse:
+        if opt.remote:
+            o.fatal("don't use -r in reverse mode; it's automatic")
+        if not opt.sources or opt.git_ids:
+            o.fatal('"bup on ... split" does not support reading from standard input')
 
     if opt.name and not valid_save_name(opt.name):
         o.fatal("'%r' is not a valid branch name." % opt.name)
