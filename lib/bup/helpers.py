@@ -580,11 +580,11 @@ def mux(p, outfd, outr, errr):
                 if fd == outr:
                     buf = os.read(outr, MAX_PACKET)
                     if not buf: break
-                    os.write(outfd, struct.pack('!IB', len(buf), 1) + buf)
+                    os.writev(outfd, (struct.pack('!IB', len(buf), 1), buf))
                 elif fd == errr:
                     buf = os.read(errr, 1024)
                     if not buf: break
-                    os.write(outfd, struct.pack('!IB', len(buf), 2) + buf)
+                    os.writev(outfd, (struct.pack('!IB', len(buf), 2), buf))
     finally:
         os.write(outfd, struct.pack('!IB', 0, 3))
 
