@@ -1,10 +1,9 @@
 
-from __future__ import absolute_import, print_function
 import glob, os, struct
 
 from bup import _helpers
 from bup.compat import pending_raise
-from bup.helpers import log, mmap_read
+from bup.helpers import OBJECT_EXISTS, ObjectLocation, log, mmap_read
 from bup.io import path_msg
 
 
@@ -102,8 +101,9 @@ class PackMidx:
     def __del__(self):
         assert self.closed
 
-    def exists(self, hash, want_source=False):
+    def exists(self, hash, want_source=False, want_offset=False):
         """Return nonempty if the object exists in the index files."""
+        assert want_offset == False, "returning offset is not supported in midx"
         global _total_searches, _total_steps
         _total_searches += 1
         want = hash
@@ -133,7 +133,9 @@ class PackMidx:
                 end = mid
                 endv = _helpers.firstword(v)
             else: # got it!
-                return want_source and self._get_idxname(mid) or True
+                if want_source:
+                    return ObjectLocation(self._get_idxname(mid), None)
+                return OBJECT_EXISTS
         return None
 
     def __iter__(self):

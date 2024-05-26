@@ -13,7 +13,7 @@ from bup._helpers import RecordHashSplitter
 
 _empty_metadata = MetadataRO()
 
-def _write_tree(w, dir_meta, items, add_meta=True):
+def _write_tree(repo, dir_meta, items, add_meta=True):
     shalist = []
     if add_meta:
         metalist = [(b'', _empty_metadata if dir_meta is None else dir_meta)]
@@ -22,13 +22,13 @@ def _write_tree(w, dir_meta, items, add_meta=True):
                      for entry in items if entry.mode != GIT_MODE_TREE]
         metalist.sort(key = lambda x: x[0])
         metadata = BytesIO(b''.join(m[1].encode() for m in metalist))
-        mode, oid = split_to_blob_or_tree(w.new_blob, w.new_tree,
+        mode, oid = split_to_blob_or_tree(repo.write_bupm, repo.write_tree,
                                          [metadata],
                                          keep_boundaries=False)
         shalist.append((mode, b'.bupm', oid))
     shalist += [(entry.gitmode, entry.mangled_name(), entry.oid)
                 for entry in items]
-    return w.new_tree(shalist)
+    return repo.write_tree(shalist)
 
 class TreeItem:
     __slots__ = 'name', 'mode', 'gitmode', 'oid', 'meta'
@@ -98,7 +98,7 @@ def _abbreviate_item_names(items):
     for abbrev_name, item in zip(abbrevnames, items):
         item.name = abbrev_name
 
-def _write_split_tree(w, dir_meta, items, level=0):
+def _write_split_tree(repo, dir_meta, items, level=0):
     """Write a (possibly split) tree representing items.
 
     Write items as either a a single git tree object, or as a "split
@@ -106,7 +106,7 @@ def _write_split_tree(w, dir_meta, items, level=0):
     """
     assert level >= 0
     if not items:
-        return _write_tree(w, dir_meta, items)
+        return _write_tree(repo, dir_meta, items)
 
     # We only feed the name into the hashsplitter because otherwise
     # minor changes (changing the content of the file, or changing a
@@ -150,18 +150,18 @@ def _write_split_tree(w, dir_meta, items, level=0):
             assert len(items) == len(splits[0])
             assert all(lambda x, y: x is y for x, y in zip(items, splits[0]))
             _abbreviate_item_names(items)
-            sentinel_sha = w.new_blob(b'')
+            sentinel_sha = repo.write_data(b'')
             items.append(RawTreeItem(b'.bupd.%d.bupd' % level,
                                      GIT_MODE_FILE, GIT_MODE_FILE,
                                      sentinel_sha, None))
-        return _write_tree(w, dir_meta, items)
+        return _write_tree(repo, dir_meta, items)
 
     # This tree level was split
     newtree = []
     if level == 0:  # Leaf nodes, just add them.
         for split_items in splits:
             newtree.append(SplitTreeItem(split_items[0].name,
-                                         _write_tree(w, None, split_items),
+                                         _write_tree(repo, None, split_items),
                                          split_items[0].name,
                                          split_items[-1].name))
     else:  # "inner" nodes (not top, not leaf), abbreviate names
@@ -169,13 +169,13 @@ def _write_split_tree(w, dir_meta, items, level=0):
             _abbreviate_item_names(split_items)
             # "internal" (not top, not leaf) trees don't have a .bupm
             newtree.append(SplitTreeItem(split_items[0].name,
-                                         _write_tree(w, None, split_items,
+                                         _write_tree(repo, None, split_items,
                                                      add_meta=False),
                                          split_items[0].first_full_name,
                                          split_items[-1].last_full_name))
 
     assert newtree
-    return _write_split_tree(w, dir_meta, newtree, level + 1)
+    return _write_split_tree(repo, dir_meta, newtree, level + 1)
 
 
 class StackDir:
@@ -213,19 +213,19 @@ class Stack:
                 items.append(item)
         return items
 
-    def _write(self, w, tree):
+    def _write(self, repo, tree):
         items = self._clean(tree)
         if not self.split_trees:
-            return _write_tree(w, tree.meta, items)
+            return _write_tree(repo, tree.meta, items)
         items.sort(key=lambda x: x.name)
-        return _write_split_tree(w, tree.meta, items)
+        return _write_split_tree(repo, tree.meta, items)
 
-    def pop(self, w, override_tree=None, override_meta=None):
+    def pop(self, repo, override_tree=None, override_meta=None):
         tree = self.stack.pop()
         if override_meta is not None:
             tree.meta = override_meta
         if not override_tree: # caution - False happens, not just None
-            tree_oid = self._write(w, tree)
+            tree_oid = self._write(repo, tree)
         else:
             tree_oid = override_tree
         if len(self):

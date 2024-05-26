@@ -10,7 +10,7 @@ from bup.helpers import (add_error, chunkyreader, die_if_errors,
                          mkdirp, parse_rx_excludes, progress, qprogress,
                          should_rx_exclude_path)
 from bup.io import byte_stream
-from bup.repo import LocalRepo, RemoteRepo
+from bup.repo import LocalRepo, make_repo
 
 
 optspec = """
@@ -242,7 +242,7 @@ def main(argv):
         mkdirp(opt.outdir)
         os.chdir(opt.outdir)
 
-    with RemoteRepo(opt.remote) if opt.remote else LocalRepo() as repo:
+    with make_repo(argv_bytes(opt.remote)) if opt.remote else LocalRepo() as repo:
         top = fsencode(os.getcwd())
         hardlinks = {}
         for path in [argv_bytes(x) for x in extra]:

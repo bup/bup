@@ -11,7 +11,7 @@ from wvpytest import *
 
 from bup import git, path, vfs
 from bup.compat import environ
-from bup.repo import LocalRepo, RemoteRepo
+from bup.repo import LocalRepo, make_repo
 from buptest import ex, exo
 from buptest.vfs import tree_dict
 
@@ -278,7 +278,7 @@ def test_local_resolve(tmpdir):
 
 def test_remote_resolve(tmpdir):
     prep_and_test_repo(tmpdir,
-                       lambda x: RemoteRepo(x), _test_resolve)
+                       lambda x: make_repo(x), _test_resolve)
 
 def _test_resolve_loop(repo, tmpdir):
     data_path = tmpdir + b'/src'
@@ -304,6 +304,6 @@ def test_local_resolve_loop(tmpdir):
 
 def test_remote_resolve_loop(tmpdir):
     prep_and_test_repo(tmpdir,
-                       lambda x: RemoteRepo(x), _test_resolve_loop)
+                       lambda x: make_repo(x), _test_resolve_loop)
 
 # FIXME: add tests for the want_meta=False cases.

@@ -16,7 +16,9 @@ from bup.compat import (bytes_from_byte, bytes_from_uint,
                         environ,
                         pending_raise)
 from bup.io import path_msg
-from bup.helpers import (Sha1, add_error, chunkyreader, debug1, debug2,
+from bup.helpers import (OBJECT_EXISTS,
+                         ObjectLocation,
+                         Sha1, add_error, chunkyreader, debug1, debug2,
                          exo,
                          fdatasync,
                          finalized,
@@ -382,10 +384,21 @@ class PackIdx(object):
             return self._ofs_from_idx(idx)
         return None
 
-    def exists(self, hash, want_source=False):
-        """Return nonempty if the object exists in this index."""
-        if hash and (self._idx_from_hash(hash) != None):
-            return want_source and os.path.basename(self.name) or True
+    def exists(self, hash, want_source=False, want_offset=False):
+        """Return an ObjectLocation if the object exists in this
+           index, otherwise None."""
+        if not hash:
+            return None
+        idx = self._idx_from_hash(hash)
+        if idx is not None:
+            if want_source or want_offset:
+                ret = ObjectLocation(None, None)
+                if want_source:
+                    ret.pack = os.path.basename(self.name)
+                if want_offset:
+                    ret.offset = self._ofs_from_idx(idx)
+                return ret
+            return OBJECT_EXISTS
         return None
 
     def _idx_from_hash(self, hash):
@@ -584,8 +597,9 @@ class PackIdxList:
     def __len__(self):
         return sum(len(pack) for pack in self.packs)
 
-    def exists(self, hash, want_source=False):
-        """Return nonempty if the object exists in the index files."""
+    def exists(self, hash, want_source=False, want_offset=False):
+        """Return an ObjectLocation if the object exists in this
+           index, otherwise None."""
         global _total_searches
         _total_searches += 1
         if hash in self.also:
@@ -598,14 +612,41 @@ class PackIdxList:
                 return None
         for i in range(len(self.packs)):
             p = self.packs[i]
+            if want_offset and isinstance(p, midx.PackMidx):
+                get_src = True
+                get_ofs = False
+            else:
+                get_src = want_source
+                get_ofs = want_offset
             _total_searches -= 1  # will be incremented by sub-pack
-            ix = p.exists(hash, want_source=want_source)
-            if ix:
+            ret = p.exists(hash, want_source=get_src, want_offset=get_ofs)
+            if ret:
                 # reorder so most recently used packs are searched first
                 self.packs = [p] + self.packs[:i] + self.packs[i+1:]
-                return ix
+                if want_offset and ret.offset is None:
+                    with open_idx(os.path.join(self.dir, ret.pack)) as np:
+                        ret = np.exists(hash, want_source=want_source,
+                                        want_offset=True)
+                    assert ret
+                return ret
         self.do_bloom = True
         return None
+
+    def close_temps(self):
+        '''
+        Close all the temporary files (bloom/midx) so that you can safely call
+        auto_midx() without potentially deleting files that are open/mapped.
+        Note that you should call refresh() again afterwards to reload any new
+        ones, otherwise performance will suffer.
+        '''
+        if self.bloom is not None:
+            self.bloom.close()
+            self.bloom = None
+        for ix in list(self.packs):
+            if not isinstance(ix, midx.PackMidx):
+                continue
+            ix.close()
+            self.packs.remove(ix)
 
     def refresh(self, skip_midx = False):
         """Refresh the index list.
@@ -772,15 +813,15 @@ def create_commit_blob(tree, parent,
     l.append(msg)
     return b'\n'.join(l)
 
-def _make_objcache():
-    return PackIdxList(repo(b'objects/pack'))
+def _make_objcache(repo_dir):
+    return PackIdxList(repo(b'objects/pack', repo_dir=repo_dir))
 
 # bup-gc assumes that it can disable all PackWriter activities
 # (bloom/midx/cache) via the constructor and close() arguments.
 
 class PackWriter(object):
     """Writes Git objects inside a pack file."""
-    def __init__(self, objcache_maker=_make_objcache, compression_level=1,
+    def __init__(self, objcache_maker=None, compression_level=None,
                  run_midx=True, on_pack_finish=None,
                  max_pack_size=None, max_pack_objects=None, repo_dir=None):
         self.closed = False
@@ -791,8 +832,10 @@ class PackWriter(object):
         self.outbytes = 0
         self.tmpdir = None
         self.idx = None
-        self.objcache_maker = objcache_maker
+        self.objcache_maker = objcache_maker or _make_objcache
         self.objcache = None
+        if compression_level is None:
+            compression_level = 1
         self.compression_level = compression_level
         self.run_midx=run_midx
         self.on_pack_finish = on_pack_finish
@@ -865,8 +908,8 @@ class PackWriter(object):
         return sha
 
     def _require_objcache(self):
-        if self.objcache is None and self.objcache_maker:
-            self.objcache = self.objcache_maker()
+        if self.objcache is None:
+            self.objcache = self.objcache_maker(self.repo_dir)
         if self.objcache is None:
             raise GitError(
                     "PackWriter not opened or can't check exists w/o objcache")
@@ -1367,34 +1410,6 @@ class CatPipe:
             with pending_raise(ex):
                 self.close()
 
-    def _join(self, it):
-        _, typ, _ = next(it)
-        if typ == b'blob':
-            for blob in it:
-                yield blob
-        elif typ == b'tree':
-            treefile = b''.join(it)
-            for (mode, name, sha) in tree_decode(treefile):
-                for blob in self.join(hexlify(sha)):
-                    yield blob
-        elif typ == b'commit':
-            treeline = b''.join(it).split(b'\n')[0]
-            assert treeline.startswith(b'tree ')
-            for blob in self.join(treeline[5:]):
-                yield blob
-        else:
-            raise GitError('invalid object type %r: expected blob/tree/commit'
-                           % typ)
-
-    def join(self, id):
-        """Generate a list of the content of all blobs that can be reached
-        from an object.  The hash given in 'id' must point to a blob, a tree
-        or a commit. The content of all blobs that can be seen from trees or
-        commits will be added to the list.
-        """
-        for d in self._join(self.get(id)):
-            yield d
-
 
 _cp = {}
 
@@ -1431,10 +1446,10 @@ def tags(repo_dir = None):
 
 
 class MissingObject(KeyError):
+    __slots__ = 'oid',
     def __init__(self, oid):
         self.oid = oid
-        KeyError.__init__(self, 'object %r is missing' % hexlify(oid))
-
+        KeyError.__init__(self, f'object {hexlify(oid)!r} is missing')
 
 WalkItem = namedtuple('WalkItem', ['oid', 'type', 'mode',
                                    'path', 'chunk_path', 'data'])

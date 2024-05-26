@@ -1,6 +1,5 @@
 
 from binascii import unhexlify
-from io import BytesIO
 from os import symlink
 from random import Random, randint
 from stat import S_IFDIR, S_IFLNK, S_IFREG, S_ISDIR, S_ISREG
@@ -367,14 +366,6 @@ def test_duplicate_save_dates(tmpdir):
                   b'1970-01-02-034640-10',
                   b'latest'),
                  tuple(sorted(x[0] for x in vfs.contents(repo, revlist))))
-
-def test_item_read_write():
-    x = vfs.Root(meta=13)
-    stream = BytesIO()
-    vfs.write_item(stream, x)
-    print('stream:', repr(stream.getvalue()), stream.tell(), file=sys.stderr)
-    stream.seek(0)
-    wvpasseq(x, vfs.read_item(stream))
 
 def test_tree_depth_parsing():
     assert vfs._parse_tree_depth(b'.bupd.1.bupd') == 1

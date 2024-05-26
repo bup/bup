@@ -3,8 +3,8 @@ from binascii import hexlify, unhexlify
 import os, re, struct, sys, time, zlib
 import socket
 
-from bup import git, ssh, vfs, vint
-from bup.compat import environ, pending_raise
+from bup import git, ssh, vfs, vint, protocol
+from bup.compat import pending_raise
 from bup.helpers import (Conn, atomically_replaced_file, chunkyreader, debug1,
                          debug2, linereader, lines_until_sentinel,
                          mkdirp, nullcontext_if_not, progress, qprogress, DemuxConn)
@@ -42,7 +42,7 @@ def _raw_write_bwlimit(f, buf, bwcount, bwtime):
         return (bwcount, bwtime)
 
 
-_protocol_rs = br'([a-z]+)://'
+_protocol_rs = br'([-a-z]+)://'
 _host_rs = br'(?P<sb>\[)?((?(sb)[0-9a-f:]+|[^:/]+))(?(sb)\])'
 _port_rs = br'(?::(\d+))?'
 _path_rs = br'(/.*)?'
@@ -50,9 +50,21 @@ _url_rx = re.compile(br'%s(?:%s%s)?%s' % (_protocol_rs, _host_rs, _port_rs, _pat
                      re.I)
 
 def parse_remote(remote):
+    assert remote is not None
     url_match = _url_rx.match(remote)
     if url_match:
-        if not url_match.group(1) in (b'ssh', b'bup', b'file'):
+        # Backward compatibility: version of bup prior to this patch
+        # passed "hostname:" to parse_remote, which wasn't url_match
+        # and thus went into the else, where the ssh version was then
+        # returned, and thus the dir (last component) was the empty
+        # string instead of None from the regex.
+        # This empty string was then put into the name of the index-
+        # cache directory, so we need to preserve that to avoid the
+        # index-cache being in a different location after updates.
+        if url_match.group(1) == b'bup-rev':
+            if url_match.group(5) is None:
+                return url_match.group(1, 3, 4) + (b'', )
+        elif not url_match.group(1) in (b'ssh', b'bup', b'file'):
             raise ClientError('unexpected protocol: %s'
                               % url_match.group(1).decode('ascii'))
         return url_match.group(1,3,4,5)
@@ -70,10 +82,6 @@ class Client:
         self._busy = self.conn = None
         self.sock = self.p = self.pout = self.pin = None
         try:
-            is_reverse = environ.get(b'BUP_SERVER_REVERSE')
-            if is_reverse:
-                assert(not remote)
-                remote = b'%s:' % is_reverse
             (self.protocol, self.host, self.port, self.dir) = parse_remote(remote)
             # The b'None' here matches python2's behavior of b'%s' % None == 'None',
             # python3 will (as of version 3.7.5) do the same for str ('%s' % None),
@@ -84,27 +92,26 @@ class Client:
                                      % re.sub(br'[^@\w]',
                                               b'_',
                                               b'%s:%s' % (cachehost, cachedir)))
-            if is_reverse:
+            if self.protocol == b'bup-rev':
                 self.pout = os.fdopen(3, 'rb')
                 self.pin = os.fdopen(4, 'wb')
                 self.conn = Conn(self.pout, self.pin)
                 sys.stdin.close()
-            else:
-                if self.protocol in (b'ssh', b'file'):
-                    try:
-                        # FIXME: ssh and file shouldn't use the same module
-                        self.p = ssh.connect(self.host, self.port, b'server')
-                        self.pout = self.p.stdout
-                        self.pin = self.p.stdin
-                        self.conn = Conn(self.pout, self.pin)
-                    except OSError as e:
-                        raise ClientError('connect: %s' % e) from e
-                elif self.protocol == b'bup':
-                    self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                    self.sock.connect((self.host,
-                                       1982 if self.port is None else int(self.port)))
-                    self.sockw = self.sock.makefile('wb')
-                    self.conn = DemuxConn(self.sock.fileno(), self.sockw)
+            elif self.protocol in (b'ssh', b'file'):
+                try:
+                    # FIXME: ssh and file shouldn't use the same module
+                    self.p = ssh.connect(self.host, self.port, b'server')
+                    self.pout = self.p.stdout
+                    self.pin = self.p.stdin
+                    self.conn = Conn(self.pout, self.pin)
+                except OSError as e:
+                    raise ClientError('connect: %s' % e) from e
+            elif self.protocol == b'bup':
+                self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                self.sock.connect((self.host,
+                                   1982 if self.port is None else int(self.port)))
+                self.sockw = self.sock.makefile('wb')
+                self.conn = DemuxConn(self.sock.fileno(), self.sockw)
             self._available_commands = self._get_available_commands()
             self._require_command(b'init-dir')
             self._require_command(b'set-dir')
@@ -223,9 +230,25 @@ class Client:
             raise ClientError('server does not appear to provide %s command'
                               % name.decode('ascii'))
 
-    def sync_indexes(self):
+    def _list_indexes(self):
         self._require_command(b'list-indexes')
         self.check_busy()
+        self.conn.write(b'list-indexes\n')
+        for line in linereader(self.conn):
+            if not line:
+                break
+            assert(line.find(b'/') < 0)
+            parts = line.split(b' ')
+            idx = parts[0]
+            load = len(parts) == 2 and parts[1] == b'load'
+            yield idx, load
+        self.check_ok()
+
+    def list_indexes(self):
+        for idx, load in self._list_indexes():
+            yield idx
+
+    def sync_indexes(self):
         conn = self.conn
         mkdirp(self.cachedir)
         # All cached idxs are extra until proven otherwise
@@ -235,21 +258,14 @@ class Client:
             if f.endswith(b'.idx'):
                 extra.add(f)
         needed = set()
-        conn.write(b'list-indexes\n')
-        for line in linereader(conn):
-            if not line:
-                break
-            assert(line.find(b'/') < 0)
-            parts = line.split(b' ')
-            idx = parts[0]
-            if len(parts) == 2 and parts[1] == b'load' and idx not in extra:
+        for idx, load in self._list_indexes():
+            if load:
                 # If the server requests that we load an idx and we don't
                 # already have a copy of it, it is needed
                 needed.add(idx)
             # Any idx that the server has heard of is proven not extra
             extra.discard(idx)
 
-        self.check_ok()
         debug1('client: removing extra indexes: %s\n' % extra)
         for idx in extra:
             os.unlink(os.path.join(self.cachedir, idx))
@@ -258,30 +274,36 @@ class Client:
             self.sync_index(idx)
         git.auto_midx(self.cachedir)
 
-    def sync_index(self, name):
+    def send_index(self, name, f, send_size):
         self._require_command(b'send-index')
         #debug1('requesting %r\n' % name)
         self.check_busy()
+        self.conn.write(b'send-index %s\n' % name)
+        n = struct.unpack('!I', self.conn.read(4))[0]
+        assert(n)
+
+        send_size(n)
+
+        count = 0
+        progress('Receiving index from server: %d/%d\r' % (count, n))
+        for b in chunkyreader(self.conn, n):
+            f.write(b)
+            count += len(b)
+            qprogress('Receiving index from server: %d/%d\r' % (count, n))
+        progress('Receiving index from server: %d/%d, done.\n' % (count, n))
+        self.check_ok()
+
+    def sync_index(self, name):
         mkdirp(self.cachedir)
         fn = os.path.join(self.cachedir, name)
         if os.path.exists(fn):
             msg = ("won't request existing .idx, try `bup bloom --check %s`"
                    % path_msg(fn))
             raise ClientError(msg)
-        self.conn.write(b'send-index %s\n' % name)
-        n = struct.unpack('!I', self.conn.read(4))[0]
-        assert(n)
         with atomically_replaced_file(fn, 'wb') as f:
-            count = 0
-            progress('Receiving index from server: %d/%d\r' % (count, n))
-            for b in chunkyreader(self.conn, n):
-                f.write(b)
-                count += len(b)
-                qprogress('Receiving index from server: %d/%d\r' % (count, n))
-            progress('Receiving index from server: %d/%d, done.\n' % (count, n))
-            self.check_ok()
+            self.send_index(name, f, lambda size: None)
 
-    def _make_objcache(self):
+    def _make_objcache(self, repo_dir):
         return git.PackIdxList(self.cachedir)
 
     def _suggest_packs(self):
@@ -316,22 +338,25 @@ class Client:
             self.conn.write(b'%s\n' % ob)
         return idx
 
-    def new_packwriter(self, compression_level=1,
-                       max_pack_size=None, max_pack_objects=None):
+    def new_packwriter(self, compression_level=None,
+                       max_pack_size=None, max_pack_objects=None,
+                       objcache_maker=None, run_midx=True):
         self._require_command(b'receive-objects-v2')
         self.check_busy()
         def _set_busy():
             self._busy = b'receive-objects-v2'
             self.conn.write(b'receive-objects-v2\n')
+        objcache_maker = objcache_maker or self._make_objcache
         return PackWriter_Remote(self.conn,
-                                 objcache_maker = self._make_objcache,
+                                 objcache_maker = objcache_maker,
                                  suggest_packs = self._suggest_packs,
                                  onopen = _set_busy,
                                  onclose = self._not_busy,
                                  ensure_busy = self.ensure_busy,
                                  compression_level=compression_level,
                                  max_pack_size=max_pack_size,
-                                 max_pack_objects=max_pack_objects)
+                                 max_pack_objects=max_pack_objects,
+                                 run_midx=run_midx)
 
     def read_ref(self, refname):
         self._require_command(b'read-ref')
@@ -363,7 +388,7 @@ class Client:
             sz = struct.unpack('!I', self.conn.read(4))[0]
             if not sz: break
             yield self.conn.read(sz)
-        # FIXME: ok to assume the only NotOk is a KerError? (it is true atm)
+        # FIXME: ok to assume the only NotOk is a KeyError? (it is true atm)
         e = self.check_ok()
         self._not_busy()
         if e:
@@ -475,7 +500,7 @@ class Client:
             raise not_ok
         self._not_busy()
 
-    def resolve(self, path, parent=None, want_meta=True, follow=False):
+    def resolve(self, path, parent=None, want_meta=True, follow=True):
         self._require_command(b'resolve')
         self.check_busy()
         self._busy = b'resolve'
@@ -484,14 +509,14 @@ class Client:
                                       | (2 if follow else 0)
                                       | (4 if parent else 0)))
         if parent:
-            vfs.write_resolution(conn, parent)
+            protocol.write_resolution(conn, parent)
         write_bvec(conn, path)
         success = ord(conn.read(1))
         assert success in (0, 1)
         if success:
-            result = vfs.read_resolution(conn)
+            result = protocol.read_resolution(conn)
         else:
-            result = vfs.read_ioerror(conn)
+            result = protocol.read_ioerror(conn)
         # FIXME: confusing
         not_ok = self.check_ok()
         if not_ok:
@@ -543,14 +568,16 @@ class PackWriter_Remote(git.PackWriter):
     def __init__(self, conn, objcache_maker, suggest_packs,
                  onopen, onclose,
                  ensure_busy,
-                 compression_level=1,
+                 compression_level=None,
                  max_pack_size=None,
-                 max_pack_objects=None):
+                 max_pack_objects=None,
+                 run_midx=True):
         git.PackWriter.__init__(self,
                                 objcache_maker=objcache_maker,
                                 compression_level=compression_level,
                                 max_pack_size=max_pack_size,
-                                max_pack_objects=max_pack_objects)
+                                max_pack_objects=max_pack_objects,
+                                run_midx=run_midx)
         self.remote_closed = False
         self.file = conn
         self.filename = b'remote socket'
@@ -620,6 +647,7 @@ class PackWriter_Remote(git.PackWriter):
         self.count += 1
 
         if self.file.has_input():
+            self.objcache.close_temps()
             self.suggest_packs()
             self.objcache.refresh()
 

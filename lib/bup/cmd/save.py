@@ -6,7 +6,7 @@ import math, os, stat, sys, time
 
 from bup import hashsplit, git, options, index, client, metadata
 from bup import hlinkdb
-from bup.compat import argv_bytes, environ, nullcontext
+from bup.compat import argv_bytes, environ
 from bup.hashsplit import GIT_MODE_TREE, GIT_MODE_FILE, GIT_MODE_SYMLINK
 from bup.helpers import (add_error, grafted_path_components, handle_ctrl_c,
                          hostname, istty2, log, parse_date_or_fatal, parse_num,
@@ -16,6 +16,7 @@ from bup.helpers import (add_error, grafted_path_components, handle_ctrl_c,
 from bup.io import byte_stream, path_msg
 from bup.pwdgrp import userfullname, username
 from bup.tree import Stack
+from bup.repo import LocalRepo, make_repo
 
 
 optspec = """
@@ -34,7 +35,7 @@ f,indexfile=  the name of the index file (normally BUP_DIR/bupindex)
 strip      strips the path to every filename given
 strip-path= path-prefix to be stripped when saving
 graft=     a graft point *old_path*=*new_path* (can be used more than once)
-#,compress=  set compression level to # (0-9, 9 is highest) [1]
+#,compress=  set compression level to # (0-9, 9 is highest)
 """
 
 
@@ -108,7 +109,7 @@ def opts_from_cmdline(argv):
 
     return opt
 
-def save_tree(opt, reader, hlink_db, msr, w, split_trees):
+def save_tree(opt, reader, hlink_db, msr, repo, split_trees):
     # Metadata is stored in a file named .bupm in each directory.  The
     # first metadata entry will be the metadata for the current directory.
     # The remaining entries will be for each of the other directory
@@ -171,7 +172,7 @@ def save_tree(opt, reader, hlink_db, msr, w, split_trees):
 
 
     def already_saved(ent):
-        return ent.is_valid() and w.exists(ent.sha) and ent.sha
+        return ent.is_valid() and repo.exists(ent.sha) and ent.sha
 
     def wantrecurse_pre(ent):
         return not already_saved(ent)
@@ -287,7 +288,7 @@ def save_tree(opt, reader, hlink_db, msr, w, split_trees):
 
         # If switching to a new sub-tree, finish the current sub-tree.
         while stack.path() > [x[0] for x in dirp]:
-            _ = stack.pop(w)
+            _ = stack.pop(repo)
 
         # If switching to a new sub-tree, start a new sub-tree.
         for path_component in dirp[len(stack):]:
@@ -307,7 +308,7 @@ def save_tree(opt, reader, hlink_db, msr, w, split_trees):
                 continue # We're at the top level -- keep the current root dir
             # Since there's no filename, this is a subdir -- finish it.
             oldtree = already_saved(ent) # may be None
-            newtree = stack.pop(w, override_tree=oldtree)
+            newtree = stack.pop(repo, override_tree=oldtree)
             if not oldtree:
                 if lastskip_name and lastskip_name.startswith(ent.name):
                     ent.invalidate()
@@ -361,13 +362,13 @@ def save_tree(opt, reader, hlink_db, msr, w, split_trees):
                     # content (which we can't fix, this is inherently racy, but we
                     # can prevent the size mismatch.)
                     meta.size = 0
-                    def new_blob(data):
+                    def write_data(data):
                         meta.size += len(data)
-                        return w.new_blob(data)
+                        return repo.write_data(data)
                     before_saving_regular_file(ent.name)
                     with hashsplit.open_noatime(ent.name) as f:
                         (mode, id) = hashsplit.split_to_blob_or_tree(
-                                                new_blob, w.new_tree, [f],
+                                                write_data, repo.write_tree, [f],
                                                 keep_boundaries=False)
                 except (IOError, OSError) as e:
                     add_error('%s: %s' % (ent.name, e))
@@ -375,12 +376,12 @@ def save_tree(opt, reader, hlink_db, msr, w, split_trees):
             elif stat.S_ISDIR(ent.mode):
                 assert(0)  # handled above
             elif stat.S_ISLNK(ent.mode):
-                mode, id = (GIT_MODE_SYMLINK, w.new_blob(meta.symlink_target))
+                mode, id = (GIT_MODE_SYMLINK, repo.write_symlink(meta.symlink_target))
             else:
                 # Everything else should be fully described by its
                 # metadata, so just record an empty blob, so the paths
                 # in the tree and .bupm will match up.
-                (mode, id) = (GIT_MODE_FILE, w.new_blob(b''))
+                (mode, id) = (GIT_MODE_FILE, repo.write_data(b''))
 
             if id:
                 ent.validate(mode, id)
@@ -399,23 +400,23 @@ def save_tree(opt, reader, hlink_db, msr, w, split_trees):
 
     # pop all parts above the root folder
     while len(stack) > 1:
-        stack.pop(w)
+        stack.pop(repo)
 
     # Finish the root directory.
     # When there's a collision, use empty metadata for the root.
     root_meta = metadata.Metadata() if root_collision else None
-    tree = stack.pop(w, override_meta=root_meta)
+    tree = stack.pop(repo, override_meta=root_meta)
 
     return tree
 
 
-def commit_tree(tree, parent, date, argv, writer):
+def commit_tree(tree, parent, date, argv, repo):
     # Strip b prefix from python 3 bytes reprs to preserve previous format
     msgcmd = b'[%s]' % b', '.join([repr(argv_bytes(x))[1:].encode('ascii')
                                    for x in argv])
     msg = b'bup save\n\nGenerated by command:\n%s\n' % msgcmd
     userline = (b'%s <%s@%s>' % (userfullname(), username(), hostname()))
-    return writer.new_commit(tree, parent, userline, date, None,
+    return repo.write_commit(tree, parent, userline, date, None,
                              userline, date, None, msg)
 
 
@@ -425,59 +426,53 @@ def main(argv):
     client.bwlimit = opt.bwlimit
     git.check_repo_or_die()
 
-    remote_dest = opt.remote or opt.is_reverse
-    if not remote_dest:
-        repo = git
-        cli = nullcontext()
-        split_trees = git.git_config_get(b'bup.split-trees', opttype='bool')
-    else:
-        try:
-            cli = repo = client.Client(opt.remote)
-            split_trees = repo.config_get(b'bup.split-trees', opttype='bool')
-        except client.ClientError as e:
-            log('error: %s' % e)
-            sys.exit(2)
-
-    # cli creation must be last nontrivial command in each if clause above
-    with cli:
-        if not remote_dest:
-            w = git.PackWriter(compression_level=opt.compress)
+    try:
+        if opt.remote:
+            repo = make_repo(opt.remote,
+                             compression_level=opt.compress)
+        elif opt.is_reverse:
+            repo = make_repo(b'bup-rev://' + opt.is_reverse,
+                             compression_level=opt.compress)
         else:
-            w = cli.new_packwriter(compression_level=opt.compress)
+            repo = LocalRepo(compression_level=opt.compress)
+    except client.ClientError as e:
+        log('error: %s' % e)
+        sys.exit(1)
 
-        with w:
-            sys.stdout.flush()
-            out = byte_stream(sys.stdout)
+    # repo creation must be last nontrivial command in each if clause above
+    with repo:
+        split_trees = repo.config_get(b'bup.split-trees', opttype='bool')
+        sys.stdout.flush()
+        out = byte_stream(sys.stdout)
 
-            if opt.name:
-                refname = b'refs/heads/%s' % opt.name
-                parent = repo.read_ref(refname)
-            else:
-                refname = parent = None
+        if opt.name:
+            refname = b'refs/heads/%s' % opt.name
+            parent = repo.read_ref(refname)
+        else:
+            refname = parent = None
 
-            indexfile = opt.indexfile or git.repo(b'bupindex')
-            try:
-                msr = index.MetaStoreReader(indexfile + b'.meta')
-            except IOError as ex:
-                if ex.errno != ENOENT:
-                    raise
-                log('error: cannot access %r; have you run bup index?'
-                    % path_msg(indexfile))
-                sys.exit(1)
-            with msr, \
-                 hlinkdb.HLinkDB(indexfile + b'.hlink') as hlink_db, \
-                 index.Reader(indexfile) as reader:
-                tree = save_tree(opt, reader, hlink_db, msr, w, split_trees)
-            if opt.tree:
-                out.write(hexlify(tree))
+        indexfile = opt.indexfile or git.repo(b'bupindex')
+        try:
+            msr = index.MetaStoreReader(indexfile + b'.meta')
+        except IOError as ex:
+            if ex.errno != ENOENT:
+                raise
+            log('error: cannot access %r; have you run bup index?'
+                % path_msg(indexfile))
+            sys.exit(1)
+        with msr, \
+             hlinkdb.HLinkDB(indexfile + b'.hlink') as hlink_db, \
+             index.Reader(indexfile) as reader:
+            tree = save_tree(opt, reader, hlink_db, msr, repo, split_trees)
+        if opt.tree:
+            out.write(hexlify(tree))
+            out.write(b'\n')
+        if opt.commit or opt.name:
+            commit = commit_tree(tree, parent, opt.date, argv, repo)
+            if opt.commit:
+                out.write(hexlify(commit))
                 out.write(b'\n')
-            if opt.commit or opt.name:
-                commit = commit_tree(tree, parent, opt.date, argv, w)
-                if opt.commit:
-                    out.write(hexlify(commit))
-                    out.write(b'\n')
 
-        # packwriter must be closed before we can update the ref
         if opt.name:
             repo.update_ref(refname, commit, parent)
 

@@ -32,7 +32,6 @@ class Nonlocal:
 def nullcontext_if_not(manager):
     return manager if manager is not None else nullcontext()
 
-
 class finalized:
     def __init__(self, enter_result=None, finalize=None):
         assert finalize
@@ -51,6 +50,22 @@ def temp_dir(*args, **kwargs):
     # the deletion) because
     # https://github.com/python/cpython/issues/88458
     return finalized(mkdtemp(*args, **kwargs), lambda x: rmtree(x))
+
+# singleton used when we don't care where the object is
+OBJECT_EXISTS = None
+
+class ObjectLocation:
+    __slots__ = 'pack', 'offset'
+    def __init__(self, pack, offset):
+        self.pack = pack
+        self.offset = offset
+    def __setattr__(self, k, v):
+        if self is not OBJECT_EXISTS:
+            return super().__setattr__(k, v)
+        raise AttributeError(f'Cannot modify read-only instance attribute {k}',
+                             name=k, obj=self)
+
+OBJECT_EXISTS = ObjectLocation(None, None)
 
 sc_arg_max = os.sysconf('SC_ARG_MAX')
 if sc_arg_max == -1:  # "no definite limit" - let's choose 2M

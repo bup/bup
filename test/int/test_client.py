@@ -152,7 +152,11 @@ def test_remote_parsing():
         (b'ssh://[ff:fe::1]:2222/bup', (b'ssh', b'ff:fe::1', b'2222', b'/bup')),
         (b'bup://foo.com:1950', (b'bup', b'foo.com', b'1950', None)),
         (b'bup://foo.com:1950/bup', (b'bup', b'foo.com', b'1950', b'/bup')),
-        (b'bup://[ff:fe::1]/bup', (b'bup', b'ff:fe::1', None, b'/bup')),)
+        (b'bup://[ff:fe::1]/bup', (b'bup', b'ff:fe::1', None, b'/bup')),
+        (b'bup://[ff:fe::1]/bup', (b'bup', b'ff:fe::1', None, b'/bup')),
+        (b'bup-rev://', (b'bup-rev', None, None, b'')),
+        (b'bup-rev://host/dir', (b'bup-rev', b'host', None, b'/dir')),
+    )
     for remote, values in tests:
         assert client.parse_remote(remote) == values
 
