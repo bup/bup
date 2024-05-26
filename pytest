@@ -1,11 +1,41 @@
 #!/bin/sh
-
-# Changes here might also be appropriate for ./pylint
-
+"""": # -*-python-*-
 set -eu
 
+# Changes here might also be appropriate for ./pylint
 script_home="$(cd "$(dirname "$0")" && pwd -P)"
 testlibdir="$script_home/test/lib"
-
 export PYTHONPATH="$testlibdir${PYTHONPATH:+:$PYTHONPATH}"
-exec dev/bup-python -m pytest -v -m 'not release' "$@"
+
+exec dev/bup-python "$0" ${1+"$@"}
+"""
+
+import pytest, shlex, sys
+
+argv = ['-v', '-m', 'not release']
+
+## Drop all xdist related opts if xdist isn't available.  Otherwise
+## default to worksteal if the version's new enough since it claims,
+## and appears, to handle test sets with more widely varying run times
+## better.
+
+try:
+    import xdist
+    xdist_ver = xdist.__version__.split('.')
+    if xdist_ver >= ['3', '2', '1']: # #884: Fixed hang in worksteal scheduler
+        argv.extend(('--dist', 'worksteal'))
+    argv.extend(sys.argv[1:])
+except ModuleNotFoundError: # delete all -n opts
+    i = 1
+    while i < len(sys.argv):
+        arg = sys.argv[i]
+        if arg == '-n':
+            i += 2
+        elif arg.startswith('-n'):
+            i += 1
+        else:
+            argv.append(sys.argv[i])
+            i += 1
+
+print(shlex.join(['pytest'] + argv), file=sys.stderr)
+pytest.main(args=argv)
