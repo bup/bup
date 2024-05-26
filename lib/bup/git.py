@@ -16,7 +16,8 @@ from bup.compat import (bytes_from_byte, bytes_from_uint,
                         environ,
                         pending_raise)
 from bup.io import path_msg
-from bup.helpers import (Sha1, add_error, chunkyreader, debug1, debug2,
+from bup.helpers import (OBJECT_EXISTS,
+                         Sha1, add_error, chunkyreader, debug1, debug2,
                          exo,
                          fdatasync,
                          finalized,
@@ -30,7 +31,7 @@ from bup.helpers import (Sha1, add_error, chunkyreader, debug1, debug2,
                          temp_dir,
                          unlink,
                          utc_offset_str,
-                         ExistsResult, ObjectExists)
+                         ExistsResult)
 
 
 verbose = 0
@@ -397,7 +398,7 @@ class PackIdx(object):
                 if want_offset:
                     ret.offset = self._ofs_from_idx(idx)
                 return ret
-            return ObjectExists
+            return OBJECT_EXISTS
         return None
 
     def _idx_from_hash(self, hash):

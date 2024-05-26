@@ -11,7 +11,7 @@ from wvpytest import *
 
 from bup import git, path
 from bup.compat import bytes_from_byte, environ
-from bup.helpers import localtime, log, mkdirp, readpipe, ObjectExists
+from bup.helpers import OBJECT_EXISTS, localtime, log, mkdirp, readpipe
 
 
 bup_exe = path.exe()
@@ -534,7 +534,7 @@ def test_midx_close(tmpdir):
         # refresh the PackIdxList
         l.refresh()
         # and check that an object in pack 10 exists now
-        WVPASSEQ(ObjectExists, l.exists(struct.pack('18xBB', 10, 0)))
+        WVPASSEQ(OBJECT_EXISTS, l.exists(struct.pack('18xBB', 10, 0)))
         for fn in openfiles():
             if not b'midx-' in fn:
                 continue

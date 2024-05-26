@@ -58,9 +58,8 @@ class ExistsResult:
         self.pack = pack
         self.offset = offset
 
-# singleton to avoid creating a new one
-# when we don't care where the object is
-ObjectExists = ExistsResult(None, None)
+# singleton used when we don't care where the object is
+OBJECT_EXISTS = ExistsResult(None, None)
 
 
 sc_arg_max = os.sysconf('SC_ARG_MAX')
