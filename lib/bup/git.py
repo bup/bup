@@ -17,6 +17,7 @@ from bup.compat import (bytes_from_byte, bytes_from_uint,
                         pending_raise)
 from bup.io import path_msg
 from bup.helpers import (OBJECT_EXISTS,
+                         ObjectLocation,
                          Sha1, add_error, chunkyreader, debug1, debug2,
                          exo,
                          fdatasync,
@@ -30,8 +31,7 @@ from bup.helpers import (OBJECT_EXISTS,
                          quote,
                          temp_dir,
                          unlink,
-                         utc_offset_str,
-                         ExistsResult)
+                         utc_offset_str)
 
 
 verbose = 0
@@ -385,14 +385,14 @@ class PackIdx(object):
         return None
 
     def exists(self, hash, want_source=False, want_offset=False):
-        """Return ExistsResult instance if the object exists in this index,
-           otherwise None."""
+        """Return an ObjectLocation if the object exists in this
+           index, otherwise None."""
         if not hash:
             return None
         idx = self._idx_from_hash(hash)
         if idx is not None:
             if want_source or want_offset:
-                ret = ExistsResult(None, None)
+                ret = ObjectLocation(None, None)
                 if want_source:
                     ret.pack = os.path.basename(self.name)
                 if want_offset:
@@ -598,8 +598,8 @@ class PackIdxList:
         return sum(len(pack) for pack in self.packs)
 
     def exists(self, hash, want_source=False, want_offset=False):
-        """Return ExistsResult instance if the object exists in this index,
-           otherwise None."""
+        """Return an ObjectLocation if the object exists in this
+           index, otherwise None."""
         global _total_searches
         _total_searches += 1
         if hash in self.also:
@@ -1446,10 +1446,10 @@ def tags(repo_dir = None):
 
 
 class MissingObject(KeyError):
+    __slots__ = 'oid',
     def __init__(self, oid):
         self.oid = oid
-        KeyError.__init__(self, 'object %r is missing' % hexlify(oid))
-
+        KeyError.__init__(self, f'object {hexlify(oid)!r} is missing')
 
 WalkItem = namedtuple('WalkItem', ['oid', 'type', 'mode',
                                    'path', 'chunk_path', 'data'])
