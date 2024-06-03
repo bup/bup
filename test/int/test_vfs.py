@@ -260,28 +260,28 @@ def test_read_and_seek(tmpdir):
     environ[b'GIT_DIR'] = bup_dir
     environ[b'BUP_DIR'] = bup_dir
     git.repodir = bup_dir
+    data_path = tmpdir + b'/src'
+    os.mkdir(data_path)
+    seed = randint(-(1 << 31), (1 << 31) - 1)
+    rand = Random()
+    rand.seed(seed)
+    print('test_read seed:', seed, file=sys.stderr)
+    max_size = 2 * 1024 * 1024
+    sizes = set((rand.randint(1, max_size) for _ in range(5)))
+    sizes.add(1)
+    sizes.add(max_size)
+    for size in sizes:
+        write_sized_random_content(data_path, size, seed)
+    ex((bup_path, b'init'))
+    ex((bup_path, b'index', b'-v', data_path))
+    ex((bup_path, b'save', b'-d', b'100000', b'-tvvn', b'test',
+        b'--strip', data_path))
+    read_sizes = set((rand.randint(1, max_size) for _ in range(10)))
+    sizes.add(1)
+    sizes.add(max_size)
+    print('test_read src sizes:', sizes, file=sys.stderr)
+    print('test_read read sizes:', read_sizes, file=sys.stderr)
     with LocalRepo() as repo:
-        data_path = tmpdir + b'/src'
-        os.mkdir(data_path)
-        seed = randint(-(1 << 31), (1 << 31) - 1)
-        rand = Random()
-        rand.seed(seed)
-        print('test_read seed:', seed, file=sys.stderr)
-        max_size = 2 * 1024 * 1024
-        sizes = set((rand.randint(1, max_size) for _ in range(5)))
-        sizes.add(1)
-        sizes.add(max_size)
-        for size in sizes:
-            write_sized_random_content(data_path, size, seed)
-        ex((bup_path, b'init'))
-        ex((bup_path, b'index', b'-v', data_path))
-        ex((bup_path, b'save', b'-d', b'100000', b'-tvvn', b'test',
-            b'--strip', data_path))
-        read_sizes = set((rand.randint(1, max_size) for _ in range(10)))
-        sizes.add(1)
-        sizes.add(max_size)
-        print('test_read src sizes:', sizes, file=sys.stderr)
-        print('test_read read sizes:', read_sizes, file=sys.stderr)
         for size in sizes:
             res = resolve(repo, b'/test/latest/' + str(size).encode('ascii'))
             _, item = res[-1]
