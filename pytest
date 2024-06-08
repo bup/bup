@@ -38,4 +38,4 @@ except ModuleNotFoundError: # delete all -n opts
             i += 1
 
 print(shlex.join(['pytest'] + argv), file=sys.stderr)
-pytest.main(args=argv)
+sys.exit(pytest.main(args=argv))
