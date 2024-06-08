@@ -1,15 +1,15 @@
 
-from __future__ import absolute_import, print_function
 from shutil import rmtree
 from subprocess import DEVNULL, PIPE, run
 from tempfile import mkdtemp
 from binascii import hexlify
+from os.path import join
 import glob, os, sys
 
 from bup import options, git
 from bup.compat import argv_bytes
-from bup.helpers import Sha1, chunkyreader, istty2, log, progress
-from bup.io import byte_stream
+from bup.helpers import Sha1, chunkyreader, istty2, log, progress, temp_dir
+from bup.io import byte_stream, path_msg
 
 
 par2_ok = 0
@@ -54,7 +54,7 @@ def is_par2_parallel():
 
 _par2_parallel = None
 
-def par2(action, args, verb_floor=0):
+def par2(action, args, verb_floor=0, cwd=None):
     global _par2_parallel
     if _par2_parallel is None:
         _par2_parallel = is_par2_parallel()
@@ -66,12 +66,39 @@ def par2(action, args, verb_floor=0):
     if _par2_parallel:
         cmd.append(b'-t1')
     cmd.extend(args)
-    return run(cmd, stdout=2).returncode
+    return run(cmd, stdout=2, cwd=cwd).returncode
 
-def par2_generate(base):
-    return par2(b'create',
-                [b'-n1', b'-c200', b'--', base, base + b'.pack', base + b'.idx'],
-                verb_floor=2)
+def par2_generate(stem):
+    parent, base = os.path.split(stem)
+    # Work in a temp_dir because par2 was observed creating empty
+    # files when interrupted by C-c.
+    # cf. https://github.com/Parchive/par2cmdline/issues/84
+    with temp_dir(dir=parent, prefix=(base + b'-bup-tmp-')) as tmpdir:
+        idx = base + b'.idx'
+        pack = base + b'.pack'
+        os.symlink(join(b'..', idx), join(tmpdir, idx))
+        os.symlink(join(b'..', pack), join(tmpdir, pack))
+        rc = par2(b'create', [b'-n1', b'-c200', b'--', base, pack, idx],
+                  verb_floor=2, cwd=tmpdir)
+        if rc == 0:
+            # Currently, there should only be two files, the par2
+            # index and a single vol000+200 file, but let's be
+            # defensive for the generation (keep whatever's produced).
+            p2_idx = base + b'.par2'
+            p2_vol = base + b'.vol000+200.par2'
+            expected = frozenset((idx, pack, p2_idx, p2_vol))
+            for tmp in os.listdir(tmpdir):
+                if tmp not in expected:
+                    log(f'Unexpected par2 file (please report) {path_msg(tmp)}\n')
+                if tmp in (p2_idx, idx, pack):
+                    continue
+                os.rename(join(tmpdir, tmp), join(parent, tmp))
+            # Let this indicate success
+            os.rename(join(tmpdir, p2_idx), join(parent, p2_idx))
+            expected = frozenset((idx, pack))
+            remaining = frozenset(os.listdir(tmpdir))
+            assert expected == remaining
+        return rc
 
 def par2_verify(base):
     return par2(b'verify', [b'--', base], verb_floor=3)
