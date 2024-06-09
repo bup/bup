@@ -8,7 +8,9 @@ import glob, os, subprocess, sys
 
 from bup import options, git
 from bup.compat import argv_bytes
-from bup.helpers import Sha1, chunkyreader, istty2, log, progress, temp_dir
+from bup.helpers \
+    import (EXIT_FALSE, EXIT_TRUE,
+            Sha1, chunkyreader, istty2, log, progress, temp_dir)
 from bup.io import byte_stream
 
 
@@ -215,10 +217,7 @@ def main(argv):
 
     par2_setup()
     if opt.par2_ok:
-        if par2_ok:
-            sys.exit(0)  # 'true' in sh
-        else:
-            sys.exit(1)
+        sys.exit(EXIT_TRUE if par2_ok else EXIT_FALSE)
     if opt.disable_par2:
         par2_ok = 0
 
