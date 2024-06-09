@@ -244,6 +244,8 @@ def main(argv):
         sys.exit(EXIT_TRUE if par2_ok else EXIT_FALSE)
     if opt.disable_par2:
         par2_ok = 0
+    if not par2_ok and (opt.generate or opt.repair):
+        log(f'error: cannot --generate or --repair without par2\n')
 
     if extra:
         extra = [argv_bytes(x) for x in extra]
