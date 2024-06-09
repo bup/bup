@@ -178,12 +178,11 @@ def main(argv):
     if opt.disable_par2:
         par2_ok = 0
 
-    git.check_repo_or_die()
-
     if extra:
         extra = [argv_bytes(x) for x in extra]
     else:
         debug('fsck: No filenames given: checking all packs.\n')
+        git.check_repo_or_die()
         extra = glob.glob(git.repo(b'objects/pack/*.pack'))
 
     sys.stdout.flush()
