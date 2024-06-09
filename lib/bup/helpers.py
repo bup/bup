@@ -1,6 +1,5 @@
 """Helper functions and classes for bup."""
 
-from __future__ import absolute_import, division
 from collections import namedtuple
 from contextlib import ExitStack
 from ctypes import sizeof, c_void_p
@@ -19,6 +18,17 @@ from bup.io import byte_stream, path_msg
 # This function should really be in helpers, not in bup.options.  But we
 # want options.py to be standalone so people can include it in other projects.
 from bup.options import _tty_width as tty_width
+
+
+# EXIT_TRUE (just an alias) and EXIT_FALSE are intended for cases like
+# POSIX grep or test, or bup's own "fsck --par2-ok", where the command
+# is asking a question with a yes or no answer.  Eventually all
+# commands should avoid exiting with 1 for errors.
+
+EXIT_SUCCESS = 0
+EXIT_TRUE = 0
+EXIT_FALSE = 1
+EXIT_FAILURE = 2
 
 
 buglvl = int(os.environ.get('BUP_DEBUG', 0))
