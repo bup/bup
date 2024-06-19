@@ -228,34 +228,37 @@ def main(argv):
         git.check_repo_or_die()
         extra = glob.glob(git.repo(b'objects/pack/*.pack'))
 
+    pack_stems = []
+    for name in extra:
+        if name.endswith(b'.pack'):
+            pack_stems.append(name[:-5])
+        elif name.endswith(b'.idx'):
+            pack_stems.append(name[:-4])
+        elif name.endswith(b'.par2'):
+            pack_stems.append(name[:-5])
+        elif os.path.exists(name + b'.pack'):
+            pack_stems.append(name)
+        else:
+            raise Exception('%r is not a pack file!' % name)
+
     sys.stdout.flush()
     out = byte_stream(sys.stdout)
     code = 0
     count = 0
     outstanding = {}
-    for name in extra:
-        if name.endswith(b'.pack'):
-            base = name[:-5]
-        elif name.endswith(b'.idx'):
-            base = name[:-4]
-        elif name.endswith(b'.par2'):
-            base = name[:-5]
-        elif os.path.exists(name + b'.pack'):
-            base = name
-        else:
-            raise Exception('%r is not a pack file!' % name)
-        (dir,last) = os.path.split(base)
-        par2_exists = os.path.exists(base + b'.par2')
-        if par2_exists and os.stat(base + b'.par2').st_size == 0:
+    for stem in pack_stems:
+        base = os.path.basename(stem)
+        par2_exists = os.path.exists(stem + b'.par2')
+        if par2_exists and os.stat(stem + b'.par2').st_size == 0:
             par2_exists = 0
         sys.stdout.flush()  # Not sure we still need this, but it'll flush out too
         debug('fsck: checking %r (%s)\n'
-              % (last, par2_ok and par2_exists and 'par2' or 'git'))
+              % (base, par2_ok and par2_exists and 'par2' or 'git'))
         if not opt.verbose:
             progress('fsck (%d/%d)\r' % (count, len(extra)))
 
         if not opt.jobs:
-            nc = do_pack(base, last, par2_exists, out)
+            nc = do_pack(stem, base, par2_exists, out)
             code = code or nc
             count += 1
         else:
@@ -271,7 +274,7 @@ def main(argv):
                 outstanding[pid] = 1
             else: # child
                 try:
-                    sys.exit(do_pack(base, last, par2_exists, out))
+                    sys.exit(do_pack(stem, base, par2_exists, out))
                 except Exception as e:
                     log('exception: %r\n' % e)
                     sys.exit(99)
