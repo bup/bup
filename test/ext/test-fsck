@@ -42,7 +42,10 @@ WVPASS bup damage "$BUP_DIR"/objects/pack/*.idx -n10 -s1 -S0
 WVFAIL bup fsck --quick -j4
 WVPASS bup damage "$BUP_DIR"/objects/pack/*.pack -n10 -s1024 --percent 0.4 -S0
 WVFAIL bup fsck --quick
-WVFAIL bup fsck --quick -rvv -j99   # fails because repairs were needed
+
+# Fails because repairs were needed or we don't have a suitable par2
+WVFAIL bup fsck --quick -rvv -j9
+
 if bup fsck --par2-ok; then
     WVPASS bup fsck -r # ok because of repairs from last time
 
