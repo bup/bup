@@ -9,9 +9,9 @@ import glob, os, subprocess, sys
 from bup import options, git
 from bup.compat import argv_bytes
 from bup.helpers \
-    import (EXIT_FALSE, EXIT_TRUE,
+    import (EXIT_FAILURE, EXIT_FALSE, EXIT_TRUE, EXIT_SUCCESS,
             Sha1, chunkyreader, istty2, log, progress, temp_dir)
-from bup.io import byte_stream
+from bup.io import byte_stream, path_msg
 
 
 par2_ok = 0
@@ -118,6 +118,44 @@ def par2_generate(stem):
             assert expected == remaining
         return rc
 
+def par2_recovery_file_status(stem):
+    """Return True if recovery files exist for the stem and we should
+    assume they're acceptable.  Return None if none of them exist, and
+    return False (after logging appropriate errors) if something
+    appears to be wrong with them, for example, if any of the files
+    are empty, or if the set of files is incomplete.
+
+    """
+    # Look for empty *.par2 files because C-c during "par2 create" may
+    # leave them when interrupted, and previous versions of bup didn't
+    # run par2 create in a tempdir to compensate.  For now, we decide
+    # the existing data is OK if the pack-HASH.par2 and
+    # pack-HASH.vol000+200.par2 files exist, and neither is empty.
+    # cf. https://github.com/Parchive/par2cmdline/issues/84
+    paths = [stem + suffix for suffix in (b'.par2', b'.vol000+200.par2')]
+    empty = []
+    missing = set(paths)
+    for path in paths:
+        try:
+            st = os.stat(path)
+            if st.st_size == 0:
+                empty.append(path)
+            else:
+                missing.remove(path)
+        except FileNotFoundError:
+            pass
+    for path in empty:
+        log(f'error: empty par2 file - {path_msg(path)}\n')
+    for path in missing:
+        log(f'error: missing par2 file - {path_msg(path)}\n')
+    if empty:
+        return False
+    if len(missing) == 2:
+        return None
+    if not missing:
+        return True
+    return False
+
 def par2_verify(base):
     return par2(b'verify', [b'--', base], verb_floor=3)
 
@@ -164,6 +202,9 @@ def do_pack(base, last, par2_exists, out):
                 else:
                     action_result = b'repaired'
                     log('%s par2 repair: succeeded (0)\n' % last)
+                    # FIXME: for this to be useful, we need to define
+                    # the semantics, e.g. what's promised when we have
+                    # this and a competing error from another pack?
                     code = 100
             else:
                 action_result = b'failed'
@@ -243,22 +284,26 @@ def main(argv):
 
     sys.stdout.flush()
     out = byte_stream(sys.stdout)
-    code = 0
+    code = EXIT_SUCCESS
     count = 0
     outstanding = {}
     for stem in pack_stems:
         base = os.path.basename(stem)
-        par2_exists = os.path.exists(stem + b'.par2')
-        if par2_exists and os.stat(stem + b'.par2').st_size == 0:
-            par2_exists = 0
+        par2_status = par2_recovery_file_status(stem)
+        if par2_status == False:
+            if code == EXIT_SUCCESS:
+                code = EXIT_FAILURE
+            continue
         sys.stdout.flush()  # Not sure we still need this, but it'll flush out too
         debug('fsck: checking %r (%s)\n'
-              % (base, par2_ok and par2_exists and 'par2' or 'git'))
+              % (base, par2_ok and par2_status and 'par2' or 'git'))
         if not opt.verbose:
             progress('fsck (%d/%d)\r' % (count, len(extra)))
 
         if not opt.jobs:
-            nc = do_pack(stem, base, par2_exists, out)
+            assert par2_status != False
+            nc = do_pack(stem, base, par2_status, out)
+            # FIXME: is first wins what we really want (cf. repair's 100)
             code = code or nc
             count += 1
         else:
@@ -274,7 +319,8 @@ def main(argv):
                 outstanding[pid] = 1
             else: # child
                 try:
-                    sys.exit(do_pack(stem, base, par2_exists, out))
+                    assert par2_status != False
+                    sys.exit(do_pack(stem, base, par2_status, out))
                 except Exception as e:
                     log('exception: %r\n' % e)
                     sys.exit(99)
@@ -288,7 +334,13 @@ def main(argv):
             count += 1
         if not opt.verbose:
             progress('fsck (%d/%d)\r' % (count, len(extra)))
-
     if istty2:
         debug('fsck done.           \n')
+
+    # double-check (e.g. for (unlikely) problems with generate tmpdir renames)
+    for stem in pack_stems:
+        if par2_recovery_file_status(stem) == False:
+            if code == EXIT_SUCCESS:
+                code = EXIT_FAILURE
+
     sys.exit(code)

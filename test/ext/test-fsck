@@ -49,6 +49,32 @@ WVFAIL bup fsck --quick -rvv -j9
 if bup fsck --par2-ok; then
     WVPASS bup fsck -r # ok because of repairs from last time
 
+    some_idx="$(WVPASS find "$BUP_DIR" -name "pack-*.par2" -not -name "*.vol*.par2" | head -1)" || exit $?
+    some_vol="$(WVPASS find "$BUP_DIR" -name "pack-*.vol*.par2" | head -1)" || exit $?
+
+    WVPASS cp -p "$some_idx" some-pack.par2
+    WVPASS cp -p "$some_vol" some-pack.vol.par2
+
+    WVSTART 'fsck rejects empty par2 index files'
+    WVPASS echo -n > "$some_idx"
+    WVFAIL bup fsck -v
+    WVPASS test -e "$some_idx" -a ! -s "$some_idx"
+    WVFAIL bup fsck -vr
+    WVPASS test -e "$some_idx" -a ! -s "$some_idx"
+    WVFAIL bup fsck -vg
+    WVPASS test -e "$some_idx" -a ! -s "$some_idx"
+    WVPASS cp -p some-pack.par2 "$some_idx"
+
+    WVSTART 'fsck rejects empty par2 vol files'
+    WVPASS echo -n > "$some_vol"
+    WVFAIL bup fsck -v
+    WVPASS test -e "$some_vol" -a ! -s "$some_vol"
+    WVFAIL bup fsck -vr
+    WVPASS test -e "$some_vol" -a ! -s "$some_vol"
+    WVFAIL bup fsck -vg
+    WVPASS test -e "$some_vol" -a ! -s "$some_vol"
+    WVPASS cp -p some-pack.vol.par2 "$some_vol"
+
     # This must do "too much" damage.  Currently par2 is invoked with
     # -c200, which should allow up to 200 damaged "blocks", but since
     # we don't specify the block size, it's dynamically computed.
