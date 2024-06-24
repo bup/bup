@@ -78,11 +78,9 @@ def par2_generate(stem):
     # files when interrupted by C-c.
     # cf. https://github.com/Parchive/par2cmdline/issues/84
     with temp_dir(dir=parent, prefix=(base + b'-bup-tmp-')) as tmpdir:
-        idx = base + b'.idx'
         pack = base + b'.pack'
-        os.symlink(join(b'..', idx), join(tmpdir, idx))
         os.symlink(join(b'..', pack), join(tmpdir, pack))
-        rc = par2(b'create', [b'-n1', b'-c200', b'--', base, pack, idx],
+        rc = par2(b'create', [b'-n1', b'-c200', b'--', base, pack],
                   verb_floor=2, cwd=tmpdir)
         if rc == 0:
             # Currently, there should only be two files, the par2
@@ -90,16 +88,16 @@ def par2_generate(stem):
             # defensive for the generation (keep whatever's produced).
             p2_idx = base + b'.par2'
             p2_vol = base + b'.vol000+200.par2'
-            expected = frozenset((idx, pack, p2_idx, p2_vol))
+            expected = frozenset((pack, p2_idx, p2_vol))
             for tmp in os.listdir(tmpdir):
                 if tmp not in expected:
                     log(f'Unexpected par2 file (please report) {path_msg(tmp)}\n')
-                if tmp in (p2_idx, idx, pack):
+                if tmp in (p2_idx, pack):
                     continue
                 os.rename(join(tmpdir, tmp), join(parent, tmp))
             # Let this indicate success
             os.rename(join(tmpdir, p2_idx), join(parent, p2_idx))
-            expected = frozenset((idx, pack))
+            expected = frozenset([pack])
             remaining = frozenset(os.listdir(tmpdir))
             assert expected == remaining
         return rc
@@ -189,19 +187,36 @@ def attempt_repair(stem, base, out, *, verbose=False):
     if rc:
         log(f'{path_msg(base)} par2 repair: failed ({rc})\n')
         if verbose: out.write(base + b' failed\n')
-    else:
-        log(f'{path_msg(base)} par2 repair: succeeded (0)\n')
-        if verbose: out.write(base + b' repaired\n')
-        rc = 100
-    return rc
+        return rc if rc != 100 else EXIT_FAILURE
+    log(f'{path_msg(base)} par2 repair: succeeded, checking .idx\n')
+    try:
+        exp, act = trailing_and_actual_checksum(stem + b'.idx')
+        idx_ok = exp == act
+        if not idx_ok:
+            os.unlink(stem + b'.idx')
+    except FileNotFoundError:
+        idx_ok = False
+    if not idx_ok:
+        cmd = (b'git', b'index-pack', b'--no-rev-index', stem + b'.pack')
+        idx_rc = run(cmd).returncode
+        if idx_rc:
+            log(f'{path_msg(base)} index-pack failed\n')
+            if verbose: out.write(base + b' failed\n')
+            return idx_rc if idx_rc != 100 else EXIT_FAILURE
+        log(f'{path_msg(base)} index-pack succeeded\n')
+    if verbose: out.write(base + b' repaired\n')
+    return 100
 
 
 def do_pack(stem, par2_exists, out):
     # Repair and generate are treated as optional actions, requested
     # in addition to verification.  Always validate the git checksums,
     # and then run par2 validation if possible.  The latter only tells
-    # us that the pack/idx files haven't changed since the par2
-    # generation.
+    # us that the pack file hasn't changed since the par2 generation.
+    #
+    # When making changes here, keep in mind that bup used to include
+    # .idx files in the par2 recovery info, and we want to maintain
+    # backward-compatibility.
     base = os.path.basename(stem)
     if not git_verify(stem, quick=opt.quick):
         if opt.repair:
@@ -230,7 +245,7 @@ def do_pack(stem, par2_exists, out):
 
 
 optspec = """
-bup fsck [options...] [filenames...]
+bup fsck [options...] [packfile...]
 --
 r,repair    attempt to repair errors using par2 (dangerous!)
 g,generate  generate auto-repair information using par2
@@ -257,24 +272,16 @@ def main(argv):
         log(f'error: cannot --generate or --repair without par2\n')
 
     if extra:
-        extra = [argv_bytes(x) for x in extra]
+        pack_stems = [argv_bytes(x) for x in extra]
+        for stem in pack_stems:
+            if not stem.endswith(b'.pack'):
+                o.fatal(f'packfile argument {path_msg(stem)} must end with .pack')
     else:
         debug('fsck: No filenames given: checking all packs.\n')
         git.check_repo_or_die()
-        extra = glob.glob(git.repo(b'objects/pack/*.pack'))
+        pack_stems = glob.glob(git.repo(b'objects/pack/*.pack'))
 
-    pack_stems = []
-    for name in extra:
-        if name.endswith(b'.pack'):
-            pack_stems.append(name[:-5])
-        elif name.endswith(b'.idx'):
-            pack_stems.append(name[:-4])
-        elif name.endswith(b'.par2'):
-            pack_stems.append(name[:-5])
-        elif os.path.exists(name + b'.pack'):
-            pack_stems.append(name)
-        else:
-            raise Exception('%r is not a pack file!' % name)
+    pack_stems = [x[:-5] for x in pack_stems]
 
     sys.stdout.flush()
     out = byte_stream(sys.stdout)

@@ -9,12 +9,15 @@ bup-fsck - verify or repair a bup repository
 # SYNOPSIS
 
 bup fsck [-r] [-g] [-v] [\--quick] [-j *jobs*] [\--par2-ok]
-[\--disable-par2] [filenames...]
+[\--disable-par2] [packfile...]
 
 # DESCRIPTION
 
-`bup fsck` is a tool for validating bup repositories in the
-same way that `git fsck` validates git repositories.
+`bup fsck` validates bup repositories much the way `git fsck`
+validates git repositories.  When *packfile*s (which must end in
+.pack) are specified, pack-related operations are limited to those
+files, otherwise all packfiles in the current repository are
+considered.
 
 It can also generate and/or use "recovery blocks" using the
 `par2`(1) tool (if you have it installed).  This allows you
