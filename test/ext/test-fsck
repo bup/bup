@@ -34,10 +34,18 @@ else
 fi
 WVPASS bup fsck -g
 WVPASS bup fsck -r
+
+WVPASS chmod u+w "$BUP_DIR"/objects/pack/*.idx
+WVPASS bup damage "$BUP_DIR"/objects/pack/*.idx -n10 -s1 -S0
+WVFAIL bup fsck --quick
+WVFAIL bup fsck --quick --disable-par2
+
+WVFAIL bup fsck -r  # should repair, but returns nonzero
+
 WVPASS bup damage "$BUP_DIR"/objects/pack/*.pack -n10 -s1 -S0
 WVFAIL bup fsck --quick
 WVFAIL bup fsck --quick --disable-par2
-WVPASS chmod u+w "$BUP_DIR"/objects/pack/*.idx
+
 WVPASS bup damage "$BUP_DIR"/objects/pack/*.idx -n10 -s1 -S0
 WVFAIL bup fsck --quick -j4
 WVPASS bup damage "$BUP_DIR"/objects/pack/*.pack -n10 -s1024 --percent 0.4 -S0

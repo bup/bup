@@ -1,8 +1,8 @@
 
+from os import SEEK_END
 from shutil import rmtree
 from subprocess import DEVNULL, PIPE, run
 from tempfile import mkdtemp
-from binascii import hexlify
 from os.path import join
 import glob, os, sys
 
@@ -146,29 +146,40 @@ def par2_verify(base):
 def par2_repair(base):
     return par2(b'repair', [b'--', base], verb_floor=2)
 
-def quick_verify(base):
-    f = open(base + b'.pack', 'rb')
-    f.seek(-20, 2)
-    wantsum = f.read(20)
-    assert(len(wantsum) == 20)
-    f.seek(0)
-    sum = Sha1()
-    for b in chunkyreader(f, os.fstat(f.fileno()).st_size - 20):
-        sum.update(b)
-    if sum.digest() != wantsum:
-        raise ValueError('expected %r, got %r' % (hexlify(wantsum),
-                                                  sum.hexdigest()))
 
-
-def git_verify(base):
-    if not opt.quick:
-        return run([b'git', b'verify-pack', b'--', base]).returncode
+def trailing_and_actual_checksum(path):
     try:
-        quick_verify(base)
-    except Exception as e:
-        log('error: %s\n' % e)
-        return 1
-    return 0
+        f = open(path, 'rb')
+    except FileNotFoundError:
+        return None, None
+    with f:
+        f.seek(-20, SEEK_END)
+        trailing = f.read(20)
+        assert len(trailing) == 20
+        f.seek(0)
+        actual = Sha1()
+        for b in chunkyreader(f, os.fstat(f.fileno()).st_size - 20):
+            actual.update(b)
+        return trailing, actual.digest()
+
+
+def git_verify(stem, *, quick=False):
+    if not quick:
+        rc = run([b'git', b'verify-pack', b'--', stem]).returncode
+        if rc == 0:
+            return True
+        log(f'error: git verify-pack failed ({rc}) {path_msg(stem)}\n')
+        return False
+    result = True
+    for path in (stem + b'.idx', stem + b'.pack'):
+        exp, act = trailing_and_actual_checksum(path)
+        if act is None:
+            log(f'error: missing {path_msg(path)}\n')
+            result = False
+        elif exp != act:
+            log(f'error: expected {exp.hex()}, got {act.hex()}\n')
+            result = False
+    return result
 
 
 def do_pack(base, last, par2_exists, out):
@@ -196,11 +207,9 @@ def do_pack(base, last, par2_exists, out):
         else:
             action_result = b'ok'
     elif not opt.generate or (par2_ok and not par2_exists):
-        gresult = git_verify(base)
-        if gresult != 0:
+        if not git_verify(base, quick=opt.quick):
             action_result = b'failed'
-            log('%s git verify: failed (%d)\n' % (last, gresult))
-            code = gresult
+            code = EXIT_FAILURE
         else:
             if par2_ok and opt.generate:
                 presult = par2_generate(base)
