@@ -61,8 +61,10 @@ def par2(action, args, verb_floor=0, cwd=None):
     if _par2_parallel is None:
         _par2_parallel = is_par2_parallel()
     cmd = [b'par2', action]
-    if opt.verbose >= verb_floor and not istty2:
+    if opt.verbose == verb_floor and not istty2:
         cmd.append(b'-q')
+    elif opt.verbose > verb_floor and istty2:
+        pass
     else:
         cmd.append(b'-qq')
     if _par2_parallel:
