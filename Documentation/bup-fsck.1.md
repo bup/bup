@@ -35,6 +35,10 @@ damaged at once.  Thus, it's important to be able to verify
 the integrity of your backups and recover from disk errors
 if they occur.
 
+When attempting to `--repair`, bup will exit with status 1 if and only
+if repairs were needed and were successful, and there were no other
+errors.
+
 *WARNING*: bup fsck's recovery features are not available
 unless you have the free `par2`(1) package installed on
 your bup server.
@@ -109,6 +113,12 @@ site redundancy).
     if bup fsck --par2-ok; then
     	echo "par2 is ok"
     fi
+
+# EXIT STATUS
+
+Exits with 1 if `--repair` was requested, needed, successful, and
+there were no other errors.  Otherwise exits with 0 if there were no
+errors and a value other than zero or one for errors.
 
 # SEE ALSO
 

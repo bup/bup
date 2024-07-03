@@ -4,6 +4,9 @@ Notable changes in main (incomplete)
 May require attention
 ---------------------
 
+* `bup fsck --repair` promises to exit with a status of 1 whenever
+  repairs are needed and successful, and no other errors occur.
+
 * `bup fsck --quick` now checks the packfile indexes too.  Previously
   it only checked the packfiles.
 

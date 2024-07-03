@@ -35,14 +35,21 @@ fi
 WVPASS bup fsck -g
 WVPASS bup fsck -r
 
+WVSTART "fsck (index repairs)"
 WVPASS chmod u+w "$BUP_DIR"/objects/pack/*.idx
 WVPASS bup damage "$BUP_DIR"/objects/pack/*.idx -n10 -s1 -S0
 WVFAIL bup fsck --quick
 WVFAIL bup fsck --quick --disable-par2
+bup fsck -r
+WVPASSEQ 1 $?
+if bup fsck --par2-ok; then
+    WVPASS chmod u+w "$BUP_DIR"/objects/pack/*.idx
+    WVPASS bup damage "$BUP_DIR"/objects/pack/*.idx -n10 -s1 -S0
+    bup fsck -r --disable-par2
+    WVPASSEQ 1 $?
+fi
 
-# should repair, but returns nonzero, also recreates .idx read-only
-WVFAIL bup fsck -r
-
+WVSTART "fsck (pack repairs)"
 WVPASS bup damage "$BUP_DIR"/objects/pack/*.pack -n10 -s1 -S0
 WVFAIL bup fsck --quick
 WVFAIL bup fsck --quick --disable-par2
@@ -53,11 +60,14 @@ WVFAIL bup fsck --quick -j4
 WVPASS bup damage "$BUP_DIR"/objects/pack/*.pack -n10 -s1024 --percent 0.4 -S0
 WVFAIL bup fsck --quick
 
-# Fails because repairs were needed or we don't have a suitable par2
-WVFAIL bup fsck --quick -rvv -j9
-
-if bup fsck --par2-ok; then
-    WVPASS bup fsck -r # ok because of repairs from last time
+if ! bup fsck --par2-ok; then
+    bup fsck --quick -rvv -j9
+    rc=$?
+    WVPASSNE 0 "$rc"
+    WVPASSNE 1 "$rc"
+else
+    bup fsck --quick -rvv -j9;
+    WVPASSEQ 1 $?
 
     some_idx="$(WVPASS find "$BUP_DIR" -name "pack-*.par2" -not -name "*.vol*.par2" | head -1)" || exit $?
     some_vol="$(WVPASS find "$BUP_DIR" -name "pack-*.vol*.par2" | head -1)" || exit $?
@@ -97,12 +107,17 @@ if bup fsck --par2-ok; then
     # (or not 1/256th of the time) 600 evenly spaced bytes in each
     # pack file.
     WVPASS bup damage "$BUP_DIR"/objects/pack/*.pack -n600 -s1 --equal -S0
-
     WVFAIL bup fsck
-    WVFAIL bup fsck -rvv   # too many errors to be repairable
-    WVFAIL bup fsck -r   # too many errors to be repairable
-else
-    WVFAIL bup fsck --quick -r # still fails because par2 was missing
+
+    bup fsck -rvv   # too many errors to be repairable
+    rc=$?
+    WVPASSNE 0 "$rc"
+    WVPASSNE 1 "$rc"
+
+    bup fsck -r   # too many errors to be repairable
+    rc=$?
+    WVPASSNE 0 "$rc"
+    WVPASSNE 1 "$rc"
 fi
 
 

@@ -187,7 +187,7 @@ def attempt_repair(stem, base, out, *, verbose=False):
     if rc:
         log(f'{path_msg(base)} par2 repair: failed ({rc})\n')
         if verbose: out.write(base + b' failed\n')
-        return rc if rc != 100 else EXIT_FAILURE
+        return EXIT_FAILURE
     log(f'{path_msg(base)} par2 repair: succeeded, checking .idx\n')
     try:
         exp, act = trailing_and_actual_checksum(stem + b'.idx')
@@ -202,10 +202,13 @@ def attempt_repair(stem, base, out, *, verbose=False):
         if idx_rc:
             log(f'{path_msg(base)} index-pack failed\n')
             if verbose: out.write(base + b' failed\n')
-            return idx_rc if idx_rc != 100 else EXIT_FAILURE
+            return EXIT_FAILURE
         log(f'{path_msg(base)} index-pack succeeded\n')
     if verbose: out.write(base + b' repaired\n')
-    return 100
+    # As with grep, test, and --par2-ok, we use 1 for communicating
+    # information that's an expected possibility i.e. --repair needed
+    # to repair.
+    return EXIT_FALSE
 
 
 def do_pack(stem, par2_exists, out):
@@ -256,6 +259,19 @@ par2-ok     immediately return 0 if par2 is ok, 1 if not
 disable-par2  ignore par2 even if it is available
 """
 
+
+def merge_exits(pending, new):
+    """Return pending if it's an actual error, otherwise new if is.
+    Barring that, prefer EXIT_FALSE over EXIT_SUCCESS."""
+    if pending not in (EXIT_SUCCESS, EXIT_FALSE):
+        return pending
+    if new == EXIT_FALSE and pending == EXIT_SUCCESS:
+        return EXIT_FALSE
+    if new != EXIT_SUCCESS:
+        return new
+    return pending
+
+
 def main(argv):
     global opt, par2_ok
 
@@ -265,6 +281,9 @@ def main(argv):
 
     par2_setup()
     if opt.par2_ok:
+        if extra or opt.repair or opt.generate or opt.quick or opt.jobs \
+           or opt.disable_par2:
+            o.fatal('--par2-ok is incompatible with the other options')
         sys.exit(EXIT_TRUE if par2_ok else EXIT_FALSE)
     if opt.disable_par2:
         par2_ok = 0
@@ -303,9 +322,7 @@ def main(argv):
 
         if not opt.jobs:
             assert par2_status != False
-            nc = do_pack(stem, par2_status, out)
-            # FIXME: is first wins what we really want (cf. repair's 100)
-            code = code or nc
+            code = merge_exits(code, do_pack(stem, par2_status, out))
             count += 1
         else:
             while len(outstanding) >= opt.jobs:
@@ -313,7 +330,7 @@ def main(argv):
                 nc >>= 8
                 if pid in outstanding:
                     del outstanding[pid]
-                    code = code or nc
+                    code = merge_exits(code, nc)
                     count += 1
             pid = os.fork()
             if pid:  # parent
