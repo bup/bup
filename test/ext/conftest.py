@@ -9,8 +9,8 @@ from bup.io import byte_stream
 # Handle all test-* files as wvtest protocol subprocesses
 # cf. https://docs.pytest.org/en/latest/example/nonpython.html
 
-# version_tuple was added in 7
-use_node_path = hasattr(pytest, 'version_tuple')
+# version_tuple was added in 7.0
+pytest_ver = getattr(pytest, 'version_tuple', None)
 
 class BupSubprocFailure(Exception):
     def __init__(self, msg, cmd, status, failures):
@@ -75,16 +75,20 @@ class BupSubprocTestFile(pytest.File):
         except AttributeError:
             yield BupSubprocTestRunner('', self)
 
-def pytest_collect_file(parent, path):
-    base = path.basename
-    if base.startswith('test-') and not base.endswith('~'):
-        if use_node_path:
-            item = BupSubprocTestFile.from_parent(parent, path=Path(path))
-        else:
-            try:
-                item = BupSubprocTestFile.from_parent(parent, fspath=path)
-            except AttributeError:
-                item = BupSubprocTestFile(path, parent)
-        if base == 'test-release-archive':
+def _collect_item(item):
+    if item.name.startswith('test-') and not item.name.endswith('~'):
+        if item.name == 'test-release-archive':
             item.add_marker(pytest.mark.release)
         return item
+
+if pytest_ver: # 7+
+    def pytest_collect_file(parent, file_path):
+        item = BupSubprocTestFile.from_parent(parent, path=file_path)
+        return _collect_item(item)
+else:
+    def pytest_collect_file(parent, path):
+        try:
+            item = BupSubprocTestFile.from_parent(parent, fspath=path)
+        except AttributeError:
+            item = BupSubprocTestFile(path, parent)
+        return _collect_item(item)
