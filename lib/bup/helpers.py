@@ -1202,7 +1202,7 @@ if _localtime:
 else:
     localtime = time.localtime
     def utc_offset_str(t):
-        return time.strftime(b'%z', localtime(t))
+        return time.strftime('%z', localtime(t)).encode('ascii')
     def to_py_time(x):
         return x
 
