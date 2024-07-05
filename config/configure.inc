@@ -304,7 +304,7 @@ AC_CHECK_HEADERS () {
     for hdr in $*; do
 	echo "#include <$hdr>" >> "$__ac_tmpdir/ngc$$.c"
     done
-    echo "main() { }" >> "$__ac_tmpdir/ngc$$.c"
+    echo "int main(int argc, char **argv) { return 0; }" >> "$__ac_tmpdir/ngc$$.c"
 
     LOGN "checking for header $hdr"
 
@@ -327,20 +327,14 @@ AC_CHECK_HEADERS () {
 AC_CHECK_FUNCS () {
     AC_PROG_CC
 
-F=$1
-shift
-rm -f "$__ac_tmpdir/ngc$$.c"
-
-while [ "$1" ]; do
-    echo "#include <$1>" >> "$__ac_tmpdir/ngc$$.c"
+    F="$1"
     shift
-done
-
+    rm -f "$__ac_tmpdir/ngc$$.c"
     cat >> "$__ac_tmpdir/ngc$$.c" << EOF
-main()
+char $F(void);
+int main(int argc, char **argv)
 {
-
-    $F();
+    return $F();
 }
 EOF
 
@@ -379,7 +373,7 @@ AC_CHECK_STRUCT () {
     done
 
     cat >> "$__ac_tmpdir/ngc$$.c" << EOF
-main()
+int main(int argc, char **argv)
 {
     struct $struct foo;
 }
@@ -419,11 +413,13 @@ AC_CHECK_FIELD () {
     done
 
     cat >> "$__ac_tmpdir/ngc$$.c" << EOF
-main()
+#include <stdio.h>
+int main(int argc, char **argv)
 {
     struct $struct foo;
 
-    foo.$field;
+    printf("%p", (void *) &(foo.$field));
+    return 0;
 }
 EOF
 
@@ -450,9 +446,10 @@ AC_PROG_CC () {
 
     cat > "$__ac_tmpdir/ngc$$.c" << \EOF
 #include <stdio.h>
-main()
+int main(int argc, char **argv)
 {
     puts("hello, sailor");
+    return 0;
 }
 EOF
 
@@ -874,7 +871,11 @@ AC_HEADER_SYS_WAIT () {
 AC_TYPE_PID_T () {
     cat > "$__ac_tmpdir/pd$$.c" << EOF
 #include <sys/types.h>
-main() { pid_t me; }
+int main(int argc, char **argv)
+{
+    pid_t me;
+    return 0;
+}
 EOF
 
     LOGN "checking for pid_t"
@@ -920,7 +921,7 @@ EOF
 AC_SCALAR_TYPES () {
     cat > "$__ac_tmpdir/pd$$.c" << EOF
 #include <stdio.h>
-main()
+int main(int argc, char **argv)
 {
     unsigned long v_long;
     unsigned int v_int;
@@ -1029,7 +1030,7 @@ AC_CHECK_FLOCK() {
 #include <sys/types.h>
 #include <fcntl.h>
 
-main()
+int main(int argc, char **argv)
 {
     int x = open("$$.c", O_RDWR, 0666);
     int y = open("$$.c", O_RDWR, 0666);
@@ -1080,7 +1081,7 @@ AC_CHECK_RESOLVER () {
 #include <arpa/nameser.h>
 #include <resolv.h>
 
-main()
+int main(int argc, char **argv)
 {
     char bfr[256];
 
@@ -1111,7 +1112,7 @@ EOF
 #include <arpa/nameser.h>
 #include <resolv.h>
 
-main()
+int main(int argc, char **argv)
 {
     HEADER hhh;
     res_init();
