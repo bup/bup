@@ -61,7 +61,7 @@ task:
   name: macos check
   macos_instance:
     # https://cirrus-ci.org/guide/macOS/
-    image: ghcr.io/cirruslabs/macos-monterey-base:latest
+    image: ghcr.io/cirruslabs/macos-runner:sonoma
   script: |
     set -xe
     dev/prep-for-macos-build python3
