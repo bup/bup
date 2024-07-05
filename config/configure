@@ -206,12 +206,12 @@ AC_CHECK_HEADERS sys/ioctl.h
 
 # On GNU/kFreeBSD utimensat is defined in GNU libc, but won't work.
 if [ -z "$OS_GNU_KFREEBSD" ]; then
-    AC_CHECK_FUNCS utimensat sys/stat.h
+    AC_CHECK_FUNCS utimensat
 fi
-AC_CHECK_FUNCS utimes sys/time.h
-AC_CHECK_FUNCS lutimes sys/time.h
+AC_CHECK_FUNCS utimes
+AC_CHECK_FUNCS lutimes
 
-AC_CHECK_FUNCS mincore sys/mman.h
+AC_CHECK_FUNCS mincore
 
 mincore_incore_code="
 #if 0$ac_defined_HAVE_UNISTD_H
@@ -359,12 +359,12 @@ AC_CC="$AC_CC${bup_libacl_cflags:+ $bup_libacl_cflags}"
 LIBS="$bup_libacl_ldflags"
 AC_CHECK_HEADERS sys/acl.h
 AC_CHECK_HEADERS acl/libacl.h
-AC_CHECK_FUNCS acl_get_file sys/acl.h
-AC_CHECK_FUNCS acl_from_text sys/acl.h
-AC_CHECK_FUNCS acl_set_file sys/acl.h
+AC_CHECK_FUNCS acl_get_file
+AC_CHECK_FUNCS acl_from_text
+AC_CHECK_FUNCS acl_set_file
 # Note: These are linux specific, but we need them (for now?)
-AC_CHECK_FUNCS acl_extended_file acl/libacl.h
-AC_CHECK_FUNCS acl_to_any_text acl/libacl.h
+AC_CHECK_FUNCS acl_extended_file
+AC_CHECK_FUNCS acl_to_any_text
 TLOGN "checking for complete acl support"
 if test "$ac_defined_HAVE_ACL_EXTENDED_FILE"; then
     bup_have_libacl=1

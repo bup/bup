@@ -304,7 +304,7 @@ AC_CHECK_HEADERS () {
     for hdr in $*; do
 	echo "#include <$hdr>" >> "$__ac_tmpdir/ngc$$.c"
     done
-    echo "int main(int argc, char **argv) { }" >> "$__ac_tmpdir/ngc$$.c"
+    echo "int main(int argc, char **argv) { return 0; }" >> "$__ac_tmpdir/ngc$$.c"
 
     LOGN "checking for header $hdr"
 
@@ -327,20 +327,14 @@ AC_CHECK_HEADERS () {
 AC_CHECK_FUNCS () {
     AC_PROG_CC
 
-F=$1
-shift
-rm -f "$__ac_tmpdir/ngc$$.c"
-
-while [ "$1" ]; do
-    echo "#include <$1>" >> "$__ac_tmpdir/ngc$$.c"
+    F="$1"
     shift
-done
-
+    rm -f "$__ac_tmpdir/ngc$$.c"
     cat >> "$__ac_tmpdir/ngc$$.c" << EOF
-#include <stdio.h>
+char $F(void);
 int main(int argc, char **argv)
 {
-    return (void *) $F - (void *) printf;
+    return $F();
 }
 EOF
 
@@ -419,11 +413,13 @@ AC_CHECK_FIELD () {
     done
 
     cat >> "$__ac_tmpdir/ngc$$.c" << EOF
+#include <stdio.h>
 int main(int argc, char **argv)
 {
     struct $struct foo;
 
-    foo.$field;
+    printf("%p", (void *) &(foo.$field));
+    return 0;
 }
 EOF
 
@@ -453,6 +449,7 @@ AC_PROG_CC () {
 int main(int argc, char **argv)
 {
     puts("hello, sailor");
+    return 0;
 }
 EOF
 
@@ -874,7 +871,11 @@ AC_HEADER_SYS_WAIT () {
 AC_TYPE_PID_T () {
     cat > "$__ac_tmpdir/pd$$.c" << EOF
 #include <sys/types.h>
-int main(int argc, char **argv) { pid_t me; }
+int main(int argc, char **argv)
+{
+    pid_t me;
+    return 0;
+}
 EOF
 
     LOGN "checking for pid_t"
