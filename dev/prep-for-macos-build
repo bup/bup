@@ -23,7 +23,7 @@ brew link --force readline
 case "$pyver" in
     python3)
         brew install python
-        pip3 install --user pytest pytest-xdist
+        python3 -m pip install --break-system-packages --user pytest pytest-xdist
         ;;
     *)
         usage 1>&2
