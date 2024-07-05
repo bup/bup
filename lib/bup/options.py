@@ -62,18 +62,7 @@ consecutive lines. Groups are formed by inserting a line that begins with a
 space. The text on that line will be output after an empty line.
 """
 
-from __future__ import absolute_import
-import sys, os, textwrap, getopt, re, struct
-
-try:
-    import fcntl
-except ImportError:
-    fcntl = None
-
-try:
-    import termios
-except ImportError:
-    termios = None
+import sys, os, textwrap, getopt, re
 
 
 def _invert(v, invert):
@@ -129,21 +118,15 @@ def _intify(v):
     return v
 
 
-if not fcntl and termios:
-    def _tty_width():
+def _tty_width():
+    forced = os.environ.get('BUP_TTY_WIDTH')
+    if forced:
+        return int(forced)
+    try:
+        size = os.get_terminal_size(sys.stderr.fileno())
+    except OSError:
         return 70
-else:
-    def _tty_width():
-        forced = os.environ.get('BUP_TTY_WIDTH', None)
-        if forced:
-            return int(forced)
-        s = struct.pack("HHHH", 0, 0, 0, 0)
-        try:
-            s = fcntl.ioctl(sys.stderr.fileno(), termios.TIOCGWINSZ, s)
-        except IOError:
-            return 70
-        ysize, xsize, ypix, xpix = struct.unpack('HHHH', s)
-        return xsize or 70
+    return size.columns
 
 
 class Options:
