@@ -182,51 +182,49 @@ def git_verify(stem, *, quick=False):
     return result
 
 
-def do_pack(base, last, par2_exists, out):
-    code = 0
-    if par2_ok and par2_exists and (opt.repair or not opt.generate):
-        vresult = par2_verify(base)
-        if vresult != 0:
-            if opt.repair:
-                rresult = par2_repair(base)
-                if rresult != 0:
-                    action_result = b'failed'
-                    log('%s par2 repair: failed (%d)\n' % (last, rresult))
-                    code = rresult
-                else:
-                    action_result = b'repaired'
-                    log('%s par2 repair: succeeded (0)\n' % last)
-                    # FIXME: for this to be useful, we need to define
-                    # the semantics, e.g. what's promised when we have
-                    # this and a competing error from another pack?
-                    code = 100
-            else:
-                action_result = b'failed'
-                log('%s par2 verify: failed (%d)\n' % (last, vresult))
-                code = vresult
-        else:
-            action_result = b'ok'
-    elif not opt.generate or (par2_ok and not par2_exists):
-        if not git_verify(base, quick=opt.quick):
-            action_result = b'failed'
-            code = EXIT_FAILURE
-        else:
-            if par2_ok and opt.generate:
-                presult = par2_generate(base)
-                if presult != 0:
-                    action_result = b'failed'
-                    log('%s par2 create: failed (%d)\n' % (last, presult))
-                    code = presult
-                else:
-                    action_result = b'generated'
-            else:
-                action_result = b'ok'
+def attempt_repair(stem, base, out, *, verbose=False):
+    rc = par2_repair(stem)
+    if rc:
+        log(f'{path_msg(base)} par2 repair: failed ({rc})\n')
+        if verbose: out.write(base + b' failed\n')
     else:
-        assert(opt.generate and (not par2_ok or par2_exists))
-        action_result = b'exists' if par2_exists else b'skipped'
-    if opt.verbose:
-        out.write(last + b' ' +  action_result + b'\n')
-    return code
+        log(f'{path_msg(base)} par2 repair: succeeded (0)\n')
+        if verbose: out.write(base + b' repaired\n')
+        rc = 100
+    return rc
+
+
+def do_pack(stem, par2_exists, out):
+    # Repair and generate are treated as optional actions, requested
+    # in addition to verification.  Always validate the git checksums,
+    # and then run par2 validation if possible.  The latter only tells
+    # us that the pack/idx files haven't changed since the par2
+    # generation.
+    base = os.path.basename(stem)
+    if not git_verify(stem, quick=opt.quick):
+        if opt.repair:
+            return attempt_repair(stem, base, out, verbose=opt.verbose)
+        if opt.verbose: out.write(base + b' failed\n')
+        return EXIT_FAILURE
+    if par2_ok and par2_exists:
+        rc = par2_verify(stem)
+        if rc:
+            log(f'error: par2 verify failed ({rc}) {path_msg(base)}\n')
+            if opt.verbose: out.write(base + b' failed\n')
+            return EXIT_FAILURE
+    if opt.generate:
+        if par2_exists:
+            if opt.verbose: out.write(base + b' exists\n')
+            return EXIT_TRUE
+        rc = par2_generate(stem)
+        if rc != EXIT_SUCCESS:
+            log(f'{path_msg(base)} par2 create: failed ({rc})\n')
+            if opt.verbose: out.write(base + b' failed\n')
+            return EXIT_FAILURE
+        if opt.verbose: out.write(base + b' generated\n')
+        return EXIT_SUCCESS
+    if opt.verbose: out.write(base + b' ok\n')
+    return EXIT_SUCCESS
 
 
 optspec = """
@@ -296,7 +294,7 @@ def main(argv):
 
         if not opt.jobs:
             assert par2_status != False
-            nc = do_pack(stem, base, par2_status, out)
+            nc = do_pack(stem, par2_status, out)
             # FIXME: is first wins what we really want (cf. repair's 100)
             code = code or nc
             count += 1
@@ -314,7 +312,7 @@ def main(argv):
             else: # child
                 try:
                     assert par2_status != False
-                    sys.exit(do_pack(stem, base, par2_status, out))
+                    sys.exit(do_pack(stem, par2_status, out))
                 except Exception as e:
                     log('exception: %r\n' % e)
                     sys.exit(99)
