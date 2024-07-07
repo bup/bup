@@ -64,7 +64,7 @@ WVPASS bup random 50k > "$tmpdir/data"
 WVFAIL bup -d "$bup_dir2" on - split -n foo < "$tmpdir/data"
 WVPASS bup -d "$bup_dir2" on - split -n foo "$tmpdir/data"
 WVPASS bup -d "$bup_dir2" join foo > "$tmpdir/data-joined"
-WVPASS cmp -b "$tmpdir/data" "$tmpdir/data-joined"
+WVPASS cmp -l "$tmpdir/data" "$tmpdir/data-joined"
 WVPASSEQ $(WVPASS find "$BUP_DIR"/objects/pack -name "*.pack" | wc -l) 0
 WVPASS test $(WVPASS find "$bup_dir2"/objects/pack/*.pack | wc -l) -gt 2
 
