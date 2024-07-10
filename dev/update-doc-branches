@@ -22,7 +22,7 @@ git rev-parse --verify "$html_ref"
 echo "$man_ref" | grep -qE '^refs/heads'
 echo "$html_ref" | grep -qE '^refs/heads'
 
-"${MAKE:-make}"
+dev/make
 
 mkdir -p t/tmp
 tmpdir="$(mktemp -d "t/tmp/update-doc-branches-XXXXXX")"

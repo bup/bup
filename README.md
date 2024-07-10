@@ -156,7 +156,8 @@ From source
     pip install tornado
     ```
 
- - Build:
+ - Build (below, replace `make` with whatever GNU make is called on
+   the current system if it isn't `make`, e.g. commonly `gmake`):
 
     ```sh
     make
@@ -441,7 +442,7 @@ Notes on FreeBSD
 ----------------
 
 - In order to compile the code, run tests and install bup, you need to
-  install GNU Make from the `gmake` port.
+  install and run GNU Make from the `gmake` port.
 
 - Python's development headers are automatically installed with the 'python'
   port so there's no need to install them separately.

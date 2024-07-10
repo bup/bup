@@ -1,0 +1,30 @@
+#!/bin/bash
+
+set -eu
+
+usage() { echo "Usage: validate-make MAKE"; }
+misuse() { usage 1>&2; exit 2; }
+
+test $# -eq 1 || misuse
+make="$1"
+
+msg="$("$make" --version)"
+gnu="$(echo "$msg" | grep 'GNU Make')"
+
+if test $? -ne 0; then
+    echo '$make does not appear to be GNU Make' 1>&2
+    exit 2
+fi
+
+# Expecting something like "GNU Make 4.3"
+ver=$(echo "$gnu" | awk '{print $3}')
+
+if test -z "$ver"; then
+    printf 'Unable to find make version in %q --version output\n' "$make" 1>&2
+    exit 2
+fi    
+
+if ! expr "$ver" '>=' '3.81' > /dev/null; then
+    printf '%q version does not appear to be 3.81 or newer\n' "$make" 1>&2
+    exit 2
+fi

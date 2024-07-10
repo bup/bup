@@ -7,7 +7,6 @@ CPPFLAGS = @CPPFLAGS@
 LDFLAGS = @LDFLAGS@
 
 bup_config_cflags = @bup_config_cflags@
-bup_make=@bup_make@
 
 bup_python_config=@bup_python_config@
 bup_python_cflags=@bup_python_cflags@

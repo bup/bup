@@ -55,20 +55,6 @@ bup-add-cflag-if-supported()
     fi
 }
 
-bup-validate-make()
-{
-    if test $# -ne 1 || test -z "$1"; then
-        AC_FAIL "bup-validate-make: invalid arguments: $(printf " %q" "$@")"
-    fi
-    local candidate="$1" ver
-    "$candidate" --version | grep -q "GNU Make" || return 1
-    ver=$("$candidate" --version | grep "GNU Make" | awk '{print $3}')
-    test "$ver" || return 1
-    expr "$ver" '>=' '3.81' > /dev/null || return 1
-    return 0
-}
-
-
 TARGET=bup
 
 argv=()
@@ -98,39 +84,6 @@ if ! AC_PROG_CC; then
 fi
 
 bup-add-cflag-if-supported -Wno-unused-command-line-argument
-
-
-TLOGN "checking for make"
-
-bup_make=''
-
-if test "${MAKE:-}"; then
-    # Since ./configure changes pwd, fix MAKE if it's relative
-    case "$MAKE" in
-        /*) bup_make="$MAKE";;
-        */*) bup_make="../../$MAKE";;
-        *) bup_make="$MAKE";;
-    esac
-    if ! bup-validate-make "$bup_make"; then
-        TLOG
-        AC_FAIL "ERROR: specified MAKE is not GNU make 3.81+: $MAKE"
-    fi
-else
-    for bup_make_candidate in make gmake; do
-        if bup-validate-make "$bup_make_candidate"; then
-            bup_make="$bup_make_candidate"
-            break;
-        fi
-    done
-fi
-
-if ! test "$bup_make"; then
-    AC_FAIL "ERROR: GNU make 3.81+ not found as make or gmake (perhaps set MAKE)"
-else
-    TLOG " ($bup_make)"
-fi
-
-AC_SUB bup_make "$bup_make"
 
 
 # Haven't seen a documented way to determine the python version via
@@ -388,7 +341,6 @@ set -euo pipefail
 
 # FIXME: real tmpdir
 mkdir -p config.var.tmp
-echo -n "$bup_make" > config.var.tmp/bup-make
 echo -n "$bup_python_config" > config.var.tmp/bup-python-config
 echo -n "$with_pylint" > config.var.tmp/with-pylint
 mv config.var.tmp config.var

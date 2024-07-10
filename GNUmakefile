@@ -1,4 +1,14 @@
 
+$(shell dev/validate-make $(MAKE))
+ifneq (0, $(.SHELLSTATUS))
+  $(error Unable to validate $(MAKE))
+endif
+
+$(shell mkdir -p config/config.var && echo "$(MAKE)" > config/config.var/make)
+ifneq (0, $(.SHELLSTATUS))
+  $(error Unable to record config/config.var/make)
+endif
+
 MAKEFLAGS += --warn-undefined-variables
 
 SHELL := bash

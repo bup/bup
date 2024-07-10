@@ -1,0 +1,12 @@
+#!/bin/sh
+
+set -eu
+
+rc=0
+make="$(cat config/config.var/make)" || rc=$?
+if test $rc -ne 0; then
+    echo "Unable to read config/config.var/make; please run GNU make first" 1>&2
+    exit 2
+fi
+
+exec "$make" "$@"
