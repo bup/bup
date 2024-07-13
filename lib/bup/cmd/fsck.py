@@ -146,12 +146,12 @@ def par2_recovery_file_status(stem):
             pass
     for path in empty:
         log(f'error: empty par2 file - {path_msg(path)}\n')
-    for path in missing:
-        log(f'error: missing par2 file - {path_msg(path)}\n')
     if empty:
         return False
     if len(missing) == 2:
         return None
+    for path in missing:
+        log(f'error: missing par2 file - {path_msg(path)}\n')
     if not missing:
         return True
     return False
