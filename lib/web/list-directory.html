@@ -9,8 +9,8 @@
     <body>
         <div id="wrapper">
             <div id="breadcrumb">
-                {% for (display, part_path) in breadcrumbs %}
-                <a href="{{ part_path }}">{{ display }}</a> /
+                {% for (name, part_path) in breadcrumbs %}
+                <a href="{{ part_path }}">{{ name }}</a> /
                 {% end %}
             </div>
             <div id="message">
@@ -53,7 +53,7 @@
                     {% end %}
                     <th class="dir-name">Name</th>
                 </tr>
-                {% for (display, link, size, meta, oidx) in dir_contents %}
+                {% for (name, link, size, meta, oidx) in dir_contents %}
                 <tr>
                     {% if params.get('hash') %}
                         <td class="dir-hash">{{ oidx if oidx else '' }}</td>
@@ -70,7 +70,7 @@
                       <td class="dir-meta-mtime"> {{ local_time_str(meta.mtime) or '' }}</td>
                     {% end %}
                     <td class="dir-name">
-                      <a href="{% raw link %}">{{ display }}</a>
+                      <a href="{% raw link %}">{{ name }}</a>
                     </td>
                 </tr>
                 {% end %}
