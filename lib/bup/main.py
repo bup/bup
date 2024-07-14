@@ -176,9 +176,11 @@ if not subcmd_name:
     usage()
 
 try:
-    cmd_module = import_module('bup.cmd.'
-                               + subcmd_name.decode('ascii').replace('-', '_'))
+    cmd_module_name = 'bup.cmd.' + subcmd_name.decode('ascii').replace('-', '_')
+    cmd_module = import_module(cmd_module_name)
 except ModuleNotFoundError as ex:
+    if ex.name != cmd_module_name:
+        raise ex
     cmd_module = None
 
 if not cmd_module:
