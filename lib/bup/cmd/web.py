@@ -1,16 +1,19 @@
 
-from __future__ import absolute_import, print_function
+from binascii import hexlify
 from collections import namedtuple
 import mimetypes, os, posixpath, signal, stat, sys, time, webbrowser
-from binascii import hexlify
-
 
 from bup import options, git, vfs
-from bup.helpers import (chunkyreader, debug1, format_filesize,
-                         log, saved_errors)
+from bup.helpers \
+    import (EXIT_FAILURE,
+            chunkyreader,
+            debug1,
+            format_filesize,
+            log,
+            saved_errors)
+from bup.io import path_msg
 from bup.path import resource_path
 from bup.repo import LocalRepo
-from bup.io import path_msg
 
 try:
     from tornado import gen
@@ -20,7 +23,7 @@ try:
     import tornado.web
 except ImportError:
     log('error: cannot find the python "tornado" module; please install it\n')
-    sys.exit(1)
+    sys.exit(EXIT_FAILURE)
 
 
 # FIXME: right now the way hidden files are handled causes every
