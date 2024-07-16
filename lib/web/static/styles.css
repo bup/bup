@@ -1,3 +1,7 @@
+:root {
+    color-scheme: light dark;
+}
+
 body {
     font-family: sans-serif
 }
@@ -17,7 +21,7 @@ table {
 }
 
 tr:nth-child(even) {
-    background-color: #e0e0e0;
+    background-color: light-dark(#e5e5e5, #303030);
 }
 
 th {
