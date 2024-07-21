@@ -373,9 +373,12 @@ AC_CHECK_STRUCT () {
     done
 
     cat >> "$__ac_tmpdir/ngc$$.c" << EOF
+#include <stdio.h>
 int main(int argc, char **argv)
 {
     struct $struct foo;
+    printf("%p", (void *) &foo);
+    return 0;    
 }
 EOF
 
