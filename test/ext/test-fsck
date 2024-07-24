@@ -49,7 +49,7 @@ WVFAIL bup fsck --quick -rvv -j9
 if bup fsck --par2-ok; then
     WVPASS bup fsck -r # ok because of repairs from last time
 
-    some_idx="$(WVPASS find "$BUP_DIR" -name "pack-*.par2" -not -name "*.vol*.par2" | head -1)" || exit $?
+    some_idx="$(WVPASS find "$BUP_DIR" -name "pack-*.par2" \! -name "*.vol*.par2" | head -1)" || exit $?
     some_vol="$(WVPASS find "$BUP_DIR" -name "pack-*.vol*.par2" | head -1)" || exit $?
 
     WVPASS cp -p "$some_idx" some-pack.par2
