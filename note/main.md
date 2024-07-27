@@ -25,6 +25,16 @@ May require attention
   that the `.idx` files can be (and now are) trivially regenerated
   from the packfiles during `--repair` when needed.
 
+General
+-------
+
+* `bup web` has been improved.  It should better preserve page
+  settings while navigating, and has added settings to toggle the
+  display of various types of information, including path sizes,
+  hashes, and metadata.  Symlinks targets are now shown, and the
+  layout, in general, has been changed (including trivial support for
+  dark mode).
+
 Thanks to (at least)
 ====================
 
