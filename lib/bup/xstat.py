@@ -1,8 +1,9 @@
 """Enhanced stat operations for bup."""
 
-from __future__ import absolute_import
-import os, sys
+from time import strftime
+import os, sys, time
 import stat as pystat
+
 from bup import _helpers
 
 try:
@@ -191,3 +192,9 @@ def classification_str(mode, include_exec):
         return '='
     else:
         return ''
+
+
+def local_time_str(t):
+    if t is None:
+        return None
+    return strftime('%Y-%m-%d %H:%M', time.localtime(fstime_floor_secs(t)))

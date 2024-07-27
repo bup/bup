@@ -5,12 +5,11 @@
 # This code is covered under the terms of the GNU Library General
 # Public License as described in the bup LICENSE file.
 
-from __future__ import absolute_import, print_function
 from copy import deepcopy
 from errno import EACCES, EINVAL, ENOTTY, ENOSYS, EOPNOTSUPP
 from io import BytesIO
 from time import gmtime, strftime
-import errno, os, sys, stat, time, socket, struct
+import errno, os, sys, stat, socket, struct
 
 from bup import vint, xstat
 from bup.drecurse import recursive_dirlist
@@ -396,7 +395,7 @@ class Metadata:
         # EACCES errors at this stage are fatal for the current path.
         if lutime and stat.S_ISLNK(self.mode):
             try:
-                lutime(path, (self.atime, self.mtime))
+                lutime(path, (self.atime or 0, self.mtime or 0))
             except OSError as e:
                 if e.errno == errno.EACCES:
                     raise ApplyError('lutime: %s' % e)
@@ -404,7 +403,7 @@ class Metadata:
                     raise
         else:
             try:
-                utime(path, (self.atime, self.mtime))
+                utime(path, (self.atime or 0, self.mtime or 0))
             except OSError as e:
                 if e.errno == errno.EACCES:
                     raise ApplyError('utime: %s' % e)
@@ -1040,13 +1039,15 @@ def summary_bytes(meta, numeric_ids = False, classification = None,
     Classification may be "all", "type", or None."""
     user_str = group_str = size_or_dev_str = b'?'
     symlink_target = None
+    mode_str = b'?' * 10
+    mtime_str = b'????-??-?? ??:??'
+    classification_str = b'?'
     if meta:
         name = meta.path
         mode_str = xstat.mode_str(meta.mode).encode('ascii')
         symlink_target = meta.symlink_target
-        mtime_secs = xstat.fstime_floor_secs(meta.mtime)
-        mtime_str = strftime('%Y-%m-%d %H:%M',
-                             time.localtime(mtime_secs)).encode('ascii')
+        if meta.mtime is not None:
+            mtime_str = xstat.local_time_str(meta.mtime).encode('ascii')
         if meta.user and not numeric_ids:
             user_str = meta.user
         elif meta.uid != None:
@@ -1070,10 +1071,6 @@ def summary_bytes(meta, numeric_ids = False, classification = None,
             classification_str = \
                 xstat.classification_str(meta.mode,
                                          classification == 'all').encode()
-    else:
-        mode_str = b'?' * 10
-        mtime_str = b'????-??-?? ??:??'
-        classification_str = b'?'
 
     name = name or b''
     if classification:

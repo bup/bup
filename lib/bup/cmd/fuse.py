@@ -70,9 +70,9 @@ class BupFs(fuse.Fuse):
         st.st_mode = meta.mode
         st.st_uid = meta.uid or 0
         st.st_gid = meta.gid or 0
-        st.st_atime = max(0, xstat.fstime_floor_secs(meta.atime))
-        st.st_mtime = max(0, xstat.fstime_floor_secs(meta.mtime))
-        st.st_ctime = max(0, xstat.fstime_floor_secs(meta.ctime))
+        st.st_atime = max(0, meta.atime and xstat.fstime_floor_secs(meta.atime) or 0)
+        st.st_mtime = max(0, meta.mtime and xstat.fstime_floor_secs(meta.mtime) or 0)
+        st.st_ctime = max(0, meta.ctime and xstat.fstime_floor_secs(meta.ctime) or 0)
         return st
 
     def readdir(self, path, offset):

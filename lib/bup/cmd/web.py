@@ -1,16 +1,22 @@
 
-from __future__ import absolute_import, print_function
-from collections import namedtuple
-import mimetypes, os, posixpath, signal, stat, sys, time, webbrowser
 from binascii import hexlify
+from collections import ChainMap, namedtuple
+from urllib import parse
+from urllib.parse import urlencode
+import mimetypes, os, posixpath, signal, stat, sys, time, traceback, webbrowser
 
-
-from bup import options, git, vfs
-from bup.helpers import (chunkyreader, debug1, format_filesize,
-                         log, saved_errors)
+from bup import options, git, vfs, xstat
+from bup.helpers \
+    import (EXIT_FAILURE,
+            chunkyreader,
+            debug1,
+            format_filesize,
+            log,
+            saved_errors)
+from bup.io import path_msg
+from bup.metadata import Metadata
 from bup.path import resource_path
 from bup.repo import LocalRepo
-from bup.io import path_msg
 
 try:
     from tornado import gen
@@ -20,7 +26,7 @@ try:
     import tornado.web
 except ImportError:
     log('error: cannot find the python "tornado" module; please install it\n')
-    sys.exit(1)
+    sys.exit(EXIT_FAILURE)
 
 
 # FIXME: right now the way hidden files are handled causes every
@@ -31,18 +37,80 @@ def http_date_from_utc_ns(utc_ns):
     return time.strftime('%a, %d %b %Y %H:%M:%S', time.gmtime(utc_ns / 10**9))
 
 
-def _compute_breadcrumbs(path, show_hidden=False):
+def normalize_bool(k, v):
+    return 1 if v else 0
+
+
+def from_req_bool(k, v):
+    if v == '0': return 0
+    if v == '1': return 1
+    raise ValueError(f'Request {k} parameter not 0 or 1')
+
+
+class ParamInfo:
+    """The default indicates the value that will be assumed if the
+    parameter is missing.  from_req(k, v) converts from a request
+    value to the param value, e.g. perhaps from '100' to 100 for an
+    integer param.  normalize(k, v) converts a proposed change to the
+    canonical form, e.g. perhaps 100 to 1 for a boolean parameter.
+    from_req must produce a subset of normalize's values.
+
+    """
+    __slots__ = 'default', 'from_req', 'normalize'
+    def __init__(self, **kw):
+        for k, v in kw.items():
+            setattr(self, k, v)
+
+
+def request_params(req):
+    """Fully vet the incoming request arguments via the bup_param_info
+    and return a dictionary of the query parameters..
+
+    """
+    param_info = req.bup_param_info
+    params = {}
+    for k in req.request.arguments.keys():
+        info = param_info.get(k)
+        if not info:
+            # FIXME: eventually raise proper http error.
+            raise ValueError(f'Unexpected request parameter {k!r}')
+        v = req.get_argument(k, None)
+        params[k] = info.from_req(k, v)
+    return params
+
+
+def encode_query(params, param_info):
+    """Return a properly encoded query fragment (including a leading
+    ?) representing the given params.
+
+    """
+    result = {}
+    for k, v in params.items():
+        info = param_info.get(k)
+        if not info:
+            # FIXME: eventually raise proper http error.
+            raise ValueError(f'Unexpected request parameter {k!r}')
+        v = info.normalize(k, v)
+        if v == info.default:
+            result.pop(k, None)
+        else:
+            result[k] = v
+    if not result:
+        return ''
+    return '?' + urlencode(result)
+
+
+def _compute_breadcrumbs(path, params, param_info):
     """Returns a list of breadcrumb objects for a path."""
     breadcrumbs = []
-    breadcrumbs.append((b'[root]', b'/'))
+    full_path = '/'
+    query = encode_query(params, param_info)
+    breadcrumbs.append(('[root]', full_path + query))
     path_parts = path.split(b'/')[1:-1]
-    full_path = b'/'
     for part in path_parts:
-        full_path += part + b"/"
-        url_append = b""
-        if show_hidden:
-            url_append = b'?hidden=1'
-        breadcrumbs.append((part, full_path+url_append))
+        full_path += parse.quote(part) + '/'
+        query = encode_query(params, param_info)
+        breadcrumbs.append((path_msg(part), full_path + query))
     return breadcrumbs
 
 
@@ -59,23 +127,20 @@ def _contains_hidden_files(repo, dir_item):
     return False
 
 
-def _dir_contents(repo, resolution, show_hidden=False):
+def _dir_contents(repo, resolution, params, param_info):
     """Yield the display information for the contents of dir_item."""
 
-    url_query = b'?hidden=1' if show_hidden else b''
-
-    def display_info(name, item, resolved_item, display_name=None, omitsize=False):
-        global opt
+    def item_info(name, item, resolved_item, display_name=None,
+                  include_size=False):
+        link = parse.quote(name)
         # link should be based on fully resolved type to avoid extra
         # HTTP redirect.
-        link = tornado.escape.url_escape(name, plus=False)
         if stat.S_ISDIR(vfs.item_mode(resolved_item)):
             link += '/'
-        link = link.encode('ascii')
 
-        if not omitsize:
+        if include_size:
             size = vfs.item_size(repo, item)
-            if opt.human_readable:
+            if params.get('human'):
                 display_size = format_filesize(size)
             else:
                 display_size = size
@@ -93,25 +158,41 @@ def _dir_contents(repo, resolution, show_hidden=False):
             else:
                 display_name = name
 
-        return display_name, link + url_query, display_size
+        query = encode_query(params, param_info)
+        meta = resolved_item.meta
+        if not isinstance(meta, Metadata):
+            meta = None
+        oidx = getattr(resolved_item, 'oid', None)
+        if oidx: oidx = hexlify(oidx)
+        return path_msg(display_name), link + query, display_size, meta, oidx
 
     dir_item = resolution[-1][1]
     for name, item in vfs.contents(repo, dir_item):
-        if not show_hidden:
+        if not params.get('hidden'):
             if (name not in (b'.', b'..')) and name.startswith(b'.'):
                 continue
         if name == b'.':
             parent_item = resolution[-2][1] if len(resolution) > 1 else dir_item
-            yield display_info(b'..', parent_item, parent_item, b'..', omitsize=True)
+            yield item_info(b'..', parent_item, parent_item, b'..')
             continue
-        res_item = vfs.ensure_item_has_metadata(repo, item, include_size=True)
-        yield display_info(name, item, res_item)
+        mp = params.get('meta')
+        res_item = vfs.ensure_item_has_metadata(repo, item, include_size=mp)
+        yield item_info(name, item, res_item, include_size=mp)
 
 
 class BupRequestHandler(tornado.web.RequestHandler):
 
-    def initialize(self, repo=None):
+    def initialize(self, repo=None, human=None):
         self.repo = repo
+        default_false_param = ParamInfo(default=0, from_req=from_req_bool,
+                                        normalize=normalize_bool)
+        human_param = ParamInfo(default=1 if human else 0,
+                                from_req=from_req_bool,
+                                normalize=normalize_bool)
+        self.bup_param_info = dict(hash=default_false_param,
+                                   hidden=default_false_param,
+                                   human=human_param,
+                                   meta=default_false_param)
 
     def decode_argument(self, value, name=None):
         if name == 'path':
@@ -146,25 +227,41 @@ class BupRequestHandler(tornado.web.RequestHandler):
         Return value is either a file object, or None (indicating an
         error).  In either case, the headers are sent.
         """
+        param_info = self.bup_param_info
+        params = request_params(self)
+
         if not path.endswith(b'/') and len(path) > 0:
             print('Redirecting from %s to %s' % (path_msg(path), path_msg(path + b'/')))
-            return self.redirect(path + b'/', permanent=True)
+            query = encode_query(params, param_info)
+            return self.redirect(''.join((parse.quote(path), '/', query)),
+                                 permanent=True)
 
-        hidden_arg = self.request.arguments.get('hidden', [0])[-1]
-        try:
-            show_hidden = int(hidden_arg)
-        except ValueError as e:
-            show_hidden = False
+        def amend_query(params, **changes):
+            # The changes allow us to easily avoid double curly braces in
+            # templates, e.g. {**params, **{'hidden': 1}}
+            return encode_query(ChainMap(changes, params), param_info)
 
         self.render(
             'list-directory.html',
             path=path,
-            breadcrumbs=_compute_breadcrumbs(path, show_hidden),
+            breadcrumbs=_compute_breadcrumbs(path, params, param_info),
             files_hidden=_contains_hidden_files(self.repo, resolution[-1][1]),
-            hidden_shown=show_hidden,
-            dir_contents=_dir_contents(self.repo, resolution,
-                                       show_hidden=show_hidden))
+            local_time_str=xstat.local_time_str,
+            mode_str=xstat.mode_str,
+            params=params,
+            amend_query=amend_query,
+            dir_contents=_dir_contents(self.repo, resolution, params, param_info))
         return None
+
+    def _set_header(self, path, file_item):
+        meta = file_item.meta
+        ctype = self._guess_type(path)
+        assert len(file_item.oid) == 20
+        if meta.mtime is not None:
+            self.set_header("Last-Modified", http_date_from_utc_ns(meta.mtime))
+        self.set_header("Content-Type", ctype)
+        self.set_header("Etag", hexlify(file_item.oid))
+        self.set_header("Content-Length", str(meta.size))
 
     @gen.coroutine
     def _get_file(self, repo, path, resolved):
@@ -173,21 +270,28 @@ class BupRequestHandler(tornado.web.RequestHandler):
         Return value is either a file object, or None (indicating an error).
         In either case, the headers are sent.
         """
-        file_item = resolved[-1][1]
-        file_item = vfs.augment_item_meta(repo, file_item, include_size=True)
-        meta = file_item.meta
-        ctype = self._guess_type(path)
-        self.set_header("Last-Modified", http_date_from_utc_ns(meta.mtime))
-        self.set_header("Content-Type", ctype)
+        try:
+            file_item = resolved[-1][1]
+            file_item = vfs.augment_item_meta(repo, file_item, include_size=True)
 
-        self.set_header("Content-Length", str(meta.size))
-        assert len(file_item.oid) == 20
-        self.set_header("Etag", hexlify(file_item.oid))
-        if self.request.method != 'HEAD':
-            with vfs.fopen(self.repo, file_item) as f:
-                it = chunkyreader(f)
-                for blob in chunkyreader(f):
-                    self.write(blob)
+            # Defer the set_header() calls until after we start
+            # writing so we can still generate a 500 failure if
+            # something fails.
+            if self.request.method == 'HEAD':
+                self._set_header(path, file_item)
+            else:
+                set_header = False
+                with vfs.fopen(self.repo, file_item) as f:
+                    for blob in chunkyreader(f):
+                        if not set_header:
+                            self._set_header(path, file_item)
+                            set_header = True
+                        self.write(blob)
+        except Exception as e:
+            self.set_status(500)
+            self.write("<h1>Server Error</h1>\n")
+            self.write("%s: %s\n" % (e.__class__.__name__, str(e)))
+            log(traceback.format_exc())
         raise gen.Return()
 
     def _guess_type(self, path):
@@ -245,7 +349,6 @@ browser           show repository in default browser (incompatible with unix://)
 opt = None
 
 def main(argv):
-    global opt
     signal.signal(signal.SIGTERM, handle_sigterm)
 
     UnixAddress = namedtuple('UnixAddress', ['path'])
@@ -291,7 +394,8 @@ def main(argv):
         sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
 
     with LocalRepo() as repo:
-        handlers = [ (r"(?P<path>/.*)", BupRequestHandler, dict(repo=repo))]
+        handlers = [ (r"(?P<path>/.*)", BupRequestHandler,
+                      dict(repo=repo, human=opt.human_readable))]
         application = tornado.web.Application(handlers, **settings)
 
         http_server = HTTPServer(application)
@@ -300,10 +404,10 @@ def main(argv):
         if isinstance(address, InetAddress):
             sockets = tornado.netutil.bind_sockets(address.port, address.host)
             http_server.add_sockets(sockets)
-            print('Serving HTTP on %s:%d...' % sockets[0].getsockname()[0:2])
+            urlstr = f'http://{address.host}:{address.port}'
+            print(f'Serving HTTP on', urlstr)
             if opt.browser:
-                browser_addr = 'http://' + address[0] + ':' + str(address[1])
-                io_loop_pending.add_callback(lambda : webbrowser.open(browser_addr))
+                io_loop_pending.add_callback(lambda : webbrowser.open(urlstr))
         elif isinstance(address, UnixAddress):
             unix_socket = bind_unix_socket(address.path)
             http_server.add_socket(unix_socket)

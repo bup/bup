@@ -1,3 +1,7 @@
+:root {
+    color-scheme: light dark;
+}
+
 body {
     font-family: sans-serif
 }
@@ -13,12 +17,25 @@ body {
 
 table {
     width: auto;
+    border-collapse: collapse;
+}
+
+tr:nth-child(even) {
+    background-color: light-dark(#e5e5e5, #303030);
 }
 
 th {
     text-align: left;
 }
 
-.dir-size {
+th, td {
     padding-left:15px;
+}
+
+td.dir-size, td.dir-meta-uid, td.dir-meta-gid {
+    text-align: right;
+}
+
+td.dir-meta-mode, td.dir-hash {
+    font-family: monospace;
 }

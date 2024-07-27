@@ -88,7 +88,7 @@ if ! bup ls -l "test/latest/$tmpdir/save/a" | grep '1999-01-01 00:00 1' ; then
     WVFAIL unexpected date for file a/1
 fi
 # and ensure we actually failed, and the above script/hack didn't break
-if ! bup ls -l "test/latest/$tmpdir/save" | grep "1970-01-01 00:00 a" ; then
+if ! bup ls -l "test/latest/$tmpdir/save" | grep "????-??-?? ??:?? a" ; then
     WVFAIL unexpected date for directory a
 fi
 

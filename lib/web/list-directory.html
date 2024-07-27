@@ -9,30 +9,72 @@
     <body>
         <div id="wrapper">
             <div id="breadcrumb">
-                {% for (display, part_path) in breadcrumbs %}
-                <a href="{{ part_path }}">{{ display }}</a> /
+                {% for (name, part_path) in breadcrumbs %}
+                <a href="{{ part_path }}">{{ name }}</a> /
                 {% end %}
             </div>
-            {% if files_hidden %}
             <div id="message">
-                {% if hidden_shown %}
-                    <a href=".">Hide hidden files</a>
+                {% if files_hidden %}
+                {% if params.get('hidden') %}
+                    <a href=".{{ amend_query(params, hidden=0) }}">Hide hidden files</a>
                 {% else %}
-                    <a href="?hidden=1">Show hidden files</a>
+                    <a href=".{{ amend_query(params, hidden=1) }}">Show hidden files</a>
+                {% end %}
+                {% end %}
+                {% if params.get('meta') %}
+                    <a href=".{{ amend_query(params, meta=0) }}">Hide metadata</a>
+                {% else %}
+                    <a href=".{{ amend_query(params, meta=1) }}">Show metadata</a>
+                {% end %}
+                {% if params.get('hash') %}
+                    <a href=".{{ amend_query(params, hash=0) }}">Hide hashes</a>
+                {% else %}
+                    <a href=".{{ amend_query(params, hash=1) }}">Show hashes</a>
+                {% end %}
+                {% if params.get('human') %}
+                    <a href=".{{ amend_query(params, human=0) }}">Show sizes as bytes</a>
+                {% else %}
+                    <a href=".{{ amend_query(params, human=1) }}">Show readable sizes</a>
                 {% end %}
             </div>
-            {% end %}
             <table>
                 <tr>
-                    <th class="dir-name">Name</th>
+                    {% if params.get('hash') %}
+                        <th class="dir-hash">Hash</th>
+                    {% end %}
+                    {% if params.get('meta') %}
+                        <th class="dir-meta-mode">Mode</th>
+                        <th class="dir-meta-owner" colspan="2">Owner</th>
+                        <th class="dir-meta-group" colspan="2">Group</th>
+                    {% end %}
                     <th class="dir-size">Size</th>
+                    {% if params.get('meta') %}
+                        <th class="dir-meta-mtime">Last modified</th>
+                    {% end %}
+                    <th class="dir-name">Name</th>
                 </tr>
-                {% for (display, link, size) in dir_contents %}
+                {% for (name, link, size, meta, oidx) in dir_contents %}
                 <tr>
+                    {% if params.get('hash') %}
+                        <td class="dir-hash">{{ oidx if oidx else '' }}</td>
+                    {% end %}
+                    {% if params.get('meta') and meta is not None%}
+                        <td class="dir-meta-mode">{{ mode_str(meta.mode) }}</td>
+                        <td class="dir-meta-owner">{{ '' if meta.user is None else meta.user }}</td>
+                        <td class="dir-meta-uid">{{ '' if meta.uid is None else meta.uid }}</td>
+                        <td class="dir-meta-group">{{ '' if meta.group is None else meta.group }}</td>
+                        <td class="dir-meta-gid">{{ '' if meta.gid is None else meta.gid }}</td>
+                    {% end %}
+                    <td class="dir-size">{{ '' if size is None else size }}</td>
+                    {% if params.get('meta') and meta %}
+                      <td class="dir-meta-mtime"> {{ local_time_str(meta.mtime) or '' }}</td>
+                    {% end %}
                     <td class="dir-name">
-                      <a href="{% raw link %}">{{ display }}</a>
+                      <a href="{% raw link %}">{{ name }}</a>
+                      {% if params.get('meta') and meta and meta.symlink_target %}
+                        → {{ meta.symlink_target }}
+                      {% end %}
                     </td>
-                    <td class="dir-size">{% if size is not None %}{{ size }}{% else %}&nbsp;{% end %}</td>
                 </tr>
                 {% end %}
             </table>
