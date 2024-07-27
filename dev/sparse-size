@@ -1,0 +1,49 @@
+#!/bin/sh
+"""": # -*-python-*-
+bup_python="$(dirname "$0")/bup-python" || exit $?
+exec "$bup_python" "$0" ${1+"$@"}
+"""
+
+from argparse import ArgumentParser
+from errno import ENXIO
+from os import SEEK_CUR, SEEK_DATA, SEEK_HOLE, lseek
+from os.path import getsize
+from sys import stderr
+
+
+def log(*args, **kwargs):
+    if 'file' not in kwargs:
+        kwargs['file'] = stderr
+    if 'end' not in kwargs:
+        kwargs['end'] = ''
+    print(*args, **kwargs)
+
+parser = ArgumentParser()
+parser.add_argument('-v', dest='verbose', action='count', default=0,
+                    help='increase diagnostics (may be repeated)')
+parser.add_argument('path', metavar='<path>')
+opt = parser.parse_args()
+
+end = getsize(opt.path)
+sparse = 0
+with open(opt.path, 'rb') as f:
+    fd = f.fileno()
+    off = 0
+    while True:
+        new_off = lseek(fd, off, SEEK_HOLE)
+        if new_off == end:
+            break
+        off = new_off
+        try:
+            new_off = lseek(fd, off, SEEK_DATA)
+        except OSError as ex:
+            if ex.errno == ENXIO:
+                if opt.verbose:
+                    log(f'hole: {end - off} @ {off}\n')
+                sparse += end - off
+                break
+        if opt.verbose:
+            log(f'hole: {new_off - off} @ {off}\n')
+        sparse += new_off - off
+        off = new_off
+print(sparse)
