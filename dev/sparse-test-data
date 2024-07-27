@@ -4,7 +4,6 @@ bup_exec="$(dirname "$0")/bup-exec" || exit $?
 exec "$bup_exec" "$0" ${1+"$@"}
 """
 
-from __future__ import absolute_import, print_function
 from random import randint
 from sys import stderr, stdout
 import os, sys
@@ -92,8 +91,8 @@ pos = 0
 print('offsets:', sparse_offsets, file=stderr)
 for offset in sparse_offsets:
     count = offset - pos
-    print('write:', 'x' if data == 'x' else '0', count, file=stderr)
-    out.write(data * (offset - pos))
+    print('write:', 'x' if data == b'x' else '0', count, file=stderr)
+    out.write(data * count)
     pos += count
     data = b'\0' if data == b'x' else b'x'
 
