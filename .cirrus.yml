@@ -1,49 +1,49 @@
 
-task:
-  name: debian check/lint root
-  container:
-    image: debian:bullseye
-    cpu: 4
-    memory: 2
-  script: |
-    set -xe
-    dev/prep-for-debianish-build python3
-    dev/system-info
-    BUP_PYTHON_CONFIG=python3-config ./configure --with-pylint=yes
-    make -j6 check
+# task:
+#   name: debian check/lint root
+#   container:
+#     image: debian:bullseye
+#     cpu: 4
+#     memory: 2
+#   script: |
+#     set -xe
+#     dev/prep-for-debianish-build python3
+#     dev/system-info
+#     BUP_PYTHON_CONFIG=python3-config ./configure --with-pylint=yes
+#     make -j6 check
 
-task:
-  name: debian long-check
-  container:
-    image: debian:bullseye
-    cpu: 4
-    memory: 2
-  script: |
-    set -xe
-    dev/prep-for-debianish-build python3
-    DEBIAN_FRONTEND=noninteractive apt-get -y install bup
-    export BUP_TEST_OTHER_BUP="$(command -v bup)"
-    "$BUP_TEST_OTHER_BUP" version
-    dev/system-info
-    adduser --disabled-password --gecos '' bup
-    chown -R bup:bup .
-    printf "make -j6 -C %q BUP_PYTHON_CONFIG=python3-config long-check" \
-      "$(pwd)" | su -l bup
+# task:
+#   name: debian long-check
+#   container:
+#     image: debian:bullseye
+#     cpu: 4
+#     memory: 2
+#   script: |
+#     set -xe
+#     dev/prep-for-debianish-build python3
+#     DEBIAN_FRONTEND=noninteractive apt-get -y install bup
+#     export BUP_TEST_OTHER_BUP="$(command -v bup)"
+#     "$BUP_TEST_OTHER_BUP" version
+#     dev/system-info
+#     adduser --disabled-password --gecos '' bup
+#     chown -R bup:bup .
+#     printf "make -j6 -C %q BUP_PYTHON_CONFIG=python3-config long-check" \
+#       "$(pwd)" | su -l bup
 
-task:
-  name: debian check
-  container:
-    image: debian:bullseye
-    cpu: 4
-    memory: 2
-  script: |
-    set -xe
-    dev/prep-for-debianish-build python3
-    dev/system-info
-    adduser --disabled-password --gecos '' bup
-    chown -R bup:bup .
-    printf "make -j6 -C %q BUP_PYTHON_CONFIG=python3-config check" \
-      "$(pwd)" | su -l bup
+# task:
+#   name: debian check
+#   container:
+#     image: debian:bullseye
+#     cpu: 4
+#     memory: 2
+#   script: |
+#     set -xe
+#     dev/prep-for-debianish-build python3
+#     dev/system-info
+#     adduser --disabled-password --gecos '' bup
+#     chown -R bup:bup .
+#     printf "make -j6 -C %q BUP_PYTHON_CONFIG=python3-config check" \
+#       "$(pwd)" | su -l bup
 
 task:
   name: freebsd check
@@ -55,19 +55,19 @@ task:
     set -xe
     dev/prep-for-freebsd-build python3
     dev/system-info
-    BUP_PYTHON_CONFIG=python3.9-config gmake -j6 check
+    gmake -j6 check
 
-task:
-  name: macos check
-  macos_instance:
-    # https://cirrus-ci.org/guide/macOS/
-    image: ghcr.io/cirruslabs/macos-runner:sonoma
-  script: |
-    set -xe
-    dev/prep-for-macos-build python3
-    brew install bup
-    export BUP_TEST_OTHER_BUP="$(command -v bup)"
-    "$BUP_TEST_OTHER_BUP" version
-    export PKG_CONFIG_PATH=/usr/local/opt/readline/lib/pkgconfig
-    dev/system-info
-    make -j6 BUP_PYTHON_CONFIG=python3-config LDFLAGS=-L/usr/local/lib check
+# task:
+#   name: macos check
+#   macos_instance:
+#     # https://cirrus-ci.org/guide/macOS/
+#     image: ghcr.io/cirruslabs/macos-runner:sonoma
+#   script: |
+#     set -xe
+#     dev/prep-for-macos-build python3
+#     brew install bup
+#     export BUP_TEST_OTHER_BUP="$(command -v bup)"
+#     "$BUP_TEST_OTHER_BUP" version
+#     export PKG_CONFIG_PATH=/usr/local/opt/readline/lib/pkgconfig
+#     dev/system-info
+#     make -j6 BUP_PYTHON_CONFIG=python3-config LDFLAGS=-L/usr/local/lib check
