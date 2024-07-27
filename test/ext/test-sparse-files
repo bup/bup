@@ -25,8 +25,8 @@ data_size=$((block_size * 20))
 readonly block_size data_size
 
 WVPASS dd if=/dev/zero of=test-sparse-probe seek="$data_size" bs=1 count=1
-probe_size=$(WVPASS du -k -s test-sparse-probe | WVPASS cut -f1) || exit $?
-if [ "$probe_size" -ge "$((data_size / 1024))" ]; then
+sparse_size=$(WVPASS "$top/dev/sparse-size" test-sparse-probe) || exit $?
+if [ "$sparse_size" -lt "$block_size" ]; then
     WVSKIP "no sparse support detected -- skipping tests"
     exit 0
 fi
@@ -42,22 +42,22 @@ WVPASS bup save -n src src
 
 WVSTART "sparse file restore (all sparse)"
 WVPASS bup restore -C restore "src/latest/$(pwd)/"
-restore_size=$(WVPASS du -k -s restore/src/foo | WVPASS cut -f1) || exit $?
-WVPASS [ "$restore_size" -ge "$((data_size / 1024))" ]
+sparse_size=$(WVPASS "$top/dev/sparse-size" restore/src/foo) || exit $?
+WVPASS [ "$sparse_size" = 0 ]
 WVPASS "$top/dev/compare-trees" -c src/ restore/src/
 
 WVSTART "sparse file restore --no-sparse (all sparse)"
 WVPASS rm -r restore
 WVPASS bup restore --no-sparse -C restore "src/latest/$(pwd)/"
-restore_size=$(WVPASS du -k -s restore/src/foo | WVPASS cut -f1) || exit $?
-WVPASS [ "$restore_size" -ge "$((data_size / 1024))" ]
+sparse_size=$(WVPASS "$top/dev/sparse-size" restore/src/foo) || exit $?
+WVPASS [ "$sparse_size" = 0 ]
 WVPASS "$top/dev/compare-trees" -c src/ restore/src/
 
 WVSTART "sparse file restore --sparse (all sparse)"
 WVPASS rm -r restore
 WVPASS bup restore --sparse -C restore "src/latest/$(pwd)/"
-restore_size=$(WVPASS du -k -s restore/src/foo | WVPASS cut -f1) || exit $?
-WVPASS [ "$restore_size" -le "$((3 * (block_size / 1024)))" ]
+sparse_size=$(WVPASS "$top/dev/sparse-size" restore/src/foo) || exit $?
+WVPASS [ "$sparse_size" -gt "$((15 * block_size))" ]
 WVPASS "$top/dev/compare-trees" -c src/ restore/src/
 
 WVSTART "sparse file restore --sparse (sparse end)"
@@ -67,8 +67,8 @@ WVPASS bup index src
 WVPASS bup save -n src src
 WVPASS rm -r restore
 WVPASS bup restore --sparse -C restore "src/latest/$(pwd)/"
-restore_size=$(WVPASS du -k -s restore/src/foo | WVPASS cut -f1) || exit $?
-WVPASS [ "$restore_size" -le "$((3 * (block_size / 1024)))" ]
+sparse_size=$(WVPASS "$top/dev/sparse-size" restore/src/foo) || exit $?
+WVPASS [ "$sparse_size" -gt "$((15 * block_size))" ]
 WVPASS "$top/dev/compare-trees" -c src/ restore/src/
 
 WVSTART "sparse file restore --sparse (sparse middle)"
@@ -77,8 +77,8 @@ WVPASS bup index src
 WVPASS bup save -n src src
 WVPASS rm -r restore
 WVPASS bup restore --sparse -C restore "src/latest/$(pwd)/"
-restore_size=$(WVPASS du -k -s restore/src/foo | WVPASS cut -f1) || exit $?
-WVPASS [ "$restore_size" -le "$((5 * (block_size / 1024)))" ]
+sparse_size=$(WVPASS "$top/dev/sparse-size" restore/src/foo) || exit $?
+WVPASS [ "$sparse_size" -gt "$((15 * block_size))" ]
 WVPASS "$top/dev/compare-trees" -c src/ restore/src/
 
 WVSTART "sparse file restore --sparse (bracketed zero run in buf)"
@@ -98,8 +98,8 @@ WVPASS bup index src
 WVPASS bup save -n src src
 WVPASS rm -r restore
 WVPASS bup restore --sparse -C restore "src/latest/$(pwd)/"
-restore_size=$(WVPASS du -k -s restore/src/foo | WVPASS cut -f1) || exit $?
-WVPASS [ "$restore_size" -le "$((5 * (block_size / 1024)))" ]
+sparse_size=$(WVPASS "$top/dev/sparse-size" restore/src/foo) || exit $?
+WVPASS [ "$sparse_size" -gt "$((15 * block_size))" ]
 WVPASS "$top/dev/compare-trees" -c src/ restore/src/
 
 WVSTART "sparse file restore --sparse (sparse start and end)"
@@ -110,8 +110,8 @@ WVPASS bup index src
 WVPASS bup save -n src src
 WVPASS rm -r restore
 WVPASS bup restore --sparse -C restore "src/latest/$(pwd)/"
-restore_size=$(WVPASS du -k -s restore/src/foo | WVPASS cut -f1) || exit $?
-WVPASS [ "$restore_size" -le "$((5 * (block_size / 1024)))" ]
+sparse_size=$(WVPASS "$top/dev/sparse-size" restore/src/foo) || exit $?
+WVPASS [ "$sparse_size" -gt "$((15 * block_size))" ]
 WVPASS "$top/dev/compare-trees" -c src/ restore/src/
 
 if test "$block_size" -gt $mb; then
