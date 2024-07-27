@@ -55,7 +55,7 @@ task:
     set -xe
     dev/prep-for-freebsd-build python3
     dev/system-info
-    BUP_PYTHON_CONFIG=python3.9-config gmake -j6 check
+    gmake -j6 check
 
 task:
   name: macos check
