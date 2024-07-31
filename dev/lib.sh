@@ -20,33 +20,18 @@ resolve-parent()
         || return $?
 }
 
-current-filesystem()
-{
-    local kernel="$(uname -s)" || return $?
-    case "$kernel" in
-        NetBSD)
-            df -G . | sed -En 's/.* ([^ ]*) fstype.*/\1/p'
-            ;;
-        SunOS)
-            df -g . | sed -En 's/.* ([^ ]*) fstype.*/\1/p'
-            ;;
-        *)
-            df -T . | awk 'END{print $2}'
-    esac
-}
-
 path-filesystems()
 (
     # Return filesystem for each dir from $1 to /.
     # Perhaps for /foo/bar, "ext4\next4\nbtrfs\n".
     test "$#" -eq 1 || exit $?
     cd "$1" || exit $?
-    current-filesystem || exit $?
+    "$bup_dev_lib_top/dev/path-fs" . || exit $?
     dir="$(pwd)" || exit $?
     while test "$dir" != /; do
         cd .. || exit $?
         dir="$(pwd)" || exit $?
-        current-filesystem || exit $?
+        "$bup_dev_lib_top/dev/path-fs" . || exit $?
     done
     exit 0
 )

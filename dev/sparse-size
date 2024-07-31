@@ -5,11 +5,8 @@ exec "$bup_python" "$0" ${1+"$@"}
 """
 
 from argparse import ArgumentParser
-from errno import ENXIO
-from os import SEEK_CUR, SEEK_DATA, SEEK_HOLE, lseek
-from os.path import getsize
-from sys import stderr
-
+from os.path import abspath, dirname, getsize
+from sys import argv, stderr
 
 def log(*args, **kwargs):
     if 'file' not in kwargs:
@@ -18,11 +15,50 @@ def log(*args, **kwargs):
         kwargs['end'] = ''
     print(*args, **kwargs)
 
+try:
+    from os import SEEK_DATA, SEEK_HOLE
+    have_seek_data_hole = True
+    log('sparse-size: relying on SEEK_DATA SEEK_HOLE\n')
+except ImportError:
+    log('sparse-size: no SEEK_DATA SEEK_HOLE, using du\n')
+    have_seek_data_hole = False
+if have_seek_data_hole:
+    from errno import ENXIO
+    from os import SEEK_CUR, SEEK_DATA, SEEK_HOLE, lseek
+else:
+    from os import environb
+    from subprocess import PIPE, run
+    from time import sleep
+
+
 parser = ArgumentParser()
 parser.add_argument('-v', dest='verbose', action='count', default=0,
                     help='increase diagnostics (may be repeated)')
 parser.add_argument('path', metavar='<path>')
 opt = parser.parse_args()
+
+if not have_seek_data_hole:
+    # The allocation data (e.g. du) for some filesystems like btrfs
+    # and zfs may not settle until the next internal sync which runs
+    # every 5s.  For now, just wait unconditionally.
+    # cf. https://github.com/openzfs/zfs/issues/2134
+    path_fs = abspath(dirname(argv[0])) + '/path-fs'
+    fs = run((path_fs, opt.path), stdout=PIPE, check=True).stdout.rstrip()
+    if fs in (b'btrfs', b'zfs'):
+        sleep(5.1)
+    cmd = 'du', '-s', opt.path
+    env = environb.copy()
+    # POSIX says 512 should be the default, but at least for at least
+    # gnu and netbsd du, it isn't.  This should cover both.
+    env[b'BLOCKSIZE'] = b'512'
+    p = run(cmd, stdout=PIPE, check=True, env=env)
+    data_size = int(p.stdout.split(maxsplit=1)[0]) * 512
+    total_size = getsize(opt.path)
+    if data_size > total_size:
+        print(0)
+    else:
+        print(total_size - data_size)
+    exit(0)
 
 end = getsize(opt.path)
 sparse = 0
