@@ -31,7 +31,7 @@ if [ "$sparse_size" -lt "$block_size" ]; then
     exit 0
 fi
 
-WVSTART "sparse restore on $(current-filesystem), assuming ${block_size}B blocks"
+WVSTART "sparse restore on $("$top/dev/path-fs" .), assuming ${block_size}B blocks"
 
 WVPASS bup init
 WVPASS mkdir src

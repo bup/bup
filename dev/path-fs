@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+
+set -ueo pipefail
+
+kernel="$(uname -s)"
+case "$kernel" in
+    NetBSD)
+        fs() { df -G "$1" | sed -En 's/.* ([^ ]*) fstype.*/\1/p'; }
+        ;;
+    SunOS)
+        fs() { df -g "$1" | sed -En 's/.* ([^ ]*) fstype.*/\1/p'; }
+        ;;
+    *)
+        fs() { df -T "$1" | awk 'END{print $2}'; }
+esac
+
+while test $# -ne 0; do
+    fs "$1"
+    shift
+done
