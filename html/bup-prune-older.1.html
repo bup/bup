@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <meta name="author" content="Rob Browning rlb@defaultvalue.org" />
+  <title>bup-prune-older(1) bup 0.33.4 | bup 0.33.4</title>
+  <style>
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      background-color: #1a1a1a;
+      border: none;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">bup-prune-older(1) bup 0.33.4 | bup 0.33.4</h1>
+<p class="author">Rob Browning <a href="mailto:rlb@defaultvalue.org"
+class="email">rlb@defaultvalue.org</a></p>
+<p class="date">0.33.4</p>
+</header>
+<h1 id="name">NAME</h1>
+<p>bup-prune-older - remove older saves</p>
+<h1 id="synopsis">SYNOPSIS</h1>
+<p>bup prune-older [options…] &lt;<em>branch</em>…&gt;</p>
+<h1 id="description">DESCRIPTION</h1>
+<p><code>bup prune-older</code> removes (permanently deletes) all saves
+except those preserved by the various keep arguments detailed below. At
+least one keep argument must be specified. This command is equivalent to
+a suitable <code>bup rm</code> invocation followed by
+<code>bup gc</code>.</p>
+<p>WARNING: This is one of the few bup commands that modifies your
+archive in intentionally destructive ways. Though if an attempt to
+<code>join</code> or <code>restore</code> the data you still care about
+after a <code>prune-older</code> succeeds, that’s a fairly encouraging
+sign that the commands worked correctly. (The
+<code>dev/compare-trees</code> command in the source tree can be used to
+help test before/after results.)</p>
+<h1 id="keep-periods">KEEP PERIODS</h1>
+<p>A <code>--keep</code> PERIOD (as required below) must be an integer
+followed by a scale, or “forever”. For example, 12y specifies a PERIOD
+of twelve years. Here are the valid scales:</p>
+<ul>
+<li>s indicates seconds</li>
+<li>min indicates minutes (60s)</li>
+<li>h indicates hours (60m)</li>
+<li>d indicates days (24h)</li>
+<li>w indicates weeks (7d)</li>
+<li>m indicates months (31d)</li>
+<li>y indicates years (366d)</li>
+<li>forever is infinitely far in the past</li>
+</ul>
+<p>As indicated, the PERIODS are computed with respect to the current
+time, or the <code>--wrt</code> value if specified, and do not respect
+any calendar, so <code>--keep-dailies-for 5d</code> means a period
+starting exactly 5 * 24 * 60 * 60 seconds before the starting point.</p>
+<h1 id="options">OPTIONS</h1>
+<dl>
+<dt>--keep-all-for PERIOD</dt>
+<dd>
+when no smaller time scale <code>--keep</code> option applies, retain
+all saves within the given period.
+</dd>
+<dt>--keep-dailies-for PERIOD</dt>
+<dd>
+when no smaller time scale <code>--keep</code> option applies, retain
+the newest save for any day within the given period.
+</dd>
+<dt>--keep-monthlies-for PERIOD</dt>
+<dd>
+when no smaller time scale <code>--keep</code> option applies, retain
+the newest save for any month within the given period.
+</dd>
+<dt>--keep-yearlies-for PERIOD</dt>
+<dd>
+when no smaller time scale <code>--keep</code> option applies, retain
+the newest save for any year within the given period.
+</dd>
+<dt>--wrt UTC_SECONDS</dt>
+<dd>
+when computing a keep period, place the most recent end of the range at
+UTC_SECONDS, and any saves newer than this will be kept.
+</dd>
+<dt>--pretend</dt>
+<dd>
+<p>don’t do anything, just list the actions that would be taken to
+standard output, one action per line like this:</p>
+<pre><code>- SAVE
++ SAVE
+...</code></pre>
+</dd>
+<dt>--gc</dt>
+<dd>
+garbage collect the repository after removing the relevant saves. This
+is the default behavior, but it can be avoided with
+<code>--no-gc</code>.
+</dd>
+<dt>--gc-threshold N</dt>
+<dd>
+only rewrite a packfile if it’s over N percent garbage; otherwise leave
+it alone. The default threshold is 10%.
+</dd>
+<dt>-<em>#</em>, --compress <em>#</em></dt>
+<dd>
+set the compression level when rewriting archive data to # (a value from
+0-9, where 9 is the highest and 0 is no compression). The default is 1
+(fast, loose compression).
+</dd>
+<dt>-v, --verbose</dt>
+<dd>
+increase verbosity (can be specified more than once).
+</dd>
+</dl>
+<h1 id="notes">NOTES</h1>
+<p>When <code>--verbose</code> is specified, the save periods will be
+summarized to standard error with lines like this:</p>
+<pre><code>keeping monthlies since 1969-07-20-201800
+keeping all yearlies
+...</code></pre>
+<p>It’s possible that the current implementation might not be able to
+format the date if, for example, it is far enough back in time. In that
+case, you will see something like this:</p>
+<pre><code>keeping yearlies since -30109891477 seconds before 1969-12-31-180000
+...</code></pre>
+<h1 id="examples">EXAMPLES</h1>
+<pre><code># Keep all saves for the past month, and any newer monthlies for
+# the past year.  Delete everything else.
+$ bup prune-older --keep-all-for 1m --keep-monthlies-for 1y
+
+# Keep all saves for the past 6 months and delete everything else,
+# but only on the semester branch.
+$ bup prune-older --keep-all-for 6m semester</code></pre>
+<h1 id="see-also">SEE ALSO</h1>
+<p><code>bup-rm</code>(1), <code>bup-gc</code>(1), and
+<code>bup-fsck</code>(1)</p>
+<h1 id="bup">BUP</h1>
+<p>Part of the <code>bup</code>(1) suite.</p>
+</body>
+</html>

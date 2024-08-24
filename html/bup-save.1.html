@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <meta name="author" content="Avery Pennarun apenwarr@gmail.com" />
+  <title>bup-save(1) Bup 0.33.4</title>
+  <style>
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      background-color: #1a1a1a;
+      border: none;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">bup-save(1) Bup 0.33.4</h1>
+<p class="author">Avery Pennarun <a href="mailto:apenwarr@gmail.com"
+class="email">apenwarr@gmail.com</a></p>
+<p class="date">0.33.4</p>
+</header>
+<h1 id="name">NAME</h1>
+<p>bup-save - create a new bup backup set</p>
+<h1 id="synopsis">SYNOPSIS</h1>
+<p>bup save [-r <em>host</em>:<em>path</em>] &lt;-t|-c|-n
+<em>name</em>&gt; [-#] [-f <em>indexfile</em>] [-v] [-q]
+[--smaller=<em>maxsize</em>] &lt;paths…&gt;;</p>
+<h1 id="description">DESCRIPTION</h1>
+<p><code>bup save</code> saves the contents of the given files or paths
+into a new backup set and optionally names that backup set.</p>
+<p>Note that in order to refer to your backup set later (i.e. for
+restoration), you must either specify <code>--name</code> (the normal
+case), or record the tree or commit id printed by <code>--tree</code> or
+<code>--commit</code>.</p>
+<p>Before trying to save files using <code>bup save</code>, you should
+first update the index using <code>bup index</code>. The reasons for
+separating the two steps are described in the man page for
+<code>bup-index</code>(1).</p>
+<p>By default, metadata will be saved for every path, and the metadata
+for any unindexed parent directories of indexed paths will be taken
+directly from the filesystem. However, if <code>--strip</code>,
+<code>--strip-path</code>, or <code>--graft</code> is specified,
+metadata will not be saved for the root directory (<em>/</em>). See
+<code>bup-restore</code>(1) for more information about the handling of
+metadata.</p>
+<h1 id="options">OPTIONS</h1>
+<dl>
+<dt>-r, --remote=<em>host</em>:<em>path</em></dt>
+<dd>
+save the backup set to the given remote server. If <em>path</em> is
+omitted, uses the default path on the remote server (you still need to
+include the ‘:’). The connection to the remote server is made with SSH.
+If you’d like to specify which port, user or private key to use for the
+SSH connection, we recommend you use the <code>~/.ssh/config</code>
+file.
+</dd>
+<dt>-t, --tree</dt>
+<dd>
+after creating the backup set, print out the git tree id of the
+resulting backup.
+</dd>
+<dt>-c, --commit</dt>
+<dd>
+after creating the backup set, print out the git commit id of the
+resulting backup.
+</dd>
+<dt>-n, --name=<em>name</em></dt>
+<dd>
+after creating the backup set, create a git branch named <em>name</em>
+so that the backup can be accessed using that name. If <em>name</em>
+already exists, the new backup will be considered a descendant of the
+old <em>name</em>. (Thus, you can continually create new backup sets
+with the same name, and later view the history of that backup set to see
+how files have changed over time.)
+</dd>
+<dt>-d, --date=<em>date</em></dt>
+<dd>
+specify the date of the backup, in seconds since the epoch, instead of
+the current time.
+</dd>
+<dt>-f, --indexfile=<em>indexfile</em></dt>
+<dd>
+use a different index filename instead of
+<code>$BUP_DIR/bupindex</code>.
+</dd>
+<dt>-v, --verbose</dt>
+<dd>
+increase verbosity (can be used more than once). With one -v, prints
+every directory name as it gets backed up. With two -v, also prints
+every filename.
+</dd>
+<dt>-q, --quiet</dt>
+<dd>
+disable progress messages.
+</dd>
+<dt>--smaller=<em>maxsize</em></dt>
+<dd>
+don’t back up files &gt;= <em>maxsize</em> bytes. You can use this to
+run frequent incremental backups of your small files, which can usually
+be backed up quickly, and skip over large ones (like virtual machine
+images) which take longer. Then you can back up the large files less
+frequently. Use a suffix like k, M, or G to specify multiples of 1024,
+1024*1024, 1024*1024*1024 respectively.
+</dd>
+<dt>--bwlimit=<em>bytes/sec</em></dt>
+<dd>
+don’t transmit more than <em>bytes/sec</em> bytes per second to the
+server. This is good for making your backups not suck up all your
+network bandwidth. Use a suffix like k, M, or G to specify multiples of
+1024, 1024*1024, 1024*1024*1024 respectively.
+</dd>
+<dt>--strip</dt>
+<dd>
+<p>strips the path that is given from all files and directories.</p>
+<p>A directory <em>/root/chroot/etc</em> saved with “bup save -n chroot
+--strip /root/chroot” would be saved as <em>/etc</em>. Note that
+currently, metadata will not be saved for the root directory
+(<em>/</em>) when this option is specified.</p>
+</dd>
+<dt>--strip-path=<em>path-prefix</em></dt>
+<dd>
+<p>strips the given path prefix <em>path-prefix</em> from all files and
+directories.</p>
+<p>A directory <em>/root/chroot/webserver/etc</em> saved with “bup save
+-n webserver --strip-path=/root/chroot /root/chroot/webserver/etc” would
+be saved as <em>/webserver/etc</em>. Note that currently, metadata will
+not be saved for the root directory (<em>/</em>) when this option is
+specified.</p>
+</dd>
+<dt>--graft=<em>old_path</em>=<em>new_path</em></dt>
+<dd>
+<p>a graft point <em>old_path</em>=<em>new_path</em> (can be used more
+than once).</p>
+<p>A directory <em>/root/chroot/a/etc</em> saved with “bup save -n
+chroot --graft /root/chroot/a=/chroot/a” would be saved as
+<em>/chroot/a/etc</em>. Note that currently, metadata will not be saved
+for the root directory (<em>/</em>) when this option is specified.</p>
+</dd>
+<dt>-<em>#</em>, --compress=<em>#</em></dt>
+<dd>
+set the compression level to # (a value from 0-9, where 9 is the highest
+and 0 is no compression). The default is 1 (fast, loose compression)
+</dd>
+</dl>
+<h1 id="examples">EXAMPLES</h1>
+<pre><code>$ bup index -ux /etc
+Indexing: 1981, done.
+
+$ bup save -r myserver: -n my-pc-backup --bwlimit=50k /etc
+Reading index: 1981, done.
+Saving: 100.00% (998/998k, 1981/1981 files), done.
+
+
+
+$ ls /home/joe/chroot/httpd
+bin var
+
+$ bup index -ux /home/joe/chroot/httpd
+Indexing: 1337, done.
+
+$ bup save --strip -n joes-httpd-chroot /home/joe/chroot/httpd
+Reading index: 1337, done.
+Saving: 100.00% (998/998k, 1337/1337 files), done.
+
+$ bup ls joes-httpd-chroot/latest/
+bin/
+var/
+
+
+$ bup save --strip-path=/home/joe/chroot -n joes-chroot \
+     /home/joe/chroot/httpd
+Reading index: 1337, done.
+Saving: 100.00% (998/998k, 1337/1337 files), done.
+
+$ bup ls joes-chroot/latest/
+httpd/
+
+
+$ bup save --graft /home/joe/chroot/httpd=/http-chroot \
+     -n joe
+     /home/joe/chroot/httpd
+Reading index: 1337, done.
+Saving: 100.00% (998/998k, 1337/1337 files), done.
+
+$ bup ls joe/latest/
+http-chroot/</code></pre>
+<h1 id="see-also">SEE ALSO</h1>
+<p><code>bup-index</code>(1), <code>bup-split</code>(1),
+<code>bup-on</code>(1), <code>bup-restore</code>(1),
+<code>ssh_config</code>(5)</p>
+<h1 id="bup">BUP</h1>
+<p>Part of the <code>bup</code>(1) suite.</p>
+</body>
+</html>
