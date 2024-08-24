@@ -48,8 +48,8 @@ if not have_seek_data_hole:
         sleep(5.1)
     cmd = 'du', '-s', opt.path
     env = environb.copy()
-    # POSIX says 512 should be the default, but at least for at least
-    # gnu and netbsd du, it isn't.  This should cover both.
+    # POSIX says 512 should be the default, but for at least gnu and
+    # netbsd du, it isn't.  This should cover both.
     env[b'BLOCKSIZE'] = b'512'
     p = run(cmd, stdout=PIPE, check=True, env=env)
     data_size = int(p.stdout.split(maxsplit=1)[0]) * 512
