@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <meta name="author" content="Avery Pennarun apenwarr@gmail.com" />
+  <title>bup-damage(1) Bup 0.33.4</title>
+  <style>
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      background-color: #1a1a1a;
+      border: none;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">bup-damage(1) Bup 0.33.4</h1>
+<p class="author">Avery Pennarun <a href="mailto:apenwarr@gmail.com"
+class="email">apenwarr@gmail.com</a></p>
+<p class="date">0.33.4</p>
+</header>
+<h1 id="name">NAME</h1>
+<p>bup-damage - randomly destroy blocks of a file</p>
+<h1 id="synopsis">SYNOPSIS</h1>
+<p>bup damage [-n count] [-s maxsize] [--percent pct] [-S seed]
+[--equal] &lt;filenames…&gt;</p>
+<h1 id="description">DESCRIPTION</h1>
+<p>Use <code>bup damage</code> to deliberately destroy blocks in a
+<code>.pack</code> or <code>.idx</code> file (from
+<code>.bup/objects/pack</code>) to test the recovery features of
+<code>bup-fsck</code>(1) or other programs.</p>
+<p><em>THIS PROGRAM IS EXTREMELY DANGEROUS AND WILL DESTROY YOUR
+DATA</em></p>
+<p><code>bup damage</code> is primarily useful for automated or manual
+tests of data recovery tools, to reassure yourself that the tools
+actually work.</p>
+<p>Note that the details of the current behavior may change
+(particularly the details not documented here). For example the moment,
+the damage is strictly probabilistic, and so may or may not actually
+alter any given block. With a block size of 1, there should be a 1/256
+chance that the block won’t actually change. This behavior may
+change.</p>
+<h1 id="options">OPTIONS</h1>
+<dl>
+<dt>-n, --num=<em>numblocks</em></dt>
+<dd>
+the number of separate blocks to damage in each file (default 10). Note
+that it’s possible for more than one damaged segment to fall in the same
+<code>bup-fsck</code>(1) recovery block, so you might not damage as many
+recovery blocks as you expect. If this is a problem, use
+<code>--equal</code>.
+</dd>
+<dt>-s, --size=<em>maxblocksize</em></dt>
+<dd>
+the maximum size, in bytes, of each damaged block (default 1 unless
+<code>--percent</code> is specified). Note that because of the way
+<code>bup-fsck</code>(1) works, a multi-byte block could fall on the
+boundary between two recovery blocks, and thus damaging two separate
+recovery blocks. In small files, it’s also possible for a damaged block
+to be larger than a recovery block. If these issues might be a problem,
+you should use the default damage size of one byte.
+</dd>
+<dt>--percent=<em>maxblockpercent</em></dt>
+<dd>
+the maximum size, in percent of the original file, of each damaged
+block. If both <code>--size</code> and <code>--percent</code> are given,
+the maximum block size is the minimum of the two restrictions. You can
+use this to ensure that a given block will never damage more than one or
+two <code>git-fsck</code>(1) recovery blocks.
+</dd>
+<dt>-S, --seed=<em>randomseed</em></dt>
+<dd>
+seed the random number generator with the given value. If you use this
+option, your tests will be repeatable, since the damaged block offsets,
+sizes, and contents will be the same every time. By default, the random
+numbers are different every time (so you can run tests in a loop and
+repeatedly test with different damage each time).
+</dd>
+<dt>--equal</dt>
+<dd>
+instead of choosing random offsets for each damaged block, space the
+blocks equally throughout the file, starting at offset 0. If you also
+choose a correct maximum block size, this can guarantee that any given
+damage block never damages more than one <code>git-fsck</code>(1)
+recovery block. (This is also guaranteed if you use <code>-s 1</code>.)
+</dd>
+</dl>
+<h1 id="examples">EXAMPLES</h1>
+<pre><code># make a backup in case things go horribly wrong
+cp -pPR ~/.bup/objects/pack ~/bup-packs.bak
+
+# generate recovery blocks for all packs
+bup fsck -g
+
+# deliberately damage the packs
+bup damage -n 10 -s 1 -S 0 ~/.bup/objects/pack/*.{pack,idx}
+
+# recover from the damage
+bup fsck -r</code></pre>
+<h1 id="see-also">SEE ALSO</h1>
+<p><code>bup-fsck</code>(1), <code>par2</code>(1)</p>
+<h1 id="bup">BUP</h1>
+<p>Part of the <code>bup</code>(1) suite.</p>
+</body>
+</html>
