@@ -1355,7 +1355,7 @@ class CatPipe:
             with pending_raise(ex):
                 self.close()
 
-    def _join(self, it):
+    def _join(self, it, oid):
         _, typ, _ = next(it)
         if typ == b'blob':
             for blob in it:
@@ -1370,6 +1370,8 @@ class CatPipe:
             assert treeline.startswith(b'tree ')
             for blob in self.join(treeline[5:]):
                 yield blob
+        elif typ is None:
+            raise GitError(f'missing object: {oid!r}')
         else:
             raise GitError('invalid object type %r: expected blob/tree/commit'
                            % typ)
@@ -1380,7 +1382,7 @@ class CatPipe:
         or a commit. The content of all blobs that can be seen from trees or
         commits will be added to the list.
         """
-        for d in self._join(self.get(id)):
+        for d in self._join(self.get(id), id):
             yield d
 
 
