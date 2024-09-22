@@ -1520,19 +1520,25 @@ class MissingObject(KeyError):
         self.oid = oid
         KeyError.__init__(self, f'object {hexlify(oid)!r} is missing')
 
-WalkItem = namedtuple('WalkItem', ['oid', 'type', 'mode',
-                                   'path', 'chunk_path', 'data'])
-# The path is the mangled path, and if an item represents a fragment
-# of a chunked file, the chunk_path will be the chunked subtree path
-# for the chunk, i.e. ['', '2d3115e', ...].  The top-level path for a
-# chunked file will have a chunk_path of [''].  So some chunk subtree
-# of the file '/foo/bar/baz' might look like this:
-#
-#   item.path = ['foo', 'bar', 'baz.bup']
-#   item.chunk_path = ['', '2d3115e', '016b097']
-#   item.type = 'tree'
-#   ...
-
+class WalkItem:
+    # The path is the mangled path, and if an item represents a fragment
+    # of a chunked file, the chunk_path will be the chunked subtree path
+    # for the chunk, i.e. ['', '2d3115e', ...].  The top-level path for a
+    # chunked file will have a chunk_path of [''].  So some chunk subtree
+    # of the file '/foo/bar/baz' might look like this:
+    #
+    #   item.path = ['foo', 'bar', 'baz.bup']
+    #   item.chunk_path = ['', '2d3115e', '016b097']
+    #   item.type = 'tree'
+    #   ...
+    __slots__ = 'oid', 'type', 'mode', 'path', 'chunk_path', 'data'
+    def __init__(self, *, oid, type, mode, path, chunk_path, data):
+        self.oid = oid
+        self.type = type
+        self.mode = mode
+        self.path = path
+        self.chunk_path = chunk_path
+        self.data = data
 
 def walk_object(get_ref, oidx, stop_at=None, include_data=None):
     """Yield everything reachable from oidx via get_ref (which must
