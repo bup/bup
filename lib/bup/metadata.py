@@ -14,7 +14,13 @@ import errno, os, sys, stat, socket, struct
 from bup import vint, xstat
 from bup.drecurse import recursive_dirlist
 from bup.helpers import \
-    add_error, mkdirp, log, is_superuser, format_filesize, getgroups
+    (EXIT_FAILURE,
+     add_error,
+     mkdirp,
+     log,
+     is_superuser,
+     format_filesize,
+     getgroups)
 from bup.io import path_msg
 from bup.pwdgrp import pwd_from_uid, pwd_from_name, grp_from_gid, grp_from_name
 from bup.xstat import utime, lutime
@@ -1171,7 +1177,7 @@ def display_archive(file, out):
             if not meta.path:
                 log('bup: no metadata path, but asked to only display path'
                     ' (increase verbosity?)')
-                sys.exit(1)
+                sys.exit(EXIT_FAILURE)
             out.write(meta.path)
             out.write(b'\n')
 

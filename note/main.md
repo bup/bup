@@ -25,6 +25,12 @@ May require attention
   that the `.idx` files can be (and now are) trivially regenerated
   from the packfiles during `--repair` when needed.
 
+* Some prior exit statuses of 1 have been changed to a different
+  non-zero value.  `bup` is migrating away from exiting with status 1
+  for anything other than "false".  This is used by commands like
+  `verify-ref-links` that need to report a true or false result like
+  `grep` does.
+
 General
 -------
 

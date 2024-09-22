@@ -927,7 +927,7 @@ def clear_errors():
     saved_errors = []
 
 
-def die_if_errors(msg=None, status=1):
+def die_if_errors(msg=None, status=EXIT_FAILURE):
     global saved_errors
     if saved_errors:
         if not msg:

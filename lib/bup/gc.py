@@ -8,7 +8,8 @@ import glob, os, re, subprocess, sys, tempfile
 from bup import bloom, git, midx
 from bup.compat import hexstr, pending_raise
 from bup.git import MissingObject, walk_object
-from bup.helpers import log, note_error, progress, qprogress, reprogress
+from bup.helpers import \
+    EXIT_FAILURE, log, note_error, progress, qprogress, reprogress
 from bup.io import path_msg
 
 # This garbage collector uses a Bloom filter to track the live blobs
@@ -299,7 +300,7 @@ def bup_gc(threshold=10, compression=1, verbosity=0, ignore_missing=False):
                 reprogress()
         except MissingObject as ex:
             log('bup: missing object %r \n' % hexstr(ex.oid))
-            sys.exit(1)
+            sys.exit(EXIT_FAILURE)
         with live_objects:
             try:
                 # FIXME: just rename midxes and bloom, and restore them at the end if

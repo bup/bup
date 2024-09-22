@@ -7,6 +7,7 @@
 //   http://docs.python.org/3/c-api/intro.html#include-files
 #include <Python.h>
 
+#include "bup.h"
 #include "bup/compat.h"
 #include "bup/io.h"
 
@@ -17,7 +18,7 @@ int bup_py_bytes_main(int argc, char **argv)
     assert(argc > 0);
     wchar_t **wargv = PyMem_RawMalloc(argc * sizeof(wchar_t *));
     if (!wargv)
-        die(2, "memory insufficient to decode command line arguments");
+        die(BUP_EXIT_FAILURE, "memory insufficient to decode command line arguments");
     int i;
     for (i = 0; i < argc; i++) {
         size_t wargn;
@@ -25,17 +26,17 @@ int bup_py_bytes_main(int argc, char **argv)
         if (!wargv[i]) {
             switch (wargn) {
             case (size_t) -1:
-                die(2, "too little memory to decode command line argument %d\n",
+                die(BUP_EXIT_FAILURE, "too little memory to decode command line argument %d\n",
                     i);
                 break;
             case (size_t) -2:
-                die(2, "unable to decode command line argument %d\n", i);
+                die(BUP_EXIT_FAILURE, "unable to decode command line argument %d\n", i);
                 break;
             default:
-                die(2, "unexpected error from Py_DecodeLocale(): %zu\n", wargn);
+                die(BUP_EXIT_FAILURE, "unexpected error from Py_DecodeLocale(): %zu\n", wargn);
                 break;
             }
-            exit(2);
+            exit(BUP_EXIT_FAILURE);
         }
     }
     return Py_Main(argc, wargv);

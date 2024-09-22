@@ -9,6 +9,7 @@ from importlib import import_module
 from pkgutil import iter_modules
 from subprocess import PIPE
 from threading import Thread
+from traceback import print_exception
 import re, select, signal, subprocess
 
 from bup import compat, path, helpers
@@ -17,6 +18,7 @@ from bup.compat import (
     fsdecode
 )
 from bup.helpers import (
+    EXIT_FAILURE,
     columnate,
     handle_ctrl_c,
     log,
@@ -35,7 +37,7 @@ def maybe_import_early(argv):
             continue
         if len(argv) < 2:
             log("bup: --import-py-module must have an argument\n")
-            exit(2)
+            exit(EXIT_FAILURE)
         mod = argv[1]
         import_module(mod)
         argv = argv[2:]
@@ -387,9 +389,15 @@ def run_subcmd(module, args):
 
 def main():
     try:
-        sys.exit(run_subcmd(cmd_module, subcmd))
+        rc = run_subcmd(cmd_module, subcmd)
     except KeyboardInterrupt as ex:
-        sys.exit(130)
+        rc = 130
+    except SystemExit as ex:
+        raise ex
+    except BaseException as ex:
+        print_exception(ex)
+        rc = EXIT_FAILURE
+    sys.exit(rc)
 
 if __name__ == "__main__":
     main()

@@ -16,7 +16,8 @@ from bup.compat import (bytes_from_byte, bytes_from_uint,
                         environ,
                         pending_raise)
 from bup.io import path_msg
-from bup.helpers import (OBJECT_EXISTS,
+from bup.helpers import (EXIT_FAILURE,
+                         OBJECT_EXISTS,
                          ObjectLocation,
                          Sha1, add_error, chunkyreader, debug1, debug2,
                          exo,
@@ -1350,7 +1351,7 @@ def require_suitable_git(ver_str=None):
         raise GitError('Unexpected git --version output: %r' % ver_str)
     if status == 'insufficient':
         log('error: git version must be at least 1.7.2\n')
-        sys.exit(1)
+        sys.exit(EXIT_FAILURE)
     if status == 'suitable':
         _git_great = True
         return

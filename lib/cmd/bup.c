@@ -28,6 +28,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include "bup.h"
 #include "bup/compat.h"
 #include "bup/intprops.h"
 #include "bup/io.h"
@@ -47,7 +48,7 @@ get_argv(PyObject *self, PyObject *args) // https://bugs.python.org/issue35883
     for (i = 0; i < prog_argc; i++) {
         PyObject *s = PyBytes_FromString(prog_argv[i]);
         if (!s)
-            die(2, "cannot convert argument to bytes: %s\n", prog_argv[i]);
+            die(BUP_EXIT_FAILURE, "cannot convert argument to bytes: %s\n", prog_argv[i]);
         PyList_SET_ITEM(result, i, s);
     }
     return result;
@@ -66,7 +67,7 @@ static int setup_module(PyObject *mod)
     } else {
         PyObject *py_p = PyBytes_FromString(orig_env_pythonpath);
         if (!py_p)
-            die(2, "cannot convert PYTHONPATH to bytes: %s\n",
+            die(BUP_EXIT_FAILURE, "cannot convert PYTHONPATH to bytes: %s\n",
                 orig_env_pythonpath);
         PyObject_SetAttrString(mod, "env_pythonpath", py_p);
         Py_DECREF(py_p);
@@ -101,7 +102,7 @@ setup_bup_main_module(void) {
         orig_env_pythonpath = strdup(path);
 
     if (PyImport_AppendInittab("bup_main", PyInit_bup_main) == -1)
-        die(2, "unable to register bup_main module\n");
+        die(BUP_EXIT_FAILURE, "unable to register bup_main module\n");
 }
 
 /*
@@ -153,14 +154,14 @@ static char *exe_parent_dir(const char * const argv_0) {
     int rc = _NSGetExecutablePath(spath, &size);
     if (rc == -1) {
         mpath = malloc(size);
-        if (!mpath) die(2, "unable to allocate memory for executable path\n");
+        if (!mpath) die(BUP_EXIT_FAILURE, "unable to allocate memory for executable path\n");
         rc = _NSGetExecutablePath(mpath, &size);
     }
-    if(rc != 0) die(2, "unable to find executable path\n");
+    if(rc != 0) die(BUP_EXIT_FAILURE, "unable to find executable path\n");
     char *path = mpath ? mpath : spath;
     char *abs_exe = bup_realpath(path);
     if (!abs_exe)
-        die(2, "cannot resolve path (%s): %s\n", strerror(errno), path);
+        die(BUP_EXIT_FAILURE, "cannot resolve path (%s): %s\n", strerror(errno), path);
     char * const abs_parent = strdup(dirname(abs_exe));
     assert(abs_parent);
     if (mpath) free(mpath);
@@ -175,20 +176,20 @@ static char *exe_path ()
     const int mib[] = {CTL_KERN, KERN_PROC, KERN_PROC_PATHNAME, -1};
     size_t path_len;
     int rc = sysctl (mib, 4, NULL, &path_len, NULL, 0);
-    if (rc != 0) die(2, "unable to determine executable path length\n");
+    if (rc != 0) die(BUP_EXIT_FAILURE, "unable to determine executable path length\n");
     char *path = malloc (path_len);
-    if (!path) die(2, "unable to allocate memory for executable path\n");
+    if (!path) die(BUP_EXIT_FAILURE, "unable to allocate memory for executable path\n");
     rc = sysctl (mib, 4, path, &path_len, NULL, 0);
-    if (rc != 0) die(2, "unable to determine executable path via sysctl\n");
+    if (rc != 0) die(BUP_EXIT_FAILURE, "unable to determine executable path via sysctl\n");
     return path;
 }
 
 static char *exe_parent_dir(const char * const argv_0)
 {
     char * const exe = exe_path();
-    if (!exe) die(2, "unable to determine executable path\n");
+    if (!exe) die(BUP_EXIT_FAILURE, "unable to determine executable path\n");
     char * const parent = strdup(dirname(exe));
-    if (!parent) die(2, "unable to determine parent directory of executable\n");
+    if (!parent) die(BUP_EXIT_FAILURE, "unable to determine parent directory of executable\n");
     free(exe);
     return parent;
 }
@@ -223,7 +224,7 @@ static char *find_in_path(const char * const name, const char * const path)
                 case ENOTDIR:
                     break;
                 default:
-                    die(2, "cannot stat %s: %s\n", candidate, strerror(errno));
+                    die(BUP_EXIT_FAILURE, "cannot stat %s: %s\n", candidate, strerror(errno));
                     break;
             }
         } else if (S_ISREG(st.st_mode)) {
@@ -236,7 +237,7 @@ static char *find_in_path(const char * const name, const char * const path)
                 case ENOTDIR:
                     break;
                 default:
-                    die(2, "cannot determine executability of %s: %s\n",
+                    die(BUP_EXIT_FAILURE, "cannot determine executability of %s: %s\n",
                         candidate, strerror(errno));
                     break;
             }
@@ -257,13 +258,13 @@ static char *find_exe_parent(const char * const argv_0)
     } else {
         const char * const env_path = getenv("PATH");
         if (!env_path)
-            die(2, "no PATH and executable isn't relative or absolute: %s\n",
+            die(BUP_EXIT_FAILURE, "no PATH and executable isn't relative or absolute: %s\n",
                 argv_0);
         char *path_exe = find_in_path(argv_0, env_path);
         if (path_exe) {
             char * abs_exe = bup_realpath(path_exe);
             if (!abs_exe)
-                die(2, "cannot resolve path (%s): %s\n",
+                die(BUP_EXIT_FAILURE, "cannot resolve path (%s): %s\n",
                     strerror(errno), path_exe);
             free(path_exe);
             candidate = abs_exe;
@@ -274,7 +275,7 @@ static char *find_exe_parent(const char * const argv_0)
 
     char * const abs_exe = bup_realpath(candidate);
     if (!abs_exe)
-        die(2, "cannot resolve path (%s): %s\n", strerror(errno), candidate);
+        die(BUP_EXIT_FAILURE, "cannot resolve path (%s): %s\n", strerror(errno), candidate);
     free(candidate);
     char * const abs_parent = strdup(dirname(abs_exe));
     assert(abs_parent);
@@ -294,11 +295,11 @@ static char *exe_parent_dir(const char * const argv_0)
         if (len == -1 || (size_t) len != path_n)
             break;
         if (!INT_MULTIPLY_OK(path_n, 2, &path_n))
-            die(2, "memory buffer for executable path would be too big\n");
+            die(BUP_EXIT_FAILURE, "memory buffer for executable path would be too big\n");
         if (path != sbuf) free(path);
         path = malloc(path_n);
         if (!path)
-            die(2, "unable to allocate memory for executable path\n");
+            die(BUP_EXIT_FAILURE, "unable to allocate memory for executable path\n");
     }
     if (len != -1) {
         path[len] = '\0';
@@ -312,7 +313,7 @@ static char *exe_parent_dir(const char * const argv_0)
     case ENAMETOOLONG:
         break;
     default:
-        die(2, "cannot resolve %s: %s\n", path, strerror(errno));
+        die(BUP_EXIT_FAILURE, "cannot resolve %s: %s\n", path, strerror(errno));
         break;
     }
     if (path != sbuf)
@@ -328,7 +329,7 @@ setenv_or_die(const char *name, const char *value)
 {
     int rc = setenv(name, value, 1);
     if (rc != 0)
-        die(2, "setenv %s=%s failed (%s)\n", name, value, strerror(errno));
+        die(BUP_EXIT_FAILURE, "setenv %s=%s failed (%s)\n", name, value, strerror(errno));
 }
 
 static void
@@ -343,9 +344,9 @@ prepend_lib_to_pythonpath(const char * const exec_path,
     struct stat st;
     rc = stat(bupmodpath, &st);
     if (rc != 0)
-        die(2, "unable find lib dir (%s): %s\n", strerror(errno), bupmodpath);
+        die(BUP_EXIT_FAILURE, "unable find lib dir (%s): %s\n", strerror(errno), bupmodpath);
     if (!S_ISDIR(st.st_mode))
-        die(2, "lib path is not dir: %s\n", bupmodpath);
+        die(BUP_EXIT_FAILURE, "lib path is not dir: %s\n", bupmodpath);
     char *curpypath = getenv("PYTHONPATH");
     if (curpypath) {
         char *path;

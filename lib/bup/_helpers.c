@@ -64,6 +64,7 @@
 # pragma GCC diagnostic pop
 #endif
 
+#include "bup.h"
 #include "bup/intprops.h"
 #include "bup/pyutil.h"
 #include "bupsplit.h"
@@ -2037,7 +2038,7 @@ static int setup_module(PyObject *m)
         if (!INTEGRAL_ASSIGNMENT_FITS(&probe, INT_MAX))
         {
             fprintf(stderr, "off_t can't hold INT_MAX; please report.\n");
-            exit(1);
+            exit(BUP_EXIT_FAILURE);
         }
     }
 
