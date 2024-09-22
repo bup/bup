@@ -12,7 +12,7 @@ from bup.compat import (
     environ,
     hexstr
 )
-from bup.git import get_cat_data, parse_commit, walk_object
+from bup.git import MissingObject, get_cat_data, parse_commit, walk_object
 from bup.helpers import add_error, debug1, log, saved_errors
 from bup.helpers import hostname, tty_width, parse_num
 from bup.io import path_msg
@@ -184,6 +184,8 @@ def get_random_item(name, hash, src_repo, dest_repo, opt):
         return dest_repo.exists(unhexlify(oid))
     for item in walk_object(src_repo.cat, hash, stop_at=already_seen,
                             include_data=True):
+        if item.data is False:
+            raise MissingObject(item.oid)
         # already_seen ensures that dest_repo.exists(id) is false.
         # Otherwise, just_write() would fail.
         dest_repo.just_write(item.oid, item.type, item.data)

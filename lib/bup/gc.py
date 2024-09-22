@@ -113,6 +113,8 @@ def find_live_objects(existing_count, cat_pipe, verbosity=0):
     for ref_name, ref_id in git.list_refs():
         for item in walk_object(cat_pipe.get, hexlify(ref_id), stop_at=stop_at,
                                 include_data=None):
+            if item.data is False:
+                raise MissingObject(item.oid)
             # FIXME: batch ids
             if verbosity:
                 report_live_item(approx_live_count, existing_count,
