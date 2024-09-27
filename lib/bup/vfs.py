@@ -888,18 +888,16 @@ def contents(repo, item, names=None, want_meta=True):
             # Note: it shouldn't be possible to see an Item with type
             # 'commit' since a 'commit' should always produce a Commit.
             raise Exception('unexpected git ' + obj_t.decode('ascii'))
-        item_gen = tree_items(repo, item.oid, data, names, want_meta=want_meta)
+        yield from tree_items(repo, item.oid, data, names, want_meta=want_meta)
     elif isinstance(item, RevList):
-        item_gen = revlist_items(repo, item.oid, names,
+        yield from revlist_items(repo, item.oid, names,
                                  require_meta=want_meta)
     elif isinstance(item, Root):
-        item_gen = root_items(repo, names, want_meta)
+        yield from root_items(repo, names, want_meta)
     elif isinstance(item, Tags):
-        item_gen = tags_items(repo, names)
+        yield from tags_items(repo, names)
     else:
         raise Exception('unexpected VFS item ' + str(item))
-    for x in item_gen:
-        yield x
 
 def _resolve_path(repo, path, parent=None, want_meta=True, follow=True):
     cache_key = b'res:%d%d%d:%s\0%s' \
