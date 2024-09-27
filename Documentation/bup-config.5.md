@@ -22,6 +22,22 @@ bup.split-trees
     "Handling large directories" in the DESIGN in the `bup` source for
     additional information.
 
+    *NOTE:* Using the same index to save to repositories that have
+    differing values for this option can decrease performance because
+    the index includes hashes for directories that have been saved and
+    changing this option changes the hashes for directories that are
+    affected by splitting.
+
+    A directory tree's hash allows bup to avoid traversing the
+    directory if the index indicates that it didn't otherwise change
+    and the tree object with that hash already exists in the
+    destination repository.  Since the the value of this setting
+    changes the hashes of splittable trees, the hash in the index
+    won't be found in a repository that has a different `split-trees`
+    value from the one to which that tree was last saved.  As a
+    result, any (usually big) directory subject to tree splitting will
+    have to be re-read and its related hashes recalculated.
+
 pack.packSizeLimit
 :   Respected when writing pack files (e.g. via `bup save ...`).
     Currently read from the repository to which the pack files are
