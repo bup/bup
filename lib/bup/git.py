@@ -1515,13 +1515,16 @@ class WalkItem:
         self.chunk_path = chunk_path
         self.data = data
 
-def walk_object(get_ref, oidx, stop_at=None, include_data=None):
+def walk_object(get_ref, oidx, *, stop_at=None, include_data=None,
+                oid_exists=None):
     """Yield everything reachable from oidx via get_ref (which must
     behave like CatPipe get) as a WalkItem, stopping whenever
     stop_at(oidx) returns logically true.  Set the data field to False
-    when the object is missing or None if the object exists but
-    include_data is logically false.  Yield items depth first,
-    post-order, i.e. parents after children.
+    when the object is missing, or None if the object exists but
+    include_data is logically false.  Missing blobs may not be noticed
+    unless include_data is logically true or oid_exists(oid) is
+    provided.  Yield items depth first, post-order, i.e. parents after
+    children.
 
     """
 
@@ -1545,7 +1548,7 @@ def walk_object(get_ref, oidx, stop_at=None, include_data=None):
             yield WalkItem(oid=oid, type=b'blob',
                            chunk_path=chunk_path, path=parent_path,
                            mode=mode,
-                           data=None)
+                           data=bool(oid_exists(oid)) if oid_exists else None)
             continue
 
         item_it = get_ref(oidx)
