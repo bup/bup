@@ -9,7 +9,7 @@ from bup.git import MissingObject, walk_object
 from bup.helpers import Nonlocal, log, progress, qprogress
 from bup.io import path_msg
 
-# This garbage collector uses a Bloom filter to track the live objects
+# This garbage collector uses a Bloom filter to track the live blobs
 # during the mark phase.  This means that the collection is
 # probabilistic; it may retain some (known) percentage of garbage, but
 # it can also work within a reasonable, fixed RAM budget for any
@@ -18,21 +18,24 @@ from bup.io import path_msg
 # The collection proceeds as follows:
 #
 #   - Scan all live objects by walking all of the refs, and insert
-#     every hash encountered into a new Bloom "liveness" filter.
-#     Compute the size of the liveness filter based on the total
-#     number of objects in the repository.  This is the "mark phase".
+#     every blob encountered into a new Bloom filter.  Compute the
+#     size of the filter based on the total number of objects in the
+#     repository.  Insert all other object hashes into a set.  This
+#     set and the Bloom filter, taken together, are the "liveness
+#     filter".  This is the "mark phase".
 #
-#   - Clear the data that's dependent on the repository's object set,
-#     i.e. the reflog, the normal Bloom filter, and the midxes.
+#   - Clear the data that's dependent on the repository's object
+#     collection, i.e. the reflog, the normal Bloom filter, and the
+#     midxes.
 #
 #   - Traverse all of the pack files, consulting the liveness filter
 #     to decide which objects to keep.
 #
-#     For each pack file, rewrite it iff it probably contains more
-#     than (currently) 10% garbage (computed by an initial traversal
-#     of the packfile in consultation with the liveness filter).  To
-#     rewrite, traverse the packfile (again) and write each hash that
-#     tests positive against the liveness filter to a packwriter.
+#     For each pack file, rewrite it if it contains a tree or commit
+#     that is now garbage, or if it probably contains more than
+#     (currently) 10% garbage.  To rewrite, traverse the packfile
+#     (again) and write each hash that tests positive against the
+#     liveness filter to a packwriter.
 #
 #     During the traversal of all of the packfiles, delete redundant,
 #     old packfiles only after the packwriter has finished the pack
@@ -96,19 +99,16 @@ def report_live_item(n, total, ref_name, ref_id, item, verbosity):
 
 
 def find_live_objects(existing_count, cat_pipe, verbosity=0):
-    prune_visited_trees = True # In case we want a command line option later
     pack_dir = git.repo(b'objects/pack')
     ffd, bloom_filename = tempfile.mkstemp(b'.bloom', b'tmp-gc-', pack_dir)
     os.close(ffd)
     # FIXME: allow selection of k?
     # FIXME: support ephemeral bloom filters (i.e. *never* written to disk)
-    live_objs = bloom.create(bloom_filename, expected=existing_count, k=None)
-    # live_objs will hold on to the fd until close or exit
+    live_blobs = bloom.create(bloom_filename, expected=existing_count, k=None)
+    # live_blobs will hold on to the fd until close or exit
     os.unlink(bloom_filename)
-    stop_at, trees_visited = None, None
-    if prune_visited_trees:
-        trees_visited = set()
-        stop_at = lambda x: unhexlify(x) in trees_visited
+    live_trees = set()
+    stop_at = lambda x: unhexlify(x) in live_trees
     approx_live_count = 0
     for ref_name, ref_id in git.list_refs():
         for item in walk_object(cat_pipe.get, hexlify(ref_id), stop_at=stop_at,
@@ -117,23 +117,22 @@ def find_live_objects(existing_count, cat_pipe, verbosity=0):
             if verbosity:
                 report_live_item(approx_live_count, existing_count,
                                  ref_name, ref_id, item, verbosity)
-            if trees_visited is not None and item.type == b'tree':
-                trees_visited.add(item.oid)
-            if verbosity:
-                if not live_objs.exists(item.oid):
-                    live_objs.add(item.oid)
+            if item.type != b'blob':
+                if verbosity and not item.oid in live_trees:
                     approx_live_count += 1
+                live_trees.add(item.oid)
             else:
-                live_objs.add(item.oid)
-    trees_visited = None
+                if verbosity and not live_blobs.exists(item.oid):
+                    approx_live_count += 1
+                live_blobs.add(item.oid)
     if verbosity:
         log('expecting to retain about %.2f%% unnecessary objects\n'
-            % live_objs.pfalse_positive())
-    return live_objs
+            % live_blobs.pfalse_positive())
+    return live_blobs, live_trees
 
 
-def sweep(live_objects, existing_count, cat_pipe, threshold, compression,
-          verbosity):
+def sweep(live_objects, live_trees, existing_count, cat_pipe, threshold,
+          compression, verbosity):
     # Traverse all the packs, saving the (probably) live data.
 
     ns = Nonlocal()
@@ -164,9 +163,20 @@ def sweep(live_objects, existing_count, cat_pipe, threshold, compression,
                           % ((float(collect_count) / existing_count) * 100))
             with git.open_idx(idx_name) as idx:
                 idx_live_count = 0
+                must_rewrite = False
+                live_in_this_pack = set()
                 for sha in idx:
-                    if live_objects.exists(sha):
+                    tmp_it = cat_pipe.get(hexlify(sha), include_data=False)
+                    _, typ, _ = next(tmp_it)
+                    if typ != b'blob':
+                        is_live = sha in live_trees
+                        if not is_live:
+                            must_rewrite = True
+                    else:
+                        is_live = live_objects.exists(sha)
+                    if is_live:
                         idx_live_count += 1
+                        live_in_this_pack.add(sha)
 
                 collect_count += idx_live_count
                 if idx_live_count == 0:
@@ -178,7 +188,7 @@ def sweep(live_objects, existing_count, cat_pipe, threshold, compression,
                     continue
 
                 live_frac = idx_live_count / float(len(idx))
-                if live_frac > ((100 - threshold) / 100.0):
+                if not must_rewrite and live_frac > ((100 - threshold) / 100.0):
                     if verbosity:
                         keep_path = path_msg(git.repo_rel(basename(idx_name)))
                         log(f'keeping {keep_path} ({live_frac * 100}% live)\n')
@@ -188,7 +198,7 @@ def sweep(live_objects, existing_count, cat_pipe, threshold, compression,
                     rw_path = path_msg(basename(idx_name))
                     log(f'rewriting {rw_path} ({live_frac * 100:.2}% live)\n')
                 for sha in idx:
-                    if live_objects.exists(sha):
+                    if sha in live_in_this_pack:
                         item_it = cat_pipe.get(hexlify(sha))
                         _, typ, _ = next(item_it)
                         writer.just_write(sha, typ, b''.join(item_it))
@@ -230,8 +240,8 @@ def bup_gc(threshold=10, compression=1, verbosity=0):
             log('nothing to collect\n')
     else:
         try:
-            live_objects = find_live_objects(existing_count, cat_pipe,
-                                             verbosity=verbosity)
+            live_objects, live_trees = find_live_objects(existing_count, cat_pipe,
+                                                         verbosity=verbosity)
         except MissingObject as ex:
             log('bup: missing object %r \n' % hexstr(ex.oid))
             sys.exit(1)
@@ -248,6 +258,6 @@ def bup_gc(threshold=10, compression=1, verbosity=0):
             expirelog = subprocess.Popen(expirelog_cmd, env=git._gitenv())
             git._git_wait(b' '.join(expirelog_cmd), expirelog)
             if verbosity: log('removing unreachable data\n')
-            sweep(live_objects, existing_count, cat_pipe,
+            sweep(live_objects, live_trees, existing_count, cat_pipe,
                   threshold, compression,
                   verbosity)
