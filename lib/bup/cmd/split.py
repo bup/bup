@@ -186,6 +186,12 @@ def main(argv):
     out = byte_stream(sys.stdout)
     stdin = byte_stream(sys.stdin)
 
+    writing = not (opt.noop or opt.copy)
+    remote_dest = opt.remote or opt.is_reverse
+
+    if writing or opt.git_ids:
+        git.check_repo_or_die()
+
     if opt.git_ids:
         # the input is actually a series of git object ids that we should retrieve
         # and split.
@@ -223,12 +229,6 @@ def main(argv):
             files = (open(argv_bytes(fn), 'rb') for fn in opt.sources)
         else:
             files = [stdin]
-
-    writing = not (opt.noop or opt.copy)
-    remote_dest = opt.remote or opt.is_reverse
-
-    if writing:
-        git.check_repo_or_die()
 
     if remote_dest and writing:
         cli = repo = client.Client(opt.remote)
