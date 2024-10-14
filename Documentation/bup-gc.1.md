@@ -20,7 +20,7 @@ might or might not actually delete anything (or reclaim any space).
 
 With the current, proababilistic implementation, some fraction of the
 unreachable data may be retained.  In exchange, the garbage collection
-should require much less RAM than might by some more precise
+should require less RAM than might be required by some more precise
 approaches.
 
 Typically, the garbage collector would be invoked after some set of
@@ -36,8 +36,9 @@ used to help test before/after results.)
 # OPTIONS
 
 \--threshold=N
-:   only rewrite a packfile if it's over N percent garbage; otherwise
-    leave it alone.  The default threshold is 10%.
+:   only rewrite a packfile if it's over N percent garbage and
+    contains no unreachable trees or commits.  The default threshold
+    is 10%.
 
 -v, \--verbose
 : increase verbosity (can be used more than once).  With one -v, bup

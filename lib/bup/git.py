@@ -1296,33 +1296,65 @@ class CatPipe:
     def __init__(self, repo_dir = None):
         require_suitable_git()
         self.repo_dir = repo_dir
-        self.p = self.inprogress = None
+        self.p = self.pcheck = self.inprogress = None
+
+        # probe for cat-file --batch-command
+        tmp = subprocess.Popen([b'git', b'cat-file', b'--batch-command'],
+                               stdin=subprocess.DEVNULL,
+                               stdout=subprocess.DEVNULL,
+                               stderr=subprocess.DEVNULL,
+                               close_fds=True,
+                               env=_gitenv(self.repo_dir))
+        tmp.wait();
+        self.have_batch_command = tmp.returncode == 0
 
     def close(self, wait=False):
         self.p, p = None, self.p
+        self.pcheck, pcheck = None, self.pcheck
         self.inprogress = None
         if p:
             try:
                 p.stdout.close()
             finally:
-                # This will handle pending exceptions correctly once
-                # we drop py2
                 p.stdin.close()
+        if pcheck and pcheck != p:
+            try:
+                pcheck.stdout.close()
+            finally:
+                pcheck.stdin.close()
         if wait:
-            p.wait()
-            return p.returncode
+            if p: p.wait()
+            if pcheck: pcheck.wait()
+            if p and p.returncode:
+                return p.returncode
+            if pcheck and pcheck.returncode:
+                return pcheck.returncode
+            return 0
         return None
 
     def restart(self):
         self.close()
-        self.p = subprocess.Popen([b'git', b'cat-file', b'--batch'],
+        self.p = subprocess.Popen([b'git', b'cat-file',
+                                  b'--batch-command' if self.have_batch_command else b'--batch'],
                                   stdin=subprocess.PIPE,
                                   stdout=subprocess.PIPE,
                                   close_fds = True,
                                   bufsize = 4096,
                                   env=_gitenv(self.repo_dir))
 
-    def get(self, ref):
+    def _open_check(self):
+        if self.pcheck is not None: return
+        if self.have_batch_command:
+            self.pcheck = self.p
+            return
+        self.pcheck = subprocess.Popen([b'git', b'cat-file', b'--batch-check'],
+                                       stdin=subprocess.PIPE,
+                                       stdout=subprocess.PIPE,
+                                       close_fds = True,
+                                       bufsize = 4096,
+                                       env=_gitenv(self.repo_dir))
+
+    def get(self, ref, include_data=True):
         """Yield (oidx, type, size), followed by the data referred to by ref.
         If ref does not exist, only yield (None, None, None).
 
@@ -1339,12 +1371,21 @@ class CatPipe:
         assert ref.find(b'\r') < 0
         assert not ref.startswith(b'-')
         self.inprogress = ref
-        self.p.stdin.write(ref + b'\n')
-        self.p.stdin.flush()
-        hdr = self.p.stdout.readline()
+        if include_data:
+            p = self.p
+            if self.have_batch_command:
+                p.stdin.write(b'contents ')
+        else:
+            self._open_check()
+            p = self.pcheck
+            if self.have_batch_command:
+                p.stdin.write(b'info ')
+        p.stdin.write(ref + b'\n')
+        p.stdin.flush()
+        hdr = p.stdout.readline()
         if not hdr:
             raise GitError('unexpected cat-file EOF (last request: %r, exit: %s)'
-                           % (ref, self.p.poll() or 'none'))
+                           % (ref, p.poll() or 'none'))
         if hdr.endswith(b' missing\n'):
             self.inprogress = None
             yield None, None, None
@@ -1353,13 +1394,19 @@ class CatPipe:
         if len(info) != 3 or len(info[0]) != 40:
             raise GitError('expected object (id, type, size), got %r' % info)
         oidx, typ, size = info
+
+        if not include_data:
+            self.inprogress = None
+            yield oidx, typ, size
+            return
+
         size = int(size)
         try:
-            it = chunkyreader(self.p.stdout, size)
+            it = chunkyreader(p.stdout, size)
             yield oidx, typ, size
-            for blob in chunkyreader(self.p.stdout, size):
+            for blob in chunkyreader(p.stdout, size):
                 yield blob
-            readline_result = self.p.stdout.readline()
+            readline_result = p.stdout.readline()
             assert readline_result == b'\n'
             self.inprogress = None
         except Exception as ex:
