@@ -142,6 +142,10 @@ used to help test before/after results.)
     9 is the highest and 0 is no compression).  The default
     is 1 (fast, loose compression)
 
+\--ignore-missing
+:   ignore missing objects encountered during a transfer.  Currently
+    only supported by `--unnamed`, and potentially *dangerous*.
+
 # EXAMPLES
 
     # Update or copy the archives branch in src-repo to the local repository.

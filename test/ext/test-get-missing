@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+. ./wvtest-bup.sh
+
+set -o pipefail
+
+top="$(WVPASS pwd)" || exit $?
+tmpdir="$(WVPASS wvmktempdir)" || exit $?
+
+export BUP_DIR="$tmpdir/bup"
+export GIT_DIR="$tmpdir/bup"
+
+bup() { "$top/bup" "$@"; }
+
+WVPASS cd "$tmpdir"
+WVPASS bup init
+
+WVPASS mkdir -p src/a
+WVPASS echo 1 > src/a/1
+WVPASS echo 2 > src/a/2
+WVPASS echo 3 > src/a/3
+WVPASS bup index src
+WVPASS bup save --strip -n src src
+
+src_oid="$(git rev-parse src)"
+
+WVPASS bup -d dest-repo init
+WVPASS bup -d dest-repo get -s bup --unnamed "git:$src_oid"
+WVPASS bup -d dest-repo join "$src_oid" > /dev/null
+WVPASS rm -rf dest-repo
+
+WVPASS git ls-tree src:a | WVPASS cut -d' ' -f 3 \
+    | WVPASS cut -b -40 | WVPASS head -1 > bupm-oid
+WVPASS "$top/dev/perforate-repo" --drop-oids "$BUP_DIR" < bupm-oid
+
+WVPASS bup -d dest-repo init
+WVFAIL bup -d dest-repo get -s bup --unnamed "git:$src_oid" 2>&1 | tee get.log
+# For now...
+WVPASS grep -E 'raise MissingObject' get.log
+WVPASS rm -rf dest-repo
+
+WVPASS bup -d dest-repo init
+WVFAIL bup -d dest-repo get --ignore-missing -s bup \
+       --unnamed "git:$src_oid" 2>&1 \
+    | tee get.log
+WVPASSEQ 1 "$(grep -cF "skipping missing source object $(<bupm-oid)" get.log)"
+WVPASS rm -rf dest-repo
+
+
+WVPASS rm -rf "$tmpdir"
