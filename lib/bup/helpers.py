@@ -1017,7 +1017,7 @@ def parse_rx_excludes(options, fatal):
             try:
                 f = open(resolve_parent(parameter), 'rb')
             except IOError as e:
-                raise fatal("couldn't read %r" % parameter)
+                fatal("couldn't read %r" % parameter)
             for pattern in f.readlines():
                 spattern = pattern.rstrip(b'\n')
                 if not spattern:
