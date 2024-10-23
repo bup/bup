@@ -1,4 +1,5 @@
 
+import os
 from pathlib import Path
 from subprocess import CalledProcessError
 import pytest, subprocess, sys
@@ -76,8 +77,9 @@ class BupSubprocTestFile(pytest.File):
             yield BupSubprocTestRunner('', self)
 
 def _collect_item(item):
-    if item.name.startswith('test-') and not item.name.endswith('~'):
-        if item.name == 'test-release-archive':
+    name = os.path.basename(item.name)
+    if name.startswith('test-') and not name.endswith('~'):
+        if name == 'test-release-archive':
             item.add_marker(pytest.mark.release)
         return item
 
