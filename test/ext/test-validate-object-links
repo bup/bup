@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+. ./wvtest-bup.sh || exit $?
+
+set -o pipefail
+
+top="$(WVPASS pwd)" || exit $?
+tmpdir="$(WVPASS wvmktempdir)" || exit $?
+
+export BUP_DIR="$tmpdir/bup"
+export GIT_DIR="$tmpdir/bup"
+
+bup() { "$top/bup" "$@"; }
+
+WVPASS cd "$tmpdir"
+WVPASS bup init
+
+WVPASS mkdir -p src/a
+WVPASS echo 1 > src/a/1
+WVPASS echo 2 > src/a/2
+WVPASS echo 3 > src/a/3
+WVPASS bup index src
+WVPASS bup save --strip -n src src
+
+WVPASS bup validate-object-links | tee validate-out
+WVPASS test -z "$(<validate-out)"
+
+WVPASS git ls-tree src:a | WVPASS cut -d' ' -f 3 \
+    | WVPASS cut -b -40 | WVPASS head -1 > bupm-oid
+WVPASS "$top/dev/perforate-repo" --drop-oids "$BUP_DIR" < bupm-oid
+
+set -x
+bup validate-object-links > validate-out
+rc=$?
+set +x
+cat validate-out
+WVPASSEQ 1 "$rc"
+
+src_a_oid="$(git rev-parse src:a)"
+WVPASS grep -E "^no $(<bupm-oid) for $src_a_oid" validate-out
+
+WVPASS rm -rf "$tmpdir"

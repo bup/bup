@@ -469,6 +469,11 @@ class PackIdxV1(PackIdx):
         for ofs in range(start, start + 24 * self.nsha, 24):
             yield self.map[ofs : ofs + 20]
 
+    def oid_offsets_and_idxs(self):
+        end = self.sha_ofs + self.nsha * 24
+        for i, ofs in enumerate(range(self.sha_ofs, end, 24)):
+            yield struct.unpack_from('!I', self.map, offset=ofs)[0], i
+
     def close(self):
         self.closed = True
         if self.map is not None:
@@ -512,16 +517,19 @@ class PackIdxV2(PackIdx):
     def __len__(self):
         return int(self.nsha)  # int() from long for python 2
 
+    def _oid_ofs_from_ofs32_ofs(self, ofs32_ofs):
+        ofs32 = struct.unpack_from('!I', self.map, offset=ofs32_ofs)[0]
+        if ofs32 & 0x80000000:
+            ofs64_i = ofs32 & 0x7fffffff
+            ofs64_ofs = self.ofs64table_ofs + ofs64_i * 8
+            return struct.unpack_from('!Q', self.map, offset=ofs64_ofs)[0]
+        return ofs32
+
     def _ofs_from_idx(self, idx):
         if idx >= self.nsha or idx < 0:
             raise IndexError('invalid pack index index %d' % idx)
-        ofs_ofs = self.ofstable_ofs + idx * 4
-        ofs = struct.unpack_from('!I', self.map, offset=ofs_ofs)[0]
-        if ofs & 0x80000000:
-            idx64 = ofs & 0x7fffffff
-            ofs64_ofs = self.ofs64table_ofs + idx64 * 8
-            ofs = struct.unpack_from('!Q', self.map, offset=ofs64_ofs)[0]
-        return ofs
+        ofs32_ofs = self.ofstable_ofs + idx * 4
+        return self._oid_ofs_from_ofs32_ofs(ofs32_ofs)
 
     def _idx_to_hash(self, idx):
         if idx >= self.nsha or idx < 0:
@@ -540,6 +548,11 @@ class PackIdxV2(PackIdx):
             self.shatable = None
             self.map.close()
             self.map = None
+
+    def oid_offsets_and_idxs(self):
+        end = self.ofstable_ofs + self.nsha * 4
+        for i, ofs32_ofs in enumerate(range(self.ofstable_ofs, end, 4)):
+            yield self._oid_ofs_from_ofs32_ofs(ofs32_ofs), i
 
     def __del__(self):
         assert self.closed
