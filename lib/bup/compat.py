@@ -6,9 +6,21 @@ from os import fsdecode, fsencode
 from shlex import quote
 import os, sys
 
+ver = sys.version_info
+
 def hexstr(b):
     """Return hex string (not bytes as with hexlify) representation of b."""
     return b.hex()
+
+if (ver.major, ver.minor) >= (3, 10):
+    from itertools import pairwise
+else:
+    def pairwise(coll):
+        it = iter(coll)
+        x = next(it, None)
+        for y in it:
+            yield x, y
+            x = y
 
 class pending_raise:
     """If rethrow is true, rethrow ex (if any), unless the body throws.
