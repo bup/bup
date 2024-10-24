@@ -1,0 +1,92 @@
+#!/bin/sh
+"""": # -*-python-*-
+bup_python="$(dirname "$0")/bup-python" || exit $?
+exec "$bup_python" "$0" ${1+"$@"}
+"""
+
+from argparse import ArgumentParser
+from glob import glob
+from os import fsencode, unlink
+from os.path import splitext
+from subprocess import PIPE, run
+from sys import stderr, stdin
+from tempfile import TemporaryDirectory
+import os, re, sys
+
+# Currently does nothing bup-specific, i.e. it's up to the caller to
+# reset midx, bloom, etc. if that's relevant.
+
+script_dir = os.path.dirname(os.path.realpath(__file__))
+bup = os.path.realpath(f'{script_dir}/../bup')
+
+def runc(*args, **kwargs):
+    kwargs['check'] = True
+    return run(*args, **kwargs)
+
+def log(*args, **kwargs):
+    if 'file' not in kwargs:
+        kwargs['file'] = stderr
+    if 'end' not in kwargs:
+        kwargs['end'] = ''
+    print(*args, **kwargs)
+
+def logn(*args, **kwargs):
+    kwargs['end'] = '\n'
+    log(*args, **kwargs)
+
+def all_objects(repo):
+    git = runc(('git', '--git-dir', repo, 'cat-file', '--batch-all-objects',
+                f'--batch-check=%(objectname) %(objecttype)'),
+               stdout=PIPE)
+    for line in git.stdout.splitlines():
+        yield line.split()
+
+parser = ArgumentParser()
+add_arg = parser.add_argument
+add_arg('--drop-oids', action='store_true',
+        help='drop (hex ASCII) oids given on standard input')
+add_arg('repo', metavar='<repository>', nargs=1, help='victim repository')
+opt = parser.parse_args()
+
+repo = opt.repo[0]
+
+if not opt.drop_oids:
+    logn(f'error: --drop-oids is currently required')
+    sys.exit(2)
+
+packdir = f'{repo}/objects/pack'
+if not os.path.isdir(packdir):
+    logn(f'error: {repo!r} does not appear to be a git repository')
+    sys.exit(2)
+
+objs = list(all_objects(repo))
+packs = glob(f'{packdir}/*.pack')
+
+with TemporaryDirectory(prefix='perforate-', dir=repo) as tmpdir:
+    tmprepo = f'{tmpdir}/repo'
+    runc((bup, '-d', tmprepo, 'init'))
+    for pack in packs:
+        with open(pack, 'rb') as pf:
+            runc(('git', '--git-dir', tmprepo, 'unpack-objects'), stdin=pf)
+
+    newobjs = list(all_objects(tmprepo))
+    if not set(x[0] for x in newobjs) == set(x[0] for x in objs):
+        logn(f'error: does the source repo have loose objects?')
+        sys.exit(2)
+
+    # For now assumes only one subdir level, and that locale decoding is fine
+    oid_rx = re.compile(b'[0-9A-Za-z]{40}')
+    for oidx in stdin.buffer:
+        oidx = oidx.rstrip()
+        if not oid_rx.fullmatch(oidx):
+            logn(f'error: oid {oidx} is not a 40-char hash')
+        unlink(b'%s/objects/%s/%s' % (fsencode(tmprepo), oidx[:2], oidx[2:]))
+
+    for pack in packs:
+        stem, _ = splitext(pack)
+        for pack_related in glob(f'{stem}.*'):
+            unlink(pack_related)
+
+    new_oids = (x[0] for x in all_objects(tmprepo))
+    runc(('git', '--git-dir', tmprepo, 'pack-objects', f'{packdir}/pack'),
+         input=b'\n'.join(new_oids))

@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+. ./wvtest-bup.sh
+
+set -o pipefail
+
+top="$(WVPASS pwd)" || exit $?
+tmpdir="$(WVPASS wvmktempdir)" || exit $?
+
+export BUP_DIR="$tmpdir/bup"
+export GIT_DIR="$tmpdir/bup"
+
+bup() { "$top/bup" "$@"; }
+
+# In the past walk_object performed a pre-order traversal which could
+# cause operations like bup get to leave the repository with
+# incomplete trees if interrupted at the wrong time.
+
+WVPASS cd "$tmpdir"
+WVPASS bup init
+
+WVPASS mkdir -p src/a
+WVPASS echo 1 > src/a/1
+WVPASS echo 2 > src/a/2
+WVPASS echo 3 > src/a/3
+WVPASS bup index src
+WVPASS bup save --strip -n src src
+src_oid="$(WVPASS git rev-parse src)" || exit $?
+
+# Drop a/.bupm since it'll be one of the last things a bup get
+# post-order traversal would fetch/store (ordering for a/ is 3 2 1
+# .bupm), leaving the destination with an incomplete a/.
+
+WVPASS git ls-tree src:a | WVPASS cut -d' ' -f 3 \
+    | WVPASS cut -b -40 | WVPASS head -1 > bupm-oid
+WVPASS cp -a bup bup-missing
+WVPASS "$top/dev/perforate-repo" --drop-oids bup-missing < bupm-oid
+
+# Now fetch from the broken repo, make sure that creates a broken src,
+# then fetch again from the complete repo and make sure that produces
+# a joinable src.  Before the fix, the second get would produce a src
+# ref, but it wouldn't notice the incomplete a/.  After the fix,
+# walk_objects (and by extension, get) operates bottom up and so never
+# leaves incomplete trees in the destination.
+
+WVPASS bup -d bup-dest init
+WVFAIL bup -d bup-dest get -s bup-missing --ff src
+WVFAIL bup -d bup-dest join "$src_oid" > /dev/null
+WVPASS bup -d bup-dest get -s bup --ff src
+WVPASS bup -d bup-dest join "$src_oid" > /dev/null
+
+WVPASS rm -rf "$tmpdir"
