@@ -528,6 +528,7 @@ class Client:
 
     def config_get(self, name, opttype=None):
         assert isinstance(name, bytes)
+        name = name.lower() # git is case insensitive here
         assert opttype in ('int', 'bool', None)
         self._require_command(b'config-get')
         self.check_busy()
