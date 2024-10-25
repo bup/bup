@@ -291,8 +291,9 @@ Documentation/all: $(man_roff) $(man_html)
 Documentation/substvars: $(bup_deps)
         # FIXME: real temp file
 	set -e; bup_ver=$$(./bup version); \
-	echo "s,%BUP_VERSION%,$$bup_ver,g" > $@.tmp; \
-	echo "s,%BUP_DATE%,$$bup_ver,g" >> $@.tmp
+	echo "s,%BUP_VERSION%,$$bup_ver,g" > $@.tmp;
+	set -e; bup_date=$$(./bup version --date); \
+	echo "s,%BUP_DATE%,$$bup_date,g" >> $@.tmp
 	mv $@.tmp $@
 
 define render_page
