@@ -1,5 +1,4 @@
 
-from __future__ import absolute_import
 from io import BytesIO
 from itertools import combinations_with_replacement
 

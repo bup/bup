@@ -1,5 +1,4 @@
 
-from __future__ import absolute_import
 from calendar import timegm
 from subprocess import check_call
 from time import strptime

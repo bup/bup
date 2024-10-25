@@ -1,5 +1,4 @@
 
-from __future__ import absolute_import, print_function
 from binascii import hexlify
 from errno import ENOENT
 import math, os, stat, sys, time

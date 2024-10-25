@@ -1,5 +1,4 @@
 
-from __future__ import absolute_import
 
 from bup.compat import argv_bytes
 from bup.git import check_repo_or_die

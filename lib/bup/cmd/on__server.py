@@ -1,5 +1,4 @@
 
-from __future__ import absolute_import
 import os, struct, sys
 
 from bup import options, helpers, path

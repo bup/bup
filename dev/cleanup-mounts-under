@@ -21,7 +21,6 @@ echo "error: unable to find suitable python executable; please report" 1>&2
 exit 2
 """
 
-from __future__ import absolute_import, print_function
 from sys import stderr
 import os.path, re, subprocess, sys
 

@@ -3,7 +3,6 @@
 # This code is covered under the terms of the GNU Library General
 # Public License as described in the bup LICENSE file.
 
-from __future__ import absolute_import, print_function
 
 import errno, sys
 

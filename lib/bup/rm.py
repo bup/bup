@@ -1,5 +1,4 @@
 
-from __future__ import absolute_import
 from binascii import hexlify, unhexlify
 
 from bup import git, vfs

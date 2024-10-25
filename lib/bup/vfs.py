@@ -53,7 +53,7 @@ from itertools import chain, groupby, tee
 from random import randrange
 from stat import S_IFDIR, S_IFLNK, S_IFREG, S_ISDIR, S_ISLNK, S_ISREG
 from time import localtime, strftime
-import re, sys
+import re
 
 from bup import git
 from bup.compat import hexstr, pending_raise
@@ -62,10 +62,7 @@ from bup.helpers import debug2, last
 from bup.io import path_msg
 from bup.metadata import Metadata
 
-if sys.version_info[0] < 3:
-    from exceptions import IOError as py_IOError
-else:
-    py_IOError = IOError
+py_IOError = IOError
 
 # We currently assume that it's always appropriate to just forward IOErrors
 # to a remote client.

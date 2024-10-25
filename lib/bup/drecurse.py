@@ -1,5 +1,4 @@
 
-from __future__ import absolute_import
 import stat, os
 
 from bup.helpers \

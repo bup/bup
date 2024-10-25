@@ -1,5 +1,4 @@
 
-from __future__ import absolute_import, print_function
 from os.path import basename, dirname, realpath, relpath
 from time import tzset
 from traceback import extract_stack
@@ -88,10 +87,7 @@ _safe_path_rx = re.compile(br'[^a-zA-Z0-9_-]')
 
 @pytest.fixture()
 def tmpdir(request):
-    if sys.version_info[0] > 2:
-        rp = realpath(fsencode(request.fspath))
-    else:
-        rp = realpath(str(request.fspath))
+    rp = realpath(fsencode(request.fspath))
     rp = relpath(rp, _bup_test_dir)
     if request.function:
         rp += b'-' + fsencode(request.function.__name__)

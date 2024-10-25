@@ -1,6 +1,5 @@
 """Common code for listing files from a bup repository."""
 
-from __future__ import absolute_import
 from binascii import hexlify
 from itertools import chain
 from stat import S_ISDIR

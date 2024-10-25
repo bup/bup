@@ -270,6 +270,5 @@ class Options:
         return (opt,flags,extra)
 
     def parse_bytes(self, args):
-        if sys.version_info[0] > 2:
-            args = [x.decode(errors='surrogateescape') for x in args]
+        args = [x.decode(errors='surrogateescape') for x in args]
         return self.parse(args)

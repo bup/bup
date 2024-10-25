@@ -1,5 +1,4 @@
 
-from __future__ import absolute_import
 import os, time, random, subprocess, glob
 import pytest
 

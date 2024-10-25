@@ -1,5 +1,4 @@
 
-from __future__ import absolute_import, print_function
 from binascii import unhexlify
 from errno import ELOOP, ENOTDIR
 from os import symlink

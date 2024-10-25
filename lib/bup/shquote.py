@@ -1,5 +1,4 @@
 
-from __future__ import absolute_import
 import re
 
 from bup.compat import bytes_from_byte

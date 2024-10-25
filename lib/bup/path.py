@@ -1,11 +1,10 @@
 
-from __future__ import absolute_import
-import os, sys
+import os
 
 # Eventually, if we physically move the source tree cmd/ to lib/, then
 # we could use realpath here and save some stats...
 
-fsencode = os.fsencode if sys.version_info[0] >= 3 else lambda x: x
+fsencode = os.fsencode
 
 _libdir = os.path.abspath(os.path.dirname(fsencode(__file__)) + b'/..')
 _resdir = _libdir

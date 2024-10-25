@@ -1,5 +1,4 @@
 
-from __future__ import absolute_import
 from stat import S_ISDIR
 import copy, errno, os, re, stat, sys
 

@@ -1,5 +1,4 @@
 
-from __future__ import absolute_import
 
 from bup import git, options
 from bup.gc import bup_gc

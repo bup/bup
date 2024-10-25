@@ -80,7 +80,6 @@ None of this tells us what max_pfalse_positive to choose.
 Brandon Low <lostlogic@lostlogicx.com> 2011-02-04
 """
 
-from __future__ import absolute_import
 import os, math, struct
 
 from bup import _helpers
@@ -176,7 +175,7 @@ class ShaBloom:
         try:
             if tmp_map:
                 tmp_map.close()
-        finally:  # This won't handle pending exceptions correctly in py2
+        finally:
             if self.file:
                 tmp_file.close()
 

@@ -2,8 +2,7 @@
 Connect to a remote host via SSH and execute a command on the host.
 """
 
-from __future__ import absolute_import, print_function
-import sys, os, re, subprocess
+import re, subprocess
 
 from bup import path
 from bup.compat import environ
@@ -29,13 +28,7 @@ def connect(rhost, port, subcmd, stderr=None):
             argv.extend((b'-p', port))
         argv.extend((rhost, b'--', cmd.strip()))
         #helpers.log('argv is: %r\n' % argv)
-    if sys.version_info[0] < 3:
-        return subprocess.Popen(argv,
-                                stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                                stderr=stderr,
-                                preexec_fn=lambda: os.setsid())
-    else:
-        return subprocess.Popen(argv,
-                                stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                                stderr=stderr,
-                                start_new_session=True)
+    return subprocess.Popen(argv,
+                            stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                            stderr=stderr,
+                            start_new_session=True)

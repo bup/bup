@@ -7,7 +7,6 @@
 
 # Variable length integers are encoded as vints -- see lucene.
 
-from __future__ import absolute_import
 from io import BytesIO
 
 from bup import compat

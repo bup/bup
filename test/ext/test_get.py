@@ -1,5 +1,4 @@
 
-from __future__ import print_function
 from errno import ENOENT
 from itertools import product
 from os import chdir, mkdir, rename

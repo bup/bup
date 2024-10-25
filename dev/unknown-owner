@@ -4,7 +4,6 @@ python="$(dirname "$0")/python" || exit $?
 exec "$python" "$0" ${1+"$@"}
 """
 
-from __future__ import absolute_import, print_function
 
 import grp
 import pwd

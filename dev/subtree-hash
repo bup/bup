@@ -4,7 +4,6 @@ bup_exec="$(dirname "$0")/bup-exec" || exit $?
 exec "$bup_exec" "$0" ${1+"$@"}
 """
 
-from __future__ import absolute_import, print_function
 import os.path, sys
 
 from bup.compat import argv_bytes, get_argvb

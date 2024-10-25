@@ -1,5 +1,4 @@
 
-from __future__ import absolute_import, print_function
 from collections import defaultdict
 from itertools import chain, dropwhile, groupby, takewhile
 from os import chdir

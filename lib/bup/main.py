@@ -1,10 +1,7 @@
 
 import bup_main, os, sys
 if bup_main.env_pythonpath:
-    if sys.version_info[0] < 3:
-        os.environ['PYTHONPATH'] = bup_main.env_pythonpath
-    else:
-        os.environb[b'PYTHONPATH'] = bup_main.env_pythonpath
+    os.environb[b'PYTHONPATH'] = bup_main.env_pythonpath
 else:
     del os.environ['PYTHONPATH']
 

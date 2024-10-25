@@ -1,5 +1,4 @@
 
-from __future__ import absolute_import
 import os, subprocess, sys
 
 from bup import options

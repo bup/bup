@@ -1,5 +1,4 @@
 
-from __future__ import absolute_import, print_function
 import sys
 from binascii import hexlify, unhexlify
 from subprocess import check_call

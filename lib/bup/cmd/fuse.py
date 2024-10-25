@@ -1,5 +1,4 @@
 
-from __future__ import absolute_import, print_function
 import errno, os, sys
 
 try:
@@ -19,18 +18,17 @@ if not hasattr(fuse, '__version__'):
     sys.exit(2)
 fuse.fuse_python_api = (0, 2)
 
-if sys.version_info[0] > 2:
-    try:
-        fuse_ver = fuse.__version__.split('.')
-        fuse_ver_maj = int(fuse_ver[0])
-    except:
-        log('error: cannot determine the fuse major version; please report',
-            file=sys.stderr)
-        sys.exit(2)
-    if len(fuse_ver) < 3 or fuse_ver_maj < 1:
-        print("error: fuse module can't handle binary data; please upgrade to 1.0+\n",
-              file=sys.stderr)
-        sys.exit(2)
+try:
+    fuse_ver = fuse.__version__.split('.')
+    fuse_ver_maj = int(fuse_ver[0])
+except:
+    print('error: cannot determine the fuse major version; please report',
+          file=sys.stderr)
+    sys.exit(2)
+if len(fuse_ver) < 3 or fuse_ver_maj < 1:
+    print("error: fuse module can't handle binary data; please upgrade to 1.0+\n",
+          file=sys.stderr)
+    sys.exit(2)
 
 from bup import options, git, vfs, xstat
 from bup.compat import argv_bytes, fsdecode

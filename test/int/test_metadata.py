@@ -1,5 +1,4 @@
 
-from __future__ import absolute_import, print_function
 import errno, glob, stat, subprocess
 import os, sys
 import pytest

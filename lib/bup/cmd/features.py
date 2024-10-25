@@ -1,5 +1,4 @@
 
-from __future__ import absolute_import, print_function
 import platform, sys
 
 from bup import _helpers, metadata, options, version

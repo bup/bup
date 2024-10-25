@@ -1,5 +1,4 @@
 
-from __future__ import absolute_import, print_function
 from binascii import hexlify, unhexlify
 from collections import defaultdict
 from itertools import groupby

@@ -1,5 +1,4 @@
 
-from __future__ import absolute_import
 from time import tzset
 import os, os.path, re
 from bup import helpers

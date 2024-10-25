@@ -1,5 +1,4 @@
 
-from __future__ import absolute_import
 import math, struct, sys
 
 from bup import options, git, _helpers

@@ -1,5 +1,4 @@
 
-from __future__ import absolute_import, print_function
 
 from bup.compat import pending_raise
 from wvpytest import wvpasseq

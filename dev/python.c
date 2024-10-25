@@ -11,10 +11,8 @@
 
 #if PY_MAJOR_VERSION == 3 && PY_MINOR_VERSION < 8
 # define bup_py_main bup_py_bytes_main
-#elif PY_MAJOR_VERSION > 2
-# define bup_py_main Py_BytesMain
 #else
-# define bup_py_main Py_Main
+# define bup_py_main Py_BytesMain
 #endif
 
 int main(int argc, char **argv)

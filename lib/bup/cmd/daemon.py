@@ -1,5 +1,4 @@
 
-from __future__ import absolute_import
 import fcntl, getopt, os, socket, subprocess, sys, select
 
 from bup import options, path
