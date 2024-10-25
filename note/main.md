@@ -4,6 +4,11 @@ Notable changes in main (incomplete)
 May require attention
 ---------------------
 
+* `bup` now prefers the XDG cache location (typically
+  `~/.cache/bup/remote/`) for the client index cache, but existing
+  `$BUP_DIR/index-cache` directories will take precedence.  See
+  `bup-config`(5) for additional information.
+
 * The build system (e.g. `./configure`) no longer tries to find a
   suitable make, and we no longer try to redirect a non-GNU make to
   GNU make.  Whatever make you invoke must be GNU make >= 4.2.  On

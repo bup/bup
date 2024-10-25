@@ -43,16 +43,23 @@ WVPASS git cat-file commit "$commit_id" | head -n 1 \
 WVPASS bup join baz > restore-baz
 WVPASS cmp src/baz restore-baz
 
+repo_id="id--$(WVPASS git config --file "$tmpdir"/bup/config bup.repo.id)"
+
 WVSTART "index-cache"
-# the 'a-zA-Z0-9_' is '\w' from python,
-# the trailing _ is because there's no dir specified
-# and that should thus be empty
-hostname=$(uname -n)
-idxcache="id--$(git config --file "$tmpdir"/bup/config bup.repo.id)"
 # there should be an index-cache now
 for idx in "$tmpdir"/bup/objects/pack/*.idx ; do
-    cachedidx="$tmpdir/bup/index-cache/$idxcache/$(basename "$idx")"
+    cachedidx="$HOME/.cache/bup/remote/$repo_id/$(basename "$idx")"
     WVPASS cmp "$idx" "$cachedidx"
+done
+
+WVSTART 'index-cache respects XDG_CACHE_DIR'
+WVPASS mkdir xdg-cache
+export XDG_CACHE_HOME="$(pwd)/xdg-cache"
+WVPASS bup on - split -ct src/baz > /dev/null
+# Ensure the cache is a subset of objects/pack
+for idx in xdg-cache/bup/remote/"$repo_id"/*.idx ; do
+    repo_idx="bup/objects/pack/$(basename "$idx")"
+    WVPASS cmp "$idx" "$repo_idx"
 done
 
 WVSTART "suggest packs"
@@ -64,9 +71,9 @@ WVSTART "suggest packs"
 # pack writing code path ...
 WVPASS seq 100000 > "$tmpdir/longfile"
 WVPASS bup on - split -ctn large "$tmpdir/longfile"
-WVPASS rm -rf "$tmpdir"/bup/index-cache/
+WVPASS rm -rf "$XDG_CACHE_HOME"/bup/remote/
 WVPASS bup on - split -ctn large "$tmpdir/longfile"
-WVPASS test -f $(ls "$tmpdir"/bup/index-cache/*/*.idx | head -1)
+WVPASS test -f $(ls "$HOME"/.cache/bup/index-cache/*/*.idx | head -1)
 
 WVPASS cd "$top"
 WVPASS rm -rf "$tmpdir"

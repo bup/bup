@@ -23,7 +23,7 @@ from bup.helpers import \
      qprogress,
      DemuxConn)
 from bup.io import path_msg
-from bup.path import indexcache
+from bup.path import index_cache
 from bup.vint import read_vint, read_vuint, read_bvec, write_bvec
 
 
@@ -254,14 +254,14 @@ class Client:
         # The b'None' here matches python2's behavior of b'%s' % None == 'None',
         # python3 will (as of version 3.7.5) do the same for str ('%s' % None),
         # but crashes instead when doing b'%s' % None.
-        legacy = indexcache(b':'.join((b'None' if host is None else host,
-                                       b'None' if path is None else path)))
+        legacy = index_cache(b':'.join((b'None' if host is None else host,
+                                        b'None' if path is None else path)))
         if repo_id is None:
             return legacy
         # legacy ids can't include -, so avoid aliasing with an id--
         # prefix, and terminate with double-dash to leave some future
         # flexibility.
-        new = indexcache(b'id--' + repo_id)
+        new = index_cache(b'id--' + repo_id)
         # upgrade path - if we have the old but not the new name, move it
         if os.path.exists(legacy) and not os.path.exists(new):
             shutil.move(legacy, new)

@@ -35,10 +35,15 @@ def defaultrepo():
         return repo
     return os.path.expanduser(b'~/.bup')
 
-def cached(*what):
-    """Return the cache path to what (path joined). Currently just a
-    defaultrepo() subdir."""
-    return os.path.join(defaultrepo(), *what)
+def xdg_cache():
+    return environ.get(b'XDG_CACHE_HOME') or os.path.expanduser(b'~/.cache')
 
-def indexcache(identifier):
-    return cached(b'index-cache', identifier)
+def index_cache(identifier):
+    # Prefer XDG to the deprecated default repo cache
+    xdg = os.path.join(xdg_cache(), b'bup', b'remote', identifier)
+    if os.path.exists(xdg):
+        return xdg
+    repo_cache = os.path.join(defaultrepo(), b'index-cache', identifier)
+    if os.path.exists(repo_cache):
+        return repo_cache
+    return xdg

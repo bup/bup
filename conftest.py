@@ -1,6 +1,10 @@
 
+from contextlib import ExitStack
 from os.path import basename, dirname, realpath, relpath
 from time import tzset
+from shutil import rmtree
+from sys import stderr
+from tempfile import mkdtemp
 from traceback import extract_stack
 import errno
 import os
@@ -14,7 +18,7 @@ sys.path[:0] = ['lib']
 
 from bup import helpers
 from bup.compat import environ, fsencode
-from bup.helpers import temp_dir
+from bup.helpers import finalized
 
 
 _bup_src_top = realpath(dirname(fsencode(__file__)))
@@ -68,23 +72,33 @@ except OSError as e:
         raise
 
 @pytest.fixture(autouse=True)
-def common_test_environment():
+def common_test_environment(request):
     orig_env = environ.copy()
-    with temp_dir(dir=_bup_tmp, prefix=b'home-') as home:
+    def restore_env(_):
+        for k, orig_v in orig_env.items():
+            v = environ.get(k)
+            if v is not orig_v:
+                environ[k] = orig_v
+                if k == b'TZ':
+                    tzset()
+        for k in environ.keys():
+            if k not in orig_env:
+                del environ[k]
+                if k == b'TZ':
+                    tzset()
+    rm_home = True
+    def maybe_rm_home(home):
+        if not rm_home:
+            print('\nPreserving test HOME:', home, file=stderr)
+            return
+        rmtree(home)
+    with finalized(mkdtemp(dir=_bup_tmp, prefix=b'home-'), maybe_rm_home) as home, \
+         finalized(lambda _: os.chdir(_bup_src_top)), \
+         finalized(restore_env):
         environ[b'HOME'] = home
         yield None
-    for k, orig_v in orig_env.items():
-        v = environ.get(k)
-        if v is not orig_v:
-            environ[k] = orig_v
-            if k == b'TZ':
-                tzset()
-    for k in environ.keys():
-        if k not in orig_env:
-            del environ[k]
-            if k == b'TZ':
-                tzset()
-    os.chdir(_bup_src_top)
+        if request.node.bup['call-report'].failed:
+            rm_home = False
 
 _safe_path_rx = re.compile(br'[^a-zA-Z0-9_-]')
 

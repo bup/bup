@@ -130,6 +130,28 @@ pack.packSizeLimit
     GiB) will still mean that all objects in the pack can be addressed
     by a 31-bit offset, and thus need no large offset in the idx file.
 
+# ENVIRONMENT
+
+BUP_DIR
+:   When set, the default repository location, unless overridden by
+    `bup -d` on the command line.
+
+XDG_CACHE_HOME/bup
+:   The preferred cache location.
+
+# FILES
+
+\$XDG_CACHE_HOME/bup/remote \
+\~/.cache/bup/remote \
+
+\$BUP_DIR/index-cache
+:   The client index cache locations, in order of precedence. Remote
+    repository data is stored here during operations like `bup save
+    -r`. Currently `bup` looks for existing data in precedence order,
+    and if none is found for the repository of interest then `bup`
+    will use `$XDG_CACHE_HOME/bup/remote` if `$XDG_CACHE_HOME` is set
+    and `~/.cache/bup/remote` otherwise.
+
 # SEE ALSO
 
 `git-config`(1)
