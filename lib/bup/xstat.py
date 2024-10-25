@@ -6,24 +6,6 @@ import stat as pystat
 
 from bup import _helpers
 
-try:
-    _bup_utimensat = _helpers.bup_utimensat
-except AttributeError as e:
-    _bup_utimensat = False
-
-try:
-    _bup_utimes = _helpers.bup_utimes
-except AttributeError as e:
-    _bup_utimes = False
-
-try:
-    _bup_lutimes = _helpers.bup_lutimes
-except AttributeError as e:
-    _bup_lutimes = False
-
-assert sys.version_info[0] < 3 \
-    or not (_bup_utimensat or _bup_utimes or _bup_lutimes)
-
 
 def timespec_to_nsecs(ts):
     ts_s, ts_ns = ts
@@ -62,36 +44,12 @@ def fstime_to_sec_bytes(fstime):
     else:
         return b'%d.%09d' % (s, ns)
 
-if sys.version_info[0] > 2:
-    def utime(path, times):
-        """Times must be provided as (atime_ns, mtime_ns)."""
-        os.utime(path, ns=times)
-    def lutime(path, times):
-        """Times must be provided as (atime_ns, mtime_ns)."""
-        os.utime(path, ns=times, follow_symlinks=False)
-elif _bup_utimensat:
-    def utime(path, times):
-        """Times must be provided as (atime_ns, mtime_ns)."""
-        atime = nsecs_to_timespec(times[0])
-        mtime = nsecs_to_timespec(times[1])
-        _bup_utimensat(_helpers.AT_FDCWD, path, (atime, mtime), 0)
-    def lutime(path, times):
-        """Times must be provided as (atime_ns, mtime_ns)."""
-        atime = nsecs_to_timespec(times[0])
-        mtime = nsecs_to_timespec(times[1])
-        _bup_utimensat(_helpers.AT_FDCWD, path, (atime, mtime),
-                       _helpers.AT_SYMLINK_NOFOLLOW)
-else: # Must have these if utimensat isn't available.
-    def utime(path, times):
-        """Times must be provided as (atime_ns, mtime_ns)."""
-        atime = nsecs_to_timeval(times[0])
-        mtime = nsecs_to_timeval(times[1])
-        _bup_utimes(path, (atime, mtime))
-    def lutime(path, times):
-        """Times must be provided as (atime_ns, mtime_ns)."""
-        atime = nsecs_to_timeval(times[0])
-        mtime = nsecs_to_timeval(times[1])
-        _bup_lutimes(path, (atime, mtime))
+def utime(path, times):
+    """Times must be provided as (atime_ns, mtime_ns)."""
+    os.utime(path, ns=times)
+def lutime(path, times):
+    """Times must be provided as (atime_ns, mtime_ns)."""
+    os.utime(path, ns=times, follow_symlinks=False)
 
 _cygwin_sys = sys.platform.startswith('cygwin')
 

@@ -394,7 +394,7 @@ class Metadata:
 
         # FIXME: S_ISDOOR, S_IFMPB, S_IFCMP, S_IFNWK, ... see stat(2).
         # EACCES errors at this stage are fatal for the current path.
-        if lutime and stat.S_ISLNK(self.mode):
+        if stat.S_ISLNK(self.mode):
             try:
                 lutime(path, (self.atime or 0, self.mtime or 0))
             except OSError as e:
@@ -1118,20 +1118,9 @@ def detailed_bytes(meta, fields = None):
     if 'group' in fields:
         result.append(b'group: ' + meta.group)
     if 'atime' in fields:
-        # If we don't have xstat.lutime, that means we have to use
-        # utime(), and utime() has no way to set the mtime/atime of a
-        # symlink.  Thus, the mtime/atime of a symlink is meaningless,
-        # so let's not report it.  (That way scripts comparing
-        # before/after won't trigger.)
-        if xstat.lutime or not stat.S_ISLNK(meta.mode):
-            result.append(b'atime: ' + xstat.fstime_to_sec_bytes(meta.atime))
-        else:
-            result.append(b'atime: 0')
+        result.append(b'atime: ' + xstat.fstime_to_sec_bytes(meta.atime))
     if 'mtime' in fields:
-        if xstat.lutime or not stat.S_ISLNK(meta.mode):
-            result.append(b'mtime: ' + xstat.fstime_to_sec_bytes(meta.mtime))
-        else:
-            result.append(b'mtime: 0')
+        result.append(b'mtime: ' + xstat.fstime_to_sec_bytes(meta.mtime))
     if 'ctime' in fields:
         result.append(b'ctime: ' + xstat.fstime_to_sec_bytes(meta.ctime))
     if 'linux-attr' in fields and meta.linux_attr:
