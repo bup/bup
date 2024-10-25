@@ -77,7 +77,7 @@ def _remove_negative_kv(k, v):
     return k,v
 
 
-class OptDict(object):
+class OptDict:
     """Dictionary that exposes keys as attributes.
 
     Keys can be set or accessed with a "no-" or "no_" prefix to negate the

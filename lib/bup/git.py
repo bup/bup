@@ -377,7 +377,7 @@ def _decode_packobj(buf):
     return (type, zlib.decompress(buf[i+1:]))
 
 
-class PackIdx(object):
+class PackIdx:
     def find_offset(self, hash):
         """Get the offset of an object inside the index file."""
         idx = self._idx_from_hash(hash)
@@ -843,7 +843,7 @@ def _make_objcache(repo_dir):
 # bup-gc assumes that it can disable all PackWriter activities
 # (bloom/midx/cache) via the constructor and close() arguments.
 
-class PackWriter(object):
+class PackWriter:
     """Writes Git objects inside a pack file."""
     def __init__(self, objcache_maker=None, compression_level=None,
                  run_midx=True, on_pack_finish=None,

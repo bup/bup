@@ -167,7 +167,7 @@ class _ChunkReader:
         self.ofs += len(out)
         return out
 
-class _FileReader(object):
+class _FileReader:
     def __init__(self, repo, oid, known_size=None):
         assert len(oid) == 20
         self.closed = False
