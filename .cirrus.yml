@@ -28,7 +28,7 @@ task:
     adduser --disabled-password --gecos '' bup
     chown -R bup:bup .
     printf "make -j6 -C %q BUP_PYTHON_CONFIG=python3-config long-check" \
-      "$(pwd)" | su -l bup
+      "$(pwd)" | su -l -w BUP_TEST_OTHER_BUP bup
 
 task:
   name: debian check
