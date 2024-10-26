@@ -24,9 +24,9 @@ def main(argv):
         g = glob.glob(manpath)
         try:
             if g:
-                os.execvp('man', ['man', '-l', g[0]])
+                os.execvp(b'man', [b'man', b'-l', g[0]])
             else:
-                os.execvp('man', ['man', docname])
+                os.execvp(b'man', [b'man', docname])
         except OSError as e:
             sys.stderr.write('Unable to run man command: %s\n' % e)
             sys.exit(1)
