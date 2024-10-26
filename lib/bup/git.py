@@ -321,7 +321,7 @@ def tree_encode(shalist):
         assert(name)
         assert(len(bin) == 20)
         s = b'%o %s\0%s' % (mode,name,bin)
-        assert s[0] != b'0'  # 0-padded octal is not acceptable in a git tree
+        assert not s.startswith(b'0'), 'git trees do not allow 0-padded octal'
         l.append(s)
     return b''.join(l)
 
