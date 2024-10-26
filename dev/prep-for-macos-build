@@ -10,7 +10,8 @@ usage()
 pyver="${1:-python3}"
 
 if ! command -v brew; then
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    /usr/bin/env \
+        bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 fi
 
 brew install par2 readline rsync pkg-config md5sha1sum
