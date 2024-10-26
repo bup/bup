@@ -112,7 +112,7 @@ class Client:
             self._require_command(b'init-dir')
             self._require_command(b'set-dir')
             if self.dir:
-                self.dir = re.sub(br'[\r\n]', ' ', self.dir)
+                self.dir = re.sub(br'[\r\n]', b' ', self.dir)
                 if create:
                     self.conn.write(b'init-dir %s\n' % self.dir)
                 else:
