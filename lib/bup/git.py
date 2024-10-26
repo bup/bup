@@ -70,18 +70,16 @@ def _git_exo(cmd, **kwargs):
         raise GitError('%r returned %d' % (cmd, proc.returncode))
     return result
 
-def git_config_get(option, repo_dir=None, opttype=None, cfg_file=None):
-    assert not (repo_dir and cfg_file), "repo_dir and cfg_file cannot both be used"
-    if cfg_file:
-        cmd = [b'git', b'config', b'--file', cfg_file, b'--null']
-    else:
-        cmd = [b'git', b'--git-dir', repo_dir or repo(), b'config', b'--null']
+def repo_config_file(path):
+    return os.path.join(path or repo(), b'config')
+
+def git_config_get(path, option, *, opttype=None):
+    cmd = [b'git', b'config', b'--file', path, b'--null']
     if opttype == 'int':
         cmd.extend([b'--int'])
     else:
         assert opttype in ('bool', None)
     cmd.extend([b'--get', option])
-    env=None
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, close_fds=True)
     # with --null, git writes out a trailing \0 after the value
     r = p.stdout.read()[:-1]
@@ -865,8 +863,8 @@ class PackWriter:
         self.run_midx=run_midx
         self.on_pack_finish = on_pack_finish
         if not max_pack_size:
-            max_pack_size = git_config_get(b'pack.packSizeLimit',
-                                           repo_dir=self.repo_dir,
+            max_pack_size = git_config_get(repo_config_file(self.repo_dir),
+                                           b'pack.packSizeLimit',
                                            opttype='int')
             if not max_pack_size:
                 # larger packs slow down pruning

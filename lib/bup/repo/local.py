@@ -19,7 +19,7 @@ class LocalRepo(RepoProtocol):
         self._packwriter = None
         self.repo_dir = realpath(repo_dir or git.guess_repo())
         self._id = base.repo_id(self.repo_dir)
-        self.config_get = partial(git.git_config_get, repo_dir=self.repo_dir)
+        self.config_get = partial(git.git_config_get, git.repo_config_file(self.repo_dir))
         self.write_symlink = self.write_data
         self.write_bupm = self.write_data
         self._cp = git.cp(self.repo_dir)

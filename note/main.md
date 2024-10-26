@@ -31,6 +31,13 @@ May require attention
   `verify-ref-links` that need to report a true or false result like
   `grep` does.
 
+* `bup` now only considers the repository's `config` settings.
+  Previously configuration values would be determined by the default
+  `git-config`(1) worktree/local/global/system hierarchy, meaning, for
+  example, that the host's (local or remote) `~/.gitconfig` or
+  `/etc/gitconfig` would also be consulted.  The only existing
+  affected value is `pack.packSizeLimit`.
+
 * `bup split --copy` now writes the split data to standard output
   instead of Python memoryview representations like
 

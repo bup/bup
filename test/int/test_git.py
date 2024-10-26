@@ -545,7 +545,7 @@ def test_midx_close(tmpdir):
 def test_config(tmpdir):
     cfg_file = os.path.join(os.path.dirname(__file__), 'sample.conf')
     no_such_file = os.path.join(os.path.dirname(__file__), 'nosuch.conf')
-    git_config_get = partial(git.git_config_get, cfg_file=cfg_file)
+    git_config_get = partial(git.git_config_get, cfg_file)
     WVPASSEQ(git_config_get(b'bup.foo'), b'bar')
     WVPASSEQ(git_config_get(b'bup.bup'), b'is great')
     WVPASSEQ(git_config_get(b'bup.end'), b'end')
@@ -554,7 +554,7 @@ def test_config(tmpdir):
     WVPASSEQ(git_config_get(b'bup.and'), None)
     WVPASSEQ(git_config_get(b'bup.#and'), None)
 
-    WVPASSEQ(git.git_config_get(b'bup.foo', cfg_file=no_such_file), None)
+    WVPASSEQ(git.git_config_get(no_such_file, b'bup.foo'), None)
 
     WVEXCEPT(git.GitError, git_config_get, b'bup.isbad', opttype='bool')
     WVEXCEPT(git.GitError, git_config_get, b'bup.isbad', opttype='int')
@@ -573,4 +573,4 @@ def test_config(tmpdir):
     git.init_repo(git_dir)
     git.check_repo_or_die(git_dir)
     exc(b'git', b'--git-dir', git_dir, b'config', b'bup.foo', b'yep')
-    assert b'yep' == git.git_config_get(b'bup.foo')
+    assert b'yep' == git.git_config_get(git.repo_config_file(git_dir), b'bup.foo')
