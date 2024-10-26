@@ -692,9 +692,9 @@ def main(argv):
             try:
                 dest_repo.update_ref(ref_name, new_ref, orig_ref)
                 if opt.verbose:
-                    new_hex = hexlify(new_ref)
+                    new_hex = hexlify(new_ref).decode('ascii')
                     if orig_ref:
-                        orig_hex = hexlify(orig_ref)
+                        orig_hex = hexlify(orig_ref).decode('ascii')
                         log('updated %r (%s -> %s)\n' % (ref_name, orig_hex, new_hex))
                     else:
                         log('updated %r (%s)\n' % (ref_name, new_hex))
