@@ -197,7 +197,7 @@ def attempt_repair(stem, base, out, *, verbose=False):
     except FileNotFoundError:
         idx_ok = False
     if not idx_ok:
-        cmd = (b'git', b'index-pack', b'--no-rev-index', stem + b'.pack')
+        cmd = (b'git', b'index-pack', stem + b'.pack')
         idx_rc = run(cmd).returncode
         if idx_rc:
             log(f'{path_msg(base)} index-pack failed\n')
