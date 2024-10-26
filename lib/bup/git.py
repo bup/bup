@@ -1314,13 +1314,13 @@ def is_suitable_git(ver_str):
     if ver_str.startswith(b'0.'):
         return 'insufficient'
     if ver_str.startswith(b'1.'):
-        if re.match(br'1\.[012345]rc', ver_str):
+        if re.match(br'1\.[01234567]rc', ver_str):
             return 'insufficient'
-        if re.match(br'1\.[01234]\.', ver_str):
+        if re.match(br'1\.[0123456]\.', ver_str):
             return 'insufficient'
-        if re.match(br'1\.5\.[012345]($|\.)', ver_str):
+        if re.match(br'1\.7\.[01]($|\.)', ver_str):
             return 'insufficient'
-        if re.match(br'1\.5\.6-rc', ver_str):
+        if re.match(br'1\.7\.2-rc', ver_str):
             return 'insufficient'
         return 'suitable'
     if re.match(br'[0-9]+(\.|$)?', ver_str):
@@ -1349,7 +1349,7 @@ def require_suitable_git(ver_str=None):
     if status == 'unrecognized':
         raise GitError('Unexpected git --version output: %r' % ver_str)
     if status == 'insufficient':
-        log('error: git version must be at least 1.5.6\n')
+        log('error: git version must be at least 1.7.2\n')
         sys.exit(1)
     if status == 'suitable':
         _git_great = True
