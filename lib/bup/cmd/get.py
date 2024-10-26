@@ -359,7 +359,7 @@ def resolve_branch_dest(spec, src, src_repo, dest_repo):
 
     spec_args = spec_msg(spec)
     if not spec.dest:
-        misuse('no destination (implicit or explicit) for %s', spec_args)
+        misuse('no destination (implicit or explicit) for %s' % spec_args)
 
     dest = find_vfs_item(spec.dest, dest_repo)
     if dest:
@@ -452,7 +452,7 @@ def resolve_pick(spec, src_repo, dest_repo):
         elif src.type == 'save':
             spec = spec._replace(dest=get_save_branch(src_repo, spec.src))
     if not spec.dest:
-        misuse('no destination provided for %s', spec_args)
+        misuse('no destination provided for %s' % spec_args)
     dest = find_vfs_item(spec.dest, dest_repo)
     if not dest:
         cp = validate_vfs_path(cleanup_vfs_path(spec.dest), spec)
@@ -483,7 +483,7 @@ def resolve_new_tag(spec, src_repo, dest_repo):
     if not spec.dest and src.path.startswith(b'/.tag/'):
         spec = spec._replace(dest=src.path)
     if not spec.dest:
-        misuse('no destination (implicit or explicit) for %s', spec_args)
+        misuse('no destination (implicit or explicit) for %s' % spec_args)
     dest = find_vfs_item(spec.dest, dest_repo)
     if not dest:
         dest = default_loc._replace(path=cleanup_vfs_path(spec.dest))
@@ -510,7 +510,7 @@ def resolve_replace(spec, src_repo, dest_repo):
         if src.path.startswith(b'/.tag/') or src.type == 'branch':
             spec = spec._replace(dest=spec.src)
     if not spec.dest:
-        misuse('no destination provided for %s', spec_args)
+        misuse('no destination provided for %s' % spec_args)
     dest = find_vfs_item(spec.dest, dest_repo)
     if dest:
         if not dest.type == 'branch' and not dest.path.startswith(b'/.tag/'):
