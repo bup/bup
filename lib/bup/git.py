@@ -1355,26 +1355,24 @@ class CatPipe:
             with pending_raise(ex):
                 self.close()
 
-    def _join(self, it, oid):
+    def _join(self, oid, path):
+        it = self.get(oid)
         _, typ, _ = next(it)
         if typ == b'blob':
-            for blob in it:
-                yield blob
+            yield from it
         elif typ == b'tree':
             treefile = b''.join(it)
-            for (mode, name, sha) in tree_decode(treefile):
-                for blob in self.join(hexlify(sha)):
-                    yield blob
+            for mode, name, sha in tree_decode(treefile):
+                yield from self._join(hexlify(sha), path + [name])
         elif typ == b'commit':
             treeline = b''.join(it).split(b'\n')[0]
             assert treeline.startswith(b'tree ')
-            for blob in self.join(treeline[5:]):
-                yield blob
+            yield from self._join(treeline[5:], path + [f'commit:{oid!r}'])
         elif typ is None:
-            raise GitError(f'missing object: {oid!r}')
+            path += [repr(oid)]
+            raise GitError(f'missing ref at {path!r}')
         else:
-            raise GitError('invalid object type %r: expected blob/tree/commit'
-                           % typ)
+            raise GitError(f'ref {oid!r} type {typ!r} is not blob/tree/commit')
 
     def join(self, id):
         """Generate a list of the content of all blobs that can be reached
@@ -1382,8 +1380,7 @@ class CatPipe:
         or a commit. The content of all blobs that can be seen from trees or
         commits will be added to the list.
         """
-        for d in self._join(self.get(id), id):
-            yield d
+        yield from self._join(id, [])
 
 
 _cp = {}
