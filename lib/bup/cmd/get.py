@@ -99,8 +99,8 @@ def misuse(message=None):
 
 def require_n_args_or_die(n, args):
     if len(args) < n + 1:
-        misuse('%s argument requires %d %s'
-               % (n, 'values' if n == 1 else 'value'))
+        arg = args[0].decode('ascii')
+        misuse(f'{arg} argument requires {n} value{"" if n == 1 else "s"}')
     result = args[1:1+n], args[1+n:]
     assert len(result[0]) == n
     return result
