@@ -507,7 +507,7 @@ class BaseConn:
         self.outp.flush()
         return self._read(size)
 
-    def _readline(self, size):
+    def _readline(self):
         raise NotImplementedError("Subclasses must implement _readline")
 
     def readline(self):
