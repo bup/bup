@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 set -eu
 
@@ -24,7 +24,10 @@ if test -z "$ver"; then
     exit 2
 fi    
 
-if ! expr "$ver" '>=' '3.81' > /dev/null; then
-    printf '%q version does not appear to be 3.81 or newer\n' "$make" 1>&2
-    exit 2
+# Technically we need 4.1.90 for .SHELLSTATUS, but everything relevant
+# seems to have at least 4.2 (mostly 4.4 and higher) anyway, so let's
+# just require 4.2+ to simplify.
+
+if ! expr "$ver" '>=' '4.2' > /dev/null; then
+    printf '%q version ("%q") does not appear to be 4.2 or newer\n' "$make" "$gnu" 1>&2
 fi

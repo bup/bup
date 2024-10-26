@@ -70,4 +70,4 @@ task:
     "$BUP_TEST_OTHER_BUP" version
     export PKG_CONFIG_PATH=/usr/local/opt/readline/lib/pkgconfig
     dev/system-info
-    make -j6 BUP_PYTHON_CONFIG=python3-config LDFLAGS=-L/usr/local/lib check
+    gmake -j6 BUP_PYTHON_CONFIG=python3-config LDFLAGS=-L/usr/local/lib check
