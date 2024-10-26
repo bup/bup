@@ -1200,7 +1200,7 @@ def rev_parse(committish, repo_dir=None):
     """
     head = read_ref(committish, repo_dir=repo_dir)
     if head:
-        debug2("resolved from ref: commit = %s\n" % hexlify(head))
+        debug2(f'resolved from ref: commit = {head.hex()}\n')
         return head
 
     if len(committish) == 40:
