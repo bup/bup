@@ -33,7 +33,7 @@ task:
 task:
   name: debian check
   container:
-    image: debian:bullseye
+    image: debian:buster
     cpu: 4
     memory: 2
   script: |
