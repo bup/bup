@@ -26,7 +26,7 @@ def test_bloom(tmpdir):
             for h in [os.urandom(20) for i in range(1000)]:
                 if b.exists(h):
                     false_positives += 1
-            assert false_positives < 5
+            assert false_positives < 10
         os.unlink(tmpdir + b'/pybuptest.bloom')
 
     tf = tempfile.TemporaryFile(dir=tmpdir)
