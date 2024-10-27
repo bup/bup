@@ -311,6 +311,8 @@ def pruned_ls_files(parent, output):
     # Trim to just the paths in the source dir without the prefix, and
     # collapse any split .bupm/* paths into just a .bupm.
     bupm_rx = re.compile(rb'/\.bupm/.*')
+    assert parent.startswith(b'/')
+    assert not parent.endswith(b'/')
     for line in output.splitlines(keepends=True):
         if not line.startswith(parent[1:]):
             bupm_prev = False
@@ -318,7 +320,7 @@ def pruned_ls_files(parent, output):
         line = line[len(parent):]
         if line.startswith(b'.bupm/'):
             if not bupm_prev:
-                files.append('.bupm')
+                files.append('.bupm\n')
                 bupm_prev = True
             continue
         if b'/.bupm/' in line:
