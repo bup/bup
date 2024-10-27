@@ -41,5 +41,5 @@ except ModuleNotFoundError: # delete all -n opts
             argv.append(sys.argv[i])
             i += 1
 
-print(shlex.join(['pytest'] + argv), file=sys.stderr)
+print(' '.join([shlex.quote(x) for x in ['pytest'] + argv]), file=sys.stderr)
 sys.exit(pytest.main(args=argv))
