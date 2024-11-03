@@ -1,0 +1,19 @@
+
+digraph "after rm and gc" {
+  bgcolor="transparent";
+  node [shape=box];
+
+  saves -> save3 [style=dotted]
+  save3 -> save1
+  save3 -> root3 -> dot3
+  save1 -> root1 -> dot1
+
+  save1 [label="2024-09... (a0...)"];
+  save3 [label="2024-11... (c1...)"];
+  root1 [label="/"];
+  root3 [label="/"];
+  dot1 [label="..."];
+  dot3 [label="..."];
+
+  { rank=same; save1, save3 }
+}

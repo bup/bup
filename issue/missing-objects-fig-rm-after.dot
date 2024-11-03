@@ -1,0 +1,32 @@
+
+digraph "after rm" {
+  bgcolor="transparent";
+  node [shape=box];
+
+  saves -> save3 [style=dotted]
+  save3 -> save1
+  save3 -> root3 -> dot3
+  save1 -> root1 -> dot1
+
+  save3orig -> save2 -> save1
+  save3orig -> root3
+  save2 -> root2
+    root2 -> etc
+      etc -> fstab
+      etc -> hosts
+
+  save1 [label="2024-09... (a0...)"];
+  save2 [label="2024-10... (b0...)"; style=dotted];
+  save3 [label="2024-11... (c1...)"];
+  save3orig [label="2024-11... (c0...)"; style=dotted];
+  root1 [label="/"];
+  root2 [label="/"; style=dotted];
+  root3 [label="/"];
+  dot1 [label="..."];
+  dot3 [label="..."];
+  etc [label="etc/ (tree ee...)"; style=dotted];
+  fstab [label="fstab (blob f9...)"; style=dotted];
+  hosts [label="hosts (blob 76...)"; style=dotted];
+
+  { rank=same; save1, save2, save3, save3orig }
+}

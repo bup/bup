@@ -1,0 +1,16 @@
+
+digraph "bup get bug save" {
+  bgcolor="transparent";
+  node [shape=box];
+
+  root -> dir1;
+    dir1 -> dir2;
+      dir2 -> file2;
+      dir2 -> file1;
+
+  root [label="c-1 (commit)"];
+  dir1 [label="/ (tree)"];
+  dir2 [label="etc/ (tree)"];
+  file2 [label="fstab (blob)"];
+  file1 [label="hosts (blob)"];
+}

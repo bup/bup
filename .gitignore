@@ -10,6 +10,17 @@
 /dev/python
 /dev/python-proposed
 /dev/python-proposed.d
+/issue/missing-objects-fig-bloom-get.svg
+/issue/missing-objects-fig-bloom-set.svg
+/issue/missing-objects-fig-bup-model-2.svg
+/issue/missing-objects-fig-bup-model.svg
+/issue/missing-objects-fig-gc-dangling.svg
+/issue/missing-objects-fig-get-bug-save.svg
+/issue/missing-objects-fig-git-model.svg
+/issue/missing-objects-fig-rm-after-gc.svg
+/issue/missing-objects-fig-rm-after.svg
+/issue/missing-objects-fig-rm-before.svg
+/issue/missing-objects.html
 /lib/bup/_helpers.d
 /lib/bup/_helpers.dll
 /lib/bup/_helpers.so

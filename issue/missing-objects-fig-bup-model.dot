@@ -1,0 +1,22 @@
+
+digraph "bup model" {
+  bgcolor="transparent";
+  node [shape=box];
+
+  above -> bup
+    bup -> bashrc
+    bup -> gitconfig
+    bup -> large
+      large -> part1
+      large -> part2
+      large -> part3
+
+  above [label="..."];
+  bup [label="bup/ (tree 88...)"];
+  bashrc [label="..."];
+  gitconfig [label="..."];
+  large [label="bup-0.35.tar (tree 11...)"];
+  part1 [label="0000 (blob 0f...)"];
+  part2 [label="0879 (blob 91...)"];
+  part3 [label="1c10 (blob 63...)"];
+}

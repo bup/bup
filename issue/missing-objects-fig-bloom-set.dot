@@ -1,0 +1,27 @@
+
+digraph "bloom set" {
+  rankdir=LR;
+  // splines=ortho;
+  bgcolor="transparent";
+  ranksep=2; // This affects h* -> bloom distance
+  node [shape=box];
+
+  h1:e -> bloom2:b1:w
+  h1:e -> bloom2:b3:w
+  h2:e -> bloom2:b3:w
+  h2:e -> bloom2:b4:w
+
+  bloom2 [shape=plain; label=<
+          <table border="0" cellborder="1" cellspacing="0">
+          <tr><td>bit</td></tr>
+          <tr><td>0</td></tr>
+          <tr><td port="b1" bgcolor="lime">1</td></tr>
+          <tr><td>2</td></tr>
+          <tr><td port="b3" bgcolor="lime">3</td></tr>
+          <tr><td port="b4" bgcolor="lime">4</td></tr>
+          <tr><td>...</td></tr>
+          </table>>];
+
+  h1 [label="something (blob ae0...)"];
+  h2 [label="another (tree 273...)"];
+}

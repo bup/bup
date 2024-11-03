@@ -1,0 +1,23 @@
+
+digraph "bloom get" {
+  rankdir=RL
+  bgcolor="transparent";
+  ranksep=1; // This affects h* -> bloom distance
+  node [shape=box];
+
+  bloom2 [shape=plain; label=<
+          <table border="0" cellborder="1" cellspacing="0">
+          <tr><td>bit</td></tr>
+          <tr><td>0</td></tr>
+          <tr><td port="b1" bgcolor="lime">1</td></tr>
+          <tr><td>2</td></tr>
+          <tr><td port="b3" bgcolor="lime">3</td></tr>
+          <tr><td port="b4" bgcolor="lime">4</td></tr>
+          <tr><td>...</td></tr>
+          </table>>];
+
+  bloom2:b1 -> etc:e
+  bloom2:b4 -> etc:e
+
+  etc [label="etc/ (tree ee...)"];
+}

@@ -96,20 +96,55 @@ bup_ext_cmds := lib/cmd/bup-import-rdiff-backup lib/cmd/bup-import-rsnapshot
 
 bup_deps := lib/bup/_helpers$(soext) lib/cmd/bup
 
-all: dev/bup-exec dev/bup-python dev/python $(bup_deps) Documentation/all \
-  $(current_sampledata)
+incomplete_saves_svg := \
+  issue/missing-objects-fig-bloom-get.svg \
+  issue/missing-objects-fig-bloom-set.svg \
+  issue/missing-objects-fig-bup-model-2.svg \
+  issue/missing-objects-fig-bup-model.svg \
+  issue/missing-objects-fig-gc-dangling.svg \
+  issue/missing-objects-fig-get-bug-save.svg \
+  issue/missing-objects-fig-git-model.svg \
+  issue/missing-objects-fig-rm-after-gc.svg \
+  issue/missing-objects-fig-rm-after.svg \
+  issue/missing-objects-fig-rm-before.svg
+clean_paths += $(incomplete_saves_svg)
 
-$(current_sampledata):
-	dev/configure-sampledata --setup
+issue/missing-objects.html: $(incomplete_saves_svg)
 
+issue/%.svg: issue/%.dot
+	$(DOT) -Tsvg $< > $@
+
+issue/%.html: issue/%.md
+	$(PANDOC) -s --embed-resources --resource-path issue \
+	  -r markdown -w html -o $@ $<
+
+issues :=
+man_md :=
+
+DOT ?= $(shell type -p dot)
 PANDOC ?= $(shell type -p pandoc)
 
 ifeq (,$(PANDOC))
-  $(shell echo "Warning: pandoc not found; skipping manpage generation" 1>&2)
-  man_md :=
+  $(info Warning: pandoc not found; skipping generation of related documents)
 else
   man_md := $(wildcard Documentation/*.md)
+  ifeq (,$(findstring --embed-resources,$(shell $(PANDOC) --help)))
+    $(info Warning: no pandoc --embed-resources; skipping generation of related documents)
+  else
+    ifeq (,$(DOT))
+      $(info Warning: graphviz dot not found; skipping generation of related documents)
+    else
+      issues += issue/missing-objects.html
+    endif
+  endif
 endif
+
+
+all: dev/bup-exec dev/bup-python dev/python $(bup_deps) Documentation/all \
+  $(issues) $(current_sampledata)
+
+$(current_sampledata):
+	dev/configure-sampledata --setup
 
 man_roff := $(man_md:.md=)
 man_html := $(man_md:.md=.html)
