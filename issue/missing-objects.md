@@ -1,90 +1,59 @@
-## Object model background
+---
+title: How bup (before 0.33.5) might create incomplete trees
+---
 
-In git, we have the following structure for an individual commit
-with directories and files, labeled with name/object-type:
+Versions of bup before 0.33.5 had three issues that could cause a
+repository to end up with trees that had dangling references,
+i.e. missing files, parts of files, subtrees, etc.  This document
+describes those issues in greater detail.
 
-```mermaid
-graph LR;
-    commit1/commit-->dir1[dir1/tree];
-    dir1-->dir2[dir2/tree];
-    dir1-->dir3[dir3/tree];
-    dir3-->x[...];
-    dir2-->dir4[dir4/tree];
-    dir4-->y[...];
-    dir2-->file3[file3/blob];
-    dir2-->file2[file2/blob];
-    dir1-->file1[file1/blob];
-```
+## Background: git storage model
 
-In bup this model is extended, so you could have e.g. a large file ("file2") getting split
+In git, we have the following structure for an individual commit with
+directories and files, labeled as "name (git-type hash)":
 
-```mermaid
-graph LR;
-    commit1/commit-->dir1[dir1/tree];
-    dir1-->tree2[file2/tree];
-    dir1-->x[...];
-    tree2-->leaf1[chunk1/blob];
-    tree2-->leaf2[chunk2/blob];
-    tree2-->leaf3[chunk3/blob];
-    dir1-->file1[file1/blob];
-```
+<center>![](missing-objects-fig-git-model.svg)</center>
 
-It could also get split into multiple levels:
+bup extends this model such that large files may be split into their
+own subtrees during deduplication:
 
-```mermaid
-graph LR;
-    commit1/commit-->dir1[dir1/tree];
-    dir1-->tree2[file2/tree];
-    tree2-->tree3[file2 chunk start 000/tree];
-    tree2-->tree4[file2 chunk start 999/tree];
-    dir1-->x[...];
-    tree3-->leaf1[chunk1/blob];
-    tree3-->leaf2[chunk2/blob];
-    tree3-->leaf3[chunk3/blob];
-    tree4-->y[...];
-    dir1-->file1[file1/blob];
-```
+<center>![](missing-objects-fig-bup-model.svg)</center>
 
-There are some more details (especially with split-trees), but regardless of this, the git model holds conceptually:
+Files can also be split into multiple levels:
 
-```mermaid
-graph LR;
-    commit-->tree1[tree];
-    tree1-->tree2[tree];
-    tree1-->tree3[tree];
-    tree3-->x[...];
-    tree2-->tree4[tree];
-    tree4-->y[...];
-    tree2-->blob3[blob];
-    tree2-->blob2[blob];
-    tree1-->blob1[blob];
-```
+<center>![](missing-objects-fig-bup-model-2.svg)</center>
 
- * commits can point to zero or more other commits
- * commits point to exactly one tree
- * trees can point to other trees and/or blobs
+There are some more details, but the git model holds overall.  Commits
+refer to their parent commits and a single tree, and trees refer to
+their children (blobs and trees) -- and of course each object is
+identified by its content hash.
 
-Each object is identified by its content hash.
-
-NOTE: For the sake of simplicity I'm drawing everything as trees in this document. In reality, the bup deduplication works exactly because it is _not_ a tree, but rather a directed acyclic graph (DAG). Multiple backup commits that record unchanged or otherwise identical directories or files obviously point to the object(s) representing those, shared across them.
+> Note: For the sake of simplicity I'm drawing everything as trees in
+> this document. In reality, the bup deduplication works exactly
+> because it is _not_ a tree, but rather a directed acyclic graph
+> (DAG). Multiple backup commits that record unchanged or otherwise
+> identical directories or files obviously point to the object(s)
+> representing those, shared across them.
 
 ## How `bup save` operates
 
-When reading files and directories on the filesystem, `bup save` will create a
-number of blob and tree objects, store them into the repository if not
-already present, and (usually) finally create a new commit object that
-points to the previous commit object and the new root tree object.
+When reading files and directories from the filesystem, `bup save`
+will create a number of blob and tree objects, store them into the
+repository if not already present, and (usually) finally create a new
+commit object that points to the previous commit object and the new
+root tree object.
 
-Each file saved into the repository is uniquely identified by the hash (SHA-1)
-of its object, which in bup might be a blob or tree object. In case of
-a tree object, the file really consists of a set of objects, unlike in
-git.
+Each "plain" file saved into the repository is uniquely identified by
+the hash (SHA-1) of its object.  As mentioned above, and unlike git, a
+file might be stored as a tree.
 
-After reading a file or directory, `bup save` also updates the `index` for it with its hash. This
-helps speed up the next time `bup save` runs: if the file is unchanged during the next `bup index`
-run, the next `bup save` run can simply check if the object with the hash recorded in the index
-is present in the repository, and doesn't have to open/read the file or directory again if this
-is the case.
+After reading a file or directory, `bup save` also updates the bup
+`index` (not to be confused with git packfile indexes) entry for it
+with the related hash. This helps speed up the next `bup save` run --
+if the file is unchanged during the next `bup index` run, the next
+`bup save` can simply check whether the object with the hash recorded
+in the index is present in the repository, and doesn't have to
+open/read the file or directory again if so.
 
 ## How `bup get` operates
 
@@ -92,68 +61,31 @@ Conceptually, `bup get` simply walks over the graph of a set of objects
 in the source repository, checks if the object is present in the
 destination repository, and if not then it copies the object over.
 If it encounters a tree object that is already present in the destination
-repository, it does _not_ walk down that object, for performance
+repository, it does _not_ walk into that object, for performance
 reasons.
 
 ## How `bup prune-older`/`bup rm` operate
 
 Again conceptually, this works by cutting pieces out of the chain of
-commits, for example cutting out `commit2`:
+commits, for example a `bup rm saves/2024-10...` will change
+this branch:
 
-### Before
+<center>![](missing-objects-fig-rm-before.svg)</center>
 
-```mermaid
-graph LR;
-  ref-.->commit1-->commit2;
-  commit2-->commit3;
-  subgraph save 1
-  commit1-->tree1-->tree1a-->blob1a & blob1b;
-  end
-  subgraph save 2
-  commit2-->tree2-->tree2a-->blob2a & blob2b;
-  end
-  subgraph save 3
-  commit3-->tree3-->tree3a-->blob3a & blob3b;
-  end
-```
+into this:
 
-### After
+<center>![](missing-objects-fig-rm-after.svg)</center>
 
-```mermaid
-graph LR;
-  ref-.->commit1-->commit3;
-  commit2-->commit3;
-  subgraph save 1
-  commit1-->tree1-->tree1a-->blob1a & blob1b;
-  end
-  subgraph save 2
-  commit2-->tree2-->tree2a-->blob2a & blob2b;
-  end
-  subgraph save 3
-  commit3-->tree3-->tree3a-->blob3a & blob3b;
-  end
-```
-
-As you can see, the `commit2` object as well as trees/blobs it points to
-still exists in the repository.
-
-Technically, this still isn't quite right. Instead, `ref` now points to `commit1'` (a rewritten version of `commit1`) which points to `commit3` and `tree1`, while `commit1` also still exists in the repository pointing to `commit2` and `tree1`. However, the difference between `commit1` and `commit1'` isn't all that relevant to this explanation since commit objects contain timestamps etc. and will never re-appear in any form, so I'm ignoring that to make the pictures more readable.
+As you can see, the save (commit) `2024-10...` object and the
+trees/blobs it points to still exist in the repository, though they're
+detached from `saves`.
 
 ## How `bup gc` operates
 
 GC is intended to clean up those dangling objects. So after the prune example
 above, ideally we want to have in the repository only this left after GC:
 
-```mermaid
-graph LR;
-  ref-.->commit1-->commit3;
-  subgraph save 1
-  commit1-->tree1-->tree1a-->blob1a & blob1b;
-  end
-  subgraph save 3
-  commit3-->tree3-->tree3a-->blob3a & blob3b;
-  end
-```
+<center>![](missing-objects-fig-rm-after-gc.svg)</center>
 
 This is not exactly what happens, unfortunately. We're still doing some
 background, so more on this later.
@@ -183,17 +115,18 @@ be destroyed and recreated at will.
 
 ### Bloom filter
 
-To see if it's even worth checking, bup uses a bloom filter (`bup.bloom`), which is a
-probabilistic data structure that can say "I've never heard about this
-object before" and "I might have seen this object before". If it says
-the object doesn't exist, there's no need to check the midx/idx. If it
-says the object _might_ exist, the `*.midx`/`*.idx` files need to be
-consulted. The bloom filter is therefore not relevant to the issues at
-hand.
+To see if it's even worth checking, bup uses a [Bloom
+filter](https://en.wikipedia.org/wiki/Bloom_filter) (`bup.bloom`),
+which is a probabilistic data structure that can say "I've never heard
+about this object before" and "I might have seen this object
+before". If it says the object doesn't exist, there's no need to check
+the midx/idx files. If it says the object _might_ exist, then those
+files need to be consulted. The Bloom filter is therefore not relevant
+to the issues at hand.
 
-Just like the `*.midx` files, this file is created from the `*.idx` files
-(or perhaps from the `*.midx` that in turn come from `*.idx`) and is also
-ephemeral, they can be destroyed and recreated at will.
+Just like the `*.midx` files, this file is created from the `*.idx`
+files (or perhaps from the `*.midx` that in turn come from `*.idx`)
+and is also ephemeral, so it can be destroyed and recreated at will.
 
 ## Remote save - `bup save -r`
 
@@ -205,7 +138,7 @@ shipping the object to the server for it to check, or asking the server
 to check, both of which would take a lot of time (due to bandwidth and
 latency respectively.)
 
-## Bug #1
+## Bug #1 (remotely cached midx files)
 
 When GC is done on a repository, of course some pack files will be
 removed along with their idx files.
@@ -213,8 +146,7 @@ removed along with their idx files.
 When a client synchronizes the idx files, it deletes the idx files
 from the cache that were removed on the server repository, so that
 testing for objects that were previously contained in them should no
-longer indicate that they already exist. (It also downloads idx files
-that it doesn't have, to have the updated information.)
+longer indicate that they already exist.
 
 However, the midx files are incorrectly updated. Remember that
 midx files are created from the idx files. When updating the midx
@@ -225,234 +157,131 @@ given the answer that an object exists, even though it was GC'ed in
 the repository, and in fact the idx files no longer show that it
 exists, only the incorrect midx does.
 
-This in turn can lead to save -r or get -r omitting an object that had
+This in turn can lead to `save -r` or `get -r` omitting an object that had
 previously existed, but has been removed by GC on the remote (omitted
 because the midx still thinks the remote has it).
 
-This doesn't happen with local use of the repository (without -r or 'bup on')
-since gc removes all midx/bloom files.
+This doesn't happen with local use of the repository (without `-r` or
+`bup on`) since gc removes all midx/bloom files.
+
+Since version 0.33.5, `bup` regenerates the midx files correctly.
 
 ## Bug #2
 
 I previously showed that after prune, you have this set of objects
 in the repository:
 
-```mermaid
-graph LR;
-  ref-.->commit1-->commit3;
-  commit2-->commit3;
-  subgraph save 1
-  commit1-->tree1-->tree1a-->blob1a & blob1b;
-  end
-  subgraph save 2
-  commit2-->tree2-->tree2a-->blob2a & blob2b;
-  end
-  subgraph save 3
-  commit3-->tree3-->tree3a-->blob3a & blob3b;
-  end
-```
+<center>![](missing-objects-fig-rm-after.svg)</center>
 
 Remember that after GC, we want this set of objects:
 
-```mermaid
-graph LR;
-  ref-.->commit1-->commit3;
-  subgraph save 1
-  commit1-->tree1-->tree1a-->blob1a & blob1b;
-  end
-  subgraph save 3
-  commit3-->tree3-->tree3a-->blob3a & blob3b;
-  end
-```
+<center>![](missing-objects-fig-rm-after-gc.svg)</center>
 
-Unfortunately, the current GC fundamentally doesn't work that way (and that's the issue),
-and it might remove only
+Unfortunately, the current GC fundamentally doesn't work that way (and
+that's the issue), and it might only remove the `2024-11... (c1...)`
+and `2024-10...` commits and `hosts (blob 76...)`, leaving us with:
 
- * `commit2`
- * `tree2`
- * `blob2b`
+<center>![](missing-objects-fig-gc-dangling.svg)</center>
 
-and therefore create the following situation:
-
-```mermaid
-graph LR;
-  ref-.->commit1-->commit3;
-  subgraph save 1
-  commit1-->tree1-->tree1a-->blob1a & blob1b;
-  end
-  subgraph save 2
-  tree2a-->blob2a;
-  tree2a-->x[/blob2b missing/];
-  end
-  subgraph save 3
-  commit3-->tree3-->tree3a-->blob3a & blob3b;
-  end
-```
-
-### How does that happen?
-
-There are actually two reasons it can do this:
-
-#### Probabilistic liveness detection
-
-The first reason is that gc tracks live objects only
-probabilistically, not precisely. It treats objects as live
-when they are in a bloom filter of live objects, populated
-by a reachability walk through all refs.
-
-Because bloom filters can only say "definitely not present"
-and "maybe present", it means that a random other object
-can cause `tree2a` to be considered "maybe present" and that
-means 'live' in the gc implementation.
-
-First, the bloom filter is populated with live objects, each bit of the hash of all live objects is set to 1:
-
-```mermaid
-graph LR;
-  classDef setbit fill:#bbf;
-  live-object-1 -- set --> bloom-bit-0;
-  live-object-2 -- set --> bloom-bit-1;
-  subgraph bloom
-    bloom-bit-0[0]:::setbit;
-    bloom-bit-1[1]:::setbit;
-    bloom-bit-2[2];
-    more1[...];
-    bloom-bit-N[N];
-  end
-```
-
-Then the liveness check can erroneously return that the object is live if it maps to the same bit as a live object:
-
-```mermaid
-graph LR;
-  classDef setbit fill:#bbf;
-  tree2a -- check --> bloom-bit-0;
-  subgraph bloom
-    bloom-bit-0[0]:::setbit;
-    bloom-bit-1[1]:::setbit;
-    bloom-bit-2[2];
-    more1[...];
-    bloom-bit-N[N];
-  end
-```
-
-#### Pack file rewrite threshold
-
-Alternatively (or additionally), it's possible that `tree2a`
-and `blob2b` are part of two different pack files (depending
-on how/when they were written), and the pack file containing
-`blob2b` ends up being rewritten (because it has more dead
-objects than the threshold), but the pack file containing
-`tree2a` is not rewritten (because it doesn't.)
-
-```mermaid
-graph LR;
-  subgraph "pack2 (mostly live objects)"
-    tree2a["tree2a (dead)"];
-    live-1["object 1 (live)"];
-    live-2["object 2 (live)"];
-    live-more["... (live)"];
-    live-N["object N (live)"];
-  end
-
-  subgraph "pack1 (mostly dead objects)"
-    blob2b["blob2b (dead)"];
-    dead-1["object 1 (dead)"];
-    dead-2["object 2 (dead)"];
-    dead-more["... (dead)"];
-    dead-N["object N(dead)"];
-  end
-```
+See ["How gc (before 0.33.5) can create dangling references"](#how-gc-before-0.33.5-can-create-dangling-references)
+below for further details regarding the cause.
 
 ### Effect on `bup get`
 
-If you run `bup get` now to write to this repository, and it encounters
-`tree2a` in the set of objects to transfer, it will see that it
-already exists, and as explained earlier, will not walk into it. This
-will leave the repository broken, because now get created a new
-reference to `tree2a`, but `blob2b` is missing:
-
-```mermaid
-graph LR;
-  ref-.->transferred-commit-->commit1-->commit3;
-  subgraph save 1
-  commit1-->tree1-->tree1a-->blob1a & blob1b;
-  end
-  subgraph save 2
-  tree2a-->blob2a;
-  tree2a-->x[/blob2b missing/];
-  end
-  subgraph save 3
-  commit3-->tree3-->tree3a-->blob3a & blob3b;
-  end
-  subgraph new save
-  transferred-commit-->new-tree-->tree2a;
-  end
-```
+If you run `bup get` now to write to this repository, and it
+encounters the `etc/` tree, originally from `save 2`, in the set of
+objects to transfer, it will see that it already exists (because it
+*is* still in the repository's packfiles), and as explained earlier,
+will assume it's complete and re-use it, without delving further. This
+will leave the repository broken, because now, whatever `get` is
+building will have a reference to the `etc/` tree that itself refers
+to the missing `hosts` blob.
 
 ### Effect on `bup save`
 
-Similarly, if `bup save` encounters `tree2a` in the `index`, and sees
-that it already exists in the repository, it will not read the file.
-Again, it creates a new reference to `tree2a` despite `blob2b` being
-missing, exactly as in the previous graph.
+Similarly, if `bup save` encounters the `etc/` tree, originally from
+`save 2`, in the `index`, and sees that it already exists in the
+repository, it will prune its index traversal at that point, and
+re-use the existing, broken `etc/ (tree ee)` object without noticing
+that the tree is broken.
 
-This can (also) happen if a save was aborted in the middle, and then
-gc was run to clean up the repo and remove unreferenced objects, but
-some objects that were already referenced by the index (e.g. `tree2a`)
-were not removed by gc, while some objects pointed to by those
-referenced in the index (e.g. `blob2b`) were removed by gc.
+This can (also) happen if a save is aborted in the middle, `gc` is run
+to clean up the repo and remove unreferenced objects, and some objects
+that are referenced by the index (say the `etc/` tree) are not removed
+by the `gc`, while some other objects (say `hosts`) that are referred
+to by the preserved objects are themselves removed.
 
-However, if the index was destroyed it should not be possible for
-`bup save` to create this situation, since to save a file it will
-create each individual object the file is comprised of and check
-if that exists in the repository. This would encounter `blob2b`
-and store the missing object again, even though next it calculates
-`tree2a`, which already exists and doesn't need to be saved again.
+However, if the index doesn't exist (say due to a `bup index
+--clear`), then it shouldn't be possible for `bup save` to create the
+problem, because when saving a path it creates all the objects the
+path is comprised of, from the bottom (leaves) up, and then checks to
+see if the object exists in the repository. This process would
+encounter `hosts` first, and store it, fixing the broken `etc/` tree
+before it's reached.
 
-## Bug #3
+### How gc (before 0.33.5) can create dangling references
 
-While working on all of this, we noticed that a similar scenario as
-with `bup gc` can occur with just `bup get` in case it is aborted
-during the transfer.
+There are actually two reasons it can do this.
 
-Starting with the usual test repository from the explanations and
-examples above:
+#### Probabilistic liveness detection
 
-```mermaid
-graph LR;
-  ref-.->commit1-->commit2[...];
-  subgraph save 1
-  commit1-->tree1-->tree1a-->blob1a & blob1b;
-  end
-```
+The first reason is that the garbage collection before 0.33.5 tracks
+tree and commit objects probabilistically, not precisely. It
+determines whether they're live via a Bloom filter populated by a
+reachability walk through all refs.  (As of 0.33.5 trees and commits
+are tracked precisely.)
 
-Say that `bup get` is called to transfer `commit1` from
-this to another repository. For simplicity let's assume not
-its parent commit (`...`), perhaps to a repository that
-already has it.
+Because [Bloom filters](https://en.wikipedia.org/wiki/Bloom_filter)
+can only say "definitely not present" and "maybe present", it means
+that some other random object can cause `/etc (tree ee...)` to be
+considered "maybe present" (live) when it isn't actually reachable
+(wasn't traversed during the walk).
 
-This should transfer the following objects:
- * `commit1`
- * `tree1`
- * `tree1a`
- * `blob1a`
- * `blob1b`
+First, the Bloom filter is populated with live objects.  Each live
+object sets N bits in the Bloom filter (just 2 here):
 
-Unfortunately, current versions of `bup get` will transfer
-the objects in precisely the listed order. This means that
-`bup get` can be aborted in just the wrong place, say after
-`blob1a`, and leave `tree1a` in the destination repo, but
-with `blob1b` missing. A future `bup get` won't even repair (resume)
-this, because (as described previously) it will see `tree1a` in
-the destination repository and not check further into it.
+<center>![](missing-objects-fig-bloom-set.svg)</center>
 
-(For example, `bup get` could be aborted because of running out
-of disk space on the destination, network connections dying, etc.)
+Then the liveness check can erroneously return true if say `etc/ (tree
+ee...)` happens to map to N bits that have been set by other objects:
 
-NOTE: If you were to run `bup gc` after the aborted transfer even the
-broken version of it would clean up the freshly written pack file
-since the objects aren't connected yet, but chances are that one would
-just attempt to resume the transfer, resulting in it being connected,
-but potentially incomplete. Also, due to its own bloom collision bug,
-gc might keep wrong objects.
+<center>![](missing-objects-fig-bloom-get.svg)</center>
+
+#### Pack file rewrite threshold
+
+It's also possible that `etc/ (tree ee...)` and `hosts (blob 76...)`
+end up in separate pack files (depending on how/when they were
+written), and the pack file containing `hosts` ends up being
+rewritten, dropping `hosts` (because it has more dead objects than the
+threshold), but the pack file containing `etc/ (tree ee)` does not
+(because it had enough live objects to survive intact).
+
+## Bug #3 (bup get)
+
+While working on all of this, we noticed that `bup get` can also leave
+the repository with incomplete trees if it is aborted at the wrong
+time during a transfer.  Imagine we have a save like this:
+
+<center>![](missing-objects-fig-get-bug-save.svg)</center>
+
+Say that `bup get` is called to transfer `c-1` from another
+repository.  For simplicity we'll ignore its parent commit.  It should
+transfer `c-1`, `/`, `etc`, `fstab`, and `hosts`.  Unfortunately,
+versions of `bup get` before 0.33.5 will transfer the objects in
+precisely that order, which means that if `bup get` is interrupted at
+the wrong time, say just after fetching `fstab`, it will leave an
+incomplete `etc/` tree in the destination repo (because the `hosts`
+blob is missing).  Any future `bup get` attempts won't fix the problem
+because (as described previously) they will see `etc` in the
+destination repository and assume it's complete.
+
+And of course there are many ways `bup get` might be interrupted: full
+filesystem, system shutdown, network issues, or perhaps even more
+likely, `^C` (SIGINT).
+
+> Note: If you were to run `bup gc` after the aborted transfer even
+> the broken version of it would clean up the freshly written pack
+> file since the objects aren't connected yet, but chances are that
+> one would just attempt to resume the transfer, resulting in it being
+> connected, but potentially incomplete. Also, due to the Bloom
+> collision bug, gc might incorrectly keep some objects.

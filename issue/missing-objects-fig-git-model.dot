@@ -1,0 +1,18 @@
+
+digraph "git model" {
+  bgcolor="transparent";
+  node [shape=box];
+
+  commit -> root
+    root -> home
+      home -> bup
+        bup -> bashrc
+        bup -> gitconfig
+
+  commit [label="c-1 (commit ae...)"];
+  root [label="/ (tree 90...)"];
+  home [label="home/ (tree 1f...)"];
+  bup [label="bup/ (tree 88...)"];
+  bashrc [label=".bashrc (blob b9...)"];
+  gitconfig [label=".gitconfig (blob a1...)"];
+}

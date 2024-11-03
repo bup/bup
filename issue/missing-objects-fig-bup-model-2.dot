@@ -1,0 +1,18 @@
+
+digraph "bup model 2" {
+  bgcolor="transparent";
+  node [shape=box];
+
+  above -> large
+    large -> part1
+    large -> sub
+      sub -> part2
+      sub -> part3
+
+  above [label="..."];
+  large [label="bup-0.35.tar (tree ff...)"];
+  sub [label="046 (tree a0...)"];
+  part1 [label="000 (blob d9...)"];
+  part2 [label="000 (blob 12...)"];
+  part3 [label="1cf (blob ee...)"];
+}

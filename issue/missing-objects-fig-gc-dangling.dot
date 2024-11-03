@@ -1,0 +1,28 @@
+
+digraph "dangling after gc" {
+  bgcolor="transparent";
+  node [shape=box];
+
+  saves -> save3 [style=dotted]
+  save3 -> save1
+  save3 -> root3 -> dot3
+  save1 -> root1 -> dot1
+
+  etc -> fstab
+  etc -> hosts
+
+  // Just pushes etc below the saves
+  dot1 -> etc [dir=none; style=invisible]
+
+  save1 [label="2024-09... (a0...)"];
+  save3 [label="2024-11... (c1...)"];
+  root1 [label="/"];
+  root3 [label="/"];
+  dot1 [label="..."];
+  dot3 [label="..."];
+  etc [label="etc/ (tree ee...)"];
+  fstab [label="fstab (blob f9...)"];
+  hosts [label="hosts (blob 76...)"; style=invisible];
+
+  { rank=same; save1, save3 }
+}
