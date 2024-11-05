@@ -1607,9 +1607,10 @@ def walk_object(get_ref, oidx, *, stop_at=None, include_data=None,
         elif typ == b'commit':
             pending.append(item)
             commit_items = parse_commit(data)
+            # For now, all paths are rooted at the "nearest" commit
             for pid in commit_items.parents:
-                pending.append((pid, parent_path, chunk_path, mode, b'commit'))
-            pending.append((commit_items.tree, parent_path, chunk_path,
+                pending.append((pid, [], [], mode, b'commit'))
+            pending.append((commit_items.tree, [oidx], [],
                             hashsplit.GIT_MODE_TREE, b'tree'))
         elif typ == b'tree':
             pending.append(item)

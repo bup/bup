@@ -197,4 +197,43 @@ pack_contents_after="$(git show-index < "$BUP_DIR/objects/pack/"*.idx | cut -d' 
 WVPASSEQ 1 "$(grep -cE '^rewriting ' gc.log)"
 WVPASSEQ "$pack_contents_before" "$pack_contents_after"
 
+
+WVSTART "gc (--ignore-missing)"
+
+WVPASS rm -rf "$BUP_DIR"
+WVPASS bup init
+WVPASS rm -rf src && mkdir src
+WVPASS echo 0 > src/0
+WVPASS echo 1 > src/1
+WVPASS mkdir src/victim
+WVPASS echo 2 > src/victim/2
+WVPASS bup index src
+WVPASS bup save -n src --strip src
+
+root_bupm="$(WVPASS git cat-file -t "$(git rev-parse src:.bupm)")" || exit $?
+
+WVPASS echo 3 > src/3
+WVPASS bup index src
+WVPASS bup save -n src --strip src
+
+last_save="$(WVPASS bup ls -s src | tail -n -2 | head -n 1 | cut -d ' ' -f 2)" || exit $?
+WVPASS bup rm --unsafe src/"$last_save"
+
+# Drop the victim tree
+WVPASS git ls-tree src | grep victim | WVPASS cut -d' ' -f 3 \
+    | WVPASS cut -b -40 > victim-oid
+WVPASS test -n "$(<victim-oid)"
+WVPASS "$top/dev/perforate-repo" --drop-oids "$BUP_DIR" < victim-oid
+
+WVFAIL bup gc -v $GC_OPTS --threshold 0 --ignore-missing 2>&1 | tee gc.log
+WVPASSEQ 1 "$(WVPASS grep -cE '^rewriting ' gc.log)"
+WVPASSEQ 1 "$(WVPASS grep -cE '^missing ' gc.log)"
+
+obj_n_after="$(WVPASS git cat-file --batch-all-objects --batch-check='%(objectname)' | wc -l)" || exit $?
+if test "$root_bupm" = blob; then
+    WVPASSEQ 5 $obj_n_after
+else
+    WVPASSEQ 7 $obj_n_after
+fi
+
 WVPASS rm -rf "$tmpdir"

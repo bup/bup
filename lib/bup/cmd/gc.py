@@ -9,10 +9,11 @@ from bup.helpers import die_if_errors
 optspec = """
 bup gc [options...]
 --
-v,verbose   increase log output (can be used more than once)
-threshold=  only rewrite a packfile if it's over this percent garbage [10]
-#,compress= set compression level to # (0-9, 9 is highest) [1]
-unsafe      use the command even though it may be DANGEROUS
+v,verbose      increase log output (can be used more than once)
+threshold=     only rewrite a packfile if it's over this percent garbage [10]
+#,compress=    set compression level to # (0-9, 9 is highest) [1]
+ignore-missing don't halt halt for missing objects
+unsafe         use the command even though it may be DANGEROUS
 """
 
 # FIXME: server mode?
@@ -40,6 +41,7 @@ def main(argv):
 
     bup_gc(threshold=opt.threshold,
            compression=opt.compress,
-           verbosity=opt.verbose)
+           verbosity=opt.verbose,
+           ignore_missing=opt.ignore_missing)
 
     die_if_errors()
