@@ -126,36 +126,40 @@ def find_live_objects(existing_count, cat_pipe, idx_list, verbosity=0,
     # FIXME: allow selection of k?
     # FIXME: support ephemeral bloom filters (i.e. *never* written to disk)
     live_blobs = bloom.create(bloom_filename, expected=existing_count, k=None)
-    # live_blobs will hold on to the fd until close or exit
-    os.unlink(bloom_filename)
-    live_trees = set()
-    stop_at = lambda x: unhexlify(x) in live_trees
-    oid_exists = (lambda oid: idx_list.exists(oid)) if idx_list else None
-    approx_live_count = 0
-    for ref_name, ref_id in git.list_refs():
-        for item in walk_object(cat_pipe.get, hexlify(ref_id), stop_at=stop_at,
-                                include_data=None, oid_exists=oid_exists):
-            if item.data is False:
-                if ignore_missing:
-                    report_missing(ref_name, item, verbosity)
+    with ExitStack() as maybe_close_bloom:
+        maybe_close_bloom.enter_context(live_blobs)
+        # live_blobs will hold on to the fd until close or exit
+        os.unlink(bloom_filename)
+        live_trees = set()
+        stop_at = lambda x: unhexlify(x) in live_trees
+        oid_exists = (lambda oid: idx_list.exists(oid)) if idx_list else None
+        approx_live_count = 0
+        for ref_name, ref_id in git.list_refs():
+            for item in walk_object(cat_pipe.get, hexlify(ref_id),
+                                    stop_at=stop_at, include_data=None,
+                                    oid_exists=oid_exists):
+                if item.data is False:
+                    if ignore_missing:
+                        report_missing(ref_name, item, verbosity)
+                    else:
+                        raise MissingObject(item.oid)
+                # FIXME: batch ids
+                elif verbosity:
+                    report_live_item(approx_live_count, existing_count,
+                                     ref_name, ref_id, item, verbosity)
+                if item.type != b'blob':
+                    if verbosity and not item.oid in live_trees:
+                        approx_live_count += 1
+                    live_trees.add(item.oid)
                 else:
-                    raise MissingObject(item.oid)
-            # FIXME: batch ids
-            elif verbosity:
-                report_live_item(approx_live_count, existing_count,
-                                 ref_name, ref_id, item, verbosity)
-            if item.type != b'blob':
-                if verbosity and not item.oid in live_trees:
-                    approx_live_count += 1
-                live_trees.add(item.oid)
-            else:
-                if verbosity and not live_blobs.exists(item.oid):
-                    approx_live_count += 1
-                live_blobs.add(item.oid)
-    if verbosity:
-        log('expecting to retain about %.2f%% unnecessary objects\n'
-            % live_blobs.pfalse_positive())
-    return live_blobs, live_trees
+                    if verbosity and not live_blobs.exists(item.oid):
+                        approx_live_count += 1
+                    live_blobs.add(item.oid)
+        if verbosity:
+            log('expecting to retain about %.2f%% unnecessary objects\n'
+                % live_blobs.pfalse_positive())
+        maybe_close_bloom.pop_all()
+        return live_blobs, live_trees
 
 
 def sweep(live_objects, live_trees, existing_count, cat_pipe, threshold,
