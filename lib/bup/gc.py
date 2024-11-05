@@ -121,7 +121,7 @@ def report_live_item(n, total, ref_name, ref_id, item, verbosity):
 
 
 def find_live_objects(existing_count, cat_pipe, idx_list, verbosity=0,
-                      ignore_missing=False):
+                      count_missing=False):
     pack_dir = git.repo(b'objects/pack')
     ffd, bloom_filename = tempfile.mkstemp(b'.bloom', b'tmp-gc-', pack_dir)
     os.close(ffd)
@@ -136,13 +136,15 @@ def find_live_objects(existing_count, cat_pipe, idx_list, verbosity=0,
         stop_at = lambda x: unhexlify(x) in live_trees
         oid_exists = (lambda oid: idx_list.exists(oid)) if idx_list else None
         approx_live_count = 0
+        missing = 0
         for ref_name, ref_id in git.list_refs():
             for item in walk_object(cat_pipe.get, hexlify(ref_id),
                                     stop_at=stop_at, include_data=None,
                                     oid_exists=oid_exists):
                 if item.data is False:
-                    if ignore_missing:
+                    if count_missing:
                         report_missing(ref_name, item, verbosity)
+                        missing += 1
                     else:
                         raise MissingObject(item.oid)
                 # FIXME: batch ids
@@ -157,12 +159,11 @@ def find_live_objects(existing_count, cat_pipe, idx_list, verbosity=0,
                     if verbosity and not live_blobs.exists(item.oid):
                         approx_live_count += 1
                     live_blobs.add(item.oid)
-        if verbosity:
-            log('expecting to retain about %.2f%% unnecessary objects\n'
-                % live_blobs.pfalse_positive())
-            reprogress()
         maybe_close_bloom.pop_all()
-        return live_blobs, live_trees
+        if count_missing:
+            return live_blobs, live_trees, missing
+        else:
+            return live_blobs, live_trees
 
 
 def sweep(live_objects, live_trees, existing_count, cat_pipe, threshold,
@@ -285,10 +286,14 @@ def bup_gc(threshold=10, compression=1, verbosity=0, ignore_missing=False):
                 if ignore_missing:
                     idxl = git.PackIdxList(git.repo(b'objects/pack'))
                     maybe_close_idxl.enter_context(idxl)
-                live_objects, live_trees = \
-                    find_live_objects(existing_count, cat_pipe, idxl,
-                                      verbosity=verbosity,
-                                      ignore_missing=ignore_missing)
+                found = find_live_objects(existing_count, cat_pipe, idxl,
+                                          verbosity=verbosity,
+                                          count_missing=ignore_missing)
+            live_objects, live_trees = found[:2]
+            if verbosity:
+                log('expecting to retain about %.2f%% unnecessary objects\n'
+                    % live_objects.pfalse_positive())
+                reprogress()
         except MissingObject as ex:
             log('bup: missing object %r \n' % hexstr(ex.oid))
             sys.exit(1)

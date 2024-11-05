@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+. ./wvtest-bup.sh
+
+set -o pipefail
+
+top="$(WVPASS pwd)" || exit $?
+tmpdir="$(WVPASS wvmktempdir)" || exit $?
+
+export BUP_DIR="$tmpdir/bup"
+export GIT_DIR="$tmpdir/bup"
+
+bup() { "$top/bup" "$@"; }
+
+expect-one-src-missing()
+{
+    set -x
+    bup validate-ref-links "$@" > validate.log 2>&1
+    rc=$?
+    set +x
+    cat validate.log
+    WVPASSEQ 1 "$rc"
+    WVPASSEQ 1 "$(grep -cE '^missing ' validate.log)"
+}
+
+WVPASS cd "$tmpdir"
+WVPASS bup init
+
+WVPASS mkdir -p src/a
+WVPASS echo 1 > src/a/1
+WVPASS echo 2 > src/a/2
+WVPASS echo 3 > src/a/3
+WVPASS bup index src
+WVPASS bup save --strip -n src src
+
+WVPASS bup validate-ref-links 2>&1 | tee validate.log
+WVPASS grep -vE '^missing ' validate.log
+
+WVPASS git ls-tree src:a | WVPASS cut -d' ' -f 3 \
+    | WVPASS cut -b -40 | WVPASS head -1 > bupm-oid
+WVPASS "$top/dev/perforate-repo" --drop-oids "$BUP_DIR" < bupm-oid
+
+expect-one-src-missing
+
+WVPASS rm -rf "$tmpdir"
