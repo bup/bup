@@ -50,6 +50,14 @@ used to help test before/after results.)
     9 is the highest and 0 is no compression).  The default
     is 1 (fast, loose compression).
 
+\--ignore-missing
+:   report missing objects, but don't stop the collection.
+
+# EXIT STATUS
+
+The exit status will be nonzero if there were any errors.
+Encountering any missing object is considered an error.
+
 # EXAMPLES
 
     # Remove all saves of "home" and most of the otherwise unreferenced data.

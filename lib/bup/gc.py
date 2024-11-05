@@ -1,13 +1,14 @@
 
-from __future__ import absolute_import
 from binascii import hexlify, unhexlify
+from contextlib import ExitStack
+from itertools import chain
 from os.path import basename
 import glob, os, subprocess, sys, tempfile
 
 from bup import bloom, git, midx
 from bup.compat import hexstr, pending_raise
 from bup.git import MissingObject, walk_object
-from bup.helpers import Nonlocal, log, progress, qprogress
+from bup.helpers import Nonlocal, log, note_error, progress, qprogress
 from bup.io import path_msg
 
 # This garbage collector uses a Bloom filter to track the live blobs
@@ -65,6 +66,25 @@ def count_objects(dir, verbosity):
     return object_count
 
 
+def report_missing(ref_name, item, verbosity):
+    chunks = item.chunk_path
+    if chunks:
+        path = chain(item.path, chunks)
+    else:
+        # Top commit, for example has none.
+        if item.path:
+            demangled = git.demangle_name(item.path[-1], item.mode)[0]
+            path = chain(item.path[:-1], [demangled])
+        else:
+            path = item.path
+    ref = path_msg(ref_name)
+    path = path_msg(b'/'.join(path))
+    if item.type == b'tree':
+        note_error(f'missing {ref}:{path}/\n')
+    else:
+        note_error(f'missing {ref}:{path}\n')
+
+
 def report_live_item(n, total, ref_name, ref_id, item, verbosity):
     status = 'scanned %02.2f%%' % (n * 100.0 / total)
     hex_id = hexstr(ref_id)
@@ -99,7 +119,8 @@ def report_live_item(n, total, ref_name, ref_id, item, verbosity):
         log('%s %s:%s%s\n' % (status, hex_id, path_msg(ps), path_msg(dirslash)))
 
 
-def find_live_objects(existing_count, cat_pipe, verbosity=0):
+def find_live_objects(existing_count, cat_pipe, idx_list, verbosity=0,
+                      ignore_missing=False):
     pack_dir = git.repo(b'objects/pack')
     ffd, bloom_filename = tempfile.mkstemp(b'.bloom', b'tmp-gc-', pack_dir)
     os.close(ffd)
@@ -110,14 +131,18 @@ def find_live_objects(existing_count, cat_pipe, verbosity=0):
     os.unlink(bloom_filename)
     live_trees = set()
     stop_at = lambda x: unhexlify(x) in live_trees
+    oid_exists = (lambda oid: idx_list.exists(oid)) if idx_list else None
     approx_live_count = 0
     for ref_name, ref_id in git.list_refs():
         for item in walk_object(cat_pipe.get, hexlify(ref_id), stop_at=stop_at,
-                                include_data=None):
+                                include_data=None, oid_exists=oid_exists):
             if item.data is False:
-                raise MissingObject(item.oid)
+                if ignore_missing:
+                    report_missing(ref_name, item, verbosity)
+                else:
+                    raise MissingObject(item.oid)
             # FIXME: batch ids
-            if verbosity:
+            elif verbosity:
                 report_live_item(approx_live_count, existing_count,
                                  ref_name, ref_id, item, verbosity)
             if item.type != b'blob':
@@ -233,7 +258,7 @@ def sweep(live_objects, live_trees, existing_count, cat_pipe, threshold,
                / float(existing_count) * 100))
 
 
-def bup_gc(threshold=10, compression=1, verbosity=0):
+def bup_gc(threshold=10, compression=1, verbosity=0, ignore_missing=False):
     cat_pipe = git.cp()
     existing_count = count_objects(git.repo(b'objects/pack'), verbosity)
     if verbosity:
@@ -243,8 +268,15 @@ def bup_gc(threshold=10, compression=1, verbosity=0):
             log('nothing to collect\n')
     else:
         try:
-            live_objects, live_trees = find_live_objects(existing_count, cat_pipe,
-                                                         verbosity=verbosity)
+            with ExitStack() as maybe_close_idxl:
+                idxl = None
+                if ignore_missing:
+                    idxl = git.PackIdxList(git.repo(b'objects/pack'))
+                    maybe_close_idxl.enter_context(idxl)
+                live_objects, live_trees = \
+                    find_live_objects(existing_count, cat_pipe, idxl,
+                                      verbosity=verbosity,
+                                      ignore_missing=ignore_missing)
         except MissingObject as ex:
             log('bup: missing object %r \n' % hexstr(ex.oid))
             sys.exit(1)
