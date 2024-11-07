@@ -280,18 +280,23 @@ def bup_gc(threshold=10, compression=1, verbosity=0, ignore_missing=False):
             log('bup: missing object %r \n' % hexstr(ex.oid))
             sys.exit(1)
         with live_objects:
-            # FIXME: just rename midxes and bloom, and restore them at the end if
-            # we didn't change any packs?
-            packdir = git.repo(b'objects/pack')
-            if verbosity: log('clearing midx files\n')
-            midx.clear_midxes(packdir)
-            if verbosity: log('clearing bloom filter\n')
-            bloom.clear_bloom(packdir)
-            if verbosity: log('clearing reflog\n')
-            expirelog_cmd = [b'git', b'reflog', b'expire', b'--all', b'--expire=all']
-            expirelog = subprocess.Popen(expirelog_cmd, env=git._gitenv())
-            git._git_wait(b' '.join(expirelog_cmd), expirelog)
-            if verbosity: log('removing unreachable data\n')
-            sweep(live_objects, live_trees, existing_count, cat_pipe,
-                  threshold, compression,
-                  verbosity)
+            try:
+                # FIXME: just rename midxes and bloom, and restore them at the end if
+                # we didn't change any packs?
+                packdir = git.repo(b'objects/pack')
+                if verbosity: log('clearing midx files\n')
+                midx.clear_midxes(packdir)
+                if verbosity: log('clearing bloom filter\n')
+                bloom.clear_bloom(packdir)
+                if verbosity: log('clearing reflog\n')
+                expirelog_cmd = [b'git', b'reflog', b'expire', b'--all', b'--expire=all']
+                expirelog = subprocess.Popen(expirelog_cmd, env=git._gitenv())
+                git._git_wait(b' '.join(expirelog_cmd), expirelog)
+                if verbosity: log('removing unreachable data\n')
+                sweep(live_objects, live_trees, existing_count, cat_pipe,
+                      threshold, compression,
+                      verbosity)
+            except BaseException as ex:
+                log('WARNING: Collection interrupted.  Run gc (again) to completion before\n'
+                    'WARNING: adding any new data to the repository (e.g. via save or get).\n')
+                raise ex
