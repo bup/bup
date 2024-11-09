@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+. ./wvtest-bup.sh
+
+set -o pipefail
+
+top="$(WVPASS pwd)" || exit $?
+tmpdir="$(WVPASS wvmktempdir)" || exit $?
+
+export BUP_DIR="$tmpdir/bup"
+export GIT_DIR="$tmpdir/bup"
+
+bup() { "$top/bup" "$@"; }
+
+# In the past, gc treated all objects probabilistically (including
+# trees and commits).  This meant that it could leave tree fragments
+# after a collection if the tree were split across packfiles and gc
+# decided (based on the --threshold) to remove any of the packfiles
+# containing children while keeping packfiles containing any of the
+# parents.  Other commands could then decide to re-use these
+# incomplete trees without noticing that they still needed to fill in
+# the holes.  This is particularly easy to reproduce via get, which we
+# do here.
+
+WVPASS cd "$tmpdir"
+WVPASS bup init
+
+# Create a save that has two packfiles.  The first contains mostly
+# data we're going to drop and part of a smaller "straddle" tree we're
+# going to keep.  The second contains the rest of the straddle tree
+# (including the "top"), and a much larger "hold" tree we're going to
+# keep.
+WVPASS git config pack.packSizeLimit 1000k
+WVPASS mkdir -p src/{1-hold,2-straddle,3-transient}
+WVPASS bup random -S 1 945k > src/3-transient/data
+WVPASS bup random -S 2 100k > src/2-straddle/data
+WVPASS bup random -S 3 945k > src/1-hold/data
+WVPASS bup index src
+WVPASS bup save -vv --strip -n src src
+
+(cd bup/objects/pack && ls -lrth *.pack)
+
+packs=($(cd bup/objects/pack && ls -rt *.pack))
+WVPASSEQ "${#packs[@]}" 2
+
+transient_oid="$(WVPASS git rev-parse src:3-transient)" || exit $?
+straddle_oid="$(WVPASS git rev-parse src:2-straddle)" || exit $?
+hold_oid="$(WVPASS git rev-parse src:1-hold)" || exit $?
+
+WVPASS git show-index < bup/objects/pack/"$(basename ${packs[0]} .pack).idx" \
+    | WVPASS grep -F "$transient_oid"
+
+WVPASS git show-index < bup/objects/pack/"$(basename ${packs[1]} .pack).idx" \
+    | WVPASS grep -F "$straddle_oid"
+
+WVPASS git show-index < bup/objects/pack/"$(basename ${packs[1]} .pack).idx" \
+    | WVPASS grep -F "$hold_oid"
+
+# Keep a safe copy of src in another repo
+WVPASS bup -d bup-complete init
+WVPASS bup save -r :bup-complete --strip -n src src
+
+# Promote hold to its own branch so we can drop everything else and gc
+WVPASS bup get --append: src/latest/1-hold hold
+WVPASS bup rm --unsafe src
+WVPASS bup gc --unsafe -v --threshold 10
+
+# Fetch src back from the safe copy via get.  Because the pack with an
+# internal part of straddle was dropped, the pack with hold (that was
+# kept) has an incomplete straddle tree; get will happily re-use that
+# when creating the local src without noticing it's incomplete,
+# creating a broken src.
+WVPASS bup get -s bup-complete --append src
+WVPASS bup join "$(git rev-parse src)" > /dev/null
+
+WVPASS rm -rf "$tmpdir"
