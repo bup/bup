@@ -120,8 +120,8 @@ def report_live_item(n, total, ref_name, ref_id, item, verbosity):
         log('%s %s:%s%s\n' % (status, path_msg(ref_name), path_msg(ps), path_msg(dirslash)))
 
 
-def find_live_objects(existing_count, cat_pipe, idx_list, verbosity=0,
-                      count_missing=False):
+def find_live_objects(existing_count, cat_pipe, idx_list, refs=None,
+                      verbosity=0, count_missing=False):
     pack_dir = git.repo(b'objects/pack')
     ffd, bloom_filename = tempfile.mkstemp(b'.bloom', b'tmp-gc-', pack_dir)
     os.close(ffd)
@@ -137,7 +137,7 @@ def find_live_objects(existing_count, cat_pipe, idx_list, verbosity=0,
         oid_exists = (lambda oid: idx_list.exists(oid)) if idx_list else None
         approx_live_count = 0
         missing = 0
-        for ref_name, ref_id in git.list_refs():
+        for ref_name, ref_id in refs if refs else git.list_refs():
             for item in walk_object(cat_pipe.get, hexlify(ref_id),
                                     stop_at=stop_at, include_data=None,
                                     oid_exists=oid_exists):
