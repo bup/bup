@@ -41,4 +41,24 @@ WVPASS "$top/dev/perforate-repo" --drop-oids "$BUP_DIR" < bupm-oid
 
 expect-one-src-missing
 
+
+WVSTART 'validate specific refs'
+
+WVPASS mkdir -p more/a
+WVPASS echo 4 > more/a/4
+WVPASS echo 5 > more/a/5
+WVPASS bup index more
+WVPASS bup save --strip -n more more
+
+WVPASS bup validate-ref-links more 2>&1 | tee validate.log
+WVPASS grep -vE '^missing ' validate.log
+
+expect-one-src-missing
+expect-one-src-missing src
+
+WVPASS bup rm --unsafe src
+WVPASS bup validate-ref-links 2>&1 | tee validate.log
+WVPASS grep -vE '^missing ' validate.log
+
+
 WVPASS rm -rf "$tmpdir"

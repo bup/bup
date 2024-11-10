@@ -8,13 +8,20 @@ bup-validate-ref-links - check repository refs for links to missing objects
 
 # SYNOPSIS
 
-bup validate-ref-links
+bup validate-ref-links [*ref*...]
 
 # DESCRIPTION
 
-`bup validate-ref-links` checks all the repository refs (e.g. saves)
-for commits or subtrees that refer to missing objects and reports the
-paths to any found.
+`bup validate-ref-links` checks repository references (e.g. saves) for
+commits or subtrees that refer to missing objects and reports the
+paths to any found.  If no *ref*s are provided, checks all refs,
+otherwise only checks those specified.
+
+This command can also be used to validate a save more quickly than
+attempting a `restore` or `join`ing the save to /dev/null, and much
+more quickly for multiple related saves, though it only checks for the
+existence of the leaf (blob) data, it does not attempt to read that
+data.
 
 At the moment, the broken path information is only logged to standard
 error, and is not well specified (i.e. suitable for inspection, but
@@ -35,7 +42,7 @@ found, and some other positive integer for other failures.
 
 # SEE ALSO
 
-`bup-fsck`(1)
+`bup-fsck`(1), `bup-join`(1), `bup-restore`(1)
 
 # BUP
 
