@@ -5,7 +5,8 @@ import glob, sys, zlib
 
 from bup import options, git
 from bup.compat import pairwise
-from bup.helpers import EXIT_FALSE, EXIT_TRUE, log, wrap_boolean_main
+from bup.helpers import \
+    EXIT_FALSE, EXIT_TRUE, log, qprogress, reprogress, wrap_boolean_main
 from bup.io import byte_stream, path_msg
 
 
@@ -87,6 +88,11 @@ def validate(argv):
     ret = EXIT_TRUE
     with git.PackIdxList(git.repo(b'objects/pack')) as mi:
         idxlist = glob.glob(path.join(git.repo(b'objects/pack'), b'*.idx'))
+        obj_n = 0
+        for idxname in idxlist:
+            with git.open_idx(idxname) as idx:
+                obj_n += idx.nsha
+        obj_i = 0
         for idxname in idxlist:
             with git.open_idx(idxname) as idx, Pack(idx, cp) as pack:
                 for oid, tp, data in pack:
@@ -95,6 +101,7 @@ def validate(argv):
                         out.flush()
                         sys.stderr.flush()
                         log(f'warning: skipping tag object {oid.hex()}\n')
+                        reprogress()
                         continue
                     if tp == b'tree':
                         shalist = (x[2] for x in git.tree_decode(data))
@@ -108,6 +115,10 @@ def validate(argv):
                             out.write(b'no %s for %s\n'
                                       % (hexlify(suboid), hexlify(oid)))
                             ret = EXIT_FALSE
+                            reprogress()
+                obj_i += idx.nsha
+                obj_frac = obj_i / obj_n
+                qprogress(f'scanned {obj_i}/{obj_n} {obj_frac:.2%}\r')
     return ret
 
 def main(argv):
