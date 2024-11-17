@@ -7,7 +7,9 @@ set -o pipefail
 
 top="$(WVPASS pwd)" || exit $?
 tmpdir="$(WVPASS wvmktempdir)" || exit $?
+
 export BUP_DIR="$tmpdir/bup"
+export GIT_DIR="$tmpdir/bup"
 
 bup() { "$top/bup" "$@"; }
 sha1sum() { "$top/dev/checksum" -t sha1 "$@"; }

@@ -1,4 +1,10 @@
+import os
 import pytest
+
+# Precaution -- here just because it's already imported "everywhere".
+
+os.environb[b'BUP_DIR'] = b'/dev/null'
+os.environb[b'GIT_DIR'] = b'/dev/null'
 
 def WVPASS(cond = True, fail_value=None):
     if fail_value:

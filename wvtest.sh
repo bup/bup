@@ -4,6 +4,10 @@
 #         . ./wvtest.sh
 #
 
+# Here just because it's already sourced "everywhere".
+export BUP_DIR=/dev/null
+export GIT_DIR=/dev/null
+
 # we don't quote $TEXT in case it contains newlines; newlines
 # aren't allowed in test output.  However, we set -f so that
 # at least shell glob characters aren't processed.
