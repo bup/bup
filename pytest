@@ -5,6 +5,10 @@ set -eu
 # Changes here might also be appropriate for ./pylint
 script_home="$(cd "$(dirname "$0")" && pwd -P)"
 testlibdir="$script_home/test/lib"
+
+export BUP_DIR=/dev/null
+export GIT_DIR=/dev/null
+
 export PYTHONPATH="$testlibdir${PYTHONPATH:+:$PYTHONPATH}"
 
 exec dev/bup-python "$0" ${1+"$@"}
