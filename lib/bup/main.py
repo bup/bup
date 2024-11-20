@@ -217,11 +217,13 @@ def print_clean_line(dest, content, width, sep=None):
     content = b''.join(content)
     if sep == b'\r' and len(content) > width:
         content = content[:width]
-    os.write(dest, content)
+    out = []
+    out.append(content)
     if len(content) < width:
-        os.write(dest, b' ' * (width - len(content)))
+        out.append(b' ' * (width - len(content)))
     if sep:
-        os.write(dest, sep)
+        out.append(sep)
+    os.write(dest, b''.join(out))
 
 def filter_output(srcs, dests):
     """Transfer data from file descriptors in srcs to the corresponding
