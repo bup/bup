@@ -8,7 +8,8 @@ import glob, os, subprocess, sys, tempfile
 from bup import bloom, git, midx
 from bup.compat import hexstr, pending_raise
 from bup.git import MissingObject, walk_object
-from bup.helpers import Nonlocal, log, note_error, progress, qprogress
+from bup.helpers import \
+    Nonlocal, log, note_error, progress, qprogress, reprogress
 from bup.io import path_msg
 
 # This garbage collector uses a Bloom filter to track the live blobs
@@ -58,9 +59,9 @@ def count_objects(dir, verbosity):
     indexes = glob.glob(os.path.join(dir, b'*.idx'))
     for i, idx_name in enumerate(indexes):
         if verbosity:
-            log('found %d objects (%d/%d %s)\r'
-                % (object_count, i + 1, len(indexes),
-                   path_msg(basename(idx_name))))
+            qprogress('found %d objects (%d/%d %s)\r'
+                      % (object_count, i + 1, len(indexes),
+                         path_msg(basename(idx_name))))
         with git.open_idx(idx_name) as idx:
             object_count += len(idx)
     return object_count
@@ -113,6 +114,7 @@ def report_live_item(n, total, ref_name, ref_id, item, verbosity):
              or (verbosity > 2 and item.type == b'blob'):
             log('%s %s:%s%s\n' % (status, path_msg(ref_name), path_msg(ps),
                                   path_msg(dirslash)))
+            reprogress()
     elif verbosity > 3:
         ps = b'/'.join(item.path)
         log('%s %s:%s%s\n' % (status, path_msg(ref_name), path_msg(ps), path_msg(dirslash)))
@@ -158,6 +160,7 @@ def find_live_objects(existing_count, cat_pipe, idx_list, verbosity=0,
         if verbosity:
             log('expecting to retain about %.2f%% unnecessary objects\n'
                 % live_blobs.pfalse_positive())
+            reprogress()
         maybe_close_bloom.pop_all()
         return live_blobs, live_trees
 
@@ -171,11 +174,13 @@ def sweep(live_objects, live_trees, existing_count, cat_pipe, threshold,
     def remove_stale_files(new_pack_prefix):
         if verbosity and new_pack_prefix:
             log('created ' + path_msg(basename(new_pack_prefix)) + '\n')
+            reprogress()
         for p in ns.stale_files:
             if new_pack_prefix and p.startswith(new_pack_prefix):
                 continue  # Don't remove the new pack file
             if verbosity:
                 log(f'removing {path_msg(basename(p))}\n')
+                reprogress()
             os.unlink(p)
         if ns.stale_files:  # So git cat-pipe will close them
             cat_pipe.restart()
@@ -214,6 +219,7 @@ def sweep(live_objects, live_trees, existing_count, cat_pipe, threshold,
                     if verbosity:
                         log('deleting %s\n'
                             % path_msg(git.repo_rel(basename(idx_name))))
+                        reprogress()
                     ns.stale_files.append(idx_name)
                     ns.stale_files.append(idx_name[:-3] + b'pack')
                     continue
@@ -223,11 +229,13 @@ def sweep(live_objects, live_trees, existing_count, cat_pipe, threshold,
                     if verbosity:
                         keep_path = path_msg(git.repo_rel(basename(idx_name)))
                         log(f'keeping {keep_path} ({live_frac * 100}% live)\n')
+                        reprogress()
                     continue
 
                 if verbosity:
                     rw_path = path_msg(basename(idx_name))
                     log(f'rewriting {rw_path} ({live_frac * 100:.2}% live)\n')
+                    reprogress()
                 for sha in idx:
                     if sha in live_in_this_pack:
                         item_it = cat_pipe.get(hexlify(sha))
@@ -266,6 +274,7 @@ def bup_gc(threshold=10, compression=1, verbosity=0, ignore_missing=False):
     existing_count = count_objects(git.repo(b'objects/pack'), verbosity)
     if verbosity:
         log('found %d objects\n' % existing_count)
+        reprogress()
     if not existing_count:
         if verbosity:
             log('nothing to collect\n')
