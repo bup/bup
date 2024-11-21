@@ -87,7 +87,6 @@ def report_missing(ref_name, item, verbosity):
 
 def report_live_item(n, total, ref_name, ref_id, item, verbosity):
     status = 'scanned %02.2f%%' % (n * 100.0 / total)
-    hex_id = hexstr(ref_id)
     dirslash = b'/' if item.type == b'tree' else b''
     chunk_path = item.chunk_path
 
@@ -96,7 +95,7 @@ def report_live_item(n, total, ref_name, ref_id, item, verbosity):
             return
         ps = b'/'.join(item.path)
         chunk_ps = b'/'.join(chunk_path)
-        log('%s %s:%s/%s%s\n' % (status, hex_id, path_msg(ps),
+        log('%s %s:%s/%s%s\n' % (status, path_msg(ref_name), path_msg(ps),
                                  path_msg(chunk_ps), path_msg(dirslash)))
         return
 
@@ -108,15 +107,15 @@ def report_live_item(n, total, ref_name, ref_id, item, verbosity):
     if demangled:
         ps = b'/'.join(item.path[:-1] + [demangled])
         if verbosity == 1:
-            qprogress('%s %s:%s%s\r' % (status, hex_id, path_msg(ps),
+            qprogress('%s %s:%s%s\r' % (status, path_msg(ref_name), path_msg(ps),
                                         path_msg(dirslash)))
         elif (verbosity > 1 and item.type == b'tree') \
              or (verbosity > 2 and item.type == b'blob'):
-            log('%s %s:%s%s\n' % (status, hex_id, path_msg(ps),
+            log('%s %s:%s%s\n' % (status, path_msg(ref_name), path_msg(ps),
                                   path_msg(dirslash)))
     elif verbosity > 3:
         ps = b'/'.join(item.path)
-        log('%s %s:%s%s\n' % (status, hex_id, path_msg(ps), path_msg(dirslash)))
+        log('%s %s:%s%s\n' % (status, path_msg(ref_name), path_msg(ps), path_msg(dirslash)))
 
 
 def find_live_objects(existing_count, cat_pipe, idx_list, verbosity=0,
