@@ -943,6 +943,10 @@ def add_error(e):
     saved_errors.append(e)
     log('%-70s\n' % e)
 
+def note_error(m):
+    # FIXME: rework console output, logging, and api...
+    saved_errors.append(m)
+    log(m)
 
 def clear_errors():
     global saved_errors

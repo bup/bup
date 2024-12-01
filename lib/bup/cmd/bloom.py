@@ -1,12 +1,16 @@
 
-from __future__ import absolute_import
-
 import os, glob, sys
 
 from bup import options, git, bloom
 from bup.compat import argv_bytes, hexstr
-from bup.helpers import (add_error, debug1, log, progress, qprogress,
-                         saved_errors)
+from bup.helpers \
+    import (add_error,
+            debug1,
+            log,
+            note_error,
+            progress,
+            qprogress,
+            saved_errors)
 from bup.io import path_msg
 
 
@@ -50,7 +54,11 @@ def check_bloom(path, bloomfilename, idx):
             idx = os.path.join(path, idx)
         log('bloom: bloom file: %s\n' % path_msg(rbloomfilename))
         log('bloom:   checking %s\n' % path_msg(ridx))
-        with git.open_object_idx(idx) as oids:
+        oids = git.open_object_idx(idx)
+        if not oids:
+            note_error(f'bloom: ERROR: invalid index {path_msg(idx)}\n')
+            return
+        with oids:
             for oid in oids:
                 if not b.exists(oid):
                     add_error('bloom: ERROR: object %s missing' % hexstr(oid))
