@@ -708,29 +708,35 @@ class PackIdxList:
 
 
 def open_idx(filename):
-    if filename.endswith(b'.idx'):
-        f = open(filename, 'rb')
-        with ExitStack() as contexts:
-            contexts.enter_context(f)
-            header = f.read(8)
-            if header[0:4] == b'\377tOc':
-                version = struct.unpack('!I', header[4:8])[0]
-                if version == 2:
-                    contexts.pop_all()
-                    return PackIdxV2(filename, f)
-                else:
-                    raise GitError('%s: expected idx file version 2, got %d'
-                                   % (path_msg(filename), version))
-            elif len(header) == 8 and header[0:4] < b'\377tOc':
+    if not filename.endswith(b'.idx'): # why is this enforced *here*?
+        raise GitError('pack idx filenames must end with .idx')
+    f = open(filename, 'rb')
+    with ExitStack() as contexts:
+        contexts.enter_context(f)
+        header = f.read(8)
+        if header[0:4] == b'\377tOc':
+            version = struct.unpack('!I', header[4:8])[0]
+            if version == 2:
                 contexts.pop_all()
-                return PackIdxV1(filename, f)
+                return PackIdxV2(filename, f)
             else:
-                raise GitError('%s: unrecognized idx file header'
-                               % path_msg(filename))
+                raise GitError('%s: expected idx file version 2, got %d'
+                               % (path_msg(filename), version))
+        elif len(header) == 8 and header[0:4] < b'\377tOc':
+            contexts.pop_all()
+            return PackIdxV1(filename, f)
+        else:
+            raise GitError('%s: unrecognized idx file header'
+                           % path_msg(filename))
+
+
+def open_object_idx(filename):
+    if filename.endswith(b'.idx'):
+        return open_idx(filename)
     elif filename.endswith(b'.midx'):
         return midx.PackMidx(filename)
     else:
-        raise GitError('idx filenames must end with .idx or .midx')
+        raise GitError('pack index filenames must end with .idx or .midx')
 
 
 def idxmerge(idxlist, final_progress=True):
