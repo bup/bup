@@ -9,6 +9,7 @@ from bup.helpers import (Sha1, add_error, atomically_replaced_file, debug1, fdat
                          log, mmap_readwrite, qprogress,
                          saved_errors, unlink)
 from bup.io import byte_stream, path_msg
+from bup.midx import MissingIdxs, open_midx
 
 
 PAGE_SIZE=4096
@@ -41,6 +42,27 @@ def max_files():
     else:
         mf -= 6   # minimum safety margin
     return mf
+
+
+def _maybe_open_midx(path, *, rm_broken=False):
+    """Return a PackMidx for path as open_midx() does unless some of
+    its idx files are missing.  In that case, warn, delete the path
+    if rm_broken is true, and return None.
+    """
+    missing = None
+    try:
+        return open_midx(path, ignore_missing=False)
+    except MissingIdxs as ex:
+        missing = ex.paths
+    pathm = path_msg(path)
+    # FIXME: eventually note_error instead when we're not deleting?
+    for idx in missing:
+        idxm = path_msg(idx)
+        log(f'warning: midx {pathm} refers to mssing idx {idxm}\n')
+    if rm_broken:
+        log(f'Removing incomplete midx {pathm}\n')
+        unlink(path)
+    return None
 
 
 def check_midx(name):
@@ -98,7 +120,10 @@ def _do_midx(outdir, outfilename, infilenames, prefixstr,
     allfilenames = []
     with ExitStack() as contexts:
         for name in infilenames:
-            ix = git.open_object_idx(name)
+            if name.endswith(b'.idx'):
+                ix = git.open_idx(name)
+            else:
+                ix = _maybe_open_midx(name, rm_broken=auto or force)
             if not ix:
                 continue
             contexts.enter_context(ix)
@@ -177,7 +202,7 @@ def do_midx_dir(path, outfilename, prout, auto=False, force=False,
         midxs = []
         contents = {}
         for mname in glob.glob(b'%s/*.midx' % path):
-            m = git.open_midx(mname)
+            m = _maybe_open_midx(mname, rm_broken=auto or force)
             if not m:
                 continue
             with m:
