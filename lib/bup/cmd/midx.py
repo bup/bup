@@ -47,13 +47,13 @@ def check_midx(name):
     nicename = git.repo_rel(name)
     log('Checking %s.\n' % path_msg(nicename))
     try:
-        ix = git.open_idx(name)
+        ix = git.open_object_idx(name)
     except git.GitError as e:
         add_error('%s: %s' % (path_msg(name), e))
         return
     with ix:
         for count,subname in enumerate(ix.idxnames):
-            with git.open_idx(os.path.join(os.path.dirname(name), subname)) \
+            with git.open_object_idx(os.path.join(os.path.dirname(name), subname)) \
                  as sub:
                 for ecount,e in enumerate(sub):
                     if not (ecount % 1234):
@@ -95,7 +95,7 @@ def _do_midx(outdir, outfilename, infilenames, prefixstr,
     allfilenames = []
     with ExitStack() as contexts:
         for name in infilenames:
-            ix = git.open_idx(name)
+            ix = git.open_object_idx(name)
             contexts.enter_context(ix)
             inp.append((
                 ix.map,
@@ -171,7 +171,7 @@ def do_midx_dir(path, outfilename, prout, auto=False, force=False,
         midxs = glob.glob(b'%s/*.midx' % path)
         contents = {}
         for mname in midxs:
-            with git.open_idx(mname) as m:
+            with git.open_object_idx(mname) as m:
                 contents[mname] = [(b'%s/%s' % (path,i)) for i in m.idxnames]
                 sizes[mname] = len(m)
 

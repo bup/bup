@@ -18,7 +18,7 @@ f,force    ignore existing bloom file and regenerate it from scratch
 o,output=  output bloom filename (default: auto)
 d,dir=     input directory to look for idx files (default: auto)
 k,hashes=  number of hash functions to use (4 or 5) (default: auto)
-c,check=   check the given .idx file against the bloom filter
+c,check=   check given *.idx or *.midx file against the bloom filter
 """
 
 
@@ -50,7 +50,7 @@ def check_bloom(path, bloomfilename, idx):
             idx = os.path.join(path, idx)
         log('bloom: bloom file: %s\n' % path_msg(rbloomfilename))
         log('bloom:   checking %s\n' % path_msg(ridx))
-        with git.open_idx(idx) as oids:
+        with git.open_object_idx(idx) as oids:
             for oid in oids:
                 if not b.exists(oid):
                     add_error('bloom: ERROR: object %s missing' % hexstr(oid))

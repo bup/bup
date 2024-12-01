@@ -44,7 +44,7 @@ def main(argv):
     idxfiles = [argv_bytes(x) for x in extra]
     for name in idxfiles:
         try:
-            ix = git.open_idx(name)
+            ix = git.open_object_idx(name)
         except git.GitError as e:
             add_error('%r: %s' % (name, e))
             ix.close()
