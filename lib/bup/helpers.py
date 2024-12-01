@@ -806,18 +806,18 @@ def slashappend(s):
 
 
 def _mmap_do(f, sz, flags, prot, close):
-    if not sz:
-        st = os.fstat(f.fileno())
-        sz = st.st_size
-    if not sz:
-        # trying to open a zero-length map gives an error, but an empty
-        # string has all the same behaviour of a zero-length map, ie. it has
-        # no elements :)
-        return ''
-    map = io.mmap(f.fileno(), sz, flags, prot)
-    if close:
-        f.close()  # map will persist beyond file close
-    return map
+    with ExitStack() as contexts:
+        if close:
+            contexts.enter_context(f)
+        if not sz:
+            st = os.fstat(f.fileno())
+            sz = st.st_size
+        if not sz:
+            # trying to open a zero-length map gives an error, but an empty
+            # string has all the same behaviour of a zero-length map, ie. it has
+            # no elements :)
+            return ''
+        return io.mmap(f.fileno(), sz, flags, prot)
 
 
 def mmap_read(f, sz = 0, close=True):
