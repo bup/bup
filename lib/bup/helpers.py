@@ -804,7 +804,7 @@ def _mmap_do(f, sz, flags, prot, close):
             # trying to open a zero-length map gives an error, but an empty
             # string has all the same behaviour of a zero-length map, ie. it has
             # no elements :)
-            return ''
+            return b''
         return io.mmap(f.fileno(), sz, flags, prot)
 
 
