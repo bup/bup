@@ -43,11 +43,12 @@ def main(argv):
     count = 0
     idxfiles = [argv_bytes(x) for x in extra]
     for name in idxfiles:
+        ix = None
         try:
             ix = git.open_object_idx(name)
         except git.GitError as e:
             add_error('%r: %s' % (name, e))
-            ix.close()
+        if not ix:
             continue
         with ix:
             if len(opt.find) == 40:

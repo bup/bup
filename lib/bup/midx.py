@@ -1,4 +1,5 @@
 
+from contextlib import ExitStack
 import glob, os, struct
 
 from bup import _helpers
@@ -7,6 +8,7 @@ from bup.helpers import OBJECT_EXISTS, ObjectLocation, log, mmap_read
 from bup.io import path_msg
 
 
+MIDX_HEADER = b'MIDX'
 MIDX_VERSION = 4
 
 extract_bits = _helpers.extract_bits
@@ -14,49 +16,54 @@ _total_searches = 0
 _total_steps = 0
 
 
-class PackMidx:
-    """Wrapper which contains data from multiple index files.
-    Multiple index (.midx) files constitute a wrapper around index (.idx) files
-    and make it possible for bup to expand Git's indexing capabilities to vast
-    amounts of files.
-    """
-    def __init__(self, filename):
-        self.closed = False
-        self.name = filename
-        self.force_keep = False
-        self.map = None
-        assert(filename.endswith(b'.midx'))
-        self.map = mmap_read(open(filename))
-        if self.map[0:4] != b'MIDX':
-            log('Warning: skipping: invalid MIDX header in %r\n'
-                % path_msg(filename))
-            self.force_keep = True
-            self._init_failed()
-            return
-        ver = struct.unpack('!I', self.map[4:8])[0]
-        if ver < MIDX_VERSION:
-            log('Warning: ignoring old-style (v%d) midx %r\n'
-                % (ver, path_msg(filename)))
-            self.force_keep = False  # old stuff is boring
-            self._init_failed()
-            return
-        if ver > MIDX_VERSION:
-            log('Warning: ignoring too-new (v%d) midx %r\n'
-                % (ver, path_msg(filename)))
-            self.force_keep = True  # new stuff is exciting
-            self._init_failed()
-            return
+def _midx_header(mmap): return mmap[0:4]
+def _midx_version(mmap): return struct.unpack('!I', mmap[4:8])[0]
 
-        self.bits = _helpers.firstword(self.map[8:12])
-        self.entries = 2**self.bits
-        self.fanout_ofs = 12
-        # fanout len is self.entries * 4
-        self.sha_ofs = self.fanout_ofs + self.entries * 4
-        self.nsha = self._fanget(self.entries - 1)
-        # sha table len is self.nsha * 20
-        self.which_ofs = self.sha_ofs + 20 * self.nsha
-        # which len is self.nsha * 4
-        self.idxnames = self.map[self.which_ofs + 4 * self.nsha:].split(b'\0')
+
+class MissingIdxs(Exception):
+    __slots__ = 'paths',
+    def __init__(self, *, paths):
+        super().__init__()
+        self.paths = paths
+
+class PackMidx:
+    """Wrapper which contains data from multiple index files.  Create
+    via open_midx(), not PackMidx().  Multiple index (.midx) files
+    constitute a wrapper around index (.idx) files and make it
+    possible for bup to expand Git's indexing capabilities to vast
+    amounts of files.  This class only supports the current
+    MIDX_VERSION.
+
+    """
+    def __init__(self, filename, mmap, *, _internal=False):
+        """Takes ownership of mmap."""
+        with ExitStack() as contexts:
+            contexts.enter_context(mmap)
+            assert _internal, 'call open_midx()'
+            assert _midx_header(mmap) == MIDX_HEADER
+            assert _midx_version(mmap) == MIDX_VERSION
+            self.map = mmap
+            self.closed = False
+            self.name = filename
+            self.bits = _helpers.firstword(self.map[8:12])
+            self.entries = 2**self.bits
+            self.fanout_ofs = 12
+            # fanout len is self.entries * 4
+            self.sha_ofs = self.fanout_ofs + self.entries * 4
+            self.nsha = self._fanget(self.entries - 1)
+            # sha table len is self.nsha * 20
+            self.which_ofs = self.sha_ofs + 20 * self.nsha
+            # which len is self.nsha * 4
+            self.idxnames = self.map[self.which_ofs + 4 * self.nsha:].split(b'\0')
+            # REVIEW: idx paths always relative to midx path?
+            idxdir = os.path.dirname(filename) + b'/'
+            missing = []
+            for name in self.idxnames:
+                if not os.path.exists(idxdir + name):
+                    self.missing.append(name)
+            if missing:
+                raise MissingIdxs(paths=missing)
+            contexts.pop_all()
 
     def __enter__(self):
         return self
@@ -64,11 +71,6 @@ class PackMidx:
     def __exit__(self, type, value, traceback):
         with pending_raise(value, rethrow=False):
             self.close()
-
-    def _init_failed(self):
-        self.bits = 0
-        self.entries = 1
-        self.idxnames = []
 
     def _fanget(self, i):
         if i >= self.entries * 4 or i < 0:
@@ -145,6 +147,48 @@ class PackMidx:
 
     def __len__(self):
         return int(self.nsha)
+
+
+def open_midx(path, *, ignore_missing=True):
+    """Return a PackMidx for path.  Return None if path exists but is
+    either too old or too new.  If any of the constituent indexes are
+    missing, raise MissingIdxs if ignore_missing is false otherwise
+    return None.
+
+    """
+    # FIXME: eventually note_error when not raising?
+    assert path.endswith(b'.midx') # FIXME: wanted/needed?
+    mmap = mmap_read(open(path))
+    with ExitStack() as contexts:
+        contexts.enter_context(mmap)
+        if _midx_header(mmap) != MIDX_HEADER:
+            pathm = path_msg(path)
+            log(f'Warning: skipping: invalid MIDX header in {pathm}\n')
+            return None
+        ver = _midx_version(mmap)
+        if ver == MIDX_VERSION:
+            if not ignore_missing:
+                contexts.pop_all()
+                return PackMidx(path, mmap, _internal=True)
+            missing = None
+            contexts.pop_all()
+            try:
+                midx = PackMidx(path, mmap, _internal=True)
+            except MissingIdxs as ex:
+                missing = ex.paths
+            if not missing:
+                return midx
+            pathm = path_msg(path)
+            for missing in ex.paths:
+                imsg = path_msg(missing)
+                log(f'Warning: ignoring midx {pathm} (missing idx {imsg})\n')
+            return None
+        pathm = path_msg(path)
+        if ver < MIDX_VERSION:
+            log(f'Warning: ignoring old-style (v{ver}) midx {pathm}\n')
+        elif ver > MIDX_VERSION:
+            log(f'Warning: ignoring too-new (v{ver}) midx {pathm}\n')
+        return None
 
 
 def clear_midxes(dir=None):

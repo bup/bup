@@ -50,11 +50,14 @@ def check_midx(name):
         ix = git.open_object_idx(name)
     except git.GitError as e:
         add_error('%s: %s' % (path_msg(name), e))
+    if not ix:
         return
     with ix:
         for count,subname in enumerate(ix.idxnames):
-            with git.open_object_idx(os.path.join(os.path.dirname(name), subname)) \
-                 as sub:
+            sub = git.open_object_idx(os.path.join(os.path.dirname(name), subname))
+            if not sub:
+                continue
+            with sub:
                 for ecount,e in enumerate(sub):
                     if not (ecount % 1234):
                         qprogress('  %d/%d: %s %d/%d\r'
@@ -96,6 +99,8 @@ def _do_midx(outdir, outfilename, infilenames, prefixstr,
     with ExitStack() as contexts:
         for name in infilenames:
             ix = git.open_object_idx(name)
+            if not ix:
+                continue
             contexts.enter_context(ix)
             inp.append((
                 ix.map,
@@ -105,6 +110,7 @@ def _do_midx(outdir, outfilename, infilenames, prefixstr,
                 len(allfilenames),
             ))
             for n in ix.idxnames:
+                # FIXME: double-check wrt outfilename above
                 allfilenames.append(os.path.basename(n))
             total += len(ix)
         inp.sort(reverse=True, key=lambda x: x[0][x[2] : x[2] + 20])
@@ -141,7 +147,7 @@ def _do_midx(outdir, outfilename, infilenames, prefixstr,
 
     # This is just for testing (if you enable this, don't clear inp above)
     # if 0:
-    #     p = midx.PackMidx(outfilename)
+    #     p = midx.open_midx(outfilename)
     #     assert(len(p.idxnames) == len(infilenames))
     #     log(repr(p.idxnames) + '\n')
     #     assert(len(p) == total)
@@ -168,10 +174,14 @@ def do_midx_dir(path, outfilename, prout, auto=False, force=False,
     if force and not auto:
         midxs = []   # don't use existing midx files
     else:
-        midxs = glob.glob(b'%s/*.midx' % path)
+        midxs = []
         contents = {}
-        for mname in midxs:
-            with git.open_object_idx(mname) as m:
+        for mname in glob.glob(b'%s/*.midx' % path):
+            m = git.open_midx(mname)
+            if not m:
+                continue
+            with m:
+                midxs.append(mname)
                 contents[mname] = [(b'%s/%s' % (path,i)) for i in m.idxnames]
                 sizes[mname] = len(m)
 

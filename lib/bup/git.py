@@ -32,6 +32,7 @@ from bup.helpers import (OBJECT_EXISTS,
                          temp_dir,
                          unlink,
                          utc_offset_str)
+from bup.midx import open_midx
 
 
 verbose = 0
@@ -687,20 +688,20 @@ class PackIdxList:
                             d[os.path.join(self.dir, name)] = ix
                 for full in midxes:
                     if not d.get(full):
-                        mx = midx.PackMidx(full)
-                        (mxd, mxf) = os.path.split(mx.name)
-                        broken = False
-                        for n in mx.idxnames:
-                            if not os.path.exists(os.path.join(mxd, n)):
+                        mx, missing = None, None
+                        try:
+                            mx = open_midx(full, ignore_missing=False)
+                        except midx.MissingIdxs as ex:
+                            missing = ex.paths
+                        if not missing:
+                            if mx: midxl.append(mx)
+                        else:
+                            mxd, mxf = os.path.split(full)
+                            for n in missing:
                                 log(('warning: index %s missing\n'
                                      '  used by %s\n')
                                     % (path_msg(n), path_msg(mxf)))
-                                broken = True
-                        if broken:
-                            mx.close()
                             unlink(full)
-                        else:
-                            midxl.append(mx)
                 midxl.sort(key=lambda ix:
                            (-len(ix), -xstat.stat(ix.name).st_mtime))
                 for ix in midxl:
@@ -715,7 +716,7 @@ class PackIdxList:
                         d[ix.name] = ix
                         for name in ix.idxnames:
                             d[os.path.join(self.dir, name)] = ix
-                    elif not ix.force_keep:
+                    else:
                         debug1('midx: removing redundant: %s\n'
                                % path_msg(os.path.basename(ix.name)))
                         ix.close()
@@ -785,7 +786,7 @@ def open_object_idx(filename):
     if filename.endswith(b'.idx'):
         return open_idx(filename)
     elif filename.endswith(b'.midx'):
-        return midx.PackMidx(filename)
+        return open_midx(filename)
     else:
         raise GitError('pack index filenames must end with .idx or .midx')
 
