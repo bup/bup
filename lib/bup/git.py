@@ -710,19 +710,23 @@ class PackIdxList:
 def open_idx(filename):
     if filename.endswith(b'.idx'):
         f = open(filename, 'rb')
-        header = f.read(8)
-        if header[0:4] == b'\377tOc':
-            version = struct.unpack('!I', header[4:8])[0]
-            if version == 2:
-                return PackIdxV2(filename, f)
+        with ExitStack() as contexts:
+            contexts.enter_context(f)
+            header = f.read(8)
+            if header[0:4] == b'\377tOc':
+                version = struct.unpack('!I', header[4:8])[0]
+                if version == 2:
+                    contexts.pop_all()
+                    return PackIdxV2(filename, f)
+                else:
+                    raise GitError('%s: expected idx file version 2, got %d'
+                                   % (path_msg(filename), version))
+            elif len(header) == 8 and header[0:4] < b'\377tOc':
+                contexts.pop_all()
+                return PackIdxV1(filename, f)
             else:
-                raise GitError('%s: expected idx file version 2, got %d'
-                               % (path_msg(filename), version))
-        elif len(header) == 8 and header[0:4] < b'\377tOc':
-            return PackIdxV1(filename, f)
-        else:
-            raise GitError('%s: unrecognized idx file header'
-                           % path_msg(filename))
+                raise GitError('%s: unrecognized idx file header'
+                               % path_msg(filename))
     elif filename.endswith(b'.midx'):
         return midx.PackMidx(filename)
     else:
