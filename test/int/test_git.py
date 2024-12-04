@@ -29,6 +29,8 @@ def exo(*cmd):
 
 def test_git_version_detection():
     # Test version types from git's tag history
+    # reset in case a previous test in this process set it
+    git._git_great = None
     for expected, ver in \
         (('insufficient', b'git version 0.99'),
          ('insufficient', b'git version 0.99.1'),
