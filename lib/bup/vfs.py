@@ -57,7 +57,7 @@ import re, sys
 
 from bup import git
 from bup.compat import hexstr, pending_raise
-from bup.git import BUP_CHUNKED, parse_commit, tree_decode
+from bup.git import BUP_CHUNKED, GitError, parse_commit, tree_decode
 from bup.helpers import debug2, last
 from bup.io import path_msg
 from bup.metadata import Metadata
@@ -1154,19 +1154,20 @@ def join(repo, ref):
     commits will be added to the list.
     """
     def _join(it):
-        _, typ, _ = next(it)
+        oidx, typ, _ = next(it)
         if typ == b'blob':
             yield from it
         elif typ == b'tree':
             treefile = b''.join(it)
-            for (mode, name, sha) in git.tree_decode(treefile):
-                yield from join(repo, hexlify(sha))
+            for ent_mode, ent_name, ent_oid in git.tree_decode(treefile):
+                yield from _join(repo.cat(hexlify(ent_oid)))
         elif typ == b'commit':
             treeline = b''.join(it).split(b'\n')[0]
             assert(treeline.startswith(b'tree '))
-            yield from join(repo, treeline[5:])
+            yield from _join(repo.cat(treeline[5:]))
+        elif typ is None:
+            raise GitError(f'missing object: {oidx.hex()}')
         else:
-            raise git.GitError('invalid object type %r: expected blob/tree/commit'
-                               % typ)
+            raise GitError('object type {typ!r} is not blob/tree/commit')
 
     yield from _join(repo.cat(ref))
