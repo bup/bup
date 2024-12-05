@@ -1153,25 +1153,24 @@ def join(repo, ref):
     or a commit. The content of all blobs that can be seen from trees or
     commits will be added to the list.
     """
-    def _join(it, path):
-        # For now, names in the path are bytes and oids are strings.
+    def _join(ref, path):
+        it = repo.cat(ref)
         oidx, typ, _ = next(it)
         if typ == b'blob':
             yield from it
         elif typ == b'tree':
             treefile = b''.join(it)
             for ent_mode, ent_name, ent_oid in git.tree_decode(treefile):
-                yield from _join(repo.cat(hexlify(ent_oid)), path + [ent_name])
+                yield from _join(hexlify(ent_oid), path + [ent_name])
         elif typ == b'commit':
             treeline = b''.join(it).split(b'\n')[0]
             assert treeline.startswith(b'tree ')
-            path += [f'commit:{oidx.decode("ascii")}']
-            yield from _join(repo.cat(treeline[5:]), path)
+            tree_oidx = treeline[5:]
+            path += [oidx, tree_oidx]
+            yield from _join(tree_oidx, path)
         else:
-            path += [oidx.decode('ascii')]
-            if typ is None:
+            if oidx is None:
                 raise GitError(f'missing ref at {path!r}')
-            else:
-                raise GitError(f'type {typ!r} is not blob/tree/commit at {path!r}')
+            raise GitError(f'type {typ!r} is not blob/tree/commit at {path!r}')
 
-    yield from _join(repo.cat(ref), [])
+    yield from _join(ref, [ref])
