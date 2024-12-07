@@ -33,13 +33,14 @@ WVPASS bup init
 WVPASS cd "$tmpdir"
 
 WVPASS mkdir src
-WVPASS touch src/.dotfile src/executable
+WVPASS touch src/.1st src/.dotfile src/executable
 WVPASS mkfifo src/fifo
 WVPASS "$top"/dev/mksock src/socket
 WVPASS bup random 1k > src/file
 WVPASS chmod u+x src/executable
 WVPASS chmod -R u=rwX,g-rwx,o-rwx .
 WVPASS touch -t 200910032348 src/.dotfile src/*
+WVPASS touch -t 200910032348 src/.1st
 (WVPASS cd src; WVPASS ln -s file symlink) || exit $?
 (WVPASS cd src; WVPASS ln -s not-there bad-symlink) || exit $?
 WVPASS touch -t 200910032348 src
@@ -95,7 +96,8 @@ file
 socket
 symlink"
 
-WVPASSEQ "$(WVPASS bup-ls -A src/latest)" ".dotfile
+WVPASSEQ "$(WVPASS bup-ls -A src/latest)" ".1st
+.dotfile
 bad-symlink
 executable
 fifo
@@ -105,6 +107,7 @@ symlink"
 
 WVPASSEQ "$(WVPASS bup-ls -a src/latest)" ".
 ..
+.1st
 .dotfile
 bad-symlink
 executable
@@ -210,6 +213,7 @@ $symlink_mode $user/$group $symlink_size $symlink_date symlink -> file"
 WVPASSEQ "$(bup-ls -la src/latest | tr -s ' ' ' ')" \
 "drwx------ $user/$group 0 2009-10-03 23:48 .
 drwx------ $user/$group 0 2009-10-03 23:48 ..
+-rw------- $user/$group 0 2009-10-03 23:48 .1st
 -rw------- $user/$group 0 2009-10-03 23:48 .dotfile
 $bad_symlink_mode $user/$group $bad_symlink_size $bad_symlink_date bad-symlink -> not-there
 -rwx------ $user/$group 0 2009-10-03 23:48 executable
@@ -219,7 +223,8 @@ $socket_mode $user/$group 0 2009-10-03 23:48 socket
 $symlink_mode $user/$group $symlink_size $symlink_date symlink -> file"
 
 WVPASSEQ "$(bup-ls -lA src/latest | tr -s ' ' ' ')" \
-"-rw------- $user/$group 0 2009-10-03 23:48 .dotfile
+"-rw------- $user/$group 0 2009-10-03 23:48 .1st
+-rw------- $user/$group 0 2009-10-03 23:48 .dotfile
 $bad_symlink_mode $user/$group $bad_symlink_size $bad_symlink_date bad-symlink -> not-there
 -rwx------ $user/$group 0 2009-10-03 23:48 executable
 prw------- $user/$group 0 2009-10-03 23:48 fifo

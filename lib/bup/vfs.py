@@ -664,7 +664,7 @@ def tree_items(repo, oid, tree_data, names, *, want_meta=True):
         names = frozenset(names)
     dot_requested = not names or b'.' in names
 
-    entries = tree_decode(tree_data)
+    entries = list(tree_decode(tree_data))
     depth = None
     bupm_oid = None
     for _, mangled_name, sub_oid in entries:
