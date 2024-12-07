@@ -35,11 +35,6 @@ EXIT_FAILURE = 2
 buglvl = int(os.environ.get('BUP_DEBUG', 0))
 
 
-class Nonlocal:
-    """Helper to deal with Python scoping issues"""
-    pass
-
-
 def nullcontext_if_not(manager):
     return manager if manager is not None else nullcontext()
 
@@ -115,18 +110,19 @@ def partition(predicate, stream):
 
     """
     stream = iter(stream)
-    ns = Nonlocal()
-    ns.first_nonmatch = None
+    first_nonmatch = None
     def leading_matches():
+        nonlocal first_nonmatch
         for x in stream:
             if predicate(x):
                 yield x
             else:
-                ns.first_nonmatch = (x,)
+                first_nonmatch = (x,)
                 break
     def rest():
-        if ns.first_nonmatch:
-            yield ns.first_nonmatch[0]
+        nonlocal first_nonmatch
+        if first_nonmatch:
+            yield first_nonmatch[0]
             for x in stream:
                 yield x
     return (leading_matches(), rest())

@@ -8,8 +8,7 @@ import glob, os, re, subprocess, sys, tempfile
 from bup import bloom, git, midx
 from bup.compat import hexstr, pending_raise
 from bup.git import MissingObject, walk_object
-from bup.helpers import \
-    Nonlocal, log, note_error, progress, qprogress, reprogress
+from bup.helpers import log, note_error, progress, qprogress, reprogress
 from bup.io import path_msg
 
 # This garbage collector uses a Bloom filter to track the live blobs
