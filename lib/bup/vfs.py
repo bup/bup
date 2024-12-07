@@ -631,7 +631,7 @@ def _split_subtree_items(repo, level, oid, entries, names, want_meta, root=True)
                 assert mangled_name[-5:-1] != b'.bup', \
                     f'found {path_msg(mangled_name)} in split subtree'
             yield from _split_subtree_items(repo, level - 1, sub_oid,
-                                            tree_decode(_get_tree_object(repo, sub_oid)),
+                                            list(tree_decode(_get_tree_object(repo, sub_oid))),
                                             names, want_meta, False)
 
 _tree_depth_rx = re.compile(br'\.bupd\.([0-9]+)(?:\..*)?\.bupd')
