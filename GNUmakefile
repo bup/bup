@@ -1,7 +1,19 @@
 
-$(shell dev/validate-make $(MAKE))
-ifneq (0, $(.SHELLSTATUS))
-  $(error Unable to validate $(MAKE))
+# Technically we need 4.1.90 for .SHELLSTATUS, but everything relevant
+# seems to have at least 4.2 (mostly 4.4 and higher) anyway, so let's
+# just require 4.2+ to simplify, and if we ever raise the limit to
+# 4.4+, we'll have intcmp.
+
+# Assumes make versions always have at least two components.
+make_maj := $(word 1,$(subst ., ,$(MAKE_VERSION)))
+ifneq (,$(filter $(make_maj),0 1 2 3))
+  $(error $(MAKE) version $(MAKE_VERSION) is < 4.2)
+endif
+make_min := $(word 2,$(subst ., ,$(MAKE_VERSION)))
+ifeq (4,$(make_maj))
+  ifneq (,$(filter $(make_min),0 1))
+    $(error $(MAKE) version $(MAKE_VERSION) is < 4.2)
+  endif
 endif
 
 $(shell mkdir -p config/config.var && echo "$(MAKE)" > config/config.var/make)
