@@ -3,7 +3,7 @@ from binascii import hexlify, unhexlify
 from contextlib import ExitStack
 from itertools import chain
 from os.path import basename
-import glob, os, subprocess, sys, tempfile
+import glob, os, re, subprocess, sys, tempfile
 
 from bup import bloom, git, midx
 from bup.compat import hexstr, pending_raise
@@ -165,32 +165,37 @@ def find_live_objects(existing_count, cat_pipe, idx_list, refs=None,
         else:
             return live_blobs, live_trees
 
+_pack_stem_rx = re.compile(br'pack-[0-9a-fA-F]{40}')
 
 def sweep(live_objects, live_trees, existing_count, cat_pipe, threshold,
           compression, verbosity):
-    # Traverse all the packs, saving the (probably) live data.
+    """Traverse all the packs, saving the (probably) live data."""
 
-    ns = Nonlocal()
-    ns.stale_files = []
-    def remove_stale_files(new_pack_prefix):
-        if verbosity and new_pack_prefix:
-            log('created ' + path_msg(basename(new_pack_prefix)) + '\n')
-            reprogress()
-        for p in ns.stale_files:
-            if new_pack_prefix and p.startswith(new_pack_prefix):
-                continue  # Don't remove the new pack file
+    stale_packs = [] # stems like /some/where/pack-OIDX (no suffix)
+
+    def remove_stale_packs(new_pack_prefix):
+        nonlocal stale_packs
+        if new_pack_prefix:
+            assert _pack_stem_rx.fullmatch(basename(new_pack_prefix))
             if verbosity:
-                log(f'removing {path_msg(basename(p))}\n')
-                reprogress()
-            os.unlink(p)
-        if ns.stale_files:  # So git cat-pipe will close them
+                log('created ' + path_msg(basename(new_pack_prefix)) + '\n')
+        for stem in stale_packs:
+            assert _pack_stem_rx.fullmatch(basename(stem))
+            if stem == new_pack_prefix:
+                continue  # Don't remove the new pack file
+            for p in glob.glob(stem + b'.*'):
+                if verbosity:
+                    log(f'removing {path_msg(basename(p))}\n')
+                os.unlink(p)
+        if verbosity: reprogress()
+        if stale_packs:  # So git cat-pipe will close them
             cat_pipe.restart()
-        ns.stale_files = []
+        stale_packs = []
 
     writer = git.PackWriter(objcache_maker=lambda : None,
                             compression_level=compression,
                             run_midx=False,
-                            on_pack_finish=remove_stale_files)
+                            on_pack_finish=remove_stale_packs)
     try:
         # FIXME: sanity check .idx names vs .pack names?
         collect_count = 0
@@ -221,8 +226,8 @@ def sweep(live_objects, live_trees, existing_count, cat_pipe, threshold,
                         log('deleting %s\n'
                             % path_msg(git.repo_rel(basename(idx_name))))
                         reprogress()
-                    ns.stale_files.append(idx_name)
-                    ns.stale_files.append(idx_name[:-3] + b'pack')
+                    assert idx_name.endswith(b'.idx')
+                    stale_packs.append(idx_name[:-4])
                     continue
 
                 live_frac = idx_live_count / float(len(idx))
@@ -242,9 +247,8 @@ def sweep(live_objects, live_trees, existing_count, cat_pipe, threshold,
                         item_it = cat_pipe.get(hexlify(sha))
                         _, typ, _ = next(item_it)
                         writer.just_write(sha, typ, b''.join(item_it))
-
-                ns.stale_files.append(idx_name)
-                ns.stale_files.append(idx_name[:-3] + b'pack')
+                assert idx_name.endswith(b'.idx')
+                stale_packs.append(idx_name[:-4])
 
         if verbosity:
             progress('preserving live data (%d%% complete)\n'
@@ -262,7 +266,7 @@ def sweep(live_objects, live_trees, existing_count, cat_pipe, threshold,
         # This will finally run midx.
         writer.close()
 
-    remove_stale_files(None)  # In case we didn't write to the writer.
+    remove_stale_packs(None)  # In case we didn't write to the writer.
 
     if verbosity:
         log('discarded %d%% of objects\n'
