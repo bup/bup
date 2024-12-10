@@ -5,7 +5,8 @@
   <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <meta name="author" content="Rob Browning rlb@defaultvalue.org" />
-  <title>bup-gc(1) Bup 0.33.4</title>
+  <meta name="dcterms.date" content="2024-12-10" />
+  <title>bup-gc(1) Bup 0.33.5</title>
   <style>
     html {
       color: #1a1a1a;
@@ -59,6 +60,10 @@
       color: #1a1a1a;
     }
     img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
       max-width: 100%;
     }
     h1, h2, h3, h4, h5, h6 {
@@ -167,10 +172,10 @@
 </head>
 <body>
 <header id="title-block-header">
-<h1 class="title">bup-gc(1) Bup 0.33.4</h1>
+<h1 class="title">bup-gc(1) Bup 0.33.5</h1>
 <p class="author">Rob Browning <a href="mailto:rlb@defaultvalue.org"
 class="email">rlb@defaultvalue.org</a></p>
-<p class="date">0.33.4</p>
+<p class="date">2024-12-10</p>
 </header>
 <h1 id="name">NAME</h1>
 <p>bup-gc - remove unreferenced, unneeded data</p>
@@ -185,7 +190,7 @@ collector might or might not actually delete anything (or reclaim any
 space).</p>
 <p>With the current, proababilistic implementation, some fraction of the
 unreachable data may be retained. In exchange, the garbage collection
-should require much less RAM than might by some more precise
+should require less RAM than might be required by some more precise
 approaches.</p>
 <p>Typically, the garbage collector would be invoked after some set of
 invocations of <code>bup rm</code>.</p>
@@ -200,8 +205,8 @@ results.)</p>
 <dl>
 <dt>--threshold=N</dt>
 <dd>
-only rewrite a packfile if it’s over N percent garbage; otherwise leave
-it alone. The default threshold is 10%.
+only rewrite a packfile if it’s over N percent garbage and contains no
+unreachable trees or commits. The default threshold is 10%.
 </dd>
 <dt>-v, --verbose</dt>
 <dd>
@@ -214,7 +219,14 @@ every filename.
 set the compression level to # (a value from 0-9, where 9 is the highest
 and 0 is no compression). The default is 1 (fast, loose compression).
 </dd>
+<dt>--ignore-missing</dt>
+<dd>
+report missing objects, but don’t stop the collection.
+</dd>
 </dl>
+<h1 id="exit-status">EXIT STATUS</h1>
+<p>The exit status will be nonzero if there were any errors.
+Encountering any missing object is considered an error.</p>
 <h1 id="examples">EXAMPLES</h1>
 <pre><code># Remove all saves of &quot;home&quot; and most of the otherwise unreferenced data.
 $ bup rm home
