@@ -5,7 +5,8 @@
   <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <meta name="author" content="Rob Browning rlb@defaultvalue.org" />
-  <title>bup-get(1) Bup 0.33.4</title>
+  <meta name="dcterms.date" content="2024-12-10" />
+  <title>bup-get(1) Bup 0.33.5</title>
   <style>
     html {
       color: #1a1a1a;
@@ -59,6 +60,10 @@
       color: #1a1a1a;
     }
     img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
       max-width: 100%;
     }
     h1, h2, h3, h4, h5, h6 {
@@ -167,10 +172,10 @@
 </head>
 <body>
 <header id="title-block-header">
-<h1 class="title">bup-get(1) Bup 0.33.4</h1>
+<h1 class="title">bup-get(1) Bup 0.33.5</h1>
 <p class="author">Rob Browning <a href="mailto:rlb@defaultvalue.org"
 class="email">rlb@defaultvalue.org</a></p>
-<p class="date">0.33.4</p>
+<p class="date">2024-12-10</p>
 </header>
 <h1 id="name">NAME</h1>
 <p>bup-get - copy repository items (CAUTION: EXPERIMENTAL)</p>
@@ -321,6 +326,11 @@ suffix like k, M, or G to specify multiples of 1024, 1024*1024,
 <dd>
 set the compression level to # (a value from 0-9, where 9 is the highest
 and 0 is no compression). The default is 1 (fast, loose compression)
+</dd>
+<dt>--ignore-missing</dt>
+<dd>
+ignore missing objects encountered during a transfer. Currently only
+supported by <code>--unnamed</code>, and potentially <em>dangerous</em>.
 </dd>
 </dl>
 <h1 id="examples">EXAMPLES</h1>
