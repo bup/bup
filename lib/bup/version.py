@@ -1,6 +1,4 @@
 
-from __future__ import absolute_import, print_function
-
 from bup import source_info
 try:
     import bup.checkout_info as checkout_info
@@ -22,7 +20,7 @@ else:
 
 # The ~ in a version is a Debian-style "always less than" marker:
 # https://www.debian.org/doc/debian-policy/ch-controlfields.html#version
-base_version = b'0.33.5~'
+base_version = b'0.33.5'
 
 version = base_version
 if version.endswith(b'~'):
