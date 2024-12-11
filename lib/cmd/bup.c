@@ -37,7 +37,7 @@ static char **prog_argv = NULL;
 static char *orig_env_pythonpath = NULL;
 
 static PyObject*
-get_argv(PyObject *self, PyObject *args)
+get_argv(PyObject *self, PyObject *args) // https://bugs.python.org/issue35883
 {
     if (!PyArg_ParseTuple(args, ""))
 	return NULL;

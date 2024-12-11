@@ -6,6 +6,9 @@ from os import fsdecode, fsencode
 from shlex import quote
 import os, sys
 
+import bup_main
+
+
 ver = sys.version_info
 
 def hexstr(b):
@@ -55,21 +58,12 @@ def bytes_from_byte(b):  # python > 2: b[3] returns ord('x'), not b'x'
 def getcwd():
     return fsencode(os.getcwd())
 
+# Access argv directly, given https://bugs.python.org/issue35883
 
-try:
-    import bup_main
-except ModuleNotFoundError:
-    bup_main = None
+def get_argvb():
+    "Return a new list containing the current process argv bytes."
+    return bup_main.argv()
 
-if bup_main:
-    def get_argvb():
-        "Return a new list containing the current process argv bytes."
-        return bup_main.argv()
-    def get_argv():
-        "Return a new list containing the current process argv strings."
-        return [x.decode(errors='surrogateescape') for x in bup_main.argv()]
-else:
-    def get_argvb():
-        raise Exception('get_argvb requires the bup_main module');
-    def get_argv():
-        raise Exception('get_argv requires the bup_main module');
+def get_argv():
+    "Return a new list containing the current process argv strings."
+    return [x.decode(errors='surrogateescape') for x in bup_main.argv()]
