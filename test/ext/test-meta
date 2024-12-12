@@ -440,11 +440,10 @@ src/foo/3"
 
     tmpdir="$(WVPASS wvmktempdir)" || exit $?    
 
-    # FIXME: binary groups
-    first_group="$(WVPASS bup-cfg-py -c 'import os,grp; \
-      print(grp.getgrgid(os.getgroups()[0])[0])')" || exit $?
-    last_group="$(bup-cfg-py -c 'import os,grp; \
-      print(grp.getgrgid(os.getgroups()[-1])[0])')" || exit $?
+    # FIXME: binary groups, groups with spaces, etc.
+    groups=($("$TOP/dev/groups")) || exit $?
+    first_group="${groups[0]}"
+    last_group="${groups[-1]}"
     last_group_erx="$(escape-erx "$last_group")"
 
     WVSTART 'metadata (restoration of ownership)'

@@ -13,7 +13,8 @@ import errno, os, sys, stat, socket, struct
 
 from bup import vint, xstat
 from bup.drecurse import recursive_dirlist
-from bup.helpers import add_error, mkdirp, log, is_superuser, format_filesize
+from bup.helpers import \
+    add_error, mkdirp, log, is_superuser, format_filesize, getgroups
 from bup.io import path_msg
 from bup.pwdgrp import pwd_from_uid, pwd_from_name, grp_from_gid, grp_from_name
 from bup.xstat import utime, lutime
@@ -426,7 +427,7 @@ class Metadata:
                     if entry:
                         gid = entry.gr_gid
         else: # not superuser - only consider changing the group/gid
-            user_gids = os.getgroups()
+            user_gids = getgroups()
             if self.gid in user_gids:
                 gid = self.gid
             if not restore_numeric_ids and self.gid != 0:

@@ -4,11 +4,14 @@ python="$(dirname "$0")/python" || exit $?
 exec "$python" "$0" ${1+"$@"}
 """
 
-from __future__ import absolute_import, print_function
 import os, sys
 
 if sys.platform.startswith('cygwin'):
+    # see helpers.getgroups()
+    egid = os.getegid()
     groups = os.getgroups()
+    if egid not in groups:
+        groups.append(egid)
     if 544 in groups or 0 in groups:
         print('root')
     else:
