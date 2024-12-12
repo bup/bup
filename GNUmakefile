@@ -186,8 +186,11 @@ dest_libdir := $(DESTDIR)$(LIBDIR)
 install: all
 	$(INSTALL) -d $(dest_bindir) $(dest_libdir)/bup/cmd $(dest_libdir)/cmd \
 	  $(dest_libdir)/web/static
-	test -z "$(man_roff)" || install -d $(dest_mandir)/man1
-	test -z "$(man_roff)" || $(INSTALL) -m 0644 $(man_roff) $(dest_mandir)/man1
+	for f in $(man_roff); do \
+	    sec="$${f##*.}"; \
+	    $(INSTALL) -d $(dest_mandir)/man"$$sec"; \
+	    $(INSTALL) -m 0644 "$$f" $(dest_mandir)/man"$$sec"; \
+	done
 	test -z "$(man_html)" || install -d $(dest_docdir)
 	test -z "$(man_html)" || $(INSTALL) -m 0644 $(man_html) $(dest_docdir)
 	$(INSTALL) -pm 0755 lib/cmd/bup "$(dest_libdir)/cmd/bup"
