@@ -4,7 +4,7 @@
 
 # NAME
 
-bup-validate-object-links - scan the respository for broken object links
+bup-validate-object-links - scan the repository for broken object links
 
 # SYNOPSIS
 
