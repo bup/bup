@@ -44,6 +44,17 @@ def nullcontext_if_not(manager):
     return manager if manager is not None else nullcontext()
 
 
+def getgroups():
+    # cf. getgroups(2) - effective group id may or may not be in the
+    # list, and while on linux, for example, it normally is, in an
+    # unshare, it wasn't.
+    egid = os.getegid()
+    gids = os.getgroups()
+    if egid not in gids:
+        gids.append(egid)
+    return gids
+
+
 class finalized:
     def __init__(self, enter_result=None, finalize=None):
         assert finalize
@@ -424,7 +435,7 @@ def detect_fakeroot():
 if sys.platform.startswith('cygwin'):
     def is_superuser():
         # https://cygwin.com/ml/cygwin/2015-02/msg00057.html
-        groups = os.getgroups()
+        groups = getgroups()
         return 544 in groups or 0 in groups
 else:
     def is_superuser():

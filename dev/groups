@@ -1,0 +1,15 @@
+#!/bin/sh
+"""": # -*-python-*-
+python="$(dirname "$0")/python" || exit $?
+exec "$python" "$0" ${1+"$@"}
+"""
+
+import grp, os
+
+# cf. helpers.getgroups()
+egid = os.getegid()
+gids = os.getgroups()
+if egid not in gids:
+    gids.append(egid)
+
+print(*[grp.getgrgid(x).gr_name for x in gids])
