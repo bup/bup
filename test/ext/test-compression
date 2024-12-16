@@ -4,7 +4,7 @@
 
 set -o pipefail
 
-top="$(WVPASS pwd)" || exit $?
+top="$(WVPASS pwd -P)" || exit $?
 tmpdir="$(WVPASS wvmktempdir)" || exit $?
 
 export BUP_DIR="$tmpdir/bup"
