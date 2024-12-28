@@ -16,6 +16,8 @@ ifeq (4,$(make_maj))
   endif
 endif
 
+.DELETE_ON_ERROR:
+
 $(shell mkdir -p config/config.var && echo "$(MAKE)" > config/config.var/make)
 ifneq (0, $(.SHELLSTATUS))
   $(error Unable to record config/config.var/make)
@@ -227,7 +229,7 @@ embed_cflags = $(bup_python_cflags_embed) $(bup_shared_cflags) -I$(CURDIR)/src
 embed_ldflags := $(bup_python_ldflags_embed) $(bup_shared_ldflags)
 
 config/config.h: config/config.vars
-clean_paths += config/config.h.tmp
+clean_paths += config/config.h
 
 cc_bin = $(CC) $(embed_cflags) -I src $(CPPFLAGS) $(CFLAGS) $^ \
   $(embed_ldflags) $(LDFLAGS) -fPIE -o $@
@@ -318,12 +320,10 @@ check-py3:
 Documentation/all: $(man_roff) $(man_html)
 
 Documentation/substvars: $(bup_deps)
-        # FIXME: real temp file
 	set -e; bup_ver=$$(./bup version); \
-	echo "s,%BUP_VERSION%,$$bup_ver,g" > $@.tmp;
+	echo "s,%BUP_VERSION%,$$bup_ver,g" > $@;
 	set -e; bup_date=$$(./bup version --date); \
-	echo "s,%BUP_DATE%,$$bup_date,g" >> $@.tmp
-	mv $@.tmp $@
+	echo "s,%BUP_DATE%,$$bup_date,g" >> $@
 
 define render_page
   $(pf); sed -f Documentation/substvars $< \
