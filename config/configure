@@ -73,8 +73,8 @@ set - "${argv[@]}"
 
 . ./configure.inc
 
-# FIXME: real tmpdir
-rm -rf finished config/bin config.var config.var.tmp config.vars
+rm -f config.vars # existence indicates successful completion
+rm -rf config/bin config.var config.var.tmp config.vars.prep
 
 AC_INIT $TARGET
 
@@ -328,17 +328,16 @@ LIBS="$orig_libs"
 
 AC_SUB bup_config_cflags "$bup_config_cflags"
 
-AC_OUTPUT config.vars
+AC_OUTPUT config.vars.prep
 
 set -euo pipefail
 
-# FIXME: real tmpdir
 mkdir -p config.var.tmp
 echo -n "$bup_python_config" > config.var.tmp/bup-python-config
 echo -n "$with_pylint" > config.var.tmp/with-pylint
 mv config.var.tmp config.var
 
-touch finished
+mv config.vars.prep config.vars
 
 printf "
 found: python-config (%q)

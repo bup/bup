@@ -37,7 +37,8 @@ export PATH := $(CURDIR)/dev/shadow-bin:$(PATH)
 clean_paths :=
 generated_dependencies :=
 
-# See config/config.vars.in (sets bup_python_config, among other things)
+# See config/config.vars.prep.in (sets bup_python_config, among other
+# things); config.vars is the "configuration succeeded" state file.
 include config/config.vars
 -include $(generated_dependencies)
 
@@ -61,7 +62,7 @@ current_sampledata := test/sampledata/var/rev/v$(sampledata_rev)
 os := $(shell ($(pf); uname | sed 's/[-_].*//') $(isok))
 os := $(call shout,$(os),Unable to determine OS)
 
-# CFLAGS CPPFLAGS LDFLAGS are handled vis config/config.vars.in
+# CFLAGS CPPFLAGS LDFLAGS are handled vis config/config.vars.prep.in
 
 # Satisfy --warn-undefined-variables
 DESTDIR ?=
@@ -89,7 +90,6 @@ initial_setup := $(shell dev/update-checkout-info lib/bup/checkout_info.py $(iso
 initial_setup := $(call shout,$(initial_setup),update-checkout-info failed))
 clean_paths += lib/bup/checkout_info.py
 
-# Dependency changes here should be mirrored in Makefile
 config/config.vars: configure config/configure config/configure.inc config/*.in
 	MAKE="$(MAKE)" ./configure
 
@@ -228,9 +228,6 @@ install: all
 embed_cflags = $(bup_python_cflags_embed) $(bup_shared_cflags) -I$(CURDIR)/src
 embed_ldflags := $(bup_python_ldflags_embed) $(bup_shared_ldflags)
 
-config/config.h: config/config.vars
-clean_paths += config/config.h
-
 cc_bin = $(CC) $(embed_cflags) -I src $(CPPFLAGS) $(CFLAGS) $^ \
   $(embed_ldflags) $(LDFLAGS) -fPIE -o $@
 
@@ -357,8 +354,8 @@ import-docs: Documentation/clean
 	$(pf); git archive origin/man | (cd Documentation && tar -xvf -)
 
 clean: Documentation/clean
-	rm -f config/finished
-	cd config && rm -f config.vars
+	rm -f config/config.vars # resets configuration
+	cd config && rm -f config.h config.vars.prep
 	cd config && rm -rf bin config.var config.var.tmp
 
         # Clean up the mounts first, so that find, etc. won't crash later
