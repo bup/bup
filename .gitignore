@@ -1,7 +1,5 @@
 *.swp
 *~
-/config/config.h.tmp
-/config/finished
 /dev/bup-exec
 /dev/bup-exec.d
 /dev/bup-python

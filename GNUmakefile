@@ -357,7 +357,9 @@ import-docs: Documentation/clean
 	$(pf); git archive origin/man | (cd Documentation && tar -xvf -)
 
 clean: Documentation/clean
-	cd config && rm -rf finished bin config.var
+	rm -f config/finished
+	cd config && rm -f config.vars
+	cd config && rm -rf bin config.var config.var.tmp
 
         # Clean up the mounts first, so that find, etc. won't crash later
 	if test -e test/mnt; then dev/cleanup-mounts-under test/mnt; fi
