@@ -365,7 +365,10 @@ def run_filtered_cmd(args):
             srcs.append(p.stderr.fileno())
             dests.append(err.fileno())
         filter_output(srcs, dests)
-        return p.wait()
+        rc = p.wait()
+        if rc < 0:
+            rc = EXIT_FAILURE
+        return rc
     except BaseException as ex:
         if p and p.poll() == None:
             os.kill(p.pid, signal.SIGTERM)
