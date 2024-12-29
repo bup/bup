@@ -274,18 +274,16 @@ def filter_output(srcs, dests):
             raise pending_ex
 
 def import_and_run_main(module, args):
-    if do_profile:
-        import cProfile
-        f = compile('module.main(args)', __file__, 'exec')
-        cProfile.runctx(f, globals(), locals())
-    else:
-        module.main(args)
+    if not do_profile:
+        return module.main(args)
+    import cProfile
+    f = compile('module.main(args)', __file__, 'exec')
+    return cProfile.runctx(f, globals(), locals())
 
 
 def run_module_cmd(module, args):
     if not (fix_stdout or fix_stderr):
-        import_and_run_main(module, args)
-        return
+        return import_and_run_main(module, args)
     # Interpose filter_output between all attempts to write to the
     # stdout/stderr and the real stdout/stderr (e.g. the fds that
     # connect directly to the terminal) via a thread that runs
@@ -314,7 +312,7 @@ def run_module_cmd(module, args):
                                target=lambda : filter_output(srcs, dests))
         filter_thread.start()
         filter_thread_started = True
-        import_and_run_main(module, args)
+        return import_and_run_main(module, args)
     finally:
         # Try to make sure that whatever else happens, we restore
         # stdout and stderr here, if that's possible, so that we don't
@@ -386,7 +384,7 @@ def run_subcmd(module, args):
 def main():
     try:
         rc = run_subcmd(cmd_module, subcmd)
-    except KeyboardInterrupt as ex:
+    except KeyboardInterrupt:
         rc = 130
     except SystemExit as ex:
         raise ex
