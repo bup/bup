@@ -342,20 +342,14 @@ def run_module_cmd(module, args):
     if filter_thread_started:
         filter_thread.join()
 
-
-def run_subproc_cmd(args):
-
-    c = (do_profile and [sys.executable, b'-m', b'cProfile'] or []) + args
-    if not (fix_stdout or fix_stderr):
-        os.execvp(c[0], c)
-
+def run_filtered_cmd(args):
     sys.stdout.flush()
     sys.stderr.flush()
     out = byte_stream(sys.stdout)
     err = byte_stream(sys.stderr)
     p = None
     try:
-        p = subprocess.Popen(c,
+        p = subprocess.Popen(args,
                              stdout=PIPE if fix_stdout else out,
                              stderr=PIPE if fix_stderr else err,
                              bufsize=4096, close_fds=True)
@@ -380,12 +374,14 @@ def run_subproc_cmd(args):
             p.wait()
         raise
 
-
 def run_subcmd(module, args):
     if module:
-        run_module_cmd(module, args)
-    else:
-        run_subproc_cmd(args)
+        return run_module_cmd(module, args)
+    args = (do_profile and [sys.executable, b'-m', b'cProfile'] or []) + args
+    if fix_stdout or fix_stderr:
+        return run_filtered_cmd(args)
+    os.execvp(args[0], args)
+    assert False, 'unreachable' # pylint
 
 def main():
     try:
