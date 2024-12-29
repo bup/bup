@@ -7,7 +7,6 @@ from math import floor
 from os import environ
 from subprocess import PIPE, Popen
 from tempfile import mkdtemp
-from traceback import print_exception
 from shutil import rmtree
 import sys, os, subprocess, errno, select, mmap, stat, re, struct
 import hashlib, heapq, math, operator, time
@@ -1221,23 +1220,3 @@ def period_as_secs(s):
                   b'w': 60 * 60 * 24 * 7,
                   b'm': 60 * 60 * 24 * 31,
                   b'y': 60 * 60 * 24 * 366}[scale]
-
-
-def wrap_boolean_main(main):
-    # FIXME: this will eventually migrate to main.py when we clean up
-    # exit statuses.  It's here for now because we need to make sure
-    # we only exit EXIT_TRUE for main() EXIT_TRUE, since other code
-    # may not respect the distinction, and because python's default
-    # error exit status is 1.  See also compat.wrap_main().
-    try:
-        rc = main()
-    except KeyboardInterrupt: # preserve existing behavior for now
-        sys.exit(130)
-    except SystemExit as ex:
-        sys.exit(EXIT_FAILURE if ex.code == EXIT_TRUE else ex.code)
-    except BaseException as ex:
-        print_exception(ex)
-        sys.exit(EXIT_FAILURE)
-    if rc:
-        sys.exit(rc)
-    die_if_errors(status=EXIT_FAILURE)

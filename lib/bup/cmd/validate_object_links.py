@@ -5,8 +5,7 @@ import glob, sys, zlib
 
 from bup import options, git
 from bup.compat import pairwise
-from bup.helpers import \
-    EXIT_FALSE, EXIT_TRUE, log, qprogress, reprogress, wrap_boolean_main
+from bup.helpers import EXIT_FALSE, EXIT_TRUE, log, qprogress, reprogress
 from bup.io import byte_stream, path_msg
 
 
@@ -73,7 +72,7 @@ class Pack:
                 pm = path_msg(self._idx.name)
                 raise Exception(f'Invalid object type {kind} in {pm} at {idx}\n')
 
-def validate(argv):
+def main(argv):
     o = options.Options(optspec)
     opt, flags, extra = o.parse_bytes(argv[1:])
 
@@ -120,6 +119,3 @@ def validate(argv):
                 obj_frac = obj_i / obj_n
                 qprogress(f'scanned {obj_i}/{obj_n} {obj_frac:.2%}\r')
     return ret
-
-def main(argv):
-    wrap_boolean_main(lambda: validate(argv))

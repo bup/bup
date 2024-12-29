@@ -2,7 +2,7 @@
 from bup import git, options, vfs
 from bup.compat import argv_bytes
 from bup.gc import count_objects, find_live_objects
-from bup.helpers import EXIT_FALSE, EXIT_TRUE, log, wrap_boolean_main
+from bup.helpers import EXIT_FALSE, EXIT_TRUE, log
 from bup.io import path_msg
 from bup.repo import LocalRepo
 
@@ -13,7 +13,7 @@ bup validate-ref-links [ref...]
 v,verbose       increase log output (can be used more than once)
 """
 
-def validate(argv):
+def main(argv):
     o = options.Options(optspec)
     opt, flags, extra = o.parse_bytes(argv[1:])
     verbosity = opt.verbose
@@ -58,6 +58,3 @@ def validate(argv):
                 live_objects.close()
 
     return EXIT_FALSE if (ref_missing + found_missing) else EXIT_TRUE
-
-def main(argv):
-    wrap_boolean_main(lambda: validate(argv))
