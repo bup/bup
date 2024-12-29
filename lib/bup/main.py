@@ -20,6 +20,7 @@ from bup.compat import (
 from bup.helpers import (
     EXIT_FAILURE,
     columnate,
+    die_if_errors,
     handle_ctrl_c,
     log,
     tty_width
@@ -394,7 +395,9 @@ def main():
     except BaseException as ex:
         print_exception(ex)
         rc = EXIT_FAILURE
-    sys.exit(rc)
+    if rc:
+        sys.exit(rc)
+    die_if_errors()
 
 if __name__ == "__main__":
     main()
