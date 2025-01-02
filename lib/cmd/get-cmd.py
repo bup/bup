@@ -582,6 +582,20 @@ def log_item(name, type, opt, tree=None, commit=None, tag=None):
 
 def main():
     handle_ctrl_c()
+
+    print(textwrap.dedent("""
+
+    WARNING: all versions of bup get before 0.33.5 can produce saves
+    with missing objects (incomplete trees or commits).  See the
+    0.33.5 release notes (note/0.33.5-from-0.33.4.md) in more recent
+    versions for additional information and ways to determine if
+    you've been affected.  Refusing to run.  Please upgrade.
+
+    """).strip(),
+      file=sys.stderr)
+
+    sys.exit(2)
+
     is_reverse = environ.get(b'BUP_SERVER_REVERSE')
     opt = parse_args(compat.argv)
     git.check_repo_or_die()
