@@ -5,6 +5,7 @@ exec "$bup_python" "$0" ${1+"$@"}
 """
 # end of bup preamble
 
+from __future__ import print_function
 import sys
 
 from bup import git, options
@@ -25,6 +26,19 @@ unsafe      use the command even though it may be DANGEROUS
 # FIXME: make sure client handles server-side changes reasonably
 
 handle_ctrl_c()
+
+print("""
+
+WARNING: all versions of bup gc before 0.33.5 can produce saves with
+missing objects (incomplete trees or commits).  See the 0.33.5 release
+notes (note/0.33.5-from-0.33.4.md) in more recent versions for
+additional information and ways to determine if you've been affected.
+Refusing to run.  Please upgrade.
+
+""".strip(),
+      file=sys.stderr)
+
+sys.exit(2)
 
 o = options.Options(optspec)
 (opt, flags, extra) = o.parse(sys.argv[1:])
