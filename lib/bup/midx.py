@@ -54,11 +54,10 @@ class PackMidx:
             self.which_ofs = self.sha_ofs + 20 * self.nsha
             # which len is self.nsha * 4
             self.idxnames = self.map[self.which_ofs + 4 * self.nsha:].split(b'\0')
-            # REVIEW: idx paths always relative to midx path?
-            idxdir = os.path.dirname(filename) + b'/'
+            idxdir = os.path.dirname(filename)
             missing = []
             for name in self.idxnames:
-                if not os.path.exists(idxdir + name):
+                if not os.path.exists(os.path.join(idxdir, name)):
                     missing.append(name)
             if missing:
                 raise MissingIdxs(paths=missing)
