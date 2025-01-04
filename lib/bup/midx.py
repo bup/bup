@@ -37,13 +37,12 @@ class PackMidx:
     """
     def __init__(self, filename, mmap, *, _internal=False):
         """Takes ownership of mmap."""
-        with ExitStack() as contexts:
-            contexts.enter_context(mmap)
+        self.closed = finished = False
+        try:
+            self.map = mmap
             assert _internal, 'call open_midx()'
             assert _midx_header(mmap) == MIDX_HEADER
             assert _midx_version(mmap) == MIDX_VERSION
-            self.map = mmap
-            self.closed = False
             self.name = filename
             self.bits = _helpers.firstword(self.map[8:12])
             self.entries = 2**self.bits
@@ -63,7 +62,19 @@ class PackMidx:
                     missing.append(name)
             if missing:
                 raise MissingIdxs(paths=missing)
-            contexts.pop_all()
+            finished = True
+        finally:
+            if not finished: self.close()
+
+    def close(self):
+        # This must be able to handle __init__ partial initializations too.
+        if not self.closed:
+            self.closed = True
+            self.fanout = self.shatable = self.whichlist = self.idxnames = None
+            tmp = getattr(self, 'map', None)
+            if tmp is not None:
+                self.map = None
+                tmp.close()
 
     def __enter__(self):
         return self
@@ -92,13 +103,6 @@ class PackMidx:
 
     def _get_idxname(self, i):
         return self.idxnames[self._get_idx_i(i)]
-
-    def close(self):
-        self.closed = True
-        if self.map is not None:
-            self.fanout = self.shatable = self.whichlist = self.idxnames = None
-            self.map.close()
-            self.map = None
 
     def __del__(self):
         assert self.closed
