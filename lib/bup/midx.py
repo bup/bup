@@ -179,9 +179,9 @@ def open_midx(path, *, ignore_missing=True):
             if not missing:
                 return midx
             pathm = path_msg(path)
-            for missing in ex.paths:
-                imsg = path_msg(missing)
-                log(f'Warning: ignoring midx {pathm} (missing idx {imsg})\n')
+            for idx in missing:
+                idxm = path_msg(idx)
+                log(f'Warning: ignoring midx {pathm} (missing idx {idxm})\n')
             return None
         pathm = path_msg(path)
         if ver < MIDX_VERSION:
