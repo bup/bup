@@ -20,7 +20,7 @@ else:
 
 # The ~ in a version is a Debian-style "always less than" marker:
 # https://www.debian.org/doc/debian-policy/ch-controlfields.html#version
-base_version = b'0.33.7'
+base_version = b'0.33.8~'
 
 version = base_version
 if version.endswith(b'~'):
