@@ -184,7 +184,11 @@ dest_bindir := $(DESTDIR)$(BINDIR)
 dest_libdir := $(DESTDIR)$(LIBDIR)
 
 install: all
-	$(INSTALL) -d $(dest_bindir) $(dest_libdir)/bup/cmd $(dest_libdir)/cmd \
+	$(INSTALL) -d \
+	  $(dest_bindir) \
+	  $(dest_libdir)/bup/cmd\
+	  $(dest_libdir)/bup/repo \
+	  $(dest_libdir)/cmd \
 	  $(dest_libdir)/web/static
 	for f in $(man_roff); do \
 	    sec="$${f##*.}"; \
@@ -201,6 +205,7 @@ install: all
 	set -e; \
 	$(INSTALL) -pm 0644 lib/bup/*.py $(dest_libdir)/bup/
 	$(INSTALL) -pm 0644 lib/bup/cmd/*.py $(dest_libdir)/bup/cmd/
+	$(INSTALL) -pm 0644 lib/bup/repo/*.py $(dest_libdir)/bup/repo/
 	$(INSTALL) -pm 0755 \
 		lib/bup/*$(soext) \
 		$(dest_libdir)/bup

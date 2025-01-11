@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+. ./wvtest-bup.sh
+
+set -o pipefail
+
+top="$(WVPASS pwd)" || exit $?
+tmpdir="$(WVPASS wvmktempdir)" || exit $?
+
+# undo the ban in ./pytest
+WVPASS test -L bup -a -f lib/cmd/bup.c
+unset GIT_DIR
+
+WVPASS make PREFIX="$tmpdir/install" install
+
+WVPASS cd "$tmpdir"
+
+export PATH="$tmpdir/install/bin:$PATH"
+WVPASS bup version
+WVPASS bup help save | WVPASS grep 'bup-save - create a new bup backup set'
+WVPASS bup -d "$tmpdir/repo" init
+
+WVPASS cd "$top" && rm -rf "$tmpdir"
