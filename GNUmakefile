@@ -44,23 +44,16 @@ include config/config.vars
 
 pf := set -o pipefail
 
-define isok
-  && echo " ok" || echo " no"
-endef
-
-# If ok, strip trailing " ok" and return the output, otherwise, error
-define shout
-$(if $(subst ok,,$(lastword $(1))),$(error $(2)),$(shell x="$(1)"; echo $${x%???}))
-endef
-
-sampledata_rev := $(shell dev/configure-sampledata --revision $(isok))
-sampledata_rev := \
-  $(call shout,$(sampledata_rev),Could not parse sampledata revision)
-
+sampledata_rev := $(shell dev/configure-sampledata --revision)
+ifneq (0, $(.SHELLSTATUS))
+  $(error Could not parse sampledata revision)
+endif
 current_sampledata := test/sampledata/var/rev/v$(sampledata_rev)
 
-os := $(shell ($(pf); uname | sed 's/[-_].*//') $(isok))
-os := $(call shout,$(os),Unable to determine OS)
+os := $(shell ($(pf); uname | sed 's/[-_].*//'))
+ifneq (0, $(.SHELLSTATUS))
+  $(error Unable to determine OS)
+endif
 
 # CFLAGS CPPFLAGS LDFLAGS are handled vis config/config.vars.prep.in
 
@@ -86,8 +79,10 @@ else
   test_tmp := $(CURDIR)/test/tmp
 endif
 
-initial_setup := $(shell dev/update-checkout-info lib/bup/checkout_info.py $(isok))
-initial_setup := $(call shout,$(initial_setup),update-checkout-info failed))
+$(shell dev/update-checkout-info lib/bup/checkout_info.py $(isok))
+ifneq (0, $(.SHELLSTATUS))
+  $(error update-checkout-info failed)
+endif
 clean_paths += lib/bup/checkout_info.py
 
 config/config.vars: configure config/configure config/configure.inc config/*.in
