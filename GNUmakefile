@@ -292,11 +292,7 @@ stupid:
 check: test
 
 distcheck: all
-	if test yes = $$(dev/python -c "import xdist; print('yes')" 2>/dev/null); then \
-	  (set -x; ./pytest $(xdist_opt) -m release;) \
-	else \
-	  (set -x; ./pytest -m release;) \
-	fi
+	./pytest $(xdist_opt) -m release
 
 long-test: export BUP_TEST_LEVEL=11
 long-test: test
