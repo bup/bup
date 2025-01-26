@@ -4,42 +4,59 @@
 
 set -o pipefail
 
-WVPASS git status > /dev/null
-
-if ! git diff-index --quiet HEAD; then
-    WVDIE "uncommitted changes; cannot continue"
-fi
+WVPASS test -f lib/cmd/bup.c
+WVPASS test -f src/bup.h
+# undo the ban in ./pytest
+unset GIT_DIR
 
 top="$(WVPASS pwd)" || exit $?
 tmpdir="$(WVPASS wvmktempdir)" || exit $?
 
-bup() { "$top/bup" "$@"; }
-
 make="$(WVPASS cat "$top/config/config.var/make")" || exit $?
+base_ver="$(WVPASS dev/bup-python  -c 'import bup.version; print(bup.version.base_version.decode("ascii"))')" || exit $?
+
+# For now, we only support testing when HEAD isn't actually a release
+WVPASS test "${base_ver: -1}" = '~'
+
+head="$(WVPASS git rev-parse HEAD)" || exit $?
+ver="$base_ver$head"
 
 WVPASS cd "$tmpdir"
 
 WVPASS git clone "$top" clone
 
-for ver in 11.11 11.11.11; do
-    WVSTART "version $ver"
-    WVPASS cd clone
-    WVPASS git tag "$ver"
-    WVPASS git archive --prefix=bup-"$ver"/ -o "$tmpdir"/bup-"$ver".tgz "$ver"
-    WVPASS cd "$tmpdir"
-    WVPASS tar xzf bup-"$ver".tgz
-    WVPASS cd bup-"$ver"
-    WVPASS "$make"
-    WVPASSEQ "$ver" "$(./bup version)"
-    WVPASS cd "$tmpdir"
-done
+WVPASS cd clone
+WVPASS "$make"
+
+WVSTART "non-release tree (clean) versioning"
+WVPASSEQ "$ver" "$(./bup version)"
+
+WVSTART "non-release tree (dirty) versioning"
+WVPASS echo something >> README.md
+WVPASS "$make"
+WVPASSEQ "$ver+" "$(./bup version)"
+
+WVSTART "release tree (dirty) versioning"
+WVPASS sed "s/base_version = b'\(.\+\)~'/base_version = b'\\1'/" \
+       lib/bup/version.py > lib/bup/version.py.tmp
+WVPASS mv lib/bup/version.py.tmp lib/bup/version.py
+WVPASSEQ "${base_ver::-1}+" "$(./bup version)"
+
+WVSTART "release tree (clean) versioning"
+WVPASS git commit -am test-clean-release-tree-versioning
+WVPASS "$make"
+WVPASSEQ "${base_ver::-1}" "$(./bup version)"
+
+WVSTART "release archive versioning"
+WVPASS git archive --prefix=bup/ -o "$tmpdir"/bup.tgz HEAD
+WVPASS cd "$tmpdir"
+WVPASS tar xzf bup.tgz
+WVPASS cd bup
+WVPASS "$make"
+WVPASSEQ "${base_ver::-1}" "$(./bup version)"
 
 WVSTART 'make check in unpacked archive'
-WVPASS cd bup-11.11.11
-if ! "$make" -j5 check > archive-tests.log 2>&1; then
-    cat archive-tests.log 1>&2
-    WVPASS false
-fi
+WVPASS "$make" -j5 check
 
 WVPASS cd "$top"
 WVPASS rm -rf "$tmpdir"
