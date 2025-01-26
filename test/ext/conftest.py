@@ -79,7 +79,7 @@ class BupSubprocTestFile(pytest.File):
 def _collect_item(item):
     name = os.path.basename(item.name)
     if name.startswith('test-') and not name.endswith('~'):
-        if name == 'test-release-archive':
+        if name == 'test-versioning-and-archive':
             item.add_marker(pytest.mark.release)
         return item
 
