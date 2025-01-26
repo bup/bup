@@ -15,6 +15,8 @@ tmpdir="$(WVPASS wvmktempdir)" || exit $?
 
 bup() { "$top/bup" "$@"; }
 
+make="$(WVPASS cat "$top/config/config.var/make")" || exit $?
+
 WVPASS cd "$tmpdir"
 
 WVPASS git clone "$top" clone
@@ -27,14 +29,14 @@ for ver in 11.11 11.11.11; do
     WVPASS cd "$tmpdir"
     WVPASS tar xzf bup-"$ver".tgz
     WVPASS cd bup-"$ver"
-    WVPASS dev/make
+    WVPASS "$make"
     WVPASSEQ "$ver" "$(./bup version)"
     WVPASS cd "$tmpdir"
 done
 
 WVSTART 'make check in unpacked archive'
 WVPASS cd bup-11.11.11
-if ! dev/make -j5 check > archive-tests.log 2>&1; then
+if ! "$make" -j5 check > archive-tests.log 2>&1; then
     cat archive-tests.log 1>&2
     WVPASS false
 fi

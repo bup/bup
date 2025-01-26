@@ -10,7 +10,7 @@ tmpdir="$(WVPASS wvmktempdir)" || exit $?
 WVPASS test -L bup -a -f lib/cmd/bup.c
 unset GIT_DIR
 
-WVPASS make PREFIX="$tmpdir/install" install
+WVPASS dev/make PREFIX="$tmpdir/install" install
 
 WVPASS cd "$tmpdir"
 
