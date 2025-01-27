@@ -282,12 +282,11 @@ lint-test: dev/bup-exec dev/bup-python
 lint: lint-lib lint-test
 
 check: all test/tmp dev/python lint
-	! bup version  # Ensure we can't test the local bup (cf. dev/shadow-bin)
+        # Ensure we can't test the local bup
+	! bup version
+	test "$$(command -v bup)" = '$(CURDIR)/dev/shadow-bin/bup'
 	./bup features
 	./pytest $(xdist_opt)
-
-stupid:
-	PATH=/bin:/usr/bin $(MAKE) test
 
 distcheck: all
 	./pytest $(xdist_opt) -m release
@@ -361,4 +360,5 @@ clean: Documentation/clean
 
 check-py3: check; .PHONY: check-py3
 long-test: long-check; .PHONY: long-test
+stupid: check; .PHONY: stupid
 test: check; .PHONY: test
