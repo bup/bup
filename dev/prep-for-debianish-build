@@ -27,6 +27,7 @@ debs=(acl
       libacl1-dev
       libreadline-dev
       linux-libc-dev
+      locales
       make
       man-db
       pandoc
