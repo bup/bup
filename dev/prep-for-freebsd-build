@@ -17,7 +17,7 @@ pkg update
 pkg install rdiff-backup || true
 
 pkgs='gmake git bash rsync curl par2cmdline readline duplicity'
-pkgs="$pkgs rsnapshot"
+pkgs="$pkgs rsnapshot hs-pandoc graphviz"
 
 case "$pyver" in
     python3)
