@@ -5,14 +5,12 @@ try:
     import bup.checkout_info as checkout_info
 except ModuleNotFoundError:
     checkout_info = None
-    pass
-
 
 if checkout_info:
     date = checkout_info.date.encode('ascii')
     commit = checkout_info.commit.encode('ascii')
     modified = checkout_info.modified
-else:
+else: # presumably an archive with expanded source_info
     date = source_info.date.encode('ascii')
     commit = source_info.commit.encode('ascii')
     modified = source_info.modified
