@@ -22,11 +22,13 @@ debs=(acl
       eatmydata
       gcc
       git
+      graphviz
       kmod
       libacl1-dev
       libreadline-dev
       linux-libc-dev
       make
+      pandoc
       par2
       pkg-config
       pylint3
