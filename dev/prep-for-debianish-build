@@ -1,34 +1,47 @@
 #!/usr/bin/env bash
 
-set -exuo pipefail
+set -euo pipefail
 
-usage()
-{
-    echo "Usage: prep-for-debianish-build [python3] [pyxattr|xattr]"
-}
-
-export DEBIAN_FRONTEND=noninteractive
-apt-get update
-
-common_debs='gcc make linux-libc-dev git rsync eatmydata acl attr par2'
-common_debs="$common_debs duplicity rdiff-backup dosfstools kmod"
-common_debs="$common_debs pkg-config libreadline-dev libacl1-dev"
+usage() { echo "Usage: prep-for-debianish-build [python3 [pyxattr|xattr]]"; }
+misuse() { usage 1>&2; exit 2; }
 
 pyver="${1:-python3}"
 xattr="${2:-pyxattr}"
 
-# dosfstools: for vfat for the (root) tests
-
-case "$pyver" in
-    python3)
-        apt-get install -y \
-                $common_debs \
-                python3-dev python3-distutils python3-fuse \
-                python3-"$xattr" python3-tornado python3-pytest \
-                python3-pytest-xdist pylint3
-        ;;
-    *)
-        usage 1>&2
-        exit 2
-        ;;
+test "$pyver" = python3 || misuse
+case "$xattr" in
+    pyxattr|xattr) ;;
+    *) misuse ;;
 esac
+
+# dosfstools: for vfat for the (root) tests
+debs=(acl
+      attr
+      dosfstools
+      duplicity
+      eatmydata
+      gcc
+      git
+      kmod
+      libacl1-dev
+      libreadline-dev
+      linux-libc-dev
+      make
+      par2
+      pkg-config
+      pylint3
+      python3-"$xattr"
+      python3-dev
+      python3-distutils
+      python3-fuse
+      python3-pytest
+      python3-pytest-xdist
+      python3-tornado
+      rdiff-backup
+      rsync)
+
+set -x
+
+export DEBIAN_FRONTEND=noninteractive
+apt-get update
+apt-get install -y "${debs[@]}"
