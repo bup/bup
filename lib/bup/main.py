@@ -383,7 +383,8 @@ def run_subcmd(module, args):
     if fix_stdout or fix_stderr:
         return run_filtered_cmd(args)
     os.execvp(args[0], args)
-    assert False, 'unreachable' # pylint
+    assert False, 'unreachable'  # pylint (e.g. 3.3.3)
+    return None  # pylint (older, e.g. 2.2.2)
 
 def main():
     try:
