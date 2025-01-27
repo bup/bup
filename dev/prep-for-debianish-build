@@ -28,6 +28,7 @@ debs=(acl
       libreadline-dev
       linux-libc-dev
       make
+      man-db
       pandoc
       par2
       pkg-config
