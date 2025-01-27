@@ -18,14 +18,12 @@ def main(argv):
         os.execvp(path.exe(), [path.exe()])
     elif len(extra) == 1:
         docname = (extra[0]=='bup' and b'bup' or (b'bup-%s' % argv_bytes(extra[0])))
-        manpath = os.path.join(path.exedir(),
-                               b'../../Documentation/' + docname + b'.[1-9]')
-        g = glob.glob(manpath)
+        manpath = os.path.join(path.exedir(), b'../../Documentation/')
+        dev_page = glob.glob(os.path.join(manpath, docname + b'.[1-9]'))
         try:
-            if g:
-                os.execvp(b'man', [b'man', b'-l', g[0]])
-            else:
-                os.execvp(b'man', [b'man', docname])
+            if dev_page:
+                os.environb[b'MANPATH'] = manpath
+            os.execvp(b'man', [b'man', docname])
         except OSError as e:
             sys.stderr.write('Unable to run man command: %s\n' % e)
             sys.exit(1)
