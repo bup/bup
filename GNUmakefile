@@ -300,10 +300,6 @@ long-test: test
 long-check: export BUP_TEST_LEVEL=11
 long-check: check
 
-.PHONY: check-py3
-check-py3:
-	$(MAKE) clean && BUP_PYTHON_CONFIG=python3-config $(MAKE) check
-
 .PHONY: Documentation/all
 Documentation/all: $(man_roff) $(man_html)
 
@@ -365,3 +361,7 @@ clean: Documentation/clean
 	find . -name __pycache__ -exec rm -rf {} +
 	if test -e test/tmp; then dev/force-delete test/tmp; fi
 	dev/configure-sampledata --clean
+
+# legacy
+
+check-py3: check; .PHONY: check-py3
