@@ -31,7 +31,7 @@ for f in "${files[@]}" ; do
 done
 touch -t 199901010000 src
 
-WVPASS git config --add --bool bup.split-trees true
+WVPASS git config --add --bool bup.split.trees true
 WVPASS bup index src
 
 # Override the hash-splitter so we can create multiple levels

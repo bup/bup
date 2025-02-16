@@ -13,7 +13,7 @@ The following options may be set in the relevant `git` config
 
 # OPTIONS
 
-bup.split-trees
+bup.split.trees
 :   When this boolean option is set to true, `bup` will attempt to
     split trees (directories) when writing to the repository during,
     for example `bup save ...`, `bup gc ..`, etc.  This can notably
@@ -33,10 +33,11 @@ bup.split-trees
     and the tree object with that hash already exists in the
     destination repository.  Since the the value of this setting
     changes the hashes of splittable trees, the hash in the index
-    won't be found in a repository that has a different `split-trees`
-    value from the one to which that tree was last saved.  As a
-    result, any (usually big) directory subject to tree splitting will
-    have to be re-read and its related hashes recalculated.
+    won't be found in a repository that has a different
+    `bup.split.trees` value from the one to which that tree was last
+    saved.  As a result, any (usually big) directory subject to tree
+    splitting will have to be re-read and its related hashes
+    recalculated.
 
 pack.packSizeLimit
 :   Respected when writing pack files (e.g. via `bup save ...`).

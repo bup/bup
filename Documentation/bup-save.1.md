@@ -127,7 +127,7 @@ handling of metadata.
 
 # SETTINGS
 
-`bup save` honors the `bup.split-trees` configuration option (see
+`bup save` honors the `bup.split.trees` configuration option (see
 `bup-config(5)`.  Note that it must be set in the repository being
 written to, so for example, in the `BUP_DIR` or `-d` repository for
 `bup save ...` without `-r` and in the the remote repository for `bup

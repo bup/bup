@@ -419,11 +419,11 @@ single new file in it requires storing an entirely new tree object.
 Imagine an active Maildir containing tens or hundreds of thousands of
 files.
 
-If tree splitting is permitted (via the `bup.split-trees` config
+If tree splitting is permitted (via the `bup.split.trees` config
 option), then instead of writing a tree as one potentially large git
 tree object, bup may split it into a subtree whose "leaves" are git
 tree objects, each containing part of the original tree.  Note that
-for `bup on HOST ...`  `split-trees` must be set on the `HOST`.
+for `bup on HOST ...`  `bup.split.trees` must be set on the `HOST`.
 
 The trees are split in a manner similar to the file hashsplitting
 described above, but with the restriction that splits may only occur

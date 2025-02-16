@@ -440,7 +440,7 @@ def main(argv):
 
     # repo creation must be last nontrivial command in each if clause above
     with repo:
-        split_trees = repo.config_get(b'bup.split-trees', opttype='bool')
+        split_trees = repo.config_get(b'bup.split.trees', opttype='bool')
         sys.stdout.flush()
         out = byte_stream(sys.stdout)
 

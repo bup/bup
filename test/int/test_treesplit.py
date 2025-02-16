@@ -339,7 +339,7 @@ def split_tree_for_filenames(names, tmpdir):
     mkdirp(src)
     for name in names:
         Path(src.decode('ascii'), name).touch()
-    ex((b'git', b'--git-dir', bupdir, b'config', b'bup.split-trees', b'1'))
+    ex((b'git', b'--git-dir', bupdir, b'config', b'bup.split.trees', b'1'))
     ex((b'./bup', b'index', src))
     ex((b'./bup', b'save', b'-n', b'src', src))
     ls_tree = exo((b'git', b'--git-dir', bupdir,

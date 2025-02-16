@@ -167,13 +167,13 @@ def test_config(tmpdir):
     environ[b'GIT_DIR'] = bupdir = tmpdir
     git.init_repo(bupdir)
     with client.Client(bupdir, create=True) as c:
-        assert c.config_get(b'bup.split-trees') is None
-        assert c.config_get(b'bup.split-trees', opttype='int') is None
-        ex((b'git', b'config', b'bup.split-trees', b'0'))
-        assert c.config_get(b'bup.split-trees') == b'0'
-        assert c.config_get(b'bup.split-trees', opttype='int') == 0
-        ex((b'git', b'config', b'bup.split-trees', b'1'))
-        assert c.config_get(b'bup.split-trees', opttype='bool') == True
+        assert c.config_get(b'bup.split.trees') is None
+        assert c.config_get(b'bup.split.trees', opttype='int') is None
+        ex((b'git', b'config', b'bup.split.trees', b'0'))
+        assert c.config_get(b'bup.split.trees') == b'0'
+        assert c.config_get(b'bup.split.trees', opttype='int') == 0
+        ex((b'git', b'config', b'bup.split.trees', b'1'))
+        assert c.config_get(b'bup.split.trees', opttype='bool') == True
         with pytest.raises(PermissionError) as exinfo:
             c.config_get(b'bup.not-an-allowed-key')
         assert 'does not allow remote access' in str(exinfo.value)
