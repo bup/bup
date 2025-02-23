@@ -34,6 +34,10 @@ May require attention
 General
 -------
 
+* `bup init DIRECTORY` is now supported, and places the repository in
+  the given `DIRECTORY` which takes precedence over `-d` and
+  `BUP_DIR`.
+
 * `bup web` has been improved.  It should better preserve page
   settings while navigating, and has added settings to toggle the
   display of various types of information, including path sizes,

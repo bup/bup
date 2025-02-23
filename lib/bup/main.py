@@ -152,8 +152,11 @@ while args:
 
 subcmd = subcmd or args
 
-# Make BUP_DIR absolute, so we aren't affected by chdir (i.e. save -C, etc.).
+# It's important that we defer initialization/use of the repo to the
+# subcommands because they may select another (e.g. "bup init REPO").
 if bup_dir:
+    # Make BUP_DIR absolute, so we aren't affected by chdir (i.e. save
+    # -C, etc.).
     environ[b'BUP_DIR'] = os.path.abspath(bup_dir)
 
 if len(subcmd) == 0:

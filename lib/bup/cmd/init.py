@@ -1,13 +1,16 @@
 
+from os import environb as environ
+from os.path import abspath
 import sys
 
 from bup import git, options, repo
+from bup.compat import argv_bytes
 from bup.helpers import log
 from bup.compat import argv_bytes
 
 
 optspec = """
-[BUP_DIR=...] bup init [-r host:path]
+[BUP_DIR=directory] bup init [-r host:path] [directory]
 --
 r,remote=  remote repository path
 """
@@ -16,8 +19,10 @@ def main(argv):
     o = options.Options(optspec)
     opt, flags, extra = o.parse_bytes(argv[1:])
 
+    if len(extra) > 1:
+        o.fatal('only the directory positional argument is allowed')
     if extra:
-        o.fatal("no arguments expected")
+        environ[b'BUP_DIR'] = abspath(argv_bytes(extra[0]))
 
     try:
         repo.LocalRepo.create()

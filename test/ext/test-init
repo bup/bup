@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+. ./wvtest-bup.sh
+
+set -o pipefail
+
+top="$(WVPASS pwd)" || exit $?
+tmpdir="$(WVPASS wvmktempdir)" || exit $?
+
+#export BUP_DIR="$tmpdir/bup"
+#export GIT_DIR="$tmpdir/bup"
+
+bup() { "$top/bup" "$@"; }
+
+WVPASS cd "$tmpdir"
+
+WVSTART '-d repo argument'
+WVPASS test ! -e repo
+WVPASS bup -d repo init
+WVPASS test -d repo/refs/heads
+WVPASS test -d repo/objects/pack
+WVPASS rm -rf repo
+
+WVSTART 'positional repo argument'
+WVPASS test ! -e repo
+WVPASS bup init repo
+WVPASS test -d repo/refs/heads
+WVPASS test -d repo/objects/pack
+WVPASS rm -rf repo
+
+WVSTART 'positional repo argument precdence over -d'
+WVPASS test ! -e repod
+WVPASS test ! -e repo
+WVPASS bup -d repod init repo
+WVPASS test ! -e repod
+WVPASS test -d repo/refs/heads
+WVPASS test -d repo/objects/pack
+WVPASS rm -rf repo
+
+WVSTART 'positional repo argument precdence over BUP_DIR'
+WVPASS test ! -e repod
+WVPASS test ! -e repo
+export BUP_DIR=repod
+WVPASS bup init repo
+unset BUP_DIR
+WVPASS test ! -e repod
+WVPASS test -d repo/refs/heads
+WVPASS test -d repo/objects/pack
+WVPASS rm -rf repo
+
+WVPASS cd "$top"
+WVPASS rm -rf "$tmpdir"

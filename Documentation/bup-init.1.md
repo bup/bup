@@ -8,12 +8,14 @@ bup-init - initialize a bup repository
 
 # SYNOPSIS
 
-[BUP_DIR=*localpath*] bup init [-r *host*:*path*]
+bup init [-r *host*:*path*] [*directory*]
 
 # DESCRIPTION
 
-`bup init` initializes your local bup repository.  By default, BUP_DIR
-is `~/.bup`.
+`bup init` initializes a repository.  The location will be the
+`*directory*` if provided, the directory specifed by any global `-d`
+argument (see `bup`(1)), the value of `BUP_DIR` in the environment if
+set, or `~/.bup`.
 
 # OPTIONS
 
@@ -26,11 +28,9 @@ is `~/.bup`.
     or private key to use for the SSH connection, we recommend you use the
     `~/.ssh/config` file.
 
-
 # EXAMPLES
-    bup init
+    bup init ~/archive
     
-
 # SEE ALSO
 
 `bup-fsck`(1), `ssh_config`(5)
