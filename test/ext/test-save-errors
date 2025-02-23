@@ -132,4 +132,5 @@ for f in $(seq 9) ; do
 done
 
 
+WVPASS cd "$top"
 WVPASS rm -rf "$tmpdir"

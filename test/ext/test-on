@@ -68,4 +68,5 @@ WVPASS rm -rf "$tmpdir"/bup/index-cache/
 WVPASS bup on - split -ctn large "$tmpdir/longfile"
 WVPASS test -f $(ls "$tmpdir"/bup/index-cache/*/*.idx | head -1)
 
+WVPASS cd "$top"
 WVPASS rm -rf "$tmpdir"

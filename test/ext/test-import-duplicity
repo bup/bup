@@ -48,4 +48,5 @@ if ! grep -qE "$expected_diff_rx" tmp-compare-trees; then
 fi
 WVPASS grep -qE "$expected_diff_rx" tmp-compare-trees
 
+WVPASS cd "$top"
 WVPASS rm -rf "$tmpdir"

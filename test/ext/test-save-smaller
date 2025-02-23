@@ -55,4 +55,5 @@ WVPASS cmp "$tmpdir/restore3/small" "$tmpdir/save/small"
 WVPASSEQ "$(sha1sum < "$tmpdir/restore3/big1")" "$big1sha"
 WVPASS cmp "$tmpdir/restore3/big2" "$tmpdir/save/big2"
 
+WVPASS cd "$top"
 WVPASS rm -rf "$tmpdir"

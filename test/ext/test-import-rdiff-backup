@@ -29,4 +29,5 @@ WVPASSEQ $(bup ls import-rdiff-backup/ | wc -l) 3
 WVPASSEQ "$(bup ls -A import-rdiff-backup/latest/ | sort)" \
     "$(ls -A "$top/Documentation" | sort)"
 
+WVPASS cd "$top"
 WVPASS rm -rf "$tmpdir"

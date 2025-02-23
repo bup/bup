@@ -4,11 +4,11 @@
 
 set -o pipefail
 
-TOP="$(WVPASS pwd)" || exit $?
+top="$(WVPASS pwd)" || exit $?
 tmpdir="$(WVPASS wvmktempdir)" || exit $?
 export BUP_DIR="$tmpdir/bup"
 
-bup() { "$TOP/bup" "$@"; }
+bup() { "$top/bup" "$@"; }
 
 WVPASS cd "$tmpdir"
 
@@ -21,4 +21,5 @@ WVPASSEQ "$rc" 99
 # Check --x=y handling
 WVPASS bup --bup-dir=repo init
 
+WVPASS cd "$top"
 WVPASS rm -r "$tmpdir"

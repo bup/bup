@@ -97,4 +97,5 @@ $(pwd)/src/a/
 $(pwd)/src/a-link
 $(pwd)/src/"
 
+WVPASS cd "$top"
 WVPASS rm -rf "$tmpdir"

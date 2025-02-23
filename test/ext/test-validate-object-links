@@ -38,4 +38,5 @@ WVPASSEQ 1 "$rc"
 src_a_oid="$(git rev-parse src:a)"
 WVPASS grep -E "^no $(<bupm-oid) for $src_a_oid" validate-out
 
+WVPASS cd "$top"
 WVPASS rm -rf "$tmpdir"

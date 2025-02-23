@@ -74,5 +74,6 @@ WVPASS bup save -n save-fail-missing "$D"
 WVPASSEQ "$(bup ls -AF save-fail-missing/latest/$TOP/$D/)" "bar/
 baz/"
 
+WVPASS cd "$top"
 WVPASS rm -rf "$tmpdir"
 

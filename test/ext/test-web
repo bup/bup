@@ -4,13 +4,13 @@
 
 set -o pipefail
 
-TOP="$(WVPASS pwd)" || exit $?
+top="$(WVPASS pwd)" || exit $?
 tmpdir="$(WVPASS wvmktempdir)" || exit $?
 export BUP_DIR="$tmpdir/bup"
 
 bup()
 {
-    "$TOP/bup" "$@"
+    "$top/bup" "$@"
 }
 
 wait-for-server-start()
@@ -52,7 +52,7 @@ WVPASS echo -e 'whee \x80\x90\xff' > "$(echo -ne 'src/whee \x80\x90\xff')"
 WVPASS bup index src
 WVPASS bup save -n '¡excitement!' --strip src
 
-"$TOP/bup" web unix://socket </dev/null >bup-web.log 2>&1 &
+"$top/bup" web unix://socket </dev/null >bup-web.log 2>&1 &
 web_pid=$!
 # output the log if something fails
 trap 'cat bup-web.log' EXIT
@@ -63,7 +63,7 @@ WVPASS curl --unix-socket ./socket \
 WVPASS curl --unix-socket ./socket \
        'http://localhost/%C2%A1excitement%21/latest/whee%20%80%90%ff' > result2
 WVPASSEQ "$(curl --unix-socket ./socket http://localhost/static/styles.css)" \
-         "$(cat "$TOP/lib/web/static/styles.css")"
+         "$(cat "$top/lib/web/static/styles.css")"
 
 WVPASSEQ '¡excitement!' "$(cat result)"
 WVPASS cmp "$(echo -ne 'src/whee \x80\x90\xff')" result2
@@ -71,4 +71,5 @@ WVPASS kill -s TERM "$web_pid"
 WVPASS wait "$web_pid"
 
 trap - EXIT
+WVPASS cd "$top"
 WVPASS rm -r "$tmpdir"

@@ -68,4 +68,5 @@ WVPASS cmp -l "$tmpdir/data" "$tmpdir/data-joined"
 WVPASSEQ $(WVPASS find "$BUP_DIR"/objects/pack -name "*.pack" | wc -l) 0
 WVPASS test $(WVPASS find "$bup_dir2"/objects/pack/*.pack | wc -l) -gt 2
 
+WVPASS cd "$top"
 WVPASS rm -r "$tmpdir"

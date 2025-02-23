@@ -69,4 +69,5 @@ data_tgt=$(git -C "$BUP_DIR" show $(WVPASS bup ls -ls "test/latest/$tmpdir/save/
 WVPASSEQ abc $meta_tgt
 WVPASSEQ abc $data_tgt
 
+WVPASS cd "$top"
 WVPASS rm -rf "$tmpdir"

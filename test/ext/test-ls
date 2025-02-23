@@ -299,4 +299,5 @@ WVPASSEQ "$(bup-ls -l src/latest/bad-symlink | tr -s ' ' ' ')" \
 "$bad_symlink_mode $user/$group $bad_symlink_size $bad_symlink_date src/latest/bad-symlink -> not-there"
 
 
+WVPASS cd "$top"
 WVPASS rm -rf "$tmpdir"

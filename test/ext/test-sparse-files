@@ -157,4 +157,5 @@ WVPASS bup restore --sparse -C restore "src/latest/$(pwd)/"
 WVPASS "$top/dev/compare-trees" -c src/ restore/src/
 
 
+WVPASS cd "$top"
 WVPASS rm -rf "$tmpdir"

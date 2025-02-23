@@ -19,4 +19,5 @@ WVPASS bup version
 WVPASS bup help save | WVPASS grep 'bup-save - create a new bup backup set'
 WVPASS bup -d "$tmpdir/repo" init
 
-WVPASS cd "$top" && rm -rf "$tmpdir"
+WVPASS cd "$top"
+WVPASS rm -rf "$tmpdir"

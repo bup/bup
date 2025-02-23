@@ -37,4 +37,5 @@ WVPASS bup restore -C restore "src/latest/$(pwd)/"
 WVPASS test ! -e restore/src/b
 WVPASS "$top/dev/compare-trees" -c src/a/ restore/src/a/
 
+WVPASS cd "$top"
 WVPASS rm -rf "$tmpdir"

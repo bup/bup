@@ -35,4 +35,5 @@ PAGER=cat WVPASS bup save --help
 WVPASSEQ 1 $(bup help save | grep -cE 'bup.save . create a new bup backup set')
 WVPASSEQ 1 $(bup save --help | grep -cE 'bup.save . create a new bup backup set')
 
+WVPASS cd "$top"
 WVPASS rm -rf "$tmpdir"

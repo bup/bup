@@ -124,4 +124,5 @@ WVPASS bup save -r ":$BUP_DIR" -n r-test $D
 WVFAIL bup save -r ":$BUP_DIR/fake/path" -n r-test $D
 WVFAIL bup save -r ":$BUP_DIR" -n r-test $D/fake/path
 
+WVPASS cd "$top"
 WVPASS rm -rf "$tmpdir"

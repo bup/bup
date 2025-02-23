@@ -29,4 +29,5 @@ WVPASSEQ "$(WVPASS bup ls /src)" \
 "2015-01-02-123300
 latest"
 
+WVPASS cd "$top"
 WVPASS rm -rf "$tmpdir"

@@ -111,5 +111,5 @@ WVPASSEQ "$(git ls-tree -r --name-only src | sed -E 's%(^|/)\.bupm/.*%\1\.bupm%'
 0026/0/.bupm
 0026/0/00260026"
 
-WVSTART "clean up"
+WVPASS cd "$top"
 WVPASS rm -rf "$tmpdir"

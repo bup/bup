@@ -124,5 +124,5 @@ for i in {1..5}; do
     test-split-join $(($RANDOM * 1024))
 done
 
-cd "$top"
+WVPASS cd "$top"
 WVPASS rm -rf "$tmpdir"

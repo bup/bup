@@ -48,4 +48,5 @@ WVFAIL bup -d bup-dest join "$src_oid" > /dev/null
 WVPASS bup -d bup-dest get -s bup --ff src
 WVPASS bup -d bup-dest join "$src_oid" > /dev/null
 
+WVPASS cd "$top"
 WVPASS rm -rf "$tmpdir"

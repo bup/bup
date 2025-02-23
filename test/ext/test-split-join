@@ -93,4 +93,5 @@ WVPASS diff -u "$top/test/testfile2" out2t.tmp
 WVPASS diff -u "$top/test/testfile2" out2c.tmp
 WVPASSEQ "$(bup join split_empty_string.tmp)" ""
 
+WVPASS cd "$top"
 WVPASS rm -rf "$tmpdir"

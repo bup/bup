@@ -65,4 +65,5 @@ data_size=$(git -C "$BUP_DIR" show $(WVPASS bup ls -ls "test/latest/$tmpdir/save
 WVPASSEQ 10 $meta_size
 WVPASSEQ 10 $data_size
 
+WVPASS cd "$top"
 WVPASS rm -rf "$tmpdir"

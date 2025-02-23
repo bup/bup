@@ -42,4 +42,5 @@ compression_9_size=$(WVPASS fs-size "$BUP_DIR") || exit $?
 WVPASS [ "$compression_9_size" -lt "$compression_0_size" ]
 
 
+WVPASS cd "$top"
 WVPASS rm -rf "$tmpdir"

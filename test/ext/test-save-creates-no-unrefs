@@ -19,4 +19,5 @@ WVPASSEQ "$(git fsck --unreachable)" ""
 WVPASS bup save -n src "$tmpdir/src"
 WVPASSEQ "$(git fsck --unreachable)" ""
 
+WVPASS cd "$top"
 WVPASS rm -rf "$tmpdir"

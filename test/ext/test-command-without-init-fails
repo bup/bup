@@ -18,4 +18,5 @@ bup index "$tmpdir/foo" &> /dev/null
 index_rc=$?
 WVPASSEQ "$index_rc" "15"
 
+WVPASS cd "$top"
 WVPASS rm -rf "$tmpdir"

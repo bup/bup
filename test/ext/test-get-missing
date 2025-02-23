@@ -45,5 +45,5 @@ WVFAIL bup -d dest-repo get --ignore-missing -s bup \
 WVPASSEQ 1 "$(grep -cF "skipping missing source object $(<bupm-oid)" get.log)"
 WVPASS rm -rf dest-repo
 
-
+WVPASS cd "$top"
 WVPASS rm -rf "$tmpdir"

@@ -72,4 +72,5 @@ WVPASS bup gc --unsafe -v --threshold 10
 WVPASS bup get -s bup-complete --append src
 WVPASS bup join "$(git rev-parse src)" > /dev/null
 
+WVPASS cd "$top"
 WVPASS rm -rf "$tmpdir"

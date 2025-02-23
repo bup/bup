@@ -159,4 +159,5 @@ result=$("$top/dev/id-other-than" --group 0) ||  exit $?
 WVPASS echo "$result" | WVPASS grep -qE '.*:[0-9]+$'
 
 
+WVPASS cd "$top"
 WVPASS rm -rf "$tmpdir"

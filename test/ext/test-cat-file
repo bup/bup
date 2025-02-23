@@ -43,4 +43,5 @@ if ! cmp git-cat-bupm bup-cat-bupm; then
     WVPASS cmp git-cat-bupm bup-cat-bupm
 fi
 
+WVPASS cd "$top"
 WVPASS rm -rf "$tmpdir"

@@ -120,5 +120,5 @@ else
     test-save-restore "$BUP_TEST_OTHER_BUP" bup
 fi
 
-cd "$top"
+WVPASS cd "$top"
 WVPASS rm -rf "$tmpdir"

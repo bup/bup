@@ -253,4 +253,5 @@ WVPASSEQ "$(commit-hash-n 2 bup src)" "$(commit-hash-n 2 bup-baseline src)"
 
 # FIXME: test that committer changes when rewriting, when appropriate
 
+WVPASS cd "$top"
 WVPASS rm -rf "$tmpdir"

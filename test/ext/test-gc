@@ -236,4 +236,5 @@ else
     WVPASSEQ 7 $obj_n_after
 fi
 
+WVPASS cd "$top"
 WVPASS rm -rf "$tmpdir"

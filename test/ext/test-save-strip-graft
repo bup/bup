@@ -158,4 +158,5 @@ WVFAIL bup save --strip -n foo src/x src/y 2> tmp-err.log
 WVPASS grep -F "error: ignoring duplicate path 1 in /" tmp-err.log
 
 
+WVPASS cd "$top"
 WVPASS rm -rf "$tmpdir"

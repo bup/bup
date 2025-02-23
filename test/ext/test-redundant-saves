@@ -58,4 +58,5 @@ tree3=$(WVPASS bup save -t /) || exit $?
 indexed_tree3="$(WVPASS dev/subtree-hash "$tree3" "${indexed_top[@]}" src)" || exit $?
 WVPASSEQ "$indexed_tree1" "$indexed_tree3"
 
+WVPASS cd "$top"
 WVPASS rm -rf "$tmpdir"

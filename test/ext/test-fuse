@@ -124,4 +124,6 @@ result="$(stat --format='%A %U %G %x' mnt/src/latest/pre-epoch)"
 WVPASSEQ "$result" "-rw-r--r-- $user $group 1970-01-01 00:00:00.000000000 +0000"
 
 WVPASS fusermount -uz mnt
+
+WVPASS cd "$top"
 WVPASS rm -rf "$tmpdir"

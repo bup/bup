@@ -22,5 +22,6 @@ WVPASS bup tick
 WVPASS bup restore -C "$tmpdir/restore" "foo/latest/$tmpdir/foo/baz"
 WVPASS "$top/dev/compare-trees" "$tmpdir/foo/baz" "$tmpdir/restore/baz"
 
+WVPASS cd "$top"
 WVPASS rm -rf "$tmpdir"
 

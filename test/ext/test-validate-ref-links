@@ -61,4 +61,5 @@ WVPASS bup validate-ref-links 2>&1 | tee validate.log
 WVPASS grep -vE '^missing ' validate.log
 
 
+WVPASS cd "$top"
 WVPASS rm -rf "$tmpdir"

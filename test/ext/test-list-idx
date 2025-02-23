@@ -4,13 +4,13 @@
 
 set -o pipefail
 
-TOP="$(WVPASS pwd)" || exit $?
+top="$(WVPASS pwd)" || exit $?
 tmpdir="$(WVPASS wvmktempdir)" || exit $?
 export BUP_DIR="$tmpdir/bup"
 
 bup()
 {
-    "$TOP/bup" "$@"
+    "$top/bup" "$@"
 }
 
 WVSTART 'bup list-idx'
@@ -31,4 +31,5 @@ found="${found##* }"
 WVPASSEQ "$found" "$hash1"
 WVPASSEQ "$(wc -l < list-idx.log | tr -d ' ')" 1
 
+WVPASS cd "$top"
 WVPASS rm -r "$tmpdir"

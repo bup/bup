@@ -32,4 +32,5 @@ WVFAIL bup save -n test "$tmpdir/save"
 WVPASS bup ls -ls "test/latest/$tmpdir/save/"
 WVPASSEQ "$(bup ls -ls "test/latest/$tmpdir/save/")" ""
 
+WVPASS cd "$top"
 WVPASS rm -rf "$tmpdir"

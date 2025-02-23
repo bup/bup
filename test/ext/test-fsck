@@ -121,4 +121,5 @@ else
 fi
 
 
+WVPASS cd "$top"
 WVPASS rm -rf "$tmpdir"

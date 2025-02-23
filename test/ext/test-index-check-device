@@ -84,6 +84,7 @@ WVPASSEQ "$(bup index --status "$srcmnt")" \
   $srcmnt/foo
   $srcmnt/"
 
+WVPASS cd "$top"
 WVPASS umount "$srcmnt"
 WVPASS umount "$tmpmnt1"
 WVPASS umount "$tmpmnt2"

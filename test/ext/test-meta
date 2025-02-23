@@ -6,8 +6,8 @@ set -o pipefail
 
 root_status="$(dev/root-status)" || exit $?
 
-TOP="$(WVPASS pwd)" || exit $?
-export PATH="$TOP/test/bin:$PATH"
+top="$(WVPASS pwd)" || exit $?
+export PATH="$top/test/bin:$PATH"
 tmpdir="$(WVPASS wvmktempdir)" || exit $?
 export BUP_DIR="$tmpdir/bup"
 
@@ -22,17 +22,17 @@ WVPASS rm "$tmpdir/canary"
 
 bup()
 {
-    "$TOP/bup" "$@"
+    "$top/bup" "$@"
 }
 
 hardlink-sets()
 {
-    "$TOP/dev/hardlink-sets" "$@"
+    "$top/dev/hardlink-sets" "$@"
 }
 
 id-other-than()
 {
-    "$TOP/dev/id-other-than" "$@"
+    "$top/dev/id-other-than" "$@"
 }
 
 # Very simple metadata tests -- create a test tree then check that bup
@@ -44,7 +44,7 @@ id-other-than()
 genstat()
 {
     (
-        export PATH="$TOP/bin:$PATH" # pick up bup
+        export PATH="$top/bin:$PATH" # pick up bup
         bup version
         # Skip atime (test elsewhere) to avoid the observer effect.
         WVPASS find . -print0 | WVPASS sort-z \
@@ -95,14 +95,14 @@ test-src-save-restore()
         WVPASS mkdir src-restore
         WVPASS bup restore -C src-restore "/src/latest$(pwd)/"
         WVPASS test -d src-restore/src
-        WVPASS "$TOP/dev/compare-trees" -c src/ src-restore/src/
+        WVPASS "$top/dev/compare-trees" -c src/ src-restore/src/
         WVPASS rm -rf src.bup
     )
 }
 
 setup-test-tree()
 {
-    WVPASS "$TOP/dev/sync-tree" "$TOP/test/sampledata/" "$tmpdir/src/"
+    WVPASS "$top/dev/sync-tree" "$top/test/sampledata/" "$tmpdir/src/"
 
     # Add some hard links for the general tests.
     (
@@ -171,7 +171,7 @@ WVSTART 'metadata save/restore (general)'
     WVPASS bup restore -C src-restore "/src/latest$(pwd)/src/var/."
     WVPASS touch -t 201211111111 src-restore # Make sure the top won't match.
     # Check that the only difference is the top dir.
-    WVFAIL $TOP/dev/compare-trees -c src/var/ src-restore/ > tmp-compare-trees
+    WVFAIL $top/dev/compare-trees -c src/var/ src-restore/ > tmp-compare-trees
     WVPASSEQ $(cat tmp-compare-trees | wc -l) 1
     # The number of rsync status characters varies, so accept any
     # number of trailing dots.  For example OS X native rsync produces
@@ -216,7 +216,7 @@ WVSTART 'metadata save/restore (using index metadata)'
     WVPASS mkdir src-restore-1
     WVPASS bup restore -C src-restore-1 "/src/latest$(pwd)/"
     WVPASS test -d src-restore-1/src
-    WVPASS "$TOP/dev/compare-trees" -c src/ src-restore-1/src/
+    WVPASS "$top/dev/compare-trees" -c src/ src-restore-1/src/
 
     WVPASS echo "blarg" > src/volatile/1
     WVPASS cp -pP src/volatile/1 src-restore-1/src/volatile/
@@ -231,7 +231,7 @@ WVSTART 'metadata save/restore (using index metadata)'
     WVPASS mkdir src-restore-2
     WVPASS bup restore -C src-restore-2 "/src/latest$(pwd)/"
     WVPASS test -d src-restore-2/src
-    WVPASS "$TOP/dev/compare-trees" -c src-restore-1/src/ src-restore-2/src/
+    WVPASS "$top/dev/compare-trees" -c src-restore-1/src/ src-restore-2/src/
 
     WVPASS rm -r "$tmpdir"
 
@@ -271,7 +271,7 @@ WVSTART 'metadata save/restore (hardlinks)'
     WVPASS bup index src
     WVPASS bup save -t -n src src
     WVPASS hardlink-test-run-restore
-    WVPASS "$TOP/dev/compare-trees" -c src/ src-restore/src/
+    WVPASS "$top/dev/compare-trees" -c src/ src-restore/src/
 
     # Test the case where the hardlink hasn't changed, but the tree
     # needs to be saved again. i.e. the save-cmd.py "if hashvalid:"
@@ -283,7 +283,7 @@ WVSTART 'metadata save/restore (hardlinks)'
     WVPASS bup index src
     WVPASS bup save -t -n src src
     WVPASS hardlink-test-run-restore
-    WVPASS "$TOP/dev/compare-trees" -c src/ src-restore/src/
+    WVPASS "$top/dev/compare-trees" -c src/ src-restore/src/
 
     # Test hardlink changes between index runs.
     #
@@ -441,7 +441,7 @@ src/foo/3"
     tmpdir="$(WVPASS wvmktempdir)" || exit $?    
 
     # FIXME: binary groups, groups with spaces, etc.
-    groups=($("$TOP/dev/groups")) || exit $?
+    groups=($("$top/dev/groups")) || exit $?
     first_group="${groups[0]}"
     last_group="${groups[-1]}"
     last_group_erx="$(escape-erx "$last_group")"
@@ -488,7 +488,7 @@ src/foo/3"
     WVPASSEQ "$current_gidx" "$new_gidx"
 
     # Test that restoring an unknown user works.
-    unknown_user=$("$TOP"/dev/unknown-owner --user) || exit $?
+    unknown_user=$("$top"/dev/unknown-owner --user) || exit $?
     WVPASS rm -rf src
     current_uidx=$(bup meta -tvvf ../src.meta | grep -ae '^uid:') || exit $?
     WVPASS bup meta --edit --set-user "$unknown_user" ../src.meta \
@@ -497,7 +497,7 @@ src/foo/3"
     WVPASSEQ "$current_uidx" "$new_uidx"
 
     # Test that restoring an unknown group works.
-    unknown_group=$("$TOP"/dev/unknown-owner --group) || exit $?
+    unknown_group=$("$top"/dev/unknown-owner --group) || exit $?
     WVPASS rm -rf src
     current_gidx=$(bup meta -tvvf ../src.meta | grep -ae '^gid:') || exit $?
     WVPASS bup meta --edit --set-group "$unknown_group" ../src.meta \
@@ -589,7 +589,7 @@ src/foo/3"
     WVPASSEQ "$new_gidx" "gid: $other_gid"
 
     # Test that restoring an unknown user works.
-    unknown_user=$("$TOP"/dev/unknown-owner --user) || exit $?
+    unknown_user=$("$top"/dev/unknown-owner --user) || exit $?
     WVPASS rm -rf src
     WVPASS bup meta --edit \
         --set-uid "$other_uid" --set-user "$unknown_user" ../src.meta \
@@ -598,7 +598,7 @@ src/foo/3"
     WVPASSEQ "$new_uidx" "uid: $other_uid"
 
     # Test that restoring an unknown group works.
-    unknown_group=$("$TOP"/dev/unknown-owner --group) || exit $?
+    unknown_group=$("$top"/dev/unknown-owner --group) || exit $?
     WVPASS rm -rf src
     WVPASS bup meta --edit \
         --set-gid "$other_gid" --set-group "$unknown_group" ../src.meta \
@@ -779,4 +779,5 @@ if [ "$root_status" = root ]; then
     ) || exit $?
 fi
 
+WVPASS cd "$top"
 WVPASS rm -r "$tmpdir"

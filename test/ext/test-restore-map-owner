@@ -102,6 +102,7 @@ then
     WVPASS bup xstat dest/foo > foo-xstat
     WVPASS grep -qE "^uid: 0\$" foo-xstat
     WVPASS grep -qE "^gid: 0\$" foo-xstat
-
-    WVPASS rm -rf "$tmpdir"
 fi
+
+WVPASS cd "$top"
+WVPASS rm -rf "$tmpdir"
