@@ -1,11 +1,10 @@
 
 from os import environb as environ
 from os.path import abspath
-import sys
 
 from bup import git, options, repo
 from bup.compat import argv_bytes
-from bup.helpers import log
+from bup.helpers import EXIT_FAILURE, log
 from bup.compat import argv_bytes
 
 
@@ -26,11 +25,12 @@ def main(argv):
 
     try:
         repo.LocalRepo.create()
-    except git.GitError as e:
-        log("bup: error: could not init repository: %s" % e)
-        sys.exit(1)
+    except git.GitError as ex:
+        log(f'bup: error: could not init repository: {ex}')
+        return EXIT_FAILURE
 
     if opt.remote:
         git.check_repo_or_die()
         with repo.make_repo(argv_bytes(opt.remote), create=True):
             pass
+    return 0

@@ -3,6 +3,8 @@
 # Assumes this is always loaded while pwd is still the source tree root
 bup_dev_lib_top=$(pwd) || exit $?
 
+bup_exit_failure=2
+
 bup-cfg-py() { "$bup_dev_lib_top/dev/python" "$@"; }
 bup-python() { "$bup_dev_lib_top/dev/bup-python" "$@"; }
 

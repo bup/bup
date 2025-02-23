@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-. ./wvtest-bup.sh
+. ./wvtest-bup.sh || exit $?
+. ./dev/lib.sh || exit $?
 
 set -o pipefail
 
@@ -46,6 +47,9 @@ WVPASS test ! -e repod
 WVPASS test -d repo/refs/heads
 WVPASS test -d repo/objects/pack
 WVPASS rm -rf repo
+
+bup init /dev/null || rc=$?
+WVPASSEQ "$rc" "$bup_exit_failure"
 
 WVPASS cd "$top"
 WVPASS rm -rf "$tmpdir"
