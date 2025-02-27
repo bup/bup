@@ -4,7 +4,12 @@ import os, sys, time
 
 from bup import compat, hashsplit, git, options, client
 from bup.compat import argv_bytes, environ
-from bup.hashsplit import HashSplitter
+from bup.hashsplit import \
+    (HashSplitter,
+     split_to_blob_or_tree,
+     split_to_blobs,
+     split_to_shalist,
+     splitter)
 from bup.helpers import (add_error, hostname, log, parse_num,
                          qprogress, reprogress, saved_errors,
                          valid_save_name,
@@ -123,25 +128,30 @@ def split(opt, files, parent, out, repo):
     new_blob = repo.write_data
     new_tree = repo.write_tree
     if opt.blobs:
-        shalist = hashsplit.split_to_blobs(new_blob, files,
-                                           keep_boundaries=opt.keep_boundaries,
-                                           progress=prog, blobbits=opt.blobbits)
+        shalist = split_to_blobs(new_blob,
+                                 splitter(files,
+                                          keep_boundaries=opt.keep_boundaries,
+                                          progress=prog,
+                                          blobbits=opt.blobbits))
         for sha, size, level in shalist:
             out.write(hexlify(sha) + b'\n')
             reprogress()
     elif opt.tree or opt.commit or opt.name:
         if opt.name: # insert dummy_name which may be used as a restore target
             mode, sha = \
-                hashsplit.split_to_blob_or_tree(new_blob, new_tree, files,
-                                                keep_boundaries=opt.keep_boundaries,
-                                                progress=prog, blobbits=opt.blobbits)
+                split_to_blob_or_tree(new_blob, new_tree,
+                                      splitter(files,
+                                               keep_boundaries=opt.keep_boundaries,
+                                               progress=prog,
+                                               blobbits=opt.blobbits))
             splitfile_name = git.mangle_name(b'data', hashsplit.GIT_MODE_FILE, mode)
             shalist = [(mode, splitfile_name, sha)]
         else:
             shalist = \
-                hashsplit.split_to_shalist(new_blob, new_tree, files,
-                                           keep_boundaries=opt.keep_boundaries,
-                                           progress=prog, blobbits=opt.blobbits)
+                split_to_shalist(new_blob, new_tree,
+                                 splitter(files,
+                                          keep_boundaries=opt.keep_boundaries,
+                                          progress=prog, blobbits=opt.blobbits))
         tree = new_tree(shalist)
     else:
         last = 0

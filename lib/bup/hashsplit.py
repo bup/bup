@@ -16,17 +16,23 @@ GIT_MODE_SYMLINK = 0o120000
 
 HashSplitter = _helpers.HashSplitter
 
-def fanbits():
+def _fanbits():
     return int(math.log(fanout or 128, 2))
 
+fanbits = _fanbits
+
+def splitter(files, *, progress=None, keep_boundaries=False, blobbits=None,
+             fanbits=None):
+    return HashSplitter(files,
+                        keep_boundaries=keep_boundaries,
+                        progress=progress,
+                        bits=blobbits or BUP_BLOBBITS,
+                        fanbits=fanbits or _fanbits())
+
 total_split = 0
-def split_to_blobs(makeblob, files, keep_boundaries, progress, blobbits=None):
+def split_to_blobs(makeblob, splitter):
     global total_split
-    for blob, level in HashSplitter(files,
-                                    keep_boundaries=keep_boundaries,
-                                    progress=progress,
-                                    bits=blobbits or BUP_BLOBBITS,
-                                    fanbits=fanbits()):
+    for blob, level in splitter:
         sha = makeblob(blob)
         total_split += len(blob)
         if progress_callback:
@@ -62,11 +68,8 @@ def _squish(maketree, stacks, n):
         i += 1
 
 
-def split_to_shalist(makeblob, maketree, files,
-                     keep_boundaries, progress=None,
-                     blobbits=None):
-    sl = split_to_blobs(makeblob, files, keep_boundaries, progress,
-                        blobbits)
+def split_to_shalist(makeblob, maketree, splitter):
+    sl = split_to_blobs(makeblob, splitter)
     assert(fanout != 0)
     if not fanout:
         shal = []
@@ -84,12 +87,8 @@ def split_to_shalist(makeblob, maketree, files,
         return _make_shalist(stacks[-1])[0]
 
 
-def split_to_blob_or_tree(makeblob, maketree, files,
-                          keep_boundaries, progress=None,
-                          blobbits=None):
-    shalist = list(split_to_shalist(makeblob, maketree,
-                                    files, keep_boundaries, progress,
-                                    blobbits))
+def split_to_blob_or_tree(makeblob, maketree, splitter):
+    shalist = list(split_to_shalist(makeblob, maketree, splitter))
     if len(shalist) == 1:
         return (shalist[0][0], shalist[0][2])
     elif len(shalist) == 0:

@@ -6,7 +6,12 @@ import math, os, stat, sys, time
 from bup import hashsplit, git, options, index, client, metadata
 from bup import hlinkdb
 from bup.compat import argv_bytes, environ
-from bup.hashsplit import GIT_MODE_TREE, GIT_MODE_FILE, GIT_MODE_SYMLINK
+from bup.hashsplit import \
+    (GIT_MODE_TREE,
+     GIT_MODE_FILE,
+     GIT_MODE_SYMLINK,
+     split_to_blob_or_tree,
+     splitter)
 from bup.helpers import (add_error, grafted_path_components, handle_ctrl_c,
                          hostname, istty2, log, parse_date_or_fatal, parse_num,
                          path_components, progress, qprogress, resolve_parent,
@@ -364,10 +369,10 @@ def save_tree(opt, reader, hlink_db, msr, repo, split_trees, blobbits):
                         return repo.write_data(data)
                     before_saving_regular_file(ent.name)
                     with hashsplit.open_noatime(ent.name) as f:
-                        (mode, id) = hashsplit.split_to_blob_or_tree(
-                                                write_data, repo.write_tree, [f],
-                                                keep_boundaries=False,
-                                                blobbits=blobbits)
+                        mode, id = split_to_blob_or_tree(write_data, repo.write_tree,
+                                                         splitter([f],
+                                                                  keep_boundaries=False,
+                                                                  blobbits=blobbits))
                 except (IOError, OSError) as e:
                     add_error('%s: %s' % (ent.name, e))
                     lastskip_name = ent.name

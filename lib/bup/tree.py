@@ -1,9 +1,12 @@
 
 from io import BytesIO
 
-from bup.hashsplit import GIT_MODE_TREE, GIT_MODE_FILE
-from bup.hashsplit import split_to_blob_or_tree
-from bup.hashsplit import BUP_TREE_BLOBBITS
+from bup.hashsplit import \
+    (BUP_TREE_BLOBBITS,
+     GIT_MODE_TREE,
+     GIT_MODE_FILE,
+     split_to_blob_or_tree,
+     splitter)
 from bup.helpers import add_error
 from bup.metadata import MetadataRO
 from bup.io import path_msg
@@ -23,8 +26,8 @@ def _write_tree(repo, dir_meta, items, add_meta=True):
         metalist.sort(key = lambda x: x[0])
         metadata = BytesIO(b''.join(m[1].encode() for m in metalist))
         mode, oid = split_to_blob_or_tree(repo.write_bupm, repo.write_tree,
-                                         [metadata],
-                                         keep_boundaries=False)
+                                          splitter([metadata],
+                                                   keep_boundaries=False))
         shalist.append((mode, b'.bupm', oid))
     shalist += [(entry.gitmode, entry.mangled_name(), entry.oid)
                 for entry in items]
