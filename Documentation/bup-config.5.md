@@ -13,19 +13,29 @@ The following options may be set in the relevant `git` config
 
 # OPTIONS
 
-bup.split.files
-:   This setting determines the number of fixed bits in the hash-split
-    algorithm that lead to a chunk boundary, and thus the average size
-    of objects. This represents a trade-off between the efficiency of
-    the deduplication (fewer bits means better deduplication) and the
-    amount of metadata to keep on disk and RAM usage during repo
+bup.split.files (default `legacy:13`)
+:   Method used to split data for deduplication, for example by `bup
+    save` or `bup split`. This determines the "granularity" of the
+    deduplication, with larger values producing, on average, larger
+    chunks. The value must be a string like `legacy:N` where the
+    integer `N` must be greater than 12 and less than 22. The default
+    of 13 provides backward compatibility, but it is recommended to
+    increase this, say to 16, for all but very small repos.
+
+    `N` specifies the number of fixed bits in the hash-split algorithm
+    that when all set to one produce a chunk boundary, and thus it
+    determines the average size of the deduplicated objects. This
+    represents a trade-off between the efficiency of the deduplication
+    (fewer bits means better deduplication) as compared to the amount
+    of metadata to keep on disk and the RAM usage during repo
     operations (more bits means fewer objects, means less metadata
     space and RAM use).  The expected average block size is 2^bits (1
-    << bits), a sufficiently small change in a file would cause that
+    << bits). A sufficiently small change in a file would cause that
     much new data to be saved (plus tree metadata). The maximum blob
-    size is 4x that. The default of this setting is 13 for backward
-    compatibility, but it is recommended to change this to a higher
-    value (e.g. 16) on all but very small repos.
+    size is four times that.
+
+    `legacy` refers to the current split method, which has an
+    unintentional quirk where it "skips a bit".
 
     *NOTE:* Changing this value in an existing repository will
     duplicate data because it causes the split boundaries to change,

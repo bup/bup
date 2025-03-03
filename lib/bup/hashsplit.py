@@ -1,7 +1,8 @@
 
-import math, os
+import math, os, re
 
 from bup import _helpers
+from bup.config import ConfigError
 
 
 BUP_BLOBBITS = 13
@@ -28,6 +29,29 @@ def splitter(files, *, progress=None, keep_boundaries=False, blobbits=None,
                         progress=progress,
                         bits=blobbits or BUP_BLOBBITS,
                         fanbits=fanbits or _fanbits())
+
+
+_method_rx = br'legacy:(13|14|15|16|17|18|19|20|21)'
+
+def configuration(config_get):
+    """Return a hashsplitter configuration map based on information
+    provided by config_get."""
+    method = config_get(b'bup.split.files')
+    if method is None:
+        return {}
+    m = re.fullmatch(_method_rx, method)
+    if not m:
+        raise ConfigError(f'invalid bup.split.files setting {method}')
+    blobbits = int(m.group(1))
+    return {'blobbits': blobbits}
+
+def from_config(files, split_config):
+    """Return a hashsplitter for the given split_config."""
+    # Currently, the split_config is just a map of the options
+    # expected by splitter, so this is a trivial adapter, and
+    # any error handling is up to splitter().
+    return splitter(files, **split_config)
+
 
 total_split = 0
 def split_to_blobs(makeblob, splitter):

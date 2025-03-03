@@ -4,12 +4,9 @@ import os, sys, time
 
 from bup import compat, hashsplit, git, options, client
 from bup.compat import argv_bytes, environ
+from bup.config import ConfigError
 from bup.hashsplit import \
-    (HashSplitter,
-     split_to_blob_or_tree,
-     split_to_blobs,
-     split_to_shalist,
-     splitter)
+    split_to_blob_or_tree, split_to_blobs, split_to_shalist
 from bup.helpers import (add_error, hostname, log, parse_num,
                          qprogress, reprogress, saved_errors,
                          valid_save_name,
@@ -66,8 +63,7 @@ class NoOpRepo:
     def write_tree(self, shalist):
         return git.calc_hash(b'tree', git.tree_encode(shalist))
 
-def opts_from_cmdline(argv):
-    o = options.Options(optspec)
+def opts_from_cmdline(o, argv):
     opt, flags, extra = o.parse_bytes(argv[1:])
     opt.sources = extra
 
@@ -114,7 +110,7 @@ def opts_from_cmdline(argv):
 
     return opt
 
-def split(opt, files, parent, out, repo):
+def split(opt, files, parent, out, repo, split_cfg):
     # Hack around lack of nonlocal vars in python 2
     total_bytes = [0]
     def prog(filenum, nbytes):
@@ -125,14 +121,13 @@ def split(opt, files, parent, out, repo):
         else:
             qprogress('Splitting: %d kbytes\r' % (total_bytes[0] // 1024))
 
+    assert 'progress' not in split_cfg
+    split_cfg['progress'] = prog
     new_blob = repo.write_data
     new_tree = repo.write_tree
     if opt.blobs:
-        shalist = split_to_blobs(new_blob,
-                                 splitter(files,
-                                          keep_boundaries=opt.keep_boundaries,
-                                          progress=prog,
-                                          blobbits=opt.blobbits))
+        shalist = \
+            split_to_blobs(new_blob, hashsplit.from_config(files, split_cfg))
         for sha, size, level in shalist:
             out.write(hexlify(sha) + b'\n')
             reprogress()
@@ -140,25 +135,16 @@ def split(opt, files, parent, out, repo):
         if opt.name: # insert dummy_name which may be used as a restore target
             mode, sha = \
                 split_to_blob_or_tree(new_blob, new_tree,
-                                      splitter(files,
-                                               keep_boundaries=opt.keep_boundaries,
-                                               progress=prog,
-                                               blobbits=opt.blobbits))
+                                      hashsplit.from_config(files, split_cfg))
             splitfile_name = git.mangle_name(b'data', hashsplit.GIT_MODE_FILE, mode)
             shalist = [(mode, splitfile_name, sha)]
         else:
-            shalist = \
-                split_to_shalist(new_blob, new_tree,
-                                 splitter(files,
-                                          keep_boundaries=opt.keep_boundaries,
-                                          progress=prog, blobbits=opt.blobbits))
+            shalist = split_to_shalist(new_blob, new_tree,
+                                       hashsplit.from_config(files, split_cfg))
         tree = new_tree(shalist)
     else:
         last = 0
-        for blob, level in HashSplitter(files, progress=prog,
-                                        keep_boundaries=opt.keep_boundaries,
-                                        bits=opt.blobbits,
-                                        fanbits=hashsplit.fanbits()):
+        for blob, level in hashsplit.from_config(files, split_cfg):
             hashsplit.total_split += len(blob)
             if opt.copy:
                 out.write(blob)
@@ -183,7 +169,8 @@ def split(opt, files, parent, out, repo):
     return commit
 
 def main(argv):
-    opt = opts_from_cmdline(argv)
+    opt_parser = options.Options(optspec)
+    opt = opts_from_cmdline(opt_parser, argv)
     if opt.verbose >= 2:
         git.verbose = opt.verbose - 1
     if opt.fanout:
@@ -267,15 +254,18 @@ def main(argv):
 
     # repo creation must be last nontrivial command in each if clause above
     with repo:
-        opt.blobbits = repo.config_get(b'bup.split.files', opttype='int') \
-            or hashsplit.BUP_BLOBBITS
+        try:
+            split_cfg = hashsplit.configuration(repo.config_get)
+        except ConfigError as ex:
+            opt_parser.fatal(ex)
+        split_cfg['keep_boundaries'] = opt.keep_boundaries
         if opt.name and writing:
             refname = opt.name and b'refs/heads/%s' % opt.name
             oldref = repo.read_ref(refname)
         else:
             refname = oldref = None
 
-        commit = split(opt, files, oldref, out, repo)
+        commit = split(opt, files, oldref, out, repo, split_cfg)
 
         if refname:
             repo.update_ref(refname, commit, oldref)

@@ -50,6 +50,14 @@ General
   the given `DIRECTORY` which takes precedence over `-d` and
   `BUP_DIR`.
 
+* The deduplication granularity can now be changed by a new
+  `bup.split.files` configuration option which defaults to `legacy:13`
+  (the current behavior), but should probably be set to a higher value
+  like `legacy:16` in new repositories (say via `git-config --file
+  REPO/config bup.split.files legacy:16`).
+  The default for new repositories will eventually be raised. See
+  `bup-config`(5) for additional information.
+
 * `bup web` has been improved.  It should better preserve page
   settings while navigating, and has added settings to toggle the
   display of various types of information, including path sizes,

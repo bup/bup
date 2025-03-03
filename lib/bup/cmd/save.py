@@ -6,12 +6,12 @@ import math, os, stat, sys, time
 from bup import hashsplit, git, options, index, client, metadata
 from bup import hlinkdb
 from bup.compat import argv_bytes, environ
+from bup.config import ConfigError
 from bup.hashsplit import \
     (GIT_MODE_TREE,
      GIT_MODE_FILE,
      GIT_MODE_SYMLINK,
-     split_to_blob_or_tree,
-     splitter)
+     split_to_blob_or_tree)
 from bup.helpers import (add_error, grafted_path_components, handle_ctrl_c,
                          hostname, istty2, log, parse_date_or_fatal, parse_num,
                          path_components, progress, qprogress, resolve_parent,
@@ -51,8 +51,7 @@ def before_saving_regular_file(name):
     return
 
 
-def opts_from_cmdline(argv):
-    o = options.Options(optspec)
+def opts_from_cmdline(o, argv):
     opt, flags, extra = o.parse_bytes(argv[1:])
 
     if opt.indexfile:
@@ -113,7 +112,7 @@ def opts_from_cmdline(argv):
 
     return opt
 
-def save_tree(opt, reader, hlink_db, msr, repo, split_trees, blobbits):
+def save_tree(opt, reader, hlink_db, msr, repo, split_trees, split_cfg):
     # Metadata is stored in a file named .bupm in each directory.  The
     # first metadata entry will be the metadata for the current directory.
     # The remaining entries will be for each of the other directory
@@ -369,10 +368,9 @@ def save_tree(opt, reader, hlink_db, msr, repo, split_trees, blobbits):
                         return repo.write_data(data)
                     before_saving_regular_file(ent.name)
                     with hashsplit.open_noatime(ent.name) as f:
-                        mode, id = split_to_blob_or_tree(write_data, repo.write_tree,
-                                                         splitter([f],
-                                                                  keep_boundaries=False,
-                                                                  blobbits=blobbits))
+                        mode, id = \
+                            split_to_blob_or_tree(write_data, repo.write_tree,
+                                                  hashsplit.from_config([f], split_cfg))
                 except (IOError, OSError) as e:
                     add_error('%s: %s' % (ent.name, e))
                     lastskip_name = ent.name
@@ -425,7 +423,8 @@ def commit_tree(tree, parent, date, argv, repo):
 
 def main(argv):
     handle_ctrl_c()
-    opt = opts_from_cmdline(argv)
+    opt_parser = options.Options(optspec)
+    opt = opts_from_cmdline(opt_parser, argv)
     client.bwlimit = opt.bwlimit
     git.check_repo_or_die()
 
@@ -444,8 +443,11 @@ def main(argv):
 
     # repo creation must be last nontrivial command in each if clause above
     with repo:
+        try:
+            split_cfg = hashsplit.configuration(repo.config_get)
+        except ConfigError as ex:
+            opt_parser.fatal(ex)
         split_trees = repo.config_get(b'bup.split.trees', opttype='bool')
-        blobbits = repo.config_get(b'bup.split.files', opttype='int')
         sys.stdout.flush()
         out = byte_stream(sys.stdout)
 
@@ -467,7 +469,8 @@ def main(argv):
         with msr, \
              hlinkdb.HLinkDB(indexfile + b'.hlink') as hlink_db, \
              index.Reader(indexfile) as reader:
-            tree = save_tree(opt, reader, hlink_db, msr, repo, split_trees, blobbits)
+            tree = save_tree(opt, reader, hlink_db, msr, repo, split_trees,
+                             split_cfg)
         if opt.tree:
             out.write(hexlify(tree))
             out.write(b'\n')
