@@ -7,12 +7,16 @@ set -o pipefail
 top="$(WVPASS pwd)" || exit $?
 tmpdir="$(WVPASS wvmktempdir)" || exit $?
 
-#export BUP_DIR="$tmpdir/bup"
-#export GIT_DIR="$tmpdir/bup"
-
 bup() { "$top/bup" "$@"; }
 
 WVPASS cd "$tmpdir"
+
+WVSTART 'command without init fails'
+WVPASS mkdir foo
+bup -d nope index foo
+rc=$?
+WVPASSEQ "$rc" "15"
+WVPASS rmdir foo
 
 WVSTART '-d repo argument'
 WVPASS test ! -e repo
