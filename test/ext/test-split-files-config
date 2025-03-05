@@ -1,0 +1,137 @@
+#!/usr/bin/env bash
+. wvtest.sh
+. wvtest-bup.sh
+. dev/lib.sh
+
+set -o pipefail
+
+top="$(WVPASS pwd)" || exit $?
+tmpdir="$(WVPASS wvmktempdir)" || exit $?
+export BUP_DIR="$tmpdir/bup"
+
+bup() { "$top/bup" "$@"; }
+
+WVSTART "bup.split.file behavior"
+
+WVPASS cd "$tmpdir"
+
+size="$(WVPASS bup-python -c 'import random; print(random.randrange(0,1024*1024))')" || exit $?
+WVPASS bup random --seed "$RANDOM" "$size" > data
+
+WVSTART "split with no setting is the same as legacy:13"
+WVPASS bup init
+git config -f "$BUP_DIR/config" --unset bup.split.files
+rc=$?
+WVPASSEQ 5 "$rc"
+tree1="$(WVPASS bup split -t data)" || exit $?
+WVPASS rm -r bup
+WVPASS bup init
+WVPASS git config -f "$BUP_DIR/config" bup.split.files legacy:13
+tree2="$(WVPASS bup split -t data)" || exit $?
+WVPASSEQ "$tree1" "$tree2"
+WVPASS rm -r bup
+
+
+WVSTART 'split legacy:13 regression'
+WVPASS bup init
+WVPASS git config -f "$BUP_DIR/config" bup.split.files legacy:13
+tree1="$(WVPASS bup split -t "$top/test/testfile1")" || exit $?
+tree2="$(WVPASS bup split -t "$top/test/testfile2")" || exit $?
+WVPASSEQ 83bb4c45bbb0aa511f52bdda99c42a853a7a80f2 "$tree1"
+WVPASSEQ f5fa3217473711e003ccc4271e6af48ffa3cb990 "$tree2"
+WVPASS rm -r bup
+
+
+WVSTART 'split legacy:16 regression'
+WVPASS bup init
+WVPASS git config -f "$BUP_DIR/config" bup.split.files legacy:16
+tree1="$(WVPASS bup split -t "$top/test/testfile1")" || exit $?
+tree2="$(WVPASS bup split -t "$top/test/testfile2")" || exit $?
+WVPASSEQ 0ab731edb8e0f1b32a378daf7d99d9a1239c99f1 "$tree1"
+WVPASSEQ 84eb6ce37ce75fffd5db8472f7667b1361c5c776 "$tree2"
+WVPASS rm -r bup
+
+WVSTART 'split legacy:21 regression'
+WVPASS bup init
+WVPASS git config -f "$BUP_DIR/config" bup.split.files legacy:21
+tree1="$(WVPASS bup split -t "$top/test/testfile1")" || exit $?
+tree2="$(WVPASS bup split -t "$top/test/testfile2")" || exit $?
+WVPASSEQ 0ab731edb8e0f1b32a378daf7d99d9a1239c99f1 "$tree1"
+WVPASSEQ 84eb6ce37ce75fffd5db8472f7667b1361c5c776 "$tree2"
+WVPASS rm -r bup
+
+
+WVSTART 'save legacy:13 regression'
+WVPASS bup init
+WVPASS git config -f "$BUP_DIR/config" bup.split.files legacy:13
+WVPASS bup index "$top/test/testfile1" "$top/test/testfile3"
+WVPASS bup save -n save "$top/test"
+WVPASS git --git-dir bup ls-tree -r save \
+       --format '%(objectname) %(objectsize) %(path)' \
+    | WVPASS grep -vE '\.bupm$' \
+    | WVPASS cut -d' ' -f 1-2 > oids
+WVPASS cat > oids-exp <<EOF
+2d236959613b9796350dd270632e6e840d2320dd 79
+baec1b3aa358bcffef2e9baf542d9aaa6d605e69 6962
+d2ba74d8740393677fcaf2cd5cad2450222d0a95 878
+dd8ddcf91e8f5645d80ff8b8bb0c41f56e41ef27 3125
+68a38ef32f2dc5433b74b652f726c10b52a1c011 15074
+a3cee4a2cb0104cd318bd2472d2339199ed58bd0 16541
+8f9cad316b4b9348487c78b812b7ceb04d13a21c 3876
+43469878730dc726f2429715a7dd3dd2fbe39438 1407
+293fe8864131f046fde418d51b923527b2fd72a8 2854
+875cc9f76b4abd905ac4c54217870c9029ee0f5c 2171
+baec1b3aa358bcffef2e9baf542d9aaa6d605e69 6962
+d2ba74d8740393677fcaf2cd5cad2450222d0a95 878
+dd8ddcf91e8f5645d80ff8b8bb0c41f56e41ef27 3125
+68a38ef32f2dc5433b74b652f726c10b52a1c011 15074
+a3cee4a2cb0104cd318bd2472d2339199ed58bd0 16541
+8f9cad316b4b9348487c78b812b7ceb04d13a21c 3876
+43469878730dc726f2429715a7dd3dd2fbe39438 1407
+293fe8864131f046fde418d51b923527b2fd72a8 2854
+875cc9f76b4abd905ac4c54217870c9029ee0f5c 2171
+baec1b3aa358bcffef2e9baf542d9aaa6d605e69 6962
+d2ba74d8740393677fcaf2cd5cad2450222d0a95 878
+dd8ddcf91e8f5645d80ff8b8bb0c41f56e41ef27 3125
+68a38ef32f2dc5433b74b652f726c10b52a1c011 15074
+a3cee4a2cb0104cd318bd2472d2339199ed58bd0 16541
+8f9cad316b4b9348487c78b812b7ceb04d13a21c 3876
+43469878730dc726f2429715a7dd3dd2fbe39438 1407
+293fe8864131f046fde418d51b923527b2fd72a8 2854
+a7d82a2947458cd18ee84776214296426692d3e2 2092
+e4b1f3f103309b854c150a924c42a9dfdd1146f5 1089
+b56e39b5a108bf0e5bd1bcea92125bcbf4752b72 9717
+392baf183258029180440438d47cc7805f832255 6054
+4a8bbb0091cfca275f58ec90199c0673abbfe730 1323
+f1a41183602f7dfeb0f39ed406729f9b224c4659 24734
+0bcdaaaa7e86dcb03f1600eb5b1549d824393389 328
+1d751c97557cb49a477c3af5474f154326ad72f8 2455
+32b41bc7318e9d135e372ee6267a5c253f14b82e 12124
+cbc26696acb0ba0484305a56d09752a14cd232dc 7712
+EOF
+WVPASS diff -u oids-exp oids
+WVPASS rm -r bup oids
+
+
+WVSTART 'save legacy:16 regression'
+WVPASS bup init
+WVPASS git config -f "$BUP_DIR/config" bup.split.files legacy:16
+WVPASS bup index "$top/test/testfile1" "$top/test/testfile3"
+WVPASS bup save -n save "$top/test"
+WVPASS git --git-dir bup ls-tree -r save \
+       --format '%(objectname) %(objectsize) %(path)' \
+    | WVPASS grep -vE '\.bupm$' \
+    | WVPASS cut -d' ' -f 1-2 > oids
+WVPASS cat > oids-exp <<EOF
+31ee97900d92f636c55bbfdba7f00fb0174095eb 158664
+5dbf3ec3057bf3f95674608c8849a7e38af34332 10806
+da6c9a168a0b4f692b199731d1a2bf4ca2525260 7377
+5bb3dfb00be14795b7a7995bbaac8c2766a064e2 25062
+57acf7c5ea9623290f8bc699f471d92612419a57 22291
+EOF
+WVPASS diff -u oids-exp oids
+WVPASS rm -r bup oids
+
+
+WVPASS cd "$top"
+WVPASS rm -rf "$tmpdir"
