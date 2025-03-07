@@ -31,6 +31,11 @@ May require attention
   `verify-ref-links` that need to report a true or false result like
   `grep` does.
 
+* `bup split --copy` now writes the split data to standard output
+  instead of Python memoryview representations like
+
+      <memory at 0x7f7a89358ac0><memory at 0x7f7a89358a00>...
+
 General
 -------
 

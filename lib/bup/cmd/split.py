@@ -149,7 +149,7 @@ def split(opt, files, parent, out, repo):
                                         fanbits=hashsplit.fanbits()):
             hashsplit.total_split += len(blob)
             if opt.copy:
-                sys.stdout.write(str(blob))
+                out.write(blob)
             megs = hashsplit.total_split // 1024 // 1024
             if not opt.quiet and last != megs:
                 last = megs
