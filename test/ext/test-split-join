@@ -22,6 +22,14 @@ WVPASS bup split --noop -b <"$top/test/testfile1" >tags1n.tmp
 WVPASS bup split --noop -t <"$top/test/testfile2" >tags2tn.tmp
 WVPASSEQ $(find "$BUP_DIR/objects/pack" -name '*.pack' | wc -l) 0
 
+#WVSTART 'split --copy'
+#WVPASS bup split --copy < "$top/test/testfile1" > noop.tmp
+#WVPASS diff -u "$top/test/testfile1" noop.tmp
+#WVPASSEQ '' "$(<noop.tmp)"
+#WVPASS bup split --noop -b <"$top/test/testfile1" >tags1n.tmp
+#WVPASS bup split --noop -t <"$top/test/testfile2" >tags2tn.tmp
+#WVPASSEQ $(find "$BUP_DIR/objects/pack" -name '*.pack' | wc -l) 0
+
 WVSTART "split"
 WVPASS echo a >a.tmp
 WVPASS echo b >b.tmp

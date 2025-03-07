@@ -148,7 +148,7 @@ def split(opt, files, parent, out, pack_writer):
         for blob, level in it:
             hashsplit.total_split += len(blob)
             if opt.copy:
-                sys.stdout.write(str(blob))
+                out.write(blob)
             megs = hashsplit.total_split // 1024 // 1024
             if not opt.quiet and last != megs:
                 last = megs
