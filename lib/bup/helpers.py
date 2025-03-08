@@ -56,10 +56,16 @@ def getgroups():
 
 
 class finalized:
-    def __init__(self, enter_result=None, finalize=None):
-        assert finalize
-        self.finalize = finalize
-        self.enter_result = enter_result
+    def __init__(self, what_or_how, how=None):
+        # pyupgrade 3.8+: add positional-only '/' to arguments
+        # Finalizer is required, value is not, parameters are only
+        # positional.
+        if how is None:
+            self.enter_result = None
+            self.finalize = what_or_how
+        else:
+            self.enter_result = what_or_how
+            self.finalize = how
     def __enter__(self):
         return self.enter_result
     def __exit__(self, exc_type, exc_value, traceback):
