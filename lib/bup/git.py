@@ -1288,22 +1288,35 @@ def init_repo(path=None):
     _git_wait('git config', p)
 
 
-def check_repo_or_die(path=None):
-    """Check to see if a bup repository probably exists, and abort if not."""
+def establish_default_repo(path=None, *, must_exist=False):
+    """If path (defaults to guess_repo()) is valid, make it the
+    default repository and return True.  If path isn't valid (because
+    it doesn't exist or doesn't appear to be a repository), either
+    exit() with an error status if must_exist is true or return False.
+
+    """
     global repodir
     repodir = path or guess_repo()
     top = repo()
     pst = stat_if_exists(top + b'/objects/pack')
     if pst and stat.S_ISDIR(pst.st_mode):
-        return
+        return True
     if not pst:
         top_st = stat_if_exists(top)
         if not top_st:
-            log('error: repository %r does not exist (see "bup help init")\n'
-                % top)
-            sys.exit(15)
-    log('error: %s is not a repository\n' % path_msg(top))
-    sys.exit(14)
+            if must_exist:
+                log('error: repository %r does not exist (see "bup help init")\n'
+                    % top)
+                sys.exit(15)
+            return False
+    if must_exist:
+        log('error: %s is not a repository\n' % path_msg(top))
+        sys.exit(14)
+    return False
+
+def check_repo_or_die(path=None):
+    """Equivalent to git.establish_default_repo(path, must_exist=True)."""
+    establish_default_repo(path, must_exist=True)
 
 
 def is_suitable_git(ver_str):

@@ -1,6 +1,7 @@
 
 import sys
 from binascii import hexlify, unhexlify
+from contextlib import ExitStack
 from subprocess import check_call
 from functools import partial
 import struct, os
@@ -10,7 +11,8 @@ from wvpytest import *
 
 from bup import git, path
 from bup.compat import bytes_from_byte, environ
-from bup.helpers import OBJECT_EXISTS, localtime, log, mkdirp, readpipe
+from bup.helpers import \
+    OBJECT_EXISTS, finalized, localtime, log, mkdirp, readpipe
 
 
 bup_exe = path.exe()
@@ -200,38 +202,77 @@ def test_long_index(tmpdir):
         WVPASSEQ(i.find_offset(obj3_bin), 0xff)
 
 
-def test_check_repo_or_die(tmpdir):
+def check_establish_default_repo_variant(tmpdir, f, is_establish):
+    WVFAIL(git.repodir) # global state...
+    def reset_state(_): git.repodir = None
+    fin = finalized(reset_state)
+    def finally_reset_state():
+        ctx = ExitStack()
+        ctx.enter_context(fin)
+        return ctx
+
     environ[b'BUP_DIR'] = bupdir = tmpdir + b'/bup'
     orig_cwd = os.getcwd()
     try:
         os.chdir(tmpdir)
         git.init_repo(bupdir)
-        git.check_repo_or_die()
-        # if we reach this point the call above passed
-        WVPASS('check_repo_or_die')
+        with finally_reset_state():
+            if is_establish:
+                WVPASSEQ(True, f())
+            else:
+                WVPASSEQ(None, f())
+        if is_establish:
+            with finally_reset_state():
+                WVPASSEQ(True, f(must_exist=True))
+            with finally_reset_state():
+                WVPASSEQ(True, f(must_exist=False))
 
         os.rename(bupdir + b'/objects/pack',
                   bupdir + b'/objects/pack.tmp')
         open(bupdir + b'/objects/pack', 'w').close()
-        try:
-            git.check_repo_or_die()
-        except SystemExit as e:
-            WVPASSEQ(e.code, 14)
+        if is_establish:
+            with finally_reset_state():
+                WVPASSEQ(False, f())
+            with finally_reset_state():
+                WVPASSEQ(False, f(must_exist=False))
+            with finally_reset_state(), \
+                 pytest.raises(SystemExit) as ex_info:
+                f(must_exist=True)
+            WVPASSEQ(14, ex_info.value.code)
         else:
-            WVFAIL()
+            with finally_reset_state(), \
+                 pytest.raises(SystemExit) as ex_info:
+                f()
+            WVPASSEQ(14, ex_info.value.code)
+
         os.unlink(bupdir + b'/objects/pack')
         os.rename(bupdir + b'/objects/pack.tmp',
                   bupdir + b'/objects/pack')
-
-        try:
-            git.check_repo_or_die(b'nonexistantbup.tmp')
-        except SystemExit as e:
-            WVPASSEQ(e.code, 15)
+        if is_establish:
+            with finally_reset_state():
+                WVPASSEQ(False, f(b'nonexistant.bup'))
+            with finally_reset_state():
+                WVPASSEQ(False, f(b'nonexistant.bup', must_exist=False))
+            with finally_reset_state(), \
+                 pytest.raises(SystemExit) as ex_info:
+                f(b'nonexistant.bup', must_exist=True)
+            WVPASSEQ(15, ex_info.value.code)
         else:
-            WVFAIL()
+            with finally_reset_state(), \
+                 pytest.raises(SystemExit) as ex_info:
+                f(b'nonexistant.bup')
+            WVPASSEQ(15, ex_info.value.code)
+            assert not git.repodir
     finally:
         os.chdir(orig_cwd)
 
+def test_establish_default_repo(tmpdir):
+    git.repodir = None
+    check_establish_default_repo_variant(tmpdir, git.establish_default_repo, True)
+
+def test_check_repo_or_die(tmpdir):
+    git.repodir = None
+    check_establish_default_repo_variant(tmpdir, git.check_repo_or_die, False)
 
 def test_commit_parsing(tmpdir):
     def restore_env_var(name, val):
