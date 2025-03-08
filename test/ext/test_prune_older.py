@@ -1,5 +1,6 @@
 
 from collections import defaultdict
+from difflib import diff_bytes, unified_diff
 from itertools import chain, dropwhile, groupby, takewhile
 from os import chdir
 from random import choice, randint
@@ -9,11 +10,6 @@ from sys import stderr
 from time import localtime, strftime, time, tzset
 import random, sys
 
-if sys.version_info[:2] >= (3, 5):
-    from difflib import diff_bytes, unified_diff
-else:
-    from difflib import unified_diff
-
 from bup import compat
 from bup.compat import environ
 from bup.helpers import partition, period_as_secs, readpipe
@@ -22,9 +18,6 @@ from buptest import ex, exo
 from wvpytest import wvfail, wvpass, wvpasseq, wvpassne, wvstart
 import bup.path
 
-if sys.version_info[:2] < (3, 5):
-    def diff_bytes(_, *args):
-        return unified_diff(*args)
 
 def create_older_random_saves(n, start_utc, end_utc):
     with open(b'foo', 'wb') as f:
