@@ -45,6 +45,13 @@ General
   layout, in general, has been changed (including trivial support for
   dark mode).
 
+Bugs
+----
+
+* A bug has been fixed that could cause any internal subcommand
+  (e.g. not `import-rsnapshot`) to hang when running interactively
+  (i.e. with a controlling terminal).
+
 Thanks to (at least)
 ====================
 
