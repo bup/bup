@@ -10,6 +10,7 @@ if bup_main.env_pythonpath:
 else:
     del os.environ['PYTHONPATH']
 
+from contextlib import ExitStack
 from importlib import import_module
 from pkgutil import iter_modules
 from subprocess import PIPE
@@ -24,6 +25,7 @@ from bup.compat import (
 )
 from bup.helpers import (
     columnate,
+    finalized,
     handle_ctrl_c,
     log,
     tty_width
@@ -226,40 +228,46 @@ def print_clean_line(dest, content, width, sep=None):
     if sep:
         os.write(dest, sep)
 
-def filter_output(srcs, dests):
-    """Transfer data from file descriptors in srcs to the corresponding
-    file descriptors in dests print_clean_line until all of the srcs
-    have closed.
+# FIXME: check whether we might need to stash/defer exceptions while
+# stderr is diverted.
+
+def filter_output(srcs, dests, control):
+    """Transfer data from file descriptors in srcs to the
+    corresponding file descriptors in dests print_clean_line until the
+    control descriptor produces a 'q' (i.e. quit).
 
     """
-    global sep_rx
     assert all(isinstance(x, int) for x in srcs)
+    assert all(isinstance(x, int) for x in dests)
     assert len(srcs) == len(dests)
-    srcs = tuple(srcs)
+    assert isinstance(control, int)
+    read_fds = [control, *srcs]
     dest_for = dict(zip(srcs, dests))
     pending = {}
     try:
-        while srcs:
-            ready_fds, _, _ = select.select(srcs, [], [])
+        while True:
+            ready_fds, _, _ = select.select(read_fds, [], [])
             width = tty_width()
             for fd in ready_fds:
+                if fd == control:
+                    continue
                 buf = os.read(fd, 4096)
                 dest = dest_for[fd]
-                if not buf:
-                    srcs = tuple([x for x in srcs if x is not fd])
-                    print_clean_line(dest, pending.pop(fd, []), width)
-                else:
-                    split = sep_rx.split(buf)
-                    while len(split) > 1:
-                        content, sep = split[:2]
-                        split = split[2:]
-                        print_clean_line(dest,
-                                         pending.pop(fd, []) + [content],
-                                         width,
-                                         sep)
-                    assert len(split) == 1
-                    if split[0]:
-                        pending.setdefault(fd, []).extend(split)
+                split = sep_rx.split(buf)
+                while len(split) > 1:
+                    content, sep = split[:2]
+                    split = split[2:]
+                    print_clean_line(dest,
+                                     pending.pop(fd, []) + [content],
+                                     width,
+                                     sep)
+                assert len(split) == 1
+                if split[0]:
+                    pending.setdefault(fd, []).extend(split)
+            if control in ready_fds:
+                buf = os.read(control, 1)
+                assert buf == b'q'
+                break
     except BaseException as ex:
         pending_ex = ex
         # Try to finish each of the streams
@@ -286,8 +294,7 @@ def import_and_run_main(module, args):
 
 def run_module_cmd(module, args):
     if not (fix_stdout or fix_stderr):
-        import_and_run_main(module, args)
-        return
+        return import_and_run_main(module, args)
     # Interpose filter_output between all attempts to write to the
     # stdout/stderr and the real stdout/stderr (e.g. the fds that
     # connect directly to the terminal) via a thread that runs
@@ -297,52 +304,33 @@ def run_module_cmd(module, args):
     real_out_fd = real_err_fd = stdout_pipe = stderr_pipe = None
     filter_thread = filter_thread_started = None
     try:
-        if fix_stdout:
-            sys.stdout.flush()
-            stdout_pipe = os.pipe()  # monitored_by_filter, stdout_everyone_uses
-            real_out_fd = os.dup(sys.stdout.fileno())
-            os.dup2(stdout_pipe[1], sys.stdout.fileno())
-            srcs.append(stdout_pipe[0])
-            dests.append(real_out_fd)
-        if fix_stderr:
-            sys.stderr.flush()
-            stderr_pipe = os.pipe()  # monitored_by_filter, stderr_everyone_uses
-            real_err_fd = os.dup(sys.stderr.fileno())
-            os.dup2(stderr_pipe[1], sys.stderr.fileno())
-            srcs.append(stderr_pipe[0])
-            dests.append(real_err_fd)
-
-        filter_thread = Thread(name='output filter',
-                               target=lambda : filter_output(srcs, dests))
-        filter_thread.start()
-        filter_thread_started = True
-        import_and_run_main(module, args)
-    finally:
-        # Try to make sure that whatever else happens, we restore
-        # stdout and stderr here, if that's possible, so that we don't
-        # risk just losing some output.  Nest the finally blocks so we
-        # try each one no matter what happens, and accumulate alll
-        # exceptions in the pending exception __context__.
-        try:
+        with ExitStack() as after_join:
+            def fix_stream(src):
+                src.flush()
+                pipe = os.pipe()  # monitored_by_filter, what_everyone_uses
+                after_join.enter_context(finalized(lambda _: os.close(pipe[1])))
+                real_fd = os.dup(src.fileno())
+                os.dup2(pipe[1], src.fileno())
+                # Restore stream so that we don't risk losing output
+                fin = finalized(real_fd, lambda x: os.dup2(x, src.fileno()))
+                after_join.enter_context(fin)
+                srcs.append(pipe[0])
+                dests.append(real_fd)
+            if fix_stdout: fix_stream(sys.stdout)
+            if fix_stderr: fix_stream(sys.stderr)
+            ctrl_pipe = os.pipe()
+            filter_thread = \
+                Thread(name='output filter',
+                       target=lambda : filter_output(srcs, dests, ctrl_pipe[0]))
+            filter_thread.start()
             try:
-                try:
-                    try:
-                        real_out_fd is not None and \
-                            os.dup2(real_out_fd, sys.stdout.fileno())
-                    finally:
-                        real_err_fd is not None and \
-                            os.dup2(real_err_fd, sys.stderr.fileno())
-                finally:
-                    # Kick filter loose
-                    stdout_pipe is not None and os.close(stdout_pipe[1])
+                result = import_and_run_main(module, args)
             finally:
-                stderr_pipe is not None and os.close(stderr_pipe[1])
-        finally:
-            close_catpipes()
-
-    # There's no point in trying to join unless we finished the finally block.
-    if filter_thread_started:
-        filter_thread.join()
+                os.write(ctrl_pipe[1], b'q')
+            filter_thread.join()
+    finally:
+        close_catpipes()
+    return result
 
 
 def run_subproc_cmd(args):
