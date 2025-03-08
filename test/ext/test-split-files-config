@@ -32,6 +32,42 @@ WVPASSEQ "$tree1" "$tree2"
 WVPASS rm -r bup
 
 
+WVSTART "split --noop with no repo is the same as legacy:13"
+tree1="$(WVPASS bup -d /dev/null split --noop -t "$top/test/testfile1")" || exit $?
+tree2="$(WVPASS bup -d /dev/null split --noop -t "$top/test/testfile2")" || exit $?
+WVPASSEQ 83bb4c45bbb0aa511f52bdda99c42a853a7a80f2 "$tree1"
+WVPASSEQ f5fa3217473711e003ccc4271e6af48ffa3cb990 "$tree2"
+
+
+WVSTART 'split --noop legacy:13 regression'
+WVPASS bup init
+WVPASS git config -f "$BUP_DIR/config" bup.split.files legacy:13
+tree1="$(WVPASS bup split --noop -t "$top/test/testfile1")" || exit $?
+tree2="$(WVPASS bup split --noop -t "$top/test/testfile2")" || exit $?
+WVPASSEQ 83bb4c45bbb0aa511f52bdda99c42a853a7a80f2 "$tree1"
+WVPASSEQ f5fa3217473711e003ccc4271e6af48ffa3cb990 "$tree2"
+WVPASS rm -r bup
+
+
+WVSTART 'split --noop legacy:16 regression'
+WVPASS bup init
+WVPASS git config -f "$BUP_DIR/config" bup.split.files legacy:16
+tree1="$(WVPASS bup split --noop -t "$top/test/testfile1")" || exit $?
+tree2="$(WVPASS bup split --noop -t "$top/test/testfile2")" || exit $?
+WVPASSEQ 0ab731edb8e0f1b32a378daf7d99d9a1239c99f1 "$tree1"
+WVPASSEQ 84eb6ce37ce75fffd5db8472f7667b1361c5c776 "$tree2"
+WVPASS rm -r bup
+
+WVSTART 'split --noop legacy:21 regression'
+WVPASS bup init
+WVPASS git config -f "$BUP_DIR/config" bup.split.files legacy:21
+tree1="$(WVPASS bup split --noop -t "$top/test/testfile1")" || exit $?
+tree2="$(WVPASS bup split --noop -t "$top/test/testfile2")" || exit $?
+WVPASSEQ 0ab731edb8e0f1b32a378daf7d99d9a1239c99f1 "$tree1"
+WVPASSEQ 84eb6ce37ce75fffd5db8472f7667b1361c5c776 "$tree2"
+WVPASS rm -r bup
+
+
 WVSTART 'split legacy:13 regression'
 WVPASS bup init
 WVPASS git config -f "$BUP_DIR/config" bup.split.files legacy:13

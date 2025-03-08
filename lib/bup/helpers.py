@@ -165,6 +165,8 @@ def lines_until_sentinel(f, sentinel, ex_type):
 def stat_if_exists(path):
     try:
         return os.stat(path)
+    except NotADirectoryError:
+        return None
     except OSError as e:
         if e.errno != errno.ENOENT:
             raise
