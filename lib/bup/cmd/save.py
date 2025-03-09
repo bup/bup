@@ -127,15 +127,14 @@ def save_tree(opt, reader, hlink_db, msr, repo, split_trees):
 
     stack = Stack(split_trees=split_trees)
 
-    # Hack around lack of nonlocal vars in python 2
-    _nonlocal = {}
-    _nonlocal['count'] = 0
-    _nonlocal['subcount'] = 0
-    _nonlocal['lastremain'] = None
+    prog_count = 0
+    prog_subcount = 0
+    prog_lastremain = None
 
     def progress_report(n):
-        _nonlocal['subcount'] += n
-        cc = _nonlocal['count'] + _nonlocal['subcount']
+        nonlocal prog_count, prog_subcount, prog_lastremain
+        prog_subcount += n
+        cc = prog_count + prog_subcount
         pct = total and (cc*100.0/total) or 0
         now = time.time()
         elapsed = now - tstart
@@ -146,11 +145,11 @@ def save_tree(opt, reader, hlink_db, msr, repo, split_trees):
             remain = elapsed*1.0/cc * (total-cc)
         else:
             remain = 0.0
-        if (_nonlocal['lastremain'] and (remain > _nonlocal['lastremain'])
-              and ((remain - _nonlocal['lastremain'])/_nonlocal['lastremain'] < 0.05)):
-            remain = _nonlocal['lastremain']
+        if (prog_lastremain and (remain > prog_lastremain)
+              and ((remain - prog_lastremain)/prog_lastremain < 0.05)):
+            remain = prog_lastremain
         else:
-            _nonlocal['lastremain'] = remain
+            prog_lastremain = remain
         hours = int(remain/60/60)
         mins = int(remain/60 - hours*60)
         secs = int(remain - hours*60*60 - mins*60)
@@ -168,7 +167,6 @@ def save_tree(opt, reader, hlink_db, msr, repo, split_trees):
         qprogress('Saving: %.2f%% (%d/%dk, %d/%d files) %s %s\r'
                   % (pct, cc/1024, total/1024, fcount, ftotal,
                      remainstr, kpsstr))
-
 
     def already_saved(ent):
         return ent.is_valid() and repo.exists(ent.sha) and ent.sha
@@ -315,7 +313,7 @@ def save_tree(opt, reader, hlink_db, msr, repo, split_trees):
                     ent.validate(GIT_MODE_TREE, newtree)
                 ent.repack()
             if exists and wasmissing:
-                _nonlocal['count'] += oldsize
+                prog_count += oldsize
             continue
 
         # it's not a directory
@@ -388,14 +386,14 @@ def save_tree(opt, reader, hlink_db, msr, repo, split_trees):
                 stack.append_to_current(file, ent.mode, ent.gitmode, id, meta)
 
         if exists and wasmissing:
-            _nonlocal['count'] += oldsize
-            _nonlocal['subcount'] = 0
+            prog_count += oldsize
+            prog_subcount = 0
 
 
     if opt.progress:
-        pct = total and _nonlocal['count']*100.0/total or 100
+        pct = total and (prog_count * 100.0 / total) or 100
         progress('Saving: %.2f%% (%d/%dk, %d/%d files), done.    \n'
-                 % (pct, _nonlocal['count']/1024, total/1024, fcount, ftotal))
+                 % (pct, prog_count / 1024, total / 1024, fcount, ftotal))
 
     # pop all parts above the root folder
     while len(stack) > 1:
