@@ -1,6 +1,5 @@
 
 from bup import client
-from bup.repo import base
 from bup.repo.base import RepoProtocol
 
 
@@ -14,7 +13,6 @@ class RemoteRepo(RepoProtocol):
         self.closed = True # in case Client instantiation fails
         self.client = client.Client(address, create=create)
         self.closed = False
-        self._id = base.repo_id(address)
         self.config_get = self.client.config_get
         self.write_symlink = self.write_data
         self.write_bupm = self.write_data
@@ -51,7 +49,6 @@ class RemoteRepo(RepoProtocol):
                                     max_pack_size=self.max_pack_size,
                                     max_pack_objects=self.max_pack_objects)
 
-    def id(self): return self._id
     def is_remote(self): return True
 
     def cat(self, ref):

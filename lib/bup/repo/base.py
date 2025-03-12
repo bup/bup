@@ -1,16 +1,4 @@
 
-_next_repo_id = 0
-_repo_ids = {}
-
-def repo_id(key):
-    global _next_repo_id, _repo_ids
-    repo_id = _repo_ids.get(key)
-    if repo_id:
-        return repo_id
-    next_id = _next_repo_id = _next_repo_id + 1
-    _repo_ids[key] = next_id
-    return next_id
-
 def notimplemented(fn):
     def newfn(obj, *args, **kwargs):
         raise NotImplementedError(f'{obj.__class__.__name__}.{fn.__name__}')
@@ -19,6 +7,7 @@ def notimplemented(fn):
 class RepoProtocol:
     # Specification only; intentially has no implementations
     # Subclassing just indicates intent.
+    # Currently, the vfs relies on id(repo) for caching paths.
 
     def _validate_init(self):
         """Ensures instance is sound; should be called by all subclasses."""
@@ -26,12 +15,6 @@ class RepoProtocol:
         hasattr(self, 'dumb_server_mode')
         hasattr(self, 'max_pack_objects')
         hasattr(self, 'max_pack_size')
-
-    @notimplemented
-    def id(self):
-        """Return an identifier that differs from any other repository that
-        doesn't share the same repository-specific information
-        (e.g. refs, tags, etc.)."""
 
     @notimplemented
     def is_remote(self):

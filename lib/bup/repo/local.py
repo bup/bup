@@ -4,7 +4,6 @@ from os.path import realpath
 from functools import partial
 
 from bup import git, vfs
-from bup.repo import base
 from bup.repo.base import RepoProtocol
 
 
@@ -18,7 +17,6 @@ class LocalRepo(RepoProtocol):
         self.max_pack_objects = max_pack_objects
         self._packwriter = None
         self.repo_dir = realpath(repo_dir or git.guess_repo())
-        self._id = base.repo_id(self.repo_dir)
         self.config_get = partial(git.git_config_get, git.repo_config_file(self.repo_dir))
         self.write_symlink = self.write_data
         self.write_bupm = self.write_data
@@ -44,7 +42,6 @@ class LocalRepo(RepoProtocol):
     def __enter__(self): return self
     def __exit__(self, type, value, traceback): self.close()
 
-    def id(self): return self._id
     def is_remote(self): return False
 
     @classmethod
