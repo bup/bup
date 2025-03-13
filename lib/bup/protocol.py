@@ -227,8 +227,8 @@ class Server:
                 # FIXME: don't be lazy and count ourselves, or something, at least
                 # don't access self.repo internals
                 debug1('bup server: received %d object%s.\n'
-                    % (self.repo._packwriter.count,
-                       self.repo._packwriter.count != 1 and "s" or ''))
+                    % (self.repo._packwriter.object_count(),
+                       self.repo._packwriter.object_count() != 1 and "s" or ''))
                 fullpath = self.repo.finish_writing()
                 if fullpath:
                     dir, name = os.path.split(fullpath)
@@ -264,7 +264,7 @@ class Server:
                     continue
             # FIXME: figure out the right abstraction for this; or better yet,
             #        make the protocol aware of the object type
-            nw, crc = self.repo._packwriter._raw_write((buf,), sha=shar)
+            nw, crc = self.repo._packwriter._store.write((buf,), sha=shar)
             self._check(crcr, crc, 'object read: expected crc %d, got %d\n')
         assert False  # should be unreachable
 

@@ -561,6 +561,7 @@ _mpi_count = 0
 class PackIdxList:
     def __init__(self, dir, ignore_midx=False):
         global _mpi_count
+        self.open = False # for __del__
         # Q: was this also intended to prevent opening multiple repos?
         assert(_mpi_count == 0) # these things suck tons of VM; don't waste it
         _mpi_count += 1
@@ -836,66 +837,61 @@ def create_commit_blob(tree, parent,
     l.append(msg)
     return b'\n'.join(l)
 
-def _make_objcache(repo_dir):
-    return PackIdxList(repo(b'objects/pack', repo_dir=repo_dir))
 
-# bup-gc assumes that it can disable all PackWriter activities
-# (bloom/midx/cache) via the constructor and close() arguments.
+# del/exit/close/etc. wrt parent/child?
 
-class PackWriter:
-    """Writes Git objects inside a pack file."""
-    def __init__(self, objcache_maker=None, compression_level=None,
-                 run_midx=True, on_pack_finish=None,
-                 max_pack_size=None, max_pack_objects=None, repo_dir=None):
-        self.closed = False
-        self.repo_dir = repo_dir or repo()
-        self.file = None
-        self.parentfd = None
-        self.count = 0
-        self.outbytes = 0
-        self.tmpdir = None
-        self.idx = None
-        self.objcache_maker = objcache_maker or _make_objcache
-        self.objcache = None
-        if compression_level is None:
-            compression_level = 1
-        self.compression_level = compression_level
-        self.run_midx=run_midx
-        self.on_pack_finish = on_pack_finish
-        if not max_pack_size:
-            max_pack_size = git_config_get(repo_config_file(self.repo_dir),
-                                           b'pack.packSizeLimit',
-                                           opttype='int')
-            if not max_pack_size:
-                # larger packs slow down pruning
-                max_pack_size = 1000 * 1000 * 1000
-        self.max_pack_size = max_pack_size
-        # cache memory usage is about 83 bytes per object
-        self.max_pack_objects = max_pack_objects if max_pack_objects \
-                                else max(1, self.max_pack_size // 5000)
+class LocalPackStore():
 
-    def __enter__(self):
-        return self
+    def __init__(self, *, objcache_maker=None, on_pack_finish=None,
+                 repo_dir=None, run_midx=True):
+        self._closed = False
+        self._byte_count = 0
+        self._file = None
+        self._idx = None
+        self._make_objcache = objcache_maker \
+            or (lambda: PackIdxList(repo(b'objects/pack', repo_dir=repo_dir)))
+        self._obj_count = 0
+        self._objcache = None
+        self._on_pack_finish = on_pack_finish
+        self._parentfd = None
+        self._repo_dir = repo_dir or repo()
+        self._run_midx=run_midx
+        self._tmpdir = None
 
-    def __exit__(self, type, value, traceback):
-        with pending_raise(value, rethrow=False):
-            self.close()
+    def __del__(self): assert self._closed
+
+    def byte_count(self): return self._byte_count
+    def object_count(self): return self._obj_count
+
+    def objcache(self, *, require=True):
+        if self._objcache is not None:
+            return self._objcache
+        if not require:
+            return None
+        self._objcache = self._make_objcache()
+        assert self._objcache is not None
+        return self._objcache
 
     def _open(self):
-        if not self.file:
+        if not self._file:
             with ExitStack() as err_stack:
-                objdir = dir = os.path.join(self.repo_dir, b'objects')
-                self.tmpdir = err_stack.enter_context(temp_dir(dir=objdir, prefix=b'pack-tmp-'))
-                self.file = err_stack.enter_context(open(self.tmpdir + b'/pack', 'w+b'))
-                self.parentfd = err_stack.enter_context(finalized(os.open(objdir, os.O_RDONLY),
-                                                                  lambda x: os.close(x)))
-                self.file.write(b'PACK\0\0\0\2\0\0\0\0')
-                self.idx = PackIdxV2Writer()
+                objdir = dir = os.path.join(self._repo_dir, b'objects')
+                self._tmpdir = err_stack.enter_context(temp_dir(dir=objdir, prefix=b'pack-tmp-'))
+                self._file = err_stack.enter_context(open(self._tmpdir + b'/pack', 'w+b'))
+                self._parentfd = err_stack.enter_context(finalized(os.open(objdir, os.O_RDONLY),
+                                                                   lambda x: os.close(x)))
+                self._file.write(b'PACK\0\0\0\2\0\0\0\0')
+                self._idx = PackIdxV2Writer()
                 err_stack.pop_all()
 
-    def _raw_write(self, datalist, sha):
+    def _update_idx(self, sha, crc, size):
+        assert(sha)
+        if self._idx:
+            self._idx.add(sha, crc, self._file.tell() - size)
+
+    def write(self, datalist, sha):
         self._open()
-        f = self.file
+        f = self._file
         # in case we get interrupted (eg. KeyboardInterrupt), it's best if
         # the file never has a *partial* blob.  So let's make sure it's
         # all-or-nothing.  (The blob shouldn't be very big anyway, thanks
@@ -909,52 +905,121 @@ class PackWriter:
         nw = len(oneblob)
         crc = zlib.crc32(oneblob) & 0xffffffff
         self._update_idx(sha, crc, nw)
-        self.outbytes += nw
-        self.count += 1
+        self._byte_count += nw
+        self._obj_count += 1
         return nw, crc
 
-    def _update_idx(self, sha, crc, size):
-        assert(sha)
-        if self.idx:
-            self.idx.add(sha, crc, self.file.tell() - size)
+    def finish_pack(self, *, abort=False):
+        # Ignores run_midx during abort
+        self._tmpdir, tmpdir = None, self._tmpdir
+        self._parentfd, pfd, = None, self._parentfd
+        self._file, f = None, self._file
+        self._idx, idx = None, self._idx
+        try:
+            with nullcontext_if_not(self._objcache), \
+                 finalized(pfd, lambda x: x is not None and os.close(x)), \
+                 nullcontext_if_not(f):
+                if abort or not f:
+                    return None
+
+                # update object count
+                f.seek(8)
+                cp = struct.pack('!i', self._obj_count)
+                assert len(cp) == 4
+                f.write(cp)
+
+                # calculate the pack sha1sum
+                f.seek(0)
+                sum = Sha1()
+                for b in chunkyreader(f):
+                    sum.update(b)
+                packbin = sum.digest()
+                f.write(packbin)
+                f.flush()
+                fdatasync(f.fileno())
+                f.close()
+
+                idx.write(tmpdir + b'/idx', packbin)
+                nameprefix = os.path.join(self._repo_dir,
+                                          b'objects/pack/pack-' +  hexlify(packbin))
+                os.rename(tmpdir + b'/pack', nameprefix + b'.pack')
+                os.rename(tmpdir + b'/idx', nameprefix + b'.idx')
+                os.fsync(pfd)
+                if self._on_pack_finish:
+                    self._on_pack_finish(nameprefix)
+                if self._run_midx:
+                    auto_midx(os.path.join(self._repo_dir, b'objects/pack'))
+                return nameprefix
+        finally:
+            self._byte_count = self._obj_count = 0
+            self._objcache = None # last -- some code above depends on it
+            if tmpdir:
+                rmtree(tmpdir)
+
+    def abort(self):
+        self._closed = True
+        self.finish_pack(abort=True)
+
+    def close(self):
+        self._closed = True
+        return self.finish_pack()
+
+
+# bup-gc assumes that it can disable all PackWriter activities
+# (bloom/midx/cache) via the constructor and close() arguments.
+
+
+class PackWriter:
+    """Write Git objects to pack files."""
+
+    def __init__(self, *, store, compression_level=None,
+                 max_pack_size=None, max_pack_objects=None):
+        self._store = store
+        if compression_level is None:
+            compression_level = 1
+        self.compression_level = compression_level
+        self.max_pack_size = max_pack_size or 1000 * 1000 * 1000
+        # cache memory usage is about 83 bytes per object
+        self.max_pack_objects = max_pack_objects if max_pack_objects \
+                                else max(1, self.max_pack_size // 5000)
+
+    def __enter__(self): return self
+    def __exit__(self, type, value, traceback): self.close()
+
+    def byte_count(self): return self._store.byte_count()
+    def object_count(self): return self._store.object_count()
 
     def _write(self, sha, type, content):
         if verbose:
             log('>')
         assert sha
-        size, crc = self._raw_write(_encode_packobj(type, content,
-                                                    self.compression_level),
-                                    sha=sha)
-        if self.outbytes >= self.max_pack_size \
-           or self.count >= self.max_pack_objects:
+        size, crc = \
+            self._store.write(_encode_packobj(type, content,
+                                              self.compression_level),
+                              sha=sha)
+        if self._store.byte_count() >= self.max_pack_size \
+           or self._store.object_count() >= self.max_pack_objects:
             self.breakpoint()
         return sha
 
-    def _require_objcache(self):
-        if self.objcache is None:
-            self.objcache = self.objcache_maker(self.repo_dir)
-        if self.objcache is None:
-            raise GitError(
-                    "PackWriter not opened or can't check exists w/o objcache")
-
     def exists(self, id, want_source=False):
         """Return non-empty if an object is found in the object cache."""
-        self._require_objcache()
-        return self.objcache.exists(id, want_source=want_source)
+        return self._store.objcache().exists(id, want_source=want_source)
 
     def just_write(self, sha, type, content):
         """Write an object to the pack file without checking for duplication."""
         self._write(sha, type, content)
         # If nothing else, gc doesn't have/want an objcache
-        if self.objcache is not None:
-            self.objcache.add(sha)
+        cache = self._store.objcache(require=False)
+        if cache is not None:
+            cache.add(sha)
 
     def maybe_write(self, type, content):
         """Write an object to the pack file if not present and return its id."""
         sha = calc_hash(type, content)
         if not self.exists(sha):
-            self._require_objcache()
-            self.just_write(sha, type, content)
+            self._write(sha, type, content)
+            self._store.objcache().add(sha)
         return sha
 
     def new_blob(self, blob):
@@ -978,71 +1043,17 @@ class PackWriter:
                                      msg)
         return self.maybe_write(b'commit', content)
 
-    def _end(self, abort=False):
-        # Ignores run_midx during abort
-        self.tmpdir, tmpdir = None, self.tmpdir
-        self.parentfd, pfd, = None, self.parentfd
-        self.file, f = None, self.file
-        self.idx, idx = None, self.idx
-        try:
-            with nullcontext_if_not(self.objcache), \
-                 finalized(pfd, lambda x: x is not None and os.close(x)), \
-                 nullcontext_if_not(f):
-                if abort or not f:
-                    return None
-
-                # update object count
-                f.seek(8)
-                cp = struct.pack('!i', self.count)
-                assert len(cp) == 4
-                f.write(cp)
-
-                # calculate the pack sha1sum
-                f.seek(0)
-                sum = Sha1()
-                for b in chunkyreader(f):
-                    sum.update(b)
-                packbin = sum.digest()
-                f.write(packbin)
-                f.flush()
-                fdatasync(f.fileno())
-                f.close()
-
-                idx.write(tmpdir + b'/idx', packbin)
-                nameprefix = os.path.join(self.repo_dir,
-                                          b'objects/pack/pack-' +  hexlify(packbin))
-                os.rename(tmpdir + b'/pack', nameprefix + b'.pack')
-                os.rename(tmpdir + b'/idx', nameprefix + b'.idx')
-                os.fsync(pfd)
-                if self.on_pack_finish:
-                    self.on_pack_finish(nameprefix)
-                if self.run_midx:
-                    auto_midx(os.path.join(self.repo_dir, b'objects/pack'))
-                return nameprefix
-        finally:
-            if tmpdir:
-                rmtree(tmpdir)
-            # Must be last -- some of the code above depends on it
-            self.objcache = None
-
     def abort(self):
         """Remove the pack file from disk."""
-        self.closed = True
-        self._end(abort=True)
+        self._store.abort()
 
     def breakpoint(self):
         """Clear byte and object counts and return the last processed id."""
-        id = self._end()
-        self.outbytes = self.count = 0
-        return id
+        return self._store.finish_pack()
 
     def close(self):
         """Close the pack file and move it to its definitive path."""
-        self.closed = True
-        return self._end()
-
-    def __del__(self):
-        assert self.closed
+        return self._store.close()
 
 
 class PackIdxV2Writer:

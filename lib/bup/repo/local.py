@@ -6,7 +6,7 @@ from functools import partial
 
 from bup import git, vfs
 from bup.config import ConfigError
-from bup.git import PackWriter
+from bup.git import LocalPackStore, PackWriter
 from bup.repo.base import RepoProtocol
 
 
@@ -78,13 +78,15 @@ class LocalRepo(RepoProtocol):
 
     def _ensure_packwriter(self):
         if not self._packwriter:
-            self._packwriter = PackWriter(repo_dir=self.repo_dir,
-                                          compression_level=self.compression_level,
-                                          max_pack_size=self.max_pack_size,
-                                          max_pack_objects=self.max_pack_objects,
-                                          objcache_maker=self.objcache_maker,
-                                          on_pack_finish=self._on_pack_finish,
-                                          run_midx=self.run_midx)
+            store = LocalPackStore(repo_dir=self.repo_dir,
+                                   objcache_maker=self.objcache_maker,
+                                   on_pack_finish=self._on_pack_finish,
+                                   run_midx=self.run_midx)
+            writer = PackWriter(store=store,
+                                compression_level=self.compression_level,
+                                max_pack_size=self.max_pack_size,
+                                max_pack_objects=self.max_pack_objects)
+            self._packwriter = writer
 
     def update_ref(self, refname, newval, oldval):
         self.finish_writing()

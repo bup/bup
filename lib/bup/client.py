@@ -5,6 +5,7 @@ import socket
 
 from bup import git, ssh, vfs, vint, protocol
 from bup.compat import pending_raise
+from bup.git import PackWriter
 from bup.helpers import (Conn, atomically_replaced_file, chunkyreader, debug1,
                          debug2, linereader, lines_until_sentinel,
                          mkdirp, nullcontext_if_not, progress, qprogress, DemuxConn)
@@ -303,9 +304,6 @@ class Client:
         with atomically_replaced_file(fn, 'wb') as f:
             self.send_index(name, f, lambda size: None)
 
-    def _make_objcache(self, repo_dir):
-        return git.PackIdxList(self.cachedir)
-
     def _suggest_packs(self):
         ob = self._busy
         if ob:
@@ -346,17 +344,17 @@ class Client:
         def _set_busy():
             self._busy = b'receive-objects-v2'
             self.conn.write(b'receive-objects-v2\n')
-        objcache_maker = objcache_maker or self._make_objcache
-        return PackWriter_Remote(self.conn,
-                                 objcache_maker = objcache_maker,
-                                 suggest_packs = self._suggest_packs,
-                                 onopen = _set_busy,
-                                 onclose = self._not_busy,
-                                 ensure_busy = self.ensure_busy,
-                                 compression_level=compression_level,
-                                 max_pack_size=max_pack_size,
-                                 max_pack_objects=max_pack_objects,
-                                 run_midx=run_midx)
+        store = RemotePackStore(self.conn,
+                                cache=self.cachedir,
+                                suggest_packs=self._suggest_packs,
+                                onopen=_set_busy,
+                                onclose=self._not_busy,
+                                ensure_busy=self.ensure_busy,
+                                run_midx=run_midx)
+        return PackWriter(store=store,
+                          compression_level=compression_level,
+                          max_pack_size=max_pack_size,
+                          max_pack_objects=max_pack_objects)
 
     def read_ref(self, refname):
         self._require_command(b'read-ref')
@@ -558,79 +556,48 @@ class Client:
         self._not_busy()
         return val
 
-# FIXME: disentangle this (stop inheriting) from PackWriter
-class PackWriter_Remote(git.PackWriter):
 
-    def __new__(cls, *args, **kwargs):
-        result = super().__new__(cls)
-        result.remote_closed = True  # supports __del__
-        return result
-
-    def __init__(self, conn, objcache_maker, suggest_packs,
-                 onopen, onclose,
-                 ensure_busy,
-                 compression_level=None,
-                 max_pack_size=None,
-                 max_pack_objects=None,
-                 run_midx=True):
-        git.PackWriter.__init__(self,
-                                objcache_maker=objcache_maker,
-                                compression_level=compression_level,
-                                max_pack_size=max_pack_size,
-                                max_pack_objects=max_pack_objects,
-                                run_midx=run_midx)
-        self.remote_closed = False
-        self.file = conn
-        self.filename = b'remote socket'
-        self.suggest_packs = suggest_packs
-        self.onopen = onopen
-        self.onclose = onclose
-        self.ensure_busy = ensure_busy
-        self._packopen = False
+class RemotePackStore:
+    def __init__(self, conn, *, cache, suggest_packs, onopen, onclose,
+                 ensure_busy, run_midx=True):
+        self._closed = False
         self._bwcount = 0
         self._bwtime = time.time()
+        self._byte_count = 0
+        self._cache = cache
+        self._conn = conn
+        self._ensure_busy = ensure_busy
+        self._obj_count = 0
+        self._objcache = None
+        self._onclose = onclose
+        self._onopen = onopen
+        self._packopen = False
+        self._suggest_packs = suggest_packs
 
-    # __enter__ and __exit__ are inherited
+    def __del__(self): assert self._closed
+
+    def byte_count(self): return self._byte_count
+    def object_count(self): return self._obj_count
+
+    def objcache(self, *, require=True):
+        if self._objcache is not None:
+            return self._objcache
+        if not require:
+            return None
+        self._objcache = git.PackIdxList(self._cache)
+        assert self._objcache is not None
+        return self._objcache
 
     def _open(self):
         if not self._packopen:
-            self.onopen()
+            self._onopen()
             self._packopen = True
 
-    def _end(self):
-        # Called by other PackWriter methods like breakpoint().
-        # Must not close the connection (self.file)
-        self.objcache, objcache = None, self.objcache
-        with nullcontext_if_not(objcache):
-            if not (self._packopen and self.file):
-                return None
-            self.file.write(b'\0\0\0\0')
-            self._packopen = False
-            self.onclose() # Unbusy
-            if objcache is not None:
-                objcache.close()
-            return self.suggest_packs() # Returns last idx received
-
-    def close(self):
-        # Called by inherited __exit__
-        self.remote_closed = True
-        id = self._end()
-        self.file = None
-        super().close()
-        return id
-
-    def __del__(self):
-        assert self.remote_closed
-        super().__del__()
-
-    def abort(self):
-        raise ClientError("don't know how to abort remote pack writing")
-
-    def _raw_write(self, datalist, sha):
-        assert(self.file)
+    def write(self, datalist, sha):
+        assert(self._conn)
         if not self._packopen:
             self._open()
-        self.ensure_busy()
+        self._ensure_busy()
         data = b''.join(datalist)
         assert(data)
         assert(sha)
@@ -640,16 +607,40 @@ class PackWriter_Remote(git.PackWriter):
                            struct.pack('!I', crc),
                            data))
         try:
-            (self._bwcount, self._bwtime) = _raw_write_bwlimit(
-                    self.file, outbuf, self._bwcount, self._bwtime)
+            self._bwcount, self._bwtime = \
+                _raw_write_bwlimit(self._conn, outbuf, self._bwcount, self._bwtime)
         except IOError as e:
             raise ClientError(e) from e
-        self.outbytes += len(data)
-        self.count += 1
+        self._byte_count += len(data)
+        self._obj_count += 1
 
-        if self.file.has_input():
-            self.objcache.close_temps()
-            self.suggest_packs()
-            self.objcache.refresh()
+        if self._conn.has_input():
+            self._objcache.close_temps()
+            self._suggest_packs()
+            self._objcache.refresh()
 
         return sha, crc
+
+    def finish_pack(self, *, abort=False):
+        if abort:
+            raise ClientError("don't know how to abort remote pack writing")
+        # Called by other PackWriter methods like breakpoint().
+        # Must not close the connection (self._conn)
+        self._objcache, objcache = None, self._objcache
+        with nullcontext_if_not(objcache):
+            if not (self._packopen and self._conn):
+                return None
+            self._conn.write(b'\0\0\0\0')
+            self._packopen = False
+            self._onclose() # Unbusy
+            if objcache is not None:
+                objcache.close()
+            return self._suggest_packs() # Returns last idx received
+
+    def abort(self): self.finish_pack(abort=True)
+
+    def close(self):
+        self._closed = True
+        oid = self.finish_pack()
+        self._conn = None
+        return oid

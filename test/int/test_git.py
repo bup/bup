@@ -28,6 +28,10 @@ def exo(*cmd):
     return readpipe(cmd)
 
 
+def local_writer():
+    return git.PackWriter(store=git.LocalPackStore())
+
+
 def test_git_version_detection():
     # Test version types from git's tag history
     # reset in case a previous test in this process set it
@@ -120,12 +124,12 @@ def test_packs(tmpdir):
     git.init_repo(bupdir)
     git.verbose = 1
 
-    with git.PackWriter() as w:
+    with local_writer() as w:
         w.new_blob(os.urandom(100))
         w.new_blob(os.urandom(100))
         w.abort()
 
-    with git.PackWriter() as w:
+    with local_writer() as w:
         hashes = []
         nobj = 1000
         for i in range(nobj):
@@ -166,7 +170,7 @@ def test_pack_name_lookup(tmpdir):
     hashes = []
 
     for start in range(0,28,2):
-        with git.PackWriter() as w:
+        with local_writer() as w:
             for i in range(start, start+2):
                 hashes.append(w.new_blob(b'%d' % i))
             log('\n')
@@ -388,7 +392,7 @@ def test_new_commit(tmpdir):
     git.init_repo(bupdir)
     git.verbose = 1
 
-    with git.PackWriter() as w:
+    with local_writer() as w:
         tree = os.urandom(20)
         parent = os.urandom(20)
         author_name = b'Author'

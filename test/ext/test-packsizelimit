@@ -15,7 +15,6 @@ WVPASS cd "$tmpdir"
 
 
 WVSTART 'no pack size limit'
-
 WVPASS bup init
 WVPASSEQ $(WVPASS find "$BUP_DIR"/objects/pack -name "*.pack" | wc -l) 0
 WVPASS bup random 50k | WVPASS bup split -n foo
@@ -23,7 +22,6 @@ WVPASSEQ 1 $(WVPASS find "$BUP_DIR"/objects/pack/*.pack | wc -l)
 
 
 WVSTART 'pack size limit'
-
 rm -rf "$BUP_DIR"
 WVPASS bup init
 WVPASS git config pack.packSizeLimit 10k
@@ -35,16 +33,36 @@ WVPASS test $(WVPASS find "$BUP_DIR"/objects/pack/*.pack | wc -l) -gt 2
 bup_dir2="$tmpdir/bup2"
 
 
-WVSTART 'pack size limit (-r)'
-
+WVSTART 'pack size limit (-r, remote setting)'
 rm -rf "$BUP_DIR" "$bup_dir2"
 WVPASS bup init
 WVPASS bup -d "$bup_dir2" init
+WVPASS git --git-dir "$bup_dir2" config pack.packSizeLimit 10k
+WVPASSEQ $(WVPASS find "$BUP_DIR"/objects/pack -name "*.pack" | wc -l) 0
+WVPASSEQ $(WVPASS find "$bup_dir2"/objects/pack -name "*.pack" | wc -l) 0
+WVPASS bup random 50k | WVPASS bup split -r "$bup_dir2" -n foo
+WVPASSEQ $(WVPASS find "$BUP_DIR"/objects/pack -name "*.pack" | wc -l) 0
+WVPASS test $(WVPASS find "$bup_dir2"/objects/pack/*.pack | wc -l) -gt 2
 
-# FIXME: This is wrong; destination repo should determine the limit.
+
+WVSTART 'pack size limit (-r, local setting)'
+rm -rf "$BUP_DIR" "$bup_dir2"
+WVPASS bup init
+WVPASS bup -d "$bup_dir2" init
 WVPASS git config pack.packSizeLimit 10k
-#WVPASS git --git-dir "$bup_dir2" config pack.packSizeLimit 10k
+WVPASSEQ $(WVPASS find "$BUP_DIR"/objects/pack -name "*.pack" | wc -l) 0
+WVPASSEQ $(WVPASS find "$bup_dir2"/objects/pack -name "*.pack" | wc -l) 0
+WVPASS bup random 50k | WVPASS bup split -r "$bup_dir2" -n foo
+WVPASSEQ $(WVPASS find "$BUP_DIR"/objects/pack -name "*.pack" | wc -l) 0
+WVPASS test $(WVPASS find "$bup_dir2"/objects/pack/*.pack | wc -l) -eq 1
 
+
+WVSTART 'pack size limit (-r, local and remote setting)'
+rm -rf "$BUP_DIR" "$bup_dir2"
+WVPASS bup init
+WVPASS bup -d "$bup_dir2" init
+WVPASS git config pack.packSizeLimit 1024k
+WVPASS git --git-dir "$bup_dir2" config pack.packSizeLimit 10k
 WVPASSEQ $(WVPASS find "$BUP_DIR"/objects/pack -name "*.pack" | wc -l) 0
 WVPASSEQ $(WVPASS find "$bup_dir2"/objects/pack -name "*.pack" | wc -l) 0
 WVPASS bup random 50k | WVPASS bup split -r "$bup_dir2" -n foo
@@ -53,7 +71,6 @@ WVPASS test $(WVPASS find "$bup_dir2"/objects/pack/*.pack | wc -l) -gt 2
 
 
 WVSTART 'pack size limit (on)'
-
 rm -rf "$BUP_DIR" "$bup_dir2"
 WVPASS bup init
 WVPASS bup -d "$bup_dir2" init
@@ -67,6 +84,7 @@ WVPASS bup -d "$bup_dir2" join foo > "$tmpdir/data-joined"
 WVPASS cmp -l "$tmpdir/data" "$tmpdir/data-joined"
 WVPASSEQ $(WVPASS find "$BUP_DIR"/objects/pack -name "*.pack" | wc -l) 0
 WVPASS test $(WVPASS find "$bup_dir2"/objects/pack/*.pack | wc -l) -gt 2
+
 
 WVPASS cd "$top"
 WVPASS rm -r "$tmpdir"

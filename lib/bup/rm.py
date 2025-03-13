@@ -4,7 +4,7 @@ from binascii import hexlify, unhexlify
 from bup import git, vfs
 from bup.client import ClientError
 from bup.compat import hexstr, pending_raise
-from bup.git import get_commit_items
+from bup.git import LocalPackStore, PackWriter, get_commit_items
 from bup.helpers import add_error, die_if_errors, log, saved_errors
 from bup.io import path_msg
 
@@ -109,7 +109,8 @@ def bup_rm(repo, paths, compression=6, verbosity=None):
         updated_refs[ref] = (branchitem.oid, None)
 
     if dead_saves:
-        writer = git.PackWriter(compression_level=compression)
+        writer = PackWriter(store=LocalPackStore(),
+                            compression_level=compression)
         try:
             for branch, saves in dead_saves.items():
                 assert(saves)

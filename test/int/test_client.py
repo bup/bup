@@ -22,10 +22,14 @@ s3 = randbytes(10000)
 IDX_PAT = b'/*.idx'
 
 
+def local_writer():
+    return git.PackWriter(store=git.LocalPackStore())
+
+
 def test_server_split_with_indexes(tmpdir):
     environ[b'BUP_DIR'] = bupdir = tmpdir
     git.init_repo(bupdir)
-    with git.PackWriter() as lw:
+    with local_writer() as lw:
         lw.new_blob(s1)
     with client.Client(bupdir, create=True) as c, \
          c.new_packwriter() as rw:
@@ -38,9 +42,9 @@ def test_multiple_suggestions(tmpdir):
     environ[b'BUP_DIR'] = bupdir = tmpdir
     git.init_repo(bupdir)
 
-    with git.PackWriter() as lw:
+    with local_writer() as lw:
         lw.new_blob(s1)
-    with git.PackWriter() as lw:
+    with local_writer() as lw:
         lw.new_blob(s2)
     assert len(glob.glob(git.repo(b'objects/pack'+IDX_PAT))) == 2
 
@@ -62,12 +66,12 @@ def test_multiple_suggestions(tmpdir):
         # of this file to be very small (e.g. 10 instead of 10k)
         c.conn.outp.flush()
 
-        # Then, check if we've already received the idx files.
-        # This may happen if we're preempted just after writing
-        # the data, then the server runs and suggests, and only
-        # then we continue in PackWriter_Remote::_raw_write()
-        # and check the has_input(), in that case we'll receive
-        # the idx still in the rw.new_blob() calls above.
+        # Then, check if we've already received the idx files.  This
+        # may happen if we're preempted just after writing the data,
+        # then the server runs and suggests, and only then we continue
+        # in RemotePackStore.write() and check the has_input(), in
+        # that case we'll receive the idx still in the rw.new_blob()
+        # calls above.
         #
         # In most cases though, that doesn't happen, and we'll
         # get past the has_input() check before the server has
@@ -85,8 +89,8 @@ def test_multiple_suggestions(tmpdir):
             n += 1
         assert len(glob.glob(c.cachedir+IDX_PAT)) == 2 or c.conn.has_input()
         rw.new_blob(s2)
-        assert rw.objcache.exists(s1sha)
-        assert rw.objcache.exists(s2sha)
+        assert rw.exists(s1sha)
+        assert rw.exists(s2sha)
         rw.new_blob(s3)
         assert len(glob.glob(c.cachedir+IDX_PAT)) == 2
     assert len(glob.glob(c.cachedir+IDX_PAT)) == 3
@@ -118,7 +122,7 @@ def test_server_deduplicate_writes(deduplicate_mode, tmpdir):
     else:
         assert False
 
-    with git.PackWriter() as lw:
+    with local_writer() as lw:
         lw.new_blob(s1)
 
     with client.Client(bupdir, create=True) as c, \
