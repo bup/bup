@@ -6,16 +6,19 @@ from functools import partial
 
 from bup import git, vfs
 from bup.config import ConfigError
+from bup.git import PackWriter
 from bup.repo.base import RepoProtocol
 
 
 class LocalRepo(RepoProtocol):
     def __init__(self, repo_dir=None, compression_level=None,
                  max_pack_size=None, max_pack_objects=None,
-                 server=False):
+                 server=False, objcache_maker=None, run_midx=None,
+                 on_pack_finish=None):
         self.closed = True
         self.compression_level = compression_level
         self.max_pack_objects = max_pack_objects
+        self._on_pack_finish = on_pack_finish
         self._packwriter = None
         self.repo_dir = realpath(repo_dir or git.guess_repo())
         self.write_symlink = self.write_data
@@ -25,11 +28,13 @@ class LocalRepo(RepoProtocol):
         deduplicate = self.config_get(b'bup.server.deduplicate-writes', opttype='bool')
         if server and deduplicate == False:
             # don't make midx files
+            assert objcache_maker is None
+            assert run_midx is None
             self.objcache_maker = lambda _: None
             self.run_midx = False
         else:
-            self.objcache_maker = None
-            self.run_midx = True
+            self.objcache_maker = objcache_maker
+            self.run_midx = True if run_midx is None else run_midx
         self.max_pack_size = max_pack_size \
             or self.config_get(b'pack.packSizeLimit', opttype='int')
         super()._validate_init()
@@ -73,12 +78,13 @@ class LocalRepo(RepoProtocol):
 
     def _ensure_packwriter(self):
         if not self._packwriter:
-            self._packwriter = git.PackWriter(repo_dir=self.repo_dir,
-                                              compression_level=self.compression_level,
-                                              max_pack_size=self.max_pack_size,
-                                              max_pack_objects=self.max_pack_objects,
-                                              objcache_maker=self.objcache_maker,
-                                              run_midx=self.run_midx)
+            self._packwriter = PackWriter(repo_dir=self.repo_dir,
+                                          compression_level=self.compression_level,
+                                          max_pack_size=self.max_pack_size,
+                                          max_pack_objects=self.max_pack_objects,
+                                          objcache_maker=self.objcache_maker,
+                                          on_pack_finish=self._on_pack_finish,
+                                          run_midx=self.run_midx)
 
     def update_ref(self, refname, newval, oldval):
         self.finish_writing()

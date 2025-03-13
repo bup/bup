@@ -11,6 +11,7 @@ from bup.git import MissingObject, walk_object
 from bup.helpers import \
     EXIT_FAILURE, log, note_error, progress, qprogress, reprogress
 from bup.io import path_msg
+from bup.repo import LocalRepo
 
 # This garbage collector uses a Bloom filter to track the live blobs
 # during the mark phase.  This means that the collection is
@@ -192,10 +193,10 @@ def sweep(live_objects, live_trees, existing_count, cat_pipe, threshold,
             cat_pipe.restart()
         stale_packs = []
 
-    writer = git.PackWriter(objcache_maker=lambda _: None,
-                            compression_level=compression,
-                            run_midx=False,
-                            on_pack_finish=remove_stale_packs)
+    repo = LocalRepo(compression_level=compression,
+                     objcache_maker=lambda _: None,
+                     on_pack_finish=remove_stale_packs,
+                     run_midx=False)
     try:
         # FIXME: sanity check .idx names vs .pack names?
         collect_count = 0
@@ -246,7 +247,7 @@ def sweep(live_objects, live_trees, existing_count, cat_pipe, threshold,
                     if sha in live_in_this_pack:
                         item_it = cat_pipe.get(hexlify(sha))
                         _, typ, _ = next(item_it)
-                        writer.just_write(sha, typ, b''.join(item_it))
+                        repo.just_write(sha, typ, b''.join(item_it))
                 assert idx_name.endswith(b'.idx')
                 stale_packs.append(idx_name[:-4])
 
@@ -261,12 +262,12 @@ def sweep(live_objects, live_trees, existing_count, cat_pipe, threshold,
 
     except BaseException as ex:
         with pending_raise(ex):
-            writer.abort()
+            repo.abort_writing()
     finally:
         # This will finally run midx.
-        writer.close()
+        repo.close()
 
-    remove_stale_packs(None)  # In case we didn't write to the writer.
+    remove_stale_packs(None)  # In case we didn't write to the repo.
 
     if verbosity:
         log('discarded %d%% of objects\n'
