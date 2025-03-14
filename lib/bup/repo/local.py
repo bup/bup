@@ -53,7 +53,6 @@ class LocalRepo(RepoProtocol):
         # FIXME: this is not ideal, we should somehow
         # be able to call the constructor instead?
         git.init_repo(repo_dir)
-        git.check_repo_or_die(repo_dir)
 
     def config_get(self, name, *, opttype=None):
         cfg = git.git_config_get(git.repo_config_file(self.repo_dir),
