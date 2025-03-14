@@ -7,7 +7,7 @@ from functools import partial
 from bup import git, vfs
 from bup.config import ConfigError
 from bup.git import LocalPackStore, PackWriter
-from bup.repo.base import RepoProtocol
+from bup.repo.base import _make_base, RepoProtocol
 
 
 class LocalRepo(RepoProtocol):
@@ -16,11 +16,11 @@ class LocalRepo(RepoProtocol):
                  server=False, objcache_maker=None, run_midx=None,
                  on_pack_finish=None):
         self.closed = True
-        self.compression_level = compression_level
-        self.max_pack_objects = max_pack_objects
+        self.repo_dir = realpath(repo_dir or git.guess_repo())
+        self._base = _make_base(self.config_get, compression_level,
+                                max_pack_size, max_pack_objects)
         self._on_pack_finish = on_pack_finish
         self._packwriter = None
-        self.repo_dir = realpath(repo_dir or git.guess_repo())
         self.write_symlink = self.write_data
         self.write_bupm = self.write_data
         self._cp = git.cp(self.repo_dir)
@@ -35,9 +35,6 @@ class LocalRepo(RepoProtocol):
         else:
             self.objcache_maker = objcache_maker
             self.run_midx = True if run_midx is None else run_midx
-        self.max_pack_size = max_pack_size \
-            or self.config_get(b'pack.packSizeLimit', opttype='int')
-        super()._validate_init()
         self.closed = False
 
     def close(self):
@@ -83,9 +80,9 @@ class LocalRepo(RepoProtocol):
                                    on_pack_finish=self._on_pack_finish,
                                    run_midx=self.run_midx)
             writer = PackWriter(store=store,
-                                compression_level=self.compression_level,
-                                max_pack_size=self.max_pack_size,
-                                max_pack_objects=self.max_pack_objects)
+                                compression_level=self._base.compression_level,
+                                max_pack_size=self._base.max_pack_size,
+                                max_pack_objects=self._base.max_pack_objects)
             self._packwriter = writer
 
     def update_ref(self, refname, newval, oldval):

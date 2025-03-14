@@ -1,17 +1,17 @@
 
 from bup import client
-from bup.repo.base import RepoProtocol
+from bup.repo.base import _make_base, RepoProtocol
 
 
 class RemoteRepo(RepoProtocol):
     def __init__(self, address, create=False, compression_level=None,
                  max_pack_size=None, max_pack_objects=None):
-        self.compression_level = compression_level
-        self.max_pack_objects = max_pack_objects
         self.closed = True # in case Client instantiation fails
         self.client = client.Client(address, create=create)
         self.closed = False
         self.config_get = self.client.config_get
+        self._base = _make_base(self.config_get, compression_level,
+                                max_pack_size, max_pack_objects)
         self.write_symlink = self.write_data
         self.write_bupm = self.write_data
         self.rev_list = self.client.rev_list
@@ -22,10 +22,6 @@ class RemoteRepo(RepoProtocol):
         self.refs = self.client.refs
         self.resolve = self.client.resolve
         self._packwriter = None
-        if max_pack_size is None: # prefer the destination limit, if any
-            max_pack_size = self.config_get(b'pack.packSizeLimit', opttype='int')
-        self.max_pack_size = max_pack_size
-        super()._validate_init()
 
     def close(self):
         if not self.closed:
@@ -46,9 +42,9 @@ class RemoteRepo(RepoProtocol):
     def _ensure_packwriter(self):
         if not self._packwriter:
             self._packwriter = self.client.new_packwriter(
-                                    compression_level=self.compression_level,
-                                    max_pack_size=self.max_pack_size,
-                                    max_pack_objects=self.max_pack_objects)
+                                    compression_level=self._base.compression_level,
+                                    max_pack_size=self._base.max_pack_size,
+                                    max_pack_objects=self._base.max_pack_objects)
 
     def is_remote(self): return True
 

@@ -4,7 +4,7 @@ from contextlib import ExitStack, nullcontext
 from os import environb as environ
 from os import fsdecode, fsencode
 from shlex import quote
-import os, sys, traceback
+import dataclasses, os, sys, traceback
 
 import bup_main
 
@@ -75,3 +75,11 @@ def get_argvb():
 def get_argv():
     "Return a new list containing the current process argv strings."
     return [x.decode(errors='surrogateescape') for x in bup_main.argv()]
+
+# Makes slots best effort
+if (ver.major, ver.minor) >= (3, 10):
+    dataclass = dataclasses.dataclass
+else:
+    def dataclass(*args, **kwargs):
+        del kwargs['slots']
+        return dataclasses.dataclass(*args, **kwargs)
