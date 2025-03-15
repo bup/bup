@@ -5,8 +5,8 @@ import math, os, stat, sys, time
 
 from bup import hashsplit, git, options, index, client, metadata
 from bup import hlinkdb
-from bup.compat import argv_bytes, environ
-from bup.config import ConfigError
+from bup.compat import argv_bytes
+from bup.config import ConfigError, derive_repo_addr
 from bup.hashsplit import \
     (GIT_MODE_TREE,
      GIT_MODE_FILE,
@@ -20,7 +20,7 @@ from bup.helpers import (add_error, grafted_path_components, handle_ctrl_c,
 from bup.io import byte_stream, path_msg
 from bup.pwdgrp import userfullname, username
 from bup.tree import Stack
-from bup.repo import LocalRepo, make_repo
+from bup.repo import make_repo
 
 
 optspec = """
@@ -80,6 +80,7 @@ def opts_from_cmdline(o, argv):
     if opt.strip and opt.strip_path:
         o.fatal("--strip is incompatible with --strip-path")
 
+    opt.repo = derive_repo_addr(remote=opt.remote, die=o.fatal)
     opt.sources = [argv_bytes(x) for x in extra]
 
     grafts = []
@@ -102,10 +103,6 @@ def opts_from_cmdline(o, argv):
                 grafts.append((resolve_parent(old_path),
                                resolve_parent(new_path)))
     opt.grafts = grafts
-
-    opt.is_reverse = environ.get(b'BUP_SERVER_REVERSE')
-    if opt.is_reverse and opt.remote:
-        o.fatal("don't use -r in reverse mode; it's automatic")
 
     if opt.name and not valid_save_name(opt.name):
         o.fatal("'%s' is not a valid branch name" % path_msg(opt.name))
@@ -428,18 +425,14 @@ def main(argv):
     client.bwlimit = opt.bwlimit
     git.check_repo_or_die()
 
-    try:
-        if opt.remote:
-            repo = make_repo(opt.remote,
-                             compression_level=opt.compress)
-        elif opt.is_reverse:
-            repo = make_repo(b'bup-rev://' + opt.is_reverse,
-                             compression_level=opt.compress)
-        else:
-            repo = LocalRepo(compression_level=opt.compress)
-    except client.ClientError as e:
-        log('error: %s' % e)
-        sys.exit(1)
+    if opt.repo.startswith(b'file://'):
+        repo = make_repo(opt.repo, compression_level=opt.compress)
+    else:
+        try:
+            repo = make_repo(opt.repo, compression_level=opt.compress)
+        except client.ClientError as e:
+            log('error: %s' % e)
+            sys.exit(1)
 
     # repo creation must be last nontrivial command in each if clause above
     with repo:

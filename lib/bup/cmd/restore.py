@@ -2,14 +2,15 @@
 from stat import S_ISDIR
 import copy, errno, os, re, stat, sys
 
-from bup import options, git, vfs
+from bup import options, vfs
 from bup._helpers import write_sparsely
 from bup.compat import argv_bytes, fsencode
+from bup.config import derive_repo_addr
 from bup.helpers import (add_error, chunkyreader, die_if_errors,
                          mkdirp, parse_rx_excludes, progress, qprogress,
                          should_rx_exclude_path)
 from bup.io import byte_stream
-from bup.repo import LocalRepo, make_repo
+from bup.repo import make_repo
 
 
 optspec = """
@@ -221,12 +222,10 @@ def main(argv):
     o = options.Options(optspec)
     opt, flags, extra = o.parse_bytes(argv[1:])
     verbosity = (opt.verbose or 0) if not opt.quiet else -1
-    if opt.remote:
-        opt.remote = argv_bytes(opt.remote)
     if opt.outdir:
         opt.outdir = argv_bytes(opt.outdir)
-
-    git.check_repo_or_die()
+    addr = derive_repo_addr(remote=argv_bytes(opt.remote) if opt.remote else None,
+                            die=o.fatal)
 
     if not extra:
         o.fatal('must specify at least one filename to restore')
@@ -241,7 +240,7 @@ def main(argv):
         mkdirp(opt.outdir)
         os.chdir(opt.outdir)
 
-    with make_repo(argv_bytes(opt.remote)) if opt.remote else LocalRepo() as repo:
+    with make_repo(addr) as repo:
         top = fsencode(os.getcwd())
         hardlinks = {}
         for path in [argv_bytes(x) for x in extra]:

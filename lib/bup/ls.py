@@ -8,9 +8,10 @@ import posixpath
 
 from bup import metadata, vfs, xstat
 from bup.compat import argv_bytes
+from bup.config import derive_repo_addr
 from bup.io import path_msg
 from bup.options import Options
-from bup.repo import LocalRepo, make_repo
+from bup.repo import make_repo
 from bup.helpers import columnate, istty1, log
 
 def item_hash(item, tree_for_commit):
@@ -76,7 +77,7 @@ n,numeric-ids list numeric IDs (user, group, etc.) rather than names
 class LsOpts:
     __slots__ = ['paths', 'long_listing', 'classification', 'show_hidden',
                  'hash', 'commit_hash', 'numeric_ids', 'human_readable',
-                 'directory', 'remote', 'l']
+                 'directory', 'repo', 'l']
 
 def opts_from_cmdline(args, onabort=None, pwd=b'/'):
     """Parse ls command line arguments and return a dictionary of ls
@@ -84,11 +85,8 @@ def opts_from_cmdline(args, onabort=None, pwd=b'/'):
     "paths", and "show_hidden".
 
     """
-    if onabort:
-        opt, flags, extra = Options(optspec, onabort=onabort).parse_bytes(args)
-    else:
-        opt, flags, extra = Options(optspec).parse_bytes(args)
-
+    o = Options(optspec, onabort=onabort)
+    opt, flags, extra = o.parse_bytes(args)
     opt.paths = [argv_bytes(x) for x in extra] or (pwd,)
     opt.long_listing = opt.l
     opt.classification = None
@@ -113,7 +111,8 @@ def opts_from_cmdline(args, onabort=None, pwd=b'/'):
     ret.numeric_ids = opt.numeric_ids
     ret.human_readable = opt.human_readable
     ret.directory = opt.directory
-    ret.remote = opt.remote
+    remote = argv_bytes(opt.remote) if opt.remote else None
+    ret.repo = derive_repo_addr(remote=remote, die=o.fatal)
     return ret
 
 def within_repo(repo, opt, out, pwd=b''):
@@ -210,6 +209,5 @@ def via_cmdline(args, out=None, onabort=None):
     """
     assert out
     opt = opts_from_cmdline(args, onabort=onabort)
-    with make_repo(argv_bytes(opt.remote)) if opt.remote \
-         else LocalRepo() as repo:
+    with make_repo(opt.repo) as repo:
         return within_repo(repo, opt, out)

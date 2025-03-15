@@ -5,12 +5,8 @@ from stat import S_ISDIR
 import os, sys, textwrap, time
 
 from bup import compat, git, client, vfs
-from bup.compat import (
-    argv_bytes,
-    bytes_from_byte,
-    environ,
-    hexstr
-)
+from bup.compat import argv_bytes, bytes_from_byte, hexstr
+from bup.config import derive_repo_addr
 from bup.git import MissingObject, get_cat_data, parse_commit, walk_object
 from bup.helpers import debug1, log, note_error, saved_errors
 from bup.helpers import hostname, tty_width, parse_num
@@ -610,24 +606,15 @@ def log_item(name, type, opt, tree=None, commit=None, tag=None):
         log('%s%s\n' % (path_msg(name), last))
 
 def main(argv):
-    is_reverse = environ.get(b'BUP_SERVER_REVERSE')
     opt = parse_args(argv)
     git.check_repo_or_die()
     if opt.source:
         opt.source = argv_bytes(opt.source)
     if opt.bwlimit:
         client.bwlimit = parse_num(opt.bwlimit)
-    if is_reverse and opt.remote:
-        misuse("don't use -r in reverse mode; it's automatic")
-    if is_reverse:
-        dest_repo = make_repo(b'bup-rev://' + is_reverse,
-                              compression_level=opt.compress)
-    elif opt.remote:
-        dest_repo = make_repo(opt.remote, compression_level=opt.compress)
-    else:
-        dest_repo = LocalRepo(compression_level=opt.compress)
 
-    with dest_repo as dest_repo:
+    with make_repo(derive_repo_addr(remote=opt.remote, die=misuse),
+                   compression_level=opt.compress) as dest_repo:
         with LocalRepo(repo_dir=opt.source) as src_repo:
             # Resolve and validate all sources and destinations,
             # implicit or explicit, and do it up-front, so we can

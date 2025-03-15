@@ -1,11 +1,12 @@
 
 from binascii import hexlify
 from functools import partial
+from os import environb as environ
 import os, sys, time
 
 from bup import compat, hashsplit, git, options, client
-from bup.compat import argv_bytes, environ
-from bup.config import ConfigError
+from bup.compat import argv_bytes
+from bup.config import ConfigError, derive_repo_addr
 from bup.hashsplit import \
     split_to_blob_or_tree, split_to_blobs, split_to_shalist
 from bup.helpers import \
@@ -18,7 +19,7 @@ from bup.helpers import \
      valid_save_name)
 from bup.io import byte_stream
 from bup.pwdgrp import userfullname, username
-from bup.repo import LocalRepo, make_repo
+from bup.repo import make_repo
 
 
 optspec = """
@@ -50,7 +51,7 @@ bwlimit=   maximum bytes/sec to transmit to server
 """
 
 
-def opts_from_cmdline(o, argv):
+def opts_from_cmdline(o, argv, reverse):
     opt, flags, extra = o.parse_bytes(argv[1:])
     opt.sources = extra
 
@@ -85,12 +86,9 @@ def opts_from_cmdline(o, argv):
     else:
         opt.date = time.time()
 
-    opt.is_reverse = environ.get(b'BUP_SERVER_REVERSE')
-    if opt.is_reverse:
-        if opt.remote:
-            o.fatal("don't use -r in reverse mode; it's automatic")
-        if not opt.sources or opt.git_ids:
-            o.fatal('"bup on ... split" does not support reading from standard input')
+    if reverse and (not opt.sources or opt.git_ids):
+        o.fatal('"bup on ... split" does not support reading from standard input')
+    opt.repo = derive_repo_addr(remote=opt.remote, die=o.fatal)
 
     if opt.name and not valid_save_name(opt.name):
         o.fatal("'%r' is not a valid branch name." % opt.name)
@@ -159,8 +157,9 @@ def split(opt, files, parent, out, split_cfg, *,
     return commit
 
 def main(argv):
+    reverse = environ.get(b'BUP_SERVER_REVERSE')
     opt_parser = options.Options(optspec)
-    opt = opts_from_cmdline(opt_parser, argv)
+    opt = opts_from_cmdline(opt_parser, argv, reverse)
     if opt.verbose >= 2:
         git.verbose = opt.verbose - 1
     if opt.fanout:
@@ -176,7 +175,7 @@ def main(argv):
     out = byte_stream(sys.stdout)
     stdin = byte_stream(sys.stdin)
 
-    remote_dest = opt.remote or opt.is_reverse
+    remote_dest = opt.remote or reverse
     writing = not (opt.noop or opt.copy)
 
     repo_checked = False
@@ -229,13 +228,7 @@ def main(argv):
         write_opts = {'compression_level': opt.compress,
                       'max_pack_size': opt.max_pack_size,
                       'max_pack_objects': opt.max_pack_objects}
-        if opt.remote:
-            ensure_repo_checked()
-            repo = make_repo(opt.remote, **write_opts)
-        elif opt.is_reverse:
-            ensure_repo_checked()
-            repo = make_repo(b'bup-rev://' + opt.is_reverse, **write_opts)
-        else:
+        if opt.repo.startswith(b'file://'):
             # A repo isn't required for --noop or --copy, but if we do
             # have one, we need to respect its bup.split.files, etc.
             if writing:
@@ -243,7 +236,10 @@ def main(argv):
                 have_local_repo = True
             else:
                 have_local_repo = git.establish_default_repo()
-            repo = LocalRepo(**write_opts) if have_local_repo else None
+            repo = make_repo(opt.repo, **write_opts) if have_local_repo else None
+        else:
+            ensure_repo_checked()
+            repo = make_repo(opt.repo, **write_opts)
     except client.ClientError as e:
         log('error: %s' % e)
         sys.exit(EXIT_FAILURE)
