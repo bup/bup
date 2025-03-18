@@ -2,10 +2,12 @@
 Connect to a remote host via SSH and execute a command on the host.
 """
 
-import re, subprocess
+from subprocess import PIPE, Popen
+import re
 
 from bup import path
 from bup.compat import environ
+from bup.helpers import debug1
 
 def connect(rhost, port, subcmd, stderr=None):
     """Connect to 'rhost' and execute the bup subcommand 'subcmd' on it."""
@@ -20,15 +22,12 @@ def connect(rhost, port, subcmd, stderr=None):
             tty_width = b'BUP_TTY_WIDTH=%d' % int(tty_width)
         else:
             tty_width = b''
-        cmd = b"""
-                   sh -c 'BUP_DEBUG=%d BUP_FORCE_TTY=%d %s bup %s'
-               """ % (buglvl, force_tty, tty_width, subcmd)
         argv = [b'ssh']
         if port:
             argv.extend((b'-p', port))
-        argv.extend((rhost, b'--', cmd.strip()))
-        #helpers.log('argv is: %r\n' % argv)
-    return subprocess.Popen(argv,
-                            stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                            stderr=stderr,
-                            start_new_session=True)
+        argv.extend((rhost, b'--',
+                     b"sh -c 'BUP_DEBUG=%d BUP_FORCE_TTY=%d %s bup %s'"
+                     % (buglvl, force_tty, tty_width, subcmd)))
+        debug1(f'ssh: {argv!r}\n')
+    return Popen(argv, stdin=PIPE, stdout=PIPE, stderr=stderr,
+                 start_new_session=True)
