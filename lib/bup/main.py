@@ -5,30 +5,23 @@ if bup_main.env_pythonpath:
 else:
     del os.environ['PYTHONPATH']
 
-from contextlib import ExitStack
 from importlib import import_module
 from pkgutil import iter_modules
-from subprocess import PIPE
-from threading import Thread
 from traceback import print_exception
-import re, select, signal, subprocess
 
 from bup import compat, path, helpers
 from bup.compat import (
     environ,
     fsdecode
 )
-from bup.helpers import (
-    EXIT_FAILURE,
-    columnate,
-    die_if_errors,
-    finalized,
-    handle_ctrl_c,
-    log,
-    tty_width
-)
 from bup.git import close_catpipes
-from bup.io import byte_stream, path_msg
+from bup.helpers import \
+    (EXIT_FAILURE,
+     columnate,
+     die_if_errors,
+     handle_ctrl_c,
+     log)
+from bup.io import path_msg
 from bup.options import _tty_width
 import bup.cmd
 
@@ -190,189 +183,27 @@ if not cmd_module:
     if not os.path.exists(subcmd[0]):
         usage('error: unknown command "%s"' % path_msg(subcmd_name))
 
-already_fixed = int(environ.get(b'BUP_FORCE_TTY', 0))
-if subcmd_name in (b'mux', b'ftp', b'help', b'fuse'):
-    fix_stdout = False
-    fix_stderr = False
-else:
-    fix_stdout = not (already_fixed & 1) and os.isatty(1)
-    fix_stderr = not (already_fixed & 2) and os.isatty(2)
-
-if fix_stdout or fix_stderr:
-    _ttymask = (fix_stdout and 1 or 0) + (fix_stderr and 2 or 0)
-    environ[b'BUP_FORCE_TTY'] = b'%d' % _ttymask
-    environ[b'BUP_TTY_WIDTH'] = b'%d' % _tty_width()
-
-
-sep_rx = re.compile(br'([\r\n])')
-
-def print_clean_line(dest, content, width, sep=None):
-    """Write some or all of content, followed by sep, to the dest fd after
-    padding the content with enough spaces to fill the current
-    terminal width or truncating it to the terminal width if sep is a
-    carriage return."""
-    global sep_rx
-    assert sep in (b'\r', b'\n', None)
-    if not content:
-        if sep:
-            os.write(dest, sep)
-        return
-    for x in content:
-        assert not sep_rx.match(x)
-    content = b''.join(content)
-    if sep == b'\r' and len(content) > width:
-        content = content[:width]
-    out = []
-    out.append(content)
-    if len(content) < width:
-        out.append(b' ' * (width - len(content)))
-    if sep:
-        out.append(sep)
-    os.write(dest, b''.join(out))
-
-def filter_output(srcs, dests, control):
-    """Transfer data from file descriptors in srcs to the
-    corresponding file descriptors in dests via print_clean_line until
-    the control descriptor produces a 'q'.  At that point, assume all
-    the srcs are finished and return.
-
-    """
-    assert all(isinstance(x, int) for x in srcs)
-    assert all(isinstance(x, int) for x in dests)
-    assert len(srcs) == len(dests)
-    assert isinstance(control, int)
-    read_fds = [control, *srcs]
-    dest_for = dict(zip(srcs, dests))
-    pending = {}
-    try:
-        while True:
-            ready_fds, _, _ = select.select(read_fds, [], [])
-            width = tty_width()
-            for fd in ready_fds:
-                if fd == control:
-                    continue
-                buf = os.read(fd, 4096)
-                dest = dest_for[fd]
-                split = sep_rx.split(buf)
-                while len(split) > 1:
-                    content, sep = split[:2]
-                    split = split[2:]
-                    print_clean_line(dest,
-                                     pending.pop(fd, []) + [content],
-                                     width,
-                                     sep)
-                assert len(split) == 1
-                if split[0]:
-                    pending.setdefault(fd, []).extend(split)
-            if control in ready_fds:
-                buf = os.read(control, 1)
-                assert buf == b'q'
-                break
-    except BaseException as ex:
-        pending_ex = ex
-        # Try to finish each of the streams
-        try:
-            for fd, pending_items in pending.items():
-                dest = dest_for[fd]
-                width = tty_width()
-                try:
-                    print_clean_line(dest, pending_items, width)
-                except (EnvironmentError, EOFError) as ex:
-                    ex.__cause__ = pending_ex
-                    pending_ex = ex
-        finally:
-            raise pending_ex
-
-def import_and_run_main(module, args):
-    if not do_profile:
-        return module.main(args)
-    import cProfile
-    f = compile('module.main(args)', __file__, 'exec')
-    return cProfile.runctx(f, globals(), locals())
-
-
-def run_module_cmd(module, args):
-    if not (fix_stdout or fix_stderr):
-        return import_and_run_main(module, args)
-    # Interpose filter_output between all attempts to write to the
-    # stdout/stderr and the real stdout/stderr (e.g. the fds that
-    # connect directly to the terminal) via a thread that runs
-    # filter_output in a pipeline.
-    try:
-        with ExitStack() as after_join:
-            srcs = []
-            dests = []
-            def fix_stream(src):
-                src.flush()
-                pipe = os.pipe()  # monitored_by_filter, what_everyone_uses
-                after_join.enter_context(finalized(pipe[1], os.close))
-                real_fd = os.dup(src.fileno())
-                srcs.append(pipe[0])
-                dests.append(real_fd)
-                # Restore stream so that we won't lose output
-                restore_fd = finalized(lambda _: os.dup2(real_fd, src.fileno()))
-                os.dup2(pipe[1], src.fileno())
-                after_join.enter_context(restore_fd)
-            if fix_stdout: fix_stream(sys.stdout)
-            if fix_stderr: fix_stream(sys.stderr)
-            # From here until after_join unwinds enough to restore
-            # stderr, any output (e.g. log()) sent there could be lost
-            # if anything goes wrong with the filter thread.
-            ctrl_pipe = os.pipe()
-            filter_thread = \
-                Thread(name='output filter',
-                       target=lambda : filter_output(srcs, dests, ctrl_pipe[0]))
-            filter_thread.start()
-            try:
-                result = import_and_run_main(module, args)
-            finally:
-                os.write(ctrl_pipe[1], b'q')
-            filter_thread.join()
-    finally:
-        close_catpipes()
-    return result
-
-def run_filtered_cmd(args):
-    sys.stdout.flush()
-    sys.stderr.flush()
-    out = byte_stream(sys.stdout)
-    err = byte_stream(sys.stderr)
-    p = None
-    try:
-        p = subprocess.Popen(args,
-                             stdout=PIPE if fix_stdout else out,
-                             stderr=PIPE if fix_stderr else err,
-                             bufsize=4096, close_fds=True)
-        # Assume p will receive these signals and quit, which will
-        # then cause us to quit.
-        for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGQUIT):
-            signal.signal(sig, signal.SIG_IGN)
-
-        srcs = []
-        dests = []
-        if fix_stdout:
-            srcs.append(p.stdout.fileno())
-            dests.append(out.fileno())
-        if fix_stderr:
-            srcs.append(p.stderr.fileno())
-            dests.append(err.fileno())
-        filter_output(srcs, dests)
-        rc = p.wait()
-        if rc < 0:
-            rc = EXIT_FAILURE
-        return rc
-    except BaseException as ex:
-        if p and p.poll() == None:
-            os.kill(p.pid, signal.SIGTERM)
-            p.wait()
-        raise
-
 def run_subcmd(module, args):
+    # We may want to revisit these later, but for now, do what we've
+    # always done (also wrt older servers).
+    already_fixed = int(environ.get(b'BUP_FORCE_TTY', 0))
+    if (not already_fixed) and subcmd not in (b'mux', b'ftp', b'help', b'fuse'):
+        fix_stdout = not (already_fixed & 1) and os.isatty(1)
+        fix_stderr = not (already_fixed & 2) and os.isatty(2)
+        if fix_stdout or fix_stderr:
+            _ttymask = (fix_stdout and 1 or 0) + (fix_stderr and 2 or 0)
+            environ[b'BUP_FORCE_TTY'] = b'%d' % _ttymask
+            environ[b'BUP_TTY_WIDTH'] = b'%d' % _tty_width()
     if module:
-        return run_module_cmd(module, args)
+        try:
+            if not do_profile:
+                return module.main(args)
+            import cProfile
+            f = compile('module.main(args)', __file__, 'exec')
+            return cProfile.runctx(f, globals(), locals())
+        finally:
+            close_catpipes()
     args = (do_profile and [sys.executable, b'-m', b'cProfile'] or []) + args
-    if fix_stdout or fix_stderr:
-        return run_filtered_cmd(args)
     os.execvp(args[0], args)
     assert False, 'unreachable'  # pylint (e.g. 3.3.3)
     return None  # pylint (older, e.g. 2.2.2)

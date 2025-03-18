@@ -45,6 +45,15 @@ General
   layout, in general, has been changed (including trivial support for
   dark mode).
 
+* `bup` no longer tries to "filter" output when running
+  interactively. Previously it would try to prevent or at least
+  mitigate any intermingling of output (lines) from itself and
+  children (e.g. par2, git, etc.), for example with respect to
+  progress-style output relying on '\r' (carriage returns). The
+  previous attempts have been complex and fragile and it's not clear
+  they've been worth the cost. Our hope is to handle any issues that
+  still arise in some simpler way.
+
 Bugs
 ----
 
