@@ -26,7 +26,7 @@ class LocalRepo(RepoProtocol):
                                                         repo_dir=self.repo_dir))
         if server and self.dumb_server_mode:
             # don't make midx files in dumb server mode
-            self.objcache_maker = lambda : None
+            self.objcache_maker = lambda _: None
             self.run_midx = False
         else:
             self.objcache_maker = None
