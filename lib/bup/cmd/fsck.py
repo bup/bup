@@ -318,7 +318,7 @@ def main(argv):
         debug('fsck: checking %r (%s)\n'
               % (base, par2_ok and par2_status and 'par2' or 'git'))
         if not opt.verbose:
-            progress('fsck (%d/%d)\r' % (count, len(extra)))
+            progress('fsck (%d/%d)\r' % (count, len(pack_stems)))
 
         if not opt.jobs:
             assert par2_status != False
@@ -351,7 +351,7 @@ def main(argv):
             code = code or nc
             count += 1
         if not opt.verbose:
-            progress('fsck (%d/%d)\r' % (count, len(extra)))
+            progress('fsck (%d/%d)\r' % (count, len(pack_stems)))
     if istty2:
         debug('fsck done.           \n')
 
