@@ -39,7 +39,7 @@ def is_par2_parallel():
         with open(canary, 'wb') as f:
             f.write(b'canary\n')
         p = run((b'par2', b'create', b'-qq', b'-t1', canary),
-                stderr=PIPE, stdin=DEVNULL)
+                stdout=PIPE, stderr=PIPE, stdin=DEVNULL)
         parallel = p.returncode == 0
         if opt.verbose:
             err = p.stderr
@@ -50,6 +50,8 @@ def is_par2_parallel():
                 log('Assuming par2 supports parallel processing\n')
             else:
                 log('Assuming par2 does not support parallel processing\n')
+        if p.stdout.strip(): # currently produces b'\n'
+            log(f'Unexpected par2 create -qq output {p.stdout}\n')
         return parallel
     finally:
         rmtree(tmpdir)
