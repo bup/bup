@@ -11,7 +11,7 @@ class LocalRepo(RepoProtocol):
     def __init__(self, repo_dir=None, compression_level=None,
                  max_pack_size=None, max_pack_objects=None,
                  server=False):
-        self.closed =  False
+        self.closed = True
         self.compression_level = compression_level
         self.max_pack_size = max_pack_size
         self.max_pack_objects = max_pack_objects
@@ -32,6 +32,7 @@ class LocalRepo(RepoProtocol):
             self.objcache_maker = None
             self.run_midx = True
         super()._validate_init()
+        self.closed = False
 
     def close(self):
         if not self.closed:
