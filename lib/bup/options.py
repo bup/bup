@@ -126,9 +126,6 @@ def _intify(v):
 
 
 def _tty_width():
-    forced = os.environ.get('BUP_TTY_WIDTH')
-    if forced:
-        return int(forced)
     try:
         size = os.get_terminal_size(sys.stderr.fileno())
     except OSError:

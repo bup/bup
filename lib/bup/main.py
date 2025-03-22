@@ -23,7 +23,6 @@ from bup.helpers import \
      log,
      progress)
 from bup.io import path_msg
-from bup.options import _tty_width
 import bup.cmd
 
 def maybe_import_early(argv):
@@ -194,7 +193,6 @@ def run_subcmd(module, args):
         if fix_stdout or fix_stderr:
             _ttymask = (fix_stdout and 1 or 0) + (fix_stderr and 2 or 0)
             environ[b'BUP_FORCE_TTY'] = b'%d' % _ttymask
-            environ[b'BUP_TTY_WIDTH'] = b'%d' % _tty_width()
     if module:
         try:
             if not do_profile:
