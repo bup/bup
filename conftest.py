@@ -14,6 +14,7 @@ sys.path[:0] = ['lib']
 
 from bup import helpers
 from bup.compat import environ, fsencode
+from bup.helpers import temp_dir
 
 
 _bup_src_top = realpath(dirname(fsencode(__file__)))
@@ -57,10 +58,21 @@ def no_lingering_errors():
     fail_if_errors()
     helpers.clear_errors()
 
+# Assumes (of course) this file is at the top-level of the source tree
+_bup_test_dir = realpath(dirname(fsencode(__file__))) + b'/test'
+_bup_tmp = _bup_test_dir + b'/tmp'
+try:
+    os.makedirs(_bup_tmp)
+except OSError as e:
+    if e.errno != errno.EEXIST:
+        raise
+
 @pytest.fixture(autouse=True)
-def ephemeral_env_changes():
+def common_test_environment():
     orig_env = environ.copy()
-    yield None
+    with temp_dir(dir=_bup_tmp, prefix=b'home-') as home:
+        environ[b'HOME'] = home
+        yield None
     for k, orig_v in orig_env.items():
         v = environ.get(k)
         if v is not orig_v:
@@ -73,15 +85,6 @@ def ephemeral_env_changes():
             if k == b'TZ':
                 tzset()
     os.chdir(_bup_src_top)
-
-# Assumes (of course) this file is at the top-level of the source tree
-_bup_test_dir = realpath(dirname(fsencode(__file__))) + b'/test'
-_bup_tmp = _bup_test_dir + b'/tmp'
-try:
-    os.makedirs(_bup_tmp)
-except OSError as e:
-    if e.errno != errno.EEXIST:
-        raise
 
 _safe_path_rx = re.compile(br'[^a-zA-Z0-9_-]')
 

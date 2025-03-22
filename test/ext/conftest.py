@@ -1,10 +1,11 @@
 
-import os
+from os import environb as environ
 from pathlib import Path
 from subprocess import CalledProcessError
-import pytest, subprocess, sys
+import os, pytest, subprocess, sys
 
 from bup.compat import fsdecode
+from bup.helpers import temp_dir
 from bup.io import byte_stream
 
 # Handle all test-* files as wvtest protocol subprocesses
@@ -27,10 +28,14 @@ class BupSubprocTestRunner(pytest.Item):
 
     def runtest(self):
         cmd = str(self.fspath)
-        p = subprocess.Popen(cmd,
-                             stdout=subprocess.PIPE,
-                             stderr=subprocess.STDOUT)
-        out = p.communicate()[0]
+        with temp_dir(dir=b'test/tmp', prefix=b'bup-test-home-') as home:
+            env = environ.copy()
+            env[b'HOME'] = home
+            p = subprocess.Popen(cmd,
+                                 stdout=subprocess.PIPE,
+                                 stderr=subprocess.STDOUT,
+                                 env=env)
+            out = p.communicate()[0]
         sys.stdout.flush()
         byte_stream(sys.stdout).write(out)
         lines = out.splitlines()
