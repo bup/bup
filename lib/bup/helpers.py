@@ -217,6 +217,8 @@ def progress(s):
     """Calls log() if stderr is a TTY.  Does nothing otherwise."""
     global _last_progress
     if istty2:
+        if _last_progress.endswith('\r'):
+            log('\x1b[0K')
         log(s)
         _last_progress = s
 

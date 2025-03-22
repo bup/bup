@@ -20,7 +20,8 @@ from bup.helpers import \
      columnate,
      die_if_errors,
      handle_ctrl_c,
-     log)
+     log,
+     progress)
 from bup.io import path_msg
 from bup.options import _tty_width
 import bup.cmd
@@ -202,7 +203,12 @@ def run_subcmd(module, args):
             f = compile('module.main(args)', __file__, 'exec')
             return cProfile.runctx(f, globals(), locals())
         finally:
-            close_catpipes()
+            try:
+                # clear before exit so next process won't intermingle
+                progress('')
+            finally:
+                close_catpipes()
+    # FIXME: when would do_profile make sense here anymore?
     args = (do_profile and [sys.executable, b'-m', b'cProfile'] or []) + args
     os.execvp(args[0], args)
     assert False, 'unreachable'  # pylint (e.g. 3.3.3)
