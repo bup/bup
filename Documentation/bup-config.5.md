@@ -13,6 +13,27 @@ The following options may be set in the relevant `git` config
 
 # OPTIONS
 
+bup.repo.id
+:   When set, an identifier for the repository which should be unique
+    across all repositories encountered. Because it is currently used
+    in filesystem paths, it must consist of only the characters within
+    double-quotes here: "0123456789_-", "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+    and "abcdefghijklmnopqrstuvwxyz". Two repo-ids must also not
+    differ only in case ("something" vs "SOMETHING") unless all all
+    relevant filesystems are case sensitive.
+
+    `bup init` now adds a random identifier when it creates new
+    repositories or refreshes a existing repository that doesn't have
+    a `bup.repo.id`, so you can add one to repositories created before
+    this became the norm by re-running `bup init`. If you do set your
+    own identifier, consider including randomized content to help
+    ensure uniqueness.
+
+    Note: you should always change the identifier of a copied
+    repository (e.g. locally via `cp`(1) or across hosts via
+    `rsync`(1)) since duplicate identifiers can cause significant
+    performance problems, if nothing else.
+
 bup.server.deduplicate-writes (default `true`)
 :   When `true` `bup-server`(1) checks each incoming object against its
     local index, and if the object already exists, the server suggests

@@ -26,6 +26,7 @@ from bup.helpers import (EXIT_FAILURE,
                          fdatasync,
                          finalized,
                          log,
+                         make_repo_id,
                          merge_dict,
                          merge_iter,
                          mmap_read, mmap_readwrite,
@@ -1301,9 +1302,12 @@ def init_repo(path=None):
 
     # Always set the indexVersion so bup works with any git version
     if refresh:
+        if get_config(b'bup.repo.id') is None:
+            set_config(b'bup.repo.id', make_repo_id())
         if get_config(b'pack.indexVersion', opttype='int') != 2:
             set_config(b'pack.indexVersion', b'2')
-    else: # no config file, reestablish defaults (as git does)
+    else: # "no repo" (see above), reestablish defaults (as git does)
+        set_config(b'bup.repo.id', make_repo_id())
         set_config(b'core.logAllRefUpdates', b'true'), # enable the reflog
         set_config(b'pack.indexVersion', b'2')
 

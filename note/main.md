@@ -51,6 +51,11 @@ May require attention
 General
 -------
 
+* Repositories should now have a unique `bup.repo.id` set in the
+  config. `bup init` automatically adds one both during initial
+  creation, or when run again on an existing repository. See
+  `bup-config`(5) for more information.
+
 * `bup init DIRECTORY` is now supported, and places the repository in
   the given `DIRECTORY` which takes precedence over `-d` and
   `BUP_DIR`.

@@ -5,6 +5,7 @@ from contextlib import ExitStack
 from ctypes import sizeof, c_void_p
 from math import floor
 from os import environ
+from random import SystemRandom
 from subprocess import PIPE, Popen
 from tempfile import mkdtemp
 from shutil import rmtree
@@ -1229,3 +1230,9 @@ def period_as_secs(s):
                   b'w': 60 * 60 * 24 * 7,
                   b'm': 60 * 60 * 24 * 31,
                   b'y': 60 * 60 * 24 * 366}[scale]
+
+
+def make_repo_id(n=31):
+    rnd = SystemRandom()
+    chars = b'abcdefghijklmnopqrstuvwxyz0123456789'
+    return b''.join(rnd.choice(chars).to_bytes() for x in range(n))
