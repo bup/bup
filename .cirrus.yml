@@ -7,7 +7,7 @@ task:
     memory: 2
   script: |
     set -xe
-    dev/prep-for-debianish-build python3
+    dev/prep-for-debianish-build
     export LANG=C.UTF-8
     dev/system-info
     BUP_PYTHON_CONFIG=python3-config ./configure --with-pylint=yes
@@ -24,7 +24,7 @@ task:
     memory: 2
   script: |
     set -xe
-    dev/prep-for-debianish-build python3
+    dev/prep-for-debianish-build
     export LANG=C.UTF-8
     DEBIAN_FRONTEND=noninteractive apt-get -y install bup
     export BUP_TEST_OTHER_BUP="$(command -v bup)"
@@ -46,7 +46,7 @@ task:
     memory: 2
   script: |
     set -xe
-    dev/prep-for-debianish-build python3
+    dev/prep-for-debianish-build
     export LANG=C.UTF-8
     dev/system-info
     adduser --disabled-password --gecos '' bup
@@ -65,7 +65,7 @@ task:
     memory: 4
   script: |
     set -xe
-    dev/prep-for-freebsd-build python3
+    dev/prep-for-freebsd-build
     dev/system-info
     gmake -j6 check
   on_failure:
@@ -79,7 +79,7 @@ task:
     image: ghcr.io/cirruslabs/macos-runner:sonoma
   script: |
     set -xe
-    dev/prep-for-macos-build python3
+    dev/prep-for-macos-build
     brew install bup
     export BUP_TEST_OTHER_BUP="$(command -v bup)"
     "$BUP_TEST_OTHER_BUP" version

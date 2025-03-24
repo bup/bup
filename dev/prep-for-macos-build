@@ -4,10 +4,8 @@ set -exu
 
 usage()
 {
-    echo "Usage: prep-for-macos-build [python3]"
+    echo "Usage: prep-for-macos-build"
 }
-
-pyver="${1:-python3}"
 
 if ! command -v brew; then
     /usr/bin/env \
@@ -21,13 +19,5 @@ brew install make bash par2 readline rsync pkg-config md5sha1sum
 brew link --force readline
 # "brew unlink readline" will undo this hack
 
-case "$pyver" in
-    python3)
-        brew install python
-        python3 -m pip install --break-system-packages --user pytest pytest-xdist
-        ;;
-    *)
-        usage 1>&2
-        exit 2
-        ;;
-esac
+brew install python
+python3 -m pip install --break-system-packages --user pytest pytest-xdist

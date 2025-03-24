@@ -2,13 +2,11 @@
 
 set -euo pipefail
 
-usage() { echo "Usage: prep-for-debianish-build [python3 [pyxattr|xattr]]"; }
+usage() { echo "Usage: prep-for-debianish-build [pyxattr|xattr]"; }
 misuse() { usage 1>&2; exit 2; }
 
-pyver="${1:-python3}"
-xattr="${2:-pyxattr}"
+xattr="${1:-pyxattr}"
 
-test "$pyver" = python3 || misuse
 case "$xattr" in
     pyxattr|xattr) ;;
     *) misuse ;;

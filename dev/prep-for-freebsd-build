@@ -4,10 +4,8 @@ set -exu
 
 usage()
 {
-    echo "Usage: prep-for-freebsd-build [python3]"
+    echo "Usage: prep-for-freebsd-build"
 }
-
-pyver="${1:-python3}"
 
 # Install build deps
 export ASSUME_ALWAYS_YES=yes
@@ -18,14 +16,5 @@ pkg install rdiff-backup || true
 
 pkgs='gmake git bash rsync curl par2cmdline readline duplicity'
 pkgs="$pkgs rsnapshot hs-pandoc graphviz"
-
-case "$pyver" in
-    python3)
-        pkgs="$pkgs python311 py311-tornado py311-pytest py311-pytest-xdist"
-        pkg install $pkgs
-        ;;
-    *)
-        usage 1>&2
-        exit 2
-        ;;
-esac
+pkgs="$pkgs python311 py311-tornado py311-pytest py311-pytest-xdist"
+pkg install $pkgs
