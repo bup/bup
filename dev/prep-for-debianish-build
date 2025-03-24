@@ -17,6 +17,7 @@ debs=(acl
       attr
       dosfstools
       duplicity
+      curl
       gcc
       git
       graphviz
