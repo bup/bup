@@ -17,7 +17,6 @@ debs=(acl
       attr
       dosfstools
       duplicity
-      eatmydata
       gcc
       git
       graphviz
