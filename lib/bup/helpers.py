@@ -567,7 +567,7 @@ class BaseConn:
                 return None
             elif rl.startswith(b'error '):
                 #log('client: error: %s\n' % rl[6:])
-                return NotOk(rl[6:])
+                return NotOk(rl[6:].decode('utf-8', errors='surrogateescape'))
             else:
                 onempty(rl)
         raise Exception('server exited unexpectedly; see errors above')
