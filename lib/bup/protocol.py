@@ -294,7 +294,7 @@ class Server:
             msg = str(e)
             log(f'server: error: {msg}\n')
             self.conn.write(b'\0\0\0\0')
-            self.conn.error(msg.encode('ascii', errors='backslashreplace'))
+            self.conn.error(msg)
         else:
             self.conn.write(b'\0\0\0\0')
             self.conn.ok()
@@ -352,7 +352,7 @@ class Server:
             self.conn.write(b'\n')
             self.conn.ok()
         except git.GitError as e:
-            self.conn.error(str(e).encode('ascii', errors='backslashreplace'))
+            self.conn.error(str(e))
             raise
 
     @_command
