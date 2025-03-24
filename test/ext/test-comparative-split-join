@@ -112,6 +112,13 @@ test-split-join()
     WVPASS test "ref: refs/heads/main" = "$(< this-bup/HEAD)" \
            -o "ref: refs/heads/master" = "$(< this-bup/HEAD)"
     WVPASS rm {other,this}-bup/HEAD
+    # Exit should be 0 or 5 depending on whether that bup inits repo ids.
+    git config --file other-bup/config --unset bup.repo.id;
+    rc=$?
+    WVPASS test "$rc" = 0 -o "$rc" = 5
+    WVPASS git config --file this-bup/config --unset bup.repo.id
+    rc=$?
+    WVPASS test "$rc" = 0 -o "$rc" = 5
     WVPASS "$top/dev/compare-trees" --no-times other-bup/ this-bup/
 
     WVPASS cd "$orig_dir"
