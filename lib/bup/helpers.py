@@ -1237,4 +1237,4 @@ def period_as_secs(s):
 def make_repo_id(n=31):
     rnd = SystemRandom()
     chars = b'abcdefghijklmnopqrstuvwxyz0123456789'
-    return b''.join(rnd.choice(chars).to_bytes() for x in range(n))
+    return bytes(rnd.choice(chars) for x in range(n))
