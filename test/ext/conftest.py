@@ -28,7 +28,7 @@ class BupSubprocTestRunner(pytest.Item):
 
     def runtest(self):
         cmd = str(self.fspath)
-        with temp_dir(dir=b'test/tmp', prefix=b'bup-test-home-') as home:
+        with temp_dir(dir=os.path.abspath(b'test/tmp'), prefix=b'bup-test-home-') as home:
             env = environ.copy()
             env[b'HOME'] = home
             p = subprocess.Popen(cmd,
