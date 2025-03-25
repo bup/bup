@@ -10,6 +10,8 @@ from collections import namedtuple
 from contextlib import ExitStack
 from itertools import islice
 from shutil import rmtree
+from subprocess import run
+from sys import stderr
 
 from bup import _helpers, hashsplit, path, midx, bloom, xstat
 from bup.compat import (bytes_from_byte, bytes_from_uint,
@@ -1279,6 +1281,8 @@ def init_repo(path=None):
                        % path_msg(parent))
     if os.path.exists(d) and not os.path.isdir(os.path.join(d, b'.')):
         raise GitError('"%s" exists but is not a directory\n' % path_msg(d))
+    # This is how git detects existing repos
+    refresh = os.path.exists(os.path.join(d, b'HEAD'))
     p = subprocess.Popen([ b'git', b'--bare',
                            # arbitrary default branch name to suppress git msg.
                            b'-c', b'init.defaultBranch=main', b'init'],
@@ -1286,15 +1290,22 @@ def init_repo(path=None):
                          env=_gitenv(),
                          close_fds=True)
     _git_wait('git init', p)
-    # Force the index version configuration in order to ensure bup works
-    # regardless of the version of the installed Git binary.
-    p = subprocess.Popen([b'git', b'config', b'pack.indexVersion', '2'],
-                         stdout=sys.stderr, env=_gitenv(), close_fds=True)
-    _git_wait('git config', p)
-    # Enable the reflog
-    p = subprocess.Popen([b'git', b'config', b'core.logAllRefUpdates', b'true'],
-                         stdout=sys.stderr, env=_gitenv(), close_fds=True)
-    _git_wait('git config', p)
+
+    cfg = os.path.join(d, b'config')
+    def get_config(*arg, **kwargs):
+        return git_config_get(cfg, *arg, **kwargs)
+    def set_config(opt, val):
+        cp = run([b'git', b'config', opt, val], stdout=stderr, env=_gitenv())
+        if cp.returncode:
+            raise GitError(f'git config {opt} {val} exited with {cp.returncode}')
+
+    # Always set the indexVersion so bup works with any git version
+    if refresh:
+        if get_config(b'pack.indexVersion', opttype='int') != 2:
+            set_config(b'pack.indexVersion', b'2')
+    else: # no config file, reestablish defaults (as git does)
+        set_config(b'core.logAllRefUpdates', b'true'), # enable the reflog
+        set_config(b'pack.indexVersion', b'2')
 
 
 def establish_default_repo(path=None, *, must_exist=False):

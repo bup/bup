@@ -97,6 +97,9 @@ Bugs
   when they were directly related. Now it appends across all
   duplicates.
 
+* When run on an existing repository, `bup init` will now leave
+  changes to `core.logAllRefUpdates` alone.
+
 Build system
 ------------
 
