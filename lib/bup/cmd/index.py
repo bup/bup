@@ -9,7 +9,7 @@ from bup.hashsplit import GIT_MODE_FILE
 from bup.helpers import (add_error, handle_ctrl_c, log, parse_excludes, parse_rx_excludes,
                          progress, qprogress, saved_errors)
 from bup.io import byte_stream, path_msg
-from bup.path import default_fsindex, defaultrepo
+from bup.path import default_fsindex, defaultrepo, flat_fsindex
 
 
 class IterHelper:
@@ -54,19 +54,21 @@ def check_index(reader, verbose):
     log('check: passed.\n')
 
 
-def clear_index(indexfile, verbose):
-    indexfiles = [indexfile, indexfile + b'.meta', indexfile + b'.hlink']
-    for indexfile in indexfiles:
+def clear_index(fsindex, verbose):
+    def rm(path):
         try:
-            os.remove(indexfile)
+            os.remove(path)
             if verbose:
-                log('clear: removed %s\n' % path_msg(indexfile))
+                log('clear: removed %s\n' % path_msg(path))
         except OSError as e:
             if e.errno != errno.ENOENT:
                 raise
+    rm(fsindex.stat)
+    rm(fsindex.meta)
+    rm(fsindex.hlink)
 
 
-def update_index(top, excluded_paths, exclude_rxs, indexfile,
+def update_index(top, excluded_paths, exclude_rxs, fsindex,
                  check=False, check_device=True,
                  xdev=False, xdev_exceptions=frozenset(),
                  fake_valid=False, fake_invalid=False,
@@ -74,10 +76,10 @@ def update_index(top, excluded_paths, exclude_rxs, indexfile,
     # tmax must be epoch nanoseconds.
     tmax = (time.time() - 1) * 10**9
 
-    with index.MetaStoreWriter(indexfile + b'.meta') as msw, \
-         hlinkdb.HLinkDB(indexfile + b'.hlink') as hlinks, \
-         index.Writer(indexfile, msw, tmax) as wi, \
-         index.Reader(indexfile) as ri:
+    with index.MetaStoreWriter(fsindex.meta) as msw, \
+         hlinkdb.HLinkDB(fsindex.hlink) as hlinks, \
+         index.Writer(fsindex.stat, msw, tmax) as wi, \
+         index.Reader(fsindex.stat) as ri:
 
         rig = IterHelper(ri.iter(name=top))
 
@@ -188,7 +190,7 @@ def update_index(top, excluded_paths, exclude_rxs, indexfile,
                         check_index(ri, verbose)
                         log('check: before merging: newfile\n')
                         check_index(wr, verbose)
-                    with index.Writer(indexfile, msw, tmax) as mi:
+                    with index.Writer(fsindex.stat, msw, tmax) as mi:
                         for e in index.merge(ri, wr):
                             # FIXME: shouldn't we remove deleted entries
                             # eventually?  When?
@@ -254,16 +256,16 @@ def main(argv):
     if opt.verbose is None:
         opt.verbose = 0
 
-    indexfile = opt.indexfile or default_fsindex()
+    fsindex = flat_fsindex(opt.indexfile) if opt.indexfile else default_fsindex()
 
     if opt.check:
         log('check: starting initial check.\n')
-        with index.Reader(indexfile) as reader:
+        with index.Reader(fsindex.stat) as reader:
             check_index(reader, opt.verbose)
 
     if opt.clear:
         log('clear: clearing index.\n')
-        clear_index(indexfile, opt.verbose)
+        clear_index(fsindex, opt.verbose)
 
     sys.stdout.flush()
     out = byte_stream(sys.stdout)
@@ -276,7 +278,7 @@ def main(argv):
         exclude_rxs = parse_rx_excludes(flags, o.fatal)
         xexcept = index.unique_resolved_paths(extra)
         for rp, path in index.reduce_paths(extra):
-            update_index(rp, excluded_paths, exclude_rxs, indexfile,
+            update_index(rp, excluded_paths, exclude_rxs, fsindex,
                          check=opt.check, check_device=opt.check_device,
                          xdev=opt.xdev, xdev_exceptions=xexcept,
                          fake_valid=opt.fake_valid,
@@ -285,7 +287,7 @@ def main(argv):
 
     if opt['print'] or opt.status or opt.modified:
         extra = [argv_bytes(x) for x in extra]
-        with index.Reader(indexfile) as reader:
+        with index.Reader(fsindex.stat) as reader:
             for name, ent in reader.filter(extra or [b'']):
                 if (opt.modified
                     and (ent.is_valid() or ent.is_deleted() or not ent.mode)):
@@ -309,7 +311,7 @@ def main(argv):
 
     if opt.check and (opt['print'] or opt.status or opt.modified or opt.update):
         log('check: starting final check.\n')
-        with index.Reader(indexfile) as reader:
+        with index.Reader(fsindex.stat) as reader:
             check_index(reader, opt.verbose)
 
     if saved_errors:

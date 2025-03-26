@@ -19,7 +19,7 @@ from bup.helpers import (EXIT_FAILURE,
                          saved_errors, stripped_path_components,
                          valid_save_name)
 from bup.io import byte_stream, path_msg
-from bup.path import default_fsindex
+from bup.path import default_fsindex, flat_fsindex
 from bup.pwdgrp import userfullname, username
 from bup.tree import Stack
 from bup.repo import make_repo
@@ -453,18 +453,19 @@ def main(argv):
         else:
             refname = parent = None
 
-        indexfile = opt.indexfile or default_fsindex()
+        fsindex = flat_fsindex(opt.indexfile) if opt.indexfile \
+            else default_fsindex()
         try:
-            msr = index.MetaStoreReader(indexfile + b'.meta')
+            msr = index.MetaStoreReader(fsindex.meta)
         except IOError as ex:
             if ex.errno != ENOENT:
                 raise
             log('error: cannot access %r; have you run bup index?'
-                % path_msg(indexfile))
+                % path_msg(fsindex.meta))
             sys.exit(EXIT_FAILURE)
         with msr, \
-             hlinkdb.HLinkDB(indexfile + b'.hlink') as hlink_db, \
-             index.Reader(indexfile) as reader:
+             hlinkdb.HLinkDB(fsindex.hlink) as hlink_db, \
+             index.Reader(fsindex.stat) as reader:
             tree = save_tree(opt, reader, hlink_db, msr, repo, split_trees,
                              split_cfg)
         if opt.tree:

@@ -2,7 +2,7 @@
 from os import environb as environ
 import os
 
-from bup.compat import environ
+from bup.compat import dataclass, environ
 
 # Eventually, if we physically move the source tree cmd/ to lib/, then
 # we could use realpath here and save some stats...
@@ -48,5 +48,14 @@ def index_cache(identifier):
         return repo_cache
     return xdg
 
+@dataclass(slots=True)
+class FSIndexPaths:
+    stat: bytes
+    meta: bytes
+    hlink: bytes
+
+def flat_fsindex(stem):
+    return FSIndexPaths(stat=stem, meta=stem + b'.meta', hlink=stem + b'.hlink')
+
 def default_fsindex():
-    return os.path.join(defaultrepo(), b'bupindex')
+    return flat_fsindex(os.path.join(defaultrepo(), b'bupindex'))
