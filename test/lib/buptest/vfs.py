@@ -21,8 +21,6 @@ def tree_items(repo, oid):
     try:
         maybe_meta = lambda : Metadata.read(bupm) if bupm else None
         m = maybe_meta()
-        if m and m.size is None:
-            m.size = 0
         yield TreeDictValue(name=b'.', oid=oid, meta=m)
         tree_ents = vfs.ordered_tree_entries(tree_entries(tree_data), bupm=True)
         for name, mangled_name, kind, gitmode, sub_oid in tree_ents:

@@ -59,10 +59,11 @@ class BupFs(fuse.Fuse):
         if not item:
             return -errno.ENOENT
         if self.fake_metadata:
-            item = vfs.augment_item_meta(self.repo, item, include_size=True)
+            item = vfs.augment_item_meta(self.repo, item, include_size=True,
+                                         public=True)
         else:
             item = vfs.ensure_item_has_metadata(self.repo, item,
-                                                include_size=True)
+                                                include_size=True, public=True)
         meta = item.meta
         # FIXME: do we want/need to do anything more with nlink?
         st = fuse.Stat(st_mode=meta.mode, st_nlink=1, st_size=meta.size)
