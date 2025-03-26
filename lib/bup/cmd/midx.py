@@ -282,13 +282,15 @@ def main(argv):
     if opt.check and (not extra and not opt.auto):
         o.fatal("if using --check, you must provide filenames or -a")
 
-    git.check_repo_or_die()
-
     if opt.max_files < 0:
         opt.max_files = max_files()
     assert(opt.max_files >= 5)
 
-    path = opt.dir and argv_bytes(opt.dir) or git.repo(b'objects/pack')
+    if opt.dir:
+        path = argv_bytes(opt.dir)
+    else:
+        git.check_repo_or_die()
+        path = git.repo(b'objects/pack')
 
     extra = [argv_bytes(x) for x in extra]
 

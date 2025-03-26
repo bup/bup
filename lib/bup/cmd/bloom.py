@@ -27,10 +27,9 @@ c,check=   check given *.idx or *.midx file against the bloom filter
 
 
 def ruin_bloom(bloomfilename):
-    rbloomfilename = git.repo_rel(bloomfilename)
     if not os.path.exists(bloomfilename):
         log(path_msg(bloomfilename) + '\n')
-        add_error('bloom: %s not found to ruin\n' % path_msg(rbloomfilename))
+        add_error('bloom: %s not found to ruin\n' % path_msg(bloomfilename))
         return
     with bloom.ShaBloom(bloomfilename, readwrite=True, expected=1) as b:
         b.map[16 : 16 + 2**b.bits] = b'\0' * 2**b.bits
@@ -169,10 +168,12 @@ def main(argv):
     if opt.check:
         opt.check = argv_bytes(opt.check)
 
-    git.check_repo_or_die()
-
     output = argv_bytes(opt.output) if opt.output else None
-    path = opt.dir and argv_bytes(opt.dir) or git.repo(b'objects/pack')
+    if opt.dir:
+        path = argv_bytes(opt.dir)
+    else:
+        git.check_repo_or_die()
+        path = git.repo(b'objects/pack')
     debug1('bloom: scanning %s\n' % path_msg(path))
     outfilename = output or os.path.join(path, b'bup.bloom')
     if opt.check:
