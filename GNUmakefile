@@ -356,7 +356,11 @@ clean: Documentation/clean
 
 # legacy
 
-check-py3: check; .PHONY: check-py3
-long-test: long-check; .PHONY: long-test
-stupid: check; .PHONY: stupid
-test: check; .PHONY: test
+.PHONY: check-py3
+check-py3: check
+.PHONY: long-test
+long-test: long-check
+.PHONY: stupid
+stupid: check
+.PHONY: test
+test: check
