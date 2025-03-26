@@ -22,6 +22,8 @@ def main(argv):
     if len(extra) > 1:
         o.fatal('only the directory positional argument is allowed')
     if extra:
+        if opt.remote:
+            o.fatal('cannot initialize both local and remote repo')
         environ[b'BUP_DIR'] = abspath(argv_bytes(extra[0]))
     addr = derive_repo_addr(remote=opt.remote, die=o.fatal)
     try:
