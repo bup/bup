@@ -176,7 +176,8 @@ def _dir_contents(repo, resolution, params, param_info):
             yield item_info(b'..', parent_item, parent_item, b'..')
             continue
         mp = params.get('meta')
-        res_item = vfs.ensure_item_has_metadata(repo, item, include_size=mp)
+        res_item = vfs.ensure_item_has_metadata(repo, item, include_size=mp,
+                                                public=True)
         yield item_info(name, item, res_item, include_size=mp)
 
 
@@ -272,7 +273,8 @@ class BupRequestHandler(tornado.web.RequestHandler):
         """
         try:
             file_item = resolved[-1][1]
-            file_item = vfs.augment_item_meta(repo, file_item, include_size=True)
+            file_item = vfs.augment_item_meta(repo, file_item,
+                                              include_size=True, public=True)
 
             # Defer the set_header() calls until after we start
             # writing so we can still generate a 500 failure if

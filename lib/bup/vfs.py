@@ -357,8 +357,6 @@ def _read_dir_meta(bupm):
     if not m:
         return default_dir_mode
     assert m.mode is not None
-    if m.size is None:
-        m.size = 0
     return m
 
 def _treeish_tree_data(repo, oid):
@@ -425,6 +423,8 @@ def _compute_item_size(repo, item):
         if isinstance(item, FakeLink):
             return len(item.target)
         return len(_readlink(repo, item.oid))
+    if S_ISDIR(mode):
+        return None
     return 0
 
 def item_size(repo, item):
@@ -1095,20 +1095,27 @@ def try_resolve(repo, path, parent=None, want_meta=True):
         return follow
     return res
 
-def augment_item_meta(repo, item, include_size=False):
-    """Ensure item has a Metadata instance for item.meta.  If item.meta is
-    currently a mode, replace it with a compatible "fake" Metadata
-    instance.  If include_size is true, ensure item.meta.size is
-    correct, computing it if needed.  If item.meta is a Metadata
-    instance, this call may modify it in place or replace it.
+def augment_item_meta(repo, item, *, include_size=False, public=False):
+    """Ensure item has a Metadata instance for item.meta.  If
+    item.meta is currently a mode, replace it with a compatible "fake"
+    Metadata instance.  If include_size is true, ensure item.meta.size
+    is correct, computing it if needed.  If public is true, produce
+    metadata suitable for "public consumption", e.g. via
+    ls/fuse/web. This, for example, sets dir sizes to 0. If item.meta
+    is a Metadata instance, this call may modify it in place or
+    replace it.
 
     """
+    def maybe_public(mode, size):
+        if public and S_ISDIR(mode) and size is None:
+            return 0
+        return size
     # If we actually had parallelism, we'd need locking...
     assert repo
     m = item.meta
     if isinstance(m, Metadata):
         if include_size and m.size is None:
-            m.size = _compute_item_size(repo, item)
+            m.size = maybe_public(m.mode, _compute_item_size(repo, item))
             return item._replace(meta=m)
         return item
     # m is mode
@@ -1122,7 +1129,7 @@ def augment_item_meta(repo, item, include_size=False):
         meta.symlink_target = target
         meta.size = len(target)
     elif include_size:
-        meta.size = _compute_item_size(repo, item)
+        meta.size = maybe_public(m, _compute_item_size(repo, item))
     return item._replace(meta=meta)
 
 def fill_in_metadata_if_dir(repo, item):
@@ -1139,7 +1146,7 @@ def fill_in_metadata_if_dir(repo, item):
         item = items[0][1]
     return item
 
-def ensure_item_has_metadata(repo, item, include_size=False):
+def ensure_item_has_metadata(repo, item, *, include_size=False, public=False):
     """If item is a directory, attempt to find and add its metadata.  If
     the item still doesn't have a Metadata instance for item.meta,
     give it one via augment_item_meta().  May be useful for the output
@@ -1148,7 +1155,8 @@ def ensure_item_has_metadata(repo, item, include_size=False):
     """
     return augment_item_meta(repo,
                              fill_in_metadata_if_dir(repo, item),
-                             include_size=include_size)
+                             include_size=include_size,
+                             public=public)
 
 def join(repo, ref):
     """Generate a list of the content of all blobs that can be reached

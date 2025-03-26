@@ -165,10 +165,12 @@ def within_repo(repo, opt, out, pwd=b''):
                         continue
                     if opt.l:
                         sub_item = vfs.ensure_item_has_metadata(repo, sub_item,
-                                                                include_size=True)
+                                                                include_size=True,
+                                                                public=True)
                     elif want_meta:
                         sub_item = vfs.augment_item_meta(repo, sub_item,
-                                                         include_size=True)
+                                                         include_size=True,
+                                                         public=True)
                     line = item_line(sub_item, sub_name)
                     if not opt.long_listing and istty1:
                         pending.append(line)
@@ -178,7 +180,8 @@ def within_repo(repo, opt, out, pwd=b''):
             else:
                 if opt.long_listing:
                     leaf_item = vfs.augment_item_meta(repo, leaf_item,
-                                                      include_size=True)
+                                                      include_size=True,
+                                                      public=True)
                 line = item_line(leaf_item, os.path.normpath(path))
                 if not opt.long_listing and istty1:
                     pending.append(line)
