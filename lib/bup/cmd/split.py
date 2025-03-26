@@ -238,7 +238,6 @@ def main(argv):
                 have_local_repo = git.establish_default_repo()
             repo = make_repo(opt.repo, **write_opts) if have_local_repo else None
         else:
-            ensure_repo_checked()
             repo = make_repo(opt.repo, **write_opts)
     except client.ClientError as e:
         log('error: %s' % e)
