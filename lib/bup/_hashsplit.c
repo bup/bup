@@ -375,20 +375,26 @@ static PyObject *HashSplitter_iter(PyObject *self)
 static int bup_py_fadvise(int fd, off_t offset, off_t len, int advice)
 {
     const int rc = posix_fadvise(fd, offset, len, advice);
+    PyObject *py_err = NULL;
     switch (rc) {
     case 0:
-        return 1;
-    case EBADF:
     case ESPIPE:
-        PyErr_SetFromErrno(PyExc_IOError);
-        return 0;
+        return 1; // ignore
+    case EBADF:
+        py_err = PyExc_IOError;
+        break;
     case EINVAL:
-        PyErr_SetFromErrno(PyExc_ValueError);
-        return 0;
+        py_err = PyExc_ValueError;
+        break;
     default:
-        PyErr_SetFromErrno(PyExc_OSError);
-        return 0;
+        py_err = PyExc_OSError;
+        break;
     }
+    int errn = errno;
+    errno = rc;
+    PyErr_SetFromErrno(py_err);
+    errno = errn;
+    return 0;
 }
 
 static int HashSplitter_uncache(HashSplitter *self, int last)

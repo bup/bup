@@ -20,6 +20,8 @@ WVPASS bup split --noop <"$top/test/testfile1" >noop.tmp
 WVPASSEQ '' "$(<noop.tmp)"
 WVPASS bup split --noop -b <"$top/test/testfile1" >tags1n.tmp
 WVPASS bup split --noop -t <"$top/test/testfile2" >tags2tn.tmp
+# Check ESPIPE handling (must be > _hashsplit.c advise_chunk)
+WVPASS bup random 10m | WVPASS bup split --noop -t
 WVPASSEQ $(find "$BUP_DIR/objects/pack" -name '*.pack' | wc -l) 0
 
 WVSTART 'split --copy'
