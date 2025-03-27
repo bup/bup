@@ -7,13 +7,12 @@ else:
 
 from importlib import import_module
 from pkgutil import iter_modules
-from traceback import print_exception
 
 from bup import compat, path, helpers
-from bup.compat import (
-    environ,
-    fsdecode
-)
+from bup.compat import \
+    (environ,
+     fsdecode,
+     print_exception)
 from bup.git import close_catpipes
 from bup.helpers import \
     (EXIT_FAILURE,
