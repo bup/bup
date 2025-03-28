@@ -35,6 +35,8 @@ bup_try_c_code()
     return $rc
 }
 
+# Can not currently handle options that "printf %q" would change,
+# i.e. options with spaces in them, etc.
 bup_config_cflags=()
 
 bup-add-cflag-if-supported()
@@ -48,7 +50,7 @@ bup-add-cflag-if-supported()
            "int main(int argc, char**argv) { return 0; }" \
            "$opt";
     then
-        bup_config_cflags+="$opt"
+        bup_config_cflags+=($opt)
         TLOG ' (found)'
     else
         TLOG ' (not found)'
@@ -84,7 +86,8 @@ if ! AC_PROG_CC; then
 fi
 
 bup-add-cflag-if-supported -Wno-unused-command-line-argument
-
+bup-add-cflag-if-supported -fno-strict-aliasing
+bup-add-cflag-if-supported -fwrapv
 
 # Haven't seen a documented way to determine the python version via
 # python-config right now, so we'll defer version checking until
@@ -326,7 +329,7 @@ AC_SUB bup_have_libacl "$bup_have_libacl"
 AC_CC="$orig_ac_cc"
 LIBS="$orig_libs"
 
-AC_SUB bup_config_cflags "$bup_config_cflags"
+AC_SUB bup_config_cflags "${bup_config_cflags[*]}"
 
 AC_OUTPUT config.vars.prep
 

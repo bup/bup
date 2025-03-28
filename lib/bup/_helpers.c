@@ -139,7 +139,7 @@ static int write_all(int fd, const void *buf, const size_t count)
     size_t written = 0;
     while (written < count)
     {
-        const ssize_t rc = write(fd, buf + written, count - written);
+        const ssize_t rc = write(fd, (char *) buf + written, count - written);
         if (rc == -1)
             return -1;
         written += rc;
@@ -2079,6 +2079,8 @@ static struct PyModuleDef helpers_def = {
     NULL, // helpers_clear,
     NULL
 };
+
+extern PyObject *PyInit__helpers(void);
 
 PyMODINIT_FUNC PyInit__helpers(void)
 {

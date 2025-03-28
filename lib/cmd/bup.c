@@ -83,7 +83,7 @@ static struct PyModuleDef bup_main_module_def = {
     .m_methods = bup_main_methods
 };
 
-PyObject *
+static PyObject *
 PyInit_bup_main(void) {
     PyObject *mod =  PyModule_Create(&bup_main_module_def);
     if (!setup_module(mod))
@@ -129,7 +129,8 @@ setup_bup_main_module(void) {
 #  undef BUP_HAVE_POSIX_REALPATH
 #endif
 
-char *
+#if ! defined(__FreeBSD__)
+static char *
 bup_realpath(const char *pathname)
 {
 #ifdef BUP_HAVE_POSIX_REALPATH
@@ -144,6 +145,7 @@ bup_realpath(const char *pathname)
     return ret;
 #endif
 }
+#endif // not defined(__FreeBSD__)
 
 #if defined(__APPLE__) && defined(__MACH__)
 
