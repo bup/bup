@@ -570,7 +570,6 @@ class PackIdxList:
         _mpi_count += 1
         self.open = True
         self.dir = dir
-        self.also = set()
         self.packs = []
         self.do_bloom = False
         self.bloom = None
@@ -588,7 +587,6 @@ class PackIdxList:
             return
         _mpi_count -= 1
         assert _mpi_count == 0
-        self.also = None
         self.bloom, bloom = None, self.bloom
         self.packs, packs = None, self.packs
         self.open = False
@@ -619,8 +617,6 @@ class PackIdxList:
            index, otherwise None."""
         global _total_searches
         _total_searches += 1
-        if hash in self.also:
-            return True
         if self.do_bloom and self.bloom:
             if self.bloom.exists(hash):
                 self.do_bloom = False
@@ -769,10 +765,6 @@ class PackIdxList:
 
         debug1('PackIdxList: using %d index%s.\n'
             % (len(self.packs), len(self.packs)!=1 and 'es' or ''))
-
-    def add(self, hash):
-        """Insert an additional object in the list."""
-        self.also.add(hash)
 
 
 def open_idx(filename):
@@ -978,6 +970,7 @@ class PackWriter:
     def __init__(self, *, store, compression_level=None,
                  max_pack_size=None, max_pack_objects=None):
         self._store = store
+        self._pending_oids = set()
         if compression_level is None:
             compression_level = 1
         self.compression_level = compression_level
@@ -1005,24 +998,22 @@ class PackWriter:
             self.breakpoint()
         return sha
 
-    def exists(self, id, want_source=False):
+    def exists(self, oid, want_source=False):
         """Return non-empty if an object is found in the object cache."""
-        return self._store.objcache().exists(id, want_source=want_source)
+        return oid in self._pending_oids \
+            or self._store.objcache().exists(oid, want_source=want_source)
 
     def just_write(self, sha, type, content):
-        """Write an object to the pack file without checking for duplication."""
+        """Write an object to the pack file without deduplication."""
         self._write(sha, type, content)
-        # If nothing else, gc doesn't have/want an objcache
-        cache = self._store.objcache(require=False)
-        if cache is not None:
-            cache.add(sha)
+        self._pending_oids.add(sha)
 
     def maybe_write(self, type, content):
         """Write an object to the pack file if not present and return its id."""
         sha = calc_hash(type, content)
         if not self.exists(sha):
             self._write(sha, type, content)
-            self._store.objcache().add(sha)
+            self._pending_oids.add(sha)
         return sha
 
     def new_blob(self, blob):
