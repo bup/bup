@@ -464,73 +464,80 @@ static int HashSplitter_read(HashSplitter *self)
     assert(self->start <= self->end);
     assert(self->end <= self->bufsz);
 
-    Py_ssize_t len = 0;
+    Py_ssize_t len = 0, start_read = self->end;
     if (self->fd != -1) {
         /* this better be the common case ... */
-        Py_BEGIN_ALLOW_THREADS;
-        len = read(self->fd,
-                   PyBytes_AS_STRING(self->buf) + self->end,
-                   self->bufsz - self->end);
-        Py_END_ALLOW_THREADS;
+        do {
+            Py_BEGIN_ALLOW_THREADS;
+            len = read(self->fd,
+                       PyBytes_AS_STRING(self->buf) + self->end,
+                       self->bufsz - self->end);
+            Py_END_ALLOW_THREADS;
 
-        if (len < 0) {
-            PyErr_SetFromErrno(PyExc_IOError);
-            return -1;
-        }
+            if (len < 0) {
+                PyErr_SetFromErrno(PyExc_IOError);
+                return -1;
+            }
 
-        self->end += len;
+            self->end += len;
 
 #ifdef HASHSPLITTER_ADVISE
-        if (!INT_ADD_OK(self->read, len, &self->read)) {
-            PyErr_Format(PyExc_OverflowError, "%R mincore read count overflowed",
-                         self);
-            return -1;
-        }
-
-        assert(self->uncached <= self->read);
-        if (len == 0
-            && self->read > self->uncached
-            && self->read - self->uncached >= advise_chunk) {
-            if(HashSplitter_uncache(self, len == 0))
+            if (!INT_ADD_OK(self->read, len, &self->read)) {
+                PyErr_Format(PyExc_OverflowError, "%R mincore read count overflowed",
+                             self);
                 return -1;
-        }
+            }
+
+            assert(self->uncached <= self->read);
+            if (len == 0
+                && self->read > self->uncached
+                && self->read - self->uncached >= advise_chunk) {
+                if(HashSplitter_uncache(self, len == 0))
+                    return -1;
+            }
 #endif
+        } while (len /* not eof */ &&
+                 self->bufsz > self->end);
     } else {
-        assert(self->bufsz >= self->end);
-        assert(self->bufsz - self->end <= PY_SSIZE_T_MAX);
-        PyObject *r = PyObject_CallMethod(self->fobj, "read", "n",
-                                          self->bufsz - self->end);
-        if (!r)
-            return -1;
+        do {
+            assert(self->bufsz >= self->end);
+            assert(self->bufsz - self->end <= PY_SSIZE_T_MAX);
+            PyObject *r = PyObject_CallMethod(self->fobj, "read", "n",
+                                              self->bufsz - self->end);
+            if (!r)
+                return -1;
 
-        Py_buffer buf;
-        if (PyObject_GetBuffer(r, &buf, PyBUF_FULL_RO)) {
-            Py_DECREF(r);
-            return -1;
-        }
+            Py_buffer buf;
+            if (PyObject_GetBuffer(r, &buf, PyBUF_FULL_RO)) {
+                Py_DECREF(r);
+                return -1;
+            }
 
-        len = buf.len;
-        assert(len >= 0);
-        // see assumptions (Py_ssize_t <= size_t)
-        if ((size_t) len > self->bufsz - self->end) {
-            PyErr_Format(PyExc_ValueError, "read(%d) returned %zd bytes",
-                         self->bufsz - self->end, len);
+            len = buf.len;
+            assert(len >= 0);
+            // see assumptions (Py_ssize_t <= size_t)
+            if ((size_t) len > self->bufsz - self->end) {
+                PyErr_Format(PyExc_ValueError, "read(%d) returned %zd bytes",
+                             self->bufsz - self->end, len);
+                PyBuffer_Release(&buf);
+                Py_DECREF(r);
+                return -1;
+            }
+            if (len)
+                assert(!PyBuffer_ToContiguous(PyBytes_AS_STRING(self->buf) + self->end,
+                                              &buf, len, 'C'));
             PyBuffer_Release(&buf);
             Py_DECREF(r);
-            return -1;
-        }
-        if (len)
-            assert(!PyBuffer_ToContiguous(PyBytes_AS_STRING(self->buf) + self->end,
-                                          &buf, len, 'C'));
-        PyBuffer_Release(&buf);
-        Py_DECREF(r);
 
-        self->end += len;
+            self->end += len;
+        } while (len /* not eof */ &&
+                 self->bufsz > self->end);
     }
 
-    if (self->progress && len) {
+    if (self->progress && self->end - start_read) {
         PyObject *o = PyObject_CallFunction(self->progress, "ln",
-                                            self->filenum, len);
+                                            self->filenum,
+                                            self->end - start_read);
         if (o == NULL)
             return -1;
         Py_DECREF(o);
