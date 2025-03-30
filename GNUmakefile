@@ -16,6 +16,7 @@ ifeq (4,$(make_maj))
   endif
 endif
 
+.SUFFIXES:
 .DELETE_ON_ERROR:
 
 $(shell mkdir -p config/config.var && echo "$(MAKE)" > config/config.var/make)
@@ -40,7 +41,6 @@ generated_dependencies :=
 # See ./configure (sets bup_python_config, among other things) and
 # produces config.vars, the "configuration succeeded" state file.
 include config/config.vars
--include $(generated_dependencies)
 
 pf := set -o pipefail
 
@@ -61,12 +61,12 @@ endif
 DESTDIR ?=
 TARGET_ARCH ?=
 
-bup_shared_cflags := -O2 -Wall -Werror -Wformat=2 -MMD -MP
-bup_shared_cflags := -Wno-unknown-pragmas -Wsign-compare $(bup_shared_cflags)
-bup_shared_cflags := -D_FILE_OFFSET_BITS=64 $(bup_shared_cflags)
-bup_shared_cflags := $(bup_config_cflags) $(bup_shared_cflags)
+bup_common_cflags := $(bup_config_cflags)
+bup_common_cflags += -O2 -Wall -Werror -Wformat=2 -MMD -MP
+bup_common_cflags += -Wno-unknown-pragmas -Wsign-compare
+bup_common_cflags += -D_FILE_OFFSET_BITS=64
 
-bup_shared_ldflags :=
+bup_common_ldflags :=
 
 soext := .so
 ifeq ($(os),CYGWIN)
@@ -92,8 +92,9 @@ config/config.vars: configure config/test/*.c
 # _XOPEN_SOURCE version, i.e. -Werror crashes on a mismatch, so for
 # now, we're just going to let Python's version win.
 
-helpers_cflags = $(bup_python_cflags) $(bup_shared_cflags) -I$(CURDIR)/src
-helpers_ldflags := $(bup_python_ldflags) $(bup_shared_ldflags)
+helpers_cflags = $(bup_python_cflags) $(bup_common_cflags) -I$(CURDIR)/src
+helpers_ldflags := $(bup_python_ldflags) $(bup_common_ldflags)
+helpers_ldflags += $(bup_config_ldflags_so)
 
 ifneq ($(strip $(bup_readline_cflags)),)
   readline_cflags += $(bup_readline_cflags)
@@ -221,17 +222,25 @@ install: all
 	    $(INSTALL) -pm 0644 lib/bup/source_info.py $(dest_libdir)/bup/; \
 	fi
 
-embed_cflags = $(bup_python_cflags_embed) $(bup_shared_cflags) -I$(CURDIR)/src
-embed_ldflags := $(bup_python_ldflags_embed) $(bup_shared_ldflags)
+embed_cflags = -fPIE $(bup_python_cflags_embed) $(bup_common_cflags) -I$(CURDIR)/src
+embed_ldflags := -pie $(bup_python_ldflags_embed) $(bup_common_ldflags)
 
-cc_bin = $(CC) $(embed_cflags) -I src $(CPPFLAGS) $(CFLAGS) $^ \
-  $(embed_ldflags) $(LDFLAGS) -fPIE -o $@
+cc_bin = $(CC) $(embed_cflags) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
+ld_bin = $(CC) $(LDFLAGS) $^ -o $@ $(embed_ldflags)
 
-clean_paths += dev/python-proposed
-generated_dependencies += dev/python-proposed.d
-dev/python-proposed: dev/python.c src/bup/compat.c src/bup/io.c
-	rm -f dev/python
+# common files to build for the binaries
+src/bup/%.o: src/bup/%.c
 	$(cc_bin)
+clean_paths += src/bup/compat.o src/bup/io.o
+generated_dependencies += src/bup/compat.d src/bup/io.d
+
+clean_paths += dev/python-proposed dev/python-proposed.o
+generated_dependencies += dev/python-proposed.d
+dev/python-proposed.o: dev/python.c
+	$(cc_bin)
+dev/python-proposed: dev/python-proposed.o src/bup/compat.o src/bup/io.o
+	rm -f dev/python
+	$(ld_bin)
 
 clean_paths += dev/python
 dev/python: dev/python-proposed
@@ -240,26 +249,39 @@ dev/python: dev/python-proposed
 
 clean_paths += dev/bup-exec
 generated_dependencies += dev/bup-exec.d
-dev/bup-exec: bup_shared_cflags += -D BUP_DEV_BUP_EXEC=1
-dev/bup-exec: lib/cmd/bup.c src/bup/compat.c src/bup/io.c
+dev/bup-exec.o: bup_common_cflags += -D BUP_DEV_BUP_EXEC=1
+dev/bup-exec.o: lib/cmd/bup.c
 	$(cc_bin)
+dev/bup-exec: dev/bup-exec.o src/bup/compat.o src/bup/io.o
+	$(ld_bin)
 
 clean_paths += dev/bup-python
 generated_dependencies += dev/bup-python.d
-dev/bup-python: bup_shared_cflags += -D BUP_DEV_BUP_PYTHON=1
-dev/bup-python: lib/cmd/bup.c src/bup/compat.c src/bup/io.c
+dev/bup-python.o: bup_common_cflags += -D BUP_DEV_BUP_PYTHON=1
+dev/bup-python.o: lib/cmd/bup.c
 	$(cc_bin)
+dev/bup-python: dev/bup-python.o src/bup/compat.o src/bup/io.o
+	$(ld_bin)
 
 clean_paths += lib/cmd/bup
 generated_dependencies += lib/cmd/bup.d
-lib/cmd/bup: lib/cmd/bup.c src/bup/compat.c src/bup/io.c
+lib/cmd/bup.o: lib/cmd/bup.c
 	$(cc_bin)
+lib/cmd/bup: lib/cmd/bup.o src/bup/compat.o src/bup/io.o
+	$(ld_bin)
 
-clean_paths += lib/bup/_helpers$(soext)
-generated_dependencies += lib/bup/_helpers.d
-lib/bup/_helpers$(soext): lib/bup/_helpers.c src/bup/pyutil.c lib/bup/bupsplit.c lib/bup/_hashsplit.c
-	$(CC) $(helpers_cflags) $(CPPFLAGS) $(CFLAGS) $^ \
-	  $(helpers_ldflags) $(LDFLAGS) -o $@
+cc_helpers = $(CC) -fPIC $(helpers_cflags) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
+ld_helpers = $(CC) -fPIC $^ -o $@ $(helpers_ldflags) $(LDFLAGS)
+
+lib/bup/%.o: lib/bup/%.c
+	$(cc_helpers)
+src/bup/pyutil.o: src/bup/pyutil.c
+	$(cc_helpers)
+
+clean_paths += lib/bup/_helpers$(soext) lib/bup/_helpers.o
+generated_dependencies += lib/bup/_helpers.d src/bup/pyutil.d lib/bup/bupsplit.d lib/bup/_hashsplit.d
+lib/bup/_helpers$(soext): lib/bup/_helpers.o src/bup/pyutil.o lib/bup/bupsplit.o lib/bup/_hashsplit.o
+	$(ld_helpers)
 
 test/tmp:
 	mkdir test/tmp
@@ -353,6 +375,8 @@ clean: Documentation/clean
 	find . -name __pycache__ -exec rm -rf {} +
 	if test -e test/tmp; then dev/force-delete test/tmp; fi
 	dev/configure-sampledata --clean
+
+-include $(generated_dependencies)
 
 # legacy
 

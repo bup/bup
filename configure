@@ -211,16 +211,11 @@ else  # Earlier versions didn't support --embed
     bup_python_ldflags_embed=$("$bup_python_config" --ldflags)
 fi
 
-bup_python_cflags="$bup_python_cflags -fPIC"
-
+config_ldflags_so=()
 case "$OSTYPE" in
-    darwin*)
-        # For at least 10.3+ (2003+)
-        bup_python_ldflags="$bup_python_ldflags -bundle -undefined dynamic_lookup"
-        ;;
-    *)
-        bup_python_ldflags="$bup_python_ldflags -shared"
-        ;;
+    # For at least 10.3+ (2003+)
+    darwin*) config_ldflags_so=(-bundle -undefined dynamic_lookup) ;;
+    *) config_ldflags_so=(-shared) ;;
 esac
 
 bup_git="$(find-prog git '')"
@@ -444,6 +439,7 @@ LDFLAGS = ${LDFLAGS:-}
 bup_config_detritus=${outputs[@]} config/config.log
 
 bup_config_cflags = ${config_cflags[@]}
+bup_config_ldflags_so = ${config_ldflags_so[@]}
 
 bup_python_config = ${bup_python_config[@]}
 bup_python_cflags = ${bup_python_cflags[@]}
