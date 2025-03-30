@@ -320,11 +320,16 @@ long-check: check
 .PHONY: Documentation/all
 Documentation/all: $(man_roff) $(man_html)
 
-Documentation/substvars: $(bup_deps)
-	set -e; bup_ver=$$(./bup version); \
-	echo "s,%BUP_VERSION%,$$bup_ver,g" > $@;
-	set -e; bup_date=$$(./bup version --date); \
-	echo "s,%BUP_DATE%,$$bup_date,g" >> $@
+# Don't rebuild the docs unless the content changes, and don't
+# recompute the content unless it might have changed.
+Documentation/substvars.current: $(bup_deps)
+	(set -e; \
+	 bup_ver=$$(./bup version); \
+	 bup_date=$$(./bup version --date); \
+	 echo -e "s,%BUP_VERSION%,$$bup_ver,g\n" \
+	         "s,%BUP_DATE%,$$bup_date,g") > $@
+Documentation/substvars: Documentation/substvars.current
+	@cmp $@ $< || cp $< $@
 
 define render_page
   $(pf); sed -f Documentation/substvars $< \
@@ -338,7 +343,8 @@ Documentation/%.html: Documentation/%.md Documentation/substvars
 
 .PHONY: Documentation/clean
 Documentation/clean:
-	cd Documentation && rm -f *~ .*~ *.[0-9] *.html substvars
+	cd Documentation \
+	  && rm -f *~ .*~ *.[0-9] *.html substvars substvars.current
 
 # Note: this adds commits containing the current manpages in roff and
 # html format to the man and html branches respectively.  The version
