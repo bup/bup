@@ -88,5 +88,6 @@ with TemporaryDirectory(prefix='perforate-', dir=repo) as tmpdir:
             unlink(pack_related)
 
     new_oids = (x[0] for x in all_objects(tmprepo))
-    runc(('git', '--git-dir', tmprepo, 'pack-objects', f'{packdir}/pack'),
+    runc(('git', '--git-dir', tmprepo,
+          'pack-objects', '--window=0', '--depth=0', f'{packdir}/pack'),
          input=b'\n'.join(new_oids))
