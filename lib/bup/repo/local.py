@@ -13,8 +13,14 @@ from bup.repo.base import _make_base, RepoProtocol
 class LocalRepo(RepoProtocol):
     def __init__(self, repo_dir=None, compression_level=None,
                  max_pack_size=None, max_pack_objects=None,
-                 server=False, objcache_maker=None, run_midx=None,
+                 allow_duplicates=None, server=False, run_midx=None,
                  on_pack_finish=None):
+        """When allow_duplicates is false, (at some cost) avoid
+        writing duplicates of objects that already in the repository.
+
+        """
+        # allow_duplicates instead of deduplicate_writes so None can
+        # indicate unset without being conflated with False.
         self.closed = True
         self.repo_dir = realpath(repo_dir or git.guess_repo())
         self._base = _make_base(self.config_get, compression_level,
@@ -25,16 +31,26 @@ class LocalRepo(RepoProtocol):
         self.write_bupm = self.write_data
         self._cp = git.cp(self.repo_dir)
         self.rev_list = partial(git.rev_list, repo_dir=self.repo_dir)
-        deduplicate = self.config_get(b'bup.server.deduplicate-writes', opttype='bool')
-        if server and deduplicate == False:
+
+        if server:
+            # Ensure srv_dedup and allow_duplicates agree if server is true
+            srv_dedup = self.config_get(b'bup.server.deduplicate-writes', opttype='bool')
+            if srv_dedup is not None and allow_duplicates is not None \
+               and bool(srv_dedup) == bool(allow_duplicates):
+                raise ValueError(f'conflicting allow_duplicates ({allow_duplicates!r})'
+                                 f' and bup.server.deduplicate-writes ({srv_dedup!r})')
+        if server and srv_dedup == False:
+            assert not allow_duplicates
             # don't make midx files
-            assert objcache_maker is None
             assert run_midx is None
-            self.objcache_maker = lambda _: None
             self.run_midx = False
-        else:
-            self.objcache_maker = objcache_maker
+            self._deduplicate_writes = False
+        else: # srv_dedup is true or unset
             self.run_midx = True if run_midx is None else run_midx
+            if allow_duplicates:
+                self._deduplicate_writes = False
+            else:
+                self._deduplicate_writes = True
         self.closed = False
 
     def close(self):
@@ -75,7 +91,6 @@ class LocalRepo(RepoProtocol):
     def _ensure_packwriter(self):
         if not self._packwriter:
             store = LocalPackStore(repo_dir=self.repo_dir,
-                                   objcache_maker=self.objcache_maker,
                                    on_pack_finish=self._on_pack_finish,
                                    run_midx=self.run_midx)
             writer = PackWriter(store=store,

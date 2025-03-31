@@ -194,7 +194,7 @@ def sweep(live_objects, live_trees, existing_count, cat_pipe, threshold,
         stale_packs = []
 
     repo = LocalRepo(compression_level=compression,
-                     objcache_maker=lambda _: None,
+                     allow_duplicates=True,
                      on_pack_finish=remove_stale_packs,
                      run_midx=False)
     try:

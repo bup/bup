@@ -837,14 +837,17 @@ def create_commit_blob(tree, parent,
 
 class LocalPackStore():
 
-    def __init__(self, *, objcache_maker=None, on_pack_finish=None,
+    def __init__(self, *, allow_duplicates=False, on_pack_finish=None,
                  repo_dir=None, run_midx=True):
+        """When allow_duplicates is false, (at some cost) avoid
+        writing duplicates of objects that already in the repository.
+
+        """
         self._closed = False
         self._byte_count = 0
         self._file = None
         self._idx = None
-        self._make_objcache = objcache_maker \
-            or (lambda: PackIdxList(repo(b'objects/pack', repo_dir=repo_dir)))
+        self._deduplicate_writes = not allow_duplicates
         self._obj_count = 0
         self._objcache = None
         self._on_pack_finish = on_pack_finish
@@ -858,14 +861,17 @@ class LocalPackStore():
     def byte_count(self): return self._byte_count
     def object_count(self): return self._obj_count
 
-    def objcache(self, *, require=True):
-        if self._objcache is not None:
-            return self._objcache
-        if not require:
-            return None
-        self._objcache = self._make_objcache()
-        assert self._objcache is not None
-        return self._objcache
+
+    def exists(self, oid, want_source=False):
+        """Return a true value if the oid is found in the object
+        cache. When want_source is true, return the source if
+        available.
+
+        """
+        if self._objcache is None:
+            self._objcache = \
+                PackIdxList(repo(b'objects/pack', repo_dir=self._repo_dir))
+        return self._objcache.exists(oid, want_source=want_source)
 
     def _open(self):
         if not self._file:
@@ -1001,7 +1007,7 @@ class PackWriter:
     def exists(self, oid, want_source=False):
         """Return non-empty if an object is found in the object cache."""
         return oid in self._pending_oids \
-            or self._store.objcache().exists(oid, want_source=want_source)
+            or self._store.exists(oid, want_source=want_source)
 
     def just_write(self, sha, type, content):
         """Write an object to the pack file without deduplication."""

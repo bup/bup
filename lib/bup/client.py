@@ -442,7 +442,7 @@ class Client:
 
     def new_packwriter(self, compression_level=None,
                        max_pack_size=None, max_pack_objects=None,
-                       objcache_maker=None, run_midx=True):
+                       run_midx=True):
         self._require_command(b'receive-objects-v2')
         self.check_busy()
         def set_busy():
@@ -624,14 +624,15 @@ class RemotePackStore:
     def byte_count(self): return self._byte_count
     def object_count(self): return self._obj_count
 
-    def objcache(self, *, require=True):
-        if self._objcache is not None:
-            return self._objcache
-        if not require:
-            return None
-        self._objcache = git.PackIdxList(self._cache)
-        assert self._objcache is not None
-        return self._objcache
+    def exists(self, oid, want_source=False):
+        """Return a true value if the oid is found in the object
+        cache. When want_source is true, return the source if
+        available.
+
+        """
+        if self._objcache is None:
+            self._objcache = git.PackIdxList(self._cache)
+        return self._objcache.exists(oid, want_source=want_source)
 
     def _open(self):
         if not self._packopen:
