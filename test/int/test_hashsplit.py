@@ -235,3 +235,25 @@ def test_hashsplitter_object():
     data = b''.join([b'%.10x\n' % x for x in range(10000)])
     WVPASSEQ([x for x in _splitbuf(data)],
              [x for x in _splitbufRHS(data)])
+
+def test_hashsplitter_short_read():
+    class DataObj:
+        """
+        An instance of this returns 16 chunks of 2048 bytes for a total
+        of 32k, the maximum blob size. This checks that the HashSplitter
+        correctly combines all those reads into a single blob rather
+        than creating a new chunk for each of the (short) reads.
+        """
+        def __init__(self):
+            self._count = 16
+        def read(self, size=None):
+            assert size is None or size >= 2048
+            if self._count > 0:
+                self._count -= 1
+                return b'x' * 2048
+            return b''
+    hs = HashSplitter([DataObj()], bits=13)
+    count = 0
+    for blob, lvl in hs:
+        count += 1
+    assert count == 1
