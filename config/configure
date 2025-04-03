@@ -88,20 +88,26 @@ find-prog()
 
 try-c-code()
 {
-    local code="$1" tmpdir rc cflags=''
-    if test -z "$code"; then
-        die "No code provided to test compile"
+    # Runs $CC will all the arguments before the first "--". All the
+    # arguments after the first "--" are passed to echo -e to produce
+    # the code to compile. For now -Wall -Werror are always included.
+    local boundary='' opts=()
+    while test "$#" -gt 0; do
+        if test "$1" = '--'; then
+            shift
+            break
+        fi
+        opts+=("$1")
+        shift
+    done
+    if test "$#" -lt 1; then
+        die 'try-c-code: no code provided to test compile'
     fi
-    case "$#" in
-        1) ;;
-        2) cflags="$2" ;;
-        *) die "Invald call to try-c-code" "$@" ;;
-    esac
-    tmpdir="$(mktemp -d tmp/bup-try-c-compile-XXXXXXX)"
-    echo "$code" > "$tmpdir/test.c"
-    rc=0
-    "$CC" -Wall -Werror $cflags -c -o "$tmpdir/test" "$tmpdir/test.c" || rc=$?
-    rm -r "$tmpdir"
+    local tmp rc=0
+    tmp="$(mktemp tmp/bup-try-c-compile-XXXXXXX.c)"
+    echo -e "$@" > "$tmp"
+    "$CC" -Wall -Werror "${opts[@]}" -c -o /dev/null "$tmp" || rc=$?
+    rm "$tmp"
     return "$rc"
 }
 
@@ -117,9 +123,7 @@ add-cflag-if-supported()
         die 'No option to check'
     fi
     infop "checking for %q %q support" "$CC" "$opt"
-    if try-c-code \
-           "int main(int argc, char**argv) { return 0; }" \
-           "$opt";
+    if try-c-code "$opt" -- "int main(int argc, char**argv) { return 0; }"
     then
         config_cflags+=($opt)
         info ' (found)'
@@ -229,12 +233,9 @@ find-header()
 {
     test $# -eq 1 || die "${FUNCNAME[0]}: invalid args" "$@"
     local header="$1" tmp
-    tmp="$(mktemp tmp/test-XXXXXX.c)"
-    cat > "$tmp" <<-EOF
-	#include <$header>
-	int main(int argc, char **argv) { return 0; }
-	EOF
-    "$CC" -Wall -Werror -c -o /dev/null "$tmp"
+    try-c-code -- \
+               "#include <$header>\n" \
+               "int main(int argc, char **argv) { return 0; }\n"
 }
 
 declare -A have_header # have_header[x/y.h]=1 when found
@@ -264,14 +265,25 @@ for header in "${check_headers[@]}"; do
         info " (found)"
     fi
 done
-    
+
 info -n 'checking for mincore function'
-if "$CC" -Wall -Werror -DBUF_TYPE=char -c -o /dev/null test/have-mincore.c; then
+mincore_test_code='
+#include <sys/mman.h>
+#include <unistd.h>
+
+int main(int argc, char **argv)
+{
+    BUF_TYPE buf[32];
+    const long sc_page_size = sysconf(_SC_PAGESIZE);
+    return mincore(main, sc_page_size, buf);
+}
+'
+if try-c-code -DBUF_TYPE=char -- "$mincore_test_code"; then
     info ' (found)'
     have_func[mincore]=1
     c_define[HAVE_MINCORE]=1
     c_define[BUP_MINCORE_BUF_TYPE]=char
-elif "$CC" -Wall -Werror -DBUF_TYPE='unsigned char' -c -o /dev/null test/have-mincore.c; then
+elif try-c-code -DBUF_TYPE='unsigned char' -- "$mincore_test_code"; then
     info ' (found)'
     have_func[mincore]=1
     c_define[HAVE_MINCORE]=1
@@ -281,7 +293,16 @@ else
 fi
 
 info -n 'checking for MINCORE_INCORE definition'
-if "$CC" -Wall -Werror -c -o /dev/null test/have-mincore-incore.c; then
+mincore_test_code='
+#include <sys/mman.h>
+#include <unistd.h>
+
+int main(int argc, char **argv)
+{
+    return (int) MINCORE_INCORE;
+}
+'
+if try-c-code -- "$mincore_test_code"; then
     info ' (found)'
     c_define[BUP_HAVE_MINCORE_INCORE]=1
 else
@@ -303,17 +324,17 @@ if pkg-config readline; then
     # It looks like it's not uncommon for pkg-config to provide a -I
     # that doesn't support the documentation's specified #include
     # <readline/readline.h>.  See what's really going on.
-    if try-c-code "#include <stdio.h> // required by unpatched readline
-#include <readline/readline.h>
-$readline_test_code" \
-                      "$bup_readline_cflags"
+    if try-c-code "$bup_readline_cflags" -- \
+                  '#include <stdio.h> // required by unpatched readline\n' \
+                  '#include <readline/readline.h>\n' \
+                  "$readline_test_code"
     then
         c_define[BUP_HAVE_READLINE]=1
         c_define[BUP_READLINE_INCLUDES_IN_SUBDIR]=1
-    elif try-c-code "#include <stdio.h> // required by unpatched readline
-#include <readline.h>
-$readline_test_code" \
-                        "$bup_readline_cflags"
+    elif try-c-code "$bup_readline_cflags" -- \
+                    '#include <stdio.h> // required by unpatched readline\n' \
+                    '#include <readline.h>\n' \
+                    "$readline_test_code"
     then
         c_define[BUP_HAVE_READLINE]=1
     fi
@@ -325,11 +346,11 @@ $readline_test_code" \
     fi
 fi
 if ! test "${c_define[BUP_HAVE_READLINE]:-}"; then
-    if try-c-code "#include <readline/readline.h> $readline_test_code"; then
+    if try-c-code -- "#include <readline/readline.h> $readline_test_code"; then
         bup_readline_ldflags=-lreadline
         c_define[BUP_HAVE_READLINE]=1
         c_define[BUP_READLINE_INCLUDES_IN_SUBDIR]=1
-    elif try-c-code "#include <readline.h> $readline_test_code"; then
+    elif try-c-code -- "#include <readline.h> $readline_test_code"; then
         bup_readline_ldflags=-lreadline
         c_define[BUP_HAVE_READLINE]=1
     fi
@@ -343,13 +364,23 @@ if test "${c_define[BUP_HAVE_READLINE]:-}"; then
 fi
 
 info -n 'checking for ns resolution stat times'
-if "$CC" -Wall -Werror -DBUP_TIME_FIELD=st_atim.tv_nsec -c -o /dev/null test/stat-times.c;
+stat_code='
+#include <sys/stat.h>
+
+int main(int argc, char **argv)
+{
+    struct stat st;
+    stat(argv[0], &st);
+    return (int) st.BUP_TIME_FIELD;
+}
+'
+if try-c-code -DBUP_TIME_FIELD=st_atim.tv_nsec -- "$stat_code"; then
     info ' (found, tim)'
     c_define[BUP_STAT_ST_FLAVOR_ATIM]=1
-elif "$CC" -Wall -Werror -DBUP_TIME_FIELD=st_atimensec.tv_nsec -c -o /dev/null test/stat-times.c;
+elif try-c-code -DBUP_TIME_FIELD=st_atimensec.tv_nsec -- "$stat_code"; then
     info ' (found, timensec)'
     c_define[BUP_STAT_ST_FLAVOR_ATIMENSEC]=1
-elif "$CC" -Wall -Werror -DBUP_TIME_FIELD=st_atimespec.tv_nsec -c -o /dev/null test/stat-times.c;
+elif try-c-code -DBUP_TIME_FIELD=st_atimespec.tv_nsec -- "$stat_code"; then
     info ' (found, timespec)'
     c_define[BUP_STAT_ST_FLAVOR_ATIMESPEC]=1
 else
@@ -357,13 +388,12 @@ else
 fi
 
 info -n 'checking for tm tm_gmtoff field'
-tmp="$(mktemp tmp/test-XXXXXX.c)"
-cat > "$tmp" <<EOF
-  #include <time.h>
-  struct tm t;
-  int main(int argc, char **argv) { return (int) sizeof(t.tm_gmtoff); }
-EOF
-if "$CC" -Wall -Werror -c -o /dev/null "$tmp"; then
+if try-c-code \
+       -- \
+       '#include <time.h>\n' \
+       'struct tm t;\n' \
+       'int main(int argc, char **argv) { return (int) sizeof(t.tm_gmtoff); }\n';
+   then
     c_define[HAVE_TM_TM_GMTOFF]=1
     info ' (found)'
 else
