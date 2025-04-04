@@ -240,7 +240,7 @@ def sweep(live_objects, live_trees, existing_count, cat_pipe, threshold,
 
                 if verbosity:
                     rw_path = path_msg(basename(idx_name))
-                    log(f'rewriting {rw_path} ({live_frac * 100:.2}% live)\n')
+                    log(f'rewriting {rw_path} ({live_frac * 100:.2f}% live)\n')
                     reprogress()
                 for sha in idx:
                     if sha in live_in_this_pack:
