@@ -12,6 +12,9 @@ task:
     dev/system-info
     BUP_PYTHON_CONFIG=python3-config ./configure --with-pylint=yes
     make -j6 check
+  on_failure:
+    debug_script:
+      test -e config/config.vars || cat config.log 1>&2
 
 task:
   name: debian long-check
@@ -31,6 +34,9 @@ task:
     chown -R bup:bup .
     printf "make -j6 -C %q BUP_PYTHON_CONFIG=python3-config long-check" \
       "$(pwd)" | su -l -w BUP_TEST_OTHER_BUP bup
+  on_failure:
+    debug_script:
+      test -e config/config.vars || cat config.log 1>&2
 
 task:
   name: debian check
@@ -47,6 +53,9 @@ task:
     chown -R bup:bup .
     printf "make -j6 -C %q BUP_PYTHON_CONFIG=python3-config check" \
       "$(pwd)" | su -l bup
+  on_failure:
+    debug_script:
+      test -e config/config.vars || cat config.log 1>&2
 
 task:
   name: freebsd check
@@ -59,6 +68,9 @@ task:
     dev/prep-for-freebsd-build python3
     dev/system-info
     gmake -j6 check
+  on_failure:
+    debug_script:
+      test -e config/config.vars || cat config.log 1>&2
 
 task:
   name: macos check
@@ -74,3 +86,6 @@ task:
     export PKG_CONFIG_PATH=/usr/local/opt/readline/lib/pkgconfig
     dev/system-info
     gmake -j6 BUP_PYTHON_CONFIG=python3-config LDFLAGS=-L/usr/local/lib check
+  on_failure:
+    debug_script:
+      test -e config/config.vars || cat config.log 1>&2
