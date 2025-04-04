@@ -85,7 +85,7 @@ ifneq (0, $(.SHELLSTATUS))
 endif
 clean_paths += lib/bup/checkout_info.py
 
-config/config.vars: configure config/configure config/test/*.c
+config/config.vars: configure config/test/*.c
 	MAKE="$(MAKE)" ./configure
 
 # On some platforms, Python.h and readline.h fight over the
@@ -347,7 +347,7 @@ clean: Documentation/clean
 	  then umount test/int/testfs || true; fi
 	rm -rf test/int/testfs test/int/testfs.img testfs.img
 
-	cd config && rm -rf ${bup_config_detritus}
+	rm -rf $(bup_config_detritus)
 	rm -rf $(clean_paths) .pytest_cache
 	rm -f $(generated_dependencies)
 	find . -name __pycache__ -exec rm -rf {} +

@@ -1,5 +1,11 @@
 *.swp
 *~
+/config.log
+/config/config.h
+/config/tmp/
+/config/config.var.tmp/
+/config/config.var/
+/config/config.vars
 /dev/bup-exec
 /dev/bup-exec.d
 /dev/bup-python
