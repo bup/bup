@@ -49,7 +49,7 @@ item.coid.
 from binascii import hexlify, unhexlify
 from collections import namedtuple
 from errno import EINVAL, ELOOP, ENOTDIR
-from itertools import chain, groupby, tee
+from itertools import chain, tee
 from random import randrange
 from stat import S_IFDIR, S_IFLNK, S_IFREG, S_ISDIR, S_ISLNK, S_ISREG
 from time import localtime, strftime
@@ -700,20 +700,29 @@ def tree_items(repo, oid, tree_data, names, *, want_meta=True):
 _save_name_rx = re.compile(br'^\d\d\d\d-\d\d-\d\d-\d{6}(-\d+)?$')
 
 def _reverse_suffix_duplicates(strs):
-    """Yields the elements of strs, with any runs of duplicate values
+    """Yields the elements of strs, with any duplicate values
     suffixed with -N suffixes, where the zero padded integer N
     decreases to 0 by 1 (e.g. 10, 09, ..., 00).
 
     """
-    for name, duplicates in groupby(strs):
-        ndup = len(tuple(duplicates))
+    seen = {}
+    strs = list(strs)
+    for name in strs:
+        if name in seen:
+            seen[name][0] += 1
+            seen[name][1] += 1
+        else:
+            seen[name] = [1, 1]
+    for name in strs:
+        curdup, ndup = seen[name]
         if ndup == 1:
             yield name
         else:
             ndig = len(str(ndup - 1))
             fmt = b'%s-' + b'%0' + (b'%d' % ndig) + b'd'
-            for i in range(ndup - 1, -1, -1):
-                yield fmt % (name, i)
+            yield fmt % (name, curdup - 1)
+        seen[name][0] -= 1
+    del seen
 
 def parse_rev(f):
     items = f.readline().split(None)
@@ -753,9 +762,9 @@ def cache_commit(repo, oid, require_meta=True):
     rev_names = _reverse_suffix_duplicates(_name_for_rev(x) for x in rev_names)
     rev_items = (_item_for_rev(x) for x in rev_items)
     tip = None
-    for item in rev_items:
-        name = next(rev_names)
+    for name, item in zip(rev_names, rev_items):
         tip = tip or (name, item)
+        assert not name in entries
         entries[name] = item
     entries[b'latest'] = FakeLink(meta=default_symlink_mode, target=tip[0])
     revlist_key = b'rvl:' + tip[1].coid
