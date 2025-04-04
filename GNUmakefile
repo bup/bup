@@ -37,8 +37,8 @@ export PATH := $(CURDIR)/dev/shadow-bin:$(PATH)
 clean_paths :=
 generated_dependencies :=
 
-# See config/config.vars.prep.in (sets bup_python_config, among other
-# things); config.vars is the "configuration succeeded" state file.
+# See ./configure (sets bup_python_config, among other things) and
+# produces config.vars, the "configuration succeeded" state file.
 include config/config.vars
 -include $(generated_dependencies)
 
@@ -55,7 +55,7 @@ ifneq (0, $(.SHELLSTATUS))
   $(error Unable to determine OS)
 endif
 
-# CFLAGS CPPFLAGS LDFLAGS are handled vis config/config.vars.prep.in
+# CFLAGS CPPFLAGS LDFLAGS are handled vis configure -> config/config.vars
 
 # Satisfy --warn-undefined-variables
 DESTDIR ?=
@@ -85,7 +85,7 @@ ifneq (0, $(.SHELLSTATUS))
 endif
 clean_paths += lib/bup/checkout_info.py
 
-config/config.vars: configure config/configure config/configure.inc config/*.in
+config/config.vars: configure config/configure config/test/*.c
 	MAKE="$(MAKE)" ./configure
 
 # On some platforms, Python.h and readline.h fight over the
@@ -106,7 +106,7 @@ endif
 
 helpers_ldflags += $(bup_readline_ldflags)
 
-ifeq ($(bup_have_libacl),1)
+ifeq ($(bup_have_acls),1)
   helpers_cflags += $(bup_libacl_cflags)
   helpers_ldflags += $(bup_libacl_ldflags)
 endif
@@ -129,6 +129,7 @@ incomplete_saves_svg := \
 clean_paths += $(incomplete_saves_svg)
 
 issue/missing-objects.html: $(incomplete_saves_svg)
+clean_paths += issue/missing-objects.html
 
 issue/%.svg: issue/%.dot
 	$(DOT) -Tsvg $< > $@
@@ -336,8 +337,6 @@ import-docs: Documentation/clean
 
 clean: Documentation/clean
 	rm -f config/config.vars # resets configuration
-	cd config && rm -f config.h config.vars.prep
-	cd config && rm -rf bin config.var config.var.tmp
 
         # Clean up the mounts first, so that find, etc. won't crash later
 	if test -e test/mnt; then dev/cleanup-mounts-under test/mnt; fi
@@ -348,8 +347,7 @@ clean: Documentation/clean
 	  then umount test/int/testfs || true; fi
 	rm -rf test/int/testfs test/int/testfs.img testfs.img
 
-	cd config && rm -f \
-	  ${CONFIGURE_DETRITUS} ${CONFIGURE_FILES} ${GENERATED_FILES}
+	cd config && rm -rf ${bup_config_detritus}
 	rm -rf $(clean_paths) .pytest_cache
 	rm -f $(generated_dependencies)
 	find . -name __pycache__ -exec rm -rf {} +

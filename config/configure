@@ -1,125 +1,210 @@
 #!/usr/bin/env bash
 
-ac_help="--with-pylint[=yes|no|maybe]  require and run pylint (maybe)"
+# Currently generates:
+#   config/config.h
+#   config/config.var/VAR
+#   config/config.vars
+#
+# The existence of config/config.vars indicates successful
+# configuration.
 
-bup_find_prog()
+set -euo pipefail
+
+script_home="$(cd "$(dirname "$0")" && pwd -P)"
+
+# fds representing the terminal stdout/stdout, allowing us to redirect
+# the overall output (and set -x) to config.log and still write to the
+# terminal.
+out=1
+err=2
+
+info() { echo "$@" 1>&"$err"; }
+die() { info "$@"; exit 2; }
+infop() { printf "$@" 1>&"$err"; }
+diep() { infop "$@"; exit 2; }
+
+usage()
+{
+    cat 1>&"$out" <<EOF
+Usage:
+    configure --help
+    configure [--with-pylint[=yes|no|maybe]]
+Options:
+    --with-pylint  require and run pylint (maybe)
+EOF
+}
+
+outputs=(config/config.vars config/config.h config/config.var)
+
+success='' # when empty, assume state may be inconsistent
+rm_on_exit=("$script_home/tmp") # always removed
+rm_on_err_exit=("${outputs[@]}") # only removed on failures
+
+misuse() { success=1; usage 1>&"$err"; exit 2; }
+exit-ok() { success=1; exit 0; }
+
+on-exit()
+{
+    rm -rf "${rm_on_exit[@]}"
+    if test -z "$success"; then
+        rm -rf "${rm_on_err_exit[@]}"
+        set +x
+        info -e '\nerror: configuration failed (see config.log)'
+    fi
+}
+trap on-exit EXIT
+
+find-cmd()
+{
+    test $# -eq 1 || die "${FUNCNAME[0]}: invalid args" "$@"
+    local which="$1" rc=0
+    case "$which" in
+        */*)
+            type -p "$which" || true
+            ;;
+        *)
+            path="$(type -p "$which")" || rc=$?
+            if test "$rc" -eq 0; then
+                echo "$(basename "$path")"
+            else
+                return 1
+            fi
+            ;;
+    esac
+}
+
+find-prog()
 {
     # Prints prog path to stdout or nothing.
+    test $# -eq 2 || die "${FUNCNAME[0]}: invalid args" "$@"
     local name="$1" result="$2"
-    TLOGN "checking for $name"
+    infop "checking for program %q" "$name"
     if ! [ "$result" ]; then
-        result=`acLookFor "$name"`
+        result="$(find-cmd "$name")" || true
     fi
-    TLOG " ($result)"
+    infop ' (%q)\n' "$result"
     echo "$result"
 }
 
-bup_try_c_code()
+try-c-code()
 {
     local code="$1" tmpdir rc cflags=''
     if test -z "$code"; then
-        AC_FAIL "No code provided to test compile"
+        die "No code provided to test compile"
     fi
     case "$#" in
         1) ;;
         2) cflags="$2" ;;
-        *)
-            AC_FAIL "Invald call to bup_try_c_code" "$@"
-            ;;
+        *) die "Invald call to try-c-code" "$@" ;;
     esac
-    tmpdir="$(mktemp -d "bup-try-c-compile-XXXXXXX")" || exit $?
-    echo "$code" > "$tmpdir/test.c" || exit $?
-    $AC_CC -Wall -Werror $cflags -c -o "$tmpdir/test" "$tmpdir/test.c"
-    rc=$?
-    rm -r "$tmpdir" || exit $?
-    return $rc
+    tmpdir="$(mktemp -d tmp/bup-try-c-compile-XXXXXXX)"
+    echo "$code" > "$tmpdir/test.c"
+    rc=0
+    "$CC" -Wall -Werror $cflags -c -o "$tmpdir/test" "$tmpdir/test.c" || rc=$?
+    rm -r "$tmpdir"
+    return "$rc"
 }
 
 # Can not currently handle options that "printf %q" would change,
 # i.e. options with spaces in them, etc.
-bup_config_cflags=()
+config_cflags=()
 
-bup-add-cflag-if-supported()
+add-cflag-if-supported()
 {
+    test $# -eq 1 || die "${FUNCNAME[0]}: invalid args" "$@"
     local opt="$1"
     if test -z "$opt"; then
-        AC_FAIL 'No option to check'
+        die 'No option to check'
     fi
-    TLOGN "checking for $AC_CC $opt support"
-    if bup_try_c_code \
+    infop "checking for %q %q support" "$CC" "$opt"
+    if try-c-code \
            "int main(int argc, char**argv) { return 0; }" \
            "$opt";
     then
-        bup_config_cflags+=($opt)
-        TLOG ' (found)'
+        config_cflags+=($opt)
+        info ' (found)'
     else
-        TLOG ' (not found)'
+        info ' (not found)'
     fi
 }
 
-TARGET=bup
-
-argv=()
 with_pylint=maybe
 while test $# -gt 0; do
     case "$1" in
-        --with-pylint=yes) with_pylint=yes; shift;;
-        --with-pylint=maybe) with_pylint=maybe; shift;;
-        --with-pylint=no) with_pylint=no; shift;;
-        *) argv+=("$1"); shift;;
+        --help) usage; exit-ok; ;;
+        --with-pylint=yes) with_pylint=yes; shift ;;
+        --with-pylint=maybe) with_pylint=maybe; shift ;;
+        --with-pylint=no) with_pylint=no; shift ;;
+        *) misuse ;;
     esac
 done
 
-# Set $@ to the adjusted args
-set - "${argv[@]}"
+# Make fd 5 and fd 6 refer to the terminal stdout and stderr, and then
+# redirect this scripts stdout and stderr to config.log.
+exec 5>&1 6>&2 1>"$script_home/config.log" 2>&1
+# Arrange for info and die to print to the terminal.
+out=5
+err=6
 
-. ./configure.inc
+set -x # to config.log
 
-rm -f config.vars # existence indicates successful completion
-rm -rf config/bin config.var config.var.tmp config.vars.prep
+mkdir -p tmp
+rm -f config/config.vars # first - existence indicates successful completion
+rm -rf "${outputs[@]}"
 
-AC_INIT $TARGET
-
-if ! AC_PROG_CC; then
-    LOG " You need to have a functional C compiler to build $TARGET"
-    exit 1
+info -n 'checking for C compiler'
+CC="${CC:-}"
+if test -z "$CC"; then
+    CC="$(find-cmd gcc)" \
+        || CC="$(find-cmd clang)" \
+        || CC="$(find-cmd cc)" \
+        || true
+fi
+if test "$CC"; then
+    infop " %q\n" "$CC"
+else
+    die -e '\nerror: unable to find C compiler as $CC, gcc, clang, or cc'
 fi
 
-bup-add-cflag-if-supported -Wno-unused-command-line-argument
-bup-add-cflag-if-supported -fno-strict-aliasing
-bup-add-cflag-if-supported -fwrapv
+if ! "$CC" -Wall -Werror -c -o /dev/null test/hello.c; then
+    diep 'error: see config.log -- cannot compile test/hello.c with %q\n' "$CC"
+fi
+
+add-cflag-if-supported -Wno-unused-command-line-argument
+add-cflag-if-supported -fno-strict-aliasing
+add-cflag-if-supported -fwrapv
 
 # Haven't seen a documented way to determine the python version via
 # python-config right now, so we'll defer version checking until
 # later.
 
-if test "$BUP_PYTHON_CONFIG"; then
+if test "${BUP_PYTHON_CONFIG:-}"; then
     bup_python_config="$(type -p "$BUP_PYTHON_CONFIG")"
     if test -z "$bup_python_config"; then
-        AC_FAIL $(printf "ERROR: BUP_PYTHON_CONFIG value %q appears invalid" \
-                         "$BUP_PYTHON_CONFIG")
+        die $(printf "error: BUP_PYTHON_CONFIG value %q appears invalid" \
+                     "$BUP_PYTHON_CONFIG")
     fi
 else
     for py_min_ver in 13 12 11 10 9 8 7; do
-        bup_python_config="$(bup_find_prog "python3.$py_min_ver-config" '')"
+        bup_python_config="$(find-prog "python3.$py_min_ver-config" '')"
         test -z "$bup_python_config" || break
     done
     test -z "$bup_python_config" \
-        && bup_python_config="$(bup_find_prog python3-config '')"
+        && bup_python_config="$(find-prog python3-config '')"
     if test -z "$bup_python_config"; then
-        AC_FAIL "ERROR: unable to find a suitable python-config"
+        die "error: unable to find a suitable python-config"
     fi
 fi
 
-
-bup_python_cflags=$("$bup_python_config" --cflags) || exit $?
-bup_python_ldflags=$("$bup_python_config" --ldflags) || exit $?
-bup_python_cflags_embed=$("$bup_python_config" --cflags --embed)
-if test $? -eq 0; then
-    bup_python_ldflags_embed=$("$bup_python_config" --ldflags --embed) || exit $?
+bup_python_cflags=$("$bup_python_config" --cflags)
+bup_python_ldflags=$("$bup_python_config" --ldflags)
+rc=0
+bup_python_cflags_embed=$("$bup_python_config" --cflags --embed) || rc=$?
+if test "$rc" -eq 0; then
+    bup_python_ldflags_embed=$("$bup_python_config" --ldflags --embed)
 else  # Earlier versions didn't support --embed
-    bup_python_cflags_embed=$("$bup_python_config" --cflags) || exit $?
-    bup_python_ldflags_embed=$("$bup_python_config" --ldflags) || exit $?
+    bup_python_cflags_embed=$("$bup_python_config" --cflags)
+    bup_python_ldflags_embed=$("$bup_python_config" --ldflags)
 fi
 
 bup_python_cflags="$bup_python_cflags -fPIC"
@@ -134,232 +219,236 @@ case "$OSTYPE" in
         ;;
 esac
 
-AC_SUB bup_python_config "$bup_python_config"
-AC_SUB bup_python_cflags "$bup_python_cflags"
-AC_SUB bup_python_ldflags "$bup_python_ldflags"
-AC_SUB bup_python_cflags_embed "$bup_python_cflags_embed"
-AC_SUB bup_python_ldflags_embed "$bup_python_ldflags_embed"
-
-
-bup_git="$(bup_find_prog git '')"
+bup_git="$(find-prog git '')"
 if test -z "$bup_git"; then
-    AC_FAIL "ERROR: unable to find git"
-fi
-
-# For stat.
-AC_CHECK_HEADERS sys/stat.h
-AC_CHECK_HEADERS sys/types.h
-
-# For stat and mincore.
-AC_CHECK_HEADERS unistd.h
-
-# For mincore.
-AC_CHECK_HEADERS sys/mman.h
-
-# For FS_IOC_GETFLAGS and FS_IOC_SETFLAGS.
-AC_CHECK_HEADERS linux/fs.h
-AC_CHECK_HEADERS sys/ioctl.h
-
-AC_CHECK_FUNCS mincore
-
-mincore_incore_code="
-#if 0$ac_defined_HAVE_UNISTD_H
-#include <unistd.h>
-#endif
-#if 0$ac_defined_HAVE_SYS_MMAN_H
-#include <sys/mman.h>
-#endif
-int main(int argc, char **argv)
-{
-    if (MINCORE_INCORE)
-      return 0;
-}
-"
-
-mincore_buf_type_code()
-{
-    local vec_type="$1"
-    echo "
-#include <sys/mman.h>
-int main(int argc, char **argv)
-{
-    void *x = 0;
-    $vec_type *buf = 0;
-    return mincore(x, 0, buf);
-}" || exit $?
-}
-
-if test "$ac_defined_HAVE_MINCORE"; then
-    TLOGN "checking for MINCORE_INCORE"
-    if bup_try_c_code "$mincore_incore_code"; then
-        AC_DEFINE BUP_HAVE_MINCORE_INCORE 1
-        TLOG ' (found)'
-    else
-        TLOG ' (not found)'
-    fi
-
-    TLOGN "checking mincore buf type"
-    if bup_try_c_code "$(mincore_buf_type_code char)"; then
-        AC_DEFINE BUP_MINCORE_BUF_TYPE 'char'
-        TLOG ' (char)'
-    elif bup_try_c_code "$(mincore_buf_type_code 'unsigned char')"; then
-        AC_DEFINE BUP_MINCORE_BUF_TYPE 'unsigned char'
-        TLOG ' (unsigned char)'
-    else
-        AC_FAIL "ERROR: unexpected mincore definition; please notify bup-list@googlegroups.com"
-    fi
+    die 'error: unable to find git'
 fi
 
 
-TLOGN "checking for readline"
-bup_have_readline=''
-bup_readline_includes_in_subdir=''
-bup_readline_via_pkg_config=''
+find-header()
+{
+    test $# -eq 1 || die "${FUNCNAME[0]}: invalid args" "$@"
+    local header="$1" tmp
+    tmp="$(mktemp tmp/test-XXXXXX.c)"
+    cat > "$tmp" <<-EOF
+	#include <$header>
+	int main(int argc, char **argv) { return 0; }
+	EOF
+    "$CC" -Wall -Werror -c -o /dev/null "$tmp"
+}
+
+declare -A have_header # have_header[x/y.h]=1 when found
+declare -A have_func # have_func[name]=1 when found
+
+# Each c_define entry produces a #define in config.h, and c_define
+# will have a c_define[HAVE_X_Y_H]=1 entry for each
+# have_header[x/y.h]=1.
+declare -A c_define
+
+check_headers=(sys/time.h
+               sys/stat.h sys/types.h # for stat
+               unistd.h # for stat and mincore
+               sys/mman.h # for mincore
+               # For FS_IOC_GETFLAGS and FS_IOC_SETFLAGS.
+               linux/fs.h
+               sys/ioctl.h)
+for header in "${check_headers[@]}"; do
+    info -n "checking for header <$header>"
+    if find-header "$header"; then
+        info " (found)"
+        have_header["$header"]=1
+        def_name="${header//[^a-zA-Z0-9]/_}"
+        def_name="HAVE_${def_name^^?}"
+        c_define["$def_name"]=1
+    else
+        info " (found)"
+    fi
+done
+    
+info -n 'checking for mincore function'
+if "$CC" -Wall -Werror -DBUF_TYPE=char -c -o /dev/null test/have-mincore.c; then
+    info ' (found)'
+    have_func[mincore]=1
+    c_define[HAVE_MINCORE]=1
+    c_define[BUP_MINCORE_BUF_TYPE]=char
+elif "$CC" -Wall -Werror -DBUF_TYPE='unsigned char' -c -o /dev/null test/have-mincore.c; then
+    info ' (found)'
+    have_func[mincore]=1
+    c_define[HAVE_MINCORE]=1
+    c_define[BUP_MINCORE_BUF_TYPE]='unsigned char'
+else
+    info ' (not found)'
+fi
+
+info -n 'checking for MINCORE_INCORE definition'
+if "$CC" -Wall -Werror -c -o /dev/null test/have-mincore-incore.c; then
+    info ' (found)'
+    c_define[BUP_HAVE_MINCORE_INCORE]=1
+else
+    info ' (not found)'
+fi
+
+info -n 'checking for readline'
 # We test this specific thing because it should work everywhere and it was
 # a particulary problem on macos (we'd get the wrong includes if we just
 # tested that the includes work).
+bup_readline_via_pkg_config=''
 readline_test_code='
   static char *on_completion_entry(const char *text, int state) { return NULL; }
   void bup_test(void) { rl_completion_entry_function = on_completion_entry; }
 '
 if pkg-config readline; then
-    bup_readline_cflags="$(pkg-config readline --cflags)" || exit $?
-    bup_readline_ldflags="$(pkg-config readline --libs)" || exit $?
+    bup_readline_cflags="$(pkg-config readline --cflags)"
+    bup_readline_ldflags="$(pkg-config readline --libs)"
     # It looks like it's not uncommon for pkg-config to provide a -I
     # that doesn't support the documentation's specified #include
     # <readline/readline.h>.  See what's really going on.
-    if bup_try_c_code "#include <stdio.h> // required by unpatched readline
+    if try-c-code "#include <stdio.h> // required by unpatched readline
 #include <readline/readline.h>
 $readline_test_code" \
                       "$bup_readline_cflags"
     then
-        bup_have_readline=1
-        bup_readline_includes_in_subdir=1
-    elif bup_try_c_code "#include <stdio.h> // required by unpatched readline
+        c_define[BUP_HAVE_READLINE]=1
+        c_define[BUP_READLINE_INCLUDES_IN_SUBDIR]=1
+    elif try-c-code "#include <stdio.h> // required by unpatched readline
 #include <readline.h>
 $readline_test_code" \
                         "$bup_readline_cflags"
     then
-        bup_have_readline=1
+        c_define[BUP_HAVE_READLINE]=1
     fi
-    if test "$bup_have_readline"; then
+    if test "${c_define[BUP_HAVE_READLINE]:-}"; then
         bup_readline_via_pkg_config=1
     else
         bup_readline_cflags=''
         bup_readline_ldflags=''
     fi
 fi
-if ! test "$bup_have_readline"; then
-    if bup_try_c_code "#include <readline/readline.h> $readline_test_code"; then
+if ! test "${c_define[BUP_HAVE_READLINE]:-}"; then
+    if try-c-code "#include <readline/readline.h> $readline_test_code"; then
         bup_readline_ldflags=-lreadline
-        bup_have_readline=1
-        bup_readline_includes_in_subdir=1
-    elif bup_try_c_code "#include <readline.h> $readline_test_code"; then
+        c_define[BUP_HAVE_READLINE]=1
+        c_define[BUP_READLINE_INCLUDES_IN_SUBDIR]=1
+    elif try-c-code "#include <readline.h> $readline_test_code"; then
         bup_readline_ldflags=-lreadline
-        bup_have_readline=1
+        c_define[BUP_HAVE_READLINE]=1
     fi
 fi
-if test "$bup_have_readline"; then
-    AC_DEFINE BUP_HAVE_READLINE 1
-    if test "$bup_readline_includes_in_subdir"; then
-        AC_DEFINE BUP_READLINE_INCLUDES_IN_SUBDIR 1
-    fi
+if test "${c_define[BUP_HAVE_READLINE]:-}"; then
     if test "$bup_readline_via_pkg_config"; then
-        TLOG ' (yes, pkg-config)'
+        info ' (yes, pkg-config)'
     else
-        TLOG ' (yes)'
+        info ' (yes)'
     fi
 fi
 
+info -n 'checking for ns resolution stat times'
+if "$CC" -Wall -Werror -DBUP_TIME_FIELD=st_atim.tv_nsec -c -o /dev/null test/stat-times.c;
+    info ' (found, tim)'
+    c_define[BUP_STAT_ST_FLAVOR_ATIM]=1
+elif "$CC" -Wall -Werror -DBUP_TIME_FIELD=st_atimensec.tv_nsec -c -o /dev/null test/stat-times.c;
+    info ' (found, timensec)'
+    c_define[BUP_STAT_ST_FLAVOR_ATIMENSEC]=1
+elif "$CC" -Wall -Werror -DBUP_TIME_FIELD=st_atimespec.tv_nsec -c -o /dev/null test/stat-times.c;
+    info ' (found, timespec)'
+    c_define[BUP_STAT_ST_FLAVOR_ATIMESPEC]=1
+else
+    info ' (not found)'
+fi
 
-AC_SUB bup_readline_cflags "$bup_readline_cflags"
-AC_SUB bup_readline_ldflags "$bup_readline_ldflags"
-AC_SUB bup_have_readline "$bup_have_readline"
+info -n 'checking for tm tm_gmtoff field'
+tmp="$(mktemp tmp/test-XXXXXX.c)"
+cat > "$tmp" <<EOF
+  #include <time.h>
+  struct tm t;
+  int main(int argc, char **argv) { return (int) sizeof(t.tm_gmtoff); }
+EOF
+if "$CC" -Wall -Werror -c -o /dev/null "$tmp"; then
+    c_define[HAVE_TM_TM_GMTOFF]=1
+    info ' (found)'
+else
+    info ' (not found)'
+fi
 
-
-AC_CHECK_FIELD stat st_atim sys/stat.h
-AC_CHECK_FIELD stat st_mtim sys/stat.h
-AC_CHECK_FIELD stat st_ctim sys/stat.h
-
-AC_CHECK_FIELD stat st_atimensec sys/stat.h
-AC_CHECK_FIELD stat st_mtimensec sys/stat.h
-AC_CHECK_FIELD stat st_ctimensec sys/stat.h
-
-AC_CHECK_FIELD stat st_atimespec sys/stat.h
-AC_CHECK_FIELD stat st_mtimespec sys/stat.h
-AC_CHECK_FIELD stat st_ctimespec sys/stat.h
-
-AC_CHECK_FIELD tm tm_gmtoff time.h
-
-
-orig_ac_cc="$AC_CC"
-orig_libs="$LIBS"
-TLOGN "checking for libacl"
+info -n 'checking for libacl'
 if pkg-config libacl; then
     bup_libacl_cflags="$(pkg-config libacl --cflags)"
     bup_libacl_ldflags="$(pkg-config libacl --libs)"
-    TLOG ' (yes, pkg-config)'
+    info ' (found, pkg-config)'
 else
     bup_libacl_cflags=
     bup_libacl_ldflags='-lacl'
-    TLOG ' (yes)'
+    info ' (not found)'
 fi
-AC_CC="$AC_CC${bup_libacl_cflags:+ $bup_libacl_cflags}"
-LIBS="$bup_libacl_ldflags"
-AC_CHECK_HEADERS sys/acl.h
-AC_CHECK_HEADERS acl/libacl.h
-AC_CHECK_FUNCS acl_get_file
-AC_CHECK_FUNCS acl_from_text
-AC_CHECK_FUNCS acl_set_file
-# Note: These are linux specific, but we need them (for now?)
-AC_CHECK_FUNCS acl_extended_file
-AC_CHECK_FUNCS acl_to_any_text
-TLOGN "checking for complete acl support"
-if test "$ac_defined_HAVE_ACL_EXTENDED_FILE"; then
-    bup_have_libacl=1
-    AC_SUB bup_libacl_cflags "$bup_libacl_cflags"
-    AC_SUB bup_libacl_ldflags "$bup_libacl_ldflags"
-    TLOG ' (yes)'
+info -n 'checking for complete acl support'
+if "$CC" $bup_libacl_cflags -Wall -Werror -o /dev/null test/have-acls.c \
+         $bup_libacl_ldflags
+then
+    c_define[BUP_HAVE_ACLS]=1
+    info ' (found)'
 else
-    bup_have_libacl=
-    AC_SUB bup_have_libacl ''
-    TLOG ' (no)'
+    info ' (not found)'
 fi
-AC_SUB bup_have_libacl "$bup_have_libacl"
-AC_CC="$orig_ac_cc"
-LIBS="$orig_libs"
 
-AC_SUB bup_config_cflags "${bup_config_cflags[*]}"
 
-AC_OUTPUT config.vars.prep
+## Generate config.h
 
-set -euo pipefail
+(for def in "${!c_define[@]}"; do
+     echo "#define $def ${c_define[$def]}"
+ done) | ../dev/refresh config.h
 
-mkdir -p config.var.tmp
-echo -n "$bup_python_config" > config.var.tmp/bup-python-config
-echo -n "$with_pylint" > config.var.tmp/with-pylint
-mv config.var.tmp config.var
+rm -rf config.var tmp/config.var
+mkdir -p tmp/config.var
+echo -n "$bup_python_config" > tmp/config.var/bup-python-config
+echo -n "$with_pylint" > tmp/config.var/with-pylint
+mv tmp/config.var config.var
 
-mv config.vars.prep config.vars
+# REVIEW: double-check these for missing ${foo...:-} defaults
 
-printf "
+../dev/refresh config.vars <<EOF
+CC = $CC
+CFLAGS = ${CFLAGS:-}
+CPPFLAGS = ${CPPFLAGS:-}
+LDFLAGS = ${LDFLAGS:-}
+
+bup_config_detritus=${outputs[@]} config/config.log config/config.var.tmp
+
+bup_config_cflags = ${config_cflags[@]}
+
+bup_python_config = ${bup_python_config[@]}
+bup_python_cflags = ${bup_python_cflags[@]}
+bup_python_ldflags = ${bup_python_ldflags[@]}
+bup_python_cflags_embed = ${bup_python_cflags_embed[@]}
+bup_python_ldflags_embed = ${bup_python_ldflags_embed[@]}
+
+bup_have_acls = ${c_define[BUP_HAVE_ACLS]:-}
+bup_libacl_cflags = ${bup_libacl_cflags[@]}
+bup_libacl_ldflags = ${bup_libacl_ldflags[@]}
+
+bup_have_readline = ${c_define[BUP_HAVE_READLINE]:-}
+bup_readline_cflags = ${bup_readline_cflags[@]}
+bup_readline_ldflags = ${bup_readline_ldflags[@]}
+EOF
+
+infop "
 found: python-config (%q)
-found: git (%q, ($("$bup_git" --version))
+found: git (%q, $("$bup_git" --version))
 " \
        "$bup_python_config" \
        "$bup_git" \
-       1>&5
 
 summarize()
 {
     local found="$1"
     shift
     if test "$found"; then
-        TLOG found: "$@"
+        info found: "$@"
     else
-        TLOG not found: "$@"
+        info not found: "$@"
     fi
 }
-summarize "$bup_have_readline" 'readline support (e.g. bup ftp)'
-summarize "$bup_have_libacl" 'POSIX ACL support'
-TLOG
+summarize "${c_define[BUP_HAVE_READLINE]:-}" 'readline support (e.g. bup ftp)'
+summarize "${c_define[BUP_HAVE_ACLS]:-}" 'POSIX ACL support'
+info
+
+success=1

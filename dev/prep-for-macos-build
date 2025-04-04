@@ -14,7 +14,7 @@ if ! command -v brew; then
         bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 fi
 
-brew install make par2 readline rsync pkg-config md5sha1sum
+brew install make bash par2 readline rsync pkg-config md5sha1sum
 
 # This avoid's macos interference, i.e. without this it looks like we
 # won't actually be able to use the readline we just installed above.

@@ -1661,14 +1661,7 @@ bup_readline(PyObject *self, PyObject *args)
 
 #endif // defined BUP_HAVE_READLINE
 
-#if defined(HAVE_SYS_ACL_H) && \
-    defined(HAVE_ACL_LIBACL_H) && \
-    defined(HAVE_ACL_EXTENDED_FILE) && \
-    defined(HAVE_ACL_GET_FILE) && \
-    defined(HAVE_ACL_TO_ANY_TEXT) && \
-    defined(HAVE_ACL_FROM_TEXT) && \
-    defined(HAVE_ACL_SET_FILE)
-#define ACL_SUPPORT 1
+#ifdef BUP_HAVE_ACLS
 #include <sys/acl.h>
 #include <acl/libacl.h>
 
@@ -1964,7 +1957,7 @@ static PyMethodDef helper_methods[] = {
     { "readline", bup_readline, METH_VARARGS,
       "Call readline(prompt)." },
 #endif // defined BUP_HAVE_READLINE
-#ifdef ACL_SUPPORT
+#ifdef BUP_HAVE_ACLS
     { "read_acl", bup_read_acl, METH_VARARGS,
       "read_acl(name, isdir)\n\n"
       "Read ACLs for the given file/dirname and return the correctly encoded"
