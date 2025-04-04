@@ -1648,7 +1648,10 @@ def walk_object(get_ref, oidx, *, stop_at=None, include_data=None,
         elif typ == b'tree':
             pending.append(item)
             for mode, name, ent_id in tree_decode(data):
-                demangled, bup_type = demangle_name(name, mode)
+                if name.endswith(b'.bupd'):
+                    bup_type = BUP_NORMAL
+                else:
+                    _, bup_type = demangle_name(name, mode)
                 if chunk_path:
                     sub_path = parent_path
                     sub_chunk_path = chunk_path + [name]

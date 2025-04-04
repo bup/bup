@@ -74,7 +74,7 @@ def report_missing(ref_name, item, verbosity):
         path = chain(item.path, chunks)
     else:
         # Top commit, for example has none.
-        if item.path:
+        if item.path and not item.path[-1].endswith(b'.bupd'):
             demangled = git.demangle_name(item.path[-1], item.mode)[0]
             path = chain(item.path[:-1], [demangled])
         else:
@@ -102,8 +102,9 @@ def report_live_item(n, total, ref_name, ref_id, item, verbosity):
         return
 
     # Top commit, for example has none.
-    demangled = git.demangle_name(item.path[-1], item.mode)[0] if item.path \
-                else None
+    demangled = None
+    if item.path and not item.path[-1].endswith(b'.bupd'):
+        demangled = git.demangle_name(item.path[-1], item.mode)[0]
 
     # Don't print mangled paths unless the verbosity is over 3.
     if demangled:
