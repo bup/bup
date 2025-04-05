@@ -49,17 +49,15 @@ def getgroups():
     return gids
 
 
-# pyupgrade 3.8+: add final / to make args positional only
-def _finalized_init(self, what_or_how, how=None):
-    if how is None:
-        self.enter_result = None
-        self.finalize = what_or_how
-    else:
-        self.enter_result = what_or_how
-        self.finalize = how
-
 class finalized:
-    __init__ = _finalized_init
+    # pyupgrade 3.8+: add final / to make args positional only
+    def __init__(self, what_or_how, how=None):
+        if how is None:
+            self.enter_result = None
+            self.finalize = what_or_how
+        else:
+            self.enter_result = what_or_how
+            self.finalize = how
     def __enter__(self):
         return self.enter_result
     def __exit__(self, exc_type, exc_value, traceback):
