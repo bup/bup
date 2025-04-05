@@ -81,6 +81,13 @@ Bugs
   (e.g. not `import-rsnapshot`) to hang when running interactively
   (i.e. with a controlling terminal).
 
+Build system
+------------
+
+`./configure` now depends on a bash with support for associative
+arrays.  Accordingly, `prep-for-macos-build` has been adjusted to
+install bash via `brew`.
+
 Thanks to (at least)
 ====================
 
