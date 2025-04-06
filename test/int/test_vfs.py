@@ -146,6 +146,10 @@ def test_reverse_suffix_duplicates():
     wvpasseq((b'x-1', b'x-0', b'y'), suffix((b'x', b'x', b'y')))
     wvpasseq((b'x', b'y-1', b'y-0'), suffix((b'x', b'y', b'y')))
     wvpasseq((b'x', b'y-1', b'y-0', b'z'), suffix((b'x', b'y', b'y', b'z')))
+    wvpasseq((b'x', b'y-2', b'y-1', b'z', b'y-0'), suffix((b'x', b'y', b'y', b'z', b'y')))
+    wvpasseq((b'y-2', b'x', b'y-1', b'y-0', b'z'), suffix((b'y', b'x', b'y', b'y', b'z')))
+    wvpasseq((b'w', b'y-2', b'x', b'y-1', b'y-0', b'z'),
+             suffix((b'w', b'y', b'x', b'y', b'y', b'z')))
 
 def test_misc(tmpdir):
     bup_dir = tmpdir + b'/bup'
