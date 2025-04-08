@@ -36,6 +36,7 @@ export BUP_TEST_RANDOM_SEED ?= $(shell echo "$$RANDOM")
 export PATH := $(CURDIR)/dev/shadow-bin:$(PATH)
 
 clean_paths :=
+doc_clean_paths :=
 generated_dependencies :=
 
 # See ./configure (sets bup_python_config, among other things) and
@@ -140,7 +141,10 @@ issue/%.html: issue/%.md
 	  -r markdown -w html -o $@ $<
 
 issues :=
-man_md :=
+man_md := $(wildcard Documentation/*.md)
+man_roff := $(man_md:.md=)
+man_html := $(man_md:.md=.html)
+docs :=
 
 DOT ?= $(shell type -p dot)
 PANDOC ?= $(shell type -p pandoc)
@@ -148,7 +152,8 @@ PANDOC ?= $(shell type -p pandoc)
 ifeq (,$(PANDOC))
   $(info Warning: pandoc not found; skipping generation of related documents)
 else
-  man_md := $(wildcard Documentation/*.md)
+  docs := $(man_roff) $(man_html)
+  doc_clean_paths += $(docs)
   ifeq (,$(findstring --embed-resources,$(shell $(PANDOC) --help)))
     $(info Warning: no pandoc --embed-resources; skipping generation of related documents)
   else
@@ -166,9 +171,6 @@ all: dev/bup-exec dev/bup-python dev/python $(bup_deps) Documentation/all \
 
 $(current_sampledata):
 	dev/configure-sampledata --setup
-
-man_roff := $(man_md:.md=)
-man_html := $(man_md:.md=.html)
 
 INSTALL=install
 PREFIX=/usr/local
@@ -189,13 +191,15 @@ install: all
 	  $(dest_libdir)/bup/repo \
 	  $(dest_libdir)/cmd \
 	  $(dest_libdir)/web/static
+  ifneq (,$(docs))
 	for f in $(man_roff); do \
 	    sec="$${f##*.}"; \
 	    $(INSTALL) -d $(dest_mandir)/man"$$sec"; \
 	    $(INSTALL) -m 0644 "$$f" $(dest_mandir)/man"$$sec"; \
 	done
-	test -z "$(man_html)" || install -d $(dest_docdir)
-	test -z "$(man_html)" || $(INSTALL) -m 0644 $(man_html) $(dest_docdir)
+	install -d $(dest_docdir)
+	$(INSTALL) -m 0644 $(man_html) $(dest_docdir)
+  endif
 	$(INSTALL) -pm 0755 lib/cmd/bup "$(dest_libdir)/cmd/bup"
 	$(INSTALL) -pm 0755 $(bup_ext_cmds) "$(dest_libdir)/cmd/"
 	cd "$(dest_bindir)" && \
@@ -318,7 +322,7 @@ long-check: export BUP_TEST_LEVEL=11
 long-check: check
 
 .PHONY: Documentation/all
-Documentation/all: $(man_roff) $(man_html)
+Documentation/all: $(docs)
 
 # Don't rebuild the docs unless the content changes, and don't
 # recompute the content unless it might have changed.
@@ -330,6 +334,7 @@ Documentation/substvars.current: $(bup_deps)
 	         "s,%BUP_DATE%,$$bup_date,g") > $@
 Documentation/substvars: Documentation/substvars.current
 	@cmp $@ $< || cp $< $@
+doc_clean_paths += substvars substvars.current
 
 define render_page
   $(pf); sed -f Documentation/substvars $< \
@@ -343,8 +348,7 @@ Documentation/%.html: Documentation/%.md Documentation/substvars
 
 .PHONY: Documentation/clean
 Documentation/clean:
-	cd Documentation \
-	  && rm -f *~ .*~ *.[0-9] *.html substvars substvars.current
+	rm -rf $(doc_clean_paths)
 
 # Note: this adds commits containing the current manpages in roff and
 # html format to the man and html branches respectively.  The version
@@ -363,7 +367,8 @@ import-docs: Documentation/clean
 	$(pf); git archive origin/html | (cd Documentation && tar -xvf -)
 	$(pf); git archive origin/man | (cd Documentation && tar -xvf -)
 
-clean: Documentation/clean
+.PHONY: clean
+clean:
 	rm -f config/config.vars # resets configuration
 
         # Clean up the mounts first, so that find, etc. won't crash later
@@ -376,7 +381,7 @@ clean: Documentation/clean
 	rm -rf test/int/testfs test/int/testfs.img testfs.img
 
 	rm -rf $(bup_config_detritus)
-	rm -rf $(clean_paths) .pytest_cache
+	rm -rf $(doc_clean_paths) $(clean_paths) .pytest_cache
 	rm -f $(generated_dependencies)
 	find . -name __pycache__ -exec rm -rf {} +
 	if test -e test/tmp; then dev/force-delete test/tmp; fi
