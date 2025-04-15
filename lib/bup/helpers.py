@@ -35,8 +35,10 @@ EXIT_FAILURE = 2
 buglvl = int(os.environ.get('BUP_DEBUG', 0))
 
 
+nullctx = nullcontext() # only need one
+
 def nullcontext_if_not(manager):
-    return manager if manager is not None else nullcontext()
+    return manager if manager is not None else nullctx
 
 
 def getgroups():
