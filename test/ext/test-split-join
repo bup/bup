@@ -34,7 +34,7 @@ WVPASSEQ $(find "$BUP_DIR/objects/pack" -name '*.pack' | wc -l) 0
 WVSTART "split short reads"
 WVPASS mkfifo "$tmpdir/fifo"
 ( for i in $(seq 10) ; do echo asdf ; sleep 0.1 ; done ) > "$tmpdir/fifo" &
-WVPASSEQ "$(WVPASS bup split --noop -b < "$tmpdir/fifo" | wc -l)" "1"
+WVPASSEQ $(WVPASS bup split --noop -b < "$tmpdir/fifo" | wc -l) 1
 
 WVSTART "split"
 WVPASS echo a >a.tmp
