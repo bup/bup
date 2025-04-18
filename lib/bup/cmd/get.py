@@ -187,7 +187,10 @@ def parse_args(args):
 def get_random_item(name, hash, src_repo, dest_repo, opt):
     def already_seen(oid):
         return dest_repo.exists(unhexlify(oid))
-    for item in walk_object(src_repo.cat, hash, stop_at=already_seen,
+    def get_ref(oidx, include_data=False):
+        assert include_data
+        yield from src_repo.cat(oidx)
+    for item in walk_object(get_ref, hash, stop_at=already_seen,
                             include_data=True):
         if item.data is False:
             if not opt.ignore_missing:
