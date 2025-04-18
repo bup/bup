@@ -464,7 +464,8 @@ static int HashSplitter_read(HashSplitter *self)
     assert(self->start <= self->end);
     assert(self->end <= self->bufsz);
 
-    Py_ssize_t len = 0, start_read = self->end;
+    const Py_ssize_t start_read = self->end;
+    Py_ssize_t len = 0;
     if (self->fd != -1) {
         /* this better be the common case ... */
         do {
@@ -480,24 +481,24 @@ static int HashSplitter_read(HashSplitter *self)
             }
 
             self->end += len;
+        } while (len /* not eof */ && self->bufsz > self->end);
 
 #ifdef HASHSPLITTER_ADVISE
-            if (!INT_ADD_OK(self->read, len, &self->read)) {
-                PyErr_Format(PyExc_OverflowError, "%R mincore read count overflowed",
-                             self);
-                return -1;
-            }
+        if (!INT_ADD_OK(self->read, self->end - start_read, &self->read)) {
+            PyErr_Format(PyExc_OverflowError, "%R mincore read count overflowed",
+                         self);
+            return -1;
+        }
 
-            assert(self->uncached <= self->read);
-            if (len == 0
-                && self->read > self->uncached
-                && self->read - self->uncached >= advise_chunk) {
-                if(HashSplitter_uncache(self, len == 0))
-                    return -1;
-            }
+        assert(self->uncached <= self->read);
+        if (len == 0
+            && self->read > self->uncached
+            && self->read - self->uncached >= advise_chunk) {
+            // REVIEW: len is always zero?
+            if(HashSplitter_uncache(self, len == 0))
+                return -1;
+        }
 #endif
-        } while (len /* not eof */ &&
-                 self->bufsz > self->end);
     } else {
         do {
             assert(self->bufsz >= self->end);
