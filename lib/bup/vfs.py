@@ -49,7 +49,7 @@ item.coid.
 from binascii import hexlify, unhexlify
 from collections import namedtuple
 from errno import EINVAL, ELOOP, ENOTDIR
-from itertools import chain, tee
+from itertools import tee
 from random import randrange
 from stat import S_IFDIR, S_IFLNK, S_IFREG, S_ISDIR, S_ISLNK, S_ISREG
 from time import localtime, strftime
@@ -58,7 +58,7 @@ import re
 from bup import git
 from bup.compat import hexstr, pending_raise
 from bup.git import \
-    BUP_CHUNKED, GitError, last_tree_entry, parse_commit, tree_decode
+    BUP_CHUNKED, GitError, last_tree_entry, parse_commit, tree_decode, tree_entries
 from bup.helpers import debug2
 from bup.io import path_msg
 from bup.metadata import Metadata
@@ -99,25 +99,20 @@ def _normal_or_chunked_file_size(repo, oid):
         _, obj_t, size = next(it)
     return ofs + sum(len(b) for b in it)
 
-def _skip_chunks_before_offset(tree, offset):
-    prev_ent = next(tree, None)
-    if not prev_ent:
-        return tree
-    ent = None
-    for ent in tree:
-        ent_ofs = int(ent[1], 16)
+def _skip_chunks_before_offset(tree_data, offset):
+    entries = tree_entries(tree_data)
+    for i in range(len(entries)):
+        ent_ofs = int(entries[i][1], 16)
         if ent_ofs > offset:
-            return chain([prev_ent, ent], tree)
+            return entries[i - 1:]
         if ent_ofs == offset:
-            return chain([ent], tree)
-        prev_ent = ent
-    return [prev_ent]
+            return entries[i:]
+    return entries[-1:]
 
-def _tree_chunks(repo, tree, startofs):
-    "Tree should be a sequence of (name, mode, hash) as per tree_decode()."
+def _tree_chunks(repo, tree_data, startofs):
     assert(startofs >= 0)
     # name is the chunk's hex offset in the original file
-    for mode, name, oid in _skip_chunks_before_offset(tree, startofs):
+    for mode, name, oid in _skip_chunks_before_offset(tree_data, startofs):
         ofs = int(name, 16)
         skipmore = startofs - ofs
         if skipmore < 0:
@@ -127,8 +122,7 @@ def _tree_chunks(repo, tree, startofs):
         data = b''.join(it)
         if S_ISDIR(mode):
             assert obj_t == b'tree'
-            for b in _tree_chunks(repo, tree_decode(data), skipmore):
-                yield b
+            yield from _tree_chunks(repo, data, skipmore)
         else:
             assert obj_t == b'blob'
             yield data[skipmore:]
@@ -140,7 +134,7 @@ class _ChunkReader:
         isdir = obj_t == b'tree'
         data = b''.join(it)
         if isdir:
-            self.it = _tree_chunks(repo, tree_decode(data), startofs)
+            self.it = _tree_chunks(repo, data, startofs)
             self.blob = None
         else:
             self.it = None

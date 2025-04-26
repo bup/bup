@@ -341,6 +341,25 @@ def tree_decode(tree_data):
         yield int(mode, 8), name, tree_data[z+1:z+1+20]
 
 
+def tree_entries(tree_data):
+    """Return a (mode, name, hash) list for the entries in the git
+    tree_data.
+
+    """
+    result = []
+    ofs = 0
+    while ofs < len(tree_data):
+        z = tree_data.find(b'\0', ofs)
+        assert z > ofs
+        mode_end = tree_data.find(b' ', ofs)
+        name = tree_data[mode_end+1:z]
+        mode = tree_data[ofs:mode_end]
+        ent = int(mode, 8), name, tree_data[z+1:z+1+20]
+        result.append(ent)
+        ofs = z + 21
+    return result
+
+
 def last_tree_entry(tree_data):
     oid_start = len(tree_data) - 20
     oid = tree_data[oid_start:]
