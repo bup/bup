@@ -58,7 +58,12 @@ import re
 from bup import git
 from bup.compat import hexstr, pending_raise
 from bup.git import \
-    BUP_CHUNKED, GitError, last_tree_entry, parse_commit, tree_decode, tree_entries
+    (BUP_CHUNKED,
+     GitError,
+     last_tree_entry,
+     parse_commit,
+     tree_entries,
+     tree_iter)
 from bup.helpers import debug2
 from bup.io import path_msg
 from bup.metadata import Metadata
@@ -379,7 +384,7 @@ def tree_data_and_bupm(repo, oid):
         assert item_t == b'tree'
     elif item_t != b'tree':
         raise Exception('%s is not a tree or commit' % hexstr(oid))
-    for _, mangled_name, sub_oid in tree_decode(data):
+    for _, mangled_name, sub_oid in tree_entries(data):
         if mangled_name == b'.bupm':
             return data, sub_oid
         if mangled_name > b'.bupm':
@@ -546,12 +551,12 @@ def _tree_items_except_dot(oid, entries, names=None, bupm=None):
             meta = _default_mode_for_gitmode(gitmode)
         return Item(oid=ent_oid, meta=meta)
 
-    tree_entries = ordered_tree_entries(entries, bupm)
+    tree_ents = ordered_tree_entries(entries, bupm)
 
     assert isinstance(names, (set, frozenset)) or names is None
     assert len(oid) == 20
     if not names:
-        for name, mangled_name, kind, gitmode, ent_oid in tree_entries:
+        for name, mangled_name, kind, gitmode, ent_oid in tree_ents:
             if mangled_name == b'.bupm':
                 continue
             assert name != b'.'
@@ -567,7 +572,7 @@ def _tree_items_except_dot(oid, entries, names=None, bupm=None):
     # Account for the bupm sort order issue (cf. ordered_tree_entries above)
     last_name = max(names) if bupm else max(names) + b'/'
 
-    for name, mangled_name, kind, gitmode, ent_oid in tree_entries:
+    for name, mangled_name, kind, gitmode, ent_oid in tree_ents:
         if mangled_name == b'.bupm':
             continue
         assert name != b'.'
@@ -626,7 +631,7 @@ def _split_subtree_items(repo, level, oid, entries, names, want_meta, root=True)
                 assert mangled_name[-5:-1] != b'.bup', \
                     f'found {path_msg(mangled_name)} in split subtree'
             yield from _split_subtree_items(repo, level - 1, sub_oid,
-                                            list(tree_decode(_get_tree_object(repo, sub_oid))),
+                                            tree_entries(_get_tree_object(repo, sub_oid)),
                                             names, want_meta, False)
 
 _tree_depth_rx = re.compile(br'\.bupd\.([0-9]+)(?:\..*)?\.bupd')
@@ -656,7 +661,7 @@ def tree_items(repo, oid, tree_data, names, *, want_meta=True):
         names = frozenset(names)
     dot_requested = not names or b'.' in names
 
-    entries = list(tree_decode(tree_data))
+    entries = tree_entries(tree_data)
     depth = None
     bupm_oid = None
     for _, mangled_name, sub_oid in entries:
@@ -1159,7 +1164,7 @@ def join(repo, ref):
             yield from it
         elif typ == b'tree':
             treefile = b''.join(it)
-            for ent_mode, ent_name, ent_oid in git.tree_decode(treefile):
+            for ent_mode, ent_name, ent_oid in tree_iter(treefile):
                 yield from _join(hexlify(ent_oid), path + [ent_name])
         elif typ == b'commit':
             treeline = b''.join(it).split(b'\n')[0]

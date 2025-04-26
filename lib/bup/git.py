@@ -328,7 +328,7 @@ def tree_encode(shalist):
     return b''.join(l)
 
 
-def tree_decode(tree_data):
+def tree_iter(tree_data):
     """Yield (mode, name, hash) for each entry in the git tree_data."""
     ofs = 0
     while ofs < len(tree_data):
@@ -1684,7 +1684,7 @@ def walk_object(get_ref, oidx, *, stop_at=None, include_data=None,
                             hashsplit.GIT_MODE_TREE, b'tree'))
         elif typ == b'tree':
             pending.append(item)
-            for mode, name, ent_id in tree_decode(data):
+            for mode, name, ent_id in tree_iter(data):
                 if name.endswith(b'.bupd'):
                     bup_type = BUP_NORMAL
                 else:

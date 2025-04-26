@@ -4,7 +4,7 @@ from stat import S_ISDIR
 
 from bup import vfs
 from bup.metadata import Metadata
-from bup.git import BUP_CHUNKED, tree_decode
+from bup.git import BUP_CHUNKED, tree_entries
 
 TreeDictValue = namedtuple('TreeDictValue', ('name', 'oid', 'meta'))
 
@@ -24,7 +24,7 @@ def tree_items(repo, oid):
         if m and m.size is None:
             m.size = 0
         yield TreeDictValue(name=b'.', oid=oid, meta=m)
-        tree_ents = vfs.ordered_tree_entries(tree_decode(tree_data), bupm=True)
+        tree_ents = vfs.ordered_tree_entries(tree_entries(tree_data), bupm=True)
         for name, mangled_name, kind, gitmode, sub_oid in tree_ents:
             if mangled_name == b'.bupm':
                 continue

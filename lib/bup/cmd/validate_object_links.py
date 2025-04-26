@@ -5,6 +5,7 @@ import glob, sys, zlib
 
 from bup import options, git
 from bup.compat import pairwise
+from bup.git import tree_iter
 from bup.helpers import EXIT_FALSE, EXIT_TRUE, log, qprogress, reprogress
 from bup.io import byte_stream, path_msg
 
@@ -103,7 +104,7 @@ def main(argv):
                         reprogress()
                         continue
                     if tp == b'tree':
-                        shalist = (x[2] for x in git.tree_decode(data))
+                        shalist = (x[2] for x in tree_iter(data))
                     elif tp == b'commit':
                         commit = git.parse_commit(data)
                         shalist = map(unhexlify, commit.parents + [commit.tree])
