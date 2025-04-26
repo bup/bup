@@ -328,18 +328,17 @@ def tree_encode(shalist):
     return b''.join(l)
 
 
-def tree_decode(buf):
-    """Generate a list of (mode,name,hash) from the git tree object in buf."""
+def tree_decode(tree_data):
+    """Yield (mode, name, hash) for each entry in the git tree_data."""
     ofs = 0
-    while ofs < len(buf):
-        z = buf.find(b'\0', ofs)
-        assert(z > ofs)
-        spl = buf[ofs:z].split(b' ', 1)
-        assert(len(spl) == 2)
-        mode,name = spl
-        sha = buf[z+1:z+1+20]
-        ofs = z+1+20
-        yield (int(mode, 8), name, sha)
+    while ofs < len(tree_data):
+        z = tree_data.find(b'\0', ofs)
+        assert z > ofs
+        mode_end = tree_data.find(b' ', ofs)
+        name = tree_data[mode_end+1:z]
+        mode = tree_data[ofs:mode_end]
+        ofs = z + 21
+        yield int(mode, 8), name, tree_data[z+1:z+1+20]
 
 
 def last_tree_entry(tree_data):
