@@ -360,6 +360,30 @@ def tree_entries(tree_data):
     return result
 
 
+def find_tree_entry(named, tree_data):
+    """Return mode, named, hash for the named entry in the git
+    tree_data if it exists, or None.
+
+    """
+    assert not named.endswith(b'/')
+    dirname = named + b'/'
+    ofs = 0
+    while ofs < len(tree_data):
+        z = tree_data.find(b'\0', ofs)
+        assert z > ofs
+        mode_end = tree_data.find(b' ', ofs)
+        name = tree_data[mode_end+1:z]
+        # pylint: disable-next=consider-using-in
+        if name == named or name == dirname:
+            mode = tree_data[ofs:mode_end]
+            ent = int(mode, 8), name, tree_data[z+1:z+1+20]
+            return ent
+        if name > dirname:
+            break
+        ofs = z + 21
+    return None
+
+
 def last_tree_entry(tree_data):
     oid_start = len(tree_data) - 20
     oid = tree_data[oid_start:]

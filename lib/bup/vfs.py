@@ -60,6 +60,7 @@ from bup.compat import hexstr, pending_raise
 from bup.git import \
     (BUP_CHUNKED,
      GitError,
+     find_tree_entry,
      last_tree_entry,
      parse_commit,
      tree_entries,
@@ -367,11 +368,7 @@ def _read_dir_meta(bupm):
         m.size = 0
     return m
 
-def tree_data_and_bupm(repo, oid):
-    """Return (tree_bytes, bupm_oid) where bupm_oid will be None if the
-    tree has no metadata (i.e. older bup save, or non-bup tree).
-
-    """
+def _treeish_tree_data(repo, oid):
     assert len(oid) == 20
     it = repo.cat(hexlify(oid))
     _, item_t, size = next(it)
@@ -384,6 +381,14 @@ def tree_data_and_bupm(repo, oid):
         assert item_t == b'tree'
     elif item_t != b'tree':
         raise Exception('%s is not a tree or commit' % hexstr(oid))
+    return data
+
+def tree_data_and_bupm(repo, oid):
+    """Return (tree_bytes, bupm_oid) where bupm_oid will be None if the
+    tree has no metadata (i.e. older bup save, or non-bup tree).
+
+    """
+    data = _treeish_tree_data(repo, oid)
     for _, mangled_name, sub_oid in tree_entries(data):
         if mangled_name == b'.bupm':
             return data, sub_oid
@@ -396,9 +401,9 @@ def _find_treeish_oid_metadata(repo, oid):
     has no metadata (i.e. older bup save, or non-bup tree).
 
     """
-    tree_data, bupm_oid = tree_data_and_bupm(repo, oid)
-    if bupm_oid:
-        with _FileReader(repo, bupm_oid) as meta_stream:
+    bupm_ent = find_tree_entry(b'.bupm', _treeish_tree_data(repo, oid))
+    if bupm_ent:
+        with _FileReader(repo, bupm_ent[2]) as meta_stream:
             return _read_dir_meta(meta_stream)
     return None
 
