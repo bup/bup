@@ -342,6 +342,25 @@ def tree_decode(buf):
         yield (int(mode, 8), name, sha)
 
 
+def last_tree_entry(tree_data):
+    oid_start = len(tree_data) - 20
+    oid = tree_data[oid_start:]
+    last_ent = 0
+    z = 0
+    while True:
+        z = tree_data.find(b'\0', z)
+        if z == -1:
+            break
+        z += 21
+        if z < len(tree_data):
+            last_ent = z
+    mode_end = tree_data.find(b' ', last_ent)
+    assert mode_end > 0
+    mode = tree_data[last_ent:mode_end]
+    name = tree_data[mode_end+1:oid_start-1]
+    return int(mode, 8), name, oid
+
+
 def _encode_packobj(type, content, compression_level=1):
     if compression_level not in range(-1, 10):
         raise ValueError('invalid compression level %s' % compression_level)

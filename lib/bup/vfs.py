@@ -57,8 +57,9 @@ import re
 
 from bup import git
 from bup.compat import hexstr, pending_raise
-from bup.git import BUP_CHUNKED, GitError, parse_commit, tree_decode
-from bup.helpers import debug2, last
+from bup.git import \
+    BUP_CHUNKED, GitError, last_tree_entry, parse_commit, tree_decode
+from bup.helpers import debug2
 from bup.io import path_msg
 from bup.metadata import Metadata
 
@@ -92,7 +93,7 @@ def _normal_or_chunked_file_size(repo, oid):
     _, obj_t, size = next(it)
     ofs = 0
     while obj_t == b'tree':
-        mode, name, last_oid = last(tree_decode(b''.join(it)))
+        mode, name, last_oid = last_tree_entry(b''.join(it))
         ofs += int(name, 16)
         it = repo.cat(hexlify(last_oid))
         _, obj_t, size = next(it)
