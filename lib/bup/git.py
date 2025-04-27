@@ -12,9 +12,11 @@ from itertools import islice
 from shutil import rmtree
 from subprocess import run
 from sys import stderr
+from typing import Optional
 
 from bup import _helpers, hashsplit, path, midx, bloom, xstat
 from bup.compat import (bytes_from_byte, bytes_from_uint,
+                        dataclass,
                         environ,
                         pending_raise)
 from bup.io import path_msg
@@ -1614,6 +1616,7 @@ class MissingObject(KeyError):
         self.oid = oid
         KeyError.__init__(self, f'object {hexlify(oid)!r} is missing')
 
+@dataclass(slots=True, frozen=True)
 class WalkItem:
     # The path is the mangled path, and if an item represents a fragment
     # of a chunked file, the chunk_path will be the chunked subtree path
@@ -1625,14 +1628,12 @@ class WalkItem:
     #   item.chunk_path = ['', '2d3115e', '016b097']
     #   item.type = 'tree'
     #   ...
-    __slots__ = 'oid', 'type', 'mode', 'path', 'chunk_path', 'data'
-    def __init__(self, *, oid, type, mode, path, chunk_path, data):
-        self.oid = oid
-        self.type = type
-        self.mode = mode
-        self.path = path
-        self.chunk_path = chunk_path
-        self.data = data
+    oid: bytes
+    type: bytes
+    mode: int
+    path: bytes
+    chunk_path: bytes
+    data: Optional[bytes]
 
 def walk_object(get_ref, oidx, *, stop_at=None, include_data=None,
                 oid_exists=None):
