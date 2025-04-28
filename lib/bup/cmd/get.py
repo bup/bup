@@ -191,7 +191,8 @@ def get_random_item(name, hash, src_repo, dest_repo, opt):
         assert include_data
         yield from src_repo.cat(oidx)
     for item in walk_object(get_ref, hash, stop_at=already_seen,
-                            include_data=True):
+                            include_data=True, result='item'):
+        assert isinstance(item, git.WalkItem)
         if item.data is False:
             if not opt.ignore_missing:
                 raise MissingObject(item.oid)

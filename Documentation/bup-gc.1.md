@@ -41,9 +41,7 @@ used to help test before/after results.)
     is 10%.
 
 -v, \--verbose
-: increase verbosity (can be used more than once).  With one -v, bup
-    prints every directory name as it gets backed up.  With two -v,
-    it also prints every filename.
+: increase verbosity (can be given more than once).
 
 -*#*, \--compress=*#*
 :   set the compression level to # (a value from 0-9, where 9 is the

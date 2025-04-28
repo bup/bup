@@ -101,6 +101,9 @@ General
 * A local repository should no longer be required to run `bup index
   -f` or a remote `save`.
 
+* When verbose (via `-v...`), `bup gc` and `bup validate-ref-links` no
+  longer print paths while scanning the repository.
+
 Bugs
 ----
 

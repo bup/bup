@@ -1,7 +1,7 @@
 
 from binascii import hexlify, unhexlify
 from contextlib import ExitStack
-from itertools import chain
+#from itertools import chain
 from os.path import basename
 import glob, os, re, subprocess, sys, tempfile
 
@@ -68,58 +68,13 @@ def count_objects(dir, verbosity):
     return object_count
 
 
-def report_missing(ref_name, item, verbosity):
-    chunks = item.chunk_path
-    if chunks:
-        path = chain(item.path, chunks)
-    else:
-        # Top commit, for example has none.
-        if item.path and not item.path[-1].endswith(b'.bupd'):
-            demangled = git.demangle_name(item.path[-1], item.mode)[0]
-            path = chain(item.path[:-1], [demangled])
-        else:
-            path = item.path
+def report_missing(ref_name, item_path):
     ref = path_msg(ref_name)
-    path = path_msg(b'/'.join(path))
-    if item.type == b'tree':
-        note_error(f'missing {ref}:{path}/\n')
-    else:
-        note_error(f'missing {ref}:{path}\n')
-
-
-def report_live_item(n, total, ref_name, ref_id, item, verbosity):
-    status = 'scanned %02.2f%%' % (n * 100.0 / total)
-    dirslash = b'/' if item.type == b'tree' else b''
-    chunk_path = item.chunk_path
-
-    if chunk_path:
-        if verbosity < 4:
-            return
-        ps = b'/'.join(item.path)
-        chunk_ps = b'/'.join(chunk_path)
-        log('%s %s:%s/%s%s\n' % (status, path_msg(ref_name), path_msg(ps),
-                                 path_msg(chunk_ps), path_msg(dirslash)))
-        return
-
-    # Top commit, for example has none.
-    demangled = None
-    if item.path and not item.path[-1].endswith(b'.bupd'):
-        demangled = git.demangle_name(item.path[-1], item.mode)[0]
-
-    # Don't print mangled paths unless the verbosity is over 3.
-    if demangled:
-        ps = b'/'.join(item.path[:-1] + [demangled])
-        if verbosity == 1:
-            qprogress('%s %s:%s%s\r' % (status, path_msg(ref_name), path_msg(ps),
-                                        path_msg(dirslash)))
-        elif (verbosity > 1 and item.type == b'tree') \
-             or (verbosity > 2 and item.type == b'blob'):
-            log('%s %s:%s%s\n' % (status, path_msg(ref_name), path_msg(ps),
-                                  path_msg(dirslash)))
-            reprogress()
-    elif verbosity > 3:
-        ps = b'/'.join(item.path)
-        log('%s %s:%s%s\n' % (status, path_msg(ref_name), path_msg(ps), path_msg(dirslash)))
+    i = len(item_path) - 1
+    while i >= 0 and item_path[i].type != b'commit':
+        i -= 1
+    path = b'/'.join(item.name for item in item_path[i:])
+    note_error(f'missing {ref}:{path}/\n')
 
 
 def find_live_objects(existing_count, cat_pipe, idx_list, refs=None,
@@ -140,19 +95,23 @@ def find_live_objects(existing_count, cat_pipe, idx_list, refs=None,
         approx_live_count = 0
         missing = 0
         for ref_name, ref_id in refs if refs else git.list_refs():
-            for item in walk_object(cat_pipe.get, hexlify(ref_id),
-                                    stop_at=stop_at, include_data=None,
-                                    oid_exists=oid_exists):
+            for item_path in walk_object(cat_pipe.get, hexlify(ref_id),
+                                         stop_at=stop_at, include_data=None,
+                                         oid_exists=oid_exists):
+                assert isinstance(item_path, list)
+                for item in item_path:
+                    assert isinstance(item, git.WalkItem)
+                item = item_path[-1]
                 if item.data is False:
                     if count_missing:
-                        report_missing(ref_name, item, verbosity)
+                        report_missing(ref_name, item_path)
                         missing += 1
                     else:
                         raise MissingObject(item.oid)
                 # FIXME: batch ids
                 elif verbosity:
-                    report_live_item(approx_live_count, existing_count,
-                                     ref_name, ref_id, item, verbosity)
+                    qprogress('scanned %02.2f%%\r'
+                              % (approx_live_count * 100.0 / existing_count))
                 if item.type != b'blob':
                     if verbosity and not item.oid in live_trees:
                         approx_live_count += 1

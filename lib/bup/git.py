@@ -8,11 +8,12 @@ from array import array
 from binascii import hexlify, unhexlify
 from collections import namedtuple
 from contextlib import ExitStack
+from dataclasses import replace
 from itertools import islice
 from shutil import rmtree
 from subprocess import run
 from sys import stderr
-from typing import Optional
+from typing import Optional, Union
 
 from bup import _helpers, hashsplit, path, midx, bloom, xstat
 from bup.compat import (bytes_from_byte, bytes_from_uint,
@@ -1616,46 +1617,41 @@ class MissingObject(KeyError):
         self.oid = oid
         KeyError.__init__(self, f'object {hexlify(oid)!r} is missing')
 
+
 @dataclass(slots=True, frozen=True)
 class WalkItem:
-    # The path is the mangled path, and if an item represents a fragment
-    # of a chunked file, the chunk_path will be the chunked subtree path
-    # for the chunk, i.e. ['', '2d3115e', ...].  The top-level path for a
-    # chunked file will have a chunk_path of [''].  So some chunk subtree
-    # of the file '/foo/bar/baz' might look like this:
-    #
-    #   item.path = ['foo', 'bar', 'baz.bup']
-    #   item.chunk_path = ['', '2d3115e', '016b097']
-    #   item.type = 'tree'
-    #   ...
     oid: bytes
-    type: bytes
+    name: bytes
+    type: Union['blob', 'commit', 'tree']
     mode: int
-    path: bytes
-    chunk_path: bytes
     data: Optional[bytes]
 
 def walk_object(get_ref, oidx, *, stop_at=None, include_data=None,
-                oid_exists=None):
+                oid_exists=None, result='path'):
     """Yield everything reachable from oidx via get_ref (which must
-    behave like CatPipe get) as a WalkItem, stopping whenever
-    stop_at(oidx) returns logically true.  Set the data field to False
-    when the object is missing, or None if the object exists but
-    include_data is logically false.  Missing blobs may not be noticed
-    unless include_data is logically true or oid_exists(oid) is
-    provided.  Yield items depth first, post-order, i.e. parents after
-    children.
+    behave like CatPipe get) as a path, which is a list of WalkItems,
+    stopping whenever stop_at(oidx) returns logically true.  Set the
+    data field to False when the object is missing, or None if the
+    object exists but include_data is logically false.  Missing blobs
+    may not be noticed unless include_data is logically true or
+    oid_exists(oid) is provided.  Yield items depth first, post-order,
+    i.e. parents after children.
 
+    The data will be None for all path items except the last.
     """
 
+    assert result in ('path', 'item')
+
     # Maintain the pending stack on the heap to avoid stack overflow
-    pending = [(oidx, [], [], None, None)]
+    pending = [(False, oidx, [], oidx, None, None)]
     while len(pending):
-        if isinstance(pending[-1], WalkItem):
-            yield pending.pop()
+        completed_item = pending[-1][0]
+        assert completed_item in (True, False)
+        if completed_item:
+            yield pending.pop()[1]
             continue
 
-        oidx, parent_path, chunk_path, mode, exp_typ = pending.pop()
+        _, oidx, parents, name, mode, exp_typ = pending.pop()
         if stop_at and stop_at(oidx):
             continue
 
@@ -1665,10 +1661,9 @@ def walk_object(get_ref, oidx, *, stop_at=None, include_data=None,
             # If the object is a "regular file", then it's a leaf in
             # the graph, so we can skip reading the data if the caller
             # hasn't requested it.
-            yield WalkItem(oid=oid, type=b'blob',
-                           chunk_path=chunk_path, path=parent_path,
-                           mode=mode,
-                           data=bool(oid_exists(oid)) if oid_exists else None)
+            item = WalkItem(oid=oid, type=b'blob', name=name, mode=mode,
+                            data=bool(oid_exists(oid)) if oid_exists else None)
+            yield [*parents, item] if result == 'path' else item
             continue
 
         if exp_typ in (b'commit', b'tree', None): # must have the data
@@ -1677,9 +1672,9 @@ def walk_object(get_ref, oidx, *, stop_at=None, include_data=None,
             item_it = get_ref(oidx, include_data=include_data)
         get_oidx, typ, _ = next(item_it)
         if not get_oidx:
-            yield WalkItem(oid=unhexlify(oidx), type=exp_typ,
-                           chunk_path=chunk_path, path=parent_path,
-                           mode=mode, data=False)
+            item = WalkItem(oid=unhexlify(oidx), type=exp_typ, name=name,
+                            mode=mode, data=False)
+            yield [*parents, item] if result == 'path' else item
             continue
         if typ not in (b'blob', b'commit', b'tree'):
             raise Exception('unexpected repository object type %r' % typ)
@@ -1692,37 +1687,23 @@ def walk_object(get_ref, oidx, *, stop_at=None, include_data=None,
         else:
             data = b''.join(item_it)
 
-        item = WalkItem(oid=oid, type=typ,
-                        chunk_path=chunk_path, path=parent_path,
-                        mode=mode,
+        item = WalkItem(oid=oid, type=typ, mode=mode, name=name,
                         data=(data if include_data else None))
+        res = [*parents, item] if result == 'path' else item
 
         if typ == b'blob':
-            yield item
+            yield res
         elif typ == b'commit':
-            pending.append(item)
-            commit_items = parse_commit(data)
-            # For now, all paths are rooted at the "nearest" commit
-            for pid in commit_items.parents:
-                pending.append((pid, [], [], mode, b'commit'))
-            pending.append((commit_items.tree, [oidx], [],
+            pending.append((True, res))
+            commit = parse_commit(data)
+            commit_path = [*parents, replace(item, data=None)]
+            for pid in commit.parents:
+                pending.append((False, pid, commit_path, pid, mode, b'commit'))
+            pending.append((False, commit.tree, parents, commit.tree,
                             hashsplit.GIT_MODE_TREE, b'tree'))
         elif typ == b'tree':
-            pending.append(item)
+            pending.append((True, res))
+            tree_path = [*parents, replace(item, data=None)]
             for mode, name, ent_id in tree_iter(data):
-                if name.endswith(b'.bupd'):
-                    bup_type = BUP_NORMAL
-                else:
-                    _, bup_type = demangle_name(name, mode)
-                if chunk_path:
-                    sub_path = parent_path
-                    sub_chunk_path = chunk_path + [name]
-                else:
-                    sub_path = parent_path + [name]
-                    if bup_type == BUP_CHUNKED:
-                        sub_chunk_path = [b'']
-                    else:
-                        sub_chunk_path = chunk_path
-                pending.append((hexlify(ent_id), sub_path, sub_chunk_path,
-                                mode,
+                pending.append((False, hexlify(ent_id), tree_path, name, mode,
                                 b'tree' if stat.S_ISDIR(mode) else b'blob'))
