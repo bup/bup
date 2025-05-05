@@ -1635,9 +1635,11 @@ def walk_object(get_ref, oidx, *, stop_at=None, include_data=None,
     object exists but include_data is logically false.  Missing blobs
     may not be noticed unless include_data is logically true or
     oid_exists(oid) is provided.  Yield items depth first, post-order,
-    i.e. parents after children.
+    i.e. parents after children. A tree will be yielded (later) if
+    stop_item(oidx) is false when it is first encountered.
 
     The data will be None for all path items except the last.
+
     """
 
     assert result in ('path', 'item')

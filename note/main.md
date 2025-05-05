@@ -107,6 +107,10 @@ General
 Bugs
 ----
 
+* `bup on HOST get ...` should no longer hang in some situations where
+  the client could provoke duplicate index-cache suggestions from the
+  server, which the client then treated as an error.
+
 * A bug has been fixed that could cause any internal subcommand
   (e.g. not `import-rsnapshot`) to hang when running interactively
   (i.e. with a controlling terminal).
