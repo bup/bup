@@ -199,8 +199,26 @@ def get_random_item(name, hash, repo, writer, opt):
                 raise MissingObject(item.oid)
             note_error(f'skipping missing source object {item.oid.hex()}\n')
             continue
-        # already_seen ensures that writer.exists(id) is false.
-        # Otherwise, just_write() would fail.
+        # We must not just_write() unless we're sure that the oid
+        # doesn't writer.exists() *now* or we may cause the server to
+        # suggest the same idx more than once, causing
+        # client.sync_index() to reject it via an exception.
+        #
+        # With local repositories, we don't need to recheck existence
+        # here because the answer can't have changed, but with remote
+        # repositories already_seen() may be false when the tree is
+        # first encountered, and then true by the time walk_object()
+        # yields it here, due to index-cache changes during the
+        # depth-first traversal.
+        #
+        # That's because in the interim, the client may sync an index
+        # from the server that happens to contain the tree, as the
+        # result of a "suggestion" from the server after the client
+        # attempts to write some other oid that the server already
+        # has. Without this check, we can provoke a duplicate index
+        # suggestion which then causes client.sync_index() to throw.
+        if item.type != b'blob' and writer.exists(item.oid):
+            continue
         writer.just_write(item.oid, item.type, item.data)
 
 

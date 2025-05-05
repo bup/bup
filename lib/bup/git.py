@@ -1524,7 +1524,8 @@ def walk_object(get_ref, oidx, *, stop_at=None, include_data=None,
     include_data is logically false.  Missing blobs may not be noticed
     unless include_data is logically true or oid_exists(oid) is
     provided.  Yield items depth first, post-order, i.e. parents after
-    children.
+    children.  A tree will be yielded (later) if stop_item(oidx) is
+    false when it is first encountered.
 
     """
 
