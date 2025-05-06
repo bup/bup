@@ -1093,22 +1093,24 @@ static PyObject *bup_set_linux_file_attr(PyObject *self, PyObject *args)
 #endif /* def BUP_HAVE_FILE_ATTRS */
 
 
-#ifdef HAVE_STAT_ST_ATIM
+#ifdef BUP_STAT_NS_FLAVOR_TIM
 # define BUP_STAT_ATIME_NS(st) (st)->st_atim.tv_nsec
 # define BUP_STAT_MTIME_NS(st) (st)->st_mtim.tv_nsec
 # define BUP_STAT_CTIME_NS(st) (st)->st_ctim.tv_nsec
-#elif defined HAVE_STAT_ST_ATIMENSEC
+#elif defined BUP_STAT_NS_FLAVOR_TIMENSEC
 # define BUP_STAT_ATIME_NS(st) (st)->st_atimensec.tv_nsec
 # define BUP_STAT_MTIME_NS(st) (st)->st_mtimensec.tv_nsec
 # define BUP_STAT_CTIME_NS(st) (st)->st_ctimensec.tv_nsec
-#elif defined HAVE_STAT_ST_ATIMESPEC
+#elif defined BUP_STAT_NS_FLAVOR_TIMESPEC
 # define BUP_STAT_ATIME_NS(st) (st)->st_atimespec.tv_nsec
 # define BUP_STAT_MTIME_NS(st) (st)->st_mtimespec.tv_nsec
 # define BUP_STAT_CTIME_NS(st) (st)->st_ctimespec.tv_nsec
-#else
+#elif defined BUP_STAT_NS_FLAVOR_NONE
 # define BUP_STAT_ATIME_NS(st) 0
 # define BUP_STAT_MTIME_NS(st) 0
 # define BUP_STAT_CTIME_NS(st) 0
+#else
+# error "./configure did not define a BUP_STAT_NS_FLAVOR"
 #endif
 
 

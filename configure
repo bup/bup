@@ -371,15 +371,16 @@ int main(int argc, char **argv)
 '
 if try-c-code -DBUP_TIME_FIELD=st_atim.tv_nsec -- "$stat_code"; then
     info ' (found, tim)'
-    c_define[BUP_STAT_ST_FLAVOR_ATIM]=1
+    c_define[BUP_STAT_NS_FLAVOR_TIM]=1
 elif try-c-code -DBUP_TIME_FIELD=st_atimensec.tv_nsec -- "$stat_code"; then
     info ' (found, timensec)'
-    c_define[BUP_STAT_ST_FLAVOR_ATIMENSEC]=1
+    c_define[BUP_STAT_NS_FLAVOR_TIMENSEC]=1
 elif try-c-code -DBUP_TIME_FIELD=st_atimespec.tv_nsec -- "$stat_code"; then
     info ' (found, timespec)'
-    c_define[BUP_STAT_ST_FLAVOR_ATIMESPEC]=1
+    c_define[BUP_STAT_NS_FLAVOR_TIMESPEC]=1
 else
     info ' (not found)'
+    c_define[BUP_STAT_NS_FLAVOR_NONE]=1
 fi
 
 info -n 'checking for tm tm_gmtoff field'
