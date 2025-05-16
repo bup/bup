@@ -128,7 +128,7 @@ def save_tree(opt, reader, hlink_db, msr, repo, split_trees, split_cfg):
 
     # Maintain a stack of information representing the current location in
 
-    stack = Stack(split_trees=split_trees)
+    stack = Stack(split_cfg, split_trees=split_trees)
 
     prog_count = 0
     prog_subcount = 0
