@@ -231,14 +231,14 @@ def do_pack(mode, stem, par2_exists, out):
     base = os.path.basename(stem)
     if mode == 'repair':
         return attempt_repair(stem, base, out, verbose=opt.verbose)
-    if not git_verify(stem, quick=opt.quick):
-        if opt.verbose: out.write(base + b' failed\n')
-        return EXIT_FAILURE
-    if par2_ok and par2_exists:
-        if not par2_verify(stem):
+    if mode == 'verify':
+        if not git_verify(stem, quick=opt.quick) \
+           or (par2_ok and par2_exists and not par2_verify(stem)):
             if opt.verbose: out.write(base + b' failed\n')
             return EXIT_FAILURE
-    if opt.generate:
+        if opt.verbose: out.write(base + b' ok\n')
+        return EXIT_SUCCESS
+    if mode == 'generate':
         if par2_exists:
             if opt.verbose: out.write(base + b' exists\n')
             return EXIT_TRUE
@@ -249,8 +249,7 @@ def do_pack(mode, stem, par2_exists, out):
             return EXIT_FAILURE
         if opt.verbose: out.write(base + b' generated\n')
         return EXIT_SUCCESS
-    if opt.verbose: out.write(base + b' ok\n')
-    return EXIT_SUCCESS
+    assert False, f'unexpected mode fsck {mode}'
 
 
 optspec = """
