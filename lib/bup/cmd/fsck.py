@@ -189,6 +189,9 @@ def git_verify(stem, *, quick=False):
 
 
 def attempt_repair(stem, base, out, *, verbose=False):
+    if git_verify(stem, quick=opt.quick):
+        if opt.verbose: out.write(base + b' ok\n')
+        return EXIT_SUCCESS
     rc = par2_repair(stem)
     if rc:
         log(f'{path_msg(base)} par2 repair: failed ({rc})\n')
@@ -226,9 +229,9 @@ def do_pack(mode, stem, par2_exists, out):
     # .idx files in the par2 recovery info, and we want to maintain
     # backward-compatibility.
     base = os.path.basename(stem)
+    if mode == 'repair':
+        return attempt_repair(stem, base, out, verbose=opt.verbose)
     if not git_verify(stem, quick=opt.quick):
-        if opt.repair:
-            return attempt_repair(stem, base, out, verbose=opt.verbose)
         if opt.verbose: out.write(base + b' failed\n')
         return EXIT_FAILURE
     if par2_ok and par2_exists:
