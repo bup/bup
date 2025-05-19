@@ -188,10 +188,14 @@ def git_verify(stem, *, quick=False):
     return result
 
 
-def attempt_repair(stem, base, out, *, verbose=False):
+def attempt_repair(stem, base, par2_exists, out, *, verbose=False):
     if git_verify(stem, quick=opt.quick):
         if opt.verbose: out.write(base + b' ok\n')
         return EXIT_SUCCESS
+    if not par2_exists:
+        log(f'{path_msg(base)} has no recovery data\n')
+        if verbose: out.write(base + b' failed\n')
+        return EXIT_FAILURE
     rc = par2_repair(stem)
     if rc:
         log(f'{path_msg(base)} par2 repair: failed ({rc})\n')
@@ -230,7 +234,7 @@ def do_pack(mode, stem, par2_exists, out):
     # backward-compatibility.
     base = os.path.basename(stem)
     if mode == 'repair':
-        return attempt_repair(stem, base, out, verbose=opt.verbose)
+        return attempt_repair(stem, base, par2_exists, out, verbose=opt.verbose)
     if mode == 'verify':
         if not git_verify(stem, quick=opt.quick) \
            or (par2_ok and par2_exists and not par2_verify(stem)):
