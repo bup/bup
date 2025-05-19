@@ -39,10 +39,6 @@ When attempting to `--repair`, bup will exit with status 1 if and only
 if repairs were needed and were successful, and there were no other
 errors.
 
-*WARNING*: bup fsck's recovery features are not available
-unless you have the free `par2`(1) package installed on
-your bup server.
-
 *WARNING*: bup fsck obviously cannot recover from a
 complete disk failure.  If your backups are important, you
 need to carefully consider redundancy (such as using RAID
