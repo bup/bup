@@ -46,7 +46,7 @@ if bup fsck --par2-ok; then
     WVPASS chmod u+w "$BUP_DIR"/objects/pack/*.idx
     WVPASS bup damage "$BUP_DIR"/objects/pack/*.idx -n10 -s1 -S0
     bup fsck -r --disable-par2
-    WVPASSEQ 1 $?
+    WVPASSEQ 2 $?
 fi
 
 WVSTART "fsck (pack repairs)"

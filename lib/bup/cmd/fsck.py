@@ -293,6 +293,7 @@ def main(argv):
         par2_ok = 0
     if not par2_ok and (opt.generate or opt.repair):
         log(f'error: cannot --generate or --repair without par2\n')
+        sys.exit(EXIT_FAILURE)
 
     if extra:
         pack_stems = [argv_bytes(x) for x in extra]
