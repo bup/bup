@@ -217,11 +217,10 @@ def attempt_repair(stem, base, out, *, verbose=False):
     return EXIT_FALSE
 
 
-def do_pack(stem, par2_exists, out):
-    # Repair and generate are treated as optional actions, requested
-    # in addition to verification.  Always validate the git checksums,
-    # and then run par2 validation if possible.  The latter only tells
-    # us that the pack file hasn't changed since the par2 generation.
+def do_pack(mode, stem, par2_exists, out):
+    assert mode in ('verify', 'generate', 'repair')
+    # Note that par2 validation only tells us that the pack file
+    # hasn't changed since the par2 generation.
     #
     # When making changes here, keep in mind that bup used to include
     # .idx files in the par2 recovery info, and we want to maintain
@@ -309,6 +308,7 @@ def main(argv):
 
     sys.stdout.flush()
     out = byte_stream(sys.stdout)
+    mode = 'repair' if opt.repair else 'generate' if opt.generate else 'verify'
     code = EXIT_SUCCESS
     count = 0
     outstanding = {}
@@ -327,7 +327,7 @@ def main(argv):
 
         if not opt.jobs:
             assert par2_status != False
-            code = merge_exits(code, do_pack(stem, par2_status, out))
+            code = merge_exits(code, do_pack(mode, stem, par2_status, out))
             count += 1
         else:
             while len(outstanding) >= opt.jobs:
@@ -343,7 +343,7 @@ def main(argv):
             else: # child
                 try:
                     assert par2_status != False
-                    sys.exit(do_pack(stem, par2_status, out))
+                    sys.exit(do_pack(mode, stem, par2_status, out))
                 except Exception as e:
                     log('exception: %r\n' % e)
                     sys.exit(99)
