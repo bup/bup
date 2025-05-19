@@ -143,7 +143,11 @@ def par2_recovery_file_status(stem):
     return False
 
 def par2_verify(base):
-    return par2(b'verify', [b'--', base], verb_floor=3)
+    rc = par2(b'verify', [b'--', base], verb_floor=3)
+    if rc != 0:
+        log(f'error: par2 verify failed ({rc}) {path_msg(base)}\n')
+        return False
+    return True
 
 def par2_repair(base):
     return par2(b'repair', [b'--', base], verb_floor=2)
@@ -229,9 +233,7 @@ def do_pack(stem, par2_exists, out):
         if opt.verbose: out.write(base + b' failed\n')
         return EXIT_FAILURE
     if par2_ok and par2_exists:
-        rc = par2_verify(stem)
-        if rc:
-            log(f'error: par2 verify failed ({rc}) {path_msg(base)}\n')
+        if not par2_verify(stem):
             if opt.verbose: out.write(base + b' failed\n')
             return EXIT_FAILURE
     if opt.generate:
