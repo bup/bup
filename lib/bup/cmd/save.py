@@ -139,7 +139,7 @@ def save_tree(opt, reader, hlink_db, msr, repo, split_trees, split_cfg):
 
     # Maintain a stack of information representing the current location in
 
-    stack = Stack(split_cfg, split_trees=split_trees)
+    stack = Stack(repo, split_cfg, split_trees=split_trees)
 
     prog_count = 0
     prog_subcount = 0
@@ -301,7 +301,7 @@ def save_tree(opt, reader, hlink_db, msr, repo, split_trees, split_cfg):
 
         # If switching to a new sub-tree, finish the current sub-tree.
         while stack.path() > [x[0] for x in dirp]:
-            _ = stack.pop(repo)
+            _ = stack.pop()
 
         # If switching to a new sub-tree, start a new sub-tree.
         for path_component in dirp[len(stack):]:
@@ -321,7 +321,7 @@ def save_tree(opt, reader, hlink_db, msr, repo, split_trees, split_cfg):
                 continue # We're at the top level -- keep the current root dir
             # Since there's no filename, this is a subdir -- finish it.
             oldtree = already_saved_oid # may be False
-            newtree = stack.pop(repo, override_tree=oldtree)
+            newtree = stack.pop(override_tree=oldtree)
             if not oldtree:
                 if lastskip_name and lastskip_name.startswith(ent.name):
                     ent.invalidate()
@@ -413,12 +413,12 @@ def save_tree(opt, reader, hlink_db, msr, repo, split_trees, split_cfg):
 
     # pop all parts above the root folder
     while len(stack) > 1:
-        stack.pop(repo)
+        stack.pop()
 
     # Finish the root directory.
     # When there's a collision, use empty metadata for the root.
     root_meta = metadata.Metadata() if root_collision else None
-    tree = stack.pop(repo, override_meta=root_meta)
+    tree = stack.pop(override_meta=root_meta)
 
     return tree
 
