@@ -16,23 +16,6 @@ from bup._helpers import RecordHashSplitter
 
 _empty_metadata = MetadataRO()
 
-def _write_tree(repo, split_config, dir_meta, items, add_meta=True):
-    shalist = []
-    if add_meta:
-        metalist = [(b'', _empty_metadata if dir_meta is None else dir_meta)]
-        metalist += [(shalist_item_sort_key((entry.mode, entry.name, None)),
-                      entry.meta)
-                     for entry in items if entry.mode != GIT_MODE_TREE]
-        metalist.sort(key = lambda x: x[0])
-        metadata = BytesIO(b''.join(m[1].encode() for m in metalist))
-        splitter = hashsplit.from_config([metadata], split_config)
-        mode, oid = split_to_blob_or_tree(repo.write_bupm, repo.write_tree,
-                                          splitter)
-        shalist.append((mode, b'.bupm', oid))
-    shalist += [(entry.gitmode, entry.mangled_name(), entry.oid)
-                for entry in items]
-    return repo.write_tree(shalist)
-
 class TreeItem:
     __slots__ = 'name', 'mode', 'gitmode', 'oid', 'meta'
     def __init__(self, name, mode, gitmode, oid, meta):
@@ -101,87 +84,6 @@ def _abbreviate_item_names(items):
     for abbrev_name, item in zip(abbrevnames, items):
         item.name = abbrev_name
 
-def _write_split_tree(repo, split_config, dir_meta, items, level=0):
-    """Write a (possibly split) tree representing items.
-
-    Write items as either a a single git tree object, or as a "split
-    subtree"  See DESIGN for additional information.
-    """
-    assert level >= 0
-    if not items:
-        return _write_tree(repo, split_config, dir_meta, items)
-
-    # We only feed the name into the hashsplitter because otherwise
-    # minor changes (changing the content of the file, or changing a
-    # dir to a file or vice versa) can have major ripple effects on
-    # the layout of the split tree structure, which may then result in
-    # a lot of extra objects being written.  Unfortunately this also
-    # means that the trees will (on average) be larger (due to the 64
-    # byte) window, but the expected chunk size is relatively small so
-    # that shouldn't really be an issue.
-    #
-    # We also don't create subtrees with only a single entry (unless
-    # they're the last entry), since that would not only be wasteful,
-    # but also lead to recursion if some filename all by itself
-    # contains a split point - since it's propagated to the next layer
-    # up.  This leads to a worst-case depth of ceil(log2(# of names)),
-    # which is somewhat wasteful, but not *that* bad. Other solutions
-    # to this could be devised, e.g. applying some bit perturbation to
-    # the names depending on the level.
-
-    # As we recurse, we abbreviate all of the tree names except (of
-    # course) those in the leaves, and we track the range of names in
-    # a given subtree via the first_full_name and last_full_name
-    # attributes, so we can use them to select the proper
-    # abbreviations.  (See DESIGN for the constraints.)
-
-    splits = []  # replacement trees for this level
-    last_item = items[-1]
-    pending_split = []
-    h = RecordHashSplitter(bits=BUP_TREE_BLOBBITS)
-    for item in items:
-        pending_split.append(item)
-        split, bits = h.feed(item.name)
-        if (split and len(pending_split) > 1) or item is last_item:
-            splits.append(pending_split)
-            pending_split = []
-
-    if len(splits) == 1:
-        # If the level is 0, this is an unsplit tree, otherwise it's
-        # the top of a split tree, so add the .bupd marker.
-        if level > 0:
-            assert len(items) == len(splits[0])
-            assert all(lambda x, y: x is y for x, y in zip(items, splits[0]))
-            _abbreviate_item_names(items)
-            sentinel_sha = repo.write_data(b'')
-            items.append(RawTreeItem(b'.bupd.%d.bupd' % level,
-                                     GIT_MODE_FILE, GIT_MODE_FILE,
-                                     sentinel_sha, None))
-        return _write_tree(repo, split_config, dir_meta, items)
-
-    # This tree level was split
-    newtree = []
-    if level == 0:  # Leaf nodes, just add them.
-        for split_items in splits:
-            newtree.append(SplitTreeItem(split_items[0].name,
-                                         _write_tree(repo, split_config, None,
-                                                     split_items),
-                                         split_items[0].name,
-                                         split_items[-1].name))
-    else:  # "inner" nodes (not top, not leaf), abbreviate names
-        for split_items in splits:
-            _abbreviate_item_names(split_items)
-            # "internal" (not top, not leaf) trees don't have a .bupm
-            newtree.append(SplitTreeItem(split_items[0].name,
-                                         _write_tree(repo, split_config, None,
-                                                     split_items,
-                                                     add_meta=False),
-                                         split_items[0].first_full_name,
-                                         split_items[-1].last_full_name))
-
-    assert newtree
-    return _write_split_tree(repo, split_config, dir_meta, newtree, level + 1)
-
 
 class StackDir:
     __slots__ = 'name', 'items', 'meta'
@@ -192,19 +94,20 @@ class StackDir:
         self.items = []
 
 class Stack:
-    def __init__(self, split_config, *, split_trees=False):
-        self.stack = []
-        self.split_config = split_config
-        self.split_trees = split_trees
+    def __init__(self, repo, split_config, *, split_trees=False):
+        self._stack = []
+        self._repo = repo
+        self._split_config = split_config
+        self._split_trees = split_trees
 
     def __len__(self):
-        return len(self.stack)
+        return len(self._stack)
 
     def path(self):
-        return [p.name for p in self.stack]
+        return [p.name for p in self._stack]
 
     def push(self, name, meta):
-        self.stack.append(StackDir(name, meta))
+        self._stack.append(StackDir(name, meta))
 
     def _clean(self, tree):
         names_seen = set()
@@ -219,19 +122,116 @@ class Stack:
                 items.append(item)
         return items
 
-    def _write(self, repo, tree):
-        items = self._clean(tree)
-        if not self.split_trees:
-            return _write_tree(repo, self.split_config, tree.meta, items)
-        items.sort(key=lambda x: x.name)
-        return _write_split_tree(repo, self.split_config, tree.meta, items)
+    def _write_tree(self, dir_meta, items, add_meta=True):
+        shalist = []
+        if add_meta:
+            metalist = [(b'', _empty_metadata if dir_meta is None else dir_meta)]
+            metalist += [(shalist_item_sort_key((entry.mode, entry.name, None)),
+                          entry.meta)
+                         for entry in items if entry.mode != GIT_MODE_TREE]
+            metalist.sort(key = lambda x: x[0])
+            metadata = BytesIO(b''.join(m[1].encode() for m in metalist))
+            splitter = hashsplit.from_config([metadata], self._split_config)
+            mode, oid = split_to_blob_or_tree(self._repo.write_bupm,
+                                              self._repo.write_tree,
+                                              splitter)
+            shalist.append((mode, b'.bupm', oid))
+        shalist += [(entry.gitmode, entry.mangled_name(), entry.oid)
+                    for entry in items]
+        return self._repo.write_tree(shalist)
 
-    def pop(self, repo, override_tree=None, override_meta=None):
-        tree = self.stack.pop()
+    def _write_split_tree(self, dir_meta, items, level=0):
+        """Write a (possibly split) tree representing items.
+
+        Write items as either a a single git tree object, or as a "split
+        subtree"  See DESIGN for additional information.
+        """
+        assert level >= 0
+        if not items:
+            return self._write_tree(dir_meta, items)
+
+        # We only feed the name into the hashsplitter because otherwise
+        # minor changes (changing the content of the file, or changing a
+        # dir to a file or vice versa) can have major ripple effects on
+        # the layout of the split tree structure, which may then result in
+        # a lot of extra objects being written.  Unfortunately this also
+        # means that the trees will (on average) be larger (due to the 64
+        # byte) window, but the expected chunk size is relatively small so
+        # that shouldn't really be an issue.
+        #
+        # We also don't create subtrees with only a single entry (unless
+        # they're the last entry), since that would not only be wasteful,
+        # but also lead to recursion if some filename all by itself
+        # contains a split point - since it's propagated to the next layer
+        # up.  This leads to a worst-case depth of ceil(log2(# of names)),
+        # which is somewhat wasteful, but not *that* bad. Other solutions
+        # to this could be devised, e.g. applying some bit perturbation to
+        # the names depending on the level.
+
+        # As we recurse, we abbreviate all of the tree names except (of
+        # course) those in the leaves, and we track the range of names in
+        # a given subtree via the first_full_name and last_full_name
+        # attributes, so we can use them to select the proper
+        # abbreviations.  (See DESIGN for the constraints.)
+
+        splits = []  # replacement trees for this level
+        last_item = items[-1]
+        pending_split = []
+        h = RecordHashSplitter(bits=BUP_TREE_BLOBBITS)
+        for item in items:
+            pending_split.append(item)
+            split, bits = h.feed(item.name)
+            if (split and len(pending_split) > 1) or item is last_item:
+                splits.append(pending_split)
+                pending_split = []
+
+        if len(splits) == 1:
+            # If the level is 0, this is an unsplit tree, otherwise it's
+            # the top of a split tree, so add the .bupd marker.
+            if level > 0:
+                assert len(items) == len(splits[0])
+                assert all(lambda x, y: x is y for x, y in zip(items, splits[0]))
+                _abbreviate_item_names(items)
+                sentinel_sha = self._repo.write_data(b'')
+                items.append(RawTreeItem(b'.bupd.%d.bupd' % level,
+                                         GIT_MODE_FILE, GIT_MODE_FILE,
+                                         sentinel_sha, None))
+            return self._write_tree(dir_meta, items)
+
+        # This tree level was split
+        newtree = []
+        if level == 0:  # Leaf nodes, just add them.
+            for split_items in splits:
+                newtree.append(SplitTreeItem(split_items[0].name,
+                                             self._write_tree(None, split_items),
+                                             split_items[0].name,
+                                             split_items[-1].name))
+        else:  # "inner" nodes (not top, not leaf), abbreviate names
+            for split_items in splits:
+                _abbreviate_item_names(split_items)
+                # "internal" (not top, not leaf) trees don't have a .bupm
+                newtree.append(SplitTreeItem(split_items[0].name,
+                                             self._write_tree(None, split_items,
+                                                              add_meta=False),
+                                             split_items[0].first_full_name,
+                                             split_items[-1].last_full_name))
+
+        assert newtree
+        return self._write_split_tree(dir_meta, newtree, level + 1)
+
+    def _write(self, tree):
+        items = self._clean(tree)
+        if not self._split_trees:
+            return self._write_tree(tree.meta, items)
+        items.sort(key=lambda x: x.name)
+        return self._write_split_tree(tree.meta, items)
+
+    def pop(self, override_tree=None, override_meta=None):
+        tree = self._stack.pop()
         if override_meta is not None:
             tree.meta = override_meta
         if not override_tree: # caution - False happens, not just None
-            tree_oid = self._write(repo, tree)
+            tree_oid = self._write(tree)
         else:
             tree_oid = override_tree
         if len(self):
@@ -240,4 +240,4 @@ class Stack:
         return tree_oid
 
     def append_to_current(self, name, mode, gitmode, oid, meta):
-        self.stack[-1].items.append(TreeItem(name, mode, gitmode, oid, meta))
+        self._stack[-1].items.append(TreeItem(name, mode, gitmode, oid, meta))
