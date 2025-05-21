@@ -43,12 +43,21 @@ def prep_mapping_table(db, split_cfg):
                '    without rowid')
     return table_id
 
-def converted_already(dstrepo, item, vfs_dir, db, mapping):
-    size = -1 # irrelevant
-    mode = item.meta
+def previous_conversion(dstrepo, item, vfs_dir, db, mapping):
+    """Return (replacement_item, converted_oid, mode) for the given
+    item if any, *and* if the dstrepo has the item.oid. If not,
+    converted_oid and mode will be None. The replacement_item will
+    either be item, or an augmented copy of item, (e.g. with a proper
+    size) that should be used instead of item.
+
+    """
     if isinstance(item.meta, metadata.Metadata):
         size = item.meta.size
         mode = item.meta.mode
+    else:
+        size = None
+        mode = item.meta
+
     # if we know the size, and the oid exists already (small file w/o
     # hashsplit) then simply return it can't do that if it's a
     # directory, since it might exist but in the non-augmented
@@ -60,19 +69,21 @@ def converted_already(dstrepo, item, vfs_dir, db, mapping):
     db.execute(f'select dst, mode, size from {mapping} where src = ?',
                (item.oid,))
     data = db.fetchone()
-    # if it's not found, then we don't know anything
     if not data:
-        return None, None
+        return item, None, None
     dst, mode, size = data
     # augment the size if appropriate
     if size is not None and isinstance(item.meta, metadata.Metadata):
-        assert item.meta.size is None or item.meta.size == size
-        item.meta.size = size
+        if item.meta.size is not None:
+            assert item.meta.size == size
+        else: # must not modify vfs results (see vfs docs)
+            item = vfs.copy_item(item)
+            item.meta.size = size
     # if we have it in the DB and in the destination repo, return it
     if dstrepo.exists(dst):
-        return dst, mode
+        return item, dst, mode
     # this only happens if you reuse a database
-    return None, None
+    return item, None, None
 
 def vfs_walk_recursively(srcrepo, dstrepo, vfs_item, excludes, db, mapping,
                          fullname=b''):
@@ -84,7 +95,8 @@ def vfs_walk_recursively(srcrepo, dstrepo, vfs_item, excludes, db, mapping,
         if should_rx_exclude_path(check_name, excludes):
             continue
         if S_ISDIR(vfs.item_mode(item)):
-            if converted_already(dstrepo, item, True, db, mapping)[0] is None:
+            item, oid, _ = previous_conversion(dstrepo, item, True, db, mapping)
+            if oid is None:
                 yield from vfs_walk_recursively(srcrepo, dstrepo, item,
                                                 excludes, db, mapping,
                                                 fullname=itemname)
@@ -113,7 +125,7 @@ def rewrite_item(item, commit_name, fullname, srcrepo, src, dstrepo, split_cfg,
             meta = None
         stack.push(dir_name, meta)
 
-    oid, mode = converted_already(dstrepo, item, not filen, wdbc, mapping)
+    item, oid, mode = previous_conversion(dstrepo, item, not filen, wdbc, mapping)
 
     if not filen:
         if len(stack) == 1:
@@ -127,8 +139,7 @@ def rewrite_item(item, commit_name, fullname, srcrepo, src, dstrepo, split_cfg,
 
     vfs_mode = vfs.item_mode(item)
 
-    # already converted - id is known, item.meta was updated if needed
-    # (in converted_already()), and the proper new mode was returned
+    # already converted - oid and mode are known
     if oid is not None:
         assert mode is not None, oid
         stack.append_to_current(filen, vfs_mode, mode, oid, item.meta)
@@ -148,6 +159,8 @@ def rewrite_item(item, commit_name, fullname, srcrepo, src, dstrepo, split_cfg,
                 hashsplit.from_config([f], split_cfg))
         if isinstance(item.meta, metadata.Metadata):
             if item.meta.size is None:
+                # must not modify vfs results (see vfs docs)
+                item = vfs.copy_item(item)
                 item.meta.size = item_size
                 size_augmented = True
             else:
@@ -159,6 +172,8 @@ def rewrite_item(item, commit_name, fullname, srcrepo, src, dstrepo, split_cfg,
         mode, oid = (GIT_MODE_SYMLINK, dstrepo.write_symlink(target))
         if isinstance(item.meta, metadata.Metadata):
             if item.meta.size is None:
+                # must not modify vfs results (see vfs docs)
+                item = vfs.copy_item(item)
                 item.meta.size = len(item.meta.symlink_target)
                 size_augmented = True
             else:
