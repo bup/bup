@@ -253,6 +253,12 @@ def path_msg(x):
     return enc_shs(fsdecode(x))
 
 
+def qsql_id(s):
+    return ''.join(('"', s.replace('"', '""'), '"'))
+def qsql_str(s):
+    return ''.join(("'", s.replace("'", "''"), "'"))
+
+
 assert not hasattr(py_mmap.mmap, '__del__')
 
 class mmap(py_mmap.mmap):
