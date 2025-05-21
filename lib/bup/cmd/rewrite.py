@@ -190,6 +190,8 @@ def rewrite_branch(srcrepo, src, dstrepo, dst, excludes, workdb, fatal):
 
     vfs_branch = vfs.resolve(srcrepo, src)
     item = vfs_branch[-1][1]
+    if not item:
+        fatal(f'cannot access {path_msg(src)} in source\n')
     commit_oid_name = {
         c[1].coid: c[0]
         for c in vfs.contents(srcrepo, item)
