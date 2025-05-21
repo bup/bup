@@ -1,6 +1,7 @@
 
 from binascii import hexlify, unhexlify
 from contextlib import closing
+from itertools import chain
 from stat import S_ISDIR, S_ISLNK, S_ISREG
 import os
 import sqlite3
@@ -13,7 +14,7 @@ from bup.helpers import \
      valid_save_name, log,
      parse_rx_excludes,
      should_rx_exclude_path)
-from bup.io import path_msg
+from bup.io import path_msg, qsql_id
 from bup.tree import Stack
 from bup.repo import make_repo
 from bup.config import derive_repo_addr, ConfigError
@@ -29,6 +30,18 @@ exclude-rx=      skip paths matching the unanchored regex (may be repeated)
 exclude-rx-from= skip --exclude-rx patterns in file (may be repeated)
 """
 
+def prep_mapping_table(db, split_cfg):
+    settings = [str(x) for x in chain.from_iterable(sorted(split_cfg.items()))]
+    for x in settings: assert '_' not in x
+    table_id = f'bup_rewrite_mapping_to_bits_{"_".join(settings)}'
+    table_id = qsql_id(table_id)
+    db.execute(f'create table if not exists {table_id}'
+               '    (src blob primary key,'
+               '     dst blob not null,'
+               '     mode integer,'
+               '     size integer)'
+               '    without rowid')
+    return table_id
 
 def converted_already(dstrepo, item, vfs_dir, db, mapping):
     size = -1 # irrelevant
@@ -187,15 +200,7 @@ def rewrite_branch(srcrepo, src, dstrepo, dst, excludes, workdb, fatal):
     commits.reverse()
     with closing(workdb.cursor()) as wdbc:
         try:
-            tablename = 'mapping_to_bits'
-            for k, v in split_cfg.items():
-                tablename += f'_{k}_{v}'
-            workdb.execute(f"create table if not exists {tablename}"
-                           '    (src blob primary key,'
-                           '     dst blob not null,'
-                           '     mode integer,'
-                           '     size integer)'
-                           '    without rowid')
+            mapping = prep_mapping_table(wdbc, split_cfg)
 
             # Maintain a stack of information representing the current
             # location in the archive being constructed.
@@ -211,9 +216,9 @@ def rewrite_branch(srcrepo, src, dstrepo, dst, excludes, workdb, fatal):
                                    coid=commit)
                 for fullname, item in vfs_walk_recursively(srcrepo, dstrepo,
                                                            citem, excludes,
-                                                           wdbc, tablename):
+                                                           wdbc, mapping):
                     rewrite_item(item, commit_name, fullname, srcrepo, src,
-                                 dstrepo, split_cfg, stack, wdbc, tablename)
+                                 dstrepo, split_cfg, stack, wdbc, mapping)
 
                 while len(stack) > 1: # pop all parts above root folder
                     stack.pop()

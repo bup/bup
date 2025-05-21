@@ -1,7 +1,7 @@
 
 from wvpytest import *
 
-from bup.io import enc_dsq, enc_dsqs, enc_sh, enc_shs
+from bup.io import enc_dsq, enc_dsqs, enc_sh, enc_shs, qsql_id, qsql_str
 
 
 def _dsq_enc_byte(b):
@@ -101,3 +101,21 @@ def test_enc_shs():
         == enc_shs(b'\x80'.decode('ascii', errors='surrogateescape'))
     assert r"$'\xb5'" \
         == enc_shs(b'\xb5'.decode('utf-8', errors='surrogateescape'))
+
+def test_qsql_id():
+    assert '""""' == qsql_id('"')
+    assert '"x"' == qsql_id('x')
+    assert '"""x"' == qsql_id('"x')
+    assert '"x"""' == qsql_id('x"')
+    assert '"x"""' == qsql_id('x"')
+    assert '"x""y"' == qsql_id('x"y')
+    assert '"x""y""z"' == qsql_id('x"y"z')
+
+def test_qsql_str():
+    assert "''''" == qsql_str("'")
+    assert "'x'" == qsql_str("x")
+    assert "'''x'" == qsql_str("'x")
+    assert "'x'''" == qsql_str("x'")
+    assert "'x'''" == qsql_str("x'")
+    assert "'x''y'" == qsql_str("x'y")
+    assert "'x''y''z'" == qsql_str("x'y'z")
