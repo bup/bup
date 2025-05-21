@@ -13,6 +13,8 @@ from bup.helpers import \
     (handle_ctrl_c, path_components,
      valid_save_name, log,
      parse_rx_excludes,
+     qprogress,
+     reprogress,
      should_rx_exclude_path)
 from bup.io import path_msg, qsql_id
 from bup.tree import Stack
@@ -230,12 +232,15 @@ def rewrite_branch(srcrepo, src, dstrepo, dst, excludes, workdb, fatal):
             # Maintain a stack of information representing the current
             # location in the archive being constructed.
             parent = None
+            i, n = 0, len(commits)
             for commit, (tree, timestamp) in commits:
+                i += 1
                 stack = Stack(dstrepo, split_cfg)
 
                 commit_name = commit_oid_name[unhexlify(commit)]
-                log(b'Rewriting /%s/%s/ (%s)...\n'
-                    % (src, commit_name, commit[:12]))
+                pm = f'{path_msg(src)}/{path_msg(commit_name)}'
+                orig_oidm = commit[:12].decode("ascii")
+                qprogress(f'{i}/{n} {orig_oidm} {pm}\r')
 
                 citem = vfs.Commit(meta=vfs.default_dir_mode, oid=tree,
                                    coid=commit)
@@ -263,6 +268,10 @@ def rewrite_branch(srcrepo, src, dstrepo, dst, excludes, workdb, fatal):
                                               ci.committer_offset,
                                               ci.message)
                 parent = newref
+                new_oidm = newref.hex()[:12]
+                log(f'{orig_oidm} -> {new_oidm} {pm}\n')
+                reprogress()
+
             dstrepo.update_ref(dstref, newref, None)
         finally:
             workdb.commit() # the workdb is always ready for commit
