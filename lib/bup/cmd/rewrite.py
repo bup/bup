@@ -104,6 +104,19 @@ def vfs_walk_recursively(srcrepo, dstrepo, vfs_item, excludes, db, mapping,
         else:
             yield itemname, item
 
+def rewrite_link(item, item_mode, name, srcrepo, dstrepo, stack):
+    assert isinstance(name, bytes)
+    target = vfs.readlink(srcrepo, item)
+    git_mode, oid = GIT_MODE_SYMLINK, dstrepo.write_symlink(target)
+    if isinstance(item.meta, metadata.Metadata):
+        if item.meta.size is None:
+            # must not modify vfs results (see vfs docs)
+            item = vfs.copy_item(item)
+            item.meta.size = len(item.meta.symlink_target)
+        else:
+            assert item.meta.size == len(item.meta.symlink_target)
+    stack.append_to_current(name, item_mode, git_mode, oid, item.meta)
+
 def rewrite_item(item, commit_name, fullname, srcrepo, src, dstrepo, split_cfg,
                  stack, wdbc, mapping):
     dirn, filen = os.path.split(fullname)
@@ -123,6 +136,20 @@ def rewrite_item(item, commit_name, fullname, srcrepo, src, dstrepo, split_cfg,
         if not isinstance(meta, metadata.Metadata):
             meta = None
         stack.push(dir_name, meta)
+
+    # First, things that can't be affected by the rewrite
+    item_mode = vfs.item_mode(item)
+    if S_ISLNK(item_mode):
+        rewrite_link(item, item_mode, filen, srcrepo, dstrepo, stack)
+        return
+    if not S_ISREG(item_mode) and not S_ISDIR(item_mode):
+        # Everything here (pipes, devices, etc.) should be fully
+        # described by its metadata, and so bup just saves an empty
+        # "placeholder" blob in the git tree (so the tree and .bupm
+        # will match up).
+        git_mode, oid = GIT_MODE_FILE, dstrepo.write_data(b'')
+        stack.append_to_current(filen, item_mode, git_mode, oid, item.meta)
+        return
 
     item, oid, vfs_mode, git_mode = \
         previous_conversion(dstrepo, item, not filen, wdbc, mapping)
@@ -169,23 +196,6 @@ def rewrite_item(item, commit_name, fullname, srcrepo, src, dstrepo, split_cfg,
                 assert item.meta.size == item_size
     elif S_ISDIR(vfs_mode):
         assert False  # handled above
-    elif S_ISLNK(vfs_mode):
-        target = vfs.readlink(srcrepo, item)
-        git_mode, oid = GIT_MODE_SYMLINK, dstrepo.write_symlink(target)
-        if isinstance(item.meta, metadata.Metadata):
-            if item.meta.size is None:
-                # must not modify vfs results (see vfs docs)
-                item = vfs.copy_item(item)
-                item.meta.size = len(item.meta.symlink_target)
-            else:
-                assert item.meta.size == len(item.meta.symlink_target)
-        item_size = len(target)
-    else:
-        # Everything else should be fully described by its metadata,
-        # so just record an empty blob, so the paths in the tree and
-        # .bupm will match up.
-        assert item_size is None
-        git_mode, oid = GIT_MODE_FILE, dstrepo.write_data(b'')
 
     wdbc.execute(f'select src, dst, vfs_mode, size from {mapping}'
                  '  where src = ? and vfs_mode = ?',
