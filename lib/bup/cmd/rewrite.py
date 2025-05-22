@@ -8,7 +8,7 @@ import sqlite3
 
 from bup import hashsplit, git, options, repo, metadata, vfs
 from bup.compat import argv_bytes
-from bup.hashsplit import GIT_MODE_FILE, GIT_MODE_SYMLINK
+from bup.hashsplit import GIT_MODE_FILE, GIT_MODE_SYMLINK, GIT_MODE_TREE
 from bup.helpers import \
     (handle_ctrl_c, path_components,
      valid_save_name, log,
@@ -33,23 +33,25 @@ exclude-rx-from= skip --exclude-rx patterns in file (may be repeated)
 """
 
 def prep_mapping_table(db, split_cfg):
+    # This currently only needs to track items that may be split,
+    # depending on the current repo settings (e.g. files and
+    # directories); it records the result so we can re-use it if we
+    # encounter the item again.
     settings = [str(x) for x in chain.from_iterable(sorted(split_cfg.items()))]
     for x in settings: assert '_' not in x
     table_id = f'bup_rewrite_mapping_to_bits_{"_".join(settings)}'
     table_id = qsql_id(table_id)
     db.execute(f'create table if not exists {table_id}'
-               '    (src blob,'
+               '    (src blob primary key,'
                '     dst blob not null,'
-               '     vfs_mode integer,'
-               '     git_mode integer,'
-               '     size integer,'
-               '     primary key (src, vfs_mode))'
+               '     chunked integer,' # is this a chunked file
+               '     size integer)' # only for files
                '    without rowid')
     return table_id
 
 def previous_conversion(dstrepo, item, vfs_dir, db, mapping):
-    """Return (replacement_item, converted_oid, mode) for the given
-    item if any, *and* if the dstrepo has the item.oid. If not,
+    """Return (replacement_item, converted_oid, git_mode) for the
+    given item if any, *and* if the dstrepo has the item.oid. If not,
     converted_oid and mode will be None. The replacement_item will
     either be item, or an augmented copy of item, (e.g. with a proper
     size) that should be used instead of item.
@@ -62,15 +64,15 @@ def previous_conversion(dstrepo, item, vfs_dir, db, mapping):
         size = None
         item_mode = item.meta
 
-    db.execute(f'select dst, vfs_mode, git_mode, size from {mapping}'
-               ' where src = ? and vfs_mode = ?',
-               (item.oid, item_mode))
+    db.execute(f'select dst, chunked, size from {mapping} where src = ?',
+               (item.oid,))
     data = db.fetchone()
     if not data:
-        return item, None, None, None
+        return item, None, None
     assert db.fetchone() is None
-    dst, vfs_mode, git_mode, size = data
-    assert vfs_mode == item_mode
+    dst, chunked, size = data
+    if chunked:
+        assert S_ISREG(item_mode)
     # augment the size if appropriate
     if size is not None and isinstance(item.meta, metadata.Metadata):
         if item.meta.size is not None:
@@ -80,9 +82,11 @@ def previous_conversion(dstrepo, item, vfs_dir, db, mapping):
             item.meta.size = size
     # if we have it in the DB and in the destination repo, return it
     if dstrepo.exists(dst):
-        return item, dst, vfs_mode, git_mode
+        if chunked is None: # dir, not file
+            return item, dst, None
+        return item, dst, GIT_MODE_TREE if chunked else GIT_MODE_FILE
     # this only happens if you reuse a database
-    return item, None, None, None
+    return item, None, None
 
 def vfs_walk_recursively(srcrepo, dstrepo, vfs_item, excludes, db, mapping,
                          fullname=b''):
@@ -94,7 +98,7 @@ def vfs_walk_recursively(srcrepo, dstrepo, vfs_item, excludes, db, mapping,
         if should_rx_exclude_path(check_name, excludes):
             continue
         if S_ISDIR(vfs.item_mode(item)):
-            item, oid, _, _ = previous_conversion(dstrepo, item, True, db, mapping)
+            item, oid, _ = previous_conversion(dstrepo, item, True, db, mapping)
             if oid is None:
                 yield from vfs_walk_recursively(srcrepo, dstrepo, item,
                                                 excludes, db, mapping,
@@ -151,65 +155,58 @@ def rewrite_item(item, commit_name, fullname, srcrepo, src, dstrepo, split_cfg,
         stack.append_to_current(filen, item_mode, git_mode, oid, item.meta)
         return
 
-    item, oid, vfs_mode, git_mode = \
+    item, oid, git_mode = \
         previous_conversion(dstrepo, item, not filen, wdbc, mapping)
 
     if not filen:
+        # Since there's no filename, this is a subdir -- finish it.
+        assert S_ISDIR(item_mode)
+        assert git_mode is None, item.oid.hex() # for both exists and not
         if len(stack) == 1:
             return # We're at the top level -- keep the current root dir
-        # Since there's no filename, this is a subdir -- finish it.
         newtree = stack.pop(override_tree=oid)
         if oid is None:
-            assert vfs_mode is None, item.oid.hex()
-            assert git_mode is None, item.oid.hex()
-            vfs_mode = vfs.item_mode(item)
-            wdbc.execute(f'insert into {mapping}'
-                         '   (src, dst, vfs_mode) values (?, ?, ?)',
-                         (item.oid, newtree, vfs_mode))
+            wdbc.execute(f'insert into {mapping} (src, dst) values (?, ?)',
+                         (item.oid, newtree))
         return
 
-    # already converted - oid and mode are known
+    assert S_ISREG(item_mode)
     if oid is not None:
-        assert vfs_mode is not None, oid.hex()
-        assert git_mode is not None, oid.hex()
-        stack.append_to_current(filen, vfs_mode, git_mode, oid, item.meta)
+        # already converted - oid and mode are known
+        assert git_mode in (GIT_MODE_TREE, GIT_MODE_FILE)
+        stack.append_to_current(filen, item_mode, git_mode, oid, item.meta)
         return
 
-    vfs_mode = vfs.item_mode(item)
     item_size = None
-    if S_ISREG(vfs_mode):
-        item_size = 0
-        def write_data(data):
-            nonlocal item_size
-            item_size += len(data)
-            return dstrepo.write_data(data)
-        with vfs.tree_data_reader(srcrepo, item.oid) as f:
-            git_mode, oid = hashsplit.split_to_blob_or_tree(
-                write_data, dstrepo.write_tree,
-                hashsplit.from_config([f], split_cfg))
-        if isinstance(item.meta, metadata.Metadata):
-            if item.meta.size is None:
-                # must not modify vfs results (see vfs docs)
-                item = vfs.copy_item(item)
-                item.meta.size = item_size
-            else:
-                assert item.meta.size == item_size
-    elif S_ISDIR(vfs_mode):
-        assert False  # handled above
+    item_size = 0
+    def write_data(data):
+        nonlocal item_size
+        item_size += len(data)
+        return dstrepo.write_data(data)
+    with vfs.tree_data_reader(srcrepo, item.oid) as f:
+        git_mode, oid = hashsplit.split_to_blob_or_tree(
+            write_data, dstrepo.write_tree,
+            hashsplit.from_config([f], split_cfg))
+    if isinstance(item.meta, metadata.Metadata):
+        if item.meta.size is None:
+            # must not modify vfs results (see vfs docs)
+            item = vfs.copy_item(item)
+            item.meta.size = item_size
+        else:
+            assert item.meta.size == item_size
+    chunked = 1 if S_ISDIR(git_mode) else 0
 
-    wdbc.execute(f'select src, dst, vfs_mode, size from {mapping}'
-                 '  where src = ? and vfs_mode = ?',
-                 (item.oid, vfs_mode))
+    wdbc.execute(f'select src, dst, chunked, size from {mapping} where src = ?',
+                 (item.oid,))
     row = wdbc.fetchone()
     assert wdbc.fetchone() is None
-    if row: # reusing previously populated db
-        assert row == (item.oid, oid, vfs_mode, git_mode, item_size)
+    if row:
+        assert row == (item.oid, oid, chunked, item_size)
     else:
-        wdbc.execute(f'insert into {mapping}'
-                     '   (src, dst, vfs_mode, git_mode, size)'
-                     '   values (?, ?, ?, ?, ?)',
-                     (item.oid, oid, vfs_mode, git_mode, item_size))
-    stack.append_to_current(filen, vfs_mode, git_mode, oid, item.meta)
+        wdbc.execute(f'insert into {mapping} (src, dst, chunked, size)'
+                     '   values (?, ?, ?, ?)',
+                     (item.oid, oid, chunked, item_size))
+    stack.append_to_current(filen, item_mode, git_mode, oid, item.meta)
 
 def rewrite_branch(srcrepo, src, dstrepo, dst, excludes, workdb, fatal):
     # Currently, the workdb must always be ready to commit (see finally below)
