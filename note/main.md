@@ -101,6 +101,11 @@ General
   when large directories change (e.g. large active Maildirs). See
   `bup-config`(5) for additional information.
 
+* `bup get` picks and appends can `--rewrite` the data being
+  transferred to respect the destination repository's configuration,
+  e.g. its `bup.split.files` and `bup.split.trees` settings. See
+  `bup-get`(1) for additional information.
+
 * The default pack compression level can now be configured via either
   `pack.compression` or `core.compression`.  See `bup-config`(5) for
   additional information.
