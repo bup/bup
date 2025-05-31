@@ -1,10 +1,11 @@
 
 from binascii import hexlify, unhexlify
 from collections import namedtuple
+from contextlib import ExitStack, closing
 from stat import S_ISDIR
-import os, sys, textwrap, time
+import os, sys, textwrap, sqlite3, time
 
-from bup import compat, git, client, vfs
+from bup import client, compat, git, hashsplit, rewrite, vfs
 from bup.commit import commit_message
 from bup.compat import argv_bytes
 from bup.config import derive_repo_addr
@@ -17,19 +18,24 @@ from bup.helpers import \
      log,
      note_error,
      parse_num,
+     parse_rx_excludes,
+     temp_dir,
      tty_width)
 from bup.io import path_msg
 from bup.pwdgrp import userfullname, username
 from bup.repo import LocalRepo, make_repo
 
+
 argspec = (
     "usage: bup get [-s source] [-r remote] (<--ff|--append|...> REF [DEST])...",
 
-    """Transfer data from a source repository to a destination repository
-    according to the methods specified (--ff, --ff:, --append, etc.).
-    Both repositories default to BUP_DIR.  A remote destination may be
-    specified with -r, and data may be pulled from a remote repository
-    with the related "bup on HOST get ..." command.""",
+    """Transfer data from a source repository to a destination
+    repository according to the methods specified (--ff, --ff:,
+    --append, etc.).  Both repositories default to BUP_DIR.  A remote
+    destination may be specified with -r, and data may be pulled from
+    a remote repository with the related "bup on HOST get ..."
+    command.  The --exclude-rx and --exclude-rx-from options currently
+    only apply to rewrites.""",
 
     ('optional arguments:',
      (('-h, --help', 'show this help message and exit'),
@@ -43,6 +49,10 @@ argspec = (
       ('-t --print-trees', 'output a tree id for each ref set'),
       ('-c, --print-commits', 'output a commit id for each ref set'),
       ('--print-tags', 'output an id for each tag'),
+      ('--rewrite', 'rewrite data according to destination repo settings'),
+      ('--rewrite-db PATH', 'transient rewrite database (in TMPDIR by default)'),
+      ('--exclude-rx REGEX', 'skip paths matching the unanchored regex (may be repeated)'),
+      ('--exclude-rx-from PATH', 'skip --exclude-rx patterns in PATH (may be repeated)'),
       ('--bwlimit BWLIMIT', 'maximum bytes/sec to transmit to server'),
       ('-0, -1, -2, -3, -4, -5, -6, -7, -8, -9, --compress LEVEL',
        'set compression LEVEL (default: 1)'))),
@@ -126,9 +136,12 @@ def parse_args(args):
     opt.bwlimit = None
     opt.compress = None
     opt.ignore_missing = False
+    opt.rewrite = None # None means "didn't specify"
+    opt.rewrite_db = None
     opt.source = opt.remote = None
     opt.target_specs = []
 
+    exclude_opts = []
     remaining = args[1:]  # Skip argv[0]
     while remaining:
         arg = remaining[0]
@@ -164,6 +177,15 @@ def parse_args(args):
             opt.print_trees, remaining = True, remaining[1:]
         elif arg == b'--print-tags':
             opt.print_tags, remaining = True, remaining[1:]
+        elif arg == b'--rewrite':
+            opt.rewrite, remaining = True, remaining[1:]
+        elif arg == b'--no-rewrite':
+            opt.rewrite, remaining = False, remaining[1:]
+        elif arg == b'--rewrite-db':
+            (opt.rewrite_db,), remaining = require_n_args_or_die(1, remaining)
+        elif arg in (b'--exclude-rx', b'--exclude-rx-from'): # handled later
+            (val,), remaining = require_n_args_or_die(1, remaining)
+            exclude_opts.append((arg, val))
         elif arg in (b'-0', b'-1', b'-2', b'-3', b'-4', b'-5', b'-6', b'-7',
                      b'-8', b'-9'):
             opt.compress = int(arg[1:])
@@ -183,6 +205,9 @@ def parse_args(args):
             continue
         else:
             misuse()
+    opt.exclude_rxs = parse_rx_excludes(exclude_opts, misuse)
+    if opt.exclude_rxs and not opt.rewrite:
+        misuse('cannot --exclude-rx or --exclude-rx-from when not rewriting')
     for target in opt.target_specs:
         if opt.ignore_missing and target.method != 'unnamed':
             misuse('currently only --unnamed allows --ignore-missing')
@@ -230,7 +255,7 @@ def get_random_item(name, hash, src_repo, dest_repo, opt):
         dest_repo.just_write(item.oid, item.type, item.data)
 
 
-def append_commit(name, hash, parent, src_repo, dest_repo, opt):
+def transfer_commit(name, hash, parent, src_repo, dest_repo, opt):
     now = time.time()
     items = parse_commit(get_cat_data(src_repo.cat(hash), b'commit'))
     tree = unhexlify(items.tree)
@@ -245,12 +270,67 @@ def append_commit(name, hash, parent, src_repo, dest_repo, opt):
     return c, tree
 
 
-def append_commits(commits, src_name, dest_hash, src_repo, dest_repo, opt):
+def append_commit(src_loc, parent, src_repo, dest_repo, opt):
+    if not opt.rewrite:
+        assert isinstance(src_loc, (bytes, Loc))
+        oidx = src_loc if isinstance(src_loc, bytes) else hexlify(src_loc.hash)
+        return transfer_commit(None, # unused
+                               oidx, parent, src_repo, dest_repo, opt)
+
+    # Friendlier checking was done during resolve_*
+    assert isinstance(src_loc, Loc), src_loc
+    path = src_loc.vfs_path
+    assert len(path) == 3, path
+    root, ref, save = path
+    assert isinstance(save[1], (vfs.Commit, vfs.FakeLink)), path
+    assert isinstance(ref[1], vfs.RevList), path
+    return rewrite.append_save(path, parent, src_repo, dest_repo,
+                               opt.dest_split_cfg, opt.exclude_rxs,
+                               # FIXME: ...
+                               opt.rewrite_db_conn,
+                               opt.rewrite_db_mapping)
+
+
+def append_commits(src_loc, dest_hash, src_repo, dest_repo, opt):
+    if not opt.rewrite:
+        commits = list(src_repo.rev_list(hexlify(src_loc.hash)))
+        commits.reverse()
+        last_c, tree = dest_hash, None
+        for commit in commits:
+            last_c, tree = append_commit(commit, last_c, src_repo, dest_repo,
+                                         opt)
+        assert tree is not None
+        return last_c, tree
+
+    # Friendlier checking was done during resolve_*
+    assert isinstance(src_loc, Loc), src_loc
+    assert src_loc.type in ('branch', 'commit', 'save'), src_loc
+    path = src_loc.vfs_path
+    assert len(path) == 2, path
+    root, ref = path
+    assert isinstance(ref[1], vfs.RevList), ref[1]
+
+    # We need both the VFS name (YYYY-MM-DD[-N]), and the rev-list
+    # order, so for now, cross-reference rev-list with contents().
+    entry_for_coid = {}
+    for entry in vfs.contents(src_repo, path[1][1]):
+        if entry[0] in (b'.', b'..', b'latest'):
+            continue
+        entry_for_coid[entry[1].coid] = entry
+
+    commits = list(src_repo.rev_list(hexlify(src_loc.hash)))
+    commits.reverse()
+
     last_c, tree = dest_hash, None
     for commit in commits:
-        last_c, tree = append_commit(src_name, commit, last_c,
-                                     src_repo, dest_repo, opt)
-    assert(tree is not None)
+        coid = unhexlify(commit)
+        last_c, tree = rewrite.append_save(path + (entry_for_coid[coid],),
+                                           last_c, src_repo, dest_repo,
+                                           opt.dest_split_cfg, opt.exclude_rxs,
+                                           # FIXME: ...
+                                           opt.rewrite_db_conn,
+                                           opt.rewrite_db_mapping)
+    assert tree is not None
     return last_c, tree
 
 
@@ -266,14 +346,15 @@ def find_git_item(ref, repo):
     return GitLoc(ref, unhexlify(oidx), typ)
 
 
-Loc = namedtuple('Loc', ['type', 'hash', 'path'])
-default_loc = Loc(None, None, None)
+Loc = namedtuple('Loc', ['type', 'hash', 'path', 'vfs_path'])
+default_loc = Loc(None, None, None, None)
 
 def find_vfs_item(name, repo):
     res = repo.resolve(name, follow=False, want_meta=False)
     leaf_name, leaf_item = res[-1]
     if not leaf_item:
         return None
+    vfs_path = res
     kind = type(leaf_item)
     if kind == vfs.Root:
         kind = 'root'
@@ -309,11 +390,11 @@ def find_vfs_item(name, repo):
                         % (path_msg(name), res))
     path = b'/'.join(name for name, item in res)
     if hasattr(leaf_item, 'coid'):
-        result = Loc(type=kind, hash=leaf_item.coid, path=path)
+        result = Loc(type=kind, hash=leaf_item.coid, path=path, vfs_path=vfs_path)
     elif hasattr(leaf_item, 'oid'):
-        result = Loc(type=kind, hash=leaf_item.oid, path=path)
+        result = Loc(type=kind, hash=leaf_item.oid, path=path, vfs_path=vfs_path)
     else:
-        result = Loc(type=kind, hash=None, path=path)
+        result = Loc(type=kind, hash=None, path=path, vfs_path=vfs_path)
     return result
 
 
@@ -434,12 +515,24 @@ def handle_ff(item, src_repo, dest_repo, opt):
     return None
 
 
-def resolve_append(spec, src_repo, dest_repo):
+def resolve_append(spec, src_repo, dest_repo, *, rewrite):
     src = resolve_src(spec, src_repo)
     if src.type not in ('branch', 'save', 'commit', 'tree'):
         misuse('source for %s must be a branch, save, commit, or tree, not %s'
               % (spec_msg(spec), src.type))
     spec, dest = resolve_branch_dest(spec, src, src_repo, dest_repo)
+    if rewrite:
+        def vpm(path):
+            return path_msg(b"/".join(x[0] for x in src_path))
+        if not isinstance(src, Loc):
+            misuse(f'cannot currently rewrite git location {src}')
+        src_path = src.vfs_path
+        if len(src_path) != 2:
+            misuse(f'cannot append {vpm(src_path)}')
+        root, src_ref = src_path
+        if not isinstance(src_ref[1], vfs.RevList):
+            misuse(f'cannot append {vpm(src_path)} saves'
+                   f' ({path_msg(src_ref[0])} is a {type(src_ref[1])})')
     return Target(spec=spec, src=src, dest=dest)
 
 
@@ -447,8 +540,10 @@ def handle_append(item, src_repo, dest_repo, opt):
     assert item.spec.method == 'append'
     assert item.src.type in ('branch', 'save', 'commit', 'tree')
     assert item.dest.type == 'branch' or not item.dest.type
-    src_oidx = hexlify(item.src.hash)
     if item.src.type == 'tree':
+        src_oidx = hexlify(item.src.hash)
+        if opt.rewrite:
+            misuse(f'rewrite cannot yet promote tree to commit for {spec_msg(item.spec)}')
         get_random_item(item.spec.src, src_oidx, src_repo, dest_repo, opt)
         parent = item.dest.hash
         msg = commit_message(b'bup get', compat.get_argvb())
@@ -458,22 +553,19 @@ def handle_append(item, src_repo, dest_repo, opt):
                                         userline, now, None,
                                         userline, now, None, msg)
         return commit, item.src.hash
-    commits = list(src_repo.rev_list(src_oidx))
-    commits.reverse()
     if item.dest.hash:
         assert item.dest.type in ('branch', 'commit', 'save'), item.dest
-    return append_commits(commits, item.spec.src, item.dest.hash,
-                          src_repo, dest_repo, opt)
+    return append_commits(item.src, item.dest.hash, src_repo, dest_repo, opt)
 
 
-def resolve_pick(spec, src_repo, dest_repo):
+def resolve_pick(spec, src_repo, dest_repo, *, rewrite):
     src = resolve_src(spec, src_repo)
     spec_args = spec_msg(spec)
     if src.type == 'tree':
         misuse('%s is impossible; can only --append a tree' % spec_args)
     if src.type not in ('commit', 'save'):
         misuse('%s impossible; can only pick a commit or save, not %s'
-              % (spec_args, src.type))
+               % (spec_args, src.type))
     if not spec.dest:
         if src.path.startswith(b'/.tag/'):
             spec = spec._replace(dest=spec.src)
@@ -481,6 +573,9 @@ def resolve_pick(spec, src_repo, dest_repo):
             spec = spec._replace(dest=get_save_branch(src_repo, spec.src))
     if not spec.dest:
         misuse('no destination provided for %s' % spec_args)
+    if rewrite:
+        if src.type != 'save':
+            misuse(f'cannot currently --rewrite a {src.type}')
     dest = find_vfs_item(spec.dest, dest_repo)
     if not dest:
         cp = validate_vfs_path(cleanup_vfs_path(spec.dest), spec)
@@ -499,16 +594,15 @@ def resolve_pick(spec, src_repo, dest_repo):
 def handle_pick(item, src_repo, dest_repo, opt):
     assert item.spec.method in ('pick', 'force-pick')
     assert item.src.type in ('save', 'commit')
-    src_oidx = hexlify(item.src.hash)
     if item.dest.hash:
         # if the dest is committish, make it the parent
         if item.dest.type in ('branch', 'commit', 'save'):
-            return append_commit(item.spec.src, src_oidx, item.dest.hash,
-                                 src_repo, dest_repo, opt)
+            return append_commit(item.src, item.dest.hash, src_repo, dest_repo,
+                                 opt)
         assert item.dest.path.startswith(b'/.tag/'), item.dest
     # no parent; either dest is a non-commit tag and we should clobber
     # it, or dest doesn't exist.
-    return append_commit(item.spec.src, src_oidx, None, src_repo, dest_repo, opt)
+    return append_commit(item.src, None, src_repo, dest_repo, opt)
 
 
 def resolve_new_tag(spec, src_repo, dest_repo):
@@ -587,7 +681,7 @@ def handle_unnamed(item, src_repo, dest_repo, opt):
     return (None,)
 
 
-def resolve_targets(specs, src_repo, dest_repo, *, ignore_missing):
+def resolve_targets(specs, src_repo, dest_repo, *, ignore_missing, rewrite):
     resolved_items = []
     common_args = src_repo, dest_repo
     for spec in specs:
@@ -595,9 +689,11 @@ def resolve_targets(specs, src_repo, dest_repo, *, ignore_missing):
         if spec.method == 'ff':
             resolved_items.append(resolve_ff(spec, *common_args))
         elif spec.method == 'append':
-            resolved_items.append(resolve_append(spec, *common_args))
+            resolved_items.append(resolve_append(spec, *common_args,
+                                                 rewrite=rewrite))
         elif spec.method in ('pick', 'force-pick'):
-            resolved_items.append(resolve_pick(spec, *common_args))
+            resolved_items.append(resolve_pick(spec, *common_args,
+                                               rewrite=rewrite))
         elif spec.method == 'new-tag':
             resolved_items.append(resolve_new_tag(spec, *common_args))
         elif spec.method == 'replace':
@@ -652,16 +748,49 @@ def main(argv):
     if opt.bwlimit:
         client.bwlimit = parse_num(opt.bwlimit)
 
-    with make_repo(derive_repo_addr(remote=opt.remote, die=misuse),
+    with LocalRepo(repo_dir=opt.source) as src_repo, \
+         make_repo(derive_repo_addr(remote=opt.remote, die=misuse),
                    compression_level=opt.compress) as dest_repo:
-        with LocalRepo(repo_dir=opt.source) as src_repo:
+
+        src_split_cfg = hashsplit.configuration(src_repo.config_get)
+        opt.dest_split_cfg = hashsplit.configuration(dest_repo.config_get)
+
+        if src_split_cfg != opt.dest_split_cfg and opt.rewrite is None:
+            misuse('repository configs differ; specify --rewrite or --no-rewrite')
+
+        ctx = ExitStack()
+        if opt.rewrite:
+            if not opt.rewrite_db:
+                rwdb_tmpdir = ctx.enter_context(temp_dir(prefix='bup-rewrite-'))
+                opt.rewrite_db = f'{rwdb_tmpdir}/db'
+            rwdb_conn = sqlite3.connect(opt.rewrite_db)
+            rwdb_conn.text_factory = bytes
+            ctx.enter_context(closing(rwdb_conn))
+            opt.rewrite_db_conn = rwdb_conn # FIXME: ...
+            with closing(rwdb_conn.cursor()) as rwdb_cur:
+                opt.rewrite_db_mapping = \
+                    rewrite.prep_mapping_table(rwdb_cur, opt.dest_split_cfg)
+
+        with ctx:
+
             # Resolve and validate all sources and destinations,
             # implicit or explicit, and do it up-front, so we can
             # fail before we start writing (for any obviously
             # broken cases).
             target_items = resolve_targets(opt.target_specs,
                                            src_repo, dest_repo,
-                                           ignore_missing=opt.ignore_missing)
+                                           ignore_missing=opt.ignore_missing,
+                                           rewrite=opt.rewrite)
+            if opt.rewrite:
+                for item in target_items:
+                    if item.spec.method in ('append', 'force-pick', 'pick'):
+                        continue
+                    elif item.spec.method == 'ff':
+                        misuse(f'--ff cannot rewrite (use --pick)')
+                    elif item.spec.method in ('new-tag', 'replace', 'unnamed'):
+                        misuse(f'--{item.spec.method} cannot currently rewrite')
+                    else:
+                        assert False, f'unexpected method {item.spec.method}'
 
             updated_refs = {}  # ref_name -> (original_ref, tip_commit(bin))
             no_ref_info = (None, None)

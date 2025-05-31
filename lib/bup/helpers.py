@@ -4,7 +4,7 @@ from collections import namedtuple
 from contextlib import ExitStack, nullcontext
 from ctypes import sizeof, c_void_p
 from math import floor
-from os import environ
+from os import environ, fsencode
 from random import SystemRandom
 from subprocess import PIPE, Popen
 from tempfile import mkdtemp
@@ -1012,13 +1012,17 @@ def parse_rx_excludes(options, fatal):
     excluded_patterns = []
 
     for flag in options:
-        (option, parameter) = flag
-        if option == '--exclude-rx':
+        option, parameter = flag
+        if isinstance(option, str):
+            option = fsencode(option)
+        if isinstance(parameter, str):
+            parameter = fsencode(parameter)
+        if option == b'--exclude-rx':
             try:
-                excluded_patterns.append(re.compile(argv_bytes(parameter)))
+                excluded_patterns.append(re.compile(parameter))
             except re.error as ex:
                 fatal('invalid --exclude-rx pattern (%r): %s' % (parameter, ex))
-        elif option == '--exclude-rx-from':
+        elif option == b'--exclude-rx-from':
             try:
                 f = open(resolve_parent(parameter), 'rb')
             except IOError as e:
