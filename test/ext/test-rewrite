@@ -48,7 +48,7 @@ compare() {
 
 WVSTART split and rewrite
 WVPASS bup split -n split < "$top/test/testfile1"
-WVPASS bup -d "$BUP_DIR2" rewrite --work-db "$tmpdir/db" -s "$BUP_DIR" split:test
+WVPASS bup -d "$BUP_DIR2" get --rewrite-db "$tmpdir/db" -s "$BUP_DIR" --append: split test
 WVPASS compare "$BUP_DIR" split "$BUP_DIR2" test
 
 WVSTART make multiple saves
@@ -59,14 +59,15 @@ WVPASS bup save -n save --strip-path="$top" "$top/test/sampledata"
 WVPASS bup save -n save --strip-path="$top" "$top/test/sampledata"
 
 WVSTART rewrite to different split
-WVPASS bup -d "$BUP_DIR4" rewrite --work-db "$tmpdir/db" -s "$BUP_DIR" save
+WVPASS bup -d "$BUP_DIR" ls -l save
+WVPASS bup -d "$BUP_DIR4" get --rewrite --rewrite-db "$tmpdir/db" -s "$BUP_DIR" --append save
 WVPASS compare "$BUP_DIR" save "$BUP_DIR4" save
 
 WVSTART "rewrite unchanged (to remote)"
-WVPASS bup rewrite -r ":$BUP_DIR3" --work-db "$tmpdir/db" -s "$BUP_DIR" save
+WVPASS bup get -r ":$BUP_DIR3" -s "$BUP_DIR" --append save
 WVPASS compare "$BUP_DIR" save "$BUP_DIR3" save
-WVPASSEQ "$(GIT_DIR=$BUP_DIR WVPASS git rev-parse save)" \
-	 "$(GIT_DIR=$BUP_DIR3 WVPASS git rev-parse save)"
+WVPASSEQ "$(GIT_DIR="$BUP_DIR" WVPASS  git log --pretty=format:%T -n1 save)" \
+	 "$(GIT_DIR="$BUP_DIR3" WVPASS git log --pretty=format:%T -n1 save)"
 
 WVSTART rewrite after size not stored
 # now do a hack to save without saving the size in metadata ...
@@ -102,19 +103,19 @@ WVPASS bup -d "$BUP_DIR" ls -l save/latest/test/sampledata/y/testfile1 |
     WVPASS grep -- 158664
 
 # now rewrite again - and then the size should be correct even without augmentation
-WVPASS bup -d "$BUP_DIR4" rewrite --work-db "$tmpdir/db" -s "$BUP_DIR" save:save2
+WVPASS bup -d "$BUP_DIR4" get --rewrite --rewrite-db "$tmpdir/db" -s "$BUP_DIR" --append: save save2
 WVPASS bup+ -d "$BUP_DIR4" ls -l save/latest/test/sampledata/y/testfile1 |
     WVPASS grep -- 158664
 
 # and again for the other kind of splitting
-WVPASS bup -d "$BUP_DIR3" rewrite --work-db "$tmpdir/db" -s "$BUP_DIR" save:save2
-WVPASS bup+ -d "$BUP_DIR3" ls -l save/latest/test/sampledata/y/testfile1 |
+WVPASS bup -d "$BUP_DIR3" get --rewrite --rewrite-db "$tmpdir/db" -s "$BUP_DIR" --append: save save2
+WVPASS bup+ -d "$BUP_DIR3" ls -l save2/latest/test/sampledata/y/testfile1 |
     WVPASS grep -- 158664
 
 WVSTART rewrite with excluded files
 WVPASS bup -d "$BUP_DIR5" init
-WVPASS bup -d "$BUP_DIR5" rewrite --work-db "$tmpdir/db2" -s "$BUP_DIR4" \
-    --exclude-rx ^/test/sampledata/y/ save
+WVPASS bup -d "$BUP_DIR5" get --rewrite -s "$BUP_DIR4" \
+   --exclude-rx '^/test/sampledata/y/' --append save
 WVPASS extract_all "$BUP_DIR4" "save" "orig"
 WVPASS extract_all "$BUP_DIR5" "save" "new"
 rm -rf "$tmpdir/restore/orig/"*"/test/sampledata/y/"
@@ -128,8 +129,8 @@ WVPASS rm -rf "$tmpdir/restore"
 WVSTART "rewrite with excluded files (in repo)"
 WVPASS git config -f "$BUP_DIR/config" bup.split.trees true
 WVPASS git config -f "$BUP_DIR/config" bup.split.files legacy:14
-WVPASS bup -d "$BUP_DIR" rewrite --work-db "$tmpdir/db3" -s "$BUP_DIR" \
-    --exclude-rx ^/test/sampledata/y/ save:save-new
+WVPASS bup -d "$BUP_DIR" get --rewrite -s "$BUP_DIR" \
+   --exclude-rx '^/test/sampledata/y/' --append: save save-new
 WVPASS extract_all "$BUP_DIR" "save" "orig"
 WVPASS extract_all "$BUP_DIR" "save-new" "new"
 rm -rf "$tmpdir/restore/orig/"*"/test/sampledata/y/"

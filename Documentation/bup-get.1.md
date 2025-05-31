@@ -26,7 +26,11 @@ For example:
 
     bup get -s /source/repo --ff foo
     bup get -s /source/repo --ff: foo/latest bar
+    bup get -s /source/repo --pick: foo/2010-10-10-101010 bar
     bup get -s /source/repo --pick: foo/2010-10-10-101010 .tag/bar
+
+The behavior of any given METHOD is determined in part by the *ref*
+and *dest* types, i.e. branch, save, tag, etc.
 
 As a special case, if *ref* names the "latest" save symlink, then bup
 will act exactly as if the save that "latest" points to had been
@@ -127,6 +131,45 @@ used to help test before/after results.)
 \--print-tags
 :   for each updated tag, print the new git id.
 
+\--rewrite, \--no-rewrite
+:   rewrite the data according to the destination repository
+    configuration, e.g. its `bup.split.files`, and `bup.split.trees`
+    values. Currently, one of these options must be specified whenever
+    the source and destination repository configurations differ in a
+    relevant way, and so far, this option is only supported for
+    appends and picks. Note that while tested, this option is
+    relatively new and so warrants even more caution (see CAUTION
+    above) than `bup get` itself. Please consider validating the
+    results carefully for now.
+
+\--rewrite-db=*path*
+:   place the rewrite database at *path*. Re-using an existing
+    database (e.g. after an interruption) can allow the rewrite to
+    resume without repeating expensive operations. By default, a
+    transient database will be placed in TMPDIR and removed on exit.
+
+\--exclude-rx=*pattern*
+:   exclude any path matching *pattern*, which must be a Python regular
+    expression (http://docs.python.org/library/re.html).  The pattern
+    will be compared against the full path, without anchoring, so
+    "x/y" will match "ox/yard" or "box/yards".  To exclude the
+    contents of /tmp, but not the directory itself, use
+    "^/tmp/.". (may be repeated)
+
+    Examples:
+
+      * '/foo$' - exclude any file named foo
+      * '/foo/$' - exclude any directory named foo
+      * '/foo/.' - exclude the content of any directory named foo
+      * '^/tmp/.' - exclude root-level /tmp's content, but not /tmp itself
+
+    Only supported when rewriting.
+
+\--exclude-rx-from=*filename*
+:   read --exclude-rx patterns from *filename*, one pattern per-line
+    (may be repeated).  Ignore completely empty lines. Only supported
+    when rewriting.
+
 -v, \--verbose
 :   increase verbosity (can be used more than once).  With
     `-v`, print the name of every item fetched, with `-vv` add
@@ -186,6 +229,25 @@ used to help test before/after results.)
 
     # Append only the /home directory from archives/latest to only-home.
     $ bup get -s "$BUP_DIR" --append: archives/latest/home only-home
+
+    # Resplit (rewrite) the archives branch. Note that, done all at
+    # once, this may require additional space up to the size of the
+    # archives branch. The pick methods can do the rewriting more
+    # selectively or incrementally. (Assume BUP_DIR has no split
+    # settings.)
+    #
+    $ git --git-dir "$BUP_DIR" config bup.split.trees true
+    $ git --git-dir "$BUP_DIR" config bup.split.files legacy:16
+    $ bup get --rewrite --append: archives archives-resplit
+    #
+    # Check that archives-resplit looks OK, perhaps via trial
+    # restores, joining it, etc. (see CAUTION above), and once
+    # satisfied, perhaps...
+    #
+    $ bup rm archives
+    $ bup gc
+    $ git --git-dir "$BUP_DIR" branch -m archives-resplit archives
+
 
 # SEE ALSO
 
