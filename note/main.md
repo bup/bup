@@ -78,6 +78,11 @@ General
   The default for new repositories will eventually be raised. See
   `bup-config`(5) for additional information.
 
+* `bup` will split directories when `bup.split.trees` is `true`. This
+  can notably decrease the size of new data added to the repository
+  when large directories change (e.g. large active Maildirs). See
+  `bup-config`(5) for additional information.
+
 * The default pack compression level can now be configured via either
   `pack.compression` or `core.compression`.  See `bup-config`(5) for
   additional information.
