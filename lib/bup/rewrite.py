@@ -1,15 +1,15 @@
 
 from binascii import hexlify
-from contextlib import closing
+from contextlib import ExitStack, closing, nullcontext
 from itertools import chain
 from os.path import join as pj
 from stat import S_ISDIR, S_ISLNK, S_ISREG
-import os
+import os, sqlite3
 
 from bup import hashsplit, metadata, vfs
 from bup.git import get_cat_data, parse_commit
 from bup.hashsplit import GIT_MODE_FILE, GIT_MODE_SYMLINK, GIT_MODE_TREE
-from bup.helpers import path_components, should_rx_exclude_path
+from bup.helpers import path_components, should_rx_exclude_path, temp_dir
 from bup.io import qsql_id
 from bup.tree import Stack
 
@@ -21,7 +21,7 @@ def _fs_path_from_vfs(path):
     return fs + b'/'
 
 
-def prep_mapping_table(db, split_cfg):
+def _prep_mapping_table(db, split_cfg):
     # This currently only needs to track items that may be split,
     # depending on the current repo settings (e.g. files and
     # directories); it records the result so we can re-use it if we
@@ -38,7 +38,7 @@ def prep_mapping_table(db, split_cfg):
                '    without rowid')
     return table_id
 
-def previous_conversion(dstrepo, item, vfs_dir, db, mapping):
+def _previous_conversion(dstrepo, item, vfs_dir, db, mapping):
     """Return (replacement_item, converted_oid, git_mode) for the
     given item if any, *and* if the dstrepo has the item.oid. If not,
     converted_oid and mode will be None. The replacement_item will
@@ -77,7 +77,7 @@ def previous_conversion(dstrepo, item, vfs_dir, db, mapping):
         return item, dst, None
     return item, dst, GIT_MODE_TREE if chunked else GIT_MODE_FILE
 
-def vfs_walk_recursively(srcrepo, dstrepo, path, excludes, db, mapping):
+def _vfs_walk_recursively(srcrepo, dstrepo, path, excludes, db, mapping):
     item = path[-1][1]
     assert len(path) >= 3
     # drop branch/DATE
@@ -94,15 +94,15 @@ def vfs_walk_recursively(srcrepo, dstrepo, path, excludes, db, mapping):
             continue
         if S_ISDIR(vfs.item_mode(sub_item)):
             conv_item, oid, _ = \
-                previous_conversion(dstrepo, sub_item, True, db, mapping)
+                _previous_conversion(dstrepo, sub_item, True, db, mapping)
             if conv_item is not sub_item:
                 sub_path = sub_path[:-1] + ((sub_path[-1][0], conv_item),)
             if oid is None:
-                yield from vfs_walk_recursively(srcrepo, dstrepo, sub_path,
-                                                excludes, db, mapping)
+                yield from _vfs_walk_recursively(srcrepo, dstrepo, sub_path,
+                                                 excludes, db, mapping)
         yield sub_path
 
-def rewrite_link(item, item_mode, name, srcrepo, dstrepo, stack):
+def _rewrite_link(item, item_mode, name, srcrepo, dstrepo, stack):
     assert isinstance(name, bytes)
     target = vfs.readlink(srcrepo, item)
     git_mode, oid = GIT_MODE_SYMLINK, dstrepo.write_symlink(target)
@@ -115,8 +115,8 @@ def rewrite_link(item, item_mode, name, srcrepo, dstrepo, stack):
             assert item.meta.size == len(item.meta.symlink_target)
     stack.append_to_current(name, item_mode, git_mode, oid, item.meta)
 
-def rewrite_save_item(save_path, path, srcrepo, dstrepo, split_cfg, stack, wdbc,
-                      mapping):
+def _rewrite_save_item(save_path, path, srcrepo, dstrepo, split_cfg, stack,
+                       wdbc, mapping):
     # save_path is the vfs path to the save ref, e.g. to branch/DATE
     fs_path = _fs_path_from_vfs(path[3:]) # not including /branch/DATE
     assert not fs_path.startswith(b'/') # because resolve(parent=...)
@@ -148,7 +148,7 @@ def rewrite_save_item(save_path, path, srcrepo, dstrepo, split_cfg, stack, wdbc,
     # First, things that can't be affected by the rewrite
     item_mode = vfs.item_mode(item)
     if S_ISLNK(item_mode):
-        rewrite_link(item, item_mode, filen, srcrepo, dstrepo, stack)
+        _rewrite_link(item, item_mode, filen, srcrepo, dstrepo, stack)
         return
     if not S_ISREG(item_mode) and not S_ISDIR(item_mode):
         # Everything here (pipes, devices, etc.) should be fully
@@ -160,7 +160,7 @@ def rewrite_save_item(save_path, path, srcrepo, dstrepo, split_cfg, stack, wdbc,
         return
 
     item, oid, git_mode = \
-        previous_conversion(dstrepo, item, not filen, wdbc, mapping)
+        _previous_conversion(dstrepo, item, not filen, wdbc, mapping)
 
     if not filen:
         # Since there's no filename, this is a subdir -- finish it.
@@ -212,51 +212,77 @@ def rewrite_save_item(save_path, path, srcrepo, dstrepo, split_cfg, stack, wdbc,
                      (item.oid, oid, chunked, item_size))
     stack.append_to_current(filen, item_mode, git_mode, oid, item.meta)
 
+class Rewriter:
+    def __init__(self, *, split_cfg, db=None):
+        assert isinstance(db, (bytes, type(None)))
+        self._context = nullcontext()
+        with ExitStack() as ctx:
+            self._split_cfg = split_cfg
+            self._db_path = db
+            if db:
+                self._db_tmpdir = None
+            else:
+                self._db_tmpdir = \
+                    ctx.enter_context(temp_dir(prefix='bup-rewrite-'))
+                self._db_path = f'{self._db_tmpdir}/db'
+            self._db_conn = sqlite3.connect(self._db_path)
+            ctx.enter_context(closing(self._db_conn))
+            self._db_conn.text_factory = bytes
+            with closing(self._db_conn.cursor()) as cur:
+                self._mapping = _prep_mapping_table(cur, split_cfg)
+            self._context = ctx.pop_all()
 
-def append_save(save_path, parent, srcrepo, dstrepo, split_cfg,
-                excludes, workdb, mapping):
-    # Strict for now
-    assert isinstance(parent, (bytes, type(None))), parent
-    if parent:
-        assert len(parent) == 20, parent
-    assert len(save_path) == 3, (len(save_path), save_path)
-    assert isinstance(save_path[1][1], vfs.RevList)
-    leaf_name, leaf_item = save_path[2]
-    if isinstance(leaf_item, vfs.FakeLink):
-        # For now, vfs.contents() does not resolve the one FakeLink
-        assert leaf_name == b'latest', save_path
-        res = srcrepo.resolve(leaf_item.target, parent=save_path[:-1],
-                              follow=False, want_meta=False)
-        leaf_name, leaf_item = res[-1]
-        save_path = res
-    assert isinstance(leaf_item, vfs.Commit), leaf_item
-    # Currently, the workdb must always be ready to commit (see finally below)
-    with closing(workdb.cursor()) as dbc:
-        try:
-            # Maintain a stack of information representing the current
-            # location in the archive being constructed.
-            stack = Stack(dstrepo, split_cfg)
-            for path in vfs_walk_recursively(srcrepo, dstrepo, save_path,
-                                             excludes, dbc, mapping):
-                rewrite_save_item(save_path, path, srcrepo, dstrepo, split_cfg,
-                                  stack, dbc, mapping)
+    def __enter__(self):
+        return self
+    def __exit__(self, exc_type, exc_value, traceback):
+        with self._context:
+            pass
 
-            while len(stack) > 1: # pop all parts above root folder
-                stack.pop()
-            tree = stack.pop() # and the root to get the tree
+    def append_save(self, save_path, parent, srcrepo, dstrepo, excludes):
+        # Strict for now
+        assert isinstance(parent, (bytes, type(None))), parent
+        if parent:
+            assert len(parent) == 20, parent
+        assert len(save_path) == 3, (len(save_path), save_path)
+        assert isinstance(save_path[1][1], vfs.RevList)
+        leaf_name, leaf_item = save_path[2]
+        if isinstance(leaf_item, vfs.FakeLink):
+            # For now, vfs.contents() does not resolve the one FakeLink
+            assert leaf_name == b'latest', save_path
+            res = srcrepo.resolve(leaf_item.target, parent=save_path[:-1],
+                                  follow=False, want_meta=False)
+            leaf_name, leaf_item = res[-1]
+            save_path = res
+        assert isinstance(leaf_item, vfs.Commit), leaf_item
+        # Currently, the workdb must always be ready to commit (see finally below)
+        with closing(self._db_conn.cursor()) as dbc:
+            try:
+                # Maintain a stack of information representing the current
+                # location in the archive being constructed.
+                stack = Stack(dstrepo, self._split_cfg)
 
-            save_oidx = hexlify(save_path[2][1].coid)
-            ci = parse_commit(get_cat_data(srcrepo.cat(save_oidx), b'commit'))
-            author = ci.author_name + b' <' + ci.author_mail + b'>'
-            committer = ci.committer_name + b' <' + ci.committer_mail + b'>'
-            return (dstrepo.write_commit(tree, parent,
-                                         author,
-                                         ci.author_sec,
-                                         ci.author_offset,
-                                         committer,
-                                         ci.committer_sec,
-                                         ci.committer_offset,
-                                         ci.message),
-                    tree)
-        finally:
-            workdb.commit() # the workdb is always ready for commit
+                for path in _vfs_walk_recursively(srcrepo, dstrepo, save_path,
+                                                  excludes, dbc, self._mapping):
+                    _rewrite_save_item(save_path, path, srcrepo, dstrepo,
+                                       self._split_cfg, stack, dbc,
+                                       self._mapping)
+
+                while len(stack) > 1: # pop all parts above root folder
+                    stack.pop()
+                tree = stack.pop() # and the root to get the tree
+
+                save_oidx = hexlify(save_path[2][1].coid)
+                ci = parse_commit(get_cat_data(srcrepo.cat(save_oidx), b'commit'))
+                author = ci.author_name + b' <' + ci.author_mail + b'>'
+                committer = ci.committer_name + b' <' + ci.committer_mail + b'>'
+                return (dstrepo.write_commit(tree, parent,
+                                             author,
+                                             ci.author_sec,
+                                             ci.author_offset,
+                                             committer,
+                                             ci.committer_sec,
+                                             ci.committer_offset,
+                                             ci.message),
+                        tree)
+            finally:
+                self._db_conn.commit() # the workdb is always ready for commit
