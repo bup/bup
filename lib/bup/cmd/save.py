@@ -122,7 +122,7 @@ def opts_from_cmdline(o, argv):
 
     return opt
 
-def save_tree(opt, reader, hlink_db, msr, repo, split_trees, split_cfg):
+def save_tree(opt, reader, hlink_db, msr, repo, split_cfg):
     # Metadata is stored in a file named .bupm in each directory.  The
     # first metadata entry will be the metadata for the current directory.
     # The remaining entries will be for each of the other directory
@@ -139,7 +139,7 @@ def save_tree(opt, reader, hlink_db, msr, repo, split_trees, split_cfg):
 
     # Maintain a stack of information representing the current location in
 
-    stack = Stack(repo, split_cfg, split_trees=split_trees)
+    stack = Stack(repo, split_cfg)
 
     prog_count = 0
     prog_subcount = 0
@@ -451,7 +451,6 @@ def main(argv):
             split_cfg = hashsplit.configuration(repo.config_get)
         except ConfigError as ex:
             opt_parser.fatal(ex)
-        split_trees = repo.config_get(b'bup.split.trees', opttype='bool')
         sys.stdout.flush()
         out = byte_stream(sys.stdout)
 
@@ -474,8 +473,7 @@ def main(argv):
         with msr, \
              hlinkdb.HLinkDB(fsindex.hlink) as hlink_db, \
              index.Reader(fsindex.stat) as reader:
-            tree = save_tree(opt, reader, hlink_db, msr, repo, split_trees,
-                             split_cfg)
+            tree = save_tree(opt, reader, hlink_db, msr, repo, split_cfg)
         if opt.tree:
             out.write(hexlify(tree))
             out.write(b'\n')

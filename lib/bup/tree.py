@@ -94,11 +94,10 @@ class StackDir:
         self.items = []
 
 class Stack:
-    def __init__(self, repo, split_config, *, split_trees=False):
+    def __init__(self, repo, split_config):
         self._stack = []
         self._repo = repo
         self._split_config = split_config
-        self._split_trees = split_trees
 
     def __len__(self):
         return len(self._stack)
@@ -221,7 +220,7 @@ class Stack:
 
     def _write(self, tree):
         items = self._clean(tree)
-        if not self._split_trees:
+        if not self._split_config['trees']:
             return self._write_tree(tree.meta, items)
         items.sort(key=lambda x: x.name)
         return self._write_split_tree(tree.meta, items)
