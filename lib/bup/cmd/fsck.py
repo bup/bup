@@ -94,8 +94,8 @@ def par2_generate(stem):
     with temp_dir(dir=parent, prefix=(base + b'-bup-tmp-')) as tmpdir:
         idx = base + b'.idx'
         pack = base + b'.pack'
-        os.symlink(join(b'..', idx), join(tmpdir, idx))
-        os.symlink(join(b'..', pack), join(tmpdir, pack))
+        os.link(join(tmpdir, b'..', idx), join(tmpdir, idx))
+        os.link(join(tmpdir, b'..', pack), join(tmpdir, pack))
         rc = par2(b'create', [b'-n1', b'-c200', b'--', base, pack, idx],
                   verb_floor=2, cwd=tmpdir)
         if rc == 0:
