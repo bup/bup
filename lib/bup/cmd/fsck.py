@@ -81,7 +81,7 @@ def par2_generate(stem):
     # cf. https://github.com/Parchive/par2cmdline/issues/84
     with temp_dir(dir=parent, prefix=(base + b'-bup-tmp-')) as tmpdir:
         pack = base + b'.pack'
-        os.symlink(join(b'..', pack), join(tmpdir, pack))
+        os.link(join(tmpdir, b'..', pack), join(tmpdir, pack))
         rc = par2(b'create', [b'-n1', b'-c200', b'--', base, pack],
                   verb_floor=2, cwd=tmpdir)
         if rc == 0:
