@@ -35,6 +35,14 @@ EXIT_FALSE = 1
 EXIT_FAILURE = 2
 
 
+def dict_subset(dict, keys):
+    result = {}
+    for k in keys:
+        if k in dict:
+            result[k] = dict[k]
+    return result
+
+
 nullctx = nullcontext() # only need one
 
 def nullcontext_if_not(manager):
