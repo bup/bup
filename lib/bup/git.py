@@ -423,9 +423,7 @@ def _encode_packobj(type, content, compression_level=1):
         szbits = sz & 0x7f
         sz >>= 7
     z = zlib.compressobj(compression_level)
-    yield szout
-    yield z.compress(content)
-    yield z.flush()
+    return szout, z.compress(content), z.flush()
 
 
 def _decode_packobj(buf):
@@ -910,7 +908,6 @@ class LocalPackStore():
 
         """
         self._closed = False
-        self._byte_count = 0
         self._file = None
         self._idx = None
         self._deduplicate_writes = not allow_duplicates
@@ -923,10 +920,6 @@ class LocalPackStore():
         self._tmpdir = None
 
     def __del__(self): assert self._closed
-
-    def byte_count(self): return self._byte_count
-    def object_count(self): return self._obj_count
-
 
     def exists(self, oid, want_source=False):
         """Return a true value if the oid is found in the object
@@ -972,7 +965,6 @@ class LocalPackStore():
         nw = len(oneblob)
         crc = zlib.crc32(oneblob) & 0xffffffff
         self._update_idx(sha, crc, nw)
-        self._byte_count += nw
         self._obj_count += 1
         return nw, crc
 
@@ -1018,7 +1010,7 @@ class LocalPackStore():
                     auto_midx(os.path.join(self._repo_dir, b'objects/pack'))
                 return nameprefix
         finally:
-            self._byte_count = self._obj_count = 0
+            self._obj_count = 0
             self._objcache = None # last -- some code above depends on it
             if tmpdir:
                 rmtree(tmpdir)
@@ -1041,6 +1033,8 @@ class PackWriter:
 
     def __init__(self, *, store, compression_level=None,
                  max_pack_size=None, max_pack_objects=None):
+        self._byte_count = 0
+        self._obj_count = 0
         self._store = store
         self._pending_oids = set()
         if compression_level is None:
@@ -1054,19 +1048,19 @@ class PackWriter:
     def __enter__(self): return self
     def __exit__(self, type, value, traceback): self.close()
 
-    def byte_count(self): return self._store.byte_count()
-    def object_count(self): return self._store.object_count()
+    def byte_count(self): return self._byte_count
+    def object_count(self): return self._obj_count
 
     def _write(self, sha, type, content):
         if verbose:
             log('>')
         assert sha
-        size, crc = \
-            self._store.write(_encode_packobj(type, content,
-                                              self.compression_level),
-                              sha=sha)
-        if self._store.byte_count() >= self.max_pack_size \
-           or self._store.object_count() >= self.max_pack_objects:
+        encoded = _encode_packobj(type, content, self.compression_level)
+        size, crc = self._store.write(encoded, sha=sha)
+        self._byte_count += sum(len(x) for x in encoded)
+        self._obj_count += 1
+        if self._byte_count >= self.max_pack_size \
+           or self._obj_count >= self.max_pack_objects:
             self.breakpoint()
         return sha
 
@@ -1115,7 +1109,9 @@ class PackWriter:
 
     def breakpoint(self):
         """Clear byte and object counts and return the last processed id."""
-        return self._store.finish_pack()
+        result = self._store.finish_pack()
+        self._byte_count = self._obj_count = 0
+        return result
 
     def close(self):
         """Close the pack file and move it to its definitive path."""

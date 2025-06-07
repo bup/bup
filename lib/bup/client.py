@@ -608,11 +608,9 @@ class RemotePackStore:
         self._closed = False
         self._bwcount = 0
         self._bwtime = time.time()
-        self._byte_count = 0
         self._cache = cache
         self._conn = conn
         self._ensure_busy = ensure_busy
-        self._obj_count = 0
         self._objcache = None
         self._onclose = onclose
         self._onopen = onopen
@@ -620,9 +618,6 @@ class RemotePackStore:
         self._suggest_packs = suggest_packs
 
     def __del__(self): assert self._closed
-
-    def byte_count(self): return self._byte_count
-    def object_count(self): return self._obj_count
 
     def exists(self, oid, want_source=False):
         """Return a true value if the oid is found in the object
@@ -657,8 +652,6 @@ class RemotePackStore:
                 _raw_write_bwlimit(self._conn, outbuf, self._bwcount, self._bwtime)
         except IOError as e:
             raise ClientError(e) from e
-        self._byte_count += len(data)
-        self._obj_count += 1
 
         if self._conn.has_input():
             self._objcache.close_temps()
@@ -673,18 +666,15 @@ class RemotePackStore:
         # Called by other PackWriter methods like breakpoint().
         # Must not close the connection (self._conn)
         self._objcache, objcache = None, self._objcache
-        try:
-            with nullcontext_if_not(objcache):
-                if not (self._packopen and self._conn):
-                    return None
-                self._conn.write(b'\0\0\0\0')
-                self._packopen = False
-                self._onclose() # Unbusy
-                if objcache is not None:
-                    objcache.close()
-                return self._suggest_packs() # Returns last idx received
-        finally:
-            self._byte_count = self._obj_count = 0
+        with nullcontext_if_not(objcache):
+            if not (self._packopen and self._conn):
+                return None
+            self._conn.write(b'\0\0\0\0')
+            self._packopen = False
+            self._onclose() # Unbusy
+            if objcache is not None:
+                objcache.close()
+            return self._suggest_packs() # Returns last idx received
 
     def abort(self): self.finish_pack(abort=True)
 
