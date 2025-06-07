@@ -673,15 +673,18 @@ class RemotePackStore:
         # Called by other PackWriter methods like breakpoint().
         # Must not close the connection (self._conn)
         self._objcache, objcache = None, self._objcache
-        with nullcontext_if_not(objcache):
-            if not (self._packopen and self._conn):
-                return None
-            self._conn.write(b'\0\0\0\0')
-            self._packopen = False
-            self._onclose() # Unbusy
-            if objcache is not None:
-                objcache.close()
-            return self._suggest_packs() # Returns last idx received
+        try:
+            with nullcontext_if_not(objcache):
+                if not (self._packopen and self._conn):
+                    return None
+                self._conn.write(b'\0\0\0\0')
+                self._packopen = False
+                self._onclose() # Unbusy
+                if objcache is not None:
+                    objcache.close()
+                return self._suggest_packs() # Returns last idx received
+        finally:
+            self._byte_count = self._obj_count = 0
 
     def abort(self): self.finish_pack(abort=True)
 
