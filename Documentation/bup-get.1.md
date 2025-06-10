@@ -86,7 +86,8 @@ used to help test before/after results.)
 
 \--force-pick *ref*, \--force-pick: *ref* *dest*
 :   do the same thing as `--pick`, but don't refuse to overwrite an
-    existing tag.
+    existing tag, and if the tag refers to a commit, make it the
+    parent of *ref*.
 
 \--new-tag *ref*, \--new-tag: *ref* *dest*
 :   create a *dest* tag for *ref*, but refuse to overwrite an existing
