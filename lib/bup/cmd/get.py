@@ -452,6 +452,8 @@ def handle_append(item, src_repo, writer, opt):
         return commit, item.src.hash
     commits = list(src_repo.rev_list(src_oidx))
     commits.reverse()
+    if item.dest.hash:
+        assert item.dest.type in ('branch', 'commit', 'save'), item.dest
     return append_commits(commits, item.spec.src, item.dest.hash,
                           src_repo, writer, opt)
 
@@ -475,13 +477,14 @@ def resolve_pick(spec, src_repo, dest_repo):
     if not dest:
         cp = validate_vfs_path(cleanup_vfs_path(spec.dest), spec)
         dest = default_loc._replace(path=cp)
-    else:
-        if not dest.type == 'branch' and not dest.path.startswith(b'/.tag/'):
-            misuse('%s destination is not a tag or branch' % spec_args)
-        if spec.method == 'pick' \
-           and dest.hash and dest.path.startswith(b'/.tag/'):
-            misuse('cannot overwrite existing tag for %s (requires --force-pick)'
-                  % spec_args)
+        return Target(spec=spec, src=src, dest=dest)
+    if not dest.type == 'branch' and not dest.path.startswith(b'/.tag/'):
+        misuse('%s destination is not a tag or branch' % spec_args)
+    if not dest.hash:
+        return Target(spec=spec, src=src, dest=dest)
+    if spec.method != 'force-pick' and dest.path.startswith(b'/.tag/'):
+        misuse('cannot overwrite existing tag for %s (requires --force-pick)'
+               % spec_args)
     return Target(spec=spec, src=src, dest=dest)
 
 
@@ -490,8 +493,13 @@ def handle_pick(item, src_repo, writer, opt):
     assert item.src.type in ('save', 'commit')
     src_oidx = hexlify(item.src.hash)
     if item.dest.hash:
-        return append_commit(item.spec.src, src_oidx, item.dest.hash,
-                             src_repo, writer, opt)
+        # if the dest is committish, make it the parent
+        if item.dest.type in ('branch', 'commit', 'save'):
+            return append_commit(item.spec.src, src_oidx, item.dest.hash,
+                                 src_repo, writer, opt)
+        assert item.dest.path.startswith(b'/.tag/'), item.dest
+    # no parent; either dest is a non-commit tag and we should clobber
+    # it, or dest doesn't exist.
     return append_commit(item.spec.src, src_oidx, None, src_repo, writer, opt)
 
 

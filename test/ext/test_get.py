@@ -4,7 +4,7 @@ from errno import ENOENT
 from itertools import product
 from os import chdir, mkdir, rename
 from shutil import rmtree
-from subprocess import PIPE
+from subprocess import DEVNULL, PIPE
 import pytest, re, sys
 
 from bup import compat, path
@@ -117,6 +117,10 @@ def validate_commit(src_id, dest_id):
     if exr.rc != 0: return False
     src_cat = exr.out
     exr = verify_rcz((b'git', b'--git-dir', b'get-dest', b'cat-file', b'commit', dest_id))
+    # Check parent connectivity, etc.
+    ex((b'git', b'--git-dir', b'get-dest', b'log', b'-n2', dest_id),
+       stdin=DEVNULL)
+
     if exr.rc != 0: return False
     dest_cat = exr.out
     wvpasseq(src_cat, dest_cat)
@@ -145,6 +149,9 @@ def validate_commit(src_id, dest_id):
 
 def _validate_save(orig_dir, save_path, commit_id, tree_id):
     global bup_cmd
+    # Check parent connectivity, etc.
+    ex((b'git', b'--git-dir', b'get-dest', b'log', b'-n2', commit_id),
+       stdin=DEVNULL)
     rmrf(b'restore')
     exr = verify_rcz((bup_cmd, b'-d', b'get-dest',
                       b'restore', b'-C', b'restore', save_path + b'/.'))
@@ -204,7 +211,9 @@ def validate_new_tagged_commit(tag_name, commit_id, tree_id, get_out):
     get_tag_id = out[0]
     wvpassne(commit_id, get_tag_id)
     validate_tree(tree_id, tag_name + b':')
-
+    # Check parent connectivity, etc.
+    ex((b'git', b'--git-dir', b'get-dest', b'log', b'-n2', tag_name),
+       stdin=DEVNULL)
 
 def _run_get(disposition, method, what):
     print('run_get:', repr((disposition, method, what)), file=sys.stderr)
