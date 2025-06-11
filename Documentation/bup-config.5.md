@@ -122,9 +122,8 @@ pack.compression
 
 pack.packSizeLimit
 :   Limits the maximum pack size (see `git-config`(1)) when writing
-    pack files (e.g. via `bup save`). A value set in the destination
-    repository (which may be remote) takes precedence followed by a
-    value set in the local repository (where the index is). The
+    pack files (e.g. via `bup save`). This setting is relevant when
+    set in the destination repository (which may be remote). The
     default value is 1e9 bytes, i.e. about 0.93 GiB, and `bup` may
     exceed this limit by a chunk. However, setting it to e.g. "2g" (2
     GiB) will still mean that all objects in the pack can be addressed
