@@ -376,6 +376,8 @@ def find_tree_entry(named, tree_data):
         assert z > ofs
         mode_end = tree_data.find(b' ', ofs)
         name = tree_data[mode_end+1:z]
+        # Both until min pylint is new enough
+        # pylint: disable=consider-using-in
         # pylint: disable-next=consider-using-in
         if name == named or name == dirname:
             mode = tree_data[ofs:mode_end]

@@ -254,6 +254,8 @@ def do_pack(mode, stem, par2_exists, out):
         if opt.verbose: out.write(base + b' generated\n')
         return EXIT_SUCCESS
     assert False, f'unexpected mode fsck {mode}'
+    return None # until min pylint is new enough
+
 
 
 optspec = """
