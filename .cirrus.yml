@@ -1,6 +1,7 @@
 
 task:
   name: debian check/lint root
+  only_if: $CIRRUS_BRANCH != "master"
   container:
     image: debian:bullseye
     cpu: 4
@@ -18,6 +19,7 @@ task:
 
 task:
   name: debian long-check
+  only_if: $CIRRUS_BRANCH != "master"
   container:
     image: debian:bullseye
     cpu: 4
@@ -40,6 +42,7 @@ task:
 
 task:
   name: debian check
+  only_if: $CIRRUS_BRANCH != "master"
   container:
     image: debian:buster
     cpu: 4
@@ -59,6 +62,7 @@ task:
 
 task:
   name: freebsd check
+  only_if: $CIRRUS_BRANCH != "master"
   freebsd_instance:
     image: freebsd-13-2-release-amd64
     cpu: 4
@@ -74,6 +78,7 @@ task:
 
 task:
   name: macos check
+  only_if: $CIRRUS_BRANCH != "master"
   macos_instance:
     # https://cirrus-ci.org/guide/macOS/
     image: ghcr.io/cirruslabs/macos-runner:sonoma
