@@ -73,6 +73,9 @@ def previous_conversion(dstrepo, item, vfs_dir, db, mapping):
     dst, chunked, size = data
     if chunked:
         assert S_ISREG(item_mode)
+    if not dstrepo.exists(dst):
+        # only happens if you reuse a database
+        return item, None, None
     # augment the size if appropriate
     if size is not None and isinstance(item.meta, metadata.Metadata):
         if item.meta.size is not None:
@@ -80,13 +83,10 @@ def previous_conversion(dstrepo, item, vfs_dir, db, mapping):
         else: # must not modify vfs results (see vfs docs)
             item = vfs.copy_item(item)
             item.meta.size = size
-    # if we have it in the DB and in the destination repo, return it
-    if dstrepo.exists(dst):
-        if chunked is None: # dir, not file
-            return item, dst, None
-        return item, dst, GIT_MODE_TREE if chunked else GIT_MODE_FILE
-    # this only happens if you reuse a database
-    return item, None, None
+    # it's in the DB and in the destination repo
+    if chunked is None: # dir, not file
+        return item, dst, None
+    return item, dst, GIT_MODE_TREE if chunked else GIT_MODE_FILE
 
 def vfs_walk_recursively(srcrepo, dstrepo, vfs_item, excludes, db, mapping,
                          fullname=b''):
