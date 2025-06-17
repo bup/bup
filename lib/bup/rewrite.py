@@ -4,13 +4,15 @@ from contextlib import ExitStack, closing, nullcontext
 from itertools import chain
 from os.path import join as pj
 from stat import S_ISDIR, S_ISLNK, S_ISREG
-import os, sqlite3
+import os, sqlite3, time
 
 from bup import hashsplit, metadata, vfs
 from bup.git import get_cat_data, parse_commit
 from bup.hashsplit import GIT_MODE_FILE, GIT_MODE_SYMLINK, GIT_MODE_TREE
-from bup.helpers import path_components, should_rx_exclude_path, temp_dir
+from bup.helpers import \
+    hostname, path_components, should_rx_exclude_path, temp_dir
 from bup.io import qsql_id
+from bup.pwdgrp import userfullname, username
 from bup.tree import Stack
 
 
@@ -274,14 +276,12 @@ class Rewriter:
                 save_oidx = hexlify(save_path[2][1].coid)
                 ci = parse_commit(get_cat_data(srcrepo.cat(save_oidx), b'commit'))
                 author = ci.author_name + b' <' + ci.author_mail + b'>'
-                committer = ci.committer_name + b' <' + ci.committer_mail + b'>'
+                committer = b'%s <%s@%s>' % (userfullname(), username(), hostname())
                 return (dstrepo.write_commit(tree, parent,
                                              author,
                                              ci.author_sec,
                                              ci.author_offset,
-                                             committer,
-                                             ci.committer_sec,
-                                             ci.committer_offset,
+                                             committer, time.time(), None,
                                              ci.message),
                         tree)
             finally:
