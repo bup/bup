@@ -86,6 +86,11 @@ find-prog()
     echo "$result"
 }
 
+# Can not currently handle options that "printf %q" would change,
+# i.e. options with spaces in them, etc. Should only include common
+# cflags, e.g. not library/pkg-config specifc flags.
+config_cflags=()
+
 try-c-code()
 {
     # Runs $CC will all the arguments before the first "--". All the
@@ -106,14 +111,11 @@ try-c-code()
     local tmp rc=0
     tmp="$(mktemp config/tmp/bup-try-c-compile-XXXXXXX.c)"
     echo -e "$@" > "$tmp"
-    "$CC" -Wall -Werror "${opts[@]}" -c -o /dev/null "$tmp" || rc=$?
+    "$CC" -Wall -Werror "${config_cflags[@]}" "${opts[@]}" -c \
+          -o /dev/null "$tmp" || rc=$?
     rm "$tmp"
     return "$rc"
 }
-
-# Can not currently handle options that "printf %q" would change,
-# i.e. options with spaces in them, etc.
-config_cflags=()
 
 add-cflag-if-supported()
 {
