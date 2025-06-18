@@ -134,6 +134,11 @@ Bugs
 * When run on an existing repository, `bup init` will now leave
   changes to `core.logAllRefUpdates` alone.
 
+* `par2` changed its behavior in 1.0 to be incompatible with `bup`'s
+  use of symlinks to mitigate a `par2` bug (see the [0.33.4 release
+  notes](0.33.4-from-0.33.3.md) for additional information. `bup` now
+  uses hardlinks instead.
+
 Build system
 ------------
 
