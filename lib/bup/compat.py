@@ -1,6 +1,5 @@
 
 # pylint: disable=unused-import
-from contextlib import ExitStack, nullcontext
 from os import environb as environ
 from os import fsdecode, fsencode
 from shlex import quote

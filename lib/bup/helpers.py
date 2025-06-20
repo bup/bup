@@ -1,7 +1,7 @@
 """Helper functions and classes for bup."""
 
 from collections import namedtuple
-from contextlib import ExitStack
+from contextlib import ExitStack, nullcontext
 from ctypes import sizeof, c_void_p
 from math import floor
 from os import environ
@@ -14,7 +14,7 @@ import hashlib, heapq, math, operator, time
 
 from bup import _helpers
 from bup import io
-from bup.compat import argv_bytes, nullcontext
+from bup.compat import argv_bytes
 from bup.io import byte_stream, path_msg
 # This function should really be in helpers, not in bup.options.  But we
 # want options.py to be standalone so people can include it in other projects.

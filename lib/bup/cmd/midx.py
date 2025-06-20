@@ -1,9 +1,10 @@
 
 from binascii import hexlify
+from contextlib import ExitStack
 import glob, os, math, resource, struct, sys
 
 from bup import options, git, midx, _helpers, xstat
-from bup.compat import ExitStack, argv_bytes
+from bup.compat import argv_bytes
 from bup.helpers import \
     (Sha1,
      add_error, atomically_replaced_file,

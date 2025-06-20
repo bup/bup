@@ -1,6 +1,6 @@
 
 from binascii import hexlify, unhexlify
-from contextlib import closing
+from contextlib import ExitStack, closing
 from functools import partial
 import os, re, struct, sys, time, zlib
 import socket, shutil
@@ -9,7 +9,6 @@ from bup import git, ssh, vint, protocol
 from bup.git import PackWriter
 from bup.helpers import \
     (Conn,
-     ExitStack,
      atomically_replaced_file,
      chunkyreader,
      debug1,
