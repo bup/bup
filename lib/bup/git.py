@@ -16,10 +16,7 @@ from sys import stderr
 from typing import Optional, Union
 
 from bup import _helpers, hashsplit, path, midx, bloom, xstat
-from bup.compat import \
-    (bytes_from_uint,
-     dataclass,
-     environ)
+from bup.compat import dataclass, environ
 from bup.io import path_msg
 from bup.helpers import (EXIT_FAILURE,
                          OBJECT_EXISTS,
@@ -417,7 +414,7 @@ def _encode_packobj(type, content, compression_level=1):
     sz >>= 4
     while 1:
         if sz: szbits |= 0x80
-        szout += bytes_from_uint(szbits)
+        szout += szbits.to_bytes(1, 'big')
         if not sz:
             break
         szbits = sz & 0x7f

@@ -2,13 +2,13 @@
 import os, random
 
 from bup import options
-from bup.compat import argv_bytes, bytes_from_uint
+from bup.compat import argv_bytes
 from bup.helpers import log
 from bup.io import path_msg
 
 
 def randblock(n):
-    return b''.join(bytes_from_uint(random.randrange(0,256)) for i in range(n))
+    return bytes(random.randrange(0,256) for i in range(n))
 
 
 optspec = """

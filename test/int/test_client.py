@@ -3,16 +3,14 @@ import os, time, random, subprocess, glob
 import pytest
 
 from bup import client, git, path
-from bup.compat import bytes_from_uint, environ
+from bup.compat import environ
 from bup.config import ConfigError
 from bup.repo import LocalRepo
 from buptest import ex
 
+
 def randbytes(sz):
-    s = b''
-    for i in range(sz):
-        s += bytes_from_uint(random.randrange(0,256))
-    return s
+    return bytes(random.randrange(0,256) for i in range(sz))
 
 
 s1 = randbytes(10000)

@@ -37,9 +37,6 @@ def argv_bytes(x):
     """Return the original bytes passed to main() for an argv argument."""
     return fsencode(x)
 
-def bytes_from_uint(i):
-    return bytes((i,))
-
 def getcwd():
     return fsencode(os.getcwd())
 

@@ -9,7 +9,6 @@
 
 from io import BytesIO
 
-from bup import compat
 from bup import _helpers
 
 
@@ -22,7 +21,6 @@ def encode_vuint(x):
         return _helpers.vuint_encode(x)
     except OverflowError:
         ret = b''
-        bytes_from_uint = compat.bytes_from_uint
         if x < 0:
             raise Exception("vuints must not be negative")
         assert x, "the C version should have picked this up"
@@ -31,9 +29,9 @@ def encode_vuint(x):
             seven_bits = x & 0x7f
             x >>= 7
             if x:
-                ret += bytes_from_uint(0x80 | seven_bits)
+                ret += (0x80 | seven_bits).to_bytes(1, 'big')
             else:
-                ret += bytes_from_uint(seven_bits)
+                ret += seven_bits.to_bytes(1, 'big')
                 break
         return ret
 
@@ -70,7 +68,6 @@ def encode_vint(x):
     try:
         return _helpers.vint_encode(x)
     except OverflowError:
-        bytes_from_uint = compat.bytes_from_uint
         assert x != 0, "the C version should have picked this up"
         if x < 0:
             x = -x
@@ -79,7 +76,7 @@ def encode_vint(x):
             sign_and_six_bits = x & 0x3f
         x >>= 6
         assert x, "the C version should have picked this up"
-        return bytes_from_uint(0x80 | sign_and_six_bits) + encode_vuint(x)
+        return (0x80 | sign_and_six_bits).to_bytes(1, 'big') + encode_vuint(x)
 
 
 def read_vint(port):
