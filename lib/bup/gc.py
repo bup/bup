@@ -6,7 +6,6 @@ from os.path import basename
 import glob, os, re, subprocess, sys, tempfile
 
 from bup import bloom, git, midx
-from bup.compat import hexstr
 from bup.git import MissingObject, walk_object
 from bup.helpers import \
     EXIT_FAILURE, log, note_error, progress, qprogress, reprogress
@@ -260,7 +259,7 @@ def bup_gc(threshold=10, compression=1, verbosity=0, ignore_missing=False):
                     % live_objects.pfalse_positive())
                 reprogress()
         except MissingObject as ex:
-            log('bup: missing object %r \n' % hexstr(ex.oid))
+            log('bup: missing object %r \n' % ex.oid.hex())
             sys.exit(EXIT_FAILURE)
         with live_objects:
             try:

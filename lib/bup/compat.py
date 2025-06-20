@@ -11,10 +11,6 @@ import bup_main
 
 ver = sys.version_info
 
-def hexstr(b):
-    """Return hex string (not bytes as with hexlify) representation of b."""
-    return b.hex()
-
 if (ver.major, ver.minor) >= (3, 10):
     from itertools import pairwise
 else:

@@ -5,7 +5,7 @@ from stat import S_ISDIR
 import os, sys, textwrap, time
 
 from bup import compat, git, client, vfs
-from bup.compat import argv_bytes, hexstr
+from bup.compat import argv_bytes
 from bup.config import derive_repo_addr
 from bup.git import MissingObject, get_cat_data, parse_commit, walk_object
 from bup.helpers import \
@@ -630,11 +630,11 @@ def resolve_targets(specs, src_repo, dest_repo, *, ignore_missing):
 
 def log_item(name, type, opt, tree=None, commit=None, tag=None):
     if tag and opt.print_tags:
-        print(hexstr(tag))
+        print(tag.hex())
     if tree and opt.print_trees:
-        print(hexstr(tree))
+        print(tree.hex())
     if commit and opt.print_commits:
-        print(hexstr(commit))
+        print(commit.hex())
     if opt.verbose:
         last = ''
         if type in ('root', 'branch', 'save', 'commit', 'tree'):

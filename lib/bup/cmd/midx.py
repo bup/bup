@@ -3,7 +3,7 @@ from binascii import hexlify
 import glob, os, math, resource, struct, sys
 
 from bup import options, git, midx, _helpers, xstat
-from bup.compat import ExitStack, argv_bytes, hexstr
+from bup.compat import ExitStack, argv_bytes
 from bup.helpers import \
     (Sha1,
      add_error, atomically_replaced_file,
@@ -96,19 +96,19 @@ def check_midx(name):
                         add_error("%s: %s: %s missing from idx"
                                   % (path_msg(nicename),
                                      git.shorten_hash(subname).decode('ascii'),
-                                     hexstr(e)))
+                                     e.hex()))
                     if not ix.exists(e):
                         add_error("%s: %s: %s missing from midx"
                                   % (path_msg(nicename),
                                      git.shorten_hash(subname).decode('ascii'),
-                                     hexstr(e)))
+                                     e.hex()))
         prev = None
         for ecount,e in enumerate(ix):
             if not (ecount % 1234):
                 qprogress('  Ordering: %d/%d\r' % (ecount, len(ix)))
             if e and prev and not e >= prev:
                 add_error('%s: ordering error: %s < %s'
-                          % (nicename, hexstr(e), hexstr(prev)))
+                          % (nicename, e.hex(), prev.hex()))
             prev = e
 
 

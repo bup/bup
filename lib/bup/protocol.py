@@ -3,7 +3,6 @@ import os, struct
 from binascii import hexlify, unhexlify
 
 from bup import git, vfs, vint
-from bup.compat import hexstr
 from bup.io import path_msg
 from bup.vint import read_bvec, write_bvec
 from bup.vint import read_vint, write_vint
@@ -258,7 +257,7 @@ class Server:
                         debug1("bup server: suggesting index %s\n"
                                % git.shorten_hash(name).decode('ascii'))
                         debug1("bup server:   because of object %s\n"
-                               % hexstr(shar))
+                               % shar.hex())
                         self.conn.write(b'index %s\n' % name)
                         suggested.add(name)
                     continue

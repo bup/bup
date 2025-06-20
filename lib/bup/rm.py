@@ -3,7 +3,6 @@ from binascii import hexlify, unhexlify
 
 from bup import git, vfs
 from bup.client import ClientError
-from bup.compat import hexstr
 from bup.git import LocalPackStore, PackWriter, get_commit_items
 from bup.helpers import add_error, die_if_errors, log, saved_errors
 from bup.io import path_msg
@@ -134,15 +133,15 @@ def bup_rm(repo, paths, compression=6, verbosity=None):
                 if verbosity:
                     log('updated %s (%s%s)\n'
                         % (path_msg(ref_name),
-                           hexstr(orig_ref) + ' -> ' if orig_ref else '',
-                           hexstr(new_ref)))
+                           orig_ref.hex() + ' -> ' if orig_ref else '',
+                           new_ref.hex()))
         except (git.GitError, ClientError) as ex:
             if new_ref:
                 add_error('while trying to update %s (%s%s): %s'
                           % (path_msg(ref_name),
-                             hexstr(orig_ref) + ' -> ' if orig_ref else '',
-                             hexstr(new_ref),
+                             orig_ref.hex() + ' -> ' if orig_ref else '',
+                             new_ref.hex(),
                              ex))
             else:
                 add_error('while trying to delete %r (%s): %s'
-                          % (ref_name, hexstr(orig_ref), ex))
+                          % (ref_name, orig_ref.hex(), ex))

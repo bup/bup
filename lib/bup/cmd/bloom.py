@@ -2,7 +2,7 @@
 import os, glob
 
 from bup import options, git, bloom
-from bup.compat import argv_bytes, hexstr
+from bup.compat import argv_bytes
 from bup.helpers \
     import (add_error,
             debug1,
@@ -60,7 +60,7 @@ def check_bloom(path, bloomfilename, idx):
         with oids:
             for oid in oids:
                 if not b.exists(oid):
-                    add_error('bloom: ERROR: object %s missing' % hexstr(oid))
+                    add_error('bloom: ERROR: object %s missing' % oid.hex())
 
 
 _first = None

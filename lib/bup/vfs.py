@@ -56,7 +56,6 @@ from time import localtime, strftime
 import re
 
 from bup import git
-from bup.compat import hexstr
 from bup.git import \
     (BUP_CHUNKED,
      GitError,
@@ -374,7 +373,7 @@ def _treeish_tree_data(repo, oid):
         data = b''.join(it)
         assert item_t == b'tree'
     elif item_t != b'tree':
-        raise Exception('%s is not a tree or commit' % hexstr(oid))
+        raise Exception('%s is not a tree or commit' % oid.hex())
     return data
 
 def tree_data_and_bupm(repo, oid):
