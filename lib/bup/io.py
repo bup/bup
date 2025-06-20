@@ -1,8 +1,6 @@
 
 import mmap as py_mmap
 
-from bup.compat import pending_raise
-
 
 def byte_stream(file):
     return file.buffer
@@ -14,8 +12,6 @@ def path_msg(x):
 
 
 assert not hasattr(py_mmap.mmap, '__del__')
-if hasattr(py_mmap.mmap, '__enter__'):
-    assert hasattr(py_mmap.mmap, '__exit__')
 
 class mmap(py_mmap.mmap):
     '''mmap.mmap wrapper that detects and complains about any instances
@@ -39,22 +35,15 @@ class mmap(py_mmap.mmap):
         self._bup_closed = True
         super().close()
 
-    if hasattr(py_mmap.mmap, '__enter__'):
-        def __enter__(self):
-            super().__enter__()
-            return self
-        def __exit__(self, type, value, traceback):
-            # Don't call self.close() when the parent has its own __exit__;
-            # defer to it.
-            self._bup_closed = True
-            result = super().__exit__(type, value, traceback)
-            return result
-    else:
-        def __enter__(self):
-            return self
-        def __exit__(self, type, value, traceback):
-            with pending_raise(value, rethrow=False):
-                self.close()
+    def __enter__(self):
+        super().__enter__()
+        return self
+    def __exit__(self, type, value, traceback):
+        # Don't call self.close() when the parent has its own __exit__;
+        # defer to it.
+        self._bup_closed = True
+        result = super().__exit__(type, value, traceback)
+        return result
 
     def __del__(self):
         assert self._bup_closed
