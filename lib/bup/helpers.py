@@ -14,7 +14,7 @@ import hashlib, heapq, math, operator, time
 
 from bup import _helpers
 from bup import io
-from bup.compat import argv_bytes, nullcontext, pending_raise
+from bup.compat import argv_bytes, nullcontext
 from bup.io import byte_stream, path_msg
 # This function should really be in helpers, not in bup.options.  But we
 # want options.py to be standalone so people can include it in other projects.
@@ -512,15 +512,9 @@ class BaseConn:
     def close(self):
         self._base_closed = True
 
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_value, tb):
-        with pending_raise(exc_value, rethrow=False):
-            self.close()
-
-    def __del__(self):
-        assert self._base_closed
+    def __enter__(self): return self
+    def __exit__(self, exc_type, exc_value, tb): self.close()
+    def __del__(self): assert self._base_closed
 
     def _read(self, size):
         raise NotImplementedError("Subclasses must implement _read")
@@ -647,8 +641,9 @@ class DemuxConn(BaseConn):
             # Make sure to write all pre-BUPMUX output to stderr
             b = os.read(infd, (len(tail) < 6) and (6-len(tail)) or 1)
             if not b:
-                ex = IOError('demux: unexpected EOF during initialization')
-                with pending_raise(ex):
+                try:
+                    raise IOError('demux: unexpected EOF during initialization')
+                finally:
                     stderr.write(tail)
                     stderr.flush()
             tail += b

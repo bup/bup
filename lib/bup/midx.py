@@ -3,7 +3,6 @@ from contextlib import ExitStack
 import glob, os, struct
 
 from bup import _helpers
-from bup.compat import pending_raise
 from bup.helpers import OBJECT_EXISTS, ObjectLocation, log, mmap_read
 from bup.io import path_msg
 
@@ -75,12 +74,8 @@ class PackMidx:
                 self.map = None
                 tmp.close()
 
-    def __enter__(self):
-        return self
-
-    def __exit__(self, type, value, traceback):
-        with pending_raise(value, rethrow=False):
-            self.close()
+    def __enter__(self): return self
+    def __exit__(self, type, value, traceback): self.close()
 
     def _fanget(self, i):
         if i >= self.entries * 4 or i < 0:

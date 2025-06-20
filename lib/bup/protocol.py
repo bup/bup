@@ -8,7 +8,7 @@ from bup.io import path_msg
 from bup.vint import read_bvec, write_bvec
 from bup.vint import read_vint, write_vint
 from bup.vint import read_vuint, write_vuint
-from bup.helpers import (debug1, debug2, linereader, lines_until_sentinel, log, pending_raise)
+from bup.helpers import debug1, debug2, linereader, lines_until_sentinel, log
 from bup.vint import write_vuint
 from bup.vfs import Item, Chunky, RevList, Root, Tags, Commit, FakeLink
 from bup.metadata import Metadata
@@ -437,10 +437,9 @@ class Server:
         return self
 
     def __exit__(self, type, value, traceback):
-        with pending_raise(value, rethrow=False): # Still needed with py3?
-            try:
-                if self.suspended:
-                    self.repo.finish_writing()
-            finally:
-                if self.repo:
-                    self.repo.close()
+        try:
+            if self.suspended:
+                self.repo.finish_writing()
+        finally:
+            if self.repo:
+                self.repo.close()

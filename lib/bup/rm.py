@@ -3,7 +3,7 @@ from binascii import hexlify, unhexlify
 
 from bup import git, vfs
 from bup.client import ClientError
-from bup.compat import hexstr, pending_raise
+from bup.compat import hexstr
 from bup.git import LocalPackStore, PackWriter, get_commit_items
 from bup.helpers import add_error, die_if_errors, log, saved_errors
 from bup.io import path_msg
@@ -116,8 +116,8 @@ def bup_rm(repo, paths, compression=6, verbosity=None):
                 assert(saves)
                 updated_refs[b'refs/heads/' + branch] = rm_saves(saves, writer)
         except BaseException as ex:
-            with pending_raise(ex):
-                writer.abort()
+            writer.abort()
+            raise ex
         finally:
             writer.close()
 

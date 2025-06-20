@@ -83,7 +83,6 @@ Brandon Low <lostlogic@lostlogicx.com> 2011-02-04
 import os, math, struct
 
 from bup import _helpers
-from bup.compat import pending_raise
 from bup.helpers import (debug1, debug2, log, mmap_read, mmap_readwrite,
                          mmap_readwrite_private, unlink)
 
@@ -199,15 +198,9 @@ class ShaBloom:
         finally:  # This won't handle pending exceptions correctly in py2
             self._init_failed()
 
-    def __del__(self):
-        assert self.closed
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, type, value, traceback):
-        with pending_raise(value, rethrow=False):
-            self.close()
+    def __del__(self): assert self.closed
+    def __enter__(self): return self
+    def __exit__(self, type, value, traceback): self.close()
 
     def pfalse_positive(self, additional=0):
         n = self.entries + additional

@@ -56,7 +56,7 @@ from time import localtime, strftime
 import re
 
 from bup import git
-from bup.compat import hexstr, pending_raise
+from bup.compat import hexstr
 from bup.git import \
     (BUP_CHUNKED,
      GitError,
@@ -207,15 +207,9 @@ class _FileReader:
     def close(self):
         self.closed = True
 
-    def __del__(self):
-        assert self.closed
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, type, value, traceback):
-        with pending_raise(value, rethrow=False):
-            self.close()
+    def __enter__(self): return self
+    def __exit__(self, type, value, traceback): self.close()
+    def __del__(self): assert self.closed
 
 _multiple_slashes_rx = re.compile(br'//+')
 

@@ -6,7 +6,7 @@ from os.path import basename
 import glob, os, re, subprocess, sys, tempfile
 
 from bup import bloom, git, midx
-from bup.compat import hexstr, pending_raise
+from bup.compat import hexstr
 from bup.git import MissingObject, walk_object
 from bup.helpers import \
     EXIT_FAILURE, log, note_error, progress, qprogress, reprogress
@@ -221,8 +221,8 @@ def sweep(live_objects, live_trees, existing_count, cat_pipe, threshold,
         assert(not glob.glob(os.path.join(pack_dir, b'*.midx')))
 
     except BaseException as ex:
-        with pending_raise(ex):
-            repo.abort_writing()
+        repo.abort_writing()
+        raise ex
     finally:
         # This will finally run midx.
         repo.close()

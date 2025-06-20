@@ -16,10 +16,11 @@ from sys import stderr
 from typing import Optional, Union
 
 from bup import _helpers, hashsplit, path, midx, bloom, xstat
-from bup.compat import (bytes_from_byte, bytes_from_uint,
-                        dataclass,
-                        environ,
-                        pending_raise)
+from bup.compat import \
+    (bytes_from_byte,
+     bytes_from_uint,
+     dataclass,
+     environ)
 from bup.io import path_msg
 from bup.helpers import (EXIT_FAILURE,
                          OBJECT_EXISTS,
@@ -508,12 +509,8 @@ class PackIdxV1(PackIdx):
         self.shatable = \
             memoryview(self.map)[self.sha_ofs:self.sha_ofs + self.nsha * 24]
 
-    def __enter__(self):
-        return self
-
-    def __exit__(self, type, value, traceback):
-        with pending_raise(value, rethrow=False):
-            self.close()
+    def __enter__(self): return self
+    def __exit__(self, type, value, traceback): self.close()
 
     def __len__(self):
         return int(self.nsha)  # int() from long for python 2
@@ -573,12 +570,8 @@ class PackIdxV2(PackIdx):
             memoryview(self.map)[self.sha_ofs:self.sha_ofs + self.nsha * 20]
 
 
-    def __enter__(self):
-        return self
-
-    def __exit__(self, type, value, traceback):
-        with pending_raise(value, rethrow=False):
-            self.close()
+    def __enter__(self): return self
+    def __exit__(self, type, value, traceback): self.close()
 
     def __len__(self):
         return int(self.nsha)  # int() from long for python 2
@@ -641,8 +634,8 @@ class PackIdxList:
         try:
             self.refresh()
         except BaseException as ex:
-            with pending_raise(ex):
-                self.close()
+            self.close()
+            raise ex
 
     def close(self):
         global _mpi_count
@@ -660,15 +653,9 @@ class PackIdxList:
             if bloom:
                 bloom.close()
 
-    def __enter__(self):
-        return self
-
-    def __exit__(self, type, value, traceback):
-        with pending_raise(value, rethrow=False):
-            self.close()
-
-    def __del__(self):
-        assert not self.open
+    def __enter__(self): return self
+    def __exit__(self, type, value, traceback): self.close()
+    def __del__(self): assert not self.open
 
     def __iter__(self):
         return iter(idxmerge(self.packs))
@@ -823,9 +810,9 @@ class PackIdxList:
                         self.bloom, bloom_tmp = None, self.bloom
                         bloom_tmp.close()
             except BaseException as ex:
-                with pending_raise(ex):
-                    if self.bloom:
-                        self.bloom.close()
+                if self.bloom:
+                    self.bloom.close()
+                raise ex
 
         debug1('PackIdxList: using %d index%s.\n'
             % (len(self.packs), len(self.packs)!=1 and 'es' or ''))
@@ -1571,8 +1558,8 @@ class CatPipe:
             assert readline_result == b'\n'
             self.inprogress = None
         except Exception as ex:
-            with pending_raise(ex):
-                self.close()
+            self.close()
+            raise ex
 
 
 _cp = {}

@@ -4,7 +4,6 @@ import errno, os, stat, struct
 
 from bup import metadata, xstat
 from bup._helpers import UINT_MAX, bytescmp
-from bup.compat import pending_raise
 from bup.helpers import (add_error, mkdirp,
                          atomically_replaced_file,
                          log, merge_iter, mmap_readwrite,
@@ -60,15 +59,9 @@ class MetaStoreReader:
         if f:
             f.close()
 
-    def __del__(self):
-        assert not self._file
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, type, value, traceback):
-        with pending_raise(value, rethrow=True):
-            self.close()
+    def __del__(self): assert not self._file
+    def __enter__(self): return self
+    def __exit__(self, type, value, traceback): self.close()
 
     def metadata_at(self, ofs):
         self._file.seek(ofs)
@@ -115,15 +108,9 @@ class MetaStoreWriter:
             self._file.close()
             self._file = None
 
-    def __del__(self):
-        assert self._closed
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, type, value, traceback):
-        with pending_raise(value, rethrow=False):
-            self.close()
+    def __del__(self): assert self._closed
+    def __enter__(self): return self
+    def __exit__(self, type, value, traceback): self.close()
 
     def store(self, metadata):
         meta_encoded = metadata.encode(include_path=False)
@@ -453,12 +440,8 @@ class Reader:
                                                self.m[st.st_size - FOOTLEN
                                                       : st.st_size])[0]
 
-    def __enter__(self):
-        return self
-
-    def __exit__(self, type, value, traceback):
-        with pending_raise(value, rethrow=False):
-            self.close()
+    def __enter__(self): return self
+    def __exit__(self, type, value, traceback): self.close()
 
     def __len__(self):
         return int(self.count)
@@ -563,12 +546,8 @@ class Writer:
             self.f.write(INDEX_HDR)
             self.cleanup = self.cleanup.pop_all()
 
-    def __enter__(self):
-        return self
-
-    def __exit__(self, type, value, traceback):
-        with pending_raise(value, rethrow=False):
-            self.abort()
+    def __enter__(self): return self
+    def __exit__(self, type, value, traceback): self.abort()
 
     def abort(self):
         self.close(abort=True)

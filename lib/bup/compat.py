@@ -33,26 +33,6 @@ else:
         return traceback.print_exception(type(ex), ex, ex.__traceback__,
                                          **kwargs)
 
-class pending_raise:
-    """If rethrow is true, rethrow ex (if any), unless the body throws.
-
-    (Supports Python 2 compatibility.)
-
-    """
-    # This is completely vestigial, and should be removed
-    def __init__(self, ex, rethrow=True):
-        self.closed = False
-        self.ex = ex
-        self.rethrow = rethrow
-    def __enter__(self):
-        return None
-    def __exit__(self, exc_type, exc_value, traceback):
-        self.closed = True
-        if not exc_type and self.ex and self.rethrow:
-            raise self.ex
-    def __del__(self):
-        assert self.closed
-
 def argv_bytes(x):
     """Return the original bytes passed to main() for an argv argument."""
     return fsencode(x)
