@@ -37,9 +37,6 @@ def argv_bytes(x):
     """Return the original bytes passed to main() for an argv argument."""
     return fsencode(x)
 
-def getcwd():
-    return fsencode(os.getcwd())
-
 # Access argv directly, given https://bugs.python.org/issue35883
 
 def get_argvb():

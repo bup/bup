@@ -4,15 +4,19 @@ from itertools import product
 from os import chdir, mkdir, rename
 from shutil import rmtree
 from subprocess import DEVNULL, PIPE
-import pytest, re, sys
+import os, pytest, re, sys
 
 from bup import compat, path
-from bup.compat import environ, getcwd
+from bup.compat import environ
 from bup.helpers import bquote, merge_dict, unlink
 from bup.io import byte_stream
 from buptest import ex, exo
 from wvpytest import wvcheck, wvfail, wvmsg, wvpass, wvpasseq, wvpassne, wvstart
 import bup.path
+
+
+def getcwd():
+    return os.fsencode(os.getcwd())
 
 
 sys.stdout.flush()
