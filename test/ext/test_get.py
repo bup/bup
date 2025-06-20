@@ -8,7 +8,7 @@ import os, pytest, re, sys
 
 from bup import compat, path
 from bup.compat import environ
-from bup.helpers import bquote, merge_dict, unlink
+from bup.helpers import bquote, unlink
 from bup.io import byte_stream
 from buptest import ex, exo
 from wvpytest import wvcheck, wvfail, wvmsg, wvpass, wvpasseq, wvpassne, wvstart
@@ -88,8 +88,8 @@ def validate_tree(src_id, dest_id):
     rmrf(b'restore-dest')
     mkdir(b'restore-src')
     mkdir(b'restore-dest')
-    
-    commit_env = merge_dict(environ, {b'GIT_COMMITTER_DATE': b'2014-01-01 01:01'})
+
+    commit_env = {**environ, **{b'GIT_COMMITTER_DATE': b'2014-01-01 01:01'}}
 
     # Create a commit so the archive contents will have matching timestamps.
     src_c = exo((b'git', b'--git-dir', b'get-src',

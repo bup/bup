@@ -27,7 +27,6 @@ from bup.helpers import (EXIT_FAILURE,
                          finalized,
                          log,
                          make_repo_id,
-                         merge_dict,
                          merge_iter,
                          mmap_read, mmap_readwrite,
                          nullcontext_if_not,
@@ -58,7 +57,7 @@ def _gitenv(repo_dir=None):
     # This is not always used, i.e. sometimes we just use --git-dir
     if not repo_dir:
         repo_dir = repo()
-    return merge_dict(environ, {b'GIT_DIR': os.path.abspath(repo_dir)})
+    return {**environ, **{b'GIT_DIR': os.path.abspath(repo_dir)}}
 
 def _git_wait(cmd, p):
     rv = p.wait()
