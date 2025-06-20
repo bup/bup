@@ -15,7 +15,10 @@ import hashlib, heapq, math, operator, time
 from bup import _helpers
 from bup import io
 from bup.compat import argv_bytes
-from bup.io import byte_stream, path_msg
+from bup.io import byte_stream, debug1, debug2, log, path_msg
+# pylint: disable=unused-import
+from bup.io import istty1, istty2, progress, qprogress, reprogress
+# pylint: enable=unused-import
 # This function should really be in helpers, not in bup.options.  But we
 # want options.py to be standalone so people can include it in other projects.
 from bup.options import _tty_width as tty_width
@@ -30,9 +33,6 @@ EXIT_SUCCESS = 0
 EXIT_TRUE = 0
 EXIT_FALSE = 1
 EXIT_FAILURE = 2
-
-
-buglvl = int(os.environ.get('BUP_DEBUG', 0))
 
 
 nullctx = nullcontext() # only need one
@@ -190,78 +190,6 @@ def stat_if_exists(path):
         if e.errno != errno.ENOENT:
             raise
     return None
-
-
-# Write (blockingly) to sockets that may or may not be in blocking mode.
-# We need this because our stderr is sometimes eaten by subprocesses
-# (probably ssh) that sometimes make it nonblocking, if only temporarily,
-# leading to race conditions.  Ick.  We'll do it the hard way.
-def _hard_write(fd, buf):
-    while buf:
-        (r,w,x) = select.select([], [fd], [], None)
-        if not w:
-            raise IOError('select(fd) returned without being writable')
-        try:
-            sz = os.write(fd, buf)
-        except OSError as e:
-            if e.errno != errno.EAGAIN:
-                raise
-        assert(sz >= 0)
-        buf = buf[sz:]
-
-
-_last_prog = 0
-def log(s):
-    """Print a log message to stderr."""
-    global _last_prog
-    sys.stdout.flush()
-    _hard_write(sys.stderr.fileno(), s if isinstance(s, bytes) else s.encode())
-    _last_prog = 0
-
-
-def debug1(s):
-    if buglvl >= 1:
-        log(s)
-
-
-def debug2(s):
-    if buglvl >= 2:
-        log(s)
-
-
-istty1 = os.isatty(1) or (int(os.environ.get('BUP_FORCE_TTY', 0)) & 1)
-istty2 = os.isatty(2) or (int(os.environ.get('BUP_FORCE_TTY', 0)) & 2)
-_last_progress = ''
-def progress(s):
-    """Calls log() if stderr is a TTY.  Does nothing otherwise."""
-    global _last_progress
-    if istty2:
-        if _last_progress.endswith('\r'):
-            log('\x1b[0K')
-        log(s)
-        _last_progress = s
-
-
-def qprogress(s):
-    """Calls progress() only if we haven't printed progress in a while.
-
-    This avoids overloading the stderr buffer with excess junk.
-    """
-    global _last_prog
-    now = time.time()
-    if now - _last_prog > 0.1:
-        progress(s)
-        _last_prog = now
-
-
-def reprogress():
-    """Calls progress() to redisplay the most recent progress message.
-
-    Useful after you've printed some other message that wipes out the
-    progress line.
-    """
-    if _last_progress and _last_progress.endswith('\r'):
-        progress(_last_progress)
 
 
 def mkdirp(d, mode=None):

@@ -9,7 +9,7 @@ from importlib import import_module
 from os import fsdecode
 from pkgutil import iter_modules
 
-from bup import compat, path, helpers
+from bup import compat, io, path
 from bup.compat import environ, print_exception
 from bup.git import close_catpipes
 from bup.helpers import \
@@ -130,8 +130,8 @@ while args:
         subcmd = [b'version']
         args = args[1:]
     elif arg in (b'-D', b'--debug'):
-        helpers.buglvl += 1
-        environ[b'BUP_DEBUG'] = b'%d' % helpers.buglvl
+        io.buglvl += 1
+        environ[b'BUP_DEBUG'] = b'%d' % io.buglvl
         args = args[1:]
     elif arg == b'--profile':
         do_profile = True

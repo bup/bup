@@ -7,7 +7,8 @@ import re
 
 from bup import path
 from bup.compat import environ
-from bup.helpers import debug1
+from bup.io import buglvl, debug1
+
 
 def connect(rhost, port, subcmd, stderr=None):
     """Connect to 'rhost' and execute the bup subcommand 'subcmd' on it."""
@@ -15,7 +16,6 @@ def connect(rhost, port, subcmd, stderr=None):
     if rhost is None or rhost == b'-':
         argv = [path.exe(), subcmd]
     else:
-        buglvl = int(environ.get(b'BUP_DEBUG', 0))
         force_tty = int(environ.get(b'BUP_FORCE_TTY', 0))
         argv = [b'ssh']
         if port:
