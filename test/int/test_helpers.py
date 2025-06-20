@@ -5,7 +5,7 @@ from bup import helpers
 
 from wvpytest import *
 
-from bup.compat import bytes_from_byte, bytes_from_uint, environ
+from bup.compat import bytes_from_uint, environ
 from bup.helpers import (atomically_replaced_file, batchpipe, detect_fakeroot,
                          grafted_path_components, parse_num,
                          path_components, readpipe, stripped_path_components,
@@ -219,7 +219,7 @@ def test_valid_save_name():
     WVFAIL(valid(b'bar.'))
     WVFAIL(valid(b'foo@{'))
     for x in b' ~^:?*[\\':
-        WVFAIL(valid(b'foo' + bytes_from_byte(x)))
+        WVFAIL(valid(b'foo%c' %x))
     for i in range(20):
         WVFAIL(valid(b'foo' + bytes_from_uint(i)))
     WVFAIL(valid(b'foo' + bytes_from_uint(0x7f)))

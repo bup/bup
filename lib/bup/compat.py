@@ -40,9 +40,6 @@ def argv_bytes(x):
 def bytes_from_uint(i):
     return bytes((i,))
 
-def bytes_from_byte(b):  # python > 2: b[3] returns ord('x'), not b'x'
-    return bytes((b,))
-
 def getcwd():
     return fsencode(os.getcwd())
 

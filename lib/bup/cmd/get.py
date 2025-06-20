@@ -5,7 +5,7 @@ from stat import S_ISDIR
 import os, sys, textwrap, time
 
 from bup import compat, git, client, vfs
-from bup.compat import argv_bytes, bytes_from_byte, hexstr
+from bup.compat import argv_bytes, hexstr
 from bup.config import derive_repo_addr
 from bup.git import MissingObject, get_cat_data, parse_commit, walk_object
 from bup.helpers import \
@@ -177,7 +177,7 @@ def parse_args(args):
             # Try to interpret this as -xyz, i.e. "-xyz -> -x -y -z".
             # We do this last so that --foo -bar is valid if --foo
             # requires a value.
-            remaining[0:1] = (b'-' + bytes_from_byte(c) for c in arg[1:])
+            remaining[0:1] = (b'-%c' % c for c in arg[1:])
             # FIXME
             continue
         else:

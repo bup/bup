@@ -1,7 +1,6 @@
 
 import re
 
-from bup.compat import bytes_from_byte
 
 q = b"'"
 qq = b'"'
@@ -17,7 +16,7 @@ def _quotesplit(line):
     wordstart = 0
     word = b''
     for i in range(len(line)):
-        c = bytes_from_byte(line[i])
+        c = line[i:i+1]
         if inescape:
             if inquote == q and c != q:
                 word += b'\\'  # single-q backslashes can only quote single-q
@@ -87,7 +86,7 @@ def unfinished_word(line):
         for (wordstart,word) in _quotesplit(line):
             pass
     except QuoteError:
-        firstchar = bytes_from_byte(line[wordstart])
+        firstchar = line[wordstart:wordstart+1]
         if firstchar in [q, qq]:
             return (firstchar, word)
         else:

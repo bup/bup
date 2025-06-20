@@ -10,7 +10,7 @@ import pytest
 from wvpytest import *
 
 from bup import git, path
-from bup.compat import bytes_from_byte, environ
+from bup.compat import environ
 from bup.helpers import \
     OBJECT_EXISTS, finalized, localtime, log, mkdirp, readpipe
 
@@ -321,7 +321,7 @@ def test_commit_parsing(tmpdir):
         coffs = showval(commit, b'%ci')
         coffs = coffs[-5:]
         coff = (int(coffs[-4:-2]) * 60 * 60) + (int(coffs[-2:]) * 60)
-        if bytes_from_byte(coffs[-5]) == b'-':
+        if coffs[-5] == b'-'[0]:
             coff = - coff
         commit_items = git.get_commit_items(commit, git.cp())
         WVPASSEQ(commit_items.parents, [])

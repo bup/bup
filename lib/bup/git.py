@@ -17,8 +17,7 @@ from typing import Optional, Union
 
 from bup import _helpers, hashsplit, path, midx, bloom, xstat
 from bup.compat import \
-    (bytes_from_byte,
-     bytes_from_uint,
+    (bytes_from_uint,
      dataclass,
      environ)
 from bup.io import path_msg
@@ -111,7 +110,7 @@ def git_config_get(path, option, *, opttype=None):
 def parse_tz_offset(s):
     """UTC offset in seconds."""
     tz_off = (int(s[1:3]) * 60 * 60) + (int(s[3:5]) * 60)
-    if bytes_from_byte(s[0]) == b'-':
+    if s[0] == b'-'[0]:
         return - tz_off
     return tz_off
 
