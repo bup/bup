@@ -8,8 +8,7 @@ import errno, sys
 
 from bup import metadata, options
 from bup.compat import argv_bytes
-from bup.helpers import add_error, parse_timestamp, saved_errors, \
-    add_error, log
+from bup.helpers import add_error, parse_timestamp, add_error
 from bup.io import byte_stream
 
 
@@ -103,9 +102,3 @@ def main(argv):
             out.write(metadata.detailed_bytes(m, active_fields))
             out.write(b'\n')
             first_path = False
-
-    if saved_errors:
-        log('WARNING: %d errors encountered.\n' % len(saved_errors))
-        sys.exit(1)
-    else:
-        sys.exit(0)

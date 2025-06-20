@@ -3,6 +3,7 @@ import os, glob, sys
 
 from bup import options, path
 from bup.compat import argv_bytes
+from bup.helpers import EXIT_FAILURE
 
 
 optspec = """
@@ -26,6 +27,6 @@ def main(argv):
             os.execvp(b'man', [b'man', docname])
         except OSError as e:
             sys.stderr.write('Unable to run man command: %s\n' % e)
-            sys.exit(1)
+            sys.exit(EXIT_FAILURE)
     else:
         o.fatal("exactly one command name expected")

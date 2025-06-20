@@ -2,7 +2,6 @@
 
 from bup import git, options
 from bup.gc import bup_gc
-from bup.helpers import die_if_errors
 
 
 optspec = """
@@ -42,5 +41,3 @@ def main(argv):
            compression=opt.compress,
            verbosity=opt.verbose,
            ignore_missing=opt.ignore_missing)
-
-    die_if_errors()

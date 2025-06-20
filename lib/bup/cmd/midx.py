@@ -1,13 +1,19 @@
 
-from __future__ import absolute_import, print_function
 from binascii import hexlify
 import glob, os, math, resource, struct, sys
 
 from bup import options, git, midx, _helpers, xstat
 from bup.compat import ExitStack, argv_bytes, hexstr
-from bup.helpers import (Sha1, add_error, atomically_replaced_file, debug1, fdatasync,
-                         log, mmap_readwrite, qprogress,
-                         saved_errors, unlink)
+from bup.helpers import \
+    (Sha1,
+     add_error, atomically_replaced_file,
+     debug1,
+     fdatasync,
+     log,
+     mmap_readwrite,
+     qprogress,
+     saved_errors,
+     unlink)
 from bup.io import byte_stream, path_msg
 from bup.midx import MissingIdxs, open_midx
 
@@ -319,7 +325,3 @@ def main(argv):
                         max_files=opt.max_files)
         else:
             o.fatal("you must use -f or -a or provide input filenames")
-
-    if saved_errors:
-        log('WARNING: %d errors encountered.\n' % len(saved_errors))
-        sys.exit(1)

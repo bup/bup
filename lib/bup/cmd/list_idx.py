@@ -4,7 +4,7 @@ import sys
 
 from bup import git, options
 from bup.compat import argv_bytes
-from bup.helpers import add_error, handle_ctrl_c, log, qprogress, saved_errors
+from bup.helpers import add_error, handle_ctrl_c, qprogress
 from bup.io import byte_stream
 
 optspec = """
@@ -61,7 +61,3 @@ def main(argv):
                         out.write(b'%s %s\n' % (name, i))
                     qprogress('Searching: %d\r' % count)
                     count += 1
-
-    if saved_errors:
-        log('WARNING: %d errors encountered while saving.\n' % len(saved_errors))
-        sys.exit(1)

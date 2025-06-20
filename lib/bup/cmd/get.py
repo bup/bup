@@ -8,8 +8,15 @@ from bup import compat, git, client, vfs
 from bup.compat import argv_bytes, bytes_from_byte, hexstr
 from bup.config import derive_repo_addr
 from bup.git import MissingObject, get_cat_data, parse_commit, walk_object
-from bup.helpers import debug1, log, note_error, saved_errors
-from bup.helpers import hostname, tty_width, parse_num
+from bup.helpers import \
+    (EXIT_FAILURE,
+     EXIT_SUCCESS,
+     debug1,
+     hostname,
+     log,
+     note_error,
+     parse_num,
+     tty_width)
 from bup.io import path_msg
 from bup.pwdgrp import userfullname, username
 from bup.repo import LocalRepo, make_repo
@@ -90,7 +97,7 @@ def misuse(message=None):
         sys.stderr.write('\nerror: ')
         sys.stderr.write(message)
         sys.stderr.write('\n')
-    sys.exit(1)
+    sys.exit(EXIT_FAILURE)
 
 def require_n_args_or_die(n, args):
     if len(args) < n + 1:
@@ -126,7 +133,7 @@ def parse_args(args):
         arg = remaining[0]
         if arg in (b'-h', b'--help'):
             sys.stdout.write(usage(argspec))
-            sys.exit(0)
+            sys.exit(EXIT_SUCCESS)
         elif arg in (b'-v', b'--verbose'):
             opt.verbose += 1
             remaining = remaining[1:]
@@ -716,7 +723,3 @@ def main(argv):
                         log('updated %r (%s)\n' % (ref_name, new_hex))
             except (git.GitError, client.ClientError) as ex:
                 note_error('unable to update ref %r: %s\n' % (ref_name, ex))
-
-    if saved_errors:
-        log('WARNING: %d errors encountered while saving.\n' % len(saved_errors))
-        sys.exit(1)

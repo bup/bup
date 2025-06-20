@@ -1,5 +1,5 @@
 
-import os, glob, sys
+import os, glob
 
 from bup import options, git, bloom
 from bup.compat import argv_bytes, hexstr
@@ -183,8 +183,5 @@ def main(argv):
     else:
         do_bloom(path, outfilename, opt.k, opt.force)
 
-    if saved_errors:
-        log('WARNING: %d errors encountered during bloom.\n' % len(saved_errors))
-        sys.exit(1)
-    elif opt.check:
+    if not saved_errors:
         log('All tests passed.\n')

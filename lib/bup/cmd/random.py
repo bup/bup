@@ -2,7 +2,7 @@
 import sys
 
 from bup import options, _helpers
-from bup.helpers import handle_ctrl_c, log, parse_num, istty1
+from bup.helpers import EXIT_FAILURE, handle_ctrl_c, log, parse_num, istty1
 
 
 optspec = """
@@ -29,4 +29,4 @@ def main(argv):
                               opt.verbose and 1 or 0)
     else:
         log('error: not writing binary data to a terminal. Use -f to force.\n')
-        sys.exit(1)
+        sys.exit(EXIT_FAILURE)

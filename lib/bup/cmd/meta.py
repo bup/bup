@@ -11,7 +11,6 @@ from bup import metadata
 from bup import options
 from bup.compat import argv_bytes
 from bup.io import byte_stream
-from bup.helpers import log, saved_errors
 
 
 def open_input(name):
@@ -154,10 +153,3 @@ def main(argv):
                     m.write(output_file)
             finally:
                 f.close()
-
-
-    if saved_errors:
-        log('WARNING: %d errors encountered.\n' % len(saved_errors))
-        sys.exit(1)
-    else:
-        sys.exit(0)

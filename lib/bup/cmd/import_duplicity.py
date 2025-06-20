@@ -6,9 +6,7 @@ import os, sys, tempfile
 
 from bup import git, helpers, options
 from bup.compat import argv_bytes
-from bup.helpers import (log,
-                         shstr,
-                         saved_errors)
+from bup.helpers import log, shstr
 import bup.path
 
 
@@ -93,7 +91,3 @@ def main(argv):
         sys.stderr.flush()
     finally:
         exc([b'rm', b'-rf', tmpdir])
-
-    if saved_errors:
-        log('warning: %d errors encountered\n' % len(saved_errors))
-        sys.exit(1)

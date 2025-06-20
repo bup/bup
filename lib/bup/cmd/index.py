@@ -6,8 +6,14 @@ from bup import metadata, options, index, hlinkdb
 from bup.compat import argv_bytes
 from bup.drecurse import recursive_dirlist
 from bup.hashsplit import GIT_MODE_FILE
-from bup.helpers import (add_error, handle_ctrl_c, log, parse_excludes, parse_rx_excludes,
-                         progress, qprogress, saved_errors)
+from bup.helpers import \
+    (add_error,
+     handle_ctrl_c,
+     log,
+     parse_excludes,
+     parse_rx_excludes,
+     progress,
+     qprogress)
 from bup.io import byte_stream, path_msg
 from bup.path import default_fsindex, defaultrepo, flat_fsindex
 
@@ -313,7 +319,3 @@ def main(argv):
         log('check: starting final check.\n')
         with index.Reader(fsindex.stat) as reader:
             check_index(reader, opt.verbose)
-
-    if saved_errors:
-        log('WARNING: %d errors encountered.\n' % len(saved_errors))
-        sys.exit(1)

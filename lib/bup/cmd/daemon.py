@@ -2,7 +2,7 @@
 import fcntl, getopt, os, socket, subprocess, sys, select
 
 from bup import options, path
-from bup.helpers import log, debug1
+from bup.helpers import EXIT_FAILURE, log, debug1
 
 
 optspec = """
@@ -43,7 +43,7 @@ def main(argv):
 
     if not socks:
         log('bup daemon: listen socket: %s\n' % e.args[1])
-        sys.exit(1)
+        sys.exit(EXIT_FAILURE)
 
     try:
         while True:

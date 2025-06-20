@@ -15,7 +15,8 @@ from bup.helpers import \
      nullcontext_if_not,
      parse_date_or_fatal,
      parse_num,
-     qprogress, reprogress, saved_errors,
+     qprogress,
+     reprogress,
      valid_save_name)
 from bup.io import byte_stream
 from bup.pwdgrp import userfullname, username
@@ -281,7 +282,3 @@ def main(argv):
     if opt.bench:
         log('bup: %.2f kbytes in %.2f secs = %.2f kbytes/sec\n'
             % (size / 1024, secs, size / 1024 / secs))
-
-    if saved_errors:
-        log('WARNING: %d errors encountered while saving.\n' % len(saved_errors))
-        sys.exit(EXIT_FAILURE)

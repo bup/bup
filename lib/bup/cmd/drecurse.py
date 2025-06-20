@@ -4,7 +4,7 @@ import sys
 
 from bup import options, drecurse
 from bup.compat import argv_bytes
-from bup.helpers import log, parse_excludes, parse_rx_excludes, saved_errors
+from bup.helpers import parse_excludes, parse_rx_excludes
 from bup.io import byte_stream
 
 
@@ -50,7 +50,3 @@ def main(argv):
             out = byte_stream(sys.stdout)
             for (name,st) in it:
                 out.write(name + b'\n')
-
-    if saved_errors:
-        log('WARNING: %d errors encountered.\n' % len(saved_errors))
-        sys.exit(1)

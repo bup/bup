@@ -6,13 +6,13 @@ from urllib.parse import urlencode
 import mimetypes, os, posixpath, signal, stat, sys, time, traceback, webbrowser
 
 from bup import options, git, vfs, xstat
-from bup.helpers \
-    import (EXIT_FAILURE,
-            chunkyreader,
-            debug1,
-            format_filesize,
-            log,
-            saved_errors)
+from bup.helpers import \
+    (EXIT_FAILURE,
+     EXIT_SUCCESS,
+     chunkyreader,
+     debug1,
+     format_filesize,
+     log)
 from bup.io import path_msg
 from bup.metadata import Metadata
 from bup.path import resource_path
@@ -334,7 +334,7 @@ def handle_sigterm(signum, frame):
     debug1('\nbup-web: signal %d received\n' % signum)
     log('Shutdown requested\n')
     if not io_loop:
-        sys.exit(0)
+        sys.exit(EXIT_SUCCESS)
     io_loop.stop()
 
 
@@ -414,11 +414,7 @@ def main(argv):
             print('Serving HTTP on filesystem socket %r' % address.path)
         else:
             log('error: unexpected address %r', address)
-            sys.exit(1)
+            sys.exit(EXIT_FAILURE)
 
         io_loop = io_loop_pending
         io_loop.start()
-
-    if saved_errors:
-        log('WARNING: %d errors encountered while saving.\n' % len(saved_errors))
-        sys.exit(1)

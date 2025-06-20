@@ -3,7 +3,6 @@
 from bup.compat import argv_bytes
 from bup.git import check_repo_or_die
 from bup.options import Options
-from bup.helpers import die_if_errors
 from bup.repo import LocalRepo
 from bup.rm import bup_rm
 
@@ -29,4 +28,3 @@ def main(argv):
     with LocalRepo() as repo:
         bup_rm(repo, [argv_bytes(x) for x in extra],
                compression=opt.compress, verbosity=opt.verbose)
-    die_if_errors()

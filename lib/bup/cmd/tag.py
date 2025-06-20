@@ -1,10 +1,9 @@
 
-from __future__ import absolute_import
 import sys
 
 from bup import git, options
 from bup.compat import argv_bytes
-from bup.helpers import debug1, log
+from bup.helpers import EXIT_FAILURE, EXIT_SUCCESS, debug1, log
 from bup.io import byte_stream, path_msg
 
 
@@ -35,10 +34,10 @@ def main(argv):
         tag_name = argv_bytes(opt.delete)
         if not opt.force and tag_name not in tags:
             log("error: tag '%s' doesn't exist\n" % path_msg(tag_name))
-            sys.exit(1)
+            sys.exit(EXIT_FAILURE)
         tag_file = b'refs/tags/%s' % tag_name
         git.delete_ref(tag_file)
-        sys.exit(0)
+        return EXIT_SUCCESS
 
     if not extra:
         for t in tags:
@@ -46,8 +45,8 @@ def main(argv):
             out = byte_stream(sys.stdout)
             out.write(t)
             out.write(b'\n')
-        sys.exit(0)
-    elif len(extra) != 2:
+        return EXIT_SUCCESS
+    if len(extra) != 2:
         o.fatal('expected commit ref and hash')
 
     tag_name, commit = map(argv_bytes, extra[:2])
@@ -58,7 +57,7 @@ def main(argv):
 
     if tag_name in tags and not opt.force:
         log("bup: error: tag '%s' already exists\n" % path_msg(tag_name))
-        sys.exit(1)
+        return EXIT_FAILURE
 
     if tag_name.startswith(b'.'):
         o.fatal("'%s' is not a valid tag name." % path_msg(tag_name))
@@ -67,15 +66,16 @@ def main(argv):
         hash = git.rev_parse(commit)
     except git.GitError as e:
         log("bup: error: %s" % e)
-        sys.exit(2)
+        return EXIT_FAILURE
 
     if not hash:
         log("bup: error: commit %s not found.\n" % commit.decode('ascii'))
-        sys.exit(2)
+        return EXIT_FAILURE
 
     with git.PackIdxList(git.repo(b'objects/pack')) as pL:
         if not pL.exists(hash):
             log("bup: error: commit %s not found.\n" % commit.decode('ascii'))
-            sys.exit(2)
+            return EXIT_FAILURE
 
     git.update_ref(b'refs/tags/' + tag_name, hash, None, force=True)
+    return EXIT_SUCCESS

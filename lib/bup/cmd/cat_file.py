@@ -4,7 +4,7 @@ import re, stat, sys
 
 from bup import options, git, vfs
 from bup.compat import argv_bytes
-from bup.helpers import chunkyreader, log, saved_errors
+from bup.helpers import EXIT_FAILURE, chunkyreader, log
 from bup.io import byte_stream
 from bup.repo import LocalRepo
 
@@ -39,7 +39,7 @@ def main(argv):
         if not leaf_item:
             log('error: cannot access %r in %r\n'
                 % (b'/'.join(name for name, item in resolved), target))
-            sys.exit(1)
+            sys.exit(EXIT_FAILURE)
 
         mode = vfs.item_mode(leaf_item)
 
@@ -63,7 +63,3 @@ def main(argv):
                         out.write(b)
             else:
                 o.fatal('%r is not a plain file' % target)
-
-    if saved_errors:
-        log('warning: %d errors encountered\n' % len(saved_errors))
-        sys.exit(1)

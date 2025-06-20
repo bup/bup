@@ -160,5 +160,3 @@ def main(argv):
             bup_gc(threshold=opt.gc_threshold,
                    compression=opt.compress,
                    verbosity=opt.verbose)
-
-    die_if_errors()

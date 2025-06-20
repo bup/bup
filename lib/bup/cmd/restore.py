@@ -6,7 +6,7 @@ from bup import options, vfs
 from bup._helpers import write_sparsely
 from bup.compat import argv_bytes, fsencode
 from bup.config import derive_repo_addr
-from bup.helpers import (add_error, chunkyreader, die_if_errors,
+from bup.helpers import (add_error, chunkyreader,
                          mkdirp, parse_rx_excludes, progress, qprogress,
                          should_rx_exclude_path)
 from bup.io import byte_stream
@@ -298,4 +298,3 @@ def main(argv):
 
     if verbosity >= 0:
         progress('Restoring: %d, done.\n' % total_restored)
-    die_if_errors()

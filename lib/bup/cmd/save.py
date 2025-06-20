@@ -12,12 +12,22 @@ from bup.hashsplit import \
      GIT_MODE_FILE,
      GIT_MODE_SYMLINK,
      split_to_blob_or_tree)
-from bup.helpers import (EXIT_FAILURE,
-                         add_error, grafted_path_components, handle_ctrl_c,
-                         hostname, istty2, log, parse_date_or_fatal, parse_num,
-                         path_components, progress, qprogress, resolve_parent,
-                         saved_errors, stripped_path_components,
-                         valid_save_name)
+from bup.helpers import \
+    (EXIT_FAILURE,
+     add_error,
+     grafted_path_components,
+     handle_ctrl_c,
+     hostname,
+     istty2,
+     log,
+     parse_date_or_fatal,
+     parse_num,
+     path_components,
+     progress,
+     qprogress,
+     resolve_parent,
+     stripped_path_components,
+     valid_save_name)
 from bup.io import byte_stream, path_msg
 from bup.path import default_fsindex, flat_fsindex
 from bup.pwdgrp import userfullname, username
@@ -435,7 +445,7 @@ def main(argv):
             repo = make_repo(opt.repo, compression_level=opt.compress)
         except client.ClientError as e:
             log('error: %s' % e)
-            sys.exit(1)
+            sys.exit(EXIT_FAILURE)
 
     # repo creation must be last nontrivial command in each if clause above
     with repo:
@@ -479,7 +489,3 @@ def main(argv):
 
         if opt.name:
             repo.update_ref(refname, commit, parent)
-
-    if saved_errors:
-        log('WARNING: %d errors encountered while saving.\n' % len(saved_errors))
-        sys.exit(1)
