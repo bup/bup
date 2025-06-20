@@ -1,4 +1,5 @@
 
+from os import fsdecode
 import errno, os, sys
 
 try:
@@ -31,7 +32,7 @@ if len(fuse_ver) < 3 or fuse_ver_maj < 1:
     sys.exit(2)
 
 from bup import options, git, vfs, xstat
-from bup.compat import argv_bytes, fsdecode
+from bup.compat import argv_bytes
 from bup.helpers import log
 from bup.repo import LocalRepo
 

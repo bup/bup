@@ -6,13 +6,11 @@ else:
     del os.environ['PYTHONPATH']
 
 from importlib import import_module
+from os import fsdecode
 from pkgutil import iter_modules
 
 from bup import compat, path, helpers
-from bup.compat import \
-    (environ,
-     fsdecode,
-     print_exception)
+from bup.compat import environ, print_exception
 from bup.git import close_catpipes
 from bup.helpers import \
     (EXIT_FAILURE,

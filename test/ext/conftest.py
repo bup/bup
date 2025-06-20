@@ -1,10 +1,9 @@
 
-from os import environb as environ
+from os import environb as environ, fsdecode
 from pathlib import Path
 from subprocess import CalledProcessError
 import os, pytest, subprocess, sys
 
-from bup.compat import fsdecode
 from bup.helpers import temp_dir
 from bup.io import byte_stream
 

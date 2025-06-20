@@ -1,9 +1,11 @@
 
+# Until min pylint is new enough for disable-next
 # pylint: disable=unused-import
+# pylint: disable-next=unused-import
 from os import environb as environ
-from os import fsdecode, fsencode
-from shlex import quote
-import dataclasses, os, sys, traceback
+# pylint: enable=unused-import
+from os import fsencode
+import dataclasses, sys, traceback
 
 import bup_main
 
@@ -11,7 +13,10 @@ import bup_main
 ver = sys.version_info
 
 if (ver.major, ver.minor) >= (3, 10):
+    # pylint: disable=unused-import
+    # pylint: disable-next=unused-import
     from itertools import pairwise
+    # pylint: enable=unused-import
 else:
     def pairwise(coll):
         it = iter(coll)
