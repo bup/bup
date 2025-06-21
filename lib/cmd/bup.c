@@ -7,6 +7,7 @@
 //   http://docs.python.org/3/c-api/intro.html#include-files
 #include <Python.h>
 
+// pyupgrade *: adjust
 #if PY_MAJOR_VERSION < 3 || (PY_MAJOR_VERSION == 3 && PY_MINOR_VERSION < 7)
 #define BUP_STR(x) #x
 #define BUP_XSTR(x) BUP_STR(x)
@@ -37,6 +38,7 @@ static int prog_argc = 0;
 static char **prog_argv = NULL;
 static char *orig_env_pythonpath = NULL;
 
+// pyupgrade 3.8+: reconsider
 static PyObject*
 get_argv(PyObject *self, PyObject *args) // https://bugs.python.org/issue35883
 {
