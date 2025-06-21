@@ -13,13 +13,9 @@ bup() { "$top/bup" "$@"; }
 # FIXME: send help to stdout if requested (exit 0), stderr on error
 # (exit nonzero)
 
-bup -?
-rc=$?
-WVPASSEQ 99 "$rc"
-
-bup --help
-rc=$?
-WVPASSEQ 99 "$rc"
+WVPASS bup -? | WVPASS grep 'Usage: bup'
+WVPASS bup -h | WVPASS grep 'Usage: bup'
+WVPASS bup --help | WVPASS grep 'Usage: bup'
 
 if ! test -e Documentation/bup-save.1; then
     WVPASS rm -rf "$tmpdir"

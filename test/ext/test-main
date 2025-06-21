@@ -16,7 +16,7 @@ WVSTART 'main'
 
 bup
 rc=$?
-WVPASSEQ "$rc" 99
+WVPASSEQ "$rc" 2
 
 # Check --x=y handling
 WVPASS bup --bup-dir=repo init

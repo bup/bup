@@ -15,8 +15,7 @@ def main(argv):
     opt, flags, extra = o.parse_bytes(argv[1:])
 
     if len(extra) == 0:
-        # the wrapper program provides the default usage string
-        os.execvp(path.exe(), [path.exe()])
+        os.execvp(path.exe(), [path.exe(), b'-h'])
     elif len(extra) == 1:
         docname = (extra[0]=='bup' and b'bup' or (b'bup-%s' % argv_bytes(extra[0])))
         manpath = os.path.join(path.exedir(), b'../../Documentation/')

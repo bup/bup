@@ -14,6 +14,7 @@ from bup.compat import environ, print_exception
 from bup.git import close_catpipes
 from bup.helpers import \
     (EXIT_FAILURE,
+     EXIT_SUCCESS,
      columnate,
      die_if_errors,
      handle_ctrl_c,
@@ -45,9 +46,9 @@ cmdpath = path.cmddir()
 # compatible, since we're going to be looking for exactly
 # b'bup-SUBCMD' to exec.
 
-def usage(msg=""):
-    log('Usage: bup [-?|--help] [-d BUP_DIR] [--debug] [--profile] '
-        '<command> [options...]\n\n')
+def usage(file=sys.stdout):
+    print('Usage: bup [-?|-h|--help] [-d BUP_DIR] [--debug] [--profile] '
+          '<command> [options...]\n', file=file)
     common = dict(
         ftp = 'Browse backup sets using an ftp-like client',
         fsck = 'Check backup sets for damage and add redundancy information',
@@ -61,12 +62,12 @@ def usage(msg=""):
         web = 'Launch a web server to examine backup sets',
     )
 
-    log('Common commands:\n')
+    print('Common commands:\n', file=file)
     for cmd,synopsis in sorted(common.items()):
-        log('    %-10s %s\n' % (cmd, synopsis))
-    log('\n')
+        print('    %-10s %s' % (cmd, synopsis), file=file)
+    print(file=file)
 
-    log('Other available commands:\n')
+    print('Other available commands:', file=file)
     cmds = set()
     for c in sorted(os.listdir(cmdpath)):
         if c.startswith(b'bup-') and c.find(b'.') < 0:
@@ -79,14 +80,16 @@ def usage(msg=""):
         if name not in common:
             cmds.add(name)
 
-    log(columnate(sorted(cmds), '    '))
-    log('\n')
+    print(columnate(sorted(cmds), '    '), file=file)
 
-    log("See 'bup help COMMAND' for more information on " +
-        "a specific command.\n")
+    print("See 'bup help COMMAND' for more information on specific command.",
+          file=file)
+
+def misuse(msg=None):
+    usage(file=sys.stderr)
     if msg:
-        log("\n%s\n" % msg)
-    sys.exit(99)
+        print(f'\n{msg}', file=sys.stderr)
+    sys.exit(EXIT_FAILURE)
 
 def extract_argval(args):
     """Assume args (all elements bytes) starts with a -x, --x, or --x=,
@@ -99,28 +102,30 @@ args.  Exit with an errror if the value is missing.
     if b'=' in arg:
         val = arg.split(b'=')[1]
         if not val:
-            usage('error: no value provided for %s option' % arg)
+            misuse(f'error: no value provided for {arg} option')
         return val, args[1:]
     if len(args) < 2:
-        usage('error: no value provided for %s option' % arg)
+        misuse(f'error: no value provided for {arg} option')
     return args[1], args[2:]
 
-
 args = compat.get_argvb()
-if len(args) < 2:
+
+if len(args) == 2 and args[1] in (b'-?', b'-h', b'--help'):
     usage()
+    sys.exit(EXIT_SUCCESS)
+
+if len(args) == 1:
+    misuse()
 
 ## Parse global options
-help_requested = None
 do_profile = False
 bup_dir = None
 args = args[1:]
 subcmd = None
 while args:
     arg = args[0]
-    if arg in (b'-?', b'--help'):
-        help_requested = True
-        args = args[1:]
+    if arg in (b'-?', b'-h', b'--help'):
+        misuse()
     elif arg in (b'-V', b'--version'):
         subcmd = [b'version']
         args = args[1:]
@@ -137,8 +142,8 @@ while args:
         # Just need to skip it here
         _, args = extract_argval(args)
     elif arg.startswith(b'-'):
-        usage('error: unexpected option "%s"'
-              % arg.decode('ascii', 'backslashescape'))
+        misuse('error: unexpected option "%s"'
+               % arg.decode('ascii', 'backslashescape'))
     else:
         break
 
@@ -152,20 +157,14 @@ if bup_dir:
     environ[b'BUP_DIR'] = os.path.abspath(bup_dir)
 
 if len(subcmd) == 0:
-    if help_requested:
-        subcmd = [b'help']
-    else:
-        usage()
-
-if help_requested and subcmd[0] != b'help':
-    subcmd = [b'help'] + subcmd
+    misuse()
 
 if len(subcmd) > 1 and subcmd[1] == b'--help' and subcmd[0] != b'help':
     subcmd = [b'help', subcmd[0]] + subcmd[2:]
 
 subcmd_name = subcmd[0]
 if not subcmd_name:
-    usage()
+    misuse()
 
 try:
     cmd_module_name = 'bup.cmd.' + subcmd_name.decode('ascii').replace('-', '_')
@@ -178,7 +177,7 @@ except ModuleNotFoundError as ex:
 if not cmd_module:
     subcmd[0] = os.path.join(cmdpath, b'bup-' + subcmd_name)
     if not os.path.exists(subcmd[0]):
-        usage('error: unknown command "%s"' % path_msg(subcmd_name))
+        misuse(f'error: unknown command {path_msg(subcmd_name)!r}')
 
 def run_subcmd(module, args):
     # We may want to revisit these later, but for now, do what we've

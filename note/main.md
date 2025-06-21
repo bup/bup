@@ -49,6 +49,10 @@ May require attention
   `verify-ref-links` that need to report a true or false result like
   `grep` does.
 
+* `bup -?` and `bup --help` now exit with zero status (previously
+  non-zero), and `bup -h` is also supported, mirroring the support for
+  `-h` in subcommands.
+
 * `bup` now only considers the repository's `config` settings.
   Previously configuration values would be determined by the default
   `git-config`(1) worktree/local/global/system hierarchy, meaning, for
