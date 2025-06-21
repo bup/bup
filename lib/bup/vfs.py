@@ -58,6 +58,7 @@ import re
 from bup import git
 from bup.git import \
     (BUP_CHUNKED,
+     MissingObject,
      GitError,
      find_tree_entry,
      last_tree_entry,
@@ -91,17 +92,40 @@ def _default_mode_for_gitmode(gitmode):
         return default_symlink_mode
     raise Exception('unexpected git mode ' + oct(gitmode))
 
+def get_ref(repo, ref):
+    """Yield (oidx, type, size, data_iter) for ref.
+
+    If ref is missing, yield (None, None, None, None).
+
+    """
+    it = repo.cat(ref)
+    found_oidx, obj_t, size = next(it)
+    if not found_oidx:
+        return None, None, None, None
+    return found_oidx, obj_t, size, it
+
+def get_oidx(repo, oidx, *, throw_missing=True):
+    """Yield (oidx, type, size, data_iter) for oidx.
+
+    If oidx is missing, raise a MissingObject if throw_missing is
+    false, otherwise yield (None, None, None, None).
+
+    """
+    assert len(oidx) == 40
+    result = get_ref(repo, oidx)
+    if not result[0] and throw_missing:
+        raise MissingObject(unhexlify(oidx))
+    return result
+
 def _normal_or_chunked_file_size(repo, oid):
     """Return the size of the normal or chunked file indicated by oid."""
     # FIXME: --batch-format CatPipe?
-    it = repo.cat(hexlify(oid))
-    _, obj_t, size = next(it)
+    _, obj_t, _, it = get_oidx(repo, hexlify(oid))
     ofs = 0
     while obj_t == b'tree':
         mode, name, last_oid = last_tree_entry(b''.join(it))
         ofs += int(name, 16)
-        it = repo.cat(hexlify(last_oid))
-        _, obj_t, size = next(it)
+        _, obj_t, _, it = get_oidx(repo, hexlify(last_oid))
     return ofs + sum(len(b) for b in it)
 
 def _skip_chunks_before_offset(tree_data, offset):
@@ -122,8 +146,7 @@ def _tree_chunks(repo, tree_data, startofs):
         skipmore = startofs - ofs
         if skipmore < 0:
             skipmore = 0
-        it = repo.cat(hexlify(oid))
-        _, obj_t, size = next(it)
+        _, obj_t, _, it = get_oidx(repo, hexlify(oid))
         data = b''.join(it)
         if S_ISDIR(mode):
             assert obj_t == b'tree'
@@ -134,8 +157,7 @@ def _tree_chunks(repo, tree_data, startofs):
 
 class _ChunkReader:
     def __init__(self, repo, oid, startofs):
-        it = repo.cat(hexlify(oid))
-        _, obj_t, size = next(it)
+        _, obj_t, _, it = get_oidx(repo, hexlify(oid))
         isdir = obj_t == b'tree'
         data = b''.join(it)
         if isdir:
@@ -361,13 +383,11 @@ def _read_dir_meta(bupm):
 
 def _treeish_tree_data(repo, oid):
     assert len(oid) == 20
-    it = repo.cat(hexlify(oid))
-    _, item_t, size = next(it)
+    _, item_t, _, it = get_oidx(repo, hexlify(oid))
     data = b''.join(it)
     if item_t == b'commit':
         commit = parse_commit(data)
-        it = repo.cat(commit.tree)
-        _, item_t, size = next(it)
+        _, item_t, _, it = get_oidx(repo, commit.tree)
         data = b''.join(it)
         assert item_t == b'tree'
     elif item_t != b'tree':
@@ -454,8 +474,7 @@ def _commit_item_from_oid(repo, oid, require_meta):
     commit = cache_get_commit_item(oid, need_meta=require_meta)
     if commit and ((not require_meta) or isinstance(commit.meta, Metadata)):
         return commit
-    it = repo.cat(hexlify(oid))
-    _, typ, size = next(it)
+    _, typ, _, it = get_oidx(repo, hexlify(oid))
     assert typ == b'commit'
     commit = _commit_item_from_data(oid, b''.join(it))
     if require_meta:
@@ -500,7 +519,6 @@ def root_items(repo, names=None, want_meta=True):
         it = repo.cat(b'refs/heads/' + ref)
         oidx, typ, size = next(it)
         if not oidx:
-            for _ in it: pass
             continue
         assert typ == b'commit'
         commit = parse_commit(b''.join(it))
@@ -586,9 +604,8 @@ def _tree_items_except_dot(oid, entries, names=None, bupm=None):
         remaining -= 1
 
 def _get_tree_object(repo, oid):
-    res = repo.cat(hexlify(oid))
-    _, kind, _ = next(res)
-    assert kind == b'tree', 'expected oid %r to be tree, not %r' % (hexlify(oid), kind)
+    _, kind, _, res = get_oidx(repo, hexlify(oid))
+    assert kind == b'tree', f'expected oid {oid.hex()} to be tree, not {kind!r}'
     return b''.join(res)
 
 def _find_bupm_oid(entries):
@@ -814,9 +831,7 @@ def tags_items(repo, names):
         cached = cache_get_commit_item(oid, need_meta=False)
         if cached:
             return cached
-        oidx = hexlify(oid)
-        it = repo.cat(oidx)
-        _, typ, size = next(it)
+        _, typ, _, it = get_oidx(repo, hexlify(oid))
         if typ == b'commit':
             return _commit_item_from_data(oid, b''.join(it))
         for _ in it: pass
@@ -862,9 +877,9 @@ def tags_items(repo, names):
 def contents(repo, item, names=None, want_meta=True):
     """Yields information about the items contained in item.  Yields
     (name, item) for each name in names, if the name exists, in an
-    unspecified order.  If there are no names, then yields (name,
-    item) for all items, including, a first item named '.'
-    representing the container itself.
+    unspecified order. Items that don't exist are omitted.  If there
+    are no names, then yields (name, item) for all items, including, a
+    first item named '.' representing the container itself.
 
     The meta value for any directories other than '.' will be a
     default directory mode, not a Metadata object.  This is because
@@ -885,8 +900,7 @@ def contents(repo, item, names=None, want_meta=True):
     assert repo
     assert S_ISDIR(item_mode(item))
     if isinstance(item, real_tree_types):
-        it = repo.cat(hexlify(item.oid))
-        _, obj_t, size = next(it)
+        _, obj_t, _, it = get_oidx(repo, hexlify(item.oid))
         data = b''.join(it)
         if obj_t != b'tree':
             for _ in it: pass
@@ -970,6 +984,7 @@ def _resolve_path(repo, path, parent=None, want_meta=True, follow=True):
             if not want_meta:
                 item = items[0][1] if items else None
             else:  # First item will be '.' and have the metadata
+                assert len(items) in (1, 2), items
                 item = items[1][1] if len(items) == 2 else None
                 dot, dot_item = items[0]
                 assert dot == b'.'
@@ -1164,24 +1179,23 @@ def join(repo, ref):
     or a commit. The content of all blobs that can be seen from trees or
     commits will be added to the list.
     """
-    def _join(ref, path):
-        it = repo.cat(ref)
-        oidx, typ, _ = next(it)
+    def _join(oidx, typ, size, it, path):
         if typ == b'blob':
             yield from it
         elif typ == b'tree':
             treefile = b''.join(it)
             for ent_mode, ent_name, ent_oid in tree_iter(treefile):
-                yield from _join(hexlify(ent_oid), path + [ent_name])
+                yield from _join(*get_oidx(repo, hexlify(ent_oid)), path + [ent_name])
         elif typ == b'commit':
             treeline = b''.join(it).split(b'\n')[0]
             assert treeline.startswith(b'tree ')
             tree_oidx = treeline[5:]
             path += [oidx, tree_oidx]
-            yield from _join(tree_oidx, path)
+            yield from _join(*get_oidx(repo, tree_oidx), path)
         else:
-            if oidx is None:
-                raise GitError(f'missing ref at {path!r}')
             raise GitError(f'type {typ!r} is not blob/tree/commit at {path!r}')
 
-    yield from _join(ref, [ref])
+    got = get_ref(repo, ref)
+    if not got[0]:
+        raise GitError(f'ref {ref} does not exist') # eventually some ENOENT?
+    yield from _join(*got, [ref])
