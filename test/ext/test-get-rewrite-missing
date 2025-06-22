@@ -1,0 +1,279 @@
+#!/usr/bin/env bash
+. ./wvtest-bup.sh
+. ./test/lib/btl.sh
+
+set -o pipefail
+
+top="$(WVPASS pwd)" || exit $?
+tmpdir="$(WVPASS wvmktempdir)" || exit $?
+
+export BUP_DIR="$tmpdir/bup"
+export GIT_DIR="$tmpdir/bup"
+
+bup() { "$top/bup" "$@"; }
+
+display-file()
+{
+    local name="$1"
+    printf -- "----- \"%q\" content below -----\n" "$name"
+    cat "$name"
+    printf -- "----- \"%q\" content above -----\n" "$name"
+}
+
+# FIXME: consider checking expected compare-trees differences.
+
+
+WVPASS cd "$tmpdir"
+WVPASS bup init
+WVPASS git config bup.split.trees true
+
+# Keep in mind that all blobs have to be unique enough to avoid
+# punching unintended holes elswewhere when perforating.
+
+WVPASS mkdir -p src/a src/missing-dir
+WVPASS echo 1 > src/a/1
+WVPASS echo 2 > src/a/2
+WVPASS echo 3 > src/a/missing-file
+WVPASS echo 1 > src/missing-dir/1
+WVPASS bup random 1m > src/partial-file
+
+# Right now, make-splittable-tree's files are identical (empty).
+WVPASS "$top/dev/make-splittable-tree" src/split-tree
+WVPASS cd src
+split_tree_data_path="$(WVPASS find split-tree -name data | WVPASS sed -n 11p)"
+WVPASS "$top/dev/python" -m uuid > "$split_tree_data_path"
+WVPASS cd ..
+
+WVPASS bup index src
+WVPASS bup save --strip -n src src
+
+WVPASS readarray -t saves < <(bup ls src)
+save_date="${saves[0]}"
+src_oid="$(git rev-parse src)"
+
+WVPASS bup -d dest-repo init
+WVPASS git --git-dir dest-repo config bup.split.trees true
+WVPASS bup -d dest-repo get -s bup --unnamed "git:$src_oid"
+WVPASS bup -d dest-repo join "$src_oid" > /dev/null
+WVPASS rm -rf dest-repo
+
+# All of the oid files must be newline terminated (for use via cat below)
+WVPASS git ls-tree src | WVPASS grep -E $'\tmissing-dir$' | btl-ent-oid > dir-oid
+WVPASS git ls-tree src:a | WVPASS sed -n 4p | btl-ent-oid > file-oid
+WVPASS git ls-tree src | WVPASS grep -E $'\tpartial-file\.bup$' \
+    | btl-ent-oid > partial-file-oid
+# For now, assume it's at least two levels deep, and 7th is "fine"
+WVPASS git ls-tree -r src:partial-file.bup | WVPASS sed -n 7p \
+    | btl-ent-oid > partial-file-hole
+
+WVPASS git ls-tree src:split-tree | WVPASS grep -E $'\t\.bupd.[0-9]+\.bupd$' \
+    | btl-ent-oid > bupd-oid
+WVPASSEQ 41 $(wc -c < bupd-oid)
+
+WVPASS git ls-tree src | WVPASS grep -E $'\tsplit-tree$' \
+    | btl-ent-oid > split-tree-oid
+WVPASS git ls-tree src:split-tree | WVPASS grep -E $'\t\.bupm$' \
+    | btl-ent-oid > split-tree-bupm-oid
+
+WVPASS git ls-tree -r src:split-tree \
+    | WVPASS grep -F "${split_tree_data_path#split-tree}" > split-tree-blob-info
+btl-ent-oid < split-tree-blob-info > split-tree-blob-oid
+WVPASS cut -f 2 < split-tree-blob-info > split-tree-blob-path
+WVPASSEQ 2 $(tr -dc / < split-tree-blob-path | wc -c) # verify expected depth
+
+
+split_tree_blob_path="$(<split-tree-blob-path)"
+split_tree_l1_name="${split_tree_blob_path%%/*}"
+
+split_tree_l2_name="${split_tree_blob_path#*/}"
+split_tree_l2_name="${split_tree_l2_name%%/*}"
+
+#split_tree_l3_name="${split_tree_blob_path%/*}"
+#split_tree_l3_name="${split_tree_l3_name##*/}"
+
+WVPASS git ls-tree src:split-tree \
+    | WVPASS grep -E $'\t'"$split_tree_l1_name"'$' | btl-ent-oid > split-tree-l1-oid
+WVPASS git ls-tree "$(<split-tree-l1-oid)" \
+    | WVPASS grep -E $'\t'"$split_tree_l2_name"'$' | btl-ent-oid > split-tree-l2-oid
+# WVPASS git ls-tree "$(<split-tree-l2-oid)" \
+#     | WVPASS grep -E $'\t'"$split_tree_l3_name"'$' | btl-ent-oid > split-tree-l3-oid
+
+echo "dir: $(< dir-oid)"
+echo "file: $(< file-oid)"
+echo "partial-file: $(< partial-file-oid)"
+echo "partial-file-hole: $(< partial-file-hole)"
+echo "split-tree: $(< split-tree-oid)"
+echo "split-tree-blob: $(< split-tree-blob-oid)"
+echo "split-tree-bupm-oid: $(< split-tree-bupm-oid)"
+# e.g. some-random-path-...-8371/some-random-path-...-8403/data
+echo "split-tree-blob-path: $(< split-tree-blob-path)"
+echo "split-tree-l1-name: $split_tree_l1_name"
+echo "split-tree-l1-oid: $(< split-tree-l1-oid)"
+echo "split-tree-l2-name: $split_tree_l2_name"
+echo "split-tree-l2-oid: $(< split-tree-l2-oid)"
+echo "bupd-oid: $(< bupd-oid)"
+
+WVPASS cp -pPR "$BUP_DIR" bup-complete
+
+WVPASS "$top/dev/perforate-repo" --drop-oids "$BUP_DIR" < dir-oid
+WVPASS "$top/dev/perforate-repo" --drop-oids "$BUP_DIR" < file-oid
+WVPASS "$top/dev/perforate-repo" --drop-oids "$BUP_DIR" < partial-file-hole
+
+WVPASS rm -rf dest-repo bup-tmp
+WVPASS cp -pPR bup bup-tmp
+WVPASS bup -d dest-repo init
+WVPASS git --git-dir dest-repo config bup.split.trees true
+# test rejection of --missing ignore (only supported by --unnamed)
+WVFAIL bup -d dest-repo get -s bup --missing ignore --rewrite --append src
+# test --missing fail
+bup -d dest-repo get -s bup --missing fail --rewrite --append src
+rc=$?
+WVPASSEQ 2 "$rc"
+WVPASS rm -rf bup
+WVPASS cp -pPR bup-tmp bup
+
+repair-to-dest()
+{
+    rm -rf dest-repo
+    WVPASS bup -d dest-repo init
+    WVPASS git --git-dir dest-repo config bup.split.trees true
+    bup -d dest-repo get -s bup --missing replace --rewrite --append src 2> repair.log
+    rc=$?
+    display-file repair.log
+    WVPASSEQ 3 "$rc"
+}
+
+set-repair-id()
+{
+    WVPASSEQ 1 "$(grep -cE '^repairs needed, repair-id: ' repair.log)"
+    repair_id="$(WVPASS grep -E '^repairs needed, repair-id: ' repair.log)"
+    repair_id="${repair_id#repairs needed, repair-id: }"
+}
+
+
+WVSTART 'repair-id is reported'
+repair-to-dest
+set-repair-id
+
+oid_rx='[0-9a-fA-F]{40}'
+missing_file="/src/$save_date/a/missing-file"
+missing_dir="/src/$save_date/missing-dir/"
+missing_partial="/src/$save_date/partial-file"
+missing_split="/src/$save_date/split-tree/"
+
+WVPASS git --git-dir dest-repo ls-tree src \
+    | WVPASS grep -E $'\tmissing-dir$' | btl-ent-oid > dir-replacement-oid
+WVPASS git --git-dir dest-repo ls-tree src:a | WVPASS sed -n 4p \
+    | btl-ent-oid > blob-replacement-oid
+WVPASS git --git-dir dest-repo ls-tree src \
+    | WVPASS grep -E $'\tpartial-file$' \
+    | btl-ent-oid > partial-file-replacement-oid
+
+
+WVSTART 'commit trailers include repairs'
+git --git-dir dest-repo show -s --pretty=email src > repair-msg
+display-file repair-msg
+git interpret-trailers --parse < repair-msg > repair-trailers
+display-file repair-trailers
+bup_ver="$(bup version)"
+readarray -t trailers < repair-trailers
+wv-match-rx "${trailers[0]}" "^Bup-Version: ${bup_ver//+/\\+}$"
+wv-match-rx "${trailers[1]}" '^Bup-Argv: [^ ]+/bup.* save '
+wv-match-rx "${trailers[2]}" "^Bup-Version: ${bup_ver//+/\\+}$"
+wv-match-rx "${trailers[3]}" '^Bup-Argv: [^ ]+/bup.* get .* --rewrite '
+wv-match-rx "${trailers[4]}" "^Bup-Repair-ID: $repair_id$"
+wv-match-rx "${trailers[5]}" "^Bup-Replaced: $(< blob-replacement-oid) $missing_file$"
+wv-match-rx "${trailers[6]}" "^Bup-Replaced: $(< dir-replacement-oid) $missing_dir$"
+wv-match-rx "${trailers[7]}" \
+             "^Bup-Replaced: $(< partial-file-replacement-oid) $missing_partial$"
+WVPASSEQ "" "${trailers[8]}" # end-of-line
+unset trailers
+
+# A missing dir .bupm in a non-split repo is indistinguishable from a
+# git created tree.
+
+WVSTART 'missing blobs are rewritten'
+WVPASS grep -E "^repaired $missing_file $oid_rx -> $oid_rx\$" repair.log
+WVPASS git --git-dir dest-repo show src:a/missing-file > blob-replacement
+display-file blob-replacement
+WVPASS grep -E '^This is a replacement for a file' blob-replacement
+WVPASS grep -E "^Bup-Replacement-Info: $repair_id" blob-replacement
+WVPASS grep -E "^Replaced: file $(< file-oid)" blob-replacement
+WVPASS grep -E "^Missing: $(< file-oid)" blob-replacement
+
+
+WVSTART 'missing trees are rewritten'
+WVPASS grep -E "^repaired $missing_dir $oid_rx -> $oid_rx\$" repair.log
+WVPASS git --git-dir dest-repo show src:missing-dir > tree-replacement
+display-file tree-replacement
+WVPASS grep -E '^This is a replacement for a tree' tree-replacement
+WVPASS grep -E "^Bup-Replacement-Info: $repair_id" tree-replacement
+WVPASS grep -E "^Replaced: tree $(< dir-oid)" tree-replacement
+WVPASS grep -E "^Missing: $(< dir-oid)" tree-replacement
+
+
+WVSTART 'incomplete chunked files are rewritten'
+WVPASS grep -E "^repaired $missing_partial $oid_rx -> $oid_rx\$" repair.log
+WVPASS git --git-dir dest-repo show src:partial-file > partial-file-replacement
+display-file partial-file-replacement
+WVPASS grep -E '^This is a replacement for a file' partial-file-replacement
+WVPASS grep -E "^Bup-Replacement-Info: $repair_id" partial-file-replacement
+WVPASS grep -E "^Replaced: file $(< partial-file-oid)" partial-file-replacement
+WVPASS grep -E "^Missing: $(< partial-file-hole)" partial-file-replacement
+
+# FIXME: still need tests for missing split-tree leaf .bupms, missing
+# split-tree mid-level or leaf tree (which would require three
+# levels). No missing .bupd test since that'd just make the split-tree
+# a normal tree.
+
+# FIXME: test trailers for incomplete split trees as above
+
+WVSTART 'incomplete split tree (missing top-level sub-tree)'
+WVPASS "$top/dev/perforate-repo" --drop-oids "$BUP_DIR" < split-tree-l1-oid
+repair-to-dest
+set-repair-id
+WVPASS grep -E "^repaired $missing_split $oid_rx -> $oid_rx\$" repair.log
+WVPASS git --git-dir dest-repo show src:split-tree > split-tree-replacement
+display-file split-tree-replacement
+WVPASS grep -E '^This is a replacement for a tree' split-tree-replacement
+WVPASS grep -E "^Bup-Replacement-Info: $repair_id" split-tree-replacement
+WVPASS grep -E "^Replaced: tree $(< split-tree-oid)" split-tree-replacement
+WVPASS grep -E "^Missing: $(< split-tree-l1-oid)" split-tree-replacement
+
+
+WVSTART 'incomplete split tree (missing leaf item)'
+WVPASS rm -rf bup
+WVPASS cp -pPR bup-complete bup
+WVPASS "$top/dev/perforate-repo" --drop-oids "$BUP_DIR" < split-tree-l2-oid
+repair-to-dest
+set-repair-id
+WVPASS grep -E "^repaired /src/$save_date/split-tree/$split_tree_l2_name/ $(< split-tree-l2-oid) ->" \
+       repair.log
+WVPASS git --git-dir dest-repo \
+       show "src:split-tree/$split_tree_l1_name/$split_tree_l2_name" \
+       > split-tree-replacement
+display-file split-tree-replacement
+WVPASS grep -E '^This is a replacement for a tree' split-tree-replacement
+WVPASS grep -E "^Bup-Replacement-Info: $repair_id" split-tree-replacement
+WVPASS grep -E "^Replaced: tree $(< split-tree-l2-oid)" split-tree-replacement
+WVPASS grep -E "^Missing: $(< split-tree-l2-oid)" split-tree-replacement
+
+
+WVSTART 'incomplete split tree (missing top-level .bupm)'
+WVPASS rm -rf bup
+WVPASS cp -pPR bup-complete bup
+WVPASS "$top/dev/perforate-repo" --drop-oids "$BUP_DIR" < split-tree-bupm-oid
+repair-to-dest
+set-repair-id
+WVPASS grep -E "^repaired /src/$save_date/split-tree/ $(< split-tree-oid) ->" \
+       repair.log
+WVPASS git --git-dir dest-repo show "src:split-tree" > split-tree-replacement
+display-file split-tree-replacement
+WVPASS grep -E '^This is a replacement for a tree' split-tree-replacement
+WVPASS grep -E "^Bup-Replacement-Info: $repair_id" split-tree-replacement
+WVPASS grep -E "^Replaced: tree $(< split-tree-oid)" split-tree-replacement
+WVPASS grep -E "^Missing: $(< split-tree-bupm-oid)" split-tree-replacement
+
+
+WVPASS cd "$top"
+WVPASS rm -rf "$tmpdir"

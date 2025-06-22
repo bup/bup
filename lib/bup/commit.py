@@ -127,9 +127,25 @@ def create_commit_blob(tree, parent,
     return b'\n'.join(l)
 
 
-def commit_message(message, command):
-    message = message.rstrip()
-    return b'\n'.join((message,
-                     b'',
-                     b'Bup-Version: %s' % version,
-                     b'Bup-Argv: %s' % b' '.join(map(enc_sh, command))))
+_trailer_rx = re.compile(br'(?m)^[^\t ]+:.*(?:\r\n|\n)*\Z')
+
+def has_trailers(message):
+    # For now, a trailer key is anything not containing an ascii tab
+    # or space followed by a colon (i.e. ignoring trailer.separators,
+    # and only recognizing tab and space as
+    # "whitespace"). cf. git-interpreter-trailers(1).
+    return bool(_trailer_rx.search(message))
+
+
+def commit_message(message, argv, extra_trailers=None):
+    for trailer in extra_trailers or []:
+        assert isinstance(trailer, bytes)
+        for b in trailer: assert b >= 20 and b < 127, trailer
+    parts = [message.rstrip()]
+    if not has_trailers(message):
+        parts.append(b'')
+    parts.extend([b'Bup-Version: %s' % version,
+                  b'Bup-Argv: %s' % b' '.join(map(enc_sh, argv))])
+    if extra_trailers:
+        parts.extend(extra_trailers)
+    return b'\n'.join(parts)

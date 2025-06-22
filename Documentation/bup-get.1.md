@@ -142,12 +142,6 @@ used to help test before/after results.)
     above) than `bup get` itself. Please consider validating the
     results carefully for now.
 
-\--rewrite-db=*path*
-:   place the rewrite database at *path*. Re-using an existing
-    database (e.g. after an interruption) can allow the rewrite to
-    resume without repeating expensive operations. By default, a
-    transient database will be placed in TMPDIR and removed on exit.
-
 \--exclude-rx=*pattern*
 :   exclude any path matching *pattern*, which must be a Python regular
     expression (http://docs.python.org/library/re.html).  The pattern
@@ -187,11 +181,30 @@ used to help test before/after results.)
     pack.compression or core.compression, or 1 (fast, loose
     compression).
 
-\--missing <fail|ignore>
+\--repair-id ID
+:   set the repair session identifier, defaults to a UUID (v4). This
+    identifier will be included in repairs made during the transfer,
+    i.e. via `--missing replace`. Currently, the identifier must be
+    ASCII and must not include control characters or DEL (i.e. must be
+    comprised of bytes >= 20 and < 127).
+
+\--missing <fail|ignore|replace>
 :   when missing objects are encountered during a transfer, either
-    `fail` (exit with nonzero status, the default) or `ignore` them.
-    The latter is currently only supported by `--unnamed`, and is
-    potentially *dangerous*.
+    `fail` (exit with nonzero status, the default), `ignore` them
+    (currently only supported by `--unnamed`, and potentially
+    *dangerous*), or `replace` them with placeholders (see
+    REPLACEMENTS below).
+
+# REPLACEMENTS
+
+Saves (commits) with missing objects can be repaired by specifying
+`--missing replace` which will substitute synthesized "repair files"
+for any paths with missing objects. There is currently no support for
+retrieving unaffected parts of split files or trees, the entire file
+or tree is replaced with a repair file.
+
+These repair files contain the `--repair-id` and information about
+the replacement.
 
 # EXAMPLES
 
@@ -249,7 +262,18 @@ used to help test before/after results.)
     $ bup rm archives
     $ bup gc
     $ git --git-dir "$BUP_DIR" branch -m archives-resplit archives
+    #
+    # Repair a single save with missing objects.
+    $ bup get --missing replace --pick archives/latest fixed
+    #
+    # Check that fixed/latest looks OK, perhaps via trial
+    # restores, joining it, etc. (see CAUTION above).
 
+
+# EXIT STATUS
+
+An exit status of 3 indicates that repairs were needed and were
+successful, and that no other errors occurred.
 
 # SEE ALSO
 

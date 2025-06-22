@@ -6,7 +6,7 @@ import sys
 from wvpytest import *
 
 from bup import git
-from bup.commit import _git_date_str, parse_commit
+from bup.commit import _git_date_str, has_trailers, parse_commit
 from bup.helpers import readpipe
 
 
@@ -128,3 +128,12 @@ def test_git_date_str():
     WVPASSEQ(b'0 +0000', _git_date_str(0, 0))
     WVPASSEQ(b'0 -0130', _git_date_str(0, -90 * 60))
     WVPASSEQ(b'0 +0130', _git_date_str(0, 90 * 60))
+
+
+def test_has_trailers():
+    assert not has_trailers(b'')
+    assert not has_trailers(b'Summary\n')
+    assert not has_trailers(b'Summary\n\nBody')
+    assert not has_trailers(b'Summary\n\nBody\nNot Valid: trailer\n')
+    assert has_trailers(b'Summary\n\nBody\nValid: trailer\n')
+    assert has_trailers(b'Summary\n\nBody\n\nValid: trailer\n')
