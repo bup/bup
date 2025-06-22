@@ -60,3 +60,31 @@ WVPIPE()
 	return 2
     fi
 }
+
+wv-match-rx()
+{
+    # Atypically the "expected" rx value is second because it's
+    # expected to often be the longer, quoted literal. e.g.
+    #   wv-match-rx "$something" \
+    #   "many
+    #   regex
+    #   lines"
+    local caller_file=${BASH_SOURCE[0]}
+    local caller_line=${BASH_LINENO[0]}
+    local src="$caller_file:$caller_line"
+    if test $# -ne 2; then
+        echo "! $src wv_matches_rx requires 2 arguments FAILED" 1>&2
+        return
+    fi
+    local str="$1"
+    local rx="$2"
+    echo "Matching:" 1>&2 || exit $?
+    echo "$str" | sed 's/^\(.*\)/  \1/' 1>&2 || exit $?
+    echo "Against:" 1>&2 || exit $?
+    echo "$rx" | sed 's/^\(.*\)/  \1/' 1>&2 || exit $?
+    if [[ "$str" =~ $rx ]]; then
+        echo "! $src regex matches ok" 1>&2 || exit $?
+    else
+        echo "! $src regex doesn't match FAILED" 1>&2 || exit $?
+    fi
+}

@@ -19,11 +19,19 @@ _empty_metadata = MetadataRO()
 class TreeItem:
     __slots__ = 'name', 'mode', 'gitmode', 'oid', 'meta'
     def __init__(self, name, mode, gitmode, oid, meta):
+        assert isinstance(name, bytes), name
+        assert isinstance(mode, int), mode
+        assert isinstance(gitmode, int), gitmode
+        assert isinstance(oid, bytes), oid
+        if meta is not None:
+            assert isinstance(meta, Metadata), meta
         self.name = name
         self.mode = mode
         self.gitmode = gitmode
         self.oid = oid
         self.meta = meta or _empty_metadata
+    def __repr__(self):
+        return f'<bup.tree.TreeItem object at 0x{id(self):x} name={self.name!r}>'
     def mangled_name(self):
         return mangle_name(self.name, self.mode, self.gitmode)
 
@@ -92,6 +100,7 @@ class StackDir:
         self.name = name
         self.meta = meta
         self.items = []
+
 
 class Stack:
     def __init__(self, repo, split_config):

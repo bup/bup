@@ -4,16 +4,19 @@ from collections import namedtuple
 from dataclasses import replace as dcreplace
 from re import Pattern
 from stat import S_ISDIR
+from textwrap import fill
 from typing import Optional, Union
+from uuid import uuid4
 import os, re, sys, textwrap, time
 
 from bup import client, compat, git, hashsplit, vfs
 from bup.commit import commit_message
-from bup.compat import argv_bytes, dataclass
+from bup.compat import argv_bytes, dataclass, get_argvb
 from bup.config import derive_repo_addr
 from bup.git import MissingObject, get_cat_data, parse_commit, walk_object
 from bup.helpers import \
     (EXIT_FAILURE,
+     EXIT_RECOVERED,
      EXIT_SUCCESS,
      debug1,
      hostname,
@@ -22,9 +25,11 @@ from bup.helpers import \
      nullctx,
      parse_num,
      parse_rx_excludes,
+     saved_errors,
      tty_width)
 from bup.io import path_msg
 from bup.pwdgrp import userfullname, username
+from bup.repair import MissingConfig, RepairInfo, valid_repair_id
 from bup.repo import LocalRepo, make_repo
 from bup.rewrite import Rewriter
 
@@ -54,11 +59,11 @@ argspec = (
       ('-c, --print-commits', 'output a commit id for each ref set'),
       ('--print-tags', 'output an id for each tag'),
       ('--rewrite', 'rewrite data according to destination repo settings'),
-      ('--rewrite-db PATH', 'transient rewrite database (in TMPDIR by default)'),
       ('--exclude-rx REGEX', 'skip paths matching the unanchored regex (may be repeated)'),
       ('--exclude-rx-from PATH', 'skip --exclude-rx patterns in PATH (may be repeated)'),
       ('--bwlimit BWLIMIT', 'maximum bytes/sec to transmit to server'),
-      ('--missing <fail|ignore>', 'how to handle missing objects (default: fail)'),
+      ('--missing <fail|ignore|replace>', 'behavior for missing objects (default: fail)'),
+      ('--repair-id ID', 'repair session identifier (default: UUID v4)'),
       ('-0, -1, -2, -3, -4, -5, -6, -7, -8, -9, --compress LEVEL',
        'set compression LEVEL (default: 1)'))),
 
@@ -124,12 +129,6 @@ def require_n_args_or_die(n, args):
     return result
 
 @dataclass(slots=True, frozen=True)
-class MissingConfig:
-    mode: Union['fail', 'ignore']
-    def __post_init__(self):
-        assert self.mode in ('fail', 'ignore')
-
-@dataclass(slots=True, frozen=True)
 class Spec:
     method: str
     src: bytes
@@ -153,16 +152,17 @@ def parse_args(args):
     opt.print_commits = opt.print_trees = opt.print_tags = False
     opt.bwlimit = None
     opt.compress = None
-    opt.rewrite_db = None
+    opt.repair_info = None
     opt.source = opt.remote = None
     opt.target_specs = []
 
     # For now, rewriting is a "global" state, i.e. enabled for all
     # specs or none. Since we don't want to create a Rewriter until
     # we've finished checking the requests (e.g. are past the
-    # resolvers, True is used as an intermediate placeholder).
+    # resolvers), the spec's rewriter will be set to True to indicate
+    # that it needs the real Rewriter once we have it.
     rewrite = None # None means "didn't specify"
-    missing = MissingConfig('fail')
+    missing = 'fail'
     exclude_opts = []
     remaining = args[1:]  # Skip argv[0]
     while remaining:
@@ -173,17 +173,24 @@ def parse_args(args):
         elif arg in (b'-v', b'--verbose'):
             opt.verbose += 1
             remaining = remaining[1:]
-        elif arg == b'--ignore-missing':
-            missing = MissingConfig('ignore')
-            remaining = remaining[1:]
         elif arg == b'--missing':
-            (missing,), remaining = require_n_args_or_die(1, remaining)
-            if missing not in (b'fail', b'ignore'):
-                misuse('--missing argument must be fail or ignore')
-            missing = MissingConfig(missing.decode('ascii'))
-        elif arg == b'--no-ignore-missing':
-            missing = MissingConfig('fail')
+            (val,), remaining = require_n_args_or_die(1, remaining)
+            if val not in (b'fail', b'ignore', b'replace'):
+                misuse(f'--missing must be fail, ignore, or replace, not {val!r}')
+            missing = val.decode('ascii')
+        elif arg == b'--ignore-missing':
+            missing = 'ignore'
             remaining = remaining[1:]
+        elif arg == b'--no-ignore-missing':
+            missing = 'fail'
+            remaining = remaining[1:]
+        elif arg == b'--repair-id':
+            (val,), remaining = require_n_args_or_die(1, remaining)
+            if not val:
+                misuse('empty --repair-id')
+            if not valid_repair_id(val):
+                misuse('--repair-id must be ASCII without control characters or DEL')
+            opt.repair_info = RepairInfo(val, command=get_argvb())
         elif arg in (b'--ff', b'--append', b'--pick', b'--force-pick',
                      b'--new-tag', b'--replace', b'--unnamed'):
             (ref,), remaining = require_n_args_or_die(1, remaining)
@@ -208,8 +215,6 @@ def parse_args(args):
             rewrite, remaining = True, remaining[1:]
         elif arg == b'--no-rewrite':
             rewrite, remaining = False, remaining[1:]
-        elif arg == b'--rewrite-db':
-            (opt.rewrite_db,), remaining = require_n_args_or_die(1, remaining)
         elif arg in (b'--exclude-rx', b'--exclude-rx-from'): # handled later
             (val,), remaining = require_n_args_or_die(1, remaining)
             exclude_opts.append((arg, val))
@@ -232,12 +237,14 @@ def parse_args(args):
             continue
         else:
             misuse()
+    if opt.repair_info is None:
+        opt.repair_info = RepairInfo(str(uuid4()).encode('ascii'),
+                                     command=get_argvb())
     excludes = parse_rx_excludes(exclude_opts, misuse)
     if excludes and not rewrite:
         misuse('cannot --exclude-rx or --exclude-rx-from when not rewriting')
-    opt.target_specs = [dcreplace(x,
-                                  missing=missing,
-                                  excludes=excludes,
+    missing = MissingConfig(mode=missing, repair_info=opt.repair_info)
+    opt.target_specs = [dcreplace(x, missing=missing, excludes=excludes,
                                   rewriter=rewrite)
                         for x in opt.target_specs]
     return opt
@@ -315,8 +322,8 @@ def append_commit(src_loc, parent, src_repo, dest_repo, missing, rewriter,
     root, ref, save = path
     assert isinstance(save[1], (vfs.Commit, vfs.FakeLink)), path
     assert isinstance(ref[1], vfs.RevList), path
-    return rewriter.append_save(path, parent, src_repo, dest_repo, excludes)
-
+    return rewriter.append_save(path, parent, src_repo, dest_repo, missing,
+                                excludes)
 
 def append_commits(src_loc, dest_hash, src_repo, dest_repo, missing, rewriter,
                    excludes):
@@ -354,7 +361,7 @@ def append_commits(src_loc, dest_hash, src_repo, dest_repo, missing, rewriter,
         coid = unhexlify(commit)
         last_c, tree = rewriter.append_save(path + (entry_for_coid[coid],),
                                             last_c, src_repo, dest_repo,
-                                            excludes)
+                                            missing, excludes)
     assert tree is not None
     return last_c, tree
 
@@ -787,16 +794,8 @@ def log_item(name, type, opt, tree=None, commit=None, tag=None):
                 last = '/'
         log('%s%s\n' % (path_msg(name), last))
 
-def main(argv):
-    opt = parse_args(argv)
-    git.check_repo_or_die()
-    if opt.source:
-        opt.source = argv_bytes(opt.source)
-    if opt.bwlimit:
-        client.bwlimit = parse_num(opt.bwlimit)
-    if not opt.target_specs:
-        misuse('no methods specified')
 
+def get_everything(opt):
     with LocalRepo(repo_dir=opt.source) as src_repo, \
          make_repo(derive_repo_addr(remote=opt.remote, die=misuse),
                    compression_level=opt.compress) as dest_repo:
@@ -807,7 +806,7 @@ def main(argv):
         # For now (maybe forever), they're all the same
         rewrite = opt.target_specs[0].rewriter
         assert all(x.rewriter == rewrite for x in opt.target_specs), \
-            [x.rewriter for x in opt.target_specs]
+            opt.target_specs
 
         if src_split_cfg != dest_split_cfg and rewrite is None:
             misuse('repository configs differ; specify --rewrite or --no-rewrite')
@@ -819,8 +818,8 @@ def main(argv):
         # before creating any database via the Rewriter.
         target_items = resolve_targets(opt.target_specs, src_repo, dest_repo)
 
-        with (Rewriter(split_cfg=dest_split_cfg, db=opt.rewrite_db) \
-              if rewrite else nullctx) as rewriter:
+        with (Rewriter(split_cfg=dest_split_cfg) if rewrite else nullctx) \
+             as rewriter:
 
             target_items = [(x if not x.spec.rewriter
                              else x._replace(spec=dcreplace(x.spec, rewriter=rewriter)))
@@ -888,3 +887,25 @@ def main(argv):
                         log('updated %r (%s)\n' % (ref_name, new_hex))
             except (git.GitError, client.ClientError) as ex:
                 note_error('unable to update ref %r: %s\n' % (ref_name, ex))
+
+
+def main(argv):
+    opt = parse_args(argv)
+    git.check_repo_or_die()
+    if opt.source:
+        opt.source = argv_bytes(opt.source)
+    if opt.bwlimit:
+        client.bwlimit = parse_num(opt.bwlimit)
+    if not opt.target_specs:
+        misuse('no methods specified')
+
+    get_everything(opt)
+
+    if opt.repair_info.repair_count() and not saved_errors:
+        msg = ('Repairs were needed and successful; see above. Additional'
+               ' information may be found in the git log. Search for '
+               ' "Repair-ID:" in "git --git-dir REPO log ..." for the related'
+               ' references.\n')
+        log(f'\n{fill(msg, width=tty_width(), break_on_hyphens=False)}\n')
+        return EXIT_RECOVERED
+    return 0

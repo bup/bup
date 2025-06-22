@@ -29,10 +29,16 @@ from bup.options import _tty_width as tty_width
 # is asking a question with a yes or no answer.  Eventually all
 # commands should avoid exiting with 1 for errors.
 
+# EXIT_RECOVERED indicates something went wrong, but it was possible
+# to recover from the problem; e.g. bup get ... --missing
+# ignore/replace encountered missing objects and was able to handle
+# them as requested without additional errors.
+
 EXIT_SUCCESS = 0
 EXIT_TRUE = 0
 EXIT_FALSE = 1
 EXIT_FAILURE = 2
+EXIT_RECOVERED = 3
 
 
 def dict_subset(dict, keys):
