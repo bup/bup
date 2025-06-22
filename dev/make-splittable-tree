@@ -1,0 +1,31 @@
+#!/bin/sh
+"""": # -*-python-*-
+python="$(dirname "$0")/python" || exit $?
+exec "$python" "$0" ${1+"$@"}
+"""
+
+from os import environb as environ, mkdir
+from sys import argv, stderr
+import os.path as path, sys
+
+
+# FIXME: change this to request --depth 1 level 2 etc.?
+
+
+if len(argv) != 2:
+    print('Usage: make-splittable-tree WHERE', file=stderr)
+    sys.exit(2)
+
+where = argv[1]
+
+try:
+    mkdir(where)
+except FileExistsError:
+    print(f'error: {where!r} already exists', file=stderr)
+    sys.exit(2)
+
+for i in range(int(environ.get(b'BUP_SPLITTABLE_COUNT', '10000'))):
+    d = f'{where}/some-random-path-name-to-make-the-tree-bigger-{i}'
+    mkdir(d)
+    with open(path.join(d, 'data'), 'w') as f:
+        pass

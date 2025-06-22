@@ -48,7 +48,7 @@ compare() {
 
 WVSTART split and rewrite
 WVPASS bup split -n split < "$top/test/testfile1"
-WVPASS bup -d "$BUP_DIR2" get --rewrite-db "$tmpdir/db" -s "$BUP_DIR" --append: split test
+WVPASS bup -d "$BUP_DIR2" get -s "$BUP_DIR" --append: split test
 WVPASS compare "$BUP_DIR" split "$BUP_DIR2" test
 
 WVSTART make multiple saves
@@ -60,7 +60,7 @@ WVPASS bup save -n save --strip-path="$top" "$top/test/sampledata"
 
 WVSTART rewrite to different split
 WVPASS bup -d "$BUP_DIR" ls -l save
-WVPASS bup -d "$BUP_DIR4" get --rewrite --rewrite-db "$tmpdir/db" -s "$BUP_DIR" --append save
+WVPASS bup -d "$BUP_DIR4" get --rewrite -s "$BUP_DIR" --append save
 WVPASS compare "$BUP_DIR" save "$BUP_DIR4" save
 
 WVSTART "rewrite unchanged (to remote)"
@@ -103,12 +103,12 @@ WVPASS bup -d "$BUP_DIR" ls -l save/latest/test/sampledata/y/testfile1 |
     WVPASS grep -- 158664
 
 # now rewrite again - and then the size should be correct even without augmentation
-WVPASS bup -d "$BUP_DIR4" get --rewrite --rewrite-db "$tmpdir/db" -s "$BUP_DIR" --append: save save2
+WVPASS bup -d "$BUP_DIR4" get --rewrite -s "$BUP_DIR" --append: save save2
 WVPASS bup+ -d "$BUP_DIR4" ls -l save/latest/test/sampledata/y/testfile1 |
     WVPASS grep -- 158664
 
 # and again for the other kind of splitting
-WVPASS bup -d "$BUP_DIR3" get --rewrite --rewrite-db "$tmpdir/db" -s "$BUP_DIR" --append: save save2
+WVPASS bup -d "$BUP_DIR3" get --rewrite -s "$BUP_DIR" --append: save save2
 WVPASS bup+ -d "$BUP_DIR3" ls -l save2/latest/test/sampledata/y/testfile1 |
     WVPASS grep -- 158664
 
@@ -146,4 +146,5 @@ GIT_DIR="$BUP_DIR" WVPASS git ls-tree -r save-new^ > "$tmpdir/n"
 diff -u "$tmpdir/o" "$tmpdir/n"
 
 
+WVPASS cd "$top"
 WVPASS rm -rf "$tmpdir"

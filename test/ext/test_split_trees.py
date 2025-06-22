@@ -1,5 +1,5 @@
 
-from os import chdir, environb as environ, mkdir
+from os import chdir, environb as environ
 from os.path import join as joinp
 import pytest
 
@@ -9,24 +9,17 @@ import bup.path
 
 bup = bup.path.exe()
 
-@pytest.fixture
-def large_tree(tmpdir):
-    # pytest fixtures are cached, so there will be only one large tree
-    for i in range(10000):
-        d = b'%s/some-random-path-name-to-make-the-tree-bigger-%d' % (tmpdir, i)
-        mkdir(d)
-        with open(joinp(d, b'data'), 'w') as f:
-            print('data', file=f)
-    return tmpdir
-
-def test_large_tree(tmpdir, large_tree):
+def test_large_tree(tmpdir):
     environ[b'GIT_DIR'] = tmpdir + b'/repo'
     environ[b'BUP_DIR'] = tmpdir + b'/repo'
+
+    ex((b'dev/make-splittable-tree', joinp(tmpdir, b'src')))
+
     chdir(tmpdir)
     ex((bup, b'init'))
     ex((b'git', b'config', b'bup.split.trees', b'true'))
-    ex((bup, b'index', large_tree))
-    ex((bup, b'save', b'-n', b'gc-test', b'--strip', large_tree))
+    ex((bup, b'index', b'src'))
+    ex((bup, b'save', b'-n', b'gc-test', b'--strip', b'src'))
 
     bupd = None
     for p in exo((b'git', b'ls-tree', b'gc-test')).out.splitlines():

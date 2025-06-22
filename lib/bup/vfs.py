@@ -919,6 +919,14 @@ def contents(repo, item, names=None, want_meta=True):
         raise Exception('unexpected VFS item ' + str(item))
 
 def _resolve_path(repo, path, parent=None, want_meta=True, follow=True):
+    # FIXME: eventually more sophistication than just MissingObject
+    # with an oid, e.g. perhaps the path leading to the missing
+    # object?
+
+    # This arrangment means two repo objects representing the same
+    # physical repo will have duplicate entries in the cache, but we
+    # can't be fooled by any incorrectly matching repository
+    # ids. Shouldn't happen, but...
     cache_key = b'res:%d%d%d:%s\0%s' \
                 % (bool(want_meta), bool(follow), id(repo),
                    (b'/'.join(x[0] for x in parent) if parent else b''),
