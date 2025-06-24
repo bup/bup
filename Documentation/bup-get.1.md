@@ -187,9 +187,11 @@ used to help test before/after results.)
     pack.compression or core.compression, or 1 (fast, loose
     compression).
 
-\--ignore-missing
-:   ignore missing objects encountered during a transfer.  Currently
-    only supported by `--unnamed`, and potentially *dangerous*.
+\--missing <fail|ignore>
+:   when missing objects are encountered during a transfer, either
+    `fail` (exit with nonzero status, the default) or `ignore` them.
+    The latter is currently only supported by `--unnamed`, and is
+    potentially *dangerous*.
 
 # EXAMPLES
 

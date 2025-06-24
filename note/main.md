@@ -106,6 +106,13 @@ General
   e.g. its `bup.split.files` and `bup.split.trees` settings. See
   `bup-get`(1) for additional information.
 
+* `bup get --missing <fail|ignore> ...` can now specify how to handle
+  missing objects that are encountered during a transfer. `fail`, the
+  default, causes bup to exit with a nonzero status, and `ignore`
+  causes bup to skip over them; `ignore` is currently only supported
+  by `--unnamed` and is potentially *dangerous*. `--missing ignore` is
+  the preferred replacement for the existing `--ignore-missing`.
+
 * The default pack compression level can now be configured via either
   `pack.compression` or `core.compression`.  See `bup-config`(5) for
   additional information.
