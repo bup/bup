@@ -39,12 +39,14 @@ WVFAIL bup -d dest-repo get -s bup --unnamed "git:$src_oid" 2>&1 | tee get.log
 WVPASS grep -E 'raise MissingObject' get.log
 WVPASS rm -rf dest-repo
 
-WVPASS bup -d dest-repo init
-WVFAIL bup -d dest-repo get --ignore-missing -s bup \
-       --unnamed "git:$src_oid" 2>&1 \
-    | tee get.log
-WVPASSEQ 1 "$(grep -cF "skipping missing source object ${bupm_oid}" get.log)"
-WVPASS rm -rf dest-repo
+for args in '--missing ignore' --ignore-missing; do
+    WVPASS bup -d dest-repo init
+    WVFAIL bup -d dest-repo get $args -s bup --unnamed "git:$src_oid" 2>&1 \
+        | tee get.log
+    WVPASSEQ 1 "$(grep -cF "skipping missing source object ${bupm_oid}" get.log)"
+    WVPASS rm -rf dest-repo
+done
+
 
 WVPASS cd "$top"
 WVPASS rm -rf "$tmpdir"
