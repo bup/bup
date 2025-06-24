@@ -5,7 +5,7 @@ from dataclasses import replace as dcreplace
 from contextlib import nullcontext
 from stat import S_ISDIR
 from typing import Optional, Union
-import os, sys, textwrap, time
+import os, re, sys, textwrap, time
 
 from bup import client, compat, git, hashsplit, vfs
 from bup.commit import commit_message
@@ -99,7 +99,7 @@ def usage(argspec, width=None):
     msg = []
     msg.append(textwrap.fill(usage, width=width, subsequent_indent='  '))
     msg.append('\n\n')
-    msg.append(textwrap.fill(preamble.replace('\n', ' '), width=width))
+    msg.append(textwrap.fill(re.sub(r'\n\s+', r' ', preamble), width=(width - 1)))
     msg.append('\n')
     for group_name, group_args in groups:
         msg.extend(['\n', group_name, '\n'])
