@@ -3,6 +3,7 @@ from binascii import hexlify, unhexlify
 from collections import namedtuple
 from dataclasses import replace as dcreplace
 from contextlib import nullcontext
+from re import Pattern
 from stat import S_ISDIR
 from typing import Optional, Union
 import os, re, sys, textwrap, time
@@ -134,6 +135,7 @@ class Spec:
     src: bytes
     dest: bytes
     missing: Optional[MissingConfig] = None
+    excludes: Optional[list[Pattern]] = None
 
 def spec_msg(s):
     if not s.dest:
@@ -226,10 +228,11 @@ def parse_args(args):
             continue
         else:
             misuse()
-    opt.exclude_rxs = parse_rx_excludes(exclude_opts, misuse)
-    if opt.exclude_rxs and not opt.rewrite:
+    excludes = parse_rx_excludes(exclude_opts, misuse)
+    if excludes and not opt.rewrite:
         misuse('cannot --exclude-rx or --exclude-rx-from when not rewriting')
-    opt.target_specs = [dcreplace(x, missing=missing) for x in opt.target_specs]
+    opt.target_specs = [dcreplace(x, missing=missing, excludes=excludes)
+                        for x in opt.target_specs]
     return opt
 
 # FIXME: client error handling (remote exceptions, etc.)
@@ -290,9 +293,9 @@ def transfer_commit(name, hash, parent, src_repo, dest_repo, missing):
     return c, tree
 
 
-def append_commit(src_loc, parent, src_repo, dest_repo, missing, opt):
+def append_commit(src_loc, parent, src_repo, dest_repo, missing, excludes, opt):
     if not opt.rewrite:
-        assert isinstance(src_loc, (bytes, Loc))
+        assert isinstance(src_loc, (bytes, Loc)), src_loc
         oidx = src_loc if isinstance(src_loc, bytes) else hexlify(src_loc.hash)
         return transfer_commit(None, # unused
                                oidx, parent, src_repo, dest_repo, missing)
@@ -304,18 +307,18 @@ def append_commit(src_loc, parent, src_repo, dest_repo, missing, opt):
     root, ref, save = path
     assert isinstance(save[1], (vfs.Commit, vfs.FakeLink)), path
     assert isinstance(ref[1], vfs.RevList), path
-    return opt.rewriter.append_save(path, parent, src_repo, dest_repo,
-                                    opt.exclude_rxs)
+    return opt.rewriter.append_save(path, parent, src_repo, dest_repo, excludes)
 
 
-def append_commits(src_loc, dest_hash, src_repo, dest_repo, missing, opt):
+def append_commits(src_loc, dest_hash, src_repo, dest_repo, missing, excludes,
+                   opt):
     if not opt.rewrite:
         commits = list(src_repo.rev_list(hexlify(src_loc.hash)))
         commits.reverse()
         last_c, tree = dest_hash, None
         for commit in commits:
             last_c, tree = append_commit(commit, last_c, src_repo, dest_repo,
-                                         missing, opt)
+                                         missing, excludes, opt)
         assert tree is not None
         return last_c, tree
 
@@ -343,7 +346,7 @@ def append_commits(src_loc, dest_hash, src_repo, dest_repo, missing, opt):
         coid = unhexlify(commit)
         last_c, tree = opt.rewriter.append_save(path + (entry_for_coid[coid],),
                                                 last_c, src_repo, dest_repo,
-                                                opt.exclude_rxs)
+                                                excludes)
     assert tree is not None
     return last_c, tree
 
@@ -576,7 +579,7 @@ def handle_append(item, src_repo, dest_repo, opt):
     if item.dest.hash:
         assert item.dest.type in ('branch', 'commit', 'save'), item.dest
     return append_commits(item.src, item.dest.hash, src_repo, dest_repo,
-                          item.spec.missing, opt)
+                          item.spec.missing, item.spec.excludes, opt)
 
 
 def resolve_pick(spec, src_repo, dest_repo, *, rewrite):
@@ -621,12 +624,12 @@ def handle_pick(item, src_repo, dest_repo, opt):
         # if the dest is committish, make it the parent
         if item.dest.type in ('branch', 'commit', 'save'):
             return append_commit(item.src, item.dest.hash, src_repo, dest_repo,
-                                 item.spec.missing, opt)
+                                 item.spec.missing, item.spec.excludes, opt)
         assert item.dest.path.startswith(b'/.tag/'), item.dest
     # no parent; either dest is a non-commit tag and we should clobber
     # it, or dest doesn't exist.
     return append_commit(item.src, None, src_repo, dest_repo, item.spec.missing,
-                         opt)
+                         item.spec.excludes, opt)
 
 
 def resolve_new_tag(spec, src_repo, dest_repo):
