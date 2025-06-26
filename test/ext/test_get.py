@@ -8,7 +8,7 @@ import os, pytest, re, sys
 
 from bup import compat, path
 from bup.compat import environ
-from bup.helpers import bquote, unlink
+from bup.helpers import EXIT_FAILURE, bquote, unlink
 from bup.io import byte_stream
 from buptest import ex, exo
 from wvpytest import wvcheck, wvfail, wvmsg, wvpass, wvpasseq, wvpassne, wvstart
@@ -297,6 +297,14 @@ def run_get(disposition, method, what=None, given=None, rewrite=False):
     return _run_get(disposition, method, what, rewrite)
 
 def _test_universal(get_disposition, src_info):
+    if get_disposition == 'get':
+        wvstart("can't do nothing")
+        rmrf(b'get-dest')
+        ex((bup_cmd, b'-d', b'get-dest', b'init'))
+        exr = exo((bup_cmd, b'-d', b'get-dest', b'get'),
+                  check=False, stderr=PIPE)
+        wvpasseq(EXIT_FAILURE, exr.rc)
+        verify_rx(br'no methods specified', exr.err)
     methods = (b'--ff', b'--append', b'--pick', b'--force-pick', b'--new-tag',
                b'--replace', b'--unnamed')
     for method in methods:
