@@ -2,7 +2,6 @@
 from binascii import hexlify, unhexlify
 from collections import namedtuple
 from dataclasses import replace as dcreplace
-from contextlib import nullcontext
 from re import Pattern
 from stat import S_ISDIR
 from typing import Optional, Union
@@ -20,6 +19,7 @@ from bup.helpers import \
      hostname,
      log,
      note_error,
+     nullctx,
      parse_num,
      parse_rx_excludes,
      tty_width)
@@ -136,6 +136,7 @@ class Spec:
     dest: bytes
     missing: Optional[MissingConfig] = None
     excludes: Optional[list[Pattern]] = None
+    rewriter: Optional[Union[bool, Rewriter]] = None
 
 def spec_msg(s):
     if not s.dest:
@@ -152,12 +153,15 @@ def parse_args(args):
     opt.print_commits = opt.print_trees = opt.print_tags = False
     opt.bwlimit = None
     opt.compress = None
-    opt.rewrite = None # None means "didn't specify"
     opt.rewrite_db = None
-    opt.rewriter = None # internal, synthetic "option"...
     opt.source = opt.remote = None
     opt.target_specs = []
 
+    # For now, rewriting is a "global" state, i.e. enabled for all
+    # specs or none. Since we don't want to create a Rewriter until
+    # we've finished checking the requests (e.g. are past the
+    # resolvers, True is used as an intermediate placeholder).
+    rewrite = None # None means "didn't specify"
     missing = MissingConfig('fail')
     exclude_opts = []
     remaining = args[1:]  # Skip argv[0]
@@ -201,9 +205,9 @@ def parse_args(args):
         elif arg == b'--print-tags':
             opt.print_tags, remaining = True, remaining[1:]
         elif arg == b'--rewrite':
-            opt.rewrite, remaining = True, remaining[1:]
+            rewrite, remaining = True, remaining[1:]
         elif arg == b'--no-rewrite':
-            opt.rewrite, remaining = False, remaining[1:]
+            rewrite, remaining = False, remaining[1:]
         elif arg == b'--rewrite-db':
             (opt.rewrite_db,), remaining = require_n_args_or_die(1, remaining)
         elif arg in (b'--exclude-rx', b'--exclude-rx-from'): # handled later
@@ -229,9 +233,12 @@ def parse_args(args):
         else:
             misuse()
     excludes = parse_rx_excludes(exclude_opts, misuse)
-    if excludes and not opt.rewrite:
+    if excludes and not rewrite:
         misuse('cannot --exclude-rx or --exclude-rx-from when not rewriting')
-    opt.target_specs = [dcreplace(x, missing=missing, excludes=excludes)
+    opt.target_specs = [dcreplace(x,
+                                  missing=missing,
+                                  excludes=excludes,
+                                  rewriter=rewrite)
                         for x in opt.target_specs]
     return opt
 
@@ -293,8 +300,9 @@ def transfer_commit(name, hash, parent, src_repo, dest_repo, missing):
     return c, tree
 
 
-def append_commit(src_loc, parent, src_repo, dest_repo, missing, excludes, opt):
-    if not opt.rewrite:
+def append_commit(src_loc, parent, src_repo, dest_repo, missing, rewriter,
+                  excludes):
+    if not rewriter:
         assert isinstance(src_loc, (bytes, Loc)), src_loc
         oidx = src_loc if isinstance(src_loc, bytes) else hexlify(src_loc.hash)
         return transfer_commit(None, # unused
@@ -307,18 +315,18 @@ def append_commit(src_loc, parent, src_repo, dest_repo, missing, excludes, opt):
     root, ref, save = path
     assert isinstance(save[1], (vfs.Commit, vfs.FakeLink)), path
     assert isinstance(ref[1], vfs.RevList), path
-    return opt.rewriter.append_save(path, parent, src_repo, dest_repo, excludes)
+    return rewriter.append_save(path, parent, src_repo, dest_repo, excludes)
 
 
-def append_commits(src_loc, dest_hash, src_repo, dest_repo, missing, excludes,
-                   opt):
-    if not opt.rewrite:
+def append_commits(src_loc, dest_hash, src_repo, dest_repo, missing, rewriter,
+                   excludes):
+    if not rewriter:
         commits = list(src_repo.rev_list(hexlify(src_loc.hash)))
         commits.reverse()
         last_c, tree = dest_hash, None
         for commit in commits:
             last_c, tree = append_commit(commit, last_c, src_repo, dest_repo,
-                                         missing, excludes, opt)
+                                         missing, rewriter, excludes)
         assert tree is not None
         return last_c, tree
 
@@ -344,9 +352,9 @@ def append_commits(src_loc, dest_hash, src_repo, dest_repo, missing, excludes,
     last_c, tree = dest_hash, None
     for commit in commits:
         coid = unhexlify(commit)
-        last_c, tree = opt.rewriter.append_save(path + (entry_for_coid[coid],),
-                                                last_c, src_repo, dest_repo,
-                                                excludes)
+        last_c, tree = rewriter.append_save(path + (entry_for_coid[coid],),
+                                            last_c, src_repo, dest_repo,
+                                            excludes)
     assert tree is not None
     return last_c, tree
 
@@ -504,6 +512,8 @@ def resolve_branch_dest(spec, src, src_repo, dest_repo):
 
 
 def resolve_ff(spec, src_repo, dest_repo):
+    if spec.rewriter:
+        misuse(f'--{spec.method} cannot rewrite (use --pick)')
     if spec.missing.mode == 'ignore':
         misuse('currently only --unnamed allows --missing ignore')
     src = resolve_src(spec, src_repo)
@@ -518,7 +528,7 @@ def resolve_ff(spec, src_repo, dest_repo):
     return Target(spec=spec, src=src, dest=dest)
 
 
-def handle_ff(item, src_repo, dest_repo, opt):
+def handle_ff(item, src_repo, dest_repo):
     assert item.spec.method == 'ff'
     assert item.src.type in ('branch', 'save', 'commit')
     src_oidx = hexlify(item.src.hash)
@@ -535,7 +545,7 @@ def handle_ff(item, src_repo, dest_repo, opt):
     return None
 
 
-def resolve_append(spec, src_repo, dest_repo, *, rewrite):
+def resolve_append(spec, src_repo, dest_repo):
     if spec.missing.mode == 'ignore':
         misuse('currently only --unnamed allows --missing ignore')
     src = resolve_src(spec, src_repo)
@@ -543,7 +553,7 @@ def resolve_append(spec, src_repo, dest_repo, *, rewrite):
         misuse('source for %s must be a branch, save, commit, or tree, not %s'
               % (spec_msg(spec), src.type))
     spec, dest = resolve_branch_dest(spec, src, src_repo, dest_repo)
-    if rewrite:
+    if spec.rewriter:
         def vpm(path):
             return path_msg(b"/".join(x[0] for x in src_path))
         if not isinstance(src, Loc):
@@ -558,13 +568,13 @@ def resolve_append(spec, src_repo, dest_repo, *, rewrite):
     return Target(spec=spec, src=src, dest=dest)
 
 
-def handle_append(item, src_repo, dest_repo, opt):
+def handle_append(item, src_repo, dest_repo):
     assert item.spec.method == 'append'
     assert item.src.type in ('branch', 'save', 'commit', 'tree')
     assert item.dest.type == 'branch' or not item.dest.type
     if item.src.type == 'tree':
         src_oidx = hexlify(item.src.hash)
-        if opt.rewrite:
+        if item.spec.rewriter:
             misuse(f'rewrite cannot yet promote tree to commit for {spec_msg(item.spec)}')
         get_random_item(item.spec.src, src_oidx, src_repo, dest_repo,
                         item.spec.missing)
@@ -579,10 +589,11 @@ def handle_append(item, src_repo, dest_repo, opt):
     if item.dest.hash:
         assert item.dest.type in ('branch', 'commit', 'save'), item.dest
     return append_commits(item.src, item.dest.hash, src_repo, dest_repo,
-                          item.spec.missing, item.spec.excludes, opt)
+                          item.spec.missing, item.spec.rewriter,
+                          item.spec.excludes)
 
 
-def resolve_pick(spec, src_repo, dest_repo, *, rewrite):
+def resolve_pick(spec, src_repo, dest_repo):
     if spec.missing.mode == 'ignore':
         misuse('currently only --unnamed allows --missing ignore')
     src = resolve_src(spec, src_repo)
@@ -599,7 +610,7 @@ def resolve_pick(spec, src_repo, dest_repo, *, rewrite):
             spec = dcreplace(spec, dest=get_save_branch(src_repo, spec.src))
     if not spec.dest:
         misuse('no destination provided for %s' % spec_args)
-    if rewrite:
+    if spec.rewriter:
         if src.type != 'save':
             misuse(f'cannot currently --rewrite a {src.type}')
     dest = find_vfs_item(spec.dest, dest_repo)
@@ -617,22 +628,25 @@ def resolve_pick(spec, src_repo, dest_repo, *, rewrite):
     return Target(spec=spec, src=src, dest=dest)
 
 
-def handle_pick(item, src_repo, dest_repo, opt):
+def handle_pick(item, src_repo, dest_repo):
     assert item.spec.method in ('pick', 'force-pick')
     assert item.src.type in ('save', 'commit')
     if item.dest.hash:
         # if the dest is committish, make it the parent
         if item.dest.type in ('branch', 'commit', 'save'):
             return append_commit(item.src, item.dest.hash, src_repo, dest_repo,
-                                 item.spec.missing, item.spec.excludes, opt)
+                                 item.spec.missing, item.spec.rewriter,
+                                 item.spec.excludes)
         assert item.dest.path.startswith(b'/.tag/'), item.dest
     # no parent; either dest is a non-commit tag and we should clobber
     # it, or dest doesn't exist.
     return append_commit(item.src, None, src_repo, dest_repo, item.spec.missing,
-                         item.spec.excludes, opt)
+                         item.spec.rewriter, item.spec.excludes)
 
 
 def resolve_new_tag(spec, src_repo, dest_repo):
+    if spec.rewriter:
+        misuse(f'--{spec.method} cannot currently rewrite')
     if spec.missing.mode == 'ignore':
         misuse('currently only --unnamed allows --missing ignore')
     src = resolve_src(spec, src_repo)
@@ -652,7 +666,7 @@ def resolve_new_tag(spec, src_repo, dest_repo):
     return Target(spec=spec, src=src, dest=dest)
 
 
-def handle_new_tag(item, src_repo, dest_repo, opt):
+def handle_new_tag(item, src_repo, dest_repo):
     assert item.spec.method == 'new-tag'
     assert item.dest.path.startswith(b'/.tag/')
     get_random_item(item.spec.src, hexlify(item.src.hash),
@@ -661,6 +675,8 @@ def handle_new_tag(item, src_repo, dest_repo, opt):
 
 
 def resolve_replace(spec, src_repo, dest_repo):
+    if spec.rewriter:
+        misuse(f'--{spec.method} cannot currently rewrite')
     if spec.missing.mode == 'ignore':
         misuse('currently only --unnamed allows --missing ignore')
     src = resolve_src(spec, src_repo)
@@ -684,7 +700,7 @@ def resolve_replace(spec, src_repo, dest_repo):
     return Target(spec=spec, src=src, dest=dest)
 
 
-def handle_replace(item, src_repo, dest_repo, opt):
+def handle_replace(item, src_repo, dest_repo):
     assert(item.spec.method == 'replace')
     if item.dest.path.startswith(b'/.tag/'):
         get_random_item(item.spec.src, hexlify(item.src.hash),
@@ -699,6 +715,8 @@ def handle_replace(item, src_repo, dest_repo, opt):
 
 
 def resolve_unnamed(spec, src_repo, dest_repo):
+    if spec.rewriter:
+        misuse(f'--{spec.method} cannot currently rewrite')
     if spec.dest:
         misuse('destination name given for %s' % spec_msg(spec))
     src = resolve_src(spec, src_repo, allow='git')
@@ -707,13 +725,13 @@ def resolve_unnamed(spec, src_repo, dest_repo):
     return None
 
 
-def handle_unnamed(item, src_repo, dest_repo, opt):
+def handle_unnamed(item, src_repo, dest_repo):
     get_random_item(item.spec.src, hexlify(item.src.hash),
                     src_repo, dest_repo, item.spec.missing)
     return (None,)
 
 
-def resolve_targets(specs, src_repo, dest_repo, *, rewrite):
+def resolve_targets(specs, src_repo, dest_repo):
     resolved_items = []
     common_args = src_repo, dest_repo
     for spec in specs:
@@ -721,11 +739,9 @@ def resolve_targets(specs, src_repo, dest_repo, *, rewrite):
         if spec.method == 'ff':
             resolved_items.append(resolve_ff(spec, *common_args))
         elif spec.method == 'append':
-            resolved_items.append(resolve_append(spec, *common_args,
-                                                 rewrite=rewrite))
+            resolved_items.append(resolve_append(spec, *common_args))
         elif spec.method in ('pick', 'force-pick'):
-            resolved_items.append(resolve_pick(spec, *common_args,
-                                               rewrite=rewrite))
+            resolved_items.append(resolve_pick(spec, *common_args))
         elif spec.method == 'new-tag':
             resolved_items.append(resolve_new_tag(spec, *common_args))
         elif spec.method == 'replace':
@@ -778,6 +794,8 @@ def main(argv):
         opt.source = argv_bytes(opt.source)
     if opt.bwlimit:
         client.bwlimit = parse_num(opt.bwlimit)
+    if not opt.target_specs:
+        misuse('no methods specified')
 
     with LocalRepo(repo_dir=opt.source) as src_repo, \
          make_repo(derive_repo_addr(remote=opt.remote, die=misuse),
@@ -786,32 +804,27 @@ def main(argv):
         src_split_cfg = hashsplit.configuration(src_repo.config_get)
         dest_split_cfg = hashsplit.configuration(dest_repo.config_get)
 
-        if src_split_cfg != dest_split_cfg and opt.rewrite is None:
+        # For now (maybe forever), they're all the same
+        rewrite = opt.target_specs[0].rewriter
+        assert all(x.rewriter == rewrite for x in opt.target_specs), \
+            [x.rewriter for x in opt.target_specs]
+
+        if src_split_cfg != dest_split_cfg and rewrite is None:
             misuse('repository configs differ; specify --rewrite or --no-rewrite')
 
-        opt.rewriter = \
-            Rewriter(split_cfg=dest_split_cfg, db=opt.rewrite_db) \
-            if opt.rewrite else None
+        # Resolve and validate all sources and destinations, implicit
+        # or explicit, combinations of methods and modes (rewrite,
+        # missing, etc.) and do it up-front, so we can fail before we
+        # start writing (for any obviously broken cases).  Do this
+        # before creating any database via the Rewriter.
+        target_items = resolve_targets(opt.target_specs, src_repo, dest_repo)
 
-        with opt.rewriter or nullcontext():
+        with (Rewriter(split_cfg=dest_split_cfg, db=opt.rewrite_db) \
+              if rewrite else nullctx) as rewriter:
 
-            # Resolve and validate all sources and destinations,
-            # implicit or explicit, and do it up-front, so we can
-            # fail before we start writing (for any obviously
-            # broken cases).
-            target_items = resolve_targets(opt.target_specs,
-                                           src_repo, dest_repo,
-                                           rewrite=opt.rewrite)
-            if opt.rewrite:
-                for item in target_items:
-                    if item.spec.method in ('append', 'force-pick', 'pick'):
-                        continue
-                    elif item.spec.method == 'ff':
-                        misuse(f'--ff cannot rewrite (use --pick)')
-                    elif item.spec.method in ('new-tag', 'replace', 'unnamed'):
-                        misuse(f'--{item.spec.method} cannot currently rewrite')
-                    else:
-                        assert False, f'unexpected method {item.spec.method}'
+            target_items = [(x if not x.spec.rewriter
+                             else x._replace(spec=dcreplace(x.spec, rewriter=rewriter)))
+                            for x in target_items]
 
             updated_refs = {}  # ref_name -> (original_ref, tip_commit(bin))
             no_ref_info = (None, None)
@@ -843,7 +856,7 @@ def main(argv):
                 cur_ref = cur_ref or dest_hash
 
                 handler = handlers[item.spec.method]
-                item_result = handler(item, src_repo, dest_repo, opt)
+                item_result = handler(item, src_repo, dest_repo)
                 if len(item_result) > 1:
                     new_id, tree = item_result
                 else:
