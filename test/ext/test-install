@@ -16,7 +16,11 @@ WVPASS cd "$tmpdir"
 
 export PATH="$tmpdir/install/bin:$PATH"
 WVPASS bup version
-WVPASS bup help save | WVPASS grep 'bup-save - create a new bup backup set'
+if test "$(type -p pandoc)"; then
+    WVPASS bup help save | WVPASS grep 'bup-save - create a new bup backup set'
+else
+    WVSKIP 'pandoc not installed, skipping help test'
+fi
 WVPASS bup -d "$tmpdir/repo" init
 
 WVPASS cd "$top"
