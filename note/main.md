@@ -13,6 +13,15 @@ May require attention
   `$BUP_DIR/index-cache` directories will take precedence.  See
   `bup-config`(5) for additional information.
 
+* `bup` will now correctly disambiguate save names on a given branch
+  that have the same timestamp (committer time), even when the saves
+  are not adjacent. `bup` disambiguates duplicates by adding a unique
+  trailing integer, e.g. `archive/2025-03-29-124014-1`,
+  `archive/2025-03-29-124014-2`, and previously, it wouldn't notice
+  the duplication unless one save was the parent of the other. That's
+  typically the case unless the system clock has been changed, or
+  commands like `bup get --pick` have been used.
+
 * The build system (e.g. `./configure`) no longer tries to find a
   suitable make, and we no longer try to redirect a non-GNU make to
   GNU make.  Whatever make you invoke must be GNU make >= 4.2.  On
@@ -47,10 +56,8 @@ May require attention
   `/etc/gitconfig` would also be consulted.  The only existing
   affected value is `pack.packSizeLimit`.
 
-* A `pack.packSizeLimit` set in the destination repository will now
-  take precedence over any value set in the local repository when both
-  are involved.  Previously the destination repository's value was
-  ignored.
+* `bup` now only considers a `pack.packSizeLimit` set in the
+  destination repository.
 
 * `bup split --copy` now writes the split data to standard output
   instead of Python memoryview representations like
@@ -73,6 +80,9 @@ General
 * `bup init DIRECTORY` is now supported, and places the repository in
   the given `DIRECTORY` which takes precedence over `-d` and
   `BUP_DIR`.
+
+* `bup init` now configures `init.defaultBranch` to avoid newer git
+  versions describing ways to change the default branch.
 
 * The deduplication granularity can now be changed by a new
   `bup.split.files` configuration option which defaults to `legacy:13`
@@ -107,11 +117,20 @@ General
   they've been worth the cost. Our hope is to handle any issues that
   still arise in some simpler way.
 
+* The server "mode" can now be set by a new
+  `bup.server.deduplicate-writes` configuration option. See
+  `bup-config(5)` for additional information.
+
 * A local repository should no longer be required to run `bup index
   -f` or a remote `save`.
 
+* `bup gc` should now avoid reading data that it doesn't actually
+  need. Previously it would retrieve (and discard) a lot of unneeded
+  blobs during a collection.
+
 * When verbose (via `-v...`), `bup gc` and `bup validate-ref-links` no
-  longer print paths while scanning the repository.
+  longer print paths while scanning the repository because earlier git
+  (and then our use of git) didn't allow otherwise.
 
 Bugs
 ----
@@ -131,8 +150,8 @@ Bugs
   when they were directly related. Now it appends across all
   duplicates.
 
-* When run on an existing repository, `bup init` will now leave
-  changes to `core.logAllRefUpdates` alone.
+* When run on an existing repository, `bup init` will no longer change
+  existing `core.logAllRefUpdates` settings.
 
 * `par2` changed its behavior in 1.0 to be incompatible with `bup`'s
   use of symlinks to mitigate a `par2` bug (see the [0.33.4 release
@@ -142,9 +161,9 @@ Bugs
 Build system
 ------------
 
-`./configure` now depends on a bash with support for associative
-arrays.  Accordingly, `prep-for-macos-build` has been adjusted to
-install bash via `brew`.
+* `./configure` now depends on a bash with support for associative
+  arrays.  Accordingly, `prep-for-macos-build` has been adjusted to
+  install bash via `brew`.
 
 Thanks to (at least)
 ====================
