@@ -76,6 +76,15 @@ def temp_dir(*args, **kwargs):
     # https://github.com/python/cpython/issues/88458
     return finalized(mkdtemp(*args, **kwargs), lambda x: rmtree(x))
 
+
+if hasattr(os, 'O_PATH'):
+    def open_path_fd(path): return os.open(path, os.O_PATH)
+else:
+    def open_path_fd(path): return os.open(path, os.O_RDONLY)
+
+def os_closed(x): return finalized(x, os.close)
+
+
 # singleton used when we don't care where the object is
 OBJECT_EXISTS = None
 
@@ -792,6 +801,7 @@ class atomically_replaced_file:
         self.buffering = buffering
         self.canceled = False
         self.tmp_path = None
+        self._path_parent_fd = None
         self._path_parent, self._path_base = os.path.split(self.path)
         if not self._path_parent:
             self._path_parent = '.'
@@ -803,6 +813,8 @@ class atomically_replaced_file:
             ctx.enter_context(finalized(set_closed))
             self._closed = False
             # Anything requiring cleanup must be after this and guarded by ctx
+            ctx = os_closed(open_path_fd(self._path_parent))
+            self._path_parent_fd = self._cleanup.enter_context(ctx)
             self._cleanup = self._cleanup.pop_all()
     def __del__(self):
         assert self._closed
@@ -819,7 +831,8 @@ class atomically_replaced_file:
     def __exit__(self, exc_type, exc_value, traceback):
         with self._cleanup:
             if not (self.canceled or exc_type):
-                os.rename(self.tmp_path, self.path)
+                os.rename(self.tmp_path, self._path_base,
+                          dst_dir_fd=self._path_parent_fd)
     def cancel(self):
         self.canceled = True
 
