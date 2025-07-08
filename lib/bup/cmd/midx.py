@@ -10,6 +10,7 @@ from bup.helpers import \
      add_error, atomically_replaced_file,
      debug1,
      fdatasync,
+     fsync,
      log,
      mmap_readwrite,
      qprogress,
@@ -176,6 +177,8 @@ def _do_midx(outdir, outfilename, infilenames, prefixstr,
                 count = merge_into(fmap, bits, total, inp)
             f.seek(0, os.SEEK_END)
             f.write(b'\0'.join(allfilenames))
+            f.flush()
+            fsync(f.fileno())
 
     # This is just for testing (if you enable this, don't clear inp above)
     # if 0:

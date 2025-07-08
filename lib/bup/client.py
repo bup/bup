@@ -14,6 +14,7 @@ from bup.helpers import \
      debug1,
      debug2,
      finalized,
+     fsync,
      linereader,
      lines_until_sentinel,
      mkdirp,
@@ -396,6 +397,8 @@ class Client:
                 count += len(b)
                 qprogress('Receiving index from server: %d/%d\r' % (count, n))
             progress('Receiving index from server: %d/%d, done.\n' % (count, n))
+        f.flush()
+        fsync(f.fileno())
 
     def sync_index(self, name):
         mkdirp(self.cachedir)

@@ -4,10 +4,19 @@ import errno, os, stat, struct
 
 from bup import metadata, xstat
 from bup._helpers import UINT_MAX, bytescmp
-from bup.helpers import (add_error, mkdirp,
-                         atomically_replaced_file,
-                         log, merge_iter, mmap_readwrite,
-                         progress, qprogress, resolve_parent, slashappend)
+from bup.helpers import \
+    (add_error,
+     atomically_replaced_file,
+     fsync,
+     log,
+     merge_iter,
+     mkdirp,
+     mmap_readwrite,
+     progress,
+     qprogress,
+     resolve_parent,
+     slashappend)
+
 
 EMPTY_SHA = b'\0' * 20
 FAKE_SHA = b'\x01' * 20
@@ -570,6 +579,7 @@ class Writer:
                 self.pending_index.cancel()
             else:
                 self.flush()
+                fsync(self.f.fileno())
 
     def __del__(self):
         assert self.closed

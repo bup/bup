@@ -2,7 +2,7 @@
 from contextlib import ExitStack
 import os, pickle
 
-from bup.helpers import atomically_replaced_file, unlink
+from bup.helpers import atomically_replaced_file, fsync, unlink
 
 
 def pickle_load(filename):
@@ -44,6 +44,8 @@ class HLinkDB:
                                                               buffering=65536)
                 with self._cleanup.enter_context(self._pending_save) as f:
                     pickle.dump(self._node_paths, f, 2)
+                    f.flush()
+                    fsync(f.fileno())
             else: # No data
                 self._cleanup.callback(lambda: unlink(self._filename))
             self._cleanup = self._cleanup.pop_all()
