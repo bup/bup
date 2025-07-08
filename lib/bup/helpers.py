@@ -777,7 +777,7 @@ def chunkyreader(f, count = None):
 
 
 class atomically_replaced_file:
-    def __init__(self, path, mode='w', buffering=-1):
+    def __init__(self, path, mode='w', buffering=-1, sync=True):
         """Return a context manager supporting the atomic replacement of a file.
 
         The context manager yields an open file object that has been
@@ -786,7 +786,10 @@ class atomically_replaced_file:
         the target path (atomically if the platform allows it) if
         there are no exceptions, and the temporary directory will
         always be removed.  Calling cancel() will prevent the
-        replacement.
+        replacement. When sync is true (the default), the replacement
+        will be made durable in the fsync sense, otherwise, it's up to
+        the caller to fsync the path parent. It's always up to the
+        caller to sync the returned file itself, if desired.
 
         The file object will have a name attribute containing the
         file's path, and the mode and buffering arguments will be
@@ -797,6 +800,8 @@ class atomically_replaced_file:
 
           with atomically_replaced_file('foo.txt', 'w') as f:
               f.write('hello jack.')
+              f.flush()
+              os.fsync(f.fileno())
 
         """
         # Anything requiring cleanup must come after _closed is set to
@@ -808,6 +813,7 @@ class atomically_replaced_file:
         self.buffering = buffering
         self.canceled = False
         self.tmp_path = None
+        self._sync = sync
         self._tmp_dir_fd = None
         self._path_parent_fd = None
         self._path_parent, self._path_base = os.path.split(self.path)
@@ -821,7 +827,7 @@ class atomically_replaced_file:
             ctx.enter_context(finalized(set_closed))
             self._closed = False
             # Anything requiring cleanup must be after this and guarded by ctx
-            ctx = os_closed(open_path_fd(self._path_parent))
+            ctx = os_closed(os.open(self._path_parent, os.O_RDONLY))
             self._path_parent_fd = self._cleanup.enter_context(ctx)
             self._cleanup = self._cleanup.pop_all()
     def __del__(self):
@@ -841,10 +847,13 @@ class atomically_replaced_file:
             return f
     def __exit__(self, exc_type, exc_value, traceback):
         with self._cleanup:
-            if not (self.canceled or exc_type):
-                os.rename(b'pending', self._path_base,
-                          src_dir_fd=self._tmp_dir_fd,
-                          dst_dir_fd=self._path_parent_fd)
+            if self.canceled or exc_type:
+                return
+            os.rename(b'pending', self._path_base,
+                      src_dir_fd=self._tmp_dir_fd,
+                      dst_dir_fd=self._path_parent_fd)
+            if self._sync:
+                fdatasync(self._path_parent_fd)
     def cancel(self):
         self.canceled = True
 
