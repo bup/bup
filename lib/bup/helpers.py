@@ -783,6 +783,9 @@ class atomically_replaced_file:
               f.write('hello jack.')
 
         """
+        # Anything requiring cleanup must come after _closed is set to
+        # False to coordinate with __exit__ and __del__, etc.
+        self._closed = True
         assert 'w' in mode
         self.path = path
         self.mode = mode
@@ -793,19 +796,28 @@ class atomically_replaced_file:
         if not self._path_parent:
             self._path_parent = '.'
         assert self._path_base, f'{self._path_base} is a directory'
-        self.cleanup = ExitStack()
+        ctx = ExitStack()
+        self._cleanup = ctx
+        with ctx:
+            def set_closed(_): self._closed = True
+            ctx.enter_context(finalized(set_closed))
+            self._closed = False
+            # Anything requiring cleanup must be after this and guarded by ctx
+            self._cleanup = self._cleanup.pop_all()
+    def __del__(self):
+        assert self._closed
     def __enter__(self):
-        with self.cleanup:
+        with self._cleanup:
             tmpdir = temp_dir(dir=self._path_parent,
                               prefix=self._path_base + b'-')
-            tmpdir = self.cleanup.enter_context(tmpdir)
+            tmpdir = self._cleanup.enter_context(tmpdir)
             self.tmp_path = tmpdir + b'/pending'
             f = open(self.tmp_path, mode=self.mode, buffering=self.buffering)
-            f = self.cleanup.enter_context(f)
-            self.cleanup = self.cleanup.pop_all()
+            f = self._cleanup.enter_context(f)
+            self._cleanup = self._cleanup.pop_all()
             return f
     def __exit__(self, exc_type, exc_value, traceback):
-        with self.cleanup:
+        with self._cleanup:
             if not (self.canceled or exc_type):
                 os.rename(self.tmp_path, self.path)
     def cancel(self):
