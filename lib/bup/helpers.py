@@ -789,12 +789,16 @@ class atomically_replaced_file:
         self.buffering = buffering
         self.canceled = False
         self.tmp_path = None
+        self._path_parent, self._path_base = os.path.split(self.path)
+        if not self._path_parent:
+            self._path_parent = '.'
+        assert self._path_base, f'{self._path_base} is a directory'
         self.cleanup = ExitStack()
     def __enter__(self):
         with self.cleanup:
-            parent, name = os.path.split(self.path)
-            tmpdir = self.cleanup.enter_context(temp_dir(dir=parent,
-                                                         prefix=name + b'-'))
+            tmpdir = temp_dir(dir=self._path_parent,
+                              prefix=self._path_base + b'-')
+            tmpdir = self.cleanup.enter_context(tmpdir)
             self.tmp_path = tmpdir + b'/pending'
             f = open(self.tmp_path, mode=self.mode, buffering=self.buffering)
             f = self.cleanup.enter_context(f)
