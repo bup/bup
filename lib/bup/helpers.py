@@ -102,25 +102,28 @@ def last(iterable):
         pass
     return result
 
-try:
-    _fdatasync = os.fdatasync
-except AttributeError:
-    _fdatasync = os.fsync
 
-if sys.platform.startswith('darwin'):
-    # Apparently os.fsync on OS X doesn't guarantee to sync all the way down
+if not sys.platform.startswith('darwin'):
+    fsync = os.fsync
+    fdatasync = getattr(os, 'fdatasync', os.fsync) # currently always fdatasync
+else:
+    # macos doesn't guarantee to sync all the way down (see fsync(2))
     import fcntl
-    def fdatasync(fd):
+    def _fullsync(fd):
         try:
-            return fcntl.fcntl(fd, fcntl.F_FULLFSYNC)
+            # Ignore result - errors will throw, other values undocumented
+            fcntl.fcntl(fd, fcntl.F_FULLFSYNC)
+            return True
         except IOError as e:
             # Fallback for file systems (SMB) that do not support F_FULLFSYNC
-            if e.errno == errno.ENOTSUP:
-                return _fdatasync(fd)
-            else:
+            if e.errno != errno.ENOTSUP:
                 raise
-else:
-    fdatasync = _fdatasync
+            return False
+    def fsync(fd): return _fullsync(fd) or os.fsync(fd)
+    if getattr(os, 'fdatasync', None): # ...in case it's added someday
+        def fdatasync(fd): return _fullsync(fd) or os.fdatasync(fd)
+    else:
+        def fdatasync(fd): return _fullsync(fd) or os.fsync(fd)
 
 
 def partition(predicate, stream):

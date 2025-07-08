@@ -985,7 +985,7 @@ class LocalPackStore():
                                           b'objects/pack/pack-' +  hexlify(packbin))
                 os.rename(tmpdir + b'/pack', nameprefix + b'.pack')
                 os.rename(tmpdir + b'/idx', nameprefix + b'.idx')
-                os.fsync(pfd)
+                fdatasync(pfd)
                 if self._on_pack_finish:
                     self._on_pack_finish(nameprefix)
                 if self._run_midx:
