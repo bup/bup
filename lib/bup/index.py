@@ -7,6 +7,7 @@ from bup._helpers import UINT_MAX, bytescmp
 from bup.compat import pending_raise
 from bup.helpers import (add_error,
                          atomically_replaced_file,
+                         fsync,
                          log, merge_iter, mmap_readwrite,
                          progress, qprogress, resolve_parent, slashappend)
 
@@ -588,6 +589,7 @@ class Writer:
                 self.pending_index.cancel()
             else:
                 self.flush()
+                fsync(self.f.fileno())
 
     def __del__(self):
         assert self.closed

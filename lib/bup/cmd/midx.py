@@ -5,7 +5,8 @@ import glob, os, math, resource, struct, sys
 
 from bup import options, git, midx, _helpers, xstat
 from bup.compat import ExitStack, argv_bytes, hexstr
-from bup.helpers import (Sha1, add_error, atomically_replaced_file, debug1, fdatasync,
+from bup.helpers import (Sha1, add_error, atomically_replaced_file, debug1,
+                         fdatasync, fsync,
                          log, mmap_readwrite, qprogress,
                          saved_errors, unlink)
 from bup.io import byte_stream, path_msg
@@ -169,6 +170,8 @@ def _do_midx(outdir, outfilename, infilenames, prefixstr,
                 count = merge_into(fmap, bits, total, inp)
             f.seek(0, os.SEEK_END)
             f.write(b'\0'.join(allfilenames))
+            f.flush()
+            fsync(f.fileno())
 
     # This is just for testing (if you enable this, don't clear inp above)
     # if 0:

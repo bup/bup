@@ -9,7 +9,7 @@ import socket
 from bup import git, ssh, vfs
 from bup.compat import environ, pending_raise
 from bup.helpers import (Conn, atomically_replaced_file, chunkyreader, debug1,
-                         debug2, linereader, lines_until_sentinel,
+                         debug2, fsync, linereader, lines_until_sentinel,
                          mkdirp, nullcontext_if_not, progress, qprogress, DemuxConn)
 from bup.io import path_msg
 from bup.vint import write_bvec
@@ -282,6 +282,8 @@ class Client:
                 count += len(b)
                 qprogress('Receiving index from server: %d/%d\r' % (count, n))
             progress('Receiving index from server: %d/%d, done.\n' % (count, n))
+            f.flush()
+            fsync(f.fileno())
             self.check_ok()
 
     def _make_objcache(self):
