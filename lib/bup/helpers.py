@@ -77,6 +77,13 @@ def temp_dir(*args, **kwargs):
     return finalized(mkdtemp(*args, **kwargs), lambda x: rmtree(x))
 
 
+def open_in(fd, path, *args, **kwargs):
+    """Open path with dir_fd set to fd via open()'s opener."""
+    assert 'opener' not in kwargs
+    def opener(name, mode):
+        return os.open(name, mode, dir_fd=fd)
+    return open(path, *args, opener=opener, **kwargs)
+
 if hasattr(os, 'O_PATH'):
     def open_path_fd(path): return os.open(path, os.O_PATH)
 else:
@@ -801,6 +808,7 @@ class atomically_replaced_file:
         self.buffering = buffering
         self.canceled = False
         self.tmp_path = None
+        self._tmp_dir_fd = None
         self._path_parent_fd = None
         self._path_parent, self._path_base = os.path.split(self.path)
         if not self._path_parent:
@@ -823,15 +831,19 @@ class atomically_replaced_file:
             tmpdir = temp_dir(dir=self._path_parent,
                               prefix=self._path_base + b'-')
             tmpdir = self._cleanup.enter_context(tmpdir)
+            tmpdir_ctx = os_closed(open_path_fd(tmpdir))
+            self._tmp_dir_fd = self._cleanup.enter_context(tmpdir_ctx)
             self.tmp_path = tmpdir + b'/pending'
-            f = open(self.tmp_path, mode=self.mode, buffering=self.buffering)
+            f = open_in(self._tmp_dir_fd, b'pending', mode=self.mode,
+                        buffering=self.buffering)
             f = self._cleanup.enter_context(f)
             self._cleanup = self._cleanup.pop_all()
             return f
     def __exit__(self, exc_type, exc_value, traceback):
         with self._cleanup:
             if not (self.canceled or exc_type):
-                os.rename(self.tmp_path, self._path_base,
+                os.rename(b'pending', self._path_base,
+                          src_dir_fd=self._tmp_dir_fd,
                           dst_dir_fd=self._path_parent_fd)
     def cancel(self):
         self.canceled = True

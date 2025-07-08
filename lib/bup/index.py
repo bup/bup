@@ -617,7 +617,7 @@ class Writer:
 
     def new_reader(self):
         self.flush()
-        return Reader(self.f.name)
+        return Reader(self.pending_index.tmp_path)
 
 
 def _slashappend_or_add_error(p, caller):
