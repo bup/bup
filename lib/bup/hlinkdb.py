@@ -51,6 +51,8 @@ class HLinkDB:
             self._cleanup = self._cleanup.pop_all()
 
     def commit_save(self):
+        if self.closed:
+            return
         self.closed = True
         if self._node_paths and not self._pending_save:
             raise Error('cannot commit save of %r; no save prepared'
@@ -59,6 +61,8 @@ class HLinkDB:
         self._pending_save = None
 
     def abort_save(self):
+        if self.closed:
+            return
         self.closed = True
         with self._cleanup:
             if self._pending_save:

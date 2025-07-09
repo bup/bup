@@ -573,6 +573,8 @@ class Writer:
         assert(self.level == None)
 
     def close(self, abort=False):
+        if self.closed:
+            return
         self.closed = True
         with self.cleanup:
             if abort:
