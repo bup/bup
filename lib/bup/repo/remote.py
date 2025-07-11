@@ -6,6 +6,7 @@ from bup.repo.base import _make_base, RepoProtocol
 class RemoteRepo(RepoProtocol):
     def __init__(self, address, create=False, compression_level=None,
                  max_pack_size=None, max_pack_objects=None):
+        self._address = address
         self.closed = True # in case Client instantiation fails
         self.client = client.Client(address, create=create)
         self.closed = False
@@ -22,6 +23,11 @@ class RemoteRepo(RepoProtocol):
         self.refs = self.client.refs
         self.resolve = self.client.resolve
         self._packwriter = None
+
+    def __repr__(self):
+        cls = self.__class__
+        return f'<{cls.__module__}.{cls.__name__} object at {hex(id(self))}' \
+            f' address={self._address!r}>'
 
     def close(self):
         if not self.closed:
