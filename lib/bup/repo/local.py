@@ -53,6 +53,11 @@ class LocalRepo(RepoProtocol):
                 self._deduplicate_writes = True
         self.closed = False
 
+    def __repr__(self):
+        cls = self.__class__
+        return f'<{cls.__module__}.{cls.__name__} object at {hex(id(self))}' \
+            f' repo_dir={self.repo_dir!r}>'
+
     def close(self):
         if not self.closed:
             self.closed = True
