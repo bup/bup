@@ -1,8 +1,9 @@
 
 from binascii import hexlify
-from collections import namedtuple
+from typing import List, Optional
 import re
 
+from bup.compat import dataclass
 from bup.helpers import utc_offset_str
 
 
@@ -56,13 +57,20 @@ _parent_hash_rx = re.compile(br'\s*parent ([abcdefABCDEF0123456789]{40})\s*')
 
 # Note that the author_sec and committer_sec values are (UTC) epoch
 # seconds, and for now the mergetag is not included.
-CommitInfo = namedtuple('CommitInfo', ['tree', 'parents',
-                                       'author_name', 'author_mail',
-                                       'author_sec', 'author_offset',
-                                       'committer_name', 'committer_mail',
-                                       'committer_sec', 'committer_offset',
-                                       'gpgsig',
-                                       'message'])
+@dataclass(slots=True, frozen=True)
+class CommitInfo:
+    tree: bytes # oidx
+    parents: List[bytes] # oidx
+    author_name: bytes
+    author_mail: bytes
+    author_sec: int
+    author_offset: int
+    committer_name: bytes
+    committer_mail: bytes
+    committer_sec: int
+    committer_offset: int
+    gpgsig: Optional[bytes]
+    message: bytes
 
 def parse_commit(content):
     commit_match = re.match(_commit_rx, content)
