@@ -30,3 +30,33 @@ _wvfind_caller()
     WVCALLER_FILE=${BASH_SOURCE[2]}
     WVCALLER_LINE=${BASH_LINENO[1]}
 }
+
+
+_wvsigpipe_rc="$(dev/python -c 'import signal; print(signal.SIGPIPE)')" \
+    || exit $?
+_wvsigpipe_rc="$((_wvsigpipe_rc + 128))"
+
+WVPIPE()
+{
+    # Identical to WVPASS, except that it ignores SIGPIPE. For use
+    # when the consumer might exit early, e.g. for coreutils head:
+    #   WVPIPE something | WVPASS head -1
+    local TEXT="$*"
+    _wvpushcall "$@"
+
+    _wvfind_caller
+    "$@"
+    local rc=$?
+    if test $rc -eq 0 -o $rc -eq "$_wvsigpipe_rc"; then
+	if test $rc -eq "$_wvsigpipe_rc"; then
+	    TEXT="$TEXT (SIGPIPE)"
+	fi
+	_wvpopcall
+	_wvcheck 0 "$TEXT"
+	return 0
+    else
+	_wvcheck 1 "$TEXT"
+	# NOTREACHED
+	return 2
+    fi
+}

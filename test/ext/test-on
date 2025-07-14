@@ -26,8 +26,8 @@ WVPASSEQ $(WVPASS cat get.log | WVPASS wc -l) 2
 tree_id=$(WVPASS awk 'FNR == 1' get.log) || exit $?
 commit_id=$(WVPASS awk 'FNR == 2' get.log) || exit $?
 WVPASS git ls-tree "$tree_id"
-WVPASS git cat-file commit "$commit_id" | head -n 1 \
-    | WVPASS grep "^tree $tree_id\$"
+cat_id="$(WVPIPE git cat-file commit "$commit_id" | WVPASS head -1)" || exit $?
+WVPASSEQ "tree $tree_id" "$cat_id"
 
 WVPASS bup restore -C restore "src/latest/$(pwd)/src/."
 WVPASS compare-trees src/ restore/
@@ -38,8 +38,8 @@ WVPASS bup on - split -ctn baz src/baz > get.log
 tree_id=$(WVPASS awk 'FNR == 1' get.log) || exit $?
 commit_id=$(WVPASS awk 'FNR == 2' get.log) || exit $?
 WVPASS git ls-tree "$tree_id"
-WVPASS git cat-file commit "$commit_id" | head -n 1 \
-    | WVPASS grep "^tree $tree_id\$"
+cat_id="$(WVPIPE git cat-file commit "$commit_id" | WVPASS head -1)" || exit $?
+WVPASSEQ "tree $tree_id" "$cat_id"
 WVPASS bup join baz > restore-baz
 WVPASS cmp src/baz restore-baz
 
@@ -73,7 +73,8 @@ WVPASS seq 100000 > "$tmpdir/longfile"
 WVPASS bup on - split -ctn large "$tmpdir/longfile"
 WVPASS rm -rf "$XDG_CACHE_HOME"/bup/remote/
 WVPASS bup --debug on - split -ctn large "$tmpdir/longfile"
-WVPASS test -f "$(ls "$XDG_CACHE_HOME"/bup/remote/*/*.idx | head -1)"
+idxs=("$XDG_CACHE_HOME"/bup/remote/*/*.idx)
+WVPASS test -f "${idxs[0]}"
 
 WVPASS cd "$top"
 WVPASS rm -rf "$tmpdir"

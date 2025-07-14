@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-. ./wvtest-bup.sh
+. ./wvtest-bup.sh || exit $?
+. test/lib/btl.sh || exit $?
 
 set -o pipefail
 
@@ -28,9 +29,9 @@ WVPASS bup -d dest-repo get -s bup --unnamed "git:$src_oid"
 WVPASS bup -d dest-repo join "$src_oid" > /dev/null
 WVPASS rm -rf dest-repo
 
-WVPASS git ls-tree src:a | WVPASS cut -d' ' -f 3 \
-    | WVPASS cut -b -40 | WVPASS head -1 > bupm-oid
-WVPASS "$top/dev/perforate-repo" --drop-oids "$BUP_DIR" < bupm-oid
+bupm_oid="$(WVPIPE git ls-tree src:a | WVPASS head -1 | WVPASS btl-ent-oid)" \
+    || exit $?
+echo "$bupm_oid" | WVPASS "$top/dev/perforate-repo" --drop-oids "$BUP_DIR"
 
 WVPASS bup -d dest-repo init
 WVFAIL bup -d dest-repo get -s bup --unnamed "git:$src_oid" 2>&1 | tee get.log
@@ -42,7 +43,7 @@ WVPASS bup -d dest-repo init
 WVFAIL bup -d dest-repo get --ignore-missing -s bup \
        --unnamed "git:$src_oid" 2>&1 \
     | tee get.log
-WVPASSEQ 1 "$(grep -cF "skipping missing source object $(<bupm-oid)" get.log)"
+WVPASSEQ 1 "$(grep -cF "skipping missing source object ${bupm_oid}" get.log)"
 WVPASS rm -rf dest-repo
 
 WVPASS cd "$top"

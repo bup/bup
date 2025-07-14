@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 . ./wvtest-bup.sh || exit $?
+. test/lib/btl.sh || exit $?
 
 set -o pipefail
 
@@ -24,9 +25,9 @@ WVPASS bup save --strip -n src src
 WVPASS bup validate-object-links | tee validate-out
 WVPASS test -z "$(<validate-out)"
 
-WVPASS git ls-tree src:a | WVPASS cut -d' ' -f 3 \
-    | WVPASS cut -b -40 | WVPASS head -1 > bupm-oid
-WVPASS "$top/dev/perforate-repo" --drop-oids "$BUP_DIR" < bupm-oid
+bupm_oid="$(WVPIPE git ls-tree src:a | WVPASS head -1 | WVPASS btl-ent-oid)" \
+    || exit $?
+echo "$bupm_oid" | WVPASS "$top/dev/perforate-repo" --drop-oids "$BUP_DIR"
 
 set -x
 bup validate-object-links > validate-out
@@ -36,7 +37,7 @@ cat validate-out
 WVPASSEQ 1 "$rc"
 
 src_a_oid="$(git rev-parse src:a)"
-WVPASS grep -E "^no $(<bupm-oid) for $src_a_oid" validate-out
+WVPASS grep -E "^no $bupm_oid for $src_a_oid" validate-out
 
 WVPASS cd "$top"
 WVPASS rm -rf "$tmpdir"

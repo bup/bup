@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-. ./wvtest-bup.sh
+. ./wvtest-bup.sh || exit $?
+. test/lib/btl.sh || exit $?
 
 set -o pipefail
 
@@ -35,9 +36,9 @@ WVPASS bup save --strip -n src src
 WVPASS bup validate-ref-links 2>&1 | tee validate.log
 WVPASS grep -vE '^missing ' validate.log
 
-WVPASS git ls-tree src:a | WVPASS cut -d' ' -f 3 \
-    | WVPASS cut -b -40 | WVPASS head -1 > bupm-oid
-WVPASS "$top/dev/perforate-repo" --drop-oids "$BUP_DIR" < bupm-oid
+bupm_oid="$(WVPIPE git ls-tree src:a | WVPASS head -1 | WVPASS btl-ent-oid)" \
+    || exit $?
+echo "$bupm_oid" | WVPASS "$top/dev/perforate-repo" --drop-oids "$BUP_DIR"
 
 expect-one-src-missing
 

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-. ./wvtest-bup.sh
+. ./wvtest-bup.sh || exit $?
+. test/lib/btl.sh || exit $?
 
 set -o pipefail
 
@@ -30,10 +31,10 @@ src_oid="$(WVPASS git rev-parse src)" || exit $?
 # post-order traversal would fetch/store (ordering for a/ is 3 2 1
 # .bupm), leaving the destination with an incomplete a/.
 
-WVPASS git ls-tree src:a | WVPASS cut -d' ' -f 3 \
-    | WVPASS cut -b -40 | WVPASS head -1 > bupm-oid
+bupm_oid="$(WVPIPE git ls-tree src:a | WVPASS head -1 | WVPASS btl-ent-oid)" \
+    || exit $?
 WVPASS cp -a bup bup-missing
-WVPASS "$top/dev/perforate-repo" --drop-oids bup-missing < bupm-oid
+echo "$bupm_oid" | WVPASS "$top/dev/perforate-repo" --drop-oids bup-missing
 
 # Now fetch from the broken repo, make sure that creates a broken src,
 # then fetch again from the complete repo and make sure that produces
