@@ -81,6 +81,83 @@ def byte_stream(file):
     return file.buffer
 
 
+def _make_enc_sh_map():
+    m = [None] * 256
+    for i in range(7): m[i] = br'\x%02x' % i
+    m[7] = br'\a'
+    m[8] = br'\b'
+    m[9] = br'\t'
+    m[10] = br'\n'
+    m[11] = br'\v'
+    m[12] = br'\f'
+    m[13] = br'\r'
+    for i in range(14, 27): m[i] = br'\x%02x' % i
+    m[27] = br'\e' # ESC
+    for i in range(28, 32): m[i] = br'\x%02x' % i
+    m[39] = br"\'"
+    m[92] = br'\\'
+    for i in range(127, 256): m[i] = br'\x%02x' % i
+    return m
+
+_enc_sh_map = _make_enc_sh_map()
+
+def enc_dsq(val):
+    """Encode val in POSIX $'...' (dollar-single-quote) format."""
+    # https://pubs.opengroup.org/onlinepubs/9799919799/utilities/V3_chap02.html#tag_19_02_04
+    result = [b"$'"]
+    part_start = 0
+    i = 0
+
+    def finish_part():
+        nonlocal result, i, part_start
+        if i != part_start:
+            result.append(val[part_start:i])
+        part_start = i = i + 1
+
+    encoding = _enc_sh_map
+    while i < len(val):
+        b = val[i]
+        enc = encoding[b]
+        if enc:
+            finish_part()
+            result.append(enc)
+        else:
+            i += 1
+    finish_part()
+    result.append(b"'")
+    return b''.join(result)
+
+def enc_sh(val):
+    """Minimally POSIX quote val as a single line. Use no quotes if
+    possible, single quotes if val doesn't contain single quotes or
+    newline, otherwise dollar-single-quote.
+    https://pubs.opengroup.org/onlinepubs/9799919799/utilities/V3_chap02.html#tag_19_02
+
+    For now, like git with core.quotePath set to false, this
+    conservatively hex escapes all bytes with the high bit set,
+    keeping the output compatible with any encoding that's compatible
+    with ASCII, e.g. UTF-8, Latin-1, etc.
+
+    """
+    #pylint: disable=consider-using-in
+    assert isinstance(val, bytes), val
+    if val == b'':
+        return b"''"
+    need_sq = False
+    need_dsq = False
+    for c in val: # 32 is space
+        if c < 32 or c == b"'"[0]:
+            need_dsq = True
+            break
+        # This set is everything from POSIX except ' and \n (handled above).
+        if c in b'|&;<>()$`\\" \t*?[]^!#~=%{,}':
+            need_sq = True
+    if need_dsq:
+        return enc_dsq(val)
+    if need_sq:
+        return b"'%s'" % val
+    return val
+
 def path_msg(x):
     """Return a string representation of a path."""
     # FIXME: configurability (might git-config quotePath be involved?)
