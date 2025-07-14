@@ -5,6 +5,8 @@ import re
 
 from bup.compat import dataclass
 from bup.helpers import utc_offset_str
+from bup.io import enc_sh
+from bup.version import version
 
 
 def parse_tz_offset(s):
@@ -123,3 +125,11 @@ def create_commit_blob(tree, parent,
     l.append(b'')
     l.append(msg)
     return b'\n'.join(l)
+
+
+def commit_message(message, command):
+    message = message.rstrip()
+    return b'\n'.join((message,
+                     b'',
+                     b'Bup-Version: %s' % version,
+                     b'Bup-Argv: %s' % b' '.join(map(enc_sh, command))))
