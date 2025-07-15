@@ -967,8 +967,11 @@ class PackWriter:
                    author, adate_sec, adate_tz,
                    committer, cdate_sec, cdate_tz,
                    msg):
-        """Create a commit object in the pack.  The date_sec values must be
-        epoch-seconds, and if a tz is None, the local timezone is assumed."""
+        """Create a commit object in the pack.  The date_sec values
+        must be epoch-seconds, and if a tz is None, the local timezone
+        is assumed. Return the commit oid.
+
+        """
         content = create_commit_blob(tree, parent,
                                      author, adate_sec, adate_tz,
                                      committer, cdate_sec, cdate_tz,
