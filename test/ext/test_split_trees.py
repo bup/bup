@@ -1,6 +1,6 @@
 
 from os import chdir, environb as environ, mkdir
-from os.path import join as pj
+from os.path import join as joinp
 import pytest
 
 from buptest import ex, exo
@@ -15,7 +15,7 @@ def large_tree(tmpdir):
     for i in range(10000):
         d = b'%s/some-random-path-name-to-make-the-tree-bigger-%d' % (tmpdir, i)
         mkdir(d)
-        with open(pj(d, b'data'), 'w') as f:
+        with open(joinp(d, b'data'), 'w') as f:
             print('data', file=f)
     return tmpdir
 
