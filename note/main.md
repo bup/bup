@@ -162,6 +162,11 @@ Bugs
   when they were directly related. Now it appends across all
   duplicates.
 
+* `bup prune-older` should no longer be confused by duplicate save
+  names, i.e. commits with duplicate commit times (author
+  dates). Previously it would fail with a message like "error: cannot
+  access SAVE in SAVE".
+
 * When run on an existing repository, `bup init` will no longer change
   existing `core.logAllRefUpdates` settings.
 

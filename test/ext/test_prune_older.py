@@ -23,13 +23,17 @@ def create_older_random_saves(n, start_utc, end_utc):
     with open(b'foo', 'wb') as f:
         pass
     ex([b'git', b'add', b'foo'])
-    utcs = set()
+    utcs = []
     while len(utcs) != n:
-        utcs.add(randint(start_utc, end_utc))
+        utc = randint(start_utc, end_utc)
+        utcs.append(utc)
+    if n > 1: # ensure we have some duplicates
+        for i in range(min(10, max(1, n // 3))):
+            utcs[i] = utcs[-i]
     utcs = sorted(utcs)
-    for utc in utcs:
+    for i, utc in enumerate(utcs):
         with open(b'foo', 'wb') as f:
-            f.write(b'%d\n' % utc)
+            f.write(b'%d\n' % i)
         ex([b'git', b'commit', b'--date', b'%d' % utc, b'-qam', b'%d' % utc])
     ex([b'git', b'gc', b'--aggressive'])
     return utcs

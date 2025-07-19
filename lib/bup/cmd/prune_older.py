@@ -12,6 +12,7 @@ from bup.helpers import die_if_errors, log, partition, period_as_secs
 from bup.io import byte_stream
 from bup.repo import LocalRepo
 from bup.rm import bup_rm
+from bup.vfs import save_names_for_commit_utcs
 
 
 def branches(refnames=tuple()):
@@ -19,14 +20,11 @@ def branches(refnames=tuple()):
             in git.list_refs(patterns=(b'refs/heads/' + n for n in refnames),
                              limit_to_heads=True))
 
-def save_name(branch, utc):
-    return branch + b'/' \
-            + strftime('%Y-%m-%d-%H%M%S', localtime(utc)).encode('ascii')
-
 def classify_saves(saves, period_start):
-    """For each (utc, id) in saves, yield (True, (utc, id)) if the save
-    should be kept and (False, (utc, id)) if the save should be removed.
-    The ids are binary hashes.
+    """For each (utc, ...) in saves, yield (True, (utc, ...)) if the
+    save should be kept and (False, (utc, ...)) if the save should be
+    removed.
+
     """
 
     def retain_newest_in_region(region):
@@ -139,16 +137,20 @@ def main(argv):
     removals = []
     for branch, branch_id in branches(roots):
         die_if_errors()
-        saves = ((utc, unhexlify(oidx)) for (oidx, utc) in
-                 git.rev_list(branch_id, format=b'%at', parse=parse_info))
-        for keep_save, (utc, id) in classify_saves(saves, period_start):
+        # At the moment, oids are irrelevant; the save name is crucial
+        revs = list(git.rev_list(branch_id, format=b'%at', parse=parse_info))
+        saves = ((utc, unhexlify(oidx), save_name) \
+                 for ((oidx, utc), save_name) \
+                 in zip(revs, save_names_for_commit_utcs(x[1] for x in revs)))
+        for keep_save, (utc, oid_, save_name) \
+                in classify_saves(saves, period_start):
             assert(keep_save in (False, True))
             # FIXME: base removals on hashes
             if opt.pretend:
-                out.write((b'+ ' if keep_save else b'- ')
-                          + save_name(branch, utc) + b'\n')
+                out.write(b'%s %s/%s\n' % (b'+ ' if keep_save else b'- ',
+                                           branch, save_name))
             elif not keep_save:
-                removals.append(save_name(branch, utc))
+                removals.append(b'%s/%s' % (branch, save_name))
 
     if not opt.pretend:
         die_if_errors()

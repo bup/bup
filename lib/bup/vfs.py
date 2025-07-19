@@ -722,15 +722,16 @@ def _reverse_suffix_duplicates(strs):
         seen[name][0] -= 1
     del seen
 
+def save_names_for_commit_utcs(utcs):
+    names = (strftime('%Y-%m-%d-%H%M%S', localtime(utc)).encode('ascii')
+             for utc in utcs)
+    return _reverse_suffix_duplicates(names)
+
 def parse_rev(f):
     items = f.readline().split(None)
     assert len(items) == 2
     tree, auth_sec = items
     return unhexlify(tree), int(auth_sec)
-
-def _name_for_rev(rev):
-    commit_oidx, (tree_oid, utc) = rev
-    return strftime('%Y-%m-%d-%H%M%S', localtime(utc)).encode('ascii')
 
 def _item_for_rev(rev):
     commit_oidx, (tree_oid, utc) = rev
@@ -757,7 +758,7 @@ def cache_commit(repo, oid, require_meta=True):
                          parse=parse_rev)
     rev_items, rev_names = tee(revs)
     revs = None  # Don't disturb the tees
-    rev_names = _reverse_suffix_duplicates(_name_for_rev(x) for x in rev_names)
+    rev_names = save_names_for_commit_utcs(x[1][1] for x in rev_names)
     rev_items = (_item_for_rev(x) for x in rev_items)
     tip = None
     for name, item in zip(rev_names, rev_items):
