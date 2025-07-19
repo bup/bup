@@ -178,10 +178,9 @@ def main(argv):
     outfilename = output or os.path.join(path, b'bup.bloom')
     if opt.check:
         check_bloom(path, outfilename, opt.check)
+        if not saved_errors:
+            log('All tests passed.\n')
     elif opt.ruin:
         ruin_bloom(outfilename)
     else:
         do_bloom(path, outfilename, opt.k, opt.force)
-
-    if not saved_errors:
-        log('All tests passed.\n')
