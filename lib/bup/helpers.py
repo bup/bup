@@ -800,6 +800,9 @@ class atomically_replaced_file:
         with self.cleanup:
             if not (self.canceled or exc_type):
                 os.rename(self.tmp_path, self.path)
+                parent = os.path.dirname(self.path) or b'.'
+                with finalized(os.open(parent, os.O_RDONLY), os.close) as fd:
+                    fsync(fd)
     def cancel(self):
         self.canceled = True
 
