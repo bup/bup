@@ -119,6 +119,10 @@ def last(iterable):
     return result
 
 
+# Note: it's been reported that Solaris (11.4's) fdatasync excludes
+# some important operations (file extensions and holes) from
+# fdatasync.
+
 if not sys.platform.startswith('darwin'):
     fsync = os.fsync
     fdatasync = getattr(os, 'fdatasync', os.fsync) # currently always fdatasync
@@ -853,7 +857,7 @@ class atomically_replaced_file:
                       src_dir_fd=self._tmp_dir_fd,
                       dst_dir_fd=self._path_parent_fd)
             if self._sync:
-                fdatasync(self._path_parent_fd)
+                fsync(self._path_parent_fd)
     def cancel(self):
         self.canceled = True
 

@@ -9,7 +9,6 @@ from bup.helpers import \
     (Sha1,
      add_error, atomically_replaced_file,
      debug1,
-     fdatasync,
      fsync,
      log,
      mmap_readwrite,
@@ -171,7 +170,7 @@ def _do_midx(outdir, outfilename, infilenames, prefixstr,
 
             f.truncate(12 + 4*entries + 20*total + 4*total)
             f.flush()
-            fdatasync(f.fileno())
+            fsync(f.fileno())
 
             with mmap_readwrite(f, close=False) as fmap:
                 count = merge_into(fmap, bits, total, inp)

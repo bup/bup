@@ -23,8 +23,8 @@ from bup.helpers import (EXIT_FAILURE,
                          ObjectLocation,
                          Sha1, add_error, chunkyreader, debug1, debug2,
                          exo,
-                         fdatasync,
                          finalized,
+                         fsync,
                          log,
                          make_repo_id,
                          merge_iter,
@@ -977,7 +977,7 @@ class LocalPackStore():
                 packbin = sum.digest()
                 f.write(packbin)
                 f.flush()
-                fdatasync(f.fileno())
+                fsync(f.fileno())
                 f.close()
 
                 idx.write(tmpdir + b'/idx', packbin)
@@ -985,7 +985,7 @@ class LocalPackStore():
                                           b'objects/pack/pack-' +  hexlify(packbin))
                 os.rename(tmpdir + b'/pack', nameprefix + b'.pack')
                 os.rename(tmpdir + b'/idx', nameprefix + b'.idx')
-                fdatasync(pfd)
+                fsync(pfd)
                 if self._on_pack_finish:
                     self._on_pack_finish(nameprefix)
                 if self._run_midx:
@@ -1123,7 +1123,7 @@ class PackIdxV2Writer:
         idx_f = open(filename, 'w+b')
         try:
             idx_f.truncate(index_len)
-            fdatasync(idx_f.fileno())
+            fsync(idx_f.fileno())
             idx_map = mmap_readwrite(idx_f, close=False)
             try:
                 count = _helpers.write_idx(filename, idx_map, self.idx,
@@ -1149,7 +1149,7 @@ class PackIdxV2Writer:
             for b in chunkyreader(idx_f):
                 idx_sum.update(b)
             idx_f.write(idx_sum.digest())
-            fdatasync(idx_f.fileno())
+            fsync(idx_f.fileno())
         finally:
             idx_f.close()
 
