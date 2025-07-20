@@ -101,7 +101,7 @@ except AttributeError:
 if sys.platform.startswith('darwin'):
     # Apparently os.fsync on OS X doesn't guarantee to sync all the way down
     import fcntl
-    def fdatasync(fd):
+    def fsync(fd):
         try:
             return fcntl.fcntl(fd, fcntl.F_FULLFSYNC)
         except IOError as e:
@@ -110,8 +110,10 @@ if sys.platform.startswith('darwin'):
                 return _fdatasync(fd)
             else:
                 raise
+    fdatasync = fsync
 else:
-    fdatasync = _fdatasync
+    fdatasync = getattr(os, 'fdatasync', os.fsync) # currently always fdatasync
+    fsync = os.fsync
 
 
 def partition(predicate, stream):
