@@ -39,6 +39,19 @@ clean_paths :=
 doc_clean_paths :=
 generated_dependencies :=
 
+# Suppress config.vars undefined variable warnings during initial
+# setup.
+$(shell test -e config/config.vars)
+ifneq (0, $(.SHELLSTATUS))
+  bup_config_cflags ?=
+  bup_config_ldflags_so ?=
+  bup_have_acls ?=
+  bup_python_ldflags ?=
+  bup_python_ldflags_embed ?=
+  bup_readline_cflags ?=
+  bup_readline_ldflags ?=
+endif
+
 # See ./configure (sets bup_python_config, among other things) and
 # produces config.vars, the "configuration succeeded" state file.
 include config/config.vars
