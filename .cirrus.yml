@@ -8,6 +8,7 @@ task:
     memory: 2
   script: |
     set -xe
+    sed -ie '/buster/d' /etc/apt/sources.list
     dev/prep-for-debianish-build
     export LANG=C.UTF-8
     dev/system-info
@@ -26,6 +27,7 @@ task:
     memory: 2
   script: |
     set -xe
+    sed -ie '/buster/d' /etc/apt/sources.list
     dev/prep-for-debianish-build
     export LANG=C.UTF-8
     DEBIAN_FRONTEND=noninteractive apt-get -y install bup
@@ -49,6 +51,7 @@ task:
     memory: 2
   script: |
     set -xe
+    sed -ie '/buster/d' /etc/apt/sources.list
     dev/prep-for-debianish-build
     export LANG=C.UTF-8
     dev/system-info
