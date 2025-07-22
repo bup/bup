@@ -43,12 +43,11 @@ task:
 task:
   name: debian check
   container:
-    image: debian:buster
+    image: debian:bookworm
     cpu: 4
     memory: 2
   script: |
     set -xe
-    sed -ie '/buster/d' /etc/apt/sources.list
     dev/prep-for-debianish-build python3
     export LANG=C.UTF-8
     dev/system-info
