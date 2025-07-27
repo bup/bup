@@ -1,5 +1,6 @@
 
 from errno import EAGAIN
+from os import fsdecode
 import mmap as py_mmap
 import os, select, sys, time
 
@@ -101,9 +102,23 @@ def _make_enc_sh_map():
 
 _enc_sh_map = _make_enc_sh_map()
 
+def _make_enc_shs_map():
+    m = [None] * 128
+    for i in range(128):
+        enc = _enc_sh_map[i]
+        if enc:
+            m[i] = enc.decode('ascii')
+    return m
+
+_enc_shs_map = _make_enc_shs_map()
+
+
 def enc_dsq(val):
-    """Encode val in POSIX $'...' (dollar-single-quote) format."""
-    # https://pubs.opengroup.org/onlinepubs/9799919799/utilities/V3_chap02.html#tag_19_02_04
+    """Encode val (bytes) in POSIX $'...' (dollar-single-quote)
+    format.
+    https://pubs.opengroup.org/onlinepubs/9799919799/utilities/V3_chap02.html#tag_19_02_04
+
+    """
     result = [b"$'"]
     part_start = 0
     i = 0
@@ -127,10 +142,47 @@ def enc_dsq(val):
     result.append(b"'")
     return b''.join(result)
 
+def enc_dsqs(val):
+    """Encode string in POSIX $'...' (dollar-single-quote) format with
+    any surrogates (from surrogate escape) \\xNN encoded as the
+    original bytes. Pass through any characters whose ord() is >= 128.
+    https://pubs.opengroup.org/onlinepubs/9799919799/utilities/V3_chap02.html#tag_19_02_04
+    https://peps.python.org/pep-0383/
+
+    """
+    result = ["$'"]
+    part_start = 0
+    i = 0
+
+    def finish_part():
+        nonlocal result, i, part_start
+        if i != part_start:
+            result.append(val[part_start:i])
+        part_start = i = i + 1
+
+    encoding = _enc_shs_map
+    while i < len(val):
+        b = ord(val[i])
+        if b < 128:
+            enc = encoding[b]
+        elif (b >= 0xdc80 and b <= 0xdcff): # surrogate escape
+            enc = r'\x%02x' % (128 + (b - 0xdc80))
+        else:
+            enc = None
+        if enc:
+            finish_part()
+            result.append(enc)
+        else:
+            i += 1
+    finish_part()
+    result.append("'")
+    return ''.join(result)
+
+
 def enc_sh(val):
-    """Minimally POSIX quote val as a single line. Use no quotes if
-    possible, single quotes if val doesn't contain single quotes or
-    newline, otherwise dollar-single-quote.
+    """Minimally POSIX quote val (bytes) as a single line. Use no
+    quotes if possible, single quotes if val doesn't contain single
+    quotes or newline, otherwise dollar-single-quote.
     https://pubs.opengroup.org/onlinepubs/9799919799/utilities/V3_chap02.html#tag_19_02
 
     For now, like git with core.quotePath set to false, this
@@ -146,7 +198,7 @@ def enc_sh(val):
     need_sq = False
     need_dsq = False
     for c in val: # 32 is space
-        if c < 32 or c == b"'"[0]:
+        if c < 32 or c >= 127 or c == b"'"[0]:
             need_dsq = True
             break
         # This set is everything from POSIX except ' and \n (handled above).
@@ -158,10 +210,42 @@ def enc_sh(val):
         return b"'%s'" % val
     return val
 
+def enc_shs(val):
+    """Minimally POSIX quote val (string) as a single line. Use no
+    quotes if possible, single quotes if val doesn't contain single
+    quotes or newline, otherwise dollar-single-quote.
+    https://pubs.opengroup.org/onlinepubs/9799919799/utilities/V3_chap02.html#tag_19_02
+    https://peps.python.org/pep-0383/
+
+    \\xNN encode any surrogates (from surrogate escape) as the
+    original bytes. Pass through any characters whose ord() is >= 128.
+
+    """
+    #pylint: disable=consider-using-in
+    assert isinstance(val, str), val
+    if val == '':
+        return "''"
+    need_sq = False
+    need_dsq = False
+    for ch in val:
+        c = ord(ch)
+        if c < 32 or c == b"'"[0] or c == 127 \
+           or (c >= 0xdc80 and c <= 0xdcff): # lone surrogate (PEP-0383)
+            need_dsq = True
+            break
+        # This set is everything from POSIX except ' and \n (handled above).
+        if ch in '|&;<>()$`\\" \t*?[]^!#~=%{,}':
+            need_sq = True
+    if need_dsq:
+        return enc_dsqs(val)
+    if need_sq:
+        return f"'{val}'"
+    return val
+
+
 def path_msg(x):
     """Return a string representation of a path."""
-    # FIXME: configurability (might git-config quotePath be involved?)
-    return x.decode(errors='backslashreplace')
+    return enc_shs(fsdecode(x))
 
 
 assert not hasattr(py_mmap.mmap, '__del__')

@@ -144,6 +144,10 @@ General
   single quote or newline, and falls back to `$'...'` quoting
   otherwise.
 
+* Many of the paths printed in error and status messages are now POSIX
+  quoted instead of Python "backslashreplace"d, but note that the
+  format is not settled, i.e. may continue to change.
+
 Bugs
 ----
 
