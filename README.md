@@ -71,14 +71,17 @@ Reasons you might want to avoid bup
    more likely to eat your data.  It's also missing some
    probably-critical features, though fewer than it used to be.
    
- - It requires python 3.7 or newer, a C compiler, and an installed git
-   version >= 1.7.2.  It also requires par2 if you want fsck to be
-   able to generate the information needed to recover from some types
-   of corruption.
- 
- - It currently only works on Linux, FreeBSD, NetBSD, OS X >= 10.4,
-   Solaris, or Windows (with Cygwin, and WSL).  Patches to support
-   other platforms are welcome.
+ - While it is intended to work with python 3.7 or newer, a C
+   compiler, and an installed git version >= 1.7.2, it is currently
+   only automatically tested against some python versions 3.9 and
+   newer and git versions 2.3 and newer. Please report any
+   discrepancies.  It also requires par2 if you want fsck to be able
+   to generate the information needed to recover from some types of
+   corruption.
+
+ - It has only been reported to work on Linux, FreeBSD, NetBSD, OS X
+   >= 10.4, Solaris, or Windows (with Cygwin, and WSL).  Patches to
+   support other platforms are welcome.
 
  - Any items in "Things that are stupid" below.
 
