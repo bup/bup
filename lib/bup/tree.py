@@ -115,6 +115,7 @@ class Stack:
         return [p.name for p in self._stack]
 
     def push(self, name, meta):
+        assert isinstance(meta, (Metadata, type(None))), meta
         self._stack.append(StackDir(name, meta))
 
     def _clean(self, tree):
