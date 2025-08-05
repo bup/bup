@@ -23,10 +23,15 @@ def _hard_write(fd, buf):
         buf = buf[sz:]
 
 
+_clear_line_seq = b'\x1b[0K'
 _last_prog = 0
+_last_progress = ''
+
 def log(s):
     """Print a log message to stderr."""
     global _last_prog
+    if _last_prog and _last_progress.endswith('\r'):
+        _hard_write(sys.stderr.fileno(), _clear_line_seq)
     sys.stdout.flush()
     _hard_write(sys.stderr.fileno(), s if isinstance(s, bytes) else s.encode())
     _last_prog = 0
@@ -45,13 +50,13 @@ def debug2(s):
 
 istty1 = os.isatty(1) or (int(os.environ.get('BUP_FORCE_TTY', 0)) & 1)
 istty2 = os.isatty(2) or (int(os.environ.get('BUP_FORCE_TTY', 0)) & 2)
-_last_progress = ''
+
 def progress(s):
     """Calls log() if stderr is a TTY.  Does nothing otherwise."""
     global _last_progress
     if istty2:
         if _last_progress.endswith('\r'):
-            log('\x1b[0K')
+            _hard_write(sys.stderr.fileno(), _clear_line_seq)
         log(s)
         _last_progress = s
 
