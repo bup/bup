@@ -68,22 +68,12 @@ def count_objects(dir, verbosity):
 
 
 def report_missing(ref_name, item, verbosity):
-    chunks = item.chunk_path
-    if chunks:
-        path = chain(item.path, chunks)
-    else:
-        # Top commit, for example has none.
-        if item.path:
-            demangled = git.demangle_name(item.path[-1], item.mode)[0]
-            path = chain(item.path[:-1], [demangled])
-        else:
-            path = item.path
     ref = path_msg(ref_name)
-    path = path_msg(b'/'.join(path))
+    path = path_msg(b'/'.join(chain(item.path, item.chunk_path)))
     if item.type == b'tree':
-        note_error(f'missing {ref}:{path}/\n')
+        note_error(f'missing {item.oid.hex()} {ref}:{path}/\n')
     else:
-        note_error(f'missing {ref}:{path}\n')
+        note_error(f'missing {item.oid.hex()} {ref}:{path}\n')
 
 
 def report_live_item(n, total, ref_name, ref_id, item, verbosity):
