@@ -3,6 +3,7 @@ from binascii import hexlify, unhexlify
 from contextlib import ExitStack
 #from itertools import chain
 from os.path import basename
+from stat import S_ISDIR
 import glob, os, re, subprocess, sys, tempfile
 
 from bup import bloom, git, midx
@@ -72,8 +73,12 @@ def report_missing(ref_name, item_path):
     i = len(item_path) - 1
     while i >= 0 and item_path[i].type != b'commit':
         i -= 1
-    path = b'/'.join(item.name for item in item_path[i:])
-    note_error(f'missing {ref}:{path}/\n')
+    path = path_msg(b'/'.join(x.name for x in item_path[i:]))
+    item = item_path[-1]
+    if S_ISDIR(item.mode):
+        note_error(f'missing {item.oid.hex()} {ref}:{path}/\n')
+    else:
+        note_error(f'missing {item.oid.hex()} {ref}:{path}\n')
 
 
 def find_live_objects(existing_count, cat_pipe, idx_list, refs=None,
