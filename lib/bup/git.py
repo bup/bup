@@ -1415,7 +1415,6 @@ class CatPipe:
             return
 
         try:
-            it = chunkyreader(p.stdout, size)
             yield oidx, typ, size
             for blob in chunkyreader(p.stdout, size):
                 yield blob
