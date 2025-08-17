@@ -32,9 +32,9 @@ _wvfind_caller()
 }
 
 
-_wvsigpipe_rc="$(dev/python -c 'import signal; print(signal.SIGPIPE)')" \
+_wvsigpipe_rc="$(dev/python -c 'import signal; print(signal.SIGPIPE.value)')" \
     || exit $?
-_wvsigpipe_rc="$((_wvsigpipe_rc + 128))"
+_wvsigpipe_rc="$((_wvsigpipe_rc + 128))" || exit $?
 
 WVPIPE()
 {
