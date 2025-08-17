@@ -1539,10 +1539,9 @@ def walk_object(get_ref, oidx, *, stop_at=None, include_data=None,
             yield [*parents, item] if result == 'path' else item
             continue
 
-        if exp_typ in (b'commit', b'tree', None): # must have the data
-            item_it = get_ref(oidx, include_data=True)
-        else:
-            item_it = get_ref(oidx, include_data=include_data)
+        # must have data for commits, trees, or unknown
+        got_data = (exp_typ in (b'commit', b'tree', None)) or include_data
+        item_it = get_ref(oidx, include_data=got_data)
         get_oidx, typ, _ = next(item_it)
         if not get_oidx:
             item = WalkItem(oid=unhexlify(oidx), type=exp_typ, name=name,
@@ -1556,6 +1555,8 @@ def walk_object(get_ref, oidx, *, stop_at=None, include_data=None,
 
         # FIXME: set the mode based on the type when the mode is None
         if typ == b'blob' and not include_data:
+            if got_data: # i.e. exp_typ was None
+                for _ in item_it: pass
             data = None
         else:
             data = b''.join(item_it)
