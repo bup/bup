@@ -1429,13 +1429,13 @@ class CatPipe:
         if len(info) != 3 or len(info[0]) != 40:
             raise GitError('expected object (id, type, size), got %r' % info)
         oidx, typ, size = info
+        size = int(size)
 
         if not include_data:
             self.inprogress = None
             yield oidx, typ, size
             return
 
-        size = int(size)
         try:
             it = chunkyreader(p.stdout, size)
             yield oidx, typ, size
