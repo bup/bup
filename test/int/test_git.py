@@ -473,11 +473,18 @@ def test_cat_pipe(tmpdir):
               b'cat-file', b'-t', b'src').strip()
     size = int(exo(b'git', b'--git-dir', bupdir,
                        b'cat-file', b'-s', b'src'))
+
     it = git.cp().get(b'src')
-    get_info = next(it)
-    for buf in next(it):
-        pass
-    WVPASSEQ((oidx, typ, size), get_info)
+    assert (oidx, typ, size) == next(it)
+    data = b''.join(it)
+    assert data.startswith(b'tree ')
+    assert b'\nauthor ' in  data
+    assert b'\ncommitter ' in  data
+
+    it = git.cp().get(b'src', include_data=False)
+    assert (oidx, typ, size) == next(it)
+    assert b'' ==  b''.join(it)
+
 
 def _create_idx(d, i):
     idx = git.PackIdxV2Writer()
