@@ -1399,10 +1399,9 @@ class CatPipe:
             self.restart()
         assert(self.p)
         poll_result = self.p.poll()
-        assert(poll_result == None)
-        if self.inprogress:
-            log('get: opening %r while %r is open\n' % (ref, self.inprogress))
-        assert(not self.inprogress)
+        assert poll_result is None
+        assert not self.inprogress, \
+            f'opening {ref.decode("ascii")} while {self.inprogress.decode("ascii")} is open'
         assert ref.find(b'\n') < 0
         assert ref.find(b'\r') < 0
         assert not ref.startswith(b'-')
