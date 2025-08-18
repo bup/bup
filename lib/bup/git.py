@@ -21,6 +21,7 @@ from bup.io import path_msg
 from bup.helpers import (Sha1, add_error, chunkyreader, debug1, debug2,
                          exo,
                          fdatasync,
+                         fsync,
                          finalized,
                          log,
                          merge_dict,
@@ -962,7 +963,7 @@ class PackWriter(object):
                                           b'objects/pack/pack-' +  hexlify(packbin))
                 os.rename(tmpdir + b'/pack', nameprefix + b'.pack')
                 os.rename(tmpdir + b'/idx', nameprefix + b'.idx')
-                os.fsync(pfd)
+                fsync(pfd)
                 if self.on_pack_finish:
                     self.on_pack_finish(nameprefix)
                 if run_midx:
