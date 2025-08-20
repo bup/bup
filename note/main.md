@@ -179,6 +179,10 @@ Bugs
   notes](0.33.4-from-0.33.3.md) for additional information. `bup` now
   uses hardlinks instead.
 
+* `bup rm some/SAVE` should now succeed even if the root metadata (the
+  `some/SAVE/.bupm` file) is missing. Previously it failed with
+  "EOFError('encountered EOF while reading vuint')".
+
 Build system
 ------------
 

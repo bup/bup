@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 . ./wvtest-bup.sh || exit $?
 . ./dev/lib.sh || exit $?
+. ./test/lib/btl.sh || exit $?
 
 top="$(WVPASS pwd)" || exit $?
 tmpdir="$(WVPASS wvmktempdir)" || exit $?
@@ -204,11 +205,12 @@ WVPASS bup save -n src src
 WVPASS echo twisty-maze > src/2
 WVPASS bup index src
 WVPASS bup tick
-WVPASS bup save -n src src
+middle_commit="$(WVPASS bup save -cn src src)" || exit $?
 WVPASS echo twisty-maze > src/3
 WVPASS bup index src
 WVPASS bup tick
 WVPASS bup save -n src src
+save_names=( $(WVPASS bup ls src) ) || exit $?
 WVPASS mv bup bup-baseline
 WVPASS bup tick # Make sure we always get the timestamp changes below
 
@@ -249,6 +251,21 @@ observed=$(git rev-list src | wc -l) || exit $?
 WVPASSEQ 2 $observed
 WVPASSEQ "$(commit-hash-n 1 bup src)" "$(commit-hash-n 1 bup-baseline src)"
 WVPASSEQ "$(commit-hash-n 2 bup src)" "$(commit-hash-n 2 bup-baseline src)"
+
+
+WVSTART 'rm /foo/SAVE with missing /foo/SAVE/.bupm'
+# Primarily a regression test that that rm doesn't just crash. We
+# don't try verify-changes-caused-by-rewriting-save for now because
+# the perforation rearranges objects/pack.
+WVPASS "$top"/dev/sync-tree bup-baseline/ bup/
+WVPASS git ls-tree "$middle_commit": | WVPASS grep -E $'\t\.bupm$' \
+    | WVPASS btl-ent-oid > bupm-oid
+WVPASS "$top/dev/perforate-repo" --drop-oids "$BUP_DIR" < bupm-oid
+WVPASS bup rm --unsafe /src/"${save_names[1]}"
+observed=$(git rev-list src | wc -l) || exit $?
+WVPASSEQ 2 $observed
+WVPASSEQ "$(commit-hash-n 1 bup src)" "$(commit-hash-n 1 bup-baseline src)"
+WVPASSEQ "$(rm-safe-cinfo 2 bup src)" "$(rm-safe-cinfo 3 bup-baseline src)"
 
 
 # FIXME: test that committer changes when rewriting, when appropriate
