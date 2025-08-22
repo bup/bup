@@ -140,9 +140,9 @@ class Stack:
                       for entry in items if entry.mode != GIT_MODE_TREE)
         if add_meta and meta_ok:
             metalist = [(b'', _empty_metadata if dir_meta is None else dir_meta)]
-            metalist += [(shalist_item_sort_key((entry.mode, entry.name, None)),
-                          entry.meta)
-                         for entry in items if entry.mode != GIT_MODE_TREE]
+            metalist.extend((shalist_item_sort_key((entry.mode, entry.name, None)),
+                             entry.meta)
+                            for entry in items if entry.mode != GIT_MODE_TREE)
             metalist.sort(key = lambda x: x[0])
             metadata = BytesIO(b''.join(m[1].encode() for m in metalist))
             splitter = hashsplit.from_config([metadata], self._split_config)
@@ -150,8 +150,8 @@ class Stack:
                                               self._repo.write_tree,
                                               splitter)
             shalist.append((mode, b'.bupm', oid))
-        shalist += [(entry.gitmode, entry.mangled_name(), entry.oid)
-                    for entry in items]
+        shalist.extend((entry.gitmode, entry.mangled_name(), entry.oid)
+                       for entry in items)
         return self._repo.write_tree(shalist)
 
     def _write_split_tree(self, dir_meta, items, level=0):
