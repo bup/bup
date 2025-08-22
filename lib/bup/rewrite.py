@@ -301,7 +301,7 @@ def _rewrite_save_item(save_path, path, replacement_dir, srcrepo, dstrepo,
     # If switching to a new sub-tree, finish the current sub-tree, and
     # then we'll establish the sub-tree for the new sub-tree via
     # extend_stack for the missing components.
-    while list(stack.path()) > [x[0] for x in dir_path]:
+    while stack.path() > [x[0] for x in dir_path]:
         stack.pop()
 
     def extend_stack(parents):
