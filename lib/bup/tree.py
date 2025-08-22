@@ -112,6 +112,7 @@ class Stack:
         return len(self._stack)
 
     def path(self):
+        # Must return a list - callers may compare it via <, >, etc.
         return [p.name for p in self._stack]
 
     def push(self, name, meta):
