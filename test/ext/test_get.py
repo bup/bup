@@ -389,7 +389,7 @@ def _test_replace(get_disposition, src_info):
         for item in (b'.tag/commit-2', b'src/latest', b'src'):
             exr = run_get(get_disposition, b'--replace', (item, b'.tag/obj'),
                           given=ex_ref)
-            validate_tagged_save(b'obj', getcwd() + b'/src',
+            validate_tagged_save(b'obj', b'/',
                                  commit_2_id, tree_2_id, b'src-2', exr.out)
             verify_only_refs(heads=[], tags=(b'obj',))
 
@@ -404,7 +404,7 @@ def _test_replace(get_disposition, src_info):
                         + ex_type + ' with ' + item_type)
                 exr = run_get(get_disposition, b'--replace', (item, b'obj'),
                               given=ex_ref)
-                validate_save(b'obj/latest', getcwd() + b'/src',
+                validate_save(b'obj/latest', b'/',
                               commit_2_id, tree_2_id, b'src-2', exr.out)
                 verify_only_refs(heads=(b'obj',), tags=[])
 
@@ -427,12 +427,12 @@ def _test_replace(get_disposition, src_info):
         wvstart(get_disposition + ' --replace, implicit destinations')
 
         exr = run_get(get_disposition, b'--replace', b'src')
-        validate_save(b'src/latest', getcwd() + b'/src',
+        validate_save(b'src/latest', b'/',
                       commit_2_id, tree_2_id, b'src-2', exr.out)
         verify_only_refs(heads=(b'src',), tags=[])
 
         exr = run_get(get_disposition, b'--replace', b'.tag/commit-2')
-        validate_tagged_save(b'commit-2', getcwd() + b'/src',
+        validate_tagged_save(b'commit-2', b'/',
                              commit_2_id, tree_2_id, b'src-2', exr.out)
         verify_only_refs(heads=[], tags=(b'commit-2',))
 
@@ -502,7 +502,7 @@ def _test_ff(get_disposition, src_info):
         for given in (None, (b'.tag/commit-1', b'obj'), (b'.tag/commit-2', b'obj')):
             exr = run_get(get_disposition, b'--ff', (src, b'obj'), given=given)
             wvpasseq(0, exr.rc)
-            validate_save(b'obj/latest', getcwd() + b'/src',
+            validate_save(b'obj/latest', b'/',
                           commit_2_id, tree_2_id, b'src-2', exr.out)
             verify_only_refs(heads=(b'obj',), tags=[])
             
@@ -514,7 +514,7 @@ def _test_ff(get_disposition, src_info):
         ex((b'find', b'get-dest/refs'))
         ex((bup_cmd, b'-d', b'get-dest', b'ls'))
 
-        validate_save(b'src/latest', getcwd() + b'/src',
+        validate_save(b'src/latest', b'/',
                      commit_2_id, tree_2_id, b'src-2', exr.out)
         #verify_only_refs(heads=('src',), tags=[])
 
@@ -605,7 +605,7 @@ def _test_append(get_disposition, src_info):
             exr = run_get(get_disposition, b'--append', (item, b'obj'),
                           given=existing, rewrite=rewrite)
             wvpasseq(0, exr.rc)
-            validate_new_save(b'obj/latest', getcwd() + b'/src',
+            validate_new_save(b'obj/latest', b'/',
                               commit_2_id, tree_2_id, b'src-2', exr.out,
                               rewrite=rewrite)
             verify_only_refs(heads=(b'obj',), tags=[])
@@ -621,7 +621,7 @@ def _test_append(get_disposition, src_info):
                       given=(b'.tag/commit-2', b'obj'),
                       rewrite=rewrite)
         wvpasseq(0, exr.rc)
-        validate_new_save(b'obj/latest', getcwd() + b'/src',
+        validate_new_save(b'obj/latest', b'/',
                           commit_1_id, tree_1_id, b'src-1', exr.out,
                           rewrite=rewrite)
         verify_only_refs(heads=(b'obj',), tags=[])
@@ -653,7 +653,7 @@ def _test_append(get_disposition, src_info):
                           (b'src/latest', False)):
         exr = run_get(get_disposition, b'--append', item, rewrite=rewrite)
         wvpasseq(0, exr.rc)
-        validate_new_save(b'src/latest', getcwd() + b'/src', commit_2_id, tree_2_id,
+        validate_new_save(b'src/latest', b'/', commit_2_id, tree_2_id,
                           b'src-2', exr.out, rewrite=rewrite)
         verify_only_refs(heads=(b'src',), tags=[])
 
@@ -736,7 +736,7 @@ def _test_pick_common(get_disposition, src_info, force=False):
                               given=given, rewrite=rewrite)
                 wvpasseq(0, exr.rc)
                 if rewrite:
-                    validate_tagged_save(b'obj', getcwd() + b'/src', None, None,
+                    validate_tagged_save(b'obj', b'/', None, None,
                                          b'src-2', exr.out)
                 else:
                     validate_new_tagged_commit(b'obj', commit_2_id, tree_2_id,
@@ -764,7 +764,7 @@ def _test_pick_common(get_disposition, src_info, force=False):
         wvpasseq(0, exr.rc)
         validate_clean_repo()
         if rewrite:
-            validate_tagged_save(b'obj', getcwd() + b'/src', None, None,
+            validate_tagged_save(b'obj', b'/', None, None,
                                  b'src-2', exr.out)
         else:
             validate_new_tagged_commit(b'obj', commit_2_id, tree_2_id, exr.out)
@@ -780,7 +780,7 @@ def _test_pick_common(get_disposition, src_info, force=False):
             wvpasseq(0, exr.rc)
             ex((bup_cmd, b'-d', b'get-dest', b'ls', b'--commit-hash', b'obj'))
             validate_clean_repo()
-            validate_new_save(b'obj/latest', getcwd() + b'/src',
+            validate_new_save(b'obj/latest', b'/',
                               commit_2_id, tree_2_id, b'src-2', exr.out,
                               rewrite=rewrite)
             verify_only_refs(heads=(b'obj',), tags=[])
@@ -794,7 +794,7 @@ def _test_pick_common(get_disposition, src_info, force=False):
                       rewrite=rewrite)
         wvpasseq(0, exr.rc)
         validate_clean_repo()
-        validate_new_save(b'obj/latest', getcwd() + b'/src',
+        validate_new_save(b'obj/latest', b'/',
                           commit_2_id, tree_2_id, b'src-2', exr.out,
                           rewrite=rewrite)
         verify_only_refs(heads=(b'obj',), tags=[])
@@ -811,7 +811,7 @@ def _test_pick_common(get_disposition, src_info, force=False):
                       rewrite=rewrite)
         wvpasseq(0, exr.rc)
         validate_clean_repo()
-        validate_new_save(b'obj/latest', getcwd() + b'/src',
+        validate_new_save(b'obj/latest', b'/',
                           commit_1_id, tree_1_id, b'src-1', exr.out,
                           rewrite=rewrite)
         verify_only_refs(heads=(b'obj',), tags=[])
@@ -827,7 +827,7 @@ def _test_pick_common(get_disposition, src_info, force=False):
         exr = run_get(get_disposition, flavor, b'src/latest', rewrite=rewrite)
         wvpasseq(0, exr.rc)
         validate_clean_repo()
-        validate_new_save(b'src/latest', getcwd() + b'/src',
+        validate_new_save(b'src/latest', b'/',
                           commit_2_id, tree_2_id, b'src-2', exr.out,
                           rewrite=rewrite)
         verify_only_refs(heads=(b'src',), tags=[])
@@ -877,7 +877,7 @@ def _test_new_tag(get_disposition, src_info):
     for item in (b'.tag/commit-2', b'src/latest', b'src'):
         exr = run_get(get_disposition, b'--new-tag', (item, b'.tag/obj'))
         wvpasseq(0, exr.rc)        
-        validate_tagged_save(b'obj', getcwd() + b'/src/', commit_2_id, tree_2_id,
+        validate_tagged_save(b'obj', b'/', commit_2_id, tree_2_id,
                              b'src-2', exr.out)
         verify_only_refs(heads=[], tags=(b'obj',))
 
@@ -922,7 +922,7 @@ def _test_new_tag(get_disposition, src_info):
     wvstart(get_disposition + ' --new-tag, implicit destinations')
     exr = run_get(get_disposition, b'--new-tag', b'.tag/commit-2')
     wvpasseq(0, exr.rc)        
-    validate_tagged_save(b'commit-2', getcwd() + b'/src/', commit_2_id, tree_2_id,
+    validate_tagged_save(b'commit-2', b'/', commit_2_id, tree_2_id,
                          b'src-2', exr.out)
     verify_only_refs(heads=[], tags=(b'commit-2',))
 
@@ -994,14 +994,14 @@ def create_get_src():
     mkdir(b'src')
     open(b'src/unrelated', 'a').close()
     ex((bup_cmd, b'-d', b'get-src', b'index', b'src'))
-    ex((bup_cmd, b'-d', b'get-src', b'save', b'-tcn', b'unrelated-branch', b'src'))
+    ex((bup_cmd, b'-d', b'get-src', b'save', b'-tcn', b'unrelated-branch', b'--strip', b'src'))
 
     ex((bup_cmd, b'-d', b'get-src', b'index', b'--clear'))
     rmrf(b'src')
     mkdir(b'src')
     open(b'src/zero', 'a').close()
     ex((bup_cmd, b'-d', b'get-src', b'index', b'src'))
-    exr = exo((bup_cmd, b'-d', b'get-src', b'save', b'-tcn', b'src', b'src'))
+    exr = exo((bup_cmd, b'-d', b'get-src', b'save', b'-tcn', b'src', b'--strip', b'src'))
     out = exr.out.splitlines()
     tree_0_id = out[0]
     commit_0_id = out[-1]
@@ -1012,12 +1012,13 @@ def create_get_src():
     
     rmrf(b'src')
     mkdir(b'src')
+    mkdir(b'src/empty-dir')
     mkdir(b'src/x')
     mkdir(b'src/x/y')
     ex((bup_cmd + b' -d get-src random 1k > src/1'), shell=True)
     ex((bup_cmd + b' -d get-src random 1m > src/x/2'), shell=True)
     ex((bup_cmd, b'-d', b'get-src', b'index', b'src'))
-    exr = exo((bup_cmd, b'-d', b'get-src', b'save', b'-tcn', b'src', b'src'))
+    exr = exo((bup_cmd, b'-d', b'get-src', b'save', b'-tcn', b'src', b'--strip', b'src'))
     out = exr.out.splitlines()
     tree_1_id = out[0]
     commit_1_id = out[-1]
@@ -1033,7 +1034,7 @@ def create_get_src():
     with open(b'src/tiny-file', 'ab') as f: f.write(b'xyzzy')
     ex((bup_cmd, b'-d', b'get-src', b'index', b'src'))
     ex((bup_cmd, b'-d', b'get-src', b'tick'))  # Ensure the save names differ
-    exr = exo((bup_cmd, b'-d', b'get-src', b'save', b'-tcn', b'src', b'src'))
+    exr = exo((bup_cmd, b'-d', b'get-src', b'save', b'-tcn', b'src', b'--strip', b'src'))
     out = exr.out.splitlines()
     tree_2_id = out[0]
     commit_2_id = out[-1]
@@ -1041,13 +1042,11 @@ def create_get_src():
     save_2 = exr.out.splitlines()[2]
     rename(b'src', b'src-2')
 
-    src_root = getcwd() + b'/src'
-
     subtree_path = b'src-2/x'
-    subtree_vfs_path = src_root + b'/x'
+    subtree_vfs_path = b'/x'
 
     # No support for "ls -d", so grep...
-    exr = exo((bup_cmd, b'-d', b'get-src', b'ls', b'-s', b'src/latest' + src_root))
+    exr = exo((bup_cmd, b'-d', b'get-src', b'ls', b'-s', b'src/latest'))
     out = exr.out.splitlines()
     subtree_id = None
     for line in out:
@@ -1056,7 +1055,7 @@ def create_get_src():
     assert(subtree_id)
 
     # With a tiny file, we'll get a single blob, not a chunked tree
-    tinyfile_path = src_root + b'/tiny-file'
+    tinyfile_path = b'/tiny-file'
     exr = exo((bup_cmd, b'-d', b'get-src', b'ls', b'-s', b'src/latest' + tinyfile_path))
     tinyfile_id = exr.out.splitlines()[0].split()[0]
 

@@ -53,10 +53,10 @@ WVPASS compare "$BUP_DIR" split "$BUP_DIR2" test
 
 WVSTART make multiple saves
 WVPASS bup index "$top/test/sampledata"
-WVPASS bup save -n save --strip-path="$top" "$top/test/sampledata"
-WVPASS bup save -n save --strip-path="$top" "$top/test/sampledata"
-WVPASS bup save -n save --strip-path="$top" "$top/test/sampledata"
-WVPASS bup save -n save --strip-path="$top" "$top/test/sampledata"
+WVPASS bup save -n save --strip "$top/test/sampledata"
+WVPASS bup save -n save --strip "$top/test/sampledata"
+WVPASS bup save -n save --strip "$top/test/sampledata"
+WVPASS bup save -n save --strip "$top/test/sampledata"
 
 WVSTART rewrite to different split
 WVPASS bup -d "$BUP_DIR" ls -l save
@@ -92,36 +92,35 @@ bup+()
 
 # force a re-save of the testfile1 to get it w/o size
 WVPASS bup index --fake-invalid "$top/test/sampledata/y/testfile1"
-WVPASS bup+ -d "$BUP_DIR" save -n save --strip-path="$top" \
-       "$top/test/sampledata"
+WVPASS bup+ -d "$BUP_DIR" save -n save --strip "$top/test/sampledata"
 
 # check that we get the "unknown" size out
-WVPASS bup+ -d "$BUP_DIR" ls -l save/latest/test/sampledata/y/testfile1 |
+WVPASS bup+ -d "$BUP_DIR" ls -l save/latest/y/testfile1 |
     WVPASS grep -- -1122334455
 # and that augmentation worked
-WVPASS bup -d "$BUP_DIR" ls -l save/latest/test/sampledata/y/testfile1 |
+WVPASS bup -d "$BUP_DIR" ls -l save/latest/y/testfile1 |
     WVPASS grep -- 158664
 
 # now rewrite again - and then the size should be correct even without augmentation
 WVPASS bup -d "$BUP_DIR4" get --rewrite -s "$BUP_DIR" --append: save save2
-WVPASS bup+ -d "$BUP_DIR4" ls -l save/latest/test/sampledata/y/testfile1 |
+WVPASS bup+ -d "$BUP_DIR4" ls -l save/latest/y/testfile1 |
     WVPASS grep -- 158664
 
 # and again for the other kind of splitting
 WVPASS bup -d "$BUP_DIR3" get --rewrite -s "$BUP_DIR" --append: save save2
-WVPASS bup+ -d "$BUP_DIR3" ls -l save2/latest/test/sampledata/y/testfile1 |
+WVPASS bup+ -d "$BUP_DIR3" ls -l save2/latest/y/testfile1 |
     WVPASS grep -- 158664
 
 WVSTART rewrite with excluded files
 WVPASS bup -d "$BUP_DIR5" init
-WVPASS bup -d "$BUP_DIR5" get --rewrite -s "$BUP_DIR4" \
-   --exclude-rx '^/test/sampledata/y/' --append save
+WVPASS bup -d "$BUP_DIR5" get --rewrite -s "$BUP_DIR4" --exclude-rx '^/y/' \
+       --append save
 WVPASS extract_all "$BUP_DIR4" "save" "orig"
 WVPASS extract_all "$BUP_DIR5" "save" "new"
-rm -rf "$tmpdir/restore/orig/"*"/test/sampledata/y/"
-# that rm -rf changed timestamps - just ignore them
-touch -r "$tmpdir/restore/orig/" "$tmpdir/restore/orig/"*"/test/sampledata/"
-touch -r "$tmpdir/restore/orig/" "$tmpdir/restore/new/"*"/test/sampledata/"
+WVPASS rm -rf "$tmpdir/restore/orig/"*"/y/"
+# rm -rf changed timestamps - just ignore them
+touch -r "$tmpdir/restore/orig/" "$tmpdir/restore/orig/"*"/"
+touch -r "$tmpdir/restore/orig/" "$tmpdir/restore/new/"*"/"
 touch -r "$tmpdir/restore/orig/" "$tmpdir/restore/new/"
 WVPASS "$top/dev/compare-trees" "$tmpdir/restore/orig/" "$tmpdir/restore/new/"
 WVPASS rm -rf "$tmpdir/restore"
@@ -130,13 +129,13 @@ WVSTART "rewrite with excluded files (in repo)"
 WVPASS git config -f "$BUP_DIR/config" bup.split.trees true
 WVPASS git config -f "$BUP_DIR/config" bup.split.files legacy:14
 WVPASS bup -d "$BUP_DIR" get --rewrite -s "$BUP_DIR" \
-   --exclude-rx '^/test/sampledata/y/' --append: save save-new
+   --exclude-rx '^/y/' --append: save save-new
 WVPASS extract_all "$BUP_DIR" "save" "orig"
 WVPASS extract_all "$BUP_DIR" "save-new" "new"
-rm -rf "$tmpdir/restore/orig/"*"/test/sampledata/y/"
+rm -rf "$tmpdir/restore/orig/"*"/y/"
 # that rm -rf changed timestamps - just ignore them
-touch -r "$tmpdir/restore/orig/" "$tmpdir/restore/orig/"*"/test/sampledata/"
-touch -r "$tmpdir/restore/orig/" "$tmpdir/restore/new/"*"/test/sampledata/"
+touch -r "$tmpdir/restore/orig/" "$tmpdir/restore/orig/"*"/"
+touch -r "$tmpdir/restore/orig/" "$tmpdir/restore/new/"*"/"
 touch -r "$tmpdir/restore/orig/" "$tmpdir/restore/new/"
 WVPASS "$top/dev/compare-trees" "$tmpdir/restore/orig/" "$tmpdir/restore/new/"
 WVPASS rm -rf "$tmpdir/restore"
