@@ -1,6 +1,8 @@
 
-# bup test lib: all code must assume "set +e" may be in effect, and
-# the state of pipefail is unspecified.
+# If not test-specific, see dev/lib.sh.
+
+# bup test lib: all code must assume "set +e" may or may not be in
+# effect, and the state of pipefail is unspecified.
 
 btl-ent-oid()
 {
