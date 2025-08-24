@@ -520,7 +520,7 @@ def resolve_branch_dest(spec, src, src_repo, dest_repo):
 
 def resolve_ff(spec, src_repo, dest_repo):
     if spec.rewriter:
-        misuse(f'--{spec.method} cannot rewrite (use --pick)')
+        misuse(f'--{spec.method} cannot rewrite (use --pick or --append)')
     if spec.missing.mode == 'ignore':
         misuse('currently only --unnamed allows --missing ignore')
     src = resolve_src(spec, src_repo)
