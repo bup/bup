@@ -880,11 +880,12 @@ def get_everything(opt):
                 dest_repo.update_ref(ref_name, new_ref, orig_ref)
                 if opt.verbose:
                     new_hex = hexlify(new_ref).decode('ascii')
+                    ref_msg = path_msg(ref_name)
                     if orig_ref:
                         orig_hex = hexlify(orig_ref).decode('ascii')
-                        log('updated %r (%s -> %s)\n' % (ref_name, orig_hex, new_hex))
+                        log(f'updated {ref_msg} ({orig_hex} -> {new_hex})\n')
                     else:
-                        log('updated %r (%s)\n' % (ref_name, new_hex))
+                        log(f'updated {ref_msg} ({new_hex})\n')
             except (git.GitError, client.ClientError) as ex:
                 note_error('unable to update ref %r: %s\n' % (ref_name, ex))
 
