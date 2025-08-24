@@ -174,7 +174,7 @@ def parse_args(args):
         elif arg == b'--bwlimit':
             (opt.bwlimit,), remaining = require_n_args_or_die(1, remaining)
             opt.bwlimit = int(opt.bwlimit)
-        elif arg.startswith(b'-') and len(arg) > 2 and arg[1] != b'-':
+        elif arg.startswith(b'-') and len(arg) > 2 and arg[1] != b'-'[0]:
             # Try to interpret this as -xyz, i.e. "-xyz -> -x -y -z".
             # We do this last so that --foo -bar is valid if --foo
             # requires a value.
