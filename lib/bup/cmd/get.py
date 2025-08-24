@@ -236,7 +236,7 @@ def parse_args(args):
             # FIXME
             continue
         else:
-            misuse()
+            misuse(f'unrecognized argument: {path_msg(arg)}')
     if opt.repair_info is None:
         opt.repair_info = RepairInfo(str(uuid4()).encode('ascii'),
                                      command=get_argvb())
