@@ -129,19 +129,18 @@ b"
 
 
 WVSTART "import-rsnapshot"
-D=rsnapshot.tmp
-export BUP_DIR="$tmpdir/$D/.bup"
-WVPASS force-delete $D
-WVPASS mkdir $D
+export BUP_DIR="$tmpdir/rsnapshot/.bup"
+WVPASS rm -rf rsnapshot
+WVPASS mkdir rsnapshot
 WVPASS bup init
-WVPASS mkdir -p $D/hourly.0/buptest/a
-WVPASS touch $D/hourly.0/buptest/a/b
-WVPASS mkdir -p $D/hourly.0/buptest/c/d
-WVPASS touch $D/hourly.0/buptest/c/d/e
-WVPASS true
-WVPASS bup import-rsnapshot $D/
+WVPASS mkdir -p rsnapshot/hourly.0/buptest/a
+WVPASS touch rsnapshot/hourly.0/buptest/a/b
+WVPASS mkdir -p rsnapshot/hourly.0/buptest/c/d
+WVPASS touch rsnapshot/hourly.0/buptest/c/d/e
+WVPASS bup import-rsnapshot rsnapshot/
 WVPASSEQ "$(bup ls -F buptest/latest/)" "a/
 c/"
+WVPASS rm -rf rsnapshot
 
 
 WVSTART features
