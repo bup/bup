@@ -244,12 +244,31 @@ def filter_output(srcs, dests, control):
     read_fds = [control, *srcs]
     dest_for = dict(zip(srcs, dests))
     pending = {}
+    finish = False
     try:
         while srcs:
-            ready_fds, _, _ = select.select(read_fds, [], [])
+            # When finish is true, transfer any pending data and exit.
+            if not finish:
+                readable_fds, _, _ = select.select(read_fds, [], [])
+            else:
+                # Only reachable with control since only it sets
+                # finish false. Forward any data available (without
+                # blocking) from each src, i.e. whatever's already
+                # pending.
+                if readable_fds == [control]:
+                    break
+                readable_fds, _, _ = select.select(read_fds, [], [], 0)
+                # Drop every src for which no data was available.
+                for tried in read_fds:
+                    if tried not in readable_fds:
+                        read_fds.remove(tried)
+                        if tried != control: srcs.remove(tried)
             width = tty_width()
-            for fd in ready_fds:
-                if fd == control:
+            for fd in readable_fds:
+                if control is not None and fd == control:
+                    buf = os.read(control, 1)
+                    assert buf == b'q'
+                    finish = True
                     continue
                 buf = os.read(fd, 4096)
                 dest = dest_for[fd]
@@ -269,10 +288,6 @@ def filter_output(srcs, dests, control):
                 assert len(split) == 1
                 if split[0]:
                     pending.setdefault(fd, []).extend(split)
-            if control in ready_fds:
-                buf = os.read(control, 1)
-                assert buf == b'q'
-                break
     except BaseException as ex:
         pending_ex = ex
         # Try to finish each of the streams
