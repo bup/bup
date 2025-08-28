@@ -231,7 +231,7 @@ def print_clean_line(dest, content, width, sep=None):
 # FIXME: check whether we might need to stash/defer exceptions while
 # stderr is diverted.
 
-def filter_output(srcs, dests, control):
+def filter_output(srcs, dests, control=None):
     """Transfer data from file descriptors in srcs to the
     corresponding file descriptors in dests print_clean_line until the
     control descriptor produces a 'q' (i.e. quit).
@@ -240,8 +240,11 @@ def filter_output(srcs, dests, control):
     assert all(isinstance(x, int) for x in srcs)
     assert all(isinstance(x, int) for x in dests)
     assert len(srcs) == len(dests)
-    assert isinstance(control, int)
-    read_fds = [control, *srcs]
+    if control is None:
+        read_fds = list(srcs)
+    else:
+        assert isinstance(control, int), control
+        read_fds = [control, *srcs]
     dest_for = dict(zip(srcs, dests))
     pending = {}
     finish = False
