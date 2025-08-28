@@ -319,15 +319,23 @@ def run_module_cmd(module, args):
             if fix_stdout: fix_stream(sys.stdout)
             if fix_stderr: fix_stream(sys.stderr)
             ctrl_pipe = os.pipe()
-            filter_thread = \
-                Thread(name='output filter',
-                       target=lambda : filter_output(srcs, dests, ctrl_pipe[0]))
+            filter_thread_ex = None
+            def run():
+                nonlocal filter_thread_ex
+                try:
+                    filter_output(srcs, dests, ctrl_pipe[0])
+                except BaseException as ex:
+                    filter_thread_ex = ex
+            filter_thread = Thread(name='output filter', target=run)
             filter_thread.start()
             try:
                 result = import_and_run_main(module, args)
+                # main may sys.exit(), so don't put anything that matters here
             finally:
                 os.write(ctrl_pipe[1], b'q')
-            filter_thread.join()
+                filter_thread.join()
+                if filter_thread_ex:
+                    raise filter_thread_ex
     finally:
         close_catpipes()
     return result
