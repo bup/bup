@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+
+set -ueo pipefail
+
+# Callers can test for support via "with-tty true".
+
+usage() { echo 'Usage: with-tty command [arg ...]'; }
+misuse() { usage 1>&2; exit 2; }
+
+if script -qec true /dev/null; then
+    # linux flavor
+    script -qec "$(printf ' %q' "$@")" /dev/null
+elif script -q /dev/null true; then
+    # bsd flavor
+    script -q /dev/null "$@"
+else
+    rc=0
+    cmd="$(command -v script)" || rc=$?
+    if test "$rc" -eq 0; then
+        printf 'Unsupported script command: %q\n' "$cmd" 1>&2
+    else
+        echo 'No script command' 1>&2
+    fi
+    exit 2
+fi

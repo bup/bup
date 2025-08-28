@@ -17,6 +17,7 @@ else
 fi
     
 bup() { "$top/bup" "$@"; }
+with-tty() { "$top/dev/with-tty" "$@"; }
 
 bup-ls() {
     if test "$BUP_TEST_REMOTE_REPO"; then
@@ -297,6 +298,20 @@ WVPASSEQ "$(bup-ls "src/latest/bad-symlink")" "src/latest/bad-symlink"
 WVSTART "$ls_cmd_desc -l bad-symlink"
 WVPASSEQ "$(bup-ls -l src/latest/bad-symlink | tr -s ' ' ' ')" \
 "$bad_symlink_mode $user/$group $bad_symlink_size $bad_symlink_date src/latest/bad-symlink -> not-there"
+
+
+if ! with-tty true; then
+    WVSKIP 'Skipping interactive ouput truncation test (no supported script command)'
+else
+    WVSTART "output isn't truncated when isatty"
+    WVPASS rm -rf src
+    WVPASS mkdir src
+    echo src/some-longer-name-{1..3000} | WVPASS xargs touch
+    WVPASS bup index src
+    WVPASS bup save -n src --strip src
+    WVPASS with-tty "$top/bup" ls -l src/latest | WVPASS wc -l > ls-rows
+    WVPASSEQ 3000 $(<ls-rows)
+fi
 
 
 WVPASS cd "$top"
