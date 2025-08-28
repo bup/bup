@@ -245,7 +245,7 @@ def filter_output(srcs, dests, control):
     dest_for = dict(zip(srcs, dests))
     pending = {}
     try:
-        while True:
+        while srcs:
             ready_fds, _, _ = select.select(read_fds, [], [])
             width = tty_width()
             for fd in ready_fds:
@@ -253,6 +253,11 @@ def filter_output(srcs, dests, control):
                     continue
                 buf = os.read(fd, 4096)
                 dest = dest_for[fd]
+                if not buf:
+                    srcs.remove(fd)
+                    read_fds.remove(fd)
+                    print_clean_line(dest, pending.pop(fd, []), width)
+                    continue
                 split = sep_rx.split(buf)
                 while len(split) > 1:
                     content, sep = split[:2]
