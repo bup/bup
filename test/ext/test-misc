@@ -13,6 +13,7 @@ export GIT_DIR="$tmpdir/bup"
 
 bup() { "$top/bup" "$@"; }
 sha1sum() { "$top/dev/checksum" -t sha1 "$@"; }
+with-tty() { "$top/dev/with-tty" "$@"; }
 
 WVPASS cd "$tmpdir"
 
@@ -129,6 +130,9 @@ b"
 
 
 WVSTART "import-rsnapshot"
+# NOTE: if this test is made optional, say if it eventually depends on
+# rsnapshot being installed, we might want to add other "interactive
+# external command" tests (see script below) to maintain coverage.
 export BUP_DIR="$tmpdir/rsnapshot/.bup"
 WVPASS rm -rf rsnapshot
 WVPASS mkdir rsnapshot
@@ -140,6 +144,15 @@ WVPASS touch rsnapshot/hourly.0/buptest/c/d/e
 WVPASS bup import-rsnapshot rsnapshot/
 WVPASSEQ "$(bup ls -F buptest/latest/)" "a/
 c/"
+if ! with-tty true; then
+    WVSKIP 'Skipping interactive import-snapshot test (no supported script command)'
+else
+    WVPASS rm -rf "$BUP_DIR"
+    WVPASS bup init
+    WVPASS with-tty "$top/bup" import-rsnapshot rsnapshot/
+    WVPASSEQ "$(bup ls -F buptest/latest/)" "a/
+c/"
+fi
 WVPASS rm -rf rsnapshot
 
 
