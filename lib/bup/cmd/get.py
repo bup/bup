@@ -224,7 +224,8 @@ def get_random_item(name, hash, src_repo, dest_repo, opt):
         # attempts to write some other oid that the server already
         # has. Without this check, we can provoke a duplicate index
         # suggestion which then causes client.sync_index() to throw.
-        if item.type != b'blob' and dest_repo.exists(item.oid):
+        if not isinstance(dest_repo, LocalRepo) and item.type != b'blob' \
+           and dest_repo.exists(item.oid):
             continue
         dest_repo.just_write(item.oid, item.type, item.data)
 
