@@ -128,9 +128,11 @@ def _intify(v):
 def _tty_width():
     try:
         size = os.get_terminal_size(sys.stderr.fileno())
+        # May return 0 for some python versions:
+        # https://github.com/python/cpython/issues/86340
+        return size.columns or 70
     except OSError:
         return 70
-    return size.columns
 
 
 class Options:
