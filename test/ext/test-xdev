@@ -10,11 +10,6 @@ if [ "$root_status" != root ]; then
     exit 0
 fi
 
-if ! modprobe loop; then
-    WVSKIP 'unable to load loopback module; skipping tests'
-    exit 0
-fi
-
 # These tests are only likely to work under Linux for now
 # (patches welcome).
 if ! [[ $(uname) =~ Linux ]]; then
@@ -40,7 +35,16 @@ WVPASS dd if=/dev/zero of=testfs-2.img bs=1M count=32
 WVPASS mkfs -F testfs-1.img # Don't care what type (though must have symlinks)
 WVPASS mkfs -F testfs-2.img # Don't care what type (though must have symlinks)
 WVPASS mkdir -p src/mnt-1/hidden-1 src/mnt-2/hidden-2
-WVPASS mount -o loop testfs-1.img src/mnt-1
+
+set -x
+mount -o loop testfs-1.img src/mnt-1
+rc=$?
+set +x
+if test "$rc" -ne 0; then
+    WVSKIP 'Unable to mount via loopback: skipping xdev tests.'
+    exit 0
+fi
+
 WVPASS mount -o loop testfs-2.img src/mnt-2
 
 WVPASS touch src/1

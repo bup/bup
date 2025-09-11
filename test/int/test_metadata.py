@@ -7,11 +7,12 @@ from wvpytest import *
 
 from bup import git, metadata
 from bup import vfs
+from bup.compat import fsencode
 from bup.helpers import clear_errors, detect_fakeroot, is_superuser, resolve_parent
 from bup.repo import LocalRepo
 from bup.xstat import utime, lutime
 import bup.helpers as helpers
-from bup.compat import fsencode
+import buptest
 
 lib_t_dir = os.path.dirname(fsencode(__file__))
 
@@ -20,33 +21,22 @@ top_dir = os.path.realpath(os.path.join(lib_t_dir, b'..', b'..'))
 bup_path = top_dir + b'/bup'
 
 
-def ex(*cmd):
-    try:
-        cmd_str = b' '.join(cmd)
-        print(cmd_str, file=sys.stderr)
-        rc = subprocess.call(cmd)
-        if rc < 0:
-            print('terminated by signal', - rc, file=sys.stderr)
-            sys.exit(1)
-        elif rc > 0:
-            print('returned exit status', rc, file=sys.stderr)
-            sys.exit(1)
-    except OSError as e:
-        print('subprocess call failed:', e, file=sys.stderr)
-        sys.exit(1)
+def ex(*args, **kwargs):
+    return buptest.ex(args, **kwargs)
 
 
 def setup_testfs():
+    # Try to set up testfs with user_xattr, etc.
     assert(sys.platform.startswith('linux'))
-    # Set up testfs with user_xattr, etc.
-    if subprocess.call([b'modprobe', b'loop']) != 0:
-        return False
     subprocess.call([b'umount', b'testfs'])
     ex(b'dd', b'if=/dev/zero', b'of=testfs.img', b'bs=1M', b'count=32')
     ex(b'mke2fs', b'-F', b'-j', b'-m', b'0', b'testfs.img')
     ex(b'rm', b'-rf', b'testfs')
     os.mkdir(b'testfs')
-    ex(b'mount', b'-o', b'loop,acl,user_xattr', b'testfs.img', b'testfs')
+    exr = ex(b'mount', b'-o', b'loop,acl,user_xattr', b'testfs.img', b'testfs',
+             check=False)
+    if exr.rc != 0:
+        return False
     # Hide, so that tests can't create risks.
     os.chown(b'testfs', 0, 0)
     os.chmod(b'testfs', 0o700)
@@ -272,7 +262,7 @@ if xattr:
             pytest.skip('skipping test -- not superuser')
             return
         if not setup_testfs():
-            pytest.skip('unable to load loop module; skipping dependent tests')
+            pytest.skip('unable to set up test fs; skipping dependent tests')
             return
         for f in glob.glob(b'testfs/*'):
             ex(b'rm', b'-rf', f)

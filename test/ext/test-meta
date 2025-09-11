@@ -637,11 +637,6 @@ if [ "$root_status" = root ]; then
         # (patches welcome).
         [[ $(uname) =~ Linux ]] || exit 0
 
-        if ! modprobe loop; then
-            echo 'Unable to load loopback module; skipping dependent tests.' 1>&2
-            exit 0 # FIXME: allow intermixed WVSKIPs
-        fi
-
         testfs="$(WVPASS wvmkmountpt)" || exit $?
         testfs_limited="$(WVPASS wvmkmountpt)" || exit $?
         tmpdir="$(WVPASS wvmktempdir)" || exit $?
@@ -659,7 +654,16 @@ if [ "$root_status" = root ]; then
             -I 256 \
             -O has_journal,extent,huge_file,flex_bg,uninit_bg,dir_nlink,extra_isize \
             testfs.img
-        WVPASS mount -o loop,acl,user_xattr testfs.img "$testfs"
+
+        set -x
+        mount -o loop,acl,user_xattr testfs.img "$testfs"
+        rc=$?
+        set +x
+        if test "$rc" -ne 0; then
+            echo 'Unable to mount via loopback; skipping dependent tests.' 1>&2
+            exit 0 # FIXME: allow intermixed WVSKIPs
+        fi
+
         # Hide, so that tests can't create risks.
         WVPASS chown root:root "$testfs"
         WVPASS chmod 0700 "$testfs"

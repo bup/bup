@@ -188,6 +188,17 @@ From source
     make check
     ```
  	
+    Additional (and some slightly differing) tests will be run if
+    you're either root, or running under fakeroot, and for the root
+    case, in order to include all of the tests, you'll want to make
+    sure the fuse and loop modules are loaded, which you can do for
+    Linux via (as root):
+
+    ```sh
+    modprobe fuse
+    modprobe loop
+    ```
+
     If you have the Python xdist module installed, then you can
     probably run the tests faster by adding the make -j option (see <a
     href="HACKING">./HACKING</a> for additional information):

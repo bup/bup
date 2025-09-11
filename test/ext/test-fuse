@@ -18,11 +18,6 @@ if [ $? -eq 2 ]; then
     exit 0
 fi
 
-if test -n "$(type -p modprobe)" && ! modprobe fuse; then
-    WVSKIP 'Unable to load fuse module; skipping dependent tests.'
-    exit 0
-fi
-
 if ! fusermount -V; then
     WVSKIP 'skipping FUSE tests: fusermount does not appear to work'
     exit 0
