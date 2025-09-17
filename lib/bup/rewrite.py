@@ -187,15 +187,18 @@ def _vfs_walk_dir_recursively(srcrepo, dstrepo, path, excludes, db, mapping,
     path_w_meta = None
     for entry in entries:
         name, sub_item = entry
+        # For git-created commits or older bup repos, the metadata
+        # will be an integer, so create synthetic Metadata.
+        meta = entry[1].meta
         if name == b'.':
             # contents() promises this
             assert path_w_meta is None, 'two "." dir entries encountered?!'
             # Create version of path with its real metadata, not the
             # contents() placeholder mode for dirs.
-            assert isinstance(entry[1].meta, Metadata), entry
             dir_name, dir_item = path[-1]
+            assert isinstance(meta, (Metadata, int)), (entry, meta)
             path_w_meta = path[:-1] \
-                + ((dir_name, dir_item._replace(meta=entry[1].meta)),)
+                + ((dir_name, dir_item._replace(meta=meta)),)
             continue
         sub_fs_path_in_save = joinp(fs_path_in_save, name)
         if S_ISDIR(vfs.item_mode(sub_item)):
@@ -203,6 +206,7 @@ def _vfs_walk_dir_recursively(srcrepo, dstrepo, path, excludes, db, mapping,
         if should_rx_exclude_path(sub_fs_path_in_save, excludes):
             continue
         assert path_w_meta is not None, '"." not before children in dir'
+        assert isinstance(entry[1].meta, (Metadata, int)), entry
         sub_path = path_w_meta + (entry,)
         if not S_ISDIR(vfs.item_mode(sub_item)):
             yield sub_path, None
@@ -221,7 +225,7 @@ def _vfs_walk_dir_recursively(srcrepo, dstrepo, path, excludes, db, mapping,
                                                      missing,
                                                      _replacement_parents=sub_rpath)
     assert path_w_meta is not None, f'{path_msg(fs_path_in_save)} has no "."'
-    assert isinstance(path_w_meta[-1][1].meta, Metadata), path_w_meta
+    assert isinstance(path_w_meta[-1][1].meta, (Metadata, int)), path_w_meta
     yield path_w_meta, None
 
 def _rewrite_link(path, item_mode, srcrepo, dstrepo, stack, missing):

@@ -229,7 +229,7 @@ class Metadata:
     # Timestamps are (sec, ns), relative to 1970-01-01 00:00:00, ns
     # must be non-negative and < 10**9.
 
-    # Consider bup.rewrite (e.g. _blob_replacement()) when making
+    # Consider bup.rewrite (_blob_replacement() ...) when making
     # changes to the records (particularly the common records).
 
     def _add_common(self, path, st):

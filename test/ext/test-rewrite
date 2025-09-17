@@ -144,6 +144,24 @@ GIT_DIR="$BUP_DIR" WVPASS git ls-tree -r save-new^ > "$tmpdir/n"
 # FIXME: analyse the diff properly
 diff -u "$tmpdir/o" "$tmpdir/n"
 
+WVSTART "rewrite trees without .bupm"
+WVPASS rm -rf src repo
+WVPASS mkdir src
+WVPASS date > src/x
+WVPASS date > src/y
+WVPASS chmod +x src/x
+WVPASS bup init repo
+WVPASS git --git-dir repo --work-tree "$(pwd)" add src
+WVPASS git --git-dir repo --work-tree "$(pwd)" commit -am save
+WVPASS git --git-dir repo config bup.split.trees true
+WVPASS git --git-dir repo config bup.split.files legacy:16
+WVPASS bup -d repo get --rewrite -s repo --append: main main-rewrite
+WVPASSEQ "$(bup -d repo ls -ln main-rewrite/latest/src | tr -s ' ' ' ')" \
+'-rw-r--r-- ?/? 29 ????-??-?? ??:?? x
+-rw-r--r-- ?/? 29 ????-??-?? ??:?? y'
+WVPASS git --git-dir repo ls-tree main-rewrite:src | WVPASS grep -vE '\.bupm$'
+WVPASS rm -rf repo src
+
 
 WVPASS cd "$top"
 WVPASS rm -rf "$tmpdir"
