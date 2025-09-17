@@ -137,10 +137,12 @@ used to help test before/after results.)
     values. Currently, one of these options must be specified whenever
     the source and destination repository configurations differ in a
     relevant way, and so far, this option is only supported for
-    appends and picks. Note that while tested, this option is
-    relatively new and so warrants even more caution (see CAUTION
-    above) than `bup get` itself. Please consider validating the
-    results carefully for now.
+    appends and picks. Note that repairs (see REPLACEMENTS below)
+    require `--rewrite`, and rewriting a git-created save may
+    (currently will) introduce bup-related changes. Further, while
+    tested, `--rewrite` is relatively new and so warrants even more
+    caution (see CAUTION above) than `bup get` itself. Please consider
+    validating the results carefully for now.
 
 \--exclude-rx=*pattern*
 :   exclude any path matching *pattern*, which must be a Python regular

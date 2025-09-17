@@ -1,5 +1,6 @@
 
 from io import BytesIO
+from stat import S_ISDIR
 
 from bup import hashsplit
 from bup.hashsplit import \
@@ -23,8 +24,7 @@ class TreeItem:
         assert isinstance(mode, int), mode
         assert isinstance(gitmode, int), gitmode
         assert isinstance(oid, bytes), oid
-        if meta is not None:
-            assert isinstance(meta, Metadata), meta
+        assert isinstance(meta, (Metadata, int, type(None))), meta
         self.name = name
         self.mode = mode
         self.gitmode = gitmode
@@ -118,6 +118,36 @@ class StackDir:
             f' items={[(x.name, x.oid.hex()) for x in self.items]!r}>'
 
 
+def _dir_metadata(dir_meta, items):
+    # If all the metadata bound for the bupm are int or None, drop the
+    # bupm to either match the original (say git created) tree or
+    # (not yet implemented) to repair.
+    any_real_meta = False
+    if isinstance(dir_meta, Metadata):
+        any_real_meta = True
+        meta_ents = [(b'', dir_meta)]
+    elif isinstance(dir_meta, (int, type(None))):
+        meta_ents = [(b'', _empty_metadata)]
+    else:
+        raise Exception(f'Unexpected "." metadata type {dir_meta!r}')
+    for entry in items:
+        if S_ISDIR(entry.mode):
+            continue
+        if isinstance(entry.meta, (int, type(None))):
+            ml = (shalist_item_sort_key((entry.mode, entry.name, None)),
+                  _empty_metadata)
+        elif isinstance(entry.meta, Metadata):
+            any_real_meta = True
+            ml = (shalist_item_sort_key((entry.mode, entry.name, None)),
+                  entry.meta)
+        else:
+            raise Exception(f'Unexpected metadata type in {entry!r}')
+        meta_ents.append(ml)
+    if any_real_meta:
+        return meta_ents
+    return None
+
+
 class Stack:
     def __init__(self, repo, split_config):
         self._stack = []
@@ -137,7 +167,7 @@ class Stack:
         return [p.name for p in self._stack]
 
     def push(self, name, meta):
-        assert isinstance(meta, (Metadata, type(None))), meta
+        assert isinstance(meta, (Metadata, int, type(None))), meta
         self._stack.append(StackDir(name, meta))
 
     def _clean(self, tree):
@@ -154,23 +184,24 @@ class Stack:
         return items
 
     def _write_tree(self, dir_meta, items, add_meta=True):
-        shalist = []
-        # This might be False if doing a 'bup rewrite' where the original is
-        # from an old repo without metadata, or created by 'bup split'.
-        meta_ok = all(isinstance(entry.meta, Metadata)
-                      for entry in items if entry.mode != GIT_MODE_TREE)
-        if add_meta and meta_ok:
-            metalist = [(b'', _empty_metadata if dir_meta is None else dir_meta)]
-            metalist.extend((shalist_item_sort_key((entry.mode, entry.name, None)),
-                             entry.meta)
-                            for entry in items if entry.mode != GIT_MODE_TREE)
-            metalist.sort(key = lambda x: x[0])
-            metadata = BytesIO(b''.join(m[1].encode() for m in metalist))
-            splitter = hashsplit.from_config([metadata], self._split_config)
-            mode, oid = split_to_blob_or_tree(self._repo.write_bupm,
-                                              self._repo.write_tree,
-                                              splitter)
-            shalist.append((mode, b'.bupm', oid))
+        if not add_meta:
+            return self._repo.write_tree([(entry.gitmode, entry.mangled_name(),
+                                           entry.oid)
+                                         for entry in items])
+
+        metalist = _dir_metadata(dir_meta, items)
+        if not metalist:
+            return self._repo.write_tree([(entry.gitmode, entry.mangled_name(),
+                                           entry.oid)
+                                         for entry in items])
+
+        metalist.sort(key = lambda x: x[0])
+        metadata = BytesIO(b''.join(m[1].encode() for m in metalist))
+        splitter = hashsplit.from_config([metadata], self._split_config)
+        mode, oid = split_to_blob_or_tree(self._repo.write_bupm,
+                                          self._repo.write_tree,
+                                          splitter)
+        shalist = [(mode, b'.bupm', oid)]
         shalist.extend((entry.gitmode, entry.mangled_name(), entry.oid)
                        for entry in items)
         return self._repo.write_tree(shalist)

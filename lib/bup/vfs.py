@@ -12,14 +12,26 @@ The VFS is structured like this:
 Each path is represented by an item that has least an item.meta which
 may be either a Metadata object, or an integer mode.  Functions like
 item_mode() and item_size() will return the mode and size in either
-case.  Any item.meta Metadata instances must not be modified directly.
-Make a copy to modify via item.meta.copy() if needed, or call
-copy_item().
+case.  Metadata instances must not be modified directly.  Make a copy
+to modify via item.meta.copy() if needed, or call copy_item().
 
 The want_meta argument is advisory for calls that accept it, and it
 may not be honored.  Callers must be able to handle an item.meta value
-that is either an instance of Metadata or an integer mode, perhaps
-via item_mode() or augment_item_meta().
+that is either an instance of Metadata or an integer mode, perhaps via
+item_mode() or augment_item_meta().
+
+An integer item.meta means that either no bup-recorded metadata was
+available, or the item was a subdirectory returned by a function like
+contents(), which doesn't retrieve the metadata for
+subdirectories. That's because the actual metadata for a directory is
+stored inside the directory (see fill_in_metadata_if_dir() or
+ensure_item_has_metadata()).
+
+Bup-recorded metadata may be unavailable for a number of reasons. For
+example, "synthetic" paths like the VFS root or /.tag/ don't have it,
+trees created by git or early versions of bup won't have it, and some
+versions of bup omitted it when the metadata was unreadable at save
+time.
 
 Setting want_meta=False is rarely desirable since it can limit the VFS
 to only the metadata that git itself can represent, and so for
@@ -31,12 +43,6 @@ the more limited metadata is sufficient.
 Any given metadata object's size may be None, in which case the size
 can be computed via item_size() or augment_item_meta(...,
 include_size=True).
-
-When traversing a directory using functions like contents(), the meta
-value for any directories other than '.' will be a default directory
-mode, not a Metadata object.  This is because the actual metadata for
-a directory is stored inside the directory (see
-fill_in_metadata_if_dir() or ensure_item_has_metadata()).
 
 Commit items represent commits (e.g. /.tag/some-commit or
 /foo/latest), and for most purposes, they appear as the underlying
