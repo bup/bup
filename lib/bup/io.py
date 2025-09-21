@@ -1,6 +1,7 @@
 
 from errno import EAGAIN
 from os import fsdecode
+from stat import S_ISDIR
 import mmap as py_mmap
 import os, select, sys, time
 
@@ -251,6 +252,36 @@ def enc_shs(val):
 def path_msg(x):
     """Return a string representation of a path."""
     return enc_shs(fsdecode(x))
+
+
+def walk_path_msg(ref_name, item_path):
+    # walk ref of
+    #   archive/latest/home
+    # produces
+    #   archive/latest/home 1c8749ada58cbb2b7e3752db12ee7bbbded5cf84:rlb/.bupm
+    #
+    # Currently, the item_path is always an optional sequence of
+    # commits (named by their oids), followed by the last commit's
+    # tree (also oid named), followed by any remaining items, with
+    # their git tree names.
+    if len(item_path) == 1:
+        return path_msg(item_path[0].name)
+    root = None # either the last commit or a tree
+    path_top = 1 # skips the tree if we have a commit
+    for i in range(-1, - (len(item_path) + 1), -1):
+        if item_path[i].type == b'commit':
+            root = i
+            break
+    if root is None:
+        root = 0
+    else:
+        path_top = root + 2
+    path = path_msg(b'/'.join(x.name for x in item_path[path_top:]))
+    path = f'{path_msg(item_path[root].name)}:{path}'
+    if S_ISDIR(item_path[-1].mode):
+        return f'{path_msg(ref_name)} {path}/'
+    else:
+        return f'{path_msg(ref_name)} {path}'
 
 
 def qsql_id(s):
