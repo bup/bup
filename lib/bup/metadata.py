@@ -5,11 +5,10 @@
 # This code is covered under the terms of the GNU Library General
 # Public License as described in the bup LICENSE file.
 
-from copy import deepcopy
 from errno import EACCES, EINVAL, ENOTTY, ENOSYS, EOPNOTSUPP
 from io import BytesIO
 from time import gmtime, strftime
-import errno, os, sys, stat, socket, struct
+import copy, errno, os, sys, stat, socket, struct
 
 from bup import vint, xstat
 from bup.drecurse import recursive_dirlist
@@ -745,12 +744,13 @@ class Metadata:
                 else:
                     raise
 
-    __slots__ = ('mode', 'uid', 'gid', 'user', 'group', 'rdev',
+    __slots__ = ('_frozen',
+                 'mode', 'uid', 'gid', 'user', 'group', 'rdev',
                  'atime', 'mtime', 'ctime', 'path',
                  'size', 'symlink_target', 'hardlink_target',
                  'linux_attr', 'linux_xattr', 'posix1e_acl')
 
-    def __init__(self):
+    def __init__(self, *, frozen=False):
         self.mode = self.uid = self.gid = self.user = self.group = None
         self.rdev = None
         self.atime = self.mtime = self.ctime = None
@@ -762,6 +762,29 @@ class Metadata:
         self.linux_attr = None
         self.linux_xattr = None
         self.posix1e_acl = None
+        self._frozen = frozen
+
+    def freeze(self): self._frozen = True; return self
+    def thaw(self): self._frozen = False; return self
+    def __setattr__(self, k, v):
+        if k == '_frozen':
+            return super().__setattr__(k, v)
+        if getattr(self, '_frozen', False):
+            raise AttributeError(f'Cannot change frozen instance attribute {k}',
+                                 name=k, obj=self)
+        return super().__setattr__(k, v)
+    def __copy__(self):
+        result = self.__new__(self.__class__)
+        for k in [x for x in self.__slots__ if x != '_frozen']:
+            setattr(result, k, copy.copy(getattr(self, k)))
+        result._frozen = self._frozen
+        return result
+    def __deepcopy__(self, memo):
+        result = self.__new__(self.__class__)
+        for k in [x for x in self.__slots__ if x != '_frozen']:
+            setattr(result, k, copy.deepcopy(getattr(self, k), memo))
+        result._frozen = self._frozen
+        return result
 
     def __eq__(self, other):
         if not isinstance(other, Metadata): return False
@@ -853,8 +876,12 @@ class Metadata:
         ret.append(vint.encode_vuint(_rec_tag_end))
         return b''.join(ret)
 
-    def copy(self):
-        return deepcopy(self)
+    def copy(self, frozen=None):
+        if frozen is None:
+            return copy.deepcopy(self)
+        if frozen:
+            return copy.deepcopy(self).freeze()
+        return copy.deepcopy(self).thaw()
 
     @staticmethod
     def read(port):
@@ -933,18 +960,6 @@ class Metadata:
             and self._same_posix1e_acl(other) \
             and self._same_linux_attr(other) \
             and self._same_linux_xattr(other)
-
-
-class MetadataRO(Metadata):
-    __slots__ = '_frozen',
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._frozen = True
-    def __setattr__(self, k, v):
-        if getattr(self, '_frozen', None) and hasattr(self, k):
-            raise AttributeError(f'Cannot modify read-only instance attribute {k}',
-                                 name=k, obj=self)
-        return super().__setattr__(k, v)
 
 
 def from_path(path, statinfo=None, archive_path=None,
