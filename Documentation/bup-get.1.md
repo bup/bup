@@ -238,7 +238,9 @@ transfer when `--repair` is requested.
    (ambiguous). When such an abridged `.bupm` is detected, `--repair`
    drops all of the `.bupm` entries except the one for the directory
    itself, ".", and so the affected paths lose most or all of their
-   metadata (ownership, permissions, timestamps, etc.).
+   metadata (ownership, permissions, timestamps, etc.). These paths
+   will have restrictive permissions (as if via umask 077) when
+   presented, e.g. via `bup-restore(1)`, `bup-ls(1)`, etc.
 
  * Use of `bup get` or `bup gc` versions before 0.33.5 could cause
    repositories to end up with missing objects (which can be detected

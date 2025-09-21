@@ -4,6 +4,14 @@ Notable changes in main (incomplete)
 May require attention
 ---------------------
 
+* Versions of `bup` at or after 0.25 and before 0.30.1 might (rarely)
+  drop metadata entries for non-directories. That makes the metadata
+  for all of the other non-directory paths in the same directory
+  unusable (ambiguous). `bup` now detects this and treats it as an
+  error, given the potential risks with respect to incorrect
+  ownership, permissions, etc. The new `bup validate-refs` command can
+  detect the problem and `bup get --repair` can repair affected saves.
+
 * Previously, `bup get --force-pick: SRC /.tag/DEST` created broken
   commits if the `DEST` was not itself a commit (the parent would be
   whatever `DEST` initially pointed to).
