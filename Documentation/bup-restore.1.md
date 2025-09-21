@@ -68,8 +68,8 @@ those systems, bup will log an error for each relevant path. Any
 "synthetic" paths, for example a root directory affected by `bup save
 --graft`, will have group and world read/execute permissions as if via
 a umask of 022. Any paths whose metadata has been lost (perhaps via
-earlier versions of bup; see the taxonomy in DESIGN) will have
-restrictive permissions as if via a umask of 077.
+`bup get --repair`, or earlier versions of bup; see the taxonomy in
+DESIGN) will have restrictive permissions as if via a umask of 077.
 
 The `--map-user`, `--map-group`, `--map-uid`, `--map-gid` options may
 be used to adjust the available ownership information before any of

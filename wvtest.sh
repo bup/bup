@@ -80,7 +80,6 @@ WVEXPRC()
 	esac
 }
 
-
 WVPASS()
 {
 	local TEXT="$*"

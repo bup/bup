@@ -1,0 +1,107 @@
+#!/usr/bin/env bash
+. ./wvtest-bup.sh
+. ./test/lib/btl.sh
+
+set -o pipefail
+
+top="$(WVPASS pwd)" || exit $?
+tmpdir="$(WVPASS wvmktempdir)" || exit $?
+
+export BUP_DIR="$tmpdir/bup"
+export GIT_DIR="$tmpdir/bup"
+
+bup() { "$top/bup" "$@"; }
+
+set-repair-id()
+{
+    local log="$1"
+    WVPASSEQ 1 "$(grep -cE '^repairs needed, repair-id: ' "$log")"
+    repair_id="$(WVPASS grep -E '^repairs needed, repair-id: ' "$log")"
+    repair_id="${repair_id#repairs needed, repair-id: }"
+}
+
+# FIXME: consider checking expected compare-trees differences.
+
+
+WVPASS cd "$tmpdir"
+WVPASS bup init
+
+
+# See also test-validate-refs
+
+WVSTART 'repair of abridged bupms'
+# Create a save with two root files, and then three, and then replace
+# the three entry save's .bupm with the one from the two entry save so
+# we can check that abridged bupms are detected. Note that tree
+# splitting was added to bup well after this bug was fixed.
+WVPASS rm -rf bup src
+WVPASS bup init
+WVPASS mkdir -p src
+WVPASS echo 1 > src/1
+WVPASS echo 2 > src/2
+WVPASS bup index src
+WVPASS bup save --strip -n src src
+WVPASS echo 3 > src/3
+WVPASS bup index src
+WVPASS bup tick
+WVPASS bup save --strip -n src src
+# Now replace src:.bupm with the abridged one
+bupm_1_2_ent="$(WVPASS git ls-tree src~ | WVPASS grep -E $'\t\.bupm$')"
+broken_tree="$(WVPASS git ls-tree src | WVPASS sed -Ee "1s/.*/$bupm_1_2_ent/")"
+broken_tree_oid="$(echo "$broken_tree" | WVPASS git mktree)"
+broken_save=$(WVPASS git commit-tree "$broken_tree_oid" -p src -m 'abridged bupm')
+WVPASS git branch -f src "$broken_save"
+
+src_oid="$(git rev-parse src)"
+WVPASS readarray -t saves < <(bup ls src)
+save_date="${saves[2]}"
+unset saves
+
+# May as well double-check, though test-validate-refs already does this
+WVEXPRC 1 eval 'bup validate-refs --bupm 2>&1 | tee validate.log'
+btl-display-file validate.log
+wv-match-rx "$(< validate.log)"  \
+"abridged-bupm refs/heads/src $broken_tree_oid:\.bupm/?
+scanned 0 of 1 ref \(0\.00% of all objects\)"
+
+# Ensure a normal rewrite rejects the abridged bupm
+WVEXPRC 2 eval 'bup get --rewrite --append: src dst 2>&1 | tee rewrite.log'
+btl-display-file rewrite.log
+
+WVPASS umask 077
+
+# Test repair
+WVEXPRC 3 eval 'bup get --repair --append: src dst 2>&1 | tee rewrite.log'
+btl-display-file rewrite.log
+set-repair-id rewrite.log
+
+# Check commit message trailers
+WVPASS git --git-dir bup show -s --pretty=email dst \
+    | WVPASS git interpret-trailers --parse > repair-trailers
+btl-display-file repair-trailers
+bup_ver="$(bup version)"
+readarray -t trailers < repair-trailers
+wv-match-rx "${trailers[0]}" "^Bup-Version: ${bup_ver//+/\\+}$"
+wv-match-rx "${trailers[1]}" '^Bup-Argv: [^ ]+/bup.* get --repair --append: src dst$'
+wv-match-rx "${trailers[2]}" "^Bup-Repair-ID: $repair_id$"
+wv-match-rx "${trailers[3]}" "^Bup-Repaired-Save: $src_oid src/$save_date$"
+wv-match-rx "${trailers[4]}" '^Bup-Lost-Meta: 1$'
+wv-match-rx "${trailers[5]}" '^Bup-Lost-Meta: 2$'
+wv-match-rx "${trailers[6]}" '^Bup-Lost-Meta: 3$'
+WVPASSEQ '' "${trailers[7]}" # end-of-line
+unset trailers
+
+# Check path metadata
+WVPASS bup restore -C res dst/latest/.
+for i in {1..3}; do
+    WVPASS bup xstat res/"$i" > res-xstat
+    ls -l res/"$i"
+    btl-display-file res-xstat
+    WVPASS grep -E '^mode: 100600 \(-rw-------\)$' res-xstat
+    WVPASS grep -E '^rdev: 0$' res-xstat
+    WVPASS grep -E '^mtime: 0$' res-xstat
+done
+
+
+WVPASS cd "$top"
+WVPASS rm -rf "$tmpdir"

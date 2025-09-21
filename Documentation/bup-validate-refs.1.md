@@ -57,7 +57,7 @@ found, and some other positive integer for other failures.
 
 # SEE ALSO
 
-`bup-fsck`(1), `bup-join`(1), `bup-restore`(1)
+`bup-fsck`(1), `bup-get`(1), `bup-join`(1), `bup-restore`(1)
 
 # BUP
 

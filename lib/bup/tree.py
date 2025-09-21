@@ -3,16 +3,17 @@ from io import BytesIO
 from stat import S_ISDIR
 
 from bup import hashsplit
+from bup._helpers import RecordHashSplitter
 from bup.hashsplit import \
     (BUP_TREE_BLOBBITS,
      GIT_MODE_TREE,
      GIT_MODE_FILE,
      split_to_blob_or_tree)
-from bup.helpers import add_error
-from bup.metadata import Metadata
-from bup.io import path_msg
 from bup.git import shalist_item_sort_key, mangle_name
-from bup._helpers import RecordHashSplitter
+from bup.helpers import add_error
+from bup.io import path_msg
+from bup.metadata import Metadata
+from bup.vfs import LostMetadata
 
 
 _empty_metadata = Metadata(frozen=True)
@@ -118,22 +119,35 @@ class StackDir:
             f' items={[(x.name, x.oid.hex()) for x in self.items]!r}>'
 
 
-def _dir_metadata(dir_meta, items):
-    # If all the metadata bound for the bupm are int or None, drop the
-    # bupm to either match the original (say git created) tree or
-    # (not yet implemented) to repair.
+def _dir_metadata(dir_meta, items, repair):
+    # If all the metadata bound for the bupm are int, None or (when
+    # repairing) LostMetadata, drop the bupm to either match the
+    # original (say git created) tree or to repair. In the abridged
+    # case, dir_meta still won't be a LostMetadata because the bug
+    # didn't affect directories. Changes here must maintain
+    # coordination with the relevant VFS behaviors
+    # (e.g. tree_items_except_dot).
     any_real_meta = False
-    if isinstance(dir_meta, Metadata):
+    if isinstance(dir_meta, (int, type(None))):
+        meta_ents = [(b'', _empty_metadata)]
+    elif isinstance(dir_meta, LostMetadata):
+        if not repair:
+            raise Exception(f'LostMetadata for ".", but not repairing {dir_meta!r}')
+        meta_ents = [(b'', _empty_metadata)]
+    elif isinstance(dir_meta, Metadata):
         any_real_meta = True
         meta_ents = [(b'', dir_meta)]
-    elif isinstance(dir_meta, (int, type(None))):
-        meta_ents = [(b'', _empty_metadata)]
     else:
         raise Exception(f'Unexpected "." metadata type {dir_meta!r}')
     for entry in items:
         if S_ISDIR(entry.mode):
             continue
         if isinstance(entry.meta, (int, type(None))):
+            ml = (shalist_item_sort_key((entry.mode, entry.name, None)),
+                  _empty_metadata)
+        elif isinstance(entry.meta, LostMetadata):
+            if not repair:
+                raise Exception(f'LostMetadata, but not repairing {entry!r}')
             ml = (shalist_item_sort_key((entry.mode, entry.name, None)),
                   _empty_metadata)
         elif isinstance(entry.meta, Metadata):
@@ -149,10 +163,11 @@ def _dir_metadata(dir_meta, items):
 
 
 class Stack:
-    def __init__(self, repo, split_config):
+    def __init__(self, repo, split_config, *, repair=False):
         self._stack = []
         self._repo = repo
         self._split_config = split_config
+        self._repair = repair
 
     def __repr__(self):
         cls = self.__class__
@@ -189,7 +204,7 @@ class Stack:
                                            entry.oid)
                                          for entry in items])
 
-        metalist = _dir_metadata(dir_meta, items)
+        metalist = _dir_metadata(dir_meta, items, self._repair)
         if not metalist:
             return self._repo.write_tree([(entry.gitmode, entry.mangled_name(),
                                            entry.oid)

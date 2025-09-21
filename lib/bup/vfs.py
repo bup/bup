@@ -43,6 +43,12 @@ A publically readable integer item.meta means either:
     directory (see fill_in_metadata_if_dir() or
     ensure_item_has_metadata()).
 
+When repairs are requested (e.g. via contents()) and metadata cannot
+be recovered the metadata may be a LostMetadata instance, which
+currently only has an integer mode attribute. Note that bup.tree
+relies on critical assumptions about the VFS behavior in order to
+detect and restore "git created" trees, etc. during a rewrite.
+
 Setting want_meta=False is rarely desirable since it can limit the VFS
 to only the metadata that git itself can represent, and so for
 example, fifos and sockets will appear to be regular files
@@ -97,7 +103,7 @@ from bup.git import \
      parse_commit,
      tree_entries,
      tree_iter)
-from bup.helpers import debug2
+from bup.helpers import EXIT_FAILURE, debug2
 from bup.io import path_msg
 from bup.metadata import Metadata
 
@@ -586,22 +592,84 @@ def ordered_tree_entries(entries, bupm=None):
         tree_ents.sort(key=lambda x: x[0])
     return tree_ents
 
+class LostMetadata(Metadata):
+    """Representation for metadata that's been lost, e.g. due to a bug
+    like the one that dropped bupm entries."""
+    def __init__(self, mode):
+        super().__init__()
+        self.mode = mode
+        self.freeze()
 
-def _tree_items_except_dot(oid, entries, names=None, bupm=None):
+_lost_dir_meta = LostMetadata(default_dir_mode & ~(S_IRWXO | S_IRWXG))
+_lost_file_meta = LostMetadata(default_file_mode & ~(S_IRWXO | S_IRWXG))
+_lost_exec_meta = LostMetadata(default_exec_mode & ~(S_IRWXO | S_IRWXG))
+_lost_symlink_meta = LostMetadata(default_symlink_mode & ~(S_IRWXO | S_IRWXG))
+
+def _lost_metadata_for_gitinfo(mode, kind):
+    if S_ISREG(mode):
+        if mode & S_IXUSR:
+            return _lost_exec_meta
+        return _lost_file_meta
+    if S_ISDIR(mode):
+        if kind == BUP_CHUNKED:
+            # REVIEW: We've just lost any executable bit in this case, right?
+            return _lost_file_meta
+        return _lost_dir_meta
+    if S_ISLNK(mode):
+        return _lost_symlink_meta
+    assert 'unexpected mode', oct(mode) # for now shouldn't be possible
+    return None # pylint
+
+def _validated_meta_ents(oid, tree_ents, bupm, repair):
+    # Versions before 47891d8951a95b8e0d9ca94387107cdf12ca3d3c
+    # (before 0.31) might rarely drop a bupm entry, so check.
+    if not bupm:
+        return None
+    meta_entries = []
+    try:
+        while True: meta_entries.append(Metadata.read(bupm))
+    except EOFError:
+        pass
+    exp_meta_n = 0
+    for ent in tree_ents:
+        if ent[1] != b'.bupm' and (ent[2] == BUP_CHUNKED or not S_ISDIR(ent[3])):
+            exp_meta_n += 1
+    if exp_meta_n != len(meta_entries):
+        # should be increasingly rare, and rare to begin with
+        if not repair:
+            ex = SystemExit('error: tree has missing metadata'
+                            f' (see bup-get(1)) - {oid.hex()}')
+            ex.code = EXIT_FAILURE
+            raise ex
+        return None
+    meta_entries.reverse()
+    return meta_entries
+
+def _tree_items_except_dot(oid, entries, names=None, bupm=None, *, repair=False):
     """Returns all tree items except ".", and assumes that any bupm is
     positioned just after that entry. Any paths whose metadata has
     been lost will have restrictive permissions (as if via umask
     077). See the Repository Taxonmy in DESIGN.
 
     """
+    # Ensure any changes to the metadata yielded coordinates properly
+    # with bup.tree (e.g. _dir_metadata).
+
+    tree_ents = ordered_tree_entries(entries, bupm)
+    meta_ents = _validated_meta_ents(oid, tree_ents, bupm, repair)
+    if meta_ents is None:
+        assert repair or not bupm, (meta_ents, repair, bupm)
 
     def read_nondir_meta(bupd, default_mode):
-        if not bupm:
-            return default_mode
-        meta = Metadata.read(bupm)
-        if meta is None: # lost metadata
-            return default_mode & ~(S_IRWXO | S_IRWXG)
-        return meta
+        if meta_ents is not None:
+            meta = meta_ents.pop()
+            # empty for a number of reasons; see Repository Taxonomy in DESIGN
+            if meta is None: # lost metadata
+                return default_mode & ~(S_IRWXO | S_IRWXG)
+            return meta
+        if bupm: # repair
+            return _lost_metadata_for_gitinfo(gitmode, kind)
+        return default_mode
 
     def tree_item(ent_oid, kind, gitmode):
         if kind == BUP_CHUNKED:
@@ -616,8 +684,6 @@ def _tree_items_except_dot(oid, entries, names=None, bupm=None):
 
         meta = read_nondir_meta(bupm, _default_mode_for_gitinfo(gitmode, kind))
         return Item(oid=ent_oid, meta=meta)
-
-    tree_ents = ordered_tree_entries(entries, bupm)
 
     assert isinstance(names, (set, frozenset)) or names is None
     assert len(oid) == 20
@@ -645,8 +711,8 @@ def _tree_items_except_dot(oid, entries, names=None, bupm=None):
         if name not in names:
             if name > last_name:
                 break  # given bupm sort order, we're finished
-            if (kind == BUP_CHUNKED or not S_ISDIR(gitmode)) and bupm:
-                Metadata.read(bupm)
+            if (kind == BUP_CHUNKED or not S_ISDIR(gitmode)):
+                if meta_ents is not None: meta_ents.pop()
             continue
         yield name, tree_item(ent_oid, kind, gitmode)
         if remaining == 1:
@@ -714,7 +780,7 @@ def _parse_tree_depth(mangled_name):
     assert depth > 0
     return depth
 
-def tree_items(repo, oid, tree_data, names, *, want_meta=True):
+def tree_items(repo, oid, tree_data, names, *, want_meta=True, repair=False):
     # For now, the .bupm order doesn't quite match git's, and we don't
     # load the tree data incrementally anyway, so we just work in RAM
     # via tree_data.
@@ -740,6 +806,11 @@ def tree_items(repo, oid, tree_data, names, *, want_meta=True):
         if mangled_name > b'.bupm':
             break
 
+    # When repairing, "." wouldn't be affected by the missing entries
+    # issues, i.e. the first entry (the dir) should still be OK
+    # (16f9f9829038f25aec80ebfae3c882a66281e145). Split trees should
+    # also be unaffected because the bug was fixed before they were
+    # introduced (47891d8951a95b8e0d9ca94387107cdf12ca3d3c).
     if want_meta and bupm_oid:
         if depth is None:
             with _FileReader(repo, bupm_oid) as bupm:
@@ -747,18 +818,20 @@ def tree_items(repo, oid, tree_data, names, *, want_meta=True):
                     Metadata.read(bupm)
                 else:
                     yield b'.', Item(oid=oid, meta=_read_dir_meta(bupm))
-                yield from _tree_items_except_dot(oid, entries, names, bupm)
+                yield from _tree_items_except_dot(oid, entries, names, bupm,
+                                                  repair=repair)
         else:
             if dot_requested:
                 with _FileReader(repo, bupm_oid) as bupm:
                     yield b'.', Item(oid=oid, meta=_read_dir_meta(bupm))
-            yield from _split_subtree_items(repo, depth, oid, entries, names, True)
+            yield from _split_subtree_items(repo, depth, oid, entries, names,
+                                            True)
         return
 
     if dot_requested:
         yield b'.', Item(oid=oid, meta=default_dir_mode)
     if not depth:
-        yield from _tree_items_except_dot(oid, entries, names)
+        yield from _tree_items_except_dot(oid, entries, names, repair=repair)
     else:
         yield from _split_subtree_items(repo, depth, oid, entries, names, False)
 
@@ -924,7 +997,7 @@ def tags_items(repo, names):
             return
         remaining -= 1
 
-def contents(repo, item, names=None, want_meta=True):
+def contents(repo, item, names=None, want_meta=True, repair=False):
     """Yields information about the items contained in item.  Yields
     (name, item) for each name in names, if the name exists, in an
     unspecified order. Items that don't exist are omitted.  If there
@@ -944,6 +1017,13 @@ def contents(repo, item, names=None, want_meta=True):
     restrictive (i.e. no permissions for group or other), then the
     metadata for the item has been lost.
 
+    If repair is true then when an attempt to retrieve the metadata
+    for a path fails (e.g. because the .bupm file for the directory
+    exists, but is broken), the metadata will be a suitable
+    LostMetadata instance, with uid/gid 0 and with no group or other
+    permissions. Special files will become empty regular files. If
+    repair is false, exceptions will be raised instead.
+
     Do not modify any item.meta Metadata instances directly.  If
     needed, make a copy via item.meta.copy() and modify that instead.
 
@@ -960,7 +1040,8 @@ def contents(repo, item, names=None, want_meta=True):
             # Note: it shouldn't be possible to see an Item with type
             # 'commit' since a 'commit' should always produce a Commit.
             raise Exception('unexpected git ' + obj_t.decode('ascii'))
-        yield from tree_items(repo, item.oid, data, names, want_meta=want_meta)
+        yield from tree_items(repo, item.oid, data, names, want_meta=want_meta,
+                              repair=repair)
     elif isinstance(item, RevList):
         yield from revlist_items(repo, item.oid, names,
                                  require_meta=want_meta)

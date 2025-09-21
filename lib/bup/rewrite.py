@@ -23,9 +23,15 @@ from bup.io import path_msg, qsql_id
 from bup.metadata import Metadata
 from bup.path import xdg_cache
 from bup.pwdgrp import userfullname, username
+from bup.repair import Repairs
 from bup.tree import Stack
 from bup.vfs import \
-    Item, MissingObject, default_exec_mode, default_file_mode, render_path
+    (Item,
+     LostMetadata,
+     MissingObject,
+     default_exec_mode,
+     default_file_mode,
+     render_path)
 
 
 # The current arrangement relies on a number of assumptions:
@@ -102,6 +108,11 @@ def _previous_conversion(dstrepo, item, vfs_dir, db, mapping):
         return item, dst, None
     return item, dst, GIT_MODE_TREE if chunked else GIT_MODE_FILE
 
+def _meta_replaced(path, repairs):
+    repairs.meta_replaced(path)
+    fs_path = render_path(path[1:])
+    log(f'warning: metadata lost for {path_msg(fs_path)}\n')
+
 def _path_repaired(path, oid, replacement_oid, missing_oid, repairs):
     fs_path = render_path(path)
     repairs.path_replaced(path, oid, replacement_oid)
@@ -161,7 +172,7 @@ def _vfs_walk_dir_recursively(srcrepo, dstrepo, path, excludes, db, mapping,
     """Yield information about the paths underneath the given path.
 
     Yield (src_path, replacement_dir), where src_path is a vfs_path
-    and replacement_dir is be the replacement tree oid for a src_path
+    and replacement_dir is the replacement tree oid for a src_path
     representing a directory that has already been rewritten.
 
     When unreadable objects are encountered, raise MissingObject if
@@ -187,7 +198,7 @@ def _vfs_walk_dir_recursively(srcrepo, dstrepo, path, excludes, db, mapping,
             # listed in the split-tree "leaves" are actually
             # missing. So the list() only ensures that the split tree
             # itself isn't broken; its contents may be.
-            entries = list(vfs.contents(srcrepo, item))
+            entries = list(vfs.contents(srcrepo, item, repair=True))
         except MissingObject as ex:
             yield IncompleteDir(path, ex.oid), None
             return
@@ -313,6 +324,10 @@ def _rewrite_save_item(save_path, path, replacement_dir, srcrepo, dstrepo,
     item_mode = vfs.item_mode(item)
     is_dir = S_ISDIR(item_mode)
     dir_path = fs_path if is_dir else fs_path[:-1]
+
+    if isinstance(item.meta, LostMetadata):
+        assert isinstance(repairs, Repairs), repairs
+        _meta_replaced(path, repairs)
 
     # If switching to a new sub-tree, finish the current sub-tree, and
     # then we'll establish the sub-tree for the new sub-tree via
@@ -501,7 +516,8 @@ class Rewriter:
             try:
                 # Maintain a stack of information representing the current
                 # location in the archive being constructed.
-                stack = Stack(dstrepo, self._split_cfg)
+                stack = \
+                    Stack(dstrepo, self._split_cfg, repair=repairs.destructive)
 
                 if self._current_excludes != excludes:
                     # Whenever the excludes change, remembered tree

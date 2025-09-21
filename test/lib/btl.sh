@@ -16,3 +16,11 @@ btl-ent-oid()
     oid="${ls_tree_line%%$'\t'*}"
     echo "${oid##* }"
 }
+
+btl-display-file()
+{
+    local name="$1"
+    printf -- "----- \"%q\" content below -----\n" "$name" || exit $?
+    cat "$name" || exit $?
+    printf -- "----- \"%q\" content above -----\n" "$name" || exit $?
+}
