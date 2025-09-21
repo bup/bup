@@ -8,15 +8,17 @@ bup-validate-refs - check integrity of repository refs
 
 # SYNOPSIS
 
-bup validate-refs [--links] [*ref*...]
+bup validate-refs [--links] [--bupm] [*ref*...]
 
 # DESCRIPTION
 
 `bup validate-refs` can check repository references (e.g. saves) for
-commits or trees (directories) that refer to missing objects,
-reporting the path to any it finds. If no *ref*s are provided, it
-checks all refs, otherwise it only checks those specified. If
-`--links` is not specified, then it is implied.
+commits or trees (directories) that refer to missing objects, and for
+abridged bupm files (metadata storage), reporting the paths to those
+it finds. If no *ref*s are provided, it checks all refs, otherwise it
+only checks those specified. If no checks are explicitly requested,
+then a default set of checks will be performed, currently `--links`
+and `--bupm`.
 
 At the moment, the broken path information is only logged to standard
 error, and is not well specified (i.e. suitable for inspection, but
@@ -26,12 +28,17 @@ Also note that the current implementation may not report all paths to
 a given missing object because it only examines each unique tree or
 commit object once, no matter how often it appears within the refs
 being examined.  This means that in order to find every save with
-missing objects you would need to run the command separately for each
-ref, which will almost certainly to be much more expensive than a
-combined run because it can't skip subtrees that it has encountered
-before.
+missing objects, for example, you would need to run the command
+separately for each ref, which will almost certainly to be much more
+expensive than a combined run because it can't skip subtrees that it
+has encountered before.
 
 # OPTIONS
+
+\--bupm
+:   check bupm (metadata storage) files. Currently checks for missing
+    path entries, which could have been caused by `bup` versions since
+    0.25 and before 0.30.1.
 
 \--links
 :   check for commits or trees that refer to missing objects. This

@@ -3,14 +3,13 @@ from binascii import hexlify, unhexlify
 from contextlib import ExitStack
 #from itertools import chain
 from os.path import basename
-from stat import S_ISDIR
 import glob, os, re, subprocess, sys, tempfile
 
 from bup import bloom, git, midx
 from bup.git import MissingObject, walk_object
 from bup.helpers import \
     EXIT_FAILURE, log, note_error, progress, qprogress, reprogress
-from bup.io import path_msg
+from bup.io import walk_path_msg, path_msg
 from bup.repo import LocalRepo
 
 # This garbage collector uses a Bloom filter to track the live blobs
@@ -69,20 +68,14 @@ def count_objects(dir, verbosity):
 
 
 def report_missing(ref_name, item_path):
-    ref = path_msg(ref_name)
-    i = len(item_path) - 1
-    while i >= 0 and item_path[i].type != b'commit':
-        i -= 1
-    path = path_msg(b'/'.join(x.name for x in item_path[i:]))
     item = item_path[-1]
-    if S_ISDIR(item.mode):
-        note_error(f'missing {item.oid.hex()} {ref}:{path}/\n')
-    else:
-        note_error(f'missing {item.oid.hex()} {ref}:{path}\n')
+    imsg = walk_path_msg(ref_name, item_path)
+    note_error(f'missing {item.oid.hex()} {imsg}\n')
 
 
 def find_live_objects(existing_count, cat_pipe, refs=None, *,
-                      count_missing=False, idx_list=None, verbosity=0):
+                      count_missing=False, idx_list=None, for_item=None,
+                      verbosity=0):
     if count_missing: assert idx_list, (count_missing, idx_list)
     pack_dir = git.repo(b'objects/pack')
     ffd, bloom_filename = tempfile.mkstemp(b'.bloom', b'tmp-gc-', pack_dir)
@@ -119,6 +112,8 @@ def find_live_objects(existing_count, cat_pipe, refs=None, *,
                         missing += 1
                     else:
                         raise MissingObject(item.oid)
+                if for_item:
+                    for_item(ref_name, item_path)
                 # FIXME: batch ids
                 if item.type != b'blob':
                     if verbosity and not item.oid in live_trees:

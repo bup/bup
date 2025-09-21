@@ -101,6 +101,10 @@ test via fixtures in conftest.py, including the state of the
 environment variables and the working directory; the latter is reset
 to the top of the source tree.
 
+You may want to exclude test/tmp from backups because the testing
+directories are preserved on failure (until the next `make clean`),
+and test/tmp experiences a lot of churn.
+
 Submitting patches
 ==================
 
