@@ -9,13 +9,13 @@ from bup.hashsplit import \
      GIT_MODE_FILE,
      split_to_blob_or_tree)
 from bup.helpers import add_error
-from bup.metadata import Metadata, MetadataRO
+from bup.metadata import Metadata
 from bup.io import path_msg
 from bup.git import shalist_item_sort_key, mangle_name
 from bup._helpers import RecordHashSplitter
 
 
-_empty_metadata = MetadataRO()
+_empty_metadata = Metadata(frozen=True)
 
 class TreeItem:
     __slots__ = 'name', 'mode', 'gitmode', 'oid', 'meta'

@@ -42,10 +42,10 @@ def item_info(item, name,
         else:
             result.append(b'0000000000000000000000000000000000000000 ')
     if long_fmt:
-        meta = item.meta.copy()
+        meta = item.meta.copy(frozen=False)
         meta.path = name
         # FIXME: need some way to track fake vs real meta items?
-        result.append(metadata.summary_bytes(meta,
+        result.append(metadata.summary_bytes(meta.freeze(),
                                              numeric_ids=numeric_ids,
                                              classification=classification,
                                              human_readable=human_readable))

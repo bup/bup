@@ -95,7 +95,8 @@ def _previous_conversion(dstrepo, item, vfs_dir, db, mapping):
             assert item.meta.size == size
         else: # must not modify vfs results (see vfs docs)
             item = vfs.copy_item(item)
-            item.meta.size = size
+            item.meta.thaw().size = size
+            item.meta.freeze()
     # it's in the DB and in the destination repo
     if chunked is None: # dir, not file
         return item, dst, None

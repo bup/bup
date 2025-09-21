@@ -1194,8 +1194,9 @@ def augment_item_meta(repo, item, *, include_size=False, public=False):
     m = item.meta
     if isinstance(m, Metadata):
         if include_size and m.size is None:
+            m = m.copy(frozen=False)
             m.size = maybe_public(m.mode, _compute_item_size(repo, item))
-            return item._replace(meta=m)
+            return item._replace(meta=m.freeze())
         return item
     # m is mode
     meta = Metadata()
