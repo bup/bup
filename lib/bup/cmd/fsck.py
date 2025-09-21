@@ -4,7 +4,8 @@ from subprocess import PIPE
 from tempfile import mkdtemp
 from binascii import hexlify
 from os.path import join
-import glob, os, subprocess, sys
+from shutil import copy2
+import errno, glob, os, subprocess, sys
 
 from bup import options, git
 from bup.compat import argv_bytes
@@ -86,6 +87,16 @@ def par2(action, args, verb_floor=0, cwd=None):
     cmd.extend(args)
     return run(cmd, cwd=cwd)
 
+_unable_to_link = set()
+_unable_to_link.add(getattr(errno, 'EMLINK', None))
+_unable_to_link.add(getattr(errno, 'EOPNOTSUPP', None)) # freebsd
+_unable_to_link.add(getattr(errno, 'EPERM', None)) # linux
+_unable_to_link.add(getattr(errno, 'ERANGE', None)) # cryfs
+_unable_to_link.add(getattr(errno, 'EREMOTEIO', None)) # kafs (cross-directory)
+_unable_to_link.add(getattr(errno, 'EXDEV', None)) # openafs (cross-directory)
+_unable_to_link.discard(None)
+_unable_to_link = frozenset(_unable_to_link)
+
 def par2_generate(stem):
     parent, base = os.path.split(stem)
     # Work in a temp_dir because par2 was observed creating empty
@@ -94,8 +105,18 @@ def par2_generate(stem):
     with temp_dir(dir=parent, prefix=(base + b'-bup-tmp-')) as tmpdir:
         idx = base + b'.idx'
         pack = base + b'.pack'
-        os.link(join(tmpdir, b'..', idx), join(tmpdir, idx))
-        os.link(join(tmpdir, b'..', pack), join(tmpdir, pack))
+        for entry in idx, pack:
+            entry_src = join(tmpdir, b'..', entry)
+            entry_dst = join(tmpdir, entry)
+            copy_instead = False
+            try:
+                os.link(entry_src, entry_dst)
+            except OSError as ex:
+                if not ex.errno in _unable_to_link:
+                    raise
+                copy_instead = True
+            if copy_instead:
+                copy2(entry_src, entry_dst)
         rc = par2(b'create', [b'-n1', b'-c200', b'--', base, pack, idx],
                   verb_floor=2, cwd=tmpdir)
         if rc == 0:
