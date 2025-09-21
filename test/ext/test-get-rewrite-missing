@@ -12,14 +12,6 @@ export GIT_DIR="$tmpdir/bup"
 
 bup() { "$top/bup" "$@"; }
 
-display-file()
-{
-    local name="$1"
-    printf -- "----- \"%q\" content below -----\n" "$name"
-    cat "$name"
-    printf -- "----- \"%q\" content above -----\n" "$name"
-}
-
 # FIXME: consider checking expected compare-trees differences.
 
 
@@ -175,9 +167,9 @@ WVPASS git --git-dir dest-repo ls-tree src \
 
 WVSTART 'commit trailers include repairs'
 git --git-dir dest-repo show -s --pretty=email src > repair-msg
-display-file repair-msg
+btl-display-file repair-msg
 git interpret-trailers --parse < repair-msg > repair-trailers
-display-file repair-trailers
+btl-display-file repair-trailers
 bup_ver="$(bup version)"
 readarray -t trailers < repair-trailers
 wv-match-rx "${trailers[0]}" "^Bup-Version: ${bup_ver//+/\\+}$"
@@ -205,7 +197,7 @@ src_missing_split="/src/$save_date/split-tree/"
 WVSTART 'missing blobs are rewritten'
 WVPASS grep -E "^repaired $src_missing_file $oid_rx -> $oid_rx\$" repair.log
 WVPASS git --git-dir dest-repo show src:a/missing-file > blob-replacement
-display-file blob-replacement
+btl-display-file blob-replacement
 WVPASS grep -E '^This is a replacement for a file' blob-replacement
 WVPASS grep -E "^Bup-Replacement-Info: $repair_id" blob-replacement
 WVPASS grep -E "^Replaced: file $(< file-oid)" blob-replacement
@@ -215,7 +207,7 @@ WVPASS grep -E "^Missing: $(< file-oid)" blob-replacement
 WVSTART 'missing trees are rewritten'
 WVPASS grep -E "^repaired $src_missing_dir $oid_rx -> $oid_rx\$" repair.log
 WVPASS git --git-dir dest-repo show src:missing-dir > tree-replacement
-display-file tree-replacement
+btl-display-file tree-replacement
 WVPASS grep -E '^This is a replacement for a tree' tree-replacement
 WVPASS grep -E "^Bup-Replacement-Info: $repair_id" tree-replacement
 WVPASS grep -E "^Replaced: tree $(< dir-oid)" tree-replacement
@@ -225,7 +217,7 @@ WVPASS grep -E "^Missing: $(< dir-oid)" tree-replacement
 WVSTART 'incomplete chunked files are rewritten'
 WVPASS grep -E "^repaired $src_missing_partial $oid_rx -> $oid_rx\$" repair.log
 WVPASS git --git-dir dest-repo show src:partial-file > partial-file-replacement
-display-file partial-file-replacement
+btl-display-file partial-file-replacement
 WVPASS grep -E '^This is a replacement for a file' partial-file-replacement
 WVPASS grep -E "^Bup-Replacement-Info: $repair_id" partial-file-replacement
 WVPASS grep -E "^Replaced: file $(< partial-file-oid)" partial-file-replacement
@@ -244,7 +236,7 @@ repair-to-dest
 set-repair-id
 WVPASS grep -E "^repaired $src_missing_split $oid_rx -> $oid_rx\$" repair.log
 WVPASS git --git-dir dest-repo show src:split-tree > split-tree-replacement
-display-file split-tree-replacement
+btl-display-file split-tree-replacement
 WVPASS grep -E '^This is a replacement for a tree' split-tree-replacement
 WVPASS grep -E "^Bup-Replacement-Info: $repair_id" split-tree-replacement
 WVPASS grep -E "^Replaced: tree $(< split-tree-oid)" split-tree-replacement
@@ -262,7 +254,7 @@ WVPASS grep -E "^repaired /src/$save_date/split-tree/$split_tree_l2_name/ $(< sp
 WVPASS git --git-dir dest-repo \
        show "src:split-tree/$split_tree_l1_name/$split_tree_l2_name" \
        > split-tree-replacement
-display-file split-tree-replacement
+btl-display-file split-tree-replacement
 WVPASS grep -E '^This is a replacement for a tree' split-tree-replacement
 WVPASS grep -E "^Bup-Replacement-Info: $repair_id" split-tree-replacement
 WVPASS grep -E "^Replaced: tree $(< split-tree-l2-oid)" split-tree-replacement
@@ -278,7 +270,7 @@ set-repair-id
 WVPASS grep -E "^repaired /src/$save_date/split-tree/ $(< split-tree-oid) ->" \
        repair.log
 WVPASS git --git-dir dest-repo show "src:split-tree" > split-tree-replacement
-display-file split-tree-replacement
+btl-display-file split-tree-replacement
 WVPASS grep -E '^This is a replacement for a tree' split-tree-replacement
 WVPASS grep -E "^Bup-Replacement-Info: $repair_id" split-tree-replacement
 WVPASS grep -E "^Replaced: tree $(< split-tree-oid)" split-tree-replacement
