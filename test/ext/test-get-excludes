@@ -30,5 +30,14 @@ WVSTART '--rewrite --exclude-rx --no-excludes'
 WVPASS bup get --rewrite --exclude-rx 't.*' --no-excludes --pick: src/latest dst
 WVPASSEQ $'one\nthree\ntwo' "$(bup ls dst/latest/a)"
 
+WVSTART '--rewrite --exclude-rx contextuality'
+WVPASS bup get --rewrite \
+       --exclude-rx 't.*' --pick: src/latest dst-1 \
+       --no-excludes --pick: src/latest dst-2 \
+       --exclude-rx 'one' --pick: src/latest dst-3
+WVPASSEQ $'one' "$(bup ls dst-1/latest/a)"
+WVPASSEQ $'one\nthree\ntwo' "$(bup ls dst-2/latest/a)"
+WVPASSEQ $'three\ntwo' "$(bup ls dst-3/latest/a)"
+
 WVPASS cd "$top"
 WVPASS rm -rf "$tmpdir"

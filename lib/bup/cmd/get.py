@@ -153,7 +153,7 @@ def parse_args(args):
     opt.print_commits = opt.print_trees = opt.print_tags = False
     opt.bwlimit = None
     opt.compress = None
-    opt.repair_info = None
+    opt.repair_info = RepairInfo(command=get_argvb())
     opt.source = opt.remote = None
     opt.target_specs = []
 
@@ -162,9 +162,22 @@ def parse_args(args):
     # we've finished checking the requests (e.g. are past the
     # resolvers), the spec's rewriter will be set to True to indicate
     # that it needs the real Rewriter once we have it.
-    rewrite = None # None means "didn't specify"
+    rewrite = None # None means "didn't specify", False means "said no"
     missing = 'fail'
     exclude_opts = []
+    repair_id = None
+    def make_spec(method, src, dest):
+        nonlocal repair_id
+        excludes = parse_rx_excludes(exclude_opts, misuse)
+        if excludes and not rewrite:
+            misuse('cannot --exclude-rx or --exclude-rx-from when not rewriting')
+        if repair_id is None:
+            repair_id = str(uuid4()).encode('ascii')
+        return Spec(method=method, src=src, dest=dest, excludes=excludes,
+                    rewriter=rewrite,
+                    missing=MissingConfig(id=repair_id, mode=missing,
+                                          repair_info=opt.repair_info))
+
     remaining = args[1:]  # Skip argv[0]
     while remaining:
         arg = remaining[0]
@@ -191,17 +204,17 @@ def parse_args(args):
                 misuse('empty --repair-id')
             if not valid_repair_id(val):
                 misuse('--repair-id must be ASCII without control characters or DEL')
-            opt.repair_info = RepairInfo(val, command=get_argvb())
+            repair_id = val
         elif arg in (b'--ff', b'--append', b'--pick', b'--force-pick',
                      b'--new-tag', b'--replace', b'--unnamed'):
             (ref,), remaining = require_n_args_or_die(1, remaining)
-            opt.target_specs.append(Spec(method=arg[2:].decode('ascii'),
-                                         src=ref, dest=None))
+            opt.target_specs.append(make_spec(method=arg[2:].decode('ascii'),
+                                              src=ref, dest=None))
         elif arg in (b'--ff:', b'--append:', b'--pick:', b'--force-pick:',
                      b'--new-tag:', b'--replace:'):
             (ref, dest), remaining = require_n_args_or_die(2, remaining)
-            opt.target_specs.append(Spec(method=arg[2:-1].decode('ascii'),
-                                         src=ref, dest=dest))
+            opt.target_specs.append(make_spec(method=arg[2:-1].decode('ascii'),
+                                              src=ref, dest=dest))
         elif arg in (b'-s', b'--source'):
             (opt.source,), remaining = require_n_args_or_die(1, remaining)
         elif arg in (b'-r', b'--remote'):
@@ -240,16 +253,6 @@ def parse_args(args):
             continue
         else:
             misuse(f'unrecognized argument: {path_msg(arg)}')
-    if opt.repair_info is None:
-        opt.repair_info = RepairInfo(str(uuid4()).encode('ascii'),
-                                     command=get_argvb())
-    excludes = parse_rx_excludes(exclude_opts, misuse)
-    if excludes and not rewrite:
-        misuse('cannot --exclude-rx or --exclude-rx-from when not rewriting')
-    missing = MissingConfig(mode=missing, repair_info=opt.repair_info)
-    opt.target_specs = [dcreplace(x, missing=missing, excludes=excludes,
-                                  rewriter=rewrite)
-                        for x in opt.target_specs]
     return opt
 
 # FIXME: client error handling (remote exceptions, etc.)
@@ -806,13 +809,14 @@ def get_everything(opt):
         src_split_cfg = hashsplit.configuration(src_repo.config_get)
         dest_split_cfg = hashsplit.configuration(dest_repo.config_get)
 
-        # For now (maybe forever), they're all the same
-        rewrite = opt.target_specs[0].rewriter
-        assert all(x.rewriter == rewrite for x in opt.target_specs), \
-            opt.target_specs
-
-        if src_split_cfg != dest_split_cfg and rewrite is None:
-            misuse('repository configs differ; specify --rewrite or --no-rewrite')
+        # For now, --rewrite is never implict
+        rewrite = False
+        for spec in opt.target_specs:
+            if spec.rewriter is not None:
+                rewrite = True
+            elif src_split_cfg != dest_split_cfg:
+                misuse('repository configs differ; need --[no-]rewrite before'
+                       f' {spec_msg(spec)}')
 
         # Resolve and validate all sources and destinations, implicit
         # or explicit, combinations of methods and modes (rewrite,
