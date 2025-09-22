@@ -265,19 +265,16 @@ def _run_get(disposition, method, what, rewrite=None):
     else:
         raise Exception('error: unexpected get disposition ' + repr(disposition))
     
+    cmd = (*get_cmd, b'--rewrite' if rewrite else b'--no-rewrite')
     if isinstance(what, bytes):
-        cmd = get_cmd + (method, what)
+        cmd += (method, what)
     else:
         assert not isinstance(what, str)  # python 3 sanity check
         if method in (b'--ff', b'--append', b'--pick', b'--force-pick', b'--new-tag',
                       b'--replace'):
             method += b':'
         src, dest = what
-        cmd = get_cmd + (method, src, dest)
-    if rewrite:
-        cmd += (b'--rewrite',)
-    elif rewrite == False:
-        cmd += (b'--no-rewrite',)
+        cmd += (method, src, dest)
     result = exo(cmd, check=False, stderr=PIPE)
     fsck = ex((bup_cmd, b'-d', b'get-dest', b'fsck'), check=False)
     wvpasseq(0, fsck.rc)

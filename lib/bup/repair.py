@@ -15,10 +15,9 @@ def valid_repair_id(s):
 
 
 class RepairInfo:
-    __slots__ = 'id', 'command', '_others', '_replacements'
-    def __init__(self, id, *, command=None):
-        assert valid_repair_id(id)
-        self.id = id
+    # Used, for example, to track all repairs in a bup get process
+    __slots__ = 'command', '_others', '_replacements'
+    def __init__(self, *, command=None):
         self.command = command
         self._others = 0
         self._replacements = []
@@ -26,10 +25,11 @@ class RepairInfo:
     def path_replaced(self, path, oid, new_oid):
         self._replacements.append((path, oid, new_oid))
     def repair_count(self): return len(self._replacements) + self._others
-    def repair_trailers(self):
+    def repair_trailers(self, repair_id):
+        assert valid_repair_id(repair_id)
         if not self.repair_count():
             return []
-        trailers = [b'Bup-Repair-ID: ' + self.id]
+        trailers = [b'Bup-Repair-ID: ' + repair_id]
         for path, oid, new_oid in self._replacements:
             trailers.append(b'Bup-Replaced: %s %s'
                             % (hexlify(new_oid), enc_sh(path)))
@@ -38,9 +38,11 @@ class RepairInfo:
 
 @dataclass(slots=True, frozen=True)
 class MissingConfig:
+    id: bytes
     mode: Union['fail', 'ignore', 'replace']
     repair_info: Optional[RepairInfo] = None
     def __post_init__(self):
+        assert valid_repair_id(self.id)
         assert self.mode in ('fail', 'ignore', 'replace')
         if self.mode == 'replace':
             assert isinstance(self.repair_info, RepairInfo), self.repair_info

@@ -3,6 +3,7 @@ from binascii import hexlify
 from contextlib import ExitStack, closing, nullcontext
 from itertools import chain
 from os.path import join as joinp
+from re import Pattern
 from stat import S_ISDIR, S_ISLNK, S_IRWXG, S_IRWXO, S_ISREG
 from typing import Any, Sequence
 import sqlite3, time
@@ -96,9 +97,10 @@ def _previous_conversion(dstrepo, item, vfs_dir, db, mapping):
         return item, dst, None
     return item, dst, GIT_MODE_TREE if chunked else GIT_MODE_FILE
 
-def _path_repaired(path, oid, replacement_oid, missing_oid, repair_info):
+def _path_repaired(path, oid, replacement_oid, missing_oid, repair_id,
+                   repair_info):
     if repair_info.repair_count() == 0:
-        log(b'repairs needed, repair-id: %s\n' % repair_info.id)
+        log(b'repairs needed, repair-id: %s\n' % repair_id)
     fs_path = _fs_path_from_vfs(path)
     repair_info.path_replaced(fs_path, oid, replacement_oid)
     ep = path_msg(fs_path)
@@ -253,9 +255,10 @@ def _rewrite_link(path, item_mode, srcrepo, dstrepo, stack, missing):
             if missing.mode == 'fail':
                 raise ex
             repair_info = missing.repair_info
-            replacement = _replacement_symlink_item(dstrepo, item,
-                                                    repair_info.id, ex.oid)
-            _path_repaired(path, item.oid, replacement.oid, ex.oid, repair_info)
+            replacement = _replacement_symlink_item(dstrepo, item, missing.id,
+                                                    ex.oid)
+            _path_repaired(path, item.oid, replacement.oid, ex.oid, missing.id,
+                           repair_info)
             assert replacement.meta.mode == default_file_mode
             stack.append_to_current(name, default_file_mode, default_file_mode,
                                     replacement.oid, replacement.meta)
@@ -336,14 +339,14 @@ def _rewrite_save_item(save_path, path, replacement_dir, srcrepo, dstrepo,
         # For now, wholesale replacement (no attempt to handle
         # partially readable split trees).
         rep_item = incomplete.path[-1][1]
-        replacement = _replacement_tree_item(dstrepo, rep_item, repair_info.id,
+        replacement = _replacement_tree_item(dstrepo, rep_item, missing.id,
                                              incomplete.missing)
         # Must not remember repairs because the repair-id (and so blob
         # content) can vary across saves, i.e. get --rewrite-id is a
         # contextual argument, and because the type changes from tree
         # to blob.
         _path_repaired(path, rep_item.oid, replacement.oid, incomplete.missing,
-                       repair_info)
+                       missing.id, repair_info)
         assert replacement.meta.mode == default_file_mode, repr(replacement)
         stack.append_to_current(path[-1][0],
                                 replacement.meta.mode, GIT_MODE_FILE,
@@ -425,13 +428,14 @@ def _rewrite_save_item(save_path, path, replacement_dir, srcrepo, dstrepo,
         if missing.mode == 'fail':
             raise ex
         repair_info = missing.repair_info
-        replacement = _replacement_file_item(dstrepo, item, repair_info.id,
+        replacement = _replacement_file_item(dstrepo, item, missing.id,
                                              ex.oid)
-        _path_repaired(path, item.oid, replacement.oid, ex.oid, repair_info)
         # Must not remember repairs because the repair-id (and so blob
         # content) can vary across saves, i.e. get --rewrite-id is a
         # contextual argument, and because the type may change from
         # tree to blob.
+        _path_repaired(path, item.oid, replacement.oid, ex.oid, missing.id,
+                       repair_info)
         assert replacement.meta.mode == default_file_mode, repr(replacement)
         stack.append_to_current(name, replacement.meta.mode, GIT_MODE_FILE,
                                 replacement.oid, replacement.meta)
@@ -455,6 +459,9 @@ class Rewriter:
         assert isinstance(db, (bytes, type(None)))
         self._context = nullcontext()
         with ExitStack() as ctx:
+            # Allows us to detect changes in excludes which invalidate
+            # related tree rewrites.
+            self._current_excludes = []
             self._split_cfg = split_cfg
             self._db_path = db
             if db:
@@ -486,6 +493,7 @@ class Rewriter:
         assert missing.mode in ('fail', 'replace'), missing
         if parent:
             assert len(parent) == 20, parent
+        assert all(isinstance(x, Pattern) for x in excludes)
         assert len(save_path) == 3, (len(save_path), save_path)
         assert isinstance(save_path[1][1], vfs.RevList)
         leaf_name, leaf_item = save_path[2]
@@ -503,6 +511,14 @@ class Rewriter:
                 # Maintain a stack of information representing the current
                 # location in the archive being constructed.
                 stack = Stack(dstrepo, self._split_cfg)
+
+                if self._current_excludes != excludes:
+                    # Whenever the excludes change, remembered tree
+                    # rewrites may become incorrect. We could just
+                    # drop the trees if we had an indicator, but for
+                    # now just drop everything.
+                    dbc.execute(f'delete from {self._mapping}')
+                    self._current_excludes = excludes
 
                 # Relies on the fact that recursion is dfs post-order,
                 # and so if a dir is broken, we'll see that "up
@@ -525,9 +541,9 @@ class Rewriter:
                 ci = parse_commit(get_cat_data(srcrepo.cat(save_oidx), b'commit'))
                 author = ci.author_name + b' <' + ci.author_mail + b'>'
                 committer = b'%s <%s@%s>' % (userfullname(), username(), hostname())
-                msg = commit_message(ci.message,
-                                     missing.repair_info.command,
-                                     missing.repair_info.repair_trailers())
+                trailers = missing.repair_info.repair_trailers(missing.id)
+                msg = commit_message(ci.message, missing.repair_info.command,
+                                     trailers)
                 return (dstrepo.write_commit(tree, parent,
                                              author,
                                              ci.author_sec, ci.author_offset,
