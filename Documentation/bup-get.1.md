@@ -166,6 +166,9 @@ used to help test before/after results.)
     (may be repeated).  Ignore completely empty lines. Only supported
     when rewriting.
 
+\--no-excludes
+:   forget any previous `--exclude-rx` or `--exclude-rx-from` options.
+
 -v, \--verbose
 :   increase verbosity (can be used more than once).  With
     `-v`, print the name of every item fetched, with `-vv` add

@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+. ./wvtest-bup.sh || exit $?
+. test/lib/btl.sh || exit $?
+
+set -o pipefail
+
+top="$(WVPASS pwd)" || exit $?
+tmpdir="$(WVPASS wvmktempdir)" || exit $?
+
+export BUP_DIR="$tmpdir/bup"
+export GIT_DIR="$tmpdir/bup"
+
+bup() { "$top/bup" "$@"; }
+
+WVPASS cd "$tmpdir"
+WVPASS bup init
+
+WVPASS mkdir -p src/a
+WVPASS echo 1 > src/a/one
+WVPASS echo 2 > src/a/two
+WVPASS echo 3 > src/a/three
+WVPASS bup index src
+WVPASS bup save --strip -n src src
+
+WVSTART '--rewrite --exclude-rx'
+WVPASS bup get --rewrite --exclude-rx 't.*' --pick: src/latest dst
+WVPASSEQ 'one' "$(bup ls dst/latest/a)"
+
+WVSTART '--rewrite --exclude-rx --no-excludes'
+WVPASS bup get --rewrite --exclude-rx 't.*' --no-excludes --pick: src/latest dst
+WVPASSEQ $'one\nthree\ntwo' "$(bup ls dst/latest/a)"
+
+WVPASS cd "$top"
+WVPASS rm -rf "$tmpdir"

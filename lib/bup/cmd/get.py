@@ -61,6 +61,7 @@ argspec = (
       ('--rewrite', 'rewrite data according to destination repo settings'),
       ('--exclude-rx REGEX', 'skip paths matching the unanchored regex (may be repeated)'),
       ('--exclude-rx-from PATH', 'skip --exclude-rx patterns in PATH (may be repeated)'),
+      ('--no-excludes', 'forget any preceeding exclude options'),
       ('--bwlimit BWLIMIT', 'maximum bytes/sec to transmit to server'),
       ('--missing <fail|ignore|replace>', 'behavior for missing objects (default: fail)'),
       ('--repair-id ID', 'repair session identifier (default: UUID v4)'),
@@ -218,6 +219,8 @@ def parse_args(args):
         elif arg in (b'--exclude-rx', b'--exclude-rx-from'): # handled later
             (val,), remaining = require_n_args_or_die(1, remaining)
             exclude_opts.append((arg, val))
+        elif arg == b'--no-excludes':
+            exclude_opts, remaining = [], remaining[1:]
         elif arg in (b'-0', b'-1', b'-2', b'-3', b'-4', b'-5', b'-6', b'-7',
                      b'-8', b'-9'):
             opt.compress = int(arg[1:])
