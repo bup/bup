@@ -123,10 +123,10 @@ WVPASS rm -rf dest-repo bup-tmp
 WVPASS cp -pPR bup bup-tmp
 WVPASS bup -d dest-repo init
 WVPASS git --git-dir dest-repo config bup.split.trees true
-# test rejection of --missing ignore (only supported by --unnamed)
-WVFAIL bup -d dest-repo get -s bup --missing ignore --rewrite --append src
-# test --missing fail
-bup -d dest-repo get -s bup --missing fail --rewrite --append src
+WVSTART 'rejection of --ignore-missing (only supported by --unnamed)'
+WVFAIL bup -d dest-repo get -s bup --ignore-missing --rewrite --append src
+WVSTART '--no-ignore-missing'
+bup -d dest-repo get -s bup --no-ignore-missing --rewrite --append src
 rc=$?
 WVPASSEQ 2 "$rc"
 WVPASS rm -rf bup
@@ -137,7 +137,7 @@ repair-to-dest()
     rm -rf dest-repo
     WVPASS bup -d dest-repo init
     WVPASS git --git-dir dest-repo config bup.split.trees true
-    bup -d dest-repo get -s bup --missing replace --rewrite --append src 2> repair.log
+    bup -d dest-repo get -s bup --repair --append src 2> repair.log
     rc=$?
     display-file repair.log
     WVPASSEQ 3 "$rc"
@@ -180,7 +180,7 @@ readarray -t trailers < repair-trailers
 wv-match-rx "${trailers[0]}" "^Bup-Version: ${bup_ver//+/\\+}$"
 wv-match-rx "${trailers[1]}" '^Bup-Argv: [^ ]+/bup.* save '
 wv-match-rx "${trailers[2]}" "^Bup-Version: ${bup_ver//+/\\+}$"
-wv-match-rx "${trailers[3]}" '^Bup-Argv: [^ ]+/bup.* get .* --rewrite '
+wv-match-rx "${trailers[3]}" '^Bup-Argv: [^ ]+/bup.* get .* --repair '
 wv-match-rx "${trailers[4]}" "^Bup-Repair-ID: $repair_id$"
 wv-match-rx "${trailers[5]}" "^Bup-Replaced: $(< blob-replacement-oid) $missing_file$"
 wv-match-rx "${trailers[6]}" "^Bup-Replaced: $(< dir-replacement-oid) $missing_dir$"

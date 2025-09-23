@@ -44,7 +44,7 @@ argspec = (
     a remote repository with the related "bup on HOST get ..."
     command.  The --exclude-rx and --exclude-rx-from options currently
     only apply to rewrites. Currently only --unnammed supports
-    "--missing ignore".""",
+    "--ignore-missing".""",
 
     ('optional arguments:',
      (('-h, --help', 'show this help message and exit'),
@@ -58,13 +58,14 @@ argspec = (
       ('-t --print-trees', 'output a tree id for each ref set'),
       ('-c, --print-commits', 'output a commit id for each ref set'),
       ('--print-tags', 'output an id for each tag'),
-      ('--rewrite', 'rewrite data according to destination repo settings'),
+      ('--[no-]rewrite', 'rewrite data according to destination repo settings'),
       ('--exclude-rx REGEX', 'skip paths matching the unanchored regex (may be repeated)'),
       ('--exclude-rx-from PATH', 'skip --exclude-rx patterns in PATH (may be repeated)'),
       ('--no-excludes', 'forget any preceeding exclude options'),
       ('--bwlimit BWLIMIT', 'maximum bytes/sec to transmit to server'),
-      ('--missing <fail|ignore|replace>', 'behavior for missing objects (default: fail)'),
+      ('--[no-]repair', 'repair everything possible'),
       ('--repair-id ID', 'repair session identifier (default: UUID v4)'),
+      ('--[no-]ignore-missing', 'ignore missing objects (*dangerous*)'),
       ('-0, -1, -2, -3, -4, -5, -6, -7, -8, -9, --compress LEVEL',
        'set compression LEVEL (default: 1)'))),
 
@@ -166,25 +167,31 @@ def parse_args(args):
     # we've finished checking the requests (e.g. are past the
     # resolvers), the spec's rewriter will be set to True to indicate
     # that it needs the real Rewriter once we have it.
-    rewrite = None # None means "didn't specify", False means "said no"
     exclude_opts = []
     ignore_missing = False
-    repair = False
+    # rewrite and repair track each arg's "state" and repair implies rewrite
+    rewrite = None # None means "didn't specify", False means "said no"
+    repair = None # None means "didn't specify", False means "said no"
     repair_id = None
     def make_spec(method, src, dest):
         nonlocal repair_id
         assert not (ignore_missing and repair), (ignore_missing, repair)
+        assert not (ignore_missing and rewrite), (ignore_missing, rewrite)
         excludes = parse_rx_excludes(exclude_opts, misuse)
-        if excludes and not rewrite:
-            misuse('cannot --exclude-rx or --exclude-rx-from when not rewriting')
+        if excludes and not (rewrite or repair):
+            misuse('--exclude-rx or --exclude-rx-from requires --rewrite or --repair')
         rc = None
-        if rewrite:
+        if (rewrite or repair):
             if repair_id is None:
                 repair_id = str(uuid4()).encode('ascii')
             rc = RepairConfig(id=repair_id, destructive=repair,
                               info=opt.repair_info)
+        if rewrite: rw = True
+        elif repair: rw = True
+        elif rewrite in (False, True): rw = rewrite
+        else: rw = repair
         return Spec(method=method, src=src, dest=dest, excludes=excludes,
-                    rewriter=rewrite, ignore_missing=ignore_missing, repair=rc)
+                    rewriter=rw, ignore_missing=ignore_missing, repair=rc)
 
     pending_method_context = {} # dict to preserve insertion order
     remaining = args[1:]  # Skip argv[0]
@@ -196,22 +203,14 @@ def parse_args(args):
         elif arg in (b'-v', b'--verbose'):
             opt.verbose += 1
             remaining = remaining[1:]
-        elif arg == b'--missing':
+        elif arg == b'--repair':
+            if ignore_missing:
+                misuse('--ignore-missing and --repair are incompatible')
             pending_method_context[arg] = True
-            (val,), remaining = require_n_args_or_die(1, remaining)
-            if val == b'fail':
-                ignore_missing = False
-                repair = False
-            elif val == b'ignore':
-                if repair:
-                    misuse('--ignore-missing and --repair are incompatible')
-                ignore_missing = True
-            elif val == b'replace':
-                if ignore_missing:
-                    misuse('--ignore-missing and --repair are incompatible')
-                repair = True
-            else:
-                misuse(f'--missing must be fail, ignore, or replace, not {val!r}')
+            repair, remaining = True, remaining[1:]
+        elif arg == b'--no-repair':
+            pending_method_context[arg] = True
+            repair, remaining = False, remaining[1:]
         elif arg == b'--ignore-missing':
             if repair:
                 misuse('--ignore-missing and --repair are incompatible')
@@ -231,7 +230,7 @@ def parse_args(args):
         elif arg in (b'--ff', b'--append', b'--pick', b'--force-pick',
                      b'--new-tag', b'--replace', b'--unnamed'):
             if ignore_missing and arg != b'--unnamed':
-                misuse('currently only --unnamed allows --missing ignore')
+                misuse('currently only --unnamed allows --ignore-missing')
             (ref,), remaining = require_n_args_or_die(1, remaining)
             opt.target_specs.append(make_spec(method=arg[2:].decode('ascii'),
                                               src=ref, dest=None))
@@ -239,7 +238,7 @@ def parse_args(args):
         elif arg in (b'--ff:', b'--append:', b'--pick:', b'--force-pick:',
                      b'--new-tag:', b'--replace:'):
             if ignore_missing and arg != b'--unnamed':
-                misuse('currently only --unnamed allows --missing ignore')
+                misuse('currently only --unnamed allows --ignore-missing')
             (ref, dest), remaining = require_n_args_or_die(2, remaining)
             opt.target_specs.append(make_spec(method=arg[2:-1].decode('ascii'),
                                               src=ref, dest=dest))
@@ -255,6 +254,8 @@ def parse_args(args):
         elif arg == b'--print-tags':
             opt.print_tags, remaining = True, remaining[1:]
         elif arg == b'--rewrite':
+            if ignore_missing:
+                misuse('--ignore-missing and --rewrite are incompatible')
             pending_method_context[arg] = True
             rewrite, remaining = True, remaining[1:]
         elif arg == b'--no-rewrite':

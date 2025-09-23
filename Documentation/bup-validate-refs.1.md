@@ -18,7 +18,8 @@ abridged bupm files (metadata storage), reporting the paths to those
 it finds. If no *ref*s are provided, it checks all refs, otherwise it
 only checks those specified. If no checks are explicitly requested,
 then a default set of checks will be performed, currently `--links`
-and `--bupm`.
+and `--bupm`. If problems are found, `bup-get`(1) `--repair` may be
+able to help.
 
 At the moment, the broken path information is only logged to standard
 error, and is not well specified (i.e. suitable for inspection, but
@@ -38,7 +39,8 @@ has encountered before.
 \--bupm
 :   check bupm (metadata storage) files. Currently checks for missing
     path entries, which could have been caused by `bup` versions since
-    0.25 and before 0.30.1.
+    0.25 and before 0.30.1. See REPAIRS in `bup-get`(1) for additional
+    information.
 
 \--links
 :   check for commits or trees that refer to missing objects. This
