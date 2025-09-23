@@ -1336,8 +1336,7 @@ def join(repo, ref):
         if typ == b'blob':
             yield from it
         elif typ == b'tree':
-            treefile = b''.join(it)
-            for ent_mode, ent_name, ent_oid in tree_iter(treefile):
+            for ent_mode, ent_name, ent_oid in tree_iter(b''.join(it)):
                 yield from _join(*get_oidx(repo, hexlify(ent_oid)), path + [ent_name])
         elif typ == b'commit':
             treeline = b''.join(it).split(b'\n')[0]
