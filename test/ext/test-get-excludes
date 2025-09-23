@@ -39,5 +39,9 @@ WVPASSEQ $'one' "$(bup ls dst-1/latest/a)"
 WVPASSEQ $'one\nthree\ntwo' "$(bup ls dst-2/latest/a)"
 WVPASSEQ $'three\ntwo' "$(bup ls dst-3/latest/a)"
 
+WVSTART 'ignored contextual arguments are disallowed'
+WVEXPRC 2 eval 'bup get --rewrite --append x --exclude-rx y --ignore-missing 2> >(tee err.log)'
+WVPASS grep -E '^error: trailing arguments with no effect: --exclude-rx --ignore-missing' err.log
+
 WVPASS cd "$top"
 WVPASS rm -rf "$tmpdir"
