@@ -178,6 +178,7 @@ def parse_args(args):
                     missing=MissingConfig(id=repair_id, mode=missing,
                                           repair_info=opt.repair_info))
 
+    pending_method_context = {} # dict to preserve insertion order
     remaining = args[1:]  # Skip argv[0]
     while remaining:
         arg = remaining[0]
@@ -188,17 +189,21 @@ def parse_args(args):
             opt.verbose += 1
             remaining = remaining[1:]
         elif arg == b'--missing':
+            pending_method_context[arg] = True
             (val,), remaining = require_n_args_or_die(1, remaining)
             if val not in (b'fail', b'ignore', b'replace'):
                 misuse(f'--missing must be fail, ignore, or replace, not {val!r}')
             missing = val.decode('ascii')
         elif arg == b'--ignore-missing':
+            pending_method_context[arg] = True
             missing = 'ignore'
             remaining = remaining[1:]
         elif arg == b'--no-ignore-missing':
+            pending_method_context[arg] = True
             missing = 'fail'
             remaining = remaining[1:]
         elif arg == b'--repair-id':
+            pending_method_context[arg] = True
             (val,), remaining = require_n_args_or_die(1, remaining)
             if not val:
                 misuse('empty --repair-id')
@@ -210,11 +215,14 @@ def parse_args(args):
             (ref,), remaining = require_n_args_or_die(1, remaining)
             opt.target_specs.append(make_spec(method=arg[2:].decode('ascii'),
                                               src=ref, dest=None))
+            pending_method_context = {}
         elif arg in (b'--ff:', b'--append:', b'--pick:', b'--force-pick:',
                      b'--new-tag:', b'--replace:'):
             (ref, dest), remaining = require_n_args_or_die(2, remaining)
+            args_after_last_method = remaining
             opt.target_specs.append(make_spec(method=arg[2:-1].decode('ascii'),
                                               src=ref, dest=dest))
+            pending_method_context = {}
         elif arg in (b'-s', b'--source'):
             (opt.source,), remaining = require_n_args_or_die(1, remaining)
         elif arg in (b'-r', b'--remote'):
@@ -226,13 +234,17 @@ def parse_args(args):
         elif arg == b'--print-tags':
             opt.print_tags, remaining = True, remaining[1:]
         elif arg == b'--rewrite':
+            pending_method_context[arg] = True
             rewrite, remaining = True, remaining[1:]
         elif arg == b'--no-rewrite':
+            pending_method_context[arg] = True
             rewrite, remaining = False, remaining[1:]
         elif arg in (b'--exclude-rx', b'--exclude-rx-from'): # handled later
+            pending_method_context[arg] = True
             (val,), remaining = require_n_args_or_die(1, remaining)
             exclude_opts.append((arg, val))
         elif arg == b'--no-excludes':
+            pending_method_context[arg] = True
             exclude_opts, remaining = [], remaining[1:]
         elif arg in (b'-0', b'-1', b'-2', b'-3', b'-4', b'-5', b'-6', b'-7',
                      b'-8', b'-9'):
@@ -253,6 +265,9 @@ def parse_args(args):
             continue
         else:
             misuse(f'unrecognized argument: {path_msg(arg)}')
+    if pending_method_context:
+        ctx_msg = ' '. join(path_msg(x) for x in pending_method_context.keys())
+        misuse(f'trailing arguments with no effect: {ctx_msg}')
     return opt
 
 # FIXME: client error handling (remote exceptions, etc.)
