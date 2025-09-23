@@ -137,8 +137,7 @@ used to help test before/after results.)
     values. Currently, one of these options must be specified whenever
     the source and destination repository configurations differ in a
     relevant way, and so far, this option is only supported for
-    appends and picks. Note that repairs (see REPLACEMENTS below)
-    require `--rewrite`, and rewriting a git-created save may
+    appends and picks. Note that rewriting a git-created save may
     (currently will) introduce bup-related changes. Further, while
     tested, `--rewrite` is relatively new and so warrants even more
     caution (see CAUTION above) than `bup get` itself. Please consider
@@ -188,28 +187,40 @@ used to help test before/after results.)
 
 \--repair-id ID
 :   set the repair session identifier, defaults to a UUID (v4). This
-    identifier will be included in repairs made during the transfer,
-    i.e. via `--missing replace`. Currently, the identifier must be
-    ASCII and must not include control characters or DEL (i.e. must be
-    comprised of bytes >= 20 and < 127).
+    identifier will be included in any `--repair`s made during the
+    transfer. Currently, the identifier must be ASCII and must not
+    include control characters or DEL (i.e. must be comprised of bytes
+    >= 20 and < 127).
 
-\--missing <fail|ignore|replace>
-:   when missing objects are encountered during a transfer, either
-    `fail` (exit with nonzero status, the default), `ignore` them
-    (currently only supported by `--unnamed`, and potentially
-    *dangerous*), or `replace` them with placeholders (see
-    REPLACEMENTS below).
+\--repair
+:   perform all known repairs during the transfer. See REPAIRS below.
 
-# REPLACEMENTS
+# REPAIRS
 
-Saves (commits) with missing objects can be repaired by specifying
-`--missing replace` which will substitute synthesized "repair files"
-for any paths with missing objects. There is currently no support for
-retrieving unaffected parts of split files or trees, the entire file
-or tree is replaced with a repair file.
+`bup get` can fix (or mitigate) a number of known issues during the
+transfer when `--repair` is requested.
 
-These repair files contain the `--repair-id` and information about
-the replacement.
+ * Versions of `bup` at or after 0.25 and before 0.30.1 might rarely
+   drop metadata entries for non-directories (which can be detected by
+   `bup-validate-refs`(1) `--bupm`). This makes the metadata for all
+   of the other non-directory paths in the same directory unusable
+   (ambiguous). When such an abridged `.bupm` is detected, `--repair`
+   drops all of the `.bupm` entries except the one for the directory
+   itself, ".", and so the affected paths lose most or all of their
+   metadata (ownership, permissions, timestamps, etc.).
+
+ * Use of `bup get` or `bup gc` versions before 0.33.5 could cause
+   repositories to end up with missing objects (which can be detected
+   by `bup-validate-object-links`(1)). To fix affected trees,
+   `--repair` substitutes synthesized "repair files" for any paths
+   with missing objects. Note that there is currently no support for
+   retrieving the unaffected parts of split files; the entire file is
+   replaced with a repair file. These repair files contain the
+   `--repair-id` and information about the replacement. Support for
+   split trees was added after the problem was fixed, and so should be
+   unaffected. See the
+   [0.33.5 release notes (0.33.5-from-0.33.4.md)](https://github.com/bup/bup/blob/main/note/0.33.5-from-0.33.4.md)
+   for additional information.
 
 # EXAMPLES
 
@@ -268,8 +279,8 @@ the replacement.
     $ bup gc
     $ git --git-dir "$BUP_DIR" branch -m archives-resplit archives
     #
-    # Repair a single save with missing objects.
-    $ bup get --missing replace --pick archives/latest fixed
+    # Repair a single save.
+    $ bup get --repair --pick archives/latest fixed
     #
     # Check that fixed/latest looks OK, perhaps via trial
     # restores, joining it, etc. (see CAUTION above).
