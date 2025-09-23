@@ -106,15 +106,10 @@ General
   e.g. its `bup.split.files` and `bup.split.trees` settings. See
   `bup-get`(1) for additional information.
 
-* `bup get --missing <fail|ignore|replace> ...` can now specify how to
-  handle missing objects that are encountered during a
-  transfer. `fail`, the default, causes bup to exit with a nonzero
-  status. `ignore` causes bup to skip over them (only supported by
-  `--unnamed` and potentially *dangerous*). `replace` only works with
-  `--rewrite` and replaces paths with missing contents with
-  synthesized "repair files". See bup-get(1) for additional
-  information. `--missing ignore` is the preferred replacement for the
-  existing `--ignore-missing`.
+* The new `bup get --repair` acts like a `--rewrite` while also
+  attempting to detect and fix known issues during the transfer, for
+  example, replacing paths with missing contents with synthesized
+  "repair files". See `bup-get`(1) for additional information.
 
 * The default pack compression level can now be configured via either
   `pack.compression` or `core.compression`.  See `bup-config`(5) for
