@@ -73,11 +73,12 @@ with open(opt.path, 'rb') as f:
         try:
             new_off = lseek(fd, off, SEEK_DATA)
         except OSError as ex:
-            if ex.errno == ENXIO:
-                if opt.verbose:
-                    log(f'hole: {end - off} @ {off}\n')
-                sparse += end - off
-                break
+            if ex.errno != ENXIO:
+                raise ex
+            if opt.verbose:
+                log(f'hole: {end - off} @ {off}\n')
+            sparse += end - off
+            break
         if opt.verbose:
             log(f'hole: {new_off - off} @ {off}\n')
         sparse += new_off - off
