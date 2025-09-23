@@ -1,6 +1,6 @@
 
 from binascii import hexlify
-from typing import Optional, Union
+from typing import Optional
 
 from bup.compat import dataclass
 from bup.io import enc_sh
@@ -37,12 +37,10 @@ class RepairInfo:
 
 
 @dataclass(slots=True, frozen=True)
-class MissingConfig:
+class RepairConfig:
     id: bytes
-    mode: Union['fail', 'ignore', 'replace']
-    repair_info: Optional[RepairInfo] = None
+    destructive: bool # Allow repairs that lose data (e.g. replacements)
+    info: Optional[RepairInfo] = None
     def __post_init__(self):
         assert valid_repair_id(self.id)
-        assert self.mode in ('fail', 'ignore', 'replace')
-        if self.mode == 'replace':
-            assert isinstance(self.repair_info, RepairInfo), self.repair_info
+        assert isinstance(self.info, RepairInfo)
