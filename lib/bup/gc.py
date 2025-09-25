@@ -81,8 +81,9 @@ def report_missing(ref_name, item_path):
         note_error(f'missing {item.oid.hex()} {ref}:{path}\n')
 
 
-def find_live_objects(existing_count, cat_pipe, idx_list, refs=None,
-                      verbosity=0, count_missing=False):
+def find_live_objects(existing_count, cat_pipe, refs=None, *,
+                      count_missing=False, idx_list=None, verbosity=0):
+    if count_missing: assert idx_list, (count_missing, idx_list)
     pack_dir = git.repo(b'objects/pack')
     ffd, bloom_filename = tempfile.mkstemp(b'.bloom', b'tmp-gc-', pack_dir)
     os.close(ffd)
@@ -262,9 +263,10 @@ def bup_gc(threshold=10, compression=1, verbosity=0, ignore_missing=False):
                 if ignore_missing:
                     idxl = git.PackIdxList(git.repo(b'objects/pack'))
                     maybe_close_idxl.enter_context(idxl)
-                found = find_live_objects(existing_count, cat_pipe, idxl,
-                                          verbosity=verbosity,
-                                          count_missing=ignore_missing)
+                found = find_live_objects(existing_count, cat_pipe,
+                                          count_missing=ignore_missing,
+                                          idx_list=idxl,
+                                          verbosity=verbosity)
             live_objects, live_trees = found[:2]
             if verbosity:
                 log('expecting to retain about %.2f%% unnecessary objects\n'
