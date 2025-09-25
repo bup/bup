@@ -2,7 +2,7 @@
 from bup import git, options, vfs
 from bup.compat import argv_bytes
 from bup.gc import count_objects, find_live_objects
-from bup.helpers import EXIT_FALSE, EXIT_SUCCESS, EXIT_TRUE, log
+from bup.helpers import EXIT_FALSE, EXIT_SUCCESS, EXIT_TRUE, log, progress
 from bup.io import path_msg
 from bup.repo import LocalRepo
 
@@ -52,7 +52,7 @@ def main(argv):
     if not extra or (extra and ref_info):
         existing_count = count_objects(git.repo(b'objects/pack'), verbosity)
         if verbosity:
-            log(f'found {existing_count} objects\n')
+            progress(f'found {existing_count} objects\r')
 
         if existing_count:
             with git.PackIdxList(git.repo(b'objects/pack')) as idxl:
