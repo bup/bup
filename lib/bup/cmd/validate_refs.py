@@ -57,8 +57,9 @@ def main(argv):
         if existing_count:
             with git.PackIdxList(git.repo(b'objects/pack')) as idxl:
                 live_objects, live_trees, found_missing = \
-                    find_live_objects(existing_count, cat_pipe, idxl, refs=ref_info,
-                                      verbosity=verbosity, count_missing=True)
+                    find_live_objects(existing_count, cat_pipe, refs=ref_info,
+                                      count_missing=True, idx_list=idxl,
+                                      verbosity=verbosity)
                 live_objects.close()
 
     return EXIT_FALSE if (ref_missing + found_missing) else EXIT_TRUE
