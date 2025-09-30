@@ -3,7 +3,7 @@ from binascii import hexlify
 from contextlib import ExitStack, closing, nullcontext
 from itertools import chain
 from os.path import join as joinp
-from stat import S_ISDIR, S_ISLNK, S_ISREG
+from stat import S_ISDIR, S_ISLNK, S_IRWXG, S_IRWXO, S_ISREG
 from typing import Any, Sequence
 import sqlite3, time
 
@@ -11,14 +11,19 @@ from bup import hashsplit, metadata, vfs
 from bup.commit import commit_message
 from bup.compat import dataclass
 from bup.git import get_cat_data, parse_commit
-from bup.hashsplit import GIT_MODE_FILE, GIT_MODE_SYMLINK, GIT_MODE_TREE
+from bup.hashsplit import \
+    (GIT_MODE_EXEC,
+     GIT_MODE_FILE,
+     GIT_MODE_SYMLINK,
+     GIT_MODE_TREE,
+     split_to_blob_or_tree)
 from bup.helpers import hostname, log, should_rx_exclude_path, temp_dir
 from bup.io import path_msg, qsql_id
 from bup.metadata import Metadata
 from bup.pwdgrp import userfullname, username
 from bup.repair import MissingConfig
 from bup.tree import Stack
-from bup.vfs import Item, MissingObject, default_file_mode
+from bup.vfs import Item, MissingObject, default_exec_mode, default_file_mode
 
 
 # Currently only handles replacing entire vfs-level trees if any
@@ -279,6 +284,16 @@ def _remember_rewrite(from_oid, to_oid, chunked, size, wdbc, mapping):
                      '   values (?, ?, ?, ?)',
                      (from_oid, to_oid, chunked, size))
 
+def _maybe_exec_mode(git_mode, meta):
+    if git_mode == GIT_MODE_FILE \
+       and meta in (default_exec_mode,
+                    default_exec_mode & ~(S_IRWXO | S_IRWXG)):
+        # Means (via vfs) this had GIT_MODE_EXEC in its git
+        # entry. Restore that here so tree._write_tree will include
+        # it. This only matters for the "found in db" case.
+        return GIT_MODE_EXEC
+    return git_mode
+
 def _rewrite_save_item(save_path, path, replacement_dir, srcrepo, dstrepo,
                        split_cfg, stack, wdbc, mapping, missing):
     """Returns either None, or, if a directory was missing, the
@@ -386,7 +401,8 @@ def _rewrite_save_item(save_path, path, replacement_dir, srcrepo, dstrepo,
     assert S_ISREG(item_mode)
     if oid is not None:
         # already converted - oid and mode are known
-        assert git_mode in (GIT_MODE_TREE, GIT_MODE_FILE)
+        assert S_ISREG(git_mode) or S_ISDIR(git_mode)
+        git_mode = _maybe_exec_mode(git_mode, item.meta)
         stack.append_to_current(name, item_mode, git_mode, oid, item.meta)
         return
 
@@ -399,7 +415,7 @@ def _rewrite_save_item(save_path, path, replacement_dir, srcrepo, dstrepo,
 
     try:
         with vfs.tree_data_reader(srcrepo, item.oid) as f:
-            git_mode, oid = hashsplit.split_to_blob_or_tree(
+            git_mode, oid = split_to_blob_or_tree(
                 write_data, dstrepo.write_tree,
                 hashsplit.from_config([f], split_cfg))
     except MissingObject as ex:
@@ -430,6 +446,7 @@ def _rewrite_save_item(save_path, path, replacement_dir, srcrepo, dstrepo,
     chunked = 1 if S_ISDIR(git_mode) else 0
 
     _remember_rewrite(item.oid, oid, chunked, item_size, wdbc, mapping)
+    git_mode = _maybe_exec_mode(git_mode, item.meta)
     stack.append_to_current(name, item_mode, git_mode, oid, item.meta)
 
 class Rewriter:
