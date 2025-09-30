@@ -89,6 +89,7 @@ import re
 from bup import git
 from bup.git import \
     (BUP_CHUNKED,
+     BUP_NORMAL,
      MissingObject,
      GitError,
      find_tree_entry,
@@ -117,12 +118,15 @@ default_exec_mode = S_IFREG | _exec_perms
 default_dir_mode = S_IFDIR | _exec_perms
 default_symlink_mode = S_IFLNK | _exec_perms
 
-def _default_mode_for_gitmode(gitmode):
+def _default_mode_for_gitinfo(gitmode, kind):
+    assert kind in (BUP_CHUNKED, BUP_NORMAL)
     if S_ISREG(gitmode):
         if gitmode & S_IXUSR:
             return default_exec_mode
         return default_file_mode
     if S_ISDIR(gitmode):
+        if kind == BUP_CHUNKED:
+            return default_file_mode
         return default_dir_mode
     if S_ISLNK(gitmode):
         return default_symlink_mode
@@ -602,14 +606,15 @@ def _tree_items_except_dot(oid, entries, names=None, bupm=None):
     def tree_item(ent_oid, kind, gitmode):
         if kind == BUP_CHUNKED:
             assert S_ISDIR(gitmode), (ent_oid, kind, gitmode)
-            meta = read_nondir_meta(bupm, default_file_mode)
+            meta = read_nondir_meta(bupm, _default_mode_for_gitinfo(gitmode, kind))
             return Chunky(oid=ent_oid, meta=meta)
 
         if S_ISDIR(gitmode):
             # No metadata here (accessable via '.' inside ent_oid).
-            return Item(meta=default_dir_mode, oid=ent_oid)
+            return Item(meta=_default_mode_for_gitinfo(gitmode, kind),
+                        oid=ent_oid)
 
-        meta = read_nondir_meta(bupm, _default_mode_for_gitmode(gitmode))
+        meta = read_nondir_meta(bupm, _default_mode_for_gitinfo(gitmode, kind))
         return Item(oid=ent_oid, meta=meta)
 
     tree_ents = ordered_tree_entries(entries, bupm)
