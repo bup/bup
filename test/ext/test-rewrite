@@ -147,9 +147,12 @@ diff -u "$tmpdir/o" "$tmpdir/n"
 WVSTART "rewrite trees without .bupm"
 WVPASS rm -rf src repo
 WVPASS mkdir src
+# Test rewrite db cases with multiple versions of x (numbers ensure ordering)
 WVPASS date > src/x
+WVPASS cp -p src/x src/x-1-with-exec
+WVPASS cp -p src/x src/x-2-without-exec
+WVPASS chmod +x src/x-1-with-exec
 WVPASS date > src/y
-WVPASS chmod +x src/x
 WVPASS bup init repo
 WVPASS git --git-dir repo --work-tree "$(pwd)" add src
 WVPASS git --git-dir repo --work-tree "$(pwd)" commit -am save
@@ -158,9 +161,11 @@ WVPASS git --git-dir repo config bup.split.files legacy:16
 WVPASS bup -d repo get --rewrite -s repo --append: main main-rewrite
 WVPASSEQ "$(bup -d repo ls -ln main-rewrite/latest/src | tr -s ' ' ' ')" \
 '-rw-r--r-- ?/? 29 ????-??-?? ??:?? x
+-rwxr-xr-x ?/? 29 ????-??-?? ??:?? x-1-with-exec
+-rw-r--r-- ?/? 29 ????-??-?? ??:?? x-2-without-exec
 -rw-r--r-- ?/? 29 ????-??-?? ??:?? y'
 WVPASS git --git-dir repo ls-tree main-rewrite:src | WVPASS grep -vE '\.bupm$'
-WVPASS rm -rf repo src
+WVPASS rm -rf repo restore src
 
 
 WVPASS cd "$top"

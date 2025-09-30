@@ -113,11 +113,14 @@ class IOError(py_IOError):
 _reg_perms = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH
 _exec_perms = _reg_perms | S_IXUSR | S_IXGRP | S_IXOTH
 default_file_mode = S_IFREG | _reg_perms
+default_exec_mode = S_IFREG | _exec_perms
 default_dir_mode = S_IFDIR | _exec_perms
 default_symlink_mode = S_IFLNK | _exec_perms
 
 def _default_mode_for_gitmode(gitmode):
     if S_ISREG(gitmode):
+        if gitmode & S_IXUSR:
+            return default_exec_mode
         return default_file_mode
     if S_ISDIR(gitmode):
         return default_dir_mode
