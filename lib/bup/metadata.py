@@ -208,6 +208,9 @@ class ApplyError(Exception):
     # Thrown when unable to apply any given bit of metadata to a path.
     pass
 
+# Because we want to use a Metadata instance as a default for
+# Metadata.read() staticmethod arg.
+_use_empty_metadata = object()
 
 class Metadata:
     # Metadata is stored as a sequence of tagged binary records.  Each
@@ -302,6 +305,8 @@ class Metadata:
         else:
             raise Exception('unexpected common_rec version %d' % version)
         data = vint.read_bvec(port)
+        if data is None:
+            raise EOFError('EOF while reading metadata common records')
         values = vint.unpack(unpack_fmt, data)
         if version == 3:
             (self.mode, self.uid, self.user, self.gid, self.group,
@@ -483,7 +488,10 @@ class Metadata:
             return None
 
     def _load_path_rec(self, port):
-        self.path = vint.unpack('s', vint.read_bvec(port))[0]
+        data = vint.read_bvec(port)
+        if data is None:
+            raise EOFError('EOF while reading metadata path record')
+        self.path = vint.unpack('s', data)[0]
 
 
     ## Symlink targets
@@ -503,6 +511,8 @@ class Metadata:
 
     def _load_symlink_target_rec(self, port):
         target = vint.read_bvec(port)
+        if target is None:
+            raise EOFError('EOF while reading metadata symlink target')
         self.symlink_target = target
         if self.size is None:
             self.size = len(target)
@@ -523,7 +533,10 @@ class Metadata:
         return self.hardlink_target
 
     def _load_hardlink_target_rec(self, port):
-        self.hardlink_target = vint.read_bvec(port)
+        target = vint.read_bvec(port)
+        if target is None:
+            raise EOFError('EOF while reading metadata hardlink target')
+        self.hardlink_target = target
 
 
     ## POSIX1e ACL records
@@ -580,7 +593,10 @@ class Metadata:
 
     def _load_posix1e_acl_rec(self, port, *, version):
         assert version in (1, 2)
-        acl_rep = vint.unpack('ssss', vint.read_bvec(port))
+        acl_data = vint.read_bvec(port)
+        if acl_data is None:
+            raise EOFError('EOF while reading POSIX1e ACL metadata')
+        acl_rep = vint.unpack('ssss', acl_data)
         if acl_rep[2] == b'':
             acl_rep = acl_rep[:2]
         if version == 1:
@@ -654,6 +670,8 @@ class Metadata:
 
     def _load_linux_attr_rec(self, port):
         data = vint.read_bvec(port)
+        if data is None:
+            raise EOFError('EOF while reading Linux attr metadata')
         self.linux_attr = vint.unpack('V', data)[0]
 
     def _apply_linux_attr_rec(self, path, restore_numeric_ids=False):
@@ -702,11 +720,20 @@ class Metadata:
 
     def _load_linux_xattr_rec(self, file):
         data = vint.read_bvec(file)
+        if data is None:
+            raise EOFError('EOF while reading Linux xattr metadata')
         memfile = BytesIO(data)
         result = []
-        for i in range(vint.read_vuint(memfile)):
+        xattr_n = vint.read_vuint(memfile)
+        if xattr_n is None:
+            raise EOFError('EOF while reading number of Linux xattrs')
+        for i in range(xattr_n):
             key = vint.read_bvec(memfile)
+            if key is None:
+                raise EOFError('EOF while reading Linux xattr metadata key')
             value = vint.read_bvec(memfile)
+            if value is None:
+                raise EOFError('EOF while reading Linux xattr metadata value')
             result.append((key, value))
         self.linux_xattr = result
 
@@ -885,45 +912,52 @@ class Metadata:
         return copy.deepcopy(self).thaw()
 
     @staticmethod
-    def read(port):
-        # This method should either return a valid Metadata object,
-        # return None if there was no information at all (just a
-        # _rec_tag_end), throw EOFError if there was nothing at all to
-        # read, or throw an Exception if a valid object could not be
-        # read completely.
+    def read(port, empty=_use_empty_metadata):
+        """Read an encoded Metadata instance from port, returning None on EOF.
+
+        Return either a valid Metadata object, None on EOF, or empty
+        (defaulting to metadata.empty_metadata) if there was no
+        information at all (just a _rec_tag_end).  Throw an Exception
+        if a valid object could not be read completely.
+
+        """
+        if empty is _use_empty_metadata:
+            empty = empty_metadata
         tag = vint.read_vuint(port)
-        if tag == _rec_tag_end:
+        if tag is None:
             return None
-        try: # From here on, EOF is an error.
-            result = Metadata()
-            while True: # only exit is error (exception) or _rec_tag_end
-                if tag == _rec_tag_path:
-                    result._load_path_rec(port)
-                elif tag == _rec_tag_common_v3:
-                    result._load_common_rec(port, version=3)
-                elif tag == _rec_tag_common_v2:
-                    result._load_common_rec(port, version=2)
-                elif tag == _rec_tag_symlink_target:
-                    result._load_symlink_target_rec(port)
-                elif tag == _rec_tag_hardlink_target:
-                    result._load_hardlink_target_rec(port)
-                elif tag == _rec_tag_posix1e_acl_v2:
-                    result._load_posix1e_acl_rec(port, version=2)
-                elif tag == _rec_tag_posix1e_acl_v1:
-                    result._load_posix1e_acl_rec(port, version=1)
-                elif tag == _rec_tag_linux_attr:
-                    result._load_linux_attr_rec(port)
-                elif tag == _rec_tag_linux_xattr:
-                    result._load_linux_xattr_rec(port)
-                elif tag == _rec_tag_end:
-                    return result
-                elif tag == _rec_tag_common_v1: # Should be very rare.
-                    result._load_common_rec(port, version=1)
-                else: # unknown record
-                    vint.skip_bvec(port)
-                tag = vint.read_vuint(port)
-        except EOFError:
-            raise Exception("EOF while reading Metadata")
+        if tag == _rec_tag_end:
+            return empty
+        # From here on, EOF is an error.
+        result = Metadata()
+        while True: # only exit is error (exception) or _rec_tag_end
+            if tag == _rec_tag_path:
+                result._load_path_rec(port)
+            elif tag == _rec_tag_common_v3:
+                result._load_common_rec(port, version=3)
+            elif tag == _rec_tag_common_v2:
+                result._load_common_rec(port, version=2)
+            elif tag == _rec_tag_symlink_target:
+                result._load_symlink_target_rec(port)
+            elif tag == _rec_tag_hardlink_target:
+                result._load_hardlink_target_rec(port)
+            elif tag == _rec_tag_posix1e_acl_v2:
+                result._load_posix1e_acl_rec(port, version=2)
+            elif tag == _rec_tag_posix1e_acl_v1:
+                result._load_posix1e_acl_rec(port, version=1)
+            elif tag == _rec_tag_linux_attr:
+                result._load_linux_attr_rec(port)
+            elif tag == _rec_tag_linux_xattr:
+                result._load_linux_xattr_rec(port)
+            elif tag == _rec_tag_end:
+                return result
+            elif tag == _rec_tag_common_v1: # Should be very rare.
+                result._load_common_rec(port, version=1)
+            else: # unknown record
+                vint.skip_bvec(port)
+            tag = vint.read_vuint(port)
+            if tag is None:
+                raise EOFError('EOF within Metadata entry')
 
     def isdir(self):
         return stat.S_ISDIR(self.mode)
@@ -961,6 +995,9 @@ class Metadata:
             and self._same_posix1e_acl(other) \
             and self._same_linux_attr(other) \
             and self._same_linux_xattr(other)
+
+
+empty_metadata = Metadata(frozen=True)
 
 
 def from_path(path, statinfo=None, archive_path=None,
@@ -1166,10 +1203,12 @@ def detailed_bytes(meta, fields = None):
 
 class _ArchiveIterator:
     def __next__(self):
-        try:
-            return Metadata.read(self._file)
-        except EOFError:
+        m = Metadata.read(self._file)
+        if m is empty_metadata:
+            return None
+        if m is None:
             raise StopIteration()
+        return m
 
     next = __next__
 

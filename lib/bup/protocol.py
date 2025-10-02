@@ -14,31 +14,45 @@ from bup.metadata import Metadata
 
 
 def read_item(port):
-    def read_m(port, has_meta):
+    """Read an encoded VFS item from port. Throw EOFError for EOF."""
+    def read_oid(port, kind):
+        bv = read_bvec(port)
+        if bv is None:
+            raise EOFError(f'EOF while reading {kind} OID')
+        return bv
+    def read_m(port, kind, has_meta):
         if has_meta:
             m = Metadata.read(port)
-            return m
-        return read_vuint(port)
+            if m is None:
+                raise EOFError(f'EOF while reading {kind} metadata')
+        else:
+            m = read_vuint(port)
+            if m is None:
+                raise EOFError(f'EOF while reading {kind} integer mode')
+        return m
     kind, has_meta = vint.recv(port, 'sV')
     if kind == b'Item':
-        oid, meta = read_bvec(port), read_m(port, has_meta)
+        oid, meta = read_oid(port, kind), read_m(port, kind, has_meta)
         return Item(oid=oid, meta=meta)
     if kind == b'Chunky':
-        oid, meta = read_bvec(port), read_m(port, has_meta)
+        oid, meta = read_oid(port, kind), read_m(port, kind, has_meta)
         return Chunky(oid=oid, meta=meta)
     if kind == b'RevList':
-        oid, meta = read_bvec(port), read_m(port, has_meta)
+        oid, meta = read_oid(port, kind), read_m(port, kind, has_meta)
         return RevList(oid=oid, meta=meta)
     if kind == b'Root':
-        return Root(meta=read_m(port, has_meta))
+        return Root(meta=read_m(port, kind, has_meta))
     if kind == b'Tags':
-        return Tags(meta=read_m(port, has_meta))
+        return Tags(meta=read_m(port, kind, has_meta))
     if kind == b'Commit':
         oid, coid = vint.recv(port, 'ss')
-        meta = read_m(port, has_meta)
+        meta = read_m(port, kind, has_meta)
         return Commit(oid=oid, coid=coid, meta=meta)
     if kind == b'FakeLink':
-        target, meta = read_bvec(port), read_m(port, has_meta)
+        target = read_bvec(port)
+        if target is None:
+            raise EOFError(f'EOF while reading {kind} target')
+        meta = read_m(port, kind, has_meta)
         return FakeLink(target=target, meta=meta)
     assert False
 
@@ -78,6 +92,34 @@ def write_item(port, item):
     else:
         assert False
 
+def write_resolution(port, resolution):
+    write_vuint(port, len(resolution))
+    for name, item in resolution:
+        write_bvec(port, name)
+        if item:
+            port.write(b'\x01')
+            write_item(port, item)
+        else:
+            port.write(b'\x00')
+
+def read_resolution(port):
+    # resolution must exist; raise EOFError if not
+    n = read_vuint(port)
+    if n is None:
+        raise EOFError('EOF while reading VFS resolve path length')
+    result = []
+    for i in range(n):
+        name = read_bvec(port)
+        if name is None:
+            raise EOFError(f'EOF while reading VFS resolve path name')
+        have_item = ord(port.read(1))
+        if have_item is None:
+            raise EOFError(f'EOF while reading VFS resolve path item indicator')
+        assert have_item in (0, 1)
+        item = read_item(port) if have_item else None
+        result.append((name, item))
+    return tuple(result)
+
 def write_ioerror(port, ex):
     assert isinstance(ex, vfs.IOError)
     write_vuint(port,
@@ -93,31 +135,22 @@ def write_ioerror(port, ex):
 
 def read_ioerror(port):
     mask = read_vuint(port)
-    no = read_vint(port) if 1 & mask else None
-    msg = read_bvec(port).decode('utf-8') if 2 & mask else None
-    term = read_resolution(port) if 4 & mask else None
+    if mask is None:
+        raise EOFError(f'EOF while reading IOError mask')
+    no, msg, term = None, None, None
+    if 1 & mask:
+        no = read_vint(port)
+        if no is None:
+            raise EOFError(f'EOF while reading IOError errno')
+    if 2 & mask:
+        msg = read_bvec(port).decode('utf-8')
+        if msg is None:
+            raise EOFError(f'EOF while reading IOError message')
+    if 4 & mask:
+        term = read_resolution(port)
+        if msg is None:
+            raise EOFError(f'EOF while reading IOError terminus')
     return vfs.IOError(errno=no, message=msg, terminus=term)
-
-def write_resolution(port, resolution):
-    write_vuint(port, len(resolution))
-    for name, item in resolution:
-        write_bvec(port, name)
-        if item:
-            port.write(b'\x01')
-            write_item(port, item)
-        else:
-            port.write(b'\x00')
-
-def read_resolution(port):
-    n = read_vuint(port)
-    result = []
-    for i in range(n):
-        name = read_bvec(port)
-        have_item = ord(port.read(1))
-        assert have_item in (0, 1)
-        item = read_item(port) if have_item else None
-        result.append((name, item))
-    return tuple(result)
 
 def _command(fn):
     fn.bup_server_command = True
@@ -364,6 +397,8 @@ class Server:
         have_parent = bool(flags & 4)
         parent = read_resolution(self.conn) if have_parent else None
         path = read_bvec(self.conn)
+        if path is None:
+            raise EOFError('EOF while reading resolved VFS path length')
         if not len(path):
             raise Exception('Empty resolve path')
         try:
