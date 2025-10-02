@@ -588,6 +588,8 @@ class Client:
         with self._call('config-get'):
             vint.send(conn, 'ss', name, opttype.encode('ascii') if opttype else b'')
             kind = read_vuint(conn)
+            if kind is None:
+                raise EOFError('EOF while reading config value type')
             if kind == 0:
                 return None
             elif kind == 1:
@@ -595,9 +597,13 @@ class Client:
             elif kind == 2:
                 return False
             elif kind == 3:
-                return read_vint(conn)
+                val = read_vint(conn)
+                if val is None: raise EOFError('EOF while reading vint')
+                return val
             elif kind == 4:
-                return read_bvec(conn)
+                val = read_bvec(conn)
+                if val is None: raise EOFError('EOF while reading bvec')
+                return val
             elif kind == 5:
                 raise PermissionError(f'config-get does not allow remote access to {name}')
             else:

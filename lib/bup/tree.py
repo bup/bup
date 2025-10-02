@@ -12,11 +12,9 @@ from bup.hashsplit import \
 from bup.git import shalist_item_sort_key, mangle_name
 from bup.helpers import add_error
 from bup.io import path_msg
-from bup.metadata import Metadata
+from bup.metadata import Metadata, empty_metadata
 from bup.vfs import LostMetadata
 
-
-_empty_metadata = Metadata(frozen=True)
 
 class TreeItem:
     __slots__ = 'name', 'mode', 'gitmode', 'oid', 'meta'
@@ -30,7 +28,7 @@ class TreeItem:
         self.mode = mode
         self.gitmode = gitmode
         self.oid = oid
-        self.meta = meta or _empty_metadata
+        self.meta = meta or empty_metadata
     def __repr__(self):
         cls = self.__class__
         return f'<{cls.__module__}.{cls.__name__} object at {hex(id(self))}' \
@@ -129,11 +127,11 @@ def _dir_metadata(dir_meta, items, repair):
     # (e.g. tree_items_except_dot).
     any_real_meta = False
     if isinstance(dir_meta, (int, type(None))):
-        meta_ents = [(b'', _empty_metadata)]
+        meta_ents = [(b'', empty_metadata)]
     elif isinstance(dir_meta, LostMetadata):
         if not repair:
             raise Exception(f'LostMetadata for ".", but not repairing {dir_meta!r}')
-        meta_ents = [(b'', _empty_metadata)]
+        meta_ents = [(b'', empty_metadata)]
     elif isinstance(dir_meta, Metadata):
         any_real_meta = True
         meta_ents = [(b'', dir_meta)]
@@ -144,12 +142,12 @@ def _dir_metadata(dir_meta, items, repair):
             continue
         if isinstance(entry.meta, (int, type(None))):
             ml = (shalist_item_sort_key((entry.mode, entry.name, None)),
-                  _empty_metadata)
+                  empty_metadata)
         elif isinstance(entry.meta, LostMetadata):
             if not repair:
                 raise Exception(f'LostMetadata, but not repairing {entry!r}')
             ml = (shalist_item_sort_key((entry.mode, entry.name, None)),
-                  _empty_metadata)
+                  empty_metadata)
         elif isinstance(entry.meta, Metadata):
             any_real_meta = True
             ml = (shalist_item_sort_key((entry.mode, entry.name, None)),

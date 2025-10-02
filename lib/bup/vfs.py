@@ -105,7 +105,7 @@ from bup.git import \
      tree_iter)
 from bup.helpers import EXIT_FAILURE, debug2
 from bup.io import path_msg
-from bup.metadata import Metadata
+from bup.metadata import Metadata, empty_metadata
 
 py_IOError = IOError
 
@@ -419,12 +419,13 @@ def item_mode(item):
     return m
 
 def _read_dir_meta(bupm):
-    # This is because save writes unmodified Metadata() entries for
-    # fake parents -- test-save-strip-graft.sh demonstrates.
-    m = Metadata.read(bupm)
-    if not m:
-        return default_dir_mode
-    assert m.mode is not None
+    # May be empty because save writes unmodified Metadata() entries
+    # for fake parents -- test-save-strip-graft.sh demonstrates.
+    m = Metadata.read(bupm, empty=default_dir_mode)
+    if m is None:
+        raise EOFError('EOF while reading directory metadata')
+    if isinstance(m, Metadata):
+        assert m.mode is not None
     return m
 
 def _treeish_tree_data(repo, oid):
@@ -626,10 +627,10 @@ def _validated_meta_ents(oid, tree_ents, bupm, repair):
     if not bupm:
         return None
     meta_entries = []
-    try:
-        while True: meta_entries.append(Metadata.read(bupm))
-    except EOFError:
-        pass
+    m = Metadata.read(bupm)
+    while m:
+        meta_entries.append(None if m is empty_metadata else m)
+        m = Metadata.read(bupm)
     exp_meta_n = 0
     for ent in tree_ents:
         if ent[1] != b'.bupm' and (ent[2] == BUP_CHUNKED or not S_ISDIR(ent[3])):
@@ -747,7 +748,9 @@ def _split_subtree_items(repo, level, oid, entries, names, want_meta, root=True)
             yield from _tree_items_except_dot(oid, entries, names)
         else:
             with _FileReader(repo, bupm_oid) as bupm:
-                Metadata.read(bupm) # skip dummy entry provided for older bups
+                 # skip dummy entry provided for older bups
+                if not Metadata.read(bupm):
+                    raise EOFError('EOF instead of split tree placeholder metadata')
                 yield from _tree_items_except_dot(oid, entries, names, bupm)
     else:
         for _, mangled_name, sub_oid in entries:
@@ -815,7 +818,8 @@ def tree_items(repo, oid, tree_data, names, *, want_meta=True, repair=False):
         if depth is None:
             with _FileReader(repo, bupm_oid) as bupm:
                 if not dot_requested: # skip it
-                    Metadata.read(bupm)
+                    if not Metadata.read(bupm):
+                        raise EOFError('EOF while skipping directory metadata')
                 else:
                     yield b'.', Item(oid=oid, meta=_read_dir_meta(bupm))
                 yield from _tree_items_except_dot(oid, entries, names, bupm,
