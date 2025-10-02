@@ -35,10 +35,11 @@ def encode_vuint(x):
                 break
         return ret
 
+
 def read_vuint(port):
     c = port.read(1)
     if not c:
-        raise EOFError('encountered EOF while reading vuint')
+        return None
     assert isinstance(c, bytes)
     if ord(c) == 0:
         return 0
@@ -82,7 +83,7 @@ def encode_vint(x):
 def read_vint(port):
     c = port.read(1)
     if not c:
-        raise EOFError('encountered EOF while reading vint')
+        return None
     assert isinstance(c, bytes)
     negative = False
     result = 0
@@ -95,6 +96,8 @@ def read_vint(port):
     if b & 0x80:
         offset += 6
         c = port.read(1)
+        if not c:
+            raise EOFError('encountered EOF while reading vint')
     elif negative:
         return -result
     else:
@@ -123,15 +126,25 @@ def write_bvec(port, x):
 
 def read_bvec(port):
     n = read_vuint(port)
-    return port.read(n)
-
+    if n is None:
+        return None
+    val = port.read(n)
+    if len(val) != n: # e.g. EOF when n != 0
+        raise EOFError('EOF while reading bvec bytes')
+    return val
 
 def encode_bvec(x):
     return _helpers.vuint_encode(len(x)) + x
 
 
 def skip_bvec(port):
-    port.read(read_vuint(port))
+    n = read_vuint(port)
+    if n is None:
+        raise EOFError('encountered EOF while skipping bvec')
+    val = port.read(n)
+    if not val:
+        raise EOFError('encountered EOF while skipping bvec')
+
 
 def send(port, types, *args):
     if len(types) != len(args):
@@ -149,14 +162,14 @@ def send(port, types, *args):
 def recv(port, types):
     result = []
     for type in types:
-        if type == 'V':
-            result.append(read_vuint(port))
-        elif type == 'v':
-            result.append(read_vint(port))
-        elif type == 's':
-            result.append(read_bvec(port))
-        else:
-            raise Exception('unknown xunpack format string item "' + type + '"')
+        if type == 'V': decode = read_vuint
+        elif type == 'v': decode = read_vint
+        elif type == 's': decode = read_bvec
+        else: raise Exception(f'unknown xunpack format string item {type!r}')
+        x = decode(port)
+        if x is None:
+            raise EOFError(f'EOF while reading xunpack type {type!r}')
+        result.append(x)
     return result
 
 def pack(types, *args):

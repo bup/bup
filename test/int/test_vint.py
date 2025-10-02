@@ -17,7 +17,9 @@ def test_vuint():
         for x in (0, 1, 42, 128, 10**16, 10**100):
             WVPASSEQ(encode_and_decode_vuint(x), x)
         WVEXCEPT(Exception, vint.write_vuint, BytesIO(), -1)
-        WVEXCEPT(EOFError, vint.read_vuint, BytesIO())
+        assert vint.read_vuint(BytesIO()) is None
+        WVEXCEPT(EOFError, vint.read_vuint, BytesIO(b'\x80'))
+        WVEXCEPT(EOFError, vint.read_vuint, BytesIO(b'\x80\x80'))
 
 
 def encode_and_decode_vint(x):
@@ -32,8 +34,9 @@ def test_vint():
         WVPASSEQ(encode_and_decode_vint(x), x)
     for x in [-x for x in values]:
         WVPASSEQ(encode_and_decode_vint(x), x)
-    WVEXCEPT(EOFError, vint.read_vint, BytesIO())
-    WVEXCEPT(EOFError, vint.read_vint, BytesIO(b"\x80\x80"))
+    assert vint.read_vint(BytesIO()) is None
+    WVEXCEPT(EOFError, vint.read_vint, BytesIO(b'\x80'))
+    WVEXCEPT(EOFError, vint.read_vint, BytesIO(b'\x80\x80'))
 
 
 def encode_and_decode_bvec(x):
@@ -46,7 +49,10 @@ def test_bvec():
     values = (b'', b'x', b'foo', b'\0', b'\0foo', b'foo\0bar\0')
     for x in values:
         WVPASSEQ(encode_and_decode_bvec(x), x)
-    WVEXCEPT(EOFError, vint.read_bvec, BytesIO())
+    assert vint.read_bvec(BytesIO()) is None
+    assert b'' == vint.read_bvec(BytesIO(b'\x00'))
+    WVEXCEPT(EOFError, vint.read_bvec, BytesIO(b'\x80'))
+    WVEXCEPT(EOFError, vint.read_bvec, BytesIO(b'\x01'))
     outf = BytesIO()
     for x in (b'foo', b'bar', b'baz', b'bax'):
         vint.write_bvec(outf, x)
@@ -55,6 +61,9 @@ def test_bvec():
     WVPASSEQ(vint.read_bvec(inf), b'bar')
     vint.skip_bvec(inf)
     WVPASSEQ(vint.read_bvec(inf), b'bax')
+    WVEXCEPT(EOFError, vint.skip_bvec, BytesIO(b''))
+    WVEXCEPT(EOFError, vint.skip_bvec, BytesIO(b'\x80'))
+    WVEXCEPT(EOFError, vint.skip_bvec, BytesIO(b'\x01'))
 
 
 def pack_and_unpack(types, *values):

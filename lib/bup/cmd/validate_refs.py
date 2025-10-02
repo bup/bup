@@ -101,11 +101,8 @@ def main(argv):
             bupm_n = 0
             with tree_data_reader(repo, item.oid) as bupm:
                 try:
-                    while True:
-                        Metadata.read(bupm)
+                    while Metadata.read(bupm):
                         bupm_n += 1
-                except EOFError:
-                    pass
                 except MissingObject:
                     return True # bupm sub-item, will be handled by later for_item
                 except Exception:
