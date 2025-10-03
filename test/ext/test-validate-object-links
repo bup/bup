@@ -29,12 +29,8 @@ bupm_oid="$(WVPIPE git ls-tree src:a | WVPASS head -1 | WVPASS btl-ent-oid)" \
     || exit $?
 echo "$bupm_oid" | WVPASS "$top/dev/perforate-repo" --drop-oids "$BUP_DIR"
 
-set -x
-bup validate-object-links > validate-out
-rc=$?
-set +x
-cat validate-out
-WVPASSEQ 1 "$rc"
+WVEXPRC 1 bup validate-object-links > validate-out
+btl-display-file validate-out
 
 src_a_oid="$(git rev-parse src:a)"
 WVPASS grep -E "^no $bupm_oid for $src_a_oid" validate-out

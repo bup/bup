@@ -12,14 +12,12 @@ bup() { "$top/bup" "$@"; }
 
 WVPASS cd "$tmpdir"
 
+
 WVSTART 'main'
-
-bup
-rc=$?
-WVPASSEQ "$rc" 2
-
+WVEXPRC 2 bup
 # Check --x=y handling
 WVPASS bup --bup-dir=repo init
+
 
 WVPASS cd "$top"
 WVPASS rm -r "$tmpdir"

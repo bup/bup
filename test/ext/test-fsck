@@ -61,8 +61,10 @@ WVPASS bup damage "$BUP_DIR"/objects/pack/*.pack -n10 -s1024 --percent 0.4 -S0
 WVFAIL bup fsck --quick
 
 if ! bup fsck --par2-ok; then
+    set -x
     bup fsck --quick -rvv -j9
     rc=$?
+    set +x
     WVPASSNE 0 "$rc"
     WVPASSNE 1 "$rc"
 else
@@ -113,15 +115,8 @@ else
     WVPASS bup damage "$BUP_DIR"/objects/pack/*.pack -n600 -s1 --equal -S0
     WVFAIL bup fsck
 
-    bup fsck -rvv   # too many errors to be repairable
-    rc=$?
-    WVPASSNE 0 "$rc"
-    WVPASSNE 1 "$rc"
-
-    bup fsck -r   # too many errors to be repairable
-    rc=$?
-    WVPASSNE 0 "$rc"
-    WVPASSNE 1 "$rc"
+    WVEXPRC '[!01]' bup fsck -rvv   # too many errors to be repairable
+    WVEXPRC '[!01]' bup fsck -r   # too many errors to be repairable
 fi
 
 

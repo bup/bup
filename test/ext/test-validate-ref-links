@@ -14,12 +14,13 @@ bup() { "$top/bup" "$@"; }
 
 expect-one-src-missing()
 {
-    set -x
-    bup validate-ref-links "$@" > validate.log 2>&1
-    rc=$?
-    set +x
-    cat validate.log
-    WVPASSEQ 1 "$rc"
+    if test $# -eq 0; then
+        args=''
+    else
+        args="$(printf " %q" "$@")"
+    fi
+    WVEXPRC 1 eval "bup validate-ref-links $args > validate.log 2>&1"
+    btl-display-file validate.log
     WVPASSEQ 1 "$(grep -cE '^missing ' validate.log)"
 }
 
