@@ -11,11 +11,10 @@ bup() { "$top/bup" "$@"; }
 
 WVPASS cd "$tmpdir"
 
+
 WVSTART 'command without init fails'
 WVPASS mkdir foo
-bup -d nope save -t foo
-rc=$?
-WVPASSEQ 2 "$rc"
+WVEXPRC 2 bup -d nope save -t foo
 WVPASS rmdir foo
 
 WVSTART '-d repo argument'
@@ -52,8 +51,8 @@ WVPASS test -d repo/refs/heads
 WVPASS test -d repo/objects/pack
 WVPASS rm -rf repo
 
-bup init /dev/null || rc=$?
-WVPASSEQ "$rc" "$bup_exit_failure"
+WVEXPRC "$bup_exit_failure" bup init /dev/null
+
 
 WVPASS cd "$top"
 WVPASS rm -rf "$tmpdir"
