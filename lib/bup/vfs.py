@@ -13,7 +13,7 @@ Each path is represented by an item that has least an item.meta which
 may be either a Metadata object, or an integer mode.  Functions like
 item_mode() and item_size() will return the mode and size in either
 case.  Metadata instances must not be modified directly.  Make a copy
-to modify via item.meta.copy() if needed, or call copy_item().
+to modify via deepcopy() if needed, or call copy_item().
 
 The want_meta argument is advisory for calls that accept it, and it
 may not be honored.  Callers must be able to handle an item.meta value
@@ -70,6 +70,7 @@ item.coid.
 
 from binascii import hexlify, unhexlify
 from collections import namedtuple
+from copy import deepcopy
 from errno import EINVAL, ELOOP, ENOTDIR
 from itertools import tee
 from random import randrange
@@ -408,7 +409,7 @@ def copy_item(item):
     """
     meta = getattr(item, 'meta', None)
     if isinstance(meta, Metadata):
-        return(item._replace(meta=meta.copy()))
+        return(item._replace(meta=deepcopy(meta)))
     return item
 
 def item_mode(item):
@@ -1029,7 +1030,7 @@ def contents(repo, item, names=None, want_meta=True, repair=False):
     repair is false, exceptions will be raised instead.
 
     Do not modify any item.meta Metadata instances directly.  If
-    needed, make a copy via item.meta.copy() and modify that instead.
+    needed, make a copy via deepcopy() and modify that instead.
 
     """
     # Q: are we comfortable promising '.' first when no names?
@@ -1226,7 +1227,7 @@ def resolve(repo, path, parent=None, want_meta=True, follow=True):
     or the more limited metadata is sufficient.
 
     Do not modify any item.meta Metadata instances directly.  If
-    needed, make a copy via item.meta.copy() and modify that instead.
+    needed, make a copy via deepcopy() and modify that instead.
 
     """
     if repo.is_remote():
@@ -1279,7 +1280,7 @@ def augment_item_meta(repo, item, *, include_size=False, public=False):
     m = item.meta
     if isinstance(m, Metadata):
         if include_size and m.size is None:
-            m = m.copy(frozen=False)
+            m = deepcopy(m).thaw()
             m.size = maybe_public(m.mode, _compute_item_size(repo, item))
             return item._replace(meta=m.freeze())
         return item
