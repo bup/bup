@@ -904,13 +904,6 @@ class Metadata:
         ret.append(vint.encode_vuint(_rec_tag_end))
         return b''.join(ret)
 
-    def copy(self, frozen=None):
-        if frozen is None:
-            return copy.deepcopy(self)
-        if frozen:
-            return copy.deepcopy(self).freeze()
-        return copy.deepcopy(self).thaw()
-
     @staticmethod
     def read(port, empty=_use_empty_metadata):
         """Read an encoded Metadata instance from port, returning None on EOF.
