@@ -80,6 +80,8 @@ def run_augment_item_meta_tests(repo,
     wvpass(isinstance(file_item.meta, Metadata))
     wvpass(isinstance(link_item.meta, Metadata))
     # Note: normally, modifying item.meta values is forbidden
+    file_item.meta.thaw()
+    link_item.meta.thaw()
     file_item.meta.size = file_item.meta.size or vfs.item_size(repo, file_item)
     link_item.meta.size = link_item.meta.size or vfs.item_size(repo, link_item)
 
@@ -181,8 +183,8 @@ def test_misc(tmpdir):
         wvpasseq(4, vfs.item_size(repo, link_item))
         wvpasseq(7, vfs.item_size(repo, file_item))
         meta = metadata.from_path(fsencode(__file__))
-        meta.size = 42
-        fake_item = file_item._replace(meta=meta)
+        meta.thaw().size = 42
+        fake_item = file_item._replace(meta=meta.freeze())
         wvpasseq(42, vfs.item_size(repo, fake_item))
 
         _, fakelink_item = vfs.resolve(repo, b'/test/latest', follow=False)[-1]

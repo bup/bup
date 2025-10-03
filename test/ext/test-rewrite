@@ -73,13 +73,15 @@ WVSTART rewrite after size not stored
 # now do a hack to save without saving the size in metadata ...
 WVPASS mkdir -p "$tmpdir/mod"
 cat > "$tmpdir/mod/metadata_encode_no_size.py" << EOF
+from copy import deepcopy
 from bup import metadata, vfs
 
 _orig_encode_common = metadata.Metadata._encode_common
 def _new_encode_common(self):
-    self.size = None
+    m = deepcopy(self).thaw()
+    m.size = None
     print("encoding common with self.size None")
-    return _orig_encode_common(self)
+    return _orig_encode_common(m)
 metadata.Metadata._encode_common = _new_encode_common
 
 vfs._compute_item_size = lambda repo, item: -1122334455
