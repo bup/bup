@@ -128,6 +128,7 @@ def main(argv):
             f = open(argv_bytes(path), 'rb')
             try:
                 for m in metadata._ArchiveIterator(f):
+                    m.thaw()
                     if opt.set_uid is not None:
                         try:
                             m.uid = int(opt.set_uid)
@@ -150,6 +151,6 @@ def main(argv):
                     elif opt.set_group is not None:
                         m.group = argv_bytes(opt.set_group)
 
-                    m.write(output_file)
+                    m.freeze().write(output_file)
             finally:
                 f.close()

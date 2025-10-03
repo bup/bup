@@ -5,6 +5,7 @@
 # This code is covered under the terms of the GNU Library General
 # Public License as described in the bup LICENSE file.
 
+from copy import deepcopy
 from errno import EACCES, EINVAL, ENOTTY, ENOSYS, EOPNOTSUPP
 from io import BytesIO
 from time import gmtime, strftime
@@ -778,7 +779,7 @@ class Metadata:
                  'size', 'symlink_target', 'hardlink_target',
                  'linux_attr', 'linux_xattr', 'posix1e_acl')
 
-    def __init__(self, *, frozen=False):
+    def __init__(self, *, frozen=True):
         self.mode = self.uid = self.gid = self.user = self.group = None
         self.rdev = None
         self.atime = self.mtime = self.ctime = None
@@ -922,7 +923,7 @@ class Metadata:
         if tag == _rec_tag_end:
             return empty
         # From here on, EOF is an error.
-        result = Metadata()
+        result = Metadata(frozen=False)
         while True: # only exit is error (exception) or _rec_tag_end
             if tag == _rec_tag_path:
                 result._load_path_rec(port)
@@ -943,7 +944,7 @@ class Metadata:
             elif tag == _rec_tag_linux_xattr:
                 result._load_linux_xattr_rec(port)
             elif tag == _rec_tag_end:
-                return result
+                return result.freeze()
             elif tag == _rec_tag_common_v1: # Should be very rare.
                 result._load_common_rec(port, version=1)
             else: # unknown record
@@ -990,7 +991,7 @@ class Metadata:
             and self._same_linux_xattr(other)
 
 
-empty_metadata = Metadata(frozen=True)
+empty_metadata = Metadata()
 
 
 def from_path(path, statinfo=None, archive_path=None,
@@ -1000,7 +1001,7 @@ def from_path(path, statinfo=None, archive_path=None,
     """Return the metadata associated with the path.  When normalized is
     true, return the metadata appropriate for a typical save, which
     may or may not be all of it."""
-    result = Metadata()
+    result = Metadata(frozen=False)
     result.path = archive_path
     st = statinfo or xstat.lstat(path)
     if after_stat:
@@ -1016,7 +1017,7 @@ def from_path(path, statinfo=None, archive_path=None,
         # Only store sizes for regular files and symlinks for now.
         if not (stat.S_ISREG(result.mode) or stat.S_ISLNK(result.mode)):
             result.size = None
-    return result
+    return result.freeze()
 
 
 def save_tree(output_file, paths,
@@ -1246,8 +1247,9 @@ def start_extract(file, create_symlinks=True):
             add_error(Exception('skipping risky path "%s"'
                                 % path_msg(meta.path)))
         else:
+            meta = deepcopy(meta).thaw()
             meta.path = xpath
-            _set_up_path(meta, create_symlinks=create_symlinks)
+            _set_up_path(meta.freeze(), create_symlinks=create_symlinks)
 
 
 def finish_extract(file, restore_numeric_ids=False):
@@ -1288,7 +1290,9 @@ def extract(file, restore_numeric_ids=False, create_symlinks=True):
             add_error(Exception('skipping risky path "%s"'
                                 % path_msg(meta.path)))
         else:
+            meta = deepcopy(meta).thaw()
             meta.path = xpath
+            meta.freeze()
             if verbose:
                 print('+', path_msg(meta.path), file=sys.stderr)
             _set_up_path(meta, create_symlinks=create_symlinks)

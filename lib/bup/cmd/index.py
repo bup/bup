@@ -148,7 +148,9 @@ def update_index(top, excluded_paths, exclude_rxs, fsindex,
                     # read/used from the index if hashvalid is true. (3)
                     # "faked" entries will be stale(), and so we'll invalidate
                     # them below.
+                    meta.thaw()
                     meta.ctime = meta.mtime = meta.atime = 0
+                    meta.freeze()
                     meta_ofs = msw.store(meta)
                     rig.cur.update_from_stat(pst, meta_ofs)
                     rig.cur.invalidate()
@@ -172,7 +174,9 @@ def update_index(top, excluded_paths, exclude_rxs, fsindex,
                     add_error(e)
                     continue
                 # See same assignment to 0, above, for rationale.
+                meta.thaw()
                 meta.atime = meta.mtime = meta.ctime = 0
+                meta.freeze()
                 meta_ofs = msw.store(meta)
                 wi.add(path, pst, meta_ofs, hashgen=fake_hash)
                 if not stat.S_ISDIR(pst.st_mode) and pst.st_nlink > 1:

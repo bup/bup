@@ -598,7 +598,7 @@ class LostMetadata(Metadata):
     """Representation for metadata that's been lost, e.g. due to a bug
     like the one that dropped bupm entries."""
     def __init__(self, mode):
-        super().__init__()
+        super().__init__(frozen=False)
         self.mode = mode
         self.freeze()
 
@@ -1284,8 +1284,8 @@ def augment_item_meta(repo, item, *, include_size=False, public=False):
             m.size = maybe_public(m.mode, _compute_item_size(repo, item))
             return item._replace(meta=m.freeze())
         return item
-    # m is mode
-    meta = Metadata()
+    assert isinstance(m, int), item
+    meta = Metadata(frozen=False)
     meta.mode = m
     if S_ISLNK(m):
         if isinstance(item, FakeLink):
@@ -1296,7 +1296,7 @@ def augment_item_meta(repo, item, *, include_size=False, public=False):
         meta.size = len(target)
     elif include_size:
         meta.size = maybe_public(m, _compute_item_size(repo, item))
-    return item._replace(meta=meta)
+    return item._replace(meta=meta.freeze())
 
 def fill_in_metadata_if_dir(repo, item):
     """If item is a directory and item.meta is not a Metadata instance,

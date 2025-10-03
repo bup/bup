@@ -101,7 +101,8 @@ def _previous_conversion(dstrepo, item, vfs_dir, db, mapping):
             assert item.meta.size == size
         else: # must not modify vfs results (see vfs docs)
             item = vfs.copy_item(item)
-            item.meta.thaw().size = size
+            item.meta.thaw()
+            item.meta.size = size
             item.meta.freeze()
     # it's in the DB and in the destination repo
     if chunked is None: # dir, not file
@@ -124,7 +125,7 @@ def _blob_replacement(repo, meta, content):
     # REVIEW: does all this seem reasonable?
     now = time.time()
     oid = repo.write_data(content)
-    rm = Metadata()
+    rm = Metadata(frozen=False)
     rm.mode = default_file_mode
     rm.rdev = 0
     rm.atime = rm.mtime = rm.ctime = now
@@ -137,7 +138,7 @@ def _blob_replacement(repo, meta, content):
     else:
         rm.uid = rm.gid = 0
         rm.user = rm.group = b''
-    return Item(oid=oid, meta=rm)
+    return Item(oid=oid, meta=rm.freeze())
 
 def _replacement_item(repo, item, kind, kind_msg, repair_id, missing_oid):
     # Currently assumes any trailer manipulations will preserve
@@ -273,10 +274,12 @@ def _rewrite_link(path, item_mode, srcrepo, dstrepo, stack, repairs):
 
     git_mode, oid = GIT_MODE_SYMLINK, dstrepo.write_symlink(target)
     if have_meta:
+        # FIXME: not tested?
         if item.meta.size is None:
-            # must not modify vfs results (see vfs docs)
             item = vfs.copy_item(item)
+            item.meta.thaw()
             item.meta.size = len(item.meta.symlink_target)
+            item.meta.freeze()
         else:
             assert item.meta.size == len(item.meta.symlink_target)
     stack.append_to_current(name, item_mode, git_mode, oid, item.meta)
@@ -448,10 +451,12 @@ def _rewrite_save_item(save_path, path, replacement_dir, srcrepo, dstrepo,
         return
 
     if isinstance(item.meta, metadata.Metadata):
+        # FIXME: not tested?
         if item.meta.size is None:
-            # must not modify vfs results (see vfs docs)
             item = vfs.copy_item(item)
+            item.meta.thaw()
             item.meta.size = item_size
+            item.meta.freeze()
         else:
             assert item.meta.size == item_size, (item.meta.size, item_size)
     chunked = 1 if S_ISDIR(git_mode) else 0

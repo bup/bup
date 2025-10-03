@@ -16,6 +16,7 @@ from bup.helpers import \
      qprogress,
      resolve_parent,
      slashappend)
+from bup.metadata import empty_metadata
 
 
 EMPTY_SHA = b'\0' * 20
@@ -73,6 +74,7 @@ class MetaStoreReader:
     def __exit__(self, type, value, traceback): self.close()
 
     def metadata_at(self, ofs):
+        # Must return a new instance (callers are allowed to modify it)
         self._file.seek(ofs)
         return metadata.Metadata.read(self._file)
 
@@ -155,7 +157,7 @@ class Level:
 def _golevel(level, f, ename, newentry, metastore, tmax):
     # close nodes back up the tree
     assert(level)
-    default_meta_ofs = metastore.store(metadata.Metadata())
+    default_meta_ofs = metastore.store(empty_metadata)
     while ename[:len(level.ename)] != level.ename:
         n = BlankNewEntry(level.ename[-1], default_meta_ofs, tmax)
         n.flags |= IX_EXISTS
@@ -616,7 +618,7 @@ class Writer:
                          meta_ofs, 0, 0)
         else:
             assert(endswith)
-            meta_ofs = self.metastore.store(metadata.Metadata())
+            meta_ofs = self.metastore.store(empty_metadata)
             e = BlankNewEntry(basename, meta_ofs, self.tmax)
             e.gitmode = gitmode
             e.sha = sha

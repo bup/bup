@@ -85,7 +85,7 @@ def test_index_dirty(tmpdir):
     orig_cwd = os.getcwd()
     try:
         os.chdir(tmpdir)
-        default_meta = metadata.Metadata()
+        default_meta = metadata.empty_metadata
 
         with index.MetaStoreWriter(b'index.meta.tmp') as ms1, \
              index.MetaStoreWriter(b'index2.meta.tmp') as ms2, \
