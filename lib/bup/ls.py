@@ -1,6 +1,7 @@
 """Common code for listing files from a bup repository."""
 
 from binascii import hexlify
+from copy import deepcopy
 from itertools import chain
 from stat import S_ISDIR
 import os.path
@@ -42,7 +43,7 @@ def item_info(item, name,
         else:
             result.append(b'0000000000000000000000000000000000000000 ')
     if long_fmt:
-        meta = item.meta.copy(frozen=False)
+        meta = deepcopy(item.meta).thaw()
         meta.path = name
         # FIXME: need some way to track fake vs real meta items?
         result.append(metadata.summary_bytes(meta.freeze(),
