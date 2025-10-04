@@ -1047,13 +1047,16 @@ def summary_bytes(meta, numeric_ids = False, classification = None,
                   human_readable = False):
     """Return bytes containing the "ls -l" style listing for meta.
     Classification may be "all", "type", or None."""
-    user_str = group_str = size_or_dev_str = b'?'
-    symlink_target = None
-    mode_str = b'?' * 10
+    user_str = group_str = b'?'
     mtime_str = b'????-??-?? ??:??'
     classification_str = b'?'
-    if meta:
-        name = meta.path
+    if not meta:
+        name = b''
+        mode_str = b'?' * 10
+        symlink_target = None
+        size_or_dev_str = b'?'
+    else:
+        name = meta.path or b''
         mode_str = xstat.mode_str(meta.mode).encode('ascii')
         symlink_target = meta.symlink_target
         if meta.mtime is not None:
@@ -1082,7 +1085,6 @@ def summary_bytes(meta, numeric_ids = False, classification = None,
                 xstat.classification_str(meta.mode,
                                          classification == 'all').encode()
 
-    name = name or b''
     if classification:
         name += classification_str
     if symlink_target:
