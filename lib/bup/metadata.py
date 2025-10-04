@@ -1176,7 +1176,7 @@ def display_archive(file, out):
         for meta in _ArchiveIterator(file):
             if not meta.path:
                 log('bup: no metadata path, but asked to only display path'
-                    ' (increase verbosity?)')
+                    ' (increase verbosity?)\n')
                 sys.exit(EXIT_FAILURE)
             out.write(meta.path)
             out.write(b'\n')
