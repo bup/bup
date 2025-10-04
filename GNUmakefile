@@ -396,8 +396,8 @@ clean:
 	rm -rf $(bup_config_detritus)
 	rm -rf $(doc_clean_paths) $(clean_paths) .pytest_cache
 	rm -f $(generated_dependencies)
-	find . -name __pycache__ -exec rm -rf {} +
 	if test -e test/tmp; then dev/force-delete test/tmp; fi
+	find . -name __pycache__ -exec rm -rf {} +
 	dev/configure-sampledata --clean
 
 -include $(generated_dependencies)
