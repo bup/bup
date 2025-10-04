@@ -340,6 +340,6 @@ clean: Documentation/clean
 	  ${CONFIGURE_DETRITUS} ${CONFIGURE_FILES} ${GENERATED_FILES}
 	rm -rf $(clean_paths) .pytest_cache
 	rm -f $(generated_dependencies)
-	find . -name __pycache__ -exec rm -rf {} +
 	if test -e test/tmp; then dev/force-delete test/tmp; fi
+	find . -name __pycache__ -exec rm -rf {} +
 	dev/configure-sampledata --clean
