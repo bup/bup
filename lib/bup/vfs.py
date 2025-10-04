@@ -417,7 +417,9 @@ def item_mode(item):
     m = item.meta
     if isinstance(m, Metadata):
         return m.mode
-    return m
+    elif isinstance(m, int):
+        return m
+    raise TypeError(f'not integer or Metadata {m!r}')
 
 def _read_dir_meta(bupm):
     # May be empty because save writes unmodified Metadata() entries
