@@ -788,9 +788,9 @@ comprehensive solution.  In theory, this might be sufficient, but our
 initial randomized testing discovered that some binary arguments would
 crash Python during startup[1].  Eventually Johannes Berg tracked down
 the [cause](https://sourceware.org/bugzilla/show_bug.cgi?id=26034),
-and we hope that the problem will be fixed eventually in glibc or
-worked around by Python, but in either case, it will be a long time
-before any fix is widely available.
+and we hoped that the problem would be fixed eventually in glibc or
+worked around by Python, but in either case, we assumed it would be a
+long time before any fix was widely available.
 
 Before we tracked down that bug we were pursuing an approach that
 would let us side step the issue entirely by manipulating the
@@ -798,14 +798,13 @@ LC_CTYPE, but that approach was somewhat complicated, and once we
 understood what was causing the crashes, we decided to just let Python
 3 operate "normally", and work around the issues.
 
-Consequently, we've had to wrap a number of things ourselves that
-incorrectly return Unicode strings (libacl, libreadline, hostname,
-etc.)  and we've had to come up with a way to avoid the fatal crashes
+Consequently, we ended up wrapping a number of things ourselves that
+incorrectly returned Unicode strings (libacl, libreadline, hostname,
+etc.)  and we had to come up with a way to avoid the fatal crashes
 caused by some command line arguments (sys.argv) described above.  To
-fix the latter, for the time being, we just use a trivial sh wrapper
-to redirect all of the command line arguments through the environment
-in BUP_ARGV_{0,1,2,...} variables, since the variables are unaffected,
-and we can access them directly in Python 3 via environb.
+fix the latter, we changed bup from a Python script to a binary
+executable, to allow direct access to the process argv. (This also
+makes bup appear as "bup" to the system, rather than python.)
 
 [1] Our randomized argv testing found that the byte smuggling approach
     was not working correctly for some values (initially discovered in
