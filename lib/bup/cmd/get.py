@@ -29,7 +29,7 @@ from bup.helpers import \
      tty_width)
 from bup.io import path_msg
 from bup.pwdgrp import userfullname, username
-from bup.repair import RepairConfig, RepairInfo, valid_repair_id
+from bup.repair import Repairs, valid_repair_id
 from bup.repo import LocalRepo, make_repo
 from bup.rewrite import Rewriter
 
@@ -136,12 +136,12 @@ class Spec:
     src: bytes
     dest: bytes
     ignore_missing: bool
-    repair: Optional[RepairConfig] = None
+    repairs: Optional[Repairs] = None
     excludes: Optional[list[Pattern]] = None
     rewriter: Optional[Union[bool, Rewriter]] = None
     def __post_init__(self):
-        assert not (self.ignore_missing and self.repair), \
-            (self.ignore_missing, self.repair)
+        assert not (self.ignore_missing and self.repairs), \
+            (self.ignore_missing, self.repairs)
 
 def spec_msg(s):
     if not s.dest:
@@ -158,15 +158,13 @@ def parse_args(args):
     opt.print_commits = opt.print_trees = opt.print_tags = False
     opt.bwlimit = None
     opt.compress = None
-    opt.repair_info = RepairInfo(command=get_argvb())
     opt.source = opt.remote = None
     opt.target_specs = []
 
-    # For now, rewriting is a "global" state, i.e. enabled for all
-    # specs or none. Since we don't want to create a Rewriter until
-    # we've finished checking the requests (e.g. are past the
-    # resolvers), the spec's rewriter will be set to True to indicate
-    # that it needs the real Rewriter once we have it.
+    # Since we don't want to create a Rewriter until we've finished
+    # checking the requests (e.g. are past the resolvers), the spec's
+    # rewriter will be set to True to indicate that it needs the real
+    # Rewriter once we have it.
     exclude_opts = []
     ignore_missing = False
     # rewrite and repair track each arg's "state" and repair implies rewrite
@@ -181,17 +179,16 @@ def parse_args(args):
         if excludes and not (rewrite or repair):
             misuse('--exclude-rx or --exclude-rx-from requires --rewrite or --repair')
         rc = None
-        if (rewrite or repair):
+        if rewrite or repair:
             if repair_id is None:
                 repair_id = str(uuid4()).encode('ascii')
-            rc = RepairConfig(id=repair_id, destructive=repair,
-                              info=opt.repair_info)
+            rc = Repairs(repair_id, repair, get_argvb())
         if rewrite: rw = True
         elif repair: rw = True
         elif rewrite in (False, True): rw = rewrite
         else: rw = repair
         return Spec(method=method, src=src, dest=dest, excludes=excludes,
-                    rewriter=rw, ignore_missing=ignore_missing, repair=rc)
+                    rewriter=rw, ignore_missing=ignore_missing, repairs=rc)
 
     pending_method_context = {} # dict to preserve insertion order
     remaining = args[1:]  # Skip argv[0]
@@ -350,7 +347,7 @@ def transfer_commit(name, hash, parent, src_repo, dest_repo, ignore_missing):
 
 
 def append_commit(src_loc, parent, src_repo, dest_repo, rewriter, excludes,
-                  repair_config, ignore_missing):
+                  repairs, ignore_missing):
     if not rewriter:
         assert isinstance(src_loc, (bytes, Loc)), src_loc
         oidx = src_loc if isinstance(src_loc, bytes) else hexlify(src_loc.hash)
@@ -366,17 +363,17 @@ def append_commit(src_loc, parent, src_repo, dest_repo, rewriter, excludes,
     assert isinstance(save[1], (vfs.Commit, vfs.FakeLink)), path
     assert isinstance(ref[1], vfs.RevList), path
     return rewriter.append_save(path, parent, src_repo, dest_repo, excludes,
-                                repair_config)
+                                repairs)
 
 def append_commits(src_loc, dest_hash, src_repo, dest_repo, rewriter, excludes,
-                   repair_config, ignore_missing):
+                   repairs, ignore_missing):
     if not rewriter:
         commits = list(src_repo.rev_list(hexlify(src_loc.hash)))
         commits.reverse()
         last_c, tree = dest_hash, None
         for commit in commits:
             last_c, tree = append_commit(commit, last_c, src_repo, dest_repo,
-                                         rewriter, excludes, repair_config,
+                                         rewriter, excludes, repairs,
                                          ignore_missing)
         assert tree is not None
         return last_c, tree
@@ -405,7 +402,7 @@ def append_commits(src_loc, dest_hash, src_repo, dest_repo, rewriter, excludes,
         coid = unhexlify(commit)
         last_c, tree = rewriter.append_save(path + (entry_for_coid[coid],),
                                             last_c, src_repo, dest_repo,
-                                            excludes, repair_config)
+                                            excludes, repairs)
     assert tree is not None
     return last_c, tree
 
@@ -639,7 +636,7 @@ def handle_append(item, src_repo, dest_repo):
         assert item.dest.type in ('branch', 'commit', 'save'), item.dest
     return append_commits(item.src, item.dest.hash, src_repo, dest_repo,
                           item.spec.rewriter, item.spec.excludes,
-                          item.spec.repair, item.spec.ignore_missing)
+                          item.spec.repairs, item.spec.ignore_missing)
 
 
 def resolve_pick(spec, src_repo, dest_repo):
@@ -684,13 +681,13 @@ def handle_pick(item, src_repo, dest_repo):
         if item.dest.type in ('branch', 'commit', 'save'):
             return append_commit(item.src, item.dest.hash, src_repo, dest_repo,
                                  item.spec.rewriter, item.spec.excludes,
-                                 item.spec.repair, item.spec.ignore_missing)
+                                 item.spec.repairs, item.spec.ignore_missing)
         assert item.dest.path.startswith(b'/.tag/'), item.dest
     # no parent; either dest is a non-commit tag and we should clobber
     # it, or dest doesn't exist.
     return append_commit(item.src, None, src_repo, dest_repo,
                          item.spec.rewriter, item.spec.excludes,
-                         item.spec.repair, item.spec.ignore_missing)
+                         item.spec.repairs, item.spec.ignore_missing)
 
 
 def resolve_new_tag(spec, src_repo, dest_repo):
@@ -943,7 +940,9 @@ def main(argv):
 
     get_everything(opt)
 
-    if opt.repair_info.repair_count() and not saved_errors:
+    if any(spec.repairs and spec.repairs.repair_count() \
+           for spec in opt.target_specs) \
+       and not saved_errors:
         msg = ('Repairs were needed and successful; see above. Additional'
                ' information may be found in the git log. Search for '
                ' "Repair-ID:" in "git --git-dir REPO log ..." for the related'
