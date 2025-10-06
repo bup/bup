@@ -95,11 +95,9 @@ def _previous_conversion(dstrepo, item, vfs_dir, db, mapping):
         return item, dst, None
     return item, dst, GIT_MODE_TREE if chunked else GIT_MODE_FILE
 
-def _path_repaired(path, oid, replacement_oid, missing_oid, repair_config):
-    if repair_config.info.repair_count() == 0:
-        log(b'repairs needed, repair-id: %s\n' % repair_config.id)
+def _path_repaired(path, oid, replacement_oid, missing_oid, repairs):
     fs_path = _fs_path_from_vfs(path)
-    repair_config.info.path_replaced(fs_path, oid, replacement_oid)
+    repairs.path_replaced(fs_path, oid, replacement_oid)
     ep = path_msg(fs_path)
     log(f'warning: missing object {missing_oid.hex()} for {ep}\n')
     log(f'repaired {ep} {oid.hex()} -> {replacement_oid.hex()}\n')
@@ -152,7 +150,7 @@ class IncompleteDir:
     missing: bytes # MissingObject oid
 
 def _vfs_walk_dir_recursively(srcrepo, dstrepo, path, excludes, db, mapping,
-                              repair_config, *, _replacement_parents=None):
+                              repairs, *, _replacement_parents=None):
     """Yield information about the paths underneath the given path.
 
     Yield (src_path, replacement_dir), where src_path is a vfs_path
@@ -160,9 +158,9 @@ def _vfs_walk_dir_recursively(srcrepo, dstrepo, path, excludes, db, mapping,
     representing a directory that has already been rewritten.
 
     When unreadable objects are encountered, raise MissingObject if
-    there is no repair_config, otherwise, yield an IncompleteDir if
-    the path refers to a missing git tree, or split tree with missing
-    split sub-trees.
+    repairs.destructive is false, otherwise, yield an IncompleteDir if
+    the path refers to a missing git tree, or a split tree with
+    missing split sub-trees.
 
     """
     if _replacement_parents is None:
@@ -173,7 +171,7 @@ def _vfs_walk_dir_recursively(srcrepo, dstrepo, path, excludes, db, mapping,
     # drop branch/DATE
     fs_path_in_save = _fs_path_from_vfs((path[0],) + path[3:])
 
-    if not repair_config.destructive:
+    if not repairs.destructive:
         entries = vfs.contents(srcrepo, item)
     else:
         try:
@@ -225,13 +223,13 @@ def _vfs_walk_dir_recursively(srcrepo, dstrepo, path, excludes, db, mapping,
                 sub_rpath = _replacement_parents + (conv_item.oid,)
                 yield from _vfs_walk_dir_recursively(srcrepo, dstrepo, sub_path,
                                                      excludes, db, mapping,
-                                                     repair_config,
+                                                     repairs,
                                                      _replacement_parents=sub_rpath)
     assert path_w_meta is not None, f'{path_msg(fs_path_in_save)} has no "."'
     assert isinstance(path_w_meta[-1][1].meta, (Metadata, int)), path_w_meta
     yield path_w_meta, None
 
-def _rewrite_link(path, item_mode, srcrepo, dstrepo, stack, repair_config):
+def _rewrite_link(path, item_mode, srcrepo, dstrepo, stack, repairs):
     name, item = path[-1]
     assert isinstance(name, bytes)
     have_meta = isinstance(item.meta, metadata.Metadata)
@@ -240,17 +238,16 @@ def _rewrite_link(path, item_mode, srcrepo, dstrepo, stack, repair_config):
         target = vfs.readlink(srcrepo, item)
     except MissingObject as ex:
         if have_meta and item.symlink_target is not None:
-            repair_config.info.note_repair()
+            repairs.note_indidental_repair()
             pm = path_msg(_fs_path_from_vfs(path))
             log(f'warning: symlink data replaced from metadata for {pm}\n')
             target = item.symlink_target
         else:
-            if not repair_config.destructive:
+            if not repairs.destructive:
                 raise ex
             replacement = _replacement_symlink_item(dstrepo, item,
-                                                    repair_config.id, ex.oid)
-            _path_repaired(path, item.oid, replacement.oid, ex.oid,
-                           repair_config)
+                                                    repairs.id, ex.oid)
+            _path_repaired(path, item.oid, replacement.oid, ex.oid, repairs)
             assert replacement.meta.mode == default_file_mode
             stack.append_to_current(name, default_file_mode, default_file_mode,
                                     replacement.oid, replacement.meta)
@@ -291,7 +288,7 @@ def _maybe_exec_mode(git_mode, meta):
     return git_mode
 
 def _rewrite_save_item(save_path, path, replacement_dir, srcrepo, dstrepo,
-                       split_cfg, stack, wdbc, mapping, repair_config):
+                       split_cfg, stack, wdbc, mapping, repairs):
     """Returns either None, or, if a directory was missing, the
     directory path components.
 
@@ -322,20 +319,20 @@ def _rewrite_save_item(save_path, path, replacement_dir, srcrepo, dstrepo,
 
     if incomplete: # must be a dir
         assert replacement_dir is None, replacement_dir
-        assert repair_config, repair_config
+        assert repairs, repairs
         extend_stack(dir_path[len(stack):-1])
         # For now, wholesale replacement (no attempt to handle
         # partially readable split trees).
         rep_item = incomplete.path[-1][1]
         replacement = _replacement_tree_item(dstrepo, rep_item,
-                                             repair_config.id,
+                                             repairs.id,
                                              incomplete.missing)
         # Must not remember repairs because the repair-id (and so blob
         # content) can vary across saves, i.e. get --rewrite-id is a
         # contextual argument, and because the type changes from tree
         # to blob.
         _path_repaired(path, rep_item.oid, replacement.oid, incomplete.missing,
-                       repair_config)
+                       repairs)
         assert replacement.meta.mode == default_file_mode, repr(replacement)
         stack.append_to_current(path[-1][0],
                                 replacement.meta.mode, GIT_MODE_FILE,
@@ -345,7 +342,7 @@ def _rewrite_save_item(save_path, path, replacement_dir, srcrepo, dstrepo,
     # First, things that can't be affected by the rewrite
     if S_ISLNK(item_mode):
         extend_stack(dir_path[len(stack):])
-        _rewrite_link(path, item_mode, srcrepo, dstrepo, stack, repair_config)
+        _rewrite_link(path, item_mode, srcrepo, dstrepo, stack, repairs)
         return
     if not S_ISREG(item_mode) and not S_ISDIR(item_mode):
         # Everything here (pipes, devices, etc.) should be fully
@@ -380,7 +377,7 @@ def _rewrite_save_item(save_path, path, replacement_dir, srcrepo, dstrepo,
         # has missing objects when it encounters it a second time (for
         # say the second of two saves during an --append), which will
         # omit the logging, repair trailers, etc.
-        if not repair_config.destructive:
+        if not repairs.destructive:
             wdbc.execute(f'insert into {mapping} (src, dst) values (?, ?)',
                          (item.oid, newtree))
         return
@@ -414,15 +411,15 @@ def _rewrite_save_item(save_path, path, replacement_dir, srcrepo, dstrepo,
     except MissingObject as ex:
         # For now, wholesale replacement (no attempt to handle
         # partially readable split files).
-        if not repair_config.destructive:
+        if not repairs.destructive:
             raise ex
-        replacement = _replacement_file_item(dstrepo, item, repair_config.id,
+        replacement = _replacement_file_item(dstrepo, item, repairs.id,
                                              ex.oid)
         # Must not remember repairs because the repair-id (and so blob
         # content) can vary across saves, i.e. get --rewrite-id is a
         # contextual argument, and because the type may change from
         # tree to blob.
-        _path_repaired(path, item.oid, replacement.oid, ex.oid, repair_config)
+        _path_repaired(path, item.oid, replacement.oid, ex.oid, repairs)
         assert replacement.meta.mode == default_file_mode, repr(replacement)
         stack.append_to_current(name, replacement.meta.mode, GIT_MODE_FILE,
                                 replacement.oid, replacement.meta)
@@ -473,7 +470,7 @@ class Rewriter:
             pass
 
     def append_save(self, save_path, parent, srcrepo, dstrepo, excludes,
-                    repair_config):
+                    repairs):
         # Strict for now
         assert isinstance(parent, (bytes, type(None))), parent
         if parent:
@@ -513,11 +510,11 @@ class Rewriter:
                 for path, replacement_dir \
                         in _vfs_walk_dir_recursively(srcrepo, dstrepo, save_path,
                                                      excludes, dbc, self._mapping,
-                                                     repair_config):
+                                                     repairs):
                     _rewrite_save_item(save_path, path, replacement_dir,
                                        srcrepo, dstrepo,
                                        self._split_cfg, stack, dbc,
-                                       self._mapping, repair_config)
+                                       self._mapping, repairs)
 
                 while len(stack) > 1: # pop all parts above root folder
                     stack.pop()
@@ -527,8 +524,8 @@ class Rewriter:
                 ci = parse_commit(get_cat_data(srcrepo.cat(save_oidx), b'commit'))
                 author = ci.author_name + b' <' + ci.author_mail + b'>'
                 committer = b'%s <%s@%s>' % (userfullname(), username(), hostname())
-                trailers = repair_config.info.repair_trailers(repair_config.id)
-                msg = commit_message(ci.message, repair_config.info.command,
+                trailers = repairs.repair_trailers(repairs.id)
+                msg = commit_message(ci.message, repairs.command,
                                      trailers)
                 return (dstrepo.write_commit(tree, parent,
                                              author,
