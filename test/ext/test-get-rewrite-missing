@@ -24,6 +24,7 @@ display-file()
 
 
 WVPASS cd "$tmpdir"
+WVPASS mkfifo done
 WVPASS bup init
 WVPASS git config bup.split.trees true
 
@@ -50,6 +51,7 @@ WVPASS bup save --strip -n src src
 WVPASS readarray -t saves < <(bup ls src)
 save_date="${saves[0]}"
 src_oid="$(git rev-parse src)"
+unset saves
 
 WVPASS bup -d dest-repo init
 WVPASS git --git-dir dest-repo config bup.split.trees true
@@ -137,10 +139,9 @@ repair-to-dest()
     rm -rf dest-repo
     WVPASS bup -d dest-repo init
     WVPASS git --git-dir dest-repo config bup.split.trees true
-    bup -d dest-repo get -s bup --repair --append src 2> repair.log
-    rc=$?
-    display-file repair.log
-    WVPASSEQ 3 "$rc"
+    WVEXPRC 3 eval 'bup -d dest-repo get -s bup --repair --append src' \
+            '2> >(tee repair.log; : > done)'
+    WVFAIL read < done
 }
 
 set-repair-id()
@@ -156,10 +157,10 @@ repair-to-dest
 set-repair-id
 
 oid_rx='[0-9a-fA-F]{40}'
-missing_file="/src/$save_date/a/missing-file"
-missing_dir="/src/$save_date/missing-dir/"
-missing_partial="/src/$save_date/partial-file"
-missing_split="/src/$save_date/split-tree/"
+missing_file="a/missing-file"
+missing_dir="missing-dir/"
+missing_partial="partial-file"
+missing_split="split-tree/"
 
 WVPASS git --git-dir dest-repo ls-tree src \
     | WVPASS grep -E $'\tmissing-dir$' | btl-ent-oid > dir-replacement-oid
@@ -182,18 +183,25 @@ wv-match-rx "${trailers[1]}" '^Bup-Argv: [^ ]+/bup.* save '
 wv-match-rx "${trailers[2]}" "^Bup-Version: ${bup_ver//+/\\+}$"
 wv-match-rx "${trailers[3]}" '^Bup-Argv: [^ ]+/bup.* get .* --repair '
 wv-match-rx "${trailers[4]}" "^Bup-Repair-ID: $repair_id$"
-wv-match-rx "${trailers[5]}" "^Bup-Replaced: $(< blob-replacement-oid) $missing_file$"
-wv-match-rx "${trailers[6]}" "^Bup-Replaced: $(< dir-replacement-oid) $missing_dir$"
-wv-match-rx "${trailers[7]}" \
+wv-match-rx "${trailers[5]}" "^Bup-Repaired-Save: $src_oid src/$save_date$"
+wv-match-rx "${trailers[6]}" "^Bup-Replaced: $(< blob-replacement-oid) $missing_file$"
+wv-match-rx "${trailers[7]}" "^Bup-Replaced: $(< dir-replacement-oid) $missing_dir$"
+wv-match-rx "${trailers[8]}" \
              "^Bup-Replaced: $(< partial-file-replacement-oid) $missing_partial$"
-WVPASSEQ "" "${trailers[8]}" # end-of-line
+WVPASSEQ "" "${trailers[9]}" # end-of-line
 unset trailers
+
+src_missing_file="/src/$save_date/a/missing-file"
+src_missing_dir="/src/$save_date/missing-dir/"
+src_missing_partial="/src/$save_date/partial-file"
+src_missing_split="/src/$save_date/split-tree/"
 
 # A missing dir .bupm in a non-split repo is indistinguishable from a
 # git created tree.
 
+
 WVSTART 'missing blobs are rewritten'
-WVPASS grep -E "^repaired $missing_file $oid_rx -> $oid_rx\$" repair.log
+WVPASS grep -E "^repaired $src_missing_file $oid_rx -> $oid_rx\$" repair.log
 WVPASS git --git-dir dest-repo show src:a/missing-file > blob-replacement
 display-file blob-replacement
 WVPASS grep -E '^This is a replacement for a file' blob-replacement
@@ -203,7 +211,7 @@ WVPASS grep -E "^Missing: $(< file-oid)" blob-replacement
 
 
 WVSTART 'missing trees are rewritten'
-WVPASS grep -E "^repaired $missing_dir $oid_rx -> $oid_rx\$" repair.log
+WVPASS grep -E "^repaired $src_missing_dir $oid_rx -> $oid_rx\$" repair.log
 WVPASS git --git-dir dest-repo show src:missing-dir > tree-replacement
 display-file tree-replacement
 WVPASS grep -E '^This is a replacement for a tree' tree-replacement
@@ -213,7 +221,7 @@ WVPASS grep -E "^Missing: $(< dir-oid)" tree-replacement
 
 
 WVSTART 'incomplete chunked files are rewritten'
-WVPASS grep -E "^repaired $missing_partial $oid_rx -> $oid_rx\$" repair.log
+WVPASS grep -E "^repaired $src_missing_partial $oid_rx -> $oid_rx\$" repair.log
 WVPASS git --git-dir dest-repo show src:partial-file > partial-file-replacement
 display-file partial-file-replacement
 WVPASS grep -E '^This is a replacement for a file' partial-file-replacement
@@ -232,7 +240,7 @@ WVSTART 'incomplete split tree (missing top-level sub-tree)'
 WVPASS "$top/dev/perforate-repo" --drop-oids "$BUP_DIR" < split-tree-l1-oid
 repair-to-dest
 set-repair-id
-WVPASS grep -E "^repaired $missing_split $oid_rx -> $oid_rx\$" repair.log
+WVPASS grep -E "^repaired $src_missing_split $oid_rx -> $oid_rx\$" repair.log
 WVPASS git --git-dir dest-repo show src:split-tree > split-tree-replacement
 display-file split-tree-replacement
 WVPASS grep -E '^This is a replacement for a tree' split-tree-replacement
