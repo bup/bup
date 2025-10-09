@@ -561,6 +561,13 @@ over time, both as a result of intentional changes and earlier bugs.
    of course have split trees, nor will current repositories with
    bup.split.trees set to false.
 
+Currently, an empty metadata entry for a directory is expected
+(e.g. the entry for a directory in its parent's .bupm, synthetic
+directories created by `--graft`, etc.), and an empty entry for a
+non-directory indicates that the metadata was lost (e.g. via the
+abridgement fix described above). The VFS intends to provide restrictive
+permissions (e.g. umask 077) for paths whose metadata has been lost.
+
 
 Filesystem Interaction
 ======================
