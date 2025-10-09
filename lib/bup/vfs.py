@@ -20,18 +20,28 @@ may not be honored.  Callers must be able to handle an item.meta value
 that is either an instance of Metadata or an integer mode, perhaps via
 item_mode() or augment_item_meta().
 
-An integer item.meta means that either no bup-recorded metadata was
-available, or the item was a subdirectory returned by a function like
-contents(), which doesn't retrieve the metadata for
-subdirectories. That's because the actual metadata for a directory is
-stored inside the directory (see fill_in_metadata_if_dir() or
-ensure_item_has_metadata()).
+A publically readable integer item.meta means either:
 
-Bup-recorded metadata may be unavailable for a number of reasons. For
-example, "synthetic" paths like the VFS root or /.tag/ don't have it,
-trees created by git or early versions of bup won't have it, and some
-versions of bup omitted it when the metadata was unreadable at save
-time.
+  - No bup-recorded metadata was available (e.g. a tree created by git
+    or by bup before metadata was supported).
+
+  - The item is "synthetic", for example, the root directory "/", the
+    .tags/ directory, a RevList (branch) directory, a Commit (save),
+    or a "fake parent" created by the strip/graft options. The mode
+    permissions will be "public", i.e. readable by group and other (as
+    if by "chmod go=rX").
+
+  - The item's metadata should exist (i.e. the parent tree was created
+    by bup), but has been lost. The mode permissions will be
+    "private", i.e. no group or other permissions (as if by "chmod
+    go="). See the Repository Taxonmy in DESIGN for some additional
+    information.
+
+  - The item is a subdirectory returned by a function like contents(),
+    which doesn't retrieve the metadata for subdirectories. That's
+    because the actual metadata for a directory is stored inside the
+    directory (see fill_in_metadata_if_dir() or
+    ensure_item_has_metadata()).
 
 Setting want_meta=False is rarely desirable since it can limit the VFS
 to only the metadata that git itself can represent, and so for
@@ -57,7 +67,22 @@ from collections import namedtuple
 from errno import EINVAL, ELOOP, ENOTDIR
 from itertools import tee
 from random import randrange
-from stat import S_IFDIR, S_IFLNK, S_IFREG, S_ISDIR, S_ISLNK, S_ISREG
+from stat import \
+    (S_IFDIR,
+     S_IFLNK,
+     S_IFREG,
+     S_IRGRP,
+     S_IROTH,
+     S_IRUSR,
+     S_IRWXG,
+     S_IRWXO,
+     S_ISDIR,
+     S_ISLNK,
+     S_ISREG,
+     S_IWUSR,
+     S_IXGRP,
+     S_IXOTH,
+     S_IXUSR)
 from time import localtime, strftime
 import re
 
@@ -85,9 +110,11 @@ class IOError(py_IOError):
         py_IOError.__init__(self, errno, message)
         self.terminus = terminus
 
-default_file_mode = S_IFREG | 0o644
-default_dir_mode = S_IFDIR | 0o755
-default_symlink_mode = S_IFLNK | 0o755
+_reg_perms = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH
+_exec_perms = _reg_perms | S_IXUSR | S_IXGRP | S_IXOTH
+default_file_mode = S_IFREG | _reg_perms
+default_dir_mode = S_IFDIR | _exec_perms
+default_symlink_mode = S_IFLNK | _exec_perms
 
 def _default_mode_for_gitmode(gitmode):
     if S_ISREG(gitmode):
@@ -555,22 +582,31 @@ def ordered_tree_entries(entries, bupm=None):
 
 def _tree_items_except_dot(oid, entries, names=None, bupm=None):
     """Returns all tree items except ".", and assumes that any bupm is
-    positioned just after that entry."""
+    positioned just after that entry. Any paths whose metadata has
+    been lost will have restrictive permissions (as if via umask
+    077). See the Repository Taxonmy in DESIGN.
+
+    """
+
+    def read_nondir_meta(bupd, default_mode):
+        if not bupm:
+            return default_mode
+        meta = Metadata.read(bupm)
+        if meta is None: # lost metadata
+            return default_mode & ~(S_IRWXO | S_IRWXG)
+        return meta
 
     def tree_item(ent_oid, kind, gitmode):
         if kind == BUP_CHUNKED:
-            meta = Metadata.read(bupm) if bupm else default_file_mode
+            assert S_ISDIR(gitmode), (ent_oid, kind, gitmode)
+            meta = read_nondir_meta(bupm, default_file_mode)
             return Chunky(oid=ent_oid, meta=meta)
 
         if S_ISDIR(gitmode):
             # No metadata here (accessable via '.' inside ent_oid).
             return Item(meta=default_dir_mode, oid=ent_oid)
 
-        meta = Metadata.read(bupm) if bupm else None
-        # handle the case of metadata being empty/missing in bupm
-        # (or there not being bupm at all)
-        if meta is None:
-            meta = _default_mode_for_gitmode(gitmode)
+        meta = read_nondir_meta(bupm, _default_mode_for_gitmode(gitmode))
         return Item(oid=ent_oid, meta=meta)
 
     tree_ents = ordered_tree_entries(entries, bupm)
@@ -893,9 +929,12 @@ def contents(repo, item, names=None, want_meta=True):
     (see fill_in_metadata_if_dir() or ensure_item_has_metadata()).
 
     Note that want_meta is advisory.  For any given item, item.meta
-    might be a Metadata instance or a mode, and if the former,
-    meta.size might be None.  Missing sizes can be computed via via
-    item_size() or augment_item_meta(..., include_size=True).
+    might be a Metadata instance or an integer mode, and if the
+    former, meta.size might be None.  Missing sizes can be computed
+    via via item_size() or augment_item_meta(...,
+    include_size=True). If an integer mode's permissions are
+    restrictive (i.e. no permissions for group or other), then the
+    metadata for the item has been lost.
 
     Do not modify any item.meta Metadata instances directly.  If
     needed, make a copy via item.meta.copy() and modify that instead.
@@ -1081,14 +1120,17 @@ def resolve(repo, path, parent=None, want_meta=True, follow=True):
 
     When want_meta is true, detailed metadata will be included in each
     result item if it's avaiable, otherwise item.meta will be an
-    integer mode.  The metadata size may or may not be provided, but
-    can be computed by item_size() or augment_item_meta(...,
-    include_size=True).  Setting want_meta=False is rarely desirable
-    since it can limit the VFS to just the metadata git itself can
-    represent, and so, as an example, fifos and sockets will appear to
-    be regular files (e.g. S_ISREG(item_mode(item)) will be true) .
-    But the option is provided because it may be more efficient when
-    only the path names or the more limited metadata is sufficient.
+    integer mode. If an integer mode's permissions are restrictive
+    (i.e. no permissions for group or other), then the metadata for
+    the item has been lost. The metadata size may or may not be
+    provided, but can be computed by item_size() or
+    augment_item_meta(..., include_size=True).  Setting
+    want_meta=False is rarely desirable since it can limit the VFS to
+    just the metadata git itself can represent, and so, as an example,
+    fifos and sockets will appear to be regular files
+    (e.g. S_ISREG(item_mode(item)) will be true) .  But the option is
+    provided because it may be more efficient when only the path names
+    or the more limited metadata is sufficient.
 
     Do not modify any item.meta Metadata instances directly.  If
     needed, make a copy via item.meta.copy() and modify that instead.

@@ -1,0 +1,30 @@
+#!/bin/sh
+"""": # -*-python-*-
+bup_python="$(dirname "$0")/bup-python" || exit $?
+exec "$bup_python" "$0" ${1+"$@"}
+"""
+
+from argparse import ArgumentParser
+from sys import stderr, stdin, stdout
+import sys
+
+from bup import metadata
+from bup.metadata import Metadata
+
+parser = ArgumentParser(description='Replace indexed entries with empty entries',
+                        epilog='example: clear-bupm-entries 0 2 7 < bupm > result')
+add_arg = parser.add_argument
+add_arg('indexes', metavar='<index>', type=int, nargs='*',
+        help='entry index (starting with 0)')
+opt = parser.parse_args()
+
+drop = set(opt.indexes)
+for i, m in enumerate(metadata._ArchiveIterator(stdin.buffer)):
+    if i in drop:
+        Metadata().write(stdout.buffer)
+        drop.remove(i)
+    else:
+        m.write(stdout.buffer)
+if drop:
+    print(f'ERROR: indexed entries did not exist {drop}', file=stderr)
+    sys.exit(2)
