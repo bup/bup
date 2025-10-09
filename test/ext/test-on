@@ -52,7 +52,7 @@ for idx in "$tmpdir"/bup/objects/pack/*.idx ; do
     WVPASS cmp "$idx" "$cachedidx"
 done
 
-WVSTART 'index-cache respects XDG_CACHE_DIR'
+WVSTART 'index-cache respects XDG_CACHE_HOME'
 WVPASS mkdir xdg-cache
 export XDG_CACHE_HOME="$(pwd)/xdg-cache"
 WVPASS bup on - split -ct src/baz > /dev/null
