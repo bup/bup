@@ -24,18 +24,13 @@ from bup.metadata import Metadata
 from bup.path import xdg_cache
 from bup.pwdgrp import userfullname, username
 from bup.tree import Stack
-from bup.vfs import Item, MissingObject, default_exec_mode, default_file_mode
+from bup.vfs import \
+    Item, MissingObject, default_exec_mode, default_file_mode, render_path
 
 
 # Currently only handles replacing entire vfs-level trees if any
 # consituent object is missing, entire files, and symlinks.
 
-
-def _fs_path_from_vfs(path):
-    fs = b'/'.join(x[0] for x in path)
-    if not S_ISDIR(vfs.item_mode(path[-1][1])):
-        return fs
-    return fs + b'/'
 
 def _prep_mapping_table(db, split_cfg):
     # This currently only needs to track items that may be split,
@@ -96,8 +91,8 @@ def _previous_conversion(dstrepo, item, vfs_dir, db, mapping):
     return item, dst, GIT_MODE_TREE if chunked else GIT_MODE_FILE
 
 def _path_repaired(path, oid, replacement_oid, missing_oid, repairs):
-    fs_path = _fs_path_from_vfs(path)
-    repairs.path_replaced(fs_path, oid, replacement_oid)
+    fs_path = render_path(path)
+    repairs.path_replaced(path, oid, replacement_oid)
     ep = path_msg(fs_path)
     log(f'warning: missing object {missing_oid.hex()} for {ep}\n')
     log(f'repaired {ep} {oid.hex()} -> {replacement_oid.hex()}\n')
@@ -169,7 +164,7 @@ def _vfs_walk_dir_recursively(srcrepo, dstrepo, path, excludes, db, mapping,
     item = path[-1][1]
     assert len(path) >= 3
     # drop branch/DATE
-    fs_path_in_save = _fs_path_from_vfs((path[0],) + path[3:])
+    fs_path_in_save = render_path((path[0],) + path[3:])
 
     if not repairs.destructive:
         entries = vfs.contents(srcrepo, item)
@@ -239,7 +234,7 @@ def _rewrite_link(path, item_mode, srcrepo, dstrepo, stack, repairs):
     except MissingObject as ex:
         if have_meta and item.symlink_target is not None:
             repairs.note_indidental_repair()
-            pm = path_msg(_fs_path_from_vfs(path))
+            pm = path_msg(render_path(path))
             log(f'warning: symlink data replaced from metadata for {pm}\n')
             target = item.symlink_target
         else:

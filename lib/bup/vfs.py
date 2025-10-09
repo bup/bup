@@ -1263,3 +1263,8 @@ def join(repo, ref):
     if not got[0]:
         raise GitError(f'ref {ref} does not exist') # eventually some ENOENT?
     yield from _join(*got, [ref])
+
+def render_path(path):
+    if not S_ISDIR(item_mode(path[-1][1])):
+        return b'/'.join(x[0] for x in path)
+    return b'/'.join(x[0] for x in path) + b'/'
