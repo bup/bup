@@ -17,9 +17,10 @@ from bup.hashsplit import \
      GIT_MODE_SYMLINK,
      GIT_MODE_TREE,
      split_to_blob_or_tree)
-from bup.helpers import hostname, log, should_rx_exclude_path, temp_dir
+from bup.helpers import hostname, log, mkdirp, should_rx_exclude_path, temp_dir
 from bup.io import path_msg, qsql_id
 from bup.metadata import Metadata
+from bup.path import xdg_cache
 from bup.pwdgrp import userfullname, username
 from bup.repair import MissingConfig
 from bup.tree import Stack
@@ -459,9 +460,11 @@ class Rewriter:
             if db:
                 self._db_tmpdir = None
             else:
+                cache = xdg_cache() + b'/bup/tmp'
+                mkdirp(cache)
                 self._db_tmpdir = \
-                    ctx.enter_context(temp_dir(prefix='bup-rewrite-'))
-                self._db_path = f'{self._db_tmpdir}/db'
+                    ctx.enter_context(temp_dir(dir=cache, prefix=b'rewrite-'))
+                self._db_path = self._db_tmpdir + b'/db'
             self._db_conn = sqlite3.connect(self._db_path)
             ctx.enter_context(closing(self._db_conn))
             self._db_conn.text_factory = bytes
