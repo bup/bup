@@ -218,11 +218,11 @@ class Metadata:
     # record will have some subset of add, encode, load, create, and
     # apply methods, i.e. _add_foo...
 
-    # We do allow an "empty" object as a special case, i.e. no
-    # records.  One can be created by trying to write Metadata(), and
-    # for such an object, read() will return None.  This is used by
-    # "bup save", for example, as a placeholder in cases where
-    # from_path() fails.
+    # We do allow an "empty" object as a special case, i.e. via just
+    # Metadata(), and .bupm files may include these (see the
+    # Repository Taxonomy in DESIGN). The current code assumes all
+    # in-memory instances will be the metadata.empty_metadata object,
+    # which Metadata.read() will return by default when appropriate.
 
     # NOTE: if any relevant fields are added or removed, be sure to
     # update same_file() below.
@@ -1147,6 +1147,8 @@ def summary_bytes(meta, numeric_ids = False, classification = None,
 def detailed_bytes(meta, fields = None):
     # FIXME: should optional fields be omitted, or empty i.e. "rdev:
     # 0", "link-target:", etc.
+    if not meta:
+        return b'empty'
     if not fields:
         fields = all_fields
 
@@ -1196,6 +1198,7 @@ def detailed_bytes(meta, fields = None):
 
 
 class _ArchiveIterator:
+    """Yields the metadata instances in file, or None for empty metadata."""
     def __next__(self):
         m = Metadata.read(self._file)
         if m is empty_metadata:
@@ -1228,7 +1231,7 @@ def display_archive(file, out):
             out.write(b'\n')
     elif verbose == 0:
         for meta in _ArchiveIterator(file):
-            if not meta.path:
+            if not (meta and meta.path):
                 log('bup: no metadata path, but asked to only display path'
                     ' (increase verbosity?)\n')
                 sys.exit(EXIT_FAILURE)

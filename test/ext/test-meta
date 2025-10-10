@@ -432,6 +432,22 @@ src/foo/3"
     WVPASS rm -r "$tmpdir"
 ) || exit $?
 
+WVSTART 'handling of empty metadata'
+(
+    tmpdir="$(WVPASS wvmktempdir)" || exit $?
+    WVPASS cd "$tmpdir"
+
+    WVPASS bup-python -c "
+from bup.metadata import Metadata
+with open('bupm', 'wb') as f: Metadata().write(f)
+"
+    WVEXPRC "$bup_exit_failure" bup meta -tf bupm
+    WVPASS bup meta -tvf bupm
+    WVPASSEQ "empty" "$(WVPASS bup meta -tvvf bupm)"
+
+    WVPASS rm -r "$tmpdir"
+) || exit $?
+
 # Test ownership restoration (when not root or fakeroot).
 (
     if [ "$root_status" != none ]; then
