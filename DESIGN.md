@@ -523,6 +523,39 @@ different set of filesystems than the save tree, complete sets of
 hardlinks may not be restored.
 
 
+Repository Taxonomy
+-------------------
+
+The format of the data that may appear in a repository has varied over
+time, both as a result of intentional changes and earlier bugs.
+
+ - A tree object may not have bup created metadata (i.e. may not have
+   a `.bupm` file). Perhaps because it was created by git or a version
+   of bup before metadata support was added. Eventually that might
+   also result from repairs, though for the moment, it's not
+   possible. The abridgement repair (see below) comes close, but ends
+   up leaving a `.bupm` with empty entries for everything except ".".
+
+ - A `.bupm` file may be abridged, i.e. have missing entries due to a
+   bug introduced in 0.25 by 16f9f9829038f25aec80ebfae3c882a66281e145
+   ("save-cmd.py: don't crash when a path disappears between index and
+   save") and fixed for 0.30.1 by
+   47891d8951a95b8e0d9ca94387107cdf12ca3d3c ("save: add empty metadata
+   if reading fails"). Related: `bup-validate-refs --bupm` and `bup
+   get --repair`.
+
+ - A `.bupm` may have "empty" entries, i.e. a path's entry in a
+   `.bupm` might be the encoding of a `Metadata()` object with no
+   attributes. This may be because it's a "." entry for a "synthetic"
+   directory (created via save strip/graft operations), or it may be
+   due to the fix for the abridgement issue described above, and it
+   can also occur as the result of repairs (cf. `bup-get`(1)).
+
+ - Repositories created before the introduction of split trees won't
+   of course have split trees, nor will current repositories with
+   bup.split.trees set to false.
+
+
 Filesystem Interaction
 ======================
 
