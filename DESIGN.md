@@ -469,11 +469,20 @@ store file contents with a small bit of extra information, like
 symlink targets and executable bits, so we have to store the rest
 some other way.
 
-Bup stores more complete metadata in the VFS in a file named .bupm in
-each tree.  This file contains one entry for each file in the tree
-object, sorted in the same order as the tree.  The first .bupm entry
-is for the directory itself, i.e. ".", and its name is the empty
-string, "".
+Excepting much earlier versions, bup stores more complete metadata in
+the repository in a file named .bupm in each tree.  This file contains
+one entry for each file in the tree object.  The first .bupm entry is
+for the directory itself, i.e. ".", and its name is the empty string,
+"".
+
+The .bupm entries were intended to be in the same order as the git
+tree so that you could walk through the tree and .bupm incrementally,
+in parallel, but unfortunately, they currently aren't. The bupm
+entries are ordered by the corresponding tree entry's "real"
+(unmangled name), not the actual name in the tree.  Though the .bupm
+ordering does account for the fact that git sorts trees (including
+chunked trees) as if their names ended with "/" (so "fo" sorts after
+"fo." iff fo is a directory).
 
 Each .bupm entry contains a variable length sequence of records
 containing the metadata for the corresponding path.  Each record
@@ -485,10 +494,6 @@ the complete list.
 The .bupm file is optional, and when it's missing, bup will behave as
 it did before the addition of metadata, and restore files using the
 tree information.
-
-The nice thing about this design is that you can walk through each
-file in a tree just by opening the tree and the .bupm contents, and
-iterating through both at the same time.
 
 Since the contents of any .bupm file should match the state of the
 filesystem when it was *indexed*, bup must record the detailed
