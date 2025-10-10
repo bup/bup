@@ -12,7 +12,7 @@ from itertools import islice
 from shutil import rmtree
 from subprocess import run
 from sys import stderr
-from typing import Optional, Union
+from typing import Literal, Optional, Union
 
 from bup import _helpers, hashsplit, path, midx, bloom, xstat
 from bup.commit import create_commit_blob, parse_commit
@@ -1493,7 +1493,7 @@ class MissingObject(KeyError):
 class WalkItem:
     oid: bytes
     name: bytes
-    type: Union['blob', 'commit', 'tree']
+    type: Union[Literal[b'blob'], Literal[b'commit'], Literal[b'tree']]
     mode: int
     data: Optional[bytes]
 
