@@ -38,7 +38,6 @@ def _fs_path_from_vfs(path):
         return fs
     return fs + b'/'
 
-
 def _prep_mapping_table(db, split_cfg):
     # This currently only needs to track items that may be split,
     # depending on the current repo settings (e.g. files and
@@ -515,9 +514,10 @@ class Rewriter:
                 if self._current_excludes != excludes:
                     # Whenever the excludes change, remembered tree
                     # rewrites may become incorrect. We could just
-                    # drop the trees if we had an indicator, but for
-                    # now just drop everything.
-                    dbc.execute(f'delete from {self._mapping}')
+                    # drop the affected trees if we had an indicator,
+                    # but for now just drop them all.
+                    dbc.execute(f'delete from {self._mapping}'
+                                ' where chunked is NULL')
                     self._current_excludes = excludes
 
                 # Relies on the fact that recursion is dfs post-order,
