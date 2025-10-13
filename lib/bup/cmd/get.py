@@ -43,7 +43,7 @@ argspec = (
     destination may be specified with -r, and data may be pulled from
     a remote repository with the related "bup on HOST get ..."
     command.  The --exclude-rx and --exclude-rx-from options currently
-    only apply to rewrites. Currently only --unnammed supports
+    only apply to rewrites and repairs. Currently only --unnammed supports
     "--ignore-missing".""",
 
     ('optional arguments:',
@@ -58,13 +58,14 @@ argspec = (
       ('-t --print-trees', 'output a tree id for each ref set'),
       ('-c, --print-commits', 'output a commit id for each ref set'),
       ('--print-tags', 'output an id for each tag'),
-      ('--[no-]rewrite', 'rewrite data according to destination repo settings'),
+      ('--copy', 'copy the data (no rewriting or repairs; the default)'),
+      ('--rewrite', 'rewrite data according to destination repo settings'),
+      ('--repair', 'repair everything possible'),
+      ('--repair-id ID', 'repair session identifier (default: UUID v4)'),
       ('--exclude-rx REGEX', 'skip paths matching the unanchored regex (may be repeated)'),
       ('--exclude-rx-from PATH', 'skip --exclude-rx patterns in PATH (may be repeated)'),
       ('--no-excludes', 'forget any preceeding exclude options'),
       ('--bwlimit BWLIMIT', 'maximum bytes/sec to transmit to server'),
-      ('--[no-]repair', 'repair everything possible'),
-      ('--repair-id ID', 'repair session identifier (default: UUID v4)'),
       ('--[no-]ignore-missing', 'ignore missing objects (*dangerous*)'),
       ('-0, -1, -2, -3, -4, -5, -6, -7, -8, -9, --compress LEVEL',
        'set compression LEVEL (default: 1)'))),
@@ -167,26 +168,39 @@ def parse_args(args):
     # Rewriter once we have it.
     exclude_opts = []
     ignore_missing = False
-    # rewrite and repair track each arg's "state" and repair implies rewrite
-    rewrite = None # None means "didn't specify", False means "said no"
-    repair = None # None means "didn't specify", False means "said no"
+    # mode: copy rewrite or repair (None implies copy for compatible configs)
+    mode = None
     repair_id = None
     def make_spec(method, src, dest):
+        assert mode in (None, 'copy', 'rewrite', 'repair'), mode
         nonlocal repair_id
-        assert not (ignore_missing and repair), (ignore_missing, repair)
-        assert not (ignore_missing and rewrite), (ignore_missing, rewrite)
+        if ignore_missing:
+            if mode == 'repair':
+                misuse('--ignore-missing and --repair are incompatible')
+            elif mode == 'rewrite':
+                misuse('--ignore-missing and --rewrite are incompatible')
+            if method != 'unnamed':
+                misuse('currently only --unnamed allows --ignore-missing')
         excludes = parse_rx_excludes(exclude_opts, misuse)
-        if excludes and not (rewrite or repair):
+        if excludes and not mode in ('rewrite', 'repair'):
             misuse('--exclude-rx or --exclude-rx-from requires --rewrite or --repair')
+        # Set rw to None if no opinion has been expressed so we can
+        # require you to state what you want when src/dest repository
+        # configs differ (see target checks in get_everything).
         rc = None
-        if rewrite or repair:
+        if mode in ('rewrite', 'repair'):
+            if method not in ('append', 'pick', 'force-pick'):
+                misuse(f'--{method} cannot {mode} (only picks and appends)')
             if repair_id is None:
                 repair_id = str(uuid4()).encode('ascii')
-            rc = Repairs(repair_id, repair, get_argvb())
-        if rewrite: rw = True
-        elif repair: rw = True
-        elif rewrite in (False, True): rw = rewrite
-        else: rw = repair
+            rc = Repairs(repair_id, mode == 'repair', get_argvb())
+            rw = True
+        elif mode == 'copy': # explicitly specified no rewrite/repair
+            rw = False
+        elif mode is None:
+            rw = None
+        else:
+            raise Exception(f'invalid get target mode {mode!r}')
         return Spec(method=method, src=src, dest=dest, excludes=excludes,
                     rewriter=rw, ignore_missing=ignore_missing, repairs=rc)
 
@@ -200,17 +214,13 @@ def parse_args(args):
         elif arg in (b'-v', b'--verbose'):
             opt.verbose += 1
             remaining = remaining[1:]
+        elif arg == b'--copy':
+            pending_method_context[arg] = True
+            mode, remaining = 'copy', remaining[1:]
         elif arg == b'--repair':
-            if ignore_missing:
-                misuse('--ignore-missing and --repair are incompatible')
             pending_method_context[arg] = True
-            repair, remaining = True, remaining[1:]
-        elif arg == b'--no-repair':
-            pending_method_context[arg] = True
-            repair, remaining = False, remaining[1:]
+            mode, remaining = 'repair', remaining[1:]
         elif arg == b'--ignore-missing':
-            if repair:
-                misuse('--ignore-missing and --repair are incompatible')
             pending_method_context[arg] = True
             ignore_missing, remaining = True, remaining[1:]
         elif arg == b'--no-ignore-missing':
@@ -226,16 +236,12 @@ def parse_args(args):
             repair_id = val
         elif arg in (b'--ff', b'--append', b'--pick', b'--force-pick',
                      b'--new-tag', b'--replace', b'--unnamed'):
-            if ignore_missing and arg != b'--unnamed':
-                misuse('currently only --unnamed allows --ignore-missing')
             (ref,), remaining = require_n_args_or_die(1, remaining)
             opt.target_specs.append(make_spec(method=arg[2:].decode('ascii'),
                                               src=ref, dest=None))
             pending_method_context = {}
         elif arg in (b'--ff:', b'--append:', b'--pick:', b'--force-pick:',
                      b'--new-tag:', b'--replace:'):
-            if ignore_missing and arg != b'--unnamed':
-                misuse('currently only --unnamed allows --ignore-missing')
             (ref, dest), remaining = require_n_args_or_die(2, remaining)
             opt.target_specs.append(make_spec(method=arg[2:-1].decode('ascii'),
                                               src=ref, dest=dest))
@@ -251,13 +257,8 @@ def parse_args(args):
         elif arg == b'--print-tags':
             opt.print_tags, remaining = True, remaining[1:]
         elif arg == b'--rewrite':
-            if ignore_missing:
-                misuse('--ignore-missing and --rewrite are incompatible')
             pending_method_context[arg] = True
-            rewrite, remaining = True, remaining[1:]
-        elif arg == b'--no-rewrite':
-            pending_method_context[arg] = True
-            rewrite, remaining = False, remaining[1:]
+            mode, remaining = 'rewrite', remaining[1:]
         elif arg in (b'--exclude-rx', b'--exclude-rx-from'): # handled later
             pending_method_context[arg] = True
             (val,), remaining = require_n_args_or_die(1, remaining)
@@ -560,9 +561,8 @@ def resolve_branch_dest(spec, src, src_repo, dest_repo):
 
 
 def resolve_ff(spec, src_repo, dest_repo):
-    if spec.rewriter:
-        misuse(f'--{spec.method} cannot rewrite (use --pick or --append)')
-    assert not spec.ignore_missing
+    assert not spec.rewriter, spec
+    assert not spec.ignore_missing, spec
     src = resolve_src(spec, src_repo)
     spec_args = spec_msg(spec)
     if src.type == 'tree':
@@ -691,9 +691,8 @@ def handle_pick(item, src_repo, dest_repo):
 
 
 def resolve_new_tag(spec, src_repo, dest_repo):
-    assert not spec.ignore_missing
-    if spec.rewriter:
-        misuse(f'--{spec.method} cannot currently rewrite')
+    assert not spec.rewriter, spec
+    assert not spec.ignore_missing, spec
     src = resolve_src(spec, src_repo)
     spec_args = spec_msg(spec)
     if not spec.dest and src.path.startswith(b'/.tag/'):
@@ -720,9 +719,8 @@ def handle_new_tag(item, src_repo, dest_repo):
 
 
 def resolve_replace(spec, src_repo, dest_repo):
-    assert not spec.ignore_missing
-    if spec.rewriter:
-        misuse(f'--{spec.method} cannot currently rewrite')
+    assert not spec.rewriter, spec
+    assert not spec.ignore_missing, spec
     src = resolve_src(spec, src_repo)
     spec_args = spec_msg(spec)
     if not spec.dest:
@@ -759,8 +757,7 @@ def handle_replace(item, src_repo, dest_repo):
 
 
 def resolve_unnamed(spec, src_repo, dest_repo):
-    if spec.rewriter:
-        misuse(f'--{spec.method} cannot currently rewrite')
+    assert not spec.rewriter, spec
     if spec.dest:
         misuse('destination name given for %s' % spec_msg(spec))
     src = resolve_src(spec, src_repo, allow='git')
