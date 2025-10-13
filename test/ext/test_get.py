@@ -265,7 +265,7 @@ def _run_get(disposition, method, what, rewrite=None):
     else:
         raise Exception('error: unexpected get disposition ' + repr(disposition))
     
-    cmd = (*get_cmd, b'--rewrite' if rewrite else b'--no-rewrite')
+    cmd = (*get_cmd, b'--rewrite' if rewrite else b'--copy')
     if isinstance(what, bytes):
         cmd += (method, what)
     else:
