@@ -12,12 +12,15 @@ bup get \[-s *source-path*\] \[-r *host*:*path*\]  OPTIONS \<(METHOD *ref* [*des
 
 # DESCRIPTION
 
-`bup get` copies the indicated *ref*s from the source repository to
+`bup get` transfers the indicated *ref*s from the source repository to
 the destination repository (respecting `--bup-dir` and `BUP_DIR`),
 according to the specified METHOD, which may be one of `--ff`,
 `--ff:`, `--append`, `--append:`, `--pick`, `--pick:`, `--force-pick`,
 `--force-pick:`, `--new-tag`, `--new-tag:`, `--replace`, `--replace:`,
-or `--unnamed`.  See the EXAMPLES below for a quick introduction.
+or `--unnamed`.  By default it will `--copy` the data without
+alteration, but it can also `--rewrite` it, potentially changing the
+deduplication granularity, and `--repair` some kinds of damage. See
+the EXAMPLES below for a quick introduction.
 
 The *ref* is the source repository reference of the object to be
 fetched, and the *dest* is the optional destination reference.  A
@@ -106,7 +109,8 @@ used to help test before/after results.)
 \--unnamed *ref*
 :   copy *ref* into the destination repository, without any name,
     leaving a potentially dangling reference until/unless the object
-    named by *ref* is referred to some other way (cf. `bup tag`).
+    named by *ref* is referred to some other way (cf. `bup
+    tag`). Currently only compatible with `--copy`.
 
 # OPTIONS
 
@@ -131,17 +135,35 @@ used to help test before/after results.)
 \--print-tags
 :   for each updated tag, print the new git id.
 
-\--rewrite, \--no-rewrite
+\--copy
+:   copy the data without changes (i.e. without rewrites or
+    repairs). This is the default.
+
+\--rewrite
 :   rewrite the data according to the destination repository
     configuration, e.g. its `bup.split.files`, and `bup.split.trees`
-    values. Currently, one of these options must be specified whenever
-    the source and destination repository configurations differ in a
-    relevant way, and so far, this option is only supported for
-    appends and picks. Note that rewriting a git-created save may
-    (currently will) introduce bup-related changes. Further, while
-    tested, `--rewrite` is relatively new and so warrants even more
-    caution (see CAUTION above) than `bup get` itself. Please consider
-    validating the results carefully for now.
+    values. Currently, `--rewrite`, `---repair`, or `--copy` must be
+    specified whenever the source and destination repository
+    configurations differ in a relevant way, and so far, `--rewrite`
+    is only supported for appends and picks. This option is also
+    contextual (see CONTEXTUAL OPTIONS). Note that rewriting a
+    git-created save may, and for now will, introduce bup-related
+    changes. Further, while tested, `--rewrite` is relatively new and
+    so warrants even more caution (see CAUTION above) than `bup get`
+    itself. Please consider validating the results carefully for now.
+
+\--repair
+:   in addition to what `--rewrite` does, perform all known repairs
+    during the transfer. See REPAIRS below. This option is contextual
+    (see CONTEXTUAL OPTIONS).
+
+\--repair-id ID
+:   set the repair session identifier, defaults to a UUID (v4). This
+    identifier will be included in any `--repair`s made during the
+    transfer. Currently, the identifier must be ASCII and must not
+    include control characters or DEL (i.e. must be comprised of bytes
+    \>= 20 and < 127). This option is contextual (see CONTEXTUAL
+    OPTIONS).
 
 \--ignore-missing
 :   ignore missing objects encountered during a transfer.  Currently
@@ -162,15 +184,18 @@ used to help test before/after results.)
       * '/foo/.' - exclude the content of any directory named foo
       * '^/tmp/.' - exclude root-level /tmp's content, but not /tmp itself
 
-    Only supported when rewriting.
+    Only supported when rewriting or repairing. This option is
+    contextual (see CONTEXTUAL OPTIONS).
 
 \--exclude-rx-from=*filename*
 :   read --exclude-rx patterns from *filename*, one pattern per-line
     (may be repeated).  Ignore completely empty lines. Only supported
-    when rewriting.
+    when rewriting. This option is contextual (see CONTEXTUAL
+    OPTIONS).
 
 \--no-excludes
-:   forget any previous `--exclude-rx` or `--exclude-rx-from` options.
+:   forget any previous `--exclude-rx` or `--exclude-rx-from`
+    options. This option is contextual (see CONTEXTUAL OPTIONS).
 
 -v, \--verbose
 :   increase verbosity (can be used more than once).  With
@@ -189,15 +214,21 @@ used to help test before/after results.)
     pack.compression or core.compression, or 1 (fast, loose
     compression).
 
-\--repair-id ID
-:   set the repair session identifier, defaults to a UUID (v4). This
-    identifier will be included in any `--repair`s made during the
-    transfer. Currently, the identifier must be ASCII and must not
-    include control characters or DEL (i.e. must be comprised of bytes
-    >= 20 and < 127).
+# CONTEXTUAL OPTIONS
 
-\--repair
-:   perform all known repairs during the transfer. See REPAIRS below.
+Some options like `--repair` and `--ignore-missing` can differ across
+METHODs, and each option changes the context for the next METHOD. So
+you can have
+
+    bup get ... --ignore-missing --unnamed REF \
+        --no-ignore-missing --rewrite --append REF
+
+Without `--no-ignore-missing` this command would fail because
+`--ignore-missing` is incompatible with `--rewrite`.
+
+Changing the currently active excludes is expensive because at the
+moment the cache of remembered rewrites must be cleared whenever a
+METHODs excludes differ from those for the previous METHOD.
 
 # REPAIRS
 
