@@ -853,6 +853,13 @@ def get_everything(opt):
         # before creating any database via the Rewriter.
         target_items = resolve_targets(opt.target_specs, src_repo, dest_repo)
 
+        # The current arrangement relies on the assumption that any
+        # (sub)tree created by a --rewrite is exactly the same tree
+        # that --repair would create. If we ever need to change that,
+        # then we'll need to drop the relevant dirs from the rewriter
+        # (db) when switching from a --rewrite to a
+        # --repair. (Regarding the converse, --repairs just never
+        # record directory trees in the database.)
         with (Rewriter(split_cfg=dest_split_cfg) if rewrite else nullctx) \
              as rewriter:
 
