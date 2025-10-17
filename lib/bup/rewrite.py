@@ -28,9 +28,20 @@ from bup.vfs import \
     Item, MissingObject, default_exec_mode, default_file_mode, render_path
 
 
-# Currently only handles replacing entire vfs-level trees if any
-# consituent object is missing, entire files, and symlinks.
-
+# The current arrangement relies on a number of assumptions:
+#
+#   - repairs (when repairs.destructive is true) never remember
+#     replacements nor trees representing directories (i.e. not
+#     chunked files) because their content can vary (e.g. changing
+#     repair-id).
+#
+#   - all rewrite created trees (when repairs.destructive is false)
+#     are identical to the one --repair would have created, which
+#     allows --rewrite to enter those trees into the db and subsequent
+#     --repair(s) to re-use them.
+#
+# Rewrites currently only handle replacing entire vfs-level trees if
+# any consituent object is missing, entire files, and symlinks.
 
 def _prep_mapping_table(db, split_cfg):
     # This currently only needs to track items that may be split,
@@ -46,7 +57,7 @@ def _prep_mapping_table(db, split_cfg):
     db.execute(f'create table if not exists {table_id}'
                '    (src blob primary key,'
                '     dst blob not null,'
-               '     chunked integer,' # is this a chunked file
+               '     chunked integer,' # chunked file? (0, 1, or NULL (dir))
                '     size integer)' # only for files
                '    without rowid')
     return table_id
@@ -429,6 +440,8 @@ def _rewrite_save_item(save_path, path, replacement_dir, srcrepo, dstrepo,
             assert item.meta.size == item_size, (item.meta.size, item_size)
     chunked = 1 if S_ISDIR(git_mode) else 0
 
+    # Isn't and must not be dir or replacement (since we must not
+    # remember those).
     _remember_rewrite(item.oid, oid, chunked, item_size, wdbc, mapping)
     git_mode = _maybe_exec_mode(git_mode, item.meta)
     stack.append_to_current(name, item_mode, git_mode, oid, item.meta)
