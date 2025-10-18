@@ -121,7 +121,7 @@ def validate_commit(src_id, dest_id):
     src_cat = exr.out
     exr = verify_rcz((b'git', b'--git-dir', b'get-dest', b'cat-file', b'commit', dest_id))
     # Check parent connectivity, etc.
-    ex((b'git', b'--git-dir', b'get-dest', b'log', b'-n2', dest_id),
+    ex((b'git', b'-P', b'--git-dir', b'get-dest', b'log', b'-n2', dest_id),
        stdin=DEVNULL)
 
     if exr.rc != 0: return False
@@ -153,7 +153,7 @@ def validate_commit(src_id, dest_id):
 def _validate_save(orig_dir, save_path, commit_id, tree_id):
     global bup_cmd
     # Check parent connectivity, etc.
-    ex((b'git', b'--git-dir', b'get-dest', b'log', b'-n2', commit_id),
+    ex((b'git', b'-P', b'--git-dir', b'get-dest', b'log', b'-n2', commit_id),
        stdin=DEVNULL)
     rmrf(b'restore')
     exr = verify_rcz((bup_cmd, b'-d', b'get-dest',
@@ -215,7 +215,7 @@ def validate_new_tagged_commit(tag_name, commit_id, tree_id, get_out):
     wvpassne(commit_id, get_tag_id)
     validate_tree(tree_id, tag_name + b':')
     # Check parent connectivity, etc.
-    ex((b'git', b'--git-dir', b'get-dest', b'log', b'-n2', tag_name),
+    ex((b'git', b'-P', b'--git-dir', b'get-dest', b'log', b'-n2', tag_name),
        stdin=DEVNULL)
 
 def _run_get(disposition, method, what):
