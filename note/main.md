@@ -155,9 +155,9 @@ General
   (and then our use of git) didn't allow otherwise.
 
 * The commit message format has changed to place the command in a
-  POSIX quoted `Bup-Argv` trailer (git-interpret-trailers(1)) and the
-  version in a `Bup-Version` trailer, but note that the format is not
-  settled, i.e. may continue to change. The command quoting avoids
+  POSIX quoted `Bup-Argv` trailer (`git-interpret-trailers`(1)) and
+  the version in a `Bup-Version` trailer, but note that the format is
+  not settled, i.e. may continue to change. The command quoting avoids
   quoting arguments when possible, single quotes when there's no
   single quote or newline, and falls back to `$'...'` quoting
   otherwise.
