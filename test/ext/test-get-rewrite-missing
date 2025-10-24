@@ -60,7 +60,7 @@ WVPASS git ls-tree src | WVPASS grep -E $'\tpartial-file\.bup$' \
 WVPASS git ls-tree -r src:partial-file.bup | WVPASS sed -n 7p \
     | btl-ent-oid > partial-file-hole
 
-WVPASS git ls-tree src:split-tree | WVPASS grep -E $'\t\.bupd.[0-9]+\.bupd$' \
+WVPASS git ls-tree src:split-tree | WVPASS grep -E $'\.\.[0-9]+\.bupd$' \
     | btl-ent-oid > bupd-oid
 WVPASSEQ 41 $(wc -c < bupd-oid)
 
@@ -225,8 +225,7 @@ WVPASS grep -E "^Missing: $(< partial-file-hole)" partial-file-replacement
 
 # FIXME: still need tests for missing split-tree leaf .bupms, missing
 # split-tree mid-level or leaf tree (which would require three
-# levels). No missing .bupd test since that'd just make the split-tree
-# a normal tree.
+# levels).
 
 # FIXME: test trailers for incomplete split trees as above
 

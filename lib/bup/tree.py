@@ -7,7 +7,6 @@ from bup._helpers import RecordHashSplitter
 from bup.hashsplit import \
     (BUP_TREE_BLOBBITS,
      GIT_MODE_TREE,
-     GIT_MODE_FILE,
      split_to_blob_or_tree)
 from bup.git import shalist_item_sort_key, mangle_name
 from bup.helpers import add_error
@@ -90,9 +89,10 @@ def _abbreviate_tree_names(names):
         outnames.append(out)
     return outnames
 
-def _abbreviate_item_names(items):
+def _abbreviate_item_names(items, level):
     """Set each item's name to an abbreviation that's still unique
     with respect to the other items."""
+    assert isinstance(level, int), level
     names = []
     for item in items:
         names.append(item.first_full_name)
@@ -100,7 +100,7 @@ def _abbreviate_item_names(items):
         names.append(item.last_full_name)
     abbrevnames = _abbreviate_tree_names(names)
     for abbrev_name, item in zip(abbrevnames, items):
-        item.name = abbrev_name
+        item.name = abbrev_name + (b'..%d.bupd' % level)
 
 
 class StackDir:
@@ -266,15 +266,11 @@ class Stack:
 
         if len(splits) == 1:
             # If the level is 0, this is an unsplit tree, otherwise it's
-            # the top of a split tree, so add the .bupd marker.
+            # the top of a split tree
             if level > 0:
                 assert len(items) == len(splits[0])
                 assert all(lambda x, y: x is y for x, y in zip(items, splits[0]))
-                _abbreviate_item_names(items)
-                sentinel_sha = self._repo.write_data(b'')
-                items.append(RawTreeItem(b'.bupd.%d.bupd' % level,
-                                         GIT_MODE_FILE, GIT_MODE_FILE,
-                                         sentinel_sha, None))
+                _abbreviate_item_names(items, level)
             return self._write_tree(dir_meta, items)
 
         # This tree level was split
@@ -287,7 +283,7 @@ class Stack:
                                              split_items[-1].name))
         else:  # "inner" nodes (not top, not leaf), abbreviate names
             for split_items in splits:
-                _abbreviate_item_names(split_items)
+                _abbreviate_item_names(split_items, level)
                 # "internal" (not top, not leaf) trees don't have a .bupm
                 newtree.append(SplitTreeItem(split_items[0].name,
                                              self._write_tree(None, split_items,
