@@ -756,27 +756,23 @@ def _split_subtree_items(repo, level, oid, entries, names, want_meta, root=True)
                     raise EOFError('EOF instead of split tree placeholder metadata')
                 yield from _tree_items_except_dot(oid, entries, names, bupm)
     else:
-        for _, mangled_name, sub_oid in entries:
+        validate = b'.%d.bupd' % level
+        for _, name, sub_oid in entries:
             if root:
-                if mangled_name == b'.bupm':
+                if name == b'.bupm':
                     continue
-                if mangled_name.endswith(b'.bupd'):
-                    continue
-            assert not mangled_name.endswith(b'.bup'), \
-                f'found {path_msg(mangled_name)} in split subtree'
-            if not mangled_name.endswith(b'.bupl'):
-                assert mangled_name[-5:-1] != b'.bup', \
-                    f'found {path_msg(mangled_name)} in split subtree'
+            assert name.endswith(validate), \
+                f'found {path_msg(name)} in split subtree but should end with {validate}'
             yield from _split_subtree_items(repo, level - 1, sub_oid,
                                             tree_entries(_get_tree_object(repo, sub_oid)),
                                             names, want_meta, False)
 
-_tree_depth_rx = re.compile(br'\.bupd\.([0-9]+)(?:\..*)?\.bupd')
+_tree_depth_rx = re.compile(br'.*\.([0-9]+)\.bupd')
 
 def _parse_tree_depth(mangled_name):
-    """Return the tree DEPTH from a mangled_name like
-    .bupd.DEPTH.bupd, but leave open the possibility of future
-    .bupd.DEPTH.*.bupd extensions.
+    """Return the tree DEPTH from a mangled_name like foo..DEPTH.bupd,
+    but leave open the possibility of future foo..*.DEPTH.bupd
+    extensions.
 
     """
     m = _tree_depth_rx.fullmatch(mangled_name)
@@ -801,14 +797,19 @@ def tree_items(repo, oid, tree_data, names, *, want_meta=True, repair=False):
     entries = tree_entries(tree_data)
     depth = None
     bupm_oid = None
+    split_or_not_known = False
     for _, mangled_name, sub_oid in entries:
         if mangled_name.endswith(b'.bupd'):
             depth = _parse_tree_depth(mangled_name)
             if not dot_requested: # all other metadata in "leaf" .bupm files
                 break
-        if mangled_name == b'.bupm':
+            split_or_not_known = True
+        elif mangled_name == b'.bupm':
             bupm_oid = sub_oid
-            break
+            if split_or_not_known or depth:
+                break
+        else:
+            split_or_not_known = True
         if mangled_name > b'.bupm':
             break
 
