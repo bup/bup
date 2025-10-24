@@ -374,14 +374,16 @@ def test_duplicate_save_dates(tmpdir):
                  tuple(sorted(x[0] for x in vfs.contents(repo, revlist))))
 
 def test_tree_depth_parsing():
-    assert vfs._parse_tree_depth(b'.bupd.1.bupd') == 1
-    assert vfs._parse_tree_depth(b'.bupd.42.bupd') == 42
-    assert vfs._parse_tree_depth(b'.bupd.42.something-else.bupd') == 42
-    for x in (b'.bupd..bupd',
-              b'.bupd.-1.bupd',
-              b'.bupd.?.bupd',
-              b'.bupd.???.bupd',
-              b'.bupd.???.bupx',
+    assert vfs._parse_tree_depth(b'foo..1.bupd') == 1
+    assert vfs._parse_tree_depth(b'foo..42.bupd') == 42
+    assert vfs._parse_tree_depth(b'foo..extension.42.bupd') == 42
+    for x in (b'foo.bupd',
+              b'foo..bupd',
+              b'foo...bupd',
+              b'foo..-1.bupd',
+              b'foo..?.bupd',
+              b'foo..???.bupd',
+              b'foo..???.bupx',
               b'.bupm'):
         with pytest.raises(Exception) as exinfo:
             vfs._parse_tree_depth(x)
