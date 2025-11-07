@@ -41,6 +41,10 @@ from bup.vfs import \
 #     chunked files) because their content can vary (e.g. changing
 #     repair-id).
 #
+#   - repairs never remember trees when there are any excludes since
+#     different excludes can produce different trees from the same
+#     original tree.
+#
 #   - all rewrite created trees (when repairs.destructive is false)
 #     are identical to the one --repair would have created, which
 #     allows --rewrite to enter those trees into the db and subsequent
@@ -284,7 +288,7 @@ def _rewrite_link(path, item_mode, srcrepo, dstrepo, stack, repairs):
             assert item.meta.size == len(item.meta.symlink_target)
     stack.append_to_current(name, item_mode, git_mode, oid, item.meta)
 
-def _remember_rewrite(from_oid, to_oid, chunked, size, wdbc, mapping):
+def _remember_file_rewrite(from_oid, to_oid, chunked, size, wdbc, mapping):
     assert len(from_oid) == 20, from_oid
     assert len(to_oid) == 20, to_oid
     wdbc.execute(f'select src, dst, chunked, size from {mapping} where src = ?',
@@ -309,7 +313,7 @@ def _maybe_exec_mode(git_mode, meta):
     return git_mode
 
 def _rewrite_save_item(save_path, path, replacement_dir, srcrepo, dstrepo,
-                       split_cfg, stack, wdbc, mapping, repairs):
+                       split_cfg, stack, wdbc, mapping, excludes, repairs):
     """Returns either None, or, if a directory was missing, the
     directory path components.
 
@@ -402,7 +406,7 @@ def _rewrite_save_item(save_path, path, replacement_dir, srcrepo, dstrepo,
         # has missing objects when it encounters it a second time (for
         # say the second of two saves during an --append), which will
         # omit the logging, repair trailers, etc.
-        if not repairs.destructive:
+        if not (repairs.destructive or excludes):
             wdbc.execute(f'insert into {mapping} (src, dst) values (?, ?)',
                          (item.oid, newtree))
         return
@@ -463,7 +467,7 @@ def _rewrite_save_item(save_path, path, replacement_dir, srcrepo, dstrepo,
 
     # Isn't and must not be dir or replacement (since we must not
     # remember those).
-    _remember_rewrite(item.oid, oid, chunked, item_size, wdbc, mapping)
+    _remember_file_rewrite(item.oid, oid, chunked, item_size, wdbc, mapping)
     git_mode = _maybe_exec_mode(git_mode, item.meta)
     stack.append_to_current(name, item_mode, git_mode, oid, item.meta)
 
@@ -544,7 +548,7 @@ class Rewriter:
                     _rewrite_save_item(save_path, path, replacement_dir,
                                        srcrepo, dstrepo,
                                        self._split_cfg, stack, dbc,
-                                       self._mapping, repairs)
+                                       self._mapping, excludes, repairs)
 
                 while len(stack) > 1: # pop all parts above root folder
                     stack.pop()
