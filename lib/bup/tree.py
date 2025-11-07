@@ -222,8 +222,9 @@ class Stack:
     def _write_split_tree(self, dir_meta, items, level=0):
         """Write a (possibly split) tree representing items.
 
-        Write items as either a a single git tree object, or as a "split
-        subtree"  See DESIGN for additional information.
+        Write items as either a single git tree object, or as a "split
+        subtree" See DESIGN for additional information.
+
         """
         assert level >= 0
         if not items:
