@@ -479,6 +479,7 @@ def _readlink(repo, oid):
 def readlink(repo, item):
     """Return the link target of item, which must be a symlink.  Reads the
     target from the repository if necessary."""
+    # Consider rewrite._rewrite_link when making changes here
     assert repo
     assert S_ISLNK(item_mode(item))
     if isinstance(item, FakeLink):
