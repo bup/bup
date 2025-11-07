@@ -15,7 +15,8 @@ def valid_repair_id(s):
 class Repairs:
     # Used, for example, to track all repairs in a bup get process
     __slots__ = ('id', 'destructive', 'command', '_others', '_repaired_save',
-                 '_replaced_files', '_replaced_meta')
+                 '_replaced_files', '_replaced_meta', '_restored_symlink_blobs',
+                 '_fixed_symlink_blobs')
     def __init__(self, id, destructive, command):
         assert valid_repair_id(id)
         self.id = id
@@ -25,8 +26,13 @@ class Repairs:
         self._repaired_save = {} # requires 3.7+ dict ordering
         self._replaced_files = []
         self._replaced_meta = []
+        self._restored_symlink_blobs = []
+        self._fixed_symlink_blobs = []
     def repair_count(self):
-        return len(self._replaced_files) + len(self._replaced_meta) \
+        return len(self._replaced_files) \
+            + len(self._replaced_meta) \
+            + len(self._restored_symlink_blobs) \
+            + len(self._fixed_symlink_blobs) \
             + self._others
     def note_incidental_repair(self):
         # "Safe" repairs that don't involve the repair id.
@@ -49,6 +55,16 @@ class Repairs:
             log(b'repairs needed, repair-id: %s\n' % self.id)
         self._remember_save(path)
         self._replaced_files.append((render_path(path[3:]), oid, new_oid))
+    def link_blob_restored(self, path, oid):
+        if self.repair_count() == 0:
+            log(b'repairs needed, repair-id: %s\n' % self.id)
+        self._remember_save(path)
+        self._restored_symlink_blobs.append((render_path(path[3:]), oid))
+    def link_blob_fixed(self, path, prev_blob):
+        if self.repair_count() == 0:
+            log(b'repairs needed, repair-id: %s\n' % self.id)
+        self._remember_save(path)
+        self._fixed_symlink_blobs.append((render_path(path[3:]), prev_blob))
     def repair_trailers(self, repair_id):
         assert valid_repair_id(repair_id)
         if not self.repair_count():
@@ -60,6 +76,12 @@ class Repairs:
         for path, oid, new_oid in self._replaced_files:
             trailers.append(b'Bup-Replaced: %s %s'
                             % (hexlify(new_oid), enc_sh(path)))
+        for path, oid in self._restored_symlink_blobs:
+            trailers.append(b'Bup-Restored-Link-Blob: %s %s'
+                            % (hexlify(oid), enc_sh(path)))
+        for path, prev_blob in self._fixed_symlink_blobs:
+            trailers.append(b'Bup-Fixed-Link-Blob: was %s for %s'
+                            % (enc_sh(prev_blob), enc_sh(path)))
         for path in self._replaced_meta:
             trailers.append(b'Bup-Lost-Meta: %s' % enc_sh(path))
         return trailers

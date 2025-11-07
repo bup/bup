@@ -1,0 +1,119 @@
+#!/usr/bin/env bash
+. ./wvtest-bup.sh
+. ./test/lib/btl.sh
+
+set -o pipefail
+
+top="$(WVPASS pwd)" || exit $?
+tmpdir="$(WVPASS wvmktempdir)" || exit $?
+
+export BUP_DIR="$tmpdir/bup"
+export GIT_DIR="$tmpdir/bup"
+
+bup() { "$top/bup" "$@"; }
+
+
+WVPASS cd "$tmpdir"
+WVPASS mkfifo done
+WVPASS bup init
+
+
+### symlinks with metadata (.bupm entry)
+
+WVPASS mkdir -p src
+WVPASS echo 1 > src/1
+WVPASS ln -s 1 src/2
+WVPASS bup index src
+WVPASS bup save --strip -n src src
+
+two_oid="$(WVPASS git ls-tree src: | grep -E '2$' | btl-ent-oid)"
+echo "$two_oid" | WVPASS "$top/dev/perforate-repo" --drop-oids "$BUP_DIR" || exit $?
+
+WVEXPRC 2 bup join src: > /dev/null
+
+
+WVSTART 'symlinks with metadata but no blob are noticed'
+WVPASS bup init dst
+WVEXPRC 2 eval 'bup -d dst get -s bup --append src 2> >(tee err.log; : > done)'
+WVFAIL read < done
+WVPASS grep -E "object .*${two_oid}.* is missing" err.log
+WVPASS rm -rf dst
+
+
+for method in --rewrite --repair; do
+    WVSTART "symlinks with metadata but no blob are implicitly repaired by $method"
+    WVPASS bup init dst
+    WVEXPRC 3 bup -d dst get -s bup $method --append src
+    WVPASS bup -d dst join src: > /dev/null
+    WVPASS git --git-dir dst log -n1 src | tee commit-msg
+    WVPASS grep -E "^[ ]+Bup-Restored-Link-Blob: $two_oid 2\$" commit-msg
+    WVPASS rm -rf dst
+done
+
+
+## symlinks with mismatched metadata and blob (very unlikely)
+
+# Change src:2 symlink to point a "not-1" blob (2 is third line in tree)
+not_1="$(echo -n not-1 | WVPASS git hash-object -w --stdin)" || exit $?
+not_1_ent="120000 blob $not_1	2"
+not_1_tree="$(WVPASS git ls-tree src | WVPASS sed -Ee "3s/.*/$not_1_ent/")" || exit $?
+not_1_tree_oid="$(echo "$not_1_tree" | WVPASS git mktree)" || exit $?
+not_1_save=$(WVPASS git commit-tree "$not_1_tree_oid" -p src -m 'not 1') || exit $?
+WVPASS git branch -f src "$not_1_save"
+
+WVSTART "symlinks with mismatched targets are noticed by --rewrite"
+WVPASS bup init dst
+WVEXPRC 2 eval 'bup -d dst get -s bup --rewrite --pick src/latest' \
+        '2> >(tee err.log; : > done)'
+WVFAIL read < done
+WVPASS grep -qF "Symlink with mismatched targets (can --repair)" err.log
+WVPASS rm -rf dst
+
+WVSTART "symlinks with mismatched targets are repaired by --repair"
+WVPASS bup init dst
+WVEXPRC 3 bup -d dst get -s bup --repair --pick src/latest
+WVPASS bup -d dst join src: > /dev/null
+WVPASS git --git-dir dst log -n1 src | tee commit-msg
+WVPASS grep -E "^[ ]+Bup-Fixed-Link-Blob: was not-1 for 2\$" commit-msg
+WVPASS rm -rf dst
+
+WVPASS rm -rf bup
+
+
+### symlinks with no metadata (e.g. git or older bup)
+
+WVPASS git init --bare -b src bup
+WVPASS git --work-tree src add .
+WVPASS git --work-tree src commit -am commit
+WVPASS git gc --aggressive # ensure no loose objects (for perforate)
+
+two_oid="$(WVPASS git ls-tree src: | grep -E '2$' | btl-ent-oid)"
+echo "$two_oid" | WVPASS "$top/dev/perforate-repo" --drop-oids "$BUP_DIR" || exit $?
+
+WVEXPRC 2 bup join src: > /dev/null
+
+
+WVSTART 'symlinks completely missing are noticed by --copy/--rewrite'
+WVPASS bup init dst
+WVEXPRC 2 eval 'bup -d dst get -s bup --append src 2> err.log'
+btl-display-file err.log
+WVPASS grep -E "object .*${two_oid}.* is missing" err.log
+WVEXPRC 2 eval 'bup -d dst get -s bup --rewrite --append src' \
+        '2> >(tee err.log; : > done)'
+WVFAIL read < done
+WVPASS grep -E "object .*${two_oid}.* is missing" err.log
+WVPASS rm -rf dst
+
+
+WVSTART "symlinks completely missing are repaired by --repair"
+WVPASS bup init dst
+WVEXPRC 3 bup -d dst get -s bup --repair --append src
+WVPASS bup -d dst join src: > /dev/null
+two_rep_oid="$(WVPASS git --git-dir dst ls-tree src | grep -E '2$' | btl-ent-oid)"
+WVPASS git --git-dir dst log -n1 src | tee commit-msg
+WVPASS grep -E "^[ ]+Bup-Replaced: $two_rep_oid 2\$" commit-msg
+WVPASS rm -rf dst
+
+
+WVPASS cd "$top"
+WVPASS rm -rf "$tmpdir"
