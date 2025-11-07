@@ -142,7 +142,9 @@ used to help test before/after results.)
 \--rewrite
 :   rewrite the data according to the destination repository
     configuration, e.g. its `bup.split.files`, and `bup.split.trees`
-    values. Currently, `--rewrite`, `---repair`, or `--copy` must be
+    values. Some incidental repairs may be performed during the
+    transfer when they do not materially alter the result (see REPAIRS
+    below).  Currently, `--rewrite`, `---repair`, or `--copy` must be
     specified whenever the source and destination repository
     configurations differ in a relevant way, and so far, `--rewrite`
     is only supported for appends and picks. This option is also
@@ -233,7 +235,8 @@ METHODs excludes differ from those for the previous METHOD.
 # REPAIRS
 
 `bup get` can fix (or mitigate) a number of known issues during the
-transfer when `--repair` is requested.
+transfer when `--repair` is requested, and a subset of "incidental"
+repairs may also be performed during a `--rewrite`.
 
  * Versions of `bup` at or after 0.25 and before 0.30.1 might rarely
    drop metadata entries for non-directories (which can be detected by
@@ -258,6 +261,11 @@ transfer when `--repair` is requested.
    unaffected. See the
    [0.33.5 release notes (0.33.5-from-0.33.4.md)](https://github.com/bup/bup/blob/main/note/0.33.5-from-0.33.4.md)
    for additional information.
+
+"Incidental" repairs may also be performed --- repairs that do not
+functionally alter the result. For example, bup records symlink
+targets in two places, but generally only refers to one of them. If
+the other one is missing, it can and will be restored from the first.
 
 # EXAMPLES
 
