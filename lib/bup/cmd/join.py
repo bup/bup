@@ -5,7 +5,7 @@ import sys
 from bup import options
 from bup.compat import argv_bytes
 from bup.config import derive_repo_addr
-from bup.helpers import linereader, log
+from bup.helpers import EXIT_FAILURE, linereader, log
 from bup.io import byte_stream
 from bup.repo import make_repo
 
@@ -42,6 +42,6 @@ def main(argv):
             except KeyError as e:
                 outfile.flush()
                 log('error: %s\n' % e)
-                ret = 1
+                ret = EXIT_FAILURE
 
     sys.exit(ret)
