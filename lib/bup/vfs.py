@@ -469,7 +469,12 @@ def _find_treeish_oid_metadata(repo, oid):
     return None
 
 def _readlink(repo, oid):
-    return b''.join(repo.join(hexlify(oid)))
+    # symlink blobs are never split
+    _, kind, _, it = get_ref(repo, hexlify(oid))
+    if not kind:
+        raise MissingObject(oid)
+    assert kind == b'blob', kind
+    return b''.join(it)
 
 def readlink(repo, item):
     """Return the link target of item, which must be a symlink.  Reads the
