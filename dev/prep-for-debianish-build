@@ -18,6 +18,7 @@ debs=(acl
       dosfstools
       duplicity
       curl
+      e2fsprogs
       gcc
       git
       graphviz
