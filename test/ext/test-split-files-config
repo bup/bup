@@ -103,7 +103,7 @@ WVPASS git config -f "$BUP_DIR/config" bup.split.files legacy:13
 WVPASS bup index "$top/test/testfile1" "$top/test/testfile3"
 WVPASS bup save -n save "$top/test"
 WVPASS git --git-dir bup ls-tree -r save \
-    | WVPASS grep -vE '\.bupm(\.bup/.*)?$' \
+    | WVPASS grep -vE $'(\t|/)\.bupm(/|$)' \
     | WVPASS cut -f1 \
     | WVPASS cut -d' ' -f3 > oids
 WVPASS cat > oids-exp <<EOF
@@ -155,7 +155,7 @@ WVPASS git config -f "$BUP_DIR/config" bup.split.files legacy:16
 WVPASS bup index "$top/test/testfile1" "$top/test/testfile3"
 WVPASS bup save -n save "$top/test"
 WVPASS git --git-dir bup ls-tree -r save \
-    | WVPASS grep -vE '\.bupm(\.bup/.*)?$' \
+    | WVPASS grep -vE $'(\t|/)\.bupm(/|$)' \
     | WVPASS cut -f1 \
     | WVPASS cut -d' ' -f3 > oids
 WVPASS cat > oids-exp <<EOF
