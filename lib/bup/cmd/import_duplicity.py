@@ -2,9 +2,9 @@
 from calendar import timegm
 from subprocess import check_call
 from time import strptime
-import os, sys, tempfile
+import sys, tempfile
 
-from bup import git, helpers, options
+from bup import git, options
 from bup.compat import argv_bytes
 from bup.helpers import log, shstr
 import bup.path
@@ -21,22 +21,10 @@ dry_run = False
 def logcmd(cmd):
     log(shstr(cmd).decode(errors='backslashreplace') + '\n')
 
-def exc(cmd, shell=False):
+def exc(cmd):
     logcmd(cmd)
     if not dry_run:
-        check_call(cmd, shell=shell)
-
-def exo(cmd, shell=False, preexec_fn=None, close_fds=True):
-    logcmd(cmd)
-    if dry_run:
-        return b''
-    return helpers.exo(cmd, shell=shell, preexec_fn=preexec_fn,
-                       close_fds=close_fds)[0]
-
-def redirect_dup_output():
-    os.dup2(1, 3)
-    os.dup2(1, 2)
-
+        check_call(cmd)
 
 def main(argv):
     global dry_run
@@ -66,21 +54,20 @@ def main(argv):
         dup = [b'duplicity', b'--archive-dir', tmpdir + b'/dup-cache']
         restoredir = tmpdir + b'/restore'
         tmpidx = tmpdir + b'/index'
-
-        collection_status = \
-            exo(dup + [b'collection-status', b'--log-fd=3', source_url],
-                close_fds=False, preexec_fn=redirect_dup_output)  # i.e. 3>&1 1>&2
+        tmplog = tmpdir + b'/collect.log'
+        exc(dup + [b'collection-status', b'--log-file=' + tmplog, source_url])
         # Duplicity output lines of interest look like this (one leading space):
         #  full 20150222T073111Z 1 noenc
         #  inc 20150222T073233Z 1 noenc
         dup_timestamps = []
-        for line in collection_status.splitlines():
-            if line.startswith(b' inc '):
-                assert(len(line) >= len(b' inc 20150222T073233Z'))
-                dup_timestamps.append(line[5:21])
-            elif line.startswith(b' full '):
-                assert(len(line) >= len(b' full 20150222T073233Z'))
-                dup_timestamps.append(line[6:22])
+        with open(tmplog, 'rb') as collect_log:
+            for line in collect_log:
+                if line.startswith(b' inc '):
+                    assert(len(line) >= len(b' inc 20150222T073233Z'))
+                    dup_timestamps.append(line[5:21])
+                elif line.startswith(b' full '):
+                    assert(len(line) >= len(b' full 20150222T073233Z'))
+                    dup_timestamps.append(line[6:22])
         for i, dup_ts in enumerate(dup_timestamps):
             tm = strptime(dup_ts.decode('ascii'), '%Y%m%dT%H%M%SZ')
             exc([b'rm', b'-rf', restoredir])
