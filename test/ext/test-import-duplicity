@@ -12,7 +12,7 @@ top="$(WVPASS pwd)" || exit $?
 tmpdir="$(WVPASS wvmktempdir)" || exit $?
 
 bup() { "$top/bup" "$@"; }
-dup() { duplicity --archive-dir "$tmpdir/dup-cache" "$@"; }
+dup() { duplicity --no-encryption --archive-dir "$tmpdir/dup-cache" "$@"; }
 
 WVSTART "import-duplicity"
 WVPASS "$top/dev/sync-tree" "$top/test/sampledata/" "$tmpdir/src/"
