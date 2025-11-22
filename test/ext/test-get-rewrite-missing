@@ -121,13 +121,16 @@ WVPASS cp -pPR bup bup-tmp
 
 WVFAIL bup get --no-ignore-missing --rewrite --append src
 
-WVFAIL bup get --ignore-missing --rewrite --append src 2> >(tee get.log)
+WVFAIL eval 'bup get --ignore-missing --rewrite --append src 2> >(tee get.log; : > done)'
+WVFAIL read < done
 WVPASS grep -E '^error: --ignore-missing and --rewrite are incompatible' get.log
 
-WVFAIL bup get --ignore-missing --repair --append src 2> >(tee get.log)
+WVFAIL eval 'bup get --ignore-missing --repair --append src 2> >(tee get.log; : > done)'
+WVFAIL read < done
 WVPASS grep -E '^error: --ignore-missing and --repair are incompatible' get.log
 
-WVFAIL bup get --ignore-missing --append src 2> >(tee get.log)
+WVFAIL eval 'bup get --ignore-missing --append src 2> >(tee get.log; : > done)'
+WVFAIL read < done
 WVPASS grep -E '^error: currently only --unnamed allows --ignore-missing' get.log
 
 repair-to-dest()
@@ -287,17 +290,23 @@ WVPASS echo 2 > src/a/2
 WVPASS echo 3 > src/a/3
 WVPASS bup index src
 WVPASS bup save --strip -n src src
+# Create a src-two-saves for "accumulation test" later
+WVPASS git branch src-two-saves src
+WVPASS echo 4 > src/a/4
+WVPASS bup index src
+WVPASS bup save --strip -n src-two-saves src
+
 WVPASS readarray -t saves < <(bup ls src)
 save_date="${saves[0]}"
 src_oid="$(git rev-parse src)"
 unset saves
 two_oid="$(WVPASS git ls-tree src:a | grep -E '2$' | btl-ent-oid)"
 echo "$two_oid" | WVPASS "$top/dev/perforate-repo" --drop-oids "$BUP_DIR" || exit $?
-WVPASS mv bup bup-123
+WVPASS mv bup bup-1234
 
 
 WVSTART '--rewrite (not --repair) on broken save after --repair still fails'
-WVPASS rm -rf bup && WVPASS cp -pPR bup-123 bup
+WVPASS rm -rf bup && WVPASS cp -pPR bup-1234 bup
 # Check that non-rewrite doesn't notice the missing object (b/c same repo)
 WVEXPRC 3 bup get --repair --append: src r1 --copy --append: src r2
 # Then that a second *rewrite* can't handle the missing file
@@ -309,7 +318,7 @@ WVPASS grep -E 'raise MissingObject' get.log
 
 
 WVSTART '--ignore-missing on broken save after --repair'
-WVPASS rm -rf bup && WVPASS cp -pPR bup-123 bup
+WVPASS rm -rf bup && WVPASS cp -pPR bup-1234 bup
 WVPASS bup init bup-dest
 WVEXPRC 2 eval 'bup -d bup-dest get -s bup' \
         '--repair --append: src r1' \
@@ -324,14 +333,14 @@ WVPASS grep -E '^skipping missing source object' get.log
 
 
 WVSTART '--copy --rewrite --repair'
-WVPASS rm -rf bup && WVPASS cp -pPR bup-123 bup
+WVPASS rm -rf bup && WVPASS cp -pPR bup-1234 bup
 WVEXPRC 3 eval 'bup get --rewrite --repair --repair-id r1 --append: src r1' \
         '2>&1 | tee get.log'
 WVPASSEQ 1 "$(git show r1:a/2 | grep -cE '^Bup-Replacement-Info: r1$')"
-WVPASS rm -rf bup && WVPASS cp -pPR bup-123 bup
+WVPASS rm -rf bup && WVPASS cp -pPR bup-1234 bup
 WVEXPRC 2 eval 'bup get --repair --rewrite --append: src r1 2>&1 | tee get.log'
 WVPASS grep -E 'raise MissingObject' get.log
-WVPASS rm -rf bup && WVPASS cp -pPR bup-123 bup
+WVPASS rm -rf bup && WVPASS cp -pPR bup-1234 bup
 WVPASS rm -rf bup-dest && bup init bup-dest
 WVEXPRC 2 eval 'bup -d bup-dest get -s bup --repair --copy --append: src r1' \
         '2>&1 | tee get.log'
@@ -340,7 +349,7 @@ WVPASS rm -rf bup bup-dest
 
 
 WVSTART 'multiple gets with differing repair-ids'
-WVPASS rm -rf bup && WVPASS cp -pPR bup-123 bup
+WVPASS rm -rf bup && WVPASS cp -pPR bup-1234 bup
 WVEXPRC 3 eval 'bup get --repair' \
         '--repair-id repair-1 --append: src r1' \
         '--repair-id repair-2 --append: src r2' \
@@ -384,6 +393,39 @@ WVPASS git show r1:a/2 | tee replacement-1 || exit $?
 WVPASS git show r2:a/2 | tee replacement-2 || exit $?
 WVPASSEQ 1 "$(WVPASS grep -cE '^Bup-Replacement-Info: repair-1$' replacement-1)"
 WVPASSEQ 1 "$(WVPASS grep -cE '^Bup-Replacement-Info: repair-2$' replacement-2)"
+
+
+WVSTART "trailers don't accumulate across repaired saves"
+WVPASS rm -rf bup && WVPASS cp -pPR bup-1234 bup
+WVEXPRC 3 eval 'bup get --repair' \
+        '--repair-id repair-id --append: src-two-saves r1' \
+        '2>&1 | tee get.log'
+WVPASS git show -s --pretty=email r1^ | tee repair-msg-1
+WVPASS git show -s --pretty=email r1 | tee repair-msg-2
+WVPASS git interpret-trailers --parse < repair-msg-1 | tee repair-trailers-1
+WVPASS git interpret-trailers --parse < repair-msg-2 | tee repair-trailers-2
+btl-display-file repair-trailers-1
+readarray -t trailers < repair-trailers-1
+wv-match-rx "${trailers[0]}" "^Bup-Version: ${bup_ver//+/\\+}$"
+wv-match-rx "${trailers[1]}" '^Bup-Argv: [^ ]+/bup.* save --strip -n src src'
+wv-match-rx "${trailers[2]}" "^Bup-Version: ${bup_ver//+/\\+}$"
+wv-match-rx "${trailers[3]}" '^Bup-Argv: [^ ]+/bup.* get --repair .* src-two-saves r1'
+wv-match-rx "${trailers[4]}" "^Bup-Repair-ID: repair-id$"
+wv-match-rx "${trailers[5]}" "^Bup-Repaired-Save: [0-9a-f]{40} src-two-saves/"
+wv-match-rx "${trailers[6]}" "^Bup-Replaced: [0-9a-f]{40} a/2$"
+WVPASSEQ '' "${trailers[7]}" # end-of-line
+unset trailers
+btl-display-file repair-trailers-2
+readarray -t trailers < repair-trailers-2
+wv-match-rx "${trailers[0]}" "^Bup-Version: ${bup_ver//+/\\+}$"
+wv-match-rx "${trailers[1]}" '^Bup-Argv: [^ ]+/bup.* save --strip -n src-two-saves src'
+wv-match-rx "${trailers[2]}" "^Bup-Version: ${bup_ver//+/\\+}$"
+wv-match-rx "${trailers[3]}" '^Bup-Argv: [^ ]+/bup.* get --repair .* src-two-saves r1'
+wv-match-rx "${trailers[4]}" "^Bup-Repair-ID: repair-id$"
+wv-match-rx "${trailers[5]}" "^Bup-Repaired-Save: [0-9a-f]{40} src-two-saves/"
+wv-match-rx "${trailers[6]}" "^Bup-Replaced: [0-9a-f]{40} a/2$"
+WVPASSEQ '' "${trailers[7]}" # end-of-line
+unset trailers
 
 
 WVPASS cd "$top"
