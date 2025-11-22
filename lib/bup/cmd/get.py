@@ -29,9 +29,9 @@ from bup.helpers import \
      tty_width)
 from bup.io import path_msg
 from bup.pwdgrp import userfullname, username
-from bup.repair import Repairs, valid_repair_id
+from bup.repair import valid_repair_id
 from bup.repo import LocalRepo, make_repo
-from bup.rewrite import Rewriter
+from bup.rewrite import RepairInfo, Rewriter
 
 
 argspec = (
@@ -137,12 +137,12 @@ class Spec:
     src: bytes
     dest: bytes
     ignore_missing: bool
-    repairs: Optional[Repairs] = None
+    repair_info: Optional[RepairInfo] = None
     excludes: Optional[list[Pattern]] = None
     rewriter: Optional[Union[bool, Rewriter]] = None
     def __post_init__(self):
-        assert not (self.ignore_missing and self.repairs), \
-            (self.ignore_missing, self.repairs)
+        assert not (self.ignore_missing and self.repair_info), \
+            (self.ignore_missing, self.repair_info)
 
 def spec_msg(s):
     if not s.dest:
@@ -193,7 +193,8 @@ def parse_args(args):
                 misuse(f'--{method} cannot {mode} (only picks and appends)')
             if repair_id is None:
                 repair_id = str(uuid4()).encode('ascii')
-            rc = Repairs(repair_id, mode == 'repair', get_argvb())
+            rc = RepairInfo(id=repair_id, destructive=(mode == 'repair'),
+                            command=get_argvb())
             rw = True
         elif mode == 'copy': # explicitly specified no rewrite/repair
             rw = False
@@ -202,7 +203,7 @@ def parse_args(args):
         else:
             raise Exception(f'invalid get target mode {mode!r}')
         return Spec(method=method, src=src, dest=dest, excludes=excludes,
-                    rewriter=rw, ignore_missing=ignore_missing, repairs=rc)
+                    rewriter=rw, ignore_missing=ignore_missing, repair_info=rc)
 
     pending_method_context = {} # dict to preserve insertion order
     remaining = args[1:]  # Skip argv[0]
@@ -332,6 +333,13 @@ def get_random_item(name, hash, src_repo, dest_repo, ignore_missing):
         dest_repo.just_write(item.oid, item.type, item.data)
 
 
+@dataclass(slots=True, frozen=True)
+class GetResult:
+    oid: Optional[bytes] = None
+    tree: Optional[bytes] = None
+    repairs: int = 0
+
+
 def transfer_commit(name, hash, parent, src_repo, dest_repo, ignore_missing):
     now = time.time()
     items = parse_commit(get_cat_data(src_repo.cat(hash), b'commit'))
@@ -344,11 +352,11 @@ def transfer_commit(name, hash, parent, src_repo, dest_repo, ignore_missing):
                                author, items.author_sec, items.author_offset,
                                committer, now, None,
                                items.message)
-    return c, tree
+    return GetResult(c, tree)
 
 
 def append_commit(src_loc, parent, src_repo, dest_repo, rewriter, excludes,
-                  repairs, ignore_missing):
+                  repair_info, ignore_missing):
     if not rewriter:
         assert isinstance(src_loc, (bytes, Loc)), src_loc
         oidx = src_loc if isinstance(src_loc, bytes) else hexlify(src_loc.hash)
@@ -363,21 +371,25 @@ def append_commit(src_loc, parent, src_repo, dest_repo, rewriter, excludes,
     root, ref, save = path
     assert isinstance(save[1], (vfs.Commit, vfs.FakeLink)), path
     assert isinstance(ref[1], vfs.RevList), path
-    return rewriter.append_save(path, parent, src_repo, dest_repo, excludes,
-                                repairs)
+    save_oid, tree_oid, repairs = \
+        rewriter.append_save(path, parent, src_repo, dest_repo, excludes,
+                             repair_info)
+    return GetResult(save_oid, tree_oid, repairs.repair_count())
 
 def append_commits(src_loc, dest_hash, src_repo, dest_repo, rewriter, excludes,
-                   repairs, ignore_missing):
+                   repair_info, ignore_missing):
     if not rewriter:
         commits = list(src_repo.rev_list(hexlify(src_loc.hash)))
         commits.reverse()
         last_c, tree = dest_hash, None
         for commit in commits:
-            last_c, tree = append_commit(commit, last_c, src_repo, dest_repo,
-                                         rewriter, excludes, repairs,
-                                         ignore_missing)
+            res = append_commit(commit, last_c, src_repo, dest_repo, rewriter,
+                                excludes, repair_info, ignore_missing)
+            last_c = res.oid
+            tree = res.tree
+            assert res.repairs == 0
         assert tree is not None
-        return last_c, tree
+        return GetResult(last_c, tree)
 
     # Friendlier checking was done during resolve_*
     assert isinstance(src_loc, Loc), src_loc
@@ -398,14 +410,15 @@ def append_commits(src_loc, dest_hash, src_repo, dest_repo, rewriter, excludes,
     commits = list(src_repo.rev_list(hexlify(src_loc.hash)))
     commits.reverse()
 
-    last_c, tree = dest_hash, None
+    last_c, tree, repair_count = dest_hash, None, 0
     for commit in commits:
         coid = unhexlify(commit)
-        last_c, tree = rewriter.append_save(path + (entry_for_coid[coid],),
-                                            last_c, src_repo, dest_repo,
-                                            excludes, repairs)
+        last_c, tree, repairs = \
+            rewriter.append_save(path + (entry_for_coid[coid],), last_c,
+                                 src_repo, dest_repo, excludes, repair_info)
+        repair_count += repairs.repair_count()
     assert tree is not None
-    return last_c, tree
+    return GetResult(last_c, tree, repair_count)
 
 
 GitLoc = namedtuple('GitLoc', ('ref', 'hash', 'type'))
@@ -585,7 +598,7 @@ def handle_ff(item, src_repo, dest_repo):
         get_random_item(item.spec.src, src_oidx, src_repo, dest_repo,
                         item.spec.ignore_missing)
         commit_items = parse_commit(get_cat_data(src_repo.cat(src_oidx), b'commit'))
-        return item.src.hash, unhexlify(commit_items.tree)
+        return GetResult(item.src.hash, unhexlify(commit_items.tree))
     misuse('destination is not an ancestor of source for %s'
            % spec_msg(item.spec))
     # misuse() doesn't return
@@ -631,12 +644,12 @@ def handle_append(item, src_repo, dest_repo):
         commit = dest_repo.write_commit(item.src.hash, parent,
                                         userline, now, None,
                                         userline, now, None, msg)
-        return commit, item.src.hash
+        return GetResult(commit, item.src.hash)
     if item.dest.hash:
         assert item.dest.type in ('branch', 'commit', 'save'), item.dest
     return append_commits(item.src, item.dest.hash, src_repo, dest_repo,
                           item.spec.rewriter, item.spec.excludes,
-                          item.spec.repairs, item.spec.ignore_missing)
+                          item.spec.repair_info, item.spec.ignore_missing)
 
 
 def resolve_pick(spec, src_repo, dest_repo):
@@ -681,13 +694,13 @@ def handle_pick(item, src_repo, dest_repo):
         if item.dest.type in ('branch', 'commit', 'save'):
             return append_commit(item.src, item.dest.hash, src_repo, dest_repo,
                                  item.spec.rewriter, item.spec.excludes,
-                                 item.spec.repairs, item.spec.ignore_missing)
+                                 item.spec.repair_info, item.spec.ignore_missing)
         assert item.dest.path.startswith(b'/.tag/'), item.dest
     # no parent; either dest is a non-commit tag and we should clobber
     # it, or dest doesn't exist.
     return append_commit(item.src, None, src_repo, dest_repo,
                          item.spec.rewriter, item.spec.excludes,
-                         item.spec.repairs, item.spec.ignore_missing)
+                         item.spec.repair_info, item.spec.ignore_missing)
 
 
 def resolve_new_tag(spec, src_repo, dest_repo):
@@ -715,7 +728,7 @@ def handle_new_tag(item, src_repo, dest_repo):
     assert item.dest.path.startswith(b'/.tag/')
     get_random_item(item.spec.src, hexlify(item.src.hash),
                     src_repo, dest_repo, item.spec.ignore_missing)
-    return (item.src.hash,)
+    return GetResult(item.src.hash)
 
 
 def resolve_replace(spec, src_repo, dest_repo):
@@ -747,13 +760,13 @@ def handle_replace(item, src_repo, dest_repo):
     if item.dest.path.startswith(b'/.tag/'):
         get_random_item(item.spec.src, hexlify(item.src.hash),
                         src_repo, dest_repo, item.spec.ignore_missing)
-        return (item.src.hash,)
+        return GetResult(item.src.hash)
     assert(item.dest.type == 'branch' or not item.dest.type)
     src_oidx = hexlify(item.src.hash)
     get_random_item(item.spec.src, src_oidx, src_repo, dest_repo,
                     item.spec.ignore_missing)
     commit_items = parse_commit(get_cat_data(src_repo.cat(src_oidx), b'commit'))
-    return item.src.hash, unhexlify(commit_items.tree)
+    return GetResult(item.src.hash, unhexlify(commit_items.tree))
 
 
 def resolve_unnamed(spec, src_repo, dest_repo):
@@ -769,7 +782,7 @@ def resolve_unnamed(spec, src_repo, dest_repo):
 def handle_unnamed(item, src_repo, dest_repo):
     get_random_item(item.spec.src, hexlify(item.src.hash),
                     src_repo, dest_repo, item.spec.ignore_missing)
-    return (None,)
+    return GetResult()
 
 
 def resolve_targets(specs, src_repo, dest_repo):
@@ -830,6 +843,7 @@ def log_item(name, type, opt, tree=None, commit=None, tag=None):
 
 
 def get_everything(opt):
+    repair_count = 0
     with LocalRepo(repo_dir=opt.source) as src_repo, \
          make_repo(derive_repo_addr(remote=opt.remote, die=misuse),
                    compression_level=opt.compress) as dest_repo:
@@ -897,21 +911,19 @@ def get_everything(opt):
                 cur_ref = cur_ref or dest_hash
 
                 handler = handlers[item.spec.method]
-                item_result = handler(item, src_repo, dest_repo)
-                if len(item_result) > 1:
-                    new_id, tree = item_result
-                else:
-                    new_id = item_result[0]
+                get_res = handler(item, src_repo, dest_repo)
+                repair_count += get_res.repairs
 
                 if not dest_ref:
                     log_item(item.spec.src, item.src.type, opt)
                 else:
-                    updated_refs[dest_ref] = (orig_ref, new_id)
+                    updated_refs[dest_ref] = (orig_ref, get_res.oid)
                     if dest_ref.startswith(b'refs/tags/'):
-                        log_item(item.spec.src, item.src.type, opt, tag=new_id)
+                        log_item(item.spec.src, item.src.type, opt,
+                                 tag=get_res.oid)
                     else:
                         log_item(item.spec.src, item.src.type, opt,
-                                 tree=tree, commit=new_id)
+                                 tree=get_res.tree, commit=get_res.oid)
 
         # Only update the refs at the very end, once the destination repo
         # finished writing, so that if something goes wrong above, the old
@@ -931,6 +943,14 @@ def get_everything(opt):
             except (git.GitError, client.ClientError) as ex:
                 note_error('unable to update ref %r: %s\n' % (ref_name, ex))
 
+    if repair_count and not saved_errors:
+        msg = ('Repairs were needed and successful; see above. Additional'
+               ' information may be found in the git log. Search for '
+               ' "Repair-ID:" in "git --git-dir REPO log ..." for the related'
+               ' references.\n')
+        log(f'\n{fill(msg, width=tty_width(), break_on_hyphens=False)}\n')
+        return EXIT_RECOVERED
+    return 0
 
 def main(argv):
     opt = parse_args(argv)
@@ -942,15 +962,4 @@ def main(argv):
     if not opt.target_specs:
         misuse('no methods specified')
 
-    get_everything(opt)
-
-    if any(spec.repairs and spec.repairs.repair_count() \
-           for spec in opt.target_specs) \
-       and not saved_errors:
-        msg = ('Repairs were needed and successful; see above. Additional'
-               ' information may be found in the git log. Search for '
-               ' "Repair-ID:" in "git --git-dir REPO log ..." for the related'
-               ' references.\n')
-        log(f'\n{fill(msg, width=tty_width(), break_on_hyphens=False)}\n')
-        return EXIT_RECOVERED
-    return 0
+    return get_everything(opt)

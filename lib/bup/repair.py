@@ -14,14 +14,13 @@ def valid_repair_id(s):
 
 class Repairs:
     # Used, for example, to track all repairs in a bup get process
-    __slots__ = ('id', 'destructive', 'command', '_others', '_repaired_save',
+    __slots__ = ('id', 'destructive', '_others', '_repaired_save',
                  '_replaced_files', '_replaced_meta', '_restored_symlink_blobs',
                  '_fixed_symlink_blobs')
-    def __init__(self, id, destructive, command):
+    def __init__(self, id, destructive):
         assert valid_repair_id(id)
         self.id = id
         self.destructive = destructive
-        self.command = command
         self._others = 0
         self._repaired_save = {} # requires 3.7+ dict ordering
         self._replaced_files = []
