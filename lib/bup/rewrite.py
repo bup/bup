@@ -511,6 +511,12 @@ def _rewrite_save_item(save_path, path, replacement_dir, srcrepo, dstrepo,
     git_mode = _maybe_exec_mode(git_mode, item.meta)
     stack.append_to_current(name, item_mode, git_mode, oid, item.meta)
 
+@dataclass(slots=True, frozen=True)
+class RepairInfo:
+    id: bytes
+    destructive: bool
+    command: Sequence[bytes]
+
 class Rewriter:
     def __init__(self, *, split_cfg, db=None):
         assert isinstance(db, (bytes, type(None)))
@@ -543,12 +549,17 @@ class Rewriter:
             pass
 
     def append_save(self, save_path, parent, srcrepo, dstrepo, excludes,
-                    repairs):
+                    repair_info):
+        """Create a new save from save_path with the given parent.
+        Return (save_oid, tree_oid, repairs).
+
+        """
         # Strict for now
         assert isinstance(parent, (bytes, type(None))), parent
         if parent:
             assert len(parent) == 20, parent
         assert all(isinstance(x, Pattern) for x in excludes)
+        assert isinstance(repair_info, RepairInfo), repair_info
         assert len(save_path) == 3, (len(save_path), save_path)
         assert isinstance(save_path[1][1], vfs.RevList)
         leaf_name, leaf_item = save_path[2]
@@ -563,6 +574,7 @@ class Rewriter:
         # Currently, the workdb must always be ready to commit (see finally below)
         with closing(self._db_conn.cursor()) as dbc:
             try:
+                repairs = Repairs(repair_info.id, repair_info.destructive)
                 # Maintain a stack of information representing the current
                 # location in the archive being constructed.
                 stack = \
@@ -599,13 +611,13 @@ class Rewriter:
                 author = ci.author_name + b' <' + ci.author_mail + b'>'
                 committer = b'%s <%s@%s>' % (userfullname(), username(), hostname())
                 trailers = repairs.repair_trailers(repairs.id)
-                msg = commit_message(ci.message, repairs.command,
+                msg = commit_message(ci.message, repair_info.command,
                                      trailers)
                 return (dstrepo.write_commit(tree, parent,
                                              author,
                                              ci.author_sec, ci.author_offset,
                                              committer, time.time(), None,
                                              msg),
-                        tree)
+                        tree, repairs)
             finally:
                 self._db_conn.commit() # the workdb is always ready for commit
