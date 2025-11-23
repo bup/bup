@@ -15,12 +15,12 @@ from bup import vint, xstat
 from bup.drecurse import recursive_dirlist
 from bup.helpers import \
     (EXIT_FAILURE,
-     add_error,
-     mkdirp,
-     log,
-     is_superuser,
      format_filesize,
-     getgroups)
+     getgroups,
+     is_superuser,
+     log,
+     mkdirp,
+     note_error)
 from bup.io import path_msg
 from bup.pwdgrp import pwd_from_uid, pwd_from_name, grp_from_gid, grp_from_name
 from bup.xstat import utime, lutime
@@ -400,8 +400,8 @@ class Metadata:
         # FIXME: S_ISDOOR, S_IFMPB, S_IFCMP, S_IFNWK, ... see stat(2).
         else:
             assert(not self._recognized_file_type())
-            add_error('not creating "%s" with unrecognized mode "0x%x"\n'
-                      % (path_msg(path), self.mode))
+            note_error(f'error: unrecognized mode 0{self.mode:o},'
+                       f' not creating: {path_msg(path)}\n')
 
     def _apply_common_rec(self, path, restore_numeric_ids=False):
         if not self.mode:
@@ -414,7 +414,8 @@ class Metadata:
                 lutime(path, (self.atime or 0, self.mtime or 0))
             except OSError as e:
                 if e.errno == errno.EACCES:
-                    raise ApplyError('lutime: %s' % e)
+                    erm = e.strerror or e.errno
+                    raise ApplyError(f'lutime ({erm}): {path_msg(path)}')
                 else:
                     raise
         else:
@@ -422,7 +423,8 @@ class Metadata:
                 utime(path, (self.atime or 0, self.mtime or 0))
             except OSError as e:
                 if e.errno == errno.EACCES:
-                    raise ApplyError('utime: %s' % e)
+                    erm = e.strerror or e.errno
+                    raise ApplyError(f'utime ({erm}): {path_msg(path)}')
                 else:
                     raise
 
@@ -458,11 +460,12 @@ class Metadata:
                 os.lchown(path, uid, gid)
             except OSError as e:
                 if e.errno == errno.EPERM:
-                    add_error('lchown: %s' %  e)
+                    erm = e.strerror or e.errno
+                    note_error(f'error: lchown ({erm}): {path_msg(path)}\n')
                 elif sys.platform.startswith('cygwin') \
-                   and e.errno == errno.EINVAL:
-                    add_error('lchown: unknown uid/gid (%d/%d) for %s'
-                              %  (uid, gid, path_msg(path)))
+                     and e.errno == errno.EINVAL:
+                    note_error('error: lchown: unknown uid/gid (%d/%d): %s\n'
+                               % (uid, gid, path_msg(path)))
                 else:
                     raise
 
@@ -505,7 +508,8 @@ class Metadata:
                 # one that was in place when we did stat()
                 self.size = len(self.symlink_target)
         except OSError as e:
-            add_error('readlink: %s' % e)
+            erm = e.strerror or e.errno
+            note_error(f'error: readlink ({erm}): {path_msg(path)}\n')
 
     def _encode_symlink_target(self):
         return self.symlink_target
@@ -583,11 +587,11 @@ class Metadata:
             acl = acls[i]
             if b',' in acl:
                 if path:
-                    msg = f'Unexpected comma in ACL entry; ignoring {acl!r}' \
-                        f' for {path_msg(path)}\n'
+                    msg = 'error: unexpected comma in ACL entry;' \
+                        f' ignoring {acl!r}: {path_msg(path)}\n'
                 else:
-                    msg = f'Unexpected comma in ACL entry; ignoring {acl!r}\n'
-                add_error(msg)
+                    msg = f'error: unexpected comma in ACL entry; ignoring {acl!r}\n'
+                note_error(msg)
                 return None
             acls[i] = acl.replace(b'\n', b',')
         return acls
@@ -609,8 +613,8 @@ class Metadata:
             return
 
         if not apply_acl:
-            add_error("%s: can't restore ACLs; posix1e support missing.\n"
-                      % path_msg(path))
+            note_error("error: can't restore POSIX1e ACL (no support): %s\n"
+                       % path_msg(path))
             return
 
         try:
@@ -621,15 +625,13 @@ class Metadata:
             else:
                 apply_acl(path, acls[offs])
         except IOError as e:
-            if e.errno == errno.EINVAL:
-                # libacl returns with errno set to EINVAL if a user
-                # (or group) doesn't exist
-                raise ApplyError("POSIX1e ACL: can't create %r for %r"
-                                 % (acls, path_msg(path)))
-            elif e.errno in (errno.EPERM, errno.EOPNOTSUPP):
-                raise ApplyError('POSIX1e ACL applyto: %s' % e)
-            else:
+            # libacl returns with errno set to EINVAL if a user (or
+            # group) doesn't exist
+            if e.errno not in (errno.EINVAL, errno.EPERM, errno.EOPNOTSUPP):
                 raise
+            erm = e.strerror or e.errno
+            msg = f'POSIX1e ACL apply failed ({erm}): {path_msg(path)}'
+            raise ApplyError(msg)
 
 
     ## Linux attributes (lsattr(1), chattr(1))
@@ -644,16 +646,17 @@ class Metadata:
                     self.linux_attr = attr
             except OSError as e:
                 if e.errno == errno.EACCES:
-                    add_error('read Linux attr: %s' % e)
+                    erm = e.strerror or e.errno
+                    note_error(f'error: attr read failed ({erm}): {path_msg(path)}\n')
                 elif e.errno in (ENOTTY, ENOSYS, EOPNOTSUPP):
                     # Assume filesystem doesn't support attrs.
                     return
                 elif e.errno == EINVAL:
                     global _warned_about_attr_einval
                     if not _warned_about_attr_einval:
-                        log("Ignoring attr EINVAL;"
-                            + " if you're not using ntfs-3g, please report: "
-                            + path_msg(path) + '\n')
+                        log('Ignoring attr EINVAL;'
+                            " if you're not using ntfs-3g, please report:"
+                            f' {path_msg(path)}\n')
                         _warned_about_attr_einval = True
                     return
                 else:
@@ -679,19 +682,23 @@ class Metadata:
         if self.linux_attr:
             check_linux_file_attr_api()
             if not set_linux_file_attr:
-                add_error("%s: can't restore linuxattrs: "
-                          "linuxattr support missing.\n" % path_msg(path))
+                note_error("error: can't restore linuxattrs (no support): %s\n"
+                           % path_msg(path))
                 return
             try:
                 set_linux_file_attr(path, self.linux_attr)
             except OSError as e:
                 if e.errno in (EACCES, ENOTTY, EOPNOTSUPP, ENOSYS):
-                    raise ApplyError('Linux chattr: %s (0x%s)'
-                                     % (e, hex(self.linux_attr)))
+                    raise ApplyError('chattr(0x%s) failed (%s): %s'
+                                     % (hex(self.linux_attr),
+                                        e.strerror or e.errno,
+                                        path_msg(path)))
                 elif e.errno == EINVAL:
-                    msg = "if you're not using ntfs-3g, please report"
-                    raise ApplyError('Linux chattr: %s (0x%s) (%s)'
-                                     % (e, hex(self.linux_attr), msg))
+                    raise ApplyError('chattr(0x%s) failed (%s),'
+                                     ' please report if this is not ntfs-3g: %s'
+                                     % (hex(self.linux_attr),
+                                        e.strerror or e.errno,
+                                        path_msg(path)))
                 else:
                     raise
 
@@ -741,8 +748,8 @@ class Metadata:
     def _apply_linux_xattr_rec(self, path, restore_numeric_ids=False):
         if not xattr:
             if self.linux_xattr:
-                add_error("%s: can't restore xattr; xattr support missing.\n"
-                          % path_msg(path))
+                note_error("error: can't restore xattrs (no support): %s\n"
+                           % path_msg(path))
             return
         if not self.linux_xattr:
             return
@@ -750,7 +757,8 @@ class Metadata:
             existing_xattrs = set(xattr.list(path, nofollow=True))
         except IOError as e:
             if e.errno == errno.EACCES:
-                raise ApplyError('xattr.set %r: %s' % (path_msg(path), e))
+                erm = e.strerror or e.errno
+                raise ApplyError(f'xattr.set ({erm}): {path_msg(path)}')
             else:
                 raise
         for k, v in self.linux_xattr:
@@ -759,19 +767,19 @@ class Metadata:
                 try:
                     xattr.set(path, k, v, nofollow=True)
                 except IOError as e:
-                    if e.errno in (errno.EPERM, errno.EOPNOTSUPP):
-                        raise ApplyError('xattr.set %r: %s' % (path_msg(path), e))
-                    else:
+                    if e.errno not in (errno.EPERM, errno.EOPNOTSUPP):
                         raise
+                    erm = e.strerror or e.errno
+                    raise ApplyError(f'xattr.set ({erm}): {path_msg(path)}')
             existing_xattrs -= frozenset([k])
         for k in existing_xattrs:
             try:
                 xattr.remove(path, k, nofollow=True)
             except IOError as e:
-                if e.errno in (errno.EPERM, errno.EACCES):
-                    raise ApplyError('xattr.remove %r: %s' % (path_msg(path), e))
-                else:
+                if e.errno not in (errno.EPERM, errno.EACCES):
                     raise
+                erm = e.strerror or e.errno
+                raise ApplyError(f'xattr.remove ({erm}): {path_msg(path)}')
 
     __slots__ = ('_frozen',
                  'mode', 'uid', 'gid', 'user', 'group', 'rdev',
@@ -966,8 +974,8 @@ class Metadata:
         if not path:
             raise Exception('Metadata.apply_to_path() called with no path')
         if not self._recognized_file_type():
-            add_error('not applying metadata to "%s"' % path_msg(path)
-                      + ' with unrecognized mode "0x%x"\n' % self.mode)
+            note_error(f'error: unrecognized mode {self.mode:o},'
+                       f' not applying metadata: {path_msg(path)}\n')
             return
         num_ids = restore_numeric_ids
         for apply_metadata in (self._apply_common_rec,
@@ -977,7 +985,7 @@ class Metadata:
             try:
                 apply_metadata(path, restore_numeric_ids=num_ids)
             except ApplyError as e:
-                add_error(e)
+                note_error(f'error: {e}\n')
 
     def same_file(self, other):
         """Compare this to other for equivalency.  Return true if
@@ -1247,8 +1255,7 @@ def start_extract(file, create_symlinks=True):
             print(path_msg(meta.path), file=sys.stderr)
         xpath = _clean_up_extract_path(meta.path)
         if not xpath:
-            add_error(Exception('skipping risky path "%s"'
-                                % path_msg(meta.path)))
+            note_error(f'error: skipping risky path: {path_msg(meta.path)}\n')
         else:
             meta = deepcopy(meta).thaw()
             meta.path = xpath
@@ -1262,8 +1269,7 @@ def finish_extract(file, restore_numeric_ids=False):
             break
         xpath = _clean_up_extract_path(meta.path)
         if not xpath:
-            add_error(Exception('skipping risky path "%s"'
-                                % path_msg(meta.path)))
+            note_error(f'error: skipping risky path: {path_msg(meta.path)}\n')
         else:
             if os.path.isdir(meta.path):
                 all_dirs.append(meta)
@@ -1290,8 +1296,7 @@ def extract(file, restore_numeric_ids=False, create_symlinks=True):
             break
         xpath = _clean_up_extract_path(meta.path)
         if not xpath:
-            add_error(Exception('skipping risky path "%s"'
-                                % path_msg(meta.path)))
+            note_error(f'error: skipping risky path: {path_msg(meta.path)}\n')
         else:
             meta = deepcopy(meta).thaw()
             meta.path = xpath
