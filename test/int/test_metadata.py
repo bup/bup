@@ -168,7 +168,7 @@ def test_from_path_error(tmpdir):
         print('saved_errors:', helpers.saved_errors, file=sys.stderr)
         WVPASS(len(helpers.saved_errors) == 1)
         errmsg = _first_err()
-        WVPASS(errmsg.startswith('read Linux attr'))
+        WVPASS(errmsg.startswith('error: attr read failed '))
         clear_errors()
 
 
@@ -209,11 +209,11 @@ def test_apply_to_path_restricted_access(tmpdir):
         os.chmod(parent, 0o000)
         m.apply_to_path(path)
         print(b'saved_errors:', helpers.saved_errors, file=sys.stderr)
-        expected_errors = ['utime: ']
+        expected_errors = ['error: utime ']
         if m.linux_attr and _linux_attr_supported(tmpdir):
-            expected_errors.append('Linux chattr: ')
+            expected_errors.append('error: chattr(')
         if metadata.xattr and m.linux_xattr:
-            expected_errors.append("xattr.set ")
+            expected_errors.append('error: xattr.set ')
         WVPASS(len(helpers.saved_errors) == len(expected_errors))
         for i in range(len(expected_errors)):
             assert str(helpers.saved_errors[i]).startswith(expected_errors[i])
