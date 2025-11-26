@@ -11,11 +11,36 @@ case "$OSTYPE" in
     netbsd) exit 2 ;; # https://gnats.netbsd.org/56254
 esac
 
+# script(1), originating in 3.0BSD, is not specified by POSIX and has
+# varying forms.
+
+#   FreeBSD 15: script [-aeFfkqrw] [-t time] [file [command ...]]
+#   FreeBSD 14: script [-aeFfkqr] [-t time] [file [command ...]]
+#   FreeBSD 13: script [-aefkqr] [-F pipe] [-t time] [file [command ...]]
+#   FreeBSD 12: script [-adfkpqr] [-F pipe] [-t time] [file [command ...]]
+#   FreeBSD 11: script [-adfkpqr] [-F pipe] [-t time] [file [command ...]]
+#   FreeBSD 10: script [-adfkpqr] [-t time] [file [command ...]]
+#   FreeBSD 8: script [-akq] [-t time] [file [command ...]]
+#   FreeBSD 3.0: script [-a] [-k] [-q] [-t time] [file] [command ...]
+#   FreeBSD 1.0: script [-a] [file]
+
+#   Linux ?: script [options] [file] [-- command [argument...]]
+#     but also "-c, --command command", and -eq
+
+#   macos ?: script [-aeFkqr] [-t time] [file [command ...]]
+
+#   NetBSD 10: script [-adefpqr] [-c command] [file]
+#   NetBSD 6-9: script [-adfpqr] [-c command] [file]
+#   NetBSD 5: script [-adpr] [file]
+
 if script -qec true /dev/null; then
-    # at least linux and netbsd
+    # Linux and NetBSD 10+
     script -qec "$(printf ' %q' "$@")" /dev/null
+elif script -q -c true /dev/null; then
+    # NetBSD 6-9
+    script -q -c "$(printf ' %q' "$@")" /dev/null
 elif script -q /dev/null true; then
-    # at least freebsd
+    # FreeBSD and macOS
     script -q /dev/null "$@"
 else
     rc=0
@@ -27,3 +52,13 @@ else
     fi
     exit 2
 fi
+
+case `uname` in
+    NetBSD)
+        # On NetBSD, the top-level script(1) process exits when read()
+        # reports EOF on stdin; this happens when running tests with
+        # /dev/null as stdin.  As a workaround, wait after script, so
+        # that the command will have finished.
+        sleep 5
+        ;;
+esac
