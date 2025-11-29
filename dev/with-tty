@@ -7,11 +7,15 @@ set -ueo pipefail
 usage() { echo 'Usage: with-tty command [arg ...]'; }
 misuse() { usage 1>&2; exit 2; }
 
+case "$OSTYPE" in
+    netbsd) exit 2 ;; # https://gnats.netbsd.org/56254
+esac
+
 if script -qec true /dev/null; then
-    # linux flavor
+    # at least linux and netbsd
     script -qec "$(printf ' %q' "$@")" /dev/null
 elif script -q /dev/null true; then
-    # bsd flavor
+    # at least freebsd
     script -q /dev/null "$@"
 else
     rc=0
