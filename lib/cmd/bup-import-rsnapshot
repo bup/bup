@@ -7,7 +7,7 @@ usage() {
     echo "Usage: bup import-rsnapshot [-n]" \
         "<path to snapshot_root> [<backuptarget>]"
     echo "-n,--dry-run: just print what would be done"
-    exit 1
+    exit 2
 }
 
 DRY_RUN=
@@ -28,7 +28,7 @@ TARGET=$2
 
 if [ ! -e "$SNAPSHOT_ROOT/." ]; then
     echo "'$SNAPSHOT_ROOT' isn't a directory!"
-    exit 1
+    exit 2
 fi
 
 
