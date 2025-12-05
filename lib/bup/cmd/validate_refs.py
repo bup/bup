@@ -6,7 +6,7 @@ from stat import S_ISDIR
 from bup import git, options, vfs
 from bup.compat import argv_bytes
 from bup.gc import count_objects, find_live_objects
-from bup.git import BUP_CHUNKED, demangle_name, tree_iter
+from bup.git import BUP_CHUNKED, MissingObject, demangle_name, tree_iter
 from bup.helpers import EXIT_FAILURE, EXIT_FALSE, EXIT_TRUE, log
 from bup.metadata import Metadata
 from bup.io import walk_path_msg, path_msg
@@ -64,7 +64,7 @@ def main(argv):
     verbosity = opt.verbose
 
     if (opt.links, opt.bupm) == (False, False):
-        o.fatal(f'no validation requested')
+        o.fatal('no validation requested')
     if (opt.links, opt.bupm) == (None, None):
         opt.links = opt.bupm = True
 
@@ -77,12 +77,27 @@ def main(argv):
 
         bad_bupm = 0
         abridged_bupm = 0
-
-        def validate_if_bupm(ref_name, item_path):
-            nonlocal bad_bupm, abridged_bupm
+        found_missing = 0
+        def notice_missing(ref_name, item_path):
+            nonlocal found_missing
+            found_missing += 1
             item = item_path[-1]
+            imsg = walk_path_msg(ref_name, item_path)
+            log(f'missing {item.oid.hex()} {imsg}\n')
+
+        def for_item(ref_name, item_path):
+             # Always notice missing objects; without --links won't be
+             # comprehensive.
+            item = item_path[-1]
+            if item.data is False:
+                notice_missing(ref_name, item_path)
+                return True
+            if not opt.bupm:
+                return True
+
+            nonlocal bad_bupm, abridged_bupm
             if item.name != b'.bupm':
-                return
+                return True
             bupm_n = 0
             with tree_data_reader(repo, item.oid) as bupm:
                 try:
@@ -91,6 +106,8 @@ def main(argv):
                         bupm_n += 1
                 except EOFError:
                     pass
+                except MissingObject:
+                    return True # bupm sub-item, will be handled by later for_item
                 except Exception:
                     pm = walk_path_msg(ref_name, item_path)
                     raise Exception(f'Unable to parse .bupm at {pm}')
@@ -99,7 +116,7 @@ def main(argv):
             assert info[0], info
             exp_n = expected_bup_entry_count_for_tree(b''.join(info[3]))
             if bupm_n == exp_n:
-                return
+                return True
             elif bupm_n > exp_n:
                 bad_bupm += 1
                 log(f'error: tree with extra bupm entries ({bupm_n} > {exp_n})'
@@ -108,8 +125,8 @@ def main(argv):
                 abridged_bupm += 1
                 imsg = walk_path_msg(ref_name, item_path)
                 log(f'abridged-bupm {imsg}\n')
+            return True
 
-        found_missing = 0
         # Wanted all refs, or at least some specified weren't missing
         if not extra or (extra and ref_info):
             existing_count = count_objects(git.repo(b'objects/pack'), verbosity)
@@ -120,17 +137,13 @@ def main(argv):
                 if opt.links:
                     idxl = git.PackIdxList(git.repo(b'objects/pack'))
                     maybe_close_idxl.enter_context(idxl)
-                found = find_live_objects(existing_count, cat_pipe,
-                                          refs=ref_info,
-                                          count_missing=opt.links,
-                                          idx_list=idxl,
-                                          for_item=opt.bupm and validate_if_bupm,
-                                          verbosity=verbosity)
-                if opt.links:
-                    live_objects, live_trees, found_missing = found
-                else:
-                    live_objects, live_trees = found
-                live_objects.close()
+                live_objs, live_trees = \
+                    find_live_objects(existing_count, cat_pipe,
+                                      refs=ref_info,
+                                      idx_list=idxl,
+                                      for_item=for_item,
+                                      verbosity=verbosity)
+                live_objs.close()
         if bad_bupm:
             return EXIT_FAILURE
         elif (ref_missing + found_missing + abridged_bupm):
