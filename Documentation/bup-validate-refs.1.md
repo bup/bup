@@ -8,7 +8,7 @@ bup-validate-refs - check integrity of repository refs
 
 # SYNOPSIS
 
-bup validate-refs [--links] [--bupm] [*ref*...]
+bup validate-refs [\--links] [\--bupm] [*ref*...]
 
 # DESCRIPTION
 
@@ -39,8 +39,9 @@ has encountered before.
 \--bupm
 :   check bupm (metadata storage) files. Currently checks for missing
     path entries, which could have been caused by `bup` versions since
-    0.25 and before 0.30.1. See REPAIRS in `bup-get`(1) for additional
-    information.
+    0.25 and before 0.30.1.  May notice missing objects, but may not
+    notice all of them without `--links`.  See REPAIRS in `bup-get`(1)
+    for additional information.
 
 \--links
 :   check for commits or trees that refer to missing objects. This
