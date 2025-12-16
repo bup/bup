@@ -344,8 +344,9 @@ static int HashSplitter_init(HashSplitter *self, PyObject *args, PyObject *kwds)
         goto error;
     }
 
-    if (self->bits >= (log2(sizeof(self->max_blob)) * 8) - 2) {
-        PyErr_Format(PyExc_ValueError, "bits value is too large");
+    if (self->bits >= sizeof(self->max_blob) * 8 - 2) {
+        PyErr_Format(PyExc_ValueError, "bits value is too large: %u",
+                     self->bits);
         goto error;
     }
     self->max_blob = 1 << (self->bits + 2);
@@ -723,7 +724,7 @@ static int RecordHashSplitter_init(RecordHashSplitter *self, PyObject *args, PyO
         return -1;
 
     // Same as the file splitter's max_blob
-    if (self->bits >= (log2(sizeof(self->max_split_size)) * 8) - 2) {
+    if (self->bits >= sizeof(self->max_split_size) * 8 - 2) {
         PyErr_Format(PyExc_ValueError, "bits value is too large");
         return -1;
     }
