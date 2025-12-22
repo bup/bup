@@ -33,14 +33,21 @@ esac
 #   NetBSD 6-9: script [-adfpqr] [-c command] [file]
 #   NetBSD 5: script [-adpr] [file]
 
+# Try variants; insist on exit with child status/ (-e behavior).
+
 if script -qec true /dev/null; then
-    # Linux and NetBSD 10+
     script -qec "$(printf ' %q' "$@")" /dev/null
 elif script -q -c true /dev/null; then
-    # NetBSD 6-9
+    if script -q -c false /dev/null; then # -e behavior?
+        printf '%q ignores child exit status\n' "$(command -v script)" 1>&2
+        exit 2
+    fi
     script -q -c "$(printf ' %q' "$@")" /dev/null
 elif script -q /dev/null true; then
-    # FreeBSD and macOS
+    if script -q /dev/null false; then # -e behavior?
+        printf '%q ignores child exit status\n' "$(command -v script)" 1>&2
+        exit 2
+    fi
     script -q /dev/null "$@"
 else
     rc=0
@@ -53,8 +60,8 @@ else
     exit 2
 fi
 
-case `uname` in
-    NetBSD)
+case "$OSTYPE" in
+    netbsd)
         # On NetBSD, the top-level script(1) process exits when read()
         # reports EOF on stdin; this happens when running tests with
         # /dev/null as stdin.  As a workaround, wait after script, so
