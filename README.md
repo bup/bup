@@ -481,7 +481,10 @@ Notes on NetBSD/pkgsrc
 
  - See pkgsrc/sysutils/bup, which should be the most recent stable
    release and includes man pages.  It also has a reasonable set of
-   dependencies (git, par2, py-fuse-bindings).
+   dependencies (bash, gmake, git, par2, py-fuse-bindings).  It also
+   has `TEST_DEPENDS`.  A reasonable strategy for building bup from
+   git is to build the version of bup in pkgsrc and not install it, so
+   that the prereqs are installed, and then build from sources.
 
  - The "fuse-python" package referred to is hard to locate, and is a
    separate tarball for the python language binding distributed by the
@@ -520,8 +523,11 @@ Notes on Cygwin
    http://cygwin.com/ml/cygwin/2007-06/msg00436.html
 
 
-Notes on OS X
+Notes on macOS
 -------------
+
+ - The version of bash included in the OS is ancient (3.2.57).  bup
+   (as of 0.34) requires newer bash (5.3.3 is known to work).
 
  - There is no support for ACLs.  If/when some enterprising person
    fixes this, adjust dev/compare-trees.
