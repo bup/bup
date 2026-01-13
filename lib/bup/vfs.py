@@ -205,9 +205,8 @@ def _tree_chunks(repo, tree_data, startofs):
 class _ChunkReader:
     def __init__(self, repo, oid, startofs):
         _, obj_t, _, it = get_oidx(repo, hexlify(oid))
-        isdir = obj_t == b'tree'
         data = b''.join(it)
-        if isdir:
+        if obj_t == b'tree':
             self.it = _tree_chunks(repo, data, startofs)
             self.blob = None
             self.blobofs = None
@@ -218,26 +217,30 @@ class _ChunkReader:
         self.ofs = startofs
 
     def next(self, size):
-        out = b''
-        while len(out) < size:
+        out_parts = []
+        out_len = 0
+        while out_len < size:
             if self.it and not self.blob:
-                try:
-                    self.blob = next(self.it)
-                    self.blobofs = 0
-                except StopIteration:
+                self.blob = next(self.it, None)
+                if self.blob is None:
                     self.it = None
+                else:
+                    self.blobofs = 0
             if self.blob:
-                want = size - len(out)
-                out += self.blob[self.blobofs:self.blobofs + want]
+                want = size - out_len
+                out_parts.append(self.blob[self.blobofs:self.blobofs + want])
+                out_len += len(out_parts[-1])
                 self.blobofs += want
                 if self.blobofs >= len(self.blob):
                     self.blob = None
                     self.blobofs = None
             if not self.it:
                 break
-        debug2('next(%d) returned %d\n' % (size, len(out)))
-        self.ofs += len(out)
-        return out
+        debug2(f'next({size}) returned {out_len}\n')
+        self.ofs += out_len
+        if len(out_parts) == 1:
+            return out_parts[0]
+        return b''.join(out_parts)
 
 class _FileReader:
     def __init__(self, repo, oid, known_size=None):
