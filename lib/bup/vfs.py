@@ -210,9 +210,11 @@ class _ChunkReader:
         if isdir:
             self.it = _tree_chunks(repo, data, startofs)
             self.blob = None
+            self.blobofs = None
         else:
             self.it = None
-            self.blob = data[startofs:]
+            self.blob = data
+            self.blobofs = startofs
         self.ofs = startofs
 
     def next(self, size):
@@ -221,12 +223,16 @@ class _ChunkReader:
             if self.it and not self.blob:
                 try:
                     self.blob = next(self.it)
+                    self.blobofs = 0
                 except StopIteration:
                     self.it = None
             if self.blob:
                 want = size - len(out)
-                out += self.blob[:want]
-                self.blob = self.blob[want:]
+                out += self.blob[self.blobofs:self.blobofs + want]
+                self.blobofs += want
+                if self.blobofs >= len(self.blob):
+                    self.blob = None
+                    self.blobofs = None
             if not self.it:
                 break
         debug2('next(%d) returned %d\n' % (size, len(out)))
