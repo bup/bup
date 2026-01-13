@@ -50,7 +50,7 @@ um="$(umask)" || exit $?
 umask 0
 WVPASS bup restore -C restore/ src/latest/
 WVPASS cd restore
-WVPASSEQ "$(ls -l | cut -d' ' -f1 | tail +2)" \
+WVPASSEQ "$(ls -l | cut -d' ' -f1 | tail -n +2)" \
 '-rw-------
 -rw-r--r--
 -rw-------'
