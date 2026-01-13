@@ -4,8 +4,6 @@ from time import strftime
 import os, sys, time
 import stat as pystat
 
-from bup import _helpers
-
 
 def timespec_to_nsecs(ts):
     ts_s, ts_ns = ts
@@ -64,24 +62,20 @@ class stat_result:
     __slots__ = ('st_mode', 'st_ino', 'st_dev', 'st_nlink', 'st_uid', 'st_gid',
                  'st_rdev', 'st_size', 'st_atime', 'st_mtime', 'st_ctime')
     @staticmethod
-    def from_xstat_rep(st):
-        global _cygwin_sys
+    def from_py_stat(st):
         result = stat_result()
-        (result.st_mode,
-         result.st_ino,
-         result.st_dev,
-         result.st_nlink,
-         result.st_uid,
-         result.st_gid,
-         result.st_rdev,
-         result.st_size,
-         result.st_atime,
-         result.st_mtime,
-         result.st_ctime) = st
+        result.st_mode = st.st_mode
+        result.st_ino = st.st_ino
+        result.st_dev = st.st_dev
+        result.st_nlink = st.st_nlink
+        result.st_uid = st.st_uid
+        result.st_gid = st.st_gid
+        result.st_rdev = st.st_rdev
+        result.st_size = st.st_size
         # Inlined timespec_to_nsecs after profiling
-        result.st_atime = result.st_atime[0] * 10**9 + result.st_atime[1]
-        result.st_mtime = result.st_mtime[0] * 10**9 + result.st_mtime[1]
-        result.st_ctime = result.st_ctime[0] * 10**9 + result.st_ctime[1]
+        result.st_atime = st.st_atime_ns
+        result.st_mtime = st.st_mtime_ns
+        result.st_ctime = st.st_ctime_ns
         if _cygwin_sys:
             result.st_uid = _fix_cygwin_id(result.st_uid)
             result.st_gid = _fix_cygwin_id(result.st_gid)
@@ -89,15 +83,15 @@ class stat_result:
 
 
 def stat(path):
-    return stat_result.from_xstat_rep(_helpers.stat(path))
+    return stat_result.from_py_stat(os.stat(path))
 
 
 def fstat(path):
-    return stat_result.from_xstat_rep(_helpers.fstat(path))
+    return stat_result.from_py_stat(os.fstat(path))
 
 
 def lstat(path):
-    return stat_result.from_xstat_rep(_helpers.lstat(path))
+    return stat_result.from_py_stat(os.lstat(path))
 
 
 def mode_str(mode):

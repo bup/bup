@@ -360,31 +360,6 @@ if test "${c_define[BUP_HAVE_READLINE]:-}"; then
     fi
 fi
 
-info -n 'checking for ns resolution stat times'
-stat_code='
-#include <sys/stat.h>
-
-int main(int argc, char **argv)
-{
-    struct stat st;
-    stat(argv[0], &st);
-    return (int) st.BUP_TIME_FIELD;
-}
-'
-if try-c-code -DBUP_TIME_FIELD=st_atim.tv_nsec -- "$stat_code"; then
-    info ' (found, tim)'
-    c_define[BUP_STAT_NS_FLAVOR_TIM]=1
-elif try-c-code -DBUP_TIME_FIELD=st_atimensec.tv_nsec -- "$stat_code"; then
-    info ' (found, timensec)'
-    c_define[BUP_STAT_NS_FLAVOR_TIMENSEC]=1
-elif try-c-code -DBUP_TIME_FIELD=st_atimespec.tv_nsec -- "$stat_code"; then
-    info ' (found, timespec)'
-    c_define[BUP_STAT_NS_FLAVOR_TIMESPEC]=1
-else
-    info ' (not found)'
-    c_define[BUP_STAT_NS_FLAVOR_NONE]=1
-fi
-
 info -n 'checking for tm tm_gmtoff field'
 if try-c-code \
        -- \

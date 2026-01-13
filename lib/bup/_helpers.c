@@ -1093,100 +1093,6 @@ static PyObject *bup_set_linux_file_attr(PyObject *self, PyObject *args)
 #endif /* def BUP_HAVE_FILE_ATTRS */
 
 
-#ifdef BUP_STAT_NS_FLAVOR_TIM
-# define BUP_STAT_ATIME_NS(st) (st)->st_atim.tv_nsec
-# define BUP_STAT_MTIME_NS(st) (st)->st_mtim.tv_nsec
-# define BUP_STAT_CTIME_NS(st) (st)->st_ctim.tv_nsec
-#elif defined BUP_STAT_NS_FLAVOR_TIMENSEC
-# define BUP_STAT_ATIME_NS(st) (st)->st_atimensec.tv_nsec
-# define BUP_STAT_MTIME_NS(st) (st)->st_mtimensec.tv_nsec
-# define BUP_STAT_CTIME_NS(st) (st)->st_ctimensec.tv_nsec
-#elif defined BUP_STAT_NS_FLAVOR_TIMESPEC
-# define BUP_STAT_ATIME_NS(st) (st)->st_atimespec.tv_nsec
-# define BUP_STAT_MTIME_NS(st) (st)->st_mtimespec.tv_nsec
-# define BUP_STAT_CTIME_NS(st) (st)->st_ctimespec.tv_nsec
-#elif defined BUP_STAT_NS_FLAVOR_NONE
-# define BUP_STAT_ATIME_NS(st) 0
-# define BUP_STAT_MTIME_NS(st) 0
-# define BUP_STAT_CTIME_NS(st) 0
-#else
-# error "./configure did not define a BUP_STAT_NS_FLAVOR"
-#endif
-
-
-static PyObject *stat_struct_to_py(const struct stat *st,
-                                   const char *filename,
-                                   int fd)
-{
-    // We can check the known (via POSIX) signed and unsigned types at
-    // compile time, but not (easily) the unspecified types, so handle
-    // those via BUP_LONGISH_TO_PY().  Assumes ns values will fit in a
-    // long.
-    return Py_BuildValue("NKNNNNNL(Nl)(Nl)(Nl)",
-                         BUP_LONGISH_TO_PY(st->st_mode),
-                         (unsigned PY_LONG_LONG) st->st_ino,
-                         BUP_LONGISH_TO_PY(st->st_dev),
-                         BUP_LONGISH_TO_PY(st->st_nlink),
-                         BUP_LONGISH_TO_PY(st->st_uid),
-                         BUP_LONGISH_TO_PY(st->st_gid),
-                         BUP_LONGISH_TO_PY(st->st_rdev),
-                         (PY_LONG_LONG) st->st_size,
-                         BUP_LONGISH_TO_PY(st->st_atime),
-                         (long) BUP_STAT_ATIME_NS(st),
-                         BUP_LONGISH_TO_PY(st->st_mtime),
-                         (long) BUP_STAT_MTIME_NS(st),
-                         BUP_LONGISH_TO_PY(st->st_ctime),
-                         (long) BUP_STAT_CTIME_NS(st));
-}
-
-
-static PyObject *bup_stat(PyObject *self, PyObject *args)
-{
-    int rc;
-    char *filename;
-
-    if (!PyArg_ParseTuple(args, cstr_argf, &filename))
-        return NULL;
-
-    struct stat st;
-    rc = stat(filename, &st);
-    if (rc != 0)
-        return PyErr_SetFromErrnoWithFilename(PyExc_OSError, filename);
-    return stat_struct_to_py(&st, filename, 0);
-}
-
-
-static PyObject *bup_lstat(PyObject *self, PyObject *args)
-{
-    int rc;
-    char *filename;
-
-    if (!PyArg_ParseTuple(args, cstr_argf, &filename))
-        return NULL;
-
-    struct stat st;
-    rc = lstat(filename, &st);
-    if (rc != 0)
-        return PyErr_SetFromErrnoWithFilename(PyExc_OSError, filename);
-    return stat_struct_to_py(&st, filename, 0);
-}
-
-
-static PyObject *bup_fstat(PyObject *self, PyObject *args)
-{
-    int rc, fd;
-
-    if (!PyArg_ParseTuple(args, "i", &fd))
-        return NULL;
-
-    struct stat st;
-    rc = fstat(fd, &st);
-    if (rc != 0)
-        return PyErr_SetFromErrno(PyExc_OSError);
-    return stat_struct_to_py(&st, NULL, fd);
-}
-
-
 #ifdef HAVE_TM_TM_GMTOFF
 static PyObject *bup_localtime(PyObject *self, PyObject *args)
 {
@@ -1913,12 +1819,6 @@ static PyMethodDef helper_methods[] = {
     { "set_linux_file_attr", bup_set_linux_file_attr, METH_VARARGS,
       "Set the Linux attributes for the given file." },
 #endif
-    { "stat", bup_stat, METH_VARARGS,
-      "Extended version of stat." },
-    { "lstat", bup_lstat, METH_VARARGS,
-      "Extended version of lstat." },
-    { "fstat", bup_fstat, METH_VARARGS,
-      "Extended version of fstat." },
 #ifdef HAVE_TM_TM_GMTOFF
     { "localtime", bup_localtime, METH_VARARGS,
       "Return struct_time elements plus the timezone offset and name." },
