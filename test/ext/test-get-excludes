@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+. ./wvtest-bup.sh || exit $?
+. test/lib/btl.sh || exit $?
+
+set -o pipefail
+
+top="$(WVPASS pwd)" || exit $?
+tmpdir="$(WVPASS wvmktempdir)" || exit $?
+
+export BUP_DIR="$tmpdir/bup"
+export GIT_DIR="$tmpdir/bup"
+
+bup() { "$top/bup" "$@"; }
+
+WVPASS cd "$tmpdir"
+WVPASS mkfifo done
+WVPASS bup init
+
+WVPASS mkdir -p src/a
+WVPASS echo 1 > src/a/one
+WVPASS echo 2 > src/a/two
+WVPASS echo 3 > src/a/three
+WVPASS bup index src
+WVPASS bup save --strip -n src src
+
+WVSTART '--rewrite --exclude-rx'
+WVPASS bup get --rewrite --exclude-rx 't.*' --pick: src/latest dst
+WVPASSEQ 'one' "$(bup ls dst/latest/a)"
+
+WVSTART '--rewrite --exclude-rx --no-excludes'
+WVPASS bup get --rewrite --exclude-rx 't.*' --no-excludes --pick: src/latest dst
+WVPASSEQ $'one\nthree\ntwo' "$(bup ls dst/latest/a)"
+
+WVSTART '--rewrite --exclude-rx contextuality'
+WVPASS bup get --rewrite \
+       --exclude-rx 't.*' --pick: src/latest dst-1 \
+       --no-excludes --pick: src/latest dst-2 \
+       --exclude-rx 'one' --pick: src/latest dst-3
+WVPASSEQ $'one' "$(bup ls dst-1/latest/a)"
+WVPASSEQ $'one\nthree\ntwo' "$(bup ls dst-2/latest/a)"
+WVPASSEQ $'three\ntwo' "$(bup ls dst-3/latest/a)"
+
+WVSTART 'ignored contextual arguments are disallowed'
+WVEXPRC 2 eval 'bup get --rewrite --append x --exclude-rx y --ignore-missing' \
+        '2> >(tee err.log; : > done)'
+WVFAIL read < done
+WVPASS grep -E '^error: trailing arguments with no effect: --exclude-rx --ignore-missing' err.log
+
+WVPASS cd "$top"
+WVPASS rm -rf "$tmpdir"

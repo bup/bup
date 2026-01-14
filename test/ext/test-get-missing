@@ -12,39 +12,69 @@ export GIT_DIR="$tmpdir/bup"
 
 bup() { "$top/bup" "$@"; }
 
+
 WVPASS cd "$tmpdir"
 WVPASS bup init
 
-WVPASS mkdir -p src/a
+WVPASS mkdir -p src/a src/b
 WVPASS echo 1 > src/a/1
 WVPASS echo 2 > src/a/2
 WVPASS echo 3 > src/a/3
+WVPASS echo 1 > src/b/1
+WVPASS echo 2 > src/b/2
+WVPASS echo 3 > src/b/3
 WVPASS bup index src
 WVPASS bup save --strip -n src src
 
-src_oid="$(git rev-parse src)"
+a_oid="$(git rev-parse src:a)"
+b_oid="$(git rev-parse src:b)"
 
 WVPASS bup -d dest-repo init
-WVPASS bup -d dest-repo get -s bup --unnamed "git:$src_oid"
-WVPASS bup -d dest-repo join "$src_oid" > /dev/null
+WVPASS bup -d dest-repo get -s bup --unnamed "git:$a_oid"
+WVPASS bup -d dest-repo join "$a_oid" > /dev/null
 WVPASS rm -rf dest-repo
 
 bupm_oid="$(WVPIPE git ls-tree src:a | WVPASS head -1 | WVPASS btl-ent-oid)" \
     || exit $?
-echo "$bupm_oid" | WVPASS "$top/dev/perforate-repo" --drop-oids "$BUP_DIR"
+bupm2_oid="$(WVPIPE git ls-tree src:b | WVPASS head -1 | WVPASS btl-ent-oid)" \
+    || exit $?
+echo -e "$bupm_oid\n$bupm2_oid" \
+    | WVPASS "$top/dev/perforate-repo" --drop-oids "$BUP_DIR"
 
+
+WVSTART 'get incomplete tree without --ignore-missing'
 WVPASS bup -d dest-repo init
-WVFAIL bup -d dest-repo get -s bup --unnamed "git:$src_oid" 2>&1 | tee get.log
-# For now...
-WVPASS grep -E 'raise MissingObject' get.log
+WVFAIL bup -d dest-repo get -s bup --unnamed "git:$a_oid" 2>&1 | tee get.log
+WVPASS grep -F 'raise MissingObject' get.log # For now...
+WVFAIL bup -d dest-repo get -s bup --ignore-missing --no-ignore-missing \
+       --unnamed "git:$a_oid" 2>&1 | tee get.log
+WVPASS grep -F 'raise MissingObject' get.log # For now...
 WVPASS rm -rf dest-repo
 
+
+WVSTART 'get incomplete tree with --ignore-missing'
 WVPASS bup -d dest-repo init
-WVFAIL bup -d dest-repo get --ignore-missing -s bup \
-       --unnamed "git:$src_oid" 2>&1 \
-    | tee get.log
+WVEXPRC 2 eval 'bup -d dest-repo get -s bup --ignore-missing ' \
+        '--unnamed "git:$a_oid" 2>&1 | tee get.log'
 WVPASSEQ 1 "$(grep -cF "skipping missing source object ${bupm_oid}" get.log)"
 WVPASS rm -rf dest-repo
+
+
+WVSTART 'multiple incomplete tree gets with differing ignores'
+WVPASS bup -d dest-repo init
+WVEXPRC 2 eval 'bup -d dest-repo get -s bup' \
+        ' --ignore-missing --unnamed "git:$a_oid"'\
+        ' --no-ignore-missing --unnamed "git:$b_oid"'\
+        ' 2>&1 | tee get.log'
+WVPASSEQ 1 "$(grep -cF "skipping missing source object ${bupm_oid}" get.log)"
+log_msg_line="$(WVPASS grep -nF "skipping missing source object ${bupm_oid}" get.log)"
+log_msg_line="${log_msg_line%%:*}"
+WVPASS grep -F 'raise MissingObject' get.log # For now...
+raise_msg_line="$(WVPASS grep -nF "raise MissingObject" get.log)"
+raise_msg_line="${raise_msg_line%%:*}"
+WVPASS test "$log_msg_line" -lt "$raise_msg_line"
+WVPASS rm -rf dest-repo
+
 
 WVPASS cd "$top"
 WVPASS rm -rf "$tmpdir"

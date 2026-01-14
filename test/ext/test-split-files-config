@@ -20,9 +20,7 @@ WVPASS bup random --seed "$RANDOM" "$size" > data
 
 WVSTART "split with no setting is the same as legacy:13"
 WVPASS bup init
-git config -f "$BUP_DIR/config" --unset bup.split.files
-rc=$?
-WVPASSEQ 5 "$rc"
+WVEXPRC 5 git config -f "$BUP_DIR/config" --unset bup.split.files
 tree1="$(WVPASS bup split -t data)" || exit $?
 WVPASS rm -r bup
 WVPASS bup init

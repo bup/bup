@@ -50,6 +50,36 @@ _wvcheck()
 }
 
 
+WVEXPRC()
+{
+	if test $# -lt 2; then
+		echo 'Usage: WVEXPRC RC_CASE_PATTERN COMMAND [ARG ...]'
+		exit 2
+	fi
+	local exp="$1"
+	shift
+	local TEXT="$*"
+	_wvpushcall "$@"
+
+	_wvfind_caller
+	case "$-" in
+		*e*) set +e; "$@"; rc=$? ;;
+		*) "$@"; rc=$? ;;
+	esac
+	case "$rc" in
+		$exp)
+			_wvcheck 0 "\$?=$rc matches $exp for $TEXT"
+			_wvpopcall
+			return 0
+			;;
+		*)
+			_wvcheck 1 "\$?=$rc matches $exp for $TEXT"
+			# NOTREACHED
+			return 1
+			;;
+	esac
+}
+
 WVPASS()
 {
 	local TEXT="$*"

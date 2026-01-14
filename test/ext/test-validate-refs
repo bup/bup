@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+. ./wvtest-bup.sh || exit $?
+. test/lib/btl.sh || exit $?
+
+set -o pipefail
+
+top="$(WVPASS pwd)" || exit $?
+tmpdir="$(WVPASS wvmktempdir)" || exit $?
+
+export BUP_DIR="$tmpdir/bup"
+export GIT_DIR="$tmpdir/bup"
+
+bup() { "$top/bup" "$@"; }
+
+
+WVPASS cd "$tmpdir"
+
+
+# Additional --links tests are handled in test-validate-ref-links
+
+WVSTART 'handling of correct refs'
+WVPASS rm -rf bup src
+WVPASS bup init
+WVPASS mkdir src
+WVPASS mkdir -p src/a/b
+WVPASS touch src/a/{1,2,3}
+WVPASS "$top/dev/make-splittable-tree" src/split-tree
+WVPASS bup index src
+WVPASS bup save --strip -n src src
+WVPASS bup validate-refs --links 2>&1 | tee validate.log
+WVPASS grep -vE '^missing ' validate.log
+WVPASS bup validate-refs --bupm 2>&1 | tee validate.log
+WVPASS grep -vE '^missing ' validate.log
+WVPASS bup validate-refs 2>&1 | tee validate.log
+WVPASS grep -vE '^missing ' validate.log
+WVPASS rm -rf src bup
+
+WVSTART 'detection of abridged bupms'
+# Create a save with two root files, and then three, and then replace
+# the three entry save's .bupm with the one from the two entry save so
+# we can check that abridged bupms are detected. Note that tree
+# splitting was added to bup well after this bug was fixed.
+WVPASS rm -rf bup src
+WVPASS bup init
+WVPASS mkdir -p src
+WVPASS echo 1 > src/1
+WVPASS echo 2 > src/2
+WVPASS bup index src
+WVPASS bup save --strip -n src src
+WVPASS echo 3 > src/3
+WVPASS bup index src
+WVPASS bup save --strip -n src src
+# Check that validate-refs thinks this is fine
+WVPASS bup validate-refs --links 2>&1 | tee validate.log
+WVPASS grep -vE '^missing ' validate.log
+WVPASS bup validate-refs --bupm 2>&1 | tee validate.log
+WVPASS grep -vE '^missing ' validate.log
+WVPASS bup validate-refs 2>&1 | tee validate.log
+WVPASS grep -vE '^missing ' validate.log
+# Now replace src:.bupm with the abridged one and test
+bupm_1_2_ent="$(WVPASS git ls-tree src~ | WVPASS grep -E $'\t\.bupm$')"
+broken_tree="$(WVPASS git ls-tree src | WVPASS sed -Ee "1s/.*/$bupm_1_2_ent/")"
+broken_tree_oid="$(echo "$broken_tree" | WVPASS git mktree)"
+broken_save=$(WVPASS git commit-tree "$broken_tree_oid" -p src -m 'abridged bupm')
+WVPASS git branch -f src "$broken_save"
+WVPASS bup validate-refs --links 2>&1 | tee validate.log
+WVPASS grep -vE '^missing ' validate.log
+WVPASS mkfifo done
+for args in --bupm ''; do
+    WVEXPRC 1 eval 'bup validate-refs $args 2> >(tee validate.log; : > done)'
+    WVFAIL read < done
+    WVPASSEQ 1 "$(grep -cE "abridged-bupm refs/heads/src [0-9a-f]{40}:\.bupm" validate.log)"
+done
+
+
+WVPASS cd "$top"
+WVPASS rm -rf "$tmpdir"

@@ -1,0 +1,174 @@
+#!/usr/bin/env bash
+. wvtest.sh
+. wvtest-bup.sh
+. dev/lib.sh
+
+set -o pipefail
+
+WVPASS cd "$(pwd)"
+top="$(WVPASS pwd)" || exit $?
+tmpdir="$(WVPASS wvmktempdir)" || exit $?
+export BUP_DIR="$tmpdir/bup"
+export BUP_DIR2="$tmpdir/bup2"
+export BUP_DIR3="$tmpdir/bup3"
+export BUP_DIR4="$tmpdir/bup4"
+export BUP_DIR5="$tmpdir/bup5"
+
+bup() { "$top/bup" "$@"; }
+
+WVPASS cd "$tmpdir"
+
+WVPASS bup init
+WVPASS bup -d "$BUP_DIR2" init
+WVPASS bup -d "$BUP_DIR3" init
+WVPASS bup -d "$BUP_DIR4" init
+
+WVPASS git config -f "$BUP_DIR4/config" bup.split.trees true
+WVPASS git config -f "$BUP_DIR4/config" bup.split.files legacy:14
+
+extract_all() {
+    WVPASSEQ $# 3
+    local repo="$1" ref="$2" dest="$3"
+    saves=$(bup -d "$repo" ls "$ref" | grep ^2) # good for another ~1000 years
+    for save in $saves ; do
+	bup -d "$repo" restore -q -C "$tmpdir/restore/$dest" "$ref/$save"
+    done
+}
+
+compare() {
+    WVPASSEQ $# 4
+    local src="$1" src_ref="$2" dst="$3" dst_ref="$4"
+    WVPASS extract_all "$src" "$src_ref" orig
+    WVPASS extract_all "$dst" "$dst_ref" new
+    touch -r "$tmpdir/restore/orig/" "$tmpdir/restore/new/"
+    WVPASS "$top/dev/compare-trees" \
+           "$tmpdir/restore/orig/" "$tmpdir/restore/new/"
+    WVPASS rm -rf "$tmpdir/restore"
+}
+
+WVSTART split and rewrite
+WVPASS bup split -n split < "$top/test/testfile1"
+WVPASS bup -d "$BUP_DIR2" get -s "$BUP_DIR" --append: split test
+WVPASS compare "$BUP_DIR" split "$BUP_DIR2" test
+
+WVSTART make multiple saves
+WVPASS bup index "$top/test/sampledata"
+WVPASS bup save -n save --strip "$top/test/sampledata"
+WVPASS bup save -n save --strip "$top/test/sampledata"
+WVPASS bup save -n save --strip "$top/test/sampledata"
+WVPASS bup save -n save --strip "$top/test/sampledata"
+
+WVSTART rewrite to different split
+WVPASS bup -d "$BUP_DIR" ls -l save
+WVPASS bup -d "$BUP_DIR4" get --rewrite -s "$BUP_DIR" --append save
+WVPASS compare "$BUP_DIR" save "$BUP_DIR4" save
+
+WVSTART "rewrite unchanged (to remote)"
+WVPASS bup get -r ":$BUP_DIR3" -s "$BUP_DIR" --append save
+WVPASS compare "$BUP_DIR" save "$BUP_DIR3" save
+WVPASSEQ "$(GIT_DIR="$BUP_DIR" WVPASS  git log --pretty=format:%T -n1 save)" \
+	 "$(GIT_DIR="$BUP_DIR3" WVPASS git log --pretty=format:%T -n1 save)"
+
+WVSTART rewrite after size not stored
+# now do a hack to save without saving the size in metadata ...
+WVPASS mkdir -p "$tmpdir/mod"
+cat > "$tmpdir/mod/metadata_encode_no_size.py" << EOF
+from copy import deepcopy
+from bup import metadata, vfs
+
+_orig_encode_common = metadata.Metadata._encode_common
+def _new_encode_common(self):
+    m = deepcopy(self).thaw()
+    m.size = None
+    print("encoding common with self.size None")
+    return _orig_encode_common(m)
+metadata.Metadata._encode_common = _new_encode_common
+
+vfs._compute_item_size = lambda repo, item: -1122334455
+EOF
+
+bup+()
+{
+    PYTHONPATH="$tmpdir/mod" bup --import-py-module metadata_encode_no_size "$@"
+}
+
+# force a re-save of the testfile1 to get it w/o size
+WVPASS bup index --fake-invalid "$top/test/sampledata/y/testfile1"
+WVPASS bup+ -d "$BUP_DIR" save -n save --strip "$top/test/sampledata"
+
+# check that we get the "unknown" size out
+WVPASS bup+ -d "$BUP_DIR" ls -l save/latest/y/testfile1 |
+    WVPASS grep -- -1122334455
+# and that augmentation worked
+WVPASS bup -d "$BUP_DIR" ls -l save/latest/y/testfile1 |
+    WVPASS grep -- 158664
+
+# now rewrite again - and then the size should be correct even without augmentation
+WVPASS bup -d "$BUP_DIR4" get --rewrite -s "$BUP_DIR" --append: save save2
+WVPASS bup+ -d "$BUP_DIR4" ls -l save/latest/y/testfile1 |
+    WVPASS grep -- 158664
+
+# and again for the other kind of splitting
+WVPASS bup -d "$BUP_DIR3" get --rewrite -s "$BUP_DIR" --append: save save2
+WVPASS bup+ -d "$BUP_DIR3" ls -l save2/latest/y/testfile1 |
+    WVPASS grep -- 158664
+
+WVSTART rewrite with excluded files
+WVPASS bup -d "$BUP_DIR5" init
+WVPASS bup -d "$BUP_DIR5" get --rewrite -s "$BUP_DIR4" --exclude-rx '^/y/' \
+       --append save
+WVPASS extract_all "$BUP_DIR4" "save" "orig"
+WVPASS extract_all "$BUP_DIR5" "save" "new"
+WVPASS rm -rf "$tmpdir/restore/orig/"*"/y/"
+# rm -rf changed timestamps - just ignore them
+touch -r "$tmpdir/restore/orig/" "$tmpdir/restore/orig/"*"/"
+touch -r "$tmpdir/restore/orig/" "$tmpdir/restore/new/"*"/"
+touch -r "$tmpdir/restore/orig/" "$tmpdir/restore/new/"
+WVPASS "$top/dev/compare-trees" "$tmpdir/restore/orig/" "$tmpdir/restore/new/"
+WVPASS rm -rf "$tmpdir/restore"
+
+WVSTART "rewrite with excluded files (in repo)"
+WVPASS git config -f "$BUP_DIR/config" bup.split.trees true
+WVPASS git config -f "$BUP_DIR/config" bup.split.files legacy:14
+WVPASS bup -d "$BUP_DIR" get --rewrite -s "$BUP_DIR" \
+   --exclude-rx '^/y/' --append: save save-new
+WVPASS extract_all "$BUP_DIR" "save" "orig"
+WVPASS extract_all "$BUP_DIR" "save-new" "new"
+rm -rf "$tmpdir/restore/orig/"*"/y/"
+# that rm -rf changed timestamps - just ignore them
+touch -r "$tmpdir/restore/orig/" "$tmpdir/restore/orig/"*"/"
+touch -r "$tmpdir/restore/orig/" "$tmpdir/restore/new/"*"/"
+touch -r "$tmpdir/restore/orig/" "$tmpdir/restore/new/"
+WVPASS "$top/dev/compare-trees" "$tmpdir/restore/orig/" "$tmpdir/restore/new/"
+WVPASS rm -rf "$tmpdir/restore"
+GIT_DIR="$BUP_DIR" WVPASS git ls-tree -r save^ > "$tmpdir/o"
+GIT_DIR="$BUP_DIR" WVPASS git ls-tree -r save-new^ > "$tmpdir/n"
+# FIXME: analyse the diff properly
+diff -u "$tmpdir/o" "$tmpdir/n"
+
+WVSTART "rewrite trees without .bupm"
+WVPASS rm -rf src repo
+WVPASS mkdir src
+# Test rewrite db cases with multiple versions of x (numbers ensure ordering)
+WVPASS date > src/x
+WVPASS cp -p src/x src/x-1-with-exec
+WVPASS cp -p src/x src/x-2-without-exec
+WVPASS chmod +x src/x-1-with-exec
+WVPASS date > src/y
+WVPASS bup init repo
+WVPASS git --git-dir repo --work-tree "$(pwd)" add src
+WVPASS git --git-dir repo --work-tree "$(pwd)" commit -am save
+WVPASS git --git-dir repo config bup.split.trees true
+WVPASS git --git-dir repo config bup.split.files legacy:16
+WVPASS bup -d repo get --rewrite -s repo --append: main main-rewrite
+WVPASSEQ "$(bup -d repo ls -ln main-rewrite/latest/src | tr -s ' ' ' ')" \
+'-rw-r--r-- ?/? 29 ????-??-?? ??:?? x
+-rwxr-xr-x ?/? 29 ????-??-?? ??:?? x-1-with-exec
+-rw-r--r-- ?/? 29 ????-??-?? ??:?? x-2-without-exec
+-rw-r--r-- ?/? 29 ????-??-?? ??:?? y'
+WVPASS git --git-dir repo ls-tree main-rewrite:src | WVPASS grep -vE '\.bupm$'
+WVPASS rm -rf repo restore src
+
+
+WVPASS cd "$top"
+WVPASS rm -rf "$tmpdir"

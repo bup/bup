@@ -64,7 +64,12 @@ disabled via `--numeric-ids` (which can be important when restoring a
 chroot, for example), and as a special case, a uid or gid of 0 will
 never be remapped by name.  Additionally, some systems don't allow
 setting a uid/gid that doesn't correspond with a known user/group.  On
-those systems, bup will log an error for each relevant path.
+those systems, bup will log an error for each relevant path. Any
+"synthetic" paths, for example a root directory affected by `bup save
+--graft`, will have group and world read/execute permissions as if via
+a umask of 022. Any paths whose metadata has been lost (perhaps via
+`bup get --repair`, or earlier versions of bup; see the taxonomy in
+DESIGN) will have restrictive permissions as if via a umask of 077.
 
 The `--map-user`, `--map-group`, `--map-uid`, `--map-gid` options may
 be used to adjust the available ownership information before any of

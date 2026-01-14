@@ -1,35 +1,50 @@
 
 from binascii import hexlify, unhexlify
 from collections import namedtuple
+from dataclasses import replace as dcreplace
+from re import Pattern
 from stat import S_ISDIR
-import os, sys, textwrap, time
+from textwrap import fill
+from typing import Optional, Union
+from uuid import uuid4
+import os, re, sys, textwrap, time
 
-from bup import compat, git, client, vfs
+from bup import client, compat, git, hashsplit, vfs
 from bup.commit import commit_message
-from bup.compat import argv_bytes
+from bup.compat import argv_bytes, dataclass, get_argvb
 from bup.config import derive_repo_addr
 from bup.git import MissingObject, get_cat_data, parse_commit, walk_object
 from bup.helpers import \
     (EXIT_FAILURE,
+     EXIT_RECOVERED,
      EXIT_SUCCESS,
      debug1,
      hostname,
      log,
      note_error,
+     nullctx,
      parse_num,
+     parse_rx_excludes,
+     saved_errors,
      tty_width)
 from bup.io import path_msg
 from bup.pwdgrp import userfullname, username
+from bup.repair import valid_repair_id
 from bup.repo import LocalRepo, make_repo
+from bup.rewrite import RepairInfo, Rewriter
+
 
 argspec = (
     "usage: bup get [-s source] [-r remote] (<--ff|--append|...> REF [DEST])...",
 
-    """Transfer data from a source repository to a destination repository
-    according to the methods specified (--ff, --ff:, --append, etc.).
-    Both repositories default to BUP_DIR.  A remote destination may be
-    specified with -r, and data may be pulled from a remote repository
-    with the related "bup on HOST get ..." command.""",
+    """Transfer data from a source repository to a destination
+    repository according to the methods specified (--ff, --ff:,
+    --append, etc.).  Both repositories default to BUP_DIR.  A remote
+    destination may be specified with -r, and data may be pulled from
+    a remote repository with the related "bup on HOST get ..."
+    command.  The --exclude-rx and --exclude-rx-from options currently
+    only apply to rewrites and repairs. Currently only --unnammed supports
+    "--ignore-missing".""",
 
     ('optional arguments:',
      (('-h, --help', 'show this help message and exit'),
@@ -43,7 +58,15 @@ argspec = (
       ('-t --print-trees', 'output a tree id for each ref set'),
       ('-c, --print-commits', 'output a commit id for each ref set'),
       ('--print-tags', 'output an id for each tag'),
+      ('--copy', 'copy the data (no rewriting or repairs; the default)'),
+      ('--rewrite', 'rewrite data according to destination repo settings'),
+      ('--repair', 'repair everything possible'),
+      ('--repair-id ID', 'repair session identifier (default: UUID v4)'),
+      ('--exclude-rx REGEX', 'skip paths matching the unanchored regex (may be repeated)'),
+      ('--exclude-rx-from PATH', 'skip --exclude-rx patterns in PATH (may be repeated)'),
+      ('--no-excludes', 'forget any preceeding exclude options'),
       ('--bwlimit BWLIMIT', 'maximum bytes/sec to transmit to server'),
+      ('--[no-]ignore-missing', 'ignore missing objects (*dangerous*)'),
       ('-0, -1, -2, -3, -4, -5, -6, -7, -8, -9, --compress LEVEL',
        'set compression LEVEL (default: 1)'))),
 
@@ -85,7 +108,7 @@ def usage(argspec, width=None):
     msg = []
     msg.append(textwrap.fill(usage, width=width, subsequent_indent='  '))
     msg.append('\n\n')
-    msg.append(textwrap.fill(preamble.replace('\n', ' '), width=width))
+    msg.append(textwrap.fill(re.sub(r'\n\s+', r' ', preamble), width=(width - 1)))
     msg.append('\n')
     for group_name, group_args in groups:
         msg.extend(['\n', group_name, '\n'])
@@ -108,7 +131,18 @@ def require_n_args_or_die(n, args):
     assert len(result[0]) == n
     return result
 
-Spec = namedtuple('Spec', ('method', 'src', 'dest'))
+@dataclass(slots=True, frozen=True)
+class Spec:
+    method: str
+    src: bytes
+    dest: bytes
+    ignore_missing: bool
+    repair_info: Optional[RepairInfo] = None
+    excludes: Optional[list[Pattern]] = None
+    rewriter: Optional[Union[bool, Rewriter]] = None
+    def __post_init__(self):
+        assert not (self.ignore_missing and self.repair_info), \
+            (self.ignore_missing, self.repair_info)
 
 def spec_msg(s):
     if not s.dest:
@@ -125,10 +159,53 @@ def parse_args(args):
     opt.print_commits = opt.print_trees = opt.print_tags = False
     opt.bwlimit = None
     opt.compress = None
-    opt.ignore_missing = False
     opt.source = opt.remote = None
     opt.target_specs = []
 
+    # Since we don't want to create a Rewriter until we've finished
+    # checking the requests (e.g. are past the resolvers), the spec's
+    # rewriter will be set to True to indicate that it needs the real
+    # Rewriter once we have it.
+    exclude_opts = []
+    ignore_missing = False
+    # mode: copy rewrite or repair (None implies copy for compatible configs)
+    mode = None
+    repair_id = None
+    def make_spec(method, src, dest):
+        assert mode in (None, 'copy', 'rewrite', 'repair'), mode
+        nonlocal repair_id
+        if ignore_missing:
+            if mode == 'repair':
+                misuse('--ignore-missing and --repair are incompatible')
+            elif mode == 'rewrite':
+                misuse('--ignore-missing and --rewrite are incompatible')
+            if method != 'unnamed':
+                misuse('currently only --unnamed allows --ignore-missing')
+        excludes = parse_rx_excludes(exclude_opts, misuse)
+        if excludes and not mode in ('rewrite', 'repair'):
+            misuse('--exclude-rx or --exclude-rx-from requires --rewrite or --repair')
+        # Set rw to None if no opinion has been expressed so we can
+        # require you to state what you want when src/dest repository
+        # configs differ (see target checks in get_everything).
+        rc = None
+        if mode in ('rewrite', 'repair'):
+            if method not in ('append', 'pick', 'force-pick'):
+                misuse(f'--{method} cannot {mode} (only picks and appends)')
+            if repair_id is None:
+                repair_id = str(uuid4()).encode('ascii')
+            rc = RepairInfo(id=repair_id, destructive=(mode == 'repair'),
+                            command=get_argvb())
+            rw = True
+        elif mode == 'copy': # explicitly specified no rewrite/repair
+            rw = False
+        elif mode is None:
+            rw = None
+        else:
+            raise Exception(f'invalid get target mode {mode!r}')
+        return Spec(method=method, src=src, dest=dest, excludes=excludes,
+                    rewriter=rw, ignore_missing=ignore_missing, repair_info=rc)
+
+    pending_method_context = {} # dict to preserve insertion order
     remaining = args[1:]  # Skip argv[0]
     while remaining:
         arg = remaining[0]
@@ -138,22 +215,38 @@ def parse_args(args):
         elif arg in (b'-v', b'--verbose'):
             opt.verbose += 1
             remaining = remaining[1:]
+        elif arg == b'--copy':
+            pending_method_context[arg] = True
+            mode, remaining = 'copy', remaining[1:]
+        elif arg == b'--repair':
+            pending_method_context[arg] = True
+            mode, remaining = 'repair', remaining[1:]
         elif arg == b'--ignore-missing':
-            opt.ignore_missing = True
-            remaining = remaining[1:]
+            pending_method_context[arg] = True
+            ignore_missing, remaining = True, remaining[1:]
         elif arg == b'--no-ignore-missing':
-            opt.ignore_missing = False
-            remaining = remaining[1:]
+            pending_method_context[arg] = True
+            ignore_missing, remaining = False, remaining[1:]
+        elif arg == b'--repair-id':
+            pending_method_context[arg] = True
+            (val,), remaining = require_n_args_or_die(1, remaining)
+            if not val:
+                misuse('empty --repair-id')
+            if not valid_repair_id(val):
+                misuse('--repair-id must be ASCII without control characters or DEL')
+            repair_id = val
         elif arg in (b'--ff', b'--append', b'--pick', b'--force-pick',
                      b'--new-tag', b'--replace', b'--unnamed'):
             (ref,), remaining = require_n_args_or_die(1, remaining)
-            opt.target_specs.append(Spec(method=arg[2:].decode('ascii'),
-                                         src=ref, dest=None))
+            opt.target_specs.append(make_spec(method=arg[2:].decode('ascii'),
+                                              src=ref, dest=None))
+            pending_method_context = {}
         elif arg in (b'--ff:', b'--append:', b'--pick:', b'--force-pick:',
                      b'--new-tag:', b'--replace:'):
             (ref, dest), remaining = require_n_args_or_die(2, remaining)
-            opt.target_specs.append(Spec(method=arg[2:-1].decode('ascii'),
-                                         src=ref, dest=dest))
+            opt.target_specs.append(make_spec(method=arg[2:-1].decode('ascii'),
+                                              src=ref, dest=dest))
+            pending_method_context = {}
         elif arg in (b'-s', b'--source'):
             (opt.source,), remaining = require_n_args_or_die(1, remaining)
         elif arg in (b'-r', b'--remote'):
@@ -164,6 +257,16 @@ def parse_args(args):
             opt.print_trees, remaining = True, remaining[1:]
         elif arg == b'--print-tags':
             opt.print_tags, remaining = True, remaining[1:]
+        elif arg == b'--rewrite':
+            pending_method_context[arg] = True
+            mode, remaining = 'rewrite', remaining[1:]
+        elif arg in (b'--exclude-rx', b'--exclude-rx-from'): # handled later
+            pending_method_context[arg] = True
+            (val,), remaining = require_n_args_or_die(1, remaining)
+            exclude_opts.append((arg, val))
+        elif arg == b'--no-excludes':
+            pending_method_context[arg] = True
+            exclude_opts, remaining = [], remaining[1:]
         elif arg in (b'-0', b'-1', b'-2', b'-3', b'-4', b'-5', b'-6', b'-7',
                      b'-8', b'-9'):
             opt.compress = int(arg[1:])
@@ -182,17 +285,17 @@ def parse_args(args):
             # FIXME
             continue
         else:
-            misuse()
-    for target in opt.target_specs:
-        if opt.ignore_missing and target.method != 'unnamed':
-            misuse('currently only --unnamed allows --ignore-missing')
+            misuse(f'unrecognized argument: {path_msg(arg)}')
+    if pending_method_context:
+        ctx_msg = ' '. join(path_msg(x) for x in pending_method_context.keys())
+        misuse(f'trailing arguments with no effect: {ctx_msg}')
     return opt
 
 # FIXME: client error handling (remote exceptions, etc.)
 
 # FIXME: walk_object in in git.py doesn't support opt.verbose.  Do we
 # need to adjust for that here?
-def get_random_item(name, hash, src_repo, dest_repo, opt):
+def get_random_item(name, hash, src_repo, dest_repo, ignore_missing):
     def already_seen(oid):
         return dest_repo.exists(unhexlify(oid))
     def get_ref(oidx, include_data=False):
@@ -202,7 +305,7 @@ def get_random_item(name, hash, src_repo, dest_repo, opt):
                             include_data=True, result='item'):
         assert isinstance(item, git.WalkItem)
         if item.data is False:
-            if not opt.ignore_missing:
+            if not ignore_missing:
                 raise MissingObject(item.oid)
             note_error(f'skipping missing source object {item.oid.hex()}\n')
             continue
@@ -230,28 +333,92 @@ def get_random_item(name, hash, src_repo, dest_repo, opt):
         dest_repo.just_write(item.oid, item.type, item.data)
 
 
-def append_commit(name, hash, parent, src_repo, dest_repo, opt):
+@dataclass(slots=True, frozen=True)
+class GetResult:
+    oid: Optional[bytes] = None
+    tree: Optional[bytes] = None
+    repairs: int = 0
+
+
+def transfer_commit(name, hash, parent, src_repo, dest_repo, ignore_missing):
     now = time.time()
     items = parse_commit(get_cat_data(src_repo.cat(hash), b'commit'))
     tree = unhexlify(items.tree)
     author = b'%s <%s>' % (items.author_name, items.author_mail)
     author_time = (items.author_sec, items.author_offset)
     committer = b'%s <%s@%s>' % (userfullname(), username(), hostname())
-    get_random_item(name, hexlify(tree), src_repo, dest_repo, opt)
+    get_random_item(name, hexlify(tree), src_repo, dest_repo, ignore_missing)
     c = dest_repo.write_commit(tree, parent,
                                author, items.author_sec, items.author_offset,
                                committer, now, None,
                                items.message)
-    return c, tree
+    return GetResult(c, tree)
 
 
-def append_commits(commits, src_name, dest_hash, src_repo, dest_repo, opt):
-    last_c, tree = dest_hash, None
+def append_commit(src_loc, parent, src_repo, dest_repo, rewriter, excludes,
+                  repair_info, ignore_missing):
+    if not rewriter:
+        assert isinstance(src_loc, (bytes, Loc)), src_loc
+        oidx = src_loc if isinstance(src_loc, bytes) else hexlify(src_loc.hash)
+        return transfer_commit(None, # unused
+                               oidx, parent, src_repo, dest_repo,
+                               ignore_missing)
+
+    # Friendlier checking was done during resolve_*
+    assert isinstance(src_loc, Loc), src_loc
+    path = src_loc.vfs_path
+    assert len(path) == 3, path
+    root, ref, save = path
+    assert isinstance(save[1], (vfs.Commit, vfs.FakeLink)), path
+    assert isinstance(ref[1], vfs.RevList), path
+    save_oid, tree_oid, repairs = \
+        rewriter.append_save(path, parent, src_repo, dest_repo, excludes,
+                             repair_info)
+    return GetResult(save_oid, tree_oid, repairs.repair_count())
+
+def append_commits(src_loc, dest_hash, src_repo, dest_repo, rewriter, excludes,
+                   repair_info, ignore_missing):
+    if not rewriter:
+        commits = list(src_repo.rev_list(hexlify(src_loc.hash)))
+        commits.reverse()
+        last_c, tree = dest_hash, None
+        for commit in commits:
+            res = append_commit(commit, last_c, src_repo, dest_repo, rewriter,
+                                excludes, repair_info, ignore_missing)
+            last_c = res.oid
+            tree = res.tree
+            assert res.repairs == 0
+        assert tree is not None
+        return GetResult(last_c, tree)
+
+    # Friendlier checking was done during resolve_*
+    assert isinstance(src_loc, Loc), src_loc
+    assert src_loc.type in ('branch', 'commit', 'save'), src_loc
+    path = src_loc.vfs_path
+    assert len(path) == 2, path
+    root, ref = path
+    assert isinstance(ref[1], vfs.RevList), ref[1]
+
+    # We need both the VFS name (YYYY-MM-DD[-N]), and the rev-list
+    # order, so for now, cross-reference rev-list with contents().
+    entry_for_coid = {}
+    for entry in vfs.contents(src_repo, path[1][1]):
+        if entry[0] in (b'.', b'..', b'latest'):
+            continue
+        entry_for_coid[entry[1].coid] = entry
+
+    commits = list(src_repo.rev_list(hexlify(src_loc.hash)))
+    commits.reverse()
+
+    last_c, tree, repair_count = dest_hash, None, 0
     for commit in commits:
-        last_c, tree = append_commit(src_name, commit, last_c,
-                                     src_repo, dest_repo, opt)
-    assert(tree is not None)
-    return last_c, tree
+        coid = unhexlify(commit)
+        last_c, tree, repairs = \
+            rewriter.append_save(path + (entry_for_coid[coid],), last_c,
+                                 src_repo, dest_repo, excludes, repair_info)
+        repair_count += repairs.repair_count()
+    assert tree is not None
+    return GetResult(last_c, tree, repair_count)
 
 
 GitLoc = namedtuple('GitLoc', ('ref', 'hash', 'type'))
@@ -266,14 +433,15 @@ def find_git_item(ref, repo):
     return GitLoc(ref, unhexlify(oidx), typ)
 
 
-Loc = namedtuple('Loc', ['type', 'hash', 'path'])
-default_loc = Loc(None, None, None)
+Loc = namedtuple('Loc', ['type', 'hash', 'path', 'vfs_path'])
+default_loc = Loc(None, None, None, None)
 
 def find_vfs_item(name, repo):
     res = repo.resolve(name, follow=False, want_meta=False)
     leaf_name, leaf_item = res[-1]
     if not leaf_item:
         return None
+    vfs_path = res
     kind = type(leaf_item)
     if kind == vfs.Root:
         kind = 'root'
@@ -309,11 +477,11 @@ def find_vfs_item(name, repo):
                         % (path_msg(name), res))
     path = b'/'.join(name for name, item in res)
     if hasattr(leaf_item, 'coid'):
-        result = Loc(type=kind, hash=leaf_item.coid, path=path)
+        result = Loc(type=kind, hash=leaf_item.coid, path=path, vfs_path=vfs_path)
     elif hasattr(leaf_item, 'oid'):
-        result = Loc(type=kind, hash=leaf_item.oid, path=path)
+        result = Loc(type=kind, hash=leaf_item.oid, path=path, vfs_path=vfs_path)
     else:
-        result = Loc(type=kind, hash=None, path=path)
+        result = Loc(type=kind, hash=None, path=path, vfs_path=vfs_path)
     return result
 
 
@@ -342,7 +510,7 @@ def validate_vfs_path(p, spec):
     return p
 
 
-def resolve_src(spec, src_repo, *, allow=None, ignore_missing=False):
+def resolve_src(spec, src_repo, *, allow=None):
     assert allow in (None, 'git')
     spec_args = spec_msg(spec)
     if spec.src.startswith(b'git:'):
@@ -356,7 +524,7 @@ def resolve_src(spec, src_repo, *, allow=None, ignore_missing=False):
                 misuse('cannot fetch entire repository for %s' % spec_args)
             if src.type == 'tags':
                 misuse('cannot fetch entire /.tag directory for %s' % spec_args)
-    if not (src or ignore_missing):
+    if not (src or spec.ignore_missing):
         misuse('cannot find source for %s' % spec_args)
     debug1('src: %s\n' % loc_desc(src))
     return src
@@ -377,11 +545,11 @@ def resolve_branch_dest(spec, src, src_repo, dest_repo):
     if not spec.dest:
         # Pick a default dest.
         if src.type == 'branch':
-            spec = spec._replace(dest=spec.src)
+            spec = dcreplace(spec, dest=spec.src)
         elif src.type == 'save':
-            spec = spec._replace(dest=get_save_branch(src_repo, spec.src))
+            spec = dcreplace(spec, dest=get_save_branch(src_repo, spec.src))
         elif src.path.startswith(b'/.tag/'):  # Dest defaults to the same.
-            spec = spec._replace(dest=spec.src)
+            spec = dcreplace(spec, dest=spec.src)
 
     spec_args = spec_msg(spec)
     if not spec.dest:
@@ -406,6 +574,8 @@ def resolve_branch_dest(spec, src, src_repo, dest_repo):
 
 
 def resolve_ff(spec, src_repo, dest_repo):
+    assert not spec.rewriter, spec
+    assert not spec.ignore_missing, spec
     src = resolve_src(spec, src_repo)
     spec_args = spec_msg(spec)
     if src.type == 'tree':
@@ -418,16 +588,17 @@ def resolve_ff(spec, src_repo, dest_repo):
     return Target(spec=spec, src=src, dest=dest)
 
 
-def handle_ff(item, src_repo, dest_repo, opt):
+def handle_ff(item, src_repo, dest_repo):
     assert item.spec.method == 'ff'
     assert item.src.type in ('branch', 'save', 'commit')
     src_oidx = hexlify(item.src.hash)
     dest_oidx = hexlify(item.dest.hash) if item.dest.hash else None
     if not dest_oidx or dest_oidx in src_repo.rev_list(src_oidx):
         # Can fast forward.
-        get_random_item(item.spec.src, src_oidx, src_repo, dest_repo, opt)
+        get_random_item(item.spec.src, src_oidx, src_repo, dest_repo,
+                        item.spec.ignore_missing)
         commit_items = parse_commit(get_cat_data(src_repo.cat(src_oidx), b'commit'))
-        return item.src.hash, unhexlify(commit_items.tree)
+        return GetResult(item.src.hash, unhexlify(commit_items.tree))
     misuse('destination is not an ancestor of source for %s'
            % spec_msg(item.spec))
     # misuse() doesn't return
@@ -435,21 +606,37 @@ def handle_ff(item, src_repo, dest_repo, opt):
 
 
 def resolve_append(spec, src_repo, dest_repo):
+    assert not spec.ignore_missing
     src = resolve_src(spec, src_repo)
     if src.type not in ('branch', 'save', 'commit', 'tree'):
         misuse('source for %s must be a branch, save, commit, or tree, not %s'
               % (spec_msg(spec), src.type))
     spec, dest = resolve_branch_dest(spec, src, src_repo, dest_repo)
+    if spec.rewriter:
+        def vpm(path):
+            return path_msg(b"/".join(x[0] for x in src_path))
+        if not isinstance(src, Loc):
+            misuse(f'cannot currently rewrite git location {src}')
+        src_path = src.vfs_path
+        if len(src_path) != 2:
+            misuse(f'cannot append {vpm(src_path)}')
+        root, src_ref = src_path
+        if not isinstance(src_ref[1], vfs.RevList):
+            misuse(f'cannot append {vpm(src_path)} saves'
+                   f' ({path_msg(src_ref[0])} is a {type(src_ref[1])})')
     return Target(spec=spec, src=src, dest=dest)
 
 
-def handle_append(item, src_repo, dest_repo, opt):
+def handle_append(item, src_repo, dest_repo):
     assert item.spec.method == 'append'
     assert item.src.type in ('branch', 'save', 'commit', 'tree')
     assert item.dest.type == 'branch' or not item.dest.type
-    src_oidx = hexlify(item.src.hash)
     if item.src.type == 'tree':
-        get_random_item(item.spec.src, src_oidx, src_repo, dest_repo, opt)
+        src_oidx = hexlify(item.src.hash)
+        if item.spec.rewriter:
+            misuse(f'rewrite cannot yet promote tree to commit for {spec_msg(item.spec)}')
+        get_random_item(item.spec.src, src_oidx, src_repo, dest_repo,
+                        item.spec.ignore_missing)
         parent = item.dest.hash
         msg = commit_message(b'bup get', compat.get_argvb())
         userline = b'%s <%s@%s>' % (userfullname(), username(), hostname())
@@ -457,30 +644,33 @@ def handle_append(item, src_repo, dest_repo, opt):
         commit = dest_repo.write_commit(item.src.hash, parent,
                                         userline, now, None,
                                         userline, now, None, msg)
-        return commit, item.src.hash
-    commits = list(src_repo.rev_list(src_oidx))
-    commits.reverse()
+        return GetResult(commit, item.src.hash)
     if item.dest.hash:
         assert item.dest.type in ('branch', 'commit', 'save'), item.dest
-    return append_commits(commits, item.spec.src, item.dest.hash,
-                          src_repo, dest_repo, opt)
+    return append_commits(item.src, item.dest.hash, src_repo, dest_repo,
+                          item.spec.rewriter, item.spec.excludes,
+                          item.spec.repair_info, item.spec.ignore_missing)
 
 
 def resolve_pick(spec, src_repo, dest_repo):
+    assert not spec.ignore_missing
     src = resolve_src(spec, src_repo)
     spec_args = spec_msg(spec)
     if src.type == 'tree':
         misuse('%s is impossible; can only --append a tree' % spec_args)
     if src.type not in ('commit', 'save'):
         misuse('%s impossible; can only pick a commit or save, not %s'
-              % (spec_args, src.type))
+               % (spec_args, src.type))
     if not spec.dest:
         if src.path.startswith(b'/.tag/'):
-            spec = spec._replace(dest=spec.src)
+            spec = dcreplace(spec, dest=spec.src)
         elif src.type == 'save':
-            spec = spec._replace(dest=get_save_branch(src_repo, spec.src))
+            spec = dcreplace(spec, dest=get_save_branch(src_repo, spec.src))
     if not spec.dest:
         misuse('no destination provided for %s' % spec_args)
+    if spec.rewriter:
+        if src.type != 'save':
+            misuse(f'cannot currently --rewrite a {src.type}')
     dest = find_vfs_item(spec.dest, dest_repo)
     if not dest:
         cp = validate_vfs_path(cleanup_vfs_path(spec.dest), spec)
@@ -496,26 +686,30 @@ def resolve_pick(spec, src_repo, dest_repo):
     return Target(spec=spec, src=src, dest=dest)
 
 
-def handle_pick(item, src_repo, dest_repo, opt):
+def handle_pick(item, src_repo, dest_repo):
     assert item.spec.method in ('pick', 'force-pick')
     assert item.src.type in ('save', 'commit')
-    src_oidx = hexlify(item.src.hash)
     if item.dest.hash:
         # if the dest is committish, make it the parent
         if item.dest.type in ('branch', 'commit', 'save'):
-            return append_commit(item.spec.src, src_oidx, item.dest.hash,
-                                 src_repo, dest_repo, opt)
+            return append_commit(item.src, item.dest.hash, src_repo, dest_repo,
+                                 item.spec.rewriter, item.spec.excludes,
+                                 item.spec.repair_info, item.spec.ignore_missing)
         assert item.dest.path.startswith(b'/.tag/'), item.dest
     # no parent; either dest is a non-commit tag and we should clobber
     # it, or dest doesn't exist.
-    return append_commit(item.spec.src, src_oidx, None, src_repo, dest_repo, opt)
+    return append_commit(item.src, None, src_repo, dest_repo,
+                         item.spec.rewriter, item.spec.excludes,
+                         item.spec.repair_info, item.spec.ignore_missing)
 
 
 def resolve_new_tag(spec, src_repo, dest_repo):
+    assert not spec.rewriter, spec
+    assert not spec.ignore_missing, spec
     src = resolve_src(spec, src_repo)
     spec_args = spec_msg(spec)
     if not spec.dest and src.path.startswith(b'/.tag/'):
-        spec = spec._replace(dest=src.path)
+        spec = dcreplace(spec, dest=src.path)
     if not spec.dest:
         misuse('no destination (implicit or explicit) for %s' % spec_args)
     dest = find_vfs_item(spec.dest, dest_repo)
@@ -529,20 +723,22 @@ def resolve_new_tag(spec, src_repo, dest_repo):
     return Target(spec=spec, src=src, dest=dest)
 
 
-def handle_new_tag(item, src_repo, dest_repo, opt):
+def handle_new_tag(item, src_repo, dest_repo):
     assert item.spec.method == 'new-tag'
     assert item.dest.path.startswith(b'/.tag/')
     get_random_item(item.spec.src, hexlify(item.src.hash),
-                    src_repo, dest_repo, opt)
-    return (item.src.hash,)
+                    src_repo, dest_repo, item.spec.ignore_missing)
+    return GetResult(item.src.hash)
 
 
 def resolve_replace(spec, src_repo, dest_repo):
+    assert not spec.rewriter, spec
+    assert not spec.ignore_missing, spec
     src = resolve_src(spec, src_repo)
     spec_args = spec_msg(spec)
     if not spec.dest:
         if src.path.startswith(b'/.tag/') or src.type == 'branch':
-            spec = spec._replace(dest=spec.src)
+            spec = dcreplace(spec, dest=spec.src)
     if not spec.dest:
         misuse('no destination provided for %s' % spec_args)
     dest = find_vfs_item(spec.dest, dest_repo)
@@ -559,35 +755,37 @@ def resolve_replace(spec, src_repo, dest_repo):
     return Target(spec=spec, src=src, dest=dest)
 
 
-def handle_replace(item, src_repo, dest_repo, opt):
+def handle_replace(item, src_repo, dest_repo):
     assert(item.spec.method == 'replace')
     if item.dest.path.startswith(b'/.tag/'):
         get_random_item(item.spec.src, hexlify(item.src.hash),
-                        src_repo, dest_repo, opt)
-        return (item.src.hash,)
+                        src_repo, dest_repo, item.spec.ignore_missing)
+        return GetResult(item.src.hash)
     assert(item.dest.type == 'branch' or not item.dest.type)
     src_oidx = hexlify(item.src.hash)
-    get_random_item(item.spec.src, src_oidx, src_repo, dest_repo, opt)
+    get_random_item(item.spec.src, src_oidx, src_repo, dest_repo,
+                    item.spec.ignore_missing)
     commit_items = parse_commit(get_cat_data(src_repo.cat(src_oidx), b'commit'))
-    return item.src.hash, unhexlify(commit_items.tree)
+    return GetResult(item.src.hash, unhexlify(commit_items.tree))
 
 
-def resolve_unnamed(spec, src_repo, dest_repo, *, ignore_missing):
+def resolve_unnamed(spec, src_repo, dest_repo):
+    assert not spec.rewriter, spec
     if spec.dest:
         misuse('destination name given for %s' % spec_msg(spec))
-    src = resolve_src(spec, src_repo, allow='git', ignore_missing=ignore_missing)
+    src = resolve_src(spec, src_repo, allow='git')
     if src:
         return Target(spec=spec, src=src, dest=None)
     return None
 
 
-def handle_unnamed(item, src_repo, dest_repo, opt):
+def handle_unnamed(item, src_repo, dest_repo):
     get_random_item(item.spec.src, hexlify(item.src.hash),
-                    src_repo, dest_repo, opt)
-    return (None,)
+                    src_repo, dest_repo, item.spec.ignore_missing)
+    return GetResult()
 
 
-def resolve_targets(specs, src_repo, dest_repo, *, ignore_missing):
+def resolve_targets(specs, src_repo, dest_repo):
     resolved_items = []
     common_args = src_repo, dest_repo
     for spec in specs:
@@ -603,8 +801,7 @@ def resolve_targets(specs, src_repo, dest_repo, *, ignore_missing):
         elif spec.method == 'replace':
             resolved_items.append(resolve_replace(spec, *common_args))
         elif spec.method == 'unnamed':
-            tgt = resolve_unnamed(spec, *common_args,
-                                  ignore_missing=ignore_missing)
+            tgt = resolve_unnamed(spec, *common_args)
             if tgt:
                 resolved_items.append(tgt)
         else: # Should be impossible -- prevented by the option parser.
@@ -644,24 +841,45 @@ def log_item(name, type, opt, tree=None, commit=None, tag=None):
                 last = '/'
         log('%s%s\n' % (path_msg(name), last))
 
-def main(argv):
-    opt = parse_args(argv)
-    git.check_repo_or_die()
-    if opt.source:
-        opt.source = argv_bytes(opt.source)
-    if opt.bwlimit:
-        client.bwlimit = parse_num(opt.bwlimit)
 
-    with make_repo(derive_repo_addr(remote=opt.remote, die=misuse),
+def get_everything(opt):
+    repair_count = 0
+    with LocalRepo(repo_dir=opt.source) as src_repo, \
+         make_repo(derive_repo_addr(remote=opt.remote, die=misuse),
                    compression_level=opt.compress) as dest_repo:
-        with LocalRepo(repo_dir=opt.source) as src_repo:
-            # Resolve and validate all sources and destinations,
-            # implicit or explicit, and do it up-front, so we can
-            # fail before we start writing (for any obviously
-            # broken cases).
-            target_items = resolve_targets(opt.target_specs,
-                                           src_repo, dest_repo,
-                                           ignore_missing=opt.ignore_missing)
+
+        src_split_cfg = hashsplit.configuration(src_repo.config_get)
+        dest_split_cfg = hashsplit.configuration(dest_repo.config_get)
+
+        # For now, --rewrite is never implict
+        rewrite = False
+        for spec in opt.target_specs:
+            if spec.rewriter is not None:
+                rewrite = True
+            elif src_split_cfg != dest_split_cfg:
+                misuse('repository configs differ; need --[no-]rewrite before'
+                       f' {spec_msg(spec)}')
+
+        # Resolve and validate all sources and destinations, implicit
+        # or explicit, combinations of methods and modes (rewrite,
+        # missing, etc.) and do it up-front, so we can fail before we
+        # start writing (for any obviously broken cases).  Do this
+        # before creating any database via the Rewriter.
+        target_items = resolve_targets(opt.target_specs, src_repo, dest_repo)
+
+        # The current arrangement relies on the assumption that any
+        # (sub)tree created by a --rewrite is exactly the same tree
+        # that --repair would create. If we ever need to change that,
+        # then we'll need to drop the relevant dirs from the rewriter
+        # (db) when switching from a --rewrite to a
+        # --repair. (Regarding the converse, --repairs just never
+        # record directory trees in the database.)
+        with (Rewriter(split_cfg=dest_split_cfg) if rewrite else nullctx) \
+             as rewriter:
+
+            target_items = [(x if not x.spec.rewriter
+                             else x._replace(spec=dcreplace(x.spec, rewriter=rewriter)))
+                            for x in target_items]
 
             updated_refs = {}  # ref_name -> (original_ref, tip_commit(bin))
             no_ref_info = (None, None)
@@ -693,21 +911,19 @@ def main(argv):
                 cur_ref = cur_ref or dest_hash
 
                 handler = handlers[item.spec.method]
-                item_result = handler(item, src_repo, dest_repo, opt)
-                if len(item_result) > 1:
-                    new_id, tree = item_result
-                else:
-                    new_id = item_result[0]
+                get_res = handler(item, src_repo, dest_repo)
+                repair_count += get_res.repairs
 
                 if not dest_ref:
                     log_item(item.spec.src, item.src.type, opt)
                 else:
-                    updated_refs[dest_ref] = (orig_ref, new_id)
+                    updated_refs[dest_ref] = (orig_ref, get_res.oid)
                     if dest_ref.startswith(b'refs/tags/'):
-                        log_item(item.spec.src, item.src.type, opt, tag=new_id)
+                        log_item(item.spec.src, item.src.type, opt,
+                                 tag=get_res.oid)
                     else:
                         log_item(item.spec.src, item.src.type, opt,
-                                 tree=tree, commit=new_id)
+                                 tree=get_res.tree, commit=get_res.oid)
 
         # Only update the refs at the very end, once the destination repo
         # finished writing, so that if something goes wrong above, the old
@@ -718,10 +934,32 @@ def main(argv):
                 dest_repo.update_ref(ref_name, new_ref, orig_ref)
                 if opt.verbose:
                     new_hex = hexlify(new_ref).decode('ascii')
+                    ref_msg = path_msg(ref_name)
                     if orig_ref:
                         orig_hex = hexlify(orig_ref).decode('ascii')
-                        log('updated %r (%s -> %s)\n' % (ref_name, orig_hex, new_hex))
+                        log(f'updated {ref_msg} ({orig_hex} -> {new_hex})\n')
                     else:
-                        log('updated %r (%s)\n' % (ref_name, new_hex))
+                        log(f'updated {ref_msg} ({new_hex})\n')
             except (git.GitError, client.ClientError) as ex:
                 note_error('unable to update ref %r: %s\n' % (ref_name, ex))
+
+    if repair_count and not saved_errors:
+        msg = ('Repairs were needed and successful; see above. Additional'
+               ' information may be found in the git log. Search for '
+               ' "Repair-ID:" in "git --git-dir REPO log ..." for the related'
+               ' references.\n')
+        log(f'\n{fill(msg, width=tty_width(), break_on_hyphens=False)}\n')
+        return EXIT_RECOVERED
+    return 0
+
+def main(argv):
+    opt = parse_args(argv)
+    git.check_repo_or_die()
+    if opt.source:
+        opt.source = argv_bytes(opt.source)
+    if opt.bwlimit:
+        client.bwlimit = parse_num(opt.bwlimit)
+    if not opt.target_specs:
+        misuse('no methods specified')
+
+    return get_everything(opt)

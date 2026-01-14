@@ -30,6 +30,7 @@ from bup.helpers import \
      stripped_path_components,
      valid_save_name)
 from bup.io import byte_stream, path_msg
+from bup.metadata import empty_metadata
 from bup.path import default_fsindex, flat_fsindex
 from bup.pwdgrp import userfullname, username
 from bup.tree import Stack
@@ -122,7 +123,7 @@ def opts_from_cmdline(o, argv):
 
     return opt
 
-def save_tree(opt, reader, hlink_db, msr, repo, split_trees, split_cfg):
+def save_tree(opt, reader, hlink_db, msr, repo, split_cfg):
     # Metadata is stored in a file named .bupm in each directory.  The
     # first metadata entry will be the metadata for the current directory.
     # The remaining entries will be for each of the other directory
@@ -139,7 +140,7 @@ def save_tree(opt, reader, hlink_db, msr, repo, split_trees, split_cfg):
 
     # Maintain a stack of information representing the current location in
 
-    stack = Stack(split_cfg, split_trees=split_trees)
+    stack = Stack(repo, split_cfg)
 
     prog_count = 0
     prog_subcount = 0
@@ -301,7 +302,7 @@ def save_tree(opt, reader, hlink_db, msr, repo, split_trees, split_cfg):
 
         # If switching to a new sub-tree, finish the current sub-tree.
         while stack.path() > [x[0] for x in dirp]:
-            _ = stack.pop(repo)
+            _ = stack.pop()
 
         # If switching to a new sub-tree, start a new sub-tree.
         for path_component in dirp[len(stack):]:
@@ -309,11 +310,11 @@ def save_tree(opt, reader, hlink_db, msr, repo, split_trees, split_cfg):
             # Not indexed, so just grab the FS metadata or use empty metadata.
             try:
                 meta = metadata.from_path(fs_path, normalized=True) \
-                    if fs_path else metadata.Metadata()
+                    if fs_path else empty_metadata
             except (OSError, IOError) as e:
                 add_error(e)
                 lastskip_name = dir_name
-                meta = metadata.Metadata()
+                meta = empty_metadata
             stack.push(dir_name, meta)
 
         if not file:
@@ -321,7 +322,7 @@ def save_tree(opt, reader, hlink_db, msr, repo, split_trees, split_cfg):
                 continue # We're at the top level -- keep the current root dir
             # Since there's no filename, this is a subdir -- finish it.
             oldtree = already_saved_oid # may be False
-            newtree = stack.pop(repo, override_tree=oldtree)
+            newtree = stack.pop(override_tree=oldtree)
             if not oldtree:
                 if lastskip_name and lastskip_name.startswith(ent.name):
                     ent.invalidate()
@@ -334,10 +335,11 @@ def save_tree(opt, reader, hlink_db, msr, repo, split_trees, split_cfg):
 
         # it's not a directory
         if already_saved_oid:
-            meta = msr.metadata_at(ent.meta_ofs)
+            meta = msr.metadata_at(ent.meta_ofs).thaw()
             meta.hardlink_target = find_hardlink_target(hlink_db, ent)
             # Restore the times that were cleared to 0 in the metastore.
-            (meta.atime, meta.mtime, meta.ctime) = (ent.atime, ent.mtime, ent.ctime)
+            meta.atime, meta.mtime, meta.ctime = ent.atime, ent.mtime, ent.ctime
+            meta.freeze()
             stack.append_to_current(file, ent.mode, ent.gitmode, ent.sha, meta)
         else:
             id = None
@@ -374,7 +376,7 @@ def save_tree(opt, reader, hlink_db, msr, repo, split_trees, split_cfg):
                     # if the other stat() data might be slightly older than the file
                     # content (which we can't fix, this is inherently racy, but we
                     # can prevent the size mismatch.)
-                    meta.size = 0
+                    meta.thaw().size = 0
                     def write_data(data):
                         meta.size += len(data)
                         return repo.write_data(data)
@@ -383,6 +385,7 @@ def save_tree(opt, reader, hlink_db, msr, repo, split_trees, split_cfg):
                         mode, id = \
                             split_to_blob_or_tree(write_data, repo.write_tree,
                                                   hashsplit.from_config([f], split_cfg))
+                    meta.freeze()
                 except (IOError, OSError) as e:
                     add_error('%s: %s' % (ent.name, e))
                     lastskip_name = ent.name
@@ -413,12 +416,12 @@ def save_tree(opt, reader, hlink_db, msr, repo, split_trees, split_cfg):
 
     # pop all parts above the root folder
     while len(stack) > 1:
-        stack.pop(repo)
+        stack.pop()
 
     # Finish the root directory.
     # When there's a collision, use empty metadata for the root.
-    root_meta = metadata.Metadata() if root_collision else None
-    tree = stack.pop(repo, override_meta=root_meta)
+    root_meta = empty_metadata if root_collision else None
+    tree = stack.pop(override_meta=root_meta)
 
     return tree
 
@@ -451,7 +454,6 @@ def main(argv):
             split_cfg = hashsplit.configuration(repo.config_get)
         except ConfigError as ex:
             opt_parser.fatal(ex)
-        split_trees = repo.config_get(b'bup.split.trees', opttype='bool')
         sys.stdout.flush()
         out = byte_stream(sys.stdout)
 
@@ -474,8 +476,7 @@ def main(argv):
         with msr, \
              hlinkdb.HLinkDB(fsindex.hlink) as hlink_db, \
              index.Reader(fsindex.stat) as reader:
-            tree = save_tree(opt, reader, hlink_db, msr, repo, split_trees,
-                             split_cfg)
+            tree = save_tree(opt, reader, hlink_db, msr, repo, split_cfg)
         if opt.tree:
             out.write(hexlify(tree))
             out.write(b'\n')

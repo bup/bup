@@ -12,12 +12,15 @@ bup get \[-s *source-path*\] \[-r *host*:*path*\]  OPTIONS \<(METHOD *ref* [*des
 
 # DESCRIPTION
 
-`bup get` copies the indicated *ref*s from the source repository to
+`bup get` transfers the indicated *ref*s from the source repository to
 the destination repository (respecting `--bup-dir` and `BUP_DIR`),
 according to the specified METHOD, which may be one of `--ff`,
 `--ff:`, `--append`, `--append:`, `--pick`, `--pick:`, `--force-pick`,
 `--force-pick:`, `--new-tag`, `--new-tag:`, `--replace`, `--replace:`,
-or `--unnamed`.  See the EXAMPLES below for a quick introduction.
+or `--unnamed`.  By default it will `--copy` the data without
+alteration, but it can also `--rewrite` it, potentially changing the
+deduplication granularity, and `--repair` some kinds of damage. See
+the EXAMPLES below for a quick introduction.
 
 The *ref* is the source repository reference of the object to be
 fetched, and the *dest* is the optional destination reference.  A
@@ -26,7 +29,11 @@ For example:
 
     bup get -s /source/repo --ff foo
     bup get -s /source/repo --ff: foo/latest bar
+    bup get -s /source/repo --pick: foo/2010-10-10-101010 bar
     bup get -s /source/repo --pick: foo/2010-10-10-101010 .tag/bar
+
+The behavior of any given METHOD is determined in part by the *ref*
+and *dest* types, i.e. branch, save, tag, etc.
 
 As a special case, if *ref* names the "latest" save symlink, then bup
 will act exactly as if the save that "latest" points to had been
@@ -102,7 +109,8 @@ used to help test before/after results.)
 \--unnamed *ref*
 :   copy *ref* into the destination repository, without any name,
     leaving a potentially dangling reference until/unless the object
-    named by *ref* is referred to some other way (cf. `bup tag`).
+    named by *ref* is referred to some other way (cf. `bup
+    tag`). Currently only compatible with `--copy`.
 
 # OPTIONS
 
@@ -127,6 +135,70 @@ used to help test before/after results.)
 \--print-tags
 :   for each updated tag, print the new git id.
 
+\--copy
+:   copy the data without changes (i.e. without rewrites or
+    repairs). This is the default.
+
+\--rewrite
+:   rewrite the data according to the destination repository
+    configuration, e.g. its `bup.split.files`, and `bup.split.trees`
+    values. Some incidental repairs may be performed during the
+    transfer when they do not materially alter the result (see REPAIRS
+    below).  Currently, `--rewrite`, `---repair`, or `--copy` must be
+    specified whenever the source and destination repository
+    configurations differ in a relevant way, and so far, `--rewrite`
+    is only supported for appends and picks. This option is also
+    contextual (see CONTEXTUAL OPTIONS). Note that rewriting a
+    git-created save may, and for now will, introduce bup-related
+    changes. Further, while tested, `--rewrite` is relatively new and
+    so warrants even more caution (see CAUTION above) than `bup get`
+    itself. Please consider validating the results carefully for now.
+
+\--repair
+:   in addition to what `--rewrite` does, perform all known repairs
+    during the transfer. See REPAIRS below. This option is contextual
+    (see CONTEXTUAL OPTIONS).
+
+\--repair-id ID
+:   set the repair session identifier, defaults to a UUID (v4). This
+    identifier will be included in any `--repair`s made during the
+    transfer. Currently, the identifier must be ASCII and must not
+    include control characters or DEL (i.e. must be comprised of bytes
+    \>= 20 and < 127). This option is contextual (see CONTEXTUAL
+    OPTIONS).
+
+\--ignore-missing
+:   ignore missing objects encountered during a transfer.  Currently
+    only supported by `--unnamed`, and potentially *dangerous*.
+
+\--exclude-rx=*pattern*
+:   exclude any path matching *pattern*, which must be a Python regular
+    expression (http://docs.python.org/library/re.html).  The pattern
+    will be compared against the full path, without anchoring, so
+    "x/y" will match "ox/yard" or "box/yards".  To exclude the
+    contents of /tmp, but not the directory itself, use
+    "^/tmp/.". (may be repeated)
+
+    Examples:
+
+      * '/foo$' - exclude any file named foo
+      * '/foo/$' - exclude any directory named foo
+      * '/foo/.' - exclude the content of any directory named foo
+      * '^/tmp/.' - exclude root-level /tmp's content, but not /tmp itself
+
+    Only supported when rewriting or repairing. This option is
+    contextual (see CONTEXTUAL OPTIONS).
+
+\--exclude-rx-from=*filename*
+:   read --exclude-rx patterns from *filename*, one pattern per-line
+    (may be repeated).  Ignore completely empty lines. Only supported
+    when rewriting. This option is contextual (see CONTEXTUAL
+    OPTIONS).
+
+\--no-excludes
+:   forget any previous `--exclude-rx` or `--exclude-rx-from`
+    options. This option is contextual (see CONTEXTUAL OPTIONS).
+
 -v, \--verbose
 :   increase verbosity (can be used more than once).  With
     `-v`, print the name of every item fetched, with `-vv` add
@@ -144,9 +216,56 @@ used to help test before/after results.)
     pack.compression or core.compression, or 1 (fast, loose
     compression).
 
-\--ignore-missing
-:   ignore missing objects encountered during a transfer.  Currently
-    only supported by `--unnamed`, and potentially *dangerous*.
+# CONTEXTUAL OPTIONS
+
+Some options like `--repair` and `--ignore-missing` can differ across
+METHODs, and each option changes the context for the next METHOD. So
+you can have
+
+    bup get ... --ignore-missing --unnamed REF \
+        --no-ignore-missing --rewrite --append REF
+
+Without `--no-ignore-missing` this command would fail because
+`--ignore-missing` is incompatible with `--rewrite`.
+
+Changing the currently active excludes is expensive because at the
+moment the cache of remembered rewrites must be cleared whenever a
+METHODs excludes differ from those for the previous METHOD.
+
+# REPAIRS
+
+`bup get` can fix (or mitigate) a number of known issues during the
+transfer when `--repair` is requested, and a subset of "incidental"
+repairs may also be performed during a `--rewrite`.
+
+ * Versions of `bup` at or after 0.25 and before 0.30.1 might rarely
+   drop metadata entries for non-directories (which can be detected by
+   `bup-validate-refs`(1) `--bupm`). This makes the metadata for all
+   of the other non-directory paths in the same directory unusable
+   (ambiguous). When such an abridged `.bupm` is detected, `--repair`
+   drops all of the `.bupm` entries except the one for the directory
+   itself, ".", and so the affected paths lose most or all of their
+   metadata (ownership, permissions, timestamps, etc.). These paths
+   will have restrictive permissions (as if via umask 077) when
+   presented, e.g. via `bup-restore(1)`, `bup-ls(1)`, etc.
+
+ * Use of `bup get` or `bup gc` versions before 0.33.5 could cause
+   repositories to end up with missing objects (which can be detected
+   by `bup-validate-object-links`(1)). To fix affected trees,
+   `--repair` substitutes synthesized "repair files" for any paths
+   with missing objects. Note that there is currently no support for
+   retrieving the unaffected parts of split files; the entire file is
+   replaced with a repair file. These repair files contain the
+   `--repair-id` and information about the replacement. Support for
+   split trees was added after the problem was fixed, and so should be
+   unaffected. See the
+   [0.33.5 release notes (0.33.5-from-0.33.4.md)](https://github.com/bup/bup/blob/main/note/0.33.5-from-0.33.4.md)
+   for additional information.
+
+"Incidental" repairs may also be performed --- repairs that do not
+functionally alter the result. For example, bup records symlink
+targets in two places, but generally only refers to one of them. If
+the other one is missing, it can and will be restored from the first.
 
 # EXAMPLES
 
@@ -186,6 +305,36 @@ used to help test before/after results.)
 
     # Append only the /home directory from archives/latest to only-home.
     $ bup get -s "$BUP_DIR" --append: archives/latest/home only-home
+
+    # Resplit (rewrite) the archives branch. Note that, done all at
+    # once, this may require additional space up to the size of the
+    # archives branch. The pick methods can do the rewriting more
+    # selectively or incrementally. (Assume BUP_DIR has no split
+    # settings.)
+    #
+    $ git --git-dir "$BUP_DIR" config bup.split.trees true
+    $ git --git-dir "$BUP_DIR" config bup.split.files legacy:16
+    $ bup get --rewrite --append: archives archives-resplit
+    #
+    # Check that archives-resplit looks OK, perhaps via trial
+    # restores, joining it, etc. (see CAUTION above), and once
+    # satisfied, perhaps...
+    #
+    $ bup rm archives
+    $ bup gc
+    $ git --git-dir "$BUP_DIR" branch -m archives-resplit archives
+    #
+    # Repair a single save.
+    $ bup get --repair --pick archives/latest fixed
+    #
+    # Check that fixed/latest looks OK, perhaps via trial
+    # restores, joining it, etc. (see CAUTION above).
+
+
+# EXIT STATUS
+
+An exit status of 3 indicates that repairs were needed and were
+successful, and that no other errors occurred.
 
 # SEE ALSO
 

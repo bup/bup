@@ -102,11 +102,11 @@ def inputiter(f, pwd, out):
         while 1:
             prompt = b'bup %s> ' % (b'/'.join(name for name, item in pwd) or b'/', )
             if hasattr(_helpers, 'readline'):
-                try:
-                    yield _helpers.readline(prompt)
-                except EOFError:
+                line = _helpers.readline(prompt)
+                if line is None:
                     print()  # Clear the line for the terminal's next prompt
                     break
+                yield _helpers.readline(prompt)
             else:
                 out.write(prompt)
                 out.flush()
@@ -116,8 +116,7 @@ def inputiter(f, pwd, out):
                     break
                 yield read_line
     else:
-        for line in f:
-            yield line
+        yield from f
 
 def rpath_msg(res):
     """Return a path_msg for the resolved path res."""

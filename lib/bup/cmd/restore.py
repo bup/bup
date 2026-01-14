@@ -1,6 +1,7 @@
 
+from copy import deepcopy
 from stat import S_ISDIR
-import copy, errno, os, re, stat, sys
+import errno, os, re, stat, sys
 
 from bup import options, vfs
 from bup._helpers import write_sparsely
@@ -70,7 +71,7 @@ def parse_owner_mappings(type, options, fatal):
     return owner_map
 
 def apply_metadata(meta, name, restore_numeric_ids, owner_map):
-    m = copy.deepcopy(meta)
+    m = deepcopy(meta).thaw()
     m.user = owner_map['user'].get(m.user, m.user)
     m.group = owner_map['group'].get(m.group, m.group)
     m.uid = owner_map['uid'].get(m.uid, m.uid)

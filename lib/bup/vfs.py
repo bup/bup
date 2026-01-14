@@ -12,14 +12,42 @@ The VFS is structured like this:
 Each path is represented by an item that has least an item.meta which
 may be either a Metadata object, or an integer mode.  Functions like
 item_mode() and item_size() will return the mode and size in either
-case.  Any item.meta Metadata instances must not be modified directly.
-Make a copy to modify via item.meta.copy() if needed, or call
-copy_item().
+case.  Metadata instances must not be modified directly.  Make a copy
+to modify via deepcopy() if needed, or call copy_item().
 
 The want_meta argument is advisory for calls that accept it, and it
 may not be honored.  Callers must be able to handle an item.meta value
-that is either an instance of Metadata or an integer mode, perhaps
-via item_mode() or augment_item_meta().
+that is either an instance of Metadata or an integer mode, perhaps via
+item_mode() or augment_item_meta().
+
+A publically readable integer item.meta means either:
+
+  - No bup-recorded metadata was available (e.g. a tree created by git
+    or by bup before metadata was supported).
+
+  - The item is "synthetic", for example, the root directory "/", the
+    .tags/ directory, a RevList (branch) directory, a Commit (save),
+    or a "fake parent" created by the strip/graft options. The mode
+    permissions will be "public", i.e. readable by group and other (as
+    if by "chmod go=rX").
+
+  - The item's metadata should exist (i.e. the parent tree was created
+    by bup), but has been lost. The mode permissions will be
+    "private", i.e. no group or other permissions (as if by "chmod
+    go="). See the Repository Taxonmy in DESIGN for some additional
+    information.
+
+  - The item is a subdirectory returned by a function like contents(),
+    which doesn't retrieve the metadata for subdirectories. That's
+    because the actual metadata for a directory is stored inside the
+    directory (see fill_in_metadata_if_dir() or
+    ensure_item_has_metadata()).
+
+When repairs are requested (e.g. via contents()) and metadata cannot
+be recovered the metadata may be a LostMetadata instance, which
+currently only has an integer mode attribute. Note that bup.tree
+relies on critical assumptions about the VFS behavior in order to
+detect and restore "git created" trees, etc. during a rewrite.
 
 Setting want_meta=False is rarely desirable since it can limit the VFS
 to only the metadata that git itself can represent, and so for
@@ -32,12 +60,6 @@ Any given metadata object's size may be None, in which case the size
 can be computed via item_size() or augment_item_meta(...,
 include_size=True).
 
-When traversing a directory using functions like contents(), the meta
-value for any directories other than '.' will be a default directory
-mode, not a Metadata object.  This is because the actual metadata for
-a directory is stored inside the directory (see
-fill_in_metadata_if_dir() or ensure_item_has_metadata()).
-
 Commit items represent commits (e.g. /.tag/some-commit or
 /foo/latest), and for most purposes, they appear as the underlying
 tree.  S_ISDIR(item_mode(item)) will return true for both tree Items
@@ -48,25 +70,43 @@ item.coid.
 
 from binascii import hexlify, unhexlify
 from collections import namedtuple
+from copy import deepcopy
 from errno import EINVAL, ELOOP, ENOTDIR
 from itertools import tee
 from random import randrange
-from stat import S_IFDIR, S_IFLNK, S_IFREG, S_ISDIR, S_ISLNK, S_ISREG
+from stat import \
+    (S_IFDIR,
+     S_IFLNK,
+     S_IFREG,
+     S_IRGRP,
+     S_IROTH,
+     S_IRUSR,
+     S_IRWXG,
+     S_IRWXO,
+     S_ISDIR,
+     S_ISLNK,
+     S_ISREG,
+     S_IWUSR,
+     S_IXGRP,
+     S_IXOTH,
+     S_IXUSR)
 from time import localtime, strftime
 import re
 
 from bup import git
 from bup.git import \
     (BUP_CHUNKED,
+     BUP_NORMAL,
+     MissingObject,
      GitError,
      find_tree_entry,
      last_tree_entry,
      parse_commit,
      tree_entries,
      tree_iter)
-from bup.helpers import debug2
+from bup.helpers import EXIT_FAILURE, debug2
 from bup.io import path_msg
-from bup.metadata import Metadata
+from bup.metadata import Metadata, empty_metadata
 
 py_IOError = IOError
 
@@ -78,30 +118,61 @@ class IOError(py_IOError):
         py_IOError.__init__(self, errno, message)
         self.terminus = terminus
 
-default_file_mode = S_IFREG | 0o644
-default_dir_mode = S_IFDIR | 0o755
-default_symlink_mode = S_IFLNK | 0o755
+_reg_perms = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH
+_exec_perms = _reg_perms | S_IXUSR | S_IXGRP | S_IXOTH
+default_file_mode = S_IFREG | _reg_perms
+default_exec_mode = S_IFREG | _exec_perms
+default_dir_mode = S_IFDIR | _exec_perms
+default_symlink_mode = S_IFLNK | _exec_perms
 
-def _default_mode_for_gitmode(gitmode):
+def _default_mode_for_gitinfo(gitmode, kind):
+    assert kind in (BUP_CHUNKED, BUP_NORMAL)
     if S_ISREG(gitmode):
+        if gitmode & S_IXUSR:
+            return default_exec_mode
         return default_file_mode
     if S_ISDIR(gitmode):
+        if kind == BUP_CHUNKED:
+            return default_file_mode
         return default_dir_mode
     if S_ISLNK(gitmode):
         return default_symlink_mode
     raise Exception('unexpected git mode ' + oct(gitmode))
 
+def get_ref(repo, ref):
+    """Yield (oidx, type, size, data_iter) for ref.
+
+    If ref is missing, yield (None, None, None, None).
+
+    """
+    it = repo.cat(ref)
+    found_oidx, obj_t, size = next(it)
+    if not found_oidx:
+        return None, None, None, None
+    return found_oidx, obj_t, size, it
+
+def get_oidx(repo, oidx, *, throw_missing=True):
+    """Yield (oidx, type, size, data_iter) for oidx.
+
+    If oidx is missing, raise a MissingObject if throw_missing is
+    false, otherwise yield (None, None, None, None).
+
+    """
+    assert len(oidx) == 40
+    result = get_ref(repo, oidx)
+    if not result[0] and throw_missing:
+        raise MissingObject(unhexlify(oidx))
+    return result
+
 def _normal_or_chunked_file_size(repo, oid):
     """Return the size of the normal or chunked file indicated by oid."""
     # FIXME: --batch-format CatPipe?
-    it = repo.cat(hexlify(oid))
-    _, obj_t, size = next(it)
+    _, obj_t, _, it = get_oidx(repo, hexlify(oid))
     ofs = 0
     while obj_t == b'tree':
         mode, name, last_oid = last_tree_entry(b''.join(it))
         ofs += int(name, 16)
-        it = repo.cat(hexlify(last_oid))
-        _, obj_t, size = next(it)
+        _, obj_t, _, it = get_oidx(repo, hexlify(last_oid))
     return ofs + sum(len(b) for b in it)
 
 def _skip_chunks_before_offset(tree_data, offset):
@@ -122,8 +193,7 @@ def _tree_chunks(repo, tree_data, startofs):
         skipmore = startofs - ofs
         if skipmore < 0:
             skipmore = 0
-        it = repo.cat(hexlify(oid))
-        _, obj_t, size = next(it)
+        _, obj_t, _, it = get_oidx(repo, hexlify(oid))
         data = b''.join(it)
         if S_ISDIR(mode):
             assert obj_t == b'tree'
@@ -134,8 +204,7 @@ def _tree_chunks(repo, tree_data, startofs):
 
 class _ChunkReader:
     def __init__(self, repo, oid, startofs):
-        it = repo.cat(hexlify(oid))
-        _, obj_t, size = next(it)
+        _, obj_t, _, it = get_oidx(repo, hexlify(oid))
         isdir = obj_t == b'tree'
         data = b''.join(it)
         if isdir:
@@ -340,7 +409,7 @@ def copy_item(item):
     """
     meta = getattr(item, 'meta', None)
     if isinstance(meta, Metadata):
-        return(item._replace(meta=meta.copy()))
+        return(item._replace(meta=deepcopy(meta)))
     return item
 
 def item_mode(item):
@@ -348,28 +417,27 @@ def item_mode(item):
     m = item.meta
     if isinstance(m, Metadata):
         return m.mode
-    return m
+    elif isinstance(m, int):
+        return m
+    raise TypeError(f'not integer or Metadata {m!r}')
 
 def _read_dir_meta(bupm):
-    # This is because save writes unmodified Metadata() entries for
-    # fake parents -- test-save-strip-graft.sh demonstrates.
-    m = Metadata.read(bupm)
-    if not m:
-        return default_dir_mode
-    assert m.mode is not None
-    if m.size is None:
-        m.size = 0
+    # May be empty because save writes unmodified Metadata() entries
+    # for fake parents -- test-save-strip-graft.sh demonstrates.
+    m = Metadata.read(bupm, empty=default_dir_mode)
+    if m is None:
+        raise EOFError('EOF while reading directory metadata')
+    if isinstance(m, Metadata):
+        assert m.mode is not None
     return m
 
 def _treeish_tree_data(repo, oid):
     assert len(oid) == 20
-    it = repo.cat(hexlify(oid))
-    _, item_t, size = next(it)
+    _, item_t, _, it = get_oidx(repo, hexlify(oid))
     data = b''.join(it)
     if item_t == b'commit':
         commit = parse_commit(data)
-        it = repo.cat(commit.tree)
-        _, item_t, size = next(it)
+        _, item_t, _, it = get_oidx(repo, commit.tree)
         data = b''.join(it)
         assert item_t == b'tree'
     elif item_t != b'tree':
@@ -401,11 +469,17 @@ def _find_treeish_oid_metadata(repo, oid):
     return None
 
 def _readlink(repo, oid):
-    return b''.join(repo.join(hexlify(oid)))
+    # symlink blobs are never split
+    _, kind, _, it = get_ref(repo, hexlify(oid))
+    if not kind:
+        raise MissingObject(oid)
+    assert kind == b'blob', kind
+    return b''.join(it)
 
 def readlink(repo, item):
     """Return the link target of item, which must be a symlink.  Reads the
     target from the repository if necessary."""
+    # Consider rewrite._rewrite_link when making changes here
     assert repo
     assert S_ISLNK(item_mode(item))
     if isinstance(item, FakeLink):
@@ -425,6 +499,8 @@ def _compute_item_size(repo, item):
         if isinstance(item, FakeLink):
             return len(item.target)
         return len(_readlink(repo, item.oid))
+    if S_ISDIR(mode):
+        return None
     return 0
 
 def item_size(repo, item):
@@ -454,8 +530,7 @@ def _commit_item_from_oid(repo, oid, require_meta):
     commit = cache_get_commit_item(oid, need_meta=require_meta)
     if commit and ((not require_meta) or isinstance(commit.meta, Metadata)):
         return commit
-    it = repo.cat(hexlify(oid))
-    _, typ, size = next(it)
+    _, typ, _, it = get_oidx(repo, hexlify(oid))
     assert typ == b'commit'
     commit = _commit_item_from_data(oid, b''.join(it))
     if require_meta:
@@ -500,7 +575,6 @@ def root_items(repo, names=None, want_meta=True):
         it = repo.cat(b'refs/heads/' + ref)
         oidx, typ, size = next(it)
         if not oidx:
-            for _ in it: pass
             continue
         assert typ == b'commit'
         commit = parse_commit(b''.join(it))
@@ -528,28 +602,98 @@ def ordered_tree_entries(entries, bupm=None):
         tree_ents.sort(key=lambda x: x[0])
     return tree_ents
 
+class LostMetadata(Metadata):
+    """Representation for metadata that's been lost, e.g. due to a bug
+    like the one that dropped bupm entries."""
+    def __init__(self, mode):
+        super().__init__(frozen=False)
+        self.mode = mode
+        self.freeze()
 
-def _tree_items_except_dot(oid, entries, names=None, bupm=None):
+_lost_dir_meta = LostMetadata(default_dir_mode & ~(S_IRWXO | S_IRWXG))
+_lost_file_meta = LostMetadata(default_file_mode & ~(S_IRWXO | S_IRWXG))
+_lost_exec_meta = LostMetadata(default_exec_mode & ~(S_IRWXO | S_IRWXG))
+_lost_symlink_meta = LostMetadata(default_symlink_mode & ~(S_IRWXO | S_IRWXG))
+
+def _lost_metadata_for_gitinfo(mode, kind):
+    if S_ISREG(mode):
+        if mode & S_IXUSR:
+            return _lost_exec_meta
+        return _lost_file_meta
+    if S_ISDIR(mode):
+        if kind == BUP_CHUNKED:
+            # REVIEW: We've just lost any executable bit in this case, right?
+            return _lost_file_meta
+        return _lost_dir_meta
+    if S_ISLNK(mode):
+        return _lost_symlink_meta
+    assert 'unexpected mode', oct(mode) # for now shouldn't be possible
+    return None # pylint
+
+def _validated_meta_ents(oid, tree_ents, bupm, repair):
+    # Versions before 47891d8951a95b8e0d9ca94387107cdf12ca3d3c
+    # (before 0.31) might rarely drop a bupm entry, so check.
+    if not bupm:
+        return None
+    meta_entries = []
+    m = Metadata.read(bupm)
+    while m:
+        meta_entries.append(None if m is empty_metadata else m)
+        m = Metadata.read(bupm)
+    exp_meta_n = 0
+    for ent in tree_ents:
+        if ent[1] != b'.bupm' and (ent[2] == BUP_CHUNKED or not S_ISDIR(ent[3])):
+            exp_meta_n += 1
+    if exp_meta_n != len(meta_entries):
+        # should be increasingly rare, and rare to begin with
+        if not repair:
+            ex = SystemExit('error: tree has missing metadata'
+                            f' (see bup-get(1)) - {oid.hex()}')
+            ex.code = EXIT_FAILURE
+            raise ex
+        return None
+    meta_entries.reverse()
+    return meta_entries
+
+def _tree_items_except_dot(oid, entries, names=None, bupm=None, *, repair=False):
     """Returns all tree items except ".", and assumes that any bupm is
-    positioned just after that entry."""
+    positioned just after that entry. Any paths whose metadata has
+    been lost will have restrictive permissions (as if via umask
+    077). See the Repository Taxonmy in DESIGN.
+
+    """
+    # Ensure any changes to the metadata yielded coordinates properly
+    # with bup.tree (e.g. _dir_metadata).
+
+    tree_ents = ordered_tree_entries(entries, bupm)
+    meta_ents = _validated_meta_ents(oid, tree_ents, bupm, repair)
+    if meta_ents is None:
+        assert repair or not bupm, (meta_ents, repair, bupm)
+
+    def read_nondir_meta(bupd, default_mode):
+        if meta_ents is not None:
+            meta = meta_ents.pop()
+            # empty for a number of reasons; see Repository Taxonomy in DESIGN
+            if meta is None: # lost metadata
+                return default_mode & ~(S_IRWXO | S_IRWXG)
+            return meta
+        if bupm: # repair
+            return _lost_metadata_for_gitinfo(gitmode, kind)
+        return default_mode
 
     def tree_item(ent_oid, kind, gitmode):
         if kind == BUP_CHUNKED:
-            meta = Metadata.read(bupm) if bupm else default_file_mode
+            assert S_ISDIR(gitmode), (ent_oid, kind, gitmode)
+            meta = read_nondir_meta(bupm, _default_mode_for_gitinfo(gitmode, kind))
             return Chunky(oid=ent_oid, meta=meta)
 
         if S_ISDIR(gitmode):
             # No metadata here (accessable via '.' inside ent_oid).
-            return Item(meta=default_dir_mode, oid=ent_oid)
+            return Item(meta=_default_mode_for_gitinfo(gitmode, kind),
+                        oid=ent_oid)
 
-        meta = Metadata.read(bupm) if bupm else None
-        # handle the case of metadata being empty/missing in bupm
-        # (or there not being bupm at all)
-        if meta is None:
-            meta = _default_mode_for_gitmode(gitmode)
+        meta = read_nondir_meta(bupm, _default_mode_for_gitinfo(gitmode, kind))
         return Item(oid=ent_oid, meta=meta)
-
-    tree_ents = ordered_tree_entries(entries, bupm)
 
     assert isinstance(names, (set, frozenset)) or names is None
     assert len(oid) == 20
@@ -577,8 +721,8 @@ def _tree_items_except_dot(oid, entries, names=None, bupm=None):
         if name not in names:
             if name > last_name:
                 break  # given bupm sort order, we're finished
-            if (kind == BUP_CHUNKED or not S_ISDIR(gitmode)) and bupm:
-                Metadata.read(bupm)
+            if (kind == BUP_CHUNKED or not S_ISDIR(gitmode)):
+                if meta_ents is not None: meta_ents.pop()
             continue
         yield name, tree_item(ent_oid, kind, gitmode)
         if remaining == 1:
@@ -586,9 +730,8 @@ def _tree_items_except_dot(oid, entries, names=None, bupm=None):
         remaining -= 1
 
 def _get_tree_object(repo, oid):
-    res = repo.cat(hexlify(oid))
-    _, kind, _ = next(res)
-    assert kind == b'tree', 'expected oid %r to be tree, not %r' % (hexlify(oid), kind)
+    _, kind, _, res = get_oidx(repo, hexlify(oid))
+    assert kind == b'tree', f'expected oid {oid.hex()} to be tree, not {kind!r}'
     return b''.join(res)
 
 def _find_bupm_oid(entries):
@@ -614,30 +757,28 @@ def _split_subtree_items(repo, level, oid, entries, names, want_meta, root=True)
             yield from _tree_items_except_dot(oid, entries, names)
         else:
             with _FileReader(repo, bupm_oid) as bupm:
-                Metadata.read(bupm) # skip dummy entry provided for older bups
+                 # skip dummy entry provided for older bups
+                if not Metadata.read(bupm):
+                    raise EOFError('EOF instead of split tree placeholder metadata')
                 yield from _tree_items_except_dot(oid, entries, names, bupm)
     else:
-        for _, mangled_name, sub_oid in entries:
+        validate = b'.%d.bupd' % level
+        for _, name, sub_oid in entries:
             if root:
-                if mangled_name == b'.bupm':
+                if name == b'.bupm':
                     continue
-                if mangled_name.endswith(b'.bupd'):
-                    continue
-            assert not mangled_name.endswith(b'.bup'), \
-                f'found {path_msg(mangled_name)} in split subtree'
-            if not mangled_name.endswith(b'.bupl'):
-                assert mangled_name[-5:-1] != b'.bup', \
-                    f'found {path_msg(mangled_name)} in split subtree'
+            assert name.endswith(validate), \
+                f'found {path_msg(name)} in split subtree but should end with {validate}'
             yield from _split_subtree_items(repo, level - 1, sub_oid,
                                             tree_entries(_get_tree_object(repo, sub_oid)),
                                             names, want_meta, False)
 
-_tree_depth_rx = re.compile(br'\.bupd\.([0-9]+)(?:\..*)?\.bupd')
+_tree_depth_rx = re.compile(br'.*\.([0-9]+)\.bupd')
 
 def _parse_tree_depth(mangled_name):
-    """Return the tree DEPTH from a mangled_name like
-    .bupd.DEPTH.bupd, but leave open the possibility of future
-    .bupd.DEPTH.*.bupd extensions.
+    """Return the tree DEPTH from a mangled_name like foo..DEPTH.bupd,
+    but leave open the possibility of future foo..*.DEPTH.bupd
+    extensions.
 
     """
     m = _tree_depth_rx.fullmatch(mangled_name)
@@ -647,7 +788,7 @@ def _parse_tree_depth(mangled_name):
     assert depth > 0
     return depth
 
-def tree_items(repo, oid, tree_data, names, *, want_meta=True):
+def tree_items(repo, oid, tree_data, names, *, want_meta=True, repair=False):
     # For now, the .bupm order doesn't quite match git's, and we don't
     # load the tree data incrementally anyway, so we just work in RAM
     # via tree_data.
@@ -662,36 +803,49 @@ def tree_items(repo, oid, tree_data, names, *, want_meta=True):
     entries = tree_entries(tree_data)
     depth = None
     bupm_oid = None
+    split_or_not_known = False
     for _, mangled_name, sub_oid in entries:
         if mangled_name.endswith(b'.bupd'):
             depth = _parse_tree_depth(mangled_name)
             if not dot_requested: # all other metadata in "leaf" .bupm files
                 break
-        if mangled_name == b'.bupm':
+            split_or_not_known = True
+        elif mangled_name == b'.bupm':
             bupm_oid = sub_oid
-            break
+            if split_or_not_known or depth:
+                break
+        else:
+            split_or_not_known = True
         if mangled_name > b'.bupm':
             break
 
+    # When repairing, "." wouldn't be affected by the missing entries
+    # issues, i.e. the first entry (the dir) should still be OK
+    # (16f9f9829038f25aec80ebfae3c882a66281e145). Split trees should
+    # also be unaffected because the bug was fixed before they were
+    # introduced (47891d8951a95b8e0d9ca94387107cdf12ca3d3c).
     if want_meta and bupm_oid:
         if depth is None:
             with _FileReader(repo, bupm_oid) as bupm:
                 if not dot_requested: # skip it
-                    Metadata.read(bupm)
+                    if not Metadata.read(bupm):
+                        raise EOFError('EOF while skipping directory metadata')
                 else:
                     yield b'.', Item(oid=oid, meta=_read_dir_meta(bupm))
-                yield from _tree_items_except_dot(oid, entries, names, bupm)
+                yield from _tree_items_except_dot(oid, entries, names, bupm,
+                                                  repair=repair)
         else:
             if dot_requested:
                 with _FileReader(repo, bupm_oid) as bupm:
                     yield b'.', Item(oid=oid, meta=_read_dir_meta(bupm))
-            yield from _split_subtree_items(repo, depth, oid, entries, names, True)
+            yield from _split_subtree_items(repo, depth, oid, entries, names,
+                                            True)
         return
 
     if dot_requested:
         yield b'.', Item(oid=oid, meta=default_dir_mode)
     if not depth:
-        yield from _tree_items_except_dot(oid, entries, names)
+        yield from _tree_items_except_dot(oid, entries, names, repair=repair)
     else:
         yield from _split_subtree_items(repo, depth, oid, entries, names, False)
 
@@ -814,9 +968,7 @@ def tags_items(repo, names):
         cached = cache_get_commit_item(oid, need_meta=False)
         if cached:
             return cached
-        oidx = hexlify(oid)
-        it = repo.cat(oidx)
-        _, typ, size = next(it)
+        _, typ, _, it = get_oidx(repo, hexlify(oid))
         if typ == b'commit':
             return _commit_item_from_data(oid, b''.join(it))
         for _ in it: pass
@@ -859,12 +1011,12 @@ def tags_items(repo, names):
             return
         remaining -= 1
 
-def contents(repo, item, names=None, want_meta=True):
+def contents(repo, item, names=None, want_meta=True, repair=False):
     """Yields information about the items contained in item.  Yields
     (name, item) for each name in names, if the name exists, in an
-    unspecified order.  If there are no names, then yields (name,
-    item) for all items, including, a first item named '.'
-    representing the container itself.
+    unspecified order. Items that don't exist are omitted.  If there
+    are no names, then yields (name, item) for all items, including, a
+    first item named '.' representing the container itself.
 
     The meta value for any directories other than '.' will be a
     default directory mode, not a Metadata object.  This is because
@@ -872,12 +1024,22 @@ def contents(repo, item, names=None, want_meta=True):
     (see fill_in_metadata_if_dir() or ensure_item_has_metadata()).
 
     Note that want_meta is advisory.  For any given item, item.meta
-    might be a Metadata instance or a mode, and if the former,
-    meta.size might be None.  Missing sizes can be computed via via
-    item_size() or augment_item_meta(..., include_size=True).
+    might be a Metadata instance or an integer mode, and if the
+    former, meta.size might be None.  Missing sizes can be computed
+    via via item_size() or augment_item_meta(...,
+    include_size=True). If an integer mode's permissions are
+    restrictive (i.e. no permissions for group or other), then the
+    metadata for the item has been lost.
+
+    If repair is true then when an attempt to retrieve the metadata
+    for a path fails (e.g. because the .bupm file for the directory
+    exists, but is broken), the metadata will be a suitable
+    LostMetadata instance, with uid/gid 0 and with no group or other
+    permissions. Special files will become empty regular files. If
+    repair is false, exceptions will be raised instead.
 
     Do not modify any item.meta Metadata instances directly.  If
-    needed, make a copy via item.meta.copy() and modify that instead.
+    needed, make a copy via deepcopy() and modify that instead.
 
     """
     # Q: are we comfortable promising '.' first when no names?
@@ -885,15 +1047,15 @@ def contents(repo, item, names=None, want_meta=True):
     assert repo
     assert S_ISDIR(item_mode(item))
     if isinstance(item, real_tree_types):
-        it = repo.cat(hexlify(item.oid))
-        _, obj_t, size = next(it)
+        _, obj_t, _, it = get_oidx(repo, hexlify(item.oid))
         data = b''.join(it)
         if obj_t != b'tree':
             for _ in it: pass
             # Note: it shouldn't be possible to see an Item with type
             # 'commit' since a 'commit' should always produce a Commit.
             raise Exception('unexpected git ' + obj_t.decode('ascii'))
-        yield from tree_items(repo, item.oid, data, names, want_meta=want_meta)
+        yield from tree_items(repo, item.oid, data, names, want_meta=want_meta,
+                              repair=repair)
     elif isinstance(item, RevList):
         yield from revlist_items(repo, item.oid, names,
                                  require_meta=want_meta)
@@ -905,6 +1067,14 @@ def contents(repo, item, names=None, want_meta=True):
         raise Exception('unexpected VFS item ' + str(item))
 
 def _resolve_path(repo, path, parent=None, want_meta=True, follow=True):
+    # FIXME: eventually more sophistication than just MissingObject
+    # with an oid, e.g. perhaps the path leading to the missing
+    # object?
+
+    # This arrangment means two repo objects representing the same
+    # physical repo will have duplicate entries in the cache, but we
+    # can't be fooled by any incorrectly matching repository
+    # ids. Shouldn't happen, but...
     cache_key = b'res:%d%d%d:%s\0%s' \
                 % (bool(want_meta), bool(follow), id(repo),
                    (b'/'.join(x[0] for x in parent) if parent else b''),
@@ -970,6 +1140,7 @@ def _resolve_path(repo, path, parent=None, want_meta=True, follow=True):
             if not want_meta:
                 item = items[0][1] if items else None
             else:  # First item will be '.' and have the metadata
+                assert len(items) in (1, 2), items
                 item = items[1][1] if len(items) == 2 else None
                 dot, dot_item = items[0]
                 assert dot == b'.'
@@ -1052,17 +1223,20 @@ def resolve(repo, path, parent=None, want_meta=True, follow=True):
 
     When want_meta is true, detailed metadata will be included in each
     result item if it's avaiable, otherwise item.meta will be an
-    integer mode.  The metadata size may or may not be provided, but
-    can be computed by item_size() or augment_item_meta(...,
-    include_size=True).  Setting want_meta=False is rarely desirable
-    since it can limit the VFS to just the metadata git itself can
-    represent, and so, as an example, fifos and sockets will appear to
-    be regular files (e.g. S_ISREG(item_mode(item)) will be true) .
-    But the option is provided because it may be more efficient when
-    only the path names or the more limited metadata is sufficient.
+    integer mode. If an integer mode's permissions are restrictive
+    (i.e. no permissions for group or other), then the metadata for
+    the item has been lost. The metadata size may or may not be
+    provided, but can be computed by item_size() or
+    augment_item_meta(..., include_size=True).  Setting
+    want_meta=False is rarely desirable since it can limit the VFS to
+    just the metadata git itself can represent, and so, as an example,
+    fifos and sockets will appear to be regular files
+    (e.g. S_ISREG(item_mode(item)) will be true) .  But the option is
+    provided because it may be more efficient when only the path names
+    or the more limited metadata is sufficient.
 
     Do not modify any item.meta Metadata instances directly.  If
-    needed, make a copy via item.meta.copy() and modify that instead.
+    needed, make a copy via deepcopy() and modify that instead.
 
     """
     if repo.is_remote():
@@ -1095,24 +1269,32 @@ def try_resolve(repo, path, parent=None, want_meta=True):
         return follow
     return res
 
-def augment_item_meta(repo, item, include_size=False):
-    """Ensure item has a Metadata instance for item.meta.  If item.meta is
-    currently a mode, replace it with a compatible "fake" Metadata
-    instance.  If include_size is true, ensure item.meta.size is
-    correct, computing it if needed.  If item.meta is a Metadata
-    instance, this call may modify it in place or replace it.
+def augment_item_meta(repo, item, *, include_size=False, public=False):
+    """Ensure item has a Metadata instance for item.meta.  If
+    item.meta is currently a mode, replace it with a compatible "fake"
+    Metadata instance.  If include_size is true, ensure item.meta.size
+    is correct, computing it if needed.  If public is true, produce
+    metadata suitable for "public consumption", e.g. via
+    ls/fuse/web. This, for example, sets dir sizes to 0. If item.meta
+    is a Metadata instance, this call may modify it in place or
+    replace it.
 
     """
+    def maybe_public(mode, size):
+        if public and S_ISDIR(mode) and size is None:
+            return 0
+        return size
     # If we actually had parallelism, we'd need locking...
     assert repo
     m = item.meta
     if isinstance(m, Metadata):
         if include_size and m.size is None:
-            m.size = _compute_item_size(repo, item)
-            return item._replace(meta=m)
+            m = deepcopy(m).thaw()
+            m.size = maybe_public(m.mode, _compute_item_size(repo, item))
+            return item._replace(meta=m.freeze())
         return item
-    # m is mode
-    meta = Metadata()
+    assert isinstance(m, int), item
+    meta = Metadata(frozen=False)
     meta.mode = m
     if S_ISLNK(m):
         if isinstance(item, FakeLink):
@@ -1122,8 +1304,8 @@ def augment_item_meta(repo, item, include_size=False):
         meta.symlink_target = target
         meta.size = len(target)
     elif include_size:
-        meta.size = _compute_item_size(repo, item)
-    return item._replace(meta=meta)
+        meta.size = maybe_public(m, _compute_item_size(repo, item))
+    return item._replace(meta=meta.freeze())
 
 def fill_in_metadata_if_dir(repo, item):
     """If item is a directory and item.meta is not a Metadata instance,
@@ -1139,7 +1321,7 @@ def fill_in_metadata_if_dir(repo, item):
         item = items[0][1]
     return item
 
-def ensure_item_has_metadata(repo, item, include_size=False):
+def ensure_item_has_metadata(repo, item, *, include_size=False, public=False):
     """If item is a directory, attempt to find and add its metadata.  If
     the item still doesn't have a Metadata instance for item.meta,
     give it one via augment_item_meta().  May be useful for the output
@@ -1148,7 +1330,8 @@ def ensure_item_has_metadata(repo, item, include_size=False):
     """
     return augment_item_meta(repo,
                              fill_in_metadata_if_dir(repo, item),
-                             include_size=include_size)
+                             include_size=include_size,
+                             public=public)
 
 def join(repo, ref):
     """Generate a list of the content of all blobs that can be reached
@@ -1156,24 +1339,27 @@ def join(repo, ref):
     or a commit. The content of all blobs that can be seen from trees or
     commits will be added to the list.
     """
-    def _join(ref, path):
-        it = repo.cat(ref)
-        oidx, typ, _ = next(it)
+    def _join(oidx, typ, size, it, path):
         if typ == b'blob':
             yield from it
         elif typ == b'tree':
-            treefile = b''.join(it)
-            for ent_mode, ent_name, ent_oid in tree_iter(treefile):
-                yield from _join(hexlify(ent_oid), path + [ent_name])
+            for ent_mode, ent_name, ent_oid in tree_iter(b''.join(it)):
+                yield from _join(*get_oidx(repo, hexlify(ent_oid)), path + [ent_name])
         elif typ == b'commit':
             treeline = b''.join(it).split(b'\n')[0]
             assert treeline.startswith(b'tree ')
             tree_oidx = treeline[5:]
             path += [oidx, tree_oidx]
-            yield from _join(tree_oidx, path)
+            yield from _join(*get_oidx(repo, tree_oidx), path)
         else:
-            if oidx is None:
-                raise GitError(f'missing ref at {path!r}')
             raise GitError(f'type {typ!r} is not blob/tree/commit at {path!r}')
 
-    yield from _join(ref, [ref])
+    got = get_ref(repo, ref)
+    if not got[0]:
+        raise GitError(f'ref {ref} does not exist') # eventually some ENOENT?
+    yield from _join(*got, [ref])
+
+def render_path(path):
+    if not S_ISDIR(item_mode(path[-1][1])):
+        return b'/'.join(x[0] for x in path)
+    return b'/'.join(x[0] for x in path) + b'/'

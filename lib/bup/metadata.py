@@ -9,18 +9,18 @@ from copy import deepcopy
 from errno import EACCES, EINVAL, ENOTTY, ENOSYS, EOPNOTSUPP
 from io import BytesIO
 from time import gmtime, strftime
-import errno, os, sys, stat, socket, struct
+import copy, errno, os, sys, stat, socket, struct
 
 from bup import vint, xstat
 from bup.drecurse import recursive_dirlist
 from bup.helpers import \
     (EXIT_FAILURE,
-     add_error,
-     mkdirp,
-     log,
-     is_superuser,
      format_filesize,
-     getgroups)
+     getgroups,
+     is_superuser,
+     log,
+     mkdirp,
+     note_error)
 from bup.io import path_msg
 from bup.pwdgrp import pwd_from_uid, pwd_from_name, grp_from_gid, grp_from_name
 from bup.xstat import utime, lutime
@@ -209,17 +209,20 @@ class ApplyError(Exception):
     # Thrown when unable to apply any given bit of metadata to a path.
     pass
 
+# Because we want to use a Metadata instance as a default for
+# Metadata.read() staticmethod arg.
+_use_empty_metadata = object()
 
 class Metadata:
     # Metadata is stored as a sequence of tagged binary records.  Each
     # record will have some subset of add, encode, load, create, and
     # apply methods, i.e. _add_foo...
 
-    # We do allow an "empty" object as a special case, i.e. no
-    # records.  One can be created by trying to write Metadata(), and
-    # for such an object, read() will return None.  This is used by
-    # "bup save", for example, as a placeholder in cases where
-    # from_path() fails.
+    # We do allow an "empty" object as a special case, i.e. via just
+    # Metadata(), and .bupm files may include these (see the
+    # Repository Taxonomy in DESIGN). The current code assumes all
+    # in-memory instances will be the metadata.empty_metadata object,
+    # which Metadata.read() will return by default when appropriate.
 
     # NOTE: if any relevant fields are added or removed, be sure to
     # update same_file() below.
@@ -228,6 +231,10 @@ class Metadata:
 
     # Timestamps are (sec, ns), relative to 1970-01-01 00:00:00, ns
     # must be non-negative and < 10**9.
+
+    # Consider bup.rewrite (e.g. _blob_replacement() ...) and
+    # LostMetadata when making changes to the records (particularly
+    # the common records).
 
     def _add_common(self, path, st):
         assert(st.st_uid >= 0)
@@ -299,6 +306,8 @@ class Metadata:
         else:
             raise Exception('unexpected common_rec version %d' % version)
         data = vint.read_bvec(port)
+        if data is None:
+            raise EOFError('EOF while reading metadata common records')
         values = vint.unpack(unpack_fmt, data)
         if version == 3:
             (self.mode, self.uid, self.user, self.gid, self.group,
@@ -391,8 +400,8 @@ class Metadata:
         # FIXME: S_ISDOOR, S_IFMPB, S_IFCMP, S_IFNWK, ... see stat(2).
         else:
             assert(not self._recognized_file_type())
-            add_error('not creating "%s" with unrecognized mode "0x%x"\n'
-                      % (path_msg(path), self.mode))
+            note_error(f'error: unrecognized mode 0{self.mode:o},'
+                       f' not creating: {path_msg(path)}\n')
 
     def _apply_common_rec(self, path, restore_numeric_ids=False):
         if not self.mode:
@@ -405,7 +414,8 @@ class Metadata:
                 lutime(path, (self.atime or 0, self.mtime or 0))
             except OSError as e:
                 if e.errno == errno.EACCES:
-                    raise ApplyError('lutime: %s' % e)
+                    erm = e.strerror or e.errno
+                    raise ApplyError(f'lutime ({erm}): {path_msg(path)}')
                 else:
                     raise
         else:
@@ -413,7 +423,8 @@ class Metadata:
                 utime(path, (self.atime or 0, self.mtime or 0))
             except OSError as e:
                 if e.errno == errno.EACCES:
-                    raise ApplyError('utime: %s' % e)
+                    erm = e.strerror or e.errno
+                    raise ApplyError(f'utime ({erm}): {path_msg(path)}')
                 else:
                     raise
 
@@ -449,11 +460,12 @@ class Metadata:
                 os.lchown(path, uid, gid)
             except OSError as e:
                 if e.errno == errno.EPERM:
-                    add_error('lchown: %s' %  e)
+                    erm = e.strerror or e.errno
+                    note_error(f'error: lchown ({erm}): {path_msg(path)}\n')
                 elif sys.platform.startswith('cygwin') \
-                   and e.errno == errno.EINVAL:
-                    add_error('lchown: unknown uid/gid (%d/%d) for %s'
-                              %  (uid, gid, path_msg(path)))
+                     and e.errno == errno.EINVAL:
+                    note_error('error: lchown: unknown uid/gid (%d/%d): %s\n'
+                               % (uid, gid, path_msg(path)))
                 else:
                     raise
 
@@ -480,7 +492,10 @@ class Metadata:
             return None
 
     def _load_path_rec(self, port):
-        self.path = vint.unpack('s', vint.read_bvec(port))[0]
+        data = vint.read_bvec(port)
+        if data is None:
+            raise EOFError('EOF while reading metadata path record')
+        self.path = vint.unpack('s', data)[0]
 
 
     ## Symlink targets
@@ -493,13 +508,16 @@ class Metadata:
                 # one that was in place when we did stat()
                 self.size = len(self.symlink_target)
         except OSError as e:
-            add_error('readlink: %s' % e)
+            erm = e.strerror or e.errno
+            note_error(f'error: readlink ({erm}): {path_msg(path)}\n')
 
     def _encode_symlink_target(self):
         return self.symlink_target
 
     def _load_symlink_target_rec(self, port):
         target = vint.read_bvec(port)
+        if target is None:
+            raise EOFError('EOF while reading metadata symlink target')
         self.symlink_target = target
         if self.size is None:
             self.size = len(target)
@@ -520,7 +538,10 @@ class Metadata:
         return self.hardlink_target
 
     def _load_hardlink_target_rec(self, port):
-        self.hardlink_target = vint.read_bvec(port)
+        target = vint.read_bvec(port)
+        if target is None:
+            raise EOFError('EOF while reading metadata hardlink target')
+        self.hardlink_target = target
 
 
     ## POSIX1e ACL records
@@ -566,18 +587,21 @@ class Metadata:
             acl = acls[i]
             if b',' in acl:
                 if path:
-                    msg = f'Unexpected comma in ACL entry; ignoring {acl!r}' \
-                        f' for {path_msg(path)}\n'
+                    msg = 'error: unexpected comma in ACL entry;' \
+                        f' ignoring {acl!r}: {path_msg(path)}\n'
                 else:
-                    msg = f'Unexpected comma in ACL entry; ignoring {acl!r}\n'
-                add_error(msg)
+                    msg = f'error: unexpected comma in ACL entry; ignoring {acl!r}\n'
+                note_error(msg)
                 return None
             acls[i] = acl.replace(b'\n', b',')
         return acls
 
     def _load_posix1e_acl_rec(self, port, *, version):
         assert version in (1, 2)
-        acl_rep = vint.unpack('ssss', vint.read_bvec(port))
+        acl_data = vint.read_bvec(port)
+        if acl_data is None:
+            raise EOFError('EOF while reading POSIX1e ACL metadata')
+        acl_rep = vint.unpack('ssss', acl_data)
         if acl_rep[2] == b'':
             acl_rep = acl_rep[:2]
         if version == 1:
@@ -589,8 +613,8 @@ class Metadata:
             return
 
         if not apply_acl:
-            add_error("%s: can't restore ACLs; posix1e support missing.\n"
-                      % path_msg(path))
+            note_error("error: can't restore POSIX1e ACL (no support): %s\n"
+                       % path_msg(path))
             return
 
         try:
@@ -601,15 +625,13 @@ class Metadata:
             else:
                 apply_acl(path, acls[offs])
         except IOError as e:
-            if e.errno == errno.EINVAL:
-                # libacl returns with errno set to EINVAL if a user
-                # (or group) doesn't exist
-                raise ApplyError("POSIX1e ACL: can't create %r for %r"
-                                 % (acls, path_msg(path)))
-            elif e.errno in (errno.EPERM, errno.EOPNOTSUPP):
-                raise ApplyError('POSIX1e ACL applyto: %s' % e)
-            else:
+            # libacl returns with errno set to EINVAL if a user (or
+            # group) doesn't exist
+            if e.errno not in (errno.EINVAL, errno.EPERM, errno.EOPNOTSUPP):
                 raise
+            erm = e.strerror or e.errno
+            msg = f'POSIX1e ACL apply failed ({erm}): {path_msg(path)}'
+            raise ApplyError(msg)
 
 
     ## Linux attributes (lsattr(1), chattr(1))
@@ -624,16 +646,17 @@ class Metadata:
                     self.linux_attr = attr
             except OSError as e:
                 if e.errno == errno.EACCES:
-                    add_error('read Linux attr: %s' % e)
+                    erm = e.strerror or e.errno
+                    note_error(f'error: attr read failed ({erm}): {path_msg(path)}\n')
                 elif e.errno in (ENOTTY, ENOSYS, EOPNOTSUPP):
                     # Assume filesystem doesn't support attrs.
                     return
                 elif e.errno == EINVAL:
                     global _warned_about_attr_einval
                     if not _warned_about_attr_einval:
-                        log("Ignoring attr EINVAL;"
-                            + " if you're not using ntfs-3g, please report: "
-                            + path_msg(path) + '\n')
+                        log('Ignoring attr EINVAL;'
+                            " if you're not using ntfs-3g, please report:"
+                            f' {path_msg(path)}\n')
                         _warned_about_attr_einval = True
                     return
                 else:
@@ -651,25 +674,31 @@ class Metadata:
 
     def _load_linux_attr_rec(self, port):
         data = vint.read_bvec(port)
+        if data is None:
+            raise EOFError('EOF while reading Linux attr metadata')
         self.linux_attr = vint.unpack('V', data)[0]
 
     def _apply_linux_attr_rec(self, path, restore_numeric_ids=False):
         if self.linux_attr:
             check_linux_file_attr_api()
             if not set_linux_file_attr:
-                add_error("%s: can't restore linuxattrs: "
-                          "linuxattr support missing.\n" % path_msg(path))
+                note_error("error: can't restore linuxattrs (no support): %s\n"
+                           % path_msg(path))
                 return
             try:
                 set_linux_file_attr(path, self.linux_attr)
             except OSError as e:
                 if e.errno in (EACCES, ENOTTY, EOPNOTSUPP, ENOSYS):
-                    raise ApplyError('Linux chattr: %s (0x%s)'
-                                     % (e, hex(self.linux_attr)))
+                    raise ApplyError('chattr(0x%s) failed (%s): %s'
+                                     % (hex(self.linux_attr),
+                                        e.strerror or e.errno,
+                                        path_msg(path)))
                 elif e.errno == EINVAL:
-                    msg = "if you're not using ntfs-3g, please report"
-                    raise ApplyError('Linux chattr: %s (0x%s) (%s)'
-                                     % (e, hex(self.linux_attr), msg))
+                    raise ApplyError('chattr(0x%s) failed (%s),'
+                                     ' please report if this is not ntfs-3g: %s'
+                                     % (hex(self.linux_attr),
+                                        e.strerror or e.errno,
+                                        path_msg(path)))
                 else:
                     raise
 
@@ -699,19 +728,28 @@ class Metadata:
 
     def _load_linux_xattr_rec(self, file):
         data = vint.read_bvec(file)
+        if data is None:
+            raise EOFError('EOF while reading Linux xattr metadata')
         memfile = BytesIO(data)
         result = []
-        for i in range(vint.read_vuint(memfile)):
+        xattr_n = vint.read_vuint(memfile)
+        if xattr_n is None:
+            raise EOFError('EOF while reading number of Linux xattrs')
+        for i in range(xattr_n):
             key = vint.read_bvec(memfile)
+            if key is None:
+                raise EOFError('EOF while reading Linux xattr metadata key')
             value = vint.read_bvec(memfile)
+            if value is None:
+                raise EOFError('EOF while reading Linux xattr metadata value')
             result.append((key, value))
         self.linux_xattr = result
 
     def _apply_linux_xattr_rec(self, path, restore_numeric_ids=False):
         if not xattr:
             if self.linux_xattr:
-                add_error("%s: can't restore xattr; xattr support missing.\n"
-                          % path_msg(path))
+                note_error("error: can't restore xattrs (no support): %s\n"
+                           % path_msg(path))
             return
         if not self.linux_xattr:
             return
@@ -719,7 +757,8 @@ class Metadata:
             existing_xattrs = set(xattr.list(path, nofollow=True))
         except IOError as e:
             if e.errno == errno.EACCES:
-                raise ApplyError('xattr.set %r: %s' % (path_msg(path), e))
+                erm = e.strerror or e.errno
+                raise ApplyError(f'xattr.set ({erm}): {path_msg(path)}')
             else:
                 raise
         for k, v in self.linux_xattr:
@@ -728,26 +767,27 @@ class Metadata:
                 try:
                     xattr.set(path, k, v, nofollow=True)
                 except IOError as e:
-                    if e.errno in (errno.EPERM, errno.EOPNOTSUPP):
-                        raise ApplyError('xattr.set %r: %s' % (path_msg(path), e))
-                    else:
+                    if e.errno not in (errno.EPERM, errno.EOPNOTSUPP):
                         raise
+                    erm = e.strerror or e.errno
+                    raise ApplyError(f'xattr.set ({erm}): {path_msg(path)}')
             existing_xattrs -= frozenset([k])
         for k in existing_xattrs:
             try:
                 xattr.remove(path, k, nofollow=True)
             except IOError as e:
-                if e.errno in (errno.EPERM, errno.EACCES):
-                    raise ApplyError('xattr.remove %r: %s' % (path_msg(path), e))
-                else:
+                if e.errno not in (errno.EPERM, errno.EACCES):
                     raise
+                erm = e.strerror or e.errno
+                raise ApplyError(f'xattr.remove ({erm}): {path_msg(path)}')
 
-    __slots__ = ('mode', 'uid', 'gid', 'user', 'group', 'rdev',
+    __slots__ = ('_frozen',
+                 'mode', 'uid', 'gid', 'user', 'group', 'rdev',
                  'atime', 'mtime', 'ctime', 'path',
                  'size', 'symlink_target', 'hardlink_target',
                  'linux_attr', 'linux_xattr', 'posix1e_acl')
 
-    def __init__(self):
+    def __init__(self, *, frozen=True):
         self.mode = self.uid = self.gid = self.user = self.group = None
         self.rdev = None
         self.atime = self.mtime = self.ctime = None
@@ -759,6 +799,29 @@ class Metadata:
         self.linux_attr = None
         self.linux_xattr = None
         self.posix1e_acl = None
+        self._frozen = frozen
+
+    def freeze(self): self._frozen = True; return self
+    def thaw(self): self._frozen = False; return self
+    def __setattr__(self, k, v):
+        if k == '_frozen':
+            return super().__setattr__(k, v)
+        if getattr(self, '_frozen', False):
+            raise AttributeError(f'Cannot change frozen instance attribute {k}',
+                                 name=k, obj=self)
+        return super().__setattr__(k, v)
+    def __copy__(self):
+        result = self.__new__(self.__class__)
+        for k in [x for x in self.__slots__ if x != '_frozen']:
+            setattr(result, k, copy.copy(getattr(self, k)))
+        result._frozen = self._frozen
+        return result
+    def __deepcopy__(self, memo):
+        result = self.__new__(self.__class__)
+        for k in [x for x in self.__slots__ if x != '_frozen']:
+            setattr(result, k, copy.deepcopy(getattr(self, k), memo))
+        result._frozen = self._frozen
+        return result
 
     def __eq__(self, other):
         if not isinstance(other, Metadata): return False
@@ -850,49 +913,53 @@ class Metadata:
         ret.append(vint.encode_vuint(_rec_tag_end))
         return b''.join(ret)
 
-    def copy(self):
-        return deepcopy(self)
-
     @staticmethod
-    def read(port):
-        # This method should either return a valid Metadata object,
-        # return None if there was no information at all (just a
-        # _rec_tag_end), throw EOFError if there was nothing at all to
-        # read, or throw an Exception if a valid object could not be
-        # read completely.
+    def read(port, empty=_use_empty_metadata):
+        """Read an encoded Metadata instance from port, returning None on EOF.
+
+        Return either a valid Metadata object, None on EOF, or empty
+        (defaulting to metadata.empty_metadata) if there was no
+        information at all (just a _rec_tag_end).  Throw an Exception
+        if a valid object could not be read completely.
+
+        """
+        if empty is _use_empty_metadata:
+            empty = empty_metadata
         tag = vint.read_vuint(port)
-        if tag == _rec_tag_end:
+        if tag is None:
             return None
-        try: # From here on, EOF is an error.
-            result = Metadata()
-            while True: # only exit is error (exception) or _rec_tag_end
-                if tag == _rec_tag_path:
-                    result._load_path_rec(port)
-                elif tag == _rec_tag_common_v3:
-                    result._load_common_rec(port, version=3)
-                elif tag == _rec_tag_common_v2:
-                    result._load_common_rec(port, version=2)
-                elif tag == _rec_tag_symlink_target:
-                    result._load_symlink_target_rec(port)
-                elif tag == _rec_tag_hardlink_target:
-                    result._load_hardlink_target_rec(port)
-                elif tag == _rec_tag_posix1e_acl_v2:
-                    result._load_posix1e_acl_rec(port, version=2)
-                elif tag == _rec_tag_posix1e_acl_v1:
-                    result._load_posix1e_acl_rec(port, version=1)
-                elif tag == _rec_tag_linux_attr:
-                    result._load_linux_attr_rec(port)
-                elif tag == _rec_tag_linux_xattr:
-                    result._load_linux_xattr_rec(port)
-                elif tag == _rec_tag_end:
-                    return result
-                elif tag == _rec_tag_common_v1: # Should be very rare.
-                    result._load_common_rec(port, version=1)
-                else: # unknown record
-                    vint.skip_bvec(port)
-                tag = vint.read_vuint(port)
-        except EOFError:
-            raise Exception("EOF while reading Metadata")
+        if tag == _rec_tag_end:
+            return empty
+        # From here on, EOF is an error.
+        result = Metadata(frozen=False)
+        while True: # only exit is error (exception) or _rec_tag_end
+            if tag == _rec_tag_path:
+                result._load_path_rec(port)
+            elif tag == _rec_tag_common_v3:
+                result._load_common_rec(port, version=3)
+            elif tag == _rec_tag_common_v2:
+                result._load_common_rec(port, version=2)
+            elif tag == _rec_tag_symlink_target:
+                result._load_symlink_target_rec(port)
+            elif tag == _rec_tag_hardlink_target:
+                result._load_hardlink_target_rec(port)
+            elif tag == _rec_tag_posix1e_acl_v2:
+                result._load_posix1e_acl_rec(port, version=2)
+            elif tag == _rec_tag_posix1e_acl_v1:
+                result._load_posix1e_acl_rec(port, version=1)
+            elif tag == _rec_tag_linux_attr:
+                result._load_linux_attr_rec(port)
+            elif tag == _rec_tag_linux_xattr:
+                result._load_linux_xattr_rec(port)
+            elif tag == _rec_tag_end:
+                return result.freeze()
+            elif tag == _rec_tag_common_v1: # Should be very rare.
+                result._load_common_rec(port, version=1)
+            else: # unknown record
+                vint.skip_bvec(port)
+            tag = vint.read_vuint(port)
+            if tag is None:
+                raise EOFError('EOF within Metadata entry')
 
     def isdir(self):
         return stat.S_ISDIR(self.mode)
@@ -907,8 +974,8 @@ class Metadata:
         if not path:
             raise Exception('Metadata.apply_to_path() called with no path')
         if not self._recognized_file_type():
-            add_error('not applying metadata to "%s"' % path_msg(path)
-                      + ' with unrecognized mode "0x%x"\n' % self.mode)
+            note_error(f'error: unrecognized mode {self.mode:o},'
+                       f' not applying metadata: {path_msg(path)}\n')
             return
         num_ids = restore_numeric_ids
         for apply_metadata in (self._apply_common_rec,
@@ -918,7 +985,7 @@ class Metadata:
             try:
                 apply_metadata(path, restore_numeric_ids=num_ids)
             except ApplyError as e:
-                add_error(e)
+                note_error(f'error: {e}\n')
 
     def same_file(self, other):
         """Compare this to other for equivalency.  Return true if
@@ -932,16 +999,7 @@ class Metadata:
             and self._same_linux_xattr(other)
 
 
-class MetadataRO(Metadata):
-    __slots__ = '_frozen',
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._frozen = True
-    def __setattr__(self, k, v):
-        if getattr(self, '_frozen', None) and hasattr(self, k):
-            raise AttributeError(f'Cannot modify read-only instance attribute {k}',
-                                 name=k, obj=self)
-        return super().__setattr__(k, v)
+empty_metadata = Metadata()
 
 
 def from_path(path, statinfo=None, archive_path=None,
@@ -951,7 +1009,7 @@ def from_path(path, statinfo=None, archive_path=None,
     """Return the metadata associated with the path.  When normalized is
     true, return the metadata appropriate for a typical save, which
     may or may not be all of it."""
-    result = Metadata()
+    result = Metadata(frozen=False)
     result.path = archive_path
     st = statinfo or xstat.lstat(path)
     if after_stat:
@@ -967,7 +1025,7 @@ def from_path(path, statinfo=None, archive_path=None,
         # Only store sizes for regular files and symlinks for now.
         if not (stat.S_ISREG(result.mode) or stat.S_ISLNK(result.mode)):
             result.size = None
-    return result
+    return result.freeze()
 
 
 def save_tree(output_file, paths,
@@ -1044,13 +1102,16 @@ def summary_bytes(meta, numeric_ids = False, classification = None,
                   human_readable = False):
     """Return bytes containing the "ls -l" style listing for meta.
     Classification may be "all", "type", or None."""
-    user_str = group_str = size_or_dev_str = b'?'
-    symlink_target = None
-    mode_str = b'?' * 10
+    user_str = group_str = b'?'
     mtime_str = b'????-??-?? ??:??'
     classification_str = b'?'
-    if meta:
-        name = meta.path
+    if not meta:
+        name = b''
+        mode_str = b'?' * 10
+        symlink_target = None
+        size_or_dev_str = b'?'
+    else:
+        name = meta.path or b''
         mode_str = xstat.mode_str(meta.mode).encode('ascii')
         symlink_target = meta.symlink_target
         if meta.mtime is not None:
@@ -1079,7 +1140,6 @@ def summary_bytes(meta, numeric_ids = False, classification = None,
                 xstat.classification_str(meta.mode,
                                          classification == 'all').encode()
 
-    name = name or b''
     if classification:
         name += classification_str
     if symlink_target:
@@ -1095,6 +1155,8 @@ def summary_bytes(meta, numeric_ids = False, classification = None,
 def detailed_bytes(meta, fields = None):
     # FIXME: should optional fields be omitted, or empty i.e. "rdev:
     # 0", "link-target:", etc.
+    if not meta:
+        return b'empty'
     if not fields:
         fields = all_fields
 
@@ -1144,11 +1206,14 @@ def detailed_bytes(meta, fields = None):
 
 
 class _ArchiveIterator:
+    """Yields the metadata instances in file, or None for empty metadata."""
     def __next__(self):
-        try:
-            return Metadata.read(self._file)
-        except EOFError:
+        m = Metadata.read(self._file)
+        if m is empty_metadata:
+            return None
+        if m is None:
             raise StopIteration()
+        return m
 
     next = __next__
 
@@ -1174,7 +1239,7 @@ def display_archive(file, out):
             out.write(b'\n')
     elif verbose == 0:
         for meta in _ArchiveIterator(file):
-            if not meta.path:
+            if not (meta and meta.path):
                 log('bup: no metadata path, but asked to only display path'
                     ' (increase verbosity?)\n')
                 sys.exit(EXIT_FAILURE)
@@ -1190,11 +1255,11 @@ def start_extract(file, create_symlinks=True):
             print(path_msg(meta.path), file=sys.stderr)
         xpath = _clean_up_extract_path(meta.path)
         if not xpath:
-            add_error(Exception('skipping risky path "%s"'
-                                % path_msg(meta.path)))
+            note_error(f'error: skipping risky path: {path_msg(meta.path)}\n')
         else:
+            meta = deepcopy(meta).thaw()
             meta.path = xpath
-            _set_up_path(meta, create_symlinks=create_symlinks)
+            _set_up_path(meta.freeze(), create_symlinks=create_symlinks)
 
 
 def finish_extract(file, restore_numeric_ids=False):
@@ -1204,8 +1269,7 @@ def finish_extract(file, restore_numeric_ids=False):
             break
         xpath = _clean_up_extract_path(meta.path)
         if not xpath:
-            add_error(Exception('skipping risky path "%s"'
-                                % path_msg(meta.path)))
+            note_error(f'error: skipping risky path: {path_msg(meta.path)}\n')
         else:
             if os.path.isdir(meta.path):
                 all_dirs.append(meta)
@@ -1232,10 +1296,11 @@ def extract(file, restore_numeric_ids=False, create_symlinks=True):
             break
         xpath = _clean_up_extract_path(meta.path)
         if not xpath:
-            add_error(Exception('skipping risky path "%s"'
-                                % path_msg(meta.path)))
+            note_error(f'error: skipping risky path: {path_msg(meta.path)}\n')
         else:
+            meta = deepcopy(meta).thaw()
             meta.path = xpath
+            meta.freeze()
             if verbose:
                 print('+', path_msg(meta.path), file=sys.stderr)
             _set_up_path(meta, create_symlinks=create_symlinks)

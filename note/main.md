@@ -4,6 +4,14 @@ Notable changes in main (incomplete)
 May require attention
 ---------------------
 
+* Versions of `bup` at or after 0.25 and before 0.30.1 might (rarely)
+  drop metadata entries for non-directories. That makes the metadata
+  for all of the other non-directory paths in the same directory
+  unusable (ambiguous). `bup` now detects this and treats it as an
+  error, given the potential risks with respect to incorrect
+  ownership, permissions, etc. The new `bup validate-refs` command can
+  detect the problem and `bup get --repair` can repair affected saves.
+
 * Previously, `bup get --force-pick: SRC /.tag/DEST` created broken
   commits if the `DEST` was not itself a commit (the parent would be
   whatever `DEST` initially pointed to).
@@ -101,6 +109,16 @@ General
   when large directories change (e.g. large active Maildirs). See
   `bup-config`(5) for additional information.
 
+* `bup get` picks and appends can `--rewrite` the data being
+  transferred to respect the destination repository's configuration,
+  e.g. its `bup.split.files` and `bup.split.trees` settings. See
+  `bup-get`(1) for additional information.
+
+* The new `bup get --repair` acts like a `--rewrite` while also
+  attempting to detect and fix known issues during the transfer, for
+  example, replacing paths with missing contents with synthesized
+  "repair files". See `bup-get`(1) for additional information.
+
 * The default pack compression level can now be configured via either
   `pack.compression` or `core.compression`.  See `bup-config`(5) for
   additional information.
@@ -137,9 +155,9 @@ General
   (and then our use of git) didn't allow otherwise.
 
 * The commit message format has changed to place the command in a
-  POSIX quoted `Bup-Argv` trailer (git-interpret-trailers(1)) and the
-  version in a `Bup-Version` trailer, but note that the format is not
-  settled, i.e. may continue to change. The command quoting avoids
+  POSIX quoted `Bup-Argv` trailer (`git-interpret-trailers`(1)) and
+  the version in a `Bup-Version` trailer, but note that the format is
+  not settled, i.e. may continue to change. The command quoting avoids
   quoting arguments when possible, single quotes when there's no
   single quote or newline, and falls back to `$'...'` quoting
   otherwise.

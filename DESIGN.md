@@ -435,29 +435,31 @@ When a tree is split, a large directory like
 
 might become
 
-	dir/.b/{.bupm,aa,...,ii}
-	dir/.bupd.1.bupd
-	dir/j/{jj,...,rr}
-	dir/s/{ss,...,zz}
+	dir/.b..1.bupd/{.bupm,aa,...,ii}
+	dir/j..1.bupd/{jj,...,rr}
+	dir/s..1.bupd/{ss,...,zz}
 
-where the ".bupd.1.bupd" inside dir/ indicates that the tree for dir/
-was split, and the number (here "1") describes the number of levels
-that were created (just one in this case).  The names in an
-intermediate level (inside dir/, but not the leaves -- in this
-example, ".b", "j", "s", etc.) are derived from the first filename
-contained within each subtree, abbreviated to the shortest valid
-unique prefix.  At any level, the names contained in a subtree will
-always be greater than or equal to the name of the subtree itself and
-less than the name of the next subtree at that level.  This makes it
-possible to know which split subtree to read at every level when
-looking for a given filename.
+where the "..1.bupd" suffix indicates that the tree for dir/ was
+split, and the number (here "1") describes the number of levels that
+were created (just one in this case).  The names in an intermediate
+level (inside dir/, but not the leaves -- in this example, ".b", "j",
+"s", etc.) are derived from the first filename contained within each
+subtree, abbreviated to the shortest valid unique prefix.  At any
+level, the names contained in a subtree will always be greater than or
+equal to the name of the subtree itself and less than the name of the
+next subtree at that level.  This makes it possible to know which
+split subtree to read at every level when looking for a given
+filename.
 
-When parsing the split tree depth info file name, i.e. `.bupd.1.bupd`
-in the example above, any extra bytes in the name after the
-`.bupd.DEPTH` prefix, and before the final `.bupd` suffix must be
-ignored.  The `DEPTH` will always be a sequence of `[0-9]+`, and any
-extra bytes will begin with `.`, e.g.  `.bupd.3.SOMETHING.NEW.bupd`.
-This allows future extensions.
+Every name inside the split tree will be of the format
+`PREFIX..DEPTH.bupd` where `DEPTH` is the number of levels remaining
+in the split tree before reaching the "leaves". When parsing the name,
+i.e. `PREFIX..1.bupd`, the `..` is a separator between the `PREFIX`
+and any supplemental information. Supplemental information like the
+`DEPTH` will always be added just before existing information (right
+to left), and will never contain `..`. This allows future extensions,
+e.g. `PREFIX..SOMETHING_NEW_WITHOUT_DOTS.3.bupd`.  The `DEPTH` will
+always be a sequence of `[0-9]+`.
 
 Detailed Metadata
 -----------------
@@ -560,6 +562,13 @@ over time, both as a result of intentional changes and earlier bugs.
  - Repositories created before the introduction of split trees won't
    of course have split trees, nor will current repositories with
    bup.split.trees set to false.
+
+Currently, an empty metadata entry for a directory is expected
+(e.g. the entry for a directory in its parent's .bupm, synthetic
+directories created by `--graft`, etc.), and an empty entry for a
+non-directory indicates that the metadata was lost (e.g. via the
+abridgement fix described above). The VFS intends to provide restrictive
+permissions (e.g. umask 077) for paths whose metadata has been lost.
 
 
 Filesystem Interaction

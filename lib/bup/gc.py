@@ -3,14 +3,13 @@ from binascii import hexlify, unhexlify
 from contextlib import ExitStack
 #from itertools import chain
 from os.path import basename
-from stat import S_ISDIR
 import glob, os, re, subprocess, sys, tempfile
 
 from bup import bloom, git, midx
 from bup.git import MissingObject, walk_object
 from bup.helpers import \
     EXIT_FAILURE, log, note_error, progress, qprogress, reprogress
-from bup.io import path_msg
+from bup.io import walk_path_msg, path_msg
 from bup.repo import LocalRepo
 
 # This garbage collector uses a Bloom filter to track the live blobs
@@ -69,20 +68,23 @@ def count_objects(dir, verbosity):
 
 
 def report_missing(ref_name, item_path):
-    ref = path_msg(ref_name)
-    i = len(item_path) - 1
-    while i >= 0 and item_path[i].type != b'commit':
-        i -= 1
-    path = path_msg(b'/'.join(x.name for x in item_path[i:]))
     item = item_path[-1]
-    if S_ISDIR(item.mode):
-        note_error(f'missing {item.oid.hex()} {ref}:{path}/\n')
-    else:
-        note_error(f'missing {item.oid.hex()} {ref}:{path}\n')
+    if item.data is not False:
+        return True
+    imsg = walk_path_msg(ref_name, item_path)
+    note_error(f'missing {item.oid.hex()} {imsg}\n')
+    return True
 
 
-def find_live_objects(existing_count, cat_pipe, idx_list, refs=None,
-                      verbosity=0, count_missing=False):
+def find_live_objects(existing_count, cat_pipe, refs=None, *,
+                      idx_list=None, for_item=None, verbosity=0):
+    # Currently, for_item(ref_name, item_path) is called for all
+    # items, even missing items, and item.data will always be False
+    # for missing items as per walk_object.  When a missing object is
+    # encountered and for_item has not been provided, or if for_item
+    # has been provided and does not return True, then a MissingObject
+    # will be raised.  If idx_list is provided, then existence checks
+    # will be broad.
     pack_dir = git.repo(b'objects/pack')
     ffd, bloom_filename = tempfile.mkstemp(b'.bloom', b'tmp-gc-', pack_dir)
     os.close(ffd)
@@ -97,8 +99,13 @@ def find_live_objects(existing_count, cat_pipe, idx_list, refs=None,
         stop_at = lambda x: unhexlify(x) in live_trees
         oid_exists = (lambda oid: idx_list.exists(oid)) if idx_list else None
         approx_live_count = 0
-        missing = 0
-        for ref_name, ref_id in refs if refs else git.list_refs():
+        scan_refs = refs if refs else list(git.list_refs())
+        ref_n = len(scan_refs)
+        def progress_msg(ref_i):
+            return 'scanned %s of %s ref%s (%02.2f%% of all objects)' \
+                % (ref_i, ref_n, 's' if ref_n > 1 else '',
+                   approx_live_count * 100.0 / existing_count)
+        for ref_i, (ref_name, ref_id) in enumerate(scan_refs):
             for item_path in walk_object(cat_pipe.get, hexlify(ref_id),
                                          stop_at=stop_at, include_data=None,
                                          oid_exists=oid_exists):
@@ -106,29 +113,28 @@ def find_live_objects(existing_count, cat_pipe, idx_list, refs=None,
                 for item in item_path:
                     assert isinstance(item, git.WalkItem)
                 item = item_path[-1]
-                if item.data is False:
-                    if count_missing:
-                        report_missing(ref_name, item_path)
-                        missing += 1
-                    else:
-                        raise MissingObject(item.oid)
+                handled_missing = None
+                if for_item:
+                    handled_missing = for_item(ref_name, item_path)
+                    assert handled_missing in (True, None), handled_missing
+                if (not handled_missing) and item.data is False:
+                    raise MissingObject(item.oid)
+
                 # FIXME: batch ids
-                elif verbosity:
-                    qprogress('scanned %02.2f%%\r'
-                              % (approx_live_count * 100.0 / existing_count))
                 if item.type != b'blob':
                     if verbosity and not item.oid in live_trees:
                         approx_live_count += 1
+                        qprogress(progress_msg(ref_i) + '\r')
                     live_trees.add(item.oid)
                 else:
                     if verbosity and not live_blobs.exists(item.oid):
                         approx_live_count += 1
+                        qprogress(progress_msg(ref_i) + '\r')
                     live_blobs.add(item.oid)
+        if scan_refs:
+            log(progress_msg(ref_i) + '\n')
         maybe_close_bloom.pop_all()
-        if count_missing:
-            return live_blobs, live_trees, missing
-        else:
-            return live_blobs, live_trees
+        return live_blobs, live_trees
 
 _pack_stem_rx = re.compile(br'pack-[0-9a-fA-F]{40}')
 
@@ -251,13 +257,15 @@ def bup_gc(threshold=10, compression=1, verbosity=0, ignore_missing=False):
     else:
         try:
             with ExitStack() as maybe_close_idxl:
-                idxl = None
+                for_item, idxl = None, None
                 if ignore_missing:
                     idxl = git.PackIdxList(git.repo(b'objects/pack'))
                     maybe_close_idxl.enter_context(idxl)
-                found = find_live_objects(existing_count, cat_pipe, idxl,
-                                          verbosity=verbosity,
-                                          count_missing=ignore_missing)
+                    for_item = report_missing
+                found = find_live_objects(existing_count, cat_pipe,
+                                          for_item=for_item,
+                                          idx_list=idxl,
+                                          verbosity=verbosity)
             live_objects, live_trees = found[:2]
             if verbosity:
                 log('expecting to retain about %.2f%% unnecessary objects\n'

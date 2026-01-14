@@ -4,7 +4,7 @@ from collections import namedtuple
 from contextlib import ExitStack, nullcontext
 from ctypes import sizeof, c_void_p
 from math import floor
-from os import environ
+from os import environ, fsencode
 from random import SystemRandom
 from subprocess import PIPE, Popen
 from tempfile import mkdtemp
@@ -29,10 +29,24 @@ from bup.options import _tty_width as tty_width
 # is asking a question with a yes or no answer.  Eventually all
 # commands should avoid exiting with 1 for errors.
 
+# EXIT_RECOVERED indicates something went wrong, but it was possible
+# to recover from the problem; e.g. bup get ... --missing
+# ignore/replace encountered missing objects and was able to handle
+# them as requested without additional errors.
+
 EXIT_SUCCESS = 0
 EXIT_TRUE = 0
 EXIT_FALSE = 1
 EXIT_FAILURE = 2
+EXIT_RECOVERED = 3
+
+
+def dict_subset(dict, keys):
+    result = {}
+    for k in keys:
+        if k in dict:
+            result[k] = dict[k]
+    return result
 
 
 nullctx = nullcontext() # only need one
@@ -1004,13 +1018,17 @@ def parse_rx_excludes(options, fatal):
     excluded_patterns = []
 
     for flag in options:
-        (option, parameter) = flag
-        if option == '--exclude-rx':
+        option, parameter = flag
+        if isinstance(option, str):
+            option = fsencode(option)
+        if isinstance(parameter, str):
+            parameter = fsencode(parameter)
+        if option == b'--exclude-rx':
             try:
-                excluded_patterns.append(re.compile(argv_bytes(parameter)))
+                excluded_patterns.append(re.compile(parameter))
             except re.error as ex:
                 fatal('invalid --exclude-rx pattern (%r): %s' % (parameter, ex))
-        elif option == '--exclude-rx-from':
+        elif option == b'--exclude-rx-from':
             try:
                 f = open(resolve_parent(parameter), 'rb')
             except IOError as e:

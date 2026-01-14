@@ -19,10 +19,14 @@ def tree_items(repo, oid):
     tree_data, bupm_oid = vfs.tree_data_and_bupm(repo, oid)
     bupm = vfs._FileReader(repo, bupm_oid) if bupm_oid else None
     try:
-        maybe_meta = lambda : Metadata.read(bupm) if bupm else None
-        m = maybe_meta()
-        if m and m.size is None:
-            m.size = 0
+        def maybe_meta(name):
+            if not bupm:
+                return None
+            m = Metadata.read(bupm)
+            if not m:
+                raise EOFError(f'EOF while reading metadata entry for {name}')
+            return m
+        m = maybe_meta(b'.')
         yield TreeDictValue(name=b'.', oid=oid, meta=m)
         tree_ents = vfs.ordered_tree_entries(tree_entries(tree_data), bupm=True)
         for name, mangled_name, kind, gitmode, sub_oid in tree_ents:
@@ -32,12 +36,13 @@ def tree_items(repo, oid):
             if S_ISDIR(gitmode):
                 if kind == BUP_CHUNKED:
                     yield TreeDictValue(name=name, oid=sub_oid,
-                                        meta=maybe_meta())
+                                        meta=maybe_meta(name))
                 else:
                     yield TreeDictValue(name=name, oid=sub_oid,
                                         meta=vfs.default_dir_mode)
             else:
-                yield TreeDictValue(name=name, oid=sub_oid, meta=maybe_meta())
+                yield TreeDictValue(name=name, oid=sub_oid,
+                                    meta=maybe_meta(name))
     finally:
         if bupm:
             bupm.close()

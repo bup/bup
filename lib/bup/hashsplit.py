@@ -3,6 +3,7 @@ import math, os, re
 
 from bup import _helpers
 from bup.config import ConfigError
+from bup.helpers import dict_subset
 
 
 BUP_BLOBBITS = 13
@@ -11,6 +12,7 @@ MAX_PER_TREE = 256
 fanout = 16
 
 GIT_MODE_FILE = 0o100644
+GIT_MODE_EXEC = 0o100755
 GIT_MODE_TREE = 0o40000
 GIT_MODE_SYMLINK = 0o120000
 
@@ -20,6 +22,8 @@ def _fanbits():
     return int(math.log(fanout or 128, 2))
 
 fanbits = _fanbits
+
+_splitter_args = ('progress', 'keep_boundaries', 'blobbits', 'fanbits')
 
 def splitter(files, *, progress=None, keep_boundaries=False, blobbits=None,
              fanbits=None):
@@ -33,23 +37,26 @@ def splitter(files, *, progress=None, keep_boundaries=False, blobbits=None,
 _method_rx = br'legacy:(13|14|15|16|17|18|19|20|21)'
 
 def configuration(config_get):
-    """Return a hashsplitter configuration map based on information
-    provided by config_get."""
+    """Return a splitting configuration map based on information
+    provided by config_get. The valid entries include the splitter()
+    keyword arguments, and the configuration must include every option
+    that affects the way data will be split. (See also, rewriting via
+    get --rewrite.)
+
+    """
+    cfg = {'trees': config_get(b'bup.split.trees', opttype='bool')}
     method = config_get(b'bup.split.files')
     if method is None:
-        return {}
+        return cfg
     m = re.fullmatch(_method_rx, method)
     if not m:
         raise ConfigError(f'invalid bup.split.files setting {method}')
-    blobbits = int(m.group(1))
-    return {'blobbits': blobbits}
+    cfg['blobbits'] = int(m.group(1))
+    return cfg
 
 def from_config(files, split_config):
     """Return a hashsplitter for the given split_config."""
-    # Currently, the split_config is just a map of the options
-    # expected by splitter, so this is a trivial adapter, and
-    # any error handling is up to splitter().
-    return splitter(files, **split_config)
+    return splitter(files, **dict_subset(split_config, _splitter_args))
 
 
 total_split = 0

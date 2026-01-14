@@ -1,0 +1,623 @@
+
+from binascii import hexlify
+from contextlib import ExitStack, closing, nullcontext
+from itertools import chain
+from os.path import join as joinp
+from re import Pattern
+from stat import S_ISDIR, S_ISLNK, S_IRWXG, S_IRWXO, S_ISREG
+from typing import Any, Sequence
+import sqlite3, sys, time
+
+from bup import hashsplit, metadata, vfs
+from bup.commit import commit_message
+from bup.compat import dataclass
+from bup.git import get_cat_data, parse_commit
+from bup.hashsplit import \
+    (GIT_MODE_EXEC,
+     GIT_MODE_FILE,
+     GIT_MODE_SYMLINK,
+     GIT_MODE_TREE,
+     split_to_blob_or_tree)
+from bup.helpers import \
+    EXIT_FAILURE, hostname, log, mkdirp, should_rx_exclude_path, temp_dir
+from bup.io import path_msg, qsql_id
+from bup.metadata import Metadata
+from bup.path import xdg_cache
+from bup.pwdgrp import userfullname, username
+from bup.repair import Repairs
+from bup.tree import Stack
+from bup.vfs import \
+    (FakeLink,
+     Item,
+     LostMetadata,
+     MissingObject,
+     default_exec_mode,
+     default_file_mode,
+     render_path)
+
+
+# The current arrangement relies on a number of assumptions:
+#
+#   - repairs (when repairs.destructive is true) never remember
+#     replacements nor trees representing directories (i.e. not
+#     chunked files) because their content can vary (e.g. changing
+#     repair-id).
+#
+#   - repairs never remember trees when there are any excludes since
+#     different excludes can produce different trees from the same
+#     original tree.
+#
+#   - all rewrite created trees (when repairs.destructive is false)
+#     are identical to the one --repair would have created, which
+#     allows --rewrite to enter those trees into the db and subsequent
+#     --repair(s) to re-use them.
+#
+# Rewrites currently only handle replacing entire vfs-level trees if
+# any consituent object is missing, entire files, and symlinks.
+
+def _prep_mapping_table(db, split_cfg):
+    # This currently only needs to track items that may be split,
+    # depending on the current repo settings (e.g. files and
+    # directories); it records the result so we can re-use it if we
+    # encounter the item again. It explicitly does not store any
+    # rewrites (repairs) because the rewrite id can change across
+    # saves, and because rewrites may change the type (tree to blob).
+    settings = [str(x) for x in chain.from_iterable(sorted(split_cfg.items()))]
+    for x in settings: assert '_' not in x
+    table_id = f'bup_rewrite_mapping_to_bits_{"_".join(settings)}'
+    table_id = qsql_id(table_id)
+    db.execute(f'create table if not exists {table_id}'
+               '    (src blob primary key,'
+               '     dst blob not null,'
+               '     chunked integer,' # chunked file? (0, 1, or NULL (dir))
+               '     size integer)' # only for files
+               '    without rowid')
+    return table_id
+
+def _previous_conversion(dstrepo, item, vfs_dir, db, mapping):
+    """Return (replacement_item, converted_oid, git_mode) for the
+    given item if any, *and* if the dstrepo has the item.oid. If not,
+    converted_oid and mode will be None. The replacement_item will
+    either be item, or an augmented copy of item, (e.g. with a proper
+    size) that should be used instead of item.
+
+    """
+    if isinstance(item.meta, metadata.Metadata):
+        size = item.meta.size
+        item_mode = item.meta.mode
+    else:
+        size = None
+        item_mode = item.meta
+
+    db.execute(f'select dst, chunked, size from {mapping} where src = ?',
+               (item.oid,))
+    data = db.fetchone()
+    if not data:
+        return item, None, None
+    assert db.fetchone() is None
+    dst, chunked, size = data
+    if chunked:
+        assert S_ISREG(item_mode)
+    if not dstrepo.exists(dst):
+        # only happens if you reuse a database
+        return item, None, None
+    # augment the size if appropriate
+    if size is not None and isinstance(item.meta, metadata.Metadata):
+        if item.meta.size is not None:
+            assert item.meta.size == size
+        else: # must not modify vfs results (see vfs docs)
+            item = vfs.copy_item(item)
+            item.meta.thaw()
+            item.meta.size = size
+            item.meta.freeze()
+    # it's in the DB and in the destination repo
+    if chunked is None: # dir, not file
+        return item, dst, None
+    return item, dst, GIT_MODE_TREE if chunked else GIT_MODE_FILE
+
+def _meta_replaced(path, repairs):
+    repairs.meta_replaced(path)
+    fs_path = render_path(path[1:])
+    log(f'warning: metadata lost for {path_msg(fs_path)}\n')
+
+def _restored_link_blob(path, oid, repairs):
+    fs_path = render_path(path)
+    repairs.link_blob_restored(path, oid)
+    ep = path_msg(fs_path)
+    log(f'warning: restored missing symlink blob {oid.hex()} for {ep}\n')
+
+def _fixed_link_blob(path, oid, meta_link, blob_link, repairs):
+    fs_path = render_path(path)
+    repairs.link_blob_fixed(path, blob_link)
+    ep = path_msg(fs_path)
+    log(f'warning: symlink {ep} ({oid.hex()}) blob {blob_link} != {meta_link}\n')
+    log(f'set {ep} symlink blob to {oid.hex()} -> {meta_link}\n')
+
+def _path_repaired(path, oid, replacement_oid, missing_oid, repairs):
+    fs_path = render_path(path)
+    repairs.path_replaced(path, oid, replacement_oid)
+    ep = path_msg(fs_path)
+    log(f'warning: missing object {missing_oid.hex()} for {ep}\n')
+    log(f'repaired {ep} {oid.hex()} -> {replacement_oid.hex()}\n')
+
+def _blob_replacement(repo, meta, content):
+    # REVIEW: does all this seem reasonable?
+    now = time.time()
+    oid = repo.write_data(content)
+    rm = Metadata(frozen=False)
+    rm.mode = default_file_mode
+    rm.rdev = 0
+    rm.atime = rm.mtime = rm.ctime = now
+    rm.size = len(content)
+    if isinstance(meta, Metadata):
+        rm.uid = meta.uid
+        rm.gid = meta.gid
+        rm.user = meta.user
+        rm.group = meta.group
+    else:
+        rm.uid = rm.gid = 0
+        rm.user = rm.group = b''
+    return Item(oid=oid, meta=rm.freeze())
+
+def _replacement_item(repo, item, kind, kind_msg, repair_id, missing_oid):
+    # Currently assumes any trailer manipulations will preserve
+    # trailer ordering so we can have Missing instead of Bup-Missing,
+    # etc., and Missing should always be last.
+    m = [b'This is a replacement for a ', kind_msg, b' that was unreadable\n',
+         b'during a bup repair operation.\n\n',
+         b'Bup-Replacement-Info: ', repair_id, b'\n',
+         b'Replaced: ', kind, b' ', hexlify(item.oid), b'\n',
+         b'Missing: ', hexlify(missing_oid), b'\n']
+    return _blob_replacement(repo, item.meta, b''.join(m))
+
+def _replacement_file_item(repo, item, repair_id, missing_oid):
+    return _replacement_item(repo, item, b'file', b'file',
+                             repair_id, missing_oid)
+
+def _replacement_symlink_item(repo, item, repair_id, missing_oid):
+    return _replacement_item(repo, item, b'symlink', b'symbolic link',
+                             repair_id, missing_oid)
+
+def _replacement_tree_item(repo, item, repair_id, missing_oid):
+    return _replacement_item(repo, item, b'tree', b'tree',
+                             repair_id, missing_oid)
+
+@dataclass(frozen=True, slots=True)
+class IncompleteDir:
+    path: Sequence[Any] # vfs path
+    missing: bytes # MissingObject oid
+
+def _vfs_walk_dir_recursively(srcrepo, dstrepo, path, excludes, db, mapping,
+                              repairs, *, _replacement_parents=None):
+    """Yield information about the paths underneath the given path.
+
+    Yield (src_path, replacement_dir), where src_path is a vfs_path
+    and replacement_dir is the replacement tree oid for a src_path
+    representing a directory that has already been rewritten.
+
+    When unreadable objects are encountered, raise MissingObject if
+    repairs.destructive is false, otherwise, yield an IncompleteDir if
+    the path refers to a missing git tree, or a split tree with
+    missing split sub-trees.
+
+    """
+    if _replacement_parents is None:
+        _replacement_parents = tuple([])
+
+    item = path[-1][1]
+    assert len(path) >= 3
+    # drop branch/DATE
+    fs_path_in_save = render_path((path[0],) + path[3:])
+
+    if not repairs.destructive:
+        entries = vfs.contents(srcrepo, item)
+    else:
+        try:
+            # list(contents()) will return all of a split tree's
+            # entries even if some of the split-tree items (the oids
+            # listed in the split-tree "leaves" are actually
+            # missing. So the list() only ensures that the split tree
+            # itself isn't broken; its contents may be.
+            entries = list(vfs.contents(srcrepo, item, repair=True))
+        except MissingObject as ex:
+            yield IncompleteDir(path, ex.oid), None
+            return
+
+    path_w_meta = None
+    for entry in entries:
+        name, sub_item = entry
+        # For git-created commits or older bup repos, the metadata
+        # will be an integer, so create synthetic Metadata.
+        meta = entry[1].meta
+        if name == b'.':
+            # contents() promises this
+            assert path_w_meta is None, 'two "." dir entries encountered?!'
+            # Create version of path with its real metadata, not the
+            # contents() placeholder mode for dirs.
+            dir_name, dir_item = path[-1]
+            assert isinstance(meta, (Metadata, int)), (entry, meta)
+            path_w_meta = path[:-1] \
+                + ((dir_name, dir_item._replace(meta=meta)),)
+            continue
+        sub_fs_path_in_save = joinp(fs_path_in_save, name)
+        if S_ISDIR(vfs.item_mode(sub_item)):
+            sub_fs_path_in_save += b'/'
+        if should_rx_exclude_path(sub_fs_path_in_save, excludes):
+            continue
+        assert path_w_meta is not None, '"." not before children in dir'
+        assert isinstance(entry[1].meta, (Metadata, int)), entry
+        sub_path = path_w_meta + (entry,)
+        if not S_ISDIR(vfs.item_mode(sub_item)):
+            yield sub_path, None
+        else:
+            conv_item, oid, _ = \
+                _previous_conversion(dstrepo, sub_item, True, db, mapping)
+            assert conv_item.oid == sub_item.oid
+            if conv_item is not sub_item:
+                sub_path = sub_path[:-1] + ((sub_path[-1][0], conv_item),)
+            if oid:
+                yield sub_path, oid
+            else:
+                sub_rpath = _replacement_parents + (conv_item.oid,)
+                yield from _vfs_walk_dir_recursively(srcrepo, dstrepo, sub_path,
+                                                     excludes, db, mapping,
+                                                     repairs,
+                                                     _replacement_parents=sub_rpath)
+    assert path_w_meta is not None, f'{path_msg(fs_path_in_save)} has no "."'
+    assert isinstance(path_w_meta[-1][1].meta, (Metadata, int)), path_w_meta
+    yield path_w_meta, None
+
+def _rewrite_link(path, item_mode, srcrepo, dstrepo, stack, repairs):
+    name, item = path[-1]
+    assert isinstance(name, bytes)
+    have_meta = isinstance(item.meta, metadata.Metadata)
+    if have_meta:
+        # FIXME: not tested?
+        if item.meta.size is None:
+            item = vfs.copy_item(item)
+            item.meta.thaw()
+            item.meta.size = len(item.meta.symlink_target)
+            item.meta.freeze()
+        else:
+            assert item.meta.size == len(item.meta.symlink_target)
+
+    if isinstance(item, FakeLink):
+        target = item.target
+    elif isinstance(item.meta, Metadata):
+        target = item.meta.symlink_target
+    else:
+        target = None
+
+    change = None # restore/replace/fix
+    target_blob = None
+    if not isinstance(item, FakeLink):
+        _, kind, _, it = vfs.get_ref(srcrepo, hexlify(item.oid))
+        if not kind:
+            change = 'restore' if target else 'replace'
+        else:
+            assert kind == b'blob', kind
+            target_blob = b''.join(it)
+            if target_blob != target: # very unlikely, but easy to handle
+                if not repairs.destructive:
+                    ep = path_msg(render_path(path))
+                    log(f'Symlink with mismatched targets (can --repair): {ep}\n')
+                    sys.exit(EXIT_FAILURE)
+                # This defers to target since bup (cf. vfs.readlink())
+                # always prefers it.
+                change = 'fix'
+
+    if change == 'replace':
+        # No metadata symlink info, and blob was missing (git or pre-meta bup)
+        if not repairs.destructive:
+            raise MissingObject(item.oid)
+        replacement = \
+            _replacement_symlink_item(dstrepo, item, repairs.id, item.oid)
+        _path_repaired(path, item.oid, replacement.oid, item.oid, repairs)
+        assert replacement.meta.mode == default_file_mode
+        stack.append_to_current(name, default_file_mode, default_file_mode,
+                                replacement.oid, replacement.meta)
+        return
+
+    git_mode, oid = GIT_MODE_SYMLINK, dstrepo.write_symlink(target)
+    # REVIEW: ok if oid != item.oid?
+    if change == 'restore':
+        _restored_link_blob(path, item.oid, repairs)
+    elif change == 'fix':
+        _fixed_link_blob(path, item.oid, target, target_blob, repairs)
+    else:
+        assert change is None, change
+    stack.append_to_current(name, item_mode, git_mode, oid, item.meta)
+
+def _remember_file_rewrite(from_oid, to_oid, chunked, size, wdbc, mapping):
+    assert len(from_oid) == 20, from_oid
+    assert len(to_oid) == 20, to_oid
+    wdbc.execute(f'select src, dst, chunked, size from {mapping} where src = ?',
+                 (from_oid,))
+    row = wdbc.fetchone()
+    assert wdbc.fetchone() is None
+    if row:
+        assert row == (from_oid, to_oid, chunked, size)
+    else:
+        wdbc.execute(f'insert into {mapping} (src, dst, chunked, size)'
+                     '   values (?, ?, ?, ?)',
+                     (from_oid, to_oid, chunked, size))
+
+def _maybe_exec_mode(git_mode, meta):
+    if git_mode == GIT_MODE_FILE \
+       and meta in (default_exec_mode,
+                    default_exec_mode & ~(S_IRWXO | S_IRWXG)):
+        # Means (via vfs) this had GIT_MODE_EXEC in its git
+        # entry. Restore that here so tree._write_tree will include
+        # it. This only matters for the "found in db" case.
+        return GIT_MODE_EXEC
+    return git_mode
+
+def _rewrite_save_item(save_path, path, replacement_dir, srcrepo, dstrepo,
+                       split_cfg, stack, wdbc, mapping, excludes, repairs):
+    """Returns either None, or, if a directory was missing, the
+    directory path components.
+
+    """
+    if not isinstance(path, IncompleteDir):
+        incomplete = None
+    else:
+        incomplete = path
+        path = incomplete.path
+
+    # save_path is the full vfs save path e.g. branch/DATE.
+    fs_path = path[2:] # drop everything before the save
+    assert isinstance(fs_path[0][1], vfs.Commit), fs_path[0]
+    name, item = path[-1]
+    item_mode = vfs.item_mode(item)
+    is_dir = S_ISDIR(item_mode)
+    dir_path = fs_path if is_dir else fs_path[:-1]
+
+    if isinstance(item.meta, LostMetadata):
+        assert isinstance(repairs, Repairs), repairs
+        _meta_replaced(path, repairs)
+
+    # If switching to a new sub-tree, finish the current sub-tree, and
+    # then we'll establish the sub-tree for the new sub-tree via
+    # extend_stack for the missing components.
+    while stack.path() > [x[0] for x in dir_path]:
+        stack.pop()
+
+    def extend_stack(parents):
+        for parent in parents:
+            stack.push(parent[0], parent[1].meta)
+
+    if incomplete: # must be a dir
+        assert replacement_dir is None, replacement_dir
+        assert repairs, repairs
+        extend_stack(dir_path[len(stack):-1])
+        # For now, wholesale replacement (no attempt to handle
+        # partially readable split trees).
+        rep_item = incomplete.path[-1][1]
+        replacement = _replacement_tree_item(dstrepo, rep_item,
+                                             repairs.id,
+                                             incomplete.missing)
+        # Must not remember repairs because the repair-id (and so blob
+        # content) can vary across saves, i.e. get --rewrite-id is a
+        # contextual argument, and because the type changes from tree
+        # to blob.
+        _path_repaired(path, rep_item.oid, replacement.oid, incomplete.missing,
+                       repairs)
+        assert replacement.meta.mode == default_file_mode, repr(replacement)
+        stack.append_to_current(path[-1][0],
+                                replacement.meta.mode, GIT_MODE_FILE,
+                                replacement.oid, replacement.meta)
+        return
+
+    # First, things that can't be affected by the rewrite
+    if S_ISLNK(item_mode):
+        extend_stack(dir_path[len(stack):])
+        _rewrite_link(path, item_mode, srcrepo, dstrepo, stack, repairs)
+        return
+    if not S_ISREG(item_mode) and not S_ISDIR(item_mode):
+        # Everything here (pipes, devices, etc.) should be fully
+        # described by its metadata, and so bup just saves an empty
+        # "placeholder" blob in the git tree (so the tree and .bupm
+        # will match up).
+        extend_stack(dir_path[len(stack):])
+        git_mode, oid = GIT_MODE_FILE, dstrepo.write_data(b'')
+        stack.append_to_current(name, item_mode, git_mode, oid, item.meta)
+        return
+
+    if is_dir: # dirs come after their contents, so finish up
+        assert is_dir, path
+        assert S_ISDIR(item_mode)
+        if replacement_dir is not None:
+            # This is a directory that we've already converted; don't
+            # push/pop it, just add the previously generated tree to
+            # the parent.
+            extend_stack(dir_path[len(stack):-1]) # establish the parent
+            dir_name, dir_item = dir_path[-1]
+            stack.append_to_current(dir_name, GIT_MODE_TREE, GIT_MODE_TREE,
+                                    replacement_dir, None)
+            return
+        extend_stack(dir_path[len(stack):]) # establish the parent
+        if len(stack) == 1:
+            return # We're at the top level -- keep the current root dir
+        newtree = stack.pop()
+        assert len(item.oid) == 20, item.oid
+        assert len(newtree) == 20, newtree
+        # Don't remember any trees when we're making destructive
+        # repairs because walk will skip the contents for a tree that
+        # has missing objects when it encounters it a second time (for
+        # say the second of two saves during an --append), which will
+        # omit the logging, repair trailers, etc.
+        if not (repairs.destructive or excludes):
+            wdbc.execute(f'insert into {mapping} (src, dst) values (?, ?)',
+                         (item.oid, newtree))
+        return
+
+    extend_stack(dir_path[len(stack):])
+
+    item, oid, git_mode = \
+        _previous_conversion(dstrepo, item, is_dir, wdbc, mapping)
+    item_mode = vfs.item_mode(item)
+
+    assert S_ISREG(item_mode)
+    if oid is not None:
+        # already converted - oid and mode are known
+        assert S_ISREG(git_mode) or S_ISDIR(git_mode)
+        git_mode = _maybe_exec_mode(git_mode, item.meta)
+        stack.append_to_current(name, item_mode, git_mode, oid, item.meta)
+        return
+
+    item_size = None
+    item_size = 0
+    def write_data(data):
+        nonlocal item_size
+        item_size += len(data)
+        return dstrepo.write_data(data)
+
+    try:
+        with vfs.tree_data_reader(srcrepo, item.oid) as f:
+            git_mode, oid = split_to_blob_or_tree(
+                write_data, dstrepo.write_tree,
+                hashsplit.from_config([f], split_cfg))
+    except MissingObject as ex:
+        # For now, wholesale replacement (no attempt to handle
+        # partially readable split files).
+        if not repairs.destructive:
+            raise ex
+        replacement = _replacement_file_item(dstrepo, item, repairs.id,
+                                             ex.oid)
+        # Must not remember repairs because the repair-id (and so blob
+        # content) can vary across saves, i.e. get --rewrite-id is a
+        # contextual argument, and because the type may change from
+        # tree to blob.
+        _path_repaired(path, item.oid, replacement.oid, ex.oid, repairs)
+        assert replacement.meta.mode == default_file_mode, repr(replacement)
+        stack.append_to_current(name, replacement.meta.mode, GIT_MODE_FILE,
+                                replacement.oid, replacement.meta)
+        return
+
+    if isinstance(item.meta, metadata.Metadata):
+        # FIXME: not tested?
+        if item.meta.size is None:
+            item = vfs.copy_item(item)
+            item.meta.thaw()
+            item.meta.size = item_size
+            item.meta.freeze()
+        else:
+            assert item.meta.size == item_size, (item.meta.size, item_size)
+    chunked = 1 if S_ISDIR(git_mode) else 0
+
+    # Isn't and must not be dir or replacement (since we must not
+    # remember those).
+    _remember_file_rewrite(item.oid, oid, chunked, item_size, wdbc, mapping)
+    git_mode = _maybe_exec_mode(git_mode, item.meta)
+    stack.append_to_current(name, item_mode, git_mode, oid, item.meta)
+
+@dataclass(slots=True, frozen=True)
+class RepairInfo:
+    id: bytes
+    destructive: bool
+    command: Sequence[bytes]
+
+class Rewriter:
+    def __init__(self, *, split_cfg, db=None):
+        assert isinstance(db, (bytes, type(None)))
+        self._context = nullcontext()
+        with ExitStack() as ctx:
+            # Allows us to detect changes in excludes which invalidate
+            # related tree rewrites.
+            self._current_excludes = []
+            self._split_cfg = split_cfg
+            self._db_path = db
+            if db:
+                self._db_tmpdir = None
+            else:
+                cache = xdg_cache() + b'/bup/tmp'
+                mkdirp(cache)
+                self._db_tmpdir = \
+                    ctx.enter_context(temp_dir(dir=cache, prefix=b'rewrite-'))
+                self._db_path = self._db_tmpdir + b'/db'
+            self._db_conn = sqlite3.connect(self._db_path)
+            ctx.enter_context(closing(self._db_conn))
+            self._db_conn.text_factory = bytes
+            with closing(self._db_conn.cursor()) as cur:
+                self._mapping = _prep_mapping_table(cur, split_cfg)
+            self._context = ctx.pop_all()
+
+    def __enter__(self):
+        return self
+    def __exit__(self, exc_type, exc_value, traceback):
+        with self._context:
+            pass
+
+    def append_save(self, save_path, parent, srcrepo, dstrepo, excludes,
+                    repair_info):
+        """Create a new save from save_path with the given parent.
+        Return (save_oid, tree_oid, repairs).
+
+        """
+        # Strict for now
+        assert isinstance(parent, (bytes, type(None))), parent
+        if parent:
+            assert len(parent) == 20, parent
+        assert all(isinstance(x, Pattern) for x in excludes)
+        assert isinstance(repair_info, RepairInfo), repair_info
+        assert len(save_path) == 3, (len(save_path), save_path)
+        assert isinstance(save_path[1][1], vfs.RevList)
+        leaf_name, leaf_item = save_path[2]
+        if isinstance(leaf_item, vfs.FakeLink):
+            # For now, vfs.contents() does not resolve the one FakeLink
+            assert leaf_name == b'latest', save_path
+            res = srcrepo.resolve(leaf_item.target, parent=save_path[:-1],
+                                  follow=False, want_meta=False)
+            leaf_name, leaf_item = res[-1]
+            save_path = res
+        assert isinstance(leaf_item, vfs.Commit), leaf_item
+        # Currently, the workdb must always be ready to commit (see finally below)
+        with closing(self._db_conn.cursor()) as dbc:
+            try:
+                repairs = Repairs(repair_info.id, repair_info.destructive)
+                # Maintain a stack of information representing the current
+                # location in the archive being constructed.
+                stack = \
+                    Stack(dstrepo, self._split_cfg, repair=repairs.destructive)
+
+                if self._current_excludes != excludes:
+                    # Whenever the excludes change, remembered tree
+                    # rewrites may become incorrect. We could just
+                    # drop the affected trees if we had an indicator,
+                    # but for now just drop them all.
+                    dbc.execute(f'delete from {self._mapping}'
+                                ' where chunked is NULL')
+                    self._current_excludes = excludes
+
+                # Relies on the fact that recursion is dfs post-order,
+                # and so if a dir is broken, we'll see that "up
+                # front", and never produce any children.
+
+                for path, replacement_dir \
+                        in _vfs_walk_dir_recursively(srcrepo, dstrepo, save_path,
+                                                     excludes, dbc, self._mapping,
+                                                     repairs):
+                    _rewrite_save_item(save_path, path, replacement_dir,
+                                       srcrepo, dstrepo,
+                                       self._split_cfg, stack, dbc,
+                                       self._mapping, excludes, repairs)
+
+                while len(stack) > 1: # pop all parts above root folder
+                    stack.pop()
+                tree = stack.pop() # and the root to get the tree
+
+                save_oidx = hexlify(save_path[2][1].coid)
+                ci = parse_commit(get_cat_data(srcrepo.cat(save_oidx), b'commit'))
+                author = ci.author_name + b' <' + ci.author_mail + b'>'
+                committer = b'%s <%s@%s>' % (userfullname(), username(), hostname())
+                trailers = repairs.repair_trailers(repairs.id)
+                msg = commit_message(ci.message, repair_info.command,
+                                     trailers)
+                return (dstrepo.write_commit(tree, parent,
+                                             author,
+                                             ci.author_sec, ci.author_offset,
+                                             committer, time.time(), None,
+                                             msg),
+                        tree, repairs)
+            finally:
+                self._db_conn.commit() # the workdb is always ready for commit
