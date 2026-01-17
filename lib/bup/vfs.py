@@ -243,14 +243,14 @@ class _ChunkReader:
         return b''.join(out_parts)
 
 class _FileReader:
-    def __init__(self, repo, oid, known_size=None):
+    def __init__(self, repo, oid):
         assert len(oid) == 20
         self.closed = False
         self.oid = oid
         self.ofs = 0
         self.reader = None
         self._repo = repo
-        self._size = known_size
+        self._size = None
 
     def _compute_size(self):
         if not self._size:
