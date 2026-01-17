@@ -216,10 +216,11 @@ class _ChunkReader:
             self.blobofs = startofs
         self.ofs = startofs
 
-    def next(self, size):
+    def next(self, size): # size=-1 means all data
+        assert size >= -1, size
         out_parts = []
         out_len = 0
-        while out_len < size:
+        while size == -1 or out_len < size:
             if self.it and not self.blob:
                 self.blob = next(self.it, None)
                 if self.blob is None:
@@ -227,13 +228,17 @@ class _ChunkReader:
                 else:
                     self.blobofs = 0
             if self.blob:
-                want = size - out_len
-                out_parts.append(self.blob[self.blobofs:self.blobofs + want])
+                want = size - out_len if size != -1 \
+                    else len(self.blob) - self.blobofs
+                if self.blobofs == 0 and want >= len(self.blob):
+                    out_parts.append(self.blob)
+                    self.blob = self.blobofs = None
+                else:
+                    out_parts.append(self.blob[self.blobofs:self.blobofs + want])
+                    self.blobofs += want
+                    if self.blobofs >= len(self.blob):
+                        self.blob = self.blobofs = None
                 out_len += len(out_parts[-1])
-                self.blobofs += want
-                if self.blobofs >= len(self.blob):
-                    self.blob = None
-                    self.blobofs = None
             if not self.it:
                 break
         debug2(f'next({size}) returned {out_len}\n')
@@ -252,13 +257,15 @@ class _FileReader:
         self._repo = repo
         self._size = None
 
-    def _compute_size(self):
-        if not self._size:
+    def _require_size(self):
+        if self._size is None:
             self._size = _normal_or_chunked_file_size(self._repo, self.oid)
         return self._size
 
     def seek(self, ofs):
-        if ofs < 0 or ofs > self._compute_size():
+        if ofs == self.ofs:
+            return
+        if ofs < 0 or ofs > self._require_size():
             raise IOError(EINVAL, 'Invalid seek offset: %d' % ofs)
         self.ofs = ofs
 
@@ -266,11 +273,10 @@ class _FileReader:
         return self.ofs
 
     def read(self, count=-1):
-        size = self._compute_size()
-        if self.ofs >= size:
-            return b''
-        if count < 0:
-            count = size - self.ofs
+        if self._size is not None:
+            if self.ofs == self._size:
+                return b''
+            assert self.ofs < self._size, f'{self.ofs} > {self._size}'
         if not self.reader or self.reader.ofs != self.ofs:
             self.reader = _ChunkReader(self._repo, self.oid, self.ofs)
         try:
@@ -278,7 +284,10 @@ class _FileReader:
         except:
             self.reader = None
             raise  # our offsets will be all screwed up otherwise
-        self.ofs += len(buf)
+        if not buf:
+            self._size = self.ofs
+        else:
+            self.ofs += len(buf)
         return buf
 
     def close(self):
