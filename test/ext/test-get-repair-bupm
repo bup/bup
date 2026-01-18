@@ -60,9 +60,8 @@ unset saves
 # May as well double-check, though test-validate-refs already does this
 WVEXPRC 1 eval 'bup validate-refs --bupm 2>&1 | tee validate.log'
 btl-display-file validate.log
-wv-match-rx "$(< validate.log)"  \
-"abridged-bupm refs/heads/src $broken_tree_oid:\.bupm/?
-scanned 0 of 1 ref \(0\.00% of all objects\)"
+wv-match-rx "$(< validate.log)" \
+            "abridged-bupm refs/heads/src $broken_tree_oid:\.bupm/?"
 
 # Ensure a normal rewrite rejects the abridged bupm
 WVEXPRC 2 eval 'bup get --rewrite --append: src dst 2>&1 | tee rewrite.log'

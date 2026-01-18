@@ -103,7 +103,7 @@ def find_live_objects(existing_count, cat_pipe, refs=None, *,
         ref_n = len(scan_refs)
         def progress_msg(ref_i):
             return 'scanned %s of %s ref%s (%02.2f%% of all objects)' \
-                % (ref_i, ref_n, 's' if ref_n > 1 else '',
+                % (ref_i + 1, ref_n, 's' if ref_n > 1 else '',
                    approx_live_count * 100.0 / existing_count)
         for ref_i, (ref_name, ref_id) in enumerate(scan_refs):
             for item_path in walk_object(cat_pipe.get, hexlify(ref_id),
@@ -131,7 +131,7 @@ def find_live_objects(existing_count, cat_pipe, refs=None, *,
                         approx_live_count += 1
                         qprogress(progress_msg(ref_i) + '\r')
                     live_blobs.add(item.oid)
-        if scan_refs:
+        if verbosity and scan_refs:
             log(progress_msg(ref_i) + '\n')
         maybe_close_bloom.pop_all()
         return live_blobs, live_trees
