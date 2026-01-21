@@ -144,7 +144,7 @@ WVPASS touch rsnapshot/hourly.0/buptest/c/d/e
 WVPASS bup import-rsnapshot rsnapshot/
 WVPASSEQ "$(bup ls -F buptest/latest/)" "a/
 c/"
-if ! command -v script; then
+if ! with-tty true; then
     WVSKIP 'Skipping interactive import-snapshot test (no script command)'
 else
     WVPASS rm -rf "$BUP_DIR"
