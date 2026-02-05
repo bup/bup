@@ -4,11 +4,11 @@ from os import devnull, environb as environ, fsencode
 import pytest
 
 from bup.client import Config
-from bup.repo import repo_location_url, main_repo_location
+from bup.repo import main_repo_location, repo_location_url
 from bup.url import URL
 
 
-def test_location_url():
+def test_repo_location_url():
     url = URL(scheme=b'ssh')
     assert repo_location_url(url) is url
     assert repo_location_url(Config(remote=b'h:x', url=url)) is url

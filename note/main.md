@@ -130,6 +130,12 @@ General
   example, replacing paths with missing contents with synthesized
   "repair files". See `bup-get`(1) for additional information.
 
+* `bup get` has added a `-S, --source-url URL` option which can
+   specify a remote source repository.  This should usually be
+   preferred to `bup on HOST get` since it requires less trust in the
+   remote, and avoids the need for a remote index-cache.  See
+   `bup-get(1)` for additional information.
+
 * `bup` now verifies the hash of the incoming remote data when
   requesting a specific hash (rather than an arbitrary "ref").
   Combined with `--source-url`, this further decreases the trust

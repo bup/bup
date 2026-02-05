@@ -575,7 +575,7 @@ class Client:
                     raise ClientError('Invalid reference name in %r' % line)
                 yield name, unhexlify(oidx)
 
-    def rev_list(self, refs, parse=None, format=None):
+    def rev_list(self, ref_or_refs, parse=None, format=None):
         """See git.rev_list for the general semantics, but note that with the
         current interface, the parse function must be able to handle
         (consume) any blank lines produced by the format because the
@@ -583,12 +583,16 @@ class Client:
         as a terminator for the entire rev-list result.
 
         """
+        if isinstance(ref_or_refs, bytes):
+            refs = (ref_or_refs,)
+        else:
+            refs = ref_or_refs
         if format:
             assert b'\n' not in format
             assert parse
         for ref in refs:
-            assert ref
-            assert b'\n' not in ref
+            assert ref, ref
+            assert b'\n' not in ref, ref
         with self._line_based_call('rev-list') as call:
             self.conn.write(b'\n')
             if format:

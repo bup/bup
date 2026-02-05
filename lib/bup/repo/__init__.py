@@ -5,13 +5,14 @@ from typing import Callable, NoReturn
 from bup import client
 from bup.compat import argv_bytes
 from bup.config import url_for_remote_opt
+from bup.io import path_msg as pm
 from bup.path import defaultrepo
-from bup.repo import local, remote
-from bup.url import URL
+from bup.repo.local import LocalRepo
+from bup.repo.remote import RemoteRepo
+from bup.url import URL, parse_bytes_path_url
 
 
-LocalRepo = local.LocalRepo
-RemoteRepo = remote.RemoteRepo
+public_schemes = frozenset([b'file', b'ssh', b'bup'])
 
 
 def repo_location_url(location):
@@ -63,3 +64,19 @@ def repo_for_location(location, **kwargs):
     if isinstance(location, client.Config):
         return RemoteRepo(location, **kwargs)
     raise Exception(f'unexpected repository location {location}')
+
+
+def parse_repo_url_arg(arg, val, misuse):
+    """Call misuse(err_msg) if val is not a valid URL, otherwise
+    return a corresponding URL instance."""
+    url = parse_bytes_path_url(val)
+    if not url:
+        misuse(f'invalid {arg} {pm(val)}')
+    if isinstance(url, str):
+        misuse(f'invalid {arg} {pm(val)} ({url})')
+    url = repo_location_url(url)
+    if url.scheme not in public_schemes:
+        misuse(f'invalid {arg} schema in {pm(val)}')
+    if url.scheme == b'file' and url.auth:
+        misuse(f'{arg} {pm(val)} URL has extra leading slashes or an authority')
+    return url

@@ -30,9 +30,13 @@ from bup.io import path_msg
 from bup.pwdgrp import userfullname, username
 from bup.repair import valid_repair_id
 from bup.repo import \
-    LocalRepo, main_repo_location, repo_for_location, repo_for_url
+    (LocalRepo,
+     main_repo_location,
+     parse_repo_url_arg,
+     repo_for_location,
+     repo_for_url)
 from bup.rewrite import RepairInfo, Rewriter
-from bup.url import url_for_path
+from bup.url import URL
 
 
 argspec = (
@@ -52,8 +56,8 @@ argspec = (
       ('-v, --verbose',
        'increase log output (can be specified more than once)'),
       ('-q, --quiet', "don't show progress meter"),
-      ('-s SOURCE, --source SOURCE',
-       'path to the source repository (defaults to BUP_DIR)'),
+      ('-s PATH, -S URL --source PATH, --source-url URL',
+       'the source repository (defaults to BUP_DIR)'),
       ('-r REMOTE, --remote REMOTE',
        'hostname:/path/to/repo of remote destination repository'),
       ('-t --print-trees', 'output a tree id for each ref set'),
@@ -161,7 +165,7 @@ def parse_args(args):
     opt.bwlimit = None
     opt.compress = None
     opt.source = opt.remote = None
-    opt.source_loc = url_for_path(b'')
+    opt.source_loc = URL(scheme=b'file')
     opt.target_specs = []
 
     # Since we don't want to create a Rewriter until we've finished
@@ -249,9 +253,12 @@ def parse_args(args):
             opt.target_specs.append(make_spec(method=arg[2:-1].decode('ascii'),
                                               src=ref, dest=dest))
             pending_method_context = {}
+        elif arg in (b'-S', b'--source-url'):
+            (opt.source,), remaining = require_n_args_or_die(1, remaining)
+            opt.source_loc = parse_repo_url_arg('--source-url', opt.source, misuse)
         elif arg in (b'-s', b'--source'):
             (opt.source,), remaining = require_n_args_or_die(1, remaining)
-            opt.source_loc = url_for_path(opt.source)
+            opt.source_loc = URL(scheme=b'file', path=opt.source)
         elif arg in (b'-r', b'--remote'):
             (opt.remote,), remaining = require_n_args_or_die(1, remaining)
         elif arg in (b'-c', b'--print-commits'):
