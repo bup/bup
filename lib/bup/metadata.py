@@ -8,6 +8,7 @@
 from copy import deepcopy
 from errno import EACCES, EINVAL, ENOTTY, ENOSYS, EOPNOTSUPP
 from io import BytesIO
+from os import environb as environ
 from time import gmtime, strftime
 import copy, errno, os, sys, stat, socket, struct
 
@@ -803,13 +804,16 @@ class Metadata:
 
     def freeze(self): self._frozen = True; return self
     def thaw(self): self._frozen = False; return self
-    def __setattr__(self, k, v):
-        if k == '_frozen':
+    if int(environ.get(b'BUP_TEST_LEVEL', b'0')) >= 11:
+        # Unfortunately expensive (took an "index ~" from 25k paths/s
+        # to 16k with 3.13).
+        def __setattr__(self, k, v):
+            if k == '_frozen':
+                return super().__setattr__(k, v)
+            if getattr(self, '_frozen', False):
+                raise AttributeError(f'Cannot change frozen instance attribute {k}',
+                                     name=k, obj=self)
             return super().__setattr__(k, v)
-        if getattr(self, '_frozen', False):
-            raise AttributeError(f'Cannot change frozen instance attribute {k}',
-                                 name=k, obj=self)
-        return super().__setattr__(k, v)
     def __copy__(self):
         result = self.__new__(self.__class__)
         for k in [x for x in self.__slots__ if x != '_frozen']:
