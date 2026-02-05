@@ -1,7 +1,12 @@
 
-from bup import client
+from binascii import hexlify
+import re
+
+from bup import client, git
 from bup.repo.base import _make_base, RepoProtocol
 
+
+_oidx_rx = re.compile(br'[0-9a-fA-F]{40}')
 
 class RemoteRepo(RepoProtocol):
     def __init__(self, address, create=False, compression_level=None,
@@ -58,11 +63,23 @@ class RemoteRepo(RepoProtocol):
         # Yield all the data here so that we don't finish the
         # cat_batch iterator (triggering its cleanup) until all of the
         # data has been read.  Otherwise we'd be out of sync with the
-        # server.
+        # server.  If the ref is 40 hex digits, then assume it's an
+        # oid, and verify that the data provided by the remote
+        # actually has that oid.  If not, throw.
         items = self.client.cat_batch((ref,))
         oidx, typ, size, it = info = next(items)
         yield info[:-1]
-        if oidx: yield from it
+        if oidx:
+            if not _oidx_rx.fullmatch(ref):
+                yield from it
+            else:
+                actual_oid = git.start_sha1(typ, size)
+                for data in it:
+                    actual_oid.update(data)
+                    yield data
+                actual_oid = actual_oid.digest()
+                if hexlify(actual_oid) != ref:
+                    raise Exception(f'received {actual_oid.hex()}, expected oid {ref}')
         assert not next(items, None)
 
     def write_commit(self, tree, parent,

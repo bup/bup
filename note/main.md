@@ -119,6 +119,11 @@ General
   example, replacing paths with missing contents with synthesized
   "repair files". See `bup-get`(1) for additional information.
 
+* `bup` now verifies the hash of the incoming remote data when
+  requesting a specific hash (rather than an arbitrary "ref").
+  Combined with `--source-url`, this further decreases the trust
+  required in a remote.
+
 * The default pack compression level can now be configured via either
   `pack.compression` or `core.compression`.  See `bup-config`(5) for
   additional information.

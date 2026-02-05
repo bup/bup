@@ -207,10 +207,13 @@ def demangle_name(name, mode):
     return (name, BUP_NORMAL)
 
 
+def start_sha1(kind, size):
+    assert kind in (b'tree', b'commit', b'blob', b'tag'), kind
+    return Sha1(b'%s %d\0' % (kind, size))
+
 def calc_hash(type, content):
     """Calculate some content's hash in the Git fashion."""
-    header = b'%s %d\0' % (type, len(content))
-    sum = Sha1(header)
+    sum = start_sha1(type, len(content))
     sum.update(content)
     return sum.digest()
 
