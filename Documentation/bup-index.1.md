@@ -172,12 +172,12 @@ does, due to the accommodations described above.
     contents of /tmp, but not the directory itself, use
     "^/tmp/.". (may be repeated)
 
-    Examples:
+    Examples (the quotes are interpretted by your shell and are not part of the regex):
 
-      * '/foo$' - exclude any file named foo
-      * '/foo/$' - exclude any directory named foo
-      * '/foo/.' - exclude the content of any directory named foo
-      * '^/tmp/.' - exclude root-level /tmp's content, but not /tmp itself
+      * "/foo$"   — exclude any file named foo
+      * "/foo/$"  — exclude any directory named foo
+      * "/foo/."  — exclude the content of any directory named foo
+      * "^/tmp/." — exclude root-level /tmp's content, but not /tmp itself
 
 \--exclude-rx-from=*filename*
 :   read --exclude-rx patterns from *filename*, one pattern per-line
