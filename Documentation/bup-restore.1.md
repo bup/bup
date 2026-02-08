@@ -130,10 +130,10 @@ See the EXAMPLES section for a demonstration.
 
     Examples:
 
-      * '/foo$' - exclude any file named foo
-      * '/foo/$' - exclude any directory named foo
-      * '/foo/.' - exclude the content of any directory named foo
-      * '^/tmp/.' - exclude root-level /tmp's content, but not /tmp itself
+      * `/foo$` - exclude any file named foo
+      * `/foo/$` - exclude any directory named foo
+      * `/foo/.` - exclude the content of any directory named foo
+      * `^/tmp/.` - exclude root-level tmp's content
 
 \--exclude-rx-from=*filename*
 :   read --exclude-rx patterns from *filename*, one pattern per-line

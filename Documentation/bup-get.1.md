@@ -181,10 +181,10 @@ used to help test before/after results.)
 
     Examples:
 
-      * '/foo$' - exclude any file named foo
-      * '/foo/$' - exclude any directory named foo
-      * '/foo/.' - exclude the content of any directory named foo
-      * '^/tmp/.' - exclude root-level /tmp's content, but not /tmp itself
+      * `/foo$` - exclude any file named foo
+      * `/foo/$` - exclude any directory named foo
+      * `/foo/.` - exclude the content of any directory named foo
+      * `^/tmp/.` - exclude root-level tmp's content
 
     Only supported when rewriting or repairing. This option is
     contextual (see CONTEXTUAL OPTIONS).
