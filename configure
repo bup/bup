@@ -191,7 +191,7 @@ if test "${BUP_PYTHON_CONFIG:-}"; then
                      "$BUP_PYTHON_CONFIG")
     fi
 else
-    for py_min_ver in 13 12 11 10 9 8 7; do
+    for py_min_ver in 14 13 12 11 10 9 8 7; do
         bup_python_config="$(find-prog "python3.$py_min_ver-config" '')"
         test -z "$bup_python_config" || break
     done
