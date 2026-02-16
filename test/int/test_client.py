@@ -144,7 +144,17 @@ def test_midx_refreshing(tmpdir):
 
 def test_remote_parsing():
     tests = (
+        (b'-', (b'file', None, None, b'-')),
+        (b'-:', (b'file', None, None, b'')),
+        (b':-', (b'file', None, None, b'-')),
+        (b'x', (b'file', None, None, b'x')),
+        (b'x:', (b'ssh', b'x', None, b'')),
+        (b':y', (b'file', None, None, b'y')),
+        (b'x:y', (b'ssh', b'x', None, b'y')),
+        (b'bup', (b'file', None, None, b'bup')),
+        (b'/bup', (b'file', None, None, b'/bup')),
         (b':/bup', (b'file', None, None, b'/bup')),
+        (b'file://bup', (b'file', b'bup', None, None)),
         (b'file:///bup', (b'file', None, None, b'/bup')),
         (b'192.168.1.1:/bup', (b'ssh', b'192.168.1.1', None, b'/bup')),
         (b'ssh://192.168.1.1:2222/bup', (b'ssh', b'192.168.1.1', b'2222', b'/bup')),
