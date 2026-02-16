@@ -179,13 +179,61 @@ def test_remote_parsing():
         (b'bup://[ff:fe::1]/bup', (b'bup', b'ff:fe::1', None, b'/bup')),
         (b'bup://[ff:fe::1]/bup', (b'bup', b'ff:fe::1', None, b'/bup')),
         (b'bup-rev://', (b'bup-rev', None, None, b'')),
-        (b'bup-rev://host/dir', (b'bup-rev', b'host', None, b'/dir')),
+        (b'bup-rev://host/dir', (b'bup-rev', b'host/dir', None, b'')),
     )
     for remote, values in tests:
         assert client.parse_remote(remote) == values
 
     with pytest.raises(client.ClientError):
         client.parse_remote(b'http://asdf.com/bup')
+
+
+def test_legacy_cache_ids():
+    # Now that we prefer the repo-id, if you add one, and add a
+    # repo-id to new repositories, this should only matter for legacy
+    # repositories.  If we get this wrong (inadvertently change legacy
+    # id), then the client will create a duplicate index-cache.
+
+    def cid(reverse, remote):
+        if reverse: # see derive_repo_addr
+            assert not remote, remote
+            return client._legacy_cache_id(b'bup-rev://' + reverse)
+        return client._legacy_cache_id(remote)
+    with pytest.raises(AssertionError):
+        assert cid(b'x', b'y')
+    with pytest.raises(AssertionError):
+        cid(None, None)
+    # remotes
+    assert cid(None, b'') == b'None_'
+    assert cid(None, b':') == b'None_'
+    assert cid(None, b'-') == b'None__'
+    assert cid(None, b'p') == b'None_p'
+    assert cid(None, b'h:') == b'h_'
+    assert cid(None, b':p') == b'None_p'
+    assert cid(None, b'h:p') == b'h_p'
+    # FIXME: document unusual -r behavior if we're not going to change it, e.g.
+    #   file:p means ssh with host file, path p
+    #   file://p means a "file" with host p and path ''
+    assert cid(None, b'file:p') == b'file_p'
+    assert cid(None, b'file:/p') == b'file__p'
+    assert cid(None, b'file://p') == b'p_None' # bug if not rejected elsewhere?
+    assert cid(None, b'file:///p') == b'None__p'
+    # bup: takes the same path as ssh:
+    assert cid(None, b'ssh:/h') == b'ssh__h' # bug if not rejected elsewhere?
+    assert cid(None, b'ssh:/h/p') == b'ssh__h_p' # bug if not rejected elsewhere?
+    assert cid(None, b'ssh://h') == b'h_None'
+    assert cid(None, b'ssh://h/p') == b'h__p'
+
+    # reverses - note that on__server always sets BUP_SERVER_REVERSE
+    # to the hostname so most of these cases *should* be irrelevant.
+    with pytest.raises(AssertionError):
+        cid(b'', None)
+    assert cid(b':', None) == b'None__'
+    assert cid(b'-', None) == b'None_'
+    assert cid(b'x:', None) == b'x__'
+    assert cid(b':x', None) == b'None_x_'
+    assert cid(b'xy', None) == b'xy_' # perhaps only "real" case
+
 
 def test_config(tmpdir):
     environ[b'BUP_DIR'] = bupdir = tmpdir

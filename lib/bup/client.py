@@ -125,30 +125,33 @@ _url_rx = re.compile(br'%s(?:%s%s)?%s' % (_protocol_rs, _host_rs, _port_rs, _pat
                      re.I)
 
 def parse_remote(remote):
-    assert remote is not None
-    url_match = _url_rx.match(remote)
-    if url_match:
-        # Backward compatibility: version of bup prior to this patch
-        # passed "hostname:" to parse_remote, which wasn't url_match
-        # and thus went into the else, where the ssh version was then
-        # returned, and thus the dir (last component) was the empty
-        # string instead of None from the regex.
-        # This empty string was then put into the name of the index-
-        # cache directory, so we need to preserve that to avoid the
-        # index-cache being in a different location after updates.
-        if url_match.group(1) == b'bup-rev':
-            if url_match.group(5) is None:
-                return url_match.group(1, 3, 4) + (b'', )
-        elif not url_match.group(1) in (b'ssh', b'bup', b'file'):
-            raise ClientError('unexpected protocol: %s'
-                              % url_match.group(1).decode('ascii'))
-        return url_match.group(1,3,4,5)
-    else:
+    def parse_non_url(remote):
         rs = remote.split(b':', 1)
         if len(rs) == 1 or rs[0] in (b'', b'-'):
             return b'file', None, None, rs[-1]
         else:
             return b'ssh', rs[0], None, rs[1]
+    assert remote is not None
+    if remote and remote.startswith(b'bup-rev://'):
+        parts =  parse_non_url(remote[len(b'bup-rev://'):] + b':')
+        return (b'bup-rev',) + parts[1:]
+    url_match = _url_rx.match(remote)
+    if url_match:
+        if url_match.group(1) not in (b'ssh', b'bup', b'file'):
+            raise ClientError('unexpected protocol: %s'
+                              % url_match.group(1).decode('ascii'))
+        return url_match.group(1,3,4,5)
+    return parse_non_url(remote)
+
+
+def _legacy_cache_id(remote):
+    scheme, host, port, path = parse_remote(remote)
+    # The b'None' here matches python2's behavior of b'%s' % None == 'None',
+    # python3 will (as of version 3.7.5) do the same for str ('%s' % None),
+    # but crashes instead when doing b'%s' % None.
+    return re.sub(br'[^@\w]', b'_',
+                  b':'.join((b'None' if host is None else host,
+                             b'None' if path is None else path)))
 
 
 class Client:
@@ -242,7 +245,7 @@ class Client:
                  closing(self._sockw):
                 pass
 
-    def _prep_cache(self, host, port, path):
+    def _prep_cache(self, remote):
         # Set up the index-cache directory, prefer repo-id derived
         # dirs when the remote repo has one (that can be accessed).
         repo_id = None
@@ -251,11 +254,7 @@ class Client:
                 repo_id = self.config_get(b'bup.repo.id')
             except PermissionError:
                 pass
-        # The b'None' here matches python2's behavior of b'%s' % None == 'None',
-        # python3 will (as of version 3.7.5) do the same for str ('%s' % None),
-        # but crashes instead when doing b'%s' % None.
-        legacy = index_cache(b':'.join((b'None' if host is None else host,
-                                        b'None' if path is None else path)))
+        legacy = index_cache(_legacy_cache_id(remote))
         if repo_id is None:
             return legacy
         # legacy ids can't include -, so avoid aliasing with an id--
@@ -294,7 +293,7 @@ class Client:
                 else:
                     self.conn.write(b'set-dir %s\n' % self.dir)
                 self.check_ok()
-            self.cachedir = self._prep_cache(self.host, self.port, self.dir)
+            self.cachedir = self._prep_cache(remote)
             self.sync_indexes()
             ctx.pop_all()
         self.closed = False
