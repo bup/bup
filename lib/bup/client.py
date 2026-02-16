@@ -67,27 +67,32 @@ def parse_remote(remote):
             return b'ssh', rs[0], None, rs[1]
 
 
+def _remote_parts(reverse, remote):
+    if not reverse:
+        scheme, host, port, path = parse_remote(remote)
+    else:
+        assert not remote, remote
+        scheme, host, port, path = parse_remote(reverse + b':')
+    # The b'None' here matches python2's behavior of b'%s' % None == 'None',
+    # python3 will (as of version 3.7.5) do the same for str ('%s' % None),
+    # but crashes instead when doing b'%s' % None.
+    cache_id = re.sub(br'[^@\w]', b'_',
+                      b'%s:%s' % (b'None' if host is None else host,
+                                  b'None' if path is None else path))
+    return scheme, host, port, path, cache_id
+
+
 class Client:
     def __init__(self, remote, create=False):
         self.closed = False
         self._busy = self.conn = None
         self.sock = self.p = self.pout = self.pin = None
         try:
-            is_reverse = environ.get(b'BUP_SERVER_REVERSE')
-            if is_reverse:
-                assert(not remote)
-                remote = b'%s:' % is_reverse
-            (self.protocol, self.host, self.port, self.dir) = parse_remote(remote)
-            # The b'None' here matches python2's behavior of b'%s' % None == 'None',
-            # python3 will (as of version 3.7.5) do the same for str ('%s' % None),
-            # but crashes instead when doing b'%s' % None.
-            cachehost = b'None' if self.host is None else self.host
-            cachedir = b'None' if self.dir is None else self.dir
-            self.cachedir = git.repo(b'index-cache/%s'
-                                     % re.sub(br'[^@\w]',
-                                              b'_',
-                                              b'%s:%s' % (cachehost, cachedir)))
-            if is_reverse:
+            reverse = environ.get(b'BUP_SERVER_REVERSE')
+            self.protocol, self.host, self.port, self.dir, cache_id = \
+                _remote_parts(reverse, remote)
+            self.cachedir = git.repo(b'index-cache/' + cache_id)
+            if reverse:
                 self.pout = os.fdopen(3, 'rb')
                 self.pin = os.fdopen(4, 'wb')
                 self.conn = Conn(self.pout, self.pin)

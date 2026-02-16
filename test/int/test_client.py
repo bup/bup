@@ -157,3 +157,27 @@ def test_remote_parsing():
 
     with pytest.raises(client.ClientError):
         client.parse_remote(b'http://asdf.com/bup')
+
+
+def test_remote_cache_ids():
+    def cid(reverse, remote):
+        scheme, host, port, path, cid = client._remote_parts(reverse, remote)
+        return cid
+    with pytest.raises(AssertionError):
+        assert cid(b'x', b'y')
+    with pytest.raises(TypeError):
+        assert cid(None, None)
+    # remotes
+    assert cid(None, b'') == b'None_'
+    assert cid(None, b':') == b'None_'
+    assert cid(None, b'-') == b'None__'
+    assert cid(None, b'h:') == b'h_'
+    assert cid(None, b':p') == b'None_p'
+    # reverses
+    with pytest.raises(TypeError): # currently same as None, None case
+        assert cid(b'', None)
+    assert cid(b':', None) == b'None__'
+    assert cid(b'-', None) == b'None_'
+    assert cid(b'x:', None) == b'x__'
+    assert cid(b':x', None) == b'None_x_'
+    assert cid(b'xy', None) == b'xy_'
