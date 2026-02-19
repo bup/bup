@@ -145,7 +145,34 @@ def parse_remote(remote):
 
 
 def _legacy_cache_id(remote):
-    scheme_, host, port_, path = parse_remote(remote)
+    # This function should effectively never change its behavior since
+    # a change in return value will cause affected clients to
+    # duplicate the index-cache.  The index-cache for newer
+    # repositories is determined by the repo-id.
+    def parse_non_url(remote):
+        rs = remote.split(b':', 1)
+        if len(rs) == 1 or rs[0] in (b'', b'-'):
+            return b'file', None, None, rs[-1]
+        else:
+            return b'ssh', rs[0], None, rs[1]
+    def parse(remote):
+        assert remote is not None # FIXME: b'' too?
+        if remote and remote.startswith(b'bup-rev://'):
+            parts =  parse_non_url(remote[len(b'bup-rev://'):] + b':')
+            return (b'bup-rev',) + parts[1:]
+        scheme = br'([-a-z]+)://'
+        host = br'(?P<sb>\[)?((?(sb)[0-9a-f:]+|[^:/]+))(?(sb)\])'
+        port = br'(?::(\d+))?'
+        path = br'(/.*)?'
+        rx = re.compile(br'%s(?:%s%s)?%s' % (scheme, host, port, path), re.I)
+        url_match = rx.match(remote)
+        if url_match:
+            if url_match.group(1) not in (b'ssh', b'bup', b'file'):
+                raise ClientError('unexpected protocol: %s'
+                                  % url_match.group(1).decode('ascii'))
+            return url_match.group(1,3,4,5)
+        return parse_non_url(remote)
+    scheme_, host, port_, path = parse(remote)
     # The b'None' here matches python2's behavior of b'%s' % None == 'None',
     # python3 will (as of version 3.7.5) do the same for str ('%s' % None),
     # but crashes instead when doing b'%s' % None.
