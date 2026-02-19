@@ -22,7 +22,7 @@ from bup.helpers import \
      progress,
      qprogress,
      DemuxConn)
-from bup.io import path_msg
+from bup.io import path_msg as pm
 from bup.path import index_cache
 from bup.vint import read_vint, read_vuint, read_bvec, write_bvec
 
@@ -144,22 +144,20 @@ def parse_remote(remote):
     return parse_non_url(remote)
 
 
-def _legacy_cache_id(remote):
+def _legacy_cache_id(remote, reversed=False):
     # This function should effectively never change its behavior since
     # a change in return value will cause affected clients to
     # duplicate the index-cache.  The index-cache for newer
-    # repositories is determined by the repo-id.
+    # repositories is determined by the repo-id.  Although remote will
+    # typically already have been vetted/restricted by parse_remote, a
+    # reversed value is normally just the BUP_SERVER_REVERSE value,
+    # which should be a hostname, but could be anything.
     def parse_non_url(remote):
         rs = remote.split(b':', 1)
         if len(rs) == 1 or rs[0] in (b'', b'-'):
-            return b'file', None, None, rs[-1]
-        else:
-            return b'ssh', rs[0], None, rs[1]
+            return None, rs[-1]
+        return rs
     def parse(remote):
-        assert remote is not None # FIXME: b'' too?
-        if remote and remote.startswith(b'bup-rev://'):
-            parts =  parse_non_url(remote[len(b'bup-rev://'):] + b':')
-            return (b'bup-rev',) + parts[1:]
         scheme = br'([-a-z]+)://'
         host = br'(?P<sb>\[)?((?(sb)[0-9a-f:]+|[^:/]+))(?(sb)\])'
         port = br'(?::(\d+))?'
@@ -167,12 +165,12 @@ def _legacy_cache_id(remote):
         rx = re.compile(br'%s(?:%s%s)?%s' % (scheme, host, port, path), re.I)
         url_match = rx.match(remote)
         if url_match:
-            if url_match.group(1) not in (b'ssh', b'bup', b'file'):
-                raise ClientError('unexpected protocol: %s'
-                                  % url_match.group(1).decode('ascii'))
-            return url_match.group(1,3,4,5)
+            scheme = url_match.group(1)
+            if scheme not in (b'ssh', b'bup', b'file'):
+                raise ClientError(f'unexpected {scheme} scheme for {pm(remote)}')
+            return url_match.group(3,5)
         return parse_non_url(remote)
-    scheme_, host, port_, path = parse(remote)
+    host, path = parse_non_url(remote + b':') if reversed else parse(remote)
     # The b'None' here matches python2's behavior of b'%s' % None == 'None',
     # python3 will (as of version 3.7.5) do the same for str ('%s' % None),
     # but crashes instead when doing b'%s' % None.
@@ -273,7 +271,7 @@ class Client:
                  closing(self._sockw):
                 pass
 
-    def _prep_cache(self, remote):
+    def _prep_cache(self, remote, reversed):
         # Set up the index-cache directory, prefer repo-id derived
         # dirs when the remote repo has one (that can be accessed).
         repo_id = None
@@ -282,7 +280,7 @@ class Client:
                 repo_id = self.config_get(b'bup.repo.id')
             except PermissionError:
                 pass
-        legacy = index_cache(_legacy_cache_id(remote))
+        legacy = index_cache(_legacy_cache_id(remote, reversed))
         if repo_id is None:
             return legacy
         # legacy ids can't include -, so avoid aliasing with an id--
@@ -321,7 +319,10 @@ class Client:
                 else:
                     self.conn.write(b'set-dir %s\n' % self.dir)
                 self.check_ok()
-            self.cachedir = self._prep_cache(remote)
+            if self.protocol == b'bup-rev':
+                self.cachedir = self._prep_cache(remote[len(b'bup-rev://'):], True)
+            else:
+                self.cachedir = self._prep_cache(remote, False)
             self.sync_indexes()
             ctx.pop_all()
         self.closed = False
@@ -389,7 +390,7 @@ class Client:
         # All cached idxs are extra until proven otherwise
         extra = set()
         for f in os.listdir(self.cachedir):
-            debug1(path_msg(f) + '\n')
+            debug1(pm(f) + '\n')
             if f.endswith(b'.idx'):
                 extra.add(f)
         needed = set()
@@ -430,8 +431,7 @@ class Client:
         mkdirp(self.cachedir)
         fn = os.path.join(self.cachedir, name)
         if os.path.exists(fn):
-            msg = ("won't request existing .idx, try `bup bloom --check %s`"
-                   % path_msg(fn))
+            msg = f"won't request existing .idx, try `bup bloom --check {pm(fn)}`"
             raise ClientError(msg)
         with atomically_replaced_file(fn, 'wb') as f:
             self.send_index(name, f, lambda size: None)

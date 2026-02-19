@@ -198,11 +198,11 @@ def test_legacy_cache_ids():
     def cid(reverse, remote):
         if reverse: # see derive_repo_addr
             assert not remote, remote
-            return client._legacy_cache_id(b'bup-rev://' + reverse)
+            return client._legacy_cache_id(reverse, True)
         return client._legacy_cache_id(remote)
     with pytest.raises(AssertionError):
         assert cid(b'x', b'y')
-    with pytest.raises(AssertionError):
+    with pytest.raises(TypeError):
         cid(None, None)
     # remotes
     assert cid(None, b'') == b'None_'
@@ -227,7 +227,7 @@ def test_legacy_cache_ids():
 
     # reverses - note that on__server always sets BUP_SERVER_REVERSE
     # to the hostname so most of these cases *should* be irrelevant.
-    with pytest.raises(AssertionError):
+    with pytest.raises(TypeError):
         cid(b'', None)
     assert cid(b':', None) == b'None__'
     assert cid(b'-', None) == b'None_'
