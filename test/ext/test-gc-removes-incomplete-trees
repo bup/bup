@@ -57,7 +57,7 @@ WVPASS git show-index < bup/objects/pack/"$(basename ${packs[1]} .pack).idx" \
 
 # Keep a safe copy of src in another repo
 WVPASS bup -d bup-complete init
-WVPASS bup save -r :bup-complete --strip -n src src
+WVPASS bup save -r -:bup-complete --strip -n src src
 
 # Promote hold to its own branch so we can drop everything else and gc
 WVPASS bup get --append: src/latest/1-hold hold

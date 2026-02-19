@@ -21,7 +21,7 @@ with-tty() { "$top/dev/with-tty" "$@"; }
 
 bup-ls() {
     if test "$BUP_TEST_REMOTE_REPO"; then
-        "$top/bup" ls -r "$BUP_DIR" "$@"
+        "$top/bup" ls -r "-:$BUP_DIR" "$@"
     else
         "$top/bup" ls "$@"
     fi

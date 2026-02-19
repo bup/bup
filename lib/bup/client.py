@@ -126,20 +126,30 @@ _url_rx = re.compile(br'%s(?:%s%s)?%s' % (_protocol_rs, _host_rs, _port_rs, _pat
 
 def parse_remote(remote):
     def parse_non_url(remote):
-        rs = remote.split(b':', 1)
-        if len(rs) == 1 or rs[0] in (b'', b'-'):
-            return b'file', None, None, rs[-1]
-        else:
-            return b'ssh', rs[0], None, rs[1]
-    assert remote is not None
-    if remote and remote.startswith(b'bup-rev://'):
-        parts =  parse_non_url(remote[len(b'bup-rev://'):] + b':')
-        return (b'bup-rev',) + parts[1:]
-    url_match = _url_rx.match(remote)
-    if url_match:
-        if url_match.group(1) not in (b'ssh', b'bup', b'file'):
-            raise ClientError('unexpected protocol: %s'
-                              % url_match.group(1).decode('ascii'))
+        if b':' not in remote:
+            raise ClientError(f'remote {pm(remote)} has no colon')
+        host, path = remote.split(b':', 1)
+        if host == b'-': # use a subprocess for testing
+            return b'ssh', None, None, path if path else None
+        if not host:
+            raise ClientError(f'remote {pm(remote)} has no host')
+        return b'ssh', host, None, path
+    if remote.startswith(b'file:'):
+        raise ClientError(f'unexpected file scheme for {pm(remote)}')
+    if remote.startswith(b'bup-rev://'):
+        # It should be a hostname, so just make the value the host for now
+        return b'bup-rev', remote[len(b'bup-rev://'):], None, None
+    m = re.match(br'([a-zA-Z][-+.a-zA-Z0-9]+):', remote) # has valid scheme
+    if m:
+        scheme = m.group(1)
+        if scheme not in (b'ssh', b'bup'):
+            raise ClientError(f'unexpected {scheme} scheme for {pm(remote)}')
+        if remote[3:6] != b'://':
+            raise ClientError(f'{scheme} URL {pm(remote)} has no host')
+        url_match = _url_rx.match(remote)
+        if not url_match:
+            raise ClientError(f'invalid URL {pm(remote)}')
+        assert url_match.group(1) == scheme
         return url_match.group(1,3,4,5)
     return parse_non_url(remote)
 
@@ -303,10 +313,12 @@ class Client:
             self._busy = None
             if self.protocol == b'bup-rev':
                 self._transport = Client.ViaBupRev()
-            elif self.protocol in (b'ssh', b'file'):
+            elif self.protocol == b'ssh':
                 self._transport = Client.ViaSsh(self.host, self.port)
             elif self.protocol == b'bup':
                 self._transport = Client.ViaBup(self.host, self.port)
+            else:
+                raise ClientError(f'unrecognized remote {pm(remote)}')
             ctx.enter_context(self._transport)
             self.conn = self._transport.conn
             self._available_commands = self._get_available_commands()
@@ -320,7 +332,7 @@ class Client:
                     self.conn.write(b'set-dir %s\n' % self.dir)
                 self.check_ok()
             if self.protocol == b'bup-rev':
-                self.cachedir = self._prep_cache(remote[len(b'bup-rev://'):], True)
+                self.cachedir = self._prep_cache(self.host, True)
             else:
                 self.cachedir = self._prep_cache(remote, False)
             self.sync_indexes()

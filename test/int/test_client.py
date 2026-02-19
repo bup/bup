@@ -5,6 +5,7 @@ import pytest
 from buptest import exc as ex
 
 from bup import client, git, path
+#from bup.client import ClientError
 from bup.compat import environ
 from bup.config import ConfigError
 from bup.repo import LocalRepo
@@ -30,7 +31,7 @@ def test_server_split_with_indexes(tmpdir):
     git.init_repo(bupdir)
     with local_writer() as lw:
         lw.new_blob(s1)
-    with client.Client(bupdir, create=True) as c, \
+    with client.Client(b'-:' + bupdir, create=True) as c, \
          c.new_packwriter() as rw:
         rw.new_blob(s2)
         rw.breakpoint()
@@ -47,7 +48,7 @@ def test_multiple_suggestions(tmpdir):
         lw.new_blob(s2)
     assert len(glob.glob(git.repo(b'objects/pack'+IDX_PAT))) == 2
 
-    with client.Client(bupdir, create=True) as c, \
+    with client.Client(b'-:' + bupdir, create=True) as c, \
          c.new_packwriter() as rw:
 
         assert len(glob.glob(c.cachedir+IDX_PAT)) == 0
@@ -124,7 +125,7 @@ def test_server_deduplicate_writes(deduplicate_mode, tmpdir):
     with local_writer() as lw:
         lw.new_blob(s1)
 
-    with client.Client(bupdir, create=True) as c, \
+    with client.Client(b'-:' + bupdir, create=True) as c, \
          c.new_packwriter() as rw:
         assert len(glob.glob(c.cachedir+IDX_PAT)) == 1
         rw.new_blob(s1)
@@ -136,7 +137,7 @@ def test_server_deduplicate_writes(deduplicate_mode, tmpdir):
 def test_midx_refreshing(tmpdir):
     environ[b'BUP_DIR'] = bupdir = tmpdir
     git.init_repo(bupdir)
-    with client.Client(bupdir, create=True) as c, \
+    with client.Client(b'-:' + bupdir, create=True) as c, \
          c.new_packwriter() as rw:
         rw.new_blob(s1)
         p1base = rw.breakpoint()
@@ -170,8 +171,7 @@ def test_midx_refreshing(tmpdir):
 
 def test_remote_parsing():
     tests = (
-        (b':/bup', (b'file', None, None, b'/bup')),
-        (b'file:///bup', (b'file', None, None, b'/bup')),
+        (b'-:/bup', (b'ssh', None, None, b'/bup')),
         (b'192.168.1.1:/bup', (b'ssh', b'192.168.1.1', None, b'/bup')),
         (b'ssh://192.168.1.1:2222/bup', (b'ssh', b'192.168.1.1', b'2222', b'/bup')),
         (b'ssh://[ff:fe::1]:2222/bup', (b'ssh', b'ff:fe::1', b'2222', b'/bup')),
@@ -179,8 +179,8 @@ def test_remote_parsing():
         (b'bup://foo.com:1950/bup', (b'bup', b'foo.com', b'1950', b'/bup')),
         (b'bup://[ff:fe::1]/bup', (b'bup', b'ff:fe::1', None, b'/bup')),
         (b'bup://[ff:fe::1]/bup', (b'bup', b'ff:fe::1', None, b'/bup')),
-        (b'bup-rev://', (b'bup-rev', None, None, b'')),
-        (b'bup-rev://host/dir', (b'bup-rev', b'host/dir', None, b'')),
+        (b'bup-rev://', (b'bup-rev', b'', None, None)),
+        (b'bup-rev://host/dir', (b'bup-rev', b'host/dir', None, None)),
     )
     for remote, values in tests:
         assert client.parse_remote(remote) == values
@@ -194,7 +194,6 @@ def test_legacy_cache_ids():
     # repo-id to new repositories, this should only matter for legacy
     # repositories.  If we get this wrong (inadvertently change legacy
     # id), then the client will create a duplicate index-cache.
-
     def cid(reverse, remote):
         if reverse: # see derive_repo_addr
             assert not remote, remote
@@ -240,7 +239,7 @@ def test_config(tmpdir):
     environ[b'BUP_DIR'] = bupdir = tmpdir
     environ[b'GIT_DIR'] = bupdir = tmpdir
     git.init_repo(bupdir)
-    with client.Client(bupdir, create=True) as c:
+    with client.Client(b'-:' + bupdir, create=True) as c:
         assert c.config_get(b'bup.split.trees') is None
         assert c.config_get(b'bup.split.trees', opttype='int') is None
         ex((b'git', b'config', b'bup.split.trees', b'0'))

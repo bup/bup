@@ -155,6 +155,30 @@ Subcommands are described in separate man pages.  For example
 `bup-tick`(1)
 :   Wait for up to one second.
 
+# REMOTE OPTIONS
+
+Some options (currently just `--remote`) allow the specification of a
+remote path as either a URL or a `[*user*@]*host*:[*path*]`.
+
+For either format, when there is no path, the default path on the
+server will be used, and SSH settings for the connection can be
+provided by a custom host to your `~/.ssh/config` file
+(`ssh_config(5)`).
+
+The argument is treated as a URL if it begins with a syntactically
+valid URL scheme prefix that contains an "authority" (meaning that it
+begins with `SCHEME://` as `ssh://...`  does), and the scheme must be
+either `ssh` or `bup`; others will be rejected.
+
+For the `[*user*@]*host*:[*path*]` syntax the *host* must always be
+followed by a colon, and anything after the first colon is the *path*.
+
+For fully general purposes, prefer URLs to `[*user*@]*host*:[*path*]`,
+so that there is no potential ambiguity.  For example, consider the
+(unlikely) case where `ssh://x/y` is generated for a host named `ssh`
+and path `//x/y`, which would be interpreted as a URL with host `x`
+and path `/y`.
+
 # ENVIRONMENT
 
 `BUP_ASSUME_GIT_VERSION_IS_FINE`

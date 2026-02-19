@@ -39,13 +39,10 @@ you can view its contents using `bup join` or `git show`.
 
 # OPTIONS
 
--r, \--remote=*host*:[*path*]
-:   list information for the repository at *path* on the indicated
-    *host*.  If *path* is omitted, uses the default path on the remote
-    server (you still need to include the ':').  The connection to the
-    remote server will be made by SSH.  If you'd like to specify the
-    port, user, or private key, we recommend you use the
-    `~/.ssh/config` file (`ssh_config(5)`).
+-r, \--remote=[*user*@]*host*:[*path*], \--remote=URL
+:   draw the information from the specified remote repository, by
+    default via SSH.  See bup(1) REMOTE OPTIONS for further
+    information.
 
 -s, \--hash
 :   show hash for each file/directory.

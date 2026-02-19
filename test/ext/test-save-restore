@@ -18,7 +18,7 @@ validate-local-and-remote-restore()
     WVPASS bup restore -C "$dest" "$src"
     WVPASS "$top/dev/compare-trees" "$cmp_src" "$cmp_dest"
     force-delete "$dest"
-    WVPASS bup restore -r ":$BUP_DIR" -C "$dest" "$src"
+    WVPASS bup restore -r "-:$BUP_DIR" -C "$dest" "$src"
     WVPASS "$top/dev/compare-trees" "$cmp_src" "$cmp_dest"
 }
 
@@ -96,7 +96,7 @@ WVPASSEQ "$(cat buprestore.tmp/data)" ""
         WVPASS "$top/dev/compare-trees" "$x/" "$tmp/restore/$(basename $x)"
     done
     WVPASS force-delete "$tmp/restore"  
-    WVPASS bup restore -r ":$BUP_DIR" -C "$tmp"/restore /foo/latest/x/
+    WVPASS bup restore -r "-:$BUP_DIR" -C "$tmp"/restore /foo/latest/x/
     for x in "$tmp"/src/x/*; do
         WVPASS "$top/dev/compare-trees" "$x/" "$tmp/restore/$(basename $x)"
     done

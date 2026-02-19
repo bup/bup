@@ -84,6 +84,17 @@ General
   creation, or when run again on an existing repository. See
   `bup-config`(5) for more information.
 
+* The `--remote` (`-r`) argument interpretation has changed.  The
+  value is treated as a URL if it begins with a syntactically valid
+  URL scheme prefix that contains an "authority" (meaning that it
+  begins with `SCHEME://` as `ssh://...`  does) and anything else is
+  interpreted as a `host:[path]` where the `host` is no longer
+  optional).  `file:` URLs are no longer allowed; the semantics were
+  potentially surprising (e.g. `file://p` would ssh to host `p`).  Use
+  `ssh:` URLs instead.  The URL support, though long standing, was
+  previously undocumented.  See REMOTE OPTIONS in `bup`(1) for further
+  information.
+
 * The REMOTE directory name in the client index cache (typically
   `~/.bup/index-cache/REMOTE`) is now the `bup.repo.id` when the
   remote repository provides, one and existing directories will be

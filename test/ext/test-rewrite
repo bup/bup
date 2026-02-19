@@ -64,7 +64,7 @@ WVPASS bup -d "$BUP_DIR4" get --rewrite -s "$BUP_DIR" --append save
 WVPASS compare "$BUP_DIR" save "$BUP_DIR4" save
 
 WVSTART "rewrite unchanged (to remote)"
-WVPASS bup get -r ":$BUP_DIR3" -s "$BUP_DIR" --append save
+WVPASS bup get -r "-:$BUP_DIR3" -s "$BUP_DIR" --append save
 WVPASS compare "$BUP_DIR" save "$BUP_DIR3" save
 WVPASSEQ "$(GIT_DIR="$BUP_DIR" WVPASS  git log --pretty=format:%T -n1 save)" \
 	 "$(GIT_DIR="$BUP_DIR3" WVPASS git log --pretty=format:%T -n1 save)"
