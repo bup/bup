@@ -53,7 +53,7 @@ bwlimit=   maximum bytes/sec to transmit to server
 """
 
 
-def opts_from_cmdline(o, argv, reverse):
+def opts_from_cmdline(o, argv):
     opt, flags, extra = o.parse_bytes(argv[1:])
     opt.sources = extra
 
@@ -88,7 +88,7 @@ def opts_from_cmdline(o, argv, reverse):
     else:
         opt.date = time.time()
 
-    if reverse and (not opt.sources or opt.git_ids):
+    if environ.get(b'BUP_SERVER_REVERSE') and (not opt.sources or opt.git_ids):
         o.fatal('"bup on ... split" does not support reading from standard input')
     opt.repo = derive_repo_addr(remote=opt.remote, die=o.fatal)
 
@@ -159,9 +159,8 @@ def split(opt, files, parent, out, split_cfg, *,
     return commit
 
 def main(argv):
-    reverse = environ.get(b'BUP_SERVER_REVERSE')
     opt_parser = options.Options(optspec)
-    opt = opts_from_cmdline(opt_parser, argv, reverse)
+    opt = opts_from_cmdline(opt_parser, argv)
     if opt.verbose >= 2:
         git.verbose = opt.verbose - 1
     if opt.fanout:
@@ -177,7 +176,6 @@ def main(argv):
     out = byte_stream(sys.stdout)
     stdin = byte_stream(sys.stdin)
 
-    remote_dest = opt.remote or reverse
     writing = not (opt.noop or opt.copy)
 
     repo_checked = False
