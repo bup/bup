@@ -158,7 +158,8 @@ Subcommands are described in separate man pages.  For example
 # REMOTE OPTIONS
 
 Some options (currently just `--remote`) allow the specification of a
-remote path as either a URL or a `[*user*@]*host*:[*path*]`.
+remote path as either a URL (see `REPOSITORY URLS` below) or a
+`[*user*@]*host*:[*path*]`.
 
 For either format, when there is no path, the default path on the
 server will be used, and SSH settings for the connection can be
@@ -170,7 +171,9 @@ valid URL scheme prefix that contains an "authority" (meaning that it
 begins with `SCHEME://` as `ssh://...`  does), and the scheme must be
 either `ssh` or `bup`; others will be rejected.
 
-For the `[*user*@]*host*:[*path*]` syntax the *host* must always be
+For the `[*user*@]*host*:[*path*]` syntax, if there is an @ symbol,
+then everything before the rightmost @ is included in the *user* so
+`-r x@y@z` indicates user `x@y`, host `z`.  The *host* must always be
 followed by a colon, and anything after the first colon is the *path*.
 
 For fully general purposes, prefer URLs to `[*user*@]*host*:[*path*]`,
@@ -178,6 +181,48 @@ so that there is no potential ambiguity.  For example, consider the
 (unlikely) case where `ssh://x/y` is generated for a host named `ssh`
 and path `//x/y`, which would be interpreted as a URL with host `x`
 and path `/y`.
+
+# REPOSITORY URLS
+
+Bup supports the following URL schemes (i.e. `scheme:`) for referring
+to a repository.  Note that the term "authority" below just means the
+URL section after the `scheme://` and before the path, for example the
+"user@host:port" of an SSH URL.
+
+As an exception to the standard, a scheme may be "path-oriented",
+which means that there is no separate query or fragment.  Anything
+after the (optional) authority is taken as the "path" and the
+constituent bytes are not decoded (e.g. percent decoded).  This allows
+URLs provided on the command line to work naturally.  So
+`ssh://host/x?z` has a path of `/x?z`.
+
+`ssh:`
+:   A path-oriented scheme (see above) that specifies access to a
+    repository via a `bup-server(1)` launched on a host via SSH.  This
+    scheme has syntax and semantics matching a typical `ssh:` URL,
+    including support for a user and port
+    (e.g. `ssh://user@host:2222/some/repo`), and the user and host can
+    be percent encoded.
+
+    As an extension to the standard, because URLs with an authority
+    cannot specify a relative path when there's an authority, a
+    leading `/./` is taken to indicate a relative path.  So
+    `ssh://host/./x` indicates the path `x`.
+
+`bup:`
+:   Specifies a direct network connection to to an existing
+    `bup-server(1)`.  Otherwise identical to `ssh:`, except that it
+    does not support a user.
+
+`file:`
+:   A path-oriented scheme (see above) that specifies a repository's
+    filesystem path.  This scheme has syntax and semantics matching a
+    typical `file:` URL, except that it does not allow an authority
+    (i.e. user, host, etc.).  So when constructing a URL from an
+    arbitrary PATH, you can use `file:PATH` if the path starts with
+    `///`, if it is a single character, or if the second character is
+    not `/`.  Otherwise use `file://PATH` after ensuring the path is
+    absolute, or dot-encoding it.
 
 # ENVIRONMENT
 

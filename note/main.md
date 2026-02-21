@@ -88,7 +88,7 @@ General
   value is treated as a URL if it begins with a syntactically valid
   URL scheme prefix that contains an "authority" (meaning that it
   begins with `SCHEME://` as `ssh://...`  does) and anything else is
-  interpreted as a `host:[path]` where the `host` is no longer
+  interpreted as a `[user@]host:[path]` where the `host` is no longer
   optional).  `file:` URLs are no longer allowed; the semantics were
   potentially surprising (e.g. `file://p` would ssh to host `p`).  Use
   `ssh:` URLs instead.  The URL support, though long standing, was

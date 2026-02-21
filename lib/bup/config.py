@@ -1,5 +1,6 @@
 
 from os import environb as environ
+from urllib.parse import quote_from_bytes
 
 import bup.path
 
@@ -14,7 +15,9 @@ def derive_repo_addr(*, remote, die):
     if remote:
         if reverse:
             die("don't use -r in reverse mode; it's automatic")
-        return b'bup+ssh://' + remote
+        return b'ssh://' + remote
     if reverse:
-        return (b'bup-rev://' + reverse)
+        # Since it should effectively always be a hostname provided by
+        # on--server, make it the URL host.
+        return b'bup-rev://' + quote_from_bytes(reverse, safe='').encode('ascii')
     return b'file://' + bup.path.defaultrepo()

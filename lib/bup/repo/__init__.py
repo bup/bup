@@ -15,8 +15,8 @@ def make_repo(address, create=False, compression_level=None,
         if create:
             LocalRepo.create(path)
         return LocalRepo(repo_dir=path, **opts)
-    if address.startswith(b'bup+ssh://'):
-        address = address[len(b'bup+ssh://'):]
+    if address.startswith(b'ssh://'):
+        address = address[len(b'ssh://'):]
     elif not address.startswith(b'bup-rev://'):
         raise Exception(f'unrecognized repository address {address}')
     return RemoteRepo(address, create=create, **opts)
