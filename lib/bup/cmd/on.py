@@ -9,7 +9,7 @@ from bup.io import byte_stream
 
 
 optspec = """
-bup on <hostname> <index|save|split|get> ...
+bup on <[user@]host[:port]> <index|save|split|get> ...
 """
 
 def main(argv):
@@ -25,13 +25,10 @@ def main(argv):
     def handler(signum, frame):
         raise SigException(signum)
 
-    remote = argv_bytes(extra[0]).split(b':')
-    argv = [argv_bytes(x) for x in extra[1:]]
-
-    if len(remote) == 1:
-        hostname, port = (remote[0], None)
-    else:
-        hostname, port = remote
+    dest, *argv = (argv_bytes(x) for x in extra)
+    dest, colon, port = dest.rpartition(b':')
+    if not colon:
+        dest, port = port, None
 
     signal.signal(signal.SIGTERM, handler)
     signal.signal(signal.SIGINT, handler)
@@ -43,7 +40,7 @@ def main(argv):
         sp = None
         p = None
         ret = 99
-        p = ssh.connect(hostname, port, b'on--server', stderr=PIPE)
+        p = ssh.connect(dest, port, b'on--server', stderr=PIPE)
         try:
             argvs = b'\0'.join([b'bup'] + argv)
             p.stdin.write(struct.pack('!I', len(argvs)) + argvs)
