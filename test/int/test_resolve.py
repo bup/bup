@@ -12,7 +12,8 @@ from wvpytest import *
 
 from bup import git, path, vfs
 from bup.compat import environ
-from bup.repo import LocalRepo, make_repo
+from bup.repo import LocalRepo, repo_for_url
+from bup.url import URL
 
 
 bup_path = path.exe()
@@ -278,7 +279,7 @@ def test_local_resolve(tmpdir):
 
 def test_remote_resolve(tmpdir):
     prep_and_test_repo(tmpdir,
-                       lambda x: make_repo(b'file://' + x), _test_resolve)
+                       lambda x: repo_for_url(URL(scheme=b'file', path=x)), _test_resolve)
 
 def _test_resolve_loop(repo, tmpdir):
     data_path = tmpdir + b'/src'
@@ -303,6 +304,6 @@ def test_local_resolve_loop(tmpdir):
 
 def test_remote_resolve_loop(tmpdir):
     prep_and_test_repo(tmpdir,
-                       lambda x: make_repo(b'file://' + x), _test_resolve_loop)
+                       lambda x: repo_for_url(URL(scheme=b'file', path=x)), _test_resolve_loop)
 
 # FIXME: add tests for the want_meta=False cases.

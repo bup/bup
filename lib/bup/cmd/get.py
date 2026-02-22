@@ -12,7 +12,6 @@ import os, re, sys, textwrap, time
 from bup import client, compat, git, hashsplit, vfs
 from bup.commit import commit_message
 from bup.compat import argv_bytes, dataclass, get_argvb
-from bup.config import derive_repo_addr
 from bup.git import MissingObject, get_cat_data, parse_commit, walk_object
 from bup.helpers import \
     (EXIT_FAILURE,
@@ -30,7 +29,7 @@ from bup.helpers import \
 from bup.io import path_msg
 from bup.pwdgrp import userfullname, username
 from bup.repair import valid_repair_id
-from bup.repo import LocalRepo, make_repo
+from bup.repo import LocalRepo, main_repo_location, repo_for_location
 from bup.rewrite import RepairInfo, Rewriter
 
 
@@ -289,6 +288,7 @@ def parse_args(args):
     if pending_method_context:
         ctx_msg = ' '. join(path_msg(x) for x in pending_method_context)
         misuse(f'trailing arguments with no effect: {ctx_msg}')
+    opt.dst_loc = main_repo_location(opt.remote, misuse)
     return opt
 
 # FIXME: client error handling (remote exceptions, etc.)
@@ -837,8 +837,7 @@ def log_item(name, type, opt, tree=None, commit=None, tag=None):
 def get_everything(opt):
     repair_count = 0
     with LocalRepo(repo_dir=opt.source) as src_repo, \
-         make_repo(derive_repo_addr(remote=opt.remote, die=misuse),
-                   compression_level=opt.compress) as dest_repo:
+         repo_for_location(opt.dst_loc, compression_level=opt.compress) as dest_repo:
 
         src_split_cfg = hashsplit.configuration(src_repo.config_get)
         dest_split_cfg = hashsplit.configuration(dest_repo.config_get)

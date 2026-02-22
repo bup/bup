@@ -1,11 +1,11 @@
 
-from os import environb as environ
 from os.path import abspath
 
-from bup import git, options, repo
+from bup import git, options
 from bup.compat import argv_bytes
-from bup.config import derive_repo_addr
 from bup.helpers import EXIT_FAILURE, log
+from bup.url import URL
+from bup.repo import main_repo_location, repo_for_location
 
 
 optspec = """
@@ -17,17 +17,16 @@ r,remote=  remote repository path
 def main(argv):
     o = options.Options(optspec)
     opt, flags_, extra = o.parse_bytes(argv[1:])
-    if opt.remote: opt.remote = argv_bytes(opt.remote)
     if len(extra) > 1:
         o.fatal('only the directory positional argument is allowed')
     if extra:
         if opt.remote:
             o.fatal('cannot initialize both local and remote repo')
-        environ[b'BUP_DIR'] = abspath(argv_bytes(extra[0]))
-    addr = derive_repo_addr(remote=opt.remote, die=o.fatal)
+        loc = URL(scheme=b'file', path=abspath(argv_bytes(extra[0])))
+    else:
+        loc = main_repo_location(opt.remote, o.fatal)
     try:
-        with repo.make_repo(addr, create=True):
-            pass
+        with repo_for_location(loc, create=True): pass
     except git.GitError as ex:
         log(f'bup: error: could not init repository: {ex}')
         return EXIT_FAILURE

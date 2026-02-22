@@ -1,17 +1,15 @@
 
-from ipaddress import IPv4Address, IPv6Address
 import os, time, random, subprocess, glob
-import pytest
 
 from buptest import exc as ex
 from pytest import raises
+import pytest
 
 from bup import client, git, path
-from bup.url import URL
-from bup.client import ClientError
 from bup.compat import environ
 from bup.config import ConfigError
 from bup.repo import LocalRepo
+from bup.url import URL
 
 
 def randbytes(sz):
@@ -28,13 +26,16 @@ IDX_PAT = b'/*.idx'
 def local_writer():
     return git.PackWriter(store=git.LocalPackStore())
 
+def subproc_client(path, **kwargs):
+    return client.Client(URL(scheme=b'ssh', path=path), **kwargs)
+
 
 def test_server_split_with_indexes(tmpdir):
     environ[b'BUP_DIR'] = bupdir = tmpdir
     git.init_repo(bupdir)
     with local_writer() as lw:
         lw.new_blob(s1)
-    with client.Client(b'-:' + bupdir, create=True) as c, \
+    with subproc_client(bupdir, create=True) as c, \
          c.new_packwriter() as rw:
         rw.new_blob(s2)
         rw.breakpoint()
@@ -51,7 +52,7 @@ def test_multiple_suggestions(tmpdir):
         lw.new_blob(s2)
     assert len(glob.glob(git.repo(b'objects/pack'+IDX_PAT))) == 2
 
-    with client.Client(b'-:' + bupdir, create=True) as c, \
+    with subproc_client(bupdir, create=True) as c, \
          c.new_packwriter() as rw:
 
         assert len(glob.glob(c.cachedir+IDX_PAT)) == 0
@@ -128,7 +129,7 @@ def test_server_deduplicate_writes(deduplicate_mode, tmpdir):
     with local_writer() as lw:
         lw.new_blob(s1)
 
-    with client.Client(b'-:' + bupdir, create=True) as c, \
+    with subproc_client(bupdir, create=True) as c, \
          c.new_packwriter() as rw:
         assert len(glob.glob(c.cachedir+IDX_PAT)) == 1
         rw.new_blob(s1)
@@ -140,7 +141,7 @@ def test_server_deduplicate_writes(deduplicate_mode, tmpdir):
 def test_midx_refreshing(tmpdir):
     environ[b'BUP_DIR'] = bupdir = tmpdir
     git.init_repo(bupdir)
-    with client.Client(b'-:' + bupdir, create=True) as c, \
+    with subproc_client(bupdir, create=True) as c, \
          c.new_packwriter() as rw:
         rw.new_blob(s1)
         p1base = rw.breakpoint()
@@ -172,49 +173,16 @@ def test_midx_refreshing(tmpdir):
         assert len(pi.packs) == 1
 
 
-def test_remote_parsing():
-    def ssh(**kwargs): return URL(scheme=b'ssh', **kwargs)
-    def ssha(**kwargs): return URL(scheme=b'ssh', **kwargs)
-    def bupa(**kwargs): return URL(scheme=b'bup', **kwargs)
-    def bup_rev(**kwargs): return URL(scheme=b'bup-rev', **kwargs)
-    ip4 = IPv4Address
-    ip6 = IPv6Address
-    pr = client.parse_remote
-    with raises(ClientError, match='remote : has no host'): pr(b':')
-    with raises(ClientError, match='remote :x has no host'): pr(b':x')
-    assert pr(b'x:') == ssh(host=b'x')
-    assert pr(b'x:y') == ssh(host=b'x', path=b'y')
-    assert pr(b'x:y:z') == ssh(host=b'x', path=b'y:z')
-    assert pr(b'u@x:') == ssh(host=b'x', user=b'u')
-    assert pr(b'u@u@x:') == ssh(host=b'x', user=b'u@u')
-    assert pr(b'u@x:/') == ssh(host=b'x', user=b'u', path=b'/')
-    assert pr(b'w:x@y:z') == ssh(host=b'y', user=b'w:x', path=b'z')
-    assert pr(b'-:/bup') == ssh(path=b'/bup')
-    assert pr(b'192.168.1.1:/bup') == ssh(host=b'192.168.1.1', path=b'/bup')
-    assert pr(b'ssh://192.168.1.1:2222/bup') == ssha(host=ip4('192.168.1.1'), port=2222, path=b'/bup')
-    assert pr(b'ssh://[ff:fe::1]:2222/bup') == ssha(host=ip6('ff:fe::1'), port=2222, path=b'/bup')
-    assert pr(b'bup://foo.com:1950') ==  bupa(host=b'foo.com', port=1950)
-    assert pr(b'bup://foo.com:1950/bup') == bupa(host=b'foo.com', port=1950, path=b'/bup')
-    assert pr(b'bup://[ff:fe::1]/bup') == bupa(host=ip6('ff:fe::1'), path=b'/bup')
-    assert pr(b'bup://[ff:fe::1]/bup') == bupa(host=ip6('ff:fe::1'), path=b'/bup')
-    assert pr(b'bup-rev://%2f') == bup_rev(host=b'/')
-    with raises(ClientError, match='has a port'): pr(b'bup-rev://:1')
-    with raises(ClientError, match='has a user'): pr(b'bup-rev://u@')
-    with raises(ClientError, match='has a path'): pr(b'bup-rev:///dir')
-    with raises(ClientError, match='unexpected http scheme'):
-        client.parse_remote(b'http://asdf.com/bup')
-
-
 def test_legacy_cache_ids():
     # Now that we prefer the repo-id, if you add one, and add a
     # repo-id to new repositories, this should only matter for legacy
     # repositories.  If we get this wrong (inadvertently change legacy
     # id), then the client will create a duplicate index-cache.
     def cid(reverse, remote):
-        if reverse: # see derive_repo_addr
+        if reverse: # see main_repo_location
             assert not remote, remote
-            return client._legacy_cache_id(reverse, True)
-        return client._legacy_cache_id(remote)
+            return client._legacy_cache_id_for_remote(reverse, True)
+        return client._legacy_cache_id_for_remote(remote)
     with raises(AssertionError):
         assert cid(b'x', b'y')
     with raises(TypeError):
@@ -252,7 +220,7 @@ def test_config(tmpdir):
     environ[b'BUP_DIR'] = bupdir = tmpdir
     environ[b'GIT_DIR'] = bupdir = tmpdir
     git.init_repo(bupdir)
-    with client.Client(b'-:' + bupdir, create=True) as c:
+    with subproc_client(bupdir, create=True) as c:
         assert c.config_get(b'bup.split.trees') is None
         assert c.config_get(b'bup.split.trees', opttype='int') is None
         ex((b'git', b'config', b'bup.split.trees', b'0'))
