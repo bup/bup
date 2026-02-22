@@ -30,7 +30,7 @@ from bup.helpers import (EXIT_FAILURE,
                          merge_iter,
                          mmap_read, mmap_readwrite,
                          nullcontext_if_not,
-                         progress, qprogress, stat_if_exists,
+                         progress, qprogress,
                          quote,
                          temp_dir,
                          unlink)
@@ -1254,23 +1254,29 @@ def establish_default_repo(path=None, *, must_exist=False):
 
     """
     global repodir
+    def maybe_exit(status, msg):
+        if must_exist:
+            log(f'error: {msg}')
+            sys.exit(status)
+        return False
     repodir = path or guess_repo()
     top = repo()
-    pst = stat_if_exists(top + b'/objects/pack')
-    if pst and stat.S_ISDIR(pst.st_mode):
-        return True
-    if not pst:
-        top_st = stat_if_exists(top)
-        if not top_st:
-            if must_exist:
-                log('error: repository %r does not exist (see "bup help init")\n'
-                    % top)
-                sys.exit(15)
-            return False
-    if must_exist:
-        log('error: %s is not a repository\n' % path_msg(top))
-        sys.exit(14)
+    try:
+        if stat.S_ISDIR(os.stat(top + b'/objects/pack').st_mode):
+            return True
+        return maybe_exit(14, f'{path_msg(top)} is not a repository\n')
+    except NotADirectoryError:
+        return maybe_exit(14, f'{path_msg(top)} is not a repository\n')
+    except FileNotFoundError:
+        pass
+    try:
+        top_st = os.stat(top)
+    except NotADirectoryError:
+        return maybe_exit(15, f'{path_msg(top)} is not a repository\n')
+    except FileNotFoundError:
+        return maybe_exit(15, f'{path_msg(top)} is missing (see "bup help init")\n')
     return False
+
 
 def check_repo_or_die(path=None):
     """Equivalent to git.establish_default_repo(path, must_exist=True)."""

@@ -195,17 +195,6 @@ def lines_until_sentinel(f, sentinel, ex_type):
         yield line
 
 
-def stat_if_exists(path):
-    try:
-        return os.stat(path)
-    except NotADirectoryError:
-        return None
-    except OSError as e:
-        if e.errno != errno.ENOENT:
-            raise
-    return None
-
-
 def mkdirp(d, mode=None):
     """Recursively create directories on path 'd'.
 
