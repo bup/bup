@@ -5,7 +5,7 @@ from dataclasses import replace as dcreplace
 from re import Pattern
 from stat import S_ISDIR
 from textwrap import fill
-from typing import Optional, Union
+from typing import NoReturn, Optional, Union
 from uuid import uuid4
 import os, re, sys, textwrap, time
 
@@ -115,7 +115,7 @@ def usage(argspec, width=None):
         msg.extend(render_opts(group_args, width=width))
     return ''.join(msg)
 
-def misuse(message=None):
+def misuse(message=None) -> NoReturn:
     sys.stderr.write(usage(argspec))
     if message:
         sys.stderr.write('\nerror: ')
