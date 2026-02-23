@@ -1,8 +1,10 @@
 import os
 import pytest
 
-# Precaution -- here just because it's already imported "everywhere".
 
+# These must be included by all tests.  They're here just because this
+# is already sourced "everywhere".
+os.environb.setdefault(b'BUP_TEST_LEVEL', b'0')
 os.environb[b'BUP_DIR'] = b'/dev/null'
 os.environb[b'GIT_DIR'] = b'/dev/null'
 

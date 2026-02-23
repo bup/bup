@@ -4,7 +4,9 @@
 #         . ./wvtest.sh
 #
 
-# Here just because it's already sourced "everywhere".
+# These must be included by all tests.  They're here just because this
+# is already sourced "everywhere".
+export BUP_TEST_LEVEL="${BUP_TEST_LEVEL:-0}"
 export BUP_DIR=/dev/null
 export GIT_DIR=/dev/null
 
