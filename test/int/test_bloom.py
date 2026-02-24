@@ -1,9 +1,10 @@
 
-import os
-import errno, platform, tempfile
-import logging
+import errno, os, sys, tempfile
+
+import pytest
 
 from bup import bloom
+
 
 def test_bloom(tmpdir):
     hashes = [os.urandom(20) for i in range(100)]
@@ -33,19 +34,15 @@ def test_bloom(tmpdir):
         assert b.file == tf
         assert b.k == 5
 
+
+def test_large_bloom(tmpdir):
     # Test large (~1GiB) filter.  This may fail on s390 (31-bit
     # architecture), and anywhere else where the address space is
     # sufficiently limited.
-    tf = tempfile.TemporaryFile(dir=tmpdir)
-    skip_test = False
     try:
-        with bloom.create(b'bup.bloom', f=tf, expected=2**28,
-                          delaywrite=False) as b:
+        with bloom.create(b'bup.bloom', expected=2**28, delaywrite=False) as b:
             assert b.k == 4
     except EnvironmentError as ex:
-        (ptr_width, linkage) = platform.architecture()
-        if ptr_width == '32bit' and ex.errno == errno.ENOMEM:
-            logging.getLogger().info('skipping large bloom filter test (mmap probably failed) '
-                  + str(ex))
-        else:
+        if sys.maxsize > 2**32 or ex.errno != errno.ENOMEM:
             raise
+        pytest.skip(f'{ex} (maybe mmap failed on 32-bit system)')
