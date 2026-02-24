@@ -34,12 +34,12 @@ split_test_objs = {
 }
 
 def test_samples():
-    for k in split_test_objs:
+    for k, obj in split_test_objs.items():
 
         # Verify that the k least significant bits are 1 and that
         # the next most significant bit is zero (i.e. that the
         # rollsum of the data matched what we expect for this k).
-        rsum = _helpers.rollsum(split_test_objs[k])
+        rsum = _helpers.rollsum(obj)
         ones = (1 << k) - 1
         mask = (ones << 1) | 1
         WVPASSEQ(rsum & mask, ones)
@@ -55,11 +55,9 @@ def test_samples():
         # (quirk in the original algorithm -- see ./DESIGN).
         if exp_level > 0:
             exp_level -= 1
-        hs = HashSplitter([BytesIO(split_test_objs[k])],
-                          bits=BUP_BLOBBITS,
-                          fanbits=1)
+        hs = HashSplitter([BytesIO(obj)], bits=BUP_BLOBBITS, fanbits=1)
         blob, level = next(hs)
-        WVPASSEQ(blob, split_test_objs[k])
+        WVPASSEQ(blob, obj)
         WVPASSEQ(level, exp_level)
 
 def test_rolling_sums():

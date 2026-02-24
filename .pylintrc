@@ -7,6 +7,7 @@ enable=
   assignment-from-no-return,
   bad-classmethod-argument,
   catching-non-exception,
+  consider-using-dict-items,
   consider-using-in,
   consider-using-max-builtin,
   inconsistent-return-statements,
