@@ -190,9 +190,7 @@ def _tree_chunks(repo, tree_data, startofs):
     # name is the chunk's hex offset in the original file
     for mode, name, oid in _skip_chunks_before_offset(tree_data, startofs):
         ofs = int(name, 16)
-        skipmore = startofs - ofs
-        if skipmore < 0:
-            skipmore = 0
+        skipmore = max(0, startofs - ofs)
         _, obj_t, _, it = get_oidx(repo, hexlify(oid))
         data = b''.join(it)
         if S_ISDIR(mode):

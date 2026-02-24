@@ -6,6 +6,7 @@ disable=all
 enable=
   catching-non-exception,
   consider-using-in,
+  consider-using-max-builtin,
   inconsistent-return-statements,
   return-in-init,
   super-init-not-called,
