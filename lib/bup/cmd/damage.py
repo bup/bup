@@ -47,9 +47,7 @@ def main(argv):
             chunks = opt.num or 10
             chunksize = (size // chunks) or 1
             for r in range(chunks):
-                sz = random.randrange(1, maxsize+1)
-                if sz > size:
-                    sz = size
+                sz = min(size, random.randrange(1, maxsize + 1))
                 if opt.equal:
                     ofs = (r * chunksize) % size
                 else:

@@ -12,6 +12,7 @@ enable=
   consider-using-generator,
   consider-using-in,
   consider-using-max-builtin,
+  consider-using-min-builtin,
   inconsistent-return-statements,
   logging-not-lazy,
   return-in-init,
