@@ -754,7 +754,6 @@ def _find_bupm_oid(entries):
     for _, mangled_name, sub_oid in entries:
         if mangled_name == b'.bupm':
             return sub_oid
-            break
         if mangled_name > b'.bupm':
             break
     return None

@@ -601,8 +601,6 @@ def handle_ff(item, src_repo, dest_repo):
         return GetResult(item.src.hash, unhexlify(commit_items.tree))
     misuse('destination is not an ancestor of source for %s'
            % spec_msg(item.spec))
-    # misuse() doesn't return
-    return None
 
 
 def resolve_append(spec, src_repo, dest_repo):

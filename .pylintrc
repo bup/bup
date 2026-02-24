@@ -26,6 +26,7 @@ enable=
   unnecessary-lambda-assignment,
   unnecessary-pass,
   unnecessary-semicolon,
+  unreachable,
   unused-import,
   unused-wildcard-import,
   use-dict-literal,
