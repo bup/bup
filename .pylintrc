@@ -4,6 +4,7 @@
 [MESSAGES CONTROL]
 disable=all
 enable=
+  assert-on-string-literal,
   assignment-from-no-return,
   bad-classmethod-argument,
   catching-non-exception,

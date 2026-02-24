@@ -643,8 +643,7 @@ def _lost_metadata_for_gitinfo(mode, kind):
         return _lost_dir_meta
     if S_ISLNK(mode):
         return _lost_symlink_meta
-    assert 'unexpected mode', oct(mode) # for now shouldn't be possible
-    return None # pylint
+    raise AssertionError(f'unexpected mode {mode:o}') # for now shouldn't be possible
 
 def _validated_meta_ents(oid, tree_ents, bupm, repair):
     # Versions before 47891d8951a95b8e0d9ca94387107cdf12ca3d3c
