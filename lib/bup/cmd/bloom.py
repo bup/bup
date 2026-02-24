@@ -124,7 +124,7 @@ def do_bloom(path, outfilename, k, force):
         del rest
         del rest_count
 
-        msg = b is None and 'creating from' or 'adding'
+        msg = 'creating from' if b is None else 'adding'
         if not _first: _first = path
         dirprefix = (_first != path) and git.repo_rel(path) + b': ' or b''
         progress('bloom: %s%s %d file%s (%d object%s).\r'

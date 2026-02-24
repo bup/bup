@@ -374,10 +374,10 @@ class ExistingEntry(Entry):
     # expensive than not repacking.
     # This is implemented by having sha_missing() check IX_HASHVALID too.
     def set_sha_missing(self, val):
-        val = val and 1 or 0
-        oldval = self.sha_missing() and 1 or 0
+        val = bool(val)
+        oldval = bool(self.sha_missing())
         if val != oldval:
-            flag = val and IX_SHAMISSING or 0
+            flag = IX_SHAMISSING if val else 0
             newflags = (self.flags & (~IX_SHAMISSING)) | flag
             self.flags = newflags
             self.repack()

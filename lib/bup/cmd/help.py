@@ -17,7 +17,7 @@ def main(argv):
     if len(extra) == 0:
         os.execvp(path.exe(), [path.exe(), b'-h'])
     elif len(extra) == 1:
-        docname = (extra[0]=='bup' and b'bup' or (b'bup-%s' % argv_bytes(extra[0])))
+        docname = b'bup' if extra[0] == 'bup' else b'bup-' + argv_bytes(extra[0])
         manpath = os.path.join(path.exedir(), b'../../Documentation/')
         dev_page = glob.glob(os.path.join(manpath, docname + b'.[1-9]'))
         try:

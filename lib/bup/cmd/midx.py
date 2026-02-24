@@ -244,8 +244,8 @@ def do_midx_dir(path, outfilename, prout, auto=False, force=False,
     all = [(sizes[n],n) for n in (midxs + idxs)]
 
     # FIXME: what are the optimal values?  Does this make sense?
-    DESIRED_HWM = force and 1 or 5
-    DESIRED_LWM = force and 1 or 2
+    DESIRED_HWM = 1 if force else 5
+    DESIRED_LWM = 1 if force else 2
     existed = dict((name,1) for sz,name in all)
     debug1('midx: %d indexes; want no more than %d.\n'
            % (len(all), DESIRED_HWM))

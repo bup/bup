@@ -21,7 +21,7 @@ def main(argv):
     opt, flags, extra = o.parse_bytes(argv[1:])
 
     host = opt.listen
-    port = opt.port and int(opt.port) or 1982
+    port = int(opt.port) if opt.port else 1982
     socks = []
     e = None
     for res in socket.getaddrinfo(host, port, socket.AF_UNSPEC,

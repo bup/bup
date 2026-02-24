@@ -900,7 +900,7 @@ class Metadata:
 
     def encode(self, include_path=True):
         ret = []
-        records = include_path and [(_rec_tag_path, self._encode_path())] or []
+        records = [(_rec_tag_path, self._encode_path())] if include_path else []
         records.extend([(_rec_tag_common_v3, self._encode_common()),
                         (_rec_tag_symlink_target,
                          self._encode_symlink_target()),
