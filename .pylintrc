@@ -32,5 +32,6 @@ enable=
   unused-import,
   unused-wildcard-import,
   use-dict-literal,
+  use-implicit-booleaness-not-len,
   use-list-literal,
   useless-return

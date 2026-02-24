@@ -1522,7 +1522,7 @@ def walk_object(get_ref, oidx, *, stop_at=None, include_data=None,
 
     # Maintain the pending stack on the heap to avoid stack overflow
     pending = [(False, oidx, [], oidx, None, None)]
-    while len(pending):
+    while pending:
         completed_item = pending[-1][0]
         assert completed_item in (True, False)
         if completed_item:

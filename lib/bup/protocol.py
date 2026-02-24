@@ -399,7 +399,7 @@ class Server:
         path = read_bvec(self.conn)
         if path is None:
             raise EOFError('EOF while reading resolved VFS path length')
-        if not len(path):
+        if not path:
             raise Exception('Empty resolve path')
         try:
             res = list(self.repo.resolve(path, parent, want_meta, follow))
@@ -425,7 +425,7 @@ class Server:
                    b'pack.packsizelimit',
                    b'core.compression',
                    b'pack.compression'):
-            opttype = None if not len(opttype) else opttype.decode('ascii')
+            opttype = None if not opttype else opttype.decode('ascii')
             val = self.repo.config_get(key, opttype=opttype)
             if val is None:
                 write_vuint(self.conn, 0)
