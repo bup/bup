@@ -70,7 +70,7 @@ class LocalRepo(RepoProtocol):
     def is_remote(self): return False
 
     @classmethod
-    def create(self, repo_dir=None):
+    def create(cls, repo_dir=None):
         # FIXME: this is not ideal, we should somehow
         # be able to call the constructor instead?
         git.init_repo(repo_dir)

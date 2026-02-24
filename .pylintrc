@@ -4,6 +4,7 @@
 [MESSAGES CONTROL]
 disable=all
 enable=
+  bad-classmethod-argument,
   catching-non-exception,
   consider-using-in,
   consider-using-max-builtin,
