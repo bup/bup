@@ -12,8 +12,7 @@ from wvpytest import *
 
 from bup import git, path
 from bup.compat import environ
-from bup.helpers import \
-    OBJECT_EXISTS, finalized, localtime, log, mkdirp, readpipe
+from bup.helpers import OBJECT_EXISTS, finalized, log, mkdirp, readpipe
 
 
 bup_exe = path.exe()

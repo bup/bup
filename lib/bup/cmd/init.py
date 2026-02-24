@@ -6,7 +6,6 @@ from bup import git, options, repo
 from bup.compat import argv_bytes
 from bup.config import derive_repo_addr
 from bup.helpers import EXIT_FAILURE, log
-from bup.compat import argv_bytes
 
 
 optspec = """

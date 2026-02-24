@@ -8,7 +8,7 @@ import errno, sys
 
 from bup import metadata, options
 from bup.compat import argv_bytes
-from bup.helpers import add_error, parse_timestamp, add_error
+from bup.helpers import add_error, parse_timestamp
 from bup.io import byte_stream
 
 

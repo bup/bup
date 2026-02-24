@@ -20,6 +20,7 @@ enable=
   logging-not-lazy,
   no-else-continue,
   no-else-raise,
+  reimported,
   return-in-init,
   super-init-not-called,
   syntax-error,

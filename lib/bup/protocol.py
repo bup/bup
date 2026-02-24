@@ -3,14 +3,12 @@ import os, struct
 from binascii import hexlify, unhexlify
 
 from bup import git, vfs, vint
-from bup.io import path_msg
-from bup.vint import read_bvec, write_bvec
-from bup.vint import read_vint, write_vint
-from bup.vint import read_vuint, write_vuint
 from bup.helpers import debug1, debug2, linereader, lines_until_sentinel, log
-from bup.vint import write_vuint
-from bup.vfs import Item, Chunky, RevList, Root, Tags, Commit, FakeLink
+from bup.io import path_msg
 from bup.metadata import Metadata
+from bup.vint import \
+    read_bvec, read_vint, read_vuint, write_bvec, write_vint, write_vuint
+from bup.vfs import Item, Chunky, RevList, Root, Tags, Commit, FakeLink
 
 
 def read_item(port):
