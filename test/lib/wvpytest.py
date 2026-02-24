@@ -1,12 +1,6 @@
-import os
+
 import pytest
 
-
-# These must be included by all tests.  They're here just because this
-# is already sourced "everywhere".
-os.environb.setdefault(b'BUP_TEST_LEVEL', b'0')
-os.environb[b'BUP_DIR'] = b'/dev/null'
-os.environb[b'GIT_DIR'] = b'/dev/null'
 
 def WVPASS(cond = True, fail_value=None):
     if fail_value:

@@ -21,7 +21,12 @@ from bup.compat import environ, fsencode
 from bup.helpers import finalized
 
 
+# Common requirements for all tests
+environ.setdefault(b'BUP_TEST_LEVEL', b'0')
+environ[b'BUP_DIR'] = fsencode(os.devnull)
+environ[b'GIT_DIR'] = fsencode(os.devnull)
 _bup_src_top = realpath(dirname(fsencode(__file__)))
+
 
 # The "pwd -P" here may not be appropriate in the long run, but we
 # need it until we settle the relevant drecurse/exclusion questions:

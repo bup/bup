@@ -1,7 +1,7 @@
 
 from os import environb as environ
 from subprocess import check_call
-import sys
+import os, sys
 
 from wvpytest import *
 
