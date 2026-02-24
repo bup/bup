@@ -468,13 +468,12 @@ class BaseConn:
             #log('%d got line: %r\n' % (os.getpid(), rl))
             if not rl:  # empty line
                 continue
-            elif rl == b'ok':
+            if rl == b'ok':
                 return None
-            elif rl.startswith(b'error '):
+            if rl.startswith(b'error '):
                 #log('client: error: %s\n' % rl[6:])
                 return NotOk(rl[6:].decode('utf-8', errors='surrogateescape'))
-            else:
-                onempty(rl)
+            onempty(rl)
         raise Exception('server exited unexpectedly; see errors above')
 
     def drain_and_check_ok(self):

@@ -17,6 +17,7 @@ enable=
   deprecated-module,
   inconsistent-return-statements,
   logging-not-lazy,
+  no-else-continue,
   no-else-raise,
   return-in-init,
   super-init-not-called,

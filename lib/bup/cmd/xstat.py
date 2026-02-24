@@ -88,8 +88,7 @@ def main(argv):
             if e.errno == errno.ENOENT:
                 add_error(e)
                 continue
-            else:
-                raise
+            raise
         if metadata.verbose >= 0:
             if not first_path:
                 out.write(b'\n')
