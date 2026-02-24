@@ -228,11 +228,11 @@ def test_hashsplitter_object():
                 data = data[1:]
         yield fed, 13
     data = b''.join([b'%d\n' % x for x in range(10000)])
-    WVPASSEQ([x for x in _splitbuf(data)],
-             [x for x in _splitbufRHS(data)])
+    WVPASSEQ(list(_splitbuf(data)),
+             list(x for x in _splitbufRHS(data)))
     data = b''.join([b'%.10x\n' % x for x in range(10000)])
-    WVPASSEQ([x for x in _splitbuf(data)],
-             [x for x in _splitbufRHS(data)])
+    WVPASSEQ(list(_splitbuf(data)),
+             list(_splitbufRHS(data)))
 
 def test_hashsplitter_short_read():
     class DataObj:

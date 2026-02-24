@@ -17,6 +17,7 @@ enable=
   trailing-whitespace,
   undefined-variable,
   unidiomatic-typecheck,
+  unnecessary-comprehension,
   unnecessary-lambda,
   unnecessary-lambda-assignment,
   unnecessary-pass,
