@@ -200,7 +200,7 @@ def test_long_index(tmpdir):
     idx.add(obj2_bin, 2, 0xffffffffff)
     idx.add(obj3_bin, 3, 0xff)
     name = tmpdir + b'/tmp.idx'
-    r = idx.write(name, pack_bin)
+    idx.write(name, pack_bin)
     with git.PackIdxV2(name, open(name, 'rb')) as i:
         WVPASSEQ(i.find_offset(obj_bin), 0xfffffffff)
         WVPASSEQ(i.find_offset(obj2_bin), 0xffffffffff)
