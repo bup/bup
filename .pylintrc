@@ -18,6 +18,7 @@ enable=
   consider-using-min-builtin,
   consider-using-ternary,
   deprecated-module,
+  expression-not-assigned,
   inconsistent-return-statements,
   logging-not-lazy,
   no-else-continue,

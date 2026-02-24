@@ -1241,7 +1241,7 @@ def init_repo(path=None):
             set_config(b'pack.indexVersion', b'2')
     else: # "no repo" (see above), reestablish defaults (as git does)
         set_config(b'bup.repo.id', make_repo_id())
-        set_config(b'core.logAllRefUpdates', b'true'), # enable the reflog
+        set_config(b'core.logAllRefUpdates', b'true') # enable the reflog
         set_config(b'pack.indexVersion', b'2')
 
 
