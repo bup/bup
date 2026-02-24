@@ -143,7 +143,7 @@ def write_file_content_sparsely(repo, dest_path, vfs_file):
     with vfs.fopen(repo, vfs_file) as inf:
         outfd = os.open(dest_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
         try:
-            trailing_zeros = 0;
+            trailing_zeros = 0
             for b in chunkyreader(inf):
                 trailing_zeros = write_sparsely(outfd, b, 512, trailing_zeros)
             pos = os.lseek(outfd, trailing_zeros, os.SEEK_END)

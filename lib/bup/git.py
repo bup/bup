@@ -1347,7 +1347,7 @@ class CatPipe:
                                stderr=subprocess.DEVNULL,
                                close_fds=True,
                                env=_gitenv(self.repo_dir))
-        tmp.wait();
+        tmp.wait()
         self.have_batch_command = tmp.returncode == 0
 
     def close(self, wait=False):

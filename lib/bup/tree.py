@@ -84,7 +84,7 @@ def _abbreviate_tree_names(names):
             candidate = out[:-1]
             # of course we must not have an invalid name
             if candidate in (b'', b'.', b'..'):
-                break;
+                break
             out = candidate
         outnames.append(out)
     return outnames

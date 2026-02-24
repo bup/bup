@@ -4,15 +4,16 @@
 [MESSAGES CONTROL]
 disable=all
 enable=
-  syntax-error,
   catching-non-exception,
   consider-using-in,
   inconsistent-return-statements,
   return-in-init,
+  super-init-not-called,
+  syntax-error,
   trailing-whitespace,
   undefined-variable,
   unidiomatic-typecheck,
+  unnecessary-semicolon,
   unused-import,
   unused-wildcard-import,
-  useless-return,
-  super-init-not-called
+  useless-return

@@ -26,7 +26,7 @@ def nsecs_to_timeval(ns):
 
 def fstime_floor_secs(ns):
     """Return largest integer not greater than ns / 10e8."""
-    return int(ns) // 10**9;
+    return int(ns) // 10**9
 
 
 def fstime_to_timespec(ns):
