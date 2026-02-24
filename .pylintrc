@@ -18,6 +18,7 @@ enable=
   unidiomatic-typecheck,
   unnecessary-lambda,
   unnecessary-lambda-assignment,
+  unnecessary-pass,
   unnecessary-semicolon,
   unused-import,
   unused-wildcard-import,

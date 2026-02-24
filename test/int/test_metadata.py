@@ -201,9 +201,8 @@ def test_apply_to_path_restricted_access(tmpdir):
             try:
                 metadata.xattr.set(path, b'user.buptest', b'bup')
             except:
-                print("failed to set test xattr")
                 # ignore any failures here - maybe FS cannot do it
-                pass
+                print("failed to set test xattr")
         m = metadata.from_path(path, archive_path=path, save_symlinks=True)
         WVPASSEQ(m.path, path)
         os.chmod(parent, 0o000)
