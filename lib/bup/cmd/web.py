@@ -190,10 +190,10 @@ class BupRequestHandler(tornado.web.RequestHandler):
         human_param = ParamInfo(default=1 if human else 0,
                                 from_req=from_req_bool,
                                 normalize=normalize_bool)
-        self.bup_param_info = dict(hash=default_false_param,
-                                   hidden=default_false_param,
-                                   human=human_param,
-                                   meta=default_false_param)
+        self.bup_param_info = {'hash': default_false_param,
+                               'hidden': default_false_param,
+                               'human': human_param,
+                               'meta': default_false_param}
 
     def decode_argument(self, value, name=None):
         if name == 'path':
@@ -383,11 +383,9 @@ def main(argv):
 
     git.check_repo_or_die()
 
-    settings = dict(
-        debug = 1,
-        template_path = resource_path(b'web').decode('utf-8'),
-        static_path = resource_path(b'web/static').decode('utf-8'),
-    )
+    settings = {'debug': 1,
+                'template_path': resource_path(b'web').decode('utf-8'),
+                'static_path': resource_path(b'web/static').decode('utf-8')}
 
     # Disable buffering on stdout, for debug messages
     try:
@@ -396,8 +394,8 @@ def main(argv):
         sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
 
     with LocalRepo() as repo:
-        handlers = [ (r"(?P<path>/.*)", BupRequestHandler,
-                      dict(repo=repo, human=opt.human_readable))]
+        handlers = [(r"(?P<path>/.*)", BupRequestHandler,
+                     {'repo': repo, 'human': opt.human_readable})]
         application = tornado.web.Application(handlers, **settings)
 
         http_server = HTTPServer(application)

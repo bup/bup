@@ -49,18 +49,18 @@ cmdpath = path.cmddir()
 def usage(file=sys.stdout):
     print('Usage: bup [-?|-h|--help] [-d BUP_DIR] [--debug] [--profile] '
           '<command> [options...]\n', file=file)
-    common = dict(
-        ftp = 'Browse backup sets using an ftp-like client',
-        fsck = 'Check backup sets for damage and add redundancy information',
-        fuse = 'Mount your backup sets as a filesystem',
-        help = 'Print detailed help for the given command',
-        index = 'Create or display the index of files to back up',
-        on = 'Backup a remote machine to the local one',
-        restore = 'Extract files from a backup set',
-        save = 'Save files into a backup set (note: run "bup index" first)',
-        tag = 'Tag commits for easier access',
-        web = 'Launch a web server to examine backup sets',
-    )
+    common = {
+        'ftp': 'Browse backup sets using an ftp-like client',
+        'fsck': 'Check backup sets for damage and add redundancy information',
+        'fuse': 'Mount your backup sets as a filesystem',
+        'help': 'Print detailed help for the given command',
+        'index': 'Create or display the index of files to back up',
+        'on': 'Backup a remote machine to the local one',
+        'restore': 'Extract files from a backup set',
+        'save': 'Save files into a backup set (note: run "bup index" first)',
+        'tag': 'Tag commits for easier access',
+        'web': 'Launch a web server to examine backup sets',
+    }
 
     print('Common commands:\n', file=file)
     for cmd,synopsis in sorted(common.items()):
