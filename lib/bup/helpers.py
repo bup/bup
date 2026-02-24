@@ -86,7 +86,7 @@ def temp_dir(*args, **kwargs):
     # gc'ed, even if you pop_all() (the new stack will also trigger
     # the deletion) because
     # https://github.com/python/cpython/issues/88458
-    return finalized(mkdtemp(*args, **kwargs), lambda x: rmtree(x))
+    return finalized(mkdtemp(*args, **kwargs), rmtree)
 
 
 def open_in(fd, path, *args, **kwargs):

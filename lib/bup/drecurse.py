@@ -26,7 +26,7 @@ except AttributeError:
 
 def finalized_fd(path):
     fd = os.open(path, os.O_RDONLY|O_LARGEFILE|O_NOFOLLOW|os.O_NDELAY)
-    return finalized(fd, lambda x: os.close(x))
+    return finalized(fd, os.close)
 
 
 def _dirlist():

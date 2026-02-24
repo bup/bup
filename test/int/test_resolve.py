@@ -298,8 +298,7 @@ def _test_resolve_loop(repo, tmpdir):
                  [name for name, item in res_ex.terminus])
 
 def test_local_resolve_loop(tmpdir):
-    prep_and_test_repo(tmpdir,
-                       lambda x: LocalRepo(x), _test_resolve_loop)
+    prep_and_test_repo(tmpdir, LocalRepo, _test_resolve_loop)
 
 def test_remote_resolve_loop(tmpdir):
     prep_and_test_repo(tmpdir,

@@ -705,7 +705,7 @@ class PackIdxList:
                 if not p in new_packs:
                     p.close()
             new_packs = list(new_packs)
-            new_packs.sort(reverse=True, key=lambda x: len(x))
+            new_packs.sort(reverse=True, key=len)
             self.packs = new_packs
             if self.bloom is None and os.path.exists(bfull):
                 self.bloom = bloom.ShaBloom(bfull)
@@ -811,7 +811,7 @@ class LocalPackStore():
                 self._tmpdir = err_stack.enter_context(temp_dir(dir=objdir, prefix=b'pack-tmp-'))
                 self._file = err_stack.enter_context(open(self._tmpdir + b'/pack', 'w+b'))
                 self._parentfd = err_stack.enter_context(finalized(os.open(objdir, os.O_RDONLY),
-                                                                   lambda x: os.close(x)))
+                                                                   os.close))
                 self._file.write(b'PACK\0\0\0\2\0\0\0\0')
                 self._idx = PackIdxV2Writer()
                 err_stack.pop_all()

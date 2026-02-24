@@ -13,6 +13,7 @@ enable=
   trailing-whitespace,
   undefined-variable,
   unidiomatic-typecheck,
+  unnecessary-lambda,
   unnecessary-semicolon,
   unused-import,
   unused-wildcard-import,

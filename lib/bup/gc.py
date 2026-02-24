@@ -97,7 +97,7 @@ def find_live_objects(existing_count, cat_pipe, refs=None, *,
         os.unlink(bloom_filename)
         live_trees = set()
         stop_at = lambda x: unhexlify(x) in live_trees
-        oid_exists = (lambda oid: idx_list.exists(oid)) if idx_list else None
+        oid_exists = idx_list.exists if idx_list else None
         approx_live_count = 0
         scan_refs = refs if refs else list(git.list_refs())
         ref_n = len(scan_refs)
