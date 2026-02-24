@@ -21,7 +21,7 @@ from bup.helpers import \
      hostname,
      istty2,
      log,
-     parse_date_or_fatal,
+     parse_date_arg,
      parse_num,
      path_components,
      progress,
@@ -81,7 +81,10 @@ def opts_from_cmdline(o, argv):
     if not extra:
         o.fatal("no filenames given")
     if opt.date:
-        opt.date = parse_date_or_fatal(opt.date, o.fatal)
+        try:
+            opt.date = parse_date_arg(b'--date', opt.date)
+        except ValueError as ex:
+            o.fatal(ex.message)
     else:
         opt.date = time.time()
 

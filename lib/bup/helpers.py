@@ -929,16 +929,13 @@ def columnate(l, prefix):
     return nothing.join(out)
 
 
-def parse_date_or_fatal(str, fatal):
-    """Parses the given date or calls Option.fatal().
+def parse_date_arg(arg, val):
+    """Parses the given date arg or raises a ValueError.
     For now we expect a string that contains a float."""
     try:
-        date = float(str)
-    except ValueError as e:
-        raise fatal('invalid date format (should be a float): %r' % e)
-    else:
-        return date
-
+        return float(val)
+    except ValueError as ex:
+        raise ValueError(f'{path_msg(arg)} {path_msg(val)} is not a float') from ex
 
 def parse_excludes(options, fatal):
     """Traverse the options and extract all excludes, or call Option.fatal()."""

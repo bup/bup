@@ -14,7 +14,7 @@ from bup.helpers import \
     (EXIT_FAILURE,
      add_error, hostname, log,
      nullcontext_if_not,
-     parse_date_or_fatal,
+     parse_date_arg,
      parse_num,
      qprogress,
      reprogress,
@@ -84,7 +84,10 @@ def opts_from_cmdline(o, argv):
     if opt.bwlimit:
         opt.bwlimit = parse_num(opt.bwlimit)
     if opt.date:
-        opt.date = parse_date_or_fatal(opt.date, o.fatal)
+        try:
+            opt.date = parse_date_arg(b'--date', opt.date)
+        except ValueError as ex:
+            o.fatal(ex.message)
     else:
         opt.date = time.time()
 
