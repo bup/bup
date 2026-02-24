@@ -138,7 +138,7 @@ def test_item_mode():
     wvpasseq(meta.mode, vfs.item_mode(vfs.Item(oid=oid, meta=meta)))
 
 def test_reverse_suffix_duplicates():
-    suffix = lambda x: tuple(vfs._reverse_suffix_duplicates(x))
+    def suffix(x): return tuple(vfs._reverse_suffix_duplicates(x))
     wvpasseq((b'x',), suffix((b'x',)))
     wvpasseq((b'x', b'y'), suffix((b'x', b'y')))
     wvpasseq((b'x-1', b'x-0'), suffix((b'x',) * 2))

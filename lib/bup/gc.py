@@ -96,7 +96,7 @@ def find_live_objects(existing_count, cat_pipe, refs=None, *,
         # live_blobs will hold on to the fd until close or exit
         os.unlink(bloom_filename)
         live_trees = set()
-        stop_at = lambda x: unhexlify(x) in live_trees
+        def stop_at(x): return unhexlify(x) in live_trees
         oid_exists = idx_list.exists if idx_list else None
         approx_live_count = 0
         scan_refs = refs if refs else list(git.list_refs())

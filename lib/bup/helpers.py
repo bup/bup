@@ -220,7 +220,7 @@ class MergeIterItem:
 
 def merge_iter(iters, pfreq, pfunc, pfinal, key=None):
     if key:
-        samekey = lambda e, pe: getattr(e, key) == getattr(pe, key, None)
+        def samekey(e, pe): return getattr(e, key) == getattr(pe, key, None)
     else:
         samekey = operator.eq
     count = 0

@@ -14,6 +14,7 @@ enable=
   undefined-variable,
   unidiomatic-typecheck,
   unnecessary-lambda,
+  unnecessary-lambda-assignment,
   unnecessary-semicolon,
   unused-import,
   unused-wildcard-import,
