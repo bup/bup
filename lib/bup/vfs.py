@@ -177,8 +177,8 @@ def _normal_or_chunked_file_size(repo, oid):
 
 def _skip_chunks_before_offset(tree_data, offset):
     entries = tree_entries(tree_data)
-    for i in range(len(entries)):
-        ent_ofs = int(entries[i][1], 16)
+    for i, entry in enumerate(entries):
+        ent_ofs = int(entry[1], 16)
         if ent_ofs > offset:
             return entries[i - 1:]
         if ent_ofs == offset:

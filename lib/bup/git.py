@@ -581,8 +581,7 @@ class PackIdxList:
             else:
                 _total_searches -= 1  # was counted by bloom
                 return None
-        for i in range(len(self.packs)):
-            p = self.packs[i]
+        for i, p in enumerate(self.packs):
             if want_offset and isinstance(p, midx.PackMidx):
                 get_src = True
                 get_ofs = False

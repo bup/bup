@@ -584,8 +584,7 @@ class Metadata:
         # field name (including the user and group names) contains a
         # newline or comma.  If any field name does, then the results
         # may be wrong.  (Debian, at least, disallows them.)
-        for i in range(len(acls)):
-            acl = acls[i]
+        for i, acl in enumerate(acls):
             if b',' in acl:
                 if path:
                     msg = 'error: unexpected comma in ACL entry;' \

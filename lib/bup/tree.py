@@ -72,8 +72,8 @@ def _abbreviate_tree_names(names):
     for name in names:
         out = name
         level = abbrev
-        for n in range(len(name)):
-            level = level[name[n]]
+        for c in name:
+            level = level[c]
         while True:
             # backtrack a level
             level = level[None]

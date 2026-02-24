@@ -214,8 +214,8 @@ def test_apply_to_path_restricted_access(tmpdir):
         if metadata.xattr and m.linux_xattr:
             expected_errors.append('error: xattr.set ')
         WVPASS(len(helpers.saved_errors) == len(expected_errors))
-        for i in range(len(expected_errors)):
-            assert str(helpers.saved_errors[i]).startswith(expected_errors[i])
+        for i, err in enumerate(expected_errors):
+            assert str(helpers.saved_errors[i]).startswith(err)
     finally:
         clear_errors()
 

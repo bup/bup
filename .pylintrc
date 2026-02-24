@@ -8,6 +8,7 @@ enable=
   bad-classmethod-argument,
   catching-non-exception,
   consider-using-dict-items,
+  consider-using-enumerate,
   consider-using-generator,
   consider-using-in,
   consider-using-max-builtin,
