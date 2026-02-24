@@ -20,4 +20,5 @@ enable=
   unnecessary-semicolon,
   unused-import,
   unused-wildcard-import,
+  use-list-literal,
   useless-return

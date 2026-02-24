@@ -995,7 +995,7 @@ class PackWriter:
 
 class PackIdxV2Writer:
     def __init__(self):
-        self.idx = list(list() for i in range(256))
+        self.idx = [[] for i in range(256)]
         self.count = 0
 
     def add(self, sha, crc, offs):
