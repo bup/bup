@@ -287,7 +287,7 @@ def parse_args(args):
         else:
             misuse(f'unrecognized argument: {path_msg(arg)}')
     if pending_method_context:
-        ctx_msg = ' '. join(path_msg(x) for x in pending_method_context.keys())
+        ctx_msg = ' '. join(path_msg(x) for x in pending_method_context)
         misuse(f'trailing arguments with no effect: {ctx_msg}')
     return opt
 
