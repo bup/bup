@@ -90,8 +90,7 @@ def main(argv):
         if opt.existing:
             def foreverit(mi):
                 while 1:
-                    for e in mi:
-                        yield e
+                    yield from mi
             objit = iter(foreverit(m))
 
         for c in range(opt.cycles):

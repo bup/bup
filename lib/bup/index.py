@@ -412,8 +412,7 @@ class ExistingEntry(Entry):
                  or child.name.startswith(dname)
                  or child.name.endswith(b'/') and dname.startswith(child.name)):
                 if not wantrecurse or wantrecurse(child):
-                    for e in child.iter(name=name, wantrecurse=wantrecurse):
-                        yield e
+                    yield from child.iter(name=name, wantrecurse=wantrecurse)
             if not name or child.name == name or child.name.startswith(dname):
                 yield child
             ofs = eon + 1 + ENTLEN
@@ -475,8 +474,7 @@ class Reader:
                 dname += b'/'
             root = ExistingEntry(None, b'/', b'/',
                                  self.m, len(self.m)-FOOTLEN-ENTLEN)
-            for sub in root.iter(name=name, wantrecurse=wantrecurse):
-                yield sub
+            yield from root.iter(name=name, wantrecurse=wantrecurse)
             if not dname or dname == root.name:
                 yield root
 

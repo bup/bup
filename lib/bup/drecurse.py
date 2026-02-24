@@ -71,12 +71,11 @@ def _recursive_dirlist(prepend, xdev, bup_dir=None,
                 except OSError as e:
                     add_error('%s: %s' % (prepend, e))
                 else:
-                    for i in _recursive_dirlist(prepend=prepend+name, xdev=xdev,
-                                                bup_dir=bup_dir,
-                                                excluded_paths=excluded_paths,
-                                                exclude_rxs=exclude_rxs,
-                                                xdev_exceptions=xdev_exceptions):
-                        yield i
+                    yield from _recursive_dirlist(prepend=prepend+name, xdev=xdev,
+                                                  bup_dir=bup_dir,
+                                                  excluded_paths=excluded_paths,
+                                                  exclude_rxs=exclude_rxs,
+                                                  xdev_exceptions=xdev_exceptions)
                     os.chdir(b'..')
         yield (path, pst)
 
@@ -111,12 +110,11 @@ def recursive_dirlist(paths, xdev, bup_dir=None,
                     if stat.S_ISDIR(pst.st_mode):
                         os.fchdir(pfile)
                         prepend = os.path.join(path, b'')
-                        for i in _recursive_dirlist(prepend=prepend, xdev=xdev,
-                                                    bup_dir=bup_dir,
-                                                    excluded_paths=excluded_paths,
-                                                    exclude_rxs=exclude_rxs,
-                                                    xdev_exceptions=xdev_exceptions):
-                            yield i
+                        yield from _recursive_dirlist(prepend=prepend, xdev=xdev,
+                                                      bup_dir=bup_dir,
+                                                      excluded_paths=excluded_paths,
+                                                      exclude_rxs=exclude_rxs,
+                                                      xdev_exceptions=xdev_exceptions)
                         os.fchdir(startdir)
                     else:
                         prepend = path

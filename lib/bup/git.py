@@ -1443,8 +1443,7 @@ class CatPipe:
 
         try:
             yield oidx, typ, size
-            for blob in chunkyreader(p.stdout, size):
-                yield blob
+            yield from chunkyreader(p.stdout, size)
             readline_result = p.stdout.readline()
             assert readline_result == b'\n'
             self.inprogress = None

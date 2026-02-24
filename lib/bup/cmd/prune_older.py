@@ -49,8 +49,7 @@ def classify_saves(saves, period_start):
     for pstart, time_region_id in tm_ranges:
         matches, rest = partition(lambda s: s[0] >= pstart, rest)
         for region_id, region_saves in groupby(matches, time_region_id):
-            for action in retain_newest_in_region(list(region_saves)):
-                yield action
+            yield from retain_newest_in_region(list(region_saves))
 
     # Finally, drop any saves older than the specified periods
     for save in rest:

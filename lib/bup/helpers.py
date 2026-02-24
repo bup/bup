@@ -177,8 +177,7 @@ def partition(predicate, stream):
         nonlocal first_nonmatch
         if first_nonmatch:
             yield first_nonmatch[0]
-            for x in stream:
-                yield x
+            yield from stream
     return (leading_matches(), rest())
 
 
