@@ -67,9 +67,9 @@ def main(argv):
     metadata.verbose = opt.verbose - opt.quiet
     opt.file = argv_bytes(opt.file) if opt.file else None
 
-    action_count = sum([bool(x) for x in [opt.create, opt.list, opt.extract,
+    action_count = sum(bool(x) for x in [opt.create, opt.list, opt.extract,
                                           opt.start_extract, opt.finish_extract,
-                                          opt.edit]])
+                                          opt.edit])
     if action_count > 1:
         o.fatal("bup: only one action permitted: --create --list --extract --edit")
     if action_count == 0:
