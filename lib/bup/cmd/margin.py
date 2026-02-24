@@ -29,6 +29,7 @@ def main(argv):
         def do_predict(ix, out):
             total = len(ix)
             maxdiff = 0
+            count = 0
             for count,i in enumerate(ix):
                 prefix = struct.unpack('!Q', i[:8])[0]
                 expected = prefix * total // (1 << 64)
@@ -37,7 +38,7 @@ def main(argv):
             out.write(b'%d of %d (%.3f%%) '
                       % (maxdiff, len(ix), maxdiff * 100.0 / len(ix)))
             out.flush()
-            assert(count+1 == len(ix))
+            assert count + 1 == len(ix)
 
         sys.stdout.flush()
         out = byte_stream(sys.stdout)

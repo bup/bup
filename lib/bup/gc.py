@@ -105,6 +105,7 @@ def find_live_objects(existing_count, cat_pipe, refs=None, *,
             return 'scanned %s of %s ref%s (%02.2f%% of all objects)' \
                 % (ref_i + 1, ref_n, 's' if ref_n > 1 else '',
                    approx_live_count * 100.0 / existing_count)
+        ref_i = 0
         for ref_i, (ref_name, ref_id) in enumerate(scan_refs):
             for item_path in walk_object(cat_pipe.get, hexlify(ref_id),
                                          stop_at=stop_at, include_data=None,

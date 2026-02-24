@@ -20,6 +20,7 @@ enable=
   super-init-not-called,
   syntax-error,
   trailing-whitespace,
+  undefined-loop-variable,
   undefined-variable,
   unidiomatic-typecheck,
   unnecessary-comprehension,
