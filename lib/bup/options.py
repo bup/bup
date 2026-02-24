@@ -62,7 +62,11 @@ consecutive lines. Groups are formed by inserting a line that begins with a
 space. The text on that line will be output after an empty line.
 """
 
-import sys, os, textwrap, getopt, re
+# Python upstream deprecated this and then undeprecated it...
+# pylint: disable-next=deprecated-module
+import getopt
+
+import sys, os, textwrap, re
 
 
 def _invert(v, invert):

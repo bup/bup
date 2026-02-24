@@ -1,6 +1,9 @@
 
 from subprocess import PIPE
-import getopt, os, signal, struct, subprocess, sys
+# Python upstream deprecated this and then undeprecated it...
+# pylint: disable-next=deprecated-module
+import getopt
+import os, signal, struct, subprocess, sys
 
 from bup import options, ssh, path
 from bup.compat import argv_bytes

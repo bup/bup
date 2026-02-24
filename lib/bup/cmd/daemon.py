@@ -1,5 +1,9 @@
 
-import fcntl, getopt, os, socket, subprocess, sys, select
+# Python upstream deprecated this and then undeprecated it...
+# pylint: disable-next=deprecated-module
+import getopt
+
+import fcntl, os, socket, subprocess, sys, select
 
 from bup import options, path
 from bup.helpers import EXIT_FAILURE, log, debug1

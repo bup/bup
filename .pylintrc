@@ -13,6 +13,7 @@ enable=
   consider-using-in,
   consider-using-max-builtin,
   consider-using-min-builtin,
+  deprecated-module,
   inconsistent-return-statements,
   logging-not-lazy,
   return-in-init,
