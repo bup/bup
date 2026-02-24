@@ -171,7 +171,7 @@ def enc_dsqs(val):
         b = ord(val[i])
         if b < 128:
             enc = encoding[b]
-        elif (b >= 0xdc80 and b <= 0xdcff): # surrogate escape
+        elif 0xdc80 <= b <= 0xdcff: # surrogate escape
             enc = r'\x%02x' % (128 + (b - 0xdc80))
         else:
             enc = None
@@ -236,7 +236,7 @@ def enc_shs(val):
     for ch in val:
         c = ord(ch)
         if c < 32 or c == b"'"[0] or c == 127 \
-           or (c >= 0xdc80 and c <= 0xdcff): # lone surrogate (PEP-0383)
+           or 0xdc80 <= c <= 0xdcff: # lone surrogate (PEP-0383)
             need_dsq = True
             break
         # This set is everything from POSIX except ' and \n (handled above).

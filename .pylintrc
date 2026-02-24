@@ -8,6 +8,7 @@ enable=
   assignment-from-no-return,
   bad-classmethod-argument,
   catching-non-exception,
+  chained-comparison,
   consider-iterating-dictionary,
   consider-using-dict-items,
   consider-using-enumerate,

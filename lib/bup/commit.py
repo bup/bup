@@ -140,7 +140,7 @@ def has_trailers(message):
 def commit_message(message, argv, extra_trailers=None):
     for trailer in extra_trailers or []:
         assert isinstance(trailer, bytes)
-        for b in trailer: assert b >= 20 and b < 127, trailer
+        for b in trailer: assert 20 <= b < 127, trailer
     parts = [message.rstrip()]
     if not has_trailers(message):
         parts.append(b'')

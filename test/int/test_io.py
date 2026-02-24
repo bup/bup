@@ -21,7 +21,7 @@ def _dsq_enc_byte(b):
         return br"\'"
     if bb == b'\\':
         return br'\\'
-    if b >= 127 or b < 7 or (b > 13 and b < 27) or (b > 27 and b < 32):
+    if b >= 127 or b < 7 or 13 < b < 27 or 27 < b < 32:
         return br'\x%02x' % b
     return bb
 
