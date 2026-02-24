@@ -29,12 +29,12 @@ def main(argv):
 
     outr, outw = os.pipe()
     errr, errw = os.pipe()
-    def close_fds():
-        os.close(outr)
-        os.close(errr)
+    assert not os.get_inheritable(outr)
+    assert not os.get_inheritable(errr)
 
     p = subprocess.Popen(subcmd, stdin=orig_stdin, stdout=outw, stderr=errw,
-                         close_fds=False, preexec_fn=close_fds)
+                         close_fds=False)
+
     os.close(outw)
     os.close(errw)
     sys.stdout.flush()

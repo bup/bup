@@ -22,6 +22,7 @@ enable=
   no-else-raise,
   reimported,
   return-in-init,
+  subprocess-popen-preexec-fn,
   super-init-not-called,
   syntax-error,
   trailing-whitespace,

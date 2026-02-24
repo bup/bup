@@ -313,7 +313,6 @@ def exo(cmd,
         stderr=None,
         shell=False,
         check=True,
-        preexec_fn=None,
         close_fds=True):
     if input:
         assert stdin in (None, PIPE)
@@ -321,7 +320,6 @@ def exo(cmd,
     p = Popen(cmd,
               stdin=stdin, stdout=PIPE, stderr=stderr,
               shell=shell,
-              preexec_fn=preexec_fn,
               close_fds=close_fds)
     out, err = p.communicate(input)
     if check and p.returncode != 0:
@@ -330,9 +328,9 @@ def exo(cmd,
                            ', stderr: %r' % err if err else ''))
     return out, err, p
 
-def readpipe(argv, preexec_fn=None, shell=False):
+def readpipe(argv, shell=False):
     """Run a subprocess and return its output."""
-    return exo(argv, preexec_fn=preexec_fn, shell=shell)[0]
+    return exo(argv, shell=shell)[0]
 
 
 def resolve_parent(p):
