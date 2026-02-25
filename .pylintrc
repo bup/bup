@@ -32,6 +32,7 @@ enable=
   expression-not-assigned,
   f-string-without-interpolation,
   function-redefined,
+  import-outside-toplevel,
   inconsistent-return-statements,
   logging-not-lazy,
   no-else-continue,

@@ -36,7 +36,7 @@ def main(argv):
                                     excluded_paths=excluded_paths,
                                     exclude_rxs=exclude_rxs)
     if opt.profile:
-        import cProfile
+        import cProfile # pylint: disable=import-outside-toplevel
         def do_it():
             for i in it:
                 pass

@@ -196,7 +196,7 @@ def run_subcmd(module, args):
         try:
             if not do_profile:
                 return module.main(args)
-            import cProfile
+            import cProfile # pylint: disable=import-outside-toplevel
             f = compile('module.main(args)', __file__, 'exec')
             return cProfile.runctx(f, globals(), locals())
         finally:
