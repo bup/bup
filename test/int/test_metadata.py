@@ -5,14 +5,13 @@ import pytest
 
 from wvpytest import *
 
-from bup import git, metadata
+from bup import git, helpers, metadata
 from bup import vfs
 from bup.compat import fsencode
 from bup.helpers import clear_errors, detect_fakeroot, is_superuser, resolve_parent
 from bup.metadata import xattr
 from bup.repo import LocalRepo
 from bup.xstat import utime, lutime
-import bup.helpers as helpers
 import buptest
 
 lib_t_dir = os.path.dirname(fsencode(__file__))

@@ -2,7 +2,7 @@
 
 from bup import source_info
 try:
-    import bup.checkout_info as checkout_info
+    from bup import checkout_info
 except ImportError:
     checkout_info = None
 

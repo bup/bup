@@ -3,10 +3,9 @@ import os, time
 
 from wvpytest import *
 
-from bup import index, metadata
+from bup import index, metadata, xstat
 from bup.compat import fsencode
 from bup.helpers import resolve_parent
-import bup.xstat as xstat
 
 
 lib_t_dir = os.path.dirname(fsencode(__file__))

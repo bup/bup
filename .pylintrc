@@ -21,6 +21,7 @@ enable=
   consider-iterating-dictionary,
   consider-using-dict-items,
   consider-using-enumerate,
+  consider-using-from-import,
   consider-using-generator,
   consider-using-in,
   consider-using-max-builtin,

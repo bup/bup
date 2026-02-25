@@ -7,8 +7,9 @@ from bup.helpers \
             finalized,
             resolve_parent,
             should_rx_exclude_path)
+from bup import xstat
 from bup.io import path_msg
-import bup.xstat as xstat
+
 
 # the use of fchdir() and lstat() is for two reasons:
 #  - help out the kernel by not making it repeatedly look up the absolute path

@@ -4,7 +4,7 @@ from functools import partial
 from os import environb as environ
 import os, sys, time
 
-from bup import compat, hashsplit, git, options, client
+from bup import client, compat, git, hashsplit, options
 from bup.commit import commit_message
 from bup.compat import argv_bytes
 from bup.config import ConfigError, derive_repo_addr
