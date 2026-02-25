@@ -31,7 +31,7 @@ def maybe_import_early(argv):
             continue
         if len(argv) < 2:
             log("bup: --import-py-module must have an argument\n")
-            exit(EXIT_FAILURE)
+            sys.exit(EXIT_FAILURE)
         mod = argv[1]
         import_module(mod)
         argv = argv[2:]

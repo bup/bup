@@ -16,6 +16,7 @@ enable=
   consider-using-in,
   consider-using-max-builtin,
   consider-using-min-builtin,
+  consider-using-sys-exit,
   consider-using-ternary,
   deprecated-module,
   expression-not-assigned,
