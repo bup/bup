@@ -9,6 +9,7 @@ enable=
   assert-on-string-literal,
   assignment-from-no-return,
   bad-classmethod-argument,
+  bad-indentation,
   bare-except,
   broad-exception-caught,
   catching-non-exception,

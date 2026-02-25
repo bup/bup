@@ -117,26 +117,26 @@ def quotify(qtype, word, terminate):
 
 
 def quotify_list(words):
-  """Return minimally-quoted bytes produced by quoting each word.
+    """Return minimally-quoted bytes produced by quoting each word.
 
-  This calculates the qtype for each word depending on whether the word
-  already includes singlequote characters, doublequote characters, both,
-  or neither.
+    This calculates the qtype for each word depending on whether the word
+    already includes singlequote characters, doublequote characters, both,
+    or neither.
 
-  Args:
-    words: the list of words to quote.
-  Returns:
-    The resulting bytes, with quoted words separated by ' '.
-  """
-  wordout = []
-  for word in words:
-    qtype = q
-    if word and not re.search(br'[\s\"\']', word):
-      qtype = b''
-    elif q in word and qq not in word:
-      qtype = qq
-    wordout.append(quotify(qtype, word, True))
-  return b' '.join(wordout)
+    Args:
+      words: the list of words to quote.
+    Returns:
+      The resulting bytes, with quoted words separated by ' '.
+    """
+    wordout = []
+    for word in words:
+        qtype = q
+        if word and not re.search(br'[\s\"\']', word):
+            qtype = b''
+        elif q in word and qq not in word:
+            qtype = qq
+        wordout.append(quotify(qtype, word, True))
+    return b' '.join(wordout)
 
 
 def what_to_add(qtype, origword, newword, terminate):

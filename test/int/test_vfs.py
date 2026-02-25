@@ -239,22 +239,22 @@ def validate_vfs_seeking_read(repo, item, expected_path, read_sizes):
 
     for read_size in read_sizes:
         with open(expected_path, 'rb') as expected:
+            ex_buf = expected.read(read_size)
+            act_buf = None
+            act_pos = 0
+            while ex_buf:
+                act_pos, act_buf = read_act(act_pos)
+                wvpassge(read_size, len(ex_buf))
+                wvpassge(read_size, len(act_buf))
+                wvpasseq(len(ex_buf), len(act_buf))
+                wvpass(ex_buf == act_buf)
+                if not act_buf:
+                    break
                 ex_buf = expected.read(read_size)
-                act_buf = None
-                act_pos = 0
-                while ex_buf:
-                    act_pos, act_buf = read_act(act_pos)
-                    wvpassge(read_size, len(ex_buf))
-                    wvpassge(read_size, len(act_buf))
-                    wvpasseq(len(ex_buf), len(act_buf))
-                    wvpass(ex_buf == act_buf)
-                    if not act_buf:
-                        break
-                    ex_buf = expected.read(read_size)
-                else:  # hit expected eof first
-                    act_pos, act_buf = read_act(act_pos)
-                wvpasseq(b'', ex_buf)
-                wvpasseq(b'', act_buf)
+            else:  # hit expected eof first
+                act_pos, act_buf = read_act(act_pos)
+            wvpasseq(b'', ex_buf)
+            wvpasseq(b'', act_buf)
 
 def test_read_and_seek(tmpdir):
     # Write a set of randomly sized files containing random data whose

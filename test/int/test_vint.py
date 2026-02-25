@@ -14,12 +14,12 @@ def encode_and_decode_vuint(x):
 
 
 def test_vuint():
-        for x in (0, 1, 42, 128, 10**16, 10**100):
-            WVPASSEQ(encode_and_decode_vuint(x), x)
-        WVEXCEPT(Exception, vint.write_vuint, BytesIO(), -1)
-        assert vint.read_vuint(BytesIO()) is None
-        WVEXCEPT(EOFError, vint.read_vuint, BytesIO(b'\x80'))
-        WVEXCEPT(EOFError, vint.read_vuint, BytesIO(b'\x80\x80'))
+    for x in (0, 1, 42, 128, 10**16, 10**100):
+        WVPASSEQ(encode_and_decode_vuint(x), x)
+    WVEXCEPT(Exception, vint.write_vuint, BytesIO(), -1)
+    assert vint.read_vuint(BytesIO()) is None
+    WVEXCEPT(EOFError, vint.read_vuint, BytesIO(b'\x80'))
+    WVEXCEPT(EOFError, vint.read_vuint, BytesIO(b'\x80\x80'))
 
 
 def encode_and_decode_vint(x):
