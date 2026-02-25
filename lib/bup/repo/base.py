@@ -44,7 +44,7 @@ class RepoProtocol:
         """..."""
 
     @notimplemented
-    def config_get(self, name, opttype=None):
+    def config_get(self, name, *, opttype=None):
         """
         Return the configuration value of 'name', returning None if it doesn't
         exist. opttype indicates the type of option.
@@ -141,7 +141,7 @@ class RepoProtocol:
         """
 
     @notimplemented
-    def finish_writing(self, run_midx=True):
+    def finish_writing(self):
         """
         Finish writing, i.e. really add the previously tentatively written
         objects to the repository.

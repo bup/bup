@@ -108,7 +108,7 @@ class RemoteRepo(RepoProtocol):
         self._ensure_packwriter()
         return self._packwriter.exists(sha, want_source=want_source)
 
-    def finish_writing(self, run_midx=True):
+    def finish_writing(self):
         if self._packwriter:
             w = self._packwriter
             self._packwriter = None

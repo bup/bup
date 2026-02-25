@@ -4,6 +4,7 @@
 [MESSAGES CONTROL]
 disable=all
 enable=
+  arguments-differ,
   assert-on-string-literal,
   assignment-from-no-return,
   bad-classmethod-argument,
