@@ -25,11 +25,15 @@ def debug(s):
 def par2_setup():
     global par2_ok
     try:
-        run((b'par2', b'--help'), stdout=DEVNULL, stderr=DEVNULL, stdin=DEVNULL)
-    except OSError:
+        sp = run((b'par2', b'--help'),
+                 stdout=DEVNULL, stderr=DEVNULL, stdin=DEVNULL,
+                 check=False)
+    except (FileNotFoundError, NotADirectoryError):
         log('fsck: warning: par2 not found; disabling recovery features.\n')
-    else:
+    if sp.returncode == 0:
         par2_ok = 1
+        return
+    log('fsck: warning: par2 --help failed; disabling recovery features.\n')
 
 def is_par2_parallel():
     # A true result means it definitely allows -t1; a false result is
