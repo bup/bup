@@ -4,6 +4,7 @@
 [MESSAGES CONTROL]
 disable=all
 enable=
+  abstract-method,
   arguments-differ,
   arguments-renamed,
   assert-on-string-literal,

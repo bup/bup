@@ -329,6 +329,9 @@ class BupRequestHandler(tornado.web.RequestHandler):
         '.h': 'text/plain',
         })
 
+    def data_received(self, chunk): # for pylint abstract-method
+        raise NotImplementedError('bup web does not receive data')
+
 
 io_loop = None
 
