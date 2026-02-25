@@ -6,13 +6,14 @@ from stat import S_IFDIR
 import os
 from time import localtime, strftime
 
+from buptest import ex, exo
+from buptest.vfs import tree_dict
 from wvpytest import *
 
 from bup import git, path, vfs
 from bup.compat import environ
 from bup.repo import LocalRepo, make_repo
-from buptest import ex, exo
-from buptest.vfs import tree_dict
+
 
 bup_path = path.exe()
 

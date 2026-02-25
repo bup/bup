@@ -67,4 +67,5 @@ enable=
   use-maxsplit-arg,
   use-yield-from,
   useless-return,
+  wrong-import-order,
   wrong-import-position

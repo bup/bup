@@ -4,6 +4,7 @@ import os, sys
 import pytest
 
 from wvpytest import *
+import buptest
 
 from bup import git, helpers, metadata
 from bup import vfs
@@ -12,7 +13,6 @@ from bup.helpers import clear_errors, detect_fakeroot, is_superuser, resolve_par
 from bup.metadata import xattr
 from bup.repo import LocalRepo
 from bup.xstat import utime, lutime
-import buptest
 
 lib_t_dir = os.path.dirname(fsencode(__file__))
 

@@ -1,14 +1,16 @@
 
-import bup_main, os, sys
+import os, sys
+import bup_main
 if bup_main.env_pythonpath:
     os.environb[b'PYTHONPATH'] = bup_main.env_pythonpath
 else:
     del os.environ['PYTHONPATH']
 
-# pylint: disable=wrong-import-position
+# pylint: disable=wrong-import-position disable=wrong-import-order
 from importlib import import_module
 from os import fsdecode
 from pkgutil import iter_modules
+# pylint: enable=wrong-import-order
 
 from bup import compat, io, path
 from bup.compat import environ, print_exception

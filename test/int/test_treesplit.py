@@ -4,11 +4,11 @@ from pathlib import Path
 from sys import stderr
 import re
 
+from buptest import ex, exo
 from wvpytest import *
 
 from bup import git, tree
 from bup.helpers import mkdirp
-from buptest import ex, exo
 
 
 def test_abbreviate():

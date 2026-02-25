@@ -8,8 +8,11 @@ import os
 import sys
 from time import localtime, strftime, tzset
 
-from wvpytest import *
 import pytest
+
+from buptest import exo
+from buptest.vfs import tree_dict
+from wvpytest import *
 
 from bup._helpers import write_random
 from bup import git, metadata, vfs
@@ -17,8 +20,6 @@ from bup.compat import environ, fsencode
 from bup.helpers import exc, shstr
 from bup.metadata import Metadata
 from bup.repo import LocalRepo
-from buptest import exo
-from buptest.vfs import tree_dict
 
 lib_t_dir = os.path.dirname(fsencode(__file__))
 top_dir = os.path.join(lib_t_dir, b'../..')
