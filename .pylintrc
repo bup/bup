@@ -31,6 +31,7 @@ enable=
   logging-not-lazy,
   no-else-continue,
   no-else-raise,
+  no-value-for-parameter,
   reimported,
   return-in-init,
   singleton-comparison,

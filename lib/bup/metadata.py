@@ -810,13 +810,13 @@ class Metadata:
                                      name=k, obj=self)
             return super().__setattr__(k, v)
     def __copy__(self):
-        result = self.__new__(self.__class__)
+        result = self.__class__.__new__(self.__class__)
         for k in [x for x in self.__slots__ if x != '_frozen']:
             setattr(result, k, copy.copy(getattr(self, k)))
         result._frozen = self._frozen
         return result
     def __deepcopy__(self, memo):
-        result = self.__new__(self.__class__)
+        result = self.__class__.__new__(self.__class__)
         for k in [x for x in self.__slots__ if x != '_frozen']:
             setattr(result, k, copy.deepcopy(getattr(self, k), memo))
         result._frozen = self._frozen
