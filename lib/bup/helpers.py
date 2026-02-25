@@ -94,6 +94,7 @@ def open_in(fd, path, *args, **kwargs):
     assert 'opener' not in kwargs
     def opener(name, mode):
         return os.open(name, mode, dir_fd=fd)
+    # pylint: disable-next=unspecified-encoding
     return open(path, *args, opener=opener, **kwargs)
 
 if hasattr(os, 'O_PATH'):

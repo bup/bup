@@ -233,7 +233,7 @@ def check_establish_default_repo_variant(tmpdir, f, is_establish):
 
         os.rename(bupdir + b'/objects/pack',
                   bupdir + b'/objects/pack.tmp')
-        open(bupdir + b'/objects/pack', 'w').close()
+        open(bupdir + b'/objects/pack', 'wb').close()
         if is_establish:
             with finally_reset_state():
                 WVPASSEQ(False, f())

@@ -43,8 +43,8 @@ def test_commit_parsing(tmpdir):
         exc(b'git', b'symbolic-ref', b'HEAD', b'refs/heads/main')
         git.check_repo_or_die(repodir)
         os.chdir(workdir)
-        with open('foo', 'w') as f:
-            print('bar', file=f)
+        with open('foo', 'wb') as f:
+            f.write(b'bar\n')
         readpipe([b'git', b'add', b'.'])
         readpipe([b'git', b'commit', b'-am', b'Do something',
                   b'--author', b'Someone <someone@somewhere>',

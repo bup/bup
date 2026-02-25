@@ -10,7 +10,7 @@ from contextlib import ExitStack
 from dataclasses import replace
 from itertools import islice
 from shutil import rmtree
-from subprocess import run
+from subprocess import DEVNULL, run
 from sys import stderr
 from typing import Literal, Optional, Union
 
@@ -149,7 +149,7 @@ def repo_rel(path):
 def auto_midx(objdir):
     args = [path.exe(), b'midx', b'--auto', b'--dir', objdir]
     try:
-        rv = subprocess.call(args, stdout=open(os.devnull, 'w'))
+        rv = subprocess.call(args, stdout=DEVNULL)
     except OSError as e:
         # make sure 'args' gets printed to help with debugging
         add_error('%r: exception: %s' % (args, e))
@@ -159,7 +159,7 @@ def auto_midx(objdir):
 
     args = [path.exe(), b'bloom', b'--dir', objdir]
     try:
-        rv = subprocess.call(args, stdout=open(os.devnull, 'w'))
+        rv = subprocess.call(args, stdout=DEVNULL)
     except OSError as e:
         # make sure 'args' gets printed to help with debugging
         add_error('%r: exception: %s' % (args, e))

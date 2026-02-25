@@ -38,6 +38,7 @@ enable=
   unnecessary-pass,
   unnecessary-semicolon,
   unreachable,
+  unspecified-encoding,
   unused-import,
   unused-wildcard-import,
   use-dict-literal,
