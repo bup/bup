@@ -320,7 +320,7 @@ def main(argv):
     if opt.disable_par2:
         par2_ok = 0
     if not par2_ok and (opt.generate or opt.repair):
-        log(f'error: cannot --generate or --repair without par2\n')
+        log('error: cannot --generate or --repair without par2\n')
         sys.exit(EXIT_FAILURE)
 
     if extra:

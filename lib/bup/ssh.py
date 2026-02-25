@@ -23,11 +23,11 @@ def connect(destination, port, subcmd, stderr=None):
     assert not re.search(br'[^\w-]', subcmd)
     if not destination:
         if b'BUP_TEST_LEVEL' not in environ:
-            raise Exception(f'no ssh destination')
+            raise Exception('no ssh destination')
         argv = [path.exe(), subcmd]
     elif destination == b'-':
         if b'BUP_TEST_LEVEL' not in environ:
-            raise Exception(f'invalid ssh destination "-"')
+            raise Exception('invalid ssh destination "-"')
         argv = [path.exe(), subcmd]
     else:
         force_tty = int(environ.get(b'BUP_FORCE_TTY', 0))

@@ -109,10 +109,10 @@ def read_resolution(port):
     for i in range(n):
         name = read_bvec(port)
         if name is None:
-            raise EOFError(f'EOF while reading VFS resolve path name')
+            raise EOFError('EOF while reading VFS resolve path name')
         have_item = ord(port.read(1))
         if have_item is None:
-            raise EOFError(f'EOF while reading VFS resolve path item indicator')
+            raise EOFError('EOF while reading VFS resolve path item indicator')
         assert have_item in (0, 1)
         item = read_item(port) if have_item else None
         result.append((name, item))
@@ -134,20 +134,20 @@ def write_ioerror(port, ex):
 def read_ioerror(port):
     mask = read_vuint(port)
     if mask is None:
-        raise EOFError(f'EOF while reading IOError mask')
+        raise EOFError('EOF while reading IOError mask')
     no, msg, term = None, None, None
     if 1 & mask:
         no = read_vint(port)
         if no is None:
-            raise EOFError(f'EOF while reading IOError errno')
+            raise EOFError('EOF while reading IOError errno')
     if 2 & mask:
         msg = read_bvec(port).decode('utf-8')
         if msg is None:
-            raise EOFError(f'EOF while reading IOError message')
+            raise EOFError('EOF while reading IOError message')
     if 4 & mask:
         term = read_resolution(port)
         if msg is None:
-            raise EOFError(f'EOF while reading IOError terminus')
+            raise EOFError('EOF while reading IOError terminus')
     return vfs.IOError(errno=no, message=msg, terminus=term)
 
 def _command(fn):

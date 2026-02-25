@@ -145,7 +145,7 @@ def main(argv):
             return EXIT_FAILURE
         elif (ref_missing + found_missing + abridged_bupm):
             if (ref_missing or found_missing) and not opt.links:
-                log(f'note: missing object list may be incomplete without --links\n')
+                log('note: missing object list may be incomplete without --links\n')
             return EXIT_FALSE
         else:
             return EXIT_TRUE

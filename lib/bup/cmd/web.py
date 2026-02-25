@@ -405,7 +405,7 @@ def main(argv):
             sockets = tornado.netutil.bind_sockets(address.port, address.host)
             http_server.add_sockets(sockets)
             urlstr = f'http://{address.host}:{address.port}'
-            print(f'Serving HTTP on', urlstr)
+            print('Serving HTTP on', urlstr)
             if opt.browser:
                 io_loop_pending.add_callback(lambda : webbrowser.open(urlstr))
         elif isinstance(address, UnixAddress):
