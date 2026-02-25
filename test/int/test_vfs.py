@@ -17,7 +17,7 @@ from bup.compat import environ, fsencode
 from bup.helpers import exc, shstr
 from bup.metadata import Metadata
 from bup.repo import LocalRepo
-from buptest import ex, exo
+from buptest import exo
 from buptest.vfs import tree_dict
 
 lib_t_dir = os.path.dirname(fsencode(__file__))

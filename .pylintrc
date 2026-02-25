@@ -30,6 +30,7 @@ enable=
   deprecated-module,
   expression-not-assigned,
   f-string-without-interpolation,
+  function-redefined,
   inconsistent-return-statements,
   logging-not-lazy,
   no-else-continue,
