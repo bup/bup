@@ -6,7 +6,7 @@ from bup import helpers
 from wvpytest import *
 
 from bup.compat import environ
-from bup.helpers import (atomically_replaced_file, batchpipe, detect_fakeroot,
+from bup.helpers import (atomically_replaced_file, detect_fakeroot,
                          grafted_path_components, parse_num,
                          path_components, readpipe, stripped_path_components,
                          shstr,
@@ -116,33 +116,6 @@ def test_readpipe():
         rx = '^subprocess b?"bash -c \'exit 42\'" failed with status 42$'
         if not re.match(rx, str(ex)):
             WVPASSEQ(str(ex), rx)
-
-
-def test_batchpipe():
-    for chunk in batchpipe([b'echo'], []):
-        WVPASS(False)
-    out = b''
-    for chunk in batchpipe([b'echo'], [b'42']):
-        out += chunk
-    WVPASSEQ(out, b'42\n')
-    try:
-        batchpipe([b'bash', b'-c'], [b'exit 42'])
-    except Exception as ex:
-        WVPASSEQ(str(ex),
-                 "subprocess 'bash -c exit 42' failed with status 42")
-    args = [str(x) for x in range(6)]
-    # Force batchpipe to break the args into batches of 3.  This
-    # approach assumes all args are the same length.
-    arg_max = \
-        helpers._argmax_base([b'echo']) + helpers._argmax_args_size(args[:3])
-    batches = batchpipe(['echo'], args, arg_max=arg_max)
-    WVPASSEQ(next(batches), b'0 1 2\n')
-    WVPASSEQ(next(batches), b'3 4 5\n')
-    WVPASSEQ(next(batches, None), None)
-    batches = batchpipe([b'echo'], [str(x) for x in range(5)], arg_max=arg_max)
-    WVPASSEQ(next(batches), b'0 1 2\n')
-    WVPASSEQ(next(batches), b'3 4\n')
-    WVPASSEQ(next(batches, None), None)
 
 
 @pytest.mark.parametrize('sync_atomic_replace', (True, False))
