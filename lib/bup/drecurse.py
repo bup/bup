@@ -56,11 +56,11 @@ def _recursive_dirlist(prepend, xdev, bup_dir=None,
         if exclude_rxs and should_rx_exclude_path(path, exclude_rxs):
             continue
         if name.endswith(b'/'):
-            if bup_dir != None:
+            if bup_dir is not None:
                 if os.path.normpath(path) == bup_dir:
                     debug1('Skipping BUP_DIR.\n')
                     continue
-            if xdev != None and pst.st_dev != xdev \
+            if xdev is not None and pst.st_dev != xdev \
                and path not in xdev_exceptions:
                 debug1('Skipping contents of %r: different filesystem.\n'
                        % path_msg(path))

@@ -344,7 +344,7 @@ def main(argv):
     for stem in pack_stems:
         base = os.path.basename(stem)
         par2_status = par2_recovery_file_status(stem)
-        if par2_status == False:
+        if par2_status is False:
             if code == EXIT_SUCCESS:
                 code = EXIT_FAILURE
             continue
@@ -355,7 +355,7 @@ def main(argv):
             progress('fsck (%d/%d)\r' % (count, len(pack_stems)))
 
         if not opt.jobs:
-            assert par2_status != False
+            assert par2_status is not False
             code = merge_exits(code, do_pack(mode, stem, par2_status, out))
             count += 1
         else:
@@ -371,7 +371,7 @@ def main(argv):
                 outstanding[pid] = 1
             else: # child
                 try:
-                    assert par2_status != False
+                    assert par2_status is not False
                     sys.exit(do_pack(mode, stem, par2_status, out))
                 except Exception as e:
                     log('exception: %r\n' % e)
@@ -391,7 +391,7 @@ def main(argv):
 
     # double-check (e.g. for (unlikely) problems with generate tmpdir renames)
     for stem in pack_stems:
-        if par2_recovery_file_status(stem) == False:
+        if par2_recovery_file_status(stem) is False:
             if code == EXIT_SUCCESS:
                 code = EXIT_FAILURE
 

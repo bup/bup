@@ -39,7 +39,7 @@ class LocalRepo(RepoProtocol):
                and bool(srv_dedup) == bool(allow_duplicates):
                 raise ValueError(f'conflicting allow_duplicates ({allow_duplicates!r})'
                                  f' and bup.server.deduplicate-writes ({srv_dedup!r})')
-        if server and srv_dedup == False:
+        if server and srv_dedup is False:
             assert not allow_duplicates
             # don't make midx files
             assert run_midx is None

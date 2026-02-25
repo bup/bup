@@ -1115,17 +1115,17 @@ def summary_bytes(meta, numeric_ids = False, classification = None,
             mtime_str = xstat.local_time_str(meta.mtime).encode('ascii')
         if meta.user and not numeric_ids:
             user_str = meta.user
-        elif meta.uid != None:
+        elif meta.uid is not None:
             user_str = str(meta.uid).encode()
         if meta.group and not numeric_ids:
             group_str = meta.group
-        elif meta.gid != None:
+        elif meta.gid is not None:
             group_str = str(meta.gid).encode()
         if stat.S_ISCHR(meta.mode) or stat.S_ISBLK(meta.mode):
             if meta.rdev:
                 size_or_dev_str = ('%d,%d' % (os.major(meta.rdev),
                                               os.minor(meta.rdev))).encode()
-        elif meta.size != None:
+        elif meta.size is not None:
             if human_readable:
                 size_or_dev_str = format_filesize(meta.size).encode()
             else:

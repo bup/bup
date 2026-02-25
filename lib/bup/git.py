@@ -355,7 +355,7 @@ class PackIdx:
     def find_offset(self, hash):
         """Get the offset of an object inside the index file."""
         idx = self._idx_from_hash(hash)
-        if idx != None:
+        if idx is not None:
             return self._ofs_from_idx(idx)
         return None
 
@@ -1400,7 +1400,7 @@ class CatPipe:
         If ref does not exist, only yield (None, None, None).
 
         """
-        if not self.p or self.p.poll() != None:
+        if not self.p or self.p.poll() is not None:
             self.restart()
         assert(self.p)
         poll_result = self.p.poll()

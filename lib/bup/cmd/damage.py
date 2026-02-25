@@ -29,7 +29,7 @@ def main(argv):
     if not extra:
         o.fatal('filenames expected')
 
-    if opt.seed != None:
+    if opt.seed is not None:
         random.seed(opt.seed)
 
     for name in extra:

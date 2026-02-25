@@ -103,7 +103,7 @@ class PackMidx:
 
     def exists(self, hash, want_source=False, want_offset=False):
         """Return nonempty if the object exists in the index files."""
-        assert want_offset == False, "returning offset is not supported in midx"
+        assert not want_offset, 'returning offset is not supported in midx'
         global _total_searches, _total_steps
         _total_searches += 1
         want = hash

@@ -210,7 +210,7 @@ class Client:
                 pass
         def check_ok(self):
             rv = self._proc.poll()
-            if rv != None:
+            if rv is not None:
                 raise ClientError(f'server exited unexpectedly with code {rv}')
             try:
                 return self.conn.check_ok()

@@ -246,7 +246,7 @@ def test_config(tmpdir):
         assert c.config_get(b'bup.split.trees') == b'0'
         assert c.config_get(b'bup.split.trees', opttype='int') == 0
         ex((b'git', b'config', b'bup.split.trees', b'1'))
-        assert c.config_get(b'bup.split.trees', opttype='bool') == True
+        assert c.config_get(b'bup.split.trees', opttype='bool') is True
         with pytest.raises(PermissionError) as exinfo:
             c.config_get(b'bup.not-an-allowed-key')
         assert 'does not allow remote access' in str(exinfo.value)

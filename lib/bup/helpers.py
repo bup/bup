@@ -357,7 +357,7 @@ def resolve_parent(p):
 
 def detect_fakeroot():
     "Return True if we appear to be running under fakeroot."
-    return os.getenv("FAKEROOTKEY") != None
+    return os.getenv("FAKEROOTKEY") is not None
 
 
 if sys.platform.startswith('cygwin'):
@@ -657,7 +657,7 @@ def chunkyreader(f, count = None):
     If count is a positive integer, read 'count' bytes from 'f'. If EOF is
     reached while reading, raise IOError.
     """
-    if count != None:
+    if count is not None:
         while count > 0:
             b = f.read(min(count, 65536))
             if not b:

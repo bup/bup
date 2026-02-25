@@ -254,7 +254,7 @@ def create(name, expected, delaywrite=None, f=None, k=None):
     # darwin, linux, bsd and solaris.
     f.truncate(16+2**bits)
     f.seek(0)
-    if delaywrite != None and not delaywrite:
+    if delaywrite is not None and not delaywrite:
         # tell it to expect very few objects, forcing a direct mmap
         expected = 1
     return ShaBloom(name, f=f, readwrite=True, expected=expected)

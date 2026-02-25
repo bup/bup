@@ -295,7 +295,7 @@ def save_tree(opt, reader, hlink_db, msr, repo, split_cfg):
         # example) will have a real_fs_path of None, i.e. [('', None),
         # ...].
 
-        if first_root == None:
+        if first_root is None:
             first_root = dirp[0]
         elif first_root != dirp[0]:
             root_collision = True

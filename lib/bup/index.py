@@ -259,7 +259,7 @@ class Entry:
         self.ctime = self._fixup_time(self.ctime)
 
     def _fixup_time(self, t):
-        if self.tmax != None and t > self.tmax:
+        if self.tmax is not None and t > self.tmax:
             return self.tmax
         else:
             return t
@@ -570,7 +570,7 @@ class Writer:
                 self.count += 1
             self.f.write(struct.pack(FOOTER_SIG, self.count))
             self.f.flush()
-        assert(self.level == None)
+        assert(self.level is None)
 
     def close(self, abort=False):
         if self.closed:
