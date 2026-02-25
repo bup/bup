@@ -7,6 +7,7 @@ enable=
   assert-on-string-literal,
   assignment-from-no-return,
   bad-classmethod-argument,
+  broad-exception-caught,
   catching-non-exception,
   chained-comparison,
   consider-iterating-dictionary,

@@ -215,6 +215,7 @@ def main():
         rc = 130
     except SystemExit as ex:
         raise ex
+    # pylint: disable-next=broad-exception-caught
     except BaseException as ex:
         print_exception(ex)
         rc = EXIT_FAILURE

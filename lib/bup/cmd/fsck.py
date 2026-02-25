@@ -373,8 +373,9 @@ def main(argv):
                 try:
                     assert par2_status is not False
                     sys.exit(do_pack(mode, stem, par2_status, out))
+                # pylint: disable-next=broad-exception-caught
                 except Exception as e:
-                    log('exception: %r\n' % e)
+                    log(f'exception: {e}\n')
                     sys.exit(99)
 
     while len(outstanding):

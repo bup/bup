@@ -289,7 +289,8 @@ class BupRequestHandler(tornado.web.RequestHandler):
                             self._set_header(path, file_item)
                             set_header = True
                         self.write(blob)
-        except Exception as e:
+        # pylint: disable-next=broad-exception-caught
+        except Exception as e: # FIXME: *all* Exceptions?
             self.set_status(500)
             self.write("<h1>Server Error</h1>\n")
             self.write("%s: %s\n" % (e.__class__.__name__, str(e)))

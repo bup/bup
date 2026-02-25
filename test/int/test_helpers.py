@@ -1,6 +1,6 @@
 
 from time import tzset
-import os, os.path, re
+import os, os.path
 from bup import helpers
 
 from wvpytest import *
@@ -110,12 +110,8 @@ def test_shstr():
 def test_readpipe():
     x = readpipe([b'echo', b'42'])
     WVPASSEQ(x, b'42\n')
-    try:
+    with pytest.raises(Exception, match='^subprocess b?"bash -c \'exit 42\'" failed with status 42$'):
         readpipe([b'bash', b'-c', b'exit 42'])
-    except Exception as ex:
-        rx = '^subprocess b?"bash -c \'exit 42\'" failed with status 42$'
-        if not re.match(rx, str(ex)):
-            WVPASSEQ(str(ex), rx)
 
 
 @pytest.mark.parametrize('sync_atomic_replace', (True, False))

@@ -425,18 +425,16 @@ def _create_idx(d, i):
     packname = os.path.join(d, b'pack-%s.idx' % hexlify(packbin))
     idx.write(packname, packbin)
 
+
+# assume for now if /proc/self/fd exists, it's the one we expect
+@pytest.mark.skipif(not os.path.isdir(b'/proc/self/fd'),
+                    reason='no /proc/self/fd/')
 def test_midx_close(tmpdir):
-    fddir = b'/proc/self/fd'
-    try:
-        os.listdir(fddir)
-    except Exception:
-        # not supported, not Linux, I guess
-        return
 
     def openfiles():
-        for fd in os.listdir(fddir):
+        for fd in os.listdir(b'/proc/self/fd'):
             try:
-                yield os.readlink(os.path.join(fddir, fd))
+                yield os.readlink(os.path.join(b'/proc/self/fd', fd))
             except OSError:
                 pass
 

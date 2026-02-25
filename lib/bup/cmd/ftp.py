@@ -84,6 +84,7 @@ def enter_completion(text, iteration):
                 ret = shquote.what_to_add(qtype, lastword, fullname,
                                           terminate=True) + b' '
             return text + ret
+    # pylint: disable-next=broad-exception-caught
     except Exception as e:
         log('\n')
         _, _, tb = sys.exc_info()
