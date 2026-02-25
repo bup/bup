@@ -45,5 +45,6 @@ enable=
   use-dict-literal,
   use-implicit-booleaness-not-len,
   use-list-literal,
+  use-maxsplit-arg,
   use-yield-from,
   useless-return

@@ -359,10 +359,10 @@ def test_list_refs(tmpdir):
     src_hash = unhexlify(src_hash[0])
     tree_hash = unhexlify(exo(b'git', b'--git-dir', bupdir,
                               b'rev-parse',
-                              b'src:').strip().split(b'\n')[0])
+                              b'src:').strip().split(b'\n', maxsplit=1)[0])
     blob_hash = unhexlify(exo(b'git', b'--git-dir', bupdir,
                               b'rev-parse',
-                              b'src:1').strip().split(b'\n')[0])
+                              b'src:1').strip().split(b'\n', maxsplit=1)[0])
     WVPASSEQ(frozenset(git.list_refs()),
              frozenset([(b'refs/heads/src', src_hash)]))
     WVPASSEQ(frozenset(git.list_refs(limit_to_tags=True)), emptyset)

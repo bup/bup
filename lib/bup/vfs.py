@@ -1360,7 +1360,7 @@ def join(repo, ref):
             for ent_mode, ent_name, ent_oid in tree_iter(b''.join(it)):
                 yield from _join(*get_oidx(repo, hexlify(ent_oid)), path + [ent_name])
         elif typ == b'commit':
-            treeline = b''.join(it).split(b'\n')[0]
+            treeline = b''.join(it).split(b'\n', maxsplit=1)[0]
             assert treeline.startswith(b'tree ')
             tree_oidx = treeline[5:]
             path += [oidx, tree_oidx]

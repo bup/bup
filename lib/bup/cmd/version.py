@@ -26,7 +26,7 @@ def main(argv):
     out = byte_stream(sys.stdout)
 
     if opt.date:
-        out.write(version.date.split(b' ')[0] + b'\n')
+        out.write(version.date.split(b' ', maxsplit=1)[0] + b'\n')
     elif opt.commit:
         out.write(version.commit + b'\n')
     else:
