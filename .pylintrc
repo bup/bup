@@ -32,6 +32,7 @@ enable=
   subprocess-popen-preexec-fn,
   super-init-not-called,
   syntax-error,
+  trailing-comma-tuple,
   trailing-whitespace,
   undefined-loop-variable,
   undefined-variable,

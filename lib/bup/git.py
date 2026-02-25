@@ -1487,7 +1487,7 @@ def tags(repo_dir = None):
 
 
 class MissingObject(KeyError):
-    __slots__ = 'oid',
+    __slots__ = ('oid',)
     def __init__(self, oid):
         self.oid = oid
         KeyError.__init__(self, f'object {hexlify(oid)!r} is missing')

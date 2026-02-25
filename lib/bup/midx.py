@@ -20,7 +20,7 @@ def _midx_version(mmap): return struct.unpack('!I', mmap[4:8])[0]
 
 
 class MissingIdxs(Exception):
-    __slots__ = 'paths',
+    __slots__ = ('paths',)
     def __init__(self, *, paths):
         super().__init__()
         self.paths = paths
