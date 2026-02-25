@@ -46,6 +46,7 @@ if sys.platform.startswith('linux'):
                 'upgrade or install python-pyxattr instead.\n')
 
 try:
+    # pylint: disable-next=ungrouped-imports
     from bup._helpers import read_acl, apply_acl
 except ImportError:
     read_acl = apply_acl = None

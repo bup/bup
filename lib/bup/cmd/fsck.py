@@ -1,10 +1,9 @@
 
 from os import SEEK_END
-from shutil import rmtree
+from os.path import join
+from shutil import copy2, rmtree
 from subprocess import DEVNULL, PIPE, run
 from tempfile import mkdtemp
-from os.path import join
-from shutil import copy2
 import errno, glob, os, sys
 
 from bup import options, git

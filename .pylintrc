@@ -49,6 +49,7 @@ enable=
   unbalanced-tuple-unpacking,
   undefined-loop-variable,
   undefined-variable,
+  ungrouped-imports,
   unidiomatic-typecheck,
   unnecessary-comprehension,
   unnecessary-lambda,

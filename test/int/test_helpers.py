@@ -1,10 +1,10 @@
 
 from time import tzset
 import os, os.path
-from bup import helpers
 
 from wvpytest import *
 
+from bup import helpers
 from bup.compat import environ
 from bup.helpers import (atomically_replaced_file, detect_fakeroot,
                          grafted_path_components, parse_num,
