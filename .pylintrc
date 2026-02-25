@@ -5,6 +5,7 @@
 disable=all
 enable=
   arguments-differ,
+  arguments-renamed,
   assert-on-string-literal,
   assignment-from-no-return,
   bad-classmethod-argument,

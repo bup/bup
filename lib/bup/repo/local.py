@@ -170,13 +170,13 @@ class LocalRepo(RepoProtocol):
         self._ensure_packwriter()
         return self._packwriter.new_blob(data)
 
-    def just_write(self, sha, type, content):
+    def just_write(self, oid, type, content):
         self._ensure_packwriter()
-        return self._packwriter.just_write(sha, type, content)
+        return self._packwriter.just_write(oid, type, content)
 
-    def exists(self, sha, want_source=False):
+    def exists(self, oid, want_source=False):
         self._ensure_packwriter()
-        return self._packwriter.exists(sha, want_source=want_source)
+        return self._packwriter.exists(oid, want_source=want_source)
 
     def finish_writing(self):
         if self._packwriter:
