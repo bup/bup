@@ -22,7 +22,7 @@ fuse.fuse_python_api = (0, 2)
 try:
     fuse_ver = fuse.__version__.split('.')
     fuse_ver_maj = int(fuse_ver[0])
-except:
+except (AttributeError, TypeError, ValueError):
     print('error: cannot determine the fuse major version; please report',
           file=sys.stderr)
     sys.exit(2)

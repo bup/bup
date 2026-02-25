@@ -125,12 +125,13 @@ def test_atomically_replaced_file(sync_atomic_replace, tmpdir):
     f = open(target_file, 'r', encoding='utf-8')
     WVPASSEQ(f.read(), 'asdf')
 
+    class Escape(Exception): pass
     try:
         with atomically_replaced_file(target_file, mode='w',
                                       sync=sync_atomic_replace) as f:
             f.write('wxyz')
-            raise Exception()
-    except:
+            raise Escape()
+    except Escape:
         pass
     with open(target_file, encoding='utf-8') as f:
         WVPASSEQ(f.read(), 'asdf')
