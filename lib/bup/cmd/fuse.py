@@ -31,10 +31,12 @@ if len(fuse_ver) < 3 or fuse_ver_maj < 1:
           file=sys.stderr)
     sys.exit(2)
 
+# pylint: disable=wrong-import-position
 from bup import options, git, vfs, xstat
 from bup.compat import argv_bytes
 from bup.helpers import log
 from bup.repo import LocalRepo
+# pylint: enable=wrong-import-position
 
 
 # FIXME: self.meta and want_meta?

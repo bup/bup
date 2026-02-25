@@ -50,4 +50,5 @@ enable=
   use-list-literal,
   use-maxsplit-arg,
   use-yield-from,
-  useless-return
+  useless-return,
+  wrong-import-position

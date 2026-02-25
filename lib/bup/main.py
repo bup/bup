@@ -5,6 +5,7 @@ if bup_main.env_pythonpath:
 else:
     del os.environ['PYTHONPATH']
 
+# pylint: disable=wrong-import-position
 from importlib import import_module
 from os import fsdecode
 from pkgutil import iter_modules
@@ -22,6 +23,8 @@ from bup.helpers import \
      progress)
 from bup.io import path_msg
 import bup.cmd
+# pylint: enable=wrong-import-position
+
 
 def maybe_import_early(argv):
     """Scan argv and import any modules specified by --import-py-module."""

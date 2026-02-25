@@ -9,6 +9,7 @@ from bup import git, metadata
 from bup import vfs
 from bup.compat import fsencode
 from bup.helpers import clear_errors, detect_fakeroot, is_superuser, resolve_parent
+from bup.metadata import xattr
 from bup.repo import LocalRepo
 from bup.xstat import utime, lutime
 import bup.helpers as helpers
@@ -250,7 +251,6 @@ def test_restore_over_existing_target(tmpdir):
     WVEXCEPT(Exception, dir_m.create_path, path, create_symlinks=True)
 
 
-from bup.metadata import xattr
 if xattr:
     def remove_selinux(attrs):
         return list(filter(lambda i: not i in (b'security.selinux', ),
