@@ -360,18 +360,6 @@ if test "${c_define[BUP_HAVE_READLINE]:-}"; then
     fi
 fi
 
-info -n 'checking for tm tm_gmtoff field'
-if try-c-code \
-       -- \
-       '#include <time.h>\n' \
-       'struct tm t;\n' \
-       'int main(int argc, char **argv) { return (int) sizeof(t.tm_gmtoff); }\n';
-   then
-    c_define[HAVE_TM_TM_GMTOFF]=1
-    info ' (found)'
-else
-    info ' (not found)'
-fi
 
 info -n 'checking for libacl'
 if pkg-config libacl; then

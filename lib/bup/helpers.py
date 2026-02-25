@@ -1,13 +1,12 @@
 """Helper functions and classes for bup."""
 
-from collections import namedtuple
 from contextlib import ExitStack, nullcontext
 from ctypes import sizeof, c_void_p
-from math import floor
 from os import environ, fsencode
 from random import SystemRandom
 from subprocess import PIPE, Popen
 from tempfile import mkdtemp
+from time import localtime
 from shutil import rmtree
 import sys, os, subprocess, errno, select, mmap, stat, re, struct
 import hashlib, heapq, math, operator, time
@@ -1140,41 +1139,8 @@ def grafted_path_components(graft_points, path):
 Sha1 = hashlib.sha1
 
 
-_localtime = getattr(_helpers, 'localtime', None)
-
-if _localtime:
-    bup_time = namedtuple('bup_time', ['tm_year', 'tm_mon', 'tm_mday',
-                                       'tm_hour', 'tm_min', 'tm_sec',
-                                       'tm_wday', 'tm_yday',
-                                       'tm_isdst', 'tm_gmtoff', 'tm_zone'])
-
-# Define a localtime() that returns bup_time when possible.  Note:
-# this means that any helpers.localtime() results may need to be
-# passed through to_py_time() before being passed to python's time
-# module, which doesn't appear willing to ignore the extra items.
-if _localtime:
-    def localtime(time):
-        return bup_time(*_helpers.localtime(int(floor(time))))
-    def utc_offset_str(t):
-        """Return the local offset from UTC as "+hhmm" or "-hhmm" for time t.
-        If the current UTC offset does not represent an integer number
-        of minutes, the fractional component will be truncated."""
-        off = localtime(t).tm_gmtoff
-        # Note: // doesn't truncate like C for negative values, it rounds down.
-        offmin = abs(off) // 60
-        m = offmin % 60
-        h = (offmin - m) // 60
-        return b'%+03d%02d' % (-h if off < 0 else h, m)
-    def to_py_time(x):
-        if isinstance(x, time.struct_time):
-            return x
-        return time.struct_time(x[:9])
-else:
-    localtime = time.localtime
-    def utc_offset_str(t):
-        return time.strftime('%z', localtime(t)).encode('ascii')
-    def to_py_time(x):
-        return x
+def utc_offset_str(t):
+    return time.strftime('%z', localtime(t)).encode('ascii')
 
 
 _some_invalid_save_parts_rx = re.compile(br'[\[ ~^:?*\\]|\.\.|//|@{')

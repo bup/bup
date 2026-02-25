@@ -1092,32 +1092,6 @@ static PyObject *bup_set_linux_file_attr(PyObject *self, PyObject *args)
 }
 #endif /* def BUP_HAVE_FILE_ATTRS */
 
-
-#ifdef HAVE_TM_TM_GMTOFF
-static PyObject *bup_localtime(PyObject *self, PyObject *args)
-{
-    long long lltime;
-    time_t ttime;
-    if (!PyArg_ParseTuple(args, "L", &lltime))
-	return NULL;
-    if (!INTEGRAL_ASSIGNMENT_FITS(&ttime, lltime))
-        return PyErr_Format(PyExc_OverflowError, "time value too large");
-
-    struct tm tm;
-    tzset();
-    if(localtime_r(&ttime, &tm) == NULL)
-        return PyErr_SetFromErrno(PyExc_OSError);
-
-    // Match the Python struct_time values.
-    return Py_BuildValue("[i,i,i,i,i,i,i,i,i,i,s]",
-                         1900 + tm.tm_year, tm.tm_mon + 1, tm.tm_mday,
-                         tm.tm_hour, tm.tm_min, tm.tm_sec,
-                         tm.tm_wday, tm.tm_yday + 1,
-                         tm.tm_isdst, tm.tm_gmtoff, tm.tm_zone);
-}
-#endif /* def HAVE_TM_TM_GMTOFF */
-
-
 static unsigned int vuint_encode(long long val, char *buf)
 {
     unsigned int len = 0;
@@ -1818,10 +1792,6 @@ static PyMethodDef helper_methods[] = {
 #ifdef BUP_HAVE_FILE_ATTRS
     { "set_linux_file_attr", bup_set_linux_file_attr, METH_VARARGS,
       "Set the Linux attributes for the given file." },
-#endif
-#ifdef HAVE_TM_TM_GMTOFF
-    { "localtime", bup_localtime, METH_VARARGS,
-      "Return struct_time elements plus the timezone offset and name." },
 #endif
     { "bytescmp", bup_bytescmp, METH_VARARGS,
       "Return a negative value if x < y, zero if equal, positive otherwise."},

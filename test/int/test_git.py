@@ -4,6 +4,7 @@ from binascii import hexlify, unhexlify
 from contextlib import ExitStack
 from subprocess import check_call
 from functools import partial
+from time import localtime
 import struct, os
 import pytest
 
