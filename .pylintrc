@@ -34,6 +34,7 @@ enable=
   syntax-error,
   trailing-comma-tuple,
   trailing-whitespace,
+  unbalanced-tuple-unpacking,
   undefined-loop-variable,
   undefined-variable,
   unidiomatic-typecheck,

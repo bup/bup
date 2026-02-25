@@ -310,6 +310,7 @@ class Metadata:
         if data is None:
             raise EOFError('EOF while reading metadata common records')
         values = vint.unpack(unpack_fmt, data)
+        # pylint: disable=unbalanced-tuple-unpacking
         if version == 3:
             (self.mode, self.uid, self.user, self.gid, self.group,
              self.rdev,
@@ -324,6 +325,7 @@ class Metadata:
              self.atime, atime_ns,
              self.mtime, mtime_ns,
              self.ctime, ctime_ns) = values
+        # pylint: enable=unbalanced-tuple-unpacking
         self.atime = xstat.timespec_to_nsecs((self.atime, atime_ns))
         self.mtime = xstat.timespec_to_nsecs((self.mtime, mtime_ns))
         self.ctime = xstat.timespec_to_nsecs((self.ctime, ctime_ns))

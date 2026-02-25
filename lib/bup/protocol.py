@@ -28,6 +28,7 @@ def read_item(port):
             if m is None:
                 raise EOFError(f'EOF while reading {kind} integer mode')
         return m
+    # pylint: disable-next=unbalanced-tuple-unpacking
     kind, has_meta = vint.recv(port, 'sV')
     if kind == b'Item':
         oid, meta = read_oid(port, kind), read_m(port, kind, has_meta)
@@ -43,6 +44,7 @@ def read_item(port):
     if kind == b'Tags':
         return Tags(meta=read_m(port, kind, has_meta))
     if kind == b'Commit':
+        # pylint: disable-next=unbalanced-tuple-unpacking
         oid, coid = vint.recv(port, 'ss')
         meta = read_m(port, kind, has_meta)
         return Commit(oid=oid, coid=coid, meta=meta)
@@ -415,6 +417,7 @@ class Server:
     def config_get(self, args):
         self.init_session()
         assert not args
+        # pylint: disable-next=unbalanced-tuple-unpacking
         key, opttype = vint.recv(self.conn, 'ss')
         # git is case-insensitve, and the client sends lower-case
         if key in (b'bup.repo.id',
