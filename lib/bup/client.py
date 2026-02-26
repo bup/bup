@@ -665,7 +665,7 @@ class RemotePackStore:
             self._suggest_packs()
             self._objcache.refresh()
 
-        return sha, crc
+        return len(data), crc
 
     def finish_pack(self, *, abort=False):
         if abort:
