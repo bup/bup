@@ -1158,8 +1158,8 @@ def rev_parse(committish, repo_dir=None):
         except TypeError:
             return None
 
-        with PackIdxList(repo(b'objects/pack', repo_dir=repo_dir)) as pL:
-            if pL.exists(hash):
+        with PackIdxList(repo(b'objects/pack', repo_dir=repo_dir)) as pl:
+            if pl.exists(hash):
                 return hash
 
     return None

@@ -208,7 +208,7 @@ def test_hashsplitter_object():
         hs = HashSplitter([BytesIO(data)], bits=BUP_BLOBBITS, fanbits=1)
         for blob, lvl in hs:
             yield len(blob), 13 + lvl
-    def _splitbufRHS(data):
+    def _splitbuf_rhs(data):
         offs = None
         fed = 0
         data = data[:]
@@ -229,10 +229,10 @@ def test_hashsplitter_object():
         yield fed, 13
     data = b''.join([b'%d\n' % x for x in range(10000)])
     WVPASSEQ(list(_splitbuf(data)),
-             list(x for x in _splitbufRHS(data)))
+             list(x for x in _splitbuf_rhs(data)))
     data = b''.join([b'%.10x\n' % x for x in range(10000)])
     WVPASSEQ(list(_splitbuf(data)),
-             list(_splitbufRHS(data)))
+             list(_splitbuf_rhs(data)))
 
 def test_hashsplitter_short_read():
     class DataObj:

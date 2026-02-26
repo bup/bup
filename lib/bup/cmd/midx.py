@@ -244,23 +244,23 @@ def do_midx_dir(path, outfilename, prout, auto=False, force=False,
     all = [(sizes[n],n) for n in (midxs + idxs)]
 
     # FIXME: what are the optimal values?  Does this make sense?
-    DESIRED_HWM = 1 if force else 5
-    DESIRED_LWM = 1 if force else 2
+    desired_hwm = 1 if force else 5
+    desired_lwm = 1 if force else 2
     existed = dict((name,1) for sz,name in all)
     debug1('midx: %d indexes; want no more than %d.\n'
-           % (len(all), DESIRED_HWM))
-    if len(all) <= DESIRED_HWM:
+           % (len(all), desired_hwm))
+    if len(all) <= desired_hwm:
         debug1('midx: nothing to do.\n')
-    while len(all) > DESIRED_HWM:
+    while len(all) > desired_hwm:
         all.sort()
-        part1 = [name for sz,name in all[:len(all)-DESIRED_LWM+1]]
-        part2 = all[len(all)-DESIRED_LWM+1:]
+        part1 = [name for sz,name in all[:len(all)-desired_lwm+1]]
+        part2 = all[len(all)-desired_lwm+1:]
         all = list(do_midx_group(path, outfilename, part1,
                                  auto=auto, force=force, max_files=max_files)) \
                                  + part2
-        if len(all) > DESIRED_HWM:
+        if len(all) > desired_hwm:
             debug1('\nStill too many indexes (%d > %d).  Merging again.\n'
-                   % (len(all), DESIRED_HWM))
+                   % (len(all), desired_hwm))
 
     if print_names:
         for sz,name in all:

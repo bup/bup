@@ -72,8 +72,8 @@ def main(argv):
         log("bup: error: commit %s not found.\n" % commit.decode('ascii'))
         return EXIT_FAILURE
 
-    with git.PackIdxList(git.repo(b'objects/pack')) as pL:
-        if not pL.exists(hash):
+    with git.PackIdxList(git.repo(b'objects/pack')) as pl:
+        if not pl.exists(hash):
             log("bup: error: commit %s not found.\n" % commit.decode('ascii'))
             return EXIT_FAILURE
 

@@ -1,6 +1,10 @@
 # -*-conf-*-
 [GENERAL OPTIONS]
 
+[BASIC]
+class-rgx=([_a-z]+)|(_?([A-Z]+[a-z]*)+) # LocalRepo mmap finalized...
+const-rgx=([_a-z]+)|([_A-Z]+) # snake-case uppper or lower
+
 [VARIABLES]
 ignored-argument-names=.*_$
 
@@ -34,6 +38,7 @@ enable=
   function-redefined,
   import-outside-toplevel,
   inconsistent-return-statements,
+  invalid-name,
   logging-not-lazy,
   no-else-continue,
   no-else-raise,

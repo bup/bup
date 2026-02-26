@@ -2,55 +2,58 @@
 import pytest
 
 
-def WVPASS(cond = True, fail_value=None):
+def wvpass(cond = True, fail_value=None):
     if fail_value:
         assert cond, fail_value
     else:
         assert cond
 
-def WVFAIL(cond = True):
+def wvfail(cond = True):
     assert not cond
 
-def WVPASSEQ(a, b, fail_value=None):
+def wvpasseq(a, b, fail_value=None):
     if fail_value:
         assert a == b, fail_value
     else:
         assert a == b
 
-def WVPASSNE(a, b):
+def wvpassne(a, b):
     assert a != b
 
-def WVPASSLT(a, b):
+def wvpasslt(a, b):
     assert a < b
 
-def WVPASSLE(a, b):
+def wvpassle(a, b):
     assert a <= b
 
-def WVPASSGT(a, b):
+def wvpassgt(a, b):
     assert a > b
 
-def WVPASSGE(a, b):
+def wvpassge(a, b):
     assert a >= b
 
-def WVEXCEPT(etype, func, *args, **kwargs):
+def wvexcept(etype, func, *args, **kwargs):
     with pytest.raises(etype):
         func(*args, **kwargs)
 
-def WVCHECK(cond, msg):
+def wvcheck(cond, msg):
     assert cond, msg
 
-def WVMSG(msg):
+def wvmsg(msg):
     print(msg)
 
-wvpass = WVPASS
-wvfail = WVFAIL
-wvpasseq = WVPASSEQ
-wvpassne = WVPASSNE
-wvpaslt = WVPASSLT
-wvpassle = WVPASSLE
-wvpassgt = WVPASSGT
-wvpassge = WVPASSGE
-wvexcept = WVEXCEPT
-wvcheck = WVCHECK
-wvmsg = WVMSG
-wvstart = WVMSG
+wvstart = wvmsg
+
+
+WVPASS = wvpass
+WVFAIL = wvfail
+WVPASSEQ = wvpasseq
+WVPASSNE = wvpassne
+WVPASSLT = wvpasslt
+WVPASSLE = wvpassle
+WVPASSGT = wvpassgt
+WVPASSGE = wvpassge
+WVEXCEPT = wvexcept
+WVCHECK = wvcheck
+WVMSG = wvmsg
+WVSTART = wvmsg
