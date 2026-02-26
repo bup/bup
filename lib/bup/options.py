@@ -115,7 +115,7 @@ class OptDict:
         return self[k]
 
 
-def _default_onabort(msg):
+def _default_onabort(msg_):
     sys.exit(97)
 
 

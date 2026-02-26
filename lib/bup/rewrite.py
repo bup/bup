@@ -74,7 +74,7 @@ def _prep_mapping_table(db, split_cfg):
                '    without rowid')
     return table_id
 
-def _previous_conversion(dstrepo, item, vfs_dir, db, mapping):
+def _previous_conversion(dstrepo, item, db, mapping):
     """Return (replacement_item, converted_oid, git_mode) for the
     given item if any, *and* if the dstrepo has the item.oid. If not,
     converted_oid and mode will be None. The replacement_item will
@@ -251,7 +251,7 @@ def _vfs_walk_dir_recursively(srcrepo, dstrepo, path, excludes, db, mapping,
             yield sub_path, None
         else:
             conv_item, oid, _ = \
-                _previous_conversion(dstrepo, sub_item, True, db, mapping)
+                _previous_conversion(dstrepo, sub_item, db, mapping)
             assert conv_item.oid == sub_item.oid
             if conv_item is not sub_item:
                 sub_path = sub_path[:-1] + ((sub_path[-1][0], conv_item),)
@@ -352,8 +352,8 @@ def _maybe_exec_mode(git_mode, meta):
         return GIT_MODE_EXEC
     return git_mode
 
-def _rewrite_save_item(save_path, path, replacement_dir, srcrepo, dstrepo,
-                       split_cfg, stack, wdbc, mapping, excludes, repairs):
+def _rewrite_save_item(path, replacement_dir, srcrepo, dstrepo, split_cfg,
+                       stack, wdbc, mapping, excludes, repairs):
     """Returns either None, or, if a directory was missing, the
     directory path components.
 
@@ -364,7 +364,6 @@ def _rewrite_save_item(save_path, path, replacement_dir, srcrepo, dstrepo,
         incomplete = path
         path = incomplete.path
 
-    # save_path is the full vfs save path e.g. branch/DATE.
     fs_path = path[2:] # drop everything before the save
     assert isinstance(fs_path[0][1], vfs.Commit), fs_path[0]
     name, item = path[-1]
@@ -453,8 +452,7 @@ def _rewrite_save_item(save_path, path, replacement_dir, srcrepo, dstrepo,
 
     extend_stack(dir_path[len(stack):])
 
-    item, oid, git_mode = \
-        _previous_conversion(dstrepo, item, is_dir, wdbc, mapping)
+    item, oid, git_mode = _previous_conversion(dstrepo, item, wdbc, mapping)
     item_mode = vfs.item_mode(item)
 
     assert S_ISREG(item_mode)
@@ -597,8 +595,7 @@ class Rewriter:
                         in _vfs_walk_dir_recursively(srcrepo, dstrepo, save_path,
                                                      excludes, dbc, self._mapping,
                                                      repairs):
-                    _rewrite_save_item(save_path, path, replacement_dir,
-                                       srcrepo, dstrepo,
+                    _rewrite_save_item(path, replacement_dir, srcrepo, dstrepo,
                                        self._split_cfg, stack, dbc,
                                        self._mapping, excludes, repairs)
 

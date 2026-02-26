@@ -1,6 +1,9 @@
 # -*-conf-*-
 [GENERAL OPTIONS]
 
+[VARIABLES]
+ignored-argument-names=.*_$
+
 [MESSAGES CONTROL]
 disable=all
 enable=
@@ -51,6 +54,7 @@ enable=
   unnecessary-semicolon,
   unreachable,
   unspecified-encoding,
+  unused-argument,
   unused-import,
   unused-wildcard-import,
   use-dict-literal,

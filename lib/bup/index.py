@@ -382,7 +382,7 @@ class ExistingEntry(Entry):
             self.flags = newflags
             self.repack()
 
-    def unset_sha_missing(self, flag):
+    def unset_sha_missing(self):
         if self.flags & IX_SHAMISSING:
             self.flags &= ~IX_SHAMISSING
             self.repack()

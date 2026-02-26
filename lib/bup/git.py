@@ -767,7 +767,7 @@ def idxmerge(idxlist, final_progress=True):
     def pfinal(count, total):
         if final_progress:
             progress('Reading indexes: %.2f%% (%d/%d), done.\n'
-                     % (100, total, total))
+                     % (100, count, total))
     return merge_iter(idxlist, 10024, pfunc, pfinal)
 
 

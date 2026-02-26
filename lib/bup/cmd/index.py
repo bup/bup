@@ -91,8 +91,7 @@ def update_index(top, excluded_paths, exclude_rxs, fsindex,
 
         fake_hash = None
         if fake_valid:
-            def fake_hash(name):
-                return (GIT_MODE_FILE, index.FAKE_SHA)
+            def fake_hash(name_): return (GIT_MODE_FILE, index.FAKE_SHA)
 
         total = 0
         bup_dir = os.path.abspath(defaultrepo())

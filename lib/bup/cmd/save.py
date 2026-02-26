@@ -62,7 +62,7 @@ graft=     a graft point *old_path*=*new_path* (can be used more than once)
 
 after_nondir_metadata_stat = None
 
-def before_saving_regular_file(name):
+def before_saving_regular_file(name_):
     return
 
 
@@ -436,7 +436,7 @@ def commit_tree(tree, parent, date, argv, repo):
     userline = (b'%s <%s@%s>' % (userfullname(), username(), hostname()))
     return repo.write_commit(tree, parent, userline, date, None,
                              userline, date, None,
-                             commit_message(b'bup save', get_argvb()))
+                             commit_message(b'bup save', argv))
 
 
 def main(argv):
@@ -487,7 +487,7 @@ def main(argv):
             out.write(hexlify(tree))
             out.write(b'\n')
         if opt.commit or opt.name:
-            commit = commit_tree(tree, parent, opt.date, argv, repo)
+            commit = commit_tree(tree, parent, opt.date, get_argvb(), repo)
             if opt.commit:
                 out.write(hexlify(commit))
                 out.write(b'\n')

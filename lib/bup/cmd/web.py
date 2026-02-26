@@ -37,8 +37,7 @@ def http_date_from_utc_ns(utc_ns):
     return time.strftime('%a, %d %b %Y %H:%M:%S', time.gmtime(utc_ns / 10**9))
 
 
-def normalize_bool(k, v):
-    return 1 if v else 0
+def normalize_bool(k_, v): bool(v)
 
 
 def from_req_bool(k, v):
@@ -335,7 +334,7 @@ class BupRequestHandler(tornado.web.RequestHandler):
 
 io_loop = None
 
-def handle_sigterm(signum, frame):
+def handle_sigterm(signum, frame_):
     global io_loop
     debug1('\nbup-web: signal %d received\n' % signum)
     log('Shutdown requested\n')

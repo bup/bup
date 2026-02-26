@@ -181,7 +181,7 @@ class Server:
         pass
 
     @_command
-    def help(self, args):
+    def help(self, args_):
         self.conn.write(b'Commands:\n    %s\n' % b'\n    '.join(sorted(self._commands)))
         self.conn.ok()
 
@@ -212,7 +212,7 @@ class Server:
         self.conn.ok()
 
     @_command
-    def list_indexes(self, junk):
+    def list_indexes(self, junk_):
         assert self._deduplicate_writes is not None
         self.init_session()
         suffix = b'' if self._deduplicate_writes else b' load'
@@ -241,7 +241,7 @@ class Server:
             raise Exception(msg % (expected, actual))
 
     @_command
-    def receive_objects_v2(self, junk):
+    def receive_objects_v2(self, junk_):
         self.init_session()
         if self.suspended:
             self.suspended = False
@@ -334,7 +334,7 @@ class Server:
     cat = join # apocryphal alias
 
     @_command
-    def cat_batch(self, dummy):
+    def cat_batch(self, dummy_):
         self.init_session()
         # For now, avoid potential deadlock by just reading them all
         for ref in tuple(lines_until_sentinel(self.conn, b'\n', Exception)):

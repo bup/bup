@@ -200,7 +200,7 @@ class Client:
             if self._closed:
                 return
             self._closed = True
-            def await_ssh(p):
+            def await_ssh(_):
                 rc = self._proc.wait()
                 if rc:
                     raise ClientError(f'server tunnel returned exit code {rc}')
@@ -443,8 +443,7 @@ class Client:
         return idx
 
     def new_packwriter(self, compression_level=None,
-                       max_pack_size=None, max_pack_objects=None,
-                       run_midx=True):
+                       max_pack_size=None, max_pack_objects=None):
         self._require_command(b'receive-objects-v2')
         self.check_busy()
         def set_busy():
@@ -457,8 +456,7 @@ class Client:
                                 suggest_packs=self._suggest_packs,
                                 onopen=set_busy,
                                 onclose=unset_busy,
-                                ensure_busy=self.ensure_busy,
-                                run_midx=run_midx)
+                                ensure_busy=self.ensure_busy)
         return PackWriter(store=store,
                           compression_level=compression_level,
                           max_pack_size=max_pack_size,
@@ -612,7 +610,7 @@ class Client:
 
 class RemotePackStore:
     def __init__(self, conn, *, cache, suggest_packs, onopen, onclose,
-                 ensure_busy, run_midx=True):
+                 ensure_busy):
         self._closed = False
         self._bwcount = 0
         self._bwtime = time.time()

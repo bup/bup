@@ -295,7 +295,7 @@ def parse_args(args):
 
 # FIXME: walk_object in in git.py doesn't support opt.verbose.  Do we
 # need to adjust for that here?
-def get_random_item(name, hash, src_repo, dest_repo, ignore_missing):
+def get_random_item(hash, src_repo, dest_repo, ignore_missing):
     def already_seen(oid):
         return dest_repo.exists(unhexlify(oid))
     def get_ref(oidx, include_data=False):
@@ -340,14 +340,14 @@ class GetResult:
     repairs: int = 0
 
 
-def transfer_commit(name, hash, parent, src_repo, dest_repo, ignore_missing):
+def transfer_commit(hash, parent, src_repo, dest_repo, ignore_missing):
     now = time.time()
     items = parse_commit(get_cat_data(src_repo.cat(hash), b'commit'))
     tree = unhexlify(items.tree)
     author = b'%s <%s>' % (items.author_name, items.author_mail)
     author_time = (items.author_sec, items.author_offset)
     committer = b'%s <%s@%s>' % (userfullname(), username(), hostname())
-    get_random_item(name, hexlify(tree), src_repo, dest_repo, ignore_missing)
+    get_random_item(hexlify(tree), src_repo, dest_repo, ignore_missing)
     c = dest_repo.write_commit(tree, parent,
                                author, items.author_sec, items.author_offset,
                                committer, now, None,
@@ -360,8 +360,7 @@ def append_commit(src_loc, parent, src_repo, dest_repo, rewriter, excludes,
     if not rewriter:
         assert isinstance(src_loc, (bytes, Loc)), src_loc
         oidx = src_loc if isinstance(src_loc, bytes) else hexlify(src_loc.hash)
-        return transfer_commit(None, # unused
-                               oidx, parent, src_repo, dest_repo,
+        return transfer_commit(oidx, parent, src_repo, dest_repo,
                                ignore_missing)
 
     # Friendlier checking was done during resolve_*
@@ -595,8 +594,7 @@ def handle_ff(item, src_repo, dest_repo):
     dest_oidx = hexlify(item.dest.hash) if item.dest.hash else None
     if not dest_oidx or dest_oidx in src_repo.rev_list(src_oidx):
         # Can fast forward.
-        get_random_item(item.spec.src, src_oidx, src_repo, dest_repo,
-                        item.spec.ignore_missing)
+        get_random_item(src_oidx, src_repo, dest_repo, item.spec.ignore_missing)
         commit_items = parse_commit(get_cat_data(src_repo.cat(src_oidx), b'commit'))
         return GetResult(item.src.hash, unhexlify(commit_items.tree))
     misuse('destination is not an ancestor of source for %s'
@@ -611,8 +609,7 @@ def resolve_append(spec, src_repo, dest_repo):
               % (spec_msg(spec), src.type))
     spec, dest = resolve_branch_dest(spec, src, src_repo, dest_repo)
     if spec.rewriter:
-        def vpm(path):
-            return path_msg(b"/".join(x[0] for x in src_path))
+        def vpm(path): return path_msg(b"/".join(x[0] for x in path))
         if not isinstance(src, Loc):
             misuse(f'cannot currently rewrite git location {src}')
         src_path = src.vfs_path
@@ -633,8 +630,7 @@ def handle_append(item, src_repo, dest_repo):
         src_oidx = hexlify(item.src.hash)
         if item.spec.rewriter:
             misuse(f'rewrite cannot yet promote tree to commit for {spec_msg(item.spec)}')
-        get_random_item(item.spec.src, src_oidx, src_repo, dest_repo,
-                        item.spec.ignore_missing)
+        get_random_item(src_oidx, src_repo, dest_repo, item.spec.ignore_missing)
         parent = item.dest.hash
         msg = commit_message(b'bup get', compat.get_argvb())
         userline = b'%s <%s@%s>' % (userfullname(), username(), hostname())
@@ -724,8 +720,8 @@ def resolve_new_tag(spec, src_repo, dest_repo):
 def handle_new_tag(item, src_repo, dest_repo):
     assert item.spec.method == 'new-tag'
     assert item.dest.path.startswith(b'/.tag/')
-    get_random_item(item.spec.src, hexlify(item.src.hash),
-                    src_repo, dest_repo, item.spec.ignore_missing)
+    get_random_item(hexlify(item.src.hash), src_repo, dest_repo,
+                    item.spec.ignore_missing)
     return GetResult(item.src.hash)
 
 
@@ -756,18 +752,17 @@ def resolve_replace(spec, src_repo, dest_repo):
 def handle_replace(item, src_repo, dest_repo):
     assert(item.spec.method == 'replace')
     if item.dest.path.startswith(b'/.tag/'):
-        get_random_item(item.spec.src, hexlify(item.src.hash),
-                        src_repo, dest_repo, item.spec.ignore_missing)
+        get_random_item(hexlify(item.src.hash), src_repo, dest_repo,
+                        item.spec.ignore_missing)
         return GetResult(item.src.hash)
     assert(item.dest.type == 'branch' or not item.dest.type)
     src_oidx = hexlify(item.src.hash)
-    get_random_item(item.spec.src, src_oidx, src_repo, dest_repo,
-                    item.spec.ignore_missing)
+    get_random_item(src_oidx, src_repo, dest_repo, item.spec.ignore_missing)
     commit_items = parse_commit(get_cat_data(src_repo.cat(src_oidx), b'commit'))
     return GetResult(item.src.hash, unhexlify(commit_items.tree))
 
 
-def resolve_unnamed(spec, src_repo, dest_repo):
+def resolve_unnamed(spec, src_repo, dest_repo_):
     assert not spec.rewriter, spec
     if spec.dest:
         misuse('destination name given for %s' % spec_msg(spec))
@@ -778,8 +773,8 @@ def resolve_unnamed(spec, src_repo, dest_repo):
 
 
 def handle_unnamed(item, src_repo, dest_repo):
-    get_random_item(item.spec.src, hexlify(item.src.hash),
-                    src_repo, dest_repo, item.spec.ignore_missing)
+    get_random_item(hexlify(item.src.hash), src_repo, dest_repo,
+                    item.spec.ignore_missing)
     return GetResult()
 
 

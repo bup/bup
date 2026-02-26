@@ -685,7 +685,7 @@ def _tree_items_except_dot(oid, entries, names=None, bupm=None, *, repair=False)
     if meta_ents is None:
         assert repair or not bupm, (meta_ents, repair, bupm)
 
-    def read_nondir_meta(bupd, default_mode):
+    def read_nondir_meta(default_mode):
         if meta_ents is not None:
             meta = meta_ents.pop()
             # empty for a number of reasons; see Repository Taxonomy in DESIGN
@@ -699,7 +699,7 @@ def _tree_items_except_dot(oid, entries, names=None, bupm=None, *, repair=False)
     def tree_item(ent_oid, kind, gitmode):
         if kind == BUP_CHUNKED:
             assert S_ISDIR(gitmode), (ent_oid, kind, gitmode)
-            meta = read_nondir_meta(bupm, _default_mode_for_gitinfo(gitmode, kind))
+            meta = read_nondir_meta(_default_mode_for_gitinfo(gitmode, kind))
             return Chunky(oid=ent_oid, meta=meta)
 
         if S_ISDIR(gitmode):
@@ -707,7 +707,7 @@ def _tree_items_except_dot(oid, entries, names=None, bupm=None, *, repair=False)
             return Item(meta=_default_mode_for_gitinfo(gitmode, kind),
                         oid=ent_oid)
 
-        meta = read_nondir_meta(bupm, _default_mode_for_gitinfo(gitmode, kind))
+        meta = read_nondir_meta(_default_mode_for_gitinfo(gitmode, kind))
         return Item(oid=ent_oid, meta=meta)
 
     assert isinstance(names, (set, frozenset)) or names is None
@@ -1353,7 +1353,7 @@ def join(repo, ref):
     or a commit. The content of all blobs that can be seen from trees or
     commits will be added to the list.
     """
-    def _join(oidx, typ, size, it, path):
+    def _join(oidx, typ, size_, it, path):
         if typ == b'blob':
             yield from it
         elif typ == b'tree':

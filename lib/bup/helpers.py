@@ -476,7 +476,7 @@ class BaseConn:
 
     def drain_and_check_ok(self):
         """Remove all data for the current command from input stream."""
-        def onempty(rl):
+        def onempty(rl_):
             pass
         return self._check_ok(onempty)
 

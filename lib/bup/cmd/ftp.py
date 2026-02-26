@@ -53,7 +53,7 @@ def _completer_get_subs(repo, line):
 
 _attempt_start = None
 _attempt_end = None
-def attempt_completion(text, start, end):
+def attempt_completion(text_, start, end):
     global _attempt_start, _attempt_end
     _attempt_start = start
     _attempt_end = end

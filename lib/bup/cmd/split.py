@@ -202,9 +202,8 @@ def main(argv):
         class IterToFile:
             def __init__(self, it):
                 self.it = iter(it)
-            def read(self, size):
-                v = next(self.it, None)
-                return v or b''
+            def read(self, size_):
+                return next(self.it, b'')
         def read_ids():
             while 1:
                 line = stdin.readline()

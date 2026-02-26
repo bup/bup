@@ -237,7 +237,7 @@ class Metadata:
     # LostMetadata when making changes to the records (particularly
     # the common records).
 
-    def _add_common(self, path, st):
+    def _add_common(self, st):
         assert(st.st_uid >= 0)
         assert(st.st_gid >= 0)
         self.size = st.st_size
@@ -676,7 +676,9 @@ class Metadata:
             raise EOFError('EOF while reading Linux attr metadata')
         self.linux_attr = vint.unpack('V', data)[0]
 
-    def _apply_linux_attr_rec(self, path, restore_numeric_ids=False):
+    def _apply_linux_attr_rec(self, path,
+                              # pylint: disable-next=unused-argument
+                              restore_numeric_ids=False):
         if self.linux_attr:
             check_linux_file_attr_api()
             if not set_linux_file_attr:
@@ -702,7 +704,7 @@ class Metadata:
 
     ## Linux extended attributes (getfattr(1), setfattr(1))
 
-    def _add_linux_xattr(self, path, st):
+    def _add_linux_xattr(self, path):
         if not xattr: return
         try:
             self.linux_xattr = xattr.get_all(path, nofollow=True)
@@ -742,7 +744,9 @@ class Metadata:
             result.append((key, value))
         self.linux_xattr = result
 
-    def _apply_linux_xattr_rec(self, path, restore_numeric_ids=False):
+    def _apply_linux_xattr_rec(self, path,
+                               # pylint: disable-next=unused-argument
+                               restore_numeric_ids=False):
         if not xattr:
             if self.linux_xattr:
                 note_error("error: can't restore xattrs (no support): %s\n"
@@ -1013,13 +1017,13 @@ def from_path(path, statinfo=None, archive_path=None,
     st = statinfo or xstat.lstat(path)
     if after_stat:
         after_stat(path)
-    result._add_common(path, st)
+    result._add_common(st)
     if save_symlinks:
         result._add_symlink_target(path, st)
     result._add_hardlink_target(hardlink_target)
     result._add_posix1e_acl(path, st)
     result._add_linux_attr(path, st)
-    result._add_linux_xattr(path, st)
+    result._add_linux_xattr(path)
     if normalized:
         # Only store sizes for regular files and symlinks for now.
         if not (stat.S_ISREG(result.mode) or stat.S_ISLNK(result.mode)):

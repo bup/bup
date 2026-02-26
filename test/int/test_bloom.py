@@ -35,6 +35,7 @@ def test_bloom(tmpdir):
         assert b.k == 5
 
 
+# pylint: disable-next=unused-argument
 def test_large_bloom(tmpdir):
     # Test large (~1GiB) filter.  This may fail on s390 (31-bit
     # architecture), and anywhere else where the address space is
