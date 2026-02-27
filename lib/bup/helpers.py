@@ -329,10 +329,6 @@ def exo(cmd,
                            ', stderr: %r' % err if err else ''))
     return out, err, p
 
-def readpipe(argv, shell=False):
-    """Run a subprocess and return its output."""
-    return exo(argv, shell=shell)[0]
-
 
 def resolve_parent(p):
     """Return the absolute path of a file without following any final symlink.

@@ -8,7 +8,7 @@ from bup import helpers
 from bup.compat import environ
 from bup.helpers import (atomically_replaced_file, detect_fakeroot,
                          grafted_path_components, parse_num,
-                         path_components, readpipe, stripped_path_components,
+                         path_components, stripped_path_components,
                          shstr,
                          utc_offset_str)
 
@@ -105,13 +105,6 @@ def test_shstr():
     WVPASSEQ(shstr(('1 2', '3')), "'1 2' 3")
     WVPASSEQ(shstr(("1'2", '3')), "'1'\"'\"'2' 3")
     WVPASSEQ(shstr(("'1", '3')), "''\"'\"'1' 3")
-
-
-def test_readpipe():
-    x = readpipe([b'echo', b'42'])
-    WVPASSEQ(x, b'42\n')
-    with pytest.raises(Exception, match='^subprocess b?"bash -c \'exit 42\'" failed with status 42$'):
-        readpipe([b'bash', b'-c', b'exit 42'])
 
 
 @pytest.mark.parametrize('sync_atomic_replace', (True, False))

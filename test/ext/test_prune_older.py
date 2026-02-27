@@ -12,7 +12,7 @@ import random, sys
 
 from bup import compat
 from bup.compat import environ
-from bup.helpers import partition, period_as_secs, readpipe
+from bup.helpers import partition, period_as_secs
 from bup.io import byte_stream
 from buptest import ex, exo
 from wvpytest import wvfail, wvpass, wvpasseq, wvpassne, wvstart

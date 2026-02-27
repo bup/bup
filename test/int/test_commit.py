@@ -1,18 +1,22 @@
 
 from os import environb as environ
-from subprocess import check_call
+from subprocess import check_call, check_output
 import os, sys
 
 from wvpytest import *
 
 from bup import git
 from bup.commit import _git_date_str, has_trailers, parse_commit
-from bup.helpers import readpipe
+from bup.io import path_msg
 
 
 def exc(*cmd):
-    print(repr(cmd), file=sys.stderr)
+    print(' '.join(path_msg(x) for x in cmd), file=sys.stderr)
     check_call(cmd)
+
+def exo(*cmd):
+    print(' '.join(path_msg(x) for x in cmd), file=sys.stderr)
+    return check_output(cmd)
 
 
 def test_commit_parsing(tmpdir):
@@ -23,8 +27,8 @@ def test_commit_parsing(tmpdir):
             environ[name] = val
 
     def showval(commit, val):
-        return readpipe([b'git', b'show', b'-s',
-                         b'--pretty=format:%s' % val, commit]).strip()
+        return exo(b'git', b'show', b'-s',
+                   b'--pretty=format:%s' % val, commit).strip()
 
     orig_cwd = os.getcwd()
     workdir = tmpdir + b'/work'
@@ -39,17 +43,17 @@ def test_commit_parsing(tmpdir):
     environ[b'GIT_COMMITTER_EMAIL'] = environ[b'GIT_AUTHOR_EMAIL']
     try:
         environ[b'GIT_DIR'] = environ[b'BUP_DIR'] = repodir
-        readpipe([b'git', b'init', workdir])
+        exc(b'git', b'init', workdir)
         exc(b'git', b'symbolic-ref', b'HEAD', b'refs/heads/main')
         git.check_repo_or_die(repodir)
         os.chdir(workdir)
         with open('foo', 'wb') as f:
             f.write(b'bar\n')
-        readpipe([b'git', b'add', b'.'])
-        readpipe([b'git', b'commit', b'-am', b'Do something',
-                  b'--author', b'Someone <someone@somewhere>',
-                  b'--date', b'Sat Oct 3 19:48:49 2009 -0400'])
-        commit = readpipe([b'git', b'show-ref', b'-s', b'main']).strip()
+        exc(b'git', b'add', b'.')
+        exc(b'git', b'commit', b'-am', b'Do something',
+            b'--author', b'Someone <someone@somewhere>',
+            b'--date', b'Sat Oct 3 19:48:49 2009 -0400')
+        commit = exo(b'git', b'show-ref', b'-s', b'main').strip()
         parents = showval(commit, b'%P')
         tree = showval(commit, b'%T')
         cname = showval(commit, b'%cn')
@@ -75,9 +79,9 @@ def test_commit_parsing(tmpdir):
         WVPASSEQ(commit_items.message, b'Do something\n')
         with open(b'bar', 'wb') as f:
             f.write(b'baz\n')
-        readpipe([b'git', b'add', '.'])
-        readpipe([b'git', b'commit', b'-am', b'Do something else'])
-        child = readpipe([b'git', b'show-ref', b'-s', b'main']).strip()
+        exc(b'git', b'add', b'.')
+        exc(b'git', b'commit', b'-am', b'Do something else')
+        child = exo(b'git', b'show-ref', b'-s', b'main').strip()
         parents = showval(child, b'%P')
         commit_items = git.get_commit_items(child, git.cp())
         WVPASSEQ(commit_items.parents, [commit])

@@ -2,8 +2,8 @@
 import sys
 from binascii import hexlify, unhexlify
 from contextlib import ExitStack
-from subprocess import check_call
 from functools import partial
+from subprocess import check_call, check_output
 from time import localtime
 import struct, os
 import pytest
@@ -12,20 +12,20 @@ from wvpytest import *
 
 from bup import git, path
 from bup.compat import environ
-from bup.helpers import OBJECT_EXISTS, finalized, log, mkdirp, readpipe
+from bup.helpers import OBJECT_EXISTS, finalized, log, mkdirp
+from bup.io import path_msg
 
 
 bup_exe = path.exe()
 
 
 def exc(*cmd):
-    print(repr(cmd), file=sys.stderr)
+    print(' '.join(path_msg(x) for x in cmd), file=sys.stderr)
     check_call(cmd)
 
-
 def exo(*cmd):
-    print(repr(cmd), file=sys.stderr)
-    return readpipe(cmd)
+    print(' '.join(path_msg(x) for x in cmd), file=sys.stderr)
+    return check_output(cmd)
 
 
 def local_writer():

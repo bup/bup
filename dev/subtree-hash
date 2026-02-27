@@ -4,10 +4,11 @@ bup_exec="$(dirname "$0")/bup-exec" || exit $?
 exec "$bup_exec" "$0" ${1+"$@"}
 """
 
+from subprocess import check_output
 import os.path, sys
 
 from bup.compat import argv_bytes, get_argvb
-from bup.helpers import handle_ctrl_c, readpipe
+from bup.helpers import handle_ctrl_c
 from bup.io import byte_stream
 from bup import options
 
@@ -30,7 +31,7 @@ path = [argv_bytes(x) for x in extra[1:]]
 
 while path:
     target_name = path[0]
-    subtree_items = readpipe([b'git', b'ls-tree', b'-z', tree_hash])
+    subtree_items = check_output([b'git', b'ls-tree', b'-z', tree_hash])
     target_hash = None
     for entry in subtree_items.split(b'\0'):
         if not entry:
