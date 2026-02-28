@@ -89,6 +89,38 @@ def temp_dir(*args, **kwargs):
     return finalized(mkdtemp(*args, **kwargs), rmtree)
 
 
+class stopped:
+    """If the proc is still running, kill it.  When timeout is
+    nonzero, terminate() it and then wait that many seconds.  After
+    any wait, if the process is still running, kill() it and wait()
+    again.  Intended for use with Popen, might work with
+    multiprocess.Process.
+
+    """
+    def __init__(self, proc, timeout):
+        assert isinstance(timeout, (int, float)), timeout
+        assert timeout >= 0, timeout
+        self._proc = proc
+        self._timeout = timeout
+    def __enter__(self):
+        return self._proc
+    def __exit__(self, exc_type, exc_value, traceback):
+        try:
+            if self._proc.poll() is not None:
+                return
+            if self._timeout == 0:
+                self._proc.kill()
+                return
+            self._proc.terminate()
+            try:
+                self._proc.wait(self._timeout)
+            except subprocess.TimeoutExpired:
+                log(f'Killing process ignoring termination {self._proc}\n')
+                self._proc.kill()
+        finally:
+            self._proc.wait()
+
+
 def open_in(fd, path, *args, **kwargs):
     """Open path with dir_fd set to fd via open()'s opener."""
     assert 'opener' not in kwargs

@@ -1,8 +1,9 @@
 
-import os, subprocess, sys
+from subprocess import Popen
+import os, sys
 
 from bup import options
-from bup.helpers import debug1, debug2, mux
+from bup.helpers import debug1, debug2, mux, stopped
 from bup.io import byte_stream
 
 
@@ -32,20 +33,20 @@ def main(argv):
     assert not os.get_inheritable(outr)
     assert not os.get_inheritable(errr)
 
-    p = subprocess.Popen(subcmd, stdin=orig_stdin, stdout=outw, stderr=errw,
-                         close_fds=False)
-
-    os.close(outw)
-    os.close(errw)
-    sys.stdout.flush()
-    out = byte_stream(sys.stdout)
-    out.write(b'BUPMUX')
-    out.flush()
-    mux(p, out.fileno(), outr, errr)
-    os.close(outr)
-    os.close(errr)
-    prv = p.wait()
-
+    with stopped(Popen(subcmd, stdin=orig_stdin, stdout=outw, stderr=errw,
+                       # FIXME: pass_fds?
+                       close_fds=False),
+                 timeout=1) as p:
+        os.close(outw)
+        os.close(errw)
+        sys.stdout.flush()
+        out = byte_stream(sys.stdout)
+        out.write(b'BUPMUX')
+        out.flush()
+        mux(p, out.fileno(), outr, errr)
+        os.close(outr)
+        os.close(errr)
+        prv = p.wait()
     if prv:
         debug1('%s exited with code %d\n' % (extra[0], prv))
 

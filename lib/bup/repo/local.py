@@ -1,12 +1,14 @@
 
-import os, subprocess
+import os
 from os import path
 from os.path import realpath
 from functools import partial
+from subprocess import PIPE, Popen
 
 from bup import git, vfs
 from bup.config import ConfigError
 from bup.git import LocalPackStore, PackWriter
+from bup.helpers import stopped
 from bup.repo.base import _make_base, RepoProtocol
 
 
@@ -142,14 +144,14 @@ class LocalRepo(RepoProtocol):
         (optional, used only by bup server)
         """
         args = git.rev_list_invocation(refs, format=fmt)
-        p = subprocess.Popen(args, env=git._gitenv(self.repo_dir),
-                             stdout=subprocess.PIPE)
-        while True:
-            out = p.stdout.read(64 * 1024)
-            if not out:
-                break
-            yield out
-        rv = p.wait()  # not fatal
+        with stopped(Popen(args, env=git._gitenv(self.repo_dir), stdout=PIPE),
+                     timeout=1) as p:
+            while True:
+                out = p.stdout.read(64 * 1024)
+                if not out:
+                    break
+                yield out
+            rv = p.wait()  # not fatal
         if rv:
             raise git.GitError('git rev-list returned error %d' % rv)
 

@@ -1,4 +1,6 @@
 
+from signal import SIG_IGN, SIGKILL, SIGTERM, signal
+from subprocess import Popen
 from time import tzset
 import os, os.path
 
@@ -11,10 +13,12 @@ from bup.helpers import \
      detect_fakeroot,
      finalized,
      grafted_path_components,
+     nullctx,
      parse_num,
      path_components,
-     shstr,
+     stopped,
      stripped_path_components,
+     shstr,
      utc_offset_str)
 
 
@@ -141,6 +145,53 @@ def test_finalized():
             assert v == 'what'
             raise Exception('exit')
     assert state is True
+
+
+def test_stopped():
+
+    def stubborn_sleep():
+        # restore_signals=False avoids the the possibility that we try to
+        # kill the subprocess before it starts ignoring SIGTERM.
+        orig_term = signal(SIGTERM, SIG_IGN)
+        try:
+            proc = Popen(('sleep', '100'), restore_signals=False)
+        finally:
+            signal(SIGTERM, orig_term)
+        return proc
+
+    proc = Popen(('true',))
+    with stopped(proc, 0) as ctx:
+        assert isinstance(ctx, Popen)
+        ctx.wait()
+    assert proc.poll() == 0
+
+    proc = Popen(('true',))
+    with stopped(proc, 1) as ctx:
+        ctx.wait()
+    assert proc.poll() == 0
+
+    for raise_while_running in False, True:
+        proc = stubborn_sleep()
+        with pytest.raises(Exception, match='nope') \
+             if raise_while_running else nullctx:
+            with stopped(proc, 0) as ctx:
+                if raise_while_running: raise Exception('nope')
+        assert proc.poll() == -SIGKILL
+
+        proc = Popen(('sleep', '100'))
+        with pytest.raises(Exception, match='nope') \
+             if raise_while_running else nullctx:
+            with stopped(proc, 0.5) as ctx:
+                if raise_while_running: raise Exception('nope')
+        assert proc.poll() == -SIGTERM
+
+        # escalation
+        proc = stubborn_sleep()
+        with pytest.raises(Exception, match='nope') \
+             if raise_while_running else nullctx:
+            with stopped(proc, 0.5) as ctx:
+                if raise_while_running: raise Exception('nope')
+        assert proc.poll() == -SIGKILL
 
 
 @pytest.mark.parametrize('sync_atomic_replace', (True, False))

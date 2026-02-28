@@ -10,7 +10,7 @@ from contextlib import ExitStack
 from dataclasses import replace
 from itertools import islice
 from shutil import rmtree
-from subprocess import DEVNULL, run
+from subprocess import DEVNULL, Popen, run
 from sys import stderr
 from typing import Literal, Optional, Union
 
@@ -32,6 +32,7 @@ from bup.helpers import (EXIT_FAILURE,
                          nullcontext_if_not,
                          progress, qprogress,
                          quote,
+                         stopped,
                          temp_dir,
                          unlink)
 from bup.midx import open_midx
@@ -1116,28 +1117,26 @@ def rev_list(ref_or_refs, parse=None, format=None, repo_dir=None):
 
     """
     assert bool(parse) == bool(format)
-    p = subprocess.Popen(rev_list_invocation(ref_or_refs,
-                                             format=format),
-                         env=_gitenv(repo_dir),
-                         stdout = subprocess.PIPE,
-                         close_fds=True)
-    if not format:
-        for line in p.stdout:
-            yield line.strip()
-    else:
-        line = p.stdout.readline()
-        while line:
-            s = line.strip()
-            if not s.startswith(b'commit '):
-                raise Exception('unexpected line ' + repr(s))
-            s = s[7:]
-            assert len(s) == 40
-            yield s, parse(p.stdout)
+    with stopped(Popen(rev_list_invocation(ref_or_refs, format=format),
+                       env=_gitenv(repo_dir), stdout=subprocess.PIPE),
+                 timeout=1) as p:
+        if not format:
+            for line in p.stdout:
+                yield line.strip()
+        else:
             line = p.stdout.readline()
+            while line:
+                s = line.strip()
+                if not s.startswith(b'commit '):
+                    raise Exception('unexpected line ' + repr(s))
+                s = s[7:]
+                assert len(s) == 40
+                yield s, parse(p.stdout)
+                line = p.stdout.readline()
 
-    rv = p.wait()  # not fatal
-    if rv:
-        raise GitError('git rev-list returned error %d' % rv)
+        rv = p.wait()  # not fatal
+        if rv:
+            raise GitError('git rev-list returned error %d' % rv)
 
 
 def rev_parse(committish, repo_dir=None):
