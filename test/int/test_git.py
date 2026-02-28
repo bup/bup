@@ -1,31 +1,24 @@
 
-import sys
 from binascii import hexlify, unhexlify
 from contextlib import ExitStack
 from functools import partial
-from subprocess import check_call, check_output
 from time import localtime
 import struct, os
 import pytest
 
 from wvpytest import *
+import buptest
 
 from bup import git, path
 from bup.compat import environ
 from bup.helpers import OBJECT_EXISTS, finalized, log, mkdirp
-from bup.io import path_msg
 
 
 bup_exe = path.exe()
 
 
-def exc(*cmd):
-    print(' '.join(path_msg(x) for x in cmd), file=sys.stderr)
-    check_call(cmd)
-
-def exo(*cmd):
-    print(' '.join(path_msg(x) for x in cmd), file=sys.stderr)
-    return check_output(cmd)
+def exc(*cmd): return buptest.exc(cmd)
+def exo(*cmd): return buptest.exo(cmd).out
 
 
 def local_writer():

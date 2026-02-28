@@ -10,7 +10,7 @@ from bup import compat, path
 from bup.compat import environ
 from bup.helpers import EXIT_FAILURE, bquote, unlink
 from bup.io import byte_stream
-from buptest import ex, exo
+from buptest import exc as ex, exo
 from wvpytest import wvcheck, wvfail, wvmsg, wvpass, wvpasseq, wvpassne, wvstart
 import bup.path
 
@@ -57,8 +57,7 @@ def verify_rcz(cmd, **kwargs):
     kwargs['check'] = False
     result = exo(cmd, **kwargs)
     stdout.write(result.out)
-    rc = result.proc.returncode
-    wvcheck(rc == 0, 'process exit %d == 0' % rc)
+    wvcheck(result.rc == 0, f'process exit {result.rc:d} == 0')
     return result
 
 # FIXME: multline, or allow opts generally?

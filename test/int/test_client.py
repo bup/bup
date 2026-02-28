@@ -2,7 +2,7 @@
 import os, time, random, subprocess, glob
 import pytest
 
-from buptest import ex
+from buptest import exc as ex
 
 from bup import client, git, path
 from bup.compat import environ

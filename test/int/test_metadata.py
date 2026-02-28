@@ -22,7 +22,7 @@ bup_path = top_dir + b'/bup'
 
 
 def ex(*args, **kwargs):
-    return buptest.ex(args, **kwargs)
+    return buptest.exc(args, **kwargs)
 
 
 def setup_testfs():

@@ -1,22 +1,16 @@
 
 from os import environb as environ
-from subprocess import check_call, check_output
-import os, sys
+import os
 
 from wvpytest import *
+import buptest
 
 from bup import git
 from bup.commit import _git_date_str, has_trailers, parse_commit
-from bup.io import path_msg
 
 
-def exc(*cmd):
-    print(' '.join(path_msg(x) for x in cmd), file=sys.stderr)
-    check_call(cmd)
-
-def exo(*cmd):
-    print(' '.join(path_msg(x) for x in cmd), file=sys.stderr)
-    return check_output(cmd)
+def exc(*cmd): return buptest.exc(cmd)
+def exo(*cmd): return buptest.exo(cmd).out
 
 
 def test_commit_parsing(tmpdir):

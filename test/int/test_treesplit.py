@@ -4,7 +4,7 @@ from pathlib import Path
 from sys import stderr
 import re
 
-from buptest import ex, exo
+from buptest import exc as ex, exo
 from wvpytest import *
 
 from bup import git, tree

@@ -6,7 +6,7 @@ from stat import S_IFDIR
 import os
 from time import localtime, strftime
 
-from buptest import ex, exo
+from buptest import exc as ex, exo
 from buptest.vfs import tree_dict
 from wvpytest import *
 

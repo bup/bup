@@ -3,30 +3,24 @@ from binascii import unhexlify
 from os import symlink
 from random import Random, randint
 from stat import S_IFDIR, S_IFLNK, S_IFREG, S_ISDIR, S_ISREG
-from sys import stderr
 from time import localtime, strftime, tzset
 import os, sys
 
 import pytest
 
-from buptest import exo
+from buptest import exc as ex, exo
 from buptest.vfs import tree_dict
 from wvpytest import *
 
 from bup._helpers import write_random
 from bup import git, metadata, vfs
 from bup.compat import environ, fsencode
-from bup.helpers import exc, shstr
 from bup.metadata import Metadata
 from bup.repo import LocalRepo
 
 lib_t_dir = os.path.dirname(fsencode(__file__))
 top_dir = os.path.join(lib_t_dir, b'../..')
 bup_path = top_dir + b'/bup'
-
-def ex(cmd, **kwargs):
-    print(shstr(cmd), file=stderr)
-    return exc(cmd, **kwargs)
 
 def test_default_modes():
     wvpasseq(S_IFREG | 0o644, vfs.default_file_mode)
