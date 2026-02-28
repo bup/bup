@@ -6,11 +6,16 @@ from wvpytest import *
 
 from bup import helpers
 from bup.compat import environ
-from bup.helpers import (atomically_replaced_file, detect_fakeroot,
-                         grafted_path_components, parse_num,
-                         path_components, stripped_path_components,
-                         shstr,
-                         utc_offset_str)
+from bup.helpers import \
+    (atomically_replaced_file,
+     detect_fakeroot,
+     finalized,
+     grafted_path_components,
+     parse_num,
+     path_components,
+     shstr,
+     stripped_path_components,
+     utc_offset_str)
 
 
 def test_parse_num():
@@ -105,6 +110,37 @@ def test_shstr():
     WVPASSEQ(shstr(('1 2', '3')), "'1 2' 3")
     WVPASSEQ(shstr(("1'2", '3')), "'1'\"'\"'2' 3")
     WVPASSEQ(shstr(("'1", '3')), "''\"'\"'1' 3")
+
+
+def test_finalized():
+    what = None
+    state = False
+    def set_state(x):
+        nonlocal state
+        nonlocal what
+        assert x == what
+        state = True
+
+    with finalized(set_state) as v: assert v is None
+    assert state is True
+    state = False
+    with pytest.raises(Exception, match='exit'):
+        with finalized(set_state) as v:
+            assert v is None
+            raise Exception('exit')
+    assert state is True
+
+    state = False
+    what = 'what'
+    with finalized('what', set_state) as v:
+        assert v == 'what'
+    assert state is True
+    state = False
+    with pytest.raises(Exception, match='exit'):
+        with finalized('what', set_state) as v:
+            assert v == 'what'
+            raise Exception('exit')
+    assert state is True
 
 
 @pytest.mark.parametrize('sync_atomic_replace', (True, False))
