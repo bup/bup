@@ -188,7 +188,7 @@ def run_subcmd(module, args):
     # We may want to revisit these later, but for now, do what we've
     # always done (also wrt older servers).
     already_fixed = int(environ.get(b'BUP_FORCE_TTY', 0))
-    if (not already_fixed) and subcmd not in (b'mux', b'ftp', b'help', b'fuse'):
+    if (not already_fixed) and subcmd[0] not in (b'mux', b'ftp', b'help', b'fuse'):
         fix_stdout = not (already_fixed & 1) and os.isatty(1)
         fix_stderr = not (already_fixed & 2) and os.isatty(2)
         if fix_stdout or fix_stderr:
