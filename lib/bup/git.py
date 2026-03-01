@@ -9,20 +9,19 @@ from binascii import hexlify, unhexlify
 from contextlib import ExitStack
 from dataclasses import replace
 from itertools import islice
+from os import fsdecode
 from shutil import rmtree
-from subprocess import DEVNULL, Popen, run
+from subprocess import DEVNULL, PIPE, Popen, run
 from sys import stderr
 from typing import Literal, Optional, Union
 
 from bup import _helpers, hashsplit, path, midx, bloom, xstat
 from bup.commit import create_commit_blob, parse_commit
 from bup.compat import dataclass, environ
-from bup.io import path_msg
 from bup.helpers import (EXIT_FAILURE,
                          OBJECT_EXISTS,
                          ObjectLocation,
                          Sha1, add_error, chunkyreader, debug1, debug2,
-                         exo,
                          finalized,
                          fsync,
                          log,
@@ -31,10 +30,10 @@ from bup.helpers import (EXIT_FAILURE,
                          mmap_read, mmap_readwrite,
                          nullcontext_if_not,
                          progress, qprogress,
-                         quote,
                          stopped,
                          temp_dir,
                          unlink)
+from bup.io import enc_shs, path_msg
 from bup.midx import open_midx
 
 
@@ -59,18 +58,9 @@ def _gitenv(repo_dir=None):
         repo_dir = repo()
     return {**environ, **{b'GIT_DIR': os.path.abspath(repo_dir)}}
 
-def _git_wait(cmd, p):
-    rv = p.wait()
-    if rv != 0:
-        raise GitError('%r returned %d' % (cmd, rv))
-
-def _git_exo(cmd, **kwargs):
-    kwargs['check'] = False
-    result = exo(cmd, **kwargs)
-    _, _, proc = result
-    if proc.returncode != 0:
-        raise GitError('%r returned %d' % (cmd, proc.returncode))
-    return result
+def _raise_git_cmd_error(cmd, status):
+    qcmd = ' '.join(enc_shs(fsdecode(x)) for x in cmd)
+    raise GitError(f'nonzero exit {status} for "{qcmd}"')
 
 def repo_config_file(path):
     return os.path.join(path or repo(), b'config')
@@ -82,10 +72,10 @@ def git_config_get(path, option, *, opttype=None):
     else:
         assert opttype in ('bool', None)
     cmd.extend([b'--get', option])
-    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, close_fds=True)
+    cp = subprocess.run(cmd, stdout=subprocess.PIPE)
     # with --null, git writes out a trailing \0 after the value
-    r = p.stdout.read()[:-1]
-    rc = p.wait()
+    r = cp.stdout[:-1]
+    rc = cp.returncode
     if rc == 0:
         if opttype == 'int':
             return int(r)
@@ -730,7 +720,7 @@ class PackIdxList:
 def open_idx(filename):
     if not filename.endswith(b'.idx'): # why is this enforced *here*?
         raise GitError('pack idx filenames must end with .idx')
-    f = open(filename, 'rb')
+    f = open(filename, 'rb') # pylint: disable=consider-using-with
     with ExitStack() as contexts:
         contexts.enter_context(f)
         header = f.read(8)
@@ -1017,8 +1007,7 @@ class PackIdxV2Writer:
         # Length: header + fan-out + shas-and-crcs + overflow-offsets
         index_len = 8 + (4 * 256) + (28 * self.count) + (8 * ofs64_count)
         idx_map = None
-        idx_f = open(filename, 'w+b')
-        try:
+        with open(filename, 'w+b') as idx_f:
             idx_f.truncate(index_len)
             fsync(idx_f.fileno())
             idx_map = mmap_readwrite(idx_f, close=False)
@@ -1029,11 +1018,8 @@ class PackIdxV2Writer:
                 idx_map.flush()
             finally:
                 idx_map.close()
-        finally:
-            idx_f.close()
 
-        idx_f = open(filename, 'a+b')
-        try:
+        with open(filename, 'a+b') as idx_f:
             idx_f.write(packbin)
             idx_f.seek(0)
             idx_sum = Sha1()
@@ -1047,8 +1033,6 @@ class PackIdxV2Writer:
                 idx_sum.update(b)
             idx_f.write(idx_sum.digest())
             fsync(idx_f.fileno())
-        finally:
-            idx_f.close()
 
 
 def list_refs(patterns=None, repo_dir=None,
@@ -1068,12 +1052,10 @@ def list_refs(patterns=None, repo_dir=None,
     argv.append(b'--')
     if patterns:
         argv.extend(patterns)
-    p = subprocess.Popen(argv, env=_gitenv(repo_dir), stdout=subprocess.PIPE,
-                         close_fds=True)
-    out = p.stdout.read().strip()
-    rv = p.wait()  # not fatal
-    if rv:
-        assert(not out)
+    cp = subprocess.run(argv, env=_gitenv(repo_dir), stdout=subprocess.PIPE)
+    if cp.returncode:
+        assert not cp.stdout
+    out = cp.stdout.strip()
     if out:
         for d in out.split(b'\n'):
             sha, name = d.split(b' ', 1)
@@ -1182,8 +1164,9 @@ def update_ref(refname, newval, oldval, repo_dir=None, force=False):
     assert refname.startswith(b'refs/heads/') \
         or refname.startswith(b'refs/tags/')
     cmd = [b'git', b'update-ref', refname, hexlify(newval)] + oldarg
-    p = subprocess.Popen(cmd, env=_gitenv(repo_dir), close_fds=True)
-    _git_wait(b' '.join(quote(x) for x in cmd), p)
+    cp = subprocess.run(cmd, env=_gitenv(repo_dir))
+    if cp.returncode != 0:
+        _raise_git_cmd_error(cmd, cp.returncode)
 
 
 def delete_ref(refname, oldvalue=None):
@@ -1191,8 +1174,9 @@ def delete_ref(refname, oldvalue=None):
     assert refname.startswith(b'refs/')
     oldvalue = [] if not oldvalue else [oldvalue]
     cmd = [b'git', b'update-ref', b'-d', refname] + oldvalue
-    p = subprocess.Popen(cmd, env=_gitenv(), close_fds=True)
-    _git_wait(b' '.join(quote(x) for x in cmd), p)
+    cp = subprocess.run(cmd, env=_gitenv())
+    if cp.returncode != 0:
+        _raise_git_cmd_error(cmd, cp.returncode)
 
 
 def guess_repo():
@@ -1220,13 +1204,12 @@ def init_repo(path=None):
         raise GitError('"%s" exists but is not a directory\n' % path_msg(d))
     # This is how git detects existing repos
     refresh = os.path.exists(os.path.join(d, b'HEAD'))
-    p = subprocess.Popen([ b'git', b'--bare',
-                           # arbitrary default branch name to suppress git msg.
-                           b'-c', b'init.defaultBranch=main', b'init'],
-                         stdout=sys.stderr,
-                         env=_gitenv(),
-                         close_fds=True)
-    _git_wait('git init', p)
+    cmd = (b'git', b'--bare',
+           # arbitrary default branch name to suppress git msg.
+           b'-c', b'init.defaultBranch=main', b'init')
+    cp = subprocess.run(cmd, stdout=sys.stderr, env=_gitenv())
+    if cp.returncode != 0:
+        _raise_git_cmd_error(cmd, cp.returncode)
 
     cfg = os.path.join(d, b'config')
     def get_config(*arg, **kwargs):
@@ -1322,7 +1305,10 @@ def require_suitable_git(ver_str=None):
         _git_great = True
         return
     if not ver_str:
-        ver_str, _, _ = _git_exo([b'git', b'--version'])
+        cp = run((b'git', b'--version'), stdout=PIPE)
+        if cp.returncode != 0:
+            raise GitError(f'"git --version" failed (status {cp.returncode})')
+        ver_str = cp.stdout
     status = is_suitable_git(ver_str)
     if status == 'unrecognized':
         raise GitError('Unexpected git --version output: %r' % ver_str)
@@ -1343,14 +1329,12 @@ class CatPipe:
         self.p = self.pcheck = self.inprogress = None
 
         # probe for cat-file --batch-command
-        tmp = subprocess.Popen([b'git', b'cat-file', b'--batch-command'],
-                               stdin=subprocess.DEVNULL,
-                               stdout=subprocess.DEVNULL,
-                               stderr=subprocess.DEVNULL,
-                               close_fds=True,
-                               env=_gitenv(self.repo_dir))
-        tmp.wait()
-        self.have_batch_command = tmp.returncode == 0
+        cp = subprocess.run([b'git', b'cat-file', b'--batch-command'],
+                            stdin=subprocess.DEVNULL,
+                            stdout=subprocess.DEVNULL,
+                            stderr=subprocess.DEVNULL,
+                            env=_gitenv(self.repo_dir))
+        self.have_batch_command = cp.returncode == 0
 
     def close(self, wait=False):
         self.p, p = None, self.p
@@ -1378,6 +1362,7 @@ class CatPipe:
 
     def restart(self):
         self.close()
+        # pylint: disable-next=consider-using-with
         self.p = subprocess.Popen([b'git', b'cat-file',
                                   b'--batch-command' if self.have_batch_command else b'--batch'],
                                   stdin=subprocess.PIPE,
@@ -1391,6 +1376,7 @@ class CatPipe:
         if self.have_batch_command:
             self.pcheck = self.p
             return
+        # pylint: disable-next=consider-using-with
         self.pcheck = subprocess.Popen([b'git', b'cat-file', b'--batch-check'],
                                        stdin=subprocess.PIPE,
                                        stdout=subprocess.PIPE,

@@ -153,19 +153,19 @@ def test_stopped():
         # restore_signals=False avoids the the possibility that we try to
         # kill the subprocess before it starts ignoring SIGTERM.
         orig_term = signal(SIGTERM, SIG_IGN)
-        try:
+        try: # pylint: disable-next=consider-using-with
             proc = Popen(('sleep', '100'), restore_signals=False)
         finally:
             signal(SIGTERM, orig_term)
         return proc
 
-    proc = Popen(('true',))
+    proc = Popen(('true',)) # pylint: disable=consider-using-with
     with stopped(proc, 0) as ctx:
         assert isinstance(ctx, Popen)
         ctx.wait()
     assert proc.poll() == 0
 
-    proc = Popen(('true',))
+    proc = Popen(('true',)) # pylint: disable=consider-using-with
     with stopped(proc, 1) as ctx:
         ctx.wait()
     assert proc.poll() == 0
@@ -178,7 +178,7 @@ def test_stopped():
                 if raise_while_running: raise Exception('nope')
         assert proc.poll() == -SIGKILL
 
-        proc = Popen(('sleep', '100'))
+        proc = Popen(('sleep', '100')) # pylint: disable=consider-using-with
         with pytest.raises(Exception, match='nope') \
              if raise_while_running else nullctx:
             with stopped(proc, 0.5) as ctx:
@@ -202,8 +202,8 @@ def test_atomically_replaced_file(sync_atomic_replace, tmpdir):
                                   sync=sync_atomic_replace) as f:
         f.write('asdf')
         WVPASSEQ(f.mode, 'w')
-    f = open(target_file, 'r', encoding='utf-8')
-    WVPASSEQ(f.read(), 'asdf')
+    with open(target_file, 'r', encoding='utf-8') as f:
+        WVPASSEQ(f.read(), 'asdf')
 
     class Escape(Exception): pass
     try:

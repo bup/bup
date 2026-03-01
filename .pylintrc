@@ -33,6 +33,7 @@ enable=
   consider-using-min-builtin,
   consider-using-sys-exit,
   consider-using-ternary,
+  consider-using-with,
   deprecated-module,
   expression-not-assigned,
   f-string-without-interpolation,

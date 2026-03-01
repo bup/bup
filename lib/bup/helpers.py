@@ -3,7 +3,6 @@
 from contextlib import ExitStack, nullcontext
 from os import fsencode
 from random import SystemRandom
-from subprocess import PIPE, Popen
 from tempfile import mkdtemp
 from time import localtime
 from shutil import rmtree
@@ -336,30 +335,6 @@ def shstr(cmd):
     elif all(isinstance(x, str) for x in cmd):
         return ' '.join(map(squote, cmd))
     raise TypeError('unsupported shstr argument: ' + repr(cmd))
-
-
-exc = subprocess.check_call
-
-def exo(cmd,
-        input=None,
-        stdin=None,
-        stderr=None,
-        shell=False,
-        check=True,
-        close_fds=True):
-    if input:
-        assert stdin in (None, PIPE)
-        stdin = PIPE
-    p = Popen(cmd,
-              stdin=stdin, stdout=PIPE, stderr=stderr,
-              shell=shell,
-              close_fds=close_fds)
-    out, err = p.communicate(input)
-    if check and p.returncode != 0:
-        raise Exception('subprocess %r failed with status %d%s'
-                        % (b' '.join(map(quote, cmd)), p.returncode,
-                           ', stderr: %r' % err if err else ''))
-    return out, err, p
 
 
 def resolve_parent(p):
@@ -979,11 +954,12 @@ def parse_excludes(options, fatal):
             except OSError as ex:
                 raise fatal(f"couldn't read exclusions from {path_msg(parameter)}"
                             f' ({ex.strerror} [{ex.errno}])')
-            for exclude_path in f.readlines():
-                # FIXME: perhaps this should be rstrip('\n')
-                exclude_path = resolve_parent(exclude_path.strip())
-                if exclude_path:
-                    excluded_paths.append(exclude_path)
+            with f:
+                for exclude_path in f.readlines():
+                    # FIXME: perhaps this should be rstrip('\n')
+                    exclude_path = resolve_parent(exclude_path.strip())
+                    if exclude_path:
+                        excluded_paths.append(exclude_path)
     return sorted(frozenset(excluded_paths))
 
 
@@ -1009,14 +985,15 @@ def parse_rx_excludes(options, fatal):
             except OSError as ex:
                 raise fatal(f"couldn't read exclusions from {path_msg(parameter)}"
                             f' ({ex.strerror} [{ex.errno}])')
-            for pattern in f.readlines():
-                spattern = pattern.rstrip(b'\n')
-                if not spattern:
-                    continue
-                try:
-                    excluded_patterns.append(re.compile(spattern))
-                except re.error as ex:
-                    fatal('invalid --exclude-rx pattern (%r): %s' % (spattern, ex))
+            with f:
+                for pattern in f.readlines():
+                    spattern = pattern.rstrip(b'\n')
+                    if not spattern:
+                        continue
+                    try:
+                        excluded_patterns.append(re.compile(spattern))
+                    except re.error as ex:
+                        fatal('invalid --exclude-rx pattern (%r): %s' % (spattern, ex))
     return excluded_patterns
 
 

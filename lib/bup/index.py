@@ -1,6 +1,6 @@
 
 from contextlib import ExitStack
-import errno, os, stat, struct
+import os, stat, struct
 
 from bup import metadata, xstat
 from bup._helpers import UINT_MAX, bytescmp
@@ -62,7 +62,7 @@ class Error(Exception):
 class MetaStoreReader:
     def __init__(self, filename):
         self._file = None
-        self._file = open(filename, 'rb')
+        self._file = open(filename, 'rb') # pylint: disable=consider-using-with
 
     def close(self):
         f, self._file = self._file, None
@@ -93,8 +93,7 @@ class MetaStoreWriter:
         if dirname:
             mkdirp(dirname)
         # FIXME: see how slow this is; does it matter?
-        m_file = open(filename, 'ab+')
-        try:
+        with open(filename, 'ab+') as m_file:
             m_file.seek(0)
             try:
                 m_off = m_file.tell()
@@ -109,9 +108,7 @@ class MetaStoreWriter:
             except:
                 log('index metadata in %r appears to be corrupt\n' % filename)
                 raise
-        finally:
-            m_file.close()
-        self._file = open(filename, 'ab')
+        self._file = open(filename, 'ab') # pylint: disable=consider-using-with
 
     def close(self):
         self._closed = True
@@ -428,27 +425,28 @@ class Reader:
         self.m = b''
         self.writable = False
         self.count = 0
-        f = None
-        try:
-            f = open(filename, 'rb+')
-        except IOError as e:
-            if e.errno == errno.ENOENT:
-                pass
-            else:
-                raise
-        if f:
+        with ExitStack() as ctx:
+            try:
+                # pylint: disable-next=consider-using-with
+                f = ctx.enter_context(open(filename, 'rb+'))
+            except FileNotFoundError:
+                return
             b = f.read(len(INDEX_HDR))
             if b != INDEX_HDR:
                 log('warning: %s: header: expected %r, got %r\n'
                                  % (filename, INDEX_HDR, b))
-            else:
-                st = os.fstat(f.fileno())
-                if st.st_size:
-                    self.m = mmap_readwrite(f)
-                    self.writable = True
-                    self.count = struct.unpack(FOOTER_SIG,
-                                               self.m[st.st_size - FOOTLEN
-                                                      : st.st_size])[0]
+                return
+            st = os.fstat(f.fileno())
+            if st.st_size:
+                m = mmap_readwrite(f)
+                ctx.pop_all()
+                ctx.enter_context(m)
+                self.writable = True
+                self.count = struct.unpack(FOOTER_SIG,
+                                           m[st.st_size - FOOTLEN
+                                             : st.st_size])[0]
+                self.m = m
+                ctx.pop_all()
 
     def __enter__(self): return self
     def __exit__(self, type, value, traceback): self.close()

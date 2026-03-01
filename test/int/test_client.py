@@ -104,7 +104,7 @@ def test_dumb_client_server_conflict(tmpdir):
     environ[b'GIT_DIR'] = bupdir = tmpdir
     environ[b'BUP_DIR'] = bupdir = tmpdir
     git.init_repo(bupdir)
-    open(git.repo(b'bup-dumb-server'), 'wb').close()
+    with open(git.repo(b'bup-dumb-server'), 'wb'): pass
     ex((b'git', b'config', b'bup.server.deduplicate-writes', b'true'))
     # FIXME: propagate server ConfigError to Client()
     with raises(ConfigError) as ex_info, \
@@ -120,7 +120,7 @@ def test_server_deduplicate_writes(deduplicate_mode, tmpdir):
     environ[b'BUP_DIR'] = bupdir = tmpdir
     git.init_repo(bupdir)
     if deduplicate_mode == 'file':
-        open(git.repo(b'bup-dumb-server'), 'wb').close()
+        with open(git.repo(b'bup-dumb-server'), 'wb'): pass
     elif deduplicate_mode == 'config':
         ex((b'git', b'config', b'bup.server.deduplicate-writes', b'false'))
     else:

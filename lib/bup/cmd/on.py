@@ -48,6 +48,7 @@ def main(argv):
             argvs = b'\0'.join([b'bup'] + argv)
             p.stdin.write(struct.pack('!I', len(argvs)) + argvs)
             p.stdin.flush()
+            # pylint: disable-next=consider-using-with
             sp = subprocess.Popen([path.exe(), b'server'],
                                   stdin=p.stdout, stdout=p.stdin)
             p.stdin.close()

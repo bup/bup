@@ -62,8 +62,7 @@ def eget(l, ename):
 def test_index_negative_timestamps(tmpdir):
     # Makes 'foo' exist
     foopath = tmpdir + b'/foo'
-    f = open(foopath, 'wb')
-    f.close()
+    with open(foopath, 'wb'): pass
 
     # Dec 31, 1969
     os.utime(foopath, (-86400, -86400))

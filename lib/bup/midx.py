@@ -156,7 +156,7 @@ def open_midx(path, *, ignore_missing=True):
     """
     # FIXME: eventually note_error when not raising?
     assert path.endswith(b'.midx') # FIXME: wanted/needed?
-    mmap = mmap_read(open(path, mode='rb'))
+    mmap = mmap_read(open(path, mode='rb')) # pylint: disable=consider-using-with
     with ExitStack() as contexts:
         contexts.enter_context(mmap)
         if _midx_header(mmap) != MIDX_HEADER:

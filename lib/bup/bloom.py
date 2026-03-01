@@ -113,6 +113,7 @@ class ShaBloom:
         assert(filename.endswith(b'.bloom'))
         if readwrite:
             assert(expected > 0)
+            # pylint: disable-next=consider-using-with
             self.file = f = f or open(filename, 'r+b')
             f.seek(0)
 
@@ -140,6 +141,7 @@ class ShaBloom:
             else:
                 self.map = mmap_readwrite(self.file, close=False)
         else:
+            # pylint: disable-next=consider-using-with
             self.file = f or open(filename, 'rb')
             self.map = mmap_read(self.file)
         got = self.map[0:4]
@@ -246,6 +248,7 @@ def create(name, expected, delaywrite=None, f=None, k=None):
         log('bloom: warning, max bits exceeded, non-optimal\n')
         bits = MAX_BLOOM_BITS[k]
     debug1('bloom: using 2^%d bytes and %d hash functions\n' % (bits, k))
+    # pylint: disable-next=consider-using-with
     f = f or open(name, 'w+b')
     f.write(b'BLOM')
     f.write(struct.pack('!IHHI', BLOOM_VERSION, bits, k, 0))

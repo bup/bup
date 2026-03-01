@@ -125,8 +125,7 @@ def main(argv):
                 unset_group = True
 
         for path in remainder:
-            f = open(argv_bytes(path), 'rb')
-            try:
+            with open(path, 'rb') as f:
                 for m in metadata._ArchiveIterator(f):
                     m.thaw()
                     if opt.set_uid is not None:
@@ -152,5 +151,3 @@ def main(argv):
                         m.group = argv_bytes(opt.set_group)
 
                     m.freeze().write(output_file)
-            finally:
-                f.close()

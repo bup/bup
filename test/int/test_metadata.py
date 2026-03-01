@@ -226,7 +226,7 @@ def test_restore_over_existing_target(tmpdir):
     os.mkdir(path)
     dir_m = metadata.from_path(path, archive_path=path, save_symlinks=True)
     os.rmdir(path)
-    open(path, 'wb').close()
+    with open(path, 'wb'): pass
     file_m = metadata.from_path(path, archive_path=path, save_symlinks=True)
     # Restore dir over file.
     WVPASSEQ(dir_m.create_path(path, create_symlinks=True), None)
@@ -243,7 +243,7 @@ def test_restore_over_existing_target(tmpdir):
     # Restore file over non-empty dir.
     os.remove(path)
     os.mkdir(path)
-    open(path + b'/bar', 'wb').close()
+    with open(path + b'/bar', 'wb'): pass
     WVEXCEPT(Exception, file_m.create_path, path, create_symlinks=True)
     # Restore dir over non-empty dir.
     os.remove(path + b'/bar')
@@ -266,7 +266,7 @@ if xattr:
         for f in glob.glob(b'testfs/*'):
             ex(b'rm', b'-rf', f)
         path = b'testfs/foo'
-        open(path, 'wb').close()
+        with open(path, 'wb'): pass
         xattr.set(path, b'foo', b'bar', namespace=xattr.NS_USER)
         m = metadata.from_path(path, archive_path=path, save_symlinks=True)
         xattr.set(path, b'baz', b'bax', namespace=xattr.NS_USER)

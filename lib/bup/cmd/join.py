@@ -1,5 +1,5 @@
 
-
+from contextlib import ExitStack
 import sys
 
 from bup import options
@@ -25,9 +25,10 @@ def main(argv):
     if not extra:
         extra = linereader(stdin)
 
-    with repo_for_location(loc) as src:
+    with repo_for_location(loc) as src, \
+         ExitStack() as ctx:
         if opt.o:
-            outfile = open(opt.o, 'wb')
+            outfile = ctx.enter_context(open(opt.o, 'wb'))
         else:
             sys.stdout.flush()
             outfile = byte_stream(sys.stdout)

@@ -1,5 +1,6 @@
 
 from binascii import hexlify
+from contextlib import ExitStack
 from functools import partial
 from os import environb as environ
 import os, sys, time
@@ -188,96 +189,99 @@ def main(argv):
             git.check_repo_or_die()
             repo_checked = True
 
-    if opt.git_ids:
-        # the input is actually a series of git object ids that we should retrieve
-        # and split.
-        #
-        # This is a bit messy, but basically it converts from a series of
-        # CatPipe.get() iterators into a series of file-type objects.
-        # It would be less ugly if either CatPipe.get() returned a file-like object
-        # (not very efficient), or split_to_shalist() expected an iterator instead
-        # of a file.
-        ensure_repo_checked()
-        cp = git.CatPipe()
-        class IterToFile:
-            def __init__(self, it):
-                self.it = iter(it)
-            def read(self, size_):
-                return next(self.it, b'')
-        def read_ids():
-            while 1:
-                line = stdin.readline()
-                if not line:
-                    break
-                if line:
-                    line = line.strip()
-                try:
-                    it = cp.get(line.strip())
-                    next(it, None)  # skip the file info
-                except KeyError as e:
-                    add_error('error: %s' % e)
-                    continue
-                yield IterToFile(it)
-        files = read_ids()
-    else:
-        # the input either comes from a series of files or from stdin.
-        if opt.sources:
-            files = (open(argv_bytes(fn), 'rb') for fn in opt.sources)
+    with ExitStack() as ctx:
+        if opt.git_ids:
+            # the input is actually a series of git object ids that we should retrieve
+            # and split.
+            #
+            # This is a bit messy, but basically it converts from a series of
+            # CatPipe.get() iterators into a series of file-type objects.
+            # It would be less ugly if either CatPipe.get() returned a file-like object
+            # (not very efficient), or split_to_shalist() expected an iterator instead
+            # of a file.
+            ensure_repo_checked()
+            cp = git.CatPipe()
+            class IterToFile:
+                def __init__(self, it):
+                    self.it = iter(it)
+                def read(self, size_):
+                    return next(self.it, b'')
+            def read_ids():
+                while 1:
+                    line = stdin.readline()
+                    if not line:
+                        break
+                    if line:
+                        line = line.strip()
+                    try:
+                        it = cp.get(line.strip())
+                        next(it, None)  # skip the file info
+                    except KeyError as e:
+                        add_error('error: %s' % e)
+                        continue
+                    yield IterToFile(it)
+            files = read_ids()
         else:
-            files = [stdin]
-
-    write_opts = {'compression_level': opt.compress,
-                  'max_pack_size': opt.max_pack_size,
-                  'max_pack_objects': opt.max_pack_objects}
-    try:
-        if repo_location_url(opt.repo).scheme != b'file://':
-            dest = repo_for_location(opt.repo, **write_opts)
-        else:
-            # A repo isn't required for --noop or --copy, but if we do
-            # have one, we need to respect its bup.split.files, etc.
-            if writing:
-                ensure_repo_checked()
-                have_local_repo = True
+            # the input either comes from a series of files or from stdin.
+            if opt.sources:
+                # pylint: disable-next=consider-using-with
+                files = (ctx.enter_context(open(argv_bytes(fn), 'rb'))
+                         for fn in opt.sources)
             else:
-                have_local_repo = git.establish_default_repo()
-            dest = repo_for_location(opt.repo, **write_opts) \
-                if have_local_repo else None
-    except client.ClientError as e:
-        log('error: %s' % e)
-        sys.exit(EXIT_FAILURE)
+                files = [stdin]
 
-    # repo creation must be last nontrivial command in each if clause above
-    with nullcontext_if_not(dest):
+        write_opts = {'compression_level': opt.compress,
+                      'max_pack_size': opt.max_pack_size,
+                      'max_pack_objects': opt.max_pack_objects}
         try:
-            if dest:
-                split_cfg = hashsplit.configuration(dest.config_get)
+            if repo_location_url(opt.repo).scheme != b'file://':
+                dest = repo_for_location(opt.repo, **write_opts)
             else:
-                null_config_get = partial(git.git_config_get, os.devnull)
-                split_cfg = hashsplit.configuration(null_config_get)
-        except ConfigError as ex:
-            opt_parser.fatal(ex)
-        split_cfg['keep_boundaries'] = opt.keep_boundaries
-        if opt.name and writing:
-            refname = opt.name and b'refs/heads/%s' % opt.name
-            oldref = dest.read_ref(refname)
-        else:
-            refname = oldref = None
+                # A repo isn't required for --noop or --copy, but if we do
+                # have one, we need to respect its bup.split.files, etc.
+                if writing:
+                    ensure_repo_checked()
+                    have_local_repo = True
+                else:
+                    have_local_repo = git.establish_default_repo()
+                dest = repo_for_location(opt.repo, **write_opts) \
+                    if have_local_repo else None
+        except client.ClientError as e:
+            log('error: %s' % e)
+            sys.exit(EXIT_FAILURE)
 
-        if writing:
-            commit = split(opt, files, oldref, out, split_cfg,
-                           new_blob=dest.write_data,
-                           new_tree=dest.write_tree,
-                           new_commit=dest.write_commit)
-            if refname:
-                dest.update_ref(refname, commit, oldref)
-        else:
-            assert not refname
-            def null_write_data(content):
-                return git.calc_hash(b'blob', content)
-            def null_write_tree(shalist):
-                return git.calc_hash(b'tree', git.tree_encode(shalist))
-            split(opt, files, oldref, out, split_cfg,
-                  new_blob=null_write_data, new_tree=null_write_tree)
+        # repo creation must be last nontrivial command in each if clause above
+        with nullcontext_if_not(dest):
+            try:
+                if dest:
+                    split_cfg = hashsplit.configuration(dest.config_get)
+                else:
+                    null_config_get = partial(git.git_config_get, os.devnull)
+                    split_cfg = hashsplit.configuration(null_config_get)
+            except ConfigError as ex:
+                opt_parser.fatal(ex)
+            split_cfg['keep_boundaries'] = opt.keep_boundaries
+            if opt.name and writing:
+                refname = opt.name and b'refs/heads/%s' % opt.name
+                oldref = dest.read_ref(refname)
+            else:
+                refname = oldref = None
+
+            if writing:
+                commit = split(opt, files, oldref, out, split_cfg,
+                               new_blob=dest.write_data,
+                               new_tree=dest.write_tree,
+                               new_commit=dest.write_commit)
+                if refname:
+                    dest.update_ref(refname, commit, oldref)
+            else:
+                assert not refname
+                def null_write_data(content):
+                    return git.calc_hash(b'blob', content)
+                def null_write_tree(shalist):
+                    return git.calc_hash(b'tree', git.tree_encode(shalist))
+                split(opt, files, oldref, out, split_cfg,
+                      new_blob=null_write_data, new_tree=null_write_tree)
 
     secs = time.time() - start_time
     size = hashsplit.total_split

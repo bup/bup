@@ -59,6 +59,7 @@ def main(argv):
                     fd1 = os.dup(s.fileno())
                     fd2 = os.dup(s.fileno())
                     s.close()
+                    # pylint: disable-next=consider-using-with
                     subprocess.Popen([path.exe(), 'mux', '--',
                                       path.exe(), 'server']
                                      + extra, stdin=fd1, stdout=fd2)

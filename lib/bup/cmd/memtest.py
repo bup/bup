@@ -18,15 +18,16 @@ def linux_memstat():
             log('Warning: %s\n' % e)
             _linux_warned = 1
         return {}
-    for line in f:
-        # Note that on Solaris, this file exists but is binary.  If that
-        # happens, this split() might not return two elements.  We don't
-        # really need to care about the binary format since this output
-        # isn't used for much and report() can deal with missing entries.
-        t = re.split(br':\s*', line.strip(), 1)
-        if len(t) == 2:
-            k,v = t
-            d[k] = v
+    with f:
+        for line in f:
+            # Note that on Solaris, this file exists but is binary.  If that
+            # happens, this split() might not return two elements.  We don't
+            # really need to care about the binary format since this output
+            # isn't used for much and report() can deal with missing entries.
+            t = re.split(br':\s*', line.strip(), 1)
+            if len(t) == 2:
+                k,v = t
+                d[k] = v
     return d
 
 
