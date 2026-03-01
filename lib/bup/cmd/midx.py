@@ -42,15 +42,6 @@ def _group(l, count):
         yield l[i:i+count]
 
 
-def max_files():
-    mf = min(resource.getrlimit(resource.RLIMIT_NOFILE))
-    if mf > 32:
-        mf -= 20  # just a safety margin
-    else:
-        mf -= 6   # minimum safety margin
-    return mf
-
-
 def _maybe_open_midx(path, *, rm_broken=False):
     """Return a PackMidx for path as open_midx() does unless some of
     its idx files are missing.  In that case, warn, delete the path
@@ -291,9 +282,14 @@ def main(argv):
     if opt.check and (not extra and not opt.auto):
         o.fatal("if using --check, you must provide filenames or -a")
 
-    if opt.max_files < 0:
-        opt.max_files = max_files()
-    assert(opt.max_files >= 5)
+    if 0 <= opt.max_files < 5:
+        o.fatal('--max-files must be greater than 4')
+    elif opt.max_files < 0:
+        maxf = min(resource.getrlimit(resource.RLIMIT_NOFILE))
+        if maxf < 5:
+            o.fatal('--max-files must be greater than 4')
+        # Add a safety margin if we can, with a max of 32
+        opt.max_files = max(5, maxf - min(32, maxf))
 
     if opt.dir:
         path = argv_bytes(opt.dir)
