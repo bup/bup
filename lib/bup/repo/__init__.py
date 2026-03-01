@@ -69,12 +69,12 @@ def repo_for_location(location, **kwargs):
 def parse_repo_url_arg(arg, val, misuse):
     """Call misuse(err_msg) if val is not a valid URL, otherwise
     return a corresponding URL instance."""
-    url = parse_bytes_path_url(val)
-    if not url:
+    res = parse_bytes_path_url(val)
+    if not res:
         misuse(f'invalid {arg} {pm(val)}')
-    if isinstance(url, str):
-        misuse(f'invalid {arg} {pm(val)} ({url})')
-    url = repo_location_url(url)
+    if isinstance(res, str):
+        misuse(f'invalid {arg} {pm(val)} ({res})')
+    url = repo_location_url(res)
     if url.scheme not in public_schemes:
         misuse(f'invalid {arg} schema in {pm(val)}')
     if url.scheme == b'file' and url.auth:

@@ -200,8 +200,8 @@ def test_apply_to_path_restricted_access(tmpdir):
         if metadata.xattr:
             try:
                 metadata.xattr.set(path, b'user.buptest', b'bup')
-            except IOError as ex: # matches _apply_linux_xattr_rec
-                if ex.errno not in (errno.EPERM, errno.EOPNOTSUPP):
+            except IOError as exc: # matches _apply_linux_xattr_rec
+                if exc.errno not in (errno.EPERM, errno.EOPNOTSUPP):
                     raise
                 print("failed to set test xattr")
         m = metadata.from_path(path, archive_path=path, save_symlinks=True)

@@ -120,8 +120,8 @@ class MetaStoreWriter:
     def __enter__(self): return self
     def __exit__(self, type, value, traceback): self.close()
 
-    def store(self, metadata):
-        meta_encoded = metadata.encode(include_path=False)
+    def store(self, meta):
+        meta_encoded = meta.encode(include_path=False)
         ofs = self._offsets.get(meta_encoded)
         if ofs:
             return ofs

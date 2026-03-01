@@ -10,13 +10,14 @@ from buptest import exc as ex, exo
 from buptest.vfs import tree_dict
 from wvpytest import *
 
-from bup import git, path, vfs
+from bup import git, vfs
 from bup.compat import environ
 from bup.repo import LocalRepo, repo_for_url
 from bup.url import URL
+import bup.path, bup.repo
 
 
-bup_path = path.exe()
+bup_path = bup.path.exe()
 
 ## The clear_cache() calls below are to make sure that the test starts
 ## from a known state since at the moment the cache entry for a given
@@ -303,7 +304,7 @@ def test_local_resolve_loop(tmpdir):
     prep_and_test_repo(tmpdir, LocalRepo, _test_resolve_loop)
 
 def test_remote_resolve_loop(tmpdir):
-    prep_and_test_repo(tmpdir,
-                       lambda x: repo_for_url(URL(scheme=b'file', path=x)), _test_resolve_loop)
+    prep_and_test_repo(tmpdir, lambda x: repo_for_url(URL(scheme=b'file', path=x)),
+                       _test_resolve_loop)
 
 # FIXME: add tests for the want_meta=False cases.

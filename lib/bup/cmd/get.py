@@ -106,12 +106,12 @@ def render_opts(opts, width=None):
         result.append('\n')
     return result
 
-def usage(argspec, width=None):
+def usage(width=None):
     if not width:
         width = tty_width()
-    usage, preamble, groups = argspec[0], argspec[1], argspec[2:]
+    use, preamble, groups = argspec[0], argspec[1], argspec[2:]
     msg = []
-    msg.append(textwrap.fill(usage, width=width, subsequent_indent='  '))
+    msg.append(textwrap.fill(use, width=width, subsequent_indent='  '))
     msg.append('\n\n')
     msg.append(textwrap.fill(re.sub(r'\n\s+', r' ', preamble), width=(width - 1)))
     msg.append('\n')
@@ -121,7 +121,7 @@ def usage(argspec, width=None):
     return ''.join(msg)
 
 def misuse(message=None) -> NoReturn:
-    sys.stderr.write(usage(argspec))
+    sys.stderr.write(usage())
     if message:
         sys.stderr.write('\nerror: ')
         sys.stderr.write(message)
@@ -216,7 +216,7 @@ def parse_args(args):
     while remaining:
         arg = remaining[0]
         if arg in (b'-h', b'--help'):
-            sys.stdout.write(usage(argspec))
+            sys.stdout.write(usage())
             sys.exit(EXIT_SUCCESS)
         elif arg in (b'-v', b'--verbose'):
             opt.verbose += 1

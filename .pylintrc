@@ -45,6 +45,7 @@ enable=
   no-else-continue,
   no-else-raise,
   no-value-for-parameter,
+  redefined-outer-name,
   reimported,
   return-in-init,
   singleton-comparison,

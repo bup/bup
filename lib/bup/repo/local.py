@@ -1,6 +1,5 @@
 
 import os
-from os import path
 from os.path import realpath
 from functools import partial
 from subprocess import PIPE, Popen
@@ -83,7 +82,7 @@ class LocalRepo(RepoProtocol):
         if name != b'bup.server.deduplicate-writes':
             return cfg
         assert opttype == 'bool'
-        if path.exists(git.repo(b'bup-dumb-server', repo_dir=self.repo_dir)):
+        if os.path.exists(git.repo(b'bup-dumb-server', repo_dir=self.repo_dir)):
             if not cfg: # whether None or False
                 return False
             raise ConfigError('bup-dumb-server exists and bup.server.deduplicate-writes is true')

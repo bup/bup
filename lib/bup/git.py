@@ -15,7 +15,7 @@ from subprocess import DEVNULL, PIPE, Popen, run
 from sys import stderr
 from typing import Literal, Optional, Union
 
-from bup import _helpers, hashsplit, path, midx, bloom, xstat
+from bup import _helpers, hashsplit, midx, bloom, xstat
 from bup.commit import create_commit_blob, parse_commit
 from bup.compat import dataclass, environ
 from bup.helpers import (EXIT_FAILURE,
@@ -35,6 +35,7 @@ from bup.helpers import (EXIT_FAILURE,
                          unlink)
 from bup.io import enc_shs, path_msg
 from bup.midx import open_midx
+import bup.path
 
 
 verbose = 0
@@ -138,7 +139,7 @@ def repo_rel(path):
 
 
 def auto_midx(objdir):
-    args = [path.exe(), b'midx', b'--auto', b'--dir', objdir]
+    args = [bup.path.exe(), b'midx', b'--auto', b'--dir', objdir]
     try:
         rv = subprocess.call(args, stdout=DEVNULL)
     except OSError as e:
@@ -148,7 +149,7 @@ def auto_midx(objdir):
     if rv:
         add_error('%r: returned %d' % (args, rv))
 
-    args = [path.exe(), b'bloom', b'--dir', objdir]
+    args = [bup.path.exe(), b'bloom', b'--dir', objdir]
     try:
         rv = subprocess.call(args, stdout=DEVNULL)
     except OSError as e:
@@ -544,14 +545,14 @@ class PackIdxList:
             return
         _mpi_count -= 1
         assert _mpi_count == 0
-        self.bloom, bloom = None, self.bloom
-        self.packs, packs = None, self.packs
+        self.bloom, tmp_bloom = None, self.bloom
+        self.packs, tmp_packs = None, self.packs
         self.open = False
         with ExitStack() as stack:
-            for pack in packs:
+            for pack in tmp_packs:
                 stack.enter_context(pack)
-            if bloom:
-                bloom.close()
+            if tmp_bloom:
+                tmp_bloom.close()
 
     def __enter__(self): return self
     def __exit__(self, type, value, traceback): self.close()
@@ -1188,7 +1189,7 @@ def guess_repo():
     # previously set?
     if repodir:
         return repodir
-    return path.defaultrepo()
+    return bup.path.defaultrepo()
 
 
 def init_repo(path=None):
@@ -1465,14 +1466,14 @@ def close_catpipes():
 
 def tags(repo_dir = None):
     """Return a dictionary of all tags in the form {hash: [tag_names, ...]}."""
-    tags = {}
+    res = {}
     for n, c in list_refs(repo_dir = repo_dir, limit_to_tags=True):
         assert n.startswith(b'refs/tags/')
         name = n[10:]
-        if not c in tags:
-            tags[c] = []
-        tags[c].append(name)  # more than one tag can point at 'c'
-    return tags
+        if not c in res:
+            res[c] = []
+        res[c].append(name)  # more than one tag can point at 'c'
+    return res
 
 
 class MissingObject(KeyError):

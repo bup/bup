@@ -13,7 +13,7 @@ from bup.io import byte_stream, path_msg
 from bup.repo import LocalRepo
 
 
-repo = None
+_repo = None
 
 
 class CommandError(Exception):
@@ -61,20 +61,17 @@ def attempt_completion(text_, start, end):
 _last_line = None
 _last_res = None
 def enter_completion(text, iteration):
-    global repo
-    global _attempt_end
-    global _last_line
-    global _last_res
+    global _attempt_end, _last_line, _last_res, _repo
     try:
         line = _helpers.get_line_buffer()[:_attempt_end]
         if _last_line != line:
-            _last_res = _completer_get_subs(repo, line)
+            _last_res = _completer_get_subs(_repo, line)
             _last_line = line
         qtype, lastword, subs = _last_res
         if iteration < len(subs):
             path = subs[iteration]
             leaf_name, leaf_item = path[-1]
-            res = vfs.try_resolve(repo, leaf_name, parent=path[:-1])
+            res = vfs.try_resolve(_repo, leaf_name, parent=path[:-1])
             leaf_name, leaf_item = res[-1]
             fullname = os.path.join(*(name for name, item in res))
             if stat.S_ISDIR(vfs.item_mode(leaf_item)):
@@ -224,7 +221,7 @@ def present_interface(stdin, out, extra, repo):
             out.flush()
 
 def main(argv):
-    global repo
+    global _repo
 
     o = options.Options(optspec)
     extra = o.parse_bytes(argv[1:])[2]
@@ -233,5 +230,5 @@ def main(argv):
     sys.stdout.flush()
     out = byte_stream(sys.stdout)
     stdin = byte_stream(sys.stdin)
-    with LocalRepo() as repo:
-        present_interface(stdin, out, extra, repo)
+    with LocalRepo() as _repo:
+        present_interface(stdin, out, extra, _repo)

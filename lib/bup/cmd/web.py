@@ -350,8 +350,6 @@ human-readable    display human readable file sizes (i.e. 3.9K, 4.7M)
 browser           show repository in default browser (incompatible with unix://)
 """
 
-opt = None
-
 def main(argv):
     global io_loop
 

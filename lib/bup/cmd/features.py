@@ -4,7 +4,6 @@ import platform, sys
 from bup import _helpers, metadata, options, version
 from bup.io import byte_stream
 
-out = None
 
 def show_support(out, bool_opt, what):
     out.write(b'    %s: %s\n' % (what, b'yes' if bool_opt else b'no'))

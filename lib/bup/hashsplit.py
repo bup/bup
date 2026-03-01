@@ -26,6 +26,7 @@ fanbits = _fanbits
 _splitter_args = ('progress', 'keep_boundaries', 'blobbits', 'fanbits')
 
 def splitter(files, *, progress=None, keep_boundaries=False, blobbits=None,
+             # pylint: disable-next=redefined-outer-name
              fanbits=None):
     return HashSplitter(files,
                         keep_boundaries=keep_boundaries,
@@ -60,7 +61,9 @@ def from_config(files, split_config):
 
 
 total_split = 0
-def split_to_blobs(makeblob, splitter):
+def split_to_blobs(makeblob,
+                   # pylint: disable-next=redefined-outer-name
+                   splitter):
     global total_split
     for blob, level in splitter:
         sha = makeblob(blob)
@@ -95,8 +98,9 @@ def _squish(maketree, stacks, n):
         stacks[i] = []
         i += 1
 
-
-def split_to_shalist(makeblob, maketree, splitter):
+def split_to_shalist(makeblob, maketree,
+                     # pylint: disable-next=redefined-outer-name
+                     splitter):
     sl = split_to_blobs(makeblob, splitter)
     assert(fanout != 0)
     if not fanout:
@@ -115,7 +119,9 @@ def split_to_shalist(makeblob, maketree, splitter):
         return _make_shalist(stacks[-1])[0]
 
 
-def split_to_blob_or_tree(makeblob, maketree, splitter):
+def split_to_blob_or_tree(makeblob, maketree,
+                          # pylint: disable-next=redefined-outer-name
+                          splitter):
     shalist = list(split_to_shalist(makeblob, maketree, splitter))
     if len(shalist) == 1:
         return (shalist[0][0], shalist[0][2])

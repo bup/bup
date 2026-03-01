@@ -46,15 +46,15 @@ def valid_restore_path(path):
         return True
     return False
 
-def parse_owner_mappings(type, options, fatal):
-    """Traverse the options and parse all --map-TYPEs, or call Option.fatal()."""
+def parse_owner_mappings(type, opts, fatal):
+    """Traverse the opts and parse all --map-TYPEs, or call Option.fatal()."""
     opt_name = '--map-' + type
     if type in ('uid', 'gid'):
         value_rx = re.compile(br'^(-?[0-9]+)=(-?[0-9]+)$')
     else:
         value_rx = re.compile(br'^([^=]+)=([^=]*)$')
     owner_map = {}
-    for flag in options:
+    for flag in opts:
         (option, parameter) = flag
         if option != opt_name:
             continue

@@ -5,11 +5,12 @@ from buptest import exc as ex
 from pytest import raises
 import pytest
 
-from bup import client, git, path
+from bup import client, git
 from bup.compat import environ
 from bup.config import ConfigError
 from bup.repo import LocalRepo
 from bup.url import URL
+import bup.path
 
 
 def randbytes(sz):
@@ -164,7 +165,7 @@ def test_midx_refreshing(tmpdir):
             assert not p2.exists(s1sha)
             assert p2.exists(s2sha)
 
-        subprocess.call([path.exe(), b'midx', b'-f'])
+        subprocess.call([bup.path.exe(), b'midx', b'-f'])
         pi.refresh()
         assert len(pi.packs) == 1
         pi.refresh(skip_midx=True)
