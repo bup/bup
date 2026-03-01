@@ -335,7 +335,6 @@ class BupRequestHandler(tornado.web.RequestHandler):
 io_loop = None
 
 def handle_sigterm(signum, frame_):
-    global io_loop
     debug1('\nbup-web: signal %d received\n' % signum)
     log('Shutdown requested\n')
     if not io_loop:
@@ -354,6 +353,8 @@ browser           show repository in default browser (incompatible with unix://)
 opt = None
 
 def main(argv):
+    global io_loop
+
     signal.signal(signal.SIGTERM, handle_sigterm)
 
     UnixAddress = namedtuple('UnixAddress', ['path'])
