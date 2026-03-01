@@ -80,11 +80,22 @@ None of this tells us what max_pfalse_positive to choose.
 Brandon Low <lostlogic@lostlogicx.com> 2011-02-04
 """
 
-import os, math, struct
+from contextlib import ExitStack
+from tempfile import mkstemp
+import builtins, os, math, struct
 
 from bup import _helpers
-from bup.helpers import (debug1, debug2, log, mmap_read, mmap_readwrite,
-                         mmap_readwrite_private, unlink)
+from bup.helpers import \
+    (debug1,
+     debug2,
+     finalized,
+     log,
+     mmap_read,
+     mmap_readwrite,
+     mmap_readwrite_private,
+     notimplemented,
+     unlink)
+from bup.io import path_msg as pm
 
 
 BLOOM_VERSION = 2
@@ -98,128 +109,33 @@ _total_steps = 0
 bloom_contains = _helpers.bloom_contains
 bloom_add = _helpers.bloom_add
 
-# FIXME: check bloom create() and ShaBloom handling/ownership of "f".
-# The ownership semantics should be clarified since the caller needs
-# to know who is responsible for closing it.
 
-class ShaBloom:
-    """Wrapper which contains data from multiple index files. """
-    def __init__(self, filename, f=None, readwrite=False, expected=-1):
-        self.closed = False
-        self.name = filename
-        self.readwrite = readwrite
-        self.file = None
-        self.map = None
-        assert(filename.endswith(b'.bloom'))
-        if readwrite:
-            assert(expected > 0)
-            # pylint: disable-next=consider-using-with
-            self.file = f = f or open(filename, 'r+b')
-            f.seek(0)
+class _BloomBase:
+    """Bloom filter elements shared across both readers and writers."""
+    __slots__ = 'bits', 'entries', 'idxnames', 'k', 'map', 'path', 'version'
+    # mmap not None indicates "open"
 
-            # Decide if we want to mmap() the pages as writable ('immediate'
-            # write) or else map them privately for later writing back to
-            # the file ('delayed' write).  A bloom table's write access
-            # pattern is such that we dirty almost all the pages after adding
-            # very few entries.  But the table is so big that dirtying
-            # *all* the pages often exceeds Linux's default
-            # /proc/sys/vm/dirty_ratio or /proc/sys/vm/dirty_background_ratio,
-            # thus causing it to start flushing the table before we're
-            # finished... even though there's more than enough space to
-            # store the bloom table in RAM.
-            #
-            # To work around that behaviour, if we calculate that we'll
-            # probably end up touching the whole table anyway (at least
-            # one bit flipped per memory page), let's use a "private" mmap,
-            # which defeats Linux's ability to flush it to disk.  Then we'll
-            # flush it as one big lump during close().
-            pages = os.fstat(f.fileno()).st_size // 4096 * 5 # assume k=5
-            self.delaywrite = expected > pages
-            debug1('bloom: delaywrite=%r\n' % self.delaywrite)
-            if self.delaywrite:
-                self.map = mmap_readwrite_private(self.file, close=False)
-            else:
-                self.map = mmap_readwrite(self.file, close=False)
-        else:
-            # pylint: disable-next=consider-using-with
-            self.file = f or open(filename, 'rb')
-            self.map = mmap_read(self.file)
-        got = self.map[0:4]
-        if got != b'BLOM':
-            log('Warning: invalid BLOM header (%r) in %r\n' % (got, filename))
-            self._init_failed()
-            return
-        ver = struct.unpack('!I', self.map[4:8])[0]
-        if ver < BLOOM_VERSION:
-            log('Warning: ignoring old-style (v%d) bloom %r\n'
-                % (ver, filename))
-            self._init_failed()
-            return
-        if ver > BLOOM_VERSION:
-            log('Warning: ignoring too-new (v%d) bloom %r\n'
-                % (ver, filename))
-            self._init_failed()
-            return
+    # Should be completely replaced by subclasses so that all of the
+    # context management / logic will be visible in one place.
+    @notimplemented
+    def __init__(self):
+        # All __slots__ are required (these assignments just satisfy pylint)
+        self.bits, self.entries, self.k, self.map = [None] * 4
 
-        self.bits, self.k, self.entries = struct.unpack('!HHI', self.map[8:16])
-        idxnamestr = self.map[16 + 2**self.bits:]
-        if idxnamestr:
-            self.idxnames = idxnamestr.split(b'\0')
-        else:
-            self.idxnames = []
-
-    def _init_failed(self):
-        self.idxnames = []
-        self.bits = self.entries = 0
-        self.map, tmp_map = None, self.map
-        self.file, tmp_file = None, self.file
-        try:
-            if tmp_map:
-                tmp_map.close()
-        finally:
-            if self.file:
-                tmp_file.close()
-
-    def valid(self):
-        return self.map and self.bits
-
-    def close(self):
-        self.closed = True
-        try:
-            if self.map and self.readwrite:
-                debug2("bloom: closing with %d entries\n" % self.entries)
-                self.map[12:16] = struct.pack('!I', self.entries)
-                if self.delaywrite:
-                    self.file.seek(0)
-                    self.file.write(self.map)
-                else:
-                    self.map.flush()
-                self.file.seek(16 + 2**self.bits)
-                if self.idxnames:
-                    self.file.write(b'\0'.join(self.idxnames))
-        finally:  # This won't handle pending exceptions correctly in py2
-            self._init_failed()
-
-    def __del__(self): assert self.closed
+    # Must be a context manager
+    @notimplemented
+    def __del__(self): pass
+    @notimplemented
     def __enter__(self): return self
-    def __exit__(self, type, value, traceback): self.close()
+    @notimplemented
+    def __exit__(self, type, value, traceback): pass
 
     def pfalse_positive(self, additional=0):
+        assert self.map
         n = self.entries + additional
         m = 8*2**self.bits
         k = self.k
         return 100*(1-math.exp(-k*float(n)/m))**k
-
-    def add(self, ids):
-        """Add the hashes in ids (packed binary 20-bytes) to the filter."""
-        if not self.map:
-            raise Exception("Cannot add to closed bloom")
-        self.entries += bloom_add(self.map, ids, self.bits, self.k)
-
-    def add_idx(self, ix):
-        """Add the object to the filter."""
-        self.add(ix.shatable)
-        self.idxnames.append(os.path.basename(ix.name))
 
     def exists(self, sha):
         """Return nonempty if the object probably exists in the bloom filter.
@@ -228,6 +144,7 @@ class ShaBloom:
         If it returns true, there is a small probability that it exists
         anyway, so you'll have to check it some other way.
         """
+        assert self.map
         global _total_searches, _total_steps
         _total_searches += 1
         if not self.map:
@@ -237,30 +154,206 @@ class ShaBloom:
         return found
 
     def __len__(self):
-        return int(self.entries)
+        assert self.map
+        return self.entries
 
 
-def create(name, expected, delaywrite=None, f=None, k=None):
-    """Create and return a bloom filter for `expected` entries."""
-    bits = int(math.floor(math.log(expected * MAX_BITS_EACH // 8, 2)))
-    k = k or ((bits <= MAX_BLOOM_BITS[5]) and 5 or 4)
-    if bits > MAX_BLOOM_BITS[k]:
-        log('bloom: warning, max bits exceeded, non-optimal\n')
-        bits = MAX_BLOOM_BITS[k]
-    debug1('bloom: using 2^%d bytes and %d hash functions\n' % (bits, k))
-    # pylint: disable-next=consider-using-with
-    f = f or open(name, 'w+b')
-    f.write(b'BLOM')
-    f.write(struct.pack('!IHHI', BLOOM_VERSION, bits, k, 0))
-    assert(f.tell() == 16)
-    # NOTE: On some systems this will not extend+zerofill, but it does on
-    # darwin, linux, bsd and solaris.
-    f.truncate(16+2**bits)
-    f.seek(0)
-    if delaywrite is not None and not delaywrite:
-        # tell it to expect very few objects, forcing a direct mmap
-        expected = 1
-    return ShaBloom(name, f=f, readwrite=True, expected=expected)
+class BloomInvalid(Exception): pass
+class BloomNotFound(FileNotFoundError): pass
+
+
+def _validate_and_get_info(path, data):
+    got = data[0:4]
+    if got != b'BLOM':
+        raise BloomInvalid(f'invalid BLOM header ({pm(got)}) in {pm(path)}')
+    ver = struct.unpack('!I', data[4:8])[0]
+    if ver < BLOOM_VERSION:
+        raise BloomInvalid(f'old-style (v{ver}) bloom {pm(path)}')
+    if ver > BLOOM_VERSION:
+        raise BloomInvalid(f'too-new (v{ver}) bloom {pm(path)}')
+    bits, k, entries = struct.unpack('!HHI', data[8:16])
+    idxnames = data[16 + 2**bits:]
+    idxnames = idxnames.split(b'\0') if idxnames else []
+    return ver, bits, k, entries, idxnames
+
+
+class BloomReader(_BloomBase):
+    # pylint: disable-next=super-init-not-called
+    def __init__(self, path): # mmap not None indicates "open"
+        """Open an existing bloom filter, read-only."""
+        assert path.endswith(b'.bloom'), path
+        self.map = None
+        self.path = path
+        with ExitStack() as ctx:
+            try:
+                file = ctx.enter_context(builtins.open(path, 'rb'))
+            except FileNotFoundError as ex:
+                raise BloomNotFound(ex.errno, ex.strerror, ex.filename) from ex
+            self.map = ctx.enter_context(mmap_read(file, close=True))
+            self.version, self.bits, self.k, self.entries, self.idxnames = \
+                _validate_and_get_info(path, self.map)
+            ctx.pop_all()
+    def close(self):
+        try:
+            if self.map: self.map.close()
+        finally:
+            self.map = None
+    def __del__(self): assert not self.map, self.path
+    def __enter__(self): return self
+    def __exit__(self, type, value, traceback): self.close()
+
+
+def _create(path, expected, k):
+    with ExitStack() as ctx:
+        bits = int(math.floor(math.log(expected * MAX_BITS_EACH // 8, 2)))
+        k = k or ((bits <= MAX_BLOOM_BITS[5]) and 5 or 4)
+        if bits > MAX_BLOOM_BITS[k]:
+            log('bloom: warning, max bits exceeded, non-optimal\n')
+            bits = MAX_BLOOM_BITS[k]
+        debug1(f'bloom: using 2^{bits:d} bytes and {k:d} hash functions\n')
+        dir, name = os.path.split(path)
+        fd, tmp = mkstemp(dir=dir or os.getcwdb(), prefix=(name + b'-'))
+        with ExitStack() as ctx:
+            ctx.enter_context(finalized(tmp, unlink))
+            os.close(fd)
+            tmp_file = ctx.enter_context(builtins.open(tmp, 'w+b'))
+            tmp_file.write(b'BLOM')
+            tmp_file.write(struct.pack('!IHHI', BLOOM_VERSION, bits, k, 0))
+            assert tmp_file.tell() == 16
+            # Assume POSIX truncate(), which requires zero-fill
+            tmp_file.truncate(16+2**bits)
+            tmp_file.seek(0)
+            ctx.pop_all()
+            return tmp_file, bits, k
+
+
+def _open_write_map(file, expected):
+    # Decide if we want to mmap() the pages as writable ('immediate'
+    # write) or else map them privately for later writing back to
+    # the file ('delayed' write).  A bloom table's write access
+    # pattern is such that we dirty almost all the pages after adding
+    # very few entries.  But the table is so big that dirtying
+    # *all* the pages often exceeds Linux's default
+    # /proc/sys/vm/dirty_ratio or /proc/sys/vm/dirty_background_ratio,
+    # thus causing it to start flushing the table before we're
+    # finished... even though there's more than enough space to
+    # store the bloom table in RAM.
+    #
+    # To work around that behaviour, if we calculate that we'll
+    # probably end up touching the whole table anyway (at least
+    # one bit flipped per memory page), let's use a "private" mmap,
+    # which defeats Linux's ability to flush it to disk.  Then we'll
+    # flush it as one big lump during close().
+    pages = os.fstat(file.fileno()).st_size // 4096 * 5 # assume k=5
+    delaywrite = expected > pages
+    debug1(f'bloom: delaywrite={delaywrite!r}\n')
+    if delaywrite:
+        data = mmap_readwrite_private(file, close=False)
+    else:
+        data = mmap_readwrite(file, close=False)
+    return data, delaywrite
+
+
+class BloomWriter(_BloomBase):
+
+    __slots__ = ('_delaywrite', '_file', '_tmp_file_path')
+
+    # pylint: disable-next=super-init-not-called
+    def __init__(self, path, mode, expected, *, delaywrite=None, k=None):
+        """Open (mode='r+b') an existing, or create (mode='w+b') a new
+        bloom filter for updates.  The filter will not exist at path
+        until the instance is successfully closed.
+
+        """
+        assert path.endswith(b'.bloom'), path
+        assert expected > 0, expected
+        # mmap not None indicates "open"
+        self.map = None
+        self._file = None
+        self._tmp_file_path = None
+        self.path = path
+
+        # delaywrite arg is currently only used by tests
+        def open_map(f):
+            if delaywrite is not None and not delaywrite:
+                # tell it to expect very few objects, forcing a direct mmap
+                return _open_write_map(f, 1)
+            return _open_write_map(f, expected)
+
+        if mode ==  'wb':
+            with ExitStack() as ctx:
+                try:
+                    self._file = ctx.enter_context(builtins.open(path, 'r+b'))
+                except FileNotFoundError as ex:
+                    raise BloomNotFound(ex.errno, ex.strerror, ex.filename) from ex
+                self.map, self._delaywrite = open_map(self._file)
+                ctx.enter_context(self.map)
+                self.version, self.bits, self.k, self.entries, self.idxnames = \
+                    _validate_and_get_info(path, self.map)
+                dir, name = os.path.split(path)
+                fd, tmp = mkstemp(dir=dir or os.getcwdb(), prefix=name)
+                self._tmp_file_path = tmp
+                os.close(fd)
+                os.rename(path, tmp)
+                ctx.pop_all()
+            return
+
+        assert mode == 'w+b', mode # new filter
+        assert expected > 0, expected
+        self.entries = 0
+        self.idxnames = []
+        self.version = BLOOM_VERSION
+        self._file, self.bits, self.k = _create(path, expected, k)
+        self._tmp_file_path = self._file.name
+        with ExitStack() as ctx:
+            ctx.enter_context(finalized(self._tmp_file_path, unlink))
+            ctx.enter_context(self._file)
+            self.map, self._delaywrite = open_map(self._file)
+            ctx.pop_all()
+
+    def close(self, error=None):
+        try:
+            with ExitStack() as ctx:
+                if self._tmp_file_path:
+                    ctx.enter_context(finalized(self._tmp_file_path, unlink))
+                if self._file:
+                    ctx.enter_context(self._file)
+                if self.map:
+                    ctx.enter_context(self.map)
+                if error:
+                    log(f'dropping unfinished bloom {pm(self.path)}, interrupted by {str(error)}')
+                    return
+                if not self._file and self.map:
+                    return
+                debug2(f'bloom: closing with {self.entries} entries\n')
+                self.map[12:16] = struct.pack('!I', self.entries)
+                if self._delaywrite:
+                    self._file.seek(0)
+                    self._file.write(self.map)
+                else:
+                    self.map.flush()
+                self._file.seek(16 + 2**self.bits)
+                if self.idxnames:
+                    self._file.write(b'\0'.join(self.idxnames))
+                os.rename(self._tmp_file_path, self.path)
+        finally:
+            self._file, self.map, self._tmp_file_path = None, None, None
+
+    def __del__(self): assert not self.map, self.path
+    def __enter__(self): return self
+    def __exit__(self, type, value, traceback): self.close(value)
+
+    def add(self, ids):
+        """Add the hashes in ids (packed binary 20-bytes) to the filter."""
+        if not self.map:
+            raise Exception("Cannot add to closed bloom")
+        self.entries += bloom_add(self.map, ids, self.bits, self.k)
+
+    def add_idx(self, ix):
+        """Add the object to the filter."""
+        assert self.map
+        self.add(ix.shatable)
+        self.idxnames.append(os.path.basename(ix.name))
 
 
 def clear_bloom(dir):

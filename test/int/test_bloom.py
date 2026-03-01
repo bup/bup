@@ -1,9 +1,9 @@
 
-import errno, os, sys, tempfile
+import errno, os, sys
 
 import pytest
 
-from bup import bloom
+from bup.bloom import BloomReader, BloomWriter
 from bup.compat import dataclass
 
 
@@ -15,10 +15,10 @@ def test_bloom(tmpdir):
         shatable: bytes
     ix = Idx(name=b'dummy.idx', shatable=b''.join(hashes))
     for k in (4, 5):
-        with bloom.create(tmpdir + b'/pybuptest.bloom', expected=100, k=k) as b:
+        with BloomWriter(tmpdir + b'/pybuptest.bloom', 'w+b', expected=100, k=k) as b:
             b.add_idx(ix)
             assert b.pfalse_positive() < .1
-        with bloom.ShaBloom(tmpdir + b'/pybuptest.bloom') as b:
+        with BloomReader(tmpdir + b'/pybuptest.bloom') as b:
             all_present = True
             for h in hashes:
                 all_present &= (b.exists(h) or False)
@@ -30,9 +30,8 @@ def test_bloom(tmpdir):
             assert false_positives < 10
         os.unlink(tmpdir + b'/pybuptest.bloom')
 
-    tf = tempfile.TemporaryFile(dir=tmpdir)
-    with bloom.create(b'bup.bloom', f=tf, expected=100) as b:
-        assert b.file == tf
+    with BloomWriter(b'bup.bloom', 'w+b', expected=100) as b:
+        assert b.path == b'bup.bloom'
         assert b.k == 5
 
 
@@ -42,7 +41,7 @@ def test_large_bloom(tmpdir):
     # architecture), and anywhere else where the address space is
     # sufficiently limited.
     try:
-        with bloom.create(tmpdir + b'/bup.bloom', expected=2**28,
+        with BloomWriter(tmpdir + b'/bup.bloom', 'w+b', expected=2**28,
                           delaywrite=False) as b:
             assert b.k == 4
     except EnvironmentError as ex:

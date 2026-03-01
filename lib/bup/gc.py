@@ -1,11 +1,11 @@
 
 from binascii import hexlify, unhexlify
 from contextlib import ExitStack
-#from itertools import chain
 from os.path import basename
 import glob, os, re, subprocess, sys, tempfile
 
 from bup import bloom, git, midx
+from bup.bloom import BloomWriter
 from bup.git import MissingObject, walk_object
 from bup.helpers import \
     EXIT_FAILURE, log, note_error, progress, qprogress, reprogress
@@ -90,7 +90,7 @@ def find_live_objects(existing_count, cat_pipe, refs=None, *,
     os.close(ffd)
     # FIXME: allow selection of k?
     # FIXME: support ephemeral bloom filters (i.e. *never* written to disk)
-    live_blobs = bloom.create(bloom_filename, expected=existing_count, k=None)
+    live_blobs = BloomWriter(bloom_filename, 'w+b', expected=existing_count, k=None)
     with ExitStack() as maybe_close_bloom:
         maybe_close_bloom.enter_context(live_blobs)
         # live_blobs will hold on to the fd until close or exit

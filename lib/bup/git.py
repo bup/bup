@@ -15,7 +15,8 @@ from subprocess import DEVNULL, PIPE, Popen, run
 from sys import stderr
 from typing import Literal, Optional, Union
 
-from bup import _helpers, hashsplit, midx, bloom, xstat
+from bup import _helpers, hashsplit, midx, xstat
+from bup.bloom import BloomInvalid, BloomNotFound, BloomReader
 from bup.commit import create_commit_blob, parse_commit
 from bup.compat import dataclass_frozen_for_testing, environ
 from bup.helpers import (EXIT_FAILURE,
@@ -707,19 +708,24 @@ class PackIdxList:
             new_packs = list(new_packs)
             new_packs.sort(reverse=True, key=len)
             self.packs = new_packs
-            if self.bloom is None and os.path.exists(bfull):
-                self.bloom = bloom.ShaBloom(bfull)
+            if self.bloom is None:
+                try:
+                    self.bloom = BloomReader(bfull)
+                except BloomNotFound:
+                    pass
+                except BloomInvalid as ex:
+                    log(f'warning: {str(ex)}\n')
             try:
-                if self.bloom and self.bloom.valid() and len(self.bloom) >= len(self):
+                if self.bloom and len(self.bloom) >= len(self):
                     self.do_bloom = True
                 else:
                     if self.bloom:
                         self.bloom, bloom_tmp = None, self.bloom
                         bloom_tmp.close()
-            except BaseException as ex:
+            except BaseException:
                 if self.bloom:
                     self.bloom.close()
-                raise ex
+                raise
 
         debug1('PackIdxList: using %d index%s.\n'
             % (len(self.packs), len(self.packs)!=1 and 'es' or ''))

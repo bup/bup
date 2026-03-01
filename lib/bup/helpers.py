@@ -289,17 +289,12 @@ def merge_iter(iters, pfreq, pfunc, pfinal, key=None):
     pfinal(count, total)
 
 
-def unlink(f):
-    """Delete a file at path 'f' if it currently exists.
-
-    Unlike os.unlink(), does not throw an exception if the file didn't already
-    exist.
-    """
+def unlink(path):
+    """Unlink path, ignoring it if missing (i.e. rm -f path)."""
     try:
-        os.unlink(f)
-    except OSError as e:
-        if e.errno != errno.ENOENT:
-            raise
+        os.unlink(path)
+    except FileNotFoundError:
+        pass
 
 
 _bq_simple_id_rx = re.compile(br'^[-_./a-zA-Z0-9]+$')

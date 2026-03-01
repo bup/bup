@@ -1,10 +1,13 @@
 
 import os, glob
 
-from bup import options, git, bloom
+from bup import bloom, options, git
+from bup.bloom import BloomInvalid, BloomNotFound, BloomReader, BloomWriter
 from bup.compat import argv_bytes
 from bup.helpers \
-    import (add_error,
+    import (EXIT_FAILURE,
+            EXIT_FALSE,
+            EXIT_SUCCESS,
             debug1,
             log,
             note_error,
@@ -27,28 +30,34 @@ c,check=   check given *.idx or *.midx file against the bloom filter
 
 
 def ruin_bloom(bloomfilename):
-    if not os.path.exists(bloomfilename):
-        log(path_msg(bloomfilename) + '\n')
-        add_error('bloom: %s not found to ruin\n' % path_msg(bloomfilename))
-        return
-    with bloom.ShaBloom(bloomfilename, readwrite=True, expected=1) as b:
-        b.map[16 : 16 + 2**b.bits] = b'\0' * 2**b.bits
+    try:
+        with BloomWriter(bloomfilename, 'wb', expected=1) as b:
+            b.map[16 : 16 + 2**b.bits] = b'\0' * 2**b.bits
+    except BloomInvalid as ex:
+        log(f'error: {str(ex)}\n')
+        return EXIT_FAILURE
+    except BloomNotFound:
+        log(f'error: bloom filter {path_msg(bloomfilename)} not found\n')
+        return EXIT_FAILURE
+    return EXIT_SUCCESS
 
 
 def check_bloom(path, bloomfilename, idx):
     rbloomfilename = git.repo_rel(bloomfilename)
     ridx = git.repo_rel(idx)
-    if not os.path.exists(bloomfilename):
-        log('bloom: %s: does not exist.\n' % path_msg(rbloomfilename))
-        return
-    with bloom.ShaBloom(bloomfilename) as b:
-        if not b.valid():
-            add_error('bloom: %r is invalid.\n' % path_msg(rbloomfilename))
-            return
+    try:
+        b = BloomReader(bloomfilename)
+    except BloomInvalid as ex:
+        log(f'error: {str(ex)}\n')
+        return EXIT_FALSE
+    except BloomNotFound:
+        log(f'error: bloom filter {path_msg(bloomfilename)} not found\n')
+        return EXIT_FAILURE
+    with b:
         base = os.path.basename(idx)
         if base not in b.idxnames:
-            log('bloom: %s does not contain the idx.\n' % path_msg(rbloomfilename))
-            return
+            log(f'bloom: {path_msg(rbloomfilename)} does not contain the idx.\n')
+            return EXIT_FALSE
         if base == idx:
             idx = os.path.join(path, idx)
         log('bloom: bloom file: %s\n' % path_msg(rbloomfilename))
@@ -56,11 +65,14 @@ def check_bloom(path, bloomfilename, idx):
         oids = git.open_object_idx(idx)
         if not oids:
             note_error(f'bloom: ERROR: invalid index {path_msg(idx)}\n')
-            return
+            return EXIT_FAILURE
+        rc = EXIT_SUCCESS
         with oids:
             for oid in oids:
                 if not b.exists(oid):
-                    add_error('bloom: ERROR: object %s missing' % oid.hex())
+                    log('bloom: ERROR: object %s missing\n' % oid.hex())
+                    rc = EXIT_FALSE
+        return rc
 
 
 _first = None
@@ -69,13 +81,14 @@ def do_bloom(path, outfilename, k, force):
     assert k in (None, 4, 5)
     b = None
     try:
-        if os.path.exists(outfilename) and not force:
-            b = bloom.ShaBloom(outfilename)
-            if not b.valid():
+        if not force:
+            try:
+                b = BloomReader(outfilename)
+            except BloomNotFound:
+                pass
+            except BloomInvalid as ex:
+                log(f'warning: {str(ex)}\n')
                 debug1("bloom: Existing invalid bloom found, regenerating.\n")
-                b.close()
-                b = None
-
         add = []
         rest = []
         add_count = 0
@@ -116,8 +129,7 @@ def do_bloom(path, outfilename, k, force):
             else:
                 b, b_tmp = None, b
                 b_tmp.close()
-                b = bloom.ShaBloom(outfilename, readwrite=True,
-                                   expected=add_count)
+                b = BloomWriter(outfilename, mode='w+b', expected=add_count)
         if b is None: # Need all idxs to build from scratch
             add += rest
             add_count += rest_count
@@ -135,7 +147,7 @@ def do_bloom(path, outfilename, k, force):
         tfname = None
         if b is None:
             tfname = os.path.join(path, b'bup.tmp.bloom')
-            b = bloom.create(tfname, expected=add_count, k=k)
+            b = BloomWriter(tfname, 'w+b', expected=add_count, k=k)
         count = 0
         icount = 0
         for name in add:
@@ -177,10 +189,10 @@ def main(argv):
     debug1('bloom: scanning %s\n' % path_msg(path))
     outfilename = output or os.path.join(path, b'bup.bloom')
     if opt.check:
-        check_bloom(path, outfilename, opt.check)
-        if not saved_errors:
+        rc = check_bloom(path, outfilename, opt.check)
+        if not rc and not saved_errors:
             log('All tests passed.\n')
-    elif opt.ruin:
-        ruin_bloom(outfilename)
-    else:
-        do_bloom(path, outfilename, opt.k, opt.force)
+        return rc
+    if opt.ruin:
+        return ruin_bloom(outfilename)
+    return do_bloom(path, outfilename, opt.k, opt.force)
