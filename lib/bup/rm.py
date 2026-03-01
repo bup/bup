@@ -33,7 +33,7 @@ def filter_branch(tip_commit_hex, exclude, writer):
     for c in commits:
         if exclude(c):
             continue
-        last_c, _ = append_commit(hexlify(c), last_c, git.cp(), writer)
+        last_c, _ = append_commit(hexlify(c), last_c, git.catpipe(), writer)
     return last_c
 
 def commit_oid(item):

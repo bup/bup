@@ -69,7 +69,7 @@ def main(argv):
         opt.links = opt.bupm = True
 
     git.check_repo_or_die()
-    cat_pipe = git.cp()
+    cat_pipe = git.catpipe()
 
     with LocalRepo() as repo:
         ref_missing, ref_info = \

@@ -1441,25 +1441,25 @@ class CatPipe:
             raise ex
 
 
-_cp = {}
+_catpipe_for = {}
 
-def cp(repo_dir=None):
+def catpipe(repo_dir=None):
     """Create a CatPipe object or reuse the already existing one."""
-    global _cp, repodir
+    global repodir
     if not repo_dir:
         repo_dir = repodir or repo()
     repo_dir = os.path.abspath(repo_dir)
-    cp = _cp.get(repo_dir)
+    cp = _catpipe_for.get(repo_dir)
     if not cp:
         cp = CatPipe(repo_dir)
-        _cp[repo_dir] = cp
+        _catpipe_for[repo_dir] = cp
     return cp
 
 
 def close_catpipes():
     # FIXME: chain exceptions
-    while _cp:
-        _, cp = _cp.popitem()
+    while _catpipe_for:
+        _, cp = _catpipe_for.popitem()
         cp.close(wait=True)
 
 

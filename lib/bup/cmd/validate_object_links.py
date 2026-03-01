@@ -84,7 +84,7 @@ def main(argv):
 
     sys.stdout.flush()
     out = byte_stream(sys.stdout)
-    cp = git.cp()
+    cp = git.catpipe()
     ret = EXIT_TRUE
     with git.PackIdxList(git.repo(b'objects/pack')) as mi:
         idxlist = glob.glob(path.join(git.repo(b'objects/pack'), b'*.idx'))

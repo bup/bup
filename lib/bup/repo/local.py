@@ -31,7 +31,7 @@ class LocalRepo(RepoProtocol):
         self._packwriter = None
         self.write_symlink = self.write_data
         self.write_bupm = self.write_data
-        self._cp = git.cp(self.repo_dir)
+        self._cp = git.catpipe(self.repo_dir)
         self.rev_list = partial(git.rev_list, repo_dir=self.repo_dir)
 
         if server:

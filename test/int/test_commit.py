@@ -58,7 +58,7 @@ def test_commit_parsing(tmpdir):
         coff = (int(coffs[-4:-2]) * 60 * 60) + (int(coffs[-2:]) * 60)
         if coffs[-5] == b'-'[0]:
             coff = - coff
-        commit_items = git.get_commit_items(commit, git.cp())
+        commit_items = git.get_commit_items(commit, git.catpipe())
         assert parents == b''
         WVPASSEQ(commit_items.parents, [])
         WVPASSEQ(commit_items.tree, tree)
@@ -77,7 +77,7 @@ def test_commit_parsing(tmpdir):
         exc(b'git', b'commit', b'-am', b'Do something else')
         child = exo(b'git', b'show-ref', b'-s', b'main').strip()
         parents = showval(child, b'%P')
-        commit_items = git.get_commit_items(child, git.cp())
+        commit_items = git.get_commit_items(child, git.catpipe())
         WVPASSEQ(commit_items.parents, [commit])
     finally:
         os.chdir(orig_cwd)
