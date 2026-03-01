@@ -43,9 +43,6 @@ def maybe_import_early(argv):
 
 maybe_import_early(compat.get_argv())
 
-handle_ctrl_c()
-
-cmdpath = path.cmddir()
 
 # We manipulate the subcmds here as strings, but they must be ASCII
 # compatible, since we're going to be looking for exactly
@@ -74,7 +71,7 @@ def usage(file=sys.stdout):
 
     print('Other available commands:', file=file)
     cmds = set()
-    for c in sorted(os.listdir(cmdpath)):
+    for c in sorted(os.listdir(path.cmddir())):
         if c.startswith(b'bup-') and c.find(b'.') < 0:
             cname = fsdecode(c[4:])
             if cname not in common:
@@ -104,8 +101,8 @@ args.  Exit with an errror if the value is missing.
     """
     # Assumes that first arg is a valid arg
     arg = args[0]
-    if b'=' in arg:
-        val = arg.split(b'=')[1]
+    name_, eq, val = arg.partition(b'=')
+    if eq:
         if not val:
             misuse(f'error: no value provided for {arg} option')
         return val, args[1:]
@@ -113,82 +110,63 @@ args.  Exit with an errror if the value is missing.
         misuse(f'error: no value provided for {arg} option')
     return args[1], args[2:]
 
-args = compat.get_argvb()
 
-if len(args) == 2 and args[1] in (b'-?', b'-h', b'--help'):
-    usage()
-    sys.exit(EXIT_SUCCESS)
-
-if len(args) == 1:
-    misuse()
-
-## Parse global options
-do_profile = False
-bup_dir = None
-args = args[1:]
-subcmd = None
-while args:
-    arg = args[0]
-    if arg in (b'-?', b'-h', b'--help'):
+def parse_global_opts(args):
+    if len(args) == 2 and args[1] in (b'-?', b'-h', b'--help'):
+        usage()
+        sys.exit(EXIT_SUCCESS)
+    if len(args) == 1:
         misuse()
-    elif arg in (b'-V', b'--version'):
-        subcmd = [b'version']
-        args = args[1:]
-    elif arg in (b'-D', b'--debug'):
-        io.buglvl += 1
-        environ[b'BUP_DEBUG'] = b'%d' % io.buglvl
-        args = args[1:]
-    elif arg == b'--profile':
-        do_profile = True
-        args = args[1:]
-    elif arg in (b'-d', b'--bup-dir') or arg.startswith(b'--bup-dir='):
-        bup_dir, args = extract_argval(args)
-    elif arg == b'--import-py-module' or arg.startswith(b'--import-py-module='):
-        # Just need to skip it here
-        _, args = extract_argval(args)
-    elif arg.startswith(b'-'):
-        misuse('error: unexpected option "%s"'
-               % arg.decode('ascii', 'backslashescape'))
-    else:
-        break
 
-subcmd = subcmd or args
+    ## Parse global options
+    do_profile = False
+    bup_dir = None
+    subcmd = None
+    args = args[1:]
+    while args:
+        arg = args[0]
+        if arg in (b'-?', b'-h', b'--help'):
+            misuse()
+        elif arg in (b'-V', b'--version'):
+            subcmd = [b'version']
+            args = args[1:]
+        elif arg in (b'-D', b'--debug'):
+            io.buglvl += 1
+            environ[b'BUP_DEBUG'] = b'%d' % io.buglvl
+            args = args[1:]
+        elif arg == b'--profile':
+            do_profile = True
+            args = args[1:]
+        elif arg in (b'-d', b'--bup-dir') or arg.startswith(b'--bup-dir='):
+            bup_dir, args = extract_argval(args)
+        elif arg == b'--import-py-module' or arg.startswith(b'--import-py-module='):
+            # Just need to skip it here
+            _, args = extract_argval(args)
+        elif arg.startswith(b'-'):
+            misuse('error: unexpected option "%s"'
+                   % arg.decode('ascii', 'backslashescape'))
+        else:
+            break
 
-# It's important that we defer initialization/use of the repo to the
-# subcommands because they may select another (e.g. "bup init REPO").
-if bup_dir:
-    # Make BUP_DIR absolute, so we aren't affected by chdir (i.e. save
-    # -C, etc.).
-    environ[b'BUP_DIR'] = os.path.abspath(bup_dir)
+    subcmd = subcmd or args
+    if len(subcmd) == 0:
+        misuse()
+    if len(subcmd) > 1 and subcmd[1] == b'--help' and subcmd[0] != b'help':
+        subcmd = [b'help', subcmd[0]] + subcmd[2:]
+    subcmd_name = subcmd[0]
+    if not subcmd_name:
+        misuse()
 
-if len(subcmd) == 0:
-    misuse()
+    return {'bup-dir': bup_dir,
+            'profile': do_profile,
+            'subcmd' : subcmd,
+            'subcmd-name' : subcmd_name}
 
-if len(subcmd) > 1 and subcmd[1] == b'--help' and subcmd[0] != b'help':
-    subcmd = [b'help', subcmd[0]] + subcmd[2:]
-
-subcmd_name = subcmd[0]
-if not subcmd_name:
-    misuse()
-
-try:
-    cmd_module_name = 'bup.cmd.' + subcmd_name.decode('ascii').replace('-', '_')
-    cmd_module = import_module(cmd_module_name)
-except ModuleNotFoundError as ex:
-    if ex.name != cmd_module_name:
-        raise ex
-    cmd_module = None
-
-if not cmd_module:
-    subcmd[0] = os.path.join(cmdpath, b'bup-' + subcmd_name)
-    if not os.path.exists(subcmd[0]):
-        misuse(f'error: unknown command {path_msg(subcmd_name)!r}')
-
-def run_subcmd(module, args):
+def run_subcmd(module, args, profile):
     # We may want to revisit these later, but for now, do what we've
     # always done (also wrt older servers).
     already_fixed = int(environ.get(b'BUP_FORCE_TTY', 0))
-    if (not already_fixed) and subcmd[0] not in (b'mux', b'ftp', b'help', b'fuse'):
+    if (not already_fixed) and args[0] not in (b'mux', b'ftp', b'help', b'fuse'):
         fix_stdout = not (already_fixed & 1) and os.isatty(1)
         fix_stderr = not (already_fixed & 2) and os.isatty(2)
         if fix_stdout or fix_stderr:
@@ -196,7 +174,7 @@ def run_subcmd(module, args):
             environ[b'BUP_FORCE_TTY'] = b'%d' % _ttymask
     if module:
         try:
-            if not do_profile:
+            if not profile:
                 return module.main(args)
             import cProfile # pylint: disable=import-outside-toplevel
             f = compile('module.main(args)', __file__, 'exec')
@@ -207,15 +185,40 @@ def run_subcmd(module, args):
                 progress('')
             finally:
                 close_catpipes()
-    # FIXME: when would do_profile make sense here anymore?
-    args = (do_profile and [sys.executable, b'-m', b'cProfile'] or []) + args
+    # FIXME: when would opt['profile'] make sense here anymore?
+    args = (profile and [sys.executable, b'-m', b'cProfile'] or []) + args
     os.execvp(args[0], args)
     assert False, 'unreachable'  # pylint (e.g. 3.3.3)
     return None  # pylint (older, e.g. 2.2.2)
 
 def main():
+    handle_ctrl_c()
+    opt = parse_global_opts(compat.get_argvb())
+
+    # It's important that we defer initialization/use of the repo to the
+    # subcommands because they may select another (e.g. "bup init REPO").
+    if opt['bup-dir']:
+        # Make BUP_DIR absolute, so we aren't affected by chdir (i.e. save
+        # -C, etc.).
+        environ[b'BUP_DIR'] = os.path.abspath(opt['bup-dir'])
+
     try:
-        rc = run_subcmd(cmd_module, subcmd)
+        cmd_module_name = 'bup.cmd.' + opt['subcmd-name'].decode('ascii').replace('-', '_')
+        cmd_module = import_module(cmd_module_name)
+    except ModuleNotFoundError as ex:
+        if ex.name != cmd_module_name:
+            raise ex
+        cmd_module = None
+
+    subcmd = list(opt['subcmd'])
+    cmdpath = path.cmddir()
+    if not cmd_module:
+        subcmd[0] = os.path.join(cmdpath, b'bup-' + opt['subcmd-name'])
+        if not os.path.exists(subcmd[0]):
+            misuse(f"error: unknown command {path_msg(opt['subcmd-name'])!r}")
+
+    try:
+        rc = run_subcmd(cmd_module, subcmd, opt['profile'])
     except KeyboardInterrupt:
         rc = 130
     except SystemExit as ex:
