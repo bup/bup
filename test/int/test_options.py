@@ -6,19 +6,12 @@ from bup import options
 
 
 def test_optdict():
-    d = options.OptDict({
-        'x': ('x', False),
-        'y': ('y', False),
-        'z': ('z', False),
-        'other_thing': ('other_thing', False),
-        'no_other_thing': ('other_thing', True),
-        'no_z': ('z', True),
-        'no_smart': ('smart', True),
-        'smart': ('smart', False),
-        'stupid': ('smart', True),
-        'no_smart': ('smart', False),
-    })
-    WVPASS('foo')
+    d = options.OptDict({'x': ('x', False),
+                         'y': ('y', False),
+                         'z': ('z', False),
+                         'other_thing': ('other_thing', False),
+                         'no_other_thing': ('other_thing', True),
+                         'no_z': ('z', True)})
     d['x'] = 5
     d['y'] = 4
     d['z'] = 99

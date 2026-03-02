@@ -36,6 +36,7 @@ enable=
   consider-using-ternary,
   consider-using-with,
   deprecated-module,
+  duplicate-key,
   expression-not-assigned,
   f-string-without-interpolation,
   function-redefined,
