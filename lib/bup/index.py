@@ -179,6 +179,9 @@ def _golevel(level, f, ename, newentry, metastore, tmax):
 
 
 class Entry:
+    # The possible, pending index overhaul will obviate this, regardless.
+    # pylint: disable=no-member
+
     def __init__(self, basename, name, meta_ofs, tmax):
         assert basename is None or isinstance(basename, bytes)
         assert name is None or isinstance(name, bytes)

@@ -1,5 +1,6 @@
 
 from bup.compat import dataclass
+from bup.helpers import notimplemented
 
 
 def _make_base(config_get, compression_level, max_pack_size, max_pack_objects):
@@ -20,11 +21,6 @@ def _make_base(config_get, compression_level, max_pack_size, max_pack_objects):
                 max_pack_objects=max_pack_objects,
                 max_pack_size=max_pack_size or config_get(b'pack.packSizeLimit',
                                                           opttype='int'))
-
-def notimplemented(fn):
-    def newfn(obj, *args, **kwargs):
-        raise NotImplementedError(f'{obj.__class__.__name__}.{fn.__name__}')
-    return newfn
 
 class RepoProtocol:
     # Specification only; intentially has no implementations

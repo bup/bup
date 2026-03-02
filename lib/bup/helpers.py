@@ -22,6 +22,12 @@ from bup.io import istty1, istty2, progress, qprogress, reprogress
 from bup.options import _tty_width as tty_width
 
 
+def notimplemented(fn):
+    def newfn(obj, *args, **kwargs):
+        raise NotImplementedError(f'{obj.__class__.__name__}.{fn.__name__}')
+    return newfn
+
+
 # EXIT_TRUE (just an alias) and EXIT_FALSE are intended for cases like
 # POSIX grep or test, or bup's own "fsck --par2-ok", where the command
 # is asking a question with a yes or no answer.  Eventually all
@@ -177,6 +183,7 @@ else:
     def _fullsync(fd):
         try:
             # Ignore result - errors will throw, other values undocumented
+            # pylint: disable=no-member
             fcntl.fcntl(fd, fcntl.F_FULLFSYNC)
             return True
         except IOError as e:

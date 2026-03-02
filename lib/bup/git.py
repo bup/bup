@@ -28,6 +28,7 @@ from bup.helpers import (EXIT_FAILURE,
                          make_repo_id,
                          merge_iter,
                          mmap_read, mmap_readwrite,
+                         notimplemented,
                          nullcontext_if_not,
                          progress, qprogress,
                          stopped,
@@ -345,6 +346,17 @@ def _decode_packobj(buf):
 
 
 class PackIdx:
+
+    def __init__(self):
+        self.name = None
+        self.fanout = b''
+
+    @notimplemented
+    def _ofs_from_idx(self, idx): pass
+
+    @notimplemented
+    def _idx_to_hash(self, idx): pass
+
     def find_offset(self, hash):
         """Get the offset of an object inside the index file."""
         idx = self._idx_from_hash(hash)

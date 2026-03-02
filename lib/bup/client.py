@@ -20,6 +20,7 @@ from bup.helpers import \
      linereader,
      lines_until_sentinel,
      mkdirp,
+     notimplemented,
      nullcontext_if_not,
      progress,
      qprogress,
@@ -73,6 +74,9 @@ class _AbstractTypicalCall:
                 if ok_ex.args[0].startswith(name + ':'):
                     raise extp(*ok_ex.args)
             raise ok_ex
+
+    @notimplemented
+    def _check_ok(self): pass
 
 class _TypicalCall(_AbstractTypicalCall):
     def _check_ok(self):

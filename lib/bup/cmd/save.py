@@ -85,7 +85,7 @@ def opts_from_cmdline(o, argv):
         try:
             opt.date = parse_date_arg(b'--date', opt.date)
         except ValueError as ex:
-            o.fatal(ex.message)
+            o.fatal(str(ex))
     else:
         opt.date = time.time()
 
