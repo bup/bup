@@ -316,8 +316,7 @@ class BupRequestHandler(tornado.web.RequestHandler):
         ext = ext.lower()
         if ext in self.extensions_map:
             return self.extensions_map[ext]
-        else:
-            return self.extensions_map['']
+        return self.extensions_map['']
 
     if not mimetypes.inited:
         mimetypes.init() # try to read system mime.types

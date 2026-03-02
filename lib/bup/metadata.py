@@ -183,10 +183,9 @@ def _clean_up_extract_path(p):
     result = p.lstrip(b'/')
     if result == b'':
         return b'.'
-    elif _risky_path(result):
+    if _risky_path(result):
         return None
-    else:
-        return result
+    return result
 
 
 # These tags are currently conceptually private to Metadata, and they
@@ -488,8 +487,7 @@ class Metadata:
     def _encode_path(self):
         if self.path:
             return vint.pack('s', self.path)
-        else:
-            return None
+        return None
 
     def _load_path_rec(self, port):
         data = vint.read_bvec(port)
@@ -570,8 +568,7 @@ class Metadata:
             if len(acls) == 2:
                 return vint.pack('ssss', acls[0], acls[1], b'', b'')
             return vint.pack('ssss', acls[0], acls[1], acls[2], acls[3])
-        else:
-            return None
+        return None
 
     @staticmethod
     def _correct_posix1e_v1_delimiters(acls, path):
@@ -668,8 +665,7 @@ class Metadata:
     def _encode_linux_attr(self):
         if self.linux_attr:
             return vint.pack('V', self.linux_attr)
-        else:
-            return None
+        return None
 
     def _load_linux_attr_rec(self, port):
         data = vint.read_bvec(port)
@@ -723,8 +719,7 @@ class Metadata:
             for name, value in self.linux_xattr:
                 result += vint.pack('ss', name, value)
             return result
-        else:
-            return None
+        return None
 
     def _load_linux_xattr_rec(self, file):
         data = vint.read_bvec(file)

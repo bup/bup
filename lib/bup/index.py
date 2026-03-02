@@ -260,8 +260,7 @@ class Entry:
     def _fixup_time(self, t):
         if self.tmax is not None and t > self.tmax:
             return self.tmax
-        else:
-            return t
+        return t
 
     def is_valid(self):
         f = IX_HASHVALID|IX_EXISTS
@@ -641,10 +640,9 @@ def _slashappend_or_add_error(p, caller):
     except OSError as e:
         add_error('%s: %s' % (caller, e))
         return None
-    else:
-        if stat.S_ISDIR(st.st_mode):
-            return slashappend(p)
-        return p
+    if stat.S_ISDIR(st.st_mode):
+        return slashappend(p)
+    return p
 
 
 def unique_resolved_paths(paths):

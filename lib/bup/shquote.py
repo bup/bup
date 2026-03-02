@@ -92,10 +92,8 @@ def unfinished_word(line):
         if firstchar in [q, qq]:
             # pylint: disable-next=used-before-assignment
             return (firstchar, word)
-        else:
-            return (None, word)
-    else:
-        return (None, b'')
+        return (None, word)
+    return (None, b'')
 
 def quotify(qtype, word, terminate):
     """Return a bytes corresponding to given word, quoted using qtype.
@@ -113,10 +111,9 @@ def quotify(qtype, word, terminate):
     """
     if qtype == qq:
         return qq + word.replace(qq, b'\\"') + (terminate and qq or b'')
-    elif qtype == q:
+    if qtype == q:
         return q + word.replace(q, b"\\'") + (terminate and q or b'')
-    else:
-        return re.sub(br'([\"\' \t\n\r])', br'\\\1', word)
+    return re.sub(br'([\"\' \t\n\r])', br'\\\1', word)
 
 
 def quotify_list(words):
@@ -163,6 +160,5 @@ def what_to_add(qtype, origword, newword, terminate):
     """
     if not newword.startswith(origword):
         return b''
-    else:
-        qold = quotify(qtype, origword, terminate=False)
-        return quotify(qtype, newword, terminate=terminate)[len(qold):]
+    qold = quotify(qtype, origword, terminate=False)
+    return quotify(qtype, newword, terminate=terminate)[len(qold):]

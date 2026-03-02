@@ -114,7 +114,7 @@ def main(argv):
             exp_n = expected_bup_entry_count_for_tree(b''.join(info[3]))
             if bupm_n == exp_n:
                 return True
-            elif bupm_n > exp_n:
+            if bupm_n > exp_n:
                 bad_bupm += 1
                 log(f'error: tree with extra bupm entries ({bupm_n} > {exp_n})'
                     f' (please report): {parent.oid.hex()}\n')
@@ -143,9 +143,8 @@ def main(argv):
                 live_objs.close()
         if bad_bupm:
             return EXIT_FAILURE
-        elif (ref_missing + found_missing + abridged_bupm):
+        if (ref_missing + found_missing + abridged_bupm):
             if (ref_missing or found_missing) and not opt.links:
                 log('note: missing object list may be incomplete without --links\n')
             return EXIT_FALSE
-        else:
-            return EXIT_TRUE
+        return EXIT_TRUE

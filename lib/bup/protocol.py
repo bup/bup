@@ -266,7 +266,7 @@ class Server:
                     self.conn.write(b'%s.idx\n' % name)
                 self.conn.ok()
                 return
-            elif n == 0xffffffff:
+            if n == 0xffffffff:
                 debug2('bup server: receive-objects suspending.\n')
                 self.suspended = True
                 self.conn.ok()

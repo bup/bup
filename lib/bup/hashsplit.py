@@ -108,15 +108,14 @@ def split_to_shalist(makeblob, maketree,
         for (sha,size,level) in sl:
             shal.append((GIT_MODE_FILE, sha, size))
         return _make_shalist(shal)[0]
-    else:
-        stacks = [[]]
-        for (sha,size,level) in sl:
-            stacks[0].append((GIT_MODE_FILE, sha, size))
-            _squish(maketree, stacks, level)
-        #log('stacks: %r\n' % [len(i) for i in stacks])
-        _squish(maketree, stacks, len(stacks)-1)
-        #log('stacks: %r\n' % [len(i) for i in stacks])
-        return _make_shalist(stacks[-1])[0]
+    stacks = [[]]
+    for (sha,size,level) in sl:
+        stacks[0].append((GIT_MODE_FILE, sha, size))
+        _squish(maketree, stacks, level)
+    #log('stacks: %r\n' % [len(i) for i in stacks])
+    _squish(maketree, stacks, len(stacks)-1)
+    #log('stacks: %r\n' % [len(i) for i in stacks])
+    return _make_shalist(stacks[-1])[0]
 
 
 def split_to_blob_or_tree(makeblob, maketree,
@@ -125,7 +124,6 @@ def split_to_blob_or_tree(makeblob, maketree,
     shalist = list(split_to_shalist(makeblob, maketree, splitter))
     if len(shalist) == 1:
         return (shalist[0][0], shalist[0][2])
-    elif len(shalist) == 0:
+    if len(shalist) == 0:
         return (GIT_MODE_FILE, makeblob(b''))
-    else:
-        return (GIT_MODE_TREE, maketree(shalist))
+    return (GIT_MODE_TREE, maketree(shalist))

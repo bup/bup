@@ -432,7 +432,7 @@ def item_mode(item):
     m = item.meta
     if isinstance(m, Metadata):
         return m.mode
-    elif isinstance(m, int):
+    if isinstance(m, int):
         return m
     raise TypeError(f'not integer or Metadata {m!r}')
 
@@ -990,7 +990,7 @@ def tags_items(repo, names):
         for _ in it: pass
         if typ == b'blob':
             return Item(meta=default_file_mode, oid=oid)
-        elif typ == b'tree':
+        if typ == b'tree':
             return Item(meta=default_dir_mode, oid=oid)
         raise Exception('unexpected tag type ' + typ.decode('ascii')
                         + ' for tag ' + path_msg(name))

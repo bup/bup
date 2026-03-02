@@ -101,23 +101,22 @@ def _raw_write_bwlimit(f, buf, bwcount, bwtime):
     if not bwlimit:
         f.write(buf)
         return (len(buf), time.time())
-    else:
-        # We want to write in reasonably large blocks, but not so large that
-        # they're likely to overflow a router's queue.  So our bwlimit timing
-        # has to be pretty granular.  Also, if it takes too long from one
-        # transmit to the next, we can't just make up for lost time to bring
-        # the average back up to bwlimit - that will risk overflowing the
-        # outbound queue, which defeats the purpose.  So if we fall behind
-        # by more than one block delay, we shouldn't ever try to catch up.
-        for i in range(0,len(buf),4096):
-            now = time.time()
-            next = max(now, bwtime + 1.0*bwcount/bwlimit)
-            time.sleep(next-now)
-            sub = buf[i:i+4096]
-            f.write(sub)
-            bwcount = len(sub)  # might be less than 4096
-            bwtime = next
-        return (bwcount, bwtime)
+    # We want to write in reasonably large blocks, but not so large that
+    # they're likely to overflow a router's queue.  So our bwlimit timing
+    # has to be pretty granular.  Also, if it takes too long from one
+    # transmit to the next, we can't just make up for lost time to bring
+    # the average back up to bwlimit - that will risk overflowing the
+    # outbound queue, which defeats the purpose.  So if we fall behind
+    # by more than one block delay, we shouldn't ever try to catch up.
+    for i in range(0,len(buf),4096):
+        now = time.time()
+        next = max(now, bwtime + 1.0*bwcount/bwlimit)
+        time.sleep(next-now)
+        sub = buf[i:i+4096]
+        f.write(sub)
+        bwcount = len(sub)  # might be less than 4096
+        bwtime = next
+    return (bwcount, bwtime)
 
 
 def _legacy_cache_id_for_host_path(host, path):
@@ -643,22 +642,21 @@ class Client:
                 raise EOFError('EOF while reading config value type')
             if kind == 0:
                 return None
-            elif kind == 1:
+            if kind == 1:
                 return True
-            elif kind == 2:
+            if kind == 2:
                 return False
-            elif kind == 3:
+            if kind == 3:
                 val = read_vint(conn)
                 if val is None: raise EOFError('EOF while reading vint')
                 return val
-            elif kind == 4:
+            if kind == 4:
                 val = read_bvec(conn)
                 if val is None: raise EOFError('EOF while reading bvec')
                 return val
-            elif kind == 5:
+            if kind == 5:
                 raise PermissionError(f'config-get does not allow remote access to {name}')
-            else:
-                raise TypeError(f'Unrecognized result type {kind}')
+            raise TypeError(f'Unrecognized result type {kind}')
 
 
 class RemotePackStore:

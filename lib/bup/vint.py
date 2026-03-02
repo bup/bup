@@ -115,8 +115,7 @@ def read_vint(port):
             break
     if negative:
         return -result
-    else:
-        return result
+    return result
 
 
 def write_bvec(port, x):

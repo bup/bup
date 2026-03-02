@@ -181,8 +181,7 @@ def _linux_attr_supported(path):
     except OSError as e:
         if e.errno in (errno.ENOTTY, errno.ENOSYS, errno.EOPNOTSUPP):
             return False
-        else:
-            raise
+        raise
     return True
 
 

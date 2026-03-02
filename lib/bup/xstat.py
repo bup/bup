@@ -39,8 +39,7 @@ def fstime_to_sec_bytes(fstime):
         s += 1
     if ns == 0:
         return b'%d' % s
-    else:
-        return b'%d.%09d' % (s, ns)
+    return b'%d.%09d' % (s, ns)
 
 def utime(path, times):
     """Times must be provided as (atime_ns, mtime_ns)."""
@@ -113,18 +112,16 @@ def classification_str(mode, include_exec):
            and (pystat.S_IMODE(mode) \
                 & (pystat.S_IXUSR | pystat.S_IXGRP | pystat.S_IXOTH)):
             return '*'
-        else:
-            return ''
-    elif pystat.S_ISDIR(mode):
-        return '/'
-    elif pystat.S_ISLNK(mode):
-        return '@'
-    elif pystat.S_ISFIFO(mode):
-        return '|'
-    elif pystat.S_ISSOCK(mode):
-        return '='
-    else:
         return ''
+    if pystat.S_ISDIR(mode):
+        return '/'
+    if pystat.S_ISLNK(mode):
+        return '@'
+    if pystat.S_ISFIFO(mode):
+        return '|'
+    if pystat.S_ISSOCK(mode):
+        return '='
+    return ''
 
 
 def local_time_str(t):

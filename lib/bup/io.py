@@ -280,8 +280,7 @@ def walk_path_msg(ref_name, item_path):
     path = f'{path_msg(item_path[root].name)}:{path}'
     if S_ISDIR(item_path[-1].mode):
         return f'{path_msg(ref_name)} {path}/'
-    else:
-        return f'{path_msg(ref_name)} {path}'
+    return f'{path_msg(ref_name)} {path}'
 
 
 def qsql_id(s):

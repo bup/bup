@@ -80,7 +80,7 @@ def git_config_get(path, option, *, opttype=None):
     if rc == 0:
         if opttype == 'int':
             return int(r)
-        elif opttype == 'bool': # any positive int is true for git --bool
+        if opttype == 'bool': # any positive int is true for git --bool
             if not r:
                 return None
             if r in (b'0', b'false'):
@@ -169,10 +169,9 @@ def mangle_name(name, mode, gitmode):
     if stat.S_ISREG(mode) and not stat.S_ISREG(gitmode):
         assert(stat.S_ISDIR(gitmode))
         return name + b'.bup'
-    elif name.endswith(b'.bup') or name[:-1].endswith(b'.bup'):
+    if name.endswith(b'.bup') or name[:-1].endswith(b'.bup'):
         return name + b'.bupl'
-    else:
-        return name
+    return name
 
 
 (BUP_NORMAL, BUP_CHUNKED) = (0,1)
@@ -189,12 +188,12 @@ def demangle_name(name, mode):
     """
     if name.endswith(b'.bupl'):
         return (name[:-5], BUP_NORMAL)
-    elif name.endswith(b'.bup'):
+    if name.endswith(b'.bup'):
         return (name[:-4], BUP_CHUNKED)
-    elif name.endswith(b'.bupm'):
+    if name.endswith(b'.bupm'):
         return (name[:-5],
                 BUP_CHUNKED if stat.S_ISDIR(mode) else BUP_NORMAL)
-    elif name.endswith(b'.bupd'): # should be unreachable
+    if name.endswith(b'.bupd'): # should be unreachable
         raise ValueError(f'Cannot unmangle *.bupd files: {path_msg(name)}')
     return (name, BUP_NORMAL)
 
@@ -730,24 +729,21 @@ def open_idx(filename):
             if version == 2:
                 contexts.pop_all()
                 return PackIdxV2(filename, f)
-            else:
-                raise GitError('%s: expected idx file version 2, got %d'
-                               % (path_msg(filename), version))
-        elif len(header) == 8 and header[0:4] < b'\377tOc':
+            raise GitError('%s: expected idx file version 2, got %d'
+                           % (path_msg(filename), version))
+        if len(header) == 8 and header[0:4] < b'\377tOc':
             contexts.pop_all()
             return PackIdxV1(filename, f)
-        else:
-            raise GitError('%s: unrecognized idx file header'
-                           % path_msg(filename))
+        raise GitError('%s: unrecognized idx file header'
+                       % path_msg(filename))
 
 
 def open_object_idx(filename):
     if filename.endswith(b'.idx'):
         return open_idx(filename)
-    elif filename.endswith(b'.midx'):
+    if filename.endswith(b'.midx'):
         return open_midx(filename)
-    else:
-        raise GitError('pack index filenames must end with .idx or .midx')
+    raise GitError('pack index filenames must end with .idx or .midx')
 
 
 def idxmerge(idxlist, final_progress=True):
@@ -1070,8 +1066,7 @@ def read_ref(refname, repo_dir = None):
     if l:
         assert(len(l) == 1)
         return l[0][1]
-    else:
-        return None
+    return None
 
 
 def rev_list_invocation(ref_or_refs, format=None):

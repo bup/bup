@@ -331,9 +331,9 @@ def shstr(cmd):
     """
     if isinstance(cmd, (bytes, str)):
         return cmd
-    elif all(isinstance(x, bytes) for x in cmd):
+    if all(isinstance(x, bytes) for x in cmd):
         return b' '.join(map(bquote, cmd))
-    elif all(isinstance(x, str) for x in cmd):
+    if all(isinstance(x, str) for x in cmd):
         return ' '.join(map(squote, cmd))
     raise TypeError('unsupported shstr argument: ' + repr(cmd))
 
@@ -507,8 +507,7 @@ class Conn(BaseConn):
         if rl:
             assert(rl[0] == self.inp.fileno())
             return True
-        else:
-            return None
+        return None
 
 
 def checked_reader(fd, n):
@@ -636,8 +635,7 @@ class DemuxConn(BaseConn):
             if len(buf) < csize[0]:
                 csize[0] -= len(buf)
                 return None
-            else:
-                return csize[0]
+            return csize[0]
         return b''.join(self._read_parts(until_size))
 
     def has_input(self):
@@ -762,8 +760,7 @@ def slashappend(s):
     assert isinstance(s, bytes)
     if s and not s.endswith(b'/'):
         return s + b'/'
-    else:
-        return s
+    return s
 
 
 def _mmap_do(f, sz, flags, prot, close):
