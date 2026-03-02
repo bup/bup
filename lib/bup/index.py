@@ -239,6 +239,7 @@ class Entry:
     def update_from_stat(self, st, meta_ofs):
         # Should only be called when the entry is stale(), and
         # invalidate() should almost certainly be called afterward.
+        # pylint: disable=attribute-defined-outside-init
         self.dev = st.st_dev
         self.ino = st.st_ino
         self.nlink = st.st_nlink
@@ -252,6 +253,7 @@ class Entry:
         self._fixup()
 
     def _fixup(self):
+        # pylint: disable=attribute-defined-outside-init
         self.mtime = self._fixup_time(self.mtime)
         self.ctime = self._fixup_time(self.ctime)
 
@@ -272,6 +274,7 @@ class Entry:
         assert(sha)
         assert(gitmode)
         assert(gitmode+0 == gitmode)
+        # pylint: disable=attribute-defined-outside-init
         self.gitmode = gitmode
         self.sha = sha
         self.flags |= IX_HASHVALID|IX_EXISTS

@@ -4,11 +4,12 @@ from binascii import hexlify
 from copy import deepcopy
 from itertools import chain
 from stat import S_ISDIR
+from typing import Any, List, Optional
 import os.path
 import posixpath
 
 from bup import metadata, vfs, xstat
-from bup.compat import argv_bytes
+from bup.compat import argv_bytes, dataclass
 from bup.io import path_msg
 from bup.options import Options
 from bup.helpers import columnate, istty1, log
@@ -75,10 +76,19 @@ human-readable    print human readable file sizes (i.e. 3.9K, 4.7M)
 n,numeric-ids list numeric IDs (user, group, etc.) rather than names
 """
 
+@dataclass(slots=True)
 class LsOpts:
-    __slots__ = ['paths', 'long_listing', 'classification', 'show_hidden',
-                 'hash', 'commit_hash', 'numeric_ids', 'human_readable',
-                 'directory', 'repo', 'l']
+    classification: Optional[int]
+    commit_hash: Optional[int]
+    directory: Optional[int]
+    hash: Optional[int]
+    human_readable: Optional[int]
+    l: Optional[int]
+    long_listing: Optional[int]
+    numeric_ids: Optional[int]
+    paths: List[bytes]
+    repo: Any
+    show_hidden: str
 
 def opts_from_cmdline(args, onabort=None, pwd=b'/'):
     """Parse ls command line arguments and return a dictionary of ls
@@ -102,19 +112,18 @@ def opts_from_cmdline(args, onabort=None, pwd=b'/'):
             opt.show_hidden = 'all'
         elif option in ('-A', '--almost-all'):
             opt.show_hidden = 'almost'
-    ret = LsOpts()
-    ret.paths = opt.paths
-    ret.l = ret.long_listing = opt.long_listing
-    ret.classification = opt.classification
-    ret.show_hidden = opt.show_hidden
-    ret.hash = opt.hash
-    ret.commit_hash = opt.commit_hash
-    ret.numeric_ids = opt.numeric_ids
-    ret.human_readable = opt.human_readable
-    ret.directory = opt.directory
     remote = argv_bytes(opt.remote) if opt.remote else None
-    ret.repo = main_repo_location(remote, o.fatal)
-    return ret
+    return LsOpts(paths=opt.paths,
+                  l=opt.long_listing,
+                  long_listing=opt.long_listing,
+                  classification=opt.classification,
+                  show_hidden=opt.show_hidden,
+                  hash=opt.hash,
+                  commit_hash=opt.commit_hash,
+                  numeric_ids=opt.numeric_ids,
+                  human_readable=opt.human_readable,
+                  directory=opt.directory,
+                  repo=main_repo_location(remote, o.fatal))
 
 def within_repo(repo, opt, out, pwd=b''):
 

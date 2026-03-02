@@ -17,6 +17,7 @@ enable=
   arguments-renamed,
   assert-on-string-literal,
   assignment-from-no-return,
+  attribute-defined-outside-init,
   bad-classmethod-argument,
   bad-indentation,
   bare-except,

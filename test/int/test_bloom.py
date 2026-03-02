@@ -4,15 +4,16 @@ import errno, os, sys, tempfile
 import pytest
 
 from bup import bloom
+from bup.compat import dataclass
 
 
 def test_bloom(tmpdir):
     hashes = [os.urandom(20) for i in range(100)]
+    @dataclass(slots=True)
     class Idx:
-        pass
-    ix = Idx()
-    ix.name = b'dummy.idx'
-    ix.shatable = b''.join(hashes)
+        name: bytes
+        shatable: bytes
+    ix = Idx(name=b'dummy.idx', shatable=b''.join(hashes))
     for k in (4, 5):
         with bloom.create(tmpdir + b'/pybuptest.bloom', expected=100, k=k) as b:
             b.add_idx(ix)

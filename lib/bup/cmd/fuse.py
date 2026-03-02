@@ -47,6 +47,7 @@ from bup.repo import LocalRepo
 class BupFs(fuse.Fuse):
     def __init__(self, repo, verbose=0, fake_metadata=False):
         fuse.Fuse.__init__(self)
+        self.multithreaded = False
         self.repo = repo
         self.verbose = verbose
         self.fake_metadata = fake_metadata
@@ -165,7 +166,6 @@ def main(argv):
             f.fuse_args.add('debug')
         if opt.foreground:
             f.fuse_args.setmod('foreground')
-        f.multithreaded = False
         if opt.allow_other:
             f.fuse_args.add('allow_other')
         f.main()

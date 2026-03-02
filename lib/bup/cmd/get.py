@@ -1,7 +1,7 @@
 
 from binascii import hexlify, unhexlify
 from collections import namedtuple
-from dataclasses import replace as dcreplace
+from dataclasses import field, replace as dcreplace
 from re import Pattern
 from stat import S_ISDIR
 from textwrap import fill
@@ -155,18 +155,22 @@ def spec_msg(s):
     return '--%s: %s %s' % (s.method, path_msg(s.src), path_msg(s.dest))
 
 def parse_args(args):
+    @dataclass(slots=True)
     class GetOpts:
-        pass
+        help: bool = False
+        verbose: int = 0
+        quiet: bool = False
+        print_commits: bool = False
+        print_trees: bool = False
+        print_tags: bool = False
+        bwlimit: Optional[int] = None
+        compress: Optional[int] = None
+        source: Optional[bytes] = None
+        remote: Optional[bytes] = None
+        source_loc: URL = URL(scheme=b'file')
+        dst_loc: Optional[Union[URL, client.Config]] = None
+        target_specs: list = field(default_factory=list)
     opt = GetOpts()
-    opt.help = False
-    opt.verbose = 0
-    opt.quiet = False
-    opt.print_commits = opt.print_trees = opt.print_tags = False
-    opt.bwlimit = None
-    opt.compress = None
-    opt.source = opt.remote = None
-    opt.source_loc = URL(scheme=b'file')
-    opt.target_specs = []
 
     # Since we don't want to create a Rewriter until we've finished
     # checking the requests (e.g. are past the resolvers), the spec's

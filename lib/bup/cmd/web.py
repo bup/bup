@@ -183,12 +183,13 @@ def _dir_contents(repo, resolution, params, param_info):
 class BupRequestHandler(tornado.web.RequestHandler):
 
     def initialize(self, repo=None, human=None):
-        self.repo = repo
+        self.repo = repo # pylint: disable=attribute-defined-outside-init
         default_false_param = ParamInfo(default=0, from_req=from_req_bool,
                                         normalize=normalize_bool)
         human_param = ParamInfo(default=1 if human else 0,
                                 from_req=from_req_bool,
                                 normalize=normalize_bool)
+        # pylint: disable-next=attribute-defined-outside-init
         self.bup_param_info = {'hash': default_false_param,
                                'hidden': default_false_param,
                                'human': human_param,
