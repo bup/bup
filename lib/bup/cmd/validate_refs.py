@@ -105,9 +105,9 @@ def main(argv):
                         bupm_n += 1
                 except MissingObject:
                     return True # bupm sub-item, will be handled by later for_item
-                except Exception:
+                except Exception as ex:
                     pm = walk_path_msg(ref_name, item_path)
-                    raise Exception(f'Unable to parse .bupm at {pm}')
+                    raise Exception(f'Unable to parse .bupm at {pm}') from ex
             parent = item_path[-2]
             info = vfs.get_ref(repo, hexlify(parent.oid))
             assert info[0], info

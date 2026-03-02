@@ -5,6 +5,7 @@ from os import fsencode
 from random import SystemRandom
 from tempfile import mkdtemp
 from time import localtime
+from typing import Callable, NoReturn
 from shutil import rmtree
 import sys, os, subprocess, errno, select, mmap, stat, re, struct
 import hashlib, heapq, math, operator, time
@@ -938,7 +939,7 @@ def parse_date_arg(arg, val):
     except ValueError as ex:
         raise ValueError(f'{path_msg(arg)} {path_msg(val)} is not a float') from ex
 
-def parse_excludes(options, fatal):
+def parse_excludes(options, fatal: Callable[[str], NoReturn]):
     """Traverse the options and extract all excludes, or call Option.fatal()."""
     excluded_paths = []
 
@@ -950,8 +951,8 @@ def parse_excludes(options, fatal):
             try:
                 f = open(resolve_parent(argv_bytes(parameter)), 'rb')
             except OSError as ex:
-                raise fatal(f"couldn't read exclusions from {path_msg(parameter)}"
-                            f' ({ex.strerror} [{ex.errno}])')
+                fatal(f"couldn't read exclusions from {path_msg(parameter)}"
+                      f' ({ex.strerror} [{ex.errno}])')
             with f:
                 for exclude_path in f.readlines():
                     # FIXME: perhaps this should be rstrip('\n')
@@ -961,7 +962,7 @@ def parse_excludes(options, fatal):
     return sorted(frozenset(excluded_paths))
 
 
-def parse_rx_excludes(options, fatal):
+def parse_rx_excludes(options, fatal: Callable[[str], NoReturn]):
     """Traverse the options and extract all rx excludes, or call
     Option.fatal()."""
     excluded_patterns = []
@@ -981,8 +982,8 @@ def parse_rx_excludes(options, fatal):
             try:
                 f = open(resolve_parent(parameter), 'rb')
             except OSError as ex:
-                raise fatal(f"couldn't read exclusions from {path_msg(parameter)}"
-                            f' ({ex.strerror} [{ex.errno}])')
+                fatal(f"couldn't read exclusions from {path_msg(parameter)}"
+                      f' ({ex.strerror} [{ex.errno}])')
             with f:
                 for pattern in f.readlines():
                     spattern = pattern.rstrip(b'\n')

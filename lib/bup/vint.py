@@ -22,7 +22,7 @@ def encode_vuint(x):
     except OverflowError:
         ret = b''
         if x < 0:
-            raise Exception("vuints must not be negative")
+            raise Exception("vuints must not be negative") from None
         assert x, "the C version should have picked this up"
 
         while True:

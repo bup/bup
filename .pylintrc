@@ -48,6 +48,7 @@ enable=
   no-else-raise,
   no-else-return,
   no-value-for-parameter,
+  raise-missing-from,
   redefined-outer-name,
   reimported,
   return-in-init,

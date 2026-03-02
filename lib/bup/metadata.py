@@ -359,7 +359,7 @@ class Metadata:
                 except OSError as e:
                     if e.errno in (errno.ENOTEMPTY, errno.EEXIST):
                         raise Exception('refusing to overwrite non-empty dir '
-                                        + path_msg(path))
+                                        + path_msg(path)) from None
                     raise
             else:
                 os.unlink(path)
@@ -419,7 +419,7 @@ class Metadata:
                 if e.errno != errno.EACCES:
                     raise
                 erm = e.strerror or e.errno
-                raise ApplyError(f'lutime ({erm}): {path_msg(path)}')
+                raise ApplyError(f'lutime ({erm}): {path_msg(path)}') from e
         else:
             try:
                 utime(path, (self.atime or 0, self.mtime or 0))
@@ -427,7 +427,7 @@ class Metadata:
                 if e.errno != errno.EACCES:
                     raise
                 erm = e.strerror or e.errno
-                raise ApplyError(f'utime ({erm}): {path_msg(path)}')
+                raise ApplyError(f'utime ({erm}): {path_msg(path)}') from e
 
         uid = gid = -1 # By default, do nothing.
         if is_superuser():
@@ -627,7 +627,7 @@ class Metadata:
                 raise
             erm = e.strerror or e.errno
             msg = f'POSIX1e ACL apply failed ({erm}): {path_msg(path)}'
-            raise ApplyError(msg)
+            raise ApplyError(msg) from e
 
 
     ## Linux attributes (lsattr(1), chattr(1))
@@ -689,13 +689,13 @@ class Metadata:
                     raise ApplyError('chattr(0x%s) failed (%s): %s'
                                      % (hex(self.linux_attr),
                                         e.strerror or e.errno,
-                                        path_msg(path)))
+                                        path_msg(path))) from e
                 if e.errno == EINVAL:
                     raise ApplyError('chattr(0x%s) failed (%s),'
                                      ' please report if this is not ntfs-3g: %s'
                                      % (hex(self.linux_attr),
                                         e.strerror or e.errno,
-                                        path_msg(path)))
+                                        path_msg(path))) from e
                 raise
 
 
@@ -756,7 +756,7 @@ class Metadata:
             if e.errno != errno.EACCES:
                 raise
             erm = e.strerror or e.errno
-            raise ApplyError(f'xattr.set ({erm}): {path_msg(path)}')
+            raise ApplyError(f'xattr.set ({erm}): {path_msg(path)}') from e
         for k, v in self.linux_xattr:
             if k not in existing_xattrs \
                     or v != xattr.get(path, k, nofollow=True):
@@ -766,7 +766,8 @@ class Metadata:
                     if e.errno not in (errno.EPERM, errno.EOPNOTSUPP):
                         raise
                     erm = e.strerror or e.errno
-                    raise ApplyError(f'xattr.set ({erm}): {path_msg(path)}')
+                    raise ApplyError(f'xattr.set ({erm}): {path_msg(path)}') \
+                        from e
             existing_xattrs -= frozenset([k])
         for k in existing_xattrs:
             try:
@@ -775,7 +776,8 @@ class Metadata:
                 if e.errno not in (errno.EPERM, errno.EACCES):
                     raise
                 erm = e.strerror or e.errno
-                raise ApplyError(f'xattr.remove ({erm}): {path_msg(path)}')
+                raise ApplyError(f'xattr.remove ({erm}): {path_msg(path)}') \
+                    from e
 
     __slots__ = ('_frozen',
                  'mode', 'uid', 'gid', 'user', 'group', 'rdev',
