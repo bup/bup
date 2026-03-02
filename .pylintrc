@@ -51,6 +51,7 @@ enable=
   reimported,
   return-in-init,
   singleton-comparison,
+  stop-iteration-return,
   subprocess-popen-preexec-fn,
   super-init-not-called,
   syntax-error,

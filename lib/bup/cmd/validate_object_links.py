@@ -64,7 +64,7 @@ class Pack:
                 yield oid, git._typermap[kind], data
             elif kind in (5, 6, 7): # reserved obj_ofs_delta obj_ref_delta
                 it = self._cp.get(hexlify(oid))
-                _, tp, _ = next(it)
+                _, tp, _ = next(it, None) # cannot return None
                 data = b''.join(it)
                 if tp == b'blob':
                     continue

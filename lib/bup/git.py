@@ -1536,7 +1536,7 @@ def walk_object(get_ref, oidx, *, stop_at=None, include_data=None,
         # must have data for commits, trees, or unknown
         got_data = (exp_typ in (b'commit', b'tree', None)) or include_data
         item_it = get_ref(oidx, include_data=got_data)
-        get_oidx, typ, _ = next(item_it)
+        get_oidx, typ, _ = next(item_it, None) # cannot return None
         if not get_oidx:
             item = WalkItem(oid=unhexlify(oidx), type=exp_typ, name=name,
                             mode=mode, data=False)

@@ -591,7 +591,7 @@ def root_items(repo, names=None, want_meta=True):
         if ref in (b'.', b'.tag'):
             continue
         it = repo.cat(b'refs/heads/' + ref)
-        oidx, typ, size_ = next(it)
+        oidx, typ, size_ = next(it, None) # cannot return None
         if not oidx:
             continue
         assert typ == b'commit'

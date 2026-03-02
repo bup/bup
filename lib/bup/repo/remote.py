@@ -69,7 +69,7 @@ class RemoteRepo(RepoProtocol):
         # oid, and verify that the data provided by the remote
         # actually has that oid.  If not, throw.
         items = self.client.cat_batch((ref,))
-        oidx, typ, size, it = info = next(items)
+        oidx, typ, size, it = info = next(items, None) # cannot return None
         yield info[:-1]
         if oidx:
             if not _oidx_rx.fullmatch(ref):
