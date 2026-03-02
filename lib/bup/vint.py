@@ -21,7 +21,7 @@ def encode_vuint(x):
         return _helpers.vuint_encode(x)
     except OverflowError:
         if x < 0:
-            raise Exception(f'cannot encode negative vuint {x}') from None
+            raise ValueError(f'cannot encode negative value {x}') from None
     assert x != 0, 'the C code did not handle zero'
     ret = b''
     while True:

@@ -1097,7 +1097,7 @@ static unsigned int vuint_encode(long long val, char *buf)
     unsigned int len = 0;
 
     if (val < 0) {
-        PyErr_SetString(PyExc_Exception, "vuints must not be negative");
+        PyErr_Format(PyExc_ValueError, "cannot encode negative value %llu", val);
         return 0;
     }
 
@@ -1709,8 +1709,8 @@ static PyObject *bup_limited_vint_pack(PyObject *self, PyObject *args)
         case 'V': {
             long long val = PyLong_AsLongLong(item);
             if (val == -1 && PyErr_Occurred())
-                return PyErr_Format(PyExc_OverflowError,
-                                    "pack arg %d invalid", (int)i);
+                return PyErr_Format(PyExc_OverflowError, "pack arg %zd invalid",
+                                    i);
             if (end - pos < 10)
                 goto overflow;
 	    pos += vuint_encode(val, pos);
@@ -1719,8 +1719,8 @@ static PyObject *bup_limited_vint_pack(PyObject *self, PyObject *args)
         case 'v': {
             long long val = PyLong_AsLongLong(item);
             if (val == -1 && PyErr_Occurred())
-                return PyErr_Format(PyExc_OverflowError,
-                                    "pack arg %d invalid", (int)i);
+                return PyErr_Format(PyExc_OverflowError, "pack arg %zd invalid",
+                                    i);
             if (end - pos < 10)
                 goto overflow;
             pos += vint_encode(val, pos);
