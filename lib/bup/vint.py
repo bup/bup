@@ -20,20 +20,19 @@ def encode_vuint(x):
     try:
         return _helpers.vuint_encode(x)
     except OverflowError:
-        ret = b''
         if x < 0:
-            raise Exception("vuints must not be negative") from None
-        assert x, "the C version should have picked this up"
-
-        while True:
-            seven_bits = x & 0x7f
-            x >>= 7
-            if x:
-                ret += (0x80 | seven_bits).to_bytes(1, 'big')
-            else:
-                ret += seven_bits.to_bytes(1, 'big')
-                break
-        return ret
+            raise Exception(f'cannot encode negative vuint {x}') from None
+    assert x != 0, 'the C code did not handle zero'
+    ret = b''
+    while True:
+        seven_bits = x & 0x7f
+        x >>= 7
+        if x:
+            ret += (0x80 | seven_bits).to_bytes(1, 'big')
+        else:
+            ret += seven_bits.to_bytes(1, 'big')
+            break
+    return ret
 
 
 def read_vuint(port):
@@ -69,15 +68,16 @@ def encode_vint(x):
     try:
         return _helpers.vint_encode(x)
     except OverflowError:
-        assert x != 0, "the C version should have picked this up"
-        if x < 0:
-            x = -x
-            sign_and_six_bits = (x & 0x3f) | 0x40
-        else:
-            sign_and_six_bits = x & 0x3f
-        x >>= 6
-        assert x, "the C version should have picked this up"
-        return (0x80 | sign_and_six_bits).to_bytes(1, 'big') + encode_vuint(x)
+        pass
+    assert x != 0, 'the C code did not handle zero'
+    if x < 0:
+        x = -x
+        sign_and_six_bits = (x & 0x3f) | 0x40
+    else:
+        sign_and_six_bits = x & 0x3f
+    x >>= 6
+    assert x != 0, f'the C code did not handle the small value {x}'
+    return (0x80 | sign_and_six_bits).to_bytes(1, 'big') + encode_vuint(x)
 
 
 def read_vint(port):
