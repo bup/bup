@@ -91,7 +91,7 @@ from stat import \
      S_IXOTH,
      S_IXUSR)
 from time import localtime, strftime
-import re
+import builtins, re
 
 from bup import git
 from bup.git import \
@@ -108,14 +108,13 @@ from bup.helpers import EXIT_FAILURE, debug2
 from bup.io import path_msg
 from bup.metadata import Metadata, empty_metadata
 
-py_IOError = IOError
 
 # We currently assume that it's always appropriate to just forward IOErrors
 # to a remote client.
 
-class IOError(py_IOError):
+class IOError(builtins.IOError):
     def __init__(self, errno, message, terminus=None):
-        py_IOError.__init__(self, errno, message)
+        super().__init__(self, errno, message)
         self.terminus = terminus
 
 _reg_perms = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH

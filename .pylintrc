@@ -79,6 +79,7 @@ enable=
   use-list-literal,
   use-maxsplit-arg,
   use-yield-from,
+  used-before-assignment,
   useless-return,
   wrong-import-order,
   wrong-import-position

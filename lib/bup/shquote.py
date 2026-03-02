@@ -86,8 +86,11 @@ def unfinished_word(line):
         for (wordstart,word) in _quotesplit(line):
             pass
     except QuoteError:
+        # Assumes _quotesplit() always returns at least one item.
+        # pylint: disable-next=used-before-assignment
         firstchar = line[wordstart:wordstart+1]
         if firstchar in [q, qq]:
+            # pylint: disable-next=used-before-assignment
             return (firstchar, word)
         else:
             return (None, word)

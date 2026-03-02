@@ -125,6 +125,7 @@ def split(opt, files, parent, out, split_cfg, *,
         for sha, size_, level_ in shalist:
             out.write(hexlify(sha) + b'\n')
             reprogress()
+        if opt.verbose: log('\n')
     elif opt.tree or opt.commit or opt.name:
         if opt.name: # insert dummy_name which may be used as a restore target
             mode, sha = \
@@ -136,6 +137,8 @@ def split(opt, files, parent, out, split_cfg, *,
             shalist = split_to_shalist(new_blob, new_tree,
                                        hashsplit.from_config(files, split_cfg))
         tree = new_tree(shalist)
+        if opt.verbose: log('\n')
+        if opt.tree: out.write(hexlify(tree) + b'\n')
     else:
         last = 0
         for blob, level_ in hashsplit.from_config(files, split_cfg):
@@ -145,11 +148,7 @@ def split(opt, files, parent, out, split_cfg, *,
             megs = hashsplit.total_split // 1024 // 1024
             if not opt.quiet and last != megs:
                 last = megs
-
-    if opt.verbose:
-        log('\n')
-    if opt.tree:
-        out.write(hexlify(tree) + b'\n')
+        if opt.verbose: log('\n')
 
     commit = None
     if opt.commit or opt.name:

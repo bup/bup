@@ -377,8 +377,9 @@ class Client:
         self._available_commands = { b'help' }
         with self._line_based_call('help') as call:
             lines = call.lines()
-            if not next(lines, None) == b'Commands:':
-                raise ClientError('unexpected help header ' + repr(line))
+            line = next(lines, None)
+            if not line == b'Commands:':
+                raise ClientError(f'unexpected help header {line!r}')
             result = set()
             for line in lines:
                 if not line.startswith(b'    '):
