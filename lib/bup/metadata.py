@@ -258,6 +258,10 @@ class Metadata:
         # during restore.  On some platforms (i.e. kFreeBSD), it isn't
         # stable for other file types.  For example "cp -a" will
         # change it for a plain file.
+        #
+        # FIXME: should we always collect rdev, and just handle
+        # suppressing it for the relevant types where appropriate
+        # (cf. summary_bytes() size_or_dev_str).
         if stat.S_ISCHR(st.st_mode) or stat.S_ISBLK(st.st_mode):
             self.rdev = st.st_rdev
         else:
@@ -1126,9 +1130,8 @@ def summary_bytes(meta, numeric_ids = False, classification = None,
         elif meta.gid is not None:
             group_str = str(meta.gid).encode()
         if stat.S_ISCHR(meta.mode) or stat.S_ISBLK(meta.mode):
-            if meta.rdev:
-                size_or_dev_str = ('%d,%d' % (os.major(meta.rdev),
-                                              os.minor(meta.rdev))).encode()
+            size_or_dev_str = ('%d,%d' % (os.major(meta.rdev),
+                                          os.minor(meta.rdev))).encode()
         elif meta.size is not None:
             if human_readable:
                 size_or_dev_str = format_filesize(meta.size).encode()
