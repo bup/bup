@@ -196,19 +196,20 @@ def partition(predicate, stream):
 
     """
     stream = iter(stream)
+    have_rest = False
     first_nonmatch = None
     def leading_matches():
-        nonlocal first_nonmatch
+        nonlocal have_rest, first_nonmatch
         for x in stream:
             if predicate(x):
                 yield x
             else:
-                first_nonmatch = (x,)
+                have_rest = True
+                first_nonmatch = x
                 break
     def rest():
-        nonlocal first_nonmatch
-        if first_nonmatch:
-            yield first_nonmatch[0]
+        if have_rest:
+            yield first_nonmatch
             yield from stream
     return (leading_matches(), rest())
 

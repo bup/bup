@@ -69,6 +69,7 @@ enable=
   unnecessary-semicolon,
   unreachable,
   unspecified-encoding,
+  unsubscriptable-object,
   unused-argument,
   unused-import,
   unused-variable,

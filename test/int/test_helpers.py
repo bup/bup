@@ -15,6 +15,7 @@ from bup.helpers import \
      grafted_path_components,
      nullctx,
      parse_num,
+     partition,
      path_components,
      stopped,
      stripped_path_components,
@@ -192,6 +193,32 @@ def test_stopped():
             with stopped(proc, 0.5) as ctx:
                 if raise_while_running: raise Exception('nope')
         assert proc.poll() == -SIGKILL
+
+
+def test_partition():
+    # pylint: disable=use-implicit-booleaness-not-comparison
+    def odd(x): return isinstance(x, (int, float)) and x % 2
+    m, rest = partition(odd, tuple())
+    assert list(m) == []
+    assert list(rest) == []
+    m, rest = partition(odd, (None,))
+    assert list(m) == []
+    assert list(rest) == [None]
+    m, rest = partition(lambda x: not odd(x), (None,))
+    assert list(m) == [None]
+    assert list(rest) == []
+    m, rest = partition(odd, (2, 3, 4))
+    assert list(m) == []
+    assert list(rest) == [2, 3, 4]
+    m, rest = partition(odd, (1, 2, 3, 4))
+    assert list(m) == [1]
+    assert list(rest) == [2, 3, 4]
+    m, rest = partition(odd, (1, 3, 5))
+    assert list(m) == [1, 3, 5]
+    assert list(rest) == []
+    m, rest = partition(odd, (1, 3, 5, 6))
+    assert list(m) == [1, 3, 5]
+    assert list(rest) == [6]
 
 
 @pytest.mark.parametrize('sync_atomic_replace', (True, False))
