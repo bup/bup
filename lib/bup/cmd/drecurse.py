@@ -37,16 +37,11 @@ def main(argv):
                                     exclude_rxs=exclude_rxs)
     if opt.profile:
         import cProfile # pylint: disable=import-outside-toplevel
-        def do_it():
-            for i in it:
-                pass
-        cProfile.run('do_it()')
+        cProfile.runctx('for _ in it: pass', globals(), locals())
+    elif opt.quiet:
+        for i in it: pass
     else:
-        if opt.quiet:
-            for i in it:
-                pass
-        else:
-            sys.stdout.flush()
-            out = byte_stream(sys.stdout)
-            for (name,st) in it:
-                out.write(name + b'\n')
+        sys.stdout.flush()
+        out = byte_stream(sys.stdout)
+        for (name,st) in it:
+            out.write(name + b'\n')
