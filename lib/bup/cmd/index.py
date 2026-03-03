@@ -287,7 +287,7 @@ def main(argv):
         excluded_paths = parse_excludes(flags, o.fatal)
         exclude_rxs = parse_rx_excludes(flags, o.fatal)
         xexcept = index.unique_resolved_paths(extra)
-        for rp, path in index.reduce_paths(extra):
+        for rp, path_ in index.reduce_paths(extra):
             update_index(rp, excluded_paths, exclude_rxs, fsindex,
                          check=opt.check, check_device=opt.check_device,
                          xdev=opt.xdev, xdev_exceptions=xexcept,

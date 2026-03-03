@@ -57,7 +57,7 @@ class BupFs(fuse.Fuse):
             log('--getattr(%r)\n' % path)
         res = vfs.resolve(self.repo, path, want_meta=(not self.fake_metadata),
                           follow=False)
-        name, item = res[-1]
+        item = res[-1][1]
         if not item:
             return -errno.ENOENT
         if self.fake_metadata:
@@ -81,12 +81,12 @@ class BupFs(fuse.Fuse):
         path = argv_bytes(path)
         assert not offset  # We don't return offsets, so offset should be unused
         res = vfs.resolve(self.repo, path, follow=False)
-        dir_name, dir_item = res[-1]
+        dir_item = res[-1][1]
         if not dir_item:
             yield -errno.ENOENT
         yield fuse.Direntry('..')
         # FIXME: make sure want_meta=False is being completely respected
-        for ent_name, ent_item in vfs.contents(self.repo, dir_item, want_meta=False):
+        for ent_name, ent_item_ in vfs.contents(self.repo, dir_item, want_meta=False):
             fusename = fsdecode(ent_name.replace(b'/', b'-'))
             yield fuse.Direntry(fusename)
 
@@ -95,7 +95,7 @@ class BupFs(fuse.Fuse):
         if self.verbose > 0:
             log('--readlink(%r)\n' % path)
         res = vfs.resolve(self.repo, path, follow=False)
-        name, item = res[-1]
+        item = res[-1][1]
         if not item:
             return -errno.ENOENT
         return fsdecode(vfs.readlink(self.repo, item))
@@ -105,7 +105,7 @@ class BupFs(fuse.Fuse):
         if self.verbose > 0:
             log('--open(%r)\n' % path)
         res = vfs.resolve(self.repo, path, follow=False)
-        name, item = res[-1]
+        item = res[-1][1]
         if not item:
             return -errno.ENOENT
         accmode = os.O_RDONLY | os.O_WRONLY | os.O_RDWR
@@ -121,7 +121,7 @@ class BupFs(fuse.Fuse):
         if self.verbose > 0:
             log('--read(%r)\n' % path)
         res = vfs.resolve(self.repo, path, follow=False)
-        name, item = res[-1]
+        item = res[-1][1]
         if not item:
             return -errno.ENOENT
         with vfs.fopen(self.repo, item) as f:
@@ -141,7 +141,7 @@ v,verbose     increase log output (can be used more than once)
 
 def main(argv):
     o = options.Options(optspec)
-    opt, flags, extra = o.parse_bytes(argv[1:])
+    opt, flags_, extra = o.parse_bytes(argv[1:])
     if not opt.verbose:
         opt.verbose = 0
 

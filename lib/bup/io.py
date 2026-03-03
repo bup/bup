@@ -12,7 +12,7 @@ import os, select, sys, time
 # leading to race conditions.  Ick.  We'll do it the hard way.
 def _hard_write(fd, buf):
     while buf:
-        (r,w,x) = select.select([], [fd], [], None)
+        w = select.select([], [fd], [], None)[1]
         if not w:
             raise IOError('select(fd) returned without being writable')
         try:

@@ -6,6 +6,7 @@ class-rgx=([_a-z]+)|(_?([A-Z]+[a-z]*)+) # LocalRepo mmap finalized...
 const-rgx=([_a-z]+)|([_A-Z]+) # snake-case uppper or lower
 
 [VARIABLES]
+dummy-variables-rgx=.*_$
 ignored-argument-names=.*_$
 
 [MESSAGES CONTROL]
@@ -65,6 +66,7 @@ enable=
   unspecified-encoding,
   unused-argument,
   unused-import,
+  unused-variable,
   unused-wildcard-import,
   use-dict-literal,
   use-implicit-booleaness-not-len,

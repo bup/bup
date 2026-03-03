@@ -1,6 +1,6 @@
 
 from contextlib import ExitStack
-import os, pickle
+import pickle
 
 from bup.helpers import atomically_replaced_file, fsync, unlink
 
@@ -38,7 +38,6 @@ class HLinkDB:
             raise Error('save of %r already in progress' % self._filename)
         with self._cleanup:
             if self._node_paths:
-                dir, name = os.path.split(self._filename)
                 self._pending_save = atomically_replaced_file(self._filename,
                                                               mode='wb',
                                                               buffering=65536)

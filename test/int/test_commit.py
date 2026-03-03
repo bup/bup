@@ -61,6 +61,7 @@ def test_commit_parsing(tmpdir):
         if coffs[-5] == b'-'[0]:
             coff = - coff
         commit_items = git.get_commit_items(commit, git.cp())
+        assert parents == b''
         WVPASSEQ(commit_items.parents, [])
         WVPASSEQ(commit_items.tree, tree)
         WVPASSEQ(commit_items.author_name, b'Someone')

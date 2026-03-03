@@ -16,7 +16,7 @@ unsafe       use the command even though it may be DANGEROUS
 
 def main(argv):
     o = Options(optspec)
-    opt, flags, extra = o.parse_bytes(argv[1:])
+    opt, flags_, extra = o.parse_bytes(argv[1:])
 
     if not opt.unsafe:
         o.fatal('refusing to run dangerous, experimental command without --unsafe')

@@ -19,7 +19,7 @@ o=         output filename
 
 def main(argv):
     o = options.Options(optspec)
-    opt, flags, extra = o.parse_bytes(argv[1:])
+    opt, flags_, extra = o.parse_bytes(argv[1:])
     addr = derive_repo_addr(remote=argv_bytes(opt.remote) if opt.remote else None,
                             die=o.fatal)
 

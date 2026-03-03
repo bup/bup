@@ -16,7 +16,7 @@ ignore-midx  Don't use midx files; use only plain pack idx files.
 
 def main(argv):
     o = options.Options(optspec)
-    opt, flags, extra = o.parse_bytes(argv[1:])
+    opt, flags_, extra = o.parse_bytes(argv[1:])
 
     if extra:
         o.fatal("no arguments expected")

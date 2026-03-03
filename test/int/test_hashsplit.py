@@ -101,13 +101,12 @@ def test_fanout_behaviour():
 
 def test_hashsplit_files(tmpdir):
     # See HashSplitter_init for source of sizes
-    blob_size = 1 << BUP_BLOBBITS
     max_blob_size = 1 << (BUP_BLOBBITS + 2)
     null_path = os.path.join(tmpdir, b'nulls')
     blobs_in_file = 10
     max_blob = bytearray(max_blob_size)
     with open(null_path, 'wb') as f:
-        for idx in range(blobs_in_file):
+        for _ in range(blobs_in_file):
             f.write(max_blob)
     max_blob = None
 
@@ -252,6 +251,5 @@ def test_hashsplitter_short_read():
             return b''
     hs = HashSplitter([DataObj()], bits=13)
     count = 0
-    for blob, lvl in hs:
-        count += 1
+    for _ in hs: count += 1
     assert count == 1

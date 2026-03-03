@@ -48,7 +48,7 @@ def classify_saves(saves, period_start):
     # each group, and a "drop" action (False, utc) for the rest.
     for pstart, time_region_id in tm_ranges:
         matches, rest = partition(lambda s: s[0] >= pstart, rest)
-        for region_id, region_saves in groupby(matches, time_region_id):
+        for region_id_, region_saves in groupby(matches, time_region_id):
             yield from retain_newest_in_region(list(region_saves))
 
     # Finally, drop any saves older than the specified periods
@@ -74,7 +74,7 @@ unsafe        use the command even though it may be DANGEROUS
 
 def main(argv):
     o = options.Options(optspec)
-    opt, flags, roots = o.parse_bytes(argv[1:])
+    opt, flags_, roots = o.parse_bytes(argv[1:])
     roots = [argv_bytes(x) for x in roots]
 
     if not opt.unsafe:
@@ -111,7 +111,7 @@ def main(argv):
                     try:
                         when = strftime('%Y-%m-%d-%H%M%S', localtime(period_utc))
                         log('keeping ' + kind + ' since ' + when + '\n')
-                    except ValueError as ex:
+                    except ValueError:
                         if period_utc < 0:
                             log('keeping %s since %d seconds before %s\n'
                                 %(kind, abs(period_utc), epoch_ymd))

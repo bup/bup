@@ -264,7 +264,7 @@ def main(argv):
                 # Rename it back to 'latest'
                 resolved = tuple(elt if i != 2 else (b'latest',) + elt[1:]
                                  for i, elt in enumerate(resolved))
-            path_parent, path_name = os.path.split(path)
+            path_name = os.path.split(path)[1]
             leaf_name, leaf_item = resolved[-1]
             if not leaf_item:
                 add_error('error: cannot access %r in %r'

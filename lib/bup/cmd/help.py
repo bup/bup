@@ -12,7 +12,7 @@ bup help <command>
 
 def main(argv):
     o = options.Options(optspec)
-    opt, flags, extra = o.parse_bytes(argv[1:])
+    extra = o.parse_bytes(argv[1:])[2]
 
     if len(extra) == 0:
         os.execvp(path.exe(), [path.exe(), b'-h'])

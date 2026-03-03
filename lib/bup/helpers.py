@@ -499,7 +499,7 @@ class Conn(BaseConn):
         return self.inp.readline()
 
     def has_input(self):
-        [rl, wl, xl] = select.select([self.inp.fileno()], [], [], 0)
+        rl = select.select([self.inp.fileno()], [], [], 0)[0]
         if rl:
             assert(rl[0] == self.inp.fileno())
             return True
@@ -568,7 +568,7 @@ class DemuxConn(BaseConn):
 
     def _next_packet(self, timeout):
         if self.closed: return False
-        rl, wl, xl = select.select([self.infd], [], [], timeout)
+        rl = select.select([self.infd], [], [], timeout)[0]
         if not rl: return False
         assert(rl[0] == self.infd)
         ns = b''.join(checked_reader(self.infd, 5))
@@ -948,8 +948,9 @@ def parse_excludes(options, fatal):
         elif option == '--exclude-from':
             try:
                 f = open(resolve_parent(argv_bytes(parameter)), 'rb')
-            except IOError as e:
-                raise fatal("couldn't read %r" % parameter)
+            except OSError as ex:
+                raise fatal(f"couldn't read exclusions from {path_msg(parameter)}"
+                            f' ({ex.strerror} [{ex.errno}])')
             for exclude_path in f.readlines():
                 # FIXME: perhaps this should be rstrip('\n')
                 exclude_path = resolve_parent(exclude_path.strip())
@@ -977,8 +978,9 @@ def parse_rx_excludes(options, fatal):
         elif option == b'--exclude-rx-from':
             try:
                 f = open(resolve_parent(parameter), 'rb')
-            except IOError as e:
-                fatal("couldn't read %r" % parameter)
+            except OSError as ex:
+                raise fatal(f"couldn't read exclusions from {path_msg(parameter)}"
+                            f' ({ex.strerror} [{ex.errno}])')
             for pattern in f.readlines():
                 spattern = pattern.rstrip(b'\n')
                 if not spattern:

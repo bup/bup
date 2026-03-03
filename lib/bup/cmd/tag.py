@@ -20,7 +20,7 @@ f,force     Overwrite existing tag, or ignore missing tag when deleting
 
 def main(argv):
     o = options.Options(optspec)
-    opt, flags, extra = o.parse_bytes(argv[1:])
+    opt, flags_, extra = o.parse_bytes(argv[1:])
 
     git.check_repo_or_die()
 

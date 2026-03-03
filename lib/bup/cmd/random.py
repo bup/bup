@@ -15,7 +15,7 @@ v,verbose print byte counter to stderr
 
 def main(argv):
     o = options.Options(optspec)
-    opt, flags, extra = o.parse_bytes(argv[1:])
+    opt, flags_, extra = o.parse_bytes(argv[1:])
 
     if len(extra) != 1:
         o.fatal("exactly one argument expected")

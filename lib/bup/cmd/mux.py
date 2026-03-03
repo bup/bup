@@ -19,7 +19,7 @@ def main(argv):
     os.close(devnull)
 
     o = options.Options(optspec)
-    opt, flags, extra = o.parse_bytes(argv[1:])
+    extra = o.parse_bytes(argv[1:])[2]
     if len(extra) < 1:
         o.fatal('command is required')
 

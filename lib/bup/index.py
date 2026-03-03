@@ -400,7 +400,7 @@ class ExistingEntry(Entry):
         ofs = self.children_ofs
         assert(ofs <= len(self._m))
         assert(self.children_n <= UINT_MAX)  # i.e. python struct 'I'
-        for i in range(self.children_n):
+        for _ in range(self.children_n):
             eon = self._m.find(b'\0', ofs)
             assert(eon >= 0)
             assert(eon >= ofs)
@@ -545,7 +545,6 @@ class Writer:
         self.filename = filename = resolve_parent(filename)
         self.metastore = metastore
         self.tmax = tmax
-        (dir,name) = os.path.split(filename)
         with ExitStack() as self.cleanup:
             self.pending_index = atomically_replaced_file(self.filename,
                                                           mode='wb',

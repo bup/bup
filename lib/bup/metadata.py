@@ -735,7 +735,7 @@ class Metadata:
         xattr_n = vint.read_vuint(memfile)
         if xattr_n is None:
             raise EOFError('EOF while reading number of Linux xattrs')
-        for i in range(xattr_n):
+        for _ in range(xattr_n):
             key = vint.read_bvec(memfile)
             if key is None:
                 raise EOFError('EOF while reading Linux xattr metadata key')

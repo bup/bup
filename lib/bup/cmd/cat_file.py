@@ -17,7 +17,7 @@ bupm        print the target directory's .bupm file directly to stdout
 
 def main(argv):
     o = options.Options(optspec)
-    opt, flags, extra = o.parse_bytes(argv[1:])
+    opt, flags_, extra = o.parse_bytes(argv[1:])
 
     git.check_repo_or_die()
 
@@ -35,7 +35,7 @@ def main(argv):
 
     with LocalRepo() as repo:
         resolved = vfs.resolve(repo, target, follow=False)
-        leaf_name, leaf_item = resolved[-1]
+        leaf_item = resolved[-1][1]
         if not leaf_item:
             log('error: cannot access %r in %r\n'
                 % (b'/'.join(name for name, item in resolved), target))

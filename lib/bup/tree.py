@@ -260,7 +260,7 @@ class Stack:
         h = RecordHashSplitter(bits=BUP_TREE_BLOBBITS)
         for item in items:
             pending_split.append(item)
-            split, bits = h.feed(item.name)
+            split = h.feed(item.name)[0] # [1] is bits
             if (split and len(pending_split) > 1) or item is last_item:
                 splits.append(pending_split)
                 pending_split = []

@@ -18,7 +18,7 @@ p,port    port to listen on, defaults to 1982
 
 def main(argv):
     o = options.Options(optspec, optfunc=getopt.getopt)
-    opt, flags, extra = o.parse_bytes(argv[1:])
+    opt, flags_, extra = o.parse_bytes(argv[1:])
 
     host = opt.listen
     port = int(opt.port) if opt.port else 1982
@@ -26,10 +26,10 @@ def main(argv):
     e = None
     for res in socket.getaddrinfo(host, port, socket.AF_UNSPEC,
                                   socket.SOCK_STREAM, 0, socket.AI_PASSIVE):
-        af, socktype, proto, canonname, sa = res
+        af, socktype, proto, canonname_, sa = res
         try:
             s = socket.socket(af, socktype, proto)
-        except socket.error as e:
+        except socket.error:
             continue
         try:
             if af == socket.AF_INET6:
@@ -40,7 +40,7 @@ def main(argv):
             s.bind(sa)
             s.listen(1)
             fcntl.fcntl(s.fileno(), fcntl.F_SETFD, fcntl.FD_CLOEXEC)
-        except socket.error as e:
+        except socket.error:
             s.close()
             continue
         socks.append(s)
@@ -51,7 +51,7 @@ def main(argv):
 
     try:
         while True:
-            [rl,wl,xl] = select.select(socks, [], [], 60)
+            rl = select.select(socks, [], [], 60)[0]
             for l in rl:
                 s, src = l.accept()
                 try:

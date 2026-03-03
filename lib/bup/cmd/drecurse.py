@@ -39,9 +39,9 @@ def main(argv):
         import cProfile # pylint: disable=import-outside-toplevel
         cProfile.runctx('for _ in it: pass', globals(), locals())
     elif opt.quiet:
-        for i in it: pass
+        for _ in it: pass
     else:
         sys.stdout.flush()
         out = byte_stream(sys.stdout)
-        for (name,st) in it:
+        for name, st_ in it:
             out.write(name + b'\n')

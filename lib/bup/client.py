@@ -145,7 +145,7 @@ def parse_remote(remote):
 
 
 def _legacy_cache_id(remote):
-    scheme, host, port, path = parse_remote(remote)
+    scheme_, host, port_, path = parse_remote(remote)
     # The b'None' here matches python2's behavior of b'%s' % None == 'None',
     # python3 will (as of version 3.7.5) do the same for str ('%s' % None),
     # but crashes instead when doing b'%s' % None.
@@ -354,11 +354,10 @@ class Client:
                 yield idx, load
 
     def list_indexes(self):
-        for idx, load in self._list_indexes(self):
+        for idx, _ in self._list_indexes(self):
             yield idx
 
     def sync_indexes(self):
-        conn = self.conn
         mkdirp(self.cachedir)
         # All cached idxs are extra until proven otherwise
         extra = set()
@@ -567,7 +566,7 @@ class Client:
         arg = b'%d' % ((1 if want_meta else 0)
                        | (2 if follow else 0)
                        | (4 if parent else 0))
-        with self._call('resolve', arg) as call:
+        with self._call('resolve', arg):
             conn = self.conn
             if parent:
                 protocol.write_resolution(conn, parent)

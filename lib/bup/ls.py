@@ -93,7 +93,7 @@ def opts_from_cmdline(args, onabort=None, pwd=b'/'):
     opt.classification = None
     opt.show_hidden = None
     for flag in flags:
-        option, parameter = flag
+        option, value_ = flag
         if option in ('-F', '--classify'):
             opt.classification = 'all'
         elif option == '--file-type':
@@ -145,7 +145,7 @@ def within_repo(repo, opt, out, pwd=b''):
             else:
                 resolved = vfs.try_resolve(repo, path, want_meta=want_meta)
 
-            leaf_name, leaf_item = resolved[-1]
+            leaf_name_, leaf_item = resolved[-1]
             if not leaf_item:
                 log('error: cannot access %r in %r\n'
                     % ('/'.join(path_msg(name) for name, item in resolved),

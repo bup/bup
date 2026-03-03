@@ -170,7 +170,7 @@ def _normal_or_chunked_file_size(repo, oid):
     _, obj_t, _, it = get_oidx(repo, hexlify(oid))
     ofs = 0
     while obj_t == b'tree':
-        mode, name, last_oid = last_tree_entry(b''.join(it))
+        mode_, name, last_oid = last_tree_entry(b''.join(it))
         ofs += int(name, 16)
         _, obj_t, _, it = get_oidx(repo, hexlify(last_oid))
     return ofs + sum(len(b) for b in it)
@@ -905,7 +905,7 @@ def parse_rev(f):
     return unhexlify(tree), int(auth_sec)
 
 def _item_for_rev(rev):
-    commit_oidx, (tree_oid, utc) = rev
+    commit_oidx, (tree_oid, utc_) = rev
     coid = unhexlify(commit_oidx)
     item = cache_get_commit_item(coid, need_meta=False)
     if item:
@@ -1159,7 +1159,7 @@ def _resolve_path(repo, path, parent=None, want_meta=True, follow=True):
             else:  # First item will be '.' and have the metadata
                 assert len(items) in (1, 2), items
                 item = items[1][1] if len(items) == 2 else None
-                dot, dot_item = items[0]
+                dot = items[0][0] # items[0][1] is the dot item
                 assert dot == b'.'
                 past[-1] = parent_name, parent_item
             if not item:
@@ -1281,7 +1281,7 @@ def try_resolve(repo, path, parent=None, want_meta=True):
     if not S_ISLNK(item_mode(leaf_item)):
         return res
     follow = resolve(repo, leaf_name, parent=res[:-1], want_meta=want_meta)
-    follow_name, follow_item = follow[-1]
+    follow_item = follow[-1][1] # [0] is the name
     if follow_item:
         return follow
     return res
@@ -1360,7 +1360,7 @@ def join(repo, ref):
         if typ == b'blob':
             yield from it
         elif typ == b'tree':
-            for ent_mode, ent_name, ent_oid in tree_iter(b''.join(it)):
+            for ent_mode_, ent_name, ent_oid in tree_iter(b''.join(it)):
                 yield from _join(*get_oidx(repo, hexlify(ent_oid)), path + [ent_name])
         elif typ == b'commit':
             treeline = b''.join(it).split(b'\n', maxsplit=1)[0]

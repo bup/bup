@@ -75,7 +75,7 @@ def _test_resolve(repo, tmpdir):
     res = resolve(b'/')
     wvpasseq(1, len(res))
     wvpasseq(((b'', vfs._root),), res)
-    ignore, root_item = res[0]
+    _, root_item = res[0]
     root_content = frozenset(vfs.contents(repo, root_item))
     wvpasseq(frozenset([(b'.', root_item),
                         (b'.tag', vfs._tags),
@@ -101,7 +101,7 @@ def _test_resolve(repo, tmpdir):
     wvpasseq(2, len(res))
     wvpasseq(((b'', vfs._root), (b'.tag', vfs._tags)),
              res)
-    ignore, tag_item = res[1]
+    _, tag_item = res[1]
     tag_content = frozenset(vfs.contents(repo, tag_item))
     wvpasseq(frozenset([(b'.', tag_item),
                         (b'test-tag', expected_test_tag_item)]),
@@ -111,7 +111,7 @@ def _test_resolve(repo, tmpdir):
     res = resolve(b'/test')
     wvpasseq(2, len(res))
     wvpasseq(((b'', vfs._root), (b'test', test_revlist_w_meta)), res)
-    ignore, test_item = res[1]
+    _, test_item = res[1]
     test_content = frozenset(vfs.contents(repo, test_item))
     # latest has metadata here due to caching
     wvpasseq(frozenset([(b'.', test_revlist_w_meta),
@@ -129,7 +129,7 @@ def _test_resolve(repo, tmpdir):
                 (b'test', test_revlist_w_meta),
                 (save_time_str, expected_latest_item_w_meta))
     wvpasseq(expected, res)
-    ignore, latest_item = res[2]
+    _, latest_item = res[2]
     latest_content = frozenset(vfs.contents(repo, latest_item))
     expected = frozenset((x.name, vfs.Item(oid=x.oid, meta=x.meta))
                          for x in (tip_tree[name]
@@ -259,8 +259,8 @@ def _test_resolve(repo, tmpdir):
                 (b'dir', expected_dir_item))
     def lresolve(*args, **keys):
         return resolve(*args, **dict(keys, follow=False))
-    for resname, resolver in (('resolve', resolve),
-                              ('resolve nofollow', lresolve)):
+    for resname_, resolver in (('resolve', resolve),
+                               ('resolve nofollow', lresolve)):
         for path in (b'/test/latest/dir-symlink/',
                      b'/test/latest/dir-symlink/.'):
             vfs.clear_cache()

@@ -311,7 +311,7 @@ def main(argv):
     global opt, par2_ok
 
     o = options.Options(optspec)
-    opt, flags, extra = o.parse_bytes(argv[1:])
+    opt, flags_, extra = o.parse_bytes(argv[1:])
     opt.verbose = opt.verbose or 0
 
     par2_setup()

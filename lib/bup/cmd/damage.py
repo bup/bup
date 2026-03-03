@@ -24,7 +24,7 @@ S,seed=  random number seed (for repeatable tests)
 
 def main(argv):
     o = options.Options(optspec)
-    opt, flags, extra = o.parse_bytes(argv[1:])
+    opt, flags_, extra = o.parse_bytes(argv[1:])
 
     if not extra:
         o.fatal('filenames expected')

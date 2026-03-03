@@ -345,7 +345,6 @@ def transfer_commit(hash, parent, src_repo, dest_repo, ignore_missing):
     items = parse_commit(get_cat_data(src_repo.cat(hash), b'commit'))
     tree = unhexlify(items.tree)
     author = b'%s <%s>' % (items.author_name, items.author_mail)
-    author_time = (items.author_sec, items.author_offset)
     committer = b'%s <%s@%s>' % (userfullname(), username(), hostname())
     get_random_item(hexlify(tree), src_repo, dest_repo, ignore_missing)
     c = dest_repo.write_commit(tree, parent,
@@ -367,7 +366,7 @@ def append_commit(src_loc, parent, src_repo, dest_repo, rewriter, excludes,
     assert isinstance(src_loc, Loc), src_loc
     path = src_loc.vfs_path
     assert len(path) == 3, path
-    root, ref, save = path
+    root_, ref, save = path
     assert isinstance(save[1], (vfs.Commit, vfs.FakeLink)), path
     assert isinstance(ref[1], vfs.RevList), path
     save_oid, tree_oid, repairs = \
@@ -394,8 +393,8 @@ def append_commits(src_loc, dest_hash, src_repo, dest_repo, rewriter, excludes,
     assert isinstance(src_loc, Loc), src_loc
     assert src_loc.type in ('branch', 'commit', 'save'), src_loc
     path = src_loc.vfs_path
-    assert len(path) == 2, path
-    root, ref = path
+    assert len(path) == 2, path # root, ref
+    ref = path[1]
     assert isinstance(ref[1], vfs.RevList), ref[1]
 
     # We need both the VFS name (YYYY-MM-DD[-N]), and the rev-list
@@ -613,9 +612,9 @@ def resolve_append(spec, src_repo, dest_repo):
         if not isinstance(src, Loc):
             misuse(f'cannot currently rewrite git location {src}')
         src_path = src.vfs_path
-        if len(src_path) != 2:
+        if len(src_path) != 2: # root, src_ref
             misuse(f'cannot append {vpm(src_path)}')
-        root, src_ref = src_path
+        src_ref = src_path[1]
         if not isinstance(src_ref[1], vfs.RevList):
             misuse(f'cannot append {vpm(src_path)} saves'
                    f' ({path_msg(src_ref[0])} is a {type(src_ref[1])})')
