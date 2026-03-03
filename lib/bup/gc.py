@@ -100,6 +100,8 @@ def find_live_objects(existing_count, cat_pipe, refs=None, *,
         oid_exists = idx_list.exists if idx_list else None
         approx_live_count = 0
         scan_refs = refs if refs else list(git.list_refs())
+        if not scan_refs:
+            raise Exception('no refs; suspicious, refusing to proceed')
         ref_n = len(scan_refs)
         def progress_msg(ref_i):
             return 'scanned %s of %s ref%s (%02.2f%% of all objects)' \
