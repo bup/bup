@@ -542,13 +542,15 @@ def _commit_item_from_data(oid, data):
                   oid=unhexlify(info.tree),
                   coid=oid)
 
-def _commit_item_from_oid(repo, oid, require_meta):
+def _commit_item_from_oid(repo, oid, require_meta, *, data=None):
     commit = cache_get_commit_item(oid, need_meta=require_meta)
     if commit and ((not require_meta) or isinstance(commit.meta, Metadata)):
         return commit
-    _, typ, _, it = get_oidx(repo, hexlify(oid))
-    assert typ == b'commit'
-    commit = _commit_item_from_data(oid, b''.join(it))
+    if not data:
+        _, typ, _, it = get_oidx(repo, hexlify(oid))
+        assert typ == b'commit'
+        data = b''.join(it)
+    commit = _commit_item_from_data(oid, data)
     if require_meta:
         meta = _find_treeish_oid_metadata(repo, commit.oid)
         if meta:
@@ -557,8 +559,8 @@ def _commit_item_from_oid(repo, oid, require_meta):
     cache_notice(commit_key, commit, overwrite=True)
     return commit
 
-def _revlist_item_from_oid(repo, oid, require_meta):
-    commit = _commit_item_from_oid(repo, oid, require_meta)
+def _revlist_item_from_oid(repo, oid, require_meta, *, data=None):
+    commit = _commit_item_from_oid(repo, oid, require_meta, data=data)
     return RevList(oid=oid, meta=commit.meta)
 
 def root_items(repo, names=None, want_meta=True):
@@ -589,12 +591,13 @@ def root_items(repo, names=None, want_meta=True):
         if ref in (b'.', b'.tag'):
             continue
         it = repo.cat(b'refs/heads/' + ref)
-        oidx, typ, size = next(it)
+        oidx, typ, size_ = next(it)
         if not oidx:
             continue
         assert typ == b'commit'
-        commit = parse_commit(b''.join(it))
-        yield ref, _revlist_item_from_oid(repo, unhexlify(oidx), want_meta)
+        data = b''.join(it)
+        yield ref, _revlist_item_from_oid(repo, unhexlify(oidx), want_meta,
+                                          data=data)
 
 def ordered_tree_entries(entries, bupm=None):
     """Returns [(name, mangled_name, kind, gitmode, oid) ...] for each
