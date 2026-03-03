@@ -1274,7 +1274,7 @@ def establish_default_repo(path=None, *, must_exist=False):
         return maybe_exit(15, f'{path_msg(top)} is not a repository\n')
     except FileNotFoundError:
         return maybe_exit(15, f'{path_msg(top)} is missing (see "bup help init")\n')
-    return False
+    return maybe_exit(15, f'{path_msg(top)} is not a repository\n')
 
 
 def check_repo_or_die(path=None):
