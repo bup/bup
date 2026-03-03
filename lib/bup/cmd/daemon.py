@@ -59,9 +59,9 @@ def main(argv):
                     fd1 = os.dup(s.fileno())
                     fd2 = os.dup(s.fileno())
                     s.close()
-                    sp = subprocess.Popen([path.exe(), 'mux', '--',
-                                           path.exe(), 'server']
-                                          + extra, stdin=fd1, stdout=fd2)
+                    subprocess.Popen([path.exe(), 'mux', '--',
+                                      path.exe(), 'server']
+                                     + extra, stdin=fd1, stdout=fd2)
                 finally:
                     os.close(fd1)
                     os.close(fd2)
