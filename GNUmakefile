@@ -309,13 +309,15 @@ get_parallel_n = $(patsubst -j%,%,$(parallel_opt))
 maybe_specific_n = $(if $(filter -j%,$(parallel_opt)),-n$(get_parallel_n))
 xdist_opt = $(if $(filter -j,$(parallel_opt)),-nauto,$(maybe_specific_n))
 
+# lint targets depend on $(bup_deps) for extension-pkg-allow-list
+
 .PHONY: lint-lib
-lint-lib: dev/bup-exec dev/bup-python
+lint-lib: dev/bup-exec dev/bup-python $(bup_deps)
 	./pylint lib
 
 # unused-wildcard-import: we always "import * from wvpytest"
 .PHONY: lint-test
-lint-test: dev/bup-exec dev/bup-python
+lint-test: dev/bup-exec dev/bup-python $(bup_deps)
 	./pylint -d unused-wildcard-import test/lib test/int
 
 .PHONY: lint

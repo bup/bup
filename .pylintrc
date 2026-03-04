@@ -2,6 +2,9 @@
 [GENERAL OPTIONS]
 
 [BASIC]
+
+extension-pkg-allow-list=bup._helpers # so pylint can see effects
+
 class-rgx=([_a-z]+)|(_?([A-Z]+[a-z]*)+) # LocalRepo mmap finalized...
 const-rgx=([_a-z]+)|([_A-Z]+) # snake-case uppper or lower
 
@@ -48,6 +51,7 @@ enable=
   no-else-raise,
   no-else-return,
   no-member,
+  no-name-in-module,
   no-value-for-parameter,
   possibly-used-before-assignment,
   raise-missing-from,
