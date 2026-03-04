@@ -25,6 +25,7 @@ enable=
   bad-indentation,
   bare-except,
   broad-exception-caught,
+  c-extension-no-member,
   catching-non-exception,
   chained-comparison,
   consider-iterating-dictionary,
@@ -64,6 +65,7 @@ enable=
   super-init-not-called,
   syntax-error,
   trailing-comma-tuple,
+  trailing-newlines,
   trailing-whitespace,
   unbalanced-tuple-unpacking,
   undefined-loop-variable,
@@ -89,6 +91,7 @@ enable=
   use-yield-from,
   used-before-assignment,
   useless-return,
+  using-constant-test,
   wildcard-import,
   wrong-import-order,
   wrong-import-position
