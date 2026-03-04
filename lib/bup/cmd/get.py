@@ -47,8 +47,8 @@ argspec = (
     --append, etc.).  Both repositories default to BUP_DIR.  A remote
     destination may be specified with -r, and data may be pulled from
     a remote repository with the related "bup on HOST get ..."
-    command.  The --exclude-rx and --exclude-rx-from options currently
-    only apply to rewrites and repairs. Currently only --unnammed supports
+    command.  Currently, --exclude-rx and --exclude-rx-from only apply
+    to rewrites and repairs, and only --unnamed supports
     "--ignore-missing".""",
 
     ('optional arguments:',
