@@ -89,5 +89,6 @@ enable=
   use-yield-from,
   used-before-assignment,
   useless-return,
+  wildcard-import,
   wrong-import-order,
   wrong-import-position

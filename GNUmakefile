@@ -315,10 +315,10 @@ xdist_opt = $(if $(filter -j,$(parallel_opt)),-nauto,$(maybe_specific_n))
 lint-lib: dev/bup-exec dev/bup-python $(bup_deps)
 	./pylint lib
 
-# unused-wildcard-import: we always "import * from wvpytest"
+# unused-wildcard-import: we often "import * from wvpytest"
 .PHONY: lint-test
 lint-test: dev/bup-exec dev/bup-python $(bup_deps)
-	./pylint -d unused-wildcard-import test/lib test/int
+	./pylint -d unused-wildcard-import -d wildcard-import test/lib test/int
 
 .PHONY: lint
 lint: lint-lib lint-test
