@@ -1,4 +1,5 @@
 # -*-conf-*-
+
 [GENERAL OPTIONS]
 
 [BASIC]
@@ -13,7 +14,49 @@ dummy-variables-rgx=.*_$
 ignored-argument-names=.*_$
 
 [MESSAGES CONTROL]
+
+# Only enable the messages we want (i.e. opt-in) so that the set of
+# enable linters will be the same across pylint versions.  This does
+# mean that we'll need to periodiically check to see if we're
+# interested in new linters.  The current list was derived from the
+# default set in pylint 3.3.4.
+
 disable=all
+  # These are linters that are in the default set that we've decided
+  # against, at least for now.  To check for potentially new
+  # interesting linters, you can just uncomment these (removing all
+  # above) and run "make lint".
+  #
+  # broad-exception-raised,
+  # cell-var-from-loop,
+  # consider-using-f-string,
+  # duplicate-code,
+  # fixme,
+  # global-statement,
+  # global-variable-not-assigned,
+  # line-too-long,
+  # missing-class-docstring,
+  # missing-function-docstring,
+  # missing-module-docstring,
+  # multiple-imports,
+  # multiple-statements,
+  # protected-access,
+  # redefined-builtin,
+  # subprocess-run-check,
+  # superfluous-parens,
+  # too-few-public-methods,
+  # too-many-arguments,
+  # too-many-boolean-expressions,
+  # too-many-branches,
+  # too-many-function-args,
+  # too-many-instance-attributes,
+  # too-many-lines,
+  # too-many-locals,
+  # too-many-nested-blocks,
+  # too-many-positional-arguments,
+  # too-many-return-statements,
+  # too-many-statements
+
 enable=
   abstract-method,
   arguments-differ,
