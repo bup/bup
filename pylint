@@ -43,7 +43,7 @@ if test "$#" -eq 0; then
     dev/bup-python -m pylint \
                    -d unused-wildcard-import \
                    -d wildcard-import \
-                   test/lib test/int
+                   test/lib test/int test/ext
 else
     set -x
     exec dev/bup-python -m pylint "$@"

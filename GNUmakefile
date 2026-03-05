@@ -318,7 +318,8 @@ lint-lib: dev/bup-exec dev/bup-python $(bup_deps)
 # unused-wildcard-import: we often "import * from wvpytest"
 .PHONY: lint-test
 lint-test: dev/bup-exec dev/bup-python $(bup_deps)
-	./pylint -d unused-wildcard-import -d wildcard-import test/lib test/int
+	./pylint -d unused-wildcard-import -d wildcard-import \
+	  test/lib test/int test/ext
 
 .PHONY: lint
 lint: lint-lib lint-test
