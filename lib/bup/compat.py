@@ -57,3 +57,26 @@ else:
     def dataclass(*args, **kwargs):
         del kwargs['slots']
         return dataclasses.dataclass(*args, **kwargs)
+
+# "frozen for testing" is handled as a separate decorator because if
+# it's handled dynamically, say as a bespoke frozen setting like
+# frozen='testing' for our dataclass above, pylint (st least 3.3.4)
+# gets confused and starts issuing false positives for no-member in
+# some cases (e.g. field() fields).
+#
+# We have this because because while the docs claim there is only "a
+# tiny performance penalty" for frozen=True[1], it's currently
+# expensive.  Try "drecurse | pv -l > /dev/null" on a large tree with
+# and without a frozen stat_result, with a warm cache.
+#
+# [1] https://docs.python.org/3/library/dataclasses.html#frozen-instances
+
+if b'BUP_TEST_LEVEL' not in environ:
+    # So pylint can still understand it as a dataclasses.dataclass
+    dataclass_frozen_for_testing = dataclass
+else:
+    def dataclass_frozen_for_testing(*args, **kwargs):
+        """Exactly like dataclasses.dataclass except that frozen=True."""
+        assert 'frozen' not in kwargs, kwargs
+        kwargs['frozen'] = True
+        return dataclass(*args, **kwargs)

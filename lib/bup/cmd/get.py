@@ -11,7 +11,7 @@ import os, re, sys, textwrap, time
 
 from bup import client, compat, git, hashsplit, vfs
 from bup.commit import commit_message
-from bup.compat import dataclass, get_argvb
+from bup.compat import dataclass, dataclass_frozen_for_testing, get_argvb
 from bup.git import MissingObject, get_cat_data, parse_commit, walk_object
 from bup.helpers import \
     (EXIT_FAILURE,
@@ -348,7 +348,7 @@ def get_random_item(hash, src_repo, dest_repo, ignore_missing):
         dest_repo.just_write(item.oid, item.type, item.data)
 
 
-@dataclass(slots=True, frozen=True)
+@dataclass_frozen_for_testing(slots=True)
 class GetResult:
     oid: Optional[bytes] = None
     tree: Optional[bytes] = None

@@ -17,7 +17,7 @@ from typing import Literal, Optional, Union
 
 from bup import _helpers, hashsplit, midx, bloom, xstat
 from bup.commit import create_commit_blob, parse_commit
-from bup.compat import dataclass, environ
+from bup.compat import dataclass_frozen_for_testing, environ
 from bup.helpers import (EXIT_FAILURE,
                          OBJECT_EXISTS,
                          ObjectLocation,
@@ -1490,7 +1490,7 @@ class MissingObject(KeyError):
         KeyError.__init__(self, f'object {hexlify(oid)!r} is missing')
 
 
-@dataclass(slots=True, frozen=True)
+@dataclass_frozen_for_testing(slots=True)
 class WalkItem:
     oid: bytes
     name: bytes
