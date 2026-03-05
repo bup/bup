@@ -6,7 +6,7 @@ from shutil import rmtree
 from subprocess import DEVNULL, PIPE
 import os, pytest, re, sys
 
-from bup import compat, path
+from bup import compat
 from bup.compat import environ
 from bup.helpers import EXIT_FAILURE, bquote, unlink
 from bup.io import byte_stream
@@ -35,15 +35,16 @@ top = getcwd()
 bup_cmd = bup.path.exe()
 
 def rmrf(path):
-    err = []  # because python's scoping mess...
+    err = []
     def onerror(function, path, excinfo):
+        nonlocal err
         err.append((function, path, excinfo))
     rmtree(path, onerror=onerror)
     if err:
         function, path, excinfo = err[0]
-        ex_type, ex, traceback = excinfo
-        if (not isinstance(ex, OSError)) or ex.errno != ENOENT:
-            raise ex
+        ex_type, exc, traceback = excinfo
+        if (not isinstance(exc, FileNotFoundError)):
+            raise exc
 
 def verify_trees_match(path1, path2):
     global top
