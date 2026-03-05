@@ -3,12 +3,11 @@ task:
   name: debian check/lint root
   only_if: $CIRRUS_BRANCH != "master"
   container:
-    image: debian:bullseye
+    image: debian:bookworm
     cpu: 4
     memory: 2
   script: |
     set -xe
-    sed -ie '/buster/d' /etc/apt/sources.list
     dev/prep-for-debianish-build
     export LANG=C.UTF-8
     dev/system-info
@@ -24,12 +23,11 @@ task:
   name: debian long-check
   only_if: $CIRRUS_BRANCH != "master"
   container:
-    image: debian:bullseye
+    image: debian:bookworm
     cpu: 4
     memory: 2
   script: |
     set -xe
-    sed -ie '/buster/d' /etc/apt/sources.list
     dev/prep-for-debianish-build
     export LANG=C.UTF-8
     DEBIAN_FRONTEND=noninteractive apt-get -y install bup
@@ -48,7 +46,7 @@ task:
   name: debian check
   only_if: $CIRRUS_BRANCH != "master"
   container:
-    image: debian:bookworm
+    image: debian:trixie
     cpu: 4
     memory: 2
   script: |
