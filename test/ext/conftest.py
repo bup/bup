@@ -70,7 +70,6 @@ class BupSubprocTestRunner(pytest.Item):
 
 class BupSubprocTestFile(pytest.File):
     def collect(self):
-        name = self.fspath.basename
         # name='' because there's only one test: running the command.
         # i.e there are no sub-tests.  Otherwise the status messages
         # duplicate the test name like this:

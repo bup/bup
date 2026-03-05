@@ -39,8 +39,8 @@ def rmrf(path):
         err.append((function, path, excinfo))
     rmtree(path, onerror=onerror)
     if err:
-        function, path, excinfo = err[0]
-        ex_type, exc, traceback = excinfo
+        fn_, path, excinfo = err[0]
+        ex_type_, exc, traceback_ = excinfo
         if (not isinstance(exc, FileNotFoundError)):
             raise exc
 
@@ -1008,7 +1008,7 @@ def create_get_src():
     tree_0_id = out[0]
     commit_0_id = out[-1]
     exr = exo((bup_cmd, b'-d', b'get-src', b'ls', b'src'))
-    save_0 = exr.out.splitlines()[0]
+    save_0_ = exr.out.splitlines()[0]
     ex((b'git', b'--git-dir', b'get-src', b'branch', b'src-0', b'src'))
     ex((b'cp', b'-RPp', b'src', b'src-0'))
     
