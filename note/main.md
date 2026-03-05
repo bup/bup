@@ -188,6 +188,13 @@ General
   quoted instead of Python "backslashreplace"d, but note that the
   format is not settled, i.e. may continue to change.
 
+* We assume that Cygwin has long fixed the issue where it might return
+  a negative uid or gid, and the workaround has been removed, but bup
+  should still halt if one is encountered.  This has allowed us to
+  improve performance when handling a lot of stat results (e.g. index
+  traversals), but please let us know if the assumption is incorrect,
+  and we can reintroduce a more narrowly tailored fix.
+
 Bugs
 ----
 

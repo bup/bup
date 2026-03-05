@@ -244,9 +244,9 @@ class Metadata:
         self.size = st.st_size
         self.uid = st.st_uid
         self.gid = st.st_gid
-        self.atime = st.st_atime
-        self.mtime = st.st_mtime
-        self.ctime = st.st_ctime
+        self.atime = st.st_atime_ns
+        self.mtime = st.st_mtime_ns
+        self.ctime = st.st_ctime_ns
         self.user = self.group = b''
         entry = pwd_from_uid(st.st_uid)
         if entry:

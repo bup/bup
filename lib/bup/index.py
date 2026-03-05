@@ -218,13 +218,13 @@ class Entry:
     def stale(self, st, check_device=True):
         if self.size != st.st_size:
             return True
-        if self.mtime != st.st_mtime:
+        if self.mtime != st.st_mtime_ns:
             return True
         if self.sha == EMPTY_SHA:
             return True
         if not self.gitmode:
             return True
-        if self.ctime != st.st_ctime:
+        if self.ctime != st.st_ctime_ns:
             return True
         if self.ino != st.st_ino:
             return True
@@ -242,9 +242,9 @@ class Entry:
         self.dev = st.st_dev
         self.ino = st.st_ino
         self.nlink = st.st_nlink
-        self.ctime = st.st_ctime
-        self.mtime = st.st_mtime
-        self.atime = st.st_atime
+        self.ctime = st.st_ctime_ns
+        self.mtime = st.st_mtime_ns
+        self.atime = st.st_atime_ns
         self.size = st.st_size
         self.mode = st.st_mode
         self.flags |= IX_EXISTS
@@ -608,7 +608,7 @@ class Writer:
             assert(isdir == endswith)
             e = NewEntry(basename, name, self.tmax,
                          st.st_dev, st.st_ino, st.st_nlink,
-                         st.st_ctime, st.st_mtime, st.st_atime,
+                         st.st_ctime_ns, st.st_mtime_ns, st.st_atime_ns,
                          st.st_size, st.st_mode, gitmode, sha, flags,
                          meta_ofs, 0, 0)
         else:

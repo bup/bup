@@ -49,49 +49,30 @@ def lutime(path, times):
     """Times must be provided as (atime_ns, mtime_ns)."""
     os.utime(path, ns=times, follow_symlinks=False)
 
-_cygwin_sys = sys.platform.startswith('cygwin')
 
-def _fix_cygwin_id(id):
-    if id < 0:
-        id += 0x100000000
-        assert(id >= 0)
-    return id
-
-
-class stat_result:
-    __slots__ = ('st_mode', 'st_ino', 'st_dev', 'st_nlink', 'st_uid', 'st_gid',
-                 'st_rdev', 'st_size', 'st_atime', 'st_mtime', 'st_ctime')
-    @staticmethod
-    def from_py_stat(st):
-        result = stat_result()
-        result.st_mode = st.st_mode
-        result.st_ino = st.st_ino
-        result.st_dev = st.st_dev
-        result.st_nlink = st.st_nlink
-        result.st_uid = st.st_uid
-        result.st_gid = st.st_gid
-        result.st_rdev = st.st_rdev
-        result.st_size = st.st_size
-        # Inlined timespec_to_nsecs after profiling
-        result.st_atime = st.st_atime_ns
-        result.st_mtime = st.st_mtime_ns
-        result.st_ctime = st.st_ctime_ns
-        if _cygwin_sys:
-            result.st_uid = _fix_cygwin_id(result.st_uid)
-            result.st_gid = _fix_cygwin_id(result.st_gid)
-        return result
-
-
-def stat(path):
-    return stat_result.from_py_stat(os.stat(path))
-
-
-def fstat(path):
-    return stat_result.from_py_stat(os.fstat(path))
-
-
-def lstat(path):
-    return stat_result.from_py_stat(os.lstat(path))
+if not sys.platform.startswith('cygwin'):
+    stat = os.stat
+    fstat = os.fstat
+    lstat = os.lstat
+else:
+    # These are potentially redundant until/unless we remove the
+    # metadata _add_common guards (which we could, given that posix
+    # allows negative values).
+    def stat(path):
+        st = os.stat(path)
+        assert st.st_uid >= 0, st
+        assert st.st_gid >= 0, st
+        return st
+    def fstat(path):
+        st = os.fstat(path)
+        assert st.st_uid >= 0, st
+        assert st.st_gid >= 0, st
+        return st
+    def lstat(path):
+        st = os.lstat(path)
+        assert st.st_uid >= 0, st
+        assert st.st_gid >= 0, st
+        return st
 
 
 def mode_str(mode):
