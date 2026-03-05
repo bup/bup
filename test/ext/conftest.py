@@ -1,7 +1,7 @@
 
 from os import environb as environ, fsdecode
 from pathlib import Path
-from subprocess import CalledProcessError
+from subprocess import run
 import os, pytest, subprocess, sys
 
 from bup.helpers import temp_dir
@@ -30,11 +30,9 @@ class BupSubprocTestRunner(pytest.Item):
         with temp_dir(dir=os.path.abspath(b'test/tmp'), prefix=b'bup-test-home-') as home:
             env = environ.copy()
             env[b'HOME'] = home
-            p = subprocess.Popen(cmd,
-                                 stdout=subprocess.PIPE,
-                                 stderr=subprocess.STDOUT,
-                                 env=env)
-            out = p.communicate()[0]
+            p = run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                    env=env)
+            out = p.stdout
         sys.stdout.flush()
         byte_stream(sys.stdout).write(out)
         lines = out.splitlines()

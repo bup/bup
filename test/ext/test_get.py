@@ -992,14 +992,14 @@ def create_get_src():
     ex((bup_cmd, b'-d', b'get-src', b'init'))
 
     mkdir(b'src')
-    open(b'src/unrelated', 'a').close()
+    with open(b'src/unrelated', 'a'): pass
     ex((bup_cmd, b'-d', b'get-src', b'index', b'src'))
     ex((bup_cmd, b'-d', b'get-src', b'save', b'-tcn', b'unrelated-branch', b'--strip', b'src'))
 
     ex((bup_cmd, b'-d', b'get-src', b'index', b'--clear'))
     rmrf(b'src')
     mkdir(b'src')
-    open(b'src/zero', 'a').close()
+    with open(b'src/zero', 'a'): pass
     ex((bup_cmd, b'-d', b'get-src', b'index', b'src'))
     exr = exo((bup_cmd, b'-d', b'get-src', b'save', b'-tcn', b'src', b'--strip', b'src'))
     out = exr.out.splitlines()
