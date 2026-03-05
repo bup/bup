@@ -12,6 +12,7 @@ import bup.path
 
 bup_cmd = bup.path.exe()
 
+# pylint: disable-next=function-redefined
 def bup(*args, **kwargs):
     if 'stdout' not in kwargs:
         return exo((bup_cmd,) + args, **kwargs)
