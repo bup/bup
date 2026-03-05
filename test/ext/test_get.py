@@ -79,7 +79,7 @@ def validate_blob(src_id, dest_id):
     rmrf(b'restore-dest')
     cat_tree = top + b'/dev/git-cat-tree'
     src_blob = verify_rcz((cat_tree, b'--git-dir', b'get-src', src_id)).out
-    dest_blob = verify_rcz((cat_tree, b'--git-dir', b'get-src', src_id)).out
+    dest_blob = verify_rcz((cat_tree, b'--git-dir', b'get-src', dest_id)).out
     wvpasseq(src_blob, dest_blob)
 
 def validate_tree(src_id, dest_id):
@@ -300,7 +300,7 @@ def run_get(disposition, method, what=None, given=None, rewrite=False):
         assert not exr.rc
     return _run_get(disposition, method, what, rewrite)
 
-def _test_universal(get_disposition, src_info):
+def _test_universal(get_disposition, src_info_):
     if get_disposition == 'get':
         wvstart("can't do nothing")
         rmrf(b'get-dest')
