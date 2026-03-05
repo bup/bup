@@ -1,6 +1,5 @@
 
 from os import environb as environ, fsdecode
-from pathlib import Path
 from subprocess import run
 import os, pytest, subprocess, sys
 

@@ -7,15 +7,14 @@ from random import choice, randint
 from shutil import copytree, rmtree
 from subprocess import PIPE
 from sys import stderr
-from time import localtime, strftime, time, tzset
+from time import localtime, strftime, time
 import random, sys
 
-from bup import compat
 from bup.compat import environ
-from bup.helpers import partition, period_as_secs
+from bup.helpers import period_as_secs
 from bup.io import byte_stream
 from buptest import exc as ex, exo
-from wvpytest import wvfail, wvpass, wvpasseq, wvpassne, wvstart
+from wvpytest import wvpass, wvpasseq, wvpassne, wvstart
 import bup.path
 
 

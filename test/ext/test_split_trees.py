@@ -1,7 +1,6 @@
 
 from os import chdir, environb as environ
 from os.path import join as joinp
-import pytest
 
 from buptest import exc as ex, exo
 import bup.path

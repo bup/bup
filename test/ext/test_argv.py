@@ -1,8 +1,7 @@
 
 
 from random import randint
-from subprocess import CalledProcessError, check_output
-from sys import stderr, stdout
+from subprocess import check_output
 
 
 from test.lib.wvpytest import wvpasseq
