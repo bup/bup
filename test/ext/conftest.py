@@ -1,7 +1,9 @@
 
 from os import environb as environ, fsdecode
 from subprocess import run
-import os, pytest, subprocess, sys
+import os, subprocess, sys
+
+import pytest
 
 from bup.helpers import temp_dir
 from bup.io import byte_stream

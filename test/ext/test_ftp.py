@@ -4,10 +4,11 @@ from subprocess import PIPE
 from time import localtime, strftime, tzset
 import re
 
-from bup.compat import environ
-from bup.helpers import unlink as unlink_if_exists
 from buptest import exc as ex, exo
 from wvpytest import wvpass, wvpasseq, wvstart
+
+from bup.compat import environ
+from bup.helpers import unlink as unlink_if_exists
 import bup.path
 
 bup_cmd = bup.path.exe()

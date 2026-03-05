@@ -10,11 +10,12 @@ from sys import stderr
 from time import localtime, strftime, time
 import random, sys
 
+from buptest import exc as ex, exo
+from wvpytest import wvpass, wvpasseq, wvpassne, wvstart
+
 from bup.compat import environ
 from bup.helpers import period_as_secs
 from bup.io import byte_stream
-from buptest import exc as ex, exo
-from wvpytest import wvpass, wvpasseq, wvpassne, wvstart
 import bup.path
 
 

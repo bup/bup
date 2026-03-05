@@ -3,13 +3,15 @@ from itertools import product
 from os import chdir, mkdir, rename
 from shutil import rmtree
 from subprocess import DEVNULL, PIPE
-import os, pytest, re, sys
+import os, re, sys
+
+from buptest import exc as ex, exo
+from wvpytest import wvcheck, wvpasseq, wvpassne, wvstart
+import pytest
 
 from bup.compat import environ
 from bup.helpers import EXIT_FAILURE, bquote, unlink
 from bup.io import byte_stream
-from buptest import exc as ex, exo
-from wvpytest import wvcheck, wvpasseq, wvpassne, wvstart
 import bup.path
 
 
