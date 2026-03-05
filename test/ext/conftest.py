@@ -56,11 +56,11 @@ class BupSubprocTestRunner(pytest.Item):
         # "short", "long", "auto".
         assert isinstance(style, (type(None), str)), style
         ex = excinfo.value
-        if isinstance(ex, BupSubprocFailure):
-            msg = ['Exit status: %d' % ex.status,
-                   'Failures:']
-            msg.extend(fsdecode(s) for s in ex.failures)
-            return '\n'.join(msg)
+        if not isinstance(ex, BupSubprocFailure):
+            return None
+        msg = [f'Exit status: {ex.status}', 'Failures:']
+        msg.extend(fsdecode(s) for s in ex.failures)
+        return '\n'.join(msg)
 
     def reportinfo(self):
         # This does not appear to be documented, but is in the
@@ -84,10 +84,11 @@ class BupSubprocTestFile(pytest.File):
 
 def _collect_item(item):
     name = os.path.basename(item.name)
-    if name.startswith('test-') and not name.endswith('~'):
-        if name == 'test-versioning-and-archive':
-            item.add_marker(pytest.mark.release)
-        return item
+    if name.endswith('~') or not name.startswith('test-'):
+        return None
+    if name == 'test-versioning-and-archive':
+        item.add_marker(pytest.mark.release)
+    return item
 
 if pytest_ver: # 7+
     def pytest_collect_file(parent, file_path):

@@ -113,6 +113,7 @@ def validate_tree(src_id, dest_id):
     verify_trees_match(b'restore-src/', b'restore-dest/')
     rmrf(b'restore-src')
     rmrf(b'restore-dest')
+    return True
 
 def validate_commit(src_id, dest_id):
     exr = verify_rcz((b'git', b'--git-dir', b'get-src', b'cat-file', b'commit', src_id))
@@ -148,6 +149,7 @@ def validate_commit(src_id, dest_id):
     verify_trees_match(b'restore-src/', b'restore-dest/')
     rmrf(b'restore-src')
     rmrf(b'restore-dest')
+    return True
 
 def _get_save_coid(save):
     # FIXME: add/use some kind of ls dereference opt
@@ -192,6 +194,7 @@ def _validate_save(orig_dir, save, save_subpath, commit_id, tree_id):
                           b'cat-file', b'commit', commit_id))
         if cat.rc: return False
         wvpasseq(b'tree ' + tree_id, cat.out.splitlines()[0])
+    return True
 
 # FIXME: re-merge save and new_save?
         
