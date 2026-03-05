@@ -72,7 +72,7 @@ def verify_nrx(rx, string):
 def validate_clean_repo():
     out = verify_rcz((b'git', b'--git-dir', b'get-dest', b'fsck')).out
     verify_nrx(br'dangling|mismatch|missing|unreachable', out)
-    
+
 def validate_blob(src_id, dest_id):
     global top
     rmrf(b'restore-src')
@@ -106,7 +106,7 @@ def validate_tree(src_id, dest_id):
                      % bquote(dest_c),
                      shell=True)
     if exr.rc != 0: return False
-    
+
     # git archive doesn't include an entry for ./.
     unlink(b'restore-src/pax_global_header')
     unlink(b'restore-dest/pax_global_header')
@@ -129,7 +129,7 @@ def validate_commit(src_id, dest_id):
     dest_cat = exr.out
     wvpasseq(src_cat, dest_cat)
     if src_cat != dest_cat: return False
-    
+
     rmrf(b'restore-src')
     rmrf(b'restore-dest')
     mkdir(b'restore-src')
@@ -144,7 +144,7 @@ def validate_commit(src_id, dest_id):
                       b' | tar xf - -C restore-dest'),
                      shell=True)
     if exr.rc != 0: return False
-    
+
     # git archive doesn't include an entry for ./.
     ex((b'touch', b'-r', b'restore-src', b'restore-dest'))
     verify_trees_match(b'restore-src/', b'restore-dest/')
@@ -198,7 +198,7 @@ def _validate_save(orig_dir, save, save_subpath, commit_id, tree_id):
     return True
 
 # FIXME: re-merge save and new_save?
-        
+
 def validate_save(dest_name, restore_subpath, commit_id, tree_id, orig_value,
                   get_out):
     out = get_out.splitlines()
@@ -271,7 +271,7 @@ def _run_get(disposition, method, what, rewrite=None):
                    b'--source-url', b'ssh://' + getcwd() + b'/get-src')
     else:
         raise Exception(f'error: unexpected get disposition {disposition!r}')
-    
+
     cmd = (*get_cmd, b'--rewrite' if rewrite else b'--copy')
     if isinstance(what, bytes):
         cmd += (method, what)
@@ -380,7 +380,7 @@ def _test_replace(get_disposition, src_info):
         for item in (b'.tag/tinyfile', b'src/latest' + tinyfile_path):
             exr = run_get(get_disposition, b'--replace', (item ,b'.tag/obj'),
                           given=ex_ref)
-            wvpasseq(0, exr.rc)        
+            wvpasseq(0, exr.rc)
             validate_blob(tinyfile_id, tinyfile_id)
             verify_only_refs(heads=[], tags=(b'obj',))
         wvstart(get_disposition + ' --replace ' + ex_type + ' with tree tag')
@@ -453,7 +453,7 @@ def _test_ff(get_disposition, src_info):
         exr = run_get(get_disposition, b'--ff', (item, b'/'))
         wvpassne(0, exr.rc)
         verify_rx(br'is impossible; can only --append a tree to a branch',
-                  exr.err)    
+                  exr.err)
     for item in (b'.tag/commit-1', b'src/latest', b'src'):
         exr = run_get(get_disposition, b'--ff', (item, b'/'))
         wvpassne(0, exr.rc)
@@ -509,7 +509,7 @@ def _test_ff(get_disposition, src_info):
             validate_save(b'obj/latest', b'/',
                           commit_2_id, tree_2_id, b'src-2', exr.out)
             verify_only_refs(heads=(b'obj',), tags=[])
-            
+
     wvstart(get_disposition + ' --ff, implicit destinations')
     for item in (b'src', b'src/latest'):
         exr = run_get(get_disposition, b'--ff', item)
@@ -866,21 +866,21 @@ def _test_new_tag(get_disposition, src_info):
     wvstart(get_disposition + ' --new-tag, blob tag')
     for item in (b'.tag/tinyfile', b'src/latest' + tinyfile_path):
         exr = run_get(get_disposition, b'--new-tag', (item, b'.tag/obj'))
-        wvpasseq(0, exr.rc)        
+        wvpasseq(0, exr.rc)
         validate_blob(tinyfile_id, tinyfile_id)
         verify_only_refs(heads=[], tags=(b'obj',))
 
     wvstart(get_disposition + ' --new-tag, tree tag')
     for item in (b'.tag/subtree', b'src/latest' + subtree_vfs_path):
         exr = run_get(get_disposition, b'--new-tag', (item, b'.tag/obj'))
-        wvpasseq(0, exr.rc)        
+        wvpasseq(0, exr.rc)
         validate_tree(subtree_id, subtree_id)
         verify_only_refs(heads=[], tags=(b'obj',))
-        
+
     wvstart(get_disposition + ' --new-tag, committish tag')
     for item in (b'.tag/commit-2', b'src/latest', b'src'):
         exr = run_get(get_disposition, b'--new-tag', (item, b'.tag/obj'))
-        wvpasseq(0, exr.rc)        
+        wvpasseq(0, exr.rc)
         validate_tagged_save(b'obj', b'/', commit_2_id, tree_2_id,
                              b'src-2', exr.out)
         verify_only_refs(heads=[], tags=(b'obj',))
@@ -925,7 +925,7 @@ def _test_new_tag(get_disposition, src_info):
 
     wvstart(get_disposition + ' --new-tag, implicit destinations')
     exr = run_get(get_disposition, b'--new-tag', b'.tag/commit-2')
-    wvpasseq(0, exr.rc)        
+    wvpasseq(0, exr.rc)
     validate_tagged_save(b'commit-2', b'/', commit_2_id, tree_2_id,
                          b'src-2', exr.out)
     verify_only_refs(heads=[], tags=(b'commit-2',))
@@ -951,13 +951,13 @@ def _test_unnamed(get_disposition, src_info):
     wvstart(get_disposition + ' --unnamed file')
     for item in (b'.tag/tinyfile', b'src/latest' + tinyfile_path):
         exr = run_get(get_disposition, b'--unnamed', item)
-        wvpasseq(0, exr.rc)        
+        wvpasseq(0, exr.rc)
         validate_blob(tinyfile_id, tinyfile_id)
         verify_only_refs(heads=[], tags=[])
 
         exr = run_get(get_disposition, b'--unnamed', item,
                       given=(item, b'.tag/obj'))
-        wvpasseq(0, exr.rc)        
+        wvpasseq(0, exr.rc)
         validate_blob(tinyfile_id, tinyfile_id)
         verify_only_refs(heads=[], tags=(b'obj',))
 
@@ -965,28 +965,28 @@ def _test_unnamed(get_disposition, src_info):
     subtree_id = src_info['subtree-id']
     for item in (b'.tag/subtree', b'src/latest' + subtree_vfs_path):
         exr = run_get(get_disposition, b'--unnamed', item)
-        wvpasseq(0, exr.rc)        
+        wvpasseq(0, exr.rc)
         validate_tree(subtree_id, subtree_id)
         verify_only_refs(heads=[], tags=[])
-        
+
         exr = run_get(get_disposition, b'--unnamed', item,
                       given=(item, b'.tag/obj'))
-        wvpasseq(0, exr.rc)        
+        wvpasseq(0, exr.rc)
         validate_tree(subtree_id, subtree_id)
         verify_only_refs(heads=[], tags=(b'obj',))
-        
+
     wvstart(get_disposition + ' --unnamed committish')
     save_2 = src_info['save-2']
     commit_2_id = src_info['commit-2-id']
     for item in (b'.tag/commit-2', b'src/' + save_2, b'src'):
         exr = run_get(get_disposition, b'--unnamed', item)
-        wvpasseq(0, exr.rc)        
+        wvpasseq(0, exr.rc)
         validate_commit(commit_2_id, commit_2_id)
         verify_only_refs(heads=[], tags=[])
 
         exr = run_get(get_disposition, b'--unnamed', item,
                       given=(item, b'.tag/obj'))
-        wvpasseq(0, exr.rc)        
+        wvpasseq(0, exr.rc)
         validate_commit(commit_2_id, commit_2_id)
         verify_only_refs(heads=[], tags=(b'obj',))
 
@@ -1013,7 +1013,7 @@ def create_get_src():
     save_0_ = exr.out.splitlines()[0]
     ex((b'git', b'--git-dir', b'get-src', b'branch', b'src-0', b'src'))
     ex((b'cp', b'-RPp', b'src', b'src-0'))
-    
+
     rmrf(b'src')
     mkdir(b'src')
     mkdir(b'src/empty-dir')
@@ -1030,7 +1030,7 @@ def create_get_src():
     save_1 = exr.out.splitlines()[1]
     ex((b'git', b'--git-dir', b'get-src', b'branch', b'src-1', b'src'))
     ex((b'cp', b'-RPp', b'src', b'src-1'))
-    
+
     # Make a copy the current state of src so we'll have an ancestor.
     ex((b'cp', b'-RPp',
          b'get-src/refs/heads/src', b'get-src/refs/heads/src-ancestor'))
@@ -1087,7 +1087,7 @@ def create_get_src():
             'save-2' : save_2,
             'subtree-path' : subtree_path,
             'subtree-vfs-path' : subtree_vfs_path}
-    
+
 # FIXME: this fails in a strange way:
 #   WVPASS given nothing get --ff not-there
 

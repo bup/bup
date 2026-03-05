@@ -52,14 +52,14 @@ def test_ftp(tmpdir):
     symlink(b'dir', b'dir-symlink')
     symlink(b'not-there', b'bad-symlink')
 
-    chdir(tmpdir)    
+    chdir(tmpdir)
     bup(b'init')
     bup(b'index', b'src')
     bup(b'save', b'-n', b'src', b'--strip', b'src')
     save_utc = int(exo((b'git', b'show',
                         b'-s', b'--format=%at', b'src')).out.strip())
     save_name = strftime('%Y-%m-%d-%H%M%S', localtime(save_utc)).encode('ascii')
-    
+
     wvstart('help')
     wvpasseq(b'Commands: ls cd pwd cat get mget help quit\n',
              exo((bup_cmd, b'ftp'), input=b'help\n', stderr=PIPE).out)
@@ -98,7 +98,7 @@ def test_ftp(tmpdir):
     wvpasseq(b'excitement!\nmore excitement!\n',
              bup(b'ftp',
                  input=b'cat src/latest/file-1 src/latest/dir/file-2\n').out)
-    
+
     wvstart('get')
     bup(b'ftp', input=jl(b'get src/latest/file-1 dest'))
     with open(b'dest', 'rb') as f:
