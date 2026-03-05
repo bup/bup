@@ -53,7 +53,10 @@ class BupSubprocTestRunner(pytest.Item):
                                     % (cmd, p.returncode, len(failures)),
                                     cmd, p.returncode, failures)
 
-    def repr_failure(self, excinfo):
+    def repr_failure(self, excinfo, style=None):
+        # We ignore the style, which appears to be one of None,
+        # "short", "long", "auto".
+        assert isinstance(style, (type(None), str)), style
         ex = excinfo.value
         if isinstance(ex, BupSubprocFailure):
             msg = ['Exit status: %d' % ex.status,
