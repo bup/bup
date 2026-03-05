@@ -14,9 +14,8 @@ from bup.io import byte_stream
 pytest_ver = getattr(pytest, 'version_tuple', None)
 
 class BupSubprocFailure(Exception):
-    def __init__(self, msg, cmd, status, failures):
+    def __init__(self, msg, status=None, failures=tuple()):
         super().__init__(msg)
-        self.cmd = cmd
         self.status = status
         self.failures = failures
 
@@ -49,7 +48,7 @@ class BupSubprocTestRunner(pytest.Item):
         if failures or p.returncode != 0:
             raise BupSubprocFailure('%s failed (exit %d, %d failures)'
                                     % (cmd, p.returncode, len(failures)),
-                                    cmd, p.returncode, failures)
+                                    p.returncode, failures)
 
     def repr_failure(self, excinfo, style=None):
         # We ignore the style, which appears to be one of None,
