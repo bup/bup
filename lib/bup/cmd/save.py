@@ -1,7 +1,7 @@
 
 from binascii import hexlify
 from errno import ENOENT
-from os import O_NOATIME, O_NOFOLLOW, O_RDONLY
+from os import O_NOFOLLOW, O_RDONLY
 import math, os, stat, sys, time
 
 from bup import hashsplit, options, index, client, metadata
@@ -56,6 +56,14 @@ strip-path= path-prefix to be stripped when saving
 graft=     a graft point *old_path*=*new_path* (can be used more than once)
 #,compress=  set compression level to # (0-9, 9 is highest)
 """
+
+
+if getattr(os, 'O_NOATIME', 0): # mostly linux
+    def open_fd_noatime(path, flags, **kwargs):
+        flags |= os.O_NOATIME
+        return os.open(path, flags, **kwargs)
+else:
+    open_fd_noatime = os.open
 
 
 ### Test hooks
@@ -386,7 +394,7 @@ def save_tree(opt, reader, hlink_db, msr, repo, split_cfg):
                         return repo.write_data(data)
                     before_saving_regular_file(ent.name)
 
-                    with open(os.open(ent.name, flags=O_RDONLY | O_NOFOLLOW | O_NOATIME),
+                    with open(open_fd_noatime(ent.name, O_RDONLY | O_NOFOLLOW),
                               'rb', buffering=1024 * 1024) as f:
                         mode, id = \
                             split_to_blob_or_tree(write_data, repo.write_tree,
