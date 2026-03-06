@@ -3,7 +3,7 @@
 from bup import source_info
 try:
     import bup.checkout_info as checkout_info
-except ModuleNotFoundError:
+except ImportError:
     checkout_info = None
 
 if checkout_info:
