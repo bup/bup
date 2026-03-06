@@ -173,7 +173,7 @@ def _do_midx(outdir, outfilename, infilenames, prefixstr,
             fsync(f.fileno())
 
             with mmap_readwrite(f, close=False) as fmap:
-                count = merge_into(fmap, bits, total, inp)
+                merge_into(fmap, bits, total, inp)
             f.seek(0, os.SEEK_END)
             f.write(b'\0'.join(allfilenames))
             f.flush()
@@ -283,7 +283,7 @@ def do_midx_group(outdir, outfilename, infiles, auto=False, force=False,
 
 def main(argv):
     o = options.Options(optspec)
-    opt, flags, extra = o.parse_bytes(argv[1:])
+    opt, flags_, extra = o.parse_bytes(argv[1:])
     opt.output = argv_bytes(opt.output) if opt.output else None
 
     if extra and (opt.auto or opt.force):

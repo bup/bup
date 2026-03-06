@@ -16,7 +16,7 @@ r,remote=  remote repository path
 
 def main(argv):
     o = options.Options(optspec)
-    opt, flags, extra = o.parse_bytes(argv[1:])
+    opt, flags_, extra = o.parse_bytes(argv[1:])
     if opt.remote: opt.remote = argv_bytes(opt.remote)
     if len(extra) > 1:
         o.fatal('only the directory positional argument is allowed')

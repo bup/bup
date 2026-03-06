@@ -110,7 +110,8 @@ class LocalRepo(RepoProtocol):
 
     def cat(self, ref):
         it = self._cp.get(ref)
-        oidx, typ, size = info = next(it)
+        info = next(it)
+        oidx = info[0]
         yield info
         if oidx: yield from it
         assert not next(it, None)

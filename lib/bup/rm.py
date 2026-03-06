@@ -23,18 +23,17 @@ def filter_branch(tip_commit_hex, exclude, writer):
     # May return None if everything is excluded.
     commits = [unhexlify(x) for x in git.rev_list(tip_commit_hex)]
     commits.reverse()
-    last_c, tree = None, None
+    last_c = None
     # Rather than assert that we always find an exclusion here, we'll
     # just let the StopIteration signal the error.
     first_exclusion = next(i for i, c in enumerate(commits) if exclude(c))
     if first_exclusion != 0:
         last_c = commits[first_exclusion - 1]
-        tree = unhexlify(get_commit_items(hexlify(last_c), git.cp()).tree)
         commits = commits[first_exclusion:]
     for c in commits:
         if exclude(c):
             continue
-        last_c, tree = append_commit(hexlify(c), last_c, git.cp(), writer)
+        last_c, _ = append_commit(hexlify(c), last_c, git.cp(), writer)
     return last_c
 
 def commit_oid(item):

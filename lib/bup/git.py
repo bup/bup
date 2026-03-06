@@ -219,12 +219,11 @@ def calc_hash(type, content):
 
 
 def shalist_item_sort_key(ent):
-    (mode, name, id) = ent
-    assert(mode+0 == mode)
+    mode = ent[0] # mode, name, oid
+    assert isinstance(mode, int), oct(mode)
     if stat.S_ISDIR(mode):
-        return name + b'/'
-    else:
-        return name
+        return ent[1] + b'/'
+    return ent[1]
 
 
 def tree_encode(shalist):
@@ -668,7 +667,7 @@ class PackIdxList:
                         if not missing:
                             if mx: midxl.append(mx)
                         else:
-                            mxd, mxf = os.path.split(full)
+                            mxf = os.path.split(full)[1]
                             for n in missing:
                                 log(('warning: index %s missing\n'
                                      '  used by %s\n')
@@ -809,7 +808,7 @@ class LocalPackStore():
     def _open(self):
         if not self._file:
             with ExitStack() as err_stack:
-                objdir = dir = os.path.join(self._repo_dir, b'objects')
+                objdir = os.path.join(self._repo_dir, b'objects')
                 self._tmpdir = err_stack.enter_context(temp_dir(dir=objdir, prefix=b'pack-tmp-'))
                 self._file = err_stack.enter_context(open(self._tmpdir + b'/pack', 'w+b'))
                 self._parentfd = err_stack.enter_context(finalized(os.open(objdir, os.O_RDONLY),
@@ -930,8 +929,10 @@ class PackWriter:
             log('>')
         assert sha
         encoded = _encode_packobj(type, content, self.compression_level)
-        size, crc = self._store.write(encoded, sha=sha)
-        self._byte_count += sum(len(x) for x in encoded)
+        size, crc_ = self._store.write(encoded, sha=sha)
+        exp_size = sum(len(x) for x in encoded)
+        assert exp_size == size, f'unexpected: {exp_size} != {size} {crc_}'
+        self._byte_count += exp_size
         self._obj_count += 1
         if self._byte_count >= self.max_pack_size \
            or self._obj_count >= self.max_pack_objects:
@@ -1272,7 +1273,7 @@ def establish_default_repo(path=None, *, must_exist=False):
     except FileNotFoundError:
         pass
     try:
-        top_st = os.stat(top)
+        os.stat(top)
     except NotADirectoryError:
         return maybe_exit(15, f'{path_msg(top)} is not a repository\n')
     except FileNotFoundError:

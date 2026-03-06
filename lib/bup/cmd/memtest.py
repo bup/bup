@@ -71,7 +71,7 @@ existing   test with existing objects instead of fake ones
 
 def main(argv):
     o = options.Options(optspec)
-    opt, flags, extra = o.parse_bytes(argv[1:])
+    opt, flags_, extra = o.parse_bytes(argv[1:])
 
     if extra:
         o.fatal('no arguments expected')
@@ -94,7 +94,7 @@ def main(argv):
             objit = iter(foreverit(m))
 
         for c in range(opt.cycles):
-            for n in range(opt.number):
+            for _ in range(opt.number):
                 if opt.existing:
                     bin = next(objit)
                     assert(m.exists(bin))

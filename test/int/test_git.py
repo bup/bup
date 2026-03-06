@@ -438,10 +438,6 @@ def test_midx_close(tmpdir):
             except OSError:
                 pass
 
-    def force_midx(objdir):
-        args = [path.exe(), b'midx', b'--auto', b'--dir', objdir]
-        check_call(args)
-
     environ[b'BUP_DIR'] = bupdir = tmpdir + b'/bup'
     git.init_repo(bupdir)
     # create a few dummy idxes

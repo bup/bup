@@ -41,10 +41,6 @@ ctime-resolution=  limit s, ms, us, ns, 10ns (value must be a power of 10) [ns]
 """
 
 def main(argv):
-
-    target_filename = b''
-    active_fields = metadata.all_fields
-
     o = options.Options(optspec)
     (opt, flags, remainder) = o.parse_bytes(argv[1:])
 
@@ -52,6 +48,7 @@ def main(argv):
     mtime_resolution = parse_timestamp_arg(o, 'mtime', opt.mtime_resolution)
     ctime_resolution = parse_timestamp_arg(o, 'ctime', opt.ctime_resolution)
 
+    active_fields = metadata.all_fields
     treat_include_fields_as_definitive = True
     for flag, value in flags:
         if flag == '--exclude-fields':

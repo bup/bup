@@ -15,8 +15,9 @@ commit  display the git commit id of this version of bup
 
 def main(argv):
     o = options.Options(optspec)
-    opt, flags, extra = o.parse_bytes(argv[1:])
-
+    opt, flags_, extra = o.parse_bytes(argv[1:])
+    if extra:
+        o.fatal('arguments not expected')
 
     total = (opt.date or 0) + (opt.commit or 0)
     if total > 1:

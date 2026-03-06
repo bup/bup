@@ -4,9 +4,8 @@ from os import symlink
 from random import Random, randint
 from stat import S_IFDIR, S_IFLNK, S_IFREG, S_ISDIR, S_ISREG
 from sys import stderr
-import os
-import sys
 from time import localtime, strftime, tzset
+import os, sys
 
 import pytest
 
@@ -171,6 +170,7 @@ def test_misc(tmpdir):
     with LocalRepo() as repo:
         ls_tree = exo((b'git', b'ls-tree', b'test', b'symlink')).out
         mode, typ, oidx, name = ls_tree.strip().split(None, 3)
+        assert typ == b'blob'
         assert name == b'symlink'
         link_item = vfs.Item(oid=unhexlify(oidx), meta=int(mode, 8))
         wvpasseq(b'file', vfs.readlink(repo, link_item))
@@ -351,9 +351,8 @@ def test_duplicate_save_dates(tmpdir):
     ex((b'env',))
     ex((bup_path, b'init'))
     ex((bup_path, b'index', b'-v', data_path))
-    for i in range(11):
-        ex((bup_path, b'save', b'-d', b'100000', b'-n', b'test',
-            data_path))
+    for _ in range(11):
+        ex((bup_path, b'save', b'-d', b'100000', b'-n', b'test', data_path))
     with LocalRepo() as repo:
         res = vfs.resolve(repo, b'/test')
         wvpasseq(2, len(res))

@@ -12,7 +12,7 @@ v,verbose       increase log output (can be used more than once)
 
 def main(argv):
     o = options.Options(optspec)
-    opt, flags, extra = o.parse_bytes(argv[1:])
+    opt, flags_, extra = o.parse_bytes(argv[1:])
     args = [argv[0]]
     args.extend([b'-v'] * (opt.verbose or 0))
     args.append(b'--links')

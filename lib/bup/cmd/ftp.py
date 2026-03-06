@@ -27,7 +27,7 @@ def do_ls(repo, pwd, args, out):
     pwd_str = b'/'.join(name for name, item in pwd) or b'/'
     try:
         opt = ls.opts_from_cmdline(args, onabort=OptionError, pwd=pwd_str)
-    except OptionError as e:
+    except OptionError:
         return None
     return ls.within_repo(repo, opt, out, pwd_str)
 
@@ -202,7 +202,7 @@ def present_interface(stdin, out, extra, repo):
                         if fnmatch.fnmatch(name, base):
                             if stat.S_ISLNK(vfs.item_mode(item)):
                                 deref = vfs.resolve(repo, name, parent=res)
-                                deref_name, deref_item = deref[-1]
+                                deref_item = deref[-1][1]
                                 if not deref_item:
                                     raise CommandError('path does not exist: '
                                                        + rpath_msg(res))
@@ -227,7 +227,7 @@ def main(argv):
     global repo
 
     o = options.Options(optspec)
-    opt, flags, extra = o.parse_bytes(argv[1:])
+    extra = o.parse_bytes(argv[1:])[2]
 
     git.check_repo_or_die()
     sys.stdout.flush()

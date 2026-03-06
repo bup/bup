@@ -170,7 +170,7 @@ def _normal_or_chunked_file_size(repo, oid):
     _, obj_t, _, it = get_oidx(repo, hexlify(oid))
     ofs = 0
     while obj_t == b'tree':
-        mode, name, last_oid = last_tree_entry(b''.join(it))
+        mode_, name, last_oid = last_tree_entry(b''.join(it))
         ofs += int(name, 16)
         _, obj_t, _, it = get_oidx(repo, hexlify(last_oid))
     return ofs + sum(len(b) for b in it)
@@ -542,13 +542,15 @@ def _commit_item_from_data(oid, data):
                   oid=unhexlify(info.tree),
                   coid=oid)
 
-def _commit_item_from_oid(repo, oid, require_meta):
+def _commit_item_from_oid(repo, oid, require_meta, *, data=None):
     commit = cache_get_commit_item(oid, need_meta=require_meta)
     if commit and ((not require_meta) or isinstance(commit.meta, Metadata)):
         return commit
-    _, typ, _, it = get_oidx(repo, hexlify(oid))
-    assert typ == b'commit'
-    commit = _commit_item_from_data(oid, b''.join(it))
+    if not data:
+        _, typ, _, it = get_oidx(repo, hexlify(oid))
+        assert typ == b'commit'
+        data = b''.join(it)
+    commit = _commit_item_from_data(oid, data)
     if require_meta:
         meta = _find_treeish_oid_metadata(repo, commit.oid)
         if meta:
@@ -557,8 +559,8 @@ def _commit_item_from_oid(repo, oid, require_meta):
     cache_notice(commit_key, commit, overwrite=True)
     return commit
 
-def _revlist_item_from_oid(repo, oid, require_meta):
-    commit = _commit_item_from_oid(repo, oid, require_meta)
+def _revlist_item_from_oid(repo, oid, require_meta, *, data=None):
+    commit = _commit_item_from_oid(repo, oid, require_meta, data=data)
     return RevList(oid=oid, meta=commit.meta)
 
 def root_items(repo, names=None, want_meta=True):
@@ -589,12 +591,13 @@ def root_items(repo, names=None, want_meta=True):
         if ref in (b'.', b'.tag'):
             continue
         it = repo.cat(b'refs/heads/' + ref)
-        oidx, typ, size = next(it)
+        oidx, typ, size_ = next(it)
         if not oidx:
             continue
         assert typ == b'commit'
-        commit = parse_commit(b''.join(it))
-        yield ref, _revlist_item_from_oid(repo, unhexlify(oidx), want_meta)
+        data = b''.join(it)
+        yield ref, _revlist_item_from_oid(repo, unhexlify(oidx), want_meta,
+                                          data=data)
 
 def ordered_tree_entries(entries, bupm=None):
     """Returns [(name, mangled_name, kind, gitmode, oid) ...] for each
@@ -902,7 +905,7 @@ def parse_rev(f):
     return unhexlify(tree), int(auth_sec)
 
 def _item_for_rev(rev):
-    commit_oidx, (tree_oid, utc) = rev
+    commit_oidx, (tree_oid, utc_) = rev
     coid = unhexlify(commit_oidx)
     item = cache_get_commit_item(coid, need_meta=False)
     if item:
@@ -1156,7 +1159,7 @@ def _resolve_path(repo, path, parent=None, want_meta=True, follow=True):
             else:  # First item will be '.' and have the metadata
                 assert len(items) in (1, 2), items
                 item = items[1][1] if len(items) == 2 else None
-                dot, dot_item = items[0]
+                dot = items[0][0] # items[0][1] is the dot item
                 assert dot == b'.'
                 past[-1] = parent_name, parent_item
             if not item:
@@ -1278,7 +1281,7 @@ def try_resolve(repo, path, parent=None, want_meta=True):
     if not S_ISLNK(item_mode(leaf_item)):
         return res
     follow = resolve(repo, leaf_name, parent=res[:-1], want_meta=want_meta)
-    follow_name, follow_item = follow[-1]
+    follow_item = follow[-1][1] # [0] is the name
     if follow_item:
         return follow
     return res
@@ -1357,7 +1360,7 @@ def join(repo, ref):
         if typ == b'blob':
             yield from it
         elif typ == b'tree':
-            for ent_mode, ent_name, ent_oid in tree_iter(b''.join(it)):
+            for ent_mode_, ent_name, ent_oid in tree_iter(b''.join(it)):
                 yield from _join(*get_oidx(repo, hexlify(ent_oid)), path + [ent_name])
         elif typ == b'commit':
             treeline = b''.join(it).split(b'\n', maxsplit=1)[0]

@@ -54,7 +54,7 @@ bwlimit=   maximum bytes/sec to transmit to server
 
 
 def opts_from_cmdline(o, argv):
-    opt, flags, extra = o.parse_bytes(argv[1:])
+    opt, flags_, extra = o.parse_bytes(argv[1:])
     opt.sources = extra
 
     if opt.name: opt.name = argv_bytes(opt.name)
@@ -121,7 +121,7 @@ def split(opt, files, parent, out, split_cfg, *,
     if opt.blobs:
         shalist = \
             split_to_blobs(new_blob, hashsplit.from_config(files, split_cfg))
-        for sha, size, level in shalist:
+        for sha, size_, level_ in shalist:
             out.write(hexlify(sha) + b'\n')
             reprogress()
     elif opt.tree or opt.commit or opt.name:
@@ -137,7 +137,7 @@ def split(opt, files, parent, out, split_cfg, *,
         tree = new_tree(shalist)
     else:
         last = 0
-        for blob, level in hashsplit.from_config(files, split_cfg):
+        for blob, level_ in hashsplit.from_config(files, split_cfg):
             hashsplit.total_split += len(blob)
             if opt.copy:
                 out.write(blob)

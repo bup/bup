@@ -24,12 +24,12 @@ v,verbose  increase log output (can be used more than once)
 
 def expected_bup_entry_count_for_tree(tree_data):
     exp_n = 1 # for the parent dir
-    for mode, mangled_name, oid in tree_iter(tree_data):
+    for mode, mangled_name, oid_ in tree_iter(tree_data):
         if mangled_name.endswith(b'.bupd'):
             return 2
         if mangled_name == b'.bupm':
             continue
-        name, kind = demangle_name(mangled_name, mode)
+        kind = demangle_name(mangled_name, mode)[1]
         if S_ISDIR(mode) and kind != BUP_CHUNKED:
             continue
         exp_n += 1
@@ -60,7 +60,7 @@ def resolve_refs(repo, refs, fatal):
 
 def main(argv):
     o = options.Options(optspec)
-    opt, flags, extra = o.parse_bytes(argv[1:])
+    opt, flags_, extra = o.parse_bytes(argv[1:])
     verbosity = opt.verbose
 
     if (opt.links, opt.bupm) == (False, False):
@@ -134,7 +134,7 @@ def main(argv):
                 if opt.links:
                     idxl = git.PackIdxList(git.repo(b'objects/pack'))
                     maybe_close_idxl.enter_context(idxl)
-                live_objs, live_trees = \
+                live_objs, live_trees_ = \
                     find_live_objects(existing_count, cat_pipe,
                                       refs=ref_info,
                                       idx_list=idxl,

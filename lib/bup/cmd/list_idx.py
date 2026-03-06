@@ -15,7 +15,7 @@ find=   display only objects that start with <prefix>
 
 def main(argv):
     o = options.Options(optspec)
-    opt, flags, extra = o.parse_bytes(argv[1:])
+    opt, flags_, extra = o.parse_bytes(argv[1:])
 
     handle_ctrl_c()
 

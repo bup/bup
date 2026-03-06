@@ -17,7 +17,7 @@ bup on <[user@]host[:port]> <index|save|split|get> ...
 
 def main(argv):
     o = options.Options(optspec, optfunc=getopt.getopt)
-    opt, flags, extra = o.parse_bytes(argv[1:])
+    extra = o.parse_bytes(argv[1:])[2]
     if len(extra) < 2:
         o.fatal('must specify index, save, split, or get command')
 

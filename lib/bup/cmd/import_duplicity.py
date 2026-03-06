@@ -32,7 +32,7 @@ def main(argv):
     log('\nbup: import-duplicity is EXPERIMENTAL (proceed with caution)\n\n')
 
     o = options.Options(optspec)
-    opt, flags, extra = o.parse_bytes(argv[1:])
+    opt, flags_, extra = o.parse_bytes(argv[1:])
     dry_run = opt.dry_run
 
     if len(extra) < 1 or not extra[0]:
@@ -68,7 +68,7 @@ def main(argv):
                 elif line.startswith(b' full '):
                     assert(len(line) >= len(b' full 20150222T073233Z'))
                     dup_timestamps.append(line[6:22])
-        for i, dup_ts in enumerate(dup_timestamps):
+        for dup_ts in dup_timestamps:
             tm = strptime(dup_ts.decode('ascii'), '%Y%m%dT%H%M%SZ')
             exc([b'rm', b'-rf', restoredir])
             exc(dup + [b'restore', b'-t', dup_ts, source_url, restoredir])

@@ -118,7 +118,7 @@ def _contains_hidden_files(repo, dir_item):
     '.' and '..' that begin with '.'
 
     """
-    for name, item in vfs.contents(repo, dir_item, want_meta=False):
+    for name, item_ in vfs.contents(repo, dir_item, want_meta=False):
         if name in (b'.', b'..'):
             continue
         if name.startswith(b'.'):
@@ -211,7 +211,7 @@ class BupRequestHandler(tornado.web.RequestHandler):
         # Set want_meta because dir metadata won't be fetched, and if
         # it's not a dir, then we're going to want the metadata.
         res = vfs.resolve(self.repo, path, want_meta=True)
-        leaf_name, leaf_item = res[-1]
+        leaf_item = res[-1][1]
         if not leaf_item:
             self.send_error(404)
             return
@@ -309,7 +309,7 @@ class BupRequestHandler(tornado.web.RequestHandler):
         as a default; however it would be permissible (if
         slow) to look inside the data to make a better guess.
         """
-        base, ext = posixpath.splitext(path)
+        ext = posixpath.splitext(path)[1]
         if ext in self.extensions_map:
             return self.extensions_map[ext]
         ext = ext.lower()
@@ -360,7 +360,7 @@ def main(argv):
     InetAddress = namedtuple('InetAddress', ['host', 'port'])
 
     o = options.Options(optspec)
-    opt, flags, extra = o.parse_bytes(argv[1:])
+    opt, flags_, extra = o.parse_bytes(argv[1:])
 
     if len(extra) > 1:
         o.fatal("at most one argument expected")
@@ -380,8 +380,8 @@ def main(argv):
                 host, port = addr_parts
             try:
                 port = int(port)
-            except (TypeError, ValueError) as ex:
-                o.fatal('port must be an integer, not %r' % port)
+            except ValueError:
+                o.fatal(f'port {path_msg(port)} is not an integer')
             address = InetAddress(host=host, port=port)
 
     git.check_repo_or_die()

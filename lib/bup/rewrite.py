@@ -430,7 +430,7 @@ def _rewrite_save_item(path, replacement_dir, srcrepo, dstrepo, split_cfg,
             # push/pop it, just add the previously generated tree to
             # the parent.
             extend_stack(dir_path[len(stack):-1]) # establish the parent
-            dir_name, dir_item = dir_path[-1]
+            dir_name, dir_item_ = dir_path[-1]
             stack.append_to_current(dir_name, GIT_MODE_TREE, GIT_MODE_TREE,
                                     replacement_dir, None)
             return

@@ -108,7 +108,7 @@ def read_resolution(port):
     if n is None:
         raise EOFError('EOF while reading VFS resolve path length')
     result = []
-    for i in range(n):
+    for _ in range(n):
         name = read_bvec(port)
         if name is None:
             raise EOFError('EOF while reading VFS resolve path name')
@@ -193,7 +193,6 @@ class Server:
                 self.suspended = False
         else:
             self.repo = self._backend(repo_dir, server=True)
-            msgdir = path_msg(self.repo.repo_dir)
             dw = self.repo.config_get(b'bup.server.deduplicate-writes', opttype='bool')
             self._deduplicate_writes = True if dw is None else dw
             debug1('bup server: (%sdeduplicating) serving %s\n'
@@ -263,7 +262,7 @@ class Server:
                        self.repo._packwriter.object_count() != 1 and "s" or ''))
                 fullpath = self.repo.finish_writing()
                 if fullpath:
-                    dir, name = os.path.split(fullpath)
+                    name = os.path.split(fullpath)[1]
                     self.conn.write(b'%s.idx\n' % name)
                 self.conn.ok()
                 return
@@ -285,8 +284,8 @@ class Server:
                 if result:
                     oldpack = result.pack
                     assert(oldpack.endswith(b'.idx'))
-                    (dir,name) = os.path.split(oldpack)
-                    if not (name in suggested):
+                    name = os.path.split(oldpack)[1]
+                    if not name in suggested:
                         debug1("bup server: suggesting index %s\n"
                                % git.shorten_hash(name).decode('ascii'))
                         debug1("bup server:   because of object %s\n"
@@ -296,7 +295,7 @@ class Server:
                     continue
             # FIXME: figure out the right abstraction for this; or better yet,
             #        make the protocol aware of the object type
-            nw, crc = self.repo._packwriter._store.write((buf,), sha=shar)
+            crc = self.repo._packwriter._store.write((buf,), sha=shar)[1]
             self._check(crcr, crc, 'object read: expected crc %d, got %d\n')
         assert False  # should be unreachable
 

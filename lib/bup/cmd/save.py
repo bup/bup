@@ -208,8 +208,8 @@ def save_tree(opt, reader, hlink_db, msr, repo, split_cfg):
         assert 'progress' not in split_cfg
         split_cfg['progress'] = progress_report
 
-        for transname, ent in reader.filter(opt.sources,
-                                            wantrecurse=wantrecurse_pre):
+        for transname_, ent in reader.filter(opt.sources,
+                                             wantrecurse=wantrecurse_pre):
             if not (ftotal % 10024):
                 qprogress('Reading index: %d\r' % ftotal)
             exists = ent.exists()
@@ -238,7 +238,7 @@ def save_tree(opt, reader, hlink_db, msr, repo, split_cfg):
     fcount = 0
     lastskip_name = None
     lastdir = b''
-    for transname, ent in reader.filter(opt.sources,
+    for transname_, ent in reader.filter(opt.sources,
                                         wantrecurse=wantrecurse_during):
         (dir, file) = os.path.split(ent.name)
         exists = (ent.flags & index.IX_EXISTS)
