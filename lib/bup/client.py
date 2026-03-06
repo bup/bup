@@ -191,6 +191,7 @@ class Client:
                 self.conn = Conn(self._proc.stdout, self._proc.stdin)
             except:
                 self._proc.terminate()
+                raise
             self._closed = False
         def __enter__(self): return self
         def __del__(self): assert self._closed
