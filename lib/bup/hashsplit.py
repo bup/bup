@@ -1,5 +1,5 @@
 
-import math, os, re
+import math, re
 
 from bup import _helpers
 from bup.config import ConfigError
@@ -123,15 +123,3 @@ def split_to_blob_or_tree(makeblob, maketree, splitter):
         return (GIT_MODE_FILE, makeblob(b''))
     else:
         return (GIT_MODE_TREE, maketree(shalist))
-
-
-def open_noatime(name):
-    fd = _helpers.open_noatime(name)
-    try:
-        return os.fdopen(fd, 'rb', 1024*1024)
-    except:
-        try:
-            os.close(fd)
-        except:
-            pass
-        raise
