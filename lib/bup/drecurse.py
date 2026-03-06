@@ -119,9 +119,5 @@ def recursive_dirlist(paths, xdev, bup_dir=None,
                     else:
                         prepend = path
                 yield (prepend,pst)
-        except:
-            try:
-                os.fchdir(startdir)
-            except:
-                pass
-            raise
+        finally:
+            os.fchdir(startdir)

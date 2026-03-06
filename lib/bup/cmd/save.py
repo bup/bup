@@ -1,6 +1,7 @@
 
 from binascii import hexlify
 from errno import ENOENT
+from os import O_NOATIME, O_NOFOLLOW, O_RDONLY
 import math, os, stat, sys, time
 
 from bup import hashsplit, options, index, client, metadata
@@ -384,7 +385,9 @@ def save_tree(opt, reader, hlink_db, msr, repo, split_cfg):
                         meta.size += len(data)
                         return repo.write_data(data)
                     before_saving_regular_file(ent.name)
-                    with hashsplit.open_noatime(ent.name) as f:
+
+                    with open(os.open(ent.name, flags=O_RDONLY | O_NOFOLLOW | O_NOATIME),
+                              'rb', buffering=1024 * 1024) as f:
                         mode, id = \
                             split_to_blob_or_tree(write_data, repo.write_tree,
                                                   hashsplit.from_config([f], split_cfg))
