@@ -1,6 +1,6 @@
 
 task:
-  name: debian check/lint root
+  name: debian check (root)
   only_if: $CIRRUS_BRANCH != "master"
   container:
     image: debian:bookworm
@@ -43,7 +43,7 @@ task:
       test -e config/config.vars || cat config.log 1>&2
 
 task:
-  name: debian check
+  name: debian check / lint
   only_if: $CIRRUS_BRANCH != "master"
   container:
     image: debian:trixie
@@ -56,14 +56,14 @@ task:
     dev/system-info
     adduser --disabled-password --gecos '' bup
     chown -R bup:bup .
-    printf "make -j6 -C %q BUP_PYTHON_CONFIG=python3-config check" \
+    printf "make -j6 -C %q BUP_PYTHON_CONFIG=python3-config dev-check" \
       "$(pwd)" | su -l bup
   on_failure:
     debug_script:
       test -e config/config.vars || cat config.log 1>&2
 
 task:
-  name: freebsd check
+  name: freebsd check / lint
   only_if: $CIRRUS_BRANCH != "master"
   freebsd_instance:
     image: freebsd-13-5-release-amd64
@@ -73,13 +73,13 @@ task:
     set -xe
     dev/prep-for-freebsd-build
     dev/system-info
-    gmake -j6 check
+    gmake -j6 dev-check
   on_failure:
     debug_script:
       test -e config/config.vars || cat config.log 1>&2
 
 task:
-  name: macos check
+  name: macos check / lint
   only_if: $CIRRUS_BRANCH != "master"
   macos_instance:
     # https://cirrus-ci.org/guide/macOS/
@@ -92,7 +92,7 @@ task:
     "$BUP_TEST_OTHER_BUP" version
     export PKG_CONFIG_PATH=/usr/local/opt/readline/lib/pkgconfig
     dev/system-info
-    gmake -j6 BUP_PYTHON_CONFIG=python3-config LDFLAGS=-L/usr/local/lib check
+    gmake -j6 BUP_PYTHON_CONFIG=python3-config LDFLAGS=-L/usr/local/lib dev-check
   on_failure:
     debug_script:
       test -e config/config.vars || cat config.log 1>&2

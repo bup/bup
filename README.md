@@ -203,11 +203,12 @@ From source
     ```
 
     If you have the Python xdist module installed, then you can
-    probably run the tests faster by adding the make -j option (see <a
+    probably run the tests faster by adding the make `-j N` option,
+    with an N of perhaps one more than your CPU core count (see <a
     href="HACKING">./HACKING</a> for additional information):
 
     ```sh
-    make -j check
+    make -j 5 check
     ```
 
     The tests should pass (with some skipped tests that weren't

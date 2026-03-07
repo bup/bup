@@ -72,6 +72,14 @@ We also love a good "Tested-by:" -- the more the merrier.
 Testing
 =======
 
+You can run the typical development checks via `make dev-check`, which
+includes the test suite and linting via pylint.  To omit the linting
+(which can produce false positives, particularly with older versions
+of pylint) run `make check` instead, and you should be able to
+accelerate the tests, particularly if you have the python xdist module
+installed, via `make -j N ...`, with an `N` of perhaps one more than
+your CPU core core count.
+
 Individual tests can be run via
 
     ./pytest TEST
@@ -81,10 +89,11 @@ For example:
     ./pytest test/int/test_git.py
     ./pytest test/ext/test-ftp
 
-If you have the xdist module installed, then you can specify its `-n`
-option to run the tests in parallel (e.g. `./pytest -nauto ...`), or
-you can specify `-j` to make, which will be translated to xdist with
-`-j` becoming `-nauto` and `-jN` becoming `-nN`.
+If you have the xdist module installed, then you can specify its `-n N`
+option to run the tests in parallel (e.g. `./pytest -n 5 ...`).  Here
+too, an `N` of one more than your core count is a reasonable choice,
+and as hinted at above, we translate the make `-j` option to xdist
+`-n`, with `-j` becoming `-n auto` and `-j N` becoming `-n N`.
 
 Internal tests that test bup's code directly are located in test/int,
 and external tests that test bup from the outside, typically by

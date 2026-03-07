@@ -321,12 +321,21 @@ lint-test: dev/bup-exec dev/bup-python
 .PHONY: lint
 lint: lint-lib lint-test
 
-check: all test/tmp dev/python lint
-        # Ensure we can't test the local bup
-	! bup version
-	test "$$(command -v bup)" = '$(CURDIR)/dev/shadow-bin/bup'
-	./bup features
-	./pytest $(xdist_opt)
+define run_check
+  # Ensure we can't test the local bup
+  ! bup version
+  test "$$(command -v bup)" = '$(CURDIR)/dev/shadow-bin/bup'
+  ./bup features
+  ./pytest $(xdist_opt)
+endef
+
+check_targets := all test/tmp dev/python
+
+check: $(check_targets)
+	$(run_check)
+
+dev-check: $(check_targets) lint
+	$(run_check)
 
 distcheck: all
 	./pytest $(xdist_opt) -m release
