@@ -41,7 +41,8 @@ def test_large_bloom(tmpdir):
     # architecture), and anywhere else where the address space is
     # sufficiently limited.
     try:
-        with bloom.create(b'bup.bloom', expected=2**28, delaywrite=False) as b:
+        with bloom.create(tmpdir + b'/bup.bloom', expected=2**28,
+                          delaywrite=False) as b:
             assert b.k == 4
     except EnvironmentError as ex:
         if sys.maxsize > 2**32 or ex.errno != errno.ENOMEM:
