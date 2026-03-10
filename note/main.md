@@ -151,6 +151,16 @@ General
   Combined with `--source-url`, this further decreases the trust
   required in a remote.
 
+* `bup on` is substantially stricter.  Now it only allows a subset of
+  bup's subcommands, but all of those that were documented in
+  `bup-on`(1) still work.  Previously all comands we allowed, even
+  those that wouldn't work correctly.  The remaining commands, except
+  `get`, require less trust in the remote because the local server now
+  rejects write operations for commands that shouldn't be writing,
+  (e.g. `bup on HOST restore`), and it also disallows updates to any
+  ref other than the `--name` for save and split.  Please let us know
+  if these changes cause difficulties.
+
 * The default pack compression level can now be configured via either
   `pack.compression` or `core.compression`.  See `bup-config`(5) for
   additional information.

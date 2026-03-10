@@ -66,7 +66,8 @@ def before_saving_regular_file(name_):
     return
 
 
-def opts_from_cmdline(o, argv):
+def opts_from_cmdline(argv):
+    o = options.Options(optspec)
     opt, flags, extra = o.parse_bytes(argv[1:])
 
     if opt.indexfile:
@@ -132,7 +133,7 @@ def opts_from_cmdline(o, argv):
     if opt.name and not valid_save_name(opt.name):
         o.fatal("'%s' is not a valid branch name" % path_msg(opt.name))
 
-    return opt
+    return opt, o
 
 def save_tree(opt, reader, hlink_db, msr, repo, split_cfg):
     # Metadata is stored in a file named .bupm in each directory.  The
@@ -448,8 +449,7 @@ def commit_tree(tree, parent, date, argv, repo):
 
 def main(argv):
     handle_ctrl_c()
-    opt_parser = options.Options(optspec)
-    opt = opts_from_cmdline(opt_parser, argv)
+    opt, opt_parser = opts_from_cmdline(argv)
     client.bwlimit = opt.bwlimit
 
     try:

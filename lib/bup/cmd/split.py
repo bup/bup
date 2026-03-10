@@ -54,7 +54,8 @@ bwlimit=   maximum bytes/sec to transmit to server
 """
 
 
-def opts_from_cmdline(o, argv):
+def opts_from_cmdline(argv):
+    o = options.Options(optspec)
     opt, flags_, extra = o.parse_bytes(argv[1:])
     opt.sources = extra
 
@@ -106,7 +107,7 @@ def opts_from_cmdline(o, argv):
     if opt.name and not valid_save_name(opt.name):
         o.fatal("'%r' is not a valid branch name." % opt.name)
 
-    return opt
+    return opt, o
 
 
 def split(opt, files, parent, out, split_cfg, *,
@@ -169,8 +170,7 @@ def split(opt, files, parent, out, split_cfg, *,
     return commit
 
 def main(argv):
-    opt_parser = options.Options(optspec)
-    opt = opts_from_cmdline(opt_parser, argv)
+    opt, opt_parser = opts_from_cmdline(argv)
     if opt.verbose >= 2:
         git.verbose = opt.verbose - 1
     if opt.fanout:

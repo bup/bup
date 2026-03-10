@@ -156,23 +156,50 @@ def _command(fn):
     fn.bup_server_command = True
     return fn
 
+class CommandDenied(Exception): pass
+
 class Server:
-    def __init__(self, conn, backend):
+    def __init__(self, conn, backend, *, commands='all',
+                 vet_init_dir=None, vet_set_dir=None, vet_update_ref=None):
+        """When commands is a sequence of command names (bytes),
+        enable those commands.  When it is 'all', enable all commands.
+        The help and quit commands are always enabled, and the
+        init-dir and set-dir commands are also enabled, at least for
+        now, because earlier versions of the client unconditionally
+        required them during initialization.
+
+        The vet_* arguments can provide a function that should accept
+        COMMAND's decoded arguments, and raise a CommandDenied
+        exception if the invocation is not acceptable.
+
+        """
+        all_cmds = self._get_commands()
+        if commands == 'all':
+            self._commands = frozenset(all_cmds)
+        else:
+            for cmd in commands: assert cmd in all_cmds, commands
+            # init-dir, set-dir, list-indexes, and send-index were
+            # unconditionally required by Client() before 0.34, so
+            # always include them for now.
+            self._commands = frozenset((b'help', b'quit',
+                                        b'init-dir', b'set-dir',
+                                        b'list-indexes', b'send-index',
+                                        *commands))
         self.conn = conn
         self._backend = backend
-        self._commands = self._get_commands()
         self.suspended = False
         self.repo = None
         self._deduplicate_writes = True
+        self._vet_init_dir = vet_init_dir
+        self._vet_set_dir = vet_set_dir
+        self._vet_update_ref = vet_update_ref
 
     def _get_commands(self):
         commands = []
         for name in dir(self):
             fn = getattr(self, name)
-
             if getattr(fn, 'bup_server_command', False):
                 commands.append(name.replace('_', '-').encode('ascii'))
-
         return commands
 
     @_command
@@ -200,14 +227,16 @@ class Server:
                       path_msg(self.repo.repo_dir)))
 
     @_command
-    def init_dir(self, arg):
-        self._backend.create(arg)
-        self.init_session(arg)
+    def init_dir(self, path):
+        if self._vet_init_dir: self._vet_init_dir(self.repo, path)
+        self._backend.create(path)
+        self.init_session(path)
         self.conn.ok()
 
     @_command
-    def set_dir(self, arg):
-        self.init_session(arg)
+    def set_dir(self, path):
+        if self._vet_set_dir: self._vet_set_dir(self.repo, path)
+        self.init_session(path)
         self.conn.ok()
 
     @_command
@@ -308,10 +337,12 @@ class Server:
 
     @_command
     def update_ref(self, refname):
+        newval = unhexlify(self.conn.readline().strip())
+        oldval = unhexlify(self.conn.readline().strip())
+        if self._vet_update_ref:
+            self._vet_update_ref(self.repo, refname, newval, oldval)
         self.init_session()
-        newval = self.conn.readline().strip()
-        oldval = self.conn.readline().strip()
-        self.repo.update_ref(refname, unhexlify(newval), unhexlify(oldval))
+        self.repo.update_ref(refname, newval, oldval)
         self.conn.ok()
 
     @_command
@@ -365,11 +396,12 @@ class Server:
     @_command
     def rev_list(self, _):
         self.init_session()
+        # (broken) count support was removed in
+        # 89cd30c0d82c2b71e6fe14de7ad210f635b38f91
         count = self.conn.readline()
         if not count:
             raise Exception('Unexpected EOF while reading rev-list count')
-        assert count == b'\n'
-        count = None
+        assert count == b'\n', count
         fmt = self.conn.readline()
         if not fmt:
             raise Exception('Unexpected EOF while reading rev-list format')

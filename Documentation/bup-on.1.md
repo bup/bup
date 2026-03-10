@@ -4,7 +4,7 @@
 
 # NAME
 
-bup-on - run a bup server locally and client remotely
+bup-on - run a bup on a remote host, communicating with a local server
 
 # SYNOPSIS
 
@@ -21,29 +21,18 @@ bup on [*user*@]*host*[:*port*] get ...
 
 # DESCRIPTION
 
-`bup on` runs the given bup command on the given host using
-ssh.  It runs a bup server on the local machine, so that
-commands like `bup save` on the remote machine can back up
-to the local machine.  (You don't need to provide a
-`--remote` option to `bup save` in order for this to work.)
+`bup on` runs the command on the remote host via ssh, connected to a
+bup server running on the local machine, so that remote commands like
+`bup save` can back up to the local repository.  See `bup-index`(1),
+`bup-save`(1), and so on for the command details.
 
-See `bup-index`(1), `bup-save`(1), and so on for details of
-how each subcommand works.
-
-This 'reverse mode' operation is useful when the machine
-being backed up isn't supposed to be able to ssh into the
-backup server.  For example, your backup server can be
-hidden behind a one-way firewall on a private or dynamic IP
-address; using an ssh key, it can be authorized to ssh into
-each of your important machines.  After connecting to each
-destination machine, it initiates a backup, receiving the
-resulting data and storing in its local repository.
-
-For example, if you run several virtual private Linux
-machines on a remote hosting provider, you could back them
-up to a local (much less expensive) computer in your
-basement.
-
+Note that you don't need to (and shouldn't) provide a `--remote`
+option.  This "reverse mode" is useful when the machine being backed
+up isn't supposed to be able to ssh into the backup server.  Instead,
+the backup server, even if hidden behind a one-way firewall on a
+private or dynamic IP address, can connect to each of your important
+machines using an ssh key, and initiate a backup that saves the remote
+data to the local repository.
 
 # EXAMPLES
 
