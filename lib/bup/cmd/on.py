@@ -50,6 +50,16 @@ bup on <[user@]host[:port]> <index|save|split|get> ...
 #  +------------------+
 #
 
+def run_server(on_srv):
+    class ServerRepo(LocalRepo):
+        def __init__(self, repo_dir, server):
+            self.closed = True # subclass' __del__ can run before its init
+            git.check_repo_or_die(repo_dir)
+            LocalRepo.__init__(self, repo_dir, server=server)
+    with Conn(on_srv.stdout, on_srv.stdin) as conn, \
+         protocol.Server(conn, ServerRepo) as server:
+        server.handle()
+
 def main(argv):
     o = options.Options(optspec, optfunc=getopt.getopt)
     extra = o.parse_bytes(argv[1:])[2]
@@ -62,26 +72,23 @@ def main(argv):
     cmd = argv[0]
     if cmd == b'init':
         o.fatal('init is not supported; ssh or run "bup init -r ..." instead')
-    if cmd not in (b'features', b'get', b'help', b'index', b'restore', b'save',
-                   b'split', b'version'):
+    if cmd in (b'features', b'help', b'index', b'version'):
+        want_server = False
+    elif cmd in (b'get', b'restore', b'save', b'split'):
+        want_server = True
+    else:
         o.fatal(f'{pm(cmd)} is not currently supported')
+        assert False # (so pylint won't think srv_config might be unset)
     sys.stdout.flush()
     sys.stderr.flush()
     with ssh.connect(dest, port, b'on--server', stderr=PIPE) as on_srv:
         argvs = b'\0'.join([b'bup'] + argv)
         on_srv.stdin.write(struct.pack('!I', len(argvs)) + argvs)
         on_srv.stdin.flush()
-
-        class ServerRepo(LocalRepo):
-            def __init__(self, repo_dir, server):
-                self.closed = True # subclass' __del__ can run before its init
-                git.check_repo_or_die(repo_dir)
-                LocalRepo.__init__(self, repo_dir, server=server)
-
         # write on--server's stdout/stderr to our stdout/stderr via demux
-        with stopped(Popen((bup.path.exe(), b'demux'), stdin=on_srv.stderr), 1) as demux, \
-             Conn(on_srv.stdout, on_srv.stdin) as conn, \
-             protocol.Server(conn, ServerRepo) as server:
-            server.handle()
+        with stopped(Popen((bup.path.exe(), b'demux'), stdin=on_srv.stderr),
+                     timeout=1) as demux:
+            if want_server:
+                run_server(on_srv)
             demux.wait() # finish the output
     return on_srv.returncode
