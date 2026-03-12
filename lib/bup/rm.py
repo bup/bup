@@ -8,7 +8,7 @@ from bup.helpers import add_error, die_if_errors, log, saved_errors
 from bup.io import path_msg
 
 def append_commit(hash, parent, cp, writer):
-    ci = get_commit_items(hash, cp)
+    ci = get_commit_items(hash, cp.get)
     tree = unhexlify(ci.tree)
     author = b'%s <%s>' % (ci.author_name, ci.author_mail)
     committer = b'%s <%s>' % (ci.committer_name, ci.committer_mail)

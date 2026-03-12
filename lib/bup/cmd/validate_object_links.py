@@ -63,8 +63,7 @@ class Pack:
                 data = zlib.decompress(data)
                 yield oid, git._typermap[kind], data
             elif kind in (5, 6, 7): # reserved obj_ofs_delta obj_ref_delta
-                it = self._cp.get(hexlify(oid))
-                _, tp, _ = next(it, None) # cannot return None
+                _, tp, _, it = self._cp.get(hexlify(oid))
                 data = b''.join(it)
                 if tp == b'blob':
                     continue

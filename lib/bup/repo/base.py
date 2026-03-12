@@ -69,9 +69,11 @@ class RepoProtocol:
 
     @notimplemented
     def cat(self, ref):
-        """
-        If ref does not exist, yield (None, None, None).  Otherwise yield
-        (oidx, type, size), and then all of the data associated with ref.
+        """Return (oidx, type, size, data_iterator).  When the ref is
+        missing, all elements will be None.  For some repositories
+        (like RemoteRepo), the iterator must be consumed before
+        calling other repository methods.
+
         """
 
     @notimplemented

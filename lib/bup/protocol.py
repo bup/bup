@@ -338,12 +338,11 @@ class Server:
         # For now, avoid potential deadlock by just reading them all
         for ref in tuple(lines_until_sentinel(self.conn, b'\n', Exception)):
             ref = ref[:-1]
-            it = self.repo.cat(ref)
-            info = next(it)
-            if not info[0]:
+            oidx, kind, size, it = self.repo.cat(ref)
+            if not oidx:
                 self.conn.write(b'missing\n')
                 continue
-            self.conn.write(b'%s %s %d\n' % info)
+            self.conn.write(b'%s %s %d\n' % (oidx, kind, size))
             for buf in it:
                 self.conn.write(buf)
         self.conn.ok()

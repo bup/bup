@@ -12,7 +12,7 @@ import os, re, sys, textwrap, time
 from bup import client, compat, git, hashsplit, vfs
 from bup.commit import commit_message
 from bup.compat import dataclass, dataclass_frozen_for_testing, get_argvb
-from bup.git import MissingObject, get_cat_data, parse_commit, walk_object
+from bup.git import MissingObject, get_commit_items, walk_object
 from bup.helpers import \
     (EXIT_FAILURE,
      EXIT_RECOVERED,
@@ -320,7 +320,7 @@ def get_random_item(hash, src_repo, dest_repo, ignore_missing):
         return dest_repo.exists(unhexlify(oid))
     def get_ref(oidx, include_data=False):
         assert include_data
-        yield from src_repo.cat(oidx)
+        return src_repo.cat(oidx)
     for item in walk_object(get_ref, hash, stop_at=already_seen,
                             include_data=True, result='item'):
         assert isinstance(item, git.WalkItem)
@@ -362,7 +362,7 @@ class GetResult:
 
 def transfer_commit(hash, parent, src_repo, dest_repo, ignore_missing):
     now = time.time()
-    items = parse_commit(get_cat_data(src_repo.cat(hash), b'commit'))
+    items = get_commit_items(hash, src_repo.cat)
     tree = unhexlify(items.tree)
     author = b'%s <%s>' % (items.author_name, items.author_mail)
     committer = b'%s <%s@%s>' % (userfullname(), username(), hostname())
@@ -442,8 +442,7 @@ def append_commits(src_loc, dest_hash, src_repo, dest_repo, rewriter, excludes,
 GitLoc = namedtuple('GitLoc', ('ref', 'hash', 'type'))
 
 def find_git_item(ref, repo):
-    it = repo.cat(ref)
-    oidx, typ, _ = next(it)
+    oidx, typ, _, it = repo.cat(ref)
     # FIXME: don't include_data once repo supports it
     for _ in it: pass
     if not oidx:
@@ -614,7 +613,7 @@ def handle_ff(item, src_repo, dest_repo):
     if not dest_oidx or dest_oidx in src_repo.rev_list(src_oidx):
         # Can fast forward.
         get_random_item(src_oidx, src_repo, dest_repo, item.spec.ignore_missing)
-        commit_items = parse_commit(get_cat_data(src_repo.cat(src_oidx), b'commit'))
+        commit_items = get_commit_items(src_oidx, src_repo.cat)
         return GetResult(item.src.hash, unhexlify(commit_items.tree))
     misuse('destination is not an ancestor of source for %s'
            % spec_msg(item.spec))
@@ -777,7 +776,7 @@ def handle_replace(item, src_repo, dest_repo):
     assert(item.dest.type == 'branch' or not item.dest.type)
     src_oidx = hexlify(item.src.hash)
     get_random_item(src_oidx, src_repo, dest_repo, item.spec.ignore_missing)
-    commit_items = parse_commit(get_cat_data(src_repo.cat(src_oidx), b'commit'))
+    commit_items = get_commit_items(src_oidx, src_repo.cat)
     return GetResult(item.src.hash, unhexlify(commit_items.tree))
 
 

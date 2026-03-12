@@ -11,7 +11,7 @@ import sqlite3, sys, time
 from bup import hashsplit, metadata, vfs
 from bup.commit import commit_message
 from bup.compat import dataclass
-from bup.git import get_cat_data, parse_commit
+from bup.git import get_commit_items
 from bup.hashsplit import \
     (GIT_MODE_EXEC,
      GIT_MODE_FILE,
@@ -604,7 +604,7 @@ class Rewriter:
                 tree = stack.pop() # and the root to get the tree
 
                 save_oidx = hexlify(save_path[2][1].coid)
-                ci = parse_commit(get_cat_data(srcrepo.cat(save_oidx), b'commit'))
+                ci = get_commit_items(save_oidx, srcrepo.cat)
                 author = ci.author_name + b' <' + ci.author_mail + b'>'
                 committer = b'%s <%s@%s>' % (userfullname(), username(), hostname())
                 trailers = repairs.repair_trailers(repairs.id)

@@ -62,27 +62,28 @@ class RemoteRepo(RepoProtocol):
     def is_remote(self): return True
 
     def cat(self, ref):
-        # Yield all the data here so that we don't finish the
-        # cat_batch iterator (triggering its cleanup) until all of the
-        # data has been read.  Otherwise we'd be out of sync with the
-        # server.  If the ref is 40 hex digits, then assume it's an
-        # oid, and verify that the data provided by the remote
+        # The data iterator must be consumed before any other client
+        # interactions.  If the ref is 40 hex digits, then assume it's
+        # an oid, and verify that the data provided by the remote
         # actually has that oid.  If not, throw.
-        items = self.client.cat_batch((ref,))
-        oidx, typ, size, it = info = next(items, None) # cannot return None
-        yield info[:-1]
-        if oidx:
-            if not _oidx_rx.fullmatch(ref):
-                yield from it
-            else:
-                actual_oid = git.start_sha1(typ, size)
-                for data in it:
-                    actual_oid.update(data)
-                    yield data
-                actual_oid = actual_oid.digest()
-                if hexlify(actual_oid) != ref:
-                    raise Exception(f'received {actual_oid.hex()}, expected oid {ref}')
-        assert not next(items, None)
+        def hash_checked_data(kind, size, it, expected, batch):
+            actual_oid = git.start_sha1(kind, size)
+            for data in it:
+                actual_oid.update(data)
+                yield data
+            actual_oid = actual_oid.digest()
+            if hexlify(actual_oid) != expected:
+                raise Exception(f'received {actual_oid.hex()}, expected oid {expected}')
+            # causes client to finish the call
+            assert not next(batch, None)
+
+        batch = self.client.cat_batch((ref,))
+        oidx, typ, size, it = items = next(batch, None) # cannot return None
+        if not oidx:
+            return items
+        if not _oidx_rx.fullmatch(ref):
+            return items
+        return *items[:-1], hash_checked_data(typ, size, it, ref, batch)
 
     def write_commit(self, tree, parent,
                      author, adate_sec, adate_tz,

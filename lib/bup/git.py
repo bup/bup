@@ -95,15 +95,11 @@ def git_config_get(path, option, *, opttype=None):
     raise GitError('%r returned %d' % (cmd, rc))
 
 
-def get_cat_data(cat_iterator, expected_type):
-    _, kind, _ = next(cat_iterator)
-    if kind != expected_type:
-        raise Exception('expected %r, saw %r' % (expected_type, kind))
-    return b''.join(cat_iterator)
-
-
-def get_commit_items(id, cp):
-    return parse_commit(get_cat_data(cp.get(id), b'commit'))
+def get_commit_items(ref, get_ref):
+    _, kind, _, it = get_ref(ref)
+    if kind != b'commit':
+        raise Exception(f'{path_msg(ref)} is {kind}, not commit')
+    return parse_commit(b''.join(it))
 
 
 def repo(sub = b'', repo_dir=None):
@@ -1393,8 +1389,9 @@ class CatPipe:
                                        env=_gitenv(self.repo_dir))
 
     def get(self, ref, include_data=True):
-        """Yield (oidx, type, size), followed by the data referred to by ref.
-        If ref does not exist, only yield (None, None, None).
+        """Return (oidx, type, size, data_iterator).  When
+        include_data is true, the data_iterator will be None.  When
+        the ref is missing, all elements will be None.
 
         """
         if not self.p or self.p.poll() is not None:
@@ -1425,8 +1422,7 @@ class CatPipe:
                            % (ref, p.poll() or 'none'))
         if hdr.endswith(b' missing\n'):
             self.inprogress = None
-            yield None, None, None
-            return
+            return None, None, None, None
         info = hdr.split(b' ')
         if len(info) != 3 or len(info[0]) != 40:
             raise GitError('expected object (id, type, size), got %r' % info)
@@ -1435,18 +1431,18 @@ class CatPipe:
 
         if not include_data:
             self.inprogress = None
-            yield oidx, typ, size
-            return
+            return oidx, typ, size, None
 
-        try:
-            yield oidx, typ, size
-            yield from chunkyreader(p.stdout, size)
-            readline_result = p.stdout.readline()
-            assert readline_result == b'\n'
-            self.inprogress = None
-        except Exception as ex:
-            self.close()
-            raise ex
+        def data_iterator():
+            try:
+                yield from chunkyreader(p.stdout, size)
+                readline_result = p.stdout.readline()
+                assert readline_result == b'\n'
+                self.inprogress = None
+            except Exception as ex:
+                self.close()
+                raise ex
+        return oidx, typ, size, data_iterator()
 
 
 _catpipe_for = {}
@@ -1542,8 +1538,7 @@ def walk_object(get_ref, oidx, *, stop_at=None, include_data=None,
 
         # must have data for commits, trees, or unknown
         got_data = (exp_typ in (b'commit', b'tree', None)) or include_data
-        item_it = get_ref(oidx, include_data=got_data)
-        get_oidx, typ, _ = next(item_it, None) # cannot return None
+        get_oidx, typ, _, item_it = get_ref(oidx, include_data=got_data)
         if not get_oidx:
             item = WalkItem(oid=unhexlify(oidx), type=exp_typ, name=name,
                             mode=mode, data=False)

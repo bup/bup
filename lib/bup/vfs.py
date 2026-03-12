@@ -144,8 +144,7 @@ def get_ref(repo, ref):
     If ref is missing, yield (None, None, None, None).
 
     """
-    it = repo.cat(ref)
-    found_oidx, obj_t, size = next(it)
+    found_oidx, obj_t, size, it = repo.cat(ref)
     if not found_oidx:
         return None, None, None, None
     return found_oidx, obj_t, size, it
@@ -589,8 +588,7 @@ def root_items(repo, names=None, want_meta=True):
     for ref in names:
         if ref in (b'.', b'.tag'):
             continue
-        it = repo.cat(b'refs/heads/' + ref)
-        oidx, typ, size_ = next(it, None) # cannot return None
+        oidx, typ, size_, it = repo.cat(b'refs/heads/' + ref)
         if not oidx:
             continue
         assert typ == b'commit'

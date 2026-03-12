@@ -180,8 +180,7 @@ def sweep(live_objects, live_trees, existing_count, cat_pipe, threshold,
                 must_rewrite = False
                 live_in_this_pack = set()
                 for sha in idx:
-                    tmp_it = cat_pipe.get(hexlify(sha), include_data=False)
-                    _, typ, _ = next(tmp_it)
+                    typ = cat_pipe.get(hexlify(sha), include_data=False)[1]
                     if typ != b'blob':
                         is_live = sha in live_trees
                         if not is_live:
@@ -216,8 +215,7 @@ def sweep(live_objects, live_trees, existing_count, cat_pipe, threshold,
                     reprogress()
                 for sha in idx:
                     if sha in live_in_this_pack:
-                        item_it = cat_pipe.get(hexlify(sha))
-                        _, typ, _ = next(item_it)
+                        _, typ, _, item_it = cat_pipe.get(hexlify(sha))
                         repo.just_write(sha, typ, b''.join(item_it))
                 assert idx_name.endswith(b'.idx')
                 stale_packs.append(idx_name[:-4])

@@ -110,12 +110,7 @@ class LocalRepo(RepoProtocol):
         return git.update_ref(refname, newval, oldval, repo_dir=self.repo_dir)
 
     def cat(self, ref):
-        it = self._cp.get(ref)
-        info = next(it, None) # cannot return None
-        oidx = info[0]
-        yield info
-        if oidx: yield from it
-        assert not next(it, None)
+        return self._cp.get(ref)
 
     def join(self, ref):
         return vfs.join(self, ref)
