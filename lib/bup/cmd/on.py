@@ -8,6 +8,7 @@ import struct, sys
 from bup import git, options, ssh, protocol
 from bup.compat import argv_bytes
 from bup.helpers import Conn, stopped
+from bup.io import path_msg as pm
 from bup.repo import LocalRepo
 import bup.path
 
@@ -58,6 +59,12 @@ def main(argv):
     dest, colon, port = dest.rpartition(b':')
     if not colon:
         dest, port = port, None
+    cmd = argv[0]
+    if cmd == b'init':
+        o.fatal('init is not supported; ssh or run "bup init -r ..." instead')
+    if cmd not in (b'features', b'get', b'help', b'index', b'restore', b'save',
+                   b'split', b'version'):
+        o.fatal(f'{pm(cmd)} is not currently supported')
     sys.stdout.flush()
     sys.stderr.flush()
     with ssh.connect(dest, port, b'on--server', stderr=PIPE) as on_srv:
