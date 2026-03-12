@@ -332,13 +332,13 @@ class Client:
             ctx.enter_context(self._transport)
             self.conn = self._transport.conn
             self._available_commands = self._get_available_commands()
-            self._require_command(b'init-dir')
-            self._require_command(b'set-dir')
             if self.path:
                 mangled_path = re.sub(br'[\r\n]', b' ', self.path)
                 if create:
+                    self._require_command(b'init-dir')
                     self.conn.write(b'init-dir %s\n' % mangled_path)
                 else:
+                    self._require_command(b'set-dir')
                     self.conn.write(b'set-dir %s\n' % mangled_path)
                 self.check_ok()
             if url.scheme == b'bup-rev':
