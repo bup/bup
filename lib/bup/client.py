@@ -348,7 +348,6 @@ class Client:
             else: # use the decoded path
                 legacy_id = _legacy_cache_id_for_host_path(url.host, self.path)
             self.cachedir = self._prep_cache(legacy_id)
-            self.sync_indexes()
             ctx.pop_all()
         self.closed = False
 
@@ -497,6 +496,7 @@ class Client:
     def new_packwriter(self, compression_level=None,
                        max_pack_size=None, max_pack_objects=None):
         self._require_command(b'receive-objects-v2')
+        self.sync_indexes()
         self.check_busy()
         def set_busy():
             self._busy = b'receive-objects-v2'

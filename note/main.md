@@ -240,6 +240,10 @@ Bugs
   `some/SAVE/.bupm` file) is missing. Previously it failed with
   "EOFError('encountered EOF while reading vuint')".
 
+* Remote operations (i.e. those involving `--remote` or `bup on`) that
+  don't need the index-cache no longer populate it.  Previously all of
+  them did.
+
 Build system
 ------------
 
