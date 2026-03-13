@@ -117,13 +117,9 @@ used to help test before/after results.)
 -s, \--source=*path*
 :   use *path* as the source repository, instead of the default.
 
--r, \--remote=*host*:*path*
-:   store the indicated items on the given remote server.  If *path*
-    is omitted, uses the default path on the remote server (you still
-    need to include the ':').  The connection to the remote server is
-    made with SSH.  If you'd like to specify which port, user or
-    private key to use for the SSH connection, we recommend you use
-    the `~/.ssh/config` file.
+-r, \--remote=[*user*@]*host*:[*path*], \--remote=URL
+:   write the *ref*s to the specified remote repository, by default
+    via SSH.  See bup(1) REMOTE OPTIONS for further information.
 
 -c, \--print-commits
 :   for each updated branch, print the new git commit id.

@@ -111,10 +111,10 @@ WVPASS rm -rf src-ab
 WVPASS cp -pPR src-ab-clean src-ab
 
 WVPASS bup index src-ab
-WVPASS bup save -r :bup-remote --strip -n src-ab src-ab
+WVPASS bup save -r -:bup-remote --strip -n src-ab src-ab
 WVPASS bup index --clear
 WVPASS bup index src-ab
-WVPASS bup save -r :bup-remote -vvv --strip -n a src-ab/a
+WVPASS bup save -r -:bup-remote -vvv --strip -n a src-ab/a
 
 size_before=$(WVPASS data-size bup-remote) || exit $?
 WVPASS rm bup-remote/refs/heads/src-ab
@@ -133,7 +133,7 @@ WVFAIL bup -d bup-remote restore -C "$tmpdir/restore" /src-ab/latest
 
 # Make sure a post-gc index/save that includes gc-ed data works
 WVPASS bup index src-ab
-WVPASS bup save -r :bup-remote --strip -n src-ab src-ab
+WVPASS bup save -r -:bup-remote --strip -n src-ab src-ab
 WVPASS rm -r "$tmpdir/restore"
 WVPASS bup -d bup-remote restore -C "$tmpdir/restore" /src-ab/latest
 WVPASS compare-trees src-ab/ "$tmpdir/restore/latest/"

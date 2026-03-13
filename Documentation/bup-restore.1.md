@@ -98,13 +98,9 @@ See the EXAMPLES section for a demonstration.
 
 # OPTIONS
 
--r, \--remote=*host*:*path*
-:   restore the backup set from the given remote server.  If
-    *path* is omitted, uses the default path on the remote
-    server (you still need to include the ':').  The connection to the
-    remote server is made with SSH.  If you'd like to specify which port, user
-    or private key to use for the SSH connection, we recommend you use the
-    `~/.ssh/config` file.
+-r, \--remote=[*user*@]*host*:[*path*], \--remote=URL
+:   restore from the specified remote repository, by default via SSH.
+    See bup(1) REMOTE OPTIONS for further information.
 
 -C, \--outdir=*outdir*
 :   create and change to directory *outdir* before

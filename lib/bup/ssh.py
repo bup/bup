@@ -20,7 +20,7 @@ def connect(destination, port, subcmd, stderr=None):
     ssh.
 
     """
-    assert not re.search(br'[^\w-]', subcmd)
+    assert re.fullmatch(br'[-_a-zA-Z0-9]+', subcmd), subcmd
     if not destination:
         if b'BUP_TEST_LEVEL' not in environ:
             raise Exception('no ssh destination')

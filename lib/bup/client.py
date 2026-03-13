@@ -2,6 +2,7 @@
 from binascii import hexlify, unhexlify
 from contextlib import ExitStack, closing
 from functools import partial
+from ipaddress import IPv4Address, IPv6Address
 import os, re, struct, sys, time, zlib
 import socket, shutil
 
@@ -22,8 +23,9 @@ from bup.helpers import \
      progress,
      qprogress,
      DemuxConn)
-from bup.io import path_msg
+from bup.io import path_msg as pm
 from bup.path import index_cache
+from bup.url import URL, parse_bytes_path_url
 from bup.vint import read_vint, read_vuint, read_bvec, write_bvec
 
 
@@ -117,35 +119,64 @@ def _raw_write_bwlimit(f, buf, bwcount, bwtime):
         return (bwcount, bwtime)
 
 
-_protocol_rs = br'([-a-z]+)://'
-_host_rs = br'(?P<sb>\[)?((?(sb)[0-9a-f:]+|[^:/]+))(?(sb)\])'
-_port_rs = br'(?::(\d+))?'
-_path_rs = br'(/.*)?'
-_url_rx = re.compile(br'%s(?:%s%s)?%s' % (_protocol_rs, _host_rs, _port_rs, _path_rs),
-                     re.I)
-
 def parse_remote(remote):
+    def parse_non_url(remote):
+        user, at_, hostpath = remote.rpartition(b'@') # ssh x@y@z has user x@y
+        if b':' not in hostpath:
+            raise ClientError(f'remote {pm(remote)} has no colon')
+        host, path = hostpath.split(b':', 1)
+        if host == b'-': # use a subprocess for testing
+            return URL(scheme=b'ssh', path=path)
+        if not host:
+            raise ClientError(f'remote {pm(remote)} has no host')
+        return URL(scheme=b'ssh', host=host, user=user, path=path)
+    url = parse_bytes_path_url(remote, require_auth=True)
+    if not url:
+        return parse_non_url(remote)
+    if url.scheme == b'bup':
+        if url.user:
+            raise ClientError(f'bup URL {pm(remote)} has a user')
+    elif url.scheme in (b'ssh', b'bup'): # for now
+        if not url.host: # i.e. b''
+            raise ClientError(f'remote {pm(remote)} has no host')
+    elif url.scheme == b'bup-rev':
+        def raise_unexpected(attr):
+            raise ClientError(f'bup-rev remote {pm(remote)} has a {attr}')
+        if url.user: raise_unexpected('user')
+        if url.path: raise_unexpected('path')
+        if url.port is not None: raise_unexpected('port')
+    else:
+        raise ClientError(f'unexpected {pm(url.scheme)} scheme for {pm(remote)}')
+    return url
+
+
+def _legacy_cache_id(remote, reversed=False):
+    # This function should effectively never change its behavior since
+    # a change in return value will cause affected clients to
+    # duplicate the index-cache.  The index-cache for newer
+    # repositories is determined by the repo-id.  Although remote will
+    # typically already have been vetted/restricted by parse_remote, a
+    # reversed value is normally just the BUP_SERVER_REVERSE value,
+    # which should be a hostname, but could be anything.
     def parse_non_url(remote):
         rs = remote.split(b':', 1)
         if len(rs) == 1 or rs[0] in (b'', b'-'):
-            return b'file', None, None, rs[-1]
-        else:
-            return b'ssh', rs[0], None, rs[1]
-    assert remote is not None
-    if remote and remote.startswith(b'bup-rev://'):
-        parts =  parse_non_url(remote[len(b'bup-rev://'):] + b':')
-        return (b'bup-rev',) + parts[1:]
-    url_match = _url_rx.match(remote)
-    if url_match:
-        if url_match.group(1) not in (b'ssh', b'bup', b'file'):
-            raise ClientError('unexpected protocol: %s'
-                              % url_match.group(1).decode('ascii'))
-        return url_match.group(1,3,4,5)
-    return parse_non_url(remote)
-
-
-def _legacy_cache_id(remote):
-    scheme_, host, port_, path = parse_remote(remote)
+            return None, rs[-1]
+        return rs
+    def parse(remote):
+        scheme = br'([-a-z]+)://'
+        host = br'(?P<sb>\[)?((?(sb)[0-9a-f:]+|[^:/]+))(?(sb)\])'
+        port = br'(?::(\d+))?'
+        path = br'(/.*)?'
+        rx = re.compile(br'%s(?:%s%s)?%s' % (scheme, host, port, path), re.I)
+        url_match = rx.match(remote)
+        if url_match:
+            scheme = url_match.group(1)
+            if scheme not in (b'ssh', b'bup', b'file'):
+                raise ClientError(f'unexpected {scheme} scheme for {pm(remote)}')
+            return url_match.group(3,5)
+        return parse_non_url(remote)
+    host, path = parse_non_url(remote + b':') if reversed else parse(remote)
     # The b'None' here matches python2's behavior of b'%s' % None == 'None',
     # python3 will (as of version 3.7.5) do the same for str ('%s' % None),
     # but crashes instead when doing b'%s' % None.
@@ -180,14 +211,22 @@ class Client:
                 pass
 
     class ViaSsh:
-        def __init__(self, host, port):
+        def __init__(self, url):
             self._closed = True # only false when ready for close
+            host = url.host
+            if isinstance(host, (IPv4Address, IPv6Address)):
+                host = host.compressed
+            elif not isinstance(host, bytes):
+                raise Exception(f'unexpected host type for {host}')
+            dest = host if not url.user else b'%s@%s' % (url.user, host)
             try:
-                # FIXME: ssh and file (ViaBup) shouldn't use the same module
-                self._proc = ssh.connect(host, port, b'server')
+                self._proc = ssh.connect(dest, url.port, b'server')
             except OSError as e:
                 raise ClientError('connect: %s' % e) from e
             try:
+                assert not url.host, url
+                assert not url.user, url
+                assert url.port is None, url
                 self.conn = Conn(self._proc.stdout, self._proc.stdin)
             except:
                 self._proc.terminate()
@@ -219,8 +258,13 @@ class Client:
                 raise ClientError(e) from e
 
     class ViaBup:
-        def __init__(self, host, port):
+        def __init__(self, url):
             self._closed = True # only false when ready for close
+            host, port = url.host, url.port
+            if isinstance(host, (IPv4Address, IPv6Address)):
+                host = host.compressed
+            elif not isinstance(host, bytes):
+                raise Exception(f'unexpected host type for {host}')
             with ExitStack() as ctx:
                 self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 ctx.enter_context(closing(self._sock))
@@ -246,7 +290,7 @@ class Client:
                  closing(self._sockw):
                 pass
 
-    def _prep_cache(self, remote):
+    def _prep_cache(self, remote, reversed):
         # Set up the index-cache directory, prefer repo-id derived
         # dirs when the remote repo has one (that can be accessed).
         repo_id = None
@@ -255,7 +299,7 @@ class Client:
                 repo_id = self.config_get(b'bup.repo.id')
             except PermissionError:
                 pass
-        legacy = index_cache(_legacy_cache_id(remote))
+        legacy = index_cache(_legacy_cache_id(remote, reversed))
         if repo_id is None:
             return legacy
         # legacy ids can't include -, so avoid aliasing with an id--
@@ -274,27 +318,34 @@ class Client:
         with ExitStack() as ctx:
             self._call = partial(_TypicalCall, self)
             self._line_based_call = partial(_LineBasedCall, self)
-            self.protocol, self.host, self.port, self.dir = parse_remote(remote)
+            url = parse_remote(remote)
+            self.url = url
+            self.path = url.path
             self._busy = None
-            if self.protocol == b'bup-rev':
+            if url.scheme == b'bup-rev':
                 self._transport = Client.ViaBupRev()
-            elif self.protocol in (b'ssh', b'file'):
-                self._transport = Client.ViaSsh(self.host, self.port)
-            elif self.protocol == b'bup':
-                self._transport = Client.ViaBup(self.host, self.port)
+            elif url.scheme == b'ssh':
+                self._transport = Client.ViaSsh(url)
+            elif url.scheme == b'bup':
+                self._transport = Client.ViaBup(url)
+            else:
+                raise ClientError(f'unrecognized remote {pm(remote)}')
             ctx.enter_context(self._transport)
             self.conn = self._transport.conn
             self._available_commands = self._get_available_commands()
             self._require_command(b'init-dir')
             self._require_command(b'set-dir')
-            if self.dir:
-                self.dir = re.sub(br'[\r\n]', b' ', self.dir)
+            if self.path:
+                mangled_path = re.sub(br'[\r\n]', b' ', self.path)
                 if create:
-                    self.conn.write(b'init-dir %s\n' % self.dir)
+                    self.conn.write(b'init-dir %s\n' % mangled_path)
                 else:
-                    self.conn.write(b'set-dir %s\n' % self.dir)
+                    self.conn.write(b'set-dir %s\n' % mangled_path)
                 self.check_ok()
-            self.cachedir = self._prep_cache(remote)
+            if url.scheme == b'bup-rev':
+                self.cachedir = self._prep_cache(url.host, True)
+            else:
+                self.cachedir = self._prep_cache(remote, False)
             self.sync_indexes()
             ctx.pop_all()
         self.closed = False
@@ -362,7 +413,7 @@ class Client:
         # All cached idxs are extra until proven otherwise
         extra = set()
         for f in os.listdir(self.cachedir):
-            debug1(path_msg(f) + '\n')
+            debug1(pm(f) + '\n')
             if f.endswith(b'.idx'):
                 extra.add(f)
         needed = set()
@@ -403,8 +454,7 @@ class Client:
         mkdirp(self.cachedir)
         fn = os.path.join(self.cachedir, name)
         if os.path.exists(fn):
-            msg = ("won't request existing .idx, try `bup bloom --check %s`"
-                   % path_msg(fn))
+            msg = f"won't request existing .idx, try `bup bloom --check {pm(fn)}`"
             raise ClientError(msg)
         with atomically_replaced_file(fn, 'wb') as f:
             self.send_index(name, f, lambda size: None)
