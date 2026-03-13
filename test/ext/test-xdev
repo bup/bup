@@ -6,14 +6,14 @@ set -o pipefail
 root_status="$(dev/root-status)" || exit $?
 
 if [ "$root_status" != root ]; then
-    WVSKIP 'not root: skipping tests'
+    WVSKIP 'not root'
     exit 0
 fi
 
 # These tests are only likely to work under Linux for now
 # (patches welcome).
 if ! [[ $(uname) =~ Linux ]]; then
-    WVSKIP 'not Linux: skipping tests'
+    WVSKIP 'not Linux'
     exit 0
 fi
 
@@ -41,7 +41,7 @@ mount -o loop testfs-1.img src/mnt-1
 rc=$?
 set +x
 if test "$rc" -ne 0; then
-    WVSKIP 'Unable to mount via loopback: skipping xdev tests.'
+    WVSKIP 'Unable to mount via loopback'
     exit 0
 fi
 

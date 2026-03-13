@@ -40,7 +40,8 @@ class BupSubprocTestRunner(pytest.Item):
         lines = out.splitlines()
         for line in lines:
             if line.startswith(b'!') and line.lower().endswith(b' skip ok'):
-                pytest.skip(line.decode('ascii'))
+                # drop the leading file/line, etc. and trailing skip ok
+                pytest.skip(line.decode('utf-8').split(maxsplit=2)[-1][:-8])
                 return
         failures = [line for line in lines
                     if (line.startswith(b'!')
