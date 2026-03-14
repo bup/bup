@@ -114,7 +114,7 @@ from bup.metadata import Metadata, empty_metadata
 
 class IOError(builtins.IOError):
     def __init__(self, errno, message, terminus=None):
-        super().__init__(self, errno, message)
+        super().__init__(errno, message)
         self.terminus = terminus
 
 _reg_perms = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH
