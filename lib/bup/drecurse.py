@@ -1,6 +1,8 @@
 
+from os import O_NOFOLLOW
 import stat, os
 
+from bup.compat import MAYBE_LARGEFILE
 from bup.helpers \
     import (add_error,
             debug1,
@@ -15,18 +17,9 @@ from bup.io import path_msg
 #  - help out the kernel by not making it repeatedly look up the absolute path
 #  - avoid race conditions caused by doing listdir() on a changing symlink
 
-try:
-    O_LARGEFILE = os.O_LARGEFILE
-except AttributeError:
-    O_LARGEFILE = 0
-try:
-    O_NOFOLLOW = os.O_NOFOLLOW
-except AttributeError:
-    O_NOFOLLOW = 0
-
 
 def finalized_fd(path):
-    fd = os.open(path, os.O_RDONLY|O_LARGEFILE|O_NOFOLLOW|os.O_NDELAY)
+    fd = os.open(path, os.O_RDONLY|MAYBE_LARGEFILE|O_NOFOLLOW|os.O_NDELAY)
     return finalized(fd, os.close)
 
 
