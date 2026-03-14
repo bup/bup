@@ -8,7 +8,7 @@ from bup import hashsplit, options, index, client, metadata
 from bup import hlinkdb
 from bup.commit import commit_message
 from bup.compat import argv_bytes, get_argvb
-from bup.config import ConfigError, derive_repo_addr
+from bup.config import ConfigError
 from bup.hashsplit import \
     (GIT_MODE_TREE,
      GIT_MODE_FILE,
@@ -35,7 +35,7 @@ from bup.metadata import empty_metadata
 from bup.path import default_fsindex, flat_fsindex
 from bup.pwdgrp import userfullname, username
 from bup.tree import Stack
-from bup.repo import make_repo
+from bup.repo import main_repo_location, repo_for_location
 
 
 optspec = """
@@ -106,7 +106,7 @@ def opts_from_cmdline(o, argv):
     if opt.strip and opt.strip_path:
         o.fatal("--strip is incompatible with --strip-path")
 
-    opt.repo = derive_repo_addr(remote=opt.remote, die=o.fatal)
+    opt.repo = main_repo_location(opt.remote, o.fatal)
     opt.sources = [argv_bytes(x) for x in extra]
 
     grafts = []
@@ -453,19 +453,14 @@ def main(argv):
     opt = opts_from_cmdline(opt_parser, argv)
     client.bwlimit = opt.bwlimit
 
-    if opt.repo.startswith(b'file://'):
-        repo = make_repo(opt.repo, compression_level=opt.compress)
-    else:
+    try:
+        dest = repo_for_location(opt.repo, compression_level=opt.compress)
+    except client.ClientError as e:
+        log('error: %s' % e)
+        sys.exit(EXIT_FAILURE)
+    with dest:
         try:
-            repo = make_repo(opt.repo, compression_level=opt.compress)
-        except client.ClientError as e:
-            log('error: %s' % e)
-            sys.exit(EXIT_FAILURE)
-
-    # repo creation must be last nontrivial command in each if clause above
-    with repo:
-        try:
-            split_cfg = hashsplit.configuration(repo.config_get)
+            split_cfg = hashsplit.configuration(dest.config_get)
         except ConfigError as ex:
             opt_parser.fatal(ex)
         sys.stdout.flush()
@@ -473,7 +468,7 @@ def main(argv):
 
         if opt.name:
             refname = b'refs/heads/%s' % opt.name
-            parent = repo.read_ref(refname)
+            parent = dest.read_ref(refname)
         else:
             refname = parent = None
 
@@ -490,15 +485,15 @@ def main(argv):
         with msr, \
              hlinkdb.HLinkDB(fsindex.hlink) as hlink_db, \
              index.Reader(fsindex.stat) as reader:
-            tree = save_tree(opt, reader, hlink_db, msr, repo, split_cfg)
+            tree = save_tree(opt, reader, hlink_db, msr, dest, split_cfg)
         if opt.tree:
             out.write(hexlify(tree))
             out.write(b'\n')
         if opt.commit or opt.name:
-            commit = commit_tree(tree, parent, opt.date, get_argvb(), repo)
+            commit = commit_tree(tree, parent, opt.date, get_argvb(), dest)
             if opt.commit:
                 out.write(hexlify(commit))
                 out.write(b'\n')
 
         if opt.name:
-            repo.update_ref(refname, commit, parent)
+            dest.update_ref(refname, commit, parent)

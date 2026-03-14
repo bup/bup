@@ -9,11 +9,11 @@ import posixpath
 
 from bup import metadata, vfs, xstat
 from bup.compat import argv_bytes
-from bup.config import derive_repo_addr
 from bup.io import path_msg
 from bup.options import Options
-from bup.repo import make_repo
 from bup.helpers import columnate, istty1, log
+from bup.repo import main_repo_location, repo_for_location
+
 
 def item_hash(item, tree_for_commit):
     """If the item is a Commit, return its commit oid, otherwise return
@@ -113,7 +113,7 @@ def opts_from_cmdline(args, onabort=None, pwd=b'/'):
     ret.human_readable = opt.human_readable
     ret.directory = opt.directory
     remote = argv_bytes(opt.remote) if opt.remote else None
-    ret.repo = derive_repo_addr(remote=remote, die=o.fatal)
+    ret.repo = main_repo_location(remote, o.fatal)
     return ret
 
 def within_repo(repo, opt, out, pwd=b''):
@@ -213,5 +213,5 @@ def via_cmdline(args, out=None, onabort=None):
     """
     assert out
     opt = opts_from_cmdline(args, onabort=onabort)
-    with make_repo(opt.repo) as repo:
-        return within_repo(repo, opt, out)
+    with repo_for_location(opt.repo) as src:
+        return within_repo(src, opt, out)

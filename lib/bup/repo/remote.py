@@ -9,11 +9,13 @@ from bup.repo.base import _make_base, RepoProtocol
 _oidx_rx = re.compile(br'[0-9a-fA-F]{40}')
 
 class RemoteRepo(RepoProtocol):
-    def __init__(self, address, create=False, compression_level=None,
+    def __init__(self, location, create=False, compression_level=None,
                  max_pack_size=None, max_pack_objects=None):
-        self._address = address
+        # The location must be a URL or a client.Config, and Client()
+        # handles the validation.
+        self._location = location
         self.closed = True # in case Client instantiation fails
-        self.client = client.Client(address, create=create)
+        self.client = client.Client(location, create=create)
         self.closed = False
         self.config_get = self.client.config_get
         self._base = _make_base(self.config_get, compression_level,
@@ -32,7 +34,7 @@ class RemoteRepo(RepoProtocol):
     def __repr__(self):
         cls = self.__class__
         return f'<{cls.__module__}.{cls.__name__} object at {hex(id(self))}' \
-            f' address={self._address!r}>'
+            f' location={self._location!r}>'
 
     def close(self):
         if not self.closed:

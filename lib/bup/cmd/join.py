@@ -4,10 +4,9 @@ import sys
 
 from bup import options
 from bup.compat import argv_bytes
-from bup.config import derive_repo_addr
-from bup.helpers import EXIT_FAILURE, linereader, log
+from bup.helpers import EXIT_FAILURE, EXIT_SUCCESS, linereader, log
 from bup.io import byte_stream
-from bup.repo import make_repo
+from bup.repo import main_repo_location, repo_for_location
 
 
 optspec = """
@@ -20,15 +19,13 @@ o=         output filename
 def main(argv):
     o = options.Options(optspec)
     opt, flags_, extra = o.parse_bytes(argv[1:])
-    addr = derive_repo_addr(remote=argv_bytes(opt.remote) if opt.remote else None,
-                            die=o.fatal)
-
+    loc = main_repo_location(argv_bytes(opt.remote) if opt.remote else None,
+                             o.fatal)
     stdin = byte_stream(sys.stdin)
     if not extra:
         extra = linereader(stdin)
 
-    ret = 0
-    with make_repo(addr) as repo:
+    with repo_for_location(loc) as src:
         if opt.o:
             outfile = open(opt.o, 'wb')
         else:
@@ -37,11 +34,11 @@ def main(argv):
 
         for ref in [argv_bytes(x) for x in extra]:
             try:
-                for blob in repo.join(ref):
+                for blob in src.join(ref):
                     outfile.write(blob)
             except KeyError as e:
                 outfile.flush()
                 log('error: %s\n' % e)
-                ret = EXIT_FAILURE
+                return EXIT_FAILURE
 
-    sys.exit(ret)
+    return EXIT_SUCCESS

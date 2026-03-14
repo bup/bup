@@ -11,8 +11,7 @@ import os, re, sys, textwrap, time
 
 from bup import client, compat, git, hashsplit, vfs
 from bup.commit import commit_message
-from bup.compat import argv_bytes, dataclass, get_argvb
-from bup.config import derive_repo_addr
+from bup.compat import dataclass, get_argvb
 from bup.git import MissingObject, get_cat_data, parse_commit, walk_object
 from bup.helpers import \
     (EXIT_FAILURE,
@@ -30,8 +29,14 @@ from bup.helpers import \
 from bup.io import path_msg
 from bup.pwdgrp import userfullname, username
 from bup.repair import valid_repair_id
-from bup.repo import LocalRepo, make_repo
+from bup.repo import \
+    (LocalRepo,
+     main_repo_location,
+     parse_repo_url_arg,
+     repo_for_location,
+     repo_for_url)
 from bup.rewrite import RepairInfo, Rewriter
+from bup.url import URL
 
 
 argspec = (
@@ -51,8 +56,8 @@ argspec = (
       ('-v, --verbose',
        'increase log output (can be specified more than once)'),
       ('-q, --quiet', "don't show progress meter"),
-      ('-s SOURCE, --source SOURCE',
-       'path to the source repository (defaults to BUP_DIR)'),
+      ('-s PATH, -S URL --source PATH, --source-url URL',
+       'the source repository (defaults to BUP_DIR)'),
       ('-r REMOTE, --remote REMOTE',
        'hostname:/path/to/repo of remote destination repository'),
       ('-t --print-trees', 'output a tree id for each ref set'),
@@ -160,6 +165,7 @@ def parse_args(args):
     opt.bwlimit = None
     opt.compress = None
     opt.source = opt.remote = None
+    opt.source_loc = URL(scheme=b'file')
     opt.target_specs = []
 
     # Since we don't want to create a Rewriter until we've finished
@@ -247,8 +253,12 @@ def parse_args(args):
             opt.target_specs.append(make_spec(method=arg[2:-1].decode('ascii'),
                                               src=ref, dest=dest))
             pending_method_context = {}
+        elif arg in (b'-S', b'--source-url'):
+            (opt.source,), remaining = require_n_args_or_die(1, remaining)
+            opt.source_loc = parse_repo_url_arg('--source-url', opt.source, misuse)
         elif arg in (b'-s', b'--source'):
             (opt.source,), remaining = require_n_args_or_die(1, remaining)
+            opt.source_loc = URL(scheme=b'file', path=opt.source)
         elif arg in (b'-r', b'--remote'):
             (opt.remote,), remaining = require_n_args_or_die(1, remaining)
         elif arg in (b'-c', b'--print-commits'):
@@ -289,6 +299,7 @@ def parse_args(args):
     if pending_method_context:
         ctx_msg = ' '. join(path_msg(x) for x in pending_method_context)
         misuse(f'trailing arguments with no effect: {ctx_msg}')
+    opt.dst_loc = main_repo_location(opt.remote, misuse)
     return opt
 
 # FIXME: client error handling (remote exceptions, etc.)
@@ -836,9 +847,8 @@ def log_item(name, type, opt, tree=None, commit=None, tag=None):
 
 def get_everything(opt):
     repair_count = 0
-    with LocalRepo(repo_dir=opt.source) as src_repo, \
-         make_repo(derive_repo_addr(remote=opt.remote, die=misuse),
-                   compression_level=opt.compress) as dest_repo:
+    with repo_for_url(opt.source_loc) as src_repo, \
+         repo_for_location(opt.dst_loc, compression_level=opt.compress) as dest_repo:
 
         src_split_cfg = hashsplit.configuration(src_repo.config_get)
         dest_split_cfg = hashsplit.configuration(dest_repo.config_get)
@@ -947,8 +957,6 @@ def get_everything(opt):
 def main(argv):
     opt = parse_args(argv)
     git.check_repo_or_die()
-    if opt.source:
-        opt.source = argv_bytes(opt.source)
     if opt.bwlimit:
         client.bwlimit = parse_num(opt.bwlimit)
     if not opt.target_specs:

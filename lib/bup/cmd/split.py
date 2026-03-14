@@ -7,7 +7,7 @@ import os, sys, time
 from bup import client, compat, git, hashsplit, options
 from bup.commit import commit_message
 from bup.compat import argv_bytes
-from bup.config import ConfigError, derive_repo_addr
+from bup.config import ConfigError
 from bup.hashsplit import \
     split_to_blob_or_tree, split_to_blobs, split_to_shalist
 from bup.helpers import \
@@ -21,7 +21,7 @@ from bup.helpers import \
      valid_save_name)
 from bup.io import byte_stream
 from bup.pwdgrp import userfullname, username
-from bup.repo import make_repo
+from bup.repo import main_repo_location, repo_for_location, repo_location_url
 
 
 optspec = """
@@ -93,7 +93,7 @@ def opts_from_cmdline(o, argv):
 
     if environ.get(b'BUP_SERVER_REVERSE') and (not opt.sources or opt.git_ids):
         o.fatal('"bup on ... split" does not support reading from standard input')
-    opt.repo = derive_repo_addr(remote=opt.remote, die=o.fatal)
+    opt.repo = main_repo_location(opt.remote, o.fatal)
 
     if opt.name and not valid_save_name(opt.name):
         o.fatal("'%r' is not a valid branch name." % opt.name)
@@ -226,11 +226,13 @@ def main(argv):
         else:
             files = [stdin]
 
+    write_opts = {'compression_level': opt.compress,
+                  'max_pack_size': opt.max_pack_size,
+                  'max_pack_objects': opt.max_pack_objects}
     try:
-        write_opts = {'compression_level': opt.compress,
-                      'max_pack_size': opt.max_pack_size,
-                      'max_pack_objects': opt.max_pack_objects}
-        if opt.repo.startswith(b'file://'):
+        if repo_location_url(opt.repo).scheme != b'file://':
+            dest = repo_for_location(opt.repo, **write_opts)
+        else:
             # A repo isn't required for --noop or --copy, but if we do
             # have one, we need to respect its bup.split.files, etc.
             if writing:
@@ -238,18 +240,17 @@ def main(argv):
                 have_local_repo = True
             else:
                 have_local_repo = git.establish_default_repo()
-            repo = make_repo(opt.repo, **write_opts) if have_local_repo else None
-        else:
-            repo = make_repo(opt.repo, **write_opts)
+            dest = repo_for_location(opt.repo, **write_opts) \
+                if have_local_repo else None
     except client.ClientError as e:
         log('error: %s' % e)
         sys.exit(EXIT_FAILURE)
 
     # repo creation must be last nontrivial command in each if clause above
-    with nullcontext_if_not(repo):
+    with nullcontext_if_not(dest):
         try:
-            if repo:
-                split_cfg = hashsplit.configuration(repo.config_get)
+            if dest:
+                split_cfg = hashsplit.configuration(dest.config_get)
             else:
                 null_config_get = partial(git.git_config_get, os.devnull)
                 split_cfg = hashsplit.configuration(null_config_get)
@@ -258,17 +259,17 @@ def main(argv):
         split_cfg['keep_boundaries'] = opt.keep_boundaries
         if opt.name and writing:
             refname = opt.name and b'refs/heads/%s' % opt.name
-            oldref = repo.read_ref(refname)
+            oldref = dest.read_ref(refname)
         else:
             refname = oldref = None
 
         if writing:
             commit = split(opt, files, oldref, out, split_cfg,
-                           new_blob=repo.write_data,
-                           new_tree=repo.write_tree,
-                           new_commit=repo.write_commit)
+                           new_blob=dest.write_data,
+                           new_tree=dest.write_tree,
+                           new_commit=dest.write_commit)
             if refname:
-                repo.update_ref(refname, commit, oldref)
+                dest.update_ref(refname, commit, oldref)
         else:
             assert not refname
             def null_write_data(content):

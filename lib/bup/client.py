@@ -7,6 +7,7 @@ import os, re, struct, sys, time, zlib
 import socket, shutil
 
 from bup import git, ssh, vint, protocol
+from bup.compat import dataclass
 from bup.git import PackWriter
 from bup.helpers import \
     (Conn,
@@ -25,7 +26,7 @@ from bup.helpers import \
      DemuxConn)
 from bup.io import path_msg as pm
 from bup.path import index_cache
-from bup.url import URL, parse_bytes_path_url
+from bup.url import URL
 from bup.vint import read_vint, read_vuint, read_bvec, write_bvec
 
 
@@ -119,38 +120,18 @@ def _raw_write_bwlimit(f, buf, bwcount, bwtime):
         return (bwcount, bwtime)
 
 
-def parse_remote(remote):
-    def parse_non_url(remote):
-        user, at_, hostpath = remote.rpartition(b'@') # ssh x@y@z has user x@y
-        if b':' not in hostpath:
-            raise ClientError(f'remote {pm(remote)} has no colon')
-        host, path = hostpath.split(b':', 1)
-        if host == b'-': # use a subprocess for testing
-            return URL(scheme=b'ssh', path=path)
-        if not host:
-            raise ClientError(f'remote {pm(remote)} has no host')
-        return URL(scheme=b'ssh', host=host, user=user, path=path)
-    url = parse_bytes_path_url(remote, require_auth=True)
-    if not url:
-        return parse_non_url(remote)
-    if url.scheme == b'bup':
-        if url.user:
-            raise ClientError(f'bup URL {pm(remote)} has a user')
-    elif url.scheme in (b'ssh', b'bup'): # for now
-        if not url.host: # i.e. b''
-            raise ClientError(f'remote {pm(remote)} has no host')
-    elif url.scheme == b'bup-rev':
-        def raise_unexpected(attr):
-            raise ClientError(f'bup-rev remote {pm(remote)} has a {attr}')
-        if url.user: raise_unexpected('user')
-        if url.path: raise_unexpected('path')
-        if url.port is not None: raise_unexpected('port')
-    else:
-        raise ClientError(f'unexpected {pm(url.scheme)} scheme for {pm(remote)}')
-    return url
+def _legacy_cache_id_for_host_path(host, path):
+    # This function should effectively never change its behavior since
+    # a change in return value will cause affected clients to
+    # duplicate the index-cache.  The b'None' here matches python2's
+    # behavior of b'%s' % None == 'None', python3 will (as of version
+    # 3.7.5) do the same for str ('%s' % None), but crashes instead
+    # when doing b'%s' % None.
+    return re.sub(br'[^@\w]', b'_',
+                  b':'.join((b'None' if host is None else host,
+                             b'None' if path is None else path)))
 
-
-def _legacy_cache_id(remote, reversed=False):
+def _legacy_cache_id_for_remote(remote, reversed=False):
     # This function should effectively never change its behavior since
     # a change in return value will cause affected clients to
     # duplicate the index-cache.  The index-cache for newer
@@ -177,13 +158,13 @@ def _legacy_cache_id(remote, reversed=False):
             return url_match.group(3,5)
         return parse_non_url(remote)
     host, path = parse_non_url(remote + b':') if reversed else parse(remote)
-    # The b'None' here matches python2's behavior of b'%s' % None == 'None',
-    # python3 will (as of version 3.7.5) do the same for str ('%s' % None),
-    # but crashes instead when doing b'%s' % None.
-    return re.sub(br'[^@\w]', b'_',
-                  b':'.join((b'None' if host is None else host,
-                             b'None' if path is None else path)))
+    return _legacy_cache_id_for_host_path(host, path)
 
+
+@dataclass(slots=True, frozen=True)
+class Config:
+    url: URL
+    remote: bytes
 
 class Client:
 
@@ -290,7 +271,7 @@ class Client:
                  closing(self._sockw):
                 pass
 
-    def _prep_cache(self, remote, reversed):
+    def _prep_cache(self, legacy_id):
         # Set up the index-cache directory, prefer repo-id derived
         # dirs when the remote repo has one (that can be accessed).
         repo_id = None
@@ -299,7 +280,7 @@ class Client:
                 repo_id = self.config_get(b'bup.repo.id')
             except PermissionError:
                 pass
-        legacy = index_cache(_legacy_cache_id(remote, reversed))
+        legacy = index_cache(legacy_id)
         if repo_id is None:
             return legacy
         # legacy ids can't include -, so avoid aliasing with an id--
@@ -311,15 +292,30 @@ class Client:
             shutil.move(legacy, new)
         return new
 
-    def __init__(self, remote, create=False):
+    def __init__(self, location, create=False):
+        """Construct a Client.  The location can be either a URL or a
+        Client.Config.  The latter must be provided when the original
+        source is a REMOTE OPTION (bup(1)) so that we can be sure to
+        preserve the legacy index-cache location when we have a remote
+        option, without trying to safely carry it through a URL
+        somehow.
+
+        """
         # only hand over to __del__ -> close() if complete, which
         # means it's fine to initialize attrs incrementally.
         self.closed = True
         with ExitStack() as ctx:
             self._call = partial(_TypicalCall, self)
             self._line_based_call = partial(_LineBasedCall, self)
-            url = parse_remote(remote)
-            self.url = url
+            if isinstance(location, URL):
+                self.url = url = location
+                self.remote = None
+            elif isinstance(location, Config):
+                assert location.url.scheme != b'bup-rev', location.url
+                self.url = url = location.url
+                self.remote = location.remote
+            else:
+                raise Exception(f'unexpected client location {location}')
             self.path = url.path
             self._busy = None
             if url.scheme == b'bup-rev':
@@ -329,7 +325,7 @@ class Client:
             elif url.scheme == b'bup':
                 self._transport = Client.ViaBup(url)
             else:
-                raise ClientError(f'unrecognized remote {pm(remote)}')
+                raise ClientError(f'unrecognized URL {url}')
             ctx.enter_context(self._transport)
             self.conn = self._transport.conn
             self._available_commands = self._get_available_commands()
@@ -343,9 +339,12 @@ class Client:
                     self.conn.write(b'set-dir %s\n' % mangled_path)
                 self.check_ok()
             if url.scheme == b'bup-rev':
-                self.cachedir = self._prep_cache(url.host, True)
-            else:
-                self.cachedir = self._prep_cache(remote, False)
+                legacy_id = _legacy_cache_id_for_remote(url.host, True)
+            elif self.remote:
+                legacy_id = _legacy_cache_id_for_remote(self.remote, True)
+            else: # use the decoded path
+                legacy_id = _legacy_cache_id_for_host_path(url.host, self.path)
+            self.cachedir = self._prep_cache(legacy_id)
             self.sync_indexes()
             ctx.pop_all()
         self.closed = False
@@ -576,7 +575,7 @@ class Client:
                     raise ClientError('Invalid reference name in %r' % line)
                 yield name, unhexlify(oidx)
 
-    def rev_list(self, refs, parse=None, format=None):
+    def rev_list(self, ref_or_refs, parse=None, format=None):
         """See git.rev_list for the general semantics, but note that with the
         current interface, the parse function must be able to handle
         (consume) any blank lines produced by the format because the
@@ -584,12 +583,16 @@ class Client:
         as a terminator for the entire rev-list result.
 
         """
+        if isinstance(ref_or_refs, bytes):
+            refs = (ref_or_refs,)
+        else:
+            refs = ref_or_refs
         if format:
             assert b'\n' not in format
             assert parse
         for ref in refs:
-            assert ref
-            assert b'\n' not in ref
+            assert ref, ref
+            assert b'\n' not in ref, ref
         with self._line_based_call('rev-list') as call:
             self.conn.write(b'\n')
             if format:

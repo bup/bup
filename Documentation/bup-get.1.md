@@ -114,8 +114,9 @@ used to help test before/after results.)
 
 # OPTIONS
 
--s, \--source=*path*
-:   use *path* as the source repository, instead of the default.
+\-s *path*, \-S *url, \--source *path*, \--source-url *url*
+:   use *path* or *url* as the source repository, instead of the
+    default.  See `bup`(1) REPOSITORY URLS for further information.
 
 -r, \--remote=[*user*@]*host*:[*path*], \--remote=URL
 :   write the *ref*s to the specified remote repository, by default

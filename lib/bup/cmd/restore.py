@@ -6,12 +6,11 @@ import errno, os, re, stat, sys
 from bup import options, vfs
 from bup._helpers import write_sparsely
 from bup.compat import argv_bytes, fsencode
-from bup.config import derive_repo_addr
 from bup.helpers import (add_error, chunkyreader,
                          mkdirp, parse_rx_excludes, progress, qprogress,
                          should_rx_exclude_path)
 from bup.io import byte_stream
-from bup.repo import make_repo
+from bup.repo import main_repo_location, repo_for_location
 
 
 optspec = """
@@ -225,8 +224,8 @@ def main(argv):
     verbosity = (opt.verbose or 0) if not opt.quiet else -1
     if opt.outdir:
         opt.outdir = argv_bytes(opt.outdir)
-    addr = derive_repo_addr(remote=argv_bytes(opt.remote) if opt.remote else None,
-                            die=o.fatal)
+    loc = main_repo_location(argv_bytes(opt.remote) if opt.remote else None,
+                             o.fatal)
 
     if not extra:
         o.fatal('must specify at least one filename to restore')
@@ -241,7 +240,7 @@ def main(argv):
         mkdirp(opt.outdir)
         os.chdir(opt.outdir)
 
-    with make_repo(addr) as repo:
+    with repo_for_location(loc) as src:
         top = fsencode(os.getcwd())
         hardlinks = {}
         for path in [argv_bytes(x) for x in extra]:
@@ -249,14 +248,14 @@ def main(argv):
                 add_error("path %r doesn't include a branch and revision" % path)
                 continue
             try:
-                resolved = vfs.resolve(repo, path, want_meta=True, follow=False)
+                resolved = vfs.resolve(src, path, want_meta=True, follow=False)
             except vfs.IOError as e:
                 add_error(e)
                 continue
             if len(resolved) == 3 and resolved[2][0] == b'latest':
                 # Follow latest symlink to the actual save
                 try:
-                    resolved = vfs.resolve(repo, b'latest', parent=resolved[:-1],
+                    resolved = vfs.resolve(src, b'latest', parent=resolved[:-1],
                                            want_meta=True)
                 except vfs.IOError as e:
                     add_error(e)
@@ -280,20 +279,20 @@ def main(argv):
                 if not treeish:
                     add_error('%r cannot be restored as a directory' % path)
                 else:
-                    items = vfs.contents(repo, leaf_item, want_meta=True)
+                    items = vfs.contents(src, leaf_item, want_meta=True)
                     dot, leaf_item = next(items, None)
                     assert dot == b'.'
                     for sub_name, sub_item in items:
-                        restore(repo, b'', sub_name, sub_item, top,
+                        restore(src, b'', sub_name, sub_item, top,
                                 opt.sparse, opt.numeric_ids, owner_map,
                                 exclude_rxs, verbosity, hardlinks)
                     if path_name == b'.':
-                        leaf_item = vfs.augment_item_meta(repo, leaf_item,
+                        leaf_item = vfs.augment_item_meta(src, leaf_item,
                                                           include_size=True)
                         apply_metadata(leaf_item.meta, b'.',
                                        opt.numeric_ids, owner_map)
             else:
-                restore(repo, b'', leaf_name, leaf_item, top,
+                restore(src, b'', leaf_name, leaf_item, top,
                         opt.sparse, opt.numeric_ids, owner_map,
                         exclude_rxs, verbosity, hardlinks)
 

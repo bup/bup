@@ -261,8 +261,12 @@ def _run_get(disposition, method, what, rewrite=None):
         get_cmd = (bup_cmd, b'-d', b'get-dest',
                    b'get', b'-vvct', b'--print-tags', b'-s', b'get-src',
                    b'-r', b'-:' + getcwd() + b'/get-dest')
+    elif disposition == 'get-from':
+        get_cmd = (bup_cmd, b'-d', b'get-dest',
+                   b'get', b'-vvct', b'--print-tags',
+                   b'--source-url', b'ssh://' + getcwd() + b'/get-src')
     else:
-        raise Exception('error: unexpected get disposition ' + repr(disposition))
+        raise Exception(f'error: unexpected get disposition {disposition!r}')
     
     cmd = (*get_cmd, b'--rewrite' if rewrite else b'--copy')
     if isinstance(what, bytes):
@@ -1086,7 +1090,7 @@ def create_get_src():
 dispositions_to_test = ('get',)
 
 if int(environ.get(b'BUP_TEST_LEVEL', b'0')) >= 11:
-    dispositions_to_test += ('get-on', 'get-to')
+    dispositions_to_test += ('get-on', 'get-to', 'get-from')
 
 categories = ('replace', 'universal', 'ff', 'append', 'pick_force', 'pick_noforce', 'new_tag', 'unnamed')
 
