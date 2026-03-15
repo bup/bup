@@ -5,14 +5,12 @@
 from os import environb as environ
 # pylint: enable=unused-import
 from os import fsencode
-import dataclasses, os, sys, traceback
+import dataclasses, sys, traceback
 
 import bup_main
 
 
 ver = sys.version_info
-
-MAYBE_LARGEFILE = getattr(os, 'O_LARGEFILE', 0)
 
 if (ver.major, ver.minor) >= (3, 10):
     # pylint: disable=unused-import
