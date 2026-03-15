@@ -189,14 +189,16 @@ def restore(repo, parent_path, name, item, top, sparse, numeric_ids, owner_map,
             meta = item.meta
             meta.create_path(name)
             os.chdir(name)
-            total_restored += 1
-            if verbosity >= 0:
-                qprogress('Restoring: %d\r' % total_restored)
-            for sub_name, sub_item in sub_items:
-                restore(repo, fullname, sub_name, sub_item, top, sparse,
-                        numeric_ids, owner_map, exclude_rxs, verbosity,
-                        hardlinks)
-            os.chdir(b'..')
+            try:
+                total_restored += 1
+                if verbosity >= 0:
+                    qprogress('Restoring: %d\r' % total_restored)
+                for sub_name, sub_item in sub_items:
+                    restore(repo, fullname, sub_name, sub_item, top, sparse,
+                            numeric_ids, owner_map, exclude_rxs, verbosity,
+                            hardlinks)
+            finally:
+                os.chdir(b'..')
             apply_metadata(meta, name, numeric_ids, owner_map)
         else:
             created_hardlink = False
