@@ -994,6 +994,29 @@ static PyObject *open_noatime(PyObject *self, PyObject *args)
 }
 
 
+static PyObject *openat_noatime(PyObject *self, PyObject *args)
+{
+    char *name;
+    int fd, flags;
+    if (!PyArg_ParseTuple(args, "iyi", &fd, &name, &flags))
+	return NULL;
+#ifdef O_LARGEFILE
+    flags |= O_LARGEFILE;
+#endif
+#ifdef O_NOATIME
+    const int flags_noatime = flags | O_NOATIME;
+#else
+    const int flags_noatime = flags;
+#endif
+    int ofd = openat(fd, name, flags_noatime);
+    if (ofd < 0 && errno == EPERM) // see _open_noatime comments above
+        ofd = openat(fd, name, flags);
+    if (ofd < 0)
+	return PyErr_SetFromErrno(PyExc_OSError);
+    return Py_BuildValue("i", ofd);
+}
+
+
 // Currently the Linux kernel and FUSE disagree over the type for
 // FS_IOC_GETFLAGS and FS_IOC_SETFLAGS.  The kernel actually uses int,
 // but FUSE chose long (matching the declaration in linux/fs.h).  So
@@ -1778,6 +1801,8 @@ static PyMethodDef helper_methods[] = {
         "Return a random 20-byte string" },
     { "open_noatime", open_noatime, METH_VARARGS,
 	"open() the given filename for read with O_NOATIME if possible" },
+    { "openat_noatime", openat_noatime, METH_VARARGS,
+      "identical to openat(), but with O_NOATIME if possible" },
 #ifdef BUP_HAVE_FILE_ATTRS
     { "get_linux_file_attr", bup_get_linux_file_attr, METH_VARARGS,
       "Return the Linux attributes for the given file." },
