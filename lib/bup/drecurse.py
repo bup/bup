@@ -1,8 +1,9 @@
 
-from os import O_DIRECTORY, O_NOFOLLOW
+from os import O_DIRECTORY, O_NOFOLLOW, fsencode
+from stat import S_ISDIR
 import stat, os
 
-from bup._helpers import open_noatime
+from bup._helpers import open_noatime, openat_noatime
 from bup.helpers \
     import (add_error,
             debug1,
@@ -18,25 +19,24 @@ from bup.io import path_msg
 #  - avoid race conditions caused by doing listdir() on a changing symlink
 
 
-def _dirlist():
+def _dirlist(fd):
     l = []
-    for n in os.listdir(b'.'):
+    for n in os.listdir(fd):
         try:
-            st = xstat.lstat(n)
+            st = xstat.lstat(n, dir_fd=fd)
         except OSError as e:
             add_error(Exception('%s: %s' % (resolve_parent(n), str(e))))
             continue
-        if stat.S_ISDIR(st.st_mode):
-            n += b'/'
-        l.append((n,st))
+        l.append((fsencode(n + '/' if S_ISDIR(st.st_mode) else n), st))
     l.sort(reverse=True)
     return l
 
-def _recursive_dirlist(prepend, xdev, bup_dir=None,
+def _recursive_dirlist(prepend, dir_fd, xdev,
+                       bup_dir=None,
                        excluded_paths=None,
                        exclude_rxs=None,
                        xdev_exceptions=frozenset()):
-    for (name,pst) in _dirlist():
+    for name, pst in _dirlist(dir_fd):
         path = prepend + name
         npath = None
         if excluded_paths:
@@ -59,30 +59,33 @@ def _recursive_dirlist(prepend, xdev, bup_dir=None,
             yield path, pst
             continue
         try:
-            fd = open_noatime(name, O_NOFOLLOW | O_DIRECTORY)
+            sub_fd = openat_noatime(dir_fd, name, O_NOFOLLOW | O_DIRECTORY)
         except OSError as e:
             add_error('%s: %s' % (prepend, e))
             yield path, pst
             continue
-        with finalized(fd, os.close):
-            os.fchdir(fd)
-        yield from _recursive_dirlist(prepend=path, xdev=xdev,
-                                      bup_dir=bup_dir,
-                                      excluded_paths=excluded_paths,
-                                      exclude_rxs=exclude_rxs,
-                                      xdev_exceptions=xdev_exceptions)
+        with finalized(sub_fd, os.close):
+            os.fchdir(sub_fd)
+            yield from _recursive_dirlist(prepend=path,
+                                          dir_fd=sub_fd,
+                                          xdev=xdev,
+                                          bup_dir=bup_dir,
+                                          excluded_paths=excluded_paths,
+                                          exclude_rxs=exclude_rxs,
+                                          xdev_exceptions=xdev_exceptions)
         os.chdir(b'..')
-        yield (path, pst)
+        yield path, pst
 
 
 def recursive_dirlist(paths, xdev, bup_dir=None,
                       excluded_paths=None,
                       exclude_rxs=None,
                       xdev_exceptions=frozenset()):
+    for path in paths:
+        assert isinstance(path, bytes), path
     startdir = open_noatime(b'.', O_NOFOLLOW | O_DIRECTORY)
     with finalized(startdir, os.close):
         try:
-            assert not isinstance(paths, str)
             for path in paths:
                 try:
                     pst = xstat.lstat(path)
@@ -93,15 +96,17 @@ def recursive_dirlist(paths, xdev, bup_dir=None,
                     yield path, pst
                     continue
                 try:
-                    opened_pfile = open_noatime(path, O_NOFOLLOW | O_DIRECTORY)
+                    path_fd = open_noatime(path, O_NOFOLLOW | O_DIRECTORY)
                 except OSError as e:
                     add_error(e)
                     continue
-                with finalized(opened_pfile, os.close) as pfile:
+                with finalized(path_fd, os.close):
+                    os.fchdir(path_fd)
                     xdev = pst.st_dev if xdev else None
-                    os.fchdir(pfile)
-                    prepend = os.path.join(path, b'')
-                    yield from _recursive_dirlist(prepend=prepend, xdev=xdev,
+                    prepend = path if path[-1] == b'/'[0] else path + b'/'
+                    yield from _recursive_dirlist(prepend=prepend,
+                                                  dir_fd=path_fd,
+                                                  xdev=xdev,
                                                   bup_dir=bup_dir,
                                                   excluded_paths=excluded_paths,
                                                   exclude_rxs=exclude_rxs,
