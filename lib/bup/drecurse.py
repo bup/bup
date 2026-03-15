@@ -3,6 +3,7 @@ from os import O_DIRECTORY, O_NOFOLLOW, fsencode
 from stat import S_ISDIR
 import stat, os
 
+from bup import xstat
 from bup._helpers import open_noatime, openat_noatime
 from bup.helpers \
     import (add_error,
@@ -10,17 +11,16 @@ from bup.helpers \
             finalized,
             resolve_parent,
             should_rx_exclude_path)
-from bup import xstat
-from bup.io import path_msg
+from bup.io import path_msg as pm
 
 
-def _dirlist(fd):
+def _dirlist(fd, path):
     l = []
     for n in os.listdir(fd):
         try:
             st = xstat.lstat(n, dir_fd=fd)
         except OSError as e:
-            add_error(Exception('%s: %s' % (resolve_parent(n), str(e))))
+            add_error(Exception(f'{pm(resolve_parent(path))}/{n}: {e}'))
             continue
         l.append((fsencode(n + '/' if S_ISDIR(st.st_mode) else n), st))
     l.sort(reverse=True)
@@ -31,13 +31,13 @@ def _recursive_dirlist(prepend, dir_fd, xdev,
                        excluded_paths=None,
                        exclude_rxs=None,
                        xdev_exceptions=frozenset()):
-    for name, pst in _dirlist(dir_fd):
+    for name, pst in _dirlist(dir_fd, prepend):
         path = prepend + name
         npath = None
         if excluded_paths:
             npath = os.path.normpath(path)
             if npath in excluded_paths:
-                debug1('Skipping %r: excluded.\n' % path_msg(path))
+                debug1('Excluding path {pm(path)}')
                 continue
         if exclude_rxs and should_rx_exclude_path(path, exclude_rxs):
             continue
@@ -45,18 +45,17 @@ def _recursive_dirlist(prepend, dir_fd, xdev,
             yield path, pst
             continue
         if bup_dir is not None and (npath or os.path.normpath(path)) == bup_dir:
-            debug1('Skipping BUP_DIR.\n')
+            debug1(f'Excluding repository {pm(bup_dir)}\n')
             continue
         if xdev is not None and pst.st_dev != xdev \
            and path not in xdev_exceptions:
-            debug1('Skipping contents of %r: different filesystem.\n'
-                   % path_msg(path))
+            debug1(f'Excluding filesystem {pm(path)}\n')
             yield path, pst
             continue
         try:
             sub_fd = openat_noatime(dir_fd, name, O_NOFOLLOW | O_DIRECTORY)
         except OSError as e:
-            add_error('%s: %s' % (prepend, e))
+            add_error(Exception(f'{pm(prepend)}/{pm(name)}: {e}'))
             yield path, pst
             continue
         with finalized(sub_fd, os.close):
@@ -69,7 +68,6 @@ def _recursive_dirlist(prepend, dir_fd, xdev,
                                           xdev_exceptions=xdev_exceptions)
         yield path, pst
 
-
 def recursive_dirlist(paths, xdev, bup_dir=None,
                       excluded_paths=None,
                       exclude_rxs=None,
@@ -80,7 +78,7 @@ def recursive_dirlist(paths, xdev, bup_dir=None,
         try:
             pst = xstat.lstat(path)
         except OSError as e:
-            add_error('recursive_dirlist: %s' % e)
+            add_error(Exception(f'{pm(path)}: {e}'))
             continue
         if not stat.S_ISDIR(pst.st_mode):
             yield path, pst
