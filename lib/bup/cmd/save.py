@@ -4,10 +4,10 @@ from errno import ENOENT
 from os import O_NOFOLLOW, O_RDONLY
 import math, os, stat, sys, time
 
-from bup import hashsplit, options, index, client, metadata
-from bup import hlinkdb
+from bup import hashsplit, hlinkdb, options, index, client, metadata
+from bup._helpers import open_noatime
 from bup.commit import commit_message
-from bup.compat import MAYBE_NOATIME, argv_bytes, get_argvb
+from bup.compat import argv_bytes, get_argvb
 from bup.config import ConfigError
 from bup.hashsplit import \
     (GIT_MODE_TREE,
@@ -394,7 +394,7 @@ def save_tree(opt, reader, hlink_db, msr, repo, split_cfg):
                         return repo.write_data(data)
                     before_saving_regular_file(ent.name)
 
-                    with open(os.open(ent.name, O_RDONLY | O_NOFOLLOW | MAYBE_NOATIME),
+                    with open(open_noatime(ent.name, O_RDONLY | O_NOFOLLOW),
                               'rb', buffering=1024 * 1024) as f:
                         mode, id = \
                             split_to_blob_or_tree(write_data, repo.write_tree,

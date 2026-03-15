@@ -12,7 +12,6 @@ import bup_main
 
 ver = sys.version_info
 
-MAYBE_NOATIME = getattr(os, 'O_NOATIME', 0) # mostly linux
 MAYBE_LARGEFILE = getattr(os, 'O_LARGEFILE', 0)
 
 if (ver.major, ver.minor) >= (3, 10):
