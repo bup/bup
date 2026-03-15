@@ -960,29 +960,22 @@ static PyObject *random_sha(PyObject *self, PyObject *args)
 }
 
 
-static int _open_noatime(const char *filename, int attrs)
+static int _open_noatime(const char *path, int flags)
 {
-    int attrs_noatime, fd;
-    attrs |= O_RDONLY;
-#ifdef O_NOFOLLOW
-    attrs |= O_NOFOLLOW;
-#endif
 #ifdef O_LARGEFILE
-    attrs |= O_LARGEFILE;
+    flags |= O_LARGEFILE;
 #endif
-    attrs_noatime = attrs;
 #ifdef O_NOATIME
-    attrs_noatime |= O_NOATIME;
+    const int flags_noatime = flags | O_NOATIME;
+#else
+    const int flags_noatime = flags;
 #endif
-    fd = open(filename, attrs_noatime);
+    int fd = open(path, flags_noatime);
     if (fd < 0 && errno == EPERM)
     {
-	// older Linux kernels would return EPERM if you used O_NOATIME
-	// and weren't the file's owner.  This pointless restriction was
-	// relaxed eventually, but we have to handle it anyway.
-	// (VERY old kernels didn't recognized O_NOATIME, but they would
-	// just harmlessly ignore it, so this branch won't trigger)
-	fd = open(filename, attrs);
+	// If nothing else, Linux kernels may return EPERM for
+	// O_NOATIME when you're not the file's owner.
+	fd = open(path, flags);
     }
     return fd;
 }
@@ -990,13 +983,13 @@ static int _open_noatime(const char *filename, int attrs)
 
 static PyObject *open_noatime(PyObject *self, PyObject *args)
 {
-    char *filename = NULL;
-    int fd;
-    if (!PyArg_ParseTuple(args, cstr_argf, &filename))
+    char *path;
+    int flags;
+    if (!PyArg_ParseTuple(args, "yi", &path, &flags))
 	return NULL;
-    fd = _open_noatime(filename, 0);
+    int fd = _open_noatime(path, flags);
     if (fd < 0)
-	return PyErr_SetFromErrnoWithFilename(PyExc_OSError, filename);
+	return PyErr_SetFromErrnoWithFilename(PyExc_OSError, path);
     return Py_BuildValue("i", fd);
 }
 
@@ -1022,7 +1015,7 @@ static PyObject *bup_get_linux_file_attr(PyObject *self, PyObject *args)
     if (!PyArg_ParseTuple(args, cstr_argf, &path))
         return NULL;
 
-    fd = _open_noatime(path, O_NONBLOCK);
+    fd = _open_noatime(path, O_RDONLY | O_NOFOLLOW | O_NONBLOCK);
     if (fd == -1)
         return PyErr_SetFromErrnoWithFilename(PyExc_OSError, path);
 
