@@ -96,11 +96,7 @@ def recursive_dirlist(paths, xdev, bup_dir=None,
                     add_error(e)
                     continue
                 with opened_pfile as pfile:
-                    pst = xstat.fstat(pfile)
-                    if xdev:
-                        xdev = pst.st_dev
-                    else:
-                        xdev = None
+                    xdev = pst.st_dev if xdev else None
                     if stat.S_ISDIR(pst.st_mode):
                         os.fchdir(pfile)
                         prepend = os.path.join(path, b'')
