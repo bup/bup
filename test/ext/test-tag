@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+. ./wvtest-bup.sh
+. ./test/lib/btl.sh
+
+set -o pipefail
+
+top="$(WVPASS pwd)" || exit $?
+tmpdir="$(WVPASS wvmktempdir)" || exit $?
+
+export BUP_DIR="$tmpdir/bup"
+export GIT_DIR="$tmpdir/bup"
+
+bup() { "$top/bup" "$@"; }
+
+WVPASS bup init
+WVPASS cd "$tmpdir"
+
+WVPASS bup index "$top/test/sampledata"
+WVPASS bup save -n main "$top/test/sampledata"
+WVPASSEQ "$(git tag)" ''
+WVFAIL eval 'bup tag -d nope 2> >(tee log)'
+WVPASS grep "error: tag 'nope' doesn't exist" log
+WVPASSEQ "$(git tag)" ''
+WVPASS bup tag -f -d nope
+WVPASSEQ "$(git tag)" ''
+WVFAIL bup tag tag-1
+WVPASSEQ "$(git tag)" ''
+WVFAIL bup tag '' nope
+WVPASSEQ "$(git tag)" ''
+WVFAIL eval 'bup tag tag-1 nope 2> >(tee log)'
+WVPASS grep "error: commit nope not found" log
+WVPASSEQ "$(git tag)" ''
+WVFAIL eval 'bup tag .tag-1 main 2> >(tee log)'
+WVPASS grep "'.tag-1' is not a valid tag name" log
+WVPASSEQ "$(git tag)" ''
+WVPASS bup tag tag-1 main
+WVPASSEQ "$(git tag)" tag-1
+WVFAIL bup tag tag-1 main 2> log
+WVPASS grep -E "tag 'tag-1' already exists" log
+WVPASSEQ "$(git tag)" tag-1
+WVPASS bup tag -d tag-1
+WVPASSEQ "$(git tag)" ''
+
+WVPASS cd "$top"
+WVPASS rm -rf "$tmpdir"
