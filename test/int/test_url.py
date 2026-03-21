@@ -51,6 +51,9 @@ def test_render_url():
 
     with raises(ValueError, match='cannot represent relative path'):
         rurl(urlx(host=b'h', path=b'p'))
+    assert rurl(urlx(path=b'//p')) == b'x:////p'
+    assert rurl(urlx(host=b'%')) == b'x://%25'
+    assert rurl(urlx(host=b':', user=b'/')) == b'x://%2f@%3a'
     assert rdot(urlx(host=b'h', path=b'p')) == b'x://h/./p'
 
 # FIXME: more negative tests
