@@ -18,21 +18,38 @@ WVSTART "cat-file"
 WVPASS mkdir src
 WVPASS date > src/foo
 WVPASS bup index src
-WVPASS bup save -n src src
-WVPASS bup cat-file "src/latest/$(pwd)/src/foo" > cat-foo
+WVPASS bup save -n src --strip-path "$(pwd)" src
+
+WVSTART 'invalid invocations'
+WVFAIL eval 'bup cat-file 2> >(tee log)'
+WVPASS grep -F 'must specify a target' log
+WVFAIL eval 'bup cat-file x y 2> >(tee log)'
+WVPASS grep -F 'only one target file allowed' log
+WVFAIL eval 'bup cat-file --meta --bupm x 2> >(tee log)'
+WVPASS grep -F -e '--meta and --bupm are incompatible' log
+WVFAIL eval 'bup cat-file x 2> >(tee log)'
+WVPASS grep -F -e "path x doesn't include a branch and revision" log
+WVEXPRC 2 eval 'bup cat-file x/y 2> >(tee log)'
+WVPASS grep -F 'cannot access /x in x/y' log
+WVFAIL eval 'bup cat-file --bupm src/latest/src/foo 2> >(tee log)'
+WVPASS grep -F 'src/latest/src/foo is not a directory' log
+WVFAIL eval 'bup cat-file src/latest/src/ 2> >(tee log)'
+WVPASS grep -F 'src/latest/src/ is not a plain file' log
+
+WVPASS bup cat-file "src/latest/src/foo" > cat-foo
 WVPASS diff -u src/foo cat-foo
 
 WVSTART "cat-file --meta"
 WVPASS bup meta --create --no-paths src/foo > src-foo.meta
-WVPASS bup cat-file --meta "src/latest/$(pwd)/src/foo" > cat-foo.meta
+WVPASS bup cat-file --meta "src/latest/src/foo" > cat-foo.meta
 
 WVPASS bup meta -tvvf src-foo.meta | WVPASS grep -vE '^atime: ' > src-foo.list
 WVPASS bup meta -tvvf cat-foo.meta | WVPASS grep -vE '^atime: ' > cat-foo.list
 WVPASS diff -u src-foo.list cat-foo.list
 
 WVSTART "cat-file --bupm"
-WVPASS bup cat-file --bupm "src/latest/$(pwd)/src/" > bup-cat-bupm
-src_hash=$(WVPASS bup ls -s "src/latest/$(pwd)" | cut -d' ' -f 1) || exit $?
+WVPASS bup cat-file --bupm "src/latest/src/" > bup-cat-bupm
+src_hash=$(WVPASS bup ls -s "src/latest/" | cut -d' ' -f 1) || exit $?
 bupm_hash=$(WVPASS git ls-tree "$src_hash" | grep -F .bupm | cut -d' ' -f 3) \
     || exit $?
 bupm_hash=$(WVPASS echo "$bupm_hash" | cut -d'	' -f 1) || exit $?
