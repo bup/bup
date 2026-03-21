@@ -2,6 +2,7 @@
 from io import BytesIO
 from itertools import combinations_with_replacement
 
+from pytest import raises
 from wvpytest import *
 
 from bup import vint
@@ -14,6 +15,8 @@ def encode_and_decode_vuint(x):
 
 
 def test_vuint():
+    with raises(ValueError, match='cannot encode negative value -1'):
+        vint.encode_vuint(-1)
     for x in (0, 1, 42, 128, 10**16, 10**100):
         WVPASSEQ(encode_and_decode_vuint(x), x)
     WVEXCEPT(Exception, vint.write_vuint, BytesIO(), -1)
@@ -66,6 +69,21 @@ def test_bvec():
     WVEXCEPT(EOFError, vint.skip_bvec, BytesIO(b'\x01'))
 
 
+def test_send_recv():
+    b = BytesIO()
+    with raises(ValueError, match='number of arguments does not match format string'):
+        vint.send(b, 'v')
+    with raises(ValueError, match='unknown format string'):
+        vint.send(b, '?', 0)
+    b = BytesIO()
+    vint.send(b, 'v', 0)
+    b.seek(0)
+    with raises(ValueError, match='unknown format string'):
+        vint.recv(b, '?')
+    with raises(EOFError, match="EOF while reading type 'V'"):
+        vint.recv(b, 'vV')
+
+
 def pack_and_unpack(types, *values):
     data = vint.pack(types, *values)
     return vint.unpack(types, data)
@@ -94,3 +112,7 @@ def test_pack_and_unpack():
     WVEXCEPT(Exception, vint.pack, 'x', 1)
     WVEXCEPT(Exception, vint.unpack, 's', '')
     WVEXCEPT(Exception, vint.unpack, 'x', '')
+    with raises(ValueError, match=r"unknown format string item '\?'"):
+        vint.pack('?', 0)
+    with raises(ValueError, match=r"unknown format string item '\?'"):
+        vint.pack('v?', 10000000000000000000000000000000000000, 0)

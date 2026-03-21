@@ -1113,7 +1113,7 @@ static unsigned int vuint_encode(long long val, char *buf)
     unsigned int len = 0;
 
     if (val < 0) {
-        PyErr_Format(PyExc_ValueError, "cannot encode negative value %llu", val);
+        PyErr_Format(PyExc_ValueError, "cannot encode negative value %lld", val);
         return 0;
     }
 
@@ -1757,7 +1757,7 @@ static PyObject *bup_limited_vint_pack(PyObject *self, PyObject *args)
             break;
         }
         default:
-            PyErr_Format(PyExc_Exception, "unknown xpack format string item %c",
+            PyErr_Format(PyExc_ValueError, "unknown format string item '%c'",
                          fmt[i]);
             goto error;
         }
