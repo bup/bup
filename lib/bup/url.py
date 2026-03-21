@@ -132,14 +132,12 @@ def parse_bytes_path_url(url, require_auth=False):
     if not auth: # Use a subprocess for testing
         return URL(scheme=scheme, path=path)
     m = _userinfo_host_port_rx.fullmatch(auth)
-    if not m:
-        user, host, port = b'', auth, None
-    else:
-        user, host, port = m.groups(b'')
-        # drop the password immediately (RFC concurs)
-        user, colon_, passwd_ = user.partition(b':')
-        user = unquote_to_bytes(user)
-        port = int(port) if port else None
+    assert m, url # we know auth is not empty, and rx has .*
+    user, host, port = m.groups(b'')
+    # drop the password immediately (RFC concurs)
+    user, colon_, passwd_ = user.partition(b':')
+    user = unquote_to_bytes(user)
+    port = int(port) if port else None
     # REVIEW: is ip_address exactly right for this?
     if host and host[0] == b'['[0] and host[-1] == b']'[0]:
         addr = parse_addr(host[1:-1])
