@@ -45,6 +45,12 @@ need to carefully consider redundancy (such as using RAID
 for multi-disk redundancy, or making off-site backups for
 site redundancy).
 
+When asked to examine all packfiles (i.e. when no *packfile*s are
+specified), fsck will report any files that appear to be related to a
+pack file that no longer exists.  Previous versions of `bup gc` can
+cause this to happen because they did not remove all of the related
+files when removing a pack file.
+
 # OPTIONS
 
 -r, \--repair

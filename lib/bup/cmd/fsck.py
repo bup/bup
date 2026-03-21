@@ -4,7 +4,7 @@ from os.path import join
 from shutil import copy2, rmtree
 from subprocess import DEVNULL, PIPE, run
 from tempfile import mkdtemp
-import errno, glob, os, sys
+import errno, glob, os, re, sys
 
 from bup import options, git
 from bup.compat import argv_bytes
@@ -14,12 +14,31 @@ from bup.helpers \
 from bup.io import byte_stream, path_msg
 
 
-par2_ok = 0
 opt = None
 
 def debug(s):
     if opt.verbose > 1:
         log(s)
+
+def report_stray_pack_related_files(repo, pack_paths):
+    # For now only look for stray files we might have created (SHA1-related)
+    pack_rx = re.compile(br'(?:^|/)pack-([a-f0-9]{40})\.pack$')
+    pack_oidxs = set()
+    for path in pack_paths:
+        m = pack_rx.search(path)
+        if not m:
+            continue
+        pack_oidxs.add(m.group(1))
+
+    # Pack-related is currently pack-40HEX or pack-40HEX.*
+    pack_related_rx = re.compile(br'(?:^|/)pack-([a-f0-9]{40})(?:\..*)?$')
+    for path in glob.glob(repo + b'/objects/pack/pack-*'):
+        m = pack_related_rx.search(path)
+        if not m or m.group(1) in pack_oidxs:
+            continue
+        log(f'No pack file for {path_msg(os.path.basename(path))}\n')
+
+par2_ok = 0
 
 def par2_setup():
     global par2_ok
@@ -331,12 +350,13 @@ def main(argv):
         for stem in pack_stems:
             if not stem.endswith(b'.pack'):
                 o.fatal(f'packfile argument {path_msg(stem)} must end with .pack')
+        pack_stems = [x[:-5] for x in pack_stems]
     else:
         debug('fsck: No filenames given: checking all packs.\n')
         git.check_repo_or_die()
-        pack_stems = glob.glob(git.repo(b'objects/pack/*.pack'))
-
-    pack_stems = [x[:-5] for x in pack_stems]
+        pack_files = glob.glob(git.repo(b'objects/pack/*.pack'))
+        report_stray_pack_related_files(git.repo(), pack_files)
+        pack_stems = [x[:-5] for x in pack_files]
 
     sys.stdout.flush()
     out = byte_stream(sys.stdout)

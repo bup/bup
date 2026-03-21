@@ -51,6 +51,12 @@ May require attention
   that the `.idx` files can be (and now are) trivially regenerated
   from the packfiles during `--repair` when needed.
 
+* `bup gc` now removes all pack file related files
+  (e.g. `pack-HASH.*`) when removing a packfile.  Previously it did
+  not, leaving behind, for example `bup-fsck` generated recovery
+  files.  In addition, `bup fsck` will report lingering files when
+  asked to scan the entire repository,
+
 * Some prior exit statuses of 1 have been changed to a different
   non-zero value.  `bup` is migrating away from exiting with status 1
   for anything other than "false".  This is used by commands like
