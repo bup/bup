@@ -1,7 +1,8 @@
 
 from wvpytest import *
 
-from bup.io import enc_dsq, enc_dsqs, enc_sh, enc_shs, qsql_id, qsql_str
+from bup.io import \
+    cmd_msg, enc_dsq, enc_dsqs, enc_sh, enc_shs, qsql_id, qsql_str
 
 
 def _dsq_enc_byte(b):
@@ -101,6 +102,11 @@ def test_enc_shs():
         == enc_shs(b'\x80'.decode('ascii', errors='surrogateescape'))
     assert r"$'\xb5'" \
         == enc_shs(b'\xb5'.decode('utf-8', errors='surrogateescape'))
+
+def test_cmd_msg():
+    assert 'ls' == cmd_msg(('ls',))
+    assert 'ls' == cmd_msg((b'ls',))
+    assert "ls 'x y'" == cmd_msg(('ls', 'x y'))
 
 def test_qsql_id():
     assert '""""' == qsql_id('"')

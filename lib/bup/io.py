@@ -258,6 +258,14 @@ def path_msg(x):
     """Return a string representation of a path."""
     return enc_shs(fsdecode(x))
 
+def cmd_msg(cmd):
+    """Return an sh quoted representation of the cmd list (bytes or
+    strings) as a string.  The individual elements are quoted, not the
+    whole command.  e.g. ("ls", "x y") becomes "ls 'x y'".
+
+    """
+    return ' '.join(enc_shs(x if isinstance(x, str) else fsdecode(x))
+                    for x in cmd)
 
 def walk_path_msg(ref_name, item_path):
     # walk ref of

@@ -19,6 +19,7 @@ from bup import _helpers, hashsplit, midx, xstat
 from bup.bloom import BloomInvalid, BloomNotFound, BloomReader
 from bup.commit import create_commit_blob, parse_commit
 from bup.compat import dataclass_frozen_for_testing, environ
+from bup.config import ConfigError
 from bup.helpers import (EXIT_FAILURE,
                          OBJECT_EXISTS,
                          ObjectLocation,
@@ -35,7 +36,7 @@ from bup.helpers import (EXIT_FAILURE,
                          stopped,
                          temp_dir,
                          unlink)
-from bup.io import enc_shs, path_msg
+from bup.io import cmd_msg, enc_shs, path_msg
 from bup.midx import open_midx
 import bup.path
 
@@ -84,12 +85,12 @@ def git_config_get(path, option, *, opttype=None):
             return int(r)
         if opttype == 'bool': # any positive int is true for git --bool
             if not r:
-                return None
+                raise ConfigError(f'no output from {cmd_msg(cmd)}')
             if r in (b'0', b'false'):
                 return False
             if r in (b'1', b'true'):
                 return True
-            raise GitError(f'{cmd!r} returned invalid boolean value {r}')
+            raise ConfigError(f'got invalid value {path_msg(r)} from {cmd_msg(cmd)}')
         return r
     if rc == 1:
         return None

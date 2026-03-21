@@ -6,11 +6,13 @@ from time import localtime
 import struct, os
 import pytest
 
+from pytest import raises
 from wvpytest import *
 import buptest
 
 from bup import git, path
 from bup.compat import environ
+from bup.config import ConfigError
 from bup.helpers import OBJECT_EXISTS, finalized, log, mkdirp
 
 
@@ -481,13 +483,15 @@ def test_config(tmpdir):
 
     WVPASSEQ(git.git_config_get(no_such_file, b'bup.foo'), None)
 
-    WVEXCEPT(git.GitError, git_config_get, b'bup.isbad', opttype='bool')
+    WVEXCEPT(ConfigError, git_config_get, b'bup.isbad', opttype='bool')
     WVEXCEPT(git.GitError, git_config_get, b'bup.isbad', opttype='int')
     WVPASSEQ(git_config_get(b'bup.isbad'), b'ok')
     WVPASSEQ(True, git_config_get(b'bup.istrue1', opttype='bool'))
     WVPASSEQ(True, git_config_get(b'bup.istrue2', opttype='bool'))
     WVPASSEQ(False, git_config_get(b'bup.isfalse1', opttype='bool'))
     WVPASSEQ(False, git_config_get(b'bup.isfalse2', opttype='bool'))
+    with raises(ConfigError, match='no output from'):
+        git_config_get(b'bup.isempty', opttype='bool')
     WVPASSEQ(None, git_config_get(b'bup.nosuchkey', opttype='bool'))
     WVPASSEQ(1, git_config_get(b'bup.istrue1', opttype='int'))
     WVPASSEQ(0, git_config_get(b'bup.isfalse2', opttype='int'))
