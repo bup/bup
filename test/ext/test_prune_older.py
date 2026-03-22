@@ -1,7 +1,7 @@
 
 from collections import defaultdict
 from difflib import diff_bytes, unified_diff
-from itertools import chain, dropwhile, groupby, takewhile
+from itertools import chain, groupby, takewhile
 from os import chdir
 from random import choice, randint
 from shutil import copytree, rmtree
@@ -16,6 +16,7 @@ from wvpytest import wvpass, wvpasseq, wvpassne, wvstart
 from bup.compat import environ
 from bup.helpers import period_as_secs
 from bup.io import byte_stream
+from bup.vfs import save_names_for_commit_utcs
 import bup.path
 
 
@@ -54,32 +55,60 @@ period_scale = {b's': 1,
                 b'y': 60 * 60 * 24 * 366}
 period_scale_kinds = list(period_scale.keys())
 
-def expected_retentions(utcs, utc_start, spec):
+def expected_dispositions(utcs, utc_start, spec):
+    """Return a list of (keep, utc) for each utc in utcs, where keep
+    is true or false and utcs must be in branch child before parent
+    order.
+
+    """
     if not spec:
-        return utcs
+        return [(True, utc) for utc in utcs]
     period_start = dict(spec)
     for kind, duration in period_start.items():
         period_start[kind] = utc_start - period_as_secs(duration)
     period_start = defaultdict(lambda: float('inf'), period_start)
 
-    all = list(takewhile(lambda x: x >= period_start[b'all'], utcs))
-    utcs = list(dropwhile(lambda x: x >= period_start[b'all'], utcs))
+    # Current code only prunes leading saves with non-increasing
+    # dates, so split utcs accordingly.
+    candidates = []
+    prev_utc = float('+inf')
+    for utc in utcs:
+        if utc > prev_utc:
+            break
+        candidates.append(utc)
+        prev_utc = utc
+    remaining_utcs = utcs[len(candidates):]
 
-    matches = takewhile(lambda x: x >= period_start[b'dailies'], utcs)
-    dailies = [max(day_utcs) for yday, day_utcs
-               in groupby(matches, lambda x: localtime(x).tm_yday)]
-    utcs = list(dropwhile(lambda x: x >= period_start[b'dailies'], utcs))
+    result = []
+    # --keep-all-for (take everything in region)
+    keep = list(takewhile(lambda x: x >= period_start[b'all'], candidates))
+    result.extend((True, utc) for utc in keep)
+    candidates = candidates[len(result):]
 
-    matches = takewhile(lambda x: x >= period_start[b'monthlies'], utcs)
-    monthlies = [max(month_utcs) for month, month_utcs
-                 in groupby(matches, lambda x: localtime(x).tm_mon)]
-    utcs = dropwhile(lambda x: x >= period_start[b'monthlies'], utcs)
+    def add_period(utcs, period_key):
+        for group_, group_utcs in groupby(utcs, period_key):
+            group_utcs = list(group_utcs)
+            assert group_utcs
+            result.append((True, group_utcs[0]))
+            for utc in group_utcs[1:]:
+                result.append((False, utc))
 
-    matches = takewhile(lambda x: x >= period_start[b'yearlies'], utcs)
-    yearlies = [max(year_utcs) for year, year_utcs
-                in groupby(matches, lambda x: localtime(x).tm_year)]
+    # Keep the newest save for each group in the given --keep period.
+    in_period = list(takewhile(lambda x: x >= period_start[b'dailies'], candidates))
+    candidates = candidates[len(in_period):]
+    add_period(in_period, lambda x: localtime(x).tm_yday)
 
-    return [*all, *dailies, *monthlies, *yearlies]
+    in_period = list(takewhile(lambda x: x >= period_start[b'monthlies'], candidates))
+    candidates = candidates[len(in_period):]
+    add_period(in_period, lambda x: localtime(x).tm_mon)
+
+    in_period = list(takewhile(lambda x: x >= period_start[b'yearlies'], candidates))
+    candidates = candidates[len(in_period):]
+    add_period(in_period, lambda x: localtime(x).tm_year)
+
+    result.extend((False, utc) for utc in candidates)
+    result.extend((True, utc) for utc in remaining_utcs)
+    return result
 
 def period_spec(start_utc, end_utc):
     global period_kinds, period_scale, period_scale_kinds
@@ -138,6 +167,18 @@ def check_prune_result(branch, expected):
             byte_stream(sys.stderr).write(line)
     wvpass(expected == actual)
 
+def check_pretend_intent(branch, pretend_out, all_utcs, dispositions):
+    assert len(all_utcs) == len(dispositions)
+    all_utcs = [utc for keep, utc in dispositions]
+    all_save_names = save_names_for_commit_utcs(all_utcs)
+    expected = []
+    for (keep, utc), save_name in zip(dispositions, all_save_names):
+        if keep:
+            expected.append(b'+ %s/%s' % (branch, save_name))
+        else:
+            expected.append(b'- %s/%s' % (branch, save_name))
+    actual = pretend_out.splitlines()
+    assert expected == actual
 
 def test_prune_older(tmpdir):
     environ[b'GIT_AUTHOR_NAME'] = b'bup test'
@@ -192,13 +233,18 @@ def test_prune_older(tmpdir):
                                     three_years_ago - period_scale[b'm'],
                                     now):
         ex([b'git', b'reset', b'--hard', test_set_hash])
-        expected = expected_retentions(save_utcs, now, spec)
-        ex((bup_cmd,
-            b'prune-older', b'-v', b'--unsafe', b'--no-gc', b'--wrt',
-            b'%d' % now) \
-           + period_spec_to_period_args(spec) \
-           + (b'main',))
-        check_prune_result(b'main', expected)
+        prune_args = (bup_cmd,
+                      b'prune-older', b'-v', b'--unsafe', b'--no-gc', b'--wrt',
+                      b'%d' % now) \
+                      + period_spec_to_period_args(spec)
+        expected = expected_dispositions(save_utcs, now, spec)
+        pretend_intent = exo((*prune_args, b'--pretend', b'main')).out
+        sys.stderr.flush()
+        sys.stderr.buffer.write(pretend_intent)
+        sys.stderr.flush()
+        check_pretend_intent(b'main', pretend_intent, save_utcs, expected)
+        ex((*prune_args, b'main'))
+        check_prune_result(b'main', [utc for keep, utc in expected if keep])
 
 
     # More expensive because we have to recreate the repo each time
@@ -213,9 +259,9 @@ def test_prune_older(tmpdir):
                                     now):
         rmtree(b'work/.git')
         copytree(b'clean-test-repo', b'work/.git')
-        expected = expected_retentions(save_utcs, now, spec)
+        expected = expected_dispositions(save_utcs, now, spec)
         ex((bup_cmd,
             b'prune-older', b'-v', b'--unsafe', b'--wrt', b'%d' % now) \
            + period_spec_to_period_args(spec) \
            + (b'main',))
-        check_prune_result(b'main', expected)
+        check_prune_result(b'main', [utc for keep, utc in expected if keep])
