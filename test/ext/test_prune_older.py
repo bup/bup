@@ -116,11 +116,15 @@ def utc_save_name(utc):
 def result_diffline(x):
     return (b'%d %s\n' % (x, utc_save_name(x)))
 
-def check_prune_result(expected):
+def check_prune_result(branch, expected):
+    if not expected: # pruned all the saves, which removes the branch
+        cp = ex((b'git', b'rev-parse', b'-q', b'--verify', branch), check=False)
+        assert cp.rc == 1
+        return
+
     actual = sorted([int(x)
                      for x in exo([b'git', b'log',
                                    b'--pretty=format:%at']).out.splitlines()])
-
     if expected != actual:
         for x in expected:
             print('ex:', x, utc_save_name(x), file=stderr)
@@ -175,7 +179,7 @@ def test_prune_older(tmpdir):
               stdout=None, stderr=PIPE, check=False)
     wvpassne(proc.rc, 0)
     wvpass(b'at least one keep argument is required' in proc.err)
-    check_prune_result(save_utcs)
+    check_prune_result(b'main', save_utcs)
 
 
     wvstart('running %d generative no-gc tests on %d saves' % (prune_cycles,
@@ -192,7 +196,7 @@ def test_prune_older(tmpdir):
             b'%d' % now) \
            + period_spec_to_period_args(spec) \
            + (b'main',))
-        check_prune_result(expected)
+        check_prune_result(b'main', expected)
 
 
     # More expensive because we have to recreate the repo each time
@@ -212,4 +216,4 @@ def test_prune_older(tmpdir):
             b'prune-older', b'-v', b'--unsafe', b'--wrt', b'%d' % now) \
            + period_spec_to_period_args(spec) \
            + (b'main',))
-        check_prune_result(expected)
+        check_prune_result(b'main', expected)
