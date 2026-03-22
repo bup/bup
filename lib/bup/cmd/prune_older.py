@@ -146,7 +146,7 @@ def main(argv):
             assert(keep_save in (False, True))
             # FIXME: base removals on hashes
             if opt.pretend:
-                out.write(b'%s %s/%s\n' % (b'+ ' if keep_save else b'- ',
+                out.write(b'%s %s/%s\n' % (b'+' if keep_save else b'-',
                                            branch, save_name))
             elif not keep_save:
                 removals.append(b'%s/%s' % (branch, save_name))

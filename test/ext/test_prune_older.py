@@ -110,9 +110,11 @@ def period_spec_to_period_args(spec):
     return tuple(chain(*((b'--keep-' + kind + b'-for', period)
                          for kind, period in spec)))
 
+def utc_save_name(utc):
+    return strftime('%Y-%m-%d-%H%M%S', localtime(utc)).encode('ascii')
+
 def result_diffline(x):
-    return (b'%d %s\n'
-            % (x, strftime(' %Y-%m-%d-%H%M%S', localtime(x)).encode('ascii')))
+    return (b'%d %s\n' % (x, utc_save_name(x)))
 
 def check_prune_result(expected):
     actual = sorted([int(x)
@@ -121,8 +123,7 @@ def check_prune_result(expected):
 
     if expected != actual:
         for x in expected:
-            print('ex:', x, strftime('%Y-%m-%d-%H%M%S', localtime(x)),
-                  file=stderr)
+            print('ex:', x, utc_save_name(x), file=stderr)
         for line in diff_bytes(unified_diff,
                                [result_diffline(x) for x in expected],
                                [result_diffline(x) for x in actual],

@@ -71,6 +71,10 @@ May require attention
 * `bup` now only considers a `pack.packSizeLimit` set in the
   destination repository.
 
+* `bup prune-older --pretend` now puts just one space, not two,
+  between the plus or minus and the save name in its output, matching
+  what `bup-prune-older(1)` specifies.
+
 * `bup split --copy` now writes the split data to standard output
   instead of Python memoryview representations like
 
