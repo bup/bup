@@ -8,7 +8,7 @@ from shutil import copytree, rmtree
 from subprocess import PIPE
 from sys import stderr
 from time import localtime, strftime, time
-import random, sys
+import random, re, sys
 
 from buptest import exc as ex, exo
 from wvpytest import wvpass, wvpasseq, wvpassne, wvstart
@@ -180,7 +180,7 @@ def check_pretend_intent(branch, pretend_out, all_utcs, dispositions):
     actual = pretend_out.splitlines()
     assert expected == actual
 
-def test_prune_older(tmpdir):
+def test_random_keeps(tmpdir):
     environ[b'GIT_AUTHOR_NAME'] = b'bup test'
     environ[b'GIT_COMMITTER_NAME'] = b'bup test'
     environ[b'GIT_AUTHOR_EMAIL'] = b'bup@a425bc70a02811e49bdf73ee56450e6f'
@@ -265,3 +265,58 @@ def test_prune_older(tmpdir):
            + period_spec_to_period_args(spec) \
            + (b'main',))
         check_prune_result(b'main', [utc for keep, utc in expected if keep])
+
+def test_argument_validation(tmpdir):
+    rxs = re.search
+    environ[b'BUP_DIR'] = tmpdir + b'/bup'
+    environ[b'GIT_DIR'] = tmpdir + b'/bup'
+    chdir(tmpdir)
+    ex([b'git', b'init', b'bup'])
+
+    def prune(*args):
+        return ex((bup.path.exe(), b'prune-older', b'-v', b'--no-gc',
+                   '--pretend', b'--keep-all-for', b'forever', *args),
+                  check=False, stderr=PIPE)
+
+    wvstart('no --unsafe')
+    cp = prune()
+    assert cp.rc
+    assert b'refusing to run dangerous, experimental command without --unsafe\n' in cp.err
+
+    wvstart('no --keep-*')
+    cp = ex((bup.path.exe(), b'prune-older', b'--unsafe', b'-v', b'--no-gc',
+             '--pretend'), check=False, stderr=PIPE)
+    assert cp.rc
+    assert b'\nerror: at least one keep argument is required\n' in cp.err
+
+    wvstart('--wrt non-integer')
+    cp = prune(b'--unsafe', b'--wrt', b'x', b'main')
+    assert cp.rc
+    assert b'\nerror: --wrt value x is not an integer\n' in cp.err
+
+    wvstart('invalid --keep-*-for value')
+    cp = prune(b'--unsafe', b'--keep-all-for', b'x y', b'main')
+    assert cp.rc
+    assert rxs(br"(?m)^error: 'x y' is not a valid period$", cp.err)
+
+    wvstart('invalid --keep-*-for value')
+    cp = prune(b'--unsafe', b'--keep-all-for', b'x y', b'main')
+    assert cp.rc
+    assert rxs(br"(?m)^error: 'x y' is not a valid period", cp.err)
+
+    wvstart('invalid --keep-*-for value (zero)')
+    cp = prune(b'--unsafe', b'--keep-all-for', b'0', b'main')
+    assert cp.rc
+    assert rxs(br'(?m)^error: 0 is not a valid period', cp.err)
+
+    wvstart('--keep-*-for value larger than localtime() range')
+    cp = prune(b'--unsafe', b'--keep-all-for',
+               b'100000000000000000000000000000000000000y', b'main')
+    assert cp.rc == 0
+    assert rxs(br'(?m)^keeping all since \d+ seconds before', cp.err)
+
+    wvstart('--keep-*-for value smaller than localtime() range')
+    cp = prune(b'--unsafe', b'--keep-all-for',
+               b'100000000000000000000000000000000000000y', b'main')
+    assert cp.rc == 0
+    assert rxs(br'(?m)^keeping all since \d+ seconds before', cp.err)

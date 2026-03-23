@@ -9,7 +9,7 @@ from bup import git, options
 from bup.compat import argv_bytes
 from bup.gc import bup_gc
 from bup.helpers import die_if_errors, log, partition, period_as_secs
-from bup.io import byte_stream
+from bup.io import byte_stream, path_msg
 from bup.repo import LocalRepo
 from bup.rm import bup_rm
 from bup.vfs import save_names_for_commit_utcs
@@ -89,10 +89,12 @@ def main(argv):
                            ('dailies', opt.keep_dailies_for),
                            ('monthlies', opt.keep_monthlies_for),
                            ('yearlies', opt.keep_yearlies_for)):
-        if extent:
+        if extent is not None:
+            if isinstance(extent, int): # bup.options...
+                extent = str(extent)
             secs = period_as_secs(extent.encode('ascii'))
             if not secs:
-                o.fatal('%r is not a valid period' % extent)
+                o.fatal(f'{path_msg(extent)} is not a valid period')
             period_start[period] = now - secs
 
     if not period_start:
@@ -104,22 +106,25 @@ def main(argv):
         epoch_ymd = strftime('%Y-%m-%d-%H%M%S', localtime(0))
         for kind in ['all', 'dailies', 'monthlies', 'yearlies']:
             period_utc = period_start[kind]
-            if period_utc != float('inf'):
-                if not (period_utc > float('-inf')):
-                    log(f'keeping all {kind}\n')
+            if period_utc == float('inf'):
+                continue
+            if period_utc == float('-inf'):
+                log(f'keeping all {kind}\n')
+                continue
+            try:
+                period_local = localtime(period_utc)
+            except OverflowError:
+                if period_utc < 0:
+                    log('keeping %s since %d seconds before %s\n'
+                        %(kind, abs(period_utc), epoch_ymd))
+                elif period_utc > 0:
+                    log('keeping %s since %d seconds after %s\n'
+                        %(kind, period_utc, epoch_ymd))
                 else:
-                    try:
-                        when = strftime('%Y-%m-%d-%H%M%S', localtime(period_utc))
-                        log('keeping ' + kind + ' since ' + when + '\n')
-                    except ValueError:
-                        if period_utc < 0:
-                            log('keeping %s since %d seconds before %s\n'
-                                %(kind, abs(period_utc), epoch_ymd))
-                        elif period_utc > 0:
-                            log('keeping %s since %d seconds after %s\n'
-                                %(kind, period_utc, epoch_ymd))
-                        else:
-                            log('keeping %s since %s\n' % (kind, epoch_ymd))
+                    log('keeping %s since %s\n' % (kind, epoch_ymd))
+            else:
+                when = strftime('%Y-%m-%d-%H%M%S', period_local)
+                log(f'keeping {kind} since {when}\n')
 
     git.check_repo_or_die()
 
