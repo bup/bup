@@ -1043,8 +1043,7 @@ def save_tree(output_file, paths,
     for path in paths:
         safe_path = _clean_up_path_for_archive(path)
         if safe_path != path:
-            log('archiving "%s" as "%s"\n'
-                % (path_msg(path), path_msg(safe_path)))
+            log(f'archiving {path_msg(path)} as {path_msg(safe_path)}\n')
 
     if not recurse:
         for p in paths:
@@ -1057,21 +1056,15 @@ def save_tree(output_file, paths,
             if verbose:
                 print(m.path, file=sys.stderr)
             m.write(output_file, include_path=write_paths)
-    else:
-        start_dir = os.getcwd()
-        try:
-            for (p, st) in recursive_dirlist(paths, xdev=xdev):
-                dirlist_dir = os.getcwd()
-                os.chdir(start_dir)
-                safe_path = _clean_up_path_for_archive(p)
-                m = from_path(p, statinfo=st, archive_path=safe_path,
-                              save_symlinks=save_symlinks)
-                if verbose:
-                    print(m.path, file=sys.stderr)
-                m.write(output_file, include_path=write_paths)
-                os.chdir(dirlist_dir)
-        finally:
-            os.chdir(start_dir)
+        return
+
+    for p, st in recursive_dirlist(paths, xdev=xdev):
+        safe_path = _clean_up_path_for_archive(p)
+        m = from_path(p, statinfo=st, archive_path=safe_path,
+                      save_symlinks=save_symlinks)
+        if verbose:
+            print(m.path, file=sys.stderr)
+        m.write(output_file, include_path=write_paths)
 
 
 def _set_up_path(meta, create_symlinks=True):
