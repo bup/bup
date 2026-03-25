@@ -30,6 +30,10 @@ May require attention
   typically the case unless the system clock has been changed, or
   commands like `bup get --pick` have been used.
 
+* `bup-prune-older`(1) now clarifies that the current implementation
+  expects every save in a branch to have a date that's newer than its
+  parent.
+
 * The build system (e.g. `./configure`) no longer tries to find a
   suitable make, and we no longer try to redirect a non-GNU make to
   GNU make.  Whatever make you invoke must be GNU make >= 4.2.  On

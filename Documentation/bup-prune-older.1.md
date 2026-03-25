@@ -17,6 +17,12 @@ preserved by the various keep arguments detailed below.  At least one
 keep argument must be specified.  This command is equivalent to a
 suitable `bup rm` invocation followed by `bup gc`.
 
+Note that the current implementation expects a typical branch where a
+new save's date is always the same as or newer than the previous one.
+When that's not the case, only the saves at the end of the branch that
+have non-increasing timestamps (child to parent) will be affected by
+this command.  Future versions are likely to lift this restriction.
+
 WARNING: This is one of the few bup commands that modifies your
 archive in intentionally destructive ways.  Though if an attempt to
 `join` or `restore` the data you still care about after a
