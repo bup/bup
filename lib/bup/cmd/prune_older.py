@@ -106,7 +106,7 @@ def main(argv):
             period_utc = period_start[kind]
             if period_utc != float('inf'):
                 if not (period_utc > float('-inf')):
-                    log('keeping all ' + kind)
+                    log(f'keeping all {kind}\n')
                 else:
                     try:
                         when = strftime('%Y-%m-%d-%H%M%S', localtime(period_utc))
