@@ -20,6 +20,7 @@ import bup.path
 
 
 def create_older_random_saves(n, start_utc, end_utc):
+    # Returns save utcs in branch child before parent order
     with open(b'foo', 'wb') as f:
         pass
     ex([b'git', b'add', b'foo'])
@@ -36,6 +37,7 @@ def create_older_random_saves(n, start_utc, end_utc):
             f.write(b'%d\n' % i)
         ex([b'git', b'commit', b'--date', b'%d' % utc, b'-qam', b'%d' % utc])
     ex([b'git', b'gc', b'--aggressive'])
+    utcs.reverse()
     return utcs
 
 # There is corresponding code in bup for some of this, but the
@@ -55,7 +57,6 @@ period_scale_kinds = list(period_scale.keys())
 def expected_retentions(utcs, utc_start, spec):
     if not spec:
         return utcs
-    utcs = sorted(utcs, reverse=True)
     period_start = dict(spec)
     for kind, duration in period_start.items():
         period_start[kind] = utc_start - period_as_secs(duration)
@@ -78,7 +79,7 @@ def expected_retentions(utcs, utc_start, spec):
     yearlies = [max(year_utcs) for year, year_utcs
                 in groupby(matches, lambda x: localtime(x).tm_year)]
 
-    return chain(all, dailies, monthlies, yearlies)
+    return [*all, *dailies, *monthlies, *yearlies]
 
 def period_spec(start_utc, end_utc):
     global period_kinds, period_scale, period_scale_kinds
@@ -117,14 +118,15 @@ def result_diffline(x):
     return (b'%d %s\n' % (x, utc_save_name(x)))
 
 def check_prune_result(branch, expected):
+    # expected should be the branch utcs in child before parent order
+
     if not expected: # pruned all the saves, which removes the branch
         cp = ex((b'git', b'rev-parse', b'-q', b'--verify', branch), check=False)
         assert cp.rc == 1
         return
 
-    actual = sorted([int(x)
-                     for x in exo([b'git', b'log',
-                                   b'--pretty=format:%at']).out.splitlines()])
+    actual = [int(x) for x in exo([b'git', b'log',
+                                   b'--pretty=format:%at']).out.splitlines()]
     if expected != actual:
         for x in expected:
             print('ex:', x, utc_save_name(x), file=stderr)
@@ -190,7 +192,7 @@ def test_prune_older(tmpdir):
                                     three_years_ago - period_scale[b'm'],
                                     now):
         ex([b'git', b'reset', b'--hard', test_set_hash])
-        expected = sorted(expected_retentions(save_utcs, now, spec))
+        expected = expected_retentions(save_utcs, now, spec)
         ex((bup_cmd,
             b'prune-older', b'-v', b'--unsafe', b'--no-gc', b'--wrt',
             b'%d' % now) \
@@ -211,7 +213,7 @@ def test_prune_older(tmpdir):
                                     now):
         rmtree(b'work/.git')
         copytree(b'clean-test-repo', b'work/.git')
-        expected = sorted(expected_retentions(save_utcs, now, spec))
+        expected = expected_retentions(save_utcs, now, spec)
         ex((bup_cmd,
             b'prune-older', b'-v', b'--unsafe', b'--wrt', b'%d' % now) \
            + period_spec_to_period_args(spec) \
