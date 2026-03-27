@@ -301,6 +301,38 @@ def run_get(disposition, method, what=None, given=None, rewrite=False):
     return _run_get(disposition, method, what, rewrite)
 
 def _test_universal(get_disposition, src_info_):
+    rmrf(b'get-dest')
+    ex((bup_cmd, b'-d', b'get-dest', b'init'))
+
+    cp = exo((bup_cmd, b'-d', b'get-dest', b'get', b'-h'))
+    assert b'Transfer data from a source repository to a destination' in cp.out
+
+    cp = ex((bup_cmd, b'-d', b'get-dest', b'get', b'--ff'),
+            check=False, stderr=PIPE)
+    print(cp.err, file=sys.stderr, end='')
+    assert b'\nerror: --ff argument requires 1 value\n' in cp.err
+
+    cp = ex((bup_cmd, b'-d', b'get-dest', b'get', b'--exclude-rx', b'x',
+             b'--ff', b'main'), check=False, stderr=PIPE)
+    print(cp.err, file=sys.stderr, end='')
+    assert b'\nerror: --exclude-rx or --exclude-rx-from requires --rewrite or --repair\n' in cp.err
+
+    for mode in b'rewrite', b'repair':
+        cp = ex((bup_cmd, b'-d', b'get-dest', b'get', b'--' + mode, b'--ff', b'main'),
+                check=False, stderr=PIPE)
+        print(cp.err, file=sys.stderr, end='')
+        assert b'--ff cannot %s (only picks and appends)' % mode in cp.err
+
+    cp = ex((bup_cmd, b'-d', b'get-dest', b'get', b'--repair-id', b''),
+            check=False, stderr=PIPE)
+    print(cp.err, file=sys.stderr, end='')
+    assert b'\nerror: empty --repair-id\n' in cp.err
+
+    cp = ex((bup_cmd, b'-d', b'get-dest', b'get', b'--repair-id', b'\n'),
+            check=False, stderr=PIPE)
+    print(cp.err, file=sys.stderr, end='')
+    assert b'\nerror: --repair-id must be ASCII' in cp.err
+
     if get_disposition == 'get':
         wvstart("can't do nothing")
         rmrf(b'get-dest')
