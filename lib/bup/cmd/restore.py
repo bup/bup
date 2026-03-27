@@ -9,7 +9,7 @@ from bup.compat import argv_bytes, fsencode
 from bup.helpers import (add_error, chunkyreader,
                          mkdirp, parse_rx_excludes, progress, qprogress,
                          should_rx_exclude_path)
-from bup.io import byte_stream
+from bup.io import byte_stream, path_msg
 from bup.repo import main_repo_location, repo_for_location
 
 
@@ -230,7 +230,7 @@ def main(argv):
                              o.fatal)
 
     if not extra:
-        o.fatal('must specify at least one filename to restore')
+        o.fatal('must specify at least one path to restore')
 
     exclude_rxs = parse_rx_excludes(flags, o.fatal)
 
@@ -268,9 +268,8 @@ def main(argv):
             path_name = os.path.split(path)[1]
             leaf_name, leaf_item = resolved[-1]
             if not leaf_item:
-                add_error('error: cannot access %r in %r'
-                          % (b'/'.join(name for name, item in resolved),
-                             path))
+                res_msg = path_msg(b'/'.join(name for name, item in resolved))
+                add_error(f'error: cannot access {res_msg} in {path_msg(path)}')
                 continue
             if not path_name or path_name == b'.':
                 # Source is /foo/what/ever/ or /foo/what/ever/. -- extract
@@ -279,7 +278,7 @@ def main(argv):
                 # metadata to the current directory.
                 treeish = vfs.item_mode(leaf_item)
                 if not treeish:
-                    add_error('%r cannot be restored as a directory' % path)
+                    add_error(f'{path_msg(path)} cannot be restored as a directory')
                 else:
                     items = vfs.contents(src, leaf_item, want_meta=True)
                     dot, leaf_item = next(items, None)

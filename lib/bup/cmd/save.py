@@ -131,7 +131,7 @@ def opts_from_cmdline(argv):
     opt.grafts = grafts
 
     if opt.name and not valid_save_name(opt.name):
-        o.fatal("'%s' is not a valid branch name" % path_msg(opt.name))
+        o.fatal(f'{path_msg(opt.name)} is not a valid branch name')
 
     return opt, o
 
