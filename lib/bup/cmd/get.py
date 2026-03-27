@@ -307,6 +307,8 @@ def parse_args(args):
         ctx_msg = ' '. join(path_msg(x) for x in pending_method_context)
         misuse(f'trailing arguments with no effect: {ctx_msg}')
     opt.dst_loc = main_repo_location(opt.remote, misuse)
+    if not opt.target_specs:
+        misuse('no methods specified')
     return opt
 
 # FIXME: client error handling (remote exceptions, etc.)
@@ -966,7 +968,4 @@ def main(argv):
     git.check_repo_or_die()
     if opt.bwlimit:
         client.bwlimit = opt.bwlimit
-    if not opt.target_specs:
-        misuse('no methods specified')
-
     return get_everything(opt)
