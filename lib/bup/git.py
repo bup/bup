@@ -69,32 +69,59 @@ def _raise_git_cmd_error(cmd, status):
 def repo_config_file(path):
     return os.path.join(path or repo(), b'config')
 
+
+def parse_git_int(v):
+    """Parse v exactly as git config --type int would."""
+    mag, suffix_i = _helpers.strtoimax(v)
+    if mag == float('+inf'):
+        raise ConfigError(f'--type int value {path_msg(v)} too large')
+    if mag == float('-inf'):
+        raise ConfigError(f'--type int value {path_msg(v)} too small')
+    if mag is None:
+        raise ConfigError(f'unrecognized --type int value {path_msg(v)}')
+    unit = v[suffix_i:]
+    if not unit: return mag
+    if unit in (b'k', b'K'): return mag * 1024
+    if unit in (b'm', b'M'): return mag * 1024 * 1024
+    if unit in (b'g', b'G'): return mag * 1024 * 1024 * 1024
+    raise ConfigError(f'unrecognized --type int value {path_msg(v)}')
+
+
 def git_config_get(path, option, *, opttype=None):
+    """Return the git config value for path.  Return None if the path
+    does not exist.  Return an integer for int, boolean for bool, and
+    bytes otherwise.  This is stricter than git in that any
+    opttype='bool' values must be 0, 1, true or false.
+
+    """
+    assert opttype in ('bool', 'int', None)
+    # We don't use --type int/bool because git doesn't currently
+    # provide a way to distinguish a bad value from other errors, and
+    # for bool, we're stricter than git.
     cmd = [b'git', b'config', b'--file', path, b'--null']
-    if opttype == 'int':
-        cmd.extend([b'--int'])
-    else:
-        assert opttype in ('bool', None)
     cmd.extend([b'--get', option])
-    cp = subprocess.run(cmd, stdout=subprocess.PIPE)
+    cp = subprocess.run(cmd, stdout=PIPE)
     # with --null, git writes out a trailing \0 after the value
     r = cp.stdout[:-1]
     rc = cp.returncode
     if rc == 0:
+        if not r:
+            raise ConfigError(f'no output from {cmd_msg(cmd)}')
         if opttype == 'int':
-            return int(r)
+            val = parse_git_int(r)
+            if val is not None:
+                return val
+            raise ConfigError(f'got invalid int value {path_msg(r)} from {cmd_msg(cmd)}')
         if opttype == 'bool': # any positive int is true for git --bool
-            if not r:
-                raise ConfigError(f'no output from {cmd_msg(cmd)}')
             if r in (b'0', b'false'):
                 return False
             if r in (b'1', b'true'):
                 return True
-            raise ConfigError(f'got invalid value {path_msg(r)} from {cmd_msg(cmd)}')
+            raise ConfigError(f'got invalid bool value {path_msg(r)} from {cmd_msg(cmd)}')
         return r
     if rc == 1:
         return None
-    raise GitError('%r returned %d' % (cmd, rc))
+    raise GitError(f'unexpected exit {rc} for {cmd_msg(cmd)}')
 
 
 def get_commit_items(ref, get_ref):

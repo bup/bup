@@ -1774,6 +1774,26 @@ static PyObject *bup_limited_vint_pack(PyObject *self, PyObject *args)
     return NULL;
 }
 
+static PyObject *
+bup_strtoimax(PyObject *self, PyObject *args)
+{
+    char *str;
+    if (!PyArg_ParseTuple(args, cstr_argf, &str))
+	return NULL;
+    errno = 0;
+    char *end;
+    intmax_t v = strtoimax(str, &end, 0);
+    if (end == str)
+        return Py_BuildValue("(Oi)", Py_None, 0);
+    if (v == INTMAX_MAX && errno == ERANGE)
+        return Py_BuildValue("(Oi)", PyFloat_FromDouble(Py_INFINITY), 0);
+    if (v == INTMAX_MIN && errno == ERANGE)
+        return Py_BuildValue("(Oi)", PyFloat_FromDouble(-Py_INFINITY), 0);
+    if (errno)
+        return PyErr_SetFromErrno(PyExc_IOError);
+    return Py_BuildValue("(On)", BUP_LONGISH_TO_PY(v), end - str);
+}
+
 static PyMethodDef helper_methods[] = {
     { "write_sparsely", bup_write_sparsely, METH_VARARGS,
       "Write buf excepting zeros at the end. Return trailing zero count." },
@@ -1861,6 +1881,8 @@ static PyMethodDef helper_methods[] = {
     { "vint_encode", bup_vint_encode, METH_VARARGS, "encode an int to vint" },
     { "limited_vint_pack", bup_limited_vint_pack, METH_VARARGS,
       "Try to pack vint/vuint/str, throwing OverflowError when unable." },
+    { "strtoimax", bup_strtoimax, METH_VARARGS,
+      "Return value and index of first byte after value as per strtoimax(1)" },
     { NULL, NULL, 0, NULL },  // sentinel
 };
 

@@ -469,6 +469,38 @@ def test_midx_close(tmpdir):
             # check that we don't have it open anymore
             WVPASSEQ(False, b'deleted' in fn)
 
+
+def test_parse_git_int():
+    parse = git.parse_git_int
+    with raises(ConfigError, match="unrecognized --type int value ''"):
+        parse(b'')
+    with raises(ConfigError, match="unrecognized --type int value x"):
+        parse(b'x')
+    with raises(ConfigError, match="unrecognized --type int value 0.1"):
+        parse(b'0.1')
+    with raises(ConfigError, match="value .* too large"):
+        parse(b'10000000000000000000000000')
+    with raises(ConfigError, match="value .* too small"):
+        parse(b'-10000000000000000000000000')
+    assert 0 == parse(b'0')
+    assert 1 == parse(b'1')
+    assert 1 == parse(b' 1')
+    assert 1024 == parse(b'1k')
+    assert 1024**2 == parse(b'1m')
+    assert 1024**3 == parse(b'1g')
+    assert 1 == parse(b'+1')
+    assert 1024 == parse(b'+1k')
+    assert 1024**2 == parse(b'+1m')
+    assert 1024**3 == parse(b'+1g')
+    assert -1 == parse(b'-1')
+    assert -1024 == parse(b'-1k')
+    assert -1024**2 == parse(b'-1m')
+    assert -1024**3 == parse(b'-1g')
+    with raises(ConfigError, match="unrecognized --type int value 1q"):
+        parse(b'1q')
+    assert 43008 == parse(b'42k')
+
+
 def test_config(tmpdir):
     cfg_file = os.path.join(os.path.dirname(__file__), 'sample.conf')
     no_such_file = os.path.join(os.path.dirname(__file__), 'nosuch.conf')
@@ -484,7 +516,7 @@ def test_config(tmpdir):
     WVPASSEQ(git.git_config_get(no_such_file, b'bup.foo'), None)
 
     WVEXCEPT(ConfigError, git_config_get, b'bup.isbad', opttype='bool')
-    WVEXCEPT(git.GitError, git_config_get, b'bup.isbad', opttype='int')
+    WVEXCEPT(ConfigError, git_config_get, b'bup.isbad', opttype='int')
     WVPASSEQ(git_config_get(b'bup.isbad'), b'ok')
     WVPASSEQ(True, git_config_get(b'bup.istrue1', opttype='bool'))
     WVPASSEQ(True, git_config_get(b'bup.istrue2', opttype='bool'))
