@@ -18,6 +18,10 @@ WVPASS bup init
 WVPASS cd "$tmpdir"
 
 
+WVFAIL eval 'bup rm --unsafe 2> >(tee log)'
+WVPASS grep -F 'no paths specified' log
+
+
 WVSTART "rm /foo (lone branch)"
 WVPASS mkdir src src/foo
 WVPASS echo twisty-maze > src/1
