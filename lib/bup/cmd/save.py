@@ -90,10 +90,17 @@ def opts_from_cmdline(o, argv):
         opt.date = time.time()
 
     opt.progress = (istty2 and not opt.quiet)
-    opt.smaller = parse_num(opt.smaller or 0)
+
+    try:
+        opt.smaller = parse_num(opt.smaller or 0)
+    except ValueError as ex:
+        o.fatal(f'invalid --smaller ({str(ex)})')
 
     if opt.bwlimit:
-        opt.bwlimit = parse_num(opt.bwlimit)
+        try:
+            opt.bwlimit = parse_num(opt.bwlimit)
+        except ValueError as ex:
+            o.fatal(f'invalid --bwlimit ({str(ex)})')
 
     if opt.strip and opt.strip_path:
         o.fatal("--strip is incompatible with --strip-path")

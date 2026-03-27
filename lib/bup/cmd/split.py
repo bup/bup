@@ -58,6 +58,13 @@ def opts_from_cmdline(o, argv):
     opt, flags_, extra = o.parse_bytes(argv[1:])
     opt.sources = extra
 
+    def require_num(arg, val):
+        try:
+            return parse_num(val)
+        except ValueError as ex:
+            o.fatal(f'invalid {arg} ({str(ex)})')
+            assert False # pylint
+
     if opt.name: opt.name = argv_bytes(opt.name)
     if opt.remote: opt.remote = argv_bytes(opt.remote)
     if opt.verbose is None: opt.verbose = 0
@@ -77,13 +84,13 @@ def opts_from_cmdline(o, argv):
         git.verbose = opt.verbose - 1
         opt.bench = 1
     if opt.max_pack_size:
-        opt.max_pack_size = parse_num(opt.max_pack_size)
+        opt.max_pack_size = require_num('--max-pack-size', opt.max_pack_size)
     if opt.max_pack_objects:
-        opt.max_pack_objects = parse_num(opt.max_pack_objects)
+        opt.max_pack_size = require_num('--max-pack-objects', opt.max_pack_objects)
     if opt.fanout:
-        opt.fanout = parse_num(opt.fanout)
+        opt.fanout = require_num('--fanout', opt.fanout)
     if opt.bwlimit:
-        opt.bwlimit = parse_num(opt.bwlimit)
+        opt.bwlimit = require_num('--bwlimit', opt.bwlimit)
     if opt.date:
         try:
             opt.date = parse_date_arg(b'--date', opt.date)

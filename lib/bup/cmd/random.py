@@ -20,7 +20,10 @@ def main(argv):
     if len(extra) != 1:
         o.fatal("exactly one argument expected")
 
-    total = parse_num(extra[0])
+    try:
+        total = parse_num(extra[0])
+    except ValueError as ex:
+        o.fatal(f'invalid data size ({str(ex)})')
 
     handle_ctrl_c()
 

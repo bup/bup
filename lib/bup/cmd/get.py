@@ -290,7 +290,10 @@ def parse_args(args):
             opt.compress = int(opt.compress)
         elif arg == b'--bwlimit':
             (opt.bwlimit,), remaining = require_n_args_or_die(1, remaining)
-            opt.bwlimit = int(opt.bwlimit)
+            try:
+                opt.bwlimit = parse_num(opt.bwlimit)
+            except ValueError as ex:
+                misuse(f'invalid --bwlimit ({str(ex)})')
         elif arg.startswith(b'-') and len(arg) > 2 and arg[1] != b'-'[0]:
             # Try to interpret this as -xyz, i.e. "-xyz -> -x -y -z".
             # We do this last so that --foo -bar is valid if --foo
@@ -962,7 +965,7 @@ def main(argv):
     opt = parse_args(argv)
     git.check_repo_or_die()
     if opt.bwlimit:
-        client.bwlimit = parse_num(opt.bwlimit)
+        client.bwlimit = opt.bwlimit
     if not opt.target_specs:
         misuse('no methods specified')
 
