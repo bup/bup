@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-. ./wvtest-bup.sh
-. ./test/lib/btl.sh
+. ./wvtest-bup.sh || exit $?
+. ./test/lib/btl.sh || exit $?
 
 set -o pipefail
 
@@ -58,20 +58,18 @@ save_date="${saves[2]}"
 unset saves
 
 # May as well double-check, though test-validate-refs already does this
-WVEXPRC 1 eval 'bup validate-refs --bupm 2>&1 | tee validate.log'
+WVEXPRC 1 err-to validate.log bup validate-refs --bupm
 btl-display-file validate.log
 wv-match-rx "$(< validate.log)" \
             "abridged-bupm refs/heads/src $broken_tree_oid:\.bupm/?"
 
 # Ensure a normal rewrite rejects the abridged bupm
-WVEXPRC 2 eval 'bup get --rewrite --append: src dst 2>&1 | tee rewrite.log'
-btl-display-file rewrite.log
+WVEXPRC 2 bup get --rewrite --append: src dst
 
 WVPASS umask 077
 
 # Test repair
-WVEXPRC 3 eval 'bup get --repair --append: src dst 2>&1 | tee rewrite.log'
-btl-display-file rewrite.log
+WVEXPRC 3 err-to rewrite.log bup get --repair --append: src dst
 set-repair-id rewrite.log
 
 # Check commit message trailers

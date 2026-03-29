@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 . ./wvtest-bup.sh || exit $?
+. test/lib/btl.sh || exit $?
 
 set -o pipefail
 
@@ -21,19 +22,19 @@ WVPASS bup index src
 WVPASS bup save -n src --strip-path "$(pwd)" src
 
 WVSTART 'invalid invocations'
-WVFAIL eval 'bup cat-file 2> >(tee log)'
+WVFAIL err-to log bup cat-file
 WVPASS grep -F 'must specify a target' log
-WVFAIL eval 'bup cat-file x y 2> >(tee log)'
+WVFAIL err-to log bup cat-file x y
 WVPASS grep -F 'only one target file allowed' log
-WVFAIL eval 'bup cat-file --meta --bupm x 2> >(tee log)'
+WVFAIL err-to log bup cat-file --meta --bupm x
 WVPASS grep -F -e '--meta and --bupm are incompatible' log
-WVFAIL eval 'bup cat-file x 2> >(tee log)'
+WVFAIL err-to log bup cat-file x
 WVPASS grep -F -e "path x doesn't include a branch and revision" log
-WVEXPRC 2 eval 'bup cat-file x/y 2> >(tee log)'
+WVEXPRC 2 err-to log bup cat-file x/y
 WVPASS grep -F 'cannot access /x in x/y' log
-WVFAIL eval 'bup cat-file --bupm src/latest/src/foo 2> >(tee log)'
+WVFAIL err-to log bup cat-file --bupm src/latest/src/foo
 WVPASS grep -F 'src/latest/src/foo is not a directory' log
-WVFAIL eval 'bup cat-file src/latest/src/ 2> >(tee log)'
+WVFAIL err-to log bup cat-file src/latest/src/
 WVPASS grep -F 'src/latest/src/ is not a plain file' log
 
 WVPASS bup cat-file "src/latest/src/foo" > cat-foo

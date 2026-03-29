@@ -54,18 +54,17 @@ WVPASS rm -rf dest-repo
 
 WVSTART 'get incomplete tree with --ignore-missing'
 WVPASS bup -d dest-repo init
-WVEXPRC 2 eval 'bup -d dest-repo get -s bup --ignore-missing ' \
-        '--unnamed "git:$a_oid" 2>&1 | tee get.log'
+WVEXPRC 2 err-to get.log bup -d dest-repo get -s bup --ignore-missing \
+        --unnamed "git:$a_oid"
 WVPASSEQ 1 "$(grep -cF "skipping missing source object ${bupm_oid}" get.log)"
 WVPASS rm -rf dest-repo
 
 
 WVSTART 'multiple incomplete tree gets with differing ignores'
 WVPASS bup -d dest-repo init
-WVEXPRC 2 eval 'bup -d dest-repo get -s bup' \
-        ' --ignore-missing --unnamed "git:$a_oid"'\
-        ' --no-ignore-missing --unnamed "git:$b_oid"'\
-        ' 2>&1 | tee get.log'
+WVEXPRC 2 err-to get.log bup -d dest-repo get -s bup \
+        --ignore-missing --unnamed "git:$a_oid" \
+        --no-ignore-missing --unnamed "git:$b_oid"
 WVPASSEQ 1 "$(grep -cF "skipping missing source object ${bupm_oid}" get.log)"
 log_msg_line="$(WVPASS grep -nF "skipping missing source object ${bupm_oid}" get.log)"
 log_msg_line="${log_msg_line%%:*}"

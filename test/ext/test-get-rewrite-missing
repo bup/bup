@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-. ./wvtest-bup.sh
-. ./test/lib/btl.sh
+. ./wvtest-bup.sh || exit $?
+. ./test/lib/btl.sh || exit $?
 
 set -o pipefail
 
@@ -18,7 +18,6 @@ bup() { "$top/bup" "$@"; }
 # Missing symlinks are tested in test-get-repair-symlinks
 
 WVPASS cd "$tmpdir"
-WVPASS mkfifo done
 WVPASS bup init
 WVPASS git config bup.split.trees true
 
@@ -121,16 +120,13 @@ WVPASS cp -pPR bup bup-tmp
 
 WVFAIL bup get --no-ignore-missing --rewrite --append src
 
-WVFAIL eval 'bup get --ignore-missing --rewrite --append src 2> >(tee get.log; : > done)'
-WVFAIL read < done
+WVFAIL err-to get.log bup get --ignore-missing --rewrite --append src
 WVPASS grep -E '^error: --ignore-missing and --rewrite are incompatible' get.log
 
-WVFAIL eval 'bup get --ignore-missing --repair --append src 2> >(tee get.log; : > done)'
-WVFAIL read < done
+WVFAIL err-to get.log bup get --ignore-missing --repair --append src
 WVPASS grep -E '^error: --ignore-missing and --repair are incompatible' get.log
 
-WVFAIL eval 'bup get --ignore-missing --append src 2> >(tee get.log; : > done)'
-WVFAIL read < done
+WVFAIL err-to get.log bup get --ignore-missing --append src
 WVPASS grep -E '^error: currently only --unnamed allows --ignore-missing' get.log
 
 repair-to-dest()
@@ -138,9 +134,7 @@ repair-to-dest()
     rm -rf dest-repo
     WVPASS bup -d dest-repo init
     WVPASS git --git-dir dest-repo config bup.split.trees true
-    WVEXPRC 3 eval 'bup -d dest-repo get -s bup --repair --append src' \
-            '2> >(tee repair.log; : > done)'
-    WVFAIL read < done
+    WVEXPRC 3 err-to repair.log bup -d dest-repo get -s bup --repair --append src
 }
 
 set-repair-id()
@@ -310,50 +304,44 @@ WVPASS rm -rf bup && WVPASS cp -pPR bup-1234 bup
 # Check that non-rewrite doesn't notice the missing object (b/c same repo)
 WVEXPRC 3 bup get --repair --append: src r1 --copy --append: src r2
 # Then that a second *rewrite* can't handle the missing file
-WVEXPRC 2 eval 'bup get' \
-        '--repair --append: src r1' \
-        '--rewrite --append: src r2' \
-        '2>&1 | tee get.log'
+WVEXPRC 2 err-to get.log bup get \
+        --repair --append: src r1 \
+        --rewrite --append: src r2
 WVPASS grep -E 'raise MissingObject' get.log
 
 
 WVSTART '--ignore-missing on broken save after --repair'
 WVPASS rm -rf bup && WVPASS cp -pPR bup-1234 bup
 WVPASS bup init bup-dest
-WVEXPRC 2 eval 'bup -d bup-dest get -s bup' \
-        '--repair --append: src r1' \
-        '--copy --unnamed src' \
-        '2>&1 | tee get.log'
+WVEXPRC 2 err-to get.log bup -d bup-dest get -s bup \
+        --repair --append: src r1 \
+        --copy --unnamed src
 WVPASS grep -E 'raise MissingObject' get.log
-WVEXPRC 2 eval 'bup -d bup-dest get -s bup' \
-        '--repair --append: src r1' \
-        '--copy --ignore-missing --unnamed src' \
-        ' 2>&1 | tee get.log'
+WVEXPRC 2 err-to get.log bup -d bup-dest get -s bup \
+        --repair --append: src r1 \
+        --copy --ignore-missing --unnamed src
 WVPASS grep -E '^skipping missing source object' get.log
 
 
 WVSTART '--copy --rewrite --repair'
 WVPASS rm -rf bup && WVPASS cp -pPR bup-1234 bup
-WVEXPRC 3 eval 'bup get --rewrite --repair --repair-id r1 --append: src r1' \
-        '2>&1 | tee get.log'
+WVEXPRC 3 err-to get.log bup get --rewrite --repair --repair-id r1 --append: src r1
 WVPASSEQ 1 "$(git show r1:a/2 | grep -cE '^Bup-Replacement-Info: r1$')"
 WVPASS rm -rf bup && WVPASS cp -pPR bup-1234 bup
-WVEXPRC 2 eval 'bup get --repair --rewrite --append: src r1 2>&1 | tee get.log'
+WVEXPRC 2 err-to get.log bup get --repair --rewrite --append: src r1
 WVPASS grep -E 'raise MissingObject' get.log
 WVPASS rm -rf bup && WVPASS cp -pPR bup-1234 bup
 WVPASS rm -rf bup-dest && bup init bup-dest
-WVEXPRC 2 eval 'bup -d bup-dest get -s bup --repair --copy --append: src r1' \
-        '2>&1 | tee get.log'
+WVEXPRC 2 err-to get.log bup -d bup-dest get -s bup --repair --copy --append: src r1
 WVPASS grep -E 'raise MissingObject' get.log
 WVPASS rm -rf bup bup-dest
 
 
 WVSTART 'multiple gets with differing repair-ids'
 WVPASS rm -rf bup && WVPASS cp -pPR bup-1234 bup
-WVEXPRC 3 eval 'bup get --repair' \
-        '--repair-id repair-1 --append: src r1' \
-        '--repair-id repair-2 --append: src r2' \
-        '2>&1 | tee get.log'
+WVEXPRC 3 err-to get.log bup get --repair \
+        --repair-id repair-1 --append: src r1 \
+        --repair-id repair-2 --append: src r2
 # Check commit messages
 bup_ver="$(bup version)"
 WVPASS git show -s --pretty=email r1 | tee repair-msg
@@ -397,9 +385,8 @@ WVPASSEQ 1 "$(WVPASS grep -cE '^Bup-Replacement-Info: repair-2$' replacement-2)"
 
 WVSTART "trailers don't accumulate across repaired saves"
 WVPASS rm -rf bup && WVPASS cp -pPR bup-1234 bup
-WVEXPRC 3 eval 'bup get --repair' \
-        '--repair-id repair-id --append: src-two-saves r1' \
-        '2>&1 | tee get.log'
+WVEXPRC 3 err-to get.log bup get --repair \
+        --repair-id repair-id --append: src-two-saves r1
 WVPASS git show -s --pretty=email r1^ | tee repair-msg-1
 WVPASS git show -s --pretty=email r1 | tee repair-msg-2
 WVPASS git interpret-trailers --parse < repair-msg-1 | tee repair-trailers-1

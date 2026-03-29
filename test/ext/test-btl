@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+. ./wvtest-bup.sh || exit $?
+. ./test/lib/btl.sh || exit $?
+
+set -o pipefail
+
+top="$(WVPASS pwd)" || exit $?
+tmpdir="$(WVPASS wvmktempdir)" || exit $?
+
+out-err() { echo out; echo err 1>&2; }
+
+WVPASS cd "$tmpdir"
+
+
+WVSTART '{err,out,both,}-to redirection'
+
+WVPASS rm -f log
+WVPASS err-to log out-err
+WVPASSEQ err "$(< log)"
+
+WVPASS rm -f log
+WVPASS out-to log out-err
+WVPASSEQ out "$(< log)"
+
+WVPASS rm -f out err
+WVPASS both-to out err out-err
+WVPASSEQ out "$(< out)"
+WVPASSEQ err "$(< err)"
+
+
+WVSTART '{err,out,both}-to exit status preservation'
+WVPASS out-to log true
+WVFAIL out-to log false
+WVEXPRC 42 out-to log sh -c 'exit 42'
+WVPASS err-to log true
+WVFAIL err-to log false
+WVEXPRC 42 err-to log sh -c 'exit 42'
+WVPASS both-to out err true
+WVFAIL both-to out err false
+WVEXPRC 42 both-to out err sh -c 'exit 42'
+
+
+WVPASS cd "$top"
+WVPASS rm -rf "$tmpdir"

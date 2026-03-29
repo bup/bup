@@ -13,7 +13,6 @@ export GIT_DIR="$tmpdir/bup"
 bup() { "$top/bup" "$@"; }
 
 WVPASS cd "$tmpdir"
-WVPASS mkfifo done
 WVPASS bup init
 
 WVPASS mkdir -p src/a
@@ -41,9 +40,7 @@ WVPASSEQ $'one\nthree\ntwo' "$(bup ls dst-2/latest/a)"
 WVPASSEQ $'three\ntwo' "$(bup ls dst-3/latest/a)"
 
 WVSTART 'ignored contextual arguments are disallowed'
-WVEXPRC 2 eval 'bup get --rewrite --append x --exclude-rx y --ignore-missing' \
-        '2> >(tee err.log; : > done)'
-WVFAIL read < done
+WVEXPRC 2 err-to err.log bup get --rewrite --append x --exclude-rx y --ignore-missing
 WVPASS grep -E '^error: trailing arguments with no effect: --exclude-rx --ignore-missing' err.log
 
 WVPASS cd "$top"

@@ -18,7 +18,7 @@ WVPASS cd "$tmpdir"
 WVPASS bup index "$top/test/sampledata"
 WVPASS bup save -n main "$top/test/sampledata"
 WVPASSEQ "$(git tag)" ''
-WVFAIL eval 'bup tag -d nope 2> >(tee log)'
+WVFAIL err-to log bup tag -d nope
 WVPASS grep "error: tag 'nope' doesn't exist" log
 WVPASSEQ "$(git tag)" ''
 WVPASS bup tag -f -d nope
@@ -27,10 +27,10 @@ WVFAIL bup tag tag-1
 WVPASSEQ "$(git tag)" ''
 WVFAIL bup tag '' nope
 WVPASSEQ "$(git tag)" ''
-WVFAIL eval 'bup tag tag-1 nope 2> >(tee log)'
+WVFAIL err-to log bup tag tag-1 nope
 WVPASS grep "error: commit nope not found" log
 WVPASSEQ "$(git tag)" ''
-WVFAIL eval 'bup tag .tag-1 main 2> >(tee log)'
+WVFAIL err-to log bup tag .tag-1 main
 WVPASS grep "'.tag-1' is not a valid tag name" log
 WVPASSEQ "$(git tag)" ''
 WVPASS bup tag tag-1 main

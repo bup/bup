@@ -19,7 +19,7 @@ expect-one-src-missing()
     else
         args="$(printf " %q" "$@")"
     fi
-    WVEXPRC 1 eval "bup validate-ref-links $args > validate.log 2>&1"
+    WVEXPRC 1 err-to validate.log bup validate-ref-links $args
     btl-display-file validate.log
     WVPASSEQ 1 "$(grep -cE '^missing ' validate.log)"
 }
@@ -34,8 +34,9 @@ WVPASS echo 3 > src/a/3
 WVPASS bup index src
 WVPASS bup save --strip -n src src
 
-WVPASS bup validate-ref-links 2>&1 | tee validate.log
-WVPASS grep -vE '^missing ' validate.log
+WVPASS both-to out err bup validate-ref-links
+WVPASSEQ 0 "$(grep -cE '^missing ' out)"
+WVPASSEQ 0 "$(grep -cE '^missing ' err)"
 
 bupm_oid="$(WVPIPE git ls-tree src:a | WVPASS head -1 | WVPASS btl-ent-oid)" \
     || exit $?
@@ -52,15 +53,17 @@ WVPASS echo 5 > more/a/5
 WVPASS bup index more
 WVPASS bup save --strip -n more more
 
-WVPASS bup validate-ref-links more 2>&1 | tee validate.log
-WVPASS grep -vE '^missing ' validate.log
+WVPASS both-to out err bup validate-ref-links more
+WVPASSEQ 0 "$(grep -cE '^missing ' out)"
+WVPASSEQ 0 "$(grep -cE '^missing ' err)"
 
 expect-one-src-missing
 expect-one-src-missing src
 
 WVPASS bup rm --unsafe src
-WVPASS bup validate-ref-links 2>&1 | tee validate.log
-WVPASS grep -vE '^missing ' validate.log
+WVPASS both-to out err bup validate-ref-links
+WVPASSEQ 0 "$(grep -cE '^missing ' out)"
+WVPASSEQ 0 "$(grep -cE '^missing ' err)"
 
 
 WVPASS cd "$top"
