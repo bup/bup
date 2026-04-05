@@ -48,7 +48,12 @@ WVSTART 'web'
 WVPASS bup init
 WVPASS mkdir src
 WVPASS echo '¡excitement!' > src/data
-WVPASS echo -e 'whee \x80\x90\xff' > "$(echo -ne 'src/whee \x80\x90\xff')"
+if echo -e 'whee \x80\x90\xff' > "$(echo -ne 'src/whee \x80\x90\xff')"; then
+    test_non_utf8=true
+else
+    WVSKIP 'non-UTF8 path (unable to write)'
+    test_non_utf8=''
+fi
 WVPASS bup index src
 WVPASS bup save -n '¡excitement!' --strip src
 
@@ -66,7 +71,9 @@ WVPASSEQ "$(curl --unix-socket ./socket http://localhost/static/styles.css)" \
          "$(cat "$top/lib/web/static/styles.css")"
 
 WVPASSEQ '¡excitement!' "$(cat result)"
-WVPASS cmp "$(echo -ne 'src/whee \x80\x90\xff')" result2
+if test "$test_non_utf8"; then
+    WVPASS cmp "$(echo -ne 'src/whee \x80\x90\xff')" result2
+fi
 WVPASS kill -s TERM "$web_pid"
 WVPASS wait "$web_pid"
 
