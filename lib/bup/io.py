@@ -7,7 +7,7 @@ import os, select, sys, time
 
 
 # Get the umask once, early, so we can avoid further global changes.
-initial_umask = os.umask(0o777);
+initial_umask = os.umask(0o777)
 os.umask(initial_umask)
 
 
