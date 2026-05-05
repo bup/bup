@@ -95,7 +95,7 @@ from bup.helpers import \
      mmap_readwrite_private,
      notimplemented,
      unlink)
-from bup.io import path_msg as pm
+from bup.io import initial_umask, path_msg as pm
 
 
 BLOOM_VERSION = 2
@@ -215,6 +215,7 @@ def _create(path, expected, k):
         fd, tmp = mkstemp(dir=dir or os.getcwdb(), prefix=(name + b'-'))
         with ExitStack() as ctx:
             ctx.enter_context(finalized(tmp, unlink))
+            os.fchmod(fd, 0o666 & ~initial_umask)
             os.close(fd)
             tmp_file = ctx.enter_context(builtins.open(tmp, 'w+b'))
             tmp_file.write(b'BLOM')

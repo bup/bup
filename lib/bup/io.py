@@ -6,6 +6,11 @@ import mmap as py_mmap
 import os, select, sys, time
 
 
+# Get the umask once, early, so we can avoid further global changes.
+initial_umask = os.umask(0o777);
+os.umask(initial_umask)
+
+
 # Write (blockingly) to sockets that may or may not be in blocking mode.
 # We need this because our stderr is sometimes eaten by subprocesses
 # (probably ssh) that sometimes make it nonblocking, if only temporarily,
