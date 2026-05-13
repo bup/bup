@@ -1774,6 +1774,9 @@ static PyObject *bup_limited_vint_pack(PyObject *self, PyObject *args)
     return NULL;
 }
 
+static PyObject *pos_inf;
+static PyObject *neg_inf;
+
 static PyObject *
 bup_strtoimax(PyObject *self, PyObject *args)
 {
@@ -1956,6 +1959,24 @@ static int setup_module(PyObject *m)
         value = BUP_LONGISH_TO_PY(UINT_MAX);
         PyObject_SetAttrString(m, "UINT_MAX", value);
         Py_DECREF(value);
+    }
+
+    {
+        PyObject *math = PyImport_ImportModule("math");
+        if (!math) {
+            fprintf(stderr, "unable to find math module.\n");
+            exit(BUP_EXIT_FAILURE);
+        }
+        pos_inf = PyObject_GetAttrString(math, "inf");
+        Py_DECREF(math);
+        if (!pos_inf) {
+            fprintf(stderr, "unable to find math.inf.\n");
+            exit(BUP_EXIT_FAILURE);
+        }
+        if ((neg_inf = PyNumber_Negative(pos_inf)) == NULL) {
+            fprintf(stderr, "unable to define negative infinity.\n");
+            exit(BUP_EXIT_FAILURE);
+        }
     }
 
 #ifdef BUP_HAVE_MINCORE_INCORE
