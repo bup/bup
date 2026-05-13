@@ -1789,9 +1789,9 @@ bup_strtoimax(PyObject *self, PyObject *args)
     if (end == str)
         return Py_BuildValue("(Oi)", Py_None, 0);
     if (v == INTMAX_MAX && errno == ERANGE)
-        return Py_BuildValue("(Oi)", PyFloat_FromDouble(Py_INFINITY), 0);
+        return Py_BuildValue("(Oi)", pos_inf, 0);
     if (v == INTMAX_MIN && errno == ERANGE)
-        return Py_BuildValue("(Oi)", PyFloat_FromDouble(-Py_INFINITY), 0);
+        return Py_BuildValue("(Oi)", neg_inf, 0);
     if (errno)
         return PyErr_SetFromErrno(PyExc_IOError);
     return Py_BuildValue("(On)", BUP_LONGISH_TO_PY(v), end - str);
