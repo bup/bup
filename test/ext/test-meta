@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 . wvtest-bup.sh || exit $?
 . dev/lib.sh || exit $?
+. test/lib/btl.sh || exit $?
 
 set -o pipefail
 
@@ -738,10 +739,10 @@ if [ "$root_status" = root ]; then
                 WVPASS force-delete "$testfs_limited"/src-restore
                 WVPASS mkdir "$testfs_limited"/src-restore
                 WVPASS cd "$testfs_limited"/src-restore
-                WVFAIL bup meta --extract --file "$testfs"/src.meta 2>&1 \
-                    | WVPASS grep -e '^Linux chattr:' \
-                    | WVPASS bup-cfg-py -c \
-                    'import sys; exit(not len(sys.stdin.readlines()) == 3)'
+                WVFAIL err-to ../../err bup meta --extract --file "$testfs"/src.meta
+                WVPASS cd ../..
+                WVPASS grep -cE 'chattr.* failed' err > grep-count
+                WVPASSEQ 3 "$(< grep-count)"
             ) || exit $?
         ) || exit $?
 
@@ -761,11 +762,12 @@ if [ "$root_status" = root ]; then
             WVPASS force-delete "$testfs_limited"/src-restore
             WVPASS mkdir "$testfs_limited"/src-restore
             WVPASS cd "$testfs_limited"/src-restore
-            WVFAIL bup meta --extract --file "$testfs"/src.meta
-            WVFAIL bup meta --extract --file "$testfs"/src.meta 2>&1 \
-                | WVPASS grep -e "^xattr\.set u\?'" \
-                | WVPASS bup-cfg-py -c \
-                'import sys; exit(not len(sys.stdin.readlines()) == 2)'
+            WVFAIL err-to ../../err bup meta --extract --file "$testfs"/src.meta
+            WVPASS cd ../../
+            WVPASS grep -cE 'xattr\.set .*src/(foo|bar/)$' err > grep-count
+            WVPASSEQ 2 "$(< grep-count)"
+            WVPASS grep -cF 'xattr.set ' err > grep-count
+            WVPASSEQ 2 "$(< grep-count)"
         ) || exit $?
 
         WVSTART 'meta - POSIX.1e ACLs (as root)'
@@ -784,10 +786,12 @@ if [ "$root_status" = root ]; then
             WVPASS force-delete "$testfs_limited"/src-restore
             WVPASS mkdir "$testfs_limited"/src-restore
             WVPASS cd "$testfs_limited"/src-restore
-            WVFAIL bup meta --extract --file "$testfs"/src.meta 2>&1 \
-                | WVPASS grep -e '^POSIX1e ACL applyto:' \
-                | WVPASS bup-cfg-py -c \
-                'import sys; exit(not len(sys.stdin.readlines()) == 2)'
+            WVFAIL err-to ../../err bup meta --extract --file "$testfs"/src.meta
+            WVPASS cd ../../
+            WVPASS grep -cE 'POSIX1e ACL apply failed .*src/(foo|bar/)$' err > grep-count
+            WVPASSEQ 2 "$(< grep-count)"
+            WVPASS grep -cF 'POSIX1e ACL apply failed ' err > grep-count
+            WVPASSEQ 2 "$(< grep-count)"
         ) || exit $?
 
         WVPASS umount "$testfs"
