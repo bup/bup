@@ -22,7 +22,7 @@ from bup.helpers import \
      log,
      mkdirp,
      note_error)
-from bup.io import path_msg
+from bup.io import enc_sh, path_msg
 from bup.pwdgrp import pwd_from_uid, pwd_from_name, grp_from_gid, grp_from_name
 from bup.xstat import utime, lutime
 
@@ -1192,7 +1192,7 @@ def detailed_bytes(meta, fields = None):
         result.append(b'linux-attr: %x' % meta.linux_attr)
     if 'linux-xattr' in fields and meta.linux_xattr:
         for name, value in meta.linux_xattr:
-            result.append(b'linux-xattr: %s -> %s' % (name, value))
+            result.append(b'linux-xattr: %s -> %s' % (enc_sh(name), enc_sh(value)))
     if 'posix1e-acl' in fields and meta.posix1e_acl:
         acl = meta.posix1e_acl[0]
         result.append(b'posix1e-acl: ' + acl + b'\n')
