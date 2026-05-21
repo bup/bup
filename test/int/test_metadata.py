@@ -1,5 +1,5 @@
 
-import errno, glob, stat, subprocess
+import errno, stat, subprocess
 import os, sys
 import pytest
 
@@ -25,15 +25,14 @@ def ex(*args, **kwargs):
     return buptest.exc(args, **kwargs)
 
 
-def setup_testfs():
+def setup_testfs(img_path, mount_path, mb=32):
     # Try to set up testfs with user_xattr, etc.
-    assert(sys.platform.startswith('linux'))
-    subprocess.call([b'umount', b'testfs'])
-    ex(b'dd', b'if=/dev/zero', b'of=testfs.img', b'bs=1M', b'count=32')
-    ex(b'mke2fs', b'-F', b'-j', b'-m', b'0', b'testfs.img')
-    ex(b'rm', b'-rf', b'testfs')
-    os.mkdir(b'testfs')
-    exr = ex(b'mount', b'-o', b'loop,acl,user_xattr', b'testfs.img', b'testfs',
+    assert sys.platform.startswith('linux')
+    with open(img_path, 'xb') as img:
+        img.truncate(1024 * 1024 * mb)
+    ex(b'mke2fs', b'-F', b'-j', b'-m', b'0', img_path)
+    os.mkdir(mount_path)
+    exr = ex(b'mount', b'-o', b'loop,acl,user_xattr', img_path, mount_path,
              check=False)
     if exr.rc != 0:
         return False
@@ -43,9 +42,9 @@ def setup_testfs():
     return True
 
 
-def cleanup_testfs():
-    subprocess.call([b'umount', b'testfs'])
-    helpers.unlink(b'testfs.img')
+def cleanup_testfs(img_path, mount_path):
+    subprocess.call((b'umount', mount_path))
+    helpers.unlink(img_path)
 
 
 def test_clean_up_archive_path():
@@ -255,29 +254,33 @@ if xattr:
         return list(filter(lambda i: not i in (b'security.selinux', ),
                            attrs))
 
-    def test_handling_of_incorrect_existing_linux_xattrs():
+    def test_handling_of_incorrect_existing_linux_xattrs(tmpdir):
+        if not sys.platform.startswith('linux'):
+            pytest.skip('skipping test -- not linux')
+            return
         if not is_superuser() or detect_fakeroot():
             pytest.skip('skipping test -- not superuser')
             return
-        if not setup_testfs():
+        os.chdir(tmpdir) # reverted by common_test_environment
+        if not setup_testfs(b'testfs.img', b'testfs'):
             pytest.skip('unable to set up test fs; skipping dependent tests')
             return
-        for f in glob.glob(b'testfs/*'):
-            ex(b'rm', b'-rf', f)
-        path = b'testfs/foo'
-        with open(path, 'wb'): pass
-        xattr.set(path, b'foo', b'bar', namespace=xattr.NS_USER)
-        m = metadata.from_path(path, archive_path=path, save_symlinks=True)
-        xattr.set(path, b'baz', b'bax', namespace=xattr.NS_USER)
-        m.apply_to_path(path, restore_numeric_ids=False)
-        WVPASSEQ(remove_selinux(xattr.list(path)), [b'user.foo'])
-        WVPASSEQ(xattr.get(path, b'user.foo'), b'bar')
-        xattr.set(path, b'foo', b'baz', namespace=xattr.NS_USER)
-        m.apply_to_path(path, restore_numeric_ids=False)
-        WVPASSEQ(remove_selinux(xattr.list(path)), [b'user.foo'])
-        WVPASSEQ(xattr.get(path, b'user.foo'), b'bar')
-        xattr.remove(path, b'foo', namespace=xattr.NS_USER)
-        m.apply_to_path(path, restore_numeric_ids=False)
-        WVPASSEQ(remove_selinux(xattr.list(path)), [b'user.foo'])
-        WVPASSEQ(xattr.get(path, b'user.foo'), b'bar')
-        cleanup_testfs()
+        try:
+            path = b'testfs/foo'
+            with open(path, 'wb'): pass
+            xattr.set(path, b'foo', b'bar', namespace=xattr.NS_USER)
+            m = metadata.from_path(path, archive_path=path, save_symlinks=True)
+            xattr.set(path, b'baz', b'bax', namespace=xattr.NS_USER)
+            m.apply_to_path(path, restore_numeric_ids=False)
+            WVPASSEQ(remove_selinux(xattr.list(path)), [b'user.foo'])
+            WVPASSEQ(xattr.get(path, b'user.foo'), b'bar')
+            xattr.set(path, b'foo', b'baz', namespace=xattr.NS_USER)
+            m.apply_to_path(path, restore_numeric_ids=False)
+            WVPASSEQ(remove_selinux(xattr.list(path)), [b'user.foo'])
+            WVPASSEQ(xattr.get(path, b'user.foo'), b'bar')
+            xattr.remove(path, b'foo', namespace=xattr.NS_USER)
+            m.apply_to_path(path, restore_numeric_ids=False)
+            WVPASSEQ(remove_selinux(xattr.list(path)), [b'user.foo'])
+            WVPASSEQ(xattr.get(path, b'user.foo'), b'bar')
+        finally:
+            cleanup_testfs(b'testfs.img', b'testfs')
