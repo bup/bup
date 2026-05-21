@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-. wvtest.sh
-. wvtest-bup.sh
-. dev/lib.sh
+. wvtest.sh || exit $?
+. wvtest-bup.sh || exit $?
+. dev/lib.sh || exit $?
+. test/lib/btl.sh || exit $?
 
 set -o pipefail
 
@@ -115,8 +116,13 @@ test-split-join()
     # Exit should be 0 or 5 depending on whether that bup inits repo ids.
     WVEXPRC '[05]' git config --file other-bup/config --unset bup.repo.id;
     WVEXPRC '[05]' git config --file this-bup/config --unset bup.repo.id
-    WVPASS "$top/dev/compare-trees" --no-times other-bup/ this-bup/
 
+    # Bup versions 0.33* and before may not fully respect the umask.
+    WVEXPRC '[01]' out-to out "$top/dev/compare-trees" --no-times \
+            other-bup/ this-bup/
+    if test "$?" -ne 0; then
+        WVPASSEQ '.f...p..... objects/pack/bup.bloom' "$(< out)"
+    fi
     WVPASS cd "$orig_dir"
     WVPASS rm -r split-join
 }

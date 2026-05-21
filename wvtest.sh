@@ -52,6 +52,16 @@ _wvcheck()
 }
 
 
+# Test for expected exit statuses:
+#
+#   WVEXPRC '[01]' some command ...
+#
+# The first argument is a shell case pattern, and the test fails if
+# the command's exit status doesn't match it.  If it does match, the
+# resulting $? will be that value.  This also provides a way to ensure
+# a command ends up in the test output with line number regardless of
+# the exit status, i.e. WVEXPRC '*' some command ...
+#
 WVEXPRC()
 {
 	if test $# -lt 2; then
@@ -72,7 +82,7 @@ WVEXPRC()
 		$exp)
 			_wvcheck 0 "\$?=$rc matches $exp for $TEXT"
 			_wvpopcall
-			return 0
+			return "$rc"
 			;;
 		*)
 			_wvcheck 1 "\$?=$rc matches $exp for $TEXT"
