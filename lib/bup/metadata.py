@@ -1191,7 +1191,9 @@ def detailed_bytes(meta, fields = None):
     if 'linux-attr' in fields and meta.linux_attr:
         result.append(b'linux-attr: %x' % meta.linux_attr)
     if 'linux-xattr' in fields and meta.linux_xattr:
-        for name, value in meta.linux_xattr:
+        xats = meta.linux_xattr.copy()
+        xats.sort(key=lambda x: x[0])
+        for name, value in xats:
             result.append(b'linux-xattr: %s -> %s' % (enc_sh(name), enc_sh(value)))
     if 'posix1e-acl' in fields and meta.posix1e_acl:
         acl = meta.posix1e_acl[0]
