@@ -208,9 +208,6 @@ class Client:
             except OSError as e:
                 raise ClientError('connect: %s' % e) from e
             try:
-                assert not url.host, url
-                assert not url.user, url
-                assert url.port is None, url
                 self.conn = Conn(self._proc.stdout, self._proc.stdin)
             except:
                 self._proc.terminate()

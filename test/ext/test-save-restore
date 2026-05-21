@@ -21,6 +21,11 @@ validate-local-and-remote-restore()
     force-delete "$dest"
     WVPASS bup restore -r "-:$BUP_DIR" -C "$dest" "$src"
     WVPASS "$top/dev/compare-trees" "$cmp_src" "$cmp_dest"
+    if test "${BUP_TEST_LOCAL_SSH:-}"; then
+       force-delete "$dest"
+       WVPASS bup restore -r "$BUP_TEST_LOCAL_SSH:$BUP_DIR" -C "$dest" "$src"
+       WVPASS "$top/dev/compare-trees" "$cmp_src" "$cmp_dest"
+    fi
 }
 
 
