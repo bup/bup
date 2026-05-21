@@ -191,7 +191,7 @@ WVSTART "save disjoint top-level directories"
 
     # For now, assume that "ls -a" and "sort" use the same order.
     actual="$(WVPASS bup ls -AF src/latest)" || exit $?
-    expected="$(echo -e "$pwd_top/\n$tmp_top/" | WVPASS sort)" || exit $?
+    expected="$(echo -e "$pwd_top/\n$tmp_top/" | LC_ALL=C sort)" || exit $?
     WVPASSEQ "$actual" "$expected"
 ) || exit $?
 
