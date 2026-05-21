@@ -24,7 +24,7 @@ def main(argv):
             o.fatal('cannot initialize both local and remote repo')
         loc = URL(scheme=b'file', path=abspath(argv_bytes(extra[0])))
     else:
-        loc = main_repo_location(opt.remote, o.fatal)
+        loc = main_repo_location(opt.remote and argv_bytes(opt.remote), o.fatal)
     try:
         with repo_for_location(loc, create=True): pass
     except git.GitError as ex:

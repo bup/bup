@@ -51,6 +51,10 @@ WVPASS test -d repo/refs/heads
 WVPASS test -d repo/objects/pack
 WVPASS rm -rf repo
 
+WVSTART '--remote'
+WVPASS rm -rf repo
+WVPASS bup init --remote -:repo
+
 WVEXPRC "$bup_exit_failure" bup init /dev/null
 
 
