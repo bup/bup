@@ -606,7 +606,7 @@ class Metadata:
             acl_rep = acl_rep[:2]
         if version == 1:
             acl_rep = self._correct_posix1e_v1_delimiters(acl_rep, self.path)
-        self.posix1e_acl = acl_rep
+        self.posix1e_acl = tuple(acl_rep)
 
     def _apply_posix1e_acl_rec(self, path, restore_numeric_ids=False):
         if not self.posix1e_acl:

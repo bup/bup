@@ -1625,7 +1625,7 @@ static PyObject *bup_read_acl(PyObject *self, PyObject *args)
         if (rv)
             goto out;
 
-        ret = Py_BuildValue("[" cstr_argf cstr_argf cstr_argf cstr_argf "]",
+        ret = Py_BuildValue("(" cstr_argf cstr_argf cstr_argf cstr_argf ")",
                             acl_txt, acl_num, def_txt, def_num);
 
         if (def_txt)
@@ -1633,7 +1633,7 @@ static PyObject *bup_read_acl(PyObject *self, PyObject *args)
         if (def_num)
             acl_free((acl_t)def_num);
     } else {
-        ret = Py_BuildValue("[" cstr_argf cstr_argf "]",
+        ret = Py_BuildValue("(" cstr_argf cstr_argf ")",
                             acl_txt, acl_num);
     }
 

@@ -3,6 +3,7 @@ import errno, stat, subprocess
 import os, sys
 import pytest
 
+from buptest import exc
 from wvpytest import *
 import buptest
 
@@ -198,8 +199,8 @@ def test_apply_to_path_restricted_access(tmpdir):
         if metadata.xattr:
             try:
                 metadata.xattr.set(path, b'user.buptest', b'bup')
-            except IOError as exc: # matches _apply_linux_xattr_rec
-                if exc.errno not in (errno.EPERM, errno.EOPNOTSUPP):
+            except IOError as e: # matches _apply_linux_xattr_rec
+                if e.errno not in (errno.EPERM, errno.EOPNOTSUPP):
                     raise
                 print("failed to set test xattr")
         m = metadata.from_path(path, archive_path=path, save_symlinks=True)
@@ -284,3 +285,38 @@ if xattr:
             WVPASSEQ(xattr.get(path, b'user.foo'), b'bar')
         finally:
             cleanup_testfs(b'testfs.img', b'testfs')
+
+
+def test_maximal_metadata(tmpdir):
+    # Currently just tests that the hash computation isn't broken
+    if not sys.platform.startswith('linux'):
+        pytest.skip('skipping test -- not linux')
+        return
+    if not is_superuser() or detect_fakeroot():
+        pytest.skip('skipping test -- not superuser')
+        return
+    os.chdir(tmpdir) # reverted by common_test_environment
+    if not setup_testfs(b'testfs.img', b'testfs'):
+        pytest.skip('unable to set up test fs; skipping dependent tests')
+        return
+    try:
+        os.chdir(b'testfs')
+        with open('canary', 'wb') as f:
+            f.write(b'something')
+        try: # linux xattrs
+            exc((b'attr', b'-s', b'foo', b'-V', b'bar', b'canary'))
+        except FileNotFoundError:
+            pass
+        try: # posix1e acls
+            exc((b'setfacl', '-m', 'u:root:r', b'canary'))
+        except FileNotFoundError:
+            pass
+        try: # linux attrs
+            exc((b'chattr', b'+acd', b'canary'))
+        except FileNotFoundError:
+            pass
+        m = metadata.from_path(b'canary')
+        # Check that __hash__ works properly
+        assert isinstance(hash(m), int)
+    finally:
+        cleanup_testfs(b'testfs.img', b'testfs')
