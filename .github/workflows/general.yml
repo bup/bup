@@ -1,0 +1,46 @@
+name: general
+on: [push]
+defaults:
+  run:
+    shell: bash
+jobs:
+  ubuntu:
+    name: ubuntu long-check (root)
+    runs-on: ubuntu-24.04
+    steps:
+      - run: |
+          # We have to run our tests outside the runner-owned
+          # /home/runner tree; otherwise test-help fails because man,
+          # via "bup help save", gets EACCES for Documentation/.  So
+          # we'll just clone into an independent /home/bup.
+          sudo -i gh_repo="$GITHUB_REPOSITORY" gh_ref="$GITHUB_REF_NAME" -- bash <<'EOF'
+            set -uexo pipefail
+            git clone --depth 10 -b "$gh_ref" "https://github.com/$gh_repo.git" /home/bup
+            cd /home/bup
+            dev/prep-for-debianish-build
+            DEBIAN_FRONTEND=noninteractive apt-get -y install bup
+            other_bup="$(command -v bup)"
+            "$other_bup" version
+            dev/system-info
+            BUP_TEST_OTHER_BUP="$other_bup" make -j "$(($(nproc) + 1))" long-check
+          EOF
+  macos:
+    name: macos lint/check
+    runs-on: macos-15
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - run: |
+          set -ueo pipefail
+          git clone --depth 10 -b "$GITHUB_REF_NAME" "https://github.com/$GITHUB_REPOSITORY.git"
+          cd bup
+          dev/prep-for-macos-build
+          brew install bup
+          export BUP_TEST_OTHER_BUP="$(command -v bup)"
+          "$BUP_TEST_OTHER_BUP" version
+          export PKG_CONFIG_PATH=/usr/local/opt/readline/lib/pkgconfig
+          dev/system-info
+          trap 'test -e config/config.vars || cat config.log 1>&2' EXIT
+          export BUP_PYTHON_CONFIG=python3-config LANG=en_US.UTF-8
+          gmake -j "$(($(sysctl -n hw.logicalcpu) + 1))" LDFLAGS=-L/usr/local/lib dev-check

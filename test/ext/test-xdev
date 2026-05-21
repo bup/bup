@@ -38,13 +38,20 @@ WVPASS mkfs -t ext4 -F testfs-1.img
 WVPASS mkfs -t ext4 -F testfs-2.img
 WVPASS mkdir -p src/mnt-1/hidden-1 src/mnt-2/hidden-2
 
-WVEXPRC '*' mount -o loop,user_xattr testfs-1.img src/mnt-1
+WVEXPRC '*' mount -o loop,user_xattr,acl testfs-1.img src/mnt-1
 if test "$?" -ne 0; then
     WVSKIP 'Unable to mount via loopback'
     exit 0
 fi
+WVPASS mount -o loop,user_xattr,acl testfs-2.img src/mnt-2
 
-WVPASS mount -o loop,ext_attr,user_xattr testfs-2.img src/mnt-2
+# The new filesystems' roots (and their contents) won't have any
+# default attributes (e.g. ACLs) that directories created via mkdir
+# (or bup restore) do.  Fix that to avoid avoid spurious compare-trees
+# differences.
+WVPASS rmdir src/mnt-1/lost+found src/mnt-2/lost+found
+WVPASS rsync -aHAX -d --no-recursive --exclude='*' -i src/ src/mnt-1/
+WVPASS rsync -aHAX -d --no-recursive --exclude='*' -i src/ src/mnt-2/
 
 WVPASS touch src/1
 
