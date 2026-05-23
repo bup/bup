@@ -71,10 +71,10 @@ WVPASS grep -E '^error: --strip-path is incompatible with --graft' log
 WVFAIL err-to log bup save -n main --graft x/y src
 WVPASS grep -E '^error: a graft point must be of the form old_path=new_path' log
 
-WVPASS git --git-dir bup config set bup.split.trees 42
+WVPASS git --git-dir bup config bup.split.trees 42
 WVFAIL err-to log bup save -n main /dev/null
 WVPASS grep -E '^error: got invalid bool value 42 from git config' log
-WVPASS git --git-dir bup config unset bup.split.trees
+WVPASS git --git-dir bup config --unset bup.split.trees
 
 
 WVSTART 'restore (argument validation)'

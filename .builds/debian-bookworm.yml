@@ -1,0 +1,13 @@
+
+image: debian/bookworm
+sources:
+  - https://git.sr.ht/~rlb/bup
+tasks:
+  - prep: |
+      cd bup
+      sudo -i env -C "$(pwd)" dev/prep-for-debianish-build
+      dev/system-info
+  - check: |
+      cd bup
+      trap 'test -e config/config.vars || cat config.log 1>&2' EXIT
+      make -j "$(($(nproc) + 1))" check

@@ -1,0 +1,17 @@
+
+image: freebsd/14.x
+sources:
+  - https://git.sr.ht/~rlb/bup
+tasks:
+  - prep: |
+      cd bup
+      sudo -i env -C "$(pwd)" dev/prep-for-freebsd-build
+      dev/system-info
+  - lint: |
+      cd bup
+      trap 'test -e config/config.vars || cat config.log 1>&2' EXIT
+      gmake -j "$(($(nproc) + 1))" lint
+  - check: |
+      cd bup
+      trap 'test -e config/config.vars || cat config.log 1>&2' EXIT
+      gmake -j "$(($(nproc) + 1))" check
