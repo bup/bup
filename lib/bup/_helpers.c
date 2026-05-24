@@ -1918,6 +1918,17 @@ static void test_integral_assignment_fits(void)
     }
 }
 
+static void setattr_or_die (PyObject *obj, const char *name, PyObject *val,
+                            const char *msg)
+{
+    // Ensures reference to val is dropped
+    if (val == NULL || PyObject_SetAttrString(obj, name, val)) {
+        fputs(msg, stderr);
+        exit(BUP_EXIT_FAILURE);
+    }
+    Py_DECREF(val);
+}
+
 static int setup_module(PyObject *m)
 {
     // FIXME: migrate these tests to configure, or at least don't
@@ -1950,17 +1961,6 @@ static int setup_module(PyObject *m)
         }
     }
 
-    char *e;
-    {
-        PyObject *value;
-        value = BUP_LONGISH_TO_PY(INT_MAX);
-        PyObject_SetAttrString(m, "INT_MAX", value);
-        Py_DECREF(value);
-        value = BUP_LONGISH_TO_PY(UINT_MAX);
-        PyObject_SetAttrString(m, "UINT_MAX", value);
-        Py_DECREF(value);
-    }
-
     {
         PyObject *math = PyImport_ImportModule("math");
         if (!math) {
@@ -1979,16 +1979,17 @@ static int setup_module(PyObject *m)
         }
     }
 
+    setattr_or_die (m, "INT_MAX", BUP_LONGISH_TO_PY(INT_MAX),
+                    "error: unable to define INT_MAX\n");
+    setattr_or_die (m, "UINT_MAX", BUP_LONGISH_TO_PY(UINT_MAX),
+                    "error: unable to define UINT_MAX\n");
+
 #ifdef BUP_HAVE_MINCORE_INCORE
-    {
-        PyObject *value;
-        value = BUP_LONGISH_TO_PY(MINCORE_INCORE);
-        PyObject_SetAttrString(m, "MINCORE_INCORE", value);
-        Py_DECREF(value);
-    }
+    setattr_or_die (m, "MINCORE_INCORE", BUP_LONGISH_TO_PY(MINCORE_INCORE),
+                    "error: unable to define UINT_MAX\n");
 #endif
 
-    e = getenv("BUP_FORCE_TTY");
+    const char *e = getenv("BUP_FORCE_TTY");
     get_state(m)->istty2 = isatty(2) || (atoi(e ? e : "0") & 2);
     return 1;
 }
