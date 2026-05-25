@@ -1,11 +1,12 @@
 
 from contextlib import ExitStack
-import os, stat, struct
+import os, stat, struct, sys
 
 from bup import metadata, xstat
-from bup._helpers import UINT_MAX, bytescmp
+from bup._helpers import UINT_MAX, bytescmp, c_type_signed_size
 from bup.helpers import \
-    (add_error,
+    (EXIT_FAILURE,
+     add_error,
      atomically_replaced_file,
      fsync,
      log,
@@ -16,38 +17,70 @@ from bup.helpers import \
      qprogress,
      resolve_parent,
      slashappend)
+from bup.io import path_msg
 from bup.metadata import empty_metadata
 
 
 EMPTY_SHA = b'\0' * 20
 FAKE_SHA = b'\x01' * 20
 
-INDEX_HDR = b'BUPI\0\0\0\7'
+INDEX_SIG_V7 = b'BUPI\0\0\0\x07'
+INDEX_SIG = b'BUPI\0\0\0\x08'
+assert len(INDEX_SIG_V7) == len (INDEX_SIG)
 
 # Time values are handled as integer nanoseconds since the epoch in
 # memory, but are written as xstat/metadata timespecs.  This behavior
 # matches the existing metadata/xstat/.bupm code.
-
+#
 # Record times (mtime, ctime, atime) as xstat/metadata timespecs, and
 # store all of the times in the index so they won't interfere with the
 # forthcoming metadata cache.
-INDEX_SIG = ('!'
-             'Q'                # dev
-             'Q'                # ino
-             'Q'                # nlink
-             'qQ'               # ctime_s, ctime_ns
-             'qQ'               # mtime_s, mtime_ns
-             'qQ'               # atime_s, atime_ns
-             'Q'                # size
-             'I'                # mode
-             'I'                # gitmode
-             '20s'              # sha
-             'H'                # flags
-             'Q'                # children_ofs
-             'I'                # children_n
-             'Q')               # meta_ofs
+#
+# POSIX specifies that all of the non-timestamp types here except
+# dev_t, mode_t, and nlink_t must be unsigned, and _helpers
+# setup_module() guarantees they all fit in eight bytes.  For now, we
+# leave mode an int (i/I), as it has long been, and setup_module()
+# ensures that's OK too.  Note that the timestamp pairs are *ours*
+# (via nsecs_to_timespec), not the POSIX specified time_t and long.
 
-ENTLEN = struct.calcsize(INDEX_SIG)
+# ENTRY_SIG_V7 was the long-standing format before we started matching
+# the platform's sign for the three relevant types, and including the
+# format in the index (in v8).
+#
+ENTRY_SIG_V7 = ('!'
+                'Q'   # dev
+                'Q'   # ino
+                'Q'   # nlink
+                'qQ'  # ctime_s, ctime_ns
+                'qQ'  # mtime_s, mtime_ns
+                'qQ'  # atime_s, atime_ns
+                'Q'   # size
+                'I'   # mode
+                'I'   # gitmode
+                '20s' # sha
+                'H'   # flags
+                'Q'   # children_ofs
+                'I'   # children_n
+                'Q')  # meta_ofs
+
+ENTRY_SIG = ''.join(('!',
+                     'q' if c_type_signed_size['dev_t'] < 0 else 'Q',
+                     'Q',   # ino
+                     'q' if c_type_signed_size['nlink_t'] < 0 else 'Q',
+                     'qQ'  # ctime_s, ctime_ns
+                     'qQ'  # mtime_s, mtime_ns
+                     'qQ'  # atime_s, atime_ns
+                     'Q',   # size
+                     'i' if c_type_signed_size['mode_t'] < 0 else 'I', # mode
+                     'i' if c_type_signed_size['mode_t'] < 0 else 'I', # gitmode
+                     '20s' # sha
+                     'H'   # flags
+                     'Q'   # children_ofs
+                     'I'   # children_n
+                     'Q')) # meta_ofs
+
+ENTLEN = struct.calcsize(ENTRY_SIG)
+
 FOOTER_SIG = '!Q'
 FOOTLEN = struct.calcsize(FOOTER_SIG)
 
@@ -55,8 +88,19 @@ IX_EXISTS = 0x8000        # file exists on filesystem
 IX_HASHVALID = 0x4000     # the stored sha1 matches the filesystem
 IX_SHAMISSING = 0x2000    # the stored sha1 object doesn't seem to exist
 
+
 class Error(Exception):
     pass
+
+
+def header_len(sig):
+    if sig == INDEX_SIG:
+        # The byte before the ENTRY_SIG contains its length
+        return len(INDEX_SIG) + 1 + len(ENTRY_SIG)
+    if sig == INDEX_SIG_V7:
+        return len(INDEX_SIG_V7)
+    log(f'Unsupported index version {sig}, please --clear and reindex\n')
+    sys.exit(EXIT_FAILURE)
 
 
 class MetaStoreReader:
@@ -205,7 +249,7 @@ class Entry:
             ctime = xstat.nsecs_to_timespec(self.ctime)
             mtime = xstat.nsecs_to_timespec(self.mtime)
             atime = xstat.nsecs_to_timespec(self.atime)
-            return struct.pack(INDEX_SIG,
+            return struct.pack(ENTRY_SIG,
                                self.dev, self.ino, self.nlink,
                                ctime[0], ctime[1],
                                mtime[0], mtime[1],
@@ -366,7 +410,7 @@ class ExistingEntry(Entry):
          self.ctime, ctime_ns, self.mtime, mtime_ns, self.atime, atime_ns,
          self.size, self.mode, self.gitmode, self.sha,
          self.flags, self.children_ofs, self.children_n, self.meta_ofs
-         ) = struct.unpack(INDEX_SIG, m[ofs : ofs + ENTLEN])
+         ) = struct.unpack(ENTRY_SIG, m[ofs : ofs + ENTLEN])
         self.atime = xstat.timespec_to_nsecs((self.atime, atime_ns))
         self.mtime = xstat.timespec_to_nsecs((self.mtime, mtime_ns))
         self.ctime = xstat.timespec_to_nsecs((self.ctime, ctime_ns))
@@ -430,17 +474,32 @@ class Reader:
         self.m = b''
         self.writable = False
         self.count = 0
+        self._entries_start = header_len(INDEX_SIG) # for new indexes
         with ExitStack() as ctx:
             try:
                 # pylint: disable-next=consider-using-with
                 f = ctx.enter_context(open(filename, 'rb+'))
             except FileNotFoundError:
                 return
-            b = f.read(len(INDEX_HDR))
-            if b != INDEX_HDR:
-                log('warning: %s: header: expected %r, got %r\n'
-                                 % (filename, INDEX_HDR, b))
-                return
+
+            header = f.read(len(INDEX_SIG))
+            if header == INDEX_SIG_V7 and ENTRY_SIG == ENTRY_SIG_V7:
+                pass
+            elif header == INDEX_SIG:
+                entry_len = ord(f.read(1))
+                entry_sig = f.read(entry_len).decode('ascii')
+                if entry_sig != ENTRY_SIG:
+                    log(f'error: incompatible index {path_msg(filename)},'
+                        f' please --clear and reindex\n')
+                    log(f'(entry signature is {entry_sig} not {ENTRY_SIG})\n')
+                    sys.exit(EXIT_FAILURE)
+            else:
+                log(f'error: incompatible index {path_msg(filename)},'
+                    f' please --clear and reindex\n')
+                log(f'(index signature is {header} not {INDEX_SIG})\n')
+                sys.exit(EXIT_FAILURE)
+
+            self._entries_start = header_len(header)
             st = os.fstat(f.fileno())
             if st.st_size:
                 m = mmap_readwrite(f)
@@ -460,7 +519,7 @@ class Reader:
         return int(self.count)
 
     def forward_iter(self):
-        ofs = len(INDEX_HDR)
+        ofs = self._entries_start
         while ofs+ENTLEN <= len(self.m)-FOOTLEN:
             eon = self.m.find(b'\0', ofs)
             assert(eon >= 0)
@@ -471,7 +530,7 @@ class Reader:
             ofs = eon + 1 + ENTLEN
 
     def iter(self, name=None, wantrecurse=None):
-        if len(self.m) > len(INDEX_HDR)+ENTLEN:
+        if len(self.m) > self._entries_start + ENTLEN:
             dname = name
             if dname and not dname.endswith(b'/'):
                 dname += b'/'
@@ -554,7 +613,10 @@ class Writer:
                                                           buffering=65536)
             self.f = self.cleanup.enter_context(self.pending_index)
             self.cleanup.enter_context(self.f)
-            self.f.write(INDEX_HDR)
+            self.f.write(INDEX_SIG)
+            sig = ENTRY_SIG.encode('ascii')
+            self.f.write(b'%c' % len(sig))
+            self.f.write(sig)
             self.cleanup = self.cleanup.pop_all()
 
     def __enter__(self): return self

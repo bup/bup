@@ -36,6 +36,35 @@ void *checked_malloc(size_t n, size_t size)
     return result;
 }
 
+int bup_int_from_py(int *x, PyObject *py, const char *name)
+{
+    const long i = PyLong_AsLong(py);
+    if (i == -1 && PyErr_Occurred()) {
+        PyErr_Format(PyExc_OverflowError, "%s overflows int: %R", name, py);
+        return 0;
+    }
+    if (INT_ADD_OK(i, 0, x))
+        return 1;
+    PyErr_Format(PyExc_OverflowError, "%s overflows int: %R", name, py);
+    return 0;
+}
+
+int bup_uint_from_py(unsigned int *x, PyObject *py, const char *name)
+{
+    unsigned long tmp;
+    if (!bup_ulong_from_py(&tmp, py, name))
+        return 0;
+
+    if (tmp > UINT_MAX)
+    {
+        PyErr_Format(PyExc_OverflowError, "%s overflows unsigned int: %R",
+                     name, py);
+        return 0;
+    }
+    *x = (unsigned int) tmp;
+    return 1;
+}
+
 int bup_ulong_from_py(unsigned long *x, PyObject *py, const char *name)
 {
     if (!PyLong_Check(py))
@@ -53,22 +82,6 @@ int bup_ulong_from_py(unsigned long *x, PyObject *py, const char *name)
         return 0;
     }
     *x = tmp;
-    return 1;
-}
-
-int bup_uint_from_py(unsigned int *x, PyObject *py, const char *name)
-{
-    unsigned long tmp;
-    if (!bup_ulong_from_py(&tmp, py, name))
-        return 0;
-
-    if (tmp > UINT_MAX)
-    {
-        PyErr_Format(PyExc_OverflowError, "%s overflows unsigned int: %R",
-                     name, py);
-        return 0;
-    }
-    *x = (unsigned int) tmp;
     return 1;
 }
 

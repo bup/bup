@@ -702,7 +702,7 @@ class PackIdxList:
                                     % (path_msg(n), path_msg(mxf)))
                             unlink(full)
                 midxl.sort(key=lambda ix:
-                           (-len(ix), -xstat.stat(ix.name).st_mtime))
+                           (-len(ix), -xstat.stat(ix.name).st_mtime_ns))
                 for ix in midxl:
                     any_needed = False
                     for sub in ix.idxnames:

@@ -212,7 +212,7 @@ def do_midx_dir(path, outfilename, prout, auto=False, force=False,
 
         # sort the biggest+newest midxes first, so that we can eliminate
         # smaller (or older) redundant ones that come later in the list
-        midxs.sort(key=lambda ix: (-sizes[ix], -xstat.stat(ix).st_mtime))
+        midxs.sort(key=lambda ix: (-sizes[ix], -xstat.stat(ix).st_mtime_ns))
 
         for mname in midxs:
             any = 0

@@ -1,8 +1,11 @@
 """Enhanced stat operations for bup."""
 
 from time import strftime
-import os, sys, time
+import os, time
 import stat as pystat
+
+from bup import _helpers
+from bup._helpers import c_type_signed_size
 
 
 def timespec_to_nsecs(ts):
@@ -49,29 +52,54 @@ def lutime(path, times):
     os.utime(path, ns=times, follow_symlinks=False)
 
 
-if not sys.platform.startswith('cygwin'):
-    stat = os.stat
-    fstat = os.fstat
-    lstat = os.lstat
-else:
-    # These are potentially redundant until/unless we remove the
-    # metadata _add_common guards (which we could, given that posix
-    # allows negative values).
-    def stat(path):
-        st = os.stat(path)
-        assert st.st_uid >= 0, st
-        assert st.st_gid >= 0, st
-        return st
-    def fstat(path):
-        st = os.fstat(path)
-        assert st.st_uid >= 0, st
-        assert st.st_gid >= 0, st
-        return st
-    def lstat(path):
-        st = os.lstat(path)
-        assert st.st_uid >= 0, st
-        assert st.st_gid >= 0, st
-        return st
+# We provide our own stat wrappers, and they produce an xstat_result,
+# not an os.stat_result.  Our result provides a subset of the
+# stat_result fields, and those fields respect the platform's actual
+# types, in particular with respect to sign.  For example, dev_t is
+# unsigned on Linux, and FreeBSD, but signed on macOS.
+#
+# Originally, Python treated dev_t as signed when populating
+# os.stat_result regardless of the platform's actual definition (POSIX
+# does not require it to be signed or unsigned), but Python eventually
+# switched to treat dev_t as unsigned[1], no matter what the platform
+# specified in <sys/types.h>, with the one exception that if the
+# platform defines NODEV, then that can be returned, and is typically
+# -1.  The switch to unsigned dev_t is/was also incomplete, for
+# example still rejecting "high bit set" makedev values.
+#
+# Having our own stat functions ensures the vaules returned are
+# consistent across platforms and across Python versions.  We also
+# don't need or provide all of the stat fields right now.  For
+# example, xstat_result only provides nanosecond timestamps via
+# st_[amc]time_ns, not st_[amc]time.
+#
+# Note, though, that because we produce the platform's actual values
+# for dev_t, etc., we have to be careful if we pass those values to
+# Python functions, which is why we wrap mknod() below.
+#
+# [1] This is where Python switched to unsigned dev_t:
+#
+#   7111d9605f9db7aa0b095bb8ece7ccc0b8115c3f
+#   gh-89928: Fix integer conversion of device numbers (GH-31794)
+#   https://github.com/python/cpython/pull/31794
+#
+#   and it has been backported to various minor releases over time.
+
+stat = _helpers.stat
+lstat = _helpers.lstat
+fstat = _helpers.stat
+
+# Assuming two's complement, offset to convert negative values to
+# their corresponding unsigned equivalents (as if coerced in C).
+_dev_t_shift = 1 << abs(c_type_signed_size['dev_t']) * 8
+_nodev = getattr(os, 'NODEV', 0)
+
+def mknod(path, mode=0o600, device=0, *, dir_fd=None):
+    # If needed, adapt our native dev_t values to the unsigned values
+    # os.mknod expects.
+    if device < 0 and device != _nodev:
+        device += _dev_t_shift
+    return os.mknod(path, mode, device, dir_fd=dir_fd)
 
 
 def mode_str(mode):

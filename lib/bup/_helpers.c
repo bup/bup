@@ -42,10 +42,6 @@
 #include <sys/ioctl.h>
 #endif
 
-#ifdef HAVE_TM_TM_GMTOFF
-#include <time.h>
-#endif
-
 #if defined(BUP_RL_EXPECTED_XOPEN_SOURCE) \
     && (!defined(_XOPEN_SOURCE) || _XOPEN_SOURCE < BUP_RL_EXPECTED_XOPEN_SOURCE)
 # warning "_XOPEN_SOURCE version is incorrect for readline"
@@ -111,6 +107,10 @@ static uint64_t htonll(uint64_t value)
 #endif
 
 #define INTEGRAL_ASSIGNMENT_FITS(dest, src) INT_ADD_OK(src, 0, dest)
+
+
+static PyObject *bup_py_zero;
+static PyObject *bup_py_billion;
 
 
 static PyObject *bup_bytescmp(PyObject *self, PyObject *args)
@@ -1108,6 +1108,217 @@ static PyObject *bup_set_linux_file_attr(PyObject *self, PyObject *args)
 }
 #endif /* def BUP_HAVE_FILE_ATTRS */
 
+
+#ifdef BUP_STAT_NS_FLAVOR_TIM
+# define BUP_STAT_ATIME_NS(st) (st)->st_atim.tv_nsec
+# define BUP_STAT_MTIME_NS(st) (st)->st_mtim.tv_nsec
+# define BUP_STAT_CTIME_NS(st) (st)->st_ctim.tv_nsec
+#elif defined BUP_STAT_NS_FLAVOR_TIMENSEC
+# define BUP_STAT_ATIME_NS(st) (st)->st_atimensec.tv_nsec
+# define BUP_STAT_MTIME_NS(st) (st)->st_mtimensec.tv_nsec
+# define BUP_STAT_CTIME_NS(st) (st)->st_ctimensec.tv_nsec
+#elif defined BUP_STAT_NS_FLAVOR_TIMESPEC
+# define BUP_STAT_ATIME_NS(st) (st)->st_atimespec.tv_nsec
+# define BUP_STAT_MTIME_NS(st) (st)->st_mtimespec.tv_nsec
+# define BUP_STAT_CTIME_NS(st) (st)->st_ctimespec.tv_nsec
+#elif defined BUP_STAT_NS_FLAVOR_NONE
+# define BUP_STAT_ATIME_NS(st) 0
+# define BUP_STAT_MTIME_NS(st) 0
+# define BUP_STAT_CTIME_NS(st) 0
+#else
+# error "./configure did not define a BUP_STAT_NS_FLAVOR"
+#endif
+
+static PyStructSequence_Field xstat_result_fields[] = {
+    {"st_mode", "access modes"},
+    {"st_ino", "inode"},
+    {"st_dev", "containing device ID"},
+    {"st_nlink", "link count"},
+    {"st_uid", "owner's user id"},
+    {"st_gid", "owner's group id"},
+    {"st_size", "length in bytes"},
+    // Below here we no longer match the os.stat_result field order.
+    // But we shouldn't rely on index references anyway.
+    {"st_atime_ns", "access time {ns)"},
+    {"st_mtime_ns", "modification time (ns)"},
+    {"st_ctime_ns", "change time (ns)"},
+    {"st_rdev", "character or block special device ID"},
+    {0, 0}
+};
+
+static PyStructSequence_Desc xstat_result_desc = {
+    "bup.xstat.xstat_result",
+    "bup fstat, stat, lstat data",
+    xstat_result_fields,
+    11 // how many fields are visible in python (all)
+};
+
+static PyTypeObject *xstat_result_type;
+
+static PyObject *make_timestamp(PyObject *sec, PyObject *ns)
+{
+    // Ensures sec and ns end up unrefed
+    PyObject *result = NULL;
+    if (sec == NULL || ns == NULL)
+        goto finish;
+    PyObject *sec_as_ns = PyNumber_Multiply(sec, bup_py_billion);
+    if (sec_as_ns == NULL)
+        goto finish;
+    result = PyNumber_Add(sec_as_ns, ns);
+    Py_DECREF (sec_as_ns);
+ finish:
+    Py_XDECREF(sec);
+    Py_XDECREF(ns);
+    return result;
+}
+
+static PyObject *stat_struct_to_py(const struct stat *st)
+{
+    // The (unsigned) long long conversions (which includes
+    // BUP_LONGISH_TO_PY) are OK because setup_module has already
+    // ensured that the values will fit.
+
+#ifdef __CYGWIN__
+    // These are potentially redundant until/unless we remove the
+    // metadata _add_common guards (which we could, given that posix
+    // allows negative values).  See also:
+    //   dbb239b26a6e373c448a27e435afe48d76e99086
+    //   Drop workaround for negative cygwin uid/gid
+    if (st->st_uid < 0)
+        return PyErr_Format(PyExc_ValueError,
+                            "negative Cygwin st_uid (please report)");
+    if (st->st_gid < 0)
+        return PyErr_Format(PyExc_ValueError,
+                            "negative Cygwin st_gid (please report)");
+#endif
+
+    PyObject *sr = PyStructSequence_New(xstat_result_type);
+
+    PyObject *v = BUP_LONGISH_TO_PY(st->st_mode);
+    if (v == NULL) { Py_DECREF(sr); return NULL; }
+    PyStructSequence_SetItem(sr, 0, v);
+
+    v = BUP_LONGISH_TO_PY(st->st_ino);
+    if (v == NULL) { Py_DECREF(sr); return NULL; }
+    PyStructSequence_SetItem(sr, 1, v);
+
+    // Depending on the version, Python treats some values like dev_t
+    // as unsigned, no matter what the platform defines (e.g. it's
+    // signed on macos), and we want the real value.
+    v = BUP_LONGISH_TO_PY(st->st_dev);
+    if (v == NULL) { Py_DECREF(sr); return NULL; }
+    PyStructSequence_SetItem(sr, 2, v);
+
+    v = BUP_LONGISH_TO_PY(st->st_nlink);
+    if (v == NULL) { Py_DECREF(sr); return NULL; }
+    PyStructSequence_SetItem(sr, 3, v);
+
+    v = BUP_LONGISH_TO_PY(st->st_uid);
+    if (v == NULL) { Py_DECREF(sr); return NULL; }
+    PyStructSequence_SetItem(sr, 4, v);
+
+    v = BUP_LONGISH_TO_PY(st->st_gid);
+    if (v == NULL) { Py_DECREF(sr); return NULL; }
+    PyStructSequence_SetItem(sr, 5, v);
+
+    v = BUP_LONGISH_TO_PY(st->st_size);
+    if (v == NULL) { Py_DECREF(sr); return NULL; }
+    PyStructSequence_SetItem(sr, 6, v);
+
+    {
+        PyObject *stamp;
+        stamp = make_timestamp (BUP_LONGISH_TO_PY(st->st_atime),
+                                BUP_LONGISH_TO_PY(BUP_STAT_ATIME_NS(st)));
+        if (stamp == NULL) { Py_DECREF(sr); return NULL; }
+        PyStructSequence_SetItem(sr, 7, stamp);
+
+        stamp = make_timestamp (BUP_LONGISH_TO_PY(st->st_mtime),
+                                BUP_LONGISH_TO_PY(BUP_STAT_MTIME_NS(st)));
+        if (stamp == NULL) { Py_DECREF(sr); return NULL; }
+        PyStructSequence_SetItem(sr, 8, stamp);
+
+        stamp = make_timestamp (BUP_LONGISH_TO_PY(st->st_ctime),
+                                BUP_LONGISH_TO_PY(BUP_STAT_CTIME_NS(st)));
+        if (stamp == NULL) { Py_DECREF(sr); return NULL; }
+        PyStructSequence_SetItem(sr, 9, stamp);
+    }
+
+    v = BUP_LONGISH_TO_PY(st->st_rdev);
+    if (v == NULL) { Py_DECREF(sr); return NULL; }
+    PyStructSequence_SetItem(sr, 10, v);
+
+    return sr;
+}
+
+// Handle stat(path_or_fd, *, dir_fd=None) or equivalent lstat.
+static PyObject
+*bup_xstat(PyObject *py_path, PyObject *dir_fd, int follow_symlinks)
+{
+    PyObject *result = NULL;
+
+    // Establish the "path" (fd, bytes, or string (as bytes))
+    int path_fd = AT_FDCWD;
+    PyBytesObject *path_bytes = NULL; // if set, must eventually be unrefed
+    const char *path = NULL;
+    if (PyLong_Check(py_path)) {
+        if (dir_fd != Py_None)
+            return PyErr_Format(PyExc_ValueError, "fd disallows dir_fd");
+        if (!bup_int_from_py (&path_fd, py_path, "path"))
+            return NULL;
+    } else {
+        if (!PyUnicode_FSConverter(py_path, &path_bytes))
+            return NULL;
+        // Must goto failed after this point
+        if((path = PyBytes_AS_STRING (path_bytes)) == NULL)
+            goto failed;
+    }
+    // Now we have either path_fd or path_bytes
+
+    int rc;
+    struct stat st;
+    int dfd = AT_FDCWD;
+    if (dir_fd && dir_fd != Py_None &&
+        !bup_int_from_py (&dfd, dir_fd, "dir_fd"))
+        goto failed;
+    rc = fstatat(dfd, path, &st, follow_symlinks ? 0 : AT_SYMLINK_NOFOLLOW);
+    if (rc != 0) {
+        PyErr_SetFromErrnoWithFilename(PyExc_OSError, path);
+        goto failed;
+    }
+    result = stat_struct_to_py(&st);
+
+ failed:
+    Py_XDECREF(path_bytes);
+    return result;
+}
+
+// Handle stat(path_or_fd, *, dir_fd=None) or equivalent lstat.
+static PyObject *bup_stat(PyObject *self, PyObject *args, PyObject *kwds)
+{
+    int follow_symlinks;
+    PyObject *py_path, *dir_fd = NULL;
+    static char *keys[] = {"path", "dir_fd", "follow_symlinks", NULL };
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "O|$Op", keys,
+                                     &py_path, &dir_fd, &follow_symlinks))
+        return NULL;
+    return bup_xstat(py_path, dir_fd, follow_symlinks);
+}
+
+// We don't just have an xstat.lstat follow_symlinks=False stat
+// wrapper because this is easy, lstat is our most common stat-related
+// call, and specializing made drecurse about a 10k paths/s faster in
+// trials.
+static PyObject *bup_lstat(PyObject *self, PyObject *args, PyObject *kwds)
+{
+    PyObject *py_path, *dir_fd = NULL;
+    static char *keys[] = {"path", "dir_fd", NULL };
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "O|$O", keys,
+                                     &py_path, &dir_fd))
+        return NULL;
+    return bup_xstat(py_path, dir_fd, 0);
+}
+
+
 static unsigned int vuint_encode(long long val, char *buf)
 {
     unsigned int len = 0;
@@ -1834,6 +2045,12 @@ static PyMethodDef helper_methods[] = {
     { "set_linux_file_attr", bup_set_linux_file_attr, METH_VARARGS,
       "Set the Linux attributes for the given file." },
 #endif
+    { "stat", (PyCFunction)(void(*)(void)) bup_stat,
+      METH_VARARGS | METH_KEYWORDS,
+      "Extended version of stat." },
+    { "lstat", (PyCFunction)(void(*)(void)) bup_lstat,
+      METH_VARARGS | METH_KEYWORDS,
+      "Extended version of lstat." },
     { "bytescmp", bup_bytescmp, METH_VARARGS,
       "Return a negative value if x < y, zero if equal, positive otherwise."},
     { "getpwuid", bup_getpwuid, METH_VARARGS,
@@ -1918,7 +2135,8 @@ static void test_integral_assignment_fits(void)
     }
 }
 
-static void setattr_or_die (PyObject *obj, const char *name, PyObject *val,
+static PyObject *
+setattr_or_die (PyObject *obj, const char *name, PyObject *val,
                             const char *msg)
 {
     // Ensures reference to val is dropped
@@ -1927,27 +2145,90 @@ static void setattr_or_die (PyObject *obj, const char *name, PyObject *val,
         exit(BUP_EXIT_FAILURE);
     }
     Py_DECREF(val);
+    return val;
 }
+
+static int
+set_dict_item (PyObject *dict, const char *name, PyObject *val)
+{
+    // Ensures reference to val is dropped
+    if (val == NULL || PyDict_SetItemString(dict, name, val))
+        return 0;
+    Py_DECREF(val);
+    return 1;
+}
+
+static void
+set_ssize_or_die(PyObject *dict, const char *name, int is_signed, size_t size)
+{
+    // Set dict[name] to -size if signed, otherwise size.
+    if (!is_signed) {
+        if (!set_dict_item(dict, name, PyLong_FromSize_t(size)))
+            goto fail;
+        return;
+    }
+
+    ssize_t ssize;
+    if (!INT_SUBTRACT_OK(0, size, &ssize))
+        goto fail;
+    if (!set_dict_item(dict, name, PyLong_FromSsize_t(ssize)))
+        goto fail;
+    return;
+
+ fail:
+    fprintf(stderr, "error: unable to set c_type_signed_size['%s']\n", name);
+    exit(BUP_EXIT_FAILURE);
+}
+
 
 static int setup_module(PyObject *m)
 {
     // FIXME: migrate these tests to configure, or at least don't
-    // possibly crash the whole application.  Check against the type
-    // we're going to use when passing to python.  Other stat types
-    // are tested at runtime.
-    assert(sizeof(ino_t) <= sizeof(unsigned PY_LONG_LONG));
-    assert(sizeof(off_t) <= sizeof(PY_LONG_LONG));
-    assert(sizeof(blksize_t) <= sizeof(PY_LONG_LONG));
-    assert(sizeof(blkcnt_t) <= sizeof(PY_LONG_LONG));
-    // Just be sure (relevant when passing timestamps back to Python above).
-    assert(sizeof(PY_LONG_LONG) <= sizeof(long long));
-    assert(sizeof(unsigned PY_LONG_LONG) <= sizeof(unsigned long long));
-    // At least for BUP_LONGISH_TO_PY
+    // possibly crash the whole application.
+
+    // Establish that all the "long long" integer types are the same
+    // size, and that the intmax types are no larger.  This is almost
+    // certainly true, and for now, simplifies
+    // conversions. i.e. BUP_LONGISH_TO_PY is always sufficient when
+    // the type fits in a "long long" flavor.  Note that intmax_t and
+    // uintmax_t are not guaranteed to be the largest integer types
+    // (e.g. gcc __int128).  Some of these checks are likely
+    // redundant, standards-wise but they're roughly free.
+    assert(sizeof(long long) == sizeof(unsigned long long));
     assert(sizeof(intmax_t) <= sizeof(long long));
-    assert(sizeof(uintmax_t) <= sizeof(unsigned long long));
+    assert(sizeof(uintmax_t) <= sizeof(long long));
+    assert(sizeof(PY_LONG_LONG) == sizeof(long long));
+    assert(sizeof(unsigned PY_LONG_LONG) == sizeof(long long));
+
     // This should be guaranteed by the C standard, but it's cheap to
     // double-check, and we depend on it.
     assert(sizeof(unsigned long) >= sizeof(uint32_t));
+
+    // Simplify the stat conversions by ensuring that all the types
+    // fit in a long long or unsigned long long.
+    assert(sizeof(ino_t) <= sizeof(long long));
+    assert(sizeof(dev_t) <= sizeof(long long));
+    assert(sizeof(nlink_t) <= sizeof(long long));
+    assert(sizeof(uid_t) <= sizeof(long long));
+    assert(sizeof(gid_t) <= sizeof(long long));
+    assert(sizeof(size_t) <= sizeof(long long));
+    assert(sizeof(((struct stat *) 0)->st_atime) <= sizeof(long long));
+    assert(sizeof(((struct stat *) 0)->st_mtime) <= sizeof(long long));
+    assert(sizeof(((struct stat *) 0)->st_ctime) <= sizeof(long long));
+    assert(sizeof(BUP_STAT_ATIME_NS((struct stat *) 0)) <= sizeof(long long));
+    assert(sizeof(BUP_STAT_MTIME_NS((struct stat *) 0)) <= sizeof(long long));
+    assert(sizeof(BUP_STAT_CTIME_NS((struct stat *) 0)) <= sizeof(long long));
+    assert(sizeof(long long) <= 8); // For ENTRY_SIG, at least
+
+    // Ensure the platform respects posix for the relevant stat_t
+    // types (supports at least index.ENTRY_SIG).
+    assert(!TYPE_SIGNED(ino_t));
+    assert(!TYPE_SIGNED(size_t));
+
+    // ENTRY_SIG has always used int; let's continue until some new
+    // platform requires us to force everyone to reindex
+    // (cf. make_index_entry_packfmt).
+    assert(sizeof(mode_t) <= sizeof(int));
 
     test_integral_assignment_fits();
 
@@ -1959,6 +2240,28 @@ static int setup_module(PyObject *m)
             fprintf(stderr, "off_t can't hold INT_MAX; please report.\n");
             exit(BUP_EXIT_FAILURE);
         }
+    }
+
+    {
+        assert(CHAR_BIT == 8);
+        PyObject *d =
+            setattr_or_die (m, "c_type_signed_size", PyDict_New(),
+                            "error: unable to define c_type_signed_size\n");
+        set_ssize_or_die(d, "dev_t", TYPE_SIGNED(dev_t), sizeof(dev_t));
+        set_ssize_or_die(d, "mode_t", TYPE_SIGNED(mode_t), sizeof(mode_t));
+        set_ssize_or_die(d, "nlink_t", TYPE_SIGNED(nlink_t), sizeof(nlink_t));
+    }
+
+    bup_py_zero = PyLong_FromUnsignedLong(0);
+    if (bup_py_zero == NULL) {
+        fprintf(stderr, "error: unable to define a zero\n");
+        exit(BUP_EXIT_FAILURE);
+    }
+
+    bup_py_billion = PyLong_FromUnsignedLongLong(1000000000);
+    if (bup_py_billion == NULL) {
+        fprintf(stderr, "error: unable to define a billion\n");
+        exit(BUP_EXIT_FAILURE);
     }
 
     {
@@ -1978,6 +2281,8 @@ static int setup_module(PyObject *m)
             exit(BUP_EXIT_FAILURE);
         }
     }
+
+    xstat_result_type = PyStructSequence_NewType(&xstat_result_desc);
 
     setattr_or_die (m, "INT_MAX", BUP_LONGISH_TO_PY(INT_MAX),
                     "error: unable to define INT_MAX\n");
