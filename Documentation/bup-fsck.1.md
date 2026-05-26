@@ -13,16 +13,29 @@ bup fsck [-r] [-g] [-v] [\--quick] [-j *jobs*] [\--par2-ok]
 
 # DESCRIPTION
 
-`bup fsck` validates bup repositories much the way `git fsck`
-validates git repositories.  When *packfile*s (which must end in
-.pack) are specified, pack-related operations are limited to those
-files, otherwise all packfiles in the current repository are
-considered.
+When *packfile*s (which must end in .pack) are specified, pack-related
+operations are limited to those files, otherwise all packfiles in the
+current repository are considered.
 
-It can also generate and/or use "recovery blocks" using the
-`par2`(1) tool (if you have it installed).  This allows you
-to recover from damaged blocks covering up to 5% of your
-`.pack` files.
+Currently `bup fsck` checks the data in the repository for corruption.
+More specifically, it checks the integrity of the data *packfile*s and
+their corresponding indexes to ensure that they have not changed since
+they were written.  It does not check higher level concerns like
+connectivity (missing objects), e.g. whether all the data referred to
+by a save actually exists in the repository.  For some higher level
+checks, see `bup-validate-object-links`(1) and `bup-validate-refs`(1).
+The checks `bup fsck` performs are focused on detecting, and
+potentially repairing, file corruption, while the higher level
+problems are more likely to be caused by (hopefully rarer) bugs.
+
+When checking the packfiles and indexes, right now fsck will normally
+rely on `git-verify-pack`(1), but with `--quick` (more below), bup
+will just check the index and packfile checksums itself.
+
+To allow repairs, fsck must be asked via `--generate` to generate
+`par2`(1) "recovery blocks" (if you have it installed).  These blocks
+allow you to recover from damage affecting up to 5% of your `.pack`
+files.
 
 In a normal backup system, damaged blocks are less
 important, because there tends to be enough data duplicated
@@ -124,7 +137,8 @@ errors and a value other than zero or one for errors.
 
 # SEE ALSO
 
-`bup-damage`(1), `fsck`(1), `git-fsck`(1)
+`bup-damage`(1), `fsck`(1), `git-fsck`(1),
+`bup-validate-object-links`(1), and `bup-validate-refs`(1)
 
 # BUP
 

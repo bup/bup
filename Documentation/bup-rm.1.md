@@ -18,9 +18,16 @@ any storage space), but it may make it very difficult or impossible to
 refer to the deleted items, unless there are other references to them
 (e.g. tags).
 
-A subsequent garbage collection, either by a `bup gc`, or by a normal
-`git gc`, may permanently delete data that is no longer reachable from
-the remaining branches or tags, and reclaim the related storage space.
+A subsequent garbage collection by `bup gc` may permanently delete
+data that is no longer reachable from the remaining branches or tags
+and reclaim the related storage space.  (The same would apply to a
+`git gc` on the repository, but the safety of running `git gc` on a
+bup repository has not been carefully evaluated, and should be
+avoided.)
+
+If you are familiar with `git`(1), removing branches is similar to
+`git branch -D BRANCH` and removing saves is like a `git-rebase
+--interactive` that removes commits.
 
 WARNING: This is one of the few bup commands that modifies your
 archive in intentionally destructive ways.
@@ -33,7 +40,7 @@ archive in intentionally destructive ways.
 -*#*, \--compress=*#*
 :   set the compression level to # (a value from 0-9, where
     9 is the highest and 0 is no compression).  The default
-    is 6.  Note that `bup rm` may only write new commits.
+    is 6.  This applies to the rewritten branches (commits).
 
 # EXAMPLES
 

@@ -12,14 +12,21 @@ bup validate-refs [\--links] [\--bupm] [*ref*...]
 
 # DESCRIPTION
 
-`bup validate-refs` can check repository references (e.g. saves) for
-commits or trees (directories) that refer to missing objects, and for
-abridged bupm files (metadata storage), reporting the paths to those
-it finds. If no *ref*s are provided, it checks all refs, otherwise it
-only checks those specified. If no checks are explicitly requested,
-then a default set of checks will be performed, currently `--links`
-and `--bupm`. If problems are found, `bup-get`(1) `--repair` may be
-able to help.
+`bup validate-refs` can check repository *ref*s (e.g. branches (backup
+sets) or saves) for commits or trees (directories) that refer to
+missing objects, and for damaged bupm files (metadata storage),
+reporting the paths to any it finds. If no *ref*s are provided, it
+checks all refs, otherwise it only checks those specified. If no
+checks are explicitly requested, then a default set of checks will be
+performed, currently `--links` and `--bupm`, and if problems are
+found, `bup-get`(1) `--repair` may be able to help.
+
+`validate-refs` checks everything reachable from a given branch or
+save, which includes all of the saves preceeding it.  See EXAMPLES
+below.
+
+The existence check only consults the repository indexes; it does not
+try to read the object, so it could be misled by an incorrect index.
 
 At the moment, the broken path information is only logged to standard
 error, and is not well specified (i.e. suitable for inspection, but
@@ -50,6 +57,15 @@ has encountered before.
     much more quickly for multiple related saves, though it only
     checks for the existence of the leaf (blob) data, it does not
     attempt to read that data.
+
+# EXAMPLES
+
+    # Check --links and --bupm for all refs
+    $ bup validate-refs
+
+    # Check --links for archives/2025-01-01-030405 and
+    # all of the saves before it.
+    $ bup validate-refs --links archives/2025-01-01-030405
 
 # EXIT STATUS
 

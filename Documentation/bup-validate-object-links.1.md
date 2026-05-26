@@ -12,12 +12,15 @@ bup validate-object-links
 
 # DESCRIPTION
 
-`bup validate-object-links` scans the objects in the repository for
-and reports any "broken links" it finds, i.e. any links from a tree or
-commit in the repository to an object that doesn't exist.  Currently,
-it doesn't include "loose objects" (those not in packfiles -- which
-git may create, but bup doesn't), and it can't handle tag objects
-(which bup also doesn't create).
+`bup validate-object-links` scans the objects in the repository and
+reports any references from a tree or commit to an object that does
+not exist in the repository.  Currently, it doesn't scan "loose
+objects" (those not in packfiles) or notice them when checking for
+existence, and it cannot handle tag objects.  Note that `bup` doesn't
+create tags or loose objects, but `git` may.
+
+The existence check only consults the repository indexes; it does not
+try to read the object, so it could be misled by an incorrect index.
 
 Whenever a broken link (missing reference) is found, an ASCII encoded
 line formatted like this will be printed to standard output:
