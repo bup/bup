@@ -212,27 +212,35 @@ def git_verify(base):
 def do_pack(base, last, par2_exists, out):
     code = 0
     if par2_ok and par2_exists and (opt.repair or not opt.generate):
-        vresult = par2_verify(base)
-        if vresult != 0:
-            if opt.repair:
-                rresult = par2_repair(base)
-                if rresult != 0:
-                    action_result = b'failed'
-                    log('%s par2 repair: failed (%d)\n' % (last, rresult))
-                    code = rresult
-                else:
-                    action_result = b'repaired'
-                    log('%s par2 repair: succeeded (0)\n' % last)
-                    # FIXME: for this to be useful, we need to define
-                    # the semantics, e.g. what's promised when we have
-                    # this and a competing error from another pack?
-                    code = 100
-            else:
+        vresult = 0
+        if not opt.repair:
+            vresult = git_verify(base)
+            if vresult != 0:
                 action_result = b'failed'
-                log('%s par2 verify: failed (%d)\n' % (last, vresult))
+                log('%s git verify: failed (%d)\n' % (last, vresult))
                 code = vresult
-        else:
-            action_result = b'ok'
+        if vresult == 0:
+            vresult = par2_verify(base)
+            if vresult != 0:
+                if opt.repair:
+                    rresult = par2_repair(base)
+                    if rresult != 0:
+                        action_result = b'failed'
+                        log('%s par2 repair: failed (%d)\n' % (last, rresult))
+                        code = rresult
+                    else:
+                        action_result = b'repaired'
+                        log('%s par2 repair: succeeded (0)\n' % last)
+                        # FIXME: for this to be useful, we need to define
+                        # the semantics, e.g. what's promised when we have
+                        # this and a competing error from another pack?
+                        code = 100
+                else:
+                    action_result = b'failed'
+                    log('%s par2 verify: failed (%d)\n' % (last, vresult))
+                    code = vresult
+            else:
+                action_result = b'ok'
     elif not opt.generate or (par2_ok and not par2_exists):
         gresult = git_verify(base)
         if gresult != 0:
@@ -316,8 +324,6 @@ def main(argv):
                 code = EXIT_FAILURE
             continue
         sys.stdout.flush()  # Not sure we still need this, but it'll flush out too
-        debug('fsck: checking %r (%s)\n'
-              % (base, par2_ok and par2_status and 'par2' or 'git'))
         if not opt.verbose:
             progress('fsck (%d/%d)\r' % (count, len(extra)))
 
