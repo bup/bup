@@ -46,6 +46,10 @@ def test_enc_dsq():
     assert br"$'x'" == enc_dsq(b'x')
     assert br"$'\n'" == enc_dsq(b'\n')
     assert br"$'\x03'" == enc_dsq(b'\x03')
+    # Edge case: empty input
+    assert br"$''" == enc_dsq(b'')
+    # Return type
+    assert isinstance(enc_dsq(b'x'), bytes)
 
 def test_enc_dsqs():
     def enc(s):
@@ -71,6 +75,10 @@ def test_enc_dsqs():
         == enc_dsqs(b'\x80'.decode('ascii', errors='surrogateescape'))
     assert r"$'\xb5'" \
         == enc_dsqs(b'\xb5'.decode('utf-8', errors='surrogateescape'))
+    # Edge case: empty input
+    assert r"$''" == enc_dsqs('')
+    # Return type
+    assert isinstance(enc_dsqs('x'), str)
 
 def test_enc_sh():
     assert br"''" == enc_sh(b'')
@@ -83,6 +91,8 @@ def test_enc_sh():
         assert enc_dsq(b'%c' % needs_dsq) == enc_sh(needs_dsq.to_bytes(1, 'big'))
     for needs_sq in br'|&;<>()$`\" *?[]^!#~=%{,}':
         assert b"'%c'" % needs_sq == enc_sh(needs_sq.to_bytes(1, 'big'))
+    # Return type
+    assert isinstance(enc_sh(b'x'), bytes)
 
 def test_enc_shs():
     assert r"''" == enc_shs('')
@@ -102,11 +112,15 @@ def test_enc_shs():
         == enc_shs(b'\x80'.decode('ascii', errors='surrogateescape'))
     assert r"$'\xb5'" \
         == enc_shs(b'\xb5'.decode('utf-8', errors='surrogateescape'))
+    # Return type
+    assert isinstance(enc_shs('x'), str)
 
 def test_cmd_msg():
     assert 'ls' == cmd_msg(('ls',))
     assert 'ls' == cmd_msg((b'ls',))
     assert "ls 'x y'" == cmd_msg(('ls', 'x y'))
+    # Return type
+    assert isinstance(cmd_msg(('ls',)), str)
 
 def test_qsql_id():
     assert '""""' == qsql_id('"')
@@ -116,6 +130,8 @@ def test_qsql_id():
     assert '"x"""' == qsql_id('x"')
     assert '"x""y"' == qsql_id('x"y')
     assert '"x""y""z"' == qsql_id('x"y"z')
+    # Return type
+    assert isinstance(qsql_id('x'), str)
 
 def test_qsql_str():
     assert "''''" == qsql_str("'")
@@ -125,3 +141,5 @@ def test_qsql_str():
     assert "'x'''" == qsql_str("x'")
     assert "'x''y'" == qsql_str("x'y")
     assert "'x''y''z'" == qsql_str("x'y'z")
+    # Return type
+    assert isinstance(qsql_str('x'), str)
