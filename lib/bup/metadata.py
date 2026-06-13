@@ -1123,8 +1123,7 @@ def summary_bytes(meta, numeric_ids = False, classification = None,
         elif meta.gid is not None:
             group_str = str(meta.gid).encode()
         if stat.S_ISCHR(meta.mode) or stat.S_ISBLK(meta.mode):
-            size_or_dev_str = ('%d,%d' % (os.major(meta.rdev),
-                                          os.minor(meta.rdev))).encode()
+            size_or_dev_str = b'%d' % meta.rdev
         elif meta.size is not None:
             if human_readable:
                 size_or_dev_str = format_filesize(meta.size).encode()
@@ -1168,8 +1167,7 @@ def detailed_bytes(meta, fields = None):
         result.append(b'link-target: ' + meta.symlink_target)
     if 'rdev' in fields:
         if meta.rdev:
-            result.append(b'rdev: %d,%d' % (os.major(meta.rdev),
-                                            os.minor(meta.rdev)))
+            result.append(b'rdev: %d' % meta.rdev)
         else:
             result.append(b'rdev: 0')
     if 'size' in fields and meta.size is not None:

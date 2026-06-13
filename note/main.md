@@ -61,6 +61,12 @@ May require attention
   files.  In addition, `bup fsck` will report lingering files when
   asked to scan the entire repository,
 
+* `bup ls` and `bup xstat` now print device values (e.g. stat st_rdev)
+  as ther dev\_t integers, not as a "major,minor" pair, since the
+  behavior of `major()/minor()` is not defined by posix, and the sign
+  and size of dev\_t and the major/minor result varies across
+  platforms.
+
 * Some prior exit statuses of 1 have been changed to a different
   non-zero value.  `bup` is migrating away from exiting with status 1
   for anything other than "false".  This is used by commands like
