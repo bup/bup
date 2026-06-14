@@ -5,7 +5,7 @@ defaults:
     shell: bash
 jobs:
   ubuntu:
-    name: ubuntu long-check (root)
+    name: ubuntu 24 long-check (root)
     runs-on: ubuntu-24.04
     steps:
       - run: |
@@ -18,12 +18,39 @@ jobs:
             git clone --depth 10 -b "$gh_ref" "https://github.com/$gh_repo.git" /home/bup
             cd /home/bup
             dev/prep-for-debianish-build
-            DEBIAN_FRONTEND=noninteractive apt-get -y install bup
+            apt-get -y install bup
             other_bup="$(command -v bup)"
             "$other_bup" version
             dev/system-info
+            make -j "$(($(nproc) + 1))" lint
             BUP_TEST_OTHER_BUP="$other_bup" make -j "$(($(nproc) + 1))" long-check
           EOF
+  ubuntu-ssh:
+    name: ubuntu 22 check (ssh)
+    runs-on: ubuntu-22.04
+    steps:
+      - run: |
+          set -uexo pipefail
+          gh_repo="$GITHUB_REPOSITORY"
+          gh_ref="$GITHUB_REF_NAME"
+          git clone --depth 10 -b "$gh_ref" "https://github.com/$gh_repo.git" bup
+          cd bup
+          sudo -i env -C "$(pwd)" dev/prep-for-debianish-build
+          sudo -i apt-get -y install ssh
+          sudo -i systemctl start ssh
+          mkdir -m 0700 ~/.ssh
+          ssh-keygen -N '' -f ~/.ssh/bup
+          install -m 0600 ~/.ssh/bup.pub ~/.ssh/authorized_keys
+          install -m 0600 /dev/null ~/.ssh/known_hosts
+          ssh-keyscan -H localhost >> ~/.ssh/known_hosts
+          mkdir -p ~/.local/bin
+          ln -s "$(pwd)"/bup ~/.local/bin/
+          eval $(ssh-agent)
+          ssh-add ~/.ssh/bup
+          cat /etc/ssh/sshd_config
+          ssh localhost uname -a
+          dev/system-info
+          BUP_TEST_LOCAL_SSH=localhost make -j "$(($(nproc) + 1))" check
   macos:
     name: macos lint/check
     runs-on: macos-15
