@@ -60,17 +60,10 @@ except ImportError:
     get_linux_file_attr = set_linux_file_attr = None
 
 
-# See the bup_get_linux_file_attr() comments.
-_suppress_linux_file_attr = \
-    sys.byteorder == 'big' and struct.calcsize('@l') > struct.calcsize('@i')
-
 def check_linux_file_attr_api():
     global get_linux_file_attr, set_linux_file_attr
     if not (get_linux_file_attr or set_linux_file_attr):
         return
-    if _suppress_linux_file_attr:
-        log('Warning: Linux attr support disabled (see "bup help index").\n')
-        get_linux_file_attr = set_linux_file_attr = None
 
 
 # WARNING: the metadata encoding is *not* stable yet.  Caveat emptor!

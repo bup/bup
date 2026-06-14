@@ -1017,86 +1017,90 @@ static PyObject *openat_noatime(PyObject *self, PyObject *args)
 }
 
 
-// Currently the Linux kernel and FUSE disagree over the type for
+// The Linux kernel and FUSE used to disagree over the type for
 // FS_IOC_GETFLAGS and FS_IOC_SETFLAGS.  The kernel actually uses int,
 // but FUSE chose long (matching the declaration in linux/fs.h).  So
-// if you use int, and then traverse a FUSE filesystem, you may
-// corrupt the stack.  But if you use long, then you may get invalid
-// results on big-endian systems.
+// if you used int for the ioctl(), and then traversed a FUSE
+// filesystem, you might corrupt the stack.  But if you used long,
+// then you might get invalid results on big-endian systems.
 //
-// For now, we just use long, and then disable Linux attrs entirely
-// (with a warning) in helpers.py on systems that are affected.
+// That's been fixed in Linux 5.8 (backported to at least 5.7.10,
+// 5.4.53, 4.9.231) by:
+//
+//   31070f6ccec09f3bd4f1e28cd1e592fa4f3ba0b6
+//   fuse: Fix parameter for FS_IOC_{GET,SET}FLAGS
+//
+// So we now assume it's fixed, but make the call with enough space
+// for a long so that in the worst case, we won't risk stack
+// corruption, we'll just get the wrong answer.
+
 
 #ifdef BUP_HAVE_FILE_ATTRS
 static PyObject *bup_get_linux_file_attr(PyObject *self, PyObject *args)
 {
-    int rc;
-    unsigned long attr;
     char *path;
-    int fd;
-
     if (!PyArg_ParseTuple(args, cstr_argf, &path))
         return NULL;
 
-    fd = _open_noatime(path, O_RDONLY | O_NOFOLLOW | O_NONBLOCK);
+    int fd = _open_noatime(path, O_RDONLY | O_NOFOLLOW | O_NONBLOCK);
     if (fd == -1)
         return PyErr_SetFromErrnoWithFilename(PyExc_OSError, path);
 
-    attr = 0;  // Handle int/long mismatch (see above)
-    rc = ioctl(fd, FS_IOC_GETFLAGS, &attr);
+    union {
+        unsigned int attr;
+        long fuse_had_incorrectly_understandably_used_long; // see above
+    } buf;
+
+    int rc = ioctl(fd, FS_IOC_GETFLAGS, &buf.attr);
     if (rc == -1)
     {
         close(fd);
         return PyErr_SetFromErrnoWithFilename(PyExc_OSError, path);
     }
     close(fd);
-    assert(attr <= UINT_MAX);  // Kernel type is actually int
-    return PyLong_FromUnsignedLong(attr);
+    return PyLong_FromUnsignedLong(buf.attr);
 }
 #endif /* def BUP_HAVE_FILE_ATTRS */
-
 
 
 #ifdef BUP_HAVE_FILE_ATTRS
 static PyObject *bup_set_linux_file_attr(PyObject *self, PyObject *args)
 {
-    int rc;
-    unsigned long orig_attr;
-    unsigned int attr;
     char *path;
     PyObject *py_attr;
-    int fd;
-
     if (!PyArg_ParseTuple(args, cstr_argf "O", &path, &py_attr))
         return NULL;
 
-    if (!bup_uint_from_py(&attr, py_attr, "attr"))
+    union {
+        unsigned int attr;
+        long fuse_had_incorrectly_understandably_used_long; // see above
+    } buf;
+
+    if (!bup_uint_from_py(&buf.attr, py_attr, "attr"))
         return NULL;
 
-    fd = open(path, O_RDONLY | O_NONBLOCK | O_LARGEFILE | O_NOFOLLOW);
+    int fd = open(path, O_RDONLY | O_NONBLOCK | O_LARGEFILE | O_NOFOLLOW);
     if (fd == -1)
         return PyErr_SetFromErrnoWithFilename(PyExc_OSError, path);
 
     // Restrict attr to modifiable flags acdeijstuADST -- see
     // chattr(1) and the e2fsprogs source.  Letter to flag mapping is
     // in pf.c flags_array[].
-    attr &= FS_APPEND_FL | FS_COMPR_FL | FS_NODUMP_FL | FS_EXTENT_FL
-    | FS_IMMUTABLE_FL | FS_JOURNAL_DATA_FL | FS_SECRM_FL | FS_NOTAIL_FL
-    | FS_UNRM_FL | FS_NOATIME_FL | FS_DIRSYNC_FL | FS_SYNC_FL
-    | FS_TOPDIR_FL | FS_NOCOW_FL;
+    buf.attr &= FS_APPEND_FL | FS_COMPR_FL | FS_NODUMP_FL | FS_EXTENT_FL
+        | FS_IMMUTABLE_FL | FS_JOURNAL_DATA_FL | FS_SECRM_FL | FS_NOTAIL_FL
+        | FS_UNRM_FL | FS_NOATIME_FL | FS_DIRSYNC_FL | FS_SYNC_FL
+        | FS_TOPDIR_FL | FS_NOCOW_FL;
 
     // The extents flag can't be removed, so don't (see chattr(1) and chattr.c).
-    orig_attr = 0; // Handle int/long mismatch (see above)
-    rc = ioctl(fd, FS_IOC_GETFLAGS, &orig_attr);
+    int rc = ioctl(fd, FS_IOC_GETFLAGS, &buf.attr);
     if (rc == -1)
     {
         close(fd);
         return PyErr_SetFromErrnoWithFilename(PyExc_OSError, path);
     }
-    assert(orig_attr <= UINT_MAX);  // Kernel type is actually int
-    attr |= ((unsigned int) orig_attr) & FS_EXTENT_FL;
+    buf.attr |= buf.attr & FS_EXTENT_FL;
 
-    rc = ioctl(fd, FS_IOC_SETFLAGS, &attr);
+    rc = ioctl(fd, FS_IOC_SETFLAGS, &buf.attr);
     if (rc == -1)
     {
         close(fd);
@@ -1104,7 +1108,7 @@ static PyObject *bup_set_linux_file_attr(PyObject *self, PyObject *args)
     }
 
     close(fd);
-    return Py_BuildValue("O", Py_None);
+    Py_RETURN_NONE;
 }
 #endif /* def BUP_HAVE_FILE_ATTRS */
 

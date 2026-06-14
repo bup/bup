@@ -87,6 +87,18 @@ May require attention
 * `bup` now only considers a `pack.packSizeLimit` set in the
   destination repository.
 
+* Support for Linux file attrs (`lsattr`(1)/`chattr`(1)) has been
+  restored on big-endian systems where the size of a long is greater
+  than the size of an int.  The underlying kernel issue has been fixed
+  [here](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=31070f6ccec09f3bd4f1e28cd1e592fa4f3ba0b6):
+
+    31070f6ccec09f3bd4f1e28cd1e592fa4f3ba0b6
+    fuse: Fix parameter for FS_IOC_{GET,SET}FLAGS
+
+  and backported to at least 5.7.10, 5.4.53, and 4.9.231.  If you
+  still have an affected kernel, please upgrade or you may encounter
+  incorrect values.
+
 * `bup prune-older --pretend` now puts just one space, not two,
   between the plus or minus and the save name in its output, matching
   what `bup-prune-older(1)` specifies.
