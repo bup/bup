@@ -1,5 +1,9 @@
 name: general
-on: [push]
+on:
+  push:
+    branches:
+      - '**'
+      - '!master'
 defaults:
   run:
     shell: bash
