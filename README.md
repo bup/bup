@@ -117,9 +117,12 @@ Notable changes introduced by a release
 Test status
 ===========
 
-| main |
-|--------|
-| [![main branch test status](https://api.cirrus-ci.com/github/bup/bup.svg?branch=main)](https://cirrus-ci.com/github/bup/bup) |
+|                            |                                                                                                                                                                              |
+|----------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Debian Trixie (lint/check) | [![Debian Trixie test status](https://builds.sr.ht/~bup/bup/commits/main/debian-trixie.yml.svg)](https://builds.sr.ht/~bup/bup/commits/main/debian-trixie.yml?)              |
+| Debian Bookworm (check)    | [![Debian Bookworm test status](https://builds.sr.ht/~bup/bup/commits/main/debian-trixie.yml.svg)](https://builds.sr.ht/~bup/bup/commits/main/debian-bookworm.yml?)          |
+| FreeBSD 14.x (lint/check)  | [![FreeBSD main test status](https://builds.sr.ht/~bup/bup/commits/main/freebsd.yml.svg)](https://builds.sr.ht/~bup/bup/commits/main/freebsd.yml?)                           |
+| Ubuntu 22/24, macOS 15     | [![.github/workflows/general.yml](https://github.com/bup/bup/actions/workflows/general.yml/badge.svg?branch=main)](https://github.com/bup/bup/actions/workflows/general.yml) |
 
 Getting started
 ===============
