@@ -1,6 +1,6 @@
 """Metadata read/write support for bup."""
 
-# Copyright (C) 2010 Rob Browning
+# Copyright (C) 2010-2026 Rob Browning
 #
 # This code is covered under the terms of the GNU Library General
 # Public License as described in the bup LICENSE file.
@@ -10,7 +10,7 @@ from errno import EACCES, EINVAL, ENOTTY, ENOSYS, EOPNOTSUPP
 from io import BytesIO
 from os import environb as environ
 from time import gmtime, strftime
-import copy, errno, os, sys, stat, socket, struct
+import copy, errno, os, sys, stat, socket
 
 from bup import vint, xstat
 from bup.drecurse import recursive_dirlist
@@ -58,12 +58,6 @@ except ImportError:
     # not on Linux, in which case files don't have any linux attrs anyway, so
     # lacking the functions isn't a problem.
     get_linux_file_attr = set_linux_file_attr = None
-
-
-def check_linux_file_attr_api():
-    global get_linux_file_attr, set_linux_file_attr
-    if not (get_linux_file_attr or set_linux_file_attr):
-        return
 
 
 # WARNING: the metadata encoding is *not* stable yet.  Caveat emptor!
@@ -630,7 +624,6 @@ class Metadata:
     ## Linux attributes (lsattr(1), chattr(1))
 
     def _add_linux_attr(self, path, st):
-        check_linux_file_attr_api()
         if not get_linux_file_attr: return
         if stat.S_ISREG(st.st_mode) or stat.S_ISDIR(st.st_mode):
             try:
@@ -674,7 +667,6 @@ class Metadata:
                               # pylint: disable-next=unused-argument
                               restore_numeric_ids=False):
         if self.linux_attr:
-            check_linux_file_attr_api()
             if not set_linux_file_attr:
                 note_error("error: can't restore linuxattrs (no support): %s\n"
                            % path_msg(path))
