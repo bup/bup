@@ -524,26 +524,39 @@ def checked_reader(fd, n):
 
 
 MAX_PACKET = 128 * 1024
-def mux(p, outfd, outr, errr):
+def mux(outfd, outr, errr):
+    """Multiplex fds outr and errr onto outfd until exhausted.  Always
+    terminate the multiplexed "session" before returning.
+
+    """
+    os.write(outfd, b'BUPMUX')
     try:
         fds = [outr, errr]
-        while p.poll() is None:
+        while fds:
             rl, _, _ = select.select(fds, [], [])
             for fd in rl:
                 if fd == outr:
                     buf = os.read(outr, MAX_PACKET)
-                    if not buf: break
-                    os.writev(outfd, (struct.pack('!IB', len(buf), 1), buf))
+                    if not buf:
+                        fds.remove(outr)
+                    else:
+                        os.writev(outfd, (struct.pack('!IB', len(buf), 1), buf))
                 elif fd == errr:
                     buf = os.read(errr, 1024)
-                    if not buf: break
-                    os.writev(outfd, (struct.pack('!IB', len(buf), 2), buf))
+                    if not buf:
+                        fds.remove(errr)
+                    else:
+                        os.writev(outfd, (struct.pack('!IB', len(buf), 2), buf))
     finally:
         os.write(outfd, struct.pack('!IB', 0, 3))
 
 
 class DemuxConn(BaseConn):
-    """A helper class for bup's client-server protocol."""
+    """A helper class for bup's client-server protocol.  For now, it
+    always assumes it takes responsbility for all of the remaining
+    content in infd, and infd will be at EOF after the last read.
+
+    """
     def __init__(self, infd, outp):
         BaseConn.__init__(self, outp)
         # Anything that comes through before the sync string was not
@@ -594,6 +607,15 @@ class DemuxConn(BaseConn):
         elif fdw == 3:
             self.closed = True
             debug2("DemuxConn: marked closed\n")
+            # Write any remaining output to stderr.  This might
+            # include debug messages or backtraces or...  For example,
+            # anything after the mux() in bup.cmd.mux, including
+            # exceptions that make it out of main.
+            buf = os.read(self.infd, 1024)
+            while buf:
+                sys.stderr.buffer.write(buf)
+                buf = os.read(self.infd, 1024)
+            sys.stderr.buffer.flush()
         return True
 
     def _load_buf(self, timeout):
