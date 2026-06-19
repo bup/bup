@@ -525,6 +525,11 @@ def checked_reader(fd, n):
 
 MAX_PACKET = 128 * 1024
 def mux(outfd, outr, errr):
+    """Multiplex fds outr and errr onto outfd until exhausted.  Always
+    terminate the multiplexed "session" before returning.
+
+    """
+    os.write(outfd, b'BUPMUX')
     try:
         fds = [outr, errr]
         while fds:

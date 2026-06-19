@@ -41,8 +41,6 @@ def main(argv):
         os.close(errw)
         sys.stdout.flush()
         out = byte_stream(sys.stdout)
-        out.write(b'BUPMUX')
-        out.flush()
         mux(out.fileno(), outr, errr)
         os.close(outr)
         os.close(errr)
