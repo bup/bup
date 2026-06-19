@@ -1071,12 +1071,8 @@ static PyObject *bup_set_linux_file_attr(PyObject *self, PyObject *args)
     if (!PyArg_ParseTuple(args, cstr_argf "O", &path, &py_attr))
         return NULL;
 
-    union {
-        unsigned int attr;
-        long fuse_had_incorrectly_understandably_used_long; // see above
-    } buf;
-
-    if (!bup_uint_from_py(&buf.attr, py_attr, "attr"))
+    unsigned int new_attr;
+    if (!bup_uint_from_py(&new_attr, py_attr, "attr"))
         return NULL;
 
     int fd = open(path, O_RDONLY | O_NONBLOCK | O_LARGEFILE | O_NOFOLLOW);
@@ -1086,19 +1082,24 @@ static PyObject *bup_set_linux_file_attr(PyObject *self, PyObject *args)
     // Restrict attr to modifiable flags acdeijstuADST -- see
     // chattr(1) and the e2fsprogs source.  Letter to flag mapping is
     // in pf.c flags_array[].
-    buf.attr &= FS_APPEND_FL | FS_COMPR_FL | FS_NODUMP_FL | FS_EXTENT_FL
+    new_attr &= FS_APPEND_FL | FS_COMPR_FL | FS_NODUMP_FL | FS_EXTENT_FL
         | FS_IMMUTABLE_FL | FS_JOURNAL_DATA_FL | FS_SECRM_FL | FS_NOTAIL_FL
         | FS_UNRM_FL | FS_NOATIME_FL | FS_DIRSYNC_FL | FS_SYNC_FL
         | FS_TOPDIR_FL | FS_NOCOW_FL;
 
-    // The extents flag can't be removed, so don't (see chattr(1) and chattr.c).
+    union {
+        unsigned int attr;
+        long fuse_had_incorrectly_understandably_used_long; // see above
+    } buf;
     int rc = ioctl(fd, FS_IOC_GETFLAGS, &buf.attr);
     if (rc == -1)
     {
         close(fd);
         return PyErr_SetFromErrnoWithFilename(PyExc_OSError, path);
     }
-    buf.attr |= buf.attr & FS_EXTENT_FL;
+
+    // The extents flag can't be removed, so don't (see chattr(1) and chattr.c).
+    buf.attr |= new_attr | (buf.attr & FS_EXTENT_FL);
 
     rc = ioctl(fd, FS_IOC_SETFLAGS, &buf.attr);
     if (rc == -1)
