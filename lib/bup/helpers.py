@@ -552,7 +552,11 @@ def mux(outfd, outr, errr):
 
 
 class DemuxConn(BaseConn):
-    """A helper class for bup's client-server protocol."""
+    """A helper class for bup's client-server protocol.  For now, it
+    always assumes it takes responsbility for all of the remaining
+    content in infd, and infd will be at EOF after the last read.
+
+    """
     def __init__(self, infd, outp):
         BaseConn.__init__(self, outp)
         # Anything that comes through before the sync string was not
@@ -603,6 +607,15 @@ class DemuxConn(BaseConn):
         elif fdw == 3:
             self.closed = True
             debug2("DemuxConn: marked closed\n")
+            # Write any remaining output to stderr.  This might
+            # include debug messages or backtraces or...  For example,
+            # anything after the mux() in bup.cmd.mux, including
+            # exceptions that make it out of main.
+            buf = os.read(self.infd, 1024)
+            while buf:
+                sys.stderr.buffer.write(buf)
+                buf = os.read(self.infd, 1024)
+            sys.stderr.buffer.flush()
         return True
 
     def _load_buf(self, timeout):
