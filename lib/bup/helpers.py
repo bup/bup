@@ -524,20 +524,24 @@ def checked_reader(fd, n):
 
 
 MAX_PACKET = 128 * 1024
-def mux(p, outfd, outr, errr):
+def mux(outfd, outr, errr):
     try:
         fds = [outr, errr]
-        while p.poll() is None:
+        while fds:
             rl, _, _ = select.select(fds, [], [])
             for fd in rl:
                 if fd == outr:
                     buf = os.read(outr, MAX_PACKET)
-                    if not buf: break
-                    os.writev(outfd, (struct.pack('!IB', len(buf), 1), buf))
+                    if not buf:
+                        fds.remove(outr)
+                    else:
+                        os.writev(outfd, (struct.pack('!IB', len(buf), 1), buf))
                 elif fd == errr:
                     buf = os.read(errr, 1024)
-                    if not buf: break
-                    os.writev(outfd, (struct.pack('!IB', len(buf), 2), buf))
+                    if not buf:
+                        fds.remove(errr)
+                    else:
+                        os.writev(outfd, (struct.pack('!IB', len(buf), 2), buf))
     finally:
         os.write(outfd, struct.pack('!IB', 0, 3))
 

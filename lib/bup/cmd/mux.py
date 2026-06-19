@@ -43,7 +43,7 @@ def main(argv):
         out = byte_stream(sys.stdout)
         out.write(b'BUPMUX')
         out.flush()
-        mux(p, out.fileno(), outr, errr)
+        mux(out.fileno(), outr, errr)
         os.close(outr)
         os.close(errr)
         prv = p.wait()
