@@ -1,4 +1,5 @@
 
+from errno import ENOTSUP
 import errno, stat, subprocess
 import os, sys
 import pytest
@@ -10,7 +11,8 @@ import buptest
 from bup import git, helpers, metadata
 from bup import vfs
 from bup.compat import fsencode
-from bup.helpers import clear_errors, detect_fakeroot, is_superuser, resolve_parent
+from bup.helpers import \
+    clear_errors, detect_fakeroot, is_superuser, resolve_parent, unlink
 from bup.metadata import xattr
 from bup.repo import LocalRepo
 from bup.xstat import utime, lutime
@@ -45,7 +47,37 @@ def setup_testfs(img_path, mount_path, mb=32):
 
 def cleanup_testfs(img_path, mount_path):
     subprocess.call((b'umount', mount_path))
-    helpers.unlink(img_path)
+    unlink(img_path)
+
+
+def setup_user_xattr_test_dir(name, maybe_fs_img):
+    """Return true if we can test xattr in the given dir, mounting a
+    loopback filesystem there if possible and necessary.  The name
+    must be the name of a subdirectory to be created in the current
+    directory.
+
+    """
+    if not metadata.xattr:
+        pytest.skip('no xattrs')
+        return False
+    with open('canary', 'wb+'): pass
+    try:
+        try:
+            xattr.set('canary', 'foo', 'bar')
+        except OSError as e:
+            if e.errno == ENOTSUP:
+                os.mkdir(name)
+                return True
+            raise
+        if not is_superuser():
+            pytest.skip('test fs without user_xattr and not superuser')
+            return False
+        if not setup_testfs(maybe_fs_img, name):
+            pytest.skip('unable to set up test fs')
+            return False
+        return True
+    finally:
+        os.unlink('canary')
 
 
 def test_clean_up_archive_path():
@@ -252,41 +284,33 @@ def test_restore_over_existing_target(tmpdir):
     WVEXCEPT(Exception, dir_m.create_path, path, create_symlinks=True)
 
 
-if xattr:
+def test_handling_of_incorrect_existing_linux_xattrs(tmpdir):
     def remove_selinux(attrs):
-        return list(filter(lambda i: not i in (b'security.selinux', ),
-                           attrs))
+        return list(filter(lambda i: not i in (b'security.selinux', ), attrs))
 
-    def test_handling_of_incorrect_existing_linux_xattrs(tmpdir):
-        if not sys.platform.startswith('linux'):
-            pytest.skip('skipping test -- not linux')
-            return
-        if not is_superuser() or detect_fakeroot():
-            pytest.skip('skipping test -- not superuser')
-            return
-        os.chdir(tmpdir) # reverted by common_test_environment
-        if not setup_testfs(b'testfs.img', b'testfs'):
-            pytest.skip('unable to set up test fs; skipping dependent tests')
-            return
-        try:
-            path = b'testfs/foo'
-            with open(path, 'wb'): pass
-            xattr.set(path, b'foo', b'bar', namespace=xattr.NS_USER)
-            m = metadata.from_path(path, archive_path=path, save_symlinks=True)
-            xattr.set(path, b'baz', b'bax', namespace=xattr.NS_USER)
-            m.apply_to_path(path, restore_numeric_ids=False)
-            WVPASSEQ(remove_selinux(xattr.list(path)), [b'user.foo'])
-            WVPASSEQ(xattr.get(path, b'user.foo'), b'bar')
-            xattr.set(path, b'foo', b'baz', namespace=xattr.NS_USER)
-            m.apply_to_path(path, restore_numeric_ids=False)
-            WVPASSEQ(remove_selinux(xattr.list(path)), [b'user.foo'])
-            WVPASSEQ(xattr.get(path, b'user.foo'), b'bar')
-            xattr.remove(path, b'foo', namespace=xattr.NS_USER)
-            m.apply_to_path(path, restore_numeric_ids=False)
-            WVPASSEQ(remove_selinux(xattr.list(path)), [b'user.foo'])
-            WVPASSEQ(xattr.get(path, b'user.foo'), b'bar')
-        finally:
-            cleanup_testfs(b'testfs.img', b'testfs')
+    os.chdir(tmpdir) # reverted by common_test_environment
+    if not setup_user_xattr_test_dir(b'test', b'testfs.img'):
+        return
+    try:
+        path = b'test/foo'
+        with open(path, 'wb'): pass
+        xattr.set(path, b'foo', b'bar', namespace=xattr.NS_USER)
+        m = metadata.from_path(path, archive_path=path, save_symlinks=True)
+        xattr.set(path, b'baz', b'bax', namespace=xattr.NS_USER)
+        m.apply_to_path(path, restore_numeric_ids=False)
+        WVPASSEQ(remove_selinux(xattr.list(path)), [b'user.foo'])
+        WVPASSEQ(xattr.get(path, b'user.foo'), b'bar')
+        xattr.set(path, b'foo', b'baz', namespace=xattr.NS_USER)
+        m.apply_to_path(path, restore_numeric_ids=False)
+        WVPASSEQ(remove_selinux(xattr.list(path)), [b'user.foo'])
+        WVPASSEQ(xattr.get(path, b'user.foo'), b'bar')
+        xattr.remove(path, b'foo', namespace=xattr.NS_USER)
+        m.apply_to_path(path, restore_numeric_ids=False)
+        WVPASSEQ(remove_selinux(xattr.list(path)), [b'user.foo'])
+        WVPASSEQ(xattr.get(path, b'user.foo'), b'bar')
+    finally:
+        if os.path.exists(b'testfs.img'):
+            cleanup_testfs(b'testfs.img', b'test')
 
 
 def test_maximal_metadata(tmpdir):
