@@ -313,8 +313,9 @@ def test_restore_over_existing_target(tmpdir):
 
 
 def test_handling_of_incorrect_existing_linux_xattrs(tmpdir):
-    def remove_selinux(attrs):
-        return list(filter(lambda i: not i in (b'security.selinux', ), attrs))
+    def user_attrs(attrs):
+        # drops security.selinux system.posix_acl_acess, etc.
+        return list(filter(lambda x: x.startswith(b'user.'), attrs))
 
     os.chdir(tmpdir) # reverted by common_test_environment
     if not setup_user_xattr_test_dir(b'test', b'testfs.img'):
@@ -326,15 +327,15 @@ def test_handling_of_incorrect_existing_linux_xattrs(tmpdir):
         m = metadata.from_path(path, archive_path=path, save_symlinks=True)
         xattr.set(path, b'baz', b'bax', namespace=xattr.NS_USER)
         m.apply_to_path(path, restore_numeric_ids=False)
-        WVPASSEQ(remove_selinux(xattr.list(path)), [b'user.foo'])
+        WVPASSEQ(user_attrs(xattr.list(path)), [b'user.foo'])
         WVPASSEQ(xattr.get(path, b'user.foo'), b'bar')
         xattr.set(path, b'foo', b'baz', namespace=xattr.NS_USER)
         m.apply_to_path(path, restore_numeric_ids=False)
-        WVPASSEQ(remove_selinux(xattr.list(path)), [b'user.foo'])
+        WVPASSEQ(user_attrs(xattr.list(path)), [b'user.foo'])
         WVPASSEQ(xattr.get(path, b'user.foo'), b'bar')
         xattr.remove(path, b'foo', namespace=xattr.NS_USER)
         m.apply_to_path(path, restore_numeric_ids=False)
-        WVPASSEQ(remove_selinux(xattr.list(path)), [b'user.foo'])
+        WVPASSEQ(user_attrs(xattr.list(path)), [b'user.foo'])
         WVPASSEQ(xattr.get(path, b'user.foo'), b'bar')
     finally:
         if os.path.exists(b'testfs.img'):
