@@ -1,6 +1,7 @@
 
 from signal import SIG_IGN, SIGKILL, SIGTERM, signal
 from subprocess import Popen
+from threading import current_thread, main_thread
 from time import tzset
 import os, os.path
 
@@ -149,6 +150,9 @@ def test_finalized():
 
 
 def test_stopped():
+    if current_thread() != main_thread():
+        pytest.skip('cannot set signal handler')
+        return False
 
     def stubborn_sleep():
         # restore_signals=False avoids the the possibility that we try to
