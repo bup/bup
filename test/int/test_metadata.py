@@ -13,7 +13,7 @@ from bup import vfs
 from bup.compat import fsencode
 from bup.helpers import \
     clear_errors, detect_fakeroot, is_superuser, resolve_parent, unlink
-from bup.metadata import xattr
+from bup.metadata import detailed_bytes, xattr
 from bup.repo import LocalRepo
 from bup.xstat import utime, lutime
 
@@ -78,6 +78,34 @@ def setup_user_xattr_test_dir(name, maybe_fs_img):
         return True
     finally:
         os.unlink('canary')
+
+
+def test_user_xattr(tmpdir):
+
+    os.chdir(tmpdir) # reverted by common_test_environment
+    if not setup_user_xattr_test_dir(b'test', b'testfs.img'):
+        return
+    try:
+        os.chdir(b'test')
+
+        ## detailed_bytes
+        with open(b'foo', 'wb'): pass
+        meta = metadata.from_path(b'foo')
+        assert b'linux-xattr: user.foo' not in detailed_bytes(meta)
+        xattr.set(b'foo', b'user.bar', b'1')
+        meta = metadata.from_path(b'foo')
+        assert b'linux-xattr: user.bar -> 1' in detailed_bytes(meta)
+        xattr.set(b'foo', b'user.a b', b'1 2')
+        meta = metadata.from_path(b'foo')
+        assert b"linux-xattr: 'user.a b' -> '1 2'" in detailed_bytes(meta)
+        xattr.set(b'foo', b'user.x\ny', b'1\x002')
+        meta = metadata.from_path(b'foo')
+        assert b"linux-xattr: $'user.x\\ny' -> $'1\\x002'" in detailed_bytes(meta)
+        os.unlink(b'foo')
+
+    finally:
+        if os.path.exists(b'testfs.img'):
+            cleanup_testfs(b'testfs.img', b'test')
 
 
 def test_clean_up_archive_path():
