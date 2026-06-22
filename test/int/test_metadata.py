@@ -187,9 +187,11 @@ def _linux_attr_supported(path):
 
 def test_apply_to_path_restricted_access(tmpdir):
     if is_superuser() or detect_fakeroot():
+        pytest.skip('must not be superuser')
         return
     if sys.platform.startswith('cygwin'):
-        return # chmod 000 isn't effective.
+        pytest.skip('cygwin chmod 000 ineffective')
+        return
     try:
         parent = tmpdir + b'/foo'
         path = parent + b'/bar'
@@ -290,14 +292,14 @@ if xattr:
 def test_maximal_metadata(tmpdir):
     # Currently just tests that the hash computation isn't broken
     if not sys.platform.startswith('linux'):
-        pytest.skip('skipping test -- not linux')
+        pytest.skip('not linux')
         return
     if not is_superuser() or detect_fakeroot():
-        pytest.skip('skipping test -- not superuser')
+        pytest.skip('not superuser')
         return
     os.chdir(tmpdir) # reverted by common_test_environment
     if not setup_testfs(b'testfs.img', b'testfs'):
-        pytest.skip('unable to set up test fs; skipping dependent tests')
+        pytest.skip('unable to set up test fs')
         return
     try:
         os.chdir(b'testfs')
