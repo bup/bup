@@ -1767,7 +1767,7 @@ bup_readline(PyObject *self, PyObject *args)
 	return NULL;
     char *line = readline(prompt);
     if (!line)
-        return Py_None;
+        Py_RETURN_NONE;
     PyObject *result = PyBytes_FromString(line);
     free(line);
     return result;
