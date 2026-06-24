@@ -29,7 +29,7 @@ int bup_ullong_from_py(unsigned long long *x, PyObject *py, const char *name);
                  && PyErr_ExceptionMatches(PyExc_OverflowError))        \
                  pending_overflow = 2;                                  \
              else {                                                     \
-                 if (INTEGRAL_ASSIGNMENT_FITS((dest), tmp))             \
+                 if (INT_ADD_OK(tmp, 0, (dest)))                        \
                      result = 1;                                        \
                  else                                                   \
                      pending_overflow = 1;                              \
@@ -41,7 +41,7 @@ int bup_ullong_from_py(unsigned long long *x, PyObject *py, const char *name);
                  && PyErr_ExceptionMatches(PyExc_OverflowError))        \
                  pending_overflow = 2;                                  \
              else {                                                     \
-                 if (INTEGRAL_ASSIGNMENT_FITS((dest), tmp))             \
+                 if (INT_ADD_OK(tmp, 0, (dest)))                        \
                      result = 1;                                        \
                  else                                                   \
                      pending_overflow = 1;                              \
