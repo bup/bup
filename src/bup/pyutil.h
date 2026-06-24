@@ -47,8 +47,9 @@ int bup_ullong_from_py(unsigned long long *x, PyObject *py, const char *name);
                      pending_overflow = 1;                              \
              }                                                          \
          }                                                              \
-         if (pending_overflow == 2) {                                   \
-             PyErr_Clear();                                             \
+         if (pending_overflow) {                                        \
+             if (pending_overflow == 2)                                 \
+                 PyErr_Clear();                                         \
              *(overflow) = 1;                                           \
          }                                                              \
          result;                                                        \
