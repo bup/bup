@@ -22,35 +22,33 @@ int bup_ullong_from_py(unsigned long long *x, PyObject *py, const char *name);
 #define BUP_ASSIGN_PYLONG_TO_INTEGRAL(dest, pylong, overflow)           \
     ({                                                                  \
          int res___ = 0;                                                \
-         int pending_overflow___ = 0;                                   \
+         __auto_type pylong___ = (pylong);                              \
+         __auto_type overflow___ = (overflow);                          \
          if (EXPR_SIGNED(*(dest))) {                                    \
-             const long long tmp___ = PyLong_AsLongLong(pylong);        \
+             const long long tmp___ = PyLong_AsLongLong(pylong___);     \
              if (tmp___ == -1 && PyErr_Occurred()                       \
-                 && PyErr_ExceptionMatches(PyExc_OverflowError))        \
-                 pending_overflow___ = 2;                               \
-             else {                                                     \
+                 && PyErr_ExceptionMatches(PyExc_OverflowError)) {      \
+                 PyErr_Clear();                                         \
+                 *overflow___ = 1;                                      \
+             } else {                                                   \
                  if (INT_ADD_OK(tmp___, 0, (dest)))                     \
                      res___ = 1;                                        \
                  else                                                   \
-                     pending_overflow___ = 1;                           \
+                     *overflow___ = 1;                                  \
              }                                                          \
          } else {                                                       \
              const unsigned long long tmp___ =                          \
-                 PyLong_AsUnsignedLongLong(pylong);                     \
+                 PyLong_AsUnsignedLongLong(pylong___);                  \
              if (tmp___ == (unsigned long long) -1 && PyErr_Occurred()  \
-                 && PyErr_ExceptionMatches(PyExc_OverflowError))        \
-                 pending_overflow___ = 2;                               \
-             else {                                                     \
+                 && PyErr_ExceptionMatches(PyExc_OverflowError)) {      \
+                 PyErr_Clear();                                         \
+                 *overflow___ = 1;                                      \
+             } else {                                                   \
                  if (INT_ADD_OK(tmp___, 0, (dest)))                     \
                      res___ = 1;                                        \
                  else                                                   \
-                     pending_overflow___ = 1;                           \
+                     *overflow___ = 1;                                  \
              }                                                          \
-         }                                                              \
-         if (pending_overflow___) {                                     \
-             if (pending_overflow___ == 2)                              \
-                 PyErr_Clear();                                         \
-             *(overflow) = 1;                                           \
          }                                                              \
          res___;                                                        \
     })
