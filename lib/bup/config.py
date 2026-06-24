@@ -1,6 +1,6 @@
 
 from bup.io import path_msg as pm
-from bup.url import URL, parse_bytes_path_url
+from bup.url import URL, parse_path_oriented_url
 
 
 class ConfigError(Exception):
@@ -20,7 +20,7 @@ def url_for_remote_opt(remote):
         if not host:
             return f'remote {pm(remote)} has no host'
         return URL(scheme=b'ssh', host=host, user=user, path=path)
-    url = parse_bytes_path_url(remote, require_auth=True)
+    url = parse_path_oriented_url(remote, require_auth=True)
     if isinstance(url, (str, type(None))):
         return parse_non_url(remote)
     if url.scheme == b'bup':

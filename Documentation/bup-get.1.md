@@ -120,7 +120,7 @@ used to help test before/after results.)
 
 -r, \--remote=[*user*@]*host*:[*path*], \--remote=URL
 :   write the *ref*s to the specified remote repository, by default
-    via SSH.  See bup(1) REMOTE OPTIONS for further information.
+    via SSH.  See `bup`(1) REMOTE OPTIONS for further information.
 
 -c, \--print-commits
 :   for each updated branch, print the new git commit id.

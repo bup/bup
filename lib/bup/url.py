@@ -96,7 +96,7 @@ _port_int_rx = re.compile(br'[0-9]+')
 
 class ParseError(Exception): pass
 
-def parse_bytes_path_url(url, require_auth=False):
+def parse_path_oriented_url(url, require_auth=False):
     """Parse URL mostly according to RFC 3986.  Return None if it
     doesn't appear to be a URL at all (or doesn't start with a scheme
     and authority when require_auth is true).  Return a string
@@ -109,6 +109,10 @@ def parse_bytes_path_url(url, require_auth=False):
     referring to filesystem paths provided via the command line.
     Parse the rest of the URL mostly according to the RFC, including
     percent decoding the host and user.
+
+    Treat any path starting with /./ as a relative path,
+    i.e. "ssh://h/./x" produces path "x", so that relative paths can
+    be represented even when there's an authority.
 
     RFC 3986 Uniform Resource Identifier (URI): Generic Syntax
     https://datatracker.ietf.org/doc/html/rfc3986
@@ -126,9 +130,16 @@ def parse_bytes_path_url(url, require_auth=False):
     if not slashes: # no authority (not even an empty one) x:... not x://...
         if require_auth:
             return None
-        return URL(scheme=scheme, path=rest)
+        path = rest
+        if path.startswith(b'/./'):
+            path = path[3:].lstrip(b'/')
+        return URL(scheme=scheme, path=path)
     auth, slash, path = rest.partition(b'/')
-    if slash: path = b'/' + path
+    if slash:
+        if path.startswith(b'./'):
+            path = path[2:].lstrip(b'/')
+        else:
+            path = b'/' + path
     if not auth: # Use a subprocess for testing
         return URL(scheme=scheme, path=path)
     m = _userinfo_host_port_rx.fullmatch(auth)

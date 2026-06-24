@@ -57,8 +57,8 @@ def test_render_url():
     assert rdot(urlx(host=b'h', path=b'p')) == b'x://h/./p'
 
 # FIXME: more negative tests
-def test_parse_bytes_path_url():
-    parse = bup.url.parse_bytes_path_url
+def test_parse_path_oriented_url():
+    parse = bup.url.parse_path_oriented_url
 
     assert parse(b'x:', require_auth=True) is None
     assert parse(b'x:/', require_auth=True) is None
@@ -68,6 +68,13 @@ def test_parse_bytes_path_url():
     assert parse(b'-') is None
     assert parse(b'-:') is None
     assert parse(b'x://h:x') == 'invalid host h:x'
+
+    # dot-encoded relative paths
+    assert parse(b'x:/./p') == URL(scheme=b'x', path=b'p')
+    assert parse(b'x:///./p') == URL(scheme=b'x', path=b'p')
+    assert parse(b'x:///.//p') == URL(scheme=b'x', path=b'p')
+    assert parse(b'x://h/./p') == URL(scheme=b'x', host=b'h', path=b'p')
+    assert parse(b'x://h/.//p') == URL(scheme=b'x', host=b'h', path=b'p')
 
     # Test the second rendered form for URLs with two options (other
     # is in semetric_cases above).

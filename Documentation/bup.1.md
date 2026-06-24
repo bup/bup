@@ -196,6 +196,11 @@ constituent bytes are not decoded (e.g. percent decoded).  This allows
 URLs provided on the command line to work naturally.  So
 `ssh://host/x?z` has a path of `/x?z`.
 
+And since URLs with an authority cannot represent relative paths,
+path-oriented schemes interpret a leading `/./` as a relative path.
+So `ssh://host/./x`, `file:///./x`, and `file:/./x` all indicate the
+path `x`.
+
 `ssh:`
 :   A path-oriented scheme (see above) that specifies access to a
     repository via a `bup-server(1)` launched on a host via SSH.  This
@@ -204,25 +209,29 @@ URLs provided on the command line to work naturally.  So
     (e.g. `ssh://user@host:2222/some/repo`), and the user and host can
     be percent encoded.
 
-    As an extension to the standard, because URLs with an authority
-    cannot specify a relative path when there's an authority, a
-    leading `/./` is taken to indicate a relative path.  So
-    `ssh://host/./x` indicates the path `x`.
-
 `bup:`
-:   Specifies a direct network connection to to an existing
-    `bup-server(1)`.  Otherwise identical to `ssh:`, except that it
-    does not support a user.
+:   A path-oriented scheme (see above) specifying a direct network
+    connection to to an existing `bup-server(1)`.  Otherwise identical
+    to `ssh:`, except that it does not support a user.  This
+    connection has no authentication or encryption of its own so it's
+    unlikely you'll want to use it; prefer `file:` or `:ssh:`.
 
 `file:`
 :   A path-oriented scheme (see above) that specifies a repository's
     filesystem path.  This scheme has syntax and semantics matching a
-    typical `file:` URL, except that it does not allow an authority
-    (i.e. user, host, etc.).  So when constructing a URL from an
-    arbitrary PATH, you can use `file:PATH` if the path starts with
-    `///`, if it is a single character, or if the second character is
-    not `/`.  Otherwise use `file://PATH` after ensuring the path is
-    absolute, or dot-encoding it.
+    typical `file:` URL, except that it only allows an empty authority
+    (i.e. no user, host, etc.).
+
+    In most cases, you will probably want to include the empty
+    authority so you don't have to consider the contents of the path
+    carefully, i.e. use `file://PATH` or `ssh://user@hostPATH` when
+    the `PATH` begins with a slash, and `file:///./PATH` or
+    `ssh://user@host/./PATH` when it doesn't.
+
+    It is possible to omit the authority, but only if the path does
+    not begin with two slashes.  For example `file:/` and
+    `file:some/where` are fine, but `file://some/where` is not because
+    `some` will be read as the authority.
 
 # ENVIRONMENT
 

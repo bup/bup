@@ -163,7 +163,8 @@ General
   "repair files". See `bup-get`(1) for additional information.
 
 * `bup get` has added a `-S, --source-url URL` option which can
-   specify a remote source repository.  This should usually be
+   specify a local or remote source repository (as compared to
+   `-s/--source` which only allows a path).  This should usually be
    preferred to `bup on HOST get` since it requires less trust in the
    remote, and avoids the need for a remote index-cache.  See
    `bup-get(1)` for additional information.

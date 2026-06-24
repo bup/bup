@@ -9,7 +9,7 @@ from bup.io import path_msg as pm
 from bup.path import defaultrepo
 from bup.repo.local import LocalRepo
 from bup.repo.remote import RemoteRepo
-from bup.url import URL, parse_bytes_path_url
+from bup.url import URL, parse_path_oriented_url
 
 
 public_schemes = frozenset([b'file', b'ssh', b'bup'])
@@ -69,7 +69,7 @@ def repo_for_location(location, **kwargs):
 def parse_repo_url_arg(arg, val, misuse):
     """Call misuse(err_msg) if val is not a valid URL, otherwise
     return a corresponding URL instance."""
-    res = parse_bytes_path_url(val)
+    res = parse_path_oriented_url(val)
     if not res:
         misuse(f'invalid {arg} {pm(val)}')
     if isinstance(res, str):
