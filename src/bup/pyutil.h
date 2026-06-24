@@ -23,7 +23,7 @@ int bup_ullong_from_py(unsigned long long *x, PyObject *py, const char *name);
     ({                                                                  \
          int result = 0;                                                \
          int pending_overflow = 0;                                      \
-         if (EXPR_SIGNED(dest)) {                                       \
+         if (EXPR_SIGNED(*(dest))) {                                    \
              const long long tmp = PyLong_AsLongLong(pylong);           \
              if (tmp == -1 && PyErr_Occurred()                          \
                  && PyErr_ExceptionMatches(PyExc_OverflowError))        \
