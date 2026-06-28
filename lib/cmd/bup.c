@@ -365,13 +365,24 @@ int main(int argc, char **argv)
     setup_bup_main_module();
     prepend_lib_to_pythonpath(argv[0], "..");
 
-    char **bup_argv = alloca(argc * sizeof(char *) + 2);
-    bup_argv[0] = argv[0];
-    bup_argv[1] = "-m";
-    bup_argv[2] = "bup.main";
-    for (int i = 0; i < argc - 1; i++)
-        bup_argv[i + 3] = argv[i + 1];
-    return Py_BytesMain (argc + 2, bup_argv);
+#if PY_VERSION_HEX >= 0x030b0000u // >= 3.11
+    const int extra_args = 3;
+#else
+    const int extra_args = 2;
+#endif
+
+    char **bup_argv = alloca((argc + extra_args + 1) * sizeof(char *));
+    int i = 0;
+    bup_argv[i++] = argv[0];
+#if PY_VERSION_HEX >= 0x030b0000u // >= 3.11
+    bup_argv[i++] = "-P";
+#endif
+    bup_argv[i++] = "-m";
+    bup_argv[i++] = "bup.main";
+    for (; i < argc + extra_args; i++)
+        bup_argv[i] = argv[(i - extra_args)];
+    bup_argv[i++] = 0;
+    return Py_BytesMain (argc + extra_args, bup_argv);
 }
 
 #endif // normal bup command
