@@ -4,6 +4,8 @@ Notable changes in main (incomplete)
 May require attention
 ---------------------
 
+* The minimum Python version has been raised from 3.7 to 3.8.
+
 * Versions of `bup` at or after 0.25 and before 0.30.1 might (rarely)
   drop metadata entries for non-directories. That makes the metadata
   for all of the other non-directory paths in the same directory

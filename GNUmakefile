@@ -253,7 +253,6 @@ ld_py_bin = $(CC) $(LDFLAGS) $^ -o $@ $(py_embed_ldflags)
 common_obj := \
   dev/python-proposed.o \
   lib/cmd/bup.o \
-  src/bup/compat.o \
   src/bup/io.o \
   src/bup/pyutil.o \
   src/bup/test-pyutil.o
@@ -287,7 +286,7 @@ clean_paths += lib/bup/_helpers$(soext)
 
 ## dev/python
 
-dev/python-proposed: dev/python-proposed.o src/bup/compat.o src/bup/io.o
+dev/python-proposed: dev/python-proposed.o src/bup/io.o
 	rm -f dev/python
 	$(ld_py_bin)
 clean_paths += dev/python-proposed
@@ -306,7 +305,7 @@ dev/bup-exec.o: lib/cmd/bup.c
 generated_dependencies += dev/bup-exec.d
 clean_paths += dev/bup-exec.o
 
-dev/bup-exec: dev/bup-exec.o src/bup/compat.o src/bup/io.o
+dev/bup-exec: dev/bup-exec.o src/bup/io.o
 	$(ld_py_bin)
 clean_paths += dev/bup-exec
 
@@ -316,11 +315,11 @@ dev/bup-python.o: lib/cmd/bup.c
 generated_dependencies += dev/bup-python.d
 clean_paths += dev/bup-python.o
 
-dev/bup-python: dev/bup-python.o src/bup/compat.o src/bup/io.o
+dev/bup-python: dev/bup-python.o src/bup/io.o
 	$(ld_py_bin)
 clean_paths += dev/bup-python
 
-lib/cmd/bup: lib/cmd/bup.o src/bup/compat.o src/bup/io.o
+lib/cmd/bup: lib/cmd/bup.o src/bup/io.o
 	$(ld_py_bin)
 clean_paths += lib/cmd/bup
 

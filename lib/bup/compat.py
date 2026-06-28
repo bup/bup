@@ -7,8 +7,6 @@ from os import environb as environ
 from os import fsencode
 import dataclasses, sys, traceback
 
-import bup_main
-
 
 ver = sys.version_info
 
@@ -41,11 +39,11 @@ def argv_bytes(x):
 
 def get_argvb():
     "Return a new list containing the current process argv bytes."
-    return bup_main.argv()
+    return [fsencode(x) for x in sys.argv]
 
 def get_argv():
     "Return a new list containing the current process argv strings."
-    return [x.decode(errors='surrogateescape') for x in bup_main.argv()]
+    return list(sys.argv)
 
 # Makes slots best effort
 if (ver.major, ver.minor) >= (3, 10):

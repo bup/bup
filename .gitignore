@@ -34,7 +34,6 @@
 /lib/cmd/bup
 /lib/cmd/bup.[do]
 /nbproject/
-/src/bup/compat.[do]
 /src/bup/io.[do]
 /src/bup/pyutil.[do]
 /src/bup/test-pyutil.[do]

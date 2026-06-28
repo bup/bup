@@ -71,8 +71,7 @@ def getgroups():
 
 
 class finalized:
-    # pyupgrade 3.8+: add final / to make args positional only
-    def __init__(self, what_or_how, how=None):
+    def __init__(self, what_or_how, how=None, /):
         if how is None:
             self.enter_result = None
             self.finalize = what_or_how

@@ -71,7 +71,7 @@ Reasons you might want to avoid bup
    more likely to eat your data.  It's also missing some
    probably-critical features, though fewer than it used to be.
    
- - While it is intended to work with python 3.7 or newer, a C
+ - While it is intended to work with python 3.8 or newer, a C
    compiler, and an installed git version >= 1.7.2, it is currently
    only automatically tested against some python versions 3.9 and
    newer and git versions 2.3 and newer. Please report any

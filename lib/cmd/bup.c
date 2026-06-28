@@ -8,10 +8,10 @@
 #include <Python.h>
 
 // pyupgrade *: adjust
-#if PY_MAJOR_VERSION < 3 || (PY_MAJOR_VERSION == 3 && PY_MINOR_VERSION < 7)
+#if PY_MAJOR_VERSION < 3 || (PY_MAJOR_VERSION == 3 && PY_MINOR_VERSION < 8)
 #define BUP_STR(x) #x
 #define BUP_XSTR(x) BUP_STR(x)
-#pragma message "Python versions older than 3.7 are not supported; detected X.Y " \
+#pragma message "Python versions older than 3.8 are not supported; detected X.Y " \
     BUP_XSTR(PY_MAJOR_VERSION) "." BUP_XSTR(PY_MINOR_VERSION)
 #error "Halting"
 #endif
@@ -30,35 +30,12 @@
 #include <unistd.h>
 
 #include "bup.h"
-#include "bup/compat.h"
 #include "bup/intprops.h"
 #include "bup/io.h"
 
-static int prog_argc = 0;
-static char **prog_argv = NULL;
 static char *orig_env_pythonpath = NULL;
 
-// pyupgrade 3.8+: reconsider
-static PyObject*
-get_argv(PyObject *self, PyObject *args) // https://bugs.python.org/issue35883
-{
-    if (!PyArg_ParseTuple(args, ""))
-	return NULL;
-
-    PyObject *result = PyList_New(prog_argc);
-    int i;
-    for (i = 0; i < prog_argc; i++) {
-        PyObject *s = PyBytes_FromString(prog_argv[i]);
-        if (!s)
-            die(BUP_EXIT_FAILURE, "cannot convert argument to bytes: %s\n", prog_argv[i]);
-        PyList_SET_ITEM(result, i, s);
-    }
-    return result;
-}
-
 static PyMethodDef bup_main_methods[] = {
-    {"argv", get_argv, METH_VARARGS,
-     "Return the program's current argv array as a list of byte strings." },
     {NULL, NULL, 0, NULL}
 };
 
@@ -366,42 +343,18 @@ prepend_lib_to_pythonpath(const char * const exec_path,
     free(parent);
 }
 
-#if PY_MAJOR_VERSION == 3 && PY_MINOR_VERSION < 8
-# define bup_py_main bup_py_bytes_main
-#else
-# define bup_py_main Py_BytesMain
-#endif
-
 #if defined(BUP_DEV_BUP_PYTHON) && defined(BUP_DEV_BUP_EXEC)
 # error "Both BUP_DEV_BUP_PYTHON and BUP_DEV_BUP_EXEC are defined"
 #endif
 
-#ifdef BUP_DEV_BUP_PYTHON
+#if defined(BUP_DEV_BUP_PYTHON) || defined (BUP_DEV_BUP_EXEC)
 
 int main(int argc, char **argv)
 {
     assert(argc > 0);
-    prog_argc = argc;
-    prog_argv = argv;
     setup_bup_main_module();
     prepend_lib_to_pythonpath(argv[0], "../lib");
-    return bup_py_main (argc, argv);
-}
-
-#elif defined(BUP_DEV_BUP_EXEC)
-
-int main(int argc, char **argv)
-{
-    assert(argc > 0);
-    prog_argc = argc - 1;
-    prog_argv = argv + 1;
-    setup_bup_main_module();
-    prepend_lib_to_pythonpath(argv[0], "../lib");
-    if (argc == 1)
-        return bup_py_main (1, argv);
-    // This can't handle a script with a name like "-c", but that's
-    // python's problem, not ours.
-    return bup_py_main (2, argv);
+    return Py_BytesMain (argc, argv);
 }
 
 #else // normal bup command
@@ -409,12 +362,16 @@ int main(int argc, char **argv)
 int main(int argc, char **argv)
 {
     assert(argc > 0);
-    prog_argc = argc;
-    prog_argv = argv;
     setup_bup_main_module();
     prepend_lib_to_pythonpath(argv[0], "..");
-    char *bup_argv[] = { argv[0], "-m", "bup.main" };
-    return bup_py_main (3, bup_argv);
+
+    char **bup_argv = alloca(argc * sizeof(char *) + 2);
+    bup_argv[0] = argv[0];
+    bup_argv[1] = "-m";
+    bup_argv[2] = "bup.main";
+    for (int i = 0; i < argc - 1; i++)
+        bup_argv[i + 3] = argv[i + 1];
+    return Py_BytesMain (argc + 2, bup_argv);
 }
 
 #endif // normal bup command
