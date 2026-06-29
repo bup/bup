@@ -300,6 +300,13 @@ generated_dependencies += lib/bup/_helpers.d src/bup/pyutil.d lib/bup/bupsplit.d
 lib/bup/_helpers$(soext): lib/bup/_helpers.o src/bup/pyutil.o lib/bup/bupsplit.o lib/bup/_hashsplit.o
 	$(ld_helpers)
 
+clean_paths += src/bup/test-pyutil.o test/ext/test-pyutil
+generated_dependencies += src/bup/test-pyutil.d
+src/bup/test-%.o: src/bup/test-%.c
+	$(cc_bin)
+test/ext/test-%: src/bup/test-%.o src/bup/pyutil.o
+	$(ld_bin)
+
 test/tmp:
 	mkdir test/tmp
 
@@ -332,7 +339,7 @@ define run_check
   ./pytest $(xdist_opt)
 endef
 
-check_targets := all test/tmp dev/python
+check_targets := all test/tmp dev/python test/ext/test-pyutil
 
 check: $(check_targets)
 	$(run_check)
