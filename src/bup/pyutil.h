@@ -26,10 +26,11 @@ int bup_ullong_from_py(unsigned long long *x, PyObject *py, const char *name);
          __auto_type overflow___ = (overflow);                          \
          if (EXPR_SIGNED(*(dest))) {                                    \
              const long long tmp___ = PyLong_AsLongLong(pylong___);     \
-             if (tmp___ == -1 && PyErr_Occurred()                       \
-                 && PyErr_ExceptionMatches(PyExc_OverflowError)) {      \
-                 PyErr_Clear();                                         \
-                 *overflow___ = 1;                                      \
+             if (tmp___ == -1 && PyErr_Occurred()) {                    \
+                 if(PyErr_ExceptionMatches(PyExc_OverflowError)) {      \
+                     PyErr_Clear();                                     \
+                     *overflow___ = 1;                                  \
+                 }                                                      \
              } else {                                                   \
                  if (INT_ADD_OK(tmp___, 0, (dest)))                     \
                      res___ = 1;                                        \
@@ -39,10 +40,11 @@ int bup_ullong_from_py(unsigned long long *x, PyObject *py, const char *name);
          } else {                                                       \
              const unsigned long long tmp___ =                          \
                  PyLong_AsUnsignedLongLong(pylong___);                  \
-             if (tmp___ == (unsigned long long) -1 && PyErr_Occurred()  \
-                 && PyErr_ExceptionMatches(PyExc_OverflowError)) {      \
-                 PyErr_Clear();                                         \
-                 *overflow___ = 1;                                      \
+             if (tmp___ == (unsigned long long) -1 && PyErr_Occurred()) { \
+                 if (PyErr_ExceptionMatches(PyExc_OverflowError)) {     \
+                     PyErr_Clear();                                     \
+                     *overflow___ = 1;                                  \
+                 }                                                      \
              } else {                                                   \
                  if (INT_ADD_OK(tmp___, 0, (dest)))                     \
                      res___ = 1;                                        \
