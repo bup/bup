@@ -15,6 +15,39 @@
 
 
 static void
+test_bup_longish_to_py()
+{
+    // Only test (unsigned) long long since that's what python offers,
+    // e.g. there's currently no (u)intmax_t support.
+    PyObject *ll_min_py = PyLong_FromLongLong(LLONG_MIN);
+    PyObject *ll_max_py = PyLong_FromLongLong(LLONG_MAX);
+    PyObject *ull_max_py = PyLong_FromUnsignedLongLong(ULLONG_MAX);
+    assert (ll_min_py);
+    assert (ll_max_py);
+    assert (ull_max_py);
+
+    PyObject *py = BUP_LONGISH_TO_PY(LLONG_MIN);
+    assert(py);
+    assert(PyObject_RichCompareBool(py, ll_min_py, Py_EQ));
+    Py_DECREF(py);
+
+    py = BUP_LONGISH_TO_PY(LLONG_MAX);
+    assert(py);
+    assert(PyObject_RichCompareBool(py, ll_max_py, Py_EQ));
+    Py_DECREF(py);
+
+    py = BUP_LONGISH_TO_PY(ULLONG_MAX);
+    assert(py);
+    assert(PyObject_RichCompareBool(py, ull_max_py, Py_EQ));
+    Py_DECREF(py);
+
+    Py_DECREF(ull_max_py);
+    Py_DECREF(ll_max_py);
+    Py_DECREF(ll_min_py);
+    fprintf(stderr, "test-pyutil::%s OK\n", __func__);
+}
+
+static void
 test_bup_assign_pylong_to_integral(void)
 {
     PyObject *zero = PyLong_FromLong(0);
@@ -158,6 +191,7 @@ run(PyObject *self, PyObject *args)
     if (!PyArg_ParseTuple(args, ""))
 	return NULL;
 
+    test_bup_longish_to_py();
     test_bup_assign_pylong_to_integral();
 
     fprintf(stderr, "test-pyutil OK\n");
