@@ -16,5 +16,5 @@ pkg install rdiff-backup || true
 
 pkgs='gmake git bash rsync curl par2cmdline readline duplicity'
 pkgs="$pkgs rsnapshot hs-pandoc graphviz"
-pkgs="$pkgs python311 py311-tornado py311-pytest py311-pytest-xdist"
+pkgs="$pkgs python312 py312-tornado py312-pytest py312-pytest-xdist"
 pkg install $pkgs
