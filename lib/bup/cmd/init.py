@@ -28,6 +28,6 @@ def main(argv):
     try:
         with repo_for_location(loc, create=True): pass
     except git.GitError as ex:
-        log(f'bup: error: could not init repository: {ex}')
+        log(f'error: could not init repository: {ex}\n')
         return EXIT_FAILURE
     return 0
