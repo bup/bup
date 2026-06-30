@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-. wvtest.sh
-. wvtest-bup.sh
-. dev/lib.sh
+. ./wvtest.sh || exit $?
+. ./wvtest-bup.sh || exit $?
+. ./dev/lib.sh || exit $?
+. ./test/lib/btl.sh || exit $?
 
 set -o pipefail
 
@@ -99,6 +100,12 @@ WVPASS bup save -t $D/d/e/fifotest
 WVPASS bup save -t $D/d/e
 WVPASS rm -f $D/d/e/fifotest
 WVPASS bup index -u $D/d/e
+WVPASS out-to log bup index --status "$D"
+WVPASSEQ "$(< log)" \
+'D bupdata.tmp/d/e/fifotest
+M bupdata.tmp/d/e/
+A bupdata.tmp/d/
+A bupdata.tmp/'
 WVFAIL bup save -t $D/d/e/fifotest
 WVPASS mv "$BUP_DIR/bi.old" "$BUP_DIR/bupindex"
 
