@@ -37,6 +37,8 @@
 /src/bup/compat.[do]
 /src/bup/io.[do]
 /src/bup/pyutil.[do]
+/src/bup/test-pyutil.[do]
+/test/ext/test-pyutil
 /test/int/__init__.pyc
 /test/lib/__init__.pyc
 /test/lib/buptest/__init__.pyc

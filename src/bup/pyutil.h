@@ -21,35 +21,36 @@ int bup_ullong_from_py(unsigned long long *x, PyObject *py, const char *name);
 // will be pending.
 #define BUP_ASSIGN_PYLONG_TO_INTEGRAL(dest, pylong, overflow)           \
     ({                                                                  \
-         int result = 0;                                                \
-         int pending_overflow = 0;                                      \
-         if (EXPR_SIGNED(dest)) {                                       \
-             const long long tmp = PyLong_AsLongLong(pylong);           \
-             if (tmp == -1 && PyErr_Occurred()                          \
-                 && PyErr_ExceptionMatches(PyExc_OverflowError))        \
-                 pending_overflow = 2;                                  \
-             else {                                                     \
-                 if (INTEGRAL_ASSIGNMENT_FITS((dest), tmp))             \
-                     result = 1;                                        \
+         int res___ = 0;                                                \
+         __auto_type pylong___ = (pylong);                              \
+         __auto_type overflow___ = (overflow);                          \
+         if (EXPR_SIGNED(*(dest))) {                                    \
+             const long long tmp___ = PyLong_AsLongLong(pylong___);     \
+             if (tmp___ == -1 && PyErr_Occurred()) {                    \
+                 if(PyErr_ExceptionMatches(PyExc_OverflowError)) {      \
+                     PyErr_Clear();                                     \
+                     *overflow___ = 1;                                  \
+                 }                                                      \
+             } else {                                                   \
+                 if (INT_ADD_OK(tmp___, 0, (dest)))                     \
+                     res___ = 1;                                        \
                  else                                                   \
-                     pending_overflow = 1;                              \
+                     *overflow___ = 1;                                  \
              }                                                          \
          } else {                                                       \
-             const unsigned long long tmp =                             \
-                 PyLong_AsUnsignedLongLong(pylong);                     \
-             if (tmp == (unsigned long long) -1 && PyErr_Occurred()     \
-                 && PyErr_ExceptionMatches(PyExc_OverflowError))        \
-                 pending_overflow = 2;                                  \
-             else {                                                     \
-                 if (INTEGRAL_ASSIGNMENT_FITS((dest), tmp))             \
-                     result = 1;                                        \
+             const unsigned long long tmp___ =                          \
+                 PyLong_AsUnsignedLongLong(pylong___);                  \
+             if (tmp___ == (unsigned long long) -1 && PyErr_Occurred()) { \
+                 if (PyErr_ExceptionMatches(PyExc_OverflowError)) {     \
+                     PyErr_Clear();                                     \
+                     *overflow___ = 1;                                  \
+                 }                                                      \
+             } else {                                                   \
+                 if (INT_ADD_OK(tmp___, 0, (dest)))                     \
+                     res___ = 1;                                        \
                  else                                                   \
-                     pending_overflow = 1;                              \
+                     *overflow___ = 1;                                  \
              }                                                          \
          }                                                              \
-         if (pending_overflow == 2) {                                   \
-             PyErr_Clear();                                             \
-             *(overflow) = 1;                                           \
-         }                                                              \
-         result;                                                        \
+         res___;                                                        \
     })
