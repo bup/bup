@@ -48,6 +48,138 @@ test_bup_longish_to_py()
 }
 
 static void
+test_bup_integral_from_py(void)
+{
+    PyObject *zero = PyLong_FromLong(0);
+    PyObject *one = PyLong_FromLong(1);
+    PyObject *neg_one = PyLong_FromLong(-1);
+    PyObject *ll_min = PyLong_FromLongLong(LLONG_MIN);
+    PyObject *ll_max = PyLong_FromLongLong(LLONG_MAX);
+    PyObject *ull_max = PyLong_FromUnsignedLongLong(ULLONG_MAX);
+    assert (one);
+    assert (neg_one);
+    assert (ll_min);
+    assert (ll_max);
+    assert (ull_max);
+
+    {
+        PyObject *min = PyLong_FromLong(INT_MIN);
+        PyObject *max = PyLong_FromLong(INT_MAX);
+        PyObject *umax = PyLong_FromUnsignedLong(UINT_MAX);
+        PyObject *under = PyNumber_Subtract(min, one);
+        PyObject *over = PyNumber_Add(max, one);
+        PyObject *uover = PyNumber_Add(umax, one);
+        assert(min);
+        assert(max);
+        assert(umax);
+        assert(under);
+        assert(over);
+        assert(uover);
+
+        int i;
+        assert(bup_int_from_py(&i, min, __func__));
+        assert(i == INT_MIN);
+        assert(bup_int_from_py(&i, max, __func__));
+        assert(i == INT_MAX);
+        assert(!bup_int_from_py(&i, under, __func__));
+        assert(PyErr_Occurred() == PyExc_OverflowError);
+        PyErr_Clear();
+        assert(!bup_int_from_py(&i, over, __func__));
+        assert(PyErr_Occurred() == PyExc_OverflowError);
+        PyErr_Clear();
+        if (sizeof(int) < sizeof(long long)) {
+            assert(!bup_int_from_py(&i, ll_min, __func__));
+            assert(PyErr_Occurred() == PyExc_OverflowError);
+            PyErr_Clear();
+            assert(!bup_int_from_py(&i, ll_max, __func__));
+            assert(PyErr_Occurred() == PyExc_OverflowError);
+            PyErr_Clear();
+        }
+
+        unsigned u;
+        assert(bup_uint_from_py(&u, zero, __func__));
+        assert(u == 0);
+        assert(bup_uint_from_py(&u, umax, __func__));
+        assert(u == UINT_MAX);
+        assert(!bup_uint_from_py(&u, neg_one, __func__));
+        assert(PyErr_Occurred() == PyExc_OverflowError);
+        PyErr_Clear();
+        assert(!bup_uint_from_py(&u, uover, __func__));
+        assert(PyErr_Occurred() == PyExc_OverflowError);
+        PyErr_Clear();
+        if (sizeof(unsigned) < sizeof(unsigned long long)) {
+            assert(!bup_uint_from_py(&u, ull_max, __func__));
+            assert(PyErr_Occurred() == PyExc_OverflowError);
+            PyErr_Clear();
+        }
+
+        Py_DECREF(uover);
+        Py_DECREF(over);
+        Py_DECREF(under);
+        Py_DECREF(umax);
+        Py_DECREF(max);
+        Py_DECREF(min);
+    }
+
+    {
+        PyObject *umax = PyLong_FromUnsignedLong(ULONG_MAX);
+        PyObject *uover = PyNumber_Add(umax, one);
+        assert(umax);
+        assert(uover);
+
+        unsigned long u;
+        assert(bup_ulong_from_py(&u, zero, __func__));
+        assert(u == 0);
+        assert(bup_ulong_from_py(&u, umax, __func__));
+        assert(u == ULONG_MAX);
+        assert(!bup_ulong_from_py(&u, neg_one, __func__));
+        assert(PyErr_Occurred() == PyExc_OverflowError);
+        PyErr_Clear();
+        assert(!bup_ulong_from_py(&u, uover, __func__));
+        assert(PyErr_Occurred() == PyExc_OverflowError);
+        PyErr_Clear();
+        if (sizeof(unsigned long) < sizeof(unsigned long long)) {
+            assert(!bup_ulong_from_py(&u, ull_max, __func__));
+            assert(PyErr_Occurred() == PyExc_OverflowError);
+            PyErr_Clear();
+        }
+
+        Py_DECREF(uover);
+        Py_DECREF(umax);
+    }
+
+    {
+        PyObject *umax = PyLong_FromUnsignedLongLong(ULLONG_MAX);
+        PyObject *uover = PyNumber_Add(umax, one);
+        assert(umax);
+        assert(uover);
+
+        unsigned long long u;
+        assert(bup_ullong_from_py(&u, zero, __func__));
+        assert(u == 0);
+        assert(bup_ullong_from_py(&u, umax, __func__));
+        assert(u == ULLONG_MAX);
+        assert(!bup_ullong_from_py(&u, neg_one, __func__));
+        assert(PyErr_Occurred() == PyExc_OverflowError);
+        PyErr_Clear();
+        assert(!bup_ullong_from_py(&u, uover, __func__));
+        assert(PyErr_Occurred() == PyExc_OverflowError);
+        PyErr_Clear();
+
+        Py_DECREF(uover);
+        Py_DECREF(umax);
+    }
+
+    Py_DECREF(ull_max);
+    Py_DECREF(ll_max);
+    Py_DECREF(ll_min);
+    Py_DECREF(neg_one);
+    Py_DECREF(one);
+    Py_DECREF(zero);
+    fprintf(stderr, "test-pyutil::%s OK\n", __func__);
+}
+
+static void
 test_bup_assign_pylong_to_integral(void)
 {
     PyObject *zero = PyLong_FromLong(0);
@@ -192,6 +324,7 @@ run(PyObject *self, PyObject *args)
 	return NULL;
 
     test_bup_longish_to_py();
+    test_bup_integral_from_py();
     test_bup_assign_pylong_to_integral();
 
     fprintf(stderr, "test-pyutil OK\n");
