@@ -30,6 +30,7 @@ def test_bloom(tmpdir):
             assert false_positives < 10
         os.unlink(tmpdir + b'/pybuptest.bloom')
 
+    os.chdir(tmpdir)
     with BloomWriter(b'bup.bloom', 'w+b', expected=100) as b:
         assert b.path == b'bup.bloom'
         assert b.k == 5
