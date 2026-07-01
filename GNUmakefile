@@ -46,6 +46,10 @@ ifneq (0, $(.SHELLSTATUS))
   bup_config_cflags ?=
   bup_config_ldflags_so ?=
   bup_have_acls ?=
+  bup_libacl_cflags ?=
+  bup_libacl_ldflags ?=
+  bup_python_cflags ?=
+  bup_python_cflags_embed ?=
   bup_python_ldflags ?=
   bup_python_ldflags_embed ?=
   bup_readline_cflags ?=
@@ -108,24 +112,13 @@ clean_paths += config.log
 # _XOPEN_SOURCE version, i.e. -Werror crashes on a mismatch, so for
 # now, we're just going to let Python's version win.
 
-helpers_cflags = $(bup_python_cflags) $(bup_common_cflags) -I$(CURDIR)/src
-helpers_ldflags := $(bup_python_ldflags) $(bup_common_ldflags)
-helpers_ldflags += $(bup_config_ldflags_so)
-
 ifneq ($(strip $(bup_readline_cflags)),)
-  readline_cflags += $(bup_readline_cflags)
+  readline_cflags = $(bup_readline_cflags)
   readline_xopen := $(filter -D_XOPEN_SOURCE=%,$(readline_cflags))
   readline_xopen := $(subst -D_XOPEN_SOURCE=,,$(readline_xopen))
   readline_cflags := $(filter-out -D_XOPEN_SOURCE=%,$(readline_cflags))
   readline_cflags += $(addprefix -DBUP_RL_EXPECTED_XOPEN_SOURCE=,$(readline_xopen))
-  helpers_cflags += $(readline_cflags)
-endif
-
-helpers_ldflags += $(bup_readline_ldflags)
-
-ifeq ($(bup_have_acls),1)
-  helpers_cflags += $(bup_libacl_cflags)
-  helpers_ldflags += $(bup_libacl_ldflags)
+  bup_readline_cflags = $(readline_cflags)
 endif
 
 bup_ext_cmds := lib/cmd/bup-import-rdiff-backup lib/cmd/bup-import-rsnapshot
@@ -241,26 +234,62 @@ install: all
 	    $(INSTALL) -pm 0644 lib/bup/source_info.py $(dest_libdir)/bup/; \
 	fi
 
-embed_cflags = -fPIE $(bup_python_cflags_embed) $(bup_common_cflags) -I$(CURDIR)/src
-embed_ldflags := -pie $(bup_python_ldflags_embed) $(bup_common_ldflags)
+# So we don't have to build different .o flavors
+ifneq ($(bup_python_cflags),$(bup_python_cflags_embed))
+  $(error --embed alters python-config --cflags)
+endif
 
-cc_bin = $(CC) $(embed_cflags) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
-ld_bin = $(CC) $(LDFLAGS) $^ -o $@ $(embed_ldflags)
+# Must not be := assignments (would break target-specific adjustments)
+py_cflags = -fPIC $(bup_python_cflags) $(bup_common_cflags) -I$(CURDIR)/src
+py_mod_ldflags = -fPIC $(bup_python_ldflags) $(bup_common_ldflags) $(bup_config_ldflags_so)
+py_embed_ldflags = -fPIC -pie $(bup_python_ldflags_embed) $(bup_common_ldflags)
 
-# common files to build for the binaries
-src/bup/%.o: src/bup/%.c
-	$(cc_bin)
-generated_dependencies += src/bup/compat.d src/bup/io.d
-clean_paths += src/bup/compat.o src/bup/io.o
+cc_py_obj = $(CC) $(py_cflags) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
+ld_py_bin = $(CC) $(LDFLAGS) $^ -o $@ $(py_embed_ldflags)
 
-dev/python-proposed.o: dev/python.c
-	$(cc_bin)
-generated_dependencies += dev/python-proposed.d
-clean_paths += dev/python-proposed.o
+
+## common object files and tests
+
+common_obj := \
+  dev/python-proposed.o \
+  lib/cmd/bup.o \
+  src/bup/compat.o \
+  src/bup/io.o \
+  src/bup/pyutil.o \
+  src/bup/test-pyutil.o
+
+$(common_obj): %.o: %.c
+	$(cc_py_obj)
+generated_dependencies += $(common_obj:.o=.d)
+clean_paths += $(common_obj)
+
+test/ext/test-pyutil: src/bup/test-pyutil.o src/bup/pyutil.o
+	$(ld_py_bin)
+clean_paths += test/ext/test-pyutil
+
+
+## _helpers.so
+
+helpers_cflags := $(py_cflags) $(bup_readline_cflags) $(bup_libacl_cflags)
+helpers_ldflags := $(py_mod_ldflags) $(bup_readline_ldflags) $(bup_libacl_ldflags)
+
+helpers_o := lib/bup/_hashsplit.o lib/bup/_helpers.o lib/bup/bupsplit.o
+
+$(helpers_o): %.o: %.c
+	$(CC) $(helpers_cflags) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
+generated_dependencies += $(helpers_o:.o=.d)
+clean_paths += $(helpers_o)
+
+lib/bup/_helpers$(soext): $(helpers_o) src/bup/pyutil.o
+	$(CC) $^ -o $@ $(helpers_ldflags) $(LDFLAGS)
+clean_paths += lib/bup/_helpers$(soext)
+
+
+## dev/python
 
 dev/python-proposed: dev/python-proposed.o src/bup/compat.o src/bup/io.o
 	rm -f dev/python
-	$(ld_bin)
+	$(ld_py_bin)
 clean_paths += dev/python-proposed
 
 dev/python: dev/python-proposed
@@ -268,62 +297,33 @@ dev/python: dev/python-proposed
 	cp -R -p $@-proposed $@
 clean_paths += dev/python
 
+
+## bup.c variants (bup bup-exec bup-python)
+
 dev/bup-exec.o: bup_common_cflags += -D BUP_DEV_BUP_EXEC=1
 dev/bup-exec.o: lib/cmd/bup.c
-	$(cc_bin)
+	$(cc_py_obj)
 generated_dependencies += dev/bup-exec.d
 clean_paths += dev/bup-exec.o
 
 dev/bup-exec: dev/bup-exec.o src/bup/compat.o src/bup/io.o
-	$(ld_bin)
+	$(ld_py_bin)
 clean_paths += dev/bup-exec
 
 dev/bup-python.o: bup_common_cflags += -D BUP_DEV_BUP_PYTHON=1
 dev/bup-python.o: lib/cmd/bup.c
-	$(cc_bin)
+	$(cc_py_obj)
 generated_dependencies += dev/bup-python.d
 clean_paths += dev/bup-python.o
 
 dev/bup-python: dev/bup-python.o src/bup/compat.o src/bup/io.o
-	$(ld_bin)
+	$(ld_py_bin)
 clean_paths += dev/bup-python
 
-lib/cmd/bup.o: lib/cmd/bup.c
-	$(cc_bin)
-generated_dependencies += lib/cmd/bup.d
-clean_paths += lib/cmd/bup.o
-
 lib/cmd/bup: lib/cmd/bup.o src/bup/compat.o src/bup/io.o
-	$(ld_bin)
+	$(ld_py_bin)
 clean_paths += lib/cmd/bup
 
-cc_helpers = $(CC) -fPIC $(helpers_cflags) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
-ld_helpers = $(CC) -fPIC $^ -o $@ $(helpers_ldflags) $(LDFLAGS)
-
-lib/bup/%.o: lib/bup/%.c
-	$(cc_helpers)
-
-src/bup/pyutil.o: src/bup/pyutil.c
-	$(cc_helpers)
-generated_dependencies += src/bup/pyutil.d
-clean_paths += src/bup/pyutil.o
-
-helpers_c := $(addprefix lib/bup/,_hashsplit.c _helpers.c bupsplit.c)
-helpers_objs := $(helpers_c:.c=.o)
-
-lib/bup/_helpers$(soext): $(helpers_objs) src/bup/pyutil.o
-	$(ld_helpers)
-generated_dependencies += $(helpers_c:.c=.d)
-clean_paths += lib/bup/_helpers$(soext) $(helpers_objs)
-
-src/bup/test-%.o: src/bup/test-%.c
-	$(cc_bin)
-generated_dependencies += src/bup/test-pyutil.d
-clean_paths += src/bup/test-pyutil.o
-
-test/ext/test-%: src/bup/test-%.o src/bup/pyutil.o
-	$(ld_bin)
-clean_paths += test/ext/test-pyutil
 
 test/tmp:
 	mkdir test/tmp

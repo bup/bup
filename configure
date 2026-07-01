@@ -402,6 +402,8 @@ then
     c_define[BUP_HAVE_ACLS]=1
     info ' (found)'
 else
+    bup_libacl_cflags=
+    bup_libacl_ldflags=
     info ' (not found)'
 fi
 
