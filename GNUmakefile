@@ -99,8 +99,10 @@ ifneq (0, $(.SHELLSTATUS))
 endif
 clean_paths += lib/bup/checkout_info.py
 
+# config.vars must be cleaned first (see clean: below)
 config/config.vars: configure config/test/*.c
 	MAKE="$(MAKE)" ./configure
+clean_paths += config.log
 
 # On some platforms, Python.h and readline.h fight over the
 # _XOPEN_SOURCE version, i.e. -Werror crashes on a mismatch, so for
@@ -248,64 +250,80 @@ ld_bin = $(CC) $(LDFLAGS) $^ -o $@ $(embed_ldflags)
 # common files to build for the binaries
 src/bup/%.o: src/bup/%.c
 	$(cc_bin)
-clean_paths += src/bup/compat.o src/bup/io.o
 generated_dependencies += src/bup/compat.d src/bup/io.d
+clean_paths += src/bup/compat.o src/bup/io.o
 
-clean_paths += dev/python-proposed dev/python-proposed.o
-generated_dependencies += dev/python-proposed.d
 dev/python-proposed.o: dev/python.c
 	$(cc_bin)
+generated_dependencies += dev/python-proposed.d
+clean_paths += dev/python-proposed.o
+
 dev/python-proposed: dev/python-proposed.o src/bup/compat.o src/bup/io.o
 	rm -f dev/python
 	$(ld_bin)
+clean_paths += dev/python-proposed
 
-clean_paths += dev/python
 dev/python: dev/python-proposed
 	dev/validate-python $@-proposed
 	cp -R -p $@-proposed $@
+clean_paths += dev/python
 
-clean_paths += dev/bup-exec
-generated_dependencies += dev/bup-exec.d
 dev/bup-exec.o: bup_common_cflags += -D BUP_DEV_BUP_EXEC=1
 dev/bup-exec.o: lib/cmd/bup.c
 	$(cc_bin)
+generated_dependencies += dev/bup-exec.d
+clean_paths += dev/bup-exec.o
+
 dev/bup-exec: dev/bup-exec.o src/bup/compat.o src/bup/io.o
 	$(ld_bin)
+clean_paths += dev/bup-exec
 
-clean_paths += dev/bup-python
-generated_dependencies += dev/bup-python.d
 dev/bup-python.o: bup_common_cflags += -D BUP_DEV_BUP_PYTHON=1
 dev/bup-python.o: lib/cmd/bup.c
 	$(cc_bin)
+generated_dependencies += dev/bup-python.d
+clean_paths += dev/bup-python.o
+
 dev/bup-python: dev/bup-python.o src/bup/compat.o src/bup/io.o
 	$(ld_bin)
+clean_paths += dev/bup-python
 
-clean_paths += lib/cmd/bup
-generated_dependencies += lib/cmd/bup.d
 lib/cmd/bup.o: lib/cmd/bup.c
 	$(cc_bin)
+generated_dependencies += lib/cmd/bup.d
+clean_paths += lib/cmd/bup.o
+
 lib/cmd/bup: lib/cmd/bup.o src/bup/compat.o src/bup/io.o
 	$(ld_bin)
+clean_paths += lib/cmd/bup
 
 cc_helpers = $(CC) -fPIC $(helpers_cflags) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 ld_helpers = $(CC) -fPIC $^ -o $@ $(helpers_ldflags) $(LDFLAGS)
 
 lib/bup/%.o: lib/bup/%.c
 	$(cc_helpers)
+
 src/bup/pyutil.o: src/bup/pyutil.c
 	$(cc_helpers)
+generated_dependencies += src/bup/pyutil.d
+clean_paths += src/bup/pyutil.o
 
-clean_paths += lib/bup/_helpers$(soext) lib/bup/_helpers.o
-generated_dependencies += lib/bup/_helpers.d src/bup/pyutil.d lib/bup/bupsplit.d lib/bup/_hashsplit.d
-lib/bup/_helpers$(soext): lib/bup/_helpers.o src/bup/pyutil.o lib/bup/bupsplit.o lib/bup/_hashsplit.o
+helpers_c := $(addprefix lib/bup/,_hashsplit.c _helpers.c bupsplit.c)
+helpers_objs := $(helpers_c:.c=.o)
+
+lib/bup/_helpers$(soext): $(helpers_objs) src/bup/pyutil.o
 	$(ld_helpers)
+generated_dependencies += $(helpers_c:.c=.d)
+clean_paths += lib/bup/_helpers$(soext) $(helpers_objs)
 
-clean_paths += src/bup/test-pyutil.o test/ext/test-pyutil
-generated_dependencies += src/bup/test-pyutil.d
 src/bup/test-%.o: src/bup/test-%.c
 	$(cc_bin)
+generated_dependencies += src/bup/test-pyutil.d
+clean_paths += src/bup/test-pyutil.o
+
 test/ext/test-%: src/bup/test-%.o src/bup/pyutil.o
 	$(ld_bin)
+clean_paths += test/ext/test-pyutil
 
 test/tmp:
 	mkdir test/tmp
@@ -366,7 +384,7 @@ Documentation/substvars.current: $(bup_deps)
 	         "s,%BUP_DATE%,$$bup_date,g") > $@
 Documentation/substvars: Documentation/substvars.current
 	@cmp $@ $< || cp $< $@
-doc_clean_paths += substvars substvars.current
+doc_clean_paths += Documentation/substvars Documentation/substvars.current
 
 define render_page
   $(pf); sed -f Documentation/substvars $< \
