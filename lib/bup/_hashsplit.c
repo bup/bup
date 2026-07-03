@@ -492,10 +492,7 @@ static int HashSplitter_read(HashSplitter *self)
         }
 
         assert(self->uncached <= self->read);
-        if (len == 0
-            && self->read > self->uncached
-            && self->read - self->uncached >= advise_chunk) {
-            // REVIEW: len is always zero?
+        if (len == 0 || (self->read - self->uncached >= advise_chunk)) {
             if(HashSplitter_uncache(self, len == 0))
                 return -1;
         }
