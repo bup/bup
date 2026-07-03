@@ -638,7 +638,6 @@ def _lost_metadata_for_gitinfo(mode, kind):
         return _lost_file_meta
     if S_ISDIR(mode):
         if kind == BUP_CHUNKED:
-            # REVIEW: We've just lost any executable bit in this case, right?
             return _lost_file_meta
         return _lost_dir_meta
     if S_ISLNK(mode):

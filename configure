@@ -420,8 +420,6 @@ echo -n "$bup_python_config" > config/tmp/config.var/bup-python-config
 echo -n "$with_pylint" > config/tmp/config.var/with-pylint
 mv config/tmp/config.var config/config.var
 
-# REVIEW: double-check these for missing ${foo...:-} defaults
-
 dev/refresh config/config.vars <<EOF
 CC = $CC
 CFLAGS = ${CFLAGS:-}

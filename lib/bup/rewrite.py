@@ -141,7 +141,6 @@ def _path_repaired(path, oid, replacement_oid, missing_oid, repairs):
     log(f'repaired {ep} {oid.hex()} -> {replacement_oid.hex()}\n')
 
 def _blob_replacement(repo, meta, content):
-    # REVIEW: does all this seem reasonable?
     now = time.time()
     oid = repo.write_data(content)
     rm = Metadata(frozen=False)
@@ -319,7 +318,6 @@ def _rewrite_link(path, item_mode, srcrepo, dstrepo, stack, repairs):
         return
 
     git_mode, oid = GIT_MODE_SYMLINK, dstrepo.write_symlink(target)
-    # REVIEW: ok if oid != item.oid?
     if change == 'restore':
         _restored_link_blob(path, item.oid, repairs)
     elif change == 'fix':

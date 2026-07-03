@@ -149,7 +149,6 @@ def parse_path_oriented_url(url, require_auth=False):
     user, colon_, passwd_ = user.partition(b':')
     user = unquote_to_bytes(user)
     port = int(port) if port else None
-    # REVIEW: is ip_address exactly right for this?
     if host and host[0] == b'['[0] and host[-1] == b']'[0]:
         addr = parse_addr(host[1:-1])
         if isinstance(addr, IPv6Address):
