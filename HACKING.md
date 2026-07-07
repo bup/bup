@@ -114,6 +114,26 @@ You may want to exclude test/tmp from backups because the testing
 directories are preserved on failure (until the next `make clean`),
 and test/tmp experiences a lot of churn.
 
+The tests are affected by a number of environment variables:
+
+  - `BUP_TEST_RANDOM_SEED=N`: sets the seed for the tests to `N`,
+    sometimes useful when trying to reproduce a failure.
+
+  - `BUP_TEST_LEVEL=N`: enables more tests when when set to 11 (`make
+    long-check  does this`).
+
+  - `BUP_TEST_OTHER_BUP=PATH`: runs some tests comparing ./bup against
+    the bup executable indicated by `PATH`, e.g. an older version of
+    bup.
+
+  - `BUP_TEST_REMOTE_REPO=t`: runs real ssh remote tests; "ssh
+    localhost" must work without a password (e.g. via agent).
+
+  - `test_prune_older.py` responds to some `BUP_TEST_PRUNE_OLDER_...`
+    tuning parameters.
+
+Note that these variables may change in any given release.
+
 Submitting patches
 ==================
 
