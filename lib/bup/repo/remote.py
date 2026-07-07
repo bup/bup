@@ -62,7 +62,6 @@ class RemoteRepo(RepoProtocol):
         assert opttype in ('int', 'bool', None)
         if name not in valid_config_opts:
             raise PermissionError(f'remote access to {name} is not allowed')
-        return None
 
     def update_ref(self, refname, newval, oldval):
         self.finish_writing()
