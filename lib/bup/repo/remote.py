@@ -3,6 +3,7 @@ from binascii import hexlify
 import re
 
 from bup import client, git
+from bup.protocol import valid_config_opts
 from bup.repo.base import _make_base, RepoProtocol
 
 
@@ -17,7 +18,10 @@ class RemoteRepo(RepoProtocol):
         self.closed = True # in case Client instantiation fails
         self.client = client.Client(location, create=create)
         self.closed = False
-        self.config_get = self.client.config_get
+        if self.client.supports(b'config-get'):
+            self.config_get = self.client.config_get
+        else:
+            self.config_get = self._config_get_fallback
         self._base = _make_base(self.config_get, compression_level,
                                 max_pack_size, max_pack_objects)
         self.write_symlink = self.write_data
@@ -47,6 +51,18 @@ class RemoteRepo(RepoProtocol):
     def __del__(self): assert self.closed
     def __enter__(self): return self
     def __exit__(self, type, value, traceback): self.close()
+
+    def _config_get_fallback(self, name, opttype=None):
+        """Return an appropriate value when (older) remote does not
+        support config-get.
+
+        """
+        assert isinstance(name, bytes)
+        name = name.lower() # git is case insensitive here
+        assert opttype in ('int', 'bool', None)
+        if name not in valid_config_opts:
+            raise PermissionError(f'remote access to {name} is not allowed')
+        return None
 
     def update_ref(self, refname, newval, oldval):
         self.finish_writing()

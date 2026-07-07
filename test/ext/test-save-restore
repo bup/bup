@@ -22,9 +22,9 @@ validate-local-and-remote-restore()
     WVPASS bup restore -r "-:$BUP_DIR" -C "$dest" "$src"
     WVPASS "$top/dev/compare-trees" "$cmp_src" "$cmp_dest"
     if test "${BUP_TEST_LOCAL_SSH:-}"; then
-       force-delete "$dest"
-       WVPASS bup restore -r "$BUP_TEST_LOCAL_SSH:$BUP_DIR" -C "$dest" "$src"
-       WVPASS "$top/dev/compare-trees" "$cmp_src" "$cmp_dest"
+        force-delete "$dest"
+        WVPASS bup restore -r "$BUP_TEST_LOCAL_SSH:$BUP_DIR" -C "$dest" "$src"
+        WVPASS "$top/dev/compare-trees" "$cmp_src" "$cmp_dest"
     fi
 }
 
@@ -194,6 +194,24 @@ WVSTART "save disjoint top-level directories"
     expected="$(echo -e "$pwd_top/\n$tmp_top/" | LC_ALL=C sort)" || exit $?
     WVPASSEQ "$actual" "$expected"
 ) || exit $?
+
+
+if ! test "$BUP_TEST_OTHER_BUP"; then
+    WVSKIP "BUP_TEST_OTHER_BUP not set, skipping related tests"
+else
+    WVSTART "save/restore compatibility between ./bup and $BUP_TEST_OTHER_BUP"
+    WVPASSEQ '' "$BUP_TEST_SSH_BUP_PATH"
+    force-delete src repo restore
+    export BUP_DIR="$(pwd)/repo"
+    WVPASS bup init
+    WVPASS bup index "$top/test/sampledata"
+    export BUP_TEST_SSH_BUP_PATH="$BUP_TEST_OTHER_BUP"
+    WVPASS bup save -n save --strip "$top/test/sampledata"
+    WVPASS bup restore -r "-:$BUP_DIR" -C restore save/latest
+    unset BUP_TEST_SSH_BUP_PATH
+    WVPASS "$top/dev/compare-trees" "$top/test/sampledata/" restore/latest
+    force-delete src repo restore
+fi
 
 
 WVPASS cd "$top"

@@ -276,10 +276,7 @@ class Client:
         # dirs when the remote repo has one (that can be accessed).
         repo_id = None
         if b'config-get' in self._available_commands:
-            try:
-                repo_id = self.config_get(b'bup.repo.id')
-            except PermissionError:
-                pass
+            repo_id = self.config_get(b'bup.repo.id')
         legacy = index_cache(legacy_id)
         if repo_id is None:
             return legacy
@@ -393,6 +390,9 @@ class Client:
         if name not in self._available_commands:
             raise ClientError('server does not appear to provide %s command'
                               % name.decode('ascii'))
+
+    def supports(self, command):
+        return command in self._available_commands
 
     def _list_indexes(self):
         with self._line_based_call('list-indexes') as call:

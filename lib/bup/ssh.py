@@ -8,6 +8,7 @@ import re
 
 from bup import path
 from bup.compat import environ
+from bup.helpers import quote
 from bup.io import buglvl, debug1
 
 
@@ -21,22 +22,27 @@ def connect(destination, port, subcmd, stderr=None):
 
     """
     assert re.fullmatch(br'[-_a-zA-Z0-9]+', subcmd), subcmd
+
     if not destination:
         if b'BUP_TEST_LEVEL' not in environ:
             raise Exception('no ssh destination')
-        argv = [path.exe(), subcmd]
+        argv = [environ.get(b'BUP_TEST_SSH_BUP_PATH', path.exe()), subcmd]
     elif destination == b'-':
         if b'BUP_TEST_LEVEL' not in environ:
             raise Exception('invalid ssh destination "-"')
-        argv = [path.exe(), subcmd]
+        argv = [environ.get(b'BUP_TEST_SSH_BUP_PATH', path.exe()), subcmd]
     else:
+        bup = environ.get(b'BUP_TEST_SSH_BUP_PATH')
+        if bup and b'BUP_TEST_LEVEL' not in environ:
+            raise Exception('BUP_TEST_SSH_BUP_PATH only allowed when testing')
+        bup = bup or b'bup'
         force_tty = int(environ.get(b'BUP_FORCE_TTY', 0))
         argv = [b'ssh']
         if port:
             argv.extend((b'-p', port))
         argv.extend((destination, b'--',
-                     b"sh -c 'BUP_DEBUG=%d BUP_FORCE_TTY=%d bup %s'"
-                     % (buglvl, force_tty, subcmd)))
+                     b"sh -c \"BUP_DEBUG=%d BUP_FORCE_TTY=%d %s %s\""
+                     % (buglvl, force_tty, quote(bup), subcmd)))
         debug1(f'ssh: {argv!r}\n')
     return Popen(argv, stdin=PIPE, stdout=PIPE, stderr=stderr,
                  start_new_session=True)

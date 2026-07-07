@@ -11,6 +11,19 @@ from bup.vint import \
 from bup.vfs import Item, Chunky, RevList, Root, Tags, Commit, FakeLink
 
 
+# See also RemoteRepo._config_get_fallback().  The current assumption
+# is that None is the appropriate value for an option whenever the
+# server does not support config-get.
+
+valid_config_opts = \
+    frozenset((b'bup.repo.id',
+               b'bup.split.trees',
+               b'bup.split.files',
+               b'pack.packsizelimit',
+               b'core.compression',
+               b'pack.compression'))
+
+
 def read_item(port):
     """Read an encoded VFS item from port. Throw EOFError for EOF."""
     def read_oid(port, kind):
@@ -450,12 +463,7 @@ class Server:
         # pylint: disable-next=unbalanced-tuple-unpacking
         key, opttype = vint.recv(self.conn, 'ss')
         # git is case-insensitve, and the client sends lower-case
-        if key in (b'bup.repo.id',
-                   b'bup.split.trees',
-                   b'bup.split.files',
-                   b'pack.packsizelimit',
-                   b'core.compression',
-                   b'pack.compression'):
+        if key in valid_config_opts:
             opttype = None if not opttype else opttype.decode('ascii')
             val = self.repo.config_get(key, opttype=opttype)
             if val is None:
