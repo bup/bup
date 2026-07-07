@@ -461,6 +461,13 @@ to left), and will never contain `..`. This allows future extensions,
 e.g. `PREFIX..SOMETHING_NEW_WITHOUT_DOTS.3.bupd`.  The `DEPTH` will
 always be a sequence of `[0-9]+`.
 
+The top-level in a split tree contains a `.bupm` file that has a
+single entry for the original directory.  The intermediate levels have
+no `.bupm`, and the leaves contain `.bupm` files with entries for
+their respective contents.  In the leaf `.bupm` files, the first
+metadata entry, which would normally be for the directory itself, is
+empty.
+
 Detailed Metadata
 -----------------
 

@@ -21,18 +21,19 @@ WVPASS cd "$tmpdir"
 WVSTART 'handling of correct refs'
 WVPASS rm -rf bup src
 WVPASS bup init
+WVPASS git config bup.split.trees true
 WVPASS mkdir src
 WVPASS mkdir -p src/a/b
 WVPASS touch src/a/{1,2,3}
 WVPASS "$top/dev/make-splittable-tree" src/split-tree
 WVPASS bup index src
 WVPASS bup save --strip -n src src
-WVPASS bup validate-refs --links 2>&1 | tee validate.log
-WVPASS grep -vE '^missing ' validate.log
-WVPASS bup validate-refs --bupm 2>&1 | tee validate.log
-WVPASS grep -vE '^missing ' validate.log
-WVPASS bup validate-refs 2>&1 | tee validate.log
-WVPASS grep -vE '^missing ' validate.log
+WVPASS err-to log bup validate-refs --links
+WVPASS test "$(du log | cut -f1)" -eq 0
+WVPASS err-to log bup validate-refs --bupm
+WVPASS test "$(du log | cut -f1)" -eq 0
+WVPASS err-to log bup validate-refs
+WVPASS test "$(du log | cut -f1)" -eq 0
 WVPASS rm -rf src bup
 
 WVSTART 'detection of abridged bupms'

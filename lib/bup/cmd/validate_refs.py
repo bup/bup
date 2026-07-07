@@ -26,7 +26,7 @@ def expected_bup_entry_count_for_tree(tree_data):
     exp_n = 1 # for the parent dir
     for mode, mangled_name, oid_ in tree_iter(tree_data):
         if mangled_name.endswith(b'.bupd'):
-            return 2
+            return 1
         if mangled_name == b'.bupm':
             continue
         kind = demangle_name(mangled_name, mode)[1]
