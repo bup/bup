@@ -955,7 +955,7 @@ def get_everything(opt):
 
     if repair_count and not saved_errors:
         msg = ('Repairs were needed and successful; see above. Additional'
-               ' information may be found in the git log. Search for '
+               ' information may be found in the git log. Search for'
                ' "Repair-ID:" in "git --git-dir REPO log ..." for the related'
                ' references.\n')
         log(f'\n{fill(msg, width=tty_width(), break_on_hyphens=False)}\n')
