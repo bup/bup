@@ -144,12 +144,15 @@ used to help test before/after results.)
     below).  Currently, `--rewrite`, `---repair`, or `--copy` must be
     specified whenever the source and destination repository
     configurations differ in a relevant way, and so far, `--rewrite`
-    is only supported for appends and picks. This option is also
-    contextual (see CONTEXTUAL OPTIONS). Note that rewriting a
-    git-created save may, and for now will, introduce bup-related
-    changes. Further, while tested, `--rewrite` is relatively new and
-    so warrants even more caution (see CAUTION above) than `bup get`
-    itself. Please consider validating the results carefully for now.
+    is only supported for appends and picks of saves (e.g. not trees).
+
+    Note that rewriting a git-created save may, and for now will,
+    introduce bup-related changes. Further, while tested, `--rewrite`
+    is relatively new and so warrants even more caution (see CAUTION
+    above) than `bup get` itself. Please consider validating the
+    results carefully for now.
+
+    This option is contextual (see CONTEXTUAL OPTIONS).
 
 \--repair
 :   in addition to what `--rewrite` does, perform all known repairs
