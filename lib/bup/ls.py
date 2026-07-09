@@ -149,7 +149,7 @@ def within_repo(repo, opt, out, pwd=b''):
             if last_n > 0:
                 out.write(b'%s:\n' % printpath)
 
-            if opt.directory:
+            if opt.directory or opt.l:
                 resolved = vfs.resolve(repo, path, follow=False)
             else:
                 resolved = vfs.try_resolve(repo, path, want_meta=want_meta)

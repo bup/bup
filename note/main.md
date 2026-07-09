@@ -18,6 +18,10 @@ May require attention
   commits if the `DEST` was not itself a commit (the parent would be
   whatever `DEST` initially pointed to).
 
+* Following POSIX `ls`, `bup ls -l` no longer dereferences symlinks,
+  for example for `bup ls -l save/latest` (`bup ls -l save/latest/`
+  still does).
+
 * `bup` now prefers the XDG cache location (typically
   `~/.cache/bup/remote/`) for the client index cache, but existing
   `$BUP_DIR/index-cache` directories will take precedence.  See

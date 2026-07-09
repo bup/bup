@@ -27,7 +27,7 @@ WVPASS bup index src
 WVPASS bup save --strip -n src src
 WVPASS bup join src:.bupm > bupm
 
-wv-match-rx "$(bup ls -l src/latest | tr -s ' ' ' ')" \
+wv-match-rx "$(bup ls -l src/latest/ | tr -s ' ' ' ')" \
 '^-rw-r--r-- [^/]+/.* 2 [0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2} 1
 -rw-r--r-- [^/]+/.* 2 [0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2} 2
 prw-r--r-- [^/]+/.* 0 [0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2} 3$'
@@ -40,7 +40,7 @@ new_tree_oid="$(echo "$new_tree" | WVPASS git mktree)"
 new_save=$(WVPASS git commit-tree "$new_tree_oid" -p src -m 'empty metadata')
 WVPASS git branch -f src "$new_save"
 
-wv-match-rx "$(bup ls -l src/latest | tr -s ' ' ' ')" \
+wv-match-rx "$(bup ls -l src/latest/ | tr -s ' ' ' ')" \
 '^-rw------- \?/\? 2 \?\?\?\?-\?\?-\?\? \?\?:\?\? 1
 -rw-r--r-- [^/]+/.* 2 [0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2} 2
 -rw------- \?/\? 0 \?\?\?\?-\?\?-\?\? \?\?:\?\? 3$'
