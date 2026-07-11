@@ -29,11 +29,11 @@ WVPASS "$top/dev/make-splittable-tree" src/split-tree
 WVPASS bup index src
 WVPASS bup save --strip -n src src
 WVPASS err-to log bup validate-refs --links
-WVPASS test "$(du log | cut -f1)" -eq 0
+WVPASS test ! -s log
 WVPASS err-to log bup validate-refs --bupm
-WVPASS test "$(du log | cut -f1)" -eq 0
+WVPASS test ! -s log
 WVPASS err-to log bup validate-refs
-WVPASS test "$(du log | cut -f1)" -eq 0
+WVPASS test ! -s log
 WVPASS rm -rf src bup
 
 WVSTART 'detection of abridged bupms'
