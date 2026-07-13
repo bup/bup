@@ -47,6 +47,7 @@ def _init_session(reinit_with_new_repopath=None):
 
 
 def init_dir(conn, arg):
+    # Empty arg (b'') requests the "default repo"
     git.init_repo(arg)
     debug1('bup server: bupdir initialized: %s\n' % path_msg(git.repodir))
     _init_session(arg)

@@ -118,10 +118,11 @@ class Client:
             self._require_command(b'set-dir')
             if self.dir:
                 self.dir = re.sub(br'[\r\n]', b' ', self.dir)
-                if create:
-                    self.conn.write(b'init-dir %s\n' % self.dir)
-                else:
-                    self.conn.write(b'set-dir %s\n' % self.dir)
+            if create:
+                self.conn.write(b'init-dir %s\n' % self.dir or b'')
+                self.check_ok()
+            elif self.dir:
+                self.conn.write(b'set-dir %s\n' % self.dir)
                 self.check_ok()
             self.sync_indexes()
         except BaseException as ex:

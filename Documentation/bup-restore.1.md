@@ -93,13 +93,14 @@ See the EXAMPLES section for a demonstration.
 
 # OPTIONS
 
--r, \--remote=*host*:*path*
-:   restore the backup set from the given remote server.  If
-    *path* is omitted, uses the default path on the remote
-    server (you still need to include the ':').  The connection to the
-    remote server is made with SSH.  If you'd like to specify which port, user
-    or private key to use for the SSH connection, we recommend you use the
-    `~/.ssh/config` file.
+-r, \--remote=*host*:[*path*]
+:   restore the backup set from the given remote server.  If *path* is
+    omitted , it will be the value of `BUP_DIR` in the remote
+    environment if set, or `~/.bup` in the remote filesystem.  The
+    connection to the remote server is made with SSH.  If you'd like
+    to specify which port, user or private key to use for the SSH
+    connection, we recommend you use the `~/.ssh/config` file
+    (`ssh_config(5)`).
 
 -C, \--outdir=*outdir*
 :   create and change to directory *outdir* before
