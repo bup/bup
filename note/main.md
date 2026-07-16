@@ -24,8 +24,9 @@ May require attention
 
 * `bup` now prefers the XDG cache location (typically
   `~/.cache/bup/remote/`) for the client index cache, but existing
-  `$BUP_DIR/index-cache` directories will take precedence.  See
-  `bup-config`(5) for additional information.
+  `$BUP_DIR/index-cache` directories (defaulting to
+  `~/.bup/index-cache`) will take precedence.  See `bup-config`(5) for
+  additional information.
 
 * `bup` will now correctly disambiguate save names on a given branch
   that have the same timestamp (committer time), even when the saves
