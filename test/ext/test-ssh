@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+. ./wvtest.sh || exit $?
+. ./wvtest-bup.sh || exit $?
+. ./dev/lib.sh || exlt $?
+. ./test/lib/btl.sh || exit $?
+
+set -o pipefail
+
+if test -z "$BUP_TEST_LOCAL_SSH"; then
+    WVSKIP 'Skipping real ssh tests (BUP_TEST_LOCAL_SSH unset)'
+    exit 0
+fi
+
+top="$(WVPASS pwd)" || exit $?
+tmpdir="$(WVPASS wvmktempdir)" || exit $?
+
+bup() { "$top/bup" "$@"; }
+
+
+WVPASS cd "$tmpdir"
+
+export BUP_TEST_SSH_BUP_PATH="$top/bup"
+
+remote="$BUP_TEST_LOCAL_SSH:$(pwd)/remote"
+
+WVSTART "init"
+WVPASS bup init local
+WVPASS test ! -e remote
+WVPASS bup init -r "$remote"
+WVPASS test -f remote/HEAD
+
+WVPASS bup -d local index "$top/test/sampledata"
+WVPASS bup -d local save -r "$remote" -n save --strip "$top/test/sampledata"
+WVPASS bup restore -r "$remote" -C restore save/latest
+WVPASS "$top/dev/compare-trees" "$top/test/sampledata/" restore/latest
+force-delete src repo restore
+
+WVPASS cd "$top"
+WVPASS rm -rf "$tmpdir"
+
+

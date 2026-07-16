@@ -18,7 +18,16 @@ def connect(destination, port, subcmd, stderr=None):
 
     When BUP_TEST_LEVEL exists in the environment and the destination
     is false, or b'-', run the subcmd as a subprocess rather than via
-    ssh.
+    ssh, and choose bup as BUP_TEST_SSH_BUP_PATH when set or
+    path.exe() (the current bup).
+
+    When there is a destination, choose bup as BUP_TEST_SSH_BUP_PATH
+    when set and BUP_TEST_LEVEL exists in the environment, otherwise
+    "bup".
+
+    The BUP_TEST_LEVEL arrangements are to allow testing without
+    needing localhost ssh access, and to allow testing against some
+    other "remote" bup.
 
     """
     assert re.fullmatch(br'[-_a-zA-Z0-9]+', subcmd), subcmd

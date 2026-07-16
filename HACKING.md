@@ -123,11 +123,14 @@ The tests are affected by a number of environment variables:
     long-check  does this`).
 
   - `BUP_TEST_OTHER_BUP=PATH`: runs some tests comparing ./bup against
-    the bup executable indicated by `PATH`, e.g. an older version of
+    the bup executable indicated by `PATH`, e.g. another version of
     bup.
 
-  - `BUP_TEST_REMOTE_REPO=t`: runs real ssh remote tests; "ssh
-    localhost" must work without a password (e.g. via agent).
+  - `BUP_TEST_LOCAL_SSH=HOST`: runs real ssh remote tests; "ssh HOST"
+    must work without a password (e.g. via agent), and must refer to
+    the local host (e.g. localhost, 127.0.0.1, ...).
+    (`BUP_TEST_OTHER_BUP` tests rely on a test-only shortcut that
+    doesn't require ssh.)
 
   - `test_prune_older.py` responds to some `BUP_TEST_PRUNE_OLDER_...`
     tuning parameters.
