@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 . ./wvtest-bup.sh || exit $?
 . ./dev/lib.sh || exit $?
+. ./test/lib/btl.sh
 
 set -o pipefail
 
@@ -8,6 +9,15 @@ top="$(WVPASS pwd)" || exit $?
 tmpdir="$(WVPASS wvmktempdir)" || exit $?
 
 bup() { "$top/bup" "$@"; }
+
+validate_repo()
+{
+    local dir="$1"
+    WVPASS test -d "$dir"
+    WVPASS test -f "$dir/HEAD"
+    WVPASS test -f "$dir/config"
+    WVPASS test -d "$dir/objects/pack"
+}
 
 WVPASS cd "$tmpdir"
 
@@ -17,46 +27,94 @@ WVPASS mkdir foo
 WVEXPRC 2 bup -d nope save -t foo
 WVPASS rmdir foo
 
+WVSTART 'only one positional argument allowed'
+WVFAIL err-to log bup init x y
+WVPASS test ! -e x
+WVPASS test ! -e y
+WVPASS grep 'only the directory positional argument is allowed' log
+
+WVSTART 'local and remote disallowed'
+WVFAIL err-to log bup init -r -:remote local
+WVPASS test ! -e remote
+WVPASS test ! -e local
+WVPASS grep 'cannot initialize both local and remote repo' log
+
+WVSTART 'initialization failure'
+WVEXPRC "$bup_exit_failure" err-to log bup init /dev/null
+WVPASS grep "could not init repository" log
+
 WVSTART '-d repo argument'
 WVPASS test ! -e repo
 WVPASS bup -d repo init
-WVPASS test -d repo/refs/heads
-WVPASS test -d repo/objects/pack
+validate_repo repo
 WVPASS rm -rf repo
 
 WVSTART 'positional repo argument'
 WVPASS test ! -e repo
 WVPASS bup init repo
-WVPASS test -d repo/refs/heads
-WVPASS test -d repo/objects/pack
+validate_repo repo
 WVPASS rm -rf repo
 
-WVSTART 'positional repo argument precdence over -d'
+WVSTART 'positional repo argument precedence over -d'
 WVPASS test ! -e repod
 WVPASS test ! -e repo
 WVPASS bup -d repod init repo
 WVPASS test ! -e repod
-WVPASS test -d repo/refs/heads
-WVPASS test -d repo/objects/pack
+validate_repo repo
 WVPASS rm -rf repo
 
-WVSTART 'positional repo argument precdence over BUP_DIR'
+WVSTART 'positional repo argument precedence over BUP_DIR'
 WVPASS test ! -e repod
 WVPASS test ! -e repo
-export BUP_DIR=repod
-WVPASS bup init repo
-unset BUP_DIR
-WVPASS test ! -e repod
-WVPASS test -d repo/refs/heads
-WVPASS test -d repo/objects/pack
+(export BUP_DIR=repod
+ WVPASS bup init repo
+ WVPASS test ! -e repod
+ validate_repo repo)
 WVPASS rm -rf repo
 
-WVSTART '--remote'
+WVSTART '--remote repo argument precedence over BUP_DIR'
 WVPASS rm -rf repo
-WVPASS bup init --remote -:repo
+WVPASS test ! -e repo
+WVPASS test ! -e remote
+(export BUP_DIR=repo
+ WVPASS bup init --remote -:remote
+ validate_repo remote
+ WVPASS test ! -e repo)
+WVPASS rm -rf repo
 
-WVEXPRC "$bup_exit_failure" bup init /dev/null
+WVSTART 'no --remote path'
+WVPASS rm -rf home
+WVPASS mkdir home
+(unset BUP_DIR
+ export HOME="$(pwd)/home" # works because - isn't ssh
+ WVPASS bup init --remote -:
+ validate_repo home/.bup)
+WVPASS rm -rf home
 
+if test -z "$BUP_TEST_OTHER_BUP"; then
+    WVMSG 'Skipping --remote against other bup (no BUP_TEST_OTHER_BUP)'
+else
+    other_bup="$(printf "%q" "$BUP_TEST_OTHER_BUP")"
+    WVSTART "--remote -: against $other_bup"
+    WVPASS rm -rf home
+    WVPASS mkdir home
+    (unset BUP_DIR
+     export HOME="$(pwd)/home" # works because - isn't ssh
+     export BUP_TEST_SSH_BUP_PATH="$BUP_TEST_OTHER_BUP"
+     WVPASS bup init --remote -:
+     validate_repo home/.bup)
+    WVPASS rm -rf home
+
+    WVSTART "--remote -:path against $other_bup"
+    WVPASS rm -rf repo
+    WVPASS test ! -e repo
+    WVPASS test ! -e "$HOME/.bup"
+    (export BUP_TEST_SSH_BUP_PATH="$BUP_TEST_OTHER_BUP"
+     WVPASS bup init --remote -:repo
+     validate_repo repo
+     WVPASS test ! -e "$HOME/.bup")
+    WVPASS rm -rf repo
+fi
 
 WVPASS cd "$top"
 WVPASS rm -rf "$tmpdir"

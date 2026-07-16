@@ -162,9 +162,9 @@ remote path as either a URL (see `REPOSITORY URLS` below) or a
 `[*user*@]*host*:[*path*]`.
 
 For either format, when there is no path, the default path on the
-server will be used, and SSH settings for the connection can be
-provided by a custom host to your `~/.ssh/config` file
-(`ssh_config(5)`).
+server will be used (`BUP_DIR` if set in the remote environment or
+`~/.bup`), and SSH settings for the connection can be provided by a
+custom host in your `~/.ssh/config` file (`ssh_config(5)`).
 
 The argument is treated as a URL if it begins with a syntactically
 valid URL scheme prefix that contains an "authority" (meaning that it

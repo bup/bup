@@ -13,18 +13,16 @@ bup init [-r *host*:*path*] [*directory*]
 # DESCRIPTION
 
 `bup init` initializes a repository.  The location will be the
-`*directory*` if provided, the directory specifed by any global `-d`
-argument (see `bup`(1)), the value of `BUP_DIR` in the environment if
-set, or `~/.bup`.
+`*directory*` or `--remote` if provided, the directory specifed by any
+global `-d` argument (see `bup`(1)), the value of `BUP_DIR` in the
+environment if set, or `~/.bup`.
 
 # OPTIONS
 
 -r, \--remote=[*user*@]*host*:[*path*], \--remote=URL
-:   Initialize not only the local repository, but also the specified
-    remote repository.  This is not necessary if you intend to use the
-    default location on the server (ie. with no *path*).  By default
-    the connection to the remote server is made with SSH.  See bup(1)
-    REMOTE OPTIONS for further information.
+:   Initialize the specified *path* on the given *host*.  Incompatible
+    with *directory*.  See bup(1) REMOTE OPTIONS
+    for further information.
 
 # EXAMPLES
     bup init ~/archive

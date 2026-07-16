@@ -18,6 +18,12 @@ May require attention
   commits if the `DEST` was not itself a commit (the parent would be
   whatever `DEST` initially pointed to).
 
+* `bup init -r` (`--remote`) now only initializes the remote
+  repository, not the local and remote repositories, so `bup init -r
+  host:remote` and `bup -d local init -r host:remote` will only
+  initialze the `remote` repository, not `~/.bup` and `./local`
+  respectively.
+
 * Following POSIX `ls`, `bup ls -l` no longer dereferences symlinks,
   for example for `bup ls -l save/latest` (`bup ls -l save/latest/`
   still does).
@@ -267,6 +273,11 @@ Bugs
   names, i.e. commits with duplicate commit times (author
   dates). Previously it would fail with a message like "error: cannot
   access SAVE in SAVE".
+
+* `bup init -r host:` (without a path) now initializes the default
+  remote repository (remote `BUP_DIR` or `~/.bup`).  Previously it
+  would crash.  This matches the behavior of `-r` for other commands
+  like `bup save -r`.
 
 * When run on an existing repository, `bup init` will no longer change
   existing `core.logAllRefUpdates` settings.
