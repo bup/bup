@@ -129,18 +129,19 @@ def main(argv):
             existing_count = count_objects(git.repo(b'objects/pack'), verbosity)
             if verbosity:
                 log(f'found {existing_count} objects\n')
-            with ExitStack() as maybe_close_idxl:
-                idxl = None
-                if opt.links:
-                    idxl = git.PackIdxList(git.repo(b'objects/pack'))
-                    maybe_close_idxl.enter_context(idxl)
-                live_objs, live_trees_ = \
-                    find_live_objects(existing_count, cat_pipe,
-                                      refs=ref_info,
-                                      idx_list=idxl,
-                                      for_item=for_item,
-                                      verbosity=verbosity)
-                live_objs.close()
+            if existing_count:
+                with ExitStack() as maybe_close_idxl:
+                    idxl = None
+                    if opt.links:
+                        idxl = git.PackIdxList(git.repo(b'objects/pack'))
+                        maybe_close_idxl.enter_context(idxl)
+                    live_objs, live_trees_ = \
+                        find_live_objects(existing_count, cat_pipe,
+                                          refs=ref_info,
+                                          idx_list=idxl,
+                                          for_item=for_item,
+                                          verbosity=verbosity)
+                    live_objs.close()
         if bad_bupm:
             return EXIT_FAILURE
         if (ref_missing + found_missing + abridged_bupm):

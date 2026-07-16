@@ -85,6 +85,7 @@ def find_live_objects(existing_count, cat_pipe, refs=None, *,
     # has been provided and does not return True, then a MissingObject
     # will be raised.  If idx_list is provided, then existence checks
     # will be broad.
+    assert existing_count > 0, existing_count
     pack_dir = git.repo(b'objects/pack')
     ffd, bloom_filename = tempfile.mkstemp(b'.bloom', b'tmp-gc-', pack_dir)
     os.close(ffd)

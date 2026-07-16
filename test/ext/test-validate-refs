@@ -21,6 +21,7 @@ WVPASS cd "$tmpdir"
 WVSTART 'handling of correct refs'
 WVPASS rm -rf bup src
 WVPASS bup init
+WVPASS bup validate-refs
 WVPASS git config bup.split.trees true
 WVPASS mkdir src
 WVPASS mkdir -p src/a/b
