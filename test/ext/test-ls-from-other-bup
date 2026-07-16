@@ -9,7 +9,7 @@ if test -z "$BUP_TEST_OTHER_BUP"; then
     exit 0
 fi
 
-export BUP_TEST_REMOTE_REPO=t # as per test-ls-remote
+export BUP_TEST_LS_FAKE_SSH_REMOTE=t # as per test-ls-remote
 export BUP_TEST_SSH_BUP_PATH="$BUP_TEST_OTHER_BUP"
 
 test/ext/test-ls
