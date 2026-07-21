@@ -326,16 +326,17 @@ class Client:
             ctx.enter_context(self._transport)
             self.conn = self._transport.conn
             self._available_commands = self._get_available_commands()
-            mangled_path = b''
-            if self.path:
-                mangled_path = re.sub(br'[\r\n]', b' ', self.path)
+            if self.path and (invalid := re.search(br'[\r\n]', self.path)):
+                bad_c = path_msg(match.group())
+                pm = path_msg(self.path)
+                raise Exception(f'Invalid {bad_c} in remote path {pm(self.path)}')
             if create:
                 self._require_command(b'init-dir')
-                self.conn.write(b'init-dir %s\n' % mangled_path)
+                self.conn.write(b'init-dir %s\n' % self.path)
                 self.check_ok()
             elif self.path:
                 self._require_command(b'set-dir')
-                self.conn.write(b'set-dir %s\n' % mangled_path)
+                self.conn.write(b'set-dir %s\n' % self.path)
                 self.check_ok()
             if url.scheme == b'bup-rev':
                 legacy_id = _legacy_cache_id_for_remote(url.host, True)
