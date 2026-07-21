@@ -17,6 +17,10 @@ bup init [-r *host*:*path*] [*directory*]
 global `-d` argument (see `bup`(1)), the value of `BUP_DIR` in the
 environment if set, or `~/.bup`.
 
+See `bup-config(5)` for configuration options that you may want to
+set.  Some, like `bup.split.files` and `bup.split.trees` should
+normally be set (when desired) before adding data to the repository.
+
 # OPTIONS
 
 -r, \--remote=[*user*@]*host*:[*path*], \--remote=URL
@@ -29,7 +33,7 @@ environment if set, or `~/.bup`.
     
 # SEE ALSO
 
-`bup-fsck`(1), `ssh_config`(5)
+`bup-config(5)`, `ssh_config`(5)
 
 # BUP
 

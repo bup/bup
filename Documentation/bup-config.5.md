@@ -9,7 +9,9 @@ bup-config - bup configuration options
 # DESCRIPTION
 
 The following options may be set in the relevant `git` config
-(`git-config(1)`).
+(`git-config(1)`).  For example:
+
+    git --git-dir="$BUP_DIR" config bup.split.trees true
 
 # OPTIONS
 
@@ -51,12 +53,15 @@ bup.server.deduplicate-writes (default `true`)
 
 bup.split.files (default `legacy:13`)
 :   Method used to split data for deduplication, for example by `bup
-    save` or `bup split`. This determines the "granularity" of the
-    deduplication, with larger values producing, on average, larger
-    chunks. The value must be a string like `legacy:N` where the
-    integer `N` must be greater than 12 and less than 22. The default
-    of 13 provides backward compatibility, but it is recommended to
-    increase this, say to 16, for all but very small repos.
+    save` or `bup split`.  Should not normally be changed after adding
+    any data to the repository (see below).
+
+    This determines the "granularity" of the deduplication, with
+    larger values producing, on average, larger chunks. The value must
+    be a string like `legacy:N` where the integer `N` must be greater
+    than 12 and less than 22. The default of 13 provides backward
+    compatibility, but it is recommended to increase this for larger
+    repositories.
 
     `N` specifies the number of fixed bits in the hash-split algorithm
     that when all set to one produce a chunk boundary, and thus it
@@ -65,13 +70,25 @@ bup.split.files (default `legacy:13`)
     (fewer bits means better deduplication) as compared to the amount
     of metadata to keep on disk and the RAM usage during repo
     operations (more bits means fewer objects, means less metadata
-    space and RAM use).  The expected average block size is 2^bits (1
+    space and RAM use).  The expected average blob size is 2^bits (1
     << bits). A sufficiently small change in a file would cause that
     much new data to be saved (plus tree metadata). The maximum blob
     size is four times that.
 
+    The historical default of `legacy:13` is probably small for many
+    current repositories.  As mentioned above, setting it higher
+    should decrease the RAM required for many operations by roughly a
+    factor of two per increment while also increasing the repository's
+    size by some amount (because it exposes less potential
+    deduplication), but the effect depends on the data stored in the
+    repository (file sizes, deduplication rates, etc.).  If you have
+    the space and time, you can always test different values for your
+    data by comparing `bup get --rewrite`s to new repositories with
+    different settings.
+
     `legacy` refers to the current split method, which has an
-    unintentional quirk where it "skips a bit".
+    unintentional, but harmless quirk.  See DESIGN in the source tree
+    for further details.
 
     *NOTE:* Changing this value in an existing repository will
     duplicate data because it causes the split boundaries to change,
