@@ -36,11 +36,6 @@ class BupSubprocTestRunner(pytest.Item):
         sys.stdout.flush()
         byte_stream(sys.stdout).write(out)
         lines = out.splitlines()
-        for line in lines:
-            if line.startswith(b'!') and line.lower().endswith(b' skip ok'):
-                # drop the leading file/line, etc. and trailing skip ok
-                pytest.skip(line.decode('utf-8').split(maxsplit=2)[-1][:-8])
-                return
         failures = [line for line in lines
                     if (line.startswith(b'!')
                         and line.lower().endswith(b' failed'))]
@@ -50,6 +45,11 @@ class BupSubprocTestRunner(pytest.Item):
             raise BupSubprocFailure('%s failed (exit %d, %d failures)'
                                     % (cmd, p.returncode, len(failures)),
                                     p.returncode, failures)
+        for line in lines:
+            if line.startswith(b'!') and line.lower().endswith(b' skip ok'):
+                # drop the leading file/line, etc. and trailing skip ok
+                pytest.skip(line.decode('utf-8').split(maxsplit=2)[-1][:-8])
+                return
 
     def repr_failure(self, excinfo, style=None):
         # We ignore the style, which appears to be one of None,
