@@ -327,9 +327,9 @@ class Client:
             self.conn = self._transport.conn
             self._available_commands = self._get_available_commands()
             if self.path and (invalid := re.search(br'[\r\n]', self.path)):
-                bad_c = path_msg(match.group())
-                pm = path_msg(self.path)
-                raise Exception(f'Invalid {bad_c} in remote path {pm(self.path)}')
+                bad_c = pm(invalid.group())
+                rem = pm(self.path)
+                raise Exception(f'Invalid {bad_c} in remote path {rem}')
             if create:
                 self._require_command(b'init-dir')
                 self.conn.write(b'init-dir %s\n' % self.path)
