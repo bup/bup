@@ -861,7 +861,7 @@ def get_everything(opt):
         src_split_cfg = hashsplit.configuration(src_repo.config_get)
         dest_split_cfg = hashsplit.configuration(dest_repo.config_get)
 
-        # For now, --rewrite is never implict
+        # For now, --rewrite is never implicit
         rewrite = False
         for spec in opt.target_specs:
             if spec.rewriter is not None:
