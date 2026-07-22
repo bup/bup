@@ -135,3 +135,10 @@ def test_ftp(tmpdir):
         wvpasseq(b'excitement!\n', f.read())
     # bup mget currently always does pattern matching
     bup(b'ftp', input=b'mget src/latest/not-there\n')
+
+    wvstart('unknown command')
+    wvpasseq(b'error: no such command: badcmd\n',
+             bup(b'ftp', input=b'badcmd\n').out)
+
+    wvstart('empty line')
+    wvpasseq(b'', bup(b'ftp', input=b'\n').out)
