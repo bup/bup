@@ -186,6 +186,13 @@ dest_docdir := $(DESTDIR)$(DOCDIR)
 dest_bindir := $(DESTDIR)$(BINDIR)
 dest_libdir := $(DESTDIR)$(LIBDIR)
 
+.PHONY: install-doc # Create the doc/gen/VER branch directories
+install-doc: Documentation/all
+	$(INSTALL) -d $(dest_docdir) $(dest_docdir)/man $(dest_docdir)/html
+	$(INSTALL) -m 0644 $(man_roff) $(dest_docdir)/man
+	$(INSTALL) -m 0644 $(man_html) $(dest_docdir)/html
+	./bup version > $(dest_docdir)/version
+
 install: all
 	$(INSTALL) -d \
 	  $(dest_bindir) \
