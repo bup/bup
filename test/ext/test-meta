@@ -12,7 +12,7 @@ export PATH="$top/test/bin:$PATH"
 tmpdir="$(WVPASS wvmktempdir)" || exit $?
 export BUP_DIR="$tmpdir/bup"
 
-# Assume that mvmktempdir will always use the same dir.
+# Assume that wvmktempdir will always use the same dir.
 timestamp_resolutions="$(dev/ns-timestamp-resolutions "$tmpdir/canary")" \
     || exit $?
 atime_resolution="$(echo $timestamp_resolutions | WVPASS cut -d' ' -f 1)" \
