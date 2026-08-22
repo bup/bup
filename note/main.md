@@ -306,4 +306,9 @@ Build system
 Thanks to (at least)
 ====================
 
-...
+Aaron M. Ucko, Alain Cochard, Anton Khirnov, Austin Blatt, Austin
+Schuh, Christian Wolf, Daniel Distler, Ed Maste, Greg Troxel, Jochen
+Sprickerhof, Johannes Berg, Julian Smith, Lucas Nussbaum, Mark Hewitt,
+Michael Tokarev, Michal Karol, Moritz Lell, Nathaniel Hourt, Nix, Phil
+Sutter, Rob Browning, Rob Leslie, Robert Edmonds, Stefan Monnier,
+Thomas Haller, Tomáš Hnyk, and Zachary Dremann
