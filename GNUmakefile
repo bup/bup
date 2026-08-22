@@ -91,12 +91,6 @@ ifeq ($(os),CYGWIN)
   soext := .dll
 endif
 
-ifdef TMPDIR
-  test_tmp := $(TMPDIR)
-else
-  test_tmp := $(CURDIR)/test/tmp
-endif
-
 $(shell dev/update-checkout-info lib/bup/checkout_info.py)
 ifneq (0, $(.SHELLSTATUS))
   $(error update-checkout-info failed)
