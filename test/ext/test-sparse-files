@@ -1,4 +1,21 @@
 #!/usr/bin/env bash
+
+# These tests are currently oriented toward the behavior of ext4 (and
+# perhaps xfs, ufs, etc.), and while some generalization has been
+# attempted (see dev/sparse-size), they may still fail on some
+# filesystems like zfs.  For now, we mark them in pytest's
+# ./conftest.py as "may fail" (xfail), until/unless we can accommodate
+# the relevant filesystem's behavior.
+#
+# See:
+#
+#   https://groups.google.com/g/bup-list/c/VFxXu6oA5jY/m/PPrCpc55BAAJ
+#   Message-ID: <f4fa71b2-710c-4d85-99b6-851b7fbbdae8@gmail.com>
+#   Subject: Re: Call for testing for a 0.34 release
+#
+# and previous list messages along similar lines.  Perhaps also:
+# https://github.com/openzfs/zfs/issues/6958
+
 . ./wvtest-bup.sh || exit $?
 . dev/lib.sh || exit $?
 

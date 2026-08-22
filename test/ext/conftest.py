@@ -1,6 +1,6 @@
 
 from os import environb as environ, fsdecode
-from subprocess import run
+from subprocess import check_output, run
 import os, subprocess, sys
 
 import pytest
@@ -91,6 +91,12 @@ def _collect_item(item):
     name = os.path.basename(item.name)
     if name.endswith('~') or not name.startswith('test-'):
         return None
+    if name == 'test-sparse-files':
+        # See comments in test-sparse-files for additional information.
+        assert os.path.exists('lib/bup'), 'no ./HACKING; not in bup source tree'
+        # wvmktempdir puts the tests in test/tmp
+        if check_output((b'dev/path-fs', b'test/tmp')).strip() == b'zfs':
+            item.add_marker(pytest.mark.xfail(reason='may fail on zfs right now'))
     if name == 'test-versioning-and-archive':
         item.add_marker(pytest.mark.release)
     return item
