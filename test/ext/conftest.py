@@ -35,6 +35,10 @@ class BupSubprocTestRunner(pytest.Item):
             out = p.stdout
         sys.stdout.flush()
         byte_stream(sys.stdout).write(out)
+        # It doesn't look like pytest has any way to accommodate
+        # multiple test results from a single Item, and we have no
+        # sensible way to produce multiple Items for an ext/ test, so
+        # muddle through.
         lines = out.splitlines()
         failures = [line for line in lines
                     if (line.startswith(b'!')
@@ -46,6 +50,8 @@ class BupSubprocTestRunner(pytest.Item):
                                     % (cmd, p.returncode, len(failures)),
                                     p.returncode, failures)
         for line in lines:
+            # Any skip marks the whole test as skipped so you'll know
+            # something was skipped.
             if line.startswith(b'!') and line.lower().endswith(b' skip ok'):
                 # drop the leading file/line, etc. and trailing skip ok
                 pytest.skip(line.decode('utf-8').split(maxsplit=2)[-1][:-8])
