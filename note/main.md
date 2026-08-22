@@ -75,7 +75,7 @@ May require attention
   asked to scan the entire repository,
 
 * `bup ls` and `bup xstat` now print device values (e.g. stat st_rdev)
-  as ther dev\_t integers, not as a "major,minor" pair, since the
+  as their dev\_t integers, not as a "major,minor" pair, since the
   behavior of `major()/minor()` is not defined by posix, and the sign
   and size of dev\_t and the major/minor result varies across
   platforms.
@@ -105,8 +105,8 @@ May require attention
   than the size of an int.  The underlying kernel issue has been fixed
   [here](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=31070f6ccec09f3bd4f1e28cd1e592fa4f3ba0b6):
 
-    31070f6ccec09f3bd4f1e28cd1e592fa4f3ba0b6
-    fuse: Fix parameter for FS_IOC_{GET,SET}FLAGS
+      31070f6ccec09f3bd4f1e28cd1e592fa4f3ba0b6
+      fuse: Fix parameter for FS_IOC_{GET,SET}FLAGS
 
   and backported to at least 5.7.10, 5.4.53, and 4.9.231.  If you
   still have an affected kernel, please upgrade or you may encounter
@@ -155,9 +155,9 @@ General
 * The deduplication granularity can now be changed by a new
   `bup.split.files` configuration option which defaults to `legacy:13`
   (the current behavior), but should probably be set to a higher value
-  like `legacy:16` in new repositories (say via `git-config --file
-  REPO/config bup.split.files legacy:16`).
-  The default for new repositories will eventually be raised. See
+  like `legacy:15` or `legacy:16` in new repositories (say via
+  `git-config --file REPO/config bup.split.files legacy:16`).  The
+  default for new repositories will eventually be raised. See
   `bup-config`(5) for additional information.
 
 * `bup` will split directories when `bup.split.trees` is `true`. This
@@ -284,7 +284,7 @@ Bugs
 
 * `par2` changed its behavior in 1.0 to be incompatible with `bup`'s
   use of symlinks to mitigate a `par2` bug (see the [0.33.4 release
-  notes](0.33.4-from-0.33.3.md) for additional information. `bup` now
+  notes](0.33.4-from-0.33.3.md) for additional information). `bup` now
   uses hardlinks if possible, and copies the files if not.
 
 * `bup rm some/SAVE` should now succeed even if the root metadata (the
