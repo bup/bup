@@ -44,7 +44,7 @@ readonly block_size data_size
 WVPASS dd if=/dev/zero of=test-sparse-probe seek="$data_size" bs=1 count=1
 sparse_size=$(WVPASS "$top/dev/sparse-size" test-sparse-probe) || exit $?
 if [ "$sparse_size" -lt "$block_size" ]; then
-    WVSKIP "no sparse support detected -- skipping tests"
+    WVSKIP 'no sparse support detected'
     exit 0
 fi
 

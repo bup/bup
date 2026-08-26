@@ -12,7 +12,7 @@ export GIT_DIR="$tmpdir/bup"
 bup() { "$top/bup" "$@"; }
 
 if ! [ "$(type -p rdiff-backup)" != "" ]; then
-    WVSKIP 'Cannot find rdiff-backup; skipping test)'
+    WVSKIP 'rdiff-backup not found'
     exit 0
 fi
 

@@ -5,8 +5,12 @@
 
 set -o pipefail
 
-if ! command -v getfacl > /dev/null || ! command -v setfacl > /dev/null; then
-    WVSKIP "No getfacl and setfacl; skipping test-meta-acls"
+if ! command -v getfacl > /dev/null; then
+    WVSKIP 'getfacl not found'
+    exit 0
+fi
+if ! command -v setfacl > /dev/null; then
+    WVSKIP 'setfacl not found'
     exit 0
 fi
 
@@ -17,12 +21,12 @@ compare-trees() { "$top/dev/compare-trees" "$@"; }
 id-other-than() { "$top/dev/id-other-than" "$@"; }
 
 if ! bup features | grep -qi 'posix acls: yes'; then
-    WVSKIP "bup features missing POSIX ACLs; skipping test-meta-acls"
+    WVSKIP 'no POSIX ACLs in bup features'
     exit 0
 fi
 
 if ! compare-trees --features | grep -qi 'posix acls: yes'; then
-    WVSKIP "compare-trees --features missing POSIX ACLs; skipping test-meta-acls"
+    WVSKIP 'no POSIX ACLs in compare-trees --features'
     exit 0
 fi
 
@@ -46,7 +50,7 @@ WVPASS mkdir src
 WVPASS touch src/u-r
 
 if ! setfacl -m "u:$other_user:r" src/u-r; then
-    WVSKIP "setfacl $top/testfile failed; skipping test-meta-acls"
+    WVSKIP "setfacl $top/testfile failed"
     exit 0
 fi
 

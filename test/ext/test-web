@@ -28,19 +28,19 @@ wait-for-server-start()
 WVPASS cd "$tmpdir"
 
 if test -z "$(type -p curl)"; then
-    WVSKIP 'curl does not appear to be installed; skipping test'
+    WVSKIP 'curl not found'
     exit 0
 fi
     
 WVPASS bup-cfg-py -c "import socket as s; s.socket(s.AF_UNIX).bind('socket')"
 curl -s --unix-socket ./socket http://localhost/foo
 if test $? -ne 7; then
-    WVSKIP 'curl does not appear to support --unix-socket; skipping test'
+    WVSKIP 'no curl --unix-socket'
     exit 0
 fi
 
 if ! bup-python -c 'import tornado' 2> /dev/null; then
-    WVSKIP 'unable to import tornado; skipping test'
+    WVSKIP 'unable to import tornado'
     exit 0
 fi
 
@@ -51,7 +51,7 @@ WVPASS echo '¡excitement!' > src/data
 if echo -e 'whee \x80\x90\xff' > "$(echo -ne 'src/whee \x80\x90\xff')"; then
     test_non_utf8=true
 else
-    WVSKIP 'non-UTF8 path (unable to write)'
+    WVSKIP 'non-UTF8 path test; unable to write'
     test_non_utf8=''
 fi
 WVPASS bup index src

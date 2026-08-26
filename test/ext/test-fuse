@@ -14,17 +14,17 @@ bup() { "$top/bup" "$@"; }
 # exit with status 2 on failures
 bup fuse -h 2>/dev/null
 if [ $? -eq 2 ]; then
-    WSKIP 'unable to import fuse/check version; skipping test'
+    WSKIP 'unable to import fuse/check version'
     exit 0
 fi
 
 if ! fusermount -V; then
-    WVSKIP 'skipping FUSE tests: fusermount does not appear to work'
+    WVSKIP 'fusermount does not appear to work'
     exit 0
 fi
 
 if ! test -w /dev/fuse; then
-    WVSKIP 'skipping FUSE tests; no access to /dev/fuse'
+    WVSKIP 'no access to /dev/fuse'
     exit 0
 fi
 

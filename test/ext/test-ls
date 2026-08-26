@@ -307,7 +307,7 @@ WVPASSEQ "$(bup-ls -l src/latest/bad-symlink | tr -s ' ' ' ')" \
 
 
 if ! with-tty true; then
-    WVSKIP 'Skipping interactive ouput truncation test (no supported script command)'
+    WVSKIP 'interactive ouput truncation test (no supported script command)'
 else
     WVSTART "output isn't truncated when isatty"
     WVPASS rm -rf src

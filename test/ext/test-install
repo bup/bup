@@ -19,7 +19,7 @@ WVPASS bup version
 if test "$(type -p pandoc)"; then
     WVPASS bup help save | WVPASS grep 'bup-save - create a new bup backup set'
 else
-    WVSKIP 'pandoc not installed, skipping help test'
+    WVSKIP 'bup help test; pandoc not found'
 fi
 WVPASS bup -d "$tmpdir/repo" init
 

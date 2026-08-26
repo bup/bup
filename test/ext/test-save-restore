@@ -192,7 +192,7 @@ WVSTART "save disjoint top-level directories"
 
 
 if ! test "$BUP_TEST_OTHER_BUP"; then
-    WVSKIP "BUP_TEST_OTHER_BUP not set, skipping related tests"
+    WVSKIP 'no BUP_TEST_OTHER_BUP'
 else
     WVSTART "save/restore compatibility between ./bup and $BUP_TEST_OTHER_BUP"
     WVPASSEQ '' "$BUP_TEST_SSH_BUP_PATH"

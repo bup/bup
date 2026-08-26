@@ -7,7 +7,7 @@
 set -o pipefail
 
 if test -z "$BUP_TEST_OTHER_BUP"; then
-    WVSKIP 'Other bup not specified by BUP_TEST_OTHER_BUP; skipping test'
+    WVSKIP 'no BUP_TEST_OTHER_BUP'
     exit 0
 fi
 

@@ -5,7 +5,7 @@
 root_status="$(dev/root-status)" || exit $?
 
 if [ "$root_status" != root ]; then
-    WVSKIP 'Not root: skipping restore --map-* tests.'
+    WVSKIP 'not root'
     exit 0
 fi
 

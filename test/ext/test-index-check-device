@@ -7,17 +7,17 @@ set -o pipefail
 root_status="$(dev/root-status)" || exit $?
 
 if [ "$root_status" != root ]; then
-    WVSKIP 'Not root: skipping --check-device tests.'
+    WVSKIP 'not root'
     exit 0
 fi
 
 if test -z "$(type -p losetup)"; then
-    WVSKIP 'Unable to find losetup: skipping --check-device tests.'
+    WVSKIP 'losetup not found'
     exit 0
 fi
 
 if test -z "$(type -p mke2fs)"; then
-    WVSKIP 'Unable to find mke2fs: skipping --check-device tests.'
+    WVSKIP 'mke2fs not found'
     exit 0
 fi
 
@@ -44,7 +44,7 @@ mount -o loop testfs.img "$tmpmnt1"
 rc=$?
 set +x
 if test "$rc" -ne 0; then
-    WVSKIP 'Unable to mount via loopback: skipping --check-device tests.'
+    WVSKIP 'loop device mount failed'
     exit 0
 fi
 

@@ -4,7 +4,7 @@
 set -o pipefail
 
 if ! [ "$(type -p duplicity)" != "" ]; then
-    WVSKIP 'Cannot find duplicity; skipping test)'
+    WVSKIP 'duplicity not found'
     exit 0
 fi
 
