@@ -28,22 +28,25 @@ WVPASS bup save -n fsck-test src/y
 WVPASS bup fsck
 WVPASS bup fsck "$BUP_DIR"/objects/pack/pack-*.pack
 WVPASS bup fsck --quick
-if bup fsck --par2-ok; then
-    WVSTART "fsck (par2)"
+
+if ! bup fsck --par2-ok; then
+    have_par2=''
+    WVSKIP "tests requiring par2"
+    WVEXPRC 2 bup fsck -g
+    WVEXPRC 2 bup fsck -r
 else
-    WVSTART "fsck (PAR2 IS MISSING)"
+    have_par2=1
+    WVPASS bup fsck -g
+    WVPASS bup fsck -r
 fi
-WVPASS bup fsck -g
-WVPASS bup fsck -r
 
 WVSTART "fsck (index repairs)"
 WVPASS chmod u+w "$BUP_DIR"/objects/pack/*.idx
 WVPASS bup damage "$BUP_DIR"/objects/pack/*.idx -n10 -s1 -S0
 WVFAIL bup fsck --quick
 WVFAIL bup fsck --quick --disable-par2
-bup fsck -r
-WVPASSEQ 1 $?
-if bup fsck --par2-ok; then
+if test "$have_par2"; then
+    WVEXPRC 1 bup fsck -r
     WVPASS chmod u+w "$BUP_DIR"/objects/pack/*.idx
     WVPASS bup damage "$BUP_DIR"/objects/pack/*.idx -n10 -s1 -S0
     bup fsck -r --disable-par2
@@ -61,13 +64,8 @@ WVFAIL bup fsck --quick -j4
 WVPASS bup damage "$BUP_DIR"/objects/pack/*.pack -n10 -s1024 --percent 0.4 -S0
 WVFAIL bup fsck --quick
 
-if ! bup fsck --par2-ok; then
-    set -x
-    bup fsck --quick -rvv -j9
-    rc=$?
-    set +x
-    WVPASSNE 0 "$rc"
-    WVPASSNE 1 "$rc"
+if ! test "$have_par2"; then
+    WVEXPRC '[^01]' bup fsck --quick -rvv -j9
     WVPASS cd "$top"
     WVPASS rm -rf "$tmpdir"
     exit 0

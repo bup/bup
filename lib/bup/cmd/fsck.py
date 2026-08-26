@@ -48,6 +48,7 @@ def par2_setup():
                  check=False)
     except (FileNotFoundError, NotADirectoryError):
         log('fsck: warning: par2 not found; disabling recovery features.\n')
+        return
     if sp.returncode == 0:
         par2_ok = 1
         return
