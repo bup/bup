@@ -7,6 +7,13 @@ May require attention
 * The minimum Python version has been raised from 3.7 to 3.8, and the
   sqlite3 module is now required (to support `--rewrite/--repair`).
 
+* The new `bup get --repair` acts like a `--rewrite` (see below) while
+  also attempting to detect and fix known issues during the transfer,
+  for example, replacing paths with missing contents with synthesized
+  "repair files". See `bup-get`(1) for additional information.  This
+  can be used to repair repositories affected by the problem described
+  in the [0.33.5 release notes](note/0.33.5-from-0.33.4.md).
+
 * Versions of `bup` at or after 0.25 and before 0.30.1 might (rarely)
   drop metadata entries for non-directories. That makes the metadata
   for all of the other non-directory paths in the same directory
@@ -14,10 +21,6 @@ May require attention
   error, given the potential risks with respect to incorrect
   ownership, permissions, etc. The new `bup validate-refs` command can
   detect the problem and `bup get --repair` can repair affected saves.
-
-* Previously, `bup get --force-pick: SRC /.tag/DEST` created broken
-  commits if the `DEST` was not itself a commit (the parent would be
-  whatever `DEST` initially pointed to).
 
 * `bup init -r` (`--remote`) now only initializes the remote
   repository, not the local and remote repositories, so `bup init -r
@@ -117,11 +120,6 @@ May require attention
   between the plus or minus and the save name in its output, matching
   what `bup-prune-older(1)` specifies.
 
-* `bup split --copy` now writes the split data to standard output
-  instead of Python memoryview representations like
-
-      <memory at 0x7f7a89358ac0><memory at 0x7f7a89358a00>...
-
 General
 -------
 
@@ -170,11 +168,6 @@ General
   transferred to respect the destination repository's configuration,
   e.g. its `bup.split.files` and `bup.split.trees` settings. See
   `bup-get`(1) for additional information.
-
-* The new `bup get --repair` acts like a `--rewrite` while also
-  attempting to detect and fix known issues during the transfer, for
-  example, replacing paths with missing contents with synthesized
-  "repair files". See `bup-get`(1) for additional information.
 
 * `bup get` has added a `-S, --source-url URL` option which can
    specify a local or remote source repository (as compared to
@@ -255,25 +248,9 @@ General
 Bugs
 ----
 
-* `bup on HOST get ...` should no longer hang in some situations where
-  the client could provoke duplicate index-cache suggestions from the
-  server, which the client then treated as an error.
-
 * A bug has been fixed that could cause any internal subcommand
   (e.g. not `import-rsnapshot`) to hang when running interactively
   (i.e. with a controlling terminal).
-
-* Saves with identical dates won't end up with the same name
-  (e.g. 2025-01-08-135615 in "bup ls BRANCH") when they're not
-  adjacent -- when one isn't the other's direct parent. Previously bup
-  appended an increasing "-N" to disambiguate duplicates, but only
-  when they were directly related. Now it appends across all
-  duplicates.
-
-* `bup prune-older` should no longer be confused by duplicate save
-  names, i.e. commits with duplicate commit times (author
-  dates). Previously it would fail with a message like "error: cannot
-  access SAVE in SAVE".
 
 * `bup init -r host:` (without a path) now initializes the default
   remote repository (remote `BUP_DIR` or `~/.bup`).  Previously it
@@ -282,11 +259,6 @@ Bugs
 
 * When run on an existing repository, `bup init` will no longer change
   existing `core.logAllRefUpdates` settings.
-
-* `par2` changed its behavior in 1.0 to be incompatible with `bup`'s
-  use of symlinks to mitigate a `par2` bug (see the [0.33.4 release
-  notes](0.33.4-from-0.33.3.md) for additional information). `bup` now
-  uses hardlinks if possible, and copies the files if not.
 
 * `bup rm some/SAVE` should now succeed even if the root metadata (the
   `some/SAVE/.bupm` file) is missing. Previously it failed with
