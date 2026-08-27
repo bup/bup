@@ -16,6 +16,9 @@ compare-trees() { "$top/dev/compare-trees" "$@"; }
 WVPASS bup init
 WVPASS cd "$tmpdir"
 
+WVPASS mkdir home
+export HOME="$tmpdir/home"
+
 WVSTART "index/save"
 WVPASS mkdir src src/foo
 WVPASS date > src/bar
@@ -45,12 +48,30 @@ WVPASS cmp src/baz restore-baz
 
 repo_id="id--$(WVPASS git config --file "$tmpdir"/bup/config bup.repo.id)"
 
-WVSTART "index-cache"
+WVSTART 'index-cache exists'
 # there should be an index-cache now
 for idx in "$tmpdir"/bup/objects/pack/*.idx ; do
     cachedidx="$HOME/.cache/bup/remote/$repo_id/$(basename "$idx")"
     WVPASS cmp "$idx" "$cachedidx"
 done
+
+# Legacy is hostname: by default via BUP_SERVER_REVERSE via
+# on__server.py.  _legacy_cache_id_for_host_path converts the : to _.
+legacy_id="$("$top/dev/bup-python" -c 'import socket; print(socket.gethostname())')_"
+
+WVSTART 'legacy index-cache moved to ~/.cache'
+WVPASS mkdir -p "$BUP_DIR/index-cache"
+WVPASS mv "$HOME/.cache/bup/remote/$repo_id" "$BUP_DIR/index-cache/$legacy_id"
+# Previously we'd forgotten to create the parents when moving; verify
+# we do now
+WVPASS rm -r "$HOME/.cache/bup"
+WVPASS bup on - restore -C tmp-restore src/latest
+# index cache should have been moved back to the new location
+for idx in "$tmpdir"/bup/objects/pack/*.idx ; do
+    cachedidx="$HOME/.cache/bup/remote/$repo_id/$(basename "$idx")"
+    WVPASS cmp "$idx" "$cachedidx"
+done
+WVPASS rm -rf tmp-restore
 
 WVSTART 'index-cache respects XDG_CACHE_HOME'
 WVPASS mkdir xdg-cache

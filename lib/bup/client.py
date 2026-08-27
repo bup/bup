@@ -26,7 +26,7 @@ from bup.helpers import \
      qprogress,
      DemuxConn)
 from bup.io import path_msg as pm
-from bup.path import index_cache
+from bup.path import index_cache, legacy_index_cache
 from bup.url import URL
 from bup.vint import read_vint, read_vuint, read_bvec, write_bvec
 
@@ -277,15 +277,17 @@ class Client:
         repo_id = None
         if b'config-get' in self._available_commands:
             repo_id = self.config_get(b'bup.repo.id')
-        legacy = index_cache(legacy_id)
+        legacy = os.path.join(legacy_index_cache(), legacy_id)
         if repo_id is None:
             return legacy
         # legacy ids can't include -, so avoid aliasing with an id--
         # prefix, and terminate with double-dash to leave some future
         # flexibility.
-        new = index_cache(b'id--' + repo_id)
+        new_dir = index_cache()
+        new = os.path.join(new_dir, b'id--' + repo_id)
         # upgrade path - if we have the old but not the new name, move it
         if os.path.exists(legacy) and not os.path.exists(new):
+            mkdirp(new_dir)
             shutil.move(legacy, new)
         return new
 

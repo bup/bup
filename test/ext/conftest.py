@@ -29,6 +29,8 @@ class BupSubprocTestRunner(pytest.Item):
         cmd = str(self.fspath)
         with temp_dir(dir=os.path.abspath(b'test/tmp'), prefix=b'bup-test-home-') as home:
             env = environ.copy()
+            # This of course doesn't help for test/ext/test-foo run
+            # without pytest.
             env[b'HOME'] = home
             p = run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                     env=env)
