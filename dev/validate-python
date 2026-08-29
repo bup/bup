@@ -17,3 +17,15 @@ if test "$majver" -lt 3 || test "$majver" -eq 3 && test "$minver" -lt 8; then
     echo "ERROR: found $bup_version_str (must be >= 3.8)" 1>&2
     exit 2
 fi
+
+rc=0
+out="$("$python" -c 'import sqlite3' 2>&1)" || rc=$?
+if test $rc -ne 0; then
+    case "$out" in
+        *ModuleNotFoundError*)
+            echo "ERROR: configured python cannot import sqlite3" 1>&2
+            ;;
+        *) echo "$out" 1>&2 ;;
+    esac
+    exit 2
+fi
