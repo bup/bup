@@ -5,8 +5,8 @@
   <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <meta name="author" content="Avery Pennarun apenwarr@gmail.com" />
-  <meta name="dcterms.date" content="2026-01-28" />
-  <title>bup-save(1) Bup 0.33.10</title>
+  <meta name="dcterms.date" content="2026-09-01" />
+  <title>bup-save(1) Bup 0.34</title>
   <style>
     html {
       color: #1a1a1a;
@@ -172,10 +172,10 @@
 </head>
 <body>
 <header id="title-block-header">
-<h1 class="title">bup-save(1) Bup 0.33.10</h1>
+<h1 class="title">bup-save(1) Bup 0.34</h1>
 <p class="author">Avery Pennarun <a href="mailto:apenwarr@gmail.com"
 class="email">apenwarr@gmail.com</a></p>
-<p class="date">2026-01-28</p>
+<p class="date">2026-09-01</p>
 </header>
 <h1 id="name">NAME</h1>
 <p>bup-save - create a new bup backup set</p>
@@ -203,14 +203,11 @@ metadata will not be saved for the root directory (<em>/</em>). See
 metadata.</p>
 <h1 id="options">OPTIONS</h1>
 <dl>
-<dt>-r, --remote=<em>host</em>:<em>path</em></dt>
+<dt>-r, --remote=[<em>user</em>@]<em>host</em>:[<em>path</em>],
+--remote=URL</dt>
 <dd>
-save the backup set to the given remote server. If <em>path</em> is
-omitted, uses the default path on the remote server (you still need to
-include the ‘:’). The connection to the remote server is made with SSH.
-If you’d like to specify which port, user or private key to use for the
-SSH connection, we recommend you use the <code>~/.ssh/config</code>
-file.
+save the data to the specified remote repository, by default via SSH.
+See bup(1) REMOTE OPTIONS for further information.
 </dd>
 <dt>-t, --tree</dt>
 <dd>
@@ -297,9 +294,17 @@ for the root directory (<em>/</em>) when this option is specified.</p>
 <dt>-<em>#</em>, --compress=<em>#</em></dt>
 <dd>
 set the compression level to # (a value from 0-9, where 9 is the highest
-and 0 is no compression). The default is 1 (fast, loose compression)
+and 0 is no compression). Defaults to a configured pack.compression or
+core.compression, or 1 (fast, loose compression).
 </dd>
 </dl>
+<h1 id="settings">SETTINGS</h1>
+<p><code>bup save</code> honors the <code>bup.split.trees</code>
+configuration option (see <code>bup-config(5)</code>. Note that it must
+be set in the repository being written to, so for example, in the
+<code>BUP_DIR</code> or <code>-d</code> repository for
+<code>bup save ...</code> without <code>-r</code> and in the the remote
+repository for <code>bup save -r ...</code>.</p>
 <h1 id="examples">EXAMPLES</h1>
 <pre><code>$ bup index -ux /etc
 Indexing: 1981, done.

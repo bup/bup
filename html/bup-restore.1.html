@@ -5,8 +5,8 @@
   <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <meta name="author" content="Avery Pennarun apenwarr@gmail.com" />
-  <meta name="dcterms.date" content="2026-01-28" />
-  <title>bup-restore(1) Bup 0.33.10</title>
+  <meta name="dcterms.date" content="2026-09-01" />
+  <title>bup-restore(1) Bup 0.34</title>
   <style>
     html {
       color: #1a1a1a;
@@ -172,10 +172,10 @@
 </head>
 <body>
 <header id="title-block-header">
-<h1 class="title">bup-restore(1) Bup 0.33.10</h1>
+<h1 class="title">bup-restore(1) Bup 0.34</h1>
 <p class="author">Avery Pennarun <a href="mailto:apenwarr@gmail.com"
 class="email">apenwarr@gmail.com</a></p>
-<p class="date">2026-01-28</p>
+<p class="date">2026-09-01</p>
 </header>
 <h1 id="name">NAME</h1>
 <p>bup-restore - extract files from a backup set</p>
@@ -236,7 +236,13 @@ be disabled via <code>--numeric-ids</code> (which can be important when
 restoring a chroot, for example), and as a special case, a uid or gid of
 0 will never be remapped by name. Additionally, some systems don’t allow
 setting a uid/gid that doesn’t correspond with a known user/group. On
-those systems, bup will log an error for each relevant path.</p>
+those systems, bup will log an error for each relevant path. Any
+“synthetic” paths, for example a root directory affected by
+<code>bup save --graft</code>, will have group and world read/execute
+permissions as if via a umask of 022. Any paths whose metadata has been
+lost (perhaps via <code>bup get --repair</code>, or earlier versions of
+bup; see the taxonomy in DESIGN) will have restrictive permissions as if
+via a umask of 077.</p>
 <p>The <code>--map-user</code>, <code>--map-group</code>,
 <code>--map-uid</code>, <code>--map-gid</code> options may be used to
 adjust the available ownership information before any of the rules above
@@ -262,14 +268,11 @@ subdirectory, and then move the resulting tree to its final position.
 See the EXAMPLES section for a demonstration.</p>
 <h1 id="options">OPTIONS</h1>
 <dl>
-<dt>-r, --remote=<em>host</em>:<em>path</em></dt>
+<dt>-r, --remote=[<em>user</em>@]<em>host</em>:[<em>path</em>],
+--remote=URL</dt>
 <dd>
-restore the backup set from the given remote server. If <em>path</em> is
-omitted, uses the default path on the remote server (you still need to
-include the ‘:’). The connection to the remote server is made with SSH.
-If you’d like to specify which port, user or private key to use for the
-SSH connection, we recommend you use the <code>~/.ssh/config</code>
-file.
+restore from the specified remote repository, by default via SSH. See
+bup(1) REMOTE OPTIONS for further information.
 </dd>
 <dt>-C, --outdir=<em>outdir</em></dt>
 <dd>
@@ -295,11 +298,11 @@ filesystem destination. Given “restore … /foo/latest/etc/”, the pattern
 ‘/foo/latest/etc/passwd’.</p>
 <p>Examples:</p>
 <ul>
-<li>‘/foo$’ - exclude any file named foo</li>
-<li>‘/foo/$’ - exclude any directory named foo</li>
-<li>‘/foo/.’ - exclude the content of any directory named foo</li>
-<li>‘^/tmp/.’ - exclude root-level /tmp’s content, but not /tmp
-itself</li>
+<li><code>/foo$</code> - exclude any file named foo</li>
+<li><code>/foo/$</code> - exclude any directory named foo</li>
+<li><code>/foo/.</code> - exclude the content of any directory named
+foo</li>
+<li><code>^/tmp/.</code> - exclude root-level tmp’s content</li>
 </ul>
 </dd>
 <dt>--exclude-rx-from=<em>filename</em></dt>

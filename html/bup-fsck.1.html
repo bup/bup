@@ -5,8 +5,8 @@
   <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <meta name="author" content="Avery Pennarun apenwarr@gmail.com" />
-  <meta name="dcterms.date" content="2026-01-28" />
-  <title>bup-fsck(1) Bup 0.33.10</title>
+  <meta name="dcterms.date" content="2026-09-01" />
+  <title>bup-fsck(1) Bup 0.34</title>
   <style>
     html {
       color: #1a1a1a;
@@ -172,23 +172,39 @@
 </head>
 <body>
 <header id="title-block-header">
-<h1 class="title">bup-fsck(1) Bup 0.33.10</h1>
+<h1 class="title">bup-fsck(1) Bup 0.34</h1>
 <p class="author">Avery Pennarun <a href="mailto:apenwarr@gmail.com"
 class="email">apenwarr@gmail.com</a></p>
-<p class="date">2026-01-28</p>
+<p class="date">2026-09-01</p>
 </header>
 <h1 id="name">NAME</h1>
 <p>bup-fsck - verify or repair a bup repository</p>
 <h1 id="synopsis">SYNOPSIS</h1>
 <p>bup fsck [-r] [-g] [-v] [--quick] [-j <em>jobs</em>] [--par2-ok]
-[--disable-par2] [filenames…]</p>
+[--disable-par2] [packfile…]</p>
 <h1 id="description">DESCRIPTION</h1>
-<p><code>bup fsck</code> is a tool for validating bup repositories in
-the same way that <code>git fsck</code> validates git repositories.</p>
-<p>It can also generate and/or use “recovery blocks” using the
-<code>par2</code>(1) tool (if you have it installed). This allows you to
-recover from damaged blocks covering up to 5% of your <code>.pack</code>
-files.</p>
+<p>When <em>packfile</em>s (which must end in .pack) are specified,
+pack-related operations are limited to those files, otherwise all
+packfiles in the current repository are considered.</p>
+<p>Currently <code>bup fsck</code> checks the data in the repository for
+corruption. More specifically, it checks the integrity of the data
+<em>packfile</em>s and their corresponding indexes to ensure that they
+have not changed since they were written. It does not check higher level
+concerns like connectivity (missing objects), e.g. whether all the data
+referred to by a save actually exists in the repository. For some higher
+level checks, see <code>bup-validate-object-links</code>(1) and
+<code>bup-validate-refs</code>(1). The checks <code>bup fsck</code>
+performs are focused on detecting, and potentially repairing, file
+corruption, while the higher level problems are more likely to be caused
+by (hopefully rarer) bugs.</p>
+<p>When checking the packfiles and indexes, right now fsck will normally
+rely on <code>git-verify-pack</code>(1), but with <code>--quick</code>
+(more below), bup will just check the index and packfile checksums
+itself.</p>
+<p>To allow repairs, fsck must be asked via <code>--generate</code> to
+generate <code>par2</code>(1) “recovery blocks” (if you have it
+installed). These blocks allow you to recover from damage affecting up
+to 5% of your <code>.pack</code> files.</p>
 <p>In a normal backup system, damaged blocks are less important, because
 there tends to be enough data duplicated between backup sets that a
 single damaged backup set is non-critical. In a deduplicating backup
@@ -197,13 +213,18 @@ if it is used in every single backup. If that block were to be
 unrecoverable, <em>all</em> your backup sets would be damaged at once.
 Thus, it’s important to be able to verify the integrity of your backups
 and recover from disk errors if they occur.</p>
-<p><em>WARNING</em>: bup fsck’s recovery features are not available
-unless you have the free <code>par2</code>(1) package installed on your
-bup server.</p>
+<p>When attempting to <code>--repair</code>, bup will exit with status 1
+if and only if repairs were needed and were successful, and there were
+no other errors.</p>
 <p><em>WARNING</em>: bup fsck obviously cannot recover from a complete
 disk failure. If your backups are important, you need to carefully
 consider redundancy (such as using RAID for multi-disk redundancy, or
 making off-site backups for site redundancy).</p>
+<p>When asked to examine all packfiles (i.e. when no <em>packfile</em>s
+are specified), fsck will report any files that appear to be related to
+a pack file that no longer exists. Previous versions of
+<code>bup gc</code> can cause this to happen because they did not remove
+all of the related files when removing a pack file.</p>
 <h1 id="options">OPTIONS</h1>
 <dl>
 <dt>-r, --repair</dt>
@@ -272,9 +293,14 @@ bup fsck -r ~/.bup/objects/pack/153a1420cb1c8*.pack
 if bup fsck --par2-ok; then
     echo &quot;par2 is ok&quot;
 fi</code></pre>
+<h1 id="exit-status">EXIT STATUS</h1>
+<p>Exits with 1 if <code>--repair</code> was requested, needed,
+successful, and there were no other errors. Otherwise exits with 0 if
+there were no errors and a value other than zero or one for errors.</p>
 <h1 id="see-also">SEE ALSO</h1>
 <p><code>bup-damage</code>(1), <code>fsck</code>(1),
-<code>git-fsck</code>(1)</p>
+<code>git-fsck</code>(1), <code>bup-validate-object-links</code>(1), and
+<code>bup-validate-refs</code>(1)</p>
 <h1 id="bup">BUP</h1>
 <p>Part of the <code>bup</code>(1) suite.</p>
 </body>

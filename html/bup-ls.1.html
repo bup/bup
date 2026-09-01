@@ -5,8 +5,8 @@
   <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <meta name="author" content="Avery Pennarun apenwarr@gmail.com" />
-  <meta name="dcterms.date" content="2026-01-28" />
-  <title>bup-ls(1) Bup 0.33.10</title>
+  <meta name="dcterms.date" content="2026-09-01" />
+  <title>bup-ls(1) Bup 0.34</title>
   <style>
     html {
       color: #1a1a1a;
@@ -172,10 +172,10 @@
 </head>
 <body>
 <header id="title-block-header">
-<h1 class="title">bup-ls(1) Bup 0.33.10</h1>
+<h1 class="title">bup-ls(1) Bup 0.34</h1>
 <p class="author">Avery Pennarun <a href="mailto:apenwarr@gmail.com"
 class="email">apenwarr@gmail.com</a></p>
-<p class="date">2026-01-28</p>
+<p class="date">2026-09-01</p>
 </header>
 <h1 id="name">NAME</h1>
 <p>bup-ls - list the contents of a bup repository</p>
@@ -207,14 +207,11 @@ you can view its contents using <code>bup join</code> or
 <code>git show</code>.</p>
 <h1 id="options">OPTIONS</h1>
 <dl>
-<dt>-r, --remote=<em>host</em>:[<em>path</em>]</dt>
+<dt>-r, --remote=[<em>user</em>@]<em>host</em>:[<em>path</em>],
+--remote=URL</dt>
 <dd>
-list information for the repository at <em>path</em> on the indicated
-<em>host</em>. If <em>path</em> is omitted, uses the default path on the
-remote server (you still need to include the ‘:’). The connection to the
-remote server will be made by SSH. If you’d like to specify the port,
-user, or private key, we recommend you use the
-<code>~/.ssh/config</code> file (<code>ssh_config(5)</code>).
+draw the information from the specified remote repository, by default
+via SSH. See bup(1) REMOTE OPTIONS for further information.
 </dd>
 <dt>-s, --hash</dt>
 <dd>

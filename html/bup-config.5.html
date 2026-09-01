@@ -5,8 +5,8 @@
   <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <meta name="author" content="Rob Browning rlb@defaultvalue.org" />
-  <meta name="dcterms.date" content="2026-01-28" />
-  <title>bup-config(5) Bup 0.33.10</title>
+  <meta name="dcterms.date" content="2026-09-01" />
+  <title>bup-config(5) Bup 0.34</title>
   <style>
     html {
       color: #1a1a1a;
@@ -172,24 +172,174 @@
 </head>
 <body>
 <header id="title-block-header">
-<h1 class="title">bup-config(5) Bup 0.33.10</h1>
+<h1 class="title">bup-config(5) Bup 0.34</h1>
 <p class="author">Rob Browning <a href="mailto:rlb@defaultvalue.org"
 class="email">rlb@defaultvalue.org</a></p>
-<p class="date">2026-01-28</p>
+<p class="date">2026-09-01</p>
 </header>
 <h1 id="name">NAME</h1>
 <p>bup-config - bup configuration options</p>
 <h1 id="description">DESCRIPTION</h1>
 <p>The following options may be set in the relevant <code>git</code>
-config (<code>git-config(1)</code>).</p>
+config (<code>git-config(1)</code>). For example:</p>
+<pre><code>git --git-dir=&quot;$BUP_DIR&quot; config bup.split.trees true</code></pre>
 <h1 id="options">OPTIONS</h1>
 <dl>
+<dt>bup.repo.id</dt>
+<dd>
+<p>When set, an identifier for the repository which should be unique
+across all repositories encountered. Because it is currently used in
+filesystem paths, it must consist of only the characters within
+double-quotes here: “0123456789_-”, “ABCDEFGHIJKLMNOPQRSTUVWXYZ”, and
+“abcdefghijklmnopqrstuvwxyz”. Two repo-ids must also not differ only in
+case (“something” vs “SOMETHING”) unless all all relevant filesystems
+are case sensitive.</p>
+<p><code>bup init</code> now adds a random identifier when it creates
+new repositories or refreshes a existing repository that doesn’t have a
+<code>bup.repo.id</code>, so you can add one to repositories created
+before this became the norm by re-running <code>bup init</code>. If you
+do set your own identifier, consider including randomized content to
+help ensure uniqueness.</p>
+<p>Note: you should always change the identifier of a copied repository
+(e.g. locally via <code>cp</code>(1) or across hosts via
+<code>rsync</code>(1)) since duplicate identifiers can cause significant
+performance problems, if nothing else.</p>
+</dd>
+<dt>bup.server.deduplicate-writes (default <code>true</code>)</dt>
+<dd>
+<p>When <code>true</code> <code>bup-server</code>(1) checks each
+incoming object against its local index, and if the object already
+exists, the server suggests to the client that it download the
+<code>*.idx</code> file that the object was found in so that it can
+avoid sending duplicate data.</p>
+<p>When false the server does not check its local index before writing
+objects. To avoid writing duplicate objects, the server tells the client
+to download all of its <code>*.idx</code> files at the start of the
+session. This mode is useful on more limited server hardware
+(i.e. routers, slow NAS devices, etc.).</p>
+<p>If no value is set, and a <code>$BUP_DIR/dumb-server-mode</code> file
+exists, then <code>bup</code> will act as if this setting were
+<code>false</code>.</p>
+</dd>
+<dt>bup.split.files (default <code>legacy:13</code>)</dt>
+<dd>
+<p>Method used to split data for deduplication, for example by
+<code>bup save</code> or <code>bup split</code>. Should not normally be
+changed after adding any data to the repository (see below).</p>
+<p>This determines the “granularity” of the deduplication, with larger
+values producing, on average, larger chunks. The value must be a string
+like <code>legacy:N</code> where the integer <code>N</code> must be
+greater than 12 and less than 22. The default of 13 provides backward
+compatibility, but it is recommended to increase this for larger
+repositories.</p>
+<p><code>N</code> specifies the number of fixed bits in the hash-split
+algorithm that when all set to one produce a chunk boundary, and thus it
+determines the average size of the deduplicated objects. This represents
+a trade-off between the efficiency of the deduplication (fewer bits
+means better deduplication) as compared to the amount of metadata to
+keep on disk and the RAM usage during repo operations (more bits means
+fewer objects, means less metadata space and RAM use). The expected
+average blob size is 2^bits (1 &lt;&lt; bits). A sufficiently small
+change in a file would cause that much new data to be saved (plus tree
+metadata). The maximum blob size is four times that.</p>
+<p>The historical default of <code>legacy:13</code> is probably small
+for many current repositories. As mentioned above, setting it higher
+should decrease the RAM required for many operations by roughly a factor
+of two per increment while also increasing the repository’s size by some
+amount (because it exposes less potential deduplication), but the effect
+depends on the data stored in the repository (file sizes, deduplication
+rates, etc.). If you have the space and time, you can always test
+different values for your data by comparing
+<code>bup get --rewrite</code>s to new repositories with different
+settings.</p>
+<p><code>legacy</code> refers to the current split method, which has an
+unintentional, but harmless quirk. See DESIGN in the source tree for
+further details.</p>
+<p><em>NOTE:</em> Changing this value in an existing repository will
+duplicate data because it causes the split boundaries to change, so
+subsequent saves will not deduplicate against the existing data; they
+will just store the data again.</p>
+<p><em>NOTE:</em> As with <code>bup.split.trees</code> below (see NOTE),
+using the same index for repositories with different
+<code>bup.split.files</code> settings will result in the index
+optimizations not working correctly, and so <code>bup save</code> will
+have to completely re-read files that haven’t been modified, which is
+expensive.</p>
+</dd>
+<dt>bup.split.trees</dt>
+<dd>
+<p>When this boolean option is set to true, <code>bup</code> will
+attempt to split trees (directories) when writing to the repository
+during, for example <code>bup save ...</code>, <code>bup gc ..</code>,
+etc. This can notably decrease the size of the new data added to the
+repository when large directories have changed (e.g. large active
+Maildirs). See “Handling large directories” in the DESIGN in the
+<code>bup</code> source for additional information.</p>
+<p><em>NOTE:</em> Using the same index to save to repositories that have
+differing values for this option can decrease performance because the
+index includes hashes for directories that have been saved and changing
+this option changes the hashes for directories that are affected by
+splitting.</p>
+<p>A directory tree’s hash allows bup to avoid traversing the directory
+if the index indicates that it didn’t otherwise change and the tree
+object with that hash already exists in the destination repository.
+Since the the value of this setting changes the hashes of splittable
+trees, the hash in the index won’t be found in a repository that has a
+different <code>bup.split.trees</code> value from the one to which that
+tree was last saved. As a result, any (usually big) directory subject to
+tree splitting will have to be re-read and its related hashes
+recalculated.</p>
+</dd>
+<dt>core.compression</dt>
+<dd>
+The default pack file compression level if <code>core.compression</code>
+isn’t set. If this isn’t set either, the default is 1 (unlike git, which
+defaults to -1). A compression level given on the command-line overrides
+this. See also <code>git-config</code>(1).
+</dd>
+<dt>pack.compression</dt>
+<dd>
+The default pack file compression level. If not given, falls back to
+<code>core.compression</code>. See also <code>git-config</code>(1).
+</dd>
 <dt>pack.packSizeLimit</dt>
 <dd>
-Respected when writing pack files (e.g. via <code>bup save ...</code>).
-Currently read from the repository to which the pack files are being
-written, excepting <code>bup on REMOTE...</code> which incorrectly reads
-the value from the <code>REMOTE</code> repository.
+Limits the maximum pack size (see <code>git-config</code>(1)) when
+writing pack files (e.g. via <code>bup save</code>). This setting is
+relevant when set in the destination repository (which may be remote).
+The default value is 1e9 bytes, i.e. about 0.93 GiB, and
+<code>bup</code> may exceed this limit by a chunk. However, setting it
+to e.g. “2g” (2 GiB) will still mean that all objects in the pack can be
+addressed by a 31-bit offset, and thus need no large offset in the idx
+file.
+</dd>
+</dl>
+<h1 id="environment">ENVIRONMENT</h1>
+<dl>
+<dt>BUP_DIR</dt>
+<dd>
+When set, the default repository location, unless overridden by
+<code>bup -d</code> on the command line.
+</dd>
+<dt>XDG_CACHE_HOME/bup</dt>
+<dd>
+The preferred cache location.
+</dd>
+</dl>
+<h1 id="files">FILES</h1>
+<p>$XDG_CACHE_HOME/bup/remote<br />
+~/.cache/bup/remote<br />
+</p>
+<dl>
+<dt>$BUP_DIR/index-cache</dt>
+<dd>
+The client index cache locations, in order of precedence. Remote
+repository data is stored here during operations like
+<code>bup save -r</code>. Currently <code>bup</code> looks for existing
+data in precedence order, and if none is found for the repository of
+interest then <code>bup</code> will use
+<code>$XDG_CACHE_HOME/bup/remote</code> if <code>$XDG_CACHE_HOME</code>
+is set and <code>~/.cache/bup/remote</code> otherwise.
 </dd>
 </dl>
 <h1 id="see-also">SEE ALSO</h1>

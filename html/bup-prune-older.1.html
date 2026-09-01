@@ -5,8 +5,8 @@
   <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <meta name="author" content="Rob Browning rlb@defaultvalue.org" />
-  <meta name="dcterms.date" content="2026-01-28" />
-  <title>bup-prune-older(1) bup 0.33.10 | bup 0.33.10</title>
+  <meta name="dcterms.date" content="2026-09-01" />
+  <title>bup-prune-older(1) bup 0.34 | bup 0.34</title>
   <style>
     html {
       color: #1a1a1a;
@@ -172,10 +172,10 @@
 </head>
 <body>
 <header id="title-block-header">
-<h1 class="title">bup-prune-older(1) bup 0.33.10 | bup 0.33.10</h1>
+<h1 class="title">bup-prune-older(1) bup 0.34 | bup 0.34</h1>
 <p class="author">Rob Browning <a href="mailto:rlb@defaultvalue.org"
 class="email">rlb@defaultvalue.org</a></p>
-<p class="date">2026-01-28</p>
+<p class="date">2026-09-01</p>
 </header>
 <h1 id="name">NAME</h1>
 <p>bup-prune-older - remove older saves</p>
@@ -187,6 +187,11 @@ except those preserved by the various keep arguments detailed below. At
 least one keep argument must be specified. This command is equivalent to
 a suitable <code>bup rm</code> invocation followed by
 <code>bup gc</code>.</p>
+<p>Note that the current implementation expects a typical branch where a
+new save’s date is always the same as or newer than the previous one.
+When that’s not the case, only the saves at the end of the branch that
+have non-increasing timestamps (child to parent) will be affected by
+this command. Future versions are likely to lift this restriction.</p>
 <p>WARNING: This is one of the few bup commands that modifies your
 archive in intentionally destructive ways. Though if an attempt to
 <code>join</code> or <code>restore</code> the data you still care about

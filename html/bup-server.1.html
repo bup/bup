@@ -5,8 +5,8 @@
   <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <meta name="author" content="Avery Pennarun apenwarr@gmail.com" />
-  <meta name="dcterms.date" content="2026-01-28" />
-  <title>bup-server(1) Bup 0.33.10</title>
+  <meta name="dcterms.date" content="2026-09-01" />
+  <title>bup-server(1) Bup 0.34</title>
   <style>
     html {
       color: #1a1a1a;
@@ -172,10 +172,10 @@
 </head>
 <body>
 <header id="title-block-header">
-<h1 class="title">bup-server(1) Bup 0.33.10</h1>
+<h1 class="title">bup-server(1) Bup 0.34</h1>
 <p class="author">Avery Pennarun <a href="mailto:apenwarr@gmail.com"
 class="email">apenwarr@gmail.com</a></p>
-<p class="date">2026-01-28</p>
+<p class="date">2026-09-01</p>
 </header>
 <h1 id="name">NAME</h1>
 <p>bup-server - the server side of the bup client-server
@@ -189,35 +189,23 @@ the <code>-r</code> option, they will ssh to the remote server and run
 <code>bup server</code> to receive the transmitted objects.</p>
 <p>There is normally no reason to run <code>bup server</code>
 yourself.</p>
-<h1 id="modes">MODES</h1>
-<dl>
-<dt>smart</dt>
-<dd>
-In this mode, the server checks each incoming object against the idx
-files in its repository. If any object already exists, it tells the
-client about the idx file it was found in, allowing the client to
-download that idx and avoid sending duplicate data. This is
-<code>bup-server</code>’s default mode.
-</dd>
-<dt>dumb</dt>
-<dd>
-In this mode, the server will not check its local index before writing
-an object. To avoid writing duplicate objects, the server will tell the
-client to download all of its <code>.idx</code> files at the start of
-the session. This mode is useful on low powered server hardware (ie
-router/slow NAS).
-</dd>
-</dl>
+<p>The server’s resource usage can be limited by setting
+<code>bup.server.deduplicate-writes</code> to <code>false</code>. See
+the description in <code>bup-config(5)</code> for additional
+information.</p>
 <h1 id="files">FILES</h1>
 <dl>
 <dt>$BUP_DIR/bup-dumb-server</dt>
 <dd>
-Activate dumb server mode, as discussed above. This file is not created
-by default in new repositories.
+When this file exists, <code>bup</code> will act as if
+<code>bup.server.deduplicate-writes</code> is set to <code>false</code>
+in the configuration, unless the configuration already specifies a
+value.
 </dd>
 </dl>
 <h1 id="see-also">SEE ALSO</h1>
-<p><code>bup-save</code>(1), <code>bup-split</code>(1)</p>
+<p><code>bup-save</code>(1), <code>bup-split</code>(1),
+<code>bup-config</code>(1)</p>
 <h1 id="bup">BUP</h1>
 <p>Part of the <code>bup</code>(1) suite.</p>
 </body>

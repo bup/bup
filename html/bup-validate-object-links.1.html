@@ -5,8 +5,8 @@
   <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <meta name="author" content="Rob Browning rlb@defaultvalue.org" />
-  <meta name="dcterms.date" content="2026-01-28" />
-  <title>bup-validate-object-links(1) Bup 0.33.10</title>
+  <meta name="dcterms.date" content="2026-09-01" />
+  <title>bup-validate-object-links(1) Bup 0.34</title>
   <style>
     html {
       color: #1a1a1a;
@@ -172,10 +172,10 @@
 </head>
 <body>
 <header id="title-block-header">
-<h1 class="title">bup-validate-object-links(1) Bup 0.33.10</h1>
+<h1 class="title">bup-validate-object-links(1) Bup 0.34</h1>
 <p class="author">Rob Browning <a href="mailto:rlb@defaultvalue.org"
 class="email">rlb@defaultvalue.org</a></p>
-<p class="date">2026-01-28</p>
+<p class="date">2026-09-01</p>
 </header>
 <h1 id="name">NAME</h1>
 <p>bup-validate-object-links - scan the repository for broken object
@@ -184,11 +184,13 @@ links</p>
 <p>bup validate-object-links</p>
 <h1 id="description">DESCRIPTION</h1>
 <p><code>bup validate-object-links</code> scans the objects in the
-repository for and reports any “broken links” it finds, i.e. any links
-from a tree or commit in the repository to an object that doesn’t exist.
-Currently, it doesn’t include “loose objects” (those not in packfiles –
-which git may create, but bup doesn’t), and it can’t handle tag objects
-(which bup also doesn’t create).</p>
+repository and reports any references from a tree or commit to an object
+that does not exist in the repository. Currently, it doesn’t scan “loose
+objects” (those not in packfiles) or notice them when checking for
+existence, and it cannot handle tag objects. Note that <code>bup</code>
+doesn’t create tags or loose objects, but <code>git</code> may.</p>
+<p>The existence check only consults the repository indexes; it does not
+try to read the object, so it could be misled by an incorrect index.</p>
 <p>Whenever a broken link (missing reference) is found, an ASCII encoded
 line formatted like this will be printed to standard output:</p>
 <pre><code>no MISSING_HASH for PARENT_HASH</code></pre>

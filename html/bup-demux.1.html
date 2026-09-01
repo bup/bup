@@ -4,9 +4,9 @@
   <meta charset="utf-8" />
   <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
-  <meta name="author" content="Avery Pennarun apenwarr@gmail.com" />
+  <meta name="author" content="Rob Browning rlb@defaultvalue.org" />
   <meta name="dcterms.date" content="2026-09-01" />
-  <title>bup-init(1) Bup 0.34</title>
+  <title>bup-demux(1) Bup 0.34</title>
   <style>
     html {
       color: #1a1a1a;
@@ -172,39 +172,25 @@
 </head>
 <body>
 <header id="title-block-header">
-<h1 class="title">bup-init(1) Bup 0.34</h1>
-<p class="author">Avery Pennarun <a href="mailto:apenwarr@gmail.com"
-class="email">apenwarr@gmail.com</a></p>
+<h1 class="title">bup-demux(1) Bup 0.34</h1>
+<p class="author">Rob Browning <a href="mailto:rlb@defaultvalue.org"
+class="email">rlb@defaultvalue.org</a></p>
 <p class="date">2026-09-01</p>
 </header>
 <h1 id="name">NAME</h1>
-<p>bup-init - initialize a bup repository</p>
+<p>bup-demux - demultiplexes data and error streams from standard
+input</p>
 <h1 id="synopsis">SYNOPSIS</h1>
-<p>bup init [-r <em>host</em>:<em>path</em>] [<em>directory</em>]</p>
+<p>bup demux</p>
 <h1 id="description">DESCRIPTION</h1>
-<p><code>bup init</code> initializes a repository. The location will be
-the <code>*directory*</code> or <code>--remote</code> if provided, the
-directory specifed by any global <code>-d</code> argument (see
-<code>bup</code>(1)), the value of <code>BUP_DIR</code> in the
-environment if set, or <code>~/.bup</code>.</p>
-<p>See <code>bup-config(5)</code> for configuration options that you may
-want to set. Some, like <code>bup.split.files</code> and
-<code>bup.split.trees</code> should normally be set (when desired)
-before adding data to the repository.</p>
-<h1 id="options">OPTIONS</h1>
-<dl>
-<dt>-r, --remote=[<em>user</em>@]<em>host</em>:[<em>path</em>],
---remote=URL</dt>
-<dd>
-Initialize the specified <em>path</em> on the given <em>host</em>.
-Incompatible with <em>directory</em>. See bup(1) REMOTE OPTIONS for
-further information.
-</dd>
-</dl>
-<h1 id="examples">EXAMPLES</h1>
-<pre><code>bup init ~/archive</code></pre>
+<p>Note: this is an internal command, and may be removed or changed at
+any time.</p>
+<p><code>bup demux</code> reads standard input as a bup “multiplexed”
+stream of data from standard output and standard error, and reproduces
+that output on its own standard output and standard error. It’s primary
+purpose is to support <code>bup-on</code>(1).</p>
 <h1 id="see-also">SEE ALSO</h1>
-<p><code>bup-config(5)</code>, <code>ssh_config</code>(5)</p>
+<p><code>bup-on</code>(1), <code>bup-mux</code>(1)</p>
 <h1 id="bup">BUP</h1>
 <p>Part of the <code>bup</code>(1) suite.</p>
 </body>

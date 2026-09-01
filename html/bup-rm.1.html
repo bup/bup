@@ -5,8 +5,8 @@
   <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <meta name="author" content="Rob Browning rlb@defaultvalue.org" />
-  <meta name="dcterms.date" content="2026-01-28" />
-  <title>bup-rm(1) Bup 0.33.10</title>
+  <meta name="dcterms.date" content="2026-09-01" />
+  <title>bup-rm(1) Bup 0.34</title>
   <style>
     html {
       color: #1a1a1a;
@@ -172,10 +172,10 @@
 </head>
 <body>
 <header id="title-block-header">
-<h1 class="title">bup-rm(1) Bup 0.33.10</h1>
+<h1 class="title">bup-rm(1) Bup 0.34</h1>
 <p class="author">Rob Browning <a href="mailto:rlb@defaultvalue.org"
 class="email">rlb@defaultvalue.org</a></p>
-<p class="date">2026-01-28</p>
+<p class="date">2026-09-01</p>
 </header>
 <h1 id="name">NAME</h1>
 <p>bup-rm - remove references to archive content</p>
@@ -187,10 +187,15 @@ sets) and <em>save</em>s. By itself, this command does not delete any
 actual data (nor recover any storage space), but it may make it very
 difficult or impossible to refer to the deleted items, unless there are
 other references to them (e.g. tags).</p>
-<p>A subsequent garbage collection, either by a <code>bup gc</code>, or
-by a normal <code>git gc</code>, may permanently delete data that is no
-longer reachable from the remaining branches or tags, and reclaim the
-related storage space.</p>
+<p>A subsequent garbage collection by <code>bup gc</code> may
+permanently delete data that is no longer reachable from the remaining
+branches or tags and reclaim the related storage space. (The same would
+apply to a <code>git gc</code> on the repository, but the safety of
+running <code>git gc</code> on a bup repository has not been carefully
+evaluated, and should be avoided.)</p>
+<p>If you are familiar with <code>git</code>(1), removing branches is
+similar to <code>git branch -D BRANCH</code> and removing saves is like
+a <code>git-rebase --interactive</code> that removes commits.</p>
 <p>WARNING: This is one of the few bup commands that modifies your
 archive in intentionally destructive ways.</p>
 <h1 id="options">OPTIONS</h1>
@@ -202,8 +207,8 @@ increase verbosity (can be used more than once).
 <dt>-<em>#</em>, --compress=<em>#</em></dt>
 <dd>
 set the compression level to # (a value from 0-9, where 9 is the highest
-and 0 is no compression). The default is 6. Note that
-<code>bup rm</code> may only write new commits.
+and 0 is no compression). The default is 6. This applies to the
+rewritten branches (commits).
 </dd>
 </dl>
 <h1 id="examples">EXAMPLES</h1>

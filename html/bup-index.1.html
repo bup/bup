@@ -5,8 +5,8 @@
   <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <meta name="author" content="Avery Pennarun apenwarr@gmail.com" />
-  <meta name="dcterms.date" content="2026-01-28" />
-  <title>bup-index(1) Bup 0.33.10</title>
+  <meta name="dcterms.date" content="2026-09-01" />
+  <title>bup-index(1) Bup 0.34</title>
   <style>
     html {
       color: #1a1a1a;
@@ -172,10 +172,10 @@
 </head>
 <body>
 <header id="title-block-header">
-<h1 class="title">bup-index(1) Bup 0.33.10</h1>
+<h1 class="title">bup-index(1) Bup 0.34</h1>
 <p class="author">Avery Pennarun <a href="mailto:apenwarr@gmail.com"
 class="email">apenwarr@gmail.com</a></p>
-<p class="date">2026-01-28</p>
+<p class="date">2026-09-01</p>
 </header>
 <h1 id="name">NAME</h1>
 <p>bup-index - print and/or update the bup filesystem index</p>
@@ -208,14 +208,6 @@ purposes (such as speeding up other programs that need the same
 information).</p></li>
 </ol>
 <h1 id="notes">NOTES</h1>
-<p>At the moment, bup will ignore Linux attributes (cf. chattr(1) and
-lsattr(1)) on some systems (any big-endian systems where sizeof(long)
-&lt; sizeof(int)). This is because the Linux kernel and FUSE currently
-disagree over the type of the attr system call arguments, and so on
-big-endian systems there’s no way to get the results without the risk of
-stack corruption (http://lwn.net/Articles/575846/). In these situations,
-bup will print a warning the first time Linux attrs are relevant during
-any index/save/restore operation.</p>
 <p>bup makes accommodations for the expected “worst-case” filesystem
 timestamp resolution – currently one second; examples include VFAT,
 ext2, ext3, small ext4, etc. Since bup cannot know the filesystem
@@ -245,6 +237,13 @@ $ date &gt; src/2         # Not indexed.
 $ bup save -n src src  # But src/2 is saved anyway.</code></pre>
 <p>Strictly speaking, bup should not notice the change to src/2, but it
 does, due to the accommodations described above.</p>
+<p>Previously bup would ignore Linux attributes (cf. chattr(1) and
+lsattr(1)) on big-endian systems where sizeof(long) &lt; sizeof(int).
+This was because the Linux kernel and FUSE disagreed over the type of
+the attr system call arguments, (http://lwn.net/Articles/575846/). Since
+the kernel fixed the problem in 2020, bup now attempts to handle them
+everywhere, while still being careful not to corrupt the stack in the
+unlikely case the current system doesn’t have the fix.</p>
 <h1 id="modes">MODES</h1>
 <dl>
 <dt>-u, --update</dt>
@@ -341,11 +340,11 @@ match “ox/yard” or “box/yards”. To exclude the contents of /tmp, but not
 the directory itself, use “^/tmp/.”. (may be repeated)</p>
 <p>Examples:</p>
 <ul>
-<li>‘/foo$’ - exclude any file named foo</li>
-<li>‘/foo/$’ - exclude any directory named foo</li>
-<li>‘/foo/.’ - exclude the content of any directory named foo</li>
-<li>‘^/tmp/.’ - exclude root-level /tmp’s content, but not /tmp
-itself</li>
+<li><code>/foo$</code> - exclude any file named foo</li>
+<li><code>/foo/$</code> - exclude any directory named foo</li>
+<li><code>/foo/.</code> - exclude the content of any directory named
+foo</li>
+<li><code>^/tmp/.</code> - exclude root-level tmp’s content</li>
 </ul>
 </dd>
 <dt>--exclude-rx-from=<em>filename</em></dt>

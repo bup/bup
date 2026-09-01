@@ -5,8 +5,8 @@
   <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <meta name="author" content="Avery Pennarun apenwarr@gmail.com" />
-  <meta name="dcterms.date" content="2026-01-28" />
-  <title>bup(1) Bup 0.33.10</title>
+  <meta name="dcterms.date" content="2026-09-01" />
+  <title>bup(1) Bup 0.34</title>
   <style>
     html {
       color: #1a1a1a;
@@ -172,10 +172,10 @@
 </head>
 <body>
 <header id="title-block-header">
-<h1 class="title">bup(1) Bup 0.33.10</h1>
+<h1 class="title">bup(1) Bup 0.34</h1>
 <p class="author">Avery Pennarun <a href="mailto:apenwarr@gmail.com"
 class="email">apenwarr@gmail.com</a></p>
-<p class="date">2026-01-28</p>
+<p class="date">2026-09-01</p>
 </header>
 <h1 id="name">NAME</h1>
 <p>bup - Backup program using rolling checksums and git file formats</p>
@@ -203,86 +203,107 @@ of reading it from the $BUP_DIR environment variable or using the
 default <code>~/.bup</code> location.
 </dd>
 </dl>
-<h1 id="commonly-used-subcommands">COMMONLY USED SUBCOMMANDS</h1>
+<h1 id="primary-commands">PRIMARY COMMANDS</h1>
 <dl>
-<dt><code>bup-fsck</code>(1)</dt>
+<dt><code>bup-init</code>(1)</dt>
 <dd>
-Check backup sets for damage and add redundancy information
-</dd>
-<dt><code>bup-ftp</code>(1)</dt>
-<dd>
-Browse backup sets using an ftp-like client
-</dd>
-<dt><code>bup-fuse</code>(1)</dt>
-<dd>
-Mount your backup sets as a filesystem
-</dd>
-<dt><code>bup-help</code>(1)</dt>
-<dd>
-Print detailed help for the given command
+Initialize a bup repository
 </dd>
 <dt><code>bup-index</code>(1)</dt>
 <dd>
 Create or display the index of files to back up
 </dd>
-<dt><code>bup-on</code>(1)</dt>
+<dt><code>bup-save</code>(1)</dt>
 <dd>
-Backup a remote machine to the local one
+Save files into a backup set (note: run “bup index” first)
 </dd>
 <dt><code>bup-restore</code>(1)</dt>
 <dd>
 Extract files from a backup set
 </dd>
-<dt><code>bup-save</code>(1)</dt>
+<dt><code>bup-fsck</code>(1)</dt>
 <dd>
-Save files into a backup set (note: run “bup index” first)
+Check backup sets for damage and add recovery information
+</dd>
+<dt><code>bup-on</code>(1)</dt>
+<dd>
+Index/save/split/get/… a remote machine
+</dd>
+<dt><code>bup-help</code>(1)</dt>
+<dd>
+Print detailed help for the given command
+</dd>
+</dl>
+<h1 id="inspection-commands">INSPECTION COMMANDS</h1>
+<dl>
+<dt><code>bup-ls</code>(1)</dt>
+<dd>
+Browse the files in your backup sets
+</dd>
+<dt><code>bup-fuse</code>(1)</dt>
+<dd>
+Mount your backup sets as a filesystem
 </dd>
 <dt><code>bup-web</code>(1)</dt>
 <dd>
 Launch a web server to examine backup sets
 </dd>
-</dl>
-<h1 id="rarely-used-subcommands">RARELY USED SUBCOMMANDS</h1>
-<dl>
-<dt><code>bup-damage</code>(1)</dt>
+<dt><code>bup-ftp</code>(1)</dt>
 <dd>
-Deliberately destroy data
+Browse backup sets using an ftp-like client
+</dd>
+</dl>
+<h1 id="manipulation-commands">MANIPULATION COMMANDS</h1>
+<dl>
+<dt><code>bup-gc</code>(1)</dt>
+<dd>
+Remove unreferenced, unneeded data
+</dd>
+<dt><code>bup-get</code>(1)</dt>
+<dd>
+Transfer/transform items between/within repositories
+</dd>
+<dt><code>bup-prune-older</code>(1)</dt>
+<dd>
+Remove older saves
+</dd>
+<dt><code>bup-rm</code>(1)</dt>
+<dd>
+Remove references to archive content
+</dd>
+</dl>
+<h1 id="import-commands">IMPORT COMMANDS</h1>
+<dl>
+<dt><code>bup-import-duplicity</code>(1)</dt>
+<dd>
+Import from <code>duplicity</code>(1)
+</dd>
+<dt><code>bup-import-rdiff-backup</code>(1)</dt>
+<dd>
+Import from <code>rdiff-backup</code>(1)
+</dd>
+<dt><code>bup-import-rsnapshot</code>(1)</dt>
+<dd>
+Import from <code>rsnapshot</code>(1)
+</dd>
+</dl>
+<h1 id="other-commands">OTHER COMMANDS</h1>
+<dl>
+<dt><code>bup-cat-file</code>(1)</dt>
+<dd>
+Extract archive content
 </dd>
 <dt><code>bup-drecurse</code>(1)</dt>
 <dd>
 Recursively list files in your filesystem
 </dd>
-<dt><code>bup-init</code>(1)</dt>
+<dt><code>bup-features</code>(1)</dt>
 <dd>
-Initialize a bup repository
+Report the current status and capabilities of bup itself
 </dd>
 <dt><code>bup-join</code>(1)</dt>
 <dd>
 Retrieve a file backed up using <code>bup-split</code>(1)
-</dd>
-<dt><code>bup-ls</code>(1)</dt>
-<dd>
-Browse the files in your backup sets
-</dd>
-<dt><code>bup-margin</code>(1)</dt>
-<dd>
-Determine how close your bup repository is to armageddon
-</dd>
-<dt><code>bup-memtest</code>(1)</dt>
-<dd>
-Test bup memory usage statistics
-</dd>
-<dt><code>bup-midx</code>(1)</dt>
-<dd>
-Index objects to speed up future backups
-</dd>
-<dt><code>bup-newliner</code>(1)</dt>
-<dd>
-Make sure progress messages don’t overlap with output
-</dd>
-<dt><code>bup-random</code>(1)</dt>
-<dd>
-Generate a stream of random output
 </dd>
 <dt><code>bup-server</code>(1)</dt>
 <dd>
@@ -292,13 +313,135 @@ The server side of the bup client-server relationship
 <dd>
 Split a single file into its own backup set
 </dd>
-<dt><code>bup-tick</code>(1)</dt>
+<dt><code>bup-tag</code>(1)</dt>
 <dd>
-Wait for up to one second.
+Tag a commit in the bup repository
+</dd>
+<dt><code>bup-validate-object-links</code>(1)</dt>
+<dd>
+Scan the repository for broken object links
+</dd>
+<dt><code>bup-validate-ref-links</code>(1)</dt>
+<dd>
+Check repository refs for links to missing objects
 </dd>
 <dt><code>bup-version</code>(1)</dt>
 <dd>
 Report the version number of your copy of bup.
+</dd>
+</dl>
+<h1 id="esoteric-commands">ESOTERIC COMMANDS</h1>
+<dl>
+<dt><code>bup-bloom</code>(1)</dt>
+<dd>
+Generates, regenerates, updates bloom filters
+</dd>
+<dt><code>bup-damage</code>(1)</dt>
+<dd>
+Deliberately destroy data
+</dd>
+<dt><code>bup-margin</code>(1)</dt>
+<dd>
+Determine how close your bup repository is to armageddon
+</dd>
+<dt><code>bup-memtest</code>(1)</dt>
+<dd>
+Test bup memory usage statistics
+</dd>
+<dt><code>bup-meta</code>(1)</dt>
+<dd>
+Create or extract a metadata archive
+</dd>
+<dt><code>bup-midx</code>(1)</dt>
+<dd>
+Index objects to speed up future backups
+</dd>
+<dt><code>bup-random</code>(1)</dt>
+<dd>
+Generate a stream of random output
+</dd>
+<dt><code>bup-tick</code>(1)</dt>
+<dd>
+Wait for up to one second.
+</dd>
+</dl>
+<h1 id="remote-options">REMOTE OPTIONS</h1>
+<p>Some options (currently just <code>--remote</code>) allow the
+specification of a remote path as either a URL (see
+<code>REPOSITORY URLS</code> below) or a
+<code>[*user*@]*host*:[*path*]</code>.</p>
+<p>For either format, when there is no path, the default path on the
+server will be used (<code>BUP_DIR</code> if set in the remote
+environment or <code>~/.bup</code>), and SSH settings for the connection
+can be provided by a custom host in your <code>~/.ssh/config</code> file
+(<code>ssh_config(5)</code>).</p>
+<p>The argument is treated as a URL if it begins with a syntactically
+valid URL scheme prefix that contains an “authority” (meaning that it
+begins with <code>SCHEME://</code> as <code>ssh://...</code> does), and
+the scheme must be either <code>ssh</code> or <code>bup</code>; others
+will be rejected.</p>
+<p>For the <code>[*user*@]*host*:[*path*]</code> syntax, if there is an
+@ symbol, then everything before the rightmost @ is included in the
+<em>user</em> so <code>-r x@y@z</code> indicates user <code>x@y</code>,
+host <code>z</code>. The <em>host</em> must always be followed by a
+colon, and anything after the first colon is the <em>path</em>.</p>
+<p>For fully general purposes, prefer URLs to
+<code>[*user*@]*host*:[*path*]</code>, so that there is no potential
+ambiguity. For example, consider the (unlikely) case where
+<code>ssh://x/y</code> is generated for a host named <code>ssh</code>
+and path <code>//x/y</code>, which would be interpreted as a URL with
+host <code>x</code> and path <code>/y</code>.</p>
+<h1 id="repository-urls">REPOSITORY URLS</h1>
+<p>Bup supports the following URL schemes (i.e. <code>scheme:</code>)
+for referring to a repository. Note that the term “authority” below just
+means the URL section after the <code>scheme://</code> and before the
+path, for example the “user@host:port” of an SSH URL.</p>
+<p>As an exception to the standard, a scheme may be “path-oriented”,
+which means that there is no separate query or fragment. Anything after
+the (optional) authority is taken as the “path” and the constituent
+bytes are not decoded (e.g. percent decoded). This allows URLs provided
+on the command line to work naturally. So <code>ssh://host/x?z</code>
+has a path of <code>/x?z</code>.</p>
+<p>And since URLs with an authority cannot represent relative paths,
+path-oriented schemes interpret a leading <code>/./</code> as a relative
+path. So <code>ssh://host/./x</code>, <code>file:///./x</code>, and
+<code>file:/./x</code> all indicate the path <code>x</code>.</p>
+<dl>
+<dt><code>ssh:</code></dt>
+<dd>
+A path-oriented scheme (see above) that specifies access to a repository
+via a <code>bup-server(1)</code> launched on a host via SSH. This scheme
+has syntax and semantics matching a typical <code>ssh:</code> URL,
+including support for a user and port
+(e.g. <code>ssh://user@host:2222/some/repo</code>), and the user and
+host can be percent encoded.
+</dd>
+<dt><code>bup:</code></dt>
+<dd>
+A path-oriented scheme (see above) specifying a direct network
+connection to to an existing <code>bup-server(1)</code>. Otherwise
+identical to <code>ssh:</code>, except that it does not support a user.
+This connection has no authentication or encryption of its own so it’s
+unlikely you’ll want to use it; prefer <code>file:</code> or
+<code>:ssh:</code>.
+</dd>
+<dt><code>file:</code></dt>
+<dd>
+<p>A path-oriented scheme (see above) that specifies a repository’s
+filesystem path. This scheme has syntax and semantics matching a typical
+<code>file:</code> URL, except that it only allows an empty authority
+(i.e. no user, host, etc.).</p>
+<p>In most cases, you will probably want to include the empty authority
+so you don’t have to consider the contents of the path carefully,
+i.e. use <code>file://PATH</code> or <code>ssh://user@hostPATH</code>
+when the <code>PATH</code> begins with a slash, and
+<code>file:///./PATH</code> or <code>ssh://user@host/./PATH</code> when
+it doesn’t.</p>
+<p>It is possible to omit the authority, but only if the path does not
+begin with two slashes. For example <code>file:/</code> and
+<code>file:some/where</code> are fine, but
+<code>file://some/where</code> is not because <code>some</code> will be
+read as the authority.</p>
 </dd>
 </dl>
 <h1 id="environment">ENVIRONMENT</h1>
@@ -310,9 +453,7 @@ the version of <code>git</code> in the path is acceptable.
 </dd>
 </dl>
 <h1 id="see-also">SEE ALSO</h1>
-<p><code>git</code>(1) and the <em>README</em> file from the bup
-distribution.</p>
-<p>The home of bup is at <a href="http://github.com/bup/bup/"
-class="uri">http://github.com/bup/bup/</a>.</p>
+<p>The <em>README</em> file from the bup distribution,
+<code>git</code>(1), and http://bup.github.io</p>
 </body>
 </html>

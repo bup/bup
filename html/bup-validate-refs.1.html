@@ -4,9 +4,9 @@
   <meta charset="utf-8" />
   <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
-  <meta name="author" content="Avery Pennarun apenwarr@gmail.com" />
+  <meta name="author" content="Rob Browning rlb@defaultvalue.org" />
   <meta name="dcterms.date" content="2026-09-01" />
-  <title>bup-init(1) Bup 0.34</title>
+  <title>bup-validate-refs(1) Bup 0.34</title>
   <style>
     html {
       color: #1a1a1a;
@@ -172,39 +172,74 @@
 </head>
 <body>
 <header id="title-block-header">
-<h1 class="title">bup-init(1) Bup 0.34</h1>
-<p class="author">Avery Pennarun <a href="mailto:apenwarr@gmail.com"
-class="email">apenwarr@gmail.com</a></p>
+<h1 class="title">bup-validate-refs(1) Bup 0.34</h1>
+<p class="author">Rob Browning <a href="mailto:rlb@defaultvalue.org"
+class="email">rlb@defaultvalue.org</a></p>
 <p class="date">2026-09-01</p>
 </header>
 <h1 id="name">NAME</h1>
-<p>bup-init - initialize a bup repository</p>
+<p>bup-validate-refs - check integrity of repository refs</p>
 <h1 id="synopsis">SYNOPSIS</h1>
-<p>bup init [-r <em>host</em>:<em>path</em>] [<em>directory</em>]</p>
+<p>bup validate-refs [--links] [--bupm] [<em>ref</em>…]</p>
 <h1 id="description">DESCRIPTION</h1>
-<p><code>bup init</code> initializes a repository. The location will be
-the <code>*directory*</code> or <code>--remote</code> if provided, the
-directory specifed by any global <code>-d</code> argument (see
-<code>bup</code>(1)), the value of <code>BUP_DIR</code> in the
-environment if set, or <code>~/.bup</code>.</p>
-<p>See <code>bup-config(5)</code> for configuration options that you may
-want to set. Some, like <code>bup.split.files</code> and
-<code>bup.split.trees</code> should normally be set (when desired)
-before adding data to the repository.</p>
+<p><code>bup validate-refs</code> can check repository <em>ref</em>s
+(e.g. branches (backup sets) or saves) for commits or trees
+(directories) that refer to missing objects, and for damaged bupm files
+(metadata storage), reporting the paths to any it finds. If no
+<em>ref</em>s are provided, it checks all refs, otherwise it only checks
+those specified. If no checks are explicitly requested, then a default
+set of checks will be performed, currently <code>--links</code> and
+<code>--bupm</code>, and if problems are found, <code>bup-get</code>(1)
+<code>--repair</code> may be able to help.</p>
+<p><code>validate-refs</code> checks everything reachable from a given
+branch or save, which includes all of the saves preceeding it. See
+EXAMPLES below.</p>
+<p>The existence check only consults the repository indexes; it does not
+try to read the object, so it could be misled by an incorrect index.</p>
+<p>At the moment, the broken path information is only logged to standard
+error, and is not well specified (i.e. suitable for inspection, but not
+parsing).</p>
+<p>Also note that the current implementation may not report all paths to
+a given missing object because it only examines each unique tree or
+commit object once, no matter how often it appears within the refs being
+examined. This means that in order to find every save with missing
+objects, for example, you would need to run the command separately for
+each ref, which will almost certainly to be much more expensive than a
+combined run because it can’t skip subtrees that it has encountered
+before.</p>
 <h1 id="options">OPTIONS</h1>
 <dl>
-<dt>-r, --remote=[<em>user</em>@]<em>host</em>:[<em>path</em>],
---remote=URL</dt>
+<dt>--bupm</dt>
 <dd>
-Initialize the specified <em>path</em> on the given <em>host</em>.
-Incompatible with <em>directory</em>. See bup(1) REMOTE OPTIONS for
-further information.
+check bupm (metadata storage) files. Currently checks for missing path
+entries, which could have been caused by <code>bup</code> versions since
+0.25 and before 0.30.1. May notice missing objects, but may not notice
+all of them without <code>--links</code>. See REPAIRS in
+<code>bup-get</code>(1) for additional information.
+</dd>
+<dt>--links</dt>
+<dd>
+check for commits or trees that refer to missing objects. This command
+can also be used to validate a save more quickly than attempting a
+<code>restore</code> or <code>join</code>ing the save to /dev/null, and
+much more quickly for multiple related saves, though it only checks for
+the existence of the leaf (blob) data, it does not attempt to read that
+data.
 </dd>
 </dl>
 <h1 id="examples">EXAMPLES</h1>
-<pre><code>bup init ~/archive</code></pre>
+<pre><code># Check --links and --bupm for all refs
+$ bup validate-refs
+
+# Check --links for archives/2025-01-01-030405 and
+# all of the saves before it.
+$ bup validate-refs --links archives/2025-01-01-030405</code></pre>
+<h1 id="exit-status">EXIT STATUS</h1>
+<p>The exit status will be 1 if any broken links are found, 0 if none
+are found, and some other positive integer for other failures.</p>
 <h1 id="see-also">SEE ALSO</h1>
-<p><code>bup-config(5)</code>, <code>ssh_config</code>(5)</p>
+<p><code>bup-fsck</code>(1), <code>bup-get</code>(1),
+<code>bup-join</code>(1), <code>bup-restore</code>(1)</p>
 <h1 id="bup">BUP</h1>
 <p>Part of the <code>bup</code>(1) suite.</p>
 </body>
