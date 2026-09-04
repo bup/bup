@@ -20,23 +20,23 @@ via email.
 Current Trajectory
 ==================
 
-Now that we've finished the 0.33 release, we're working on 0.34, and
+Now that we've finished the 0.34 release, we're working on 0.35, and
 although we're not certain which new features will be included, we're
 considering:
-
-  - Migrating hashsplitting to C.
-
-  - Automatically splitting trees to avoid having to save large tree
-    objects for large directories even if only a few files have
-    changed or been added (e.g. maildirs).
 
   - Moving all of the compoents of the index to sqlite.  Right now the
     main index is an mmapped file, and the hard link and metadata
     databases are pickled.  As a result the index isn't transactional
     and suffers from bugs caused by "skew" across the components.
 
+  - Migrating away from python-fuse.
+
   - Better VFS performance for large repositories (i.e. fuse, ls,
     web...).
+
+  - Support for alternate remote storage APIs.
+
+  - Encryption.
 
   - Better VFS caching.
 
@@ -45,10 +45,6 @@ considering:
   - Incremental indexing via inotify.
 
   - Smarter (and quieter) handling of cross-filesystem metadata.
-
-  - Encryption.
-
-  - Support for alternate remote storage APIs.
 
 If you have the time and inclination, please help review patches
 posted to the list, or post your own.  (See "ways to help" below.)
