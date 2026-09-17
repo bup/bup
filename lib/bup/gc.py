@@ -102,10 +102,13 @@ def find_live_objects(existing_count, cat_pipe, refs=None, *,
         approx_live_count = 0
         scan_refs = refs if refs else list(git.list_refs())
         ref_n = len(scan_refs)
-        def progress_msg(ref_i):
-            return 'scanned %s of %s ref%s (%02.2f%% of all objects)' \
-                % (ref_i + 1, ref_n, 's' if ref_n > 1 else '',
-                   approx_live_count * 100.0 / existing_count)
+        def progress_msg(ref_name, ref_i):
+            ref_m = path_msg(ref_name)
+            pct_obj = approx_live_count * 100.0 / existing_count
+            return f'scanned {pct_obj:02.2f} of {existing_count} objects;' \
+                f' (at ref {ref_i + 1}/{ref_n}: {ref_m})'
+        def final_msg():
+            return f'scanned {existing_count} objects'
         ref_i = 0
         for ref_i, (ref_name, ref_id) in enumerate(scan_refs):
             for item_path in walk_object(cat_pipe.get, hexlify(ref_id),
@@ -126,15 +129,15 @@ def find_live_objects(existing_count, cat_pipe, refs=None, *,
                 if item.type != b'blob':
                     if verbosity and not item.oid in live_trees:
                         approx_live_count += 1
-                        qprogress(progress_msg(ref_i) + '\r')
+                        qprogress(progress_msg(ref_name, ref_i) + '\r')
                     live_trees.add(item.oid)
                 else:
                     if verbosity and not live_blobs.exists(item.oid):
                         approx_live_count += 1
-                        qprogress(progress_msg(ref_i) + '\r')
+                        qprogress(progress_msg(ref_name, ref_i) + '\r')
                     live_blobs.add(item.oid)
         if verbosity and scan_refs:
-            log(progress_msg(ref_i) + '\n')
+            log(final_msg() + '\n')
         maybe_close_bloom.pop_all()
         return live_blobs, live_trees
 
@@ -195,8 +198,7 @@ def sweep(live_objects, live_trees, existing_count, cat_pipe, threshold,
                 collect_count += idx_live_count
                 if idx_live_count == 0:
                     if verbosity:
-                        log('deleting %s\n'
-                            % path_msg(git.repo_rel(basename(idx_name))))
+                        log(f'deleting {path_msg(basename(idx_name))}\n')
                         reprogress()
                     assert idx_name.endswith(b'.idx')
                     stale_packs.append(idx_name[:-4])
@@ -205,7 +207,7 @@ def sweep(live_objects, live_trees, existing_count, cat_pipe, threshold,
                 live_frac = idx_live_count / float(len(idx))
                 if not must_rewrite and live_frac > ((100 - threshold) / 100.0):
                     if verbosity:
-                        keep_path = path_msg(git.repo_rel(basename(idx_name)))
+                        keep_path = path_msg(basename(idx_name))
                         log(f'keeping {keep_path} ({live_frac * 100}% live)\n')
                         reprogress()
                     continue
