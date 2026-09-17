@@ -1,7 +1,7 @@
 
 from __future__ import print_function
 from errno import ENOENT
-from itertools import product
+from itertools import product, permutations
 from os import chdir, mkdir, rename
 from shutil import rmtree
 from subprocess import DEVNULL, PIPE
@@ -972,3 +972,28 @@ def test_get(tmpdir, disposition, category):
         globals().get('_test_' + category)(disposition, src_info)
     finally:
         chdir(top)
+
+
+def test_multiple_method_rejection(tmpdir):
+    # --unnamed is technically irrelevant
+    methods = (b'--append', b'--append:', b'--ff', b'--ff:',
+               b'--force-pick', b'--force-pick:', b'--new-tag', b'--new-tag:',
+               b'--pick', b'--pick:', b'--replace', b'--replace:', b'--unnamed')
+    rmrf(b'get-dest')
+    ex((bup_cmd, b'-d', b'get-dest', b'init'))
+    for m1, m2 in permutations(methods, 2):
+        print(f'test rejection of get {m1} {m2}', file=sys.stderr)
+        m1args = (m1, b'x', b'x2') if m1.endswith(b':') else (m1, b'x')
+        m2args = (m2, b'y', b'y2') if m2.endswith(b':') else (m2, b'y')
+        res = ex((bup_cmd, b'-d', b'get-dest', b'get', *m1args, *m2args),
+                 check=False, stderr=PIPE)
+        assert b'only one method allowed per invocation' in res.err
+
+    for m1, m2 in permutations(methods, 2):
+        print(f'test rejection of on get {m1} {m2}', file=sys.stderr)
+        m1args = (m1, b'x', b'x2') if m1.endswith(b':') else (m1, b'x')
+        m2args = (m2, b'y', b'y2') if m2.endswith(b':') else (m2, b'y')
+        res = ex((bup_cmd, b'-d', b'get-dest', b'on', b'-', b'get',
+                  *m1args, *m2args),
+                 check=False, stderr=PIPE)
+        assert b'only one get method allowed per invocation' in res.err

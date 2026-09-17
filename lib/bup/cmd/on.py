@@ -3,6 +3,7 @@ from subprocess import PIPE
 import getopt, os, signal, struct, subprocess, sys
 
 from bup import options, ssh, path
+from bup.cmd.get import requests_potentially_broken_transfers
 from bup.compat import argv_bytes
 from bup.helpers import DemuxConn, log
 from bup.io import byte_stream
@@ -45,6 +46,12 @@ def main(argv):
         else:
             (hostname, port) = hp
         argv = [argv_bytes(x) for x in extra[1:]]
+
+        # This guards against running the broken bup get client code (see
+        # the 0.34.1 release notes).
+        if argv[0] == b'get' and requests_potentially_broken_transfers(argv):
+            o.fatal('only one get method allowed per invocation (fixed in 0.34.1)')
+
         p = ssh.connect(hostname, port, b'on--server', stderr=PIPE)
 
         try:

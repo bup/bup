@@ -3,6 +3,10 @@
 
 set -o pipefail
 
+# Until the underlying issue is resolved.  The tests depend on
+# multiple targets, but they're not currently safe for general use.
+export BUP_TEST_ALLOW_MULTIPLE_GET_TARGETS=definitely
+
 top="$(WVPASS pwd)" || exit $?
 tmpdir="$(WVPASS wvmktempdir)" || exit $?
 

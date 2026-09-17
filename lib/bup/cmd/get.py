@@ -112,6 +112,29 @@ def spec_msg(s):
         return '--%s %s' % (s.method, path_msg(s.src))
     return '--%s: %s %s' % (s.method, path_msg(s.src), path_msg(s.dest))
 
+def reject_multiple_targets_for_now(opt):
+    if environ.get(b'BUP_TEST_ALLOW_MULTIPLE_GET_TARGETS') == b'definitely':
+        return
+    if len(opt.target_specs) > 1:
+        misuse('only one method allowed per invocation until a bug is fixed')
+
+def requests_potentially_broken_transfers(args):
+    # Must return true if the args specify multiple get transfers that
+    # might be broken before the 0.34.1 fix.  It's fine if this
+    # doesn't recognize "new" methods because those by definition must
+    # have been added after the fix, and so are safe if supported by
+    # bup, and will be rejected if not.
+    n = 0
+    for arg in args:
+        if arg in (b'--append', b'--append:', b'--ff', b'--ff:',
+                   b'--force-pick', b'--force-pick:', b'--new-tag',
+                   b'--new-tag:', b'--pick', b'--pick:', b'--replace',
+                   b'--replace:', b'--unnamed'):
+            if n:
+                return True
+            n = 1
+    return False
+
 def parse_args(args):
     class GetOpts:
         pass
@@ -183,6 +206,7 @@ def parse_args(args):
     for target in opt.target_specs:
         if opt.ignore_missing and target.method != 'unnamed':
             misuse('currently only --unnamed allows --ignore-missing')
+    reject_multiple_targets_for_now(opt)
     return opt
 
 # FIXME: client error handling (remote exceptions, etc.)

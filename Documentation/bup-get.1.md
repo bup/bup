@@ -12,7 +12,12 @@ bup get \[-s *source-path*\] \[-r *host*:*path*\]  OPTIONS \<(METHOD *ref* [*des
 
 # DESCRIPTION
 
-`bup get` copies the indicated *ref*s from the source repository to
+> Note: specifying multiple METHODs for a single invocation has been
+> disallowed in 0.33.11 because it can lose information.  See the
+> release notes for 0.33.11 or 0.34.1 (where the problem was
+> addressed) for additional information.
+
+`bup get` transfers the indicated *ref*s from the source repository to
 the destination repository (respecting `--bup-dir` and `BUP_DIR`),
 according to the specified METHOD, which may be one of `--ff`,
 `--ff:`, `--append`, `--append:`, `--pick`, `--pick:`, `--force-pick`,
