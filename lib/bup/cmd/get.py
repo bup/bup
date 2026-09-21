@@ -659,14 +659,16 @@ def handle_ff(item, src_repo, dest_repo):
     assert item.spec.method == 'ff'
     assert item.src.type in ('branch', 'save', 'commit')
     src_oidx = hexlify(item.src.hash)
-    dest_oidx = hexlify(item.dest.hash) if item.dest.hash else None
-    if not dest_oidx or dest_oidx in src_repo.rev_list(src_oidx):
-        # Can fast forward.
-        get_random_item(src_oidx, src_repo, dest_repo, item.spec.ignore_missing)
-        commit_items = get_commit_items(src_oidx, src_repo.cat)
-        return GetResult(item.src.hash, unhexlify(commit_items.tree))
-    misuse('destination is not an ancestor of source for %s'
-           % spec_msg(item.spec))
+    if item.dest.hash:
+        dest_oidx = hexlify(item.dest.hash)
+        if dest_oidx not in src_repo.rev_list(src_oidx):
+            misuse('destination is not an ancestor of source for %s'
+                   % spec_msg(item.spec))
+    # Can fast forward.
+    get_random_item(src_oidx, src_repo, dest_repo, item.spec.ignore_missing)
+    commit_items = get_commit_items(src_oidx, src_repo.cat)
+    return GetResult(item.src.hash, unhexlify(commit_items.tree)), \
+        item.dest._replace(hash=item.src.hash)
 
 
 def resolve_append(spec, src_repo, dest_repo):
@@ -694,24 +696,26 @@ def handle_append(item, src_repo, dest_repo):
     assert item.spec.method == 'append'
     assert item.src.type in ('branch', 'save', 'commit', 'tree')
     assert item.dest.type == 'branch' or not item.dest.type
+    parent = item.dest.hash
     if item.src.type == 'tree':
         src_oidx = hexlify(item.src.hash)
         if item.spec.rewriter:
             misuse(f'rewrite cannot yet promote tree to commit for {spec_msg(item.spec)}')
         get_random_item(src_oidx, src_repo, dest_repo, item.spec.ignore_missing)
-        parent = item.dest.hash
         msg = commit_message(b'bup get', compat.get_argvb())
         userline = b'%s <%s@%s>' % (userfullname(), username(), hostname())
         now = time.time()
         commit = dest_repo.write_commit(item.src.hash, parent,
                                         userline, now, None,
                                         userline, now, None, msg)
-        return GetResult(commit, item.src.hash)
+        return GetResult(commit, item.src.hash), item.dest._replace(hash=commit)
     if item.dest.hash:
         assert item.dest.type in ('branch', 'commit', 'save'), item.dest
-    return append_commits(item.src, item.dest.hash, src_repo, dest_repo,
-                          item.spec.rewriter, item.spec.excludes,
-                          item.spec.repair_info, item.spec.ignore_missing)
+    res = append_commits(item.src, parent, src_repo, dest_repo,
+                         item.spec.rewriter, item.spec.excludes,
+                         item.spec.repair_info,
+                         item.spec.ignore_missing)
+    return res, item.dest._replace(hash=res.oid)
 
 
 def resolve_pick(spec, src_repo, dest_repo):
@@ -746,18 +750,16 @@ def resolve_pick(spec, src_repo, dest_repo):
 def handle_pick(item, src_repo, dest_repo):
     assert item.spec.method in ('pick', 'force-pick')
     assert item.src.type in ('save', 'commit')
-    if item.dest.hash:
-        # if the dest is committish, make it the parent
-        if item.dest.type in ('branch', 'commit', 'save'):
-            return append_commit(item.src, item.dest.hash, src_repo, dest_repo,
-                                 item.spec.rewriter, item.spec.excludes,
-                                 item.spec.repair_info, item.spec.ignore_missing)
+    parent = item.dest.hash
+    if parent and item.dest.type not in ('branch', 'commit', 'save'):
         assert item.dest.path.startswith(b'/.tag/'), item.dest
-    # no parent; either dest is a non-commit tag and we should clobber
-    # it, or dest doesn't exist.
-    return append_commit(item.src, None, src_repo, dest_repo,
-                         item.spec.rewriter, item.spec.excludes,
-                         item.spec.repair_info, item.spec.ignore_missing)
+        parent = None
+    # If there's no parent, either dest is a non-commit tag, we're
+    # --force-picking and we should clobber it, or dest doesn't exist.
+    res = append_commit(item.src, parent, src_repo, dest_repo,
+                        item.spec.rewriter, item.spec.excludes,
+                        item.spec.repair_info, item.spec.ignore_missing)
+    return res, item.dest._replace(hash=res.oid)
 
 
 def resolve_new_tag(spec, src_repo, dest_repo):
@@ -786,7 +788,8 @@ def handle_new_tag(item, src_repo, dest_repo):
     assert item.dest.path.startswith(b'/.tag/')
     get_random_item(hexlify(item.src.hash), src_repo, dest_repo,
                     item.spec.ignore_missing)
-    return GetResult(item.src.hash)
+    # No rewriting for now, so item.src.hash it is
+    return GetResult(item.src.hash), item.dest._replace(hash=item.src.hash)
 
 
 def resolve_replace(spec, src_repo, dest_repo):
@@ -813,16 +816,18 @@ def resolve_replace(spec, src_repo, dest_repo):
 
 
 def handle_replace(item, src_repo, dest_repo):
-    assert(item.spec.method == 'replace')
+    assert item.spec.method == 'replace'
     if item.dest.path.startswith(b'/.tag/'):
         get_random_item(hexlify(item.src.hash), src_repo, dest_repo,
                         item.spec.ignore_missing)
-        return GetResult(item.src.hash)
-    assert(item.dest.type == 'branch' or not item.dest.type)
-    src_oidx = hexlify(item.src.hash)
-    get_random_item(src_oidx, src_repo, dest_repo, item.spec.ignore_missing)
-    commit_items = get_commit_items(src_oidx, src_repo.cat)
-    return GetResult(item.src.hash, unhexlify(commit_items.tree))
+        res = GetResult(item.src.hash)
+    else:
+        assert item.dest.type == 'branch' or not item.dest.type, item
+        src_oidx = hexlify(item.src.hash)
+        get_random_item(src_oidx, src_repo, dest_repo, item.spec.ignore_missing)
+        commit_items = get_commit_items(src_oidx, src_repo.cat)
+        res = GetResult(item.src.hash, unhexlify(commit_items.tree))
+    return res, item.dest._replace(hash=item.src.hash)
 
 
 def resolve_unnamed(spec, src_repo, dest_repo_):
@@ -838,7 +843,7 @@ def resolve_unnamed(spec, src_repo, dest_repo_):
 def handle_unnamed(item, src_repo, dest_repo):
     get_random_item(hexlify(item.src.hash), src_repo, dest_repo,
                     item.spec.ignore_missing)
-    return GetResult()
+    return GetResult(), None
 
 
 def resolve_targets(specs, src_repo, dest_repo):
@@ -936,8 +941,15 @@ def get_everything(opt):
                              else x._replace(spec=dcreplace(x.spec, rewriter=rewriter)))
                             for x in target_items]
 
-            updated_refs = {}  # ref_name -> (original_ref, tip_commit(bin))
-            no_ref_info = (None, None)
+            # Until we actually update the refs in the destination
+            # repository (after we handle all targets, below), we must
+            # *not* rely on the vfs for any new information involving
+            # a target's destination ref because targets may change
+            # it.  Rely on ref_changes for the current state.  It
+            # includes all the info needed for the final update_ref
+            # for each modified ref.
+            orig_ref_oids = {} # vfs_dest_path_bytes -> oid
+            ref_changes = {} # vfs_dest_path_bytes -> Loc
 
             handlers = {'ff': handle_ff,
                         'append': handle_append,
@@ -951,29 +963,30 @@ def get_everything(opt):
                 debug1('get-spec: %r\n' % (item.spec,))
                 debug1('get-src: %s\n' % loc_desc(item.src))
                 debug1('get-dest: %s\n' % loc_desc(item.dest))
+
                 dest_path = item.dest and item.dest.path
-                if dest_path:
-                    if dest_path.startswith(b'/.tag/'):
-                        dest_ref = b'refs/tags/%s' % dest_path[6:]
-                    else:
-                        dest_ref = b'refs/heads/%s' % dest_path[1:]
+                if not item.dest: # e.g. --unnamed doesn't have one
+                    cur_item = item
                 else:
-                    dest_ref = None
+                    cur_dest = ref_changes.get(dest_path)
+                    cur_item = item._replace(dest=cur_dest) if cur_dest \
+                        else item
 
-                dest_hash = item.dest and item.dest.hash
-                orig_ref, cur_ref = updated_refs.get(dest_ref, no_ref_info)
-                orig_ref = orig_ref or dest_hash
-                cur_ref = cur_ref or dest_hash
-
+                # item.dest represents the ref's initial state (if
+                # any), and cur_dest is the current state, possibly
+                # modified by previous targets.
+                cur_dest = ref_changes.get(dest_path)
                 handler = handlers[item.spec.method]
-                get_res = handler(item, src_repo, dest_repo)
+                get_res, new_dest = handler(cur_item, src_repo, dest_repo)
                 repair_count += get_res.repairs
 
-                if not dest_ref:
+                if not dest_path:
                     log_item(item.spec.src, item.src.type, opt)
                 else:
-                    updated_refs[dest_ref] = (orig_ref, get_res.oid)
-                    if dest_ref.startswith(b'refs/tags/'):
+                    if dest_path not in ref_changes:
+                        orig_ref_oids[dest_path] = item.dest.hash
+                    ref_changes[dest_path] = new_dest
+                    if dest_path.startswith(b'/.tag/'):
                         log_item(item.spec.src, item.src.type, opt,
                                  tag=get_res.oid)
                     else:
@@ -983,20 +996,24 @@ def get_everything(opt):
         # Only update the refs at the very end, once the destination repo
         # finished writing, so that if something goes wrong above, the old
         # refs will be undisturbed.
-        for ref_name, info in updated_refs.items():
-            orig_ref, new_ref = info
+        for dest_path, new_loc in ref_changes.items():
+            if dest_path.startswith(b'/.tag/'):
+                dest_ref = b'refs/tags/%s' % dest_path[6:]
+            else:
+                dest_ref = b'refs/heads/%s' % dest_path[1:]
+            orig_oid = orig_ref_oids[dest_path]
             try:
-                dest_repo.update_ref(ref_name, new_ref, orig_ref)
+                dest_repo.update_ref(dest_ref, new_loc.hash, orig_oid)
                 if opt.verbose:
-                    new_hex = hexlify(new_ref).decode('ascii')
-                    ref_msg = path_msg(ref_name)
-                    if orig_ref:
-                        orig_hex = hexlify(orig_ref).decode('ascii')
+                    new_hex = hexlify(new_loc.hash).decode('ascii')
+                    ref_msg = path_msg(dest_ref)
+                    if orig_oid:
+                        orig_hex = hexlify(orig_oid).decode('ascii')
                         log(f'updated {ref_msg} ({orig_hex} -> {new_hex})\n')
                     else:
                         log(f'updated {ref_msg} ({new_hex})\n')
             except (git.GitError, client.ClientError) as ex:
-                note_error('unable to update ref %r: %s\n' % (ref_name, ex))
+                note_error('unable to update ref %r: %s\n' % (dest_ref, ex))
 
     if repair_count and not saved_errors:
         msg = ('Repairs were needed and successful; see above. Additional'
