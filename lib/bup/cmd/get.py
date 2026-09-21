@@ -499,9 +499,11 @@ def find_vfs_item(name, repo):
     # ==).
     path = b'/'.join(name for name, item in res)
     if hasattr(leaf_item, 'coid'):
-        result = Loc(type=kind, hash=leaf_item.coid, path=path, vfs_path=vfs_path)
+        result = Loc(type=kind, hash=leaf_item.coid, path=path,
+                     vfs_path=vfs_path)
     elif hasattr(leaf_item, 'oid'):
-        result = Loc(type=kind, hash=leaf_item.oid, path=path, vfs_path=vfs_path)
+        result = Loc(type=kind, hash=leaf_item.oid, path=path,
+                     vfs_path=vfs_path)
     else:
         result = Loc(type=kind, hash=None, path=path, vfs_path=vfs_path)
     return result
@@ -615,32 +617,40 @@ def resolved_loc_branch_or_tag_path(loc):
     return branch_path_for_vfs_res(loc.vfs_path)
 
 
-def resolve_branch_dest(spec, src, dest_repo):
+def resolve_branch_dest(spec, src, dest_repo, dest_changes):
     # Resulting dest must be treeish, or not exist.
     if not spec.dest:
         spec = dcreplace(spec, dest=resolved_loc_branch_or_tag_path(src))
     assert spec.dest, (spec, src)
-    spec_args = spec_msg(spec)
 
-    dest = find_vfs_item(spec.dest, dest_repo)
+    dest = dest_changes.get(spec.dest)
+    if not dest:
+        dest = find_vfs_item(spec.dest, dest_repo)
     if dest:
         if dest.type == 'commit':
+            spec_args = spec_msg(spec)
             misuse('destination for %s is a tagged commit, not a branch'
                   % spec_args)
         if dest.type != 'branch':
+            spec_args = spec_msg(spec)
             misuse('destination for %s is a %s, not a branch'
                   % (spec_args, dest.type))
     else:
         dest = dest_loc_for_unresolved_path(spec.dest, 'branch', spec)
 
+    # FIXME: tag dest is supposed to be fine (e.g. see --ff in
+    # bup-get-(1))?  Assuming so, this should be removed and tests
+    # will need adjustment (code above already ensures the path is
+    # valid).
     if dest.path.startswith(b'/.'):
+        spec_args = spec_msg(spec)
         misuse('destination for %s must be a valid branch name' % spec_args)
 
     debug1('dest: %s\n' % loc_desc(dest))
     return spec, dest
 
 
-def resolve_ff(spec, src_repo, dest_repo):
+def resolve_ff(spec, src_repo, dest_repo, dest_changes):
     assert not spec.rewriter, spec
     assert not spec.ignore_missing, spec
     src = resolve_src(spec, src_repo)
@@ -651,8 +661,8 @@ def resolve_ff(spec, src_repo, dest_repo):
     if src.type not in ('branch', 'save', 'commit'):
         misuse('source for %s must be a branch, save, or commit, not %s'
               % (spec_args, src.type))
-    spec, dest = resolve_branch_dest(spec, src, dest_repo)
-    return Target(spec=spec, src=src, dest=dest)
+    spec, dest = resolve_branch_dest(spec, src, dest_repo, dest_changes)
+    return Target(spec=spec, src=src, dest=dest), dest._replace(hash=src.hash)
 
 
 def handle_ff(item, src_repo, dest_repo):
@@ -671,25 +681,27 @@ def handle_ff(item, src_repo, dest_repo):
         item.dest._replace(hash=item.src.hash)
 
 
-def resolve_append(spec, src_repo, dest_repo):
+def resolve_append(spec, src_repo, dest_repo, dest_changes):
     assert not spec.ignore_missing
     src = resolve_src(spec, src_repo)
     if src.type not in ('branch', 'save', 'commit', 'tree'):
         misuse('source for %s must be a branch, save, commit, or tree, not %s'
               % (spec_msg(spec), src.type))
-    spec, dest = resolve_branch_dest(spec, src, dest_repo)
-    if spec.rewriter:
-        def vpm(path): return path_msg(b"/".join(x[0] for x in path))
-        if not isinstance(src, Loc):
-            misuse(f'cannot currently rewrite git location {src}')
-        src_path = src.vfs_path
-        if len(src_path) != 2: # root, src_ref
-            misuse(f'cannot append {vpm(src_path)}')
-        src_ref = src_path[1]
-        if not isinstance(src_ref[1], vfs.RevList):
-            misuse(f'cannot append {vpm(src_path)} saves'
-                   f' ({path_msg(src_ref[0])} is a {type(src_ref[1])})')
-    return Target(spec=spec, src=src, dest=dest)
+    spec, dest = resolve_branch_dest(spec, src, dest_repo, dest_changes)
+    if not spec.rewriter: # hash=None (append is defined to make new commits)
+        return Target(spec=spec, src=src, dest=dest), dest._replace(hash=None)
+
+    def vpm(path): return path_msg(b"/".join(x[0] for x in path))
+    if not isinstance(src, Loc):
+        misuse(f'cannot currently rewrite git location {src}') # GitLoc
+    src_path = src.vfs_path
+    if len(src_path) != 2: # root, src_ref
+        misuse(f'cannot append {vpm(src_path)}')
+    src_ref = src_path[1]
+    if not isinstance(src_ref[1], vfs.RevList):
+        misuse(f'cannot append {vpm(src_path)} saves'
+               f' ({path_msg(src_ref[0])} is a {type(src_ref[1])})')
+    return Target(spec=spec, src=src, dest=dest), dest._replace(hash=None)
 
 
 def handle_append(item, src_repo, dest_repo):
@@ -718,7 +730,7 @@ def handle_append(item, src_repo, dest_repo):
     return res, item.dest._replace(hash=res.oid)
 
 
-def resolve_pick(spec, src_repo, dest_repo):
+def resolve_pick(spec, src_repo, dest_repo, dest_changes):
     assert not spec.ignore_missing
     src = resolve_src(spec, src_repo)
     spec_args = spec_msg(spec)
@@ -733,18 +745,21 @@ def resolve_pick(spec, src_repo, dest_repo):
     if spec.rewriter:
         if src.type != 'save':
             misuse(f'cannot currently --rewrite a {src.type}')
-    dest = find_vfs_item(spec.dest, dest_repo)
+
+    dest = dest_changes.get(spec.dest)
+    if not dest:
+        dest = find_vfs_item(spec.dest, dest_repo)
     if not dest:
         dest = dest_loc_for_unresolved_path(spec.dest, 'branch', spec)
-        return Target(spec=spec, src=src, dest=dest)
+        return Target(spec=spec, src=src, dest=dest), dest._replace(hash=None)
     if not dest.type == 'branch' and not dest.path.startswith(b'/.tag/'):
         misuse('%s destination is not a tag or branch' % spec_args)
     if not dest.hash:
-        return Target(spec=spec, src=src, dest=dest)
+        return Target(spec=spec, src=src, dest=dest), dest
     if spec.method != 'force-pick' and dest.path.startswith(b'/.tag/'):
         misuse('cannot overwrite existing tag for %s (requires --force-pick)'
                % spec_args)
-    return Target(spec=spec, src=src, dest=dest)
+    return Target(spec=spec, src=src, dest=dest), dest._replace(hash=None)
 
 
 def handle_pick(item, src_repo, dest_repo):
@@ -762,7 +777,7 @@ def handle_pick(item, src_repo, dest_repo):
     return res, item.dest._replace(hash=res.oid)
 
 
-def resolve_new_tag(spec, src_repo, dest_repo):
+def resolve_new_tag(spec, src_repo, dest_repo, dest_changes):
     assert not spec.rewriter, spec
     assert not spec.ignore_missing, spec
     src = resolve_src(spec, src_repo)
@@ -772,7 +787,9 @@ def resolve_new_tag(spec, src_repo, dest_repo):
             misuse(f'destination for {spec_args} must be a VFS tag')
         spec = dcreplace(spec, dest=src.path)
     assert spec.dest, (spec, src)
-    dest = find_vfs_item(spec.dest, dest_repo)
+    dest = dest_changes.get(spec.dest)
+    if not dest:
+        dest = find_vfs_item(spec.dest, dest_repo)
     if not dest:
         dest = dest_loc_for_unresolved_path(spec.dest, 'branch', src.type)
     if not dest.path.startswith(b'/.tag/'):
@@ -780,7 +797,9 @@ def resolve_new_tag(spec, src_repo, dest_repo):
     if dest.hash:
         misuse('cannot overwrite existing tag for %s (requires --replace)'
               % spec_args)
-    return Target(spec=spec, src=src, dest=dest)
+    changed_type = adjusted_loc_type_for_vfs_path(src.type, dest.path)
+    change = dest._replace(type=changed_type, hash=src.hash)
+    return Target(spec=spec, src=src, dest=dest), change
 
 
 def handle_new_tag(item, src_repo, dest_repo):
@@ -792,7 +811,7 @@ def handle_new_tag(item, src_repo, dest_repo):
     return GetResult(item.src.hash), item.dest._replace(hash=item.src.hash)
 
 
-def resolve_replace(spec, src_repo, dest_repo):
+def resolve_replace(spec, src_repo, dest_repo, dest_changes):
     assert not spec.rewriter, spec
     assert not spec.ignore_missing, spec
     src = resolve_src(spec, src_repo)
@@ -802,17 +821,23 @@ def resolve_replace(spec, src_repo, dest_repo):
             misuse(f'destination for {spec_args} must be a VFS branch or tag')
         spec = dcreplace(spec, dest=src.path)
     assert spec.dest, (spec, src)
-    dest = find_vfs_item(spec.dest, dest_repo)
-    if dest:
-        if not dest.type == 'branch' and not dest.path.startswith(b'/.tag/'):
-            misuse('%s impossible; can only overwrite branch or tag'
-                  % spec_args)
-    else:
+    dest = dest_changes.get(spec.dest)
+    if not dest:
+        dest = find_vfs_item(spec.dest, dest_repo)
+    if not dest:
         dest = dest_loc_for_unresolved_path(spec.dest, 'branch', src.type)
+    if not dest.type == 'branch' and not dest.path.startswith(b'/.tag/'):
+        misuse(f'{spec_args} impossible; can only overwrite branch or tag')
     if not dest.path.startswith(b'/.tag/') \
        and not src.type in ('branch', 'save', 'commit'):
         misuse('cannot overwrite branch with %s for %s' % (src.type, spec_args))
-    return Target(spec=spec, src=src, dest=dest)
+    # Ensure the test is not root or tags or...
+    if dest.type != 'branch' and not dest.path.startswith(b'/.tag/'):
+        misuse('%s impossible; can only overwrite branch or tag'
+               % spec_args)
+    changed_type = adjusted_loc_type_for_vfs_path(src.type, dest.path)
+    change = dest._replace(type=changed_type, hash=src.hash)
+    return Target(spec=spec, src=src, dest=dest), change
 
 
 def handle_replace(item, src_repo, dest_repo):
@@ -830,14 +855,14 @@ def handle_replace(item, src_repo, dest_repo):
     return res, item.dest._replace(hash=item.src.hash)
 
 
-def resolve_unnamed(spec, src_repo, dest_repo_):
+def resolve_unnamed(spec, src_repo, dest_repo_, dest_changes_):
     assert not spec.rewriter, spec
     if spec.dest:
         misuse('destination name given for %s' % spec_msg(spec))
     src = resolve_src(spec, src_repo, allow='git')
     if src:
-        return Target(spec=spec, src=src, dest=None)
-    return None
+        return Target(spec=spec, src=src, dest=None), None
+    return None, None
 
 
 def handle_unnamed(item, src_repo, dest_repo):
@@ -846,38 +871,53 @@ def handle_unnamed(item, src_repo, dest_repo):
     return GetResult(), None
 
 
-def resolve_targets(specs, src_repo, dest_repo):
+def resolve_target(spec, src_repo, dest_repo, ref_changes):
+    common_args = src_repo, dest_repo, ref_changes
+    debug1('initial-spec: %r\n' % (spec,))
+    if spec.method == 'ff':
+        return resolve_ff(spec, *common_args)
+    if spec.method == 'append':
+        return resolve_append(spec, *common_args)
+    if spec.method in ('pick', 'force-pick'):
+        return resolve_pick(spec, *common_args)
+    if spec.method == 'new-tag':
+        return resolve_new_tag(spec, *common_args)
+    if spec.method == 'replace':
+        return resolve_replace(spec, *common_args)
+    if spec.method == 'unnamed':
+        return resolve_unnamed(spec, *common_args)
+    # Should be impossible -- prevented by the option parser
+    assert False, spec
+
+
+def validate_targets(opt, src_repo, dest_repo):
     resolved_items = []
-    common_args = src_repo, dest_repo
-    for spec in specs:
-        debug1('initial-spec: %r\n' % (spec,))
-        if spec.method == 'ff':
-            resolved_items.append(resolve_ff(spec, *common_args))
-        elif spec.method == 'append':
-            resolved_items.append(resolve_append(spec, *common_args))
-        elif spec.method in ('pick', 'force-pick'):
-            resolved_items.append(resolve_pick(spec, *common_args))
-        elif spec.method == 'new-tag':
-            resolved_items.append(resolve_new_tag(spec, *common_args))
-        elif spec.method == 'replace':
-            resolved_items.append(resolve_replace(spec, *common_args))
-        elif spec.method == 'unnamed':
-            tgt = resolve_unnamed(spec, *common_args)
-            if tgt:
-                resolved_items.append(tgt)
-        else: # Should be impossible -- prevented by the option parser.
-            assert(False)
+    ref_changes = {} # vfs_dest_path_bytes -> Loc
+    for spec in opt.target_specs:
+        res, change = resolve_target(spec, src_repo, dest_repo, ref_changes)
+        if not res:
+            assert opt.ignore_missing, (spec, opt.ignore_missing)
+            assert spec.method == 'unnamed', spec
+            assert not change, change
+            continue
+        resolved_items.append(res)
+        if change:
+            # FIXME: check for prefixes here, either in ref_changes or
+            # originally in dest_repo?
+            ref_changes[change.path] = change
 
     # FIXME: check for prefix overlap?  i.e.:
     #   bup get --ff foo --ff: baz foo/bar
     #   bup get --new-tag .tag/foo --new-tag: bar .tag/foo/bar
 
     # Now that we have all the items, check for duplicate tags.
+    # FIXME: not right, handle above via ref_changes
+
     tags_targeted = set()
     for item in resolved_items:
         dest_path = item.dest and item.dest.path
         if dest_path:
-            assert(dest_path.startswith(b'/'))
+            assert dest_path.startswith(b'/')
             if dest_path.startswith(b'/.tag/'):
                 if dest_path in tags_targeted:
                     if item.spec.method not in ('replace', 'force-pick'):
@@ -920,12 +960,12 @@ def get_everything(opt):
                 misuse('repository configs differ; need --[no-]rewrite before'
                        f' {spec_msg(spec)}')
 
-        # Resolve and validate all sources and destinations, implicit
-        # or explicit, combinations of methods and modes (rewrite,
-        # missing, etc.) and do it up-front, so we can fail before we
-        # start writing (for any obviously broken cases).  Do this
-        # before creating any database via the Rewriter.
-        target_items = resolve_targets(opt.target_specs, src_repo, dest_repo)
+        # Validate all sources and destinations, implicit or explicit,
+        # combinations of methods and modes (rewrite, missing, etc.)
+        # and do it up-front, so we can fail before we start writing
+        # (for any obviously broken cases).  Do this before creating
+        # any database via the Rewriter.
+        validate_targets(opt, src_repo, dest_repo)
 
         # The current arrangement relies on the assumption that any
         # (sub)tree created by a --rewrite is exactly the same tree
@@ -936,10 +976,6 @@ def get_everything(opt):
         # record directory trees in the database.)
         with (Rewriter(split_cfg=dest_split_cfg) if rewrite else nullctx) \
              as rewriter:
-
-            target_items = [(x if not x.spec.rewriter
-                             else x._replace(spec=dcreplace(x.spec, rewriter=rewriter)))
-                            for x in target_items]
 
             # Until we actually update the refs in the destination
             # repository (after we handle all targets, below), we must
@@ -959,7 +995,25 @@ def get_everything(opt):
                         'replace': handle_replace,
                         'unnamed': handle_unnamed}
 
-            for item in target_items:
+            def ensure_rewriter(target):
+                spec = target.spec
+                if not spec.rewriter:
+                    return target
+                return target._replace(spec=dcreplace(spec, rewriter=rewriter))
+
+            for item in opt.target_specs:
+                # The resolve_target ref changes are ignored here
+                # because the handlers provide the real information in
+                # ref_changes.
+                item, ref_change_ = resolve_target(item, src_repo, dest_repo,
+                                                   ref_changes)
+                if not item:
+                    assert opt.ignore_missing, item
+                    assert item.spec.method == 'unnamed', item
+                    assert not ref_change_, ref_change_
+                    continue
+                item = ensure_rewriter(item)
+
                 debug1('get-spec: %r\n' % (item.spec,))
                 debug1('get-src: %s\n' % loc_desc(item.src))
                 debug1('get-dest: %s\n' % loc_desc(item.dest))

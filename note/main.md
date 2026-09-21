@@ -27,6 +27,12 @@ Bugs
   only the `.bupm` file (the metadata) when it's missing rather than
   the entire tree.
 
+* `bup get` now validates repeated ref (branch or tag) updates more
+  correctly.  Previously when multiple targets were specified, it
+  wouldn't properly account for the actions of preceeding METHODs
+  (`--pick`, `--replace`, etc.) when evaluating the correctness of a
+  command before execution.
+
 Thanks to (at least)
 ====================
 

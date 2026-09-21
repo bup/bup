@@ -393,7 +393,9 @@ def _test_replace(get_disposition, src_info):
                  b'src'):
         exr = run_get(get_disposition, b'--replace', (item, b'/'))
         wvpassne(0, exr.rc)
-        verify_rx(br'impossible; can only overwrite branch or tag', exr.err)
+        verify_rx(br'(impossible; can only overwrite branch or tag)'
+                  br'|(cannot overwrite branch with .+ for)',
+                  exr.err)
 
     tinyfile_id = src_info['tinyfile-id']
     tinyfile_path = src_info['tinyfile-path']

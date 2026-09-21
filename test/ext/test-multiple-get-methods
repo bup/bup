@@ -1,0 +1,234 @@
+#!/usr/bin/env bash
+. ./wvtest-bup.sh || exit $?
+. ./test/lib/btl.sh || exit $?
+
+set -o pipefail
+
+top="$(WVPASS pwd)" || exit $?
+tmpdir="$(WVPASS wvmktempdir)" || exit $?
+
+export BUP_DIR="$tmpdir/bup"
+export GIT_DIR="$tmpdir/bup"
+
+bup() { "$top/bup" "$@"; }
+
+WVPASS cd "$tmpdir"
+
+
+### First, test method behaviors when a preceeding method changes the
+### destination.
+
+
+WVSTART '--ff respects prior dest change'
+WVPASS rm -rf bup && WVPASS bup init
+WVPASS mkdir src
+WVPASS echo 1 > src/info
+WVPASS bup index src
+WVPASS bup save --strip -n src src
+WVPASS echo 2 > src/info
+WVPASS bup index src
+WVPASS bup save --strip -n src src
+save_names=( $(WVPASS bup ls src) ) || exit $?
+WVPASS rm -rf get-dest && WVPASS bup -d get-dest init
+WVPASS bup -d get-dest get -s bup \
+       --ff src/"${save_names[0]}" --ff src/"${save_names[1]}"
+dest_save_names=( $(WVPASS bup -d get-dest ls src) ) || exit $?
+WVPASSEQ "${save_names[*]}" "${dest_save_names[*]}"
+WVPASSEQ 2 "$(WVPASS git --git-dir get-dest show src:info)"
+WVPASSEQ 1 "$(WVPASS git --git-dir get-dest show src~:info)"
+
+
+WVSTART '--ff fails if dest becomes unrelated (missing at start)'
+WVPASS rm -rf bup && WVPASS bup init
+WVPASS rm -rf src && WVPASS mkdir src
+WVPASS echo 1 > src/info
+WVPASS bup index src
+WVPASS bup save --strip -n src src
+WVPASS echo 2 > src/info
+WVPASS bup index src
+WVPASS bup save --strip -n src src
+WVPASS bup save --strip -n other src
+save_names=( $(WVPASS bup ls src) ) || exit $?
+WVPASS rm -rf get-dest && WVPASS bup -d get-dest init
+WVFAIL err-to log bup -d get-dest get -s bup \
+       --replace: other/latest src  \
+       --ff src
+WVPASS grep -E '^error: destination is not an ancestor of source for ' log
+WVSTART '--ff fails if dest becomes unrelated (valid at start)'
+WVPASS rm -rf get-dest && WVPASS bup -d get-dest init
+WVPASS bup -d get-dest get -s bup \
+       --ff src/"${save_names[0]}"
+WVFAIL err-to log bup -d get-dest get -s bup \
+       --replace: other/latest src \
+       --ff src/"${save_names[1]}"
+WVPASS grep -E '^error: destination is not an ancestor of source for ' log
+
+
+WVSTART '--append respects prior dest change'
+WVPASS rm -rf bup && WVPASS bup init
+WVPASS rm -rf src && WVPASS mkdir src
+WVPASS echo 1 > src/info
+WVPASS bup index src
+WVPASS bup save --strip -n one src
+WVPASS echo 2 > src/info
+WVPASS bup index src
+WVPASS bup save --strip -n two-three src
+WVPASS echo 3 > src/info
+WVPASS bup index src
+WVPASS bup save --strip -n two-three src
+WVPASS rm -rf get-dest && WVPASS bup -d get-dest init
+WVPASS bup -d get-dest get -s bup \
+       --append: one all \
+       --append: two-three all
+all_commits=( $(WVPASS git --git-dir get-dest rev-list all) ) || exit $?
+WVPASSEQ 3 "${#all_commits[@]}"
+WVPASSEQ 3 "$(WVPASS git --git-dir get-dest show all:info)"
+WVPASSEQ 2 "$(WVPASS git --git-dir get-dest show all~:info)"
+WVPASSEQ 1 "$(WVPASS git --git-dir get-dest show all~~:info)"
+
+
+WVSTART '--append fails if tag dest becomes non-commit (missing at start)'
+WVPASS rm -rf bup && WVPASS bup init
+WVPASS rm -rf src && WVPASS mkdir src
+WVPASS echo 1 > src/info
+WVPASS bup index src
+WVPASS bup save --strip -n src src
+WVPASS git tag info-blob src:info
+WVPASS rm -rf get-dest && WVPASS bup -d get-dest init
+WVFAIL err-to log bup -d get-dest get -s bup \
+       --replace: /.tag/info-blob /.tag/dest-tag  \
+       --append: src /.tag/dest-tag
+WVPASS grep -E \
+       '^error: destination for --append: src /\.tag/dest-tag is a blob, not a branch' \
+       log
+WVSTART '--append fails if tag dest becomes non-commit (valid at start)'
+WVPASS rm -rf get-dest && WVPASS bup -d get-dest init
+WVPASS bup -d get-dest get -s bup \
+       --replace: src /.tag/dest-tag
+WVFAIL err-to log bup -d get-dest get -s bup \
+       --replace: /.tag/info-blob /.tag/dest-tag  \
+       --append: src /.tag/dest-tag
+WVPASS grep -E \
+       '^error: destination for --append: src /\.tag/dest-tag is a blob, not a branch' \
+       log
+
+
+WVSTART '--pick respects prior dest change'
+WVPASS rm -rf bup && WVPASS bup init
+WVPASS rm -rf src && WVPASS mkdir src
+WVPASS echo 1 > src/info
+WVPASS bup index src
+WVPASS bup save --strip -n one src
+WVPASS echo 2 > src/info
+WVPASS bup index src
+WVPASS bup save --strip -n two src
+WVPASS rm -rf get-dest && WVPASS bup -d get-dest init
+WVPASS bup -d get-dest get -s bup \
+       --ff: one all \
+       --pick: two/latest all
+all_commits=( $(WVPASS git --git-dir get-dest rev-list all) ) || exit $?
+WVPASSEQ 2 "${#all_commits[@]}"
+WVPASSEQ 2 "$(WVPASS git --git-dir get-dest show all:info)"
+WVPASSEQ 1 "$(WVPASS git --git-dir get-dest show all~:info)"
+
+
+WVSTART '--pick fails if tag dest becomes non-commit (missing at start)'
+WVPASS rm -rf bup && WVPASS bup init
+WVPASS rm -rf src && WVPASS mkdir src
+WVPASS echo 1 > src/info
+WVPASS bup index src
+WVPASS bup save --strip -n src src
+WVPASS git tag info-blob src:info
+WVPASS rm -rf get-dest && WVPASS bup -d get-dest init
+WVFAIL err-to log bup -d get-dest get -s bup \
+       --replace: /.tag/info-blob /.tag/dest-tag  \
+       --pick: src/latest /.tag/dest-tag
+WVPASS grep -qF \
+       'error: cannot overwrite existing tag for --pick: src/latest /.tag/dest-tag (requires --force-pick)' \
+       log
+WVSTART '--pick fails if tag dest becomes non-commit (valid at start)'
+WVPASS rm -rf get-dest && WVPASS bup -d get-dest init
+WVPASS bup -d get-dest get -s bup \
+       --replace: src /.tag/dest-tag
+WVFAIL err-to log bup -d get-dest get -s bup \
+       --replace: /.tag/info-blob /.tag/dest-tag  \
+       --pick: src/latest /.tag/dest-tag
+WVPASS grep -qF \
+       'error: cannot overwrite existing tag for --pick: src/latest /.tag/dest-tag (requires --force-pick)' \
+       log
+
+
+WVSTART '--new-tag respects tag created by prior dest change'
+WVPASS rm -rf bup && WVPASS bup init
+WVPASS rm -rf src && WVPASS mkdir src
+WVPASS echo 1 > src/info
+WVPASS bup index src
+WVPASS bup save --strip -n src src
+WVPASS rm -rf get-dest && WVPASS bup -d get-dest init
+WVFAIL err-to log bup -d get-dest get -s bup \
+       --replace: src /.tag/dest-tag  \
+       --new-tag: src /.tag/dest-tag
+WVPASS grep -qF \
+       'error: cannot overwrite existing tag for --new-tag: src /.tag/dest-tag (requires --replace)' \
+       log
+
+
+### Now test that methods properly report their pending changes for
+### subsequent methods.
+
+
+for method in --ff --append --append/tree --pick --force-pick; do
+    WVSTART "preceeding $method reports correct change"
+    WVPASS rm -rf bup && WVPASS bup init
+    WVPASS rm -rf src && WVPASS mkdir src
+    WVPASS echo 1 > src/info
+    WVPASS bup index src
+    WVPASS bup save --strip -n one src
+    WVPASS echo 2 > src/info
+    WVPASS bup index src
+    WVPASS bup save --strip -n two src
+    WVPASS rm -rf get-dest && WVPASS bup -d get-dest init
+    case "$method" in
+        --pick|--force-pick) source=one/latest ;;
+        --append/tree) source=one/latest/.; method=--append ;;
+        *) source=one ;;
+    esac
+    WVPASS bup -d get-dest get -s bup \
+           "$method:" "$source" all \
+           --pick: two/latest all
+    all_commits=( $(WVPASS git --git-dir get-dest rev-list all) ) || exit $?
+    WVPASSEQ 2 "${#all_commits[@]}"
+    WVPASSEQ 2 "$(WVPASS git --git-dir get-dest show all:info)"
+    WVPASSEQ 1 "$(WVPASS git --git-dir get-dest show all~:info)"
+done
+
+
+for method in --new-tag --replace; do
+    WVSTART "preceeding $method reports correct change for branch"
+    WVPASS rm -rf bup && WVPASS bup init
+    WVPASS rm -rf src && WVPASS mkdir src
+    WVPASS echo 1 > src/info
+    WVPASS bup index src
+    WVPASS bup save --strip -n one src
+    WVPASS echo 2 > src/info
+    WVPASS bup index src
+    WVPASS bup save --strip -n two src
+    WVPASS rm -rf get-dest && WVPASS bup -d get-dest init
+    case "$method" in
+        --new-tag) dest=/.tag/dest-tag; git_dest=dest-tag ;;
+        *) dest=all; git_dest=all ;;
+    esac
+    WVPASS bup -d get-dest get -s bup \
+           "$method:" one "$dest" \
+           --force-pick: two/latest "$dest"
+    all_commits=( $(WVPASS git --git-dir get-dest rev-list "$git_dest") ) || exit $?
+    WVPASSEQ 2 "${#all_commits[@]}"
+    WVPASSEQ 2 "$(WVPASS git --git-dir get-dest show "$git_dest":info)"
+    WVPASSEQ 1 "$(WVPASS git --git-dir get-dest show "$git_dest"~:info)"
+
+done
+
+
+WVPASS cd "$top"
+WVPASS rm -rf "$tmpdir"
+exit 0
