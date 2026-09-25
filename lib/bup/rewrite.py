@@ -361,6 +361,16 @@ def _rewrite_save_item(path, replacement_dir, srcrepo, dstrepo, split_cfg,
     else:
         incomplete = path
         path = incomplete.path
+        if len(path) == 3:
+            # Commit's tree is missing or (currently) it's .bupm;
+            # leave stack empty and append_save will handle the
+            # repair.
+            rep_item = path[-1][1]
+            assert isinstance(path[-1][1], vfs.Commit), path
+            assert len(stack) == 0, stack
+            assert replacement_dir is None, replacement_dir
+            assert repairs, repairs
+            return
 
     fs_path = path[2:] # drop everything before the save
     assert isinstance(fs_path[0][1], vfs.Commit), fs_path[0]
@@ -387,6 +397,7 @@ def _rewrite_save_item(path, replacement_dir, srcrepo, dstrepo, split_cfg,
         assert replacement_dir is None, replacement_dir
         assert repairs, repairs
         extend_stack(dir_path[len(stack):-1])
+        assert stack, path # always a child of the vfs.Commit
         # For now, wholesale replacement (no attempt to handle
         # partially readable split trees).
         rep_item = incomplete.path[-1][1]
@@ -589,6 +600,7 @@ class Rewriter:
                 # and so if a dir is broken, we'll see that "up
                 # front", and never produce any children.
 
+                path_count, path, replacement_dir = 0, None, None
                 for path, replacement_dir \
                         in _vfs_walk_dir_recursively(srcrepo, dstrepo, save_path,
                                                      excludes, dbc, self._mapping,
@@ -596,10 +608,37 @@ class Rewriter:
                     _rewrite_save_item(path, replacement_dir, srcrepo, dstrepo,
                                        self._split_cfg, stack, dbc,
                                        self._mapping, excludes, repairs)
+                    path_count += 1
 
-                while len(stack) > 1: # pop all parts above root folder
-                    stack.pop()
-                tree = stack.pop() # and the root to get the tree
+                if len(stack):
+                    while len(stack) > 1: # pop all parts above root folder
+                        stack.pop()
+                    tree = stack.pop() # and the root to get the tree
+                else:
+                    # Only possible if top-level commit tree was
+                    # missing
+
+                    # REVIEW: is an empty root what we want?  I think
+                    # that should make this the one case where you
+                    # can't detect repairs by grepping the tree for
+                    # the Bup-Repair-ID.  You have to check the commit
+                    # message too.  An alternative would be to create
+                    # some marker file in the root dir, with the
+                    # attendant question of naming.
+
+                    assert path_count == 1, (path_count, path)
+                    assert replacement_dir is None, replacement_dir
+                    assert isinstance(path, IncompleteDir), (path_count, path)
+                    commit_path = path.path
+                    assert isinstance(commit_path[-1][1], vfs.Commit), \
+                        (path_count, path)
+                    stack.push(commit_path[-1][0], commit_path[-1][1].meta)
+                    tree = stack.pop()
+                    # Must not remember repairs because the repair-id (and so
+                    # blob content) can vary across saves, i.e. get
+                    # --rewrite-id is a contextual argument.
+                    _path_repaired(commit_path, commit_path[-1][1].oid,
+                                   tree, path.missing, repairs)
 
                 save_oidx = hexlify(save_path[2][1].coid)
                 ci = get_commit_items(save_oidx, srcrepo.cat)

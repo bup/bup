@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+
+. ./wvtest-bup.sh || exit $?
+. ./test/lib/btl.sh || exit $?
+
+set -o pipefail
+
+top="$(WVPASS pwd)" || exit $?
+tmpdir="$(WVPASS wvmktempdir)" || exit $?
+
+export BUP_DIR="$tmpdir/bup"
+export GIT_DIR="$tmpdir/bup"
+
+bup() { "$top/bup" "$@"; }
+
+
+WVPASS cd "$tmpdir"
+WVPASS bup init
+
+WVPASS mkdir -p src
+WVPASS echo 1 > src/1
+WVPASS echo 2 > src/2
+WVPASS bup index src
+WVPASS bup save --strip -n src src
+saves=( $(bup ls src) )
+save_date="${saves[0]}"
+oid_rx='[0-9a-fA-F]{40}'
+
+WVPASS cp -pPR "$BUP_DIR" bup-complete
+
+WVPASS git ls-tree src: | WVPASS grep -E $'\t\.bupm$' \
+    | btl-ent-oid > root-bupm-oid
+WVPASS git log --pretty=%T src > tip-commit-tree-oid
+
+
+set-repair-id()
+{
+    WVPASSEQ 1 "$(grep -cE '^repairs needed, repair-id: ' repair.log)"
+    repair_id="$(WVPASS grep -E '^repairs needed, repair-id: ' repair.log)"
+    repair_id="${repair_id#repairs needed, repair-id: }"
+}
+
+validate-missing-root-replacement()
+{
+    WVPASS bup -d dest-repo init
+    WVPASS git --git-dir dest-repo config bup.split.trees true
+    WVEXPRC 3 err-to repair.log bup -d dest-repo get -s bup --repair --pick src/latest
+    set-repair-id
+    WVPASS git log --pretty="%H" -n1 src > save-oid
+    WVPASS git --git-dir dest-repo log --pretty="%T" -n1 src > replacement-tree-oid
+    WVPASS git --git-dir dest-repo log -n1 src > commit
+    btl-display-file repair.log
+    btl-display-file commit
+    WVPASS grep -E "^repaired /src/$save_date/ $oid_rx -> $oid_rx\$" repair.log
+    WVPASS grep -E "^    Bup-Repair-ID: $repair_id$" commit
+    WVPASS grep -E "^    Bup-Repaired-Save: $(< save-oid) src/$save_date" commit
+    WVPASS grep -E "^    Bup-Replaced: $(< replacement-tree-oid) /" commit
+}
+
+
+WVSTART 'missing root .bupm is handled by --pick'
+WVPASS rm -rf bup
+WVPASS cp -pPR bup-complete bup
+WVPASS "$top/dev/perforate-repo" --drop-oids "$BUP_DIR" < root-bupm-oid
+validate-missing-root-replacement
+
+WVSTART 'missing root tree is handled by --pick'
+WVPASS rm -rf bup
+WVPASS cp -pPR bup-complete bup
+WVPASS "$top/dev/perforate-repo" --drop-oids "$BUP_DIR" < tip-commit-tree-oid
+validate-missing-root-replacement
+
+
+WVPASS cd "$top"
+WVPASS rm -rf "$tmpdir"

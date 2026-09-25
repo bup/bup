@@ -188,9 +188,10 @@ src_missing_dir="/src/$save_date/missing-dir/"
 src_missing_partial="/src/$save_date/partial-file"
 src_missing_split="/src/$save_date/split-tree/"
 
-# A missing dir .bupm in a non-split repo is indistinguishable from a
-# git created tree.
-
+# A missing dir .bupm currently causes the entire tree to be replaced.
+#
+# FIXME: consider changing vfs to (when repairing) return LostMetadata
+# for every entry instead (interaction with split trees)?
 
 WVSTART 'missing blobs are rewritten'
 WVPASS grep -E "^repaired $src_missing_file $oid_rx -> $oid_rx\$" repair.log
