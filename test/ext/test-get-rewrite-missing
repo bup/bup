@@ -150,10 +150,9 @@ repair-to-dest
 set-repair-id
 
 oid_rx='[0-9a-fA-F]{40}'
-missing_file="a/missing-file"
-missing_dir="missing-dir/"
-missing_partial="partial-file"
-missing_split="split-tree/"
+missing_file=/a/missing-file
+missing_dir=/missing-dir/
+missing_partial=/partial-file
 
 WVPASS git --git-dir dest-repo ls-tree src \
     | WVPASS grep -E $'\tmissing-dir$' | btl-ent-oid > dir-replacement-oid
@@ -353,7 +352,7 @@ wv-match-rx "${trailers[2]}" "^Bup-Version: ${bup_ver//+/\\+}$"
 wv-match-rx "${trailers[3]}" '^Bup-Argv: [^ ]+/bup.* get --repair '
 wv-match-rx "${trailers[4]}" "^Bup-Repair-ID: repair-1$"
 wv-match-rx "${trailers[5]}" "^Bup-Repaired-Save: $src_oid src/$save_date$"
-wv-match-rx "${trailers[6]}" "^Bup-Replaced: [0-9a-f]{40} a/2$"
+wv-match-rx "${trailers[6]}" "^Bup-Replaced: [0-9a-f]{40} /a/2$"
 WVPASSEQ '' "${trailers[7]}" # end-of-line
 unset trailers
 WVPASS git show -s --pretty=email r2 | tee repair-msg
@@ -365,7 +364,7 @@ wv-match-rx "${trailers[2]}" "^Bup-Version: ${bup_ver//+/\\+}$"
 wv-match-rx "${trailers[3]}" '^Bup-Argv: [^ ]+/bup.* get --repair'
 wv-match-rx "${trailers[4]}" "^Bup-Repair-ID: repair-2$"
 wv-match-rx "${trailers[5]}" "^Bup-Repaired-Save: $src_oid src/$save_date$"
-wv-match-rx "${trailers[6]}" "^Bup-Replaced: [0-9a-f]{40} a/2$"
+wv-match-rx "${trailers[6]}" "^Bup-Replaced: [0-9a-f]{40} /a/2$"
 WVPASSEQ '' "${trailers[7]}" # end-of-line
 unset trailers
 # Check repair ids in the log
@@ -399,7 +398,7 @@ wv-match-rx "${trailers[2]}" "^Bup-Version: ${bup_ver//+/\\+}$"
 wv-match-rx "${trailers[3]}" '^Bup-Argv: [^ ]+/bup.* get --repair .* src-two-saves r1'
 wv-match-rx "${trailers[4]}" "^Bup-Repair-ID: repair-id$"
 wv-match-rx "${trailers[5]}" "^Bup-Repaired-Save: [0-9a-f]{40} src-two-saves/"
-wv-match-rx "${trailers[6]}" "^Bup-Replaced: [0-9a-f]{40} a/2$"
+wv-match-rx "${trailers[6]}" "^Bup-Replaced: [0-9a-f]{40} /a/2$"
 WVPASSEQ '' "${trailers[7]}" # end-of-line
 unset trailers
 btl-display-file repair-trailers-2
@@ -410,7 +409,7 @@ wv-match-rx "${trailers[2]}" "^Bup-Version: ${bup_ver//+/\\+}$"
 wv-match-rx "${trailers[3]}" '^Bup-Argv: [^ ]+/bup.* get --repair .* src-two-saves r1'
 wv-match-rx "${trailers[4]}" "^Bup-Repair-ID: repair-id$"
 wv-match-rx "${trailers[5]}" "^Bup-Repaired-Save: [0-9a-f]{40} src-two-saves/"
-wv-match-rx "${trailers[6]}" "^Bup-Replaced: [0-9a-f]{40} a/2$"
+wv-match-rx "${trailers[6]}" "^Bup-Replaced: [0-9a-f]{40} /a/2$"
 WVPASSEQ '' "${trailers[7]}" # end-of-line
 unset trailers
 

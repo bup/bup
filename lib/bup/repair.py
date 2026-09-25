@@ -48,22 +48,25 @@ class Repairs:
         if self.repair_count() == 0:
             log(b'repairs needed, repair-id: %s\n' % self.id)
         self._remember_save(path)
-        self._replaced_meta.append(render_path(path[3:]))
+        self._replaced_meta.append(render_path(path[3:], absolute=True))
     def path_replaced(self, path, oid, new_oid):
         if self.repair_count() == 0:
             log(b'repairs needed, repair-id: %s\n' % self.id)
         self._remember_save(path)
-        self._replaced_files.append((render_path(path[3:]), oid, new_oid))
+        rp = render_path(path[3:], absolute=True)
+        self._replaced_files.append((rp, oid, new_oid))
     def link_blob_restored(self, path, oid):
         if self.repair_count() == 0:
             log(b'repairs needed, repair-id: %s\n' % self.id)
         self._remember_save(path)
-        self._restored_symlink_blobs.append((render_path(path[3:]), oid))
+        rp = render_path(path[3:], absolute=True)
+        self._restored_symlink_blobs.append((rp, oid))
     def link_blob_fixed(self, path, prev_blob):
         if self.repair_count() == 0:
             log(b'repairs needed, repair-id: %s\n' % self.id)
         self._remember_save(path)
-        self._fixed_symlink_blobs.append((render_path(path[3:]), prev_blob))
+        rp = render_path(path[3:], absolute=True)
+        self._fixed_symlink_blobs.append((rp, prev_blob))
     def repair_trailers(self, repair_id):
         assert valid_repair_id(repair_id)
         if not self.repair_count():

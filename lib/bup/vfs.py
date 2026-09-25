@@ -1372,7 +1372,20 @@ def join(repo, ref):
         raise GitError(f'ref {ref} does not exist') # eventually some ENOENT?
     yield from _join(*got, [ref])
 
-def render_path(path):
-    if not S_ISDIR(item_mode(path[-1][1])):
-        return b'/'.join(x[0] for x in path)
-    return b'/'.join(x[0] for x in path) + b'/'
+def render_path(path, absolute=False):
+    """When absolute is true, always include a leading slash."""
+    # absolute is used to render absolute paths for root trees too
+    # (i.e. if you remove the Root/RevList/Commit prefix to just
+    # render, say /etc/ via path[3:]).
+    if not path:
+        assert absolute, (path, absolute)
+        return b'/'
+    parts = []
+    if absolute and path[0][0]: # not (b'', Root(...))
+        parts.append(b'')
+    for part in path:
+        parts.append(part[0])
+    if S_ISDIR(item_mode(path[-1][1])):
+        parts.append(b'')
+    res = b'/'.join(parts)
+    return res

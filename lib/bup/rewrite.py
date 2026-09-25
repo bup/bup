@@ -117,7 +117,7 @@ def _previous_conversion(dstrepo, item, db, mapping):
 
 def _meta_replaced(path, repairs):
     repairs.meta_replaced(path)
-    fs_path = render_path(path[1:])
+    fs_path = render_path(path)
     log(f'warning: metadata lost for {path_msg(fs_path)}\n')
 
 def _restored_link_blob(path, oid, repairs):

@@ -82,9 +82,9 @@ wv-match-rx "${trailers[0]}" "^Bup-Version: ${bup_ver//+/\\+}$"
 wv-match-rx "${trailers[1]}" '^Bup-Argv: [^ ]+/bup.* get --repair --append: src dst$'
 wv-match-rx "${trailers[2]}" "^Bup-Repair-ID: $repair_id$"
 wv-match-rx "${trailers[3]}" "^Bup-Repaired-Save: $src_oid src/$save_date$"
-wv-match-rx "${trailers[4]}" '^Bup-Lost-Meta: 1$'
-wv-match-rx "${trailers[5]}" '^Bup-Lost-Meta: 2$'
-wv-match-rx "${trailers[6]}" '^Bup-Lost-Meta: 3$'
+wv-match-rx "${trailers[4]}" '^Bup-Lost-Meta: /1$'
+wv-match-rx "${trailers[5]}" '^Bup-Lost-Meta: /2$'
+wv-match-rx "${trailers[6]}" '^Bup-Lost-Meta: /3$'
 WVPASSEQ '' "${trailers[7]}" # end-of-line
 unset trailers
 
