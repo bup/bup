@@ -44,7 +44,7 @@ for method in --rewrite --repair; do
     WVEXPRC 3 bup -d dst get -s bup $method --append src
     WVPASS bup -d dst join src: > /dev/null
     WVPASS git --git-dir dst log -n1 src | tee commit-msg
-    WVPASS grep -E "^[ ]+Bup-Restored-Link-Blob: $two_oid 2\$" commit-msg
+    WVPASS grep -E "^[ ]+Bup-Restored-Link-Blob: $two_oid /2\$" commit-msg
     WVPASS rm -rf dst
 done
 
@@ -70,7 +70,7 @@ WVPASS bup init dst
 WVEXPRC 3 bup -d dst get -s bup --repair --pick src/latest
 WVPASS bup -d dst join src: > /dev/null
 WVPASS git --git-dir dst log -n1 src | tee commit-msg
-WVPASS grep -E "^[ ]+Bup-Fixed-Link-Blob: was not-1 for 2\$" commit-msg
+WVPASS grep -E "^[ ]+Bup-Fixed-Link-Blob: was not-1 for /2\$" commit-msg
 WVPASS rm -rf dst
 
 WVPASS rm -rf bup
@@ -104,7 +104,7 @@ WVEXPRC 3 bup -d dst get -s bup --repair --append src
 WVPASS bup -d dst join src: > /dev/null
 two_rep_oid="$(WVPASS git --git-dir dst ls-tree src | grep -E '2$' | btl-ent-oid)"
 WVPASS git --git-dir dst log -n1 src | tee commit-msg
-WVPASS grep -E "^[ ]+Bup-Replaced: $two_rep_oid 2\$" commit-msg
+WVPASS grep -E "^[ ]+Bup-Replaced: $two_rep_oid /2\$" commit-msg
 WVPASS rm -rf dst
 
 
