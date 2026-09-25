@@ -42,9 +42,6 @@ set-repair-id()
 
 validate-missing-root-replacement()
 {
-    WVPASS bup -d dest-repo init
-    WVPASS git --git-dir dest-repo config bup.split.trees true
-    WVEXPRC 3 err-to repair.log bup -d dest-repo get -s bup --repair --pick src/latest
     set-repair-id
     WVPASS git log --pretty="%H" -n1 src > save-oid
     WVPASS git --git-dir dest-repo log --pretty="%T" -n1 src > replacement-tree-oid
@@ -62,12 +59,37 @@ WVSTART 'missing root .bupm is handled by --pick'
 WVPASS rm -rf bup
 WVPASS cp -pPR bup-complete bup
 WVPASS "$top/dev/perforate-repo" --drop-oids "$BUP_DIR" < root-bupm-oid
+WVPASS bup -d dest-repo init
+WVPASS git --git-dir dest-repo config bup.split.trees true
+WVEXPRC 3 err-to repair.log bup -d dest-repo get -s bup --repair --pick src/latest
 validate-missing-root-replacement
 
 WVSTART 'missing root tree is handled by --pick'
 WVPASS rm -rf bup
 WVPASS cp -pPR bup-complete bup
 WVPASS "$top/dev/perforate-repo" --drop-oids "$BUP_DIR" < tip-commit-tree-oid
+WVPASS bup -d dest-repo init
+WVPASS git --git-dir dest-repo config bup.split.trees true
+WVEXPRC 3 err-to repair.log bup -d dest-repo get -s bup --repair --pick src/latest
+validate-missing-root-replacement
+
+
+WVSTART 'missing root .bupm is handled by --append'
+WVPASS rm -rf bup
+WVPASS cp -pPR bup-complete bup
+WVPASS "$top/dev/perforate-repo" --drop-oids "$BUP_DIR" < root-bupm-oid
+WVPASS bup -d dest-repo init
+WVPASS git --git-dir dest-repo config bup.split.trees true
+WVEXPRC 3 err-to repair.log bup -d dest-repo get -s bup --repair --append src
+validate-missing-root-replacement
+
+WVSTART 'missing root tree is handled by --append'
+WVPASS rm -rf bup
+WVPASS cp -pPR bup-complete bup
+WVPASS "$top/dev/perforate-repo" --drop-oids "$BUP_DIR" < tip-commit-tree-oid
+WVPASS bup -d dest-repo init
+WVPASS git --git-dir dest-repo config bup.split.trees true
+WVEXPRC 3 err-to repair.log bup -d dest-repo get -s bup --repair --append src
 validate-missing-root-replacement
 
 
