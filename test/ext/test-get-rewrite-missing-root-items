@@ -43,10 +43,6 @@ set-repair-id()
 
 validate-missing-root-replacement()
 {
-    # callers rely on creation of commit-trailers and repair.log
-    WVPASS bup -d dest-repo init
-    WVPASS git --git-dir dest-repo config bup.split.trees true
-    WVEXPRC 3 err-to repair.log bup -d dest-repo get -s bup --repair --pick src/latest
     set-repair-id
     WVPASS git log --pretty="%H" -n1 src > save-oid
     WVPASS git --git-dir dest-repo log --pretty="%T" -n1 src > replacement-tree-oid
@@ -59,7 +55,6 @@ validate-missing-root-replacement()
     wv-match-rx "${trailers[0]}" "^Bup-Version: ${bup_ver//+/\\+}\$"
     wv-match-rx "${trailers[1]}" '^Bup-Argv: [^ ]+/bup.* save --strip -n src src'
     wv-match-rx "${trailers[2]}" "^Bup-Version: ${bup_ver//+/\\+}\$"
-    wv-match-rx "${trailers[3]}" '^Bup-Argv: [^ ]+/bup.* get .* --repair --pick src/latest'
     wv-match-rx "${trailers[4]}" "^Bup-Repair-ID: $repair_id\$"
     wv-match-rx "${trailers[5]}" "^Bup-Repaired-Save: $(< save-oid) src/$save_date"
     unset trailers
@@ -70,8 +65,12 @@ WVSTART 'missing root .bupm is handled by --pick'
 WVPASS rm -rf bup
 WVPASS cp -pPR bup-complete bup
 WVPASS "$top/dev/perforate-repo" --drop-oids "$BUP_DIR" < root-bupm-oid
+WVPASS bup -d dest-repo init
+WVPASS git --git-dir dest-repo config bup.split.trees true
+WVEXPRC 3 err-to repair.log bup -d dest-repo get -s bup --repair --pick src/latest
 validate-missing-root-replacement
 readarray -t trailers < commit-trailers
+wv-match-rx "${trailers[3]}" '^Bup-Argv: [^ ]+/bup.* get .* --repair --pick src/latest'
 wv-match-rx "${trailers[6]}" '^Bup-Lost-Meta: /1$'
 wv-match-rx "${trailers[7]}" '^Bup-Lost-Meta: /2$'
 wv-match-rx "${trailers[8]}" '^Bup-Lost-Meta: /$'
@@ -82,9 +81,45 @@ WVSTART 'missing root tree is handled by --pick'
 WVPASS rm -rf bup
 WVPASS cp -pPR bup-complete bup
 WVPASS "$top/dev/perforate-repo" --drop-oids "$BUP_DIR" < tip-commit-tree-oid
+WVPASS bup -d dest-repo init
+WVPASS git --git-dir dest-repo config bup.split.trees true
+WVEXPRC 3 err-to repair.log bup -d dest-repo get -s bup --repair --pick src/latest
 validate-missing-root-replacement
 WVPASS grep -E "^repaired /src/$save_date/ $oid_rx -> $oid_rx\$" repair.log
 readarray -t trailers < commit-trailers
+wv-match-rx "${trailers[3]}" '^Bup-Argv: [^ ]+/bup.* get .* --repair --pick src/latest'
+wv-match-rx "${trailers[6]}" "^Bup-Replaced: $(< replacement-tree-oid) /\$"
+WVPASSEQ '' "${trailers[7]}" # end-of-line
+unset trailers
+
+
+WVSTART 'missing root .bupm is handled by --append'
+WVPASS rm -rf bup
+WVPASS cp -pPR bup-complete bup
+WVPASS "$top/dev/perforate-repo" --drop-oids "$BUP_DIR" < root-bupm-oid
+WVPASS bup -d dest-repo init
+WVPASS git --git-dir dest-repo config bup.split.trees true
+WVEXPRC 3 err-to repair.log bup -d dest-repo get -s bup --repair --append src
+validate-missing-root-replacement
+readarray -t trailers < commit-trailers
+wv-match-rx "${trailers[3]}" '^Bup-Argv: [^ ]+/bup.* get .* --repair --append src'
+wv-match-rx "${trailers[6]}" '^Bup-Lost-Meta: /1$'
+wv-match-rx "${trailers[7]}" '^Bup-Lost-Meta: /2$'
+wv-match-rx "${trailers[8]}" '^Bup-Lost-Meta: /$'
+WVPASSEQ '' "${trailers[9]}" # end-of-line
+unset trailers
+
+WVSTART 'missing root tree is handled by --append'
+WVPASS rm -rf bup
+WVPASS cp -pPR bup-complete bup
+WVPASS "$top/dev/perforate-repo" --drop-oids "$BUP_DIR" < tip-commit-tree-oid
+WVPASS bup -d dest-repo init
+WVPASS git --git-dir dest-repo config bup.split.trees true
+WVEXPRC 3 err-to repair.log bup -d dest-repo get -s bup --repair --append src
+validate-missing-root-replacement
+WVPASS grep -E "^repaired /src/$save_date/ $oid_rx -> $oid_rx\$" repair.log
+readarray -t trailers < commit-trailers
+wv-match-rx "${trailers[3]}" '^Bup-Argv: [^ ]+/bup.* get .* --repair --append src'
 wv-match-rx "${trailers[6]}" "^Bup-Replaced: $(< replacement-tree-oid) /\$"
 WVPASSEQ '' "${trailers[7]}" # end-of-line
 unset trailers

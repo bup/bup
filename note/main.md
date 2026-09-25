@@ -28,12 +28,12 @@ May require attention
 General
 -------
 
-* `bup get --repair --pick ...` can now repair saves with a missing
-  root tree or root metadata (e.g. missing git level `some/SAVE/.bupm`
-  file).  For now, when the entire root tree is missing it is replaced
-  with an empty directory, and a missing .bupm is treated the same as
-  an "abridged" .bupm (see `bup-get(1)` for more information).
-  Previously the repair would just fail.
+* `bup get --repair --pick ...` and `--append` can now repair saves
+  with a missing root tree or root metadata (e.g. missing git level
+  `some/SAVE/.bupm` file).  For now, when the entire root tree is
+  missing it is replaced with an empty directory, and a missing .bupm
+  is treated the same as an "abridged" .bupm (see `bup-get(1)` for
+  more information).  Previously the repair would just fail.
 
 Bugs
 ----

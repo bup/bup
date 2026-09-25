@@ -419,8 +419,10 @@ def append_commits(src_loc, dest_hash, src_repo, dest_repo, rewriter, excludes,
 
     # We need both the VFS name (YYYY-MM-DD[-N]), and the rev-list
     # order, so for now, cross-reference rev-list with contents().
+    # Refusing metadata allows us to handle/repair missing trees, root
+    # .bupms, etc. if we're repairing.
     entry_for_coid = {}
-    for entry in vfs.contents(src_repo, path[1][1]):
+    for entry in vfs.contents(src_repo, path[1][1], want_meta=False):
         if entry[0] in (b'.', b'..', b'latest'):
             continue
         entry_for_coid[entry[1].coid] = entry
