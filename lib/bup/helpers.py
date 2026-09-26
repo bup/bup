@@ -1134,6 +1134,8 @@ _some_invalid_save_parts_rx = re.compile(br'[\[ ~^:?*\\]|\.\.|//|@{')
 
 def valid_save_name(name):
     # Enforce a superset of the restrictions in git-check-ref-format(1)
+    if not name:
+        return False
     if name == b'@' \
        or name.startswith(b'/') or name.endswith(b'/') \
        or name.endswith(b'.'):

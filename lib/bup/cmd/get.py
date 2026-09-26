@@ -25,7 +25,8 @@ from bup.helpers import \
      parse_num,
      parse_rx_excludes,
      saved_errors,
-     tty_width)
+     tty_width,
+     valid_save_name)
 from bup.io import path_msg
 from bup.pwdgrp import userfullname, username
 from bup.repair import valid_repair_id
@@ -453,7 +454,6 @@ def find_git_item(ref, repo):
 
 
 Loc = namedtuple('Loc', ['type', 'hash', 'path', 'vfs_path'])
-default_loc = Loc(None, None, None, None)
 
 def find_vfs_item(name, repo):
     res = repo.resolve(name, follow=False, want_meta=False)
@@ -494,6 +494,9 @@ def find_vfs_item(name, repo):
     else:
         raise Exception('unexpected resolution for %s: %r'
                         % (path_msg(name), res))
+    # This path must exactly match dest_loc_for_unresolved_path and
+    # branch_path_for_vfs_res for equivalent VFS locations (i.e. wrt
+    # ==).
     path = b'/'.join(name for name, item in res)
     if hasattr(leaf_item, 'coid'):
         result = Loc(type=kind, hash=leaf_item.coid, path=path, vfs_path=vfs_path)
@@ -512,8 +515,6 @@ def loc_desc(loc):
     return repr(loc)
 
 
-# FIXME: see if resolve() means we can drop the vfs path cleanup
-
 def cleanup_vfs_path(p):
     result = os.path.normpath(p)
     if result.startswith(b'/'):
@@ -521,12 +522,52 @@ def cleanup_vfs_path(p):
     return b'/' + result
 
 
-def validate_vfs_path(p, spec):
-    if p.startswith(b'/.') \
-       and not p.startswith(b'/.tag/'):
-        misuse('unsupported destination path %s in %s'
-               % (path_msg(p), spec_msg(spec)))
-    return p
+def adjusted_loc_type_for_vfs_path(kind, path):
+    """Return the Loc type (cf. find_vfs_item), kind, adjusted for the
+      given (normalized as per cleanup_vfs_path) path.  This does not
+      validate the path against the kind (e.g. that a branch doesn't
+      end up with 'blob') because it's used in some cases before
+      user-friendly validation.  The type mapping is just to handle
+      tag vs save/branch dest types.
+
+    """
+    # FIXME: test type via some vfs_path_branch_name or similar so
+    # we're more insensitive to any future vfs additions (say some new
+    # VFS /.* paths)?
+    if kind in ('branch', 'save', 'commit'):
+        if path.startswith(b'/.tag/'):
+            return 'commit'
+        return 'branch'
+    if kind in ('commit', 'tree', 'blob'):
+        return kind
+    assert False, f'unexpected type {kind} specified for {path_msg(path)}'
+
+
+def dest_loc_for_unresolved_path(path, src_kind, spec):
+    """Return a normalized, valid Loc for a path that does not yet
+    exist.  The src_kind must be a type as per find_vfs_item, and it
+    is used to select a suitable destination Loc type.  Since the Loc
+    does not exist, it is "unresolved" (no vfs_path).  This does not
+    ensure the resulting type is valid for the path.  See
+    adjusted_loc_type_for_vfs_path.
+
+    """
+    assert path, path # otherwise src.dest would have already been chosen
+    path = cleanup_vfs_path(path)
+    if path.startswith(b'/.tag/'):
+        if not valid_save_name(path[6:]):
+            spec_args = spec_msg(spec)
+            misuse(f'destination for {spec_args} is not a valid tag name')
+    else:
+        if path.endswith(b'/'):
+            path = path[:-1]
+        if not valid_save_name(path[1:]):
+            spec_args = spec_msg(spec)
+            misuse(f'destination for {spec_args} is not a valid branch name')
+    # Now path must exactly match branch_path_for_vfs_res and
+    # find_vfs_path for equivalent VFS locations (i.e. wrt ==).
+    kind = adjusted_loc_type_for_vfs_path(src_kind, path)
+    return Loc(type=kind, hash=None, path=path, vfs_path=None)
 
 
 def resolve_src(spec, src_repo, *, allow=None):
@@ -559,6 +600,8 @@ def branch_path_for_vfs_res(res):
     if not save_item:
         misuse(f'error: cannot access {path_msg(save_name)} in {res!r}')
     assert isinstance(save_item, vfs.RevList), res
+    # This must exactly match dest_loc_for_unresolved_path and
+    # find_vfs_path for equivalent VFS locations (i.e. wrt ==).
     return b'/' + save_name
 
 
@@ -588,7 +631,7 @@ def resolve_branch_dest(spec, src, dest_repo):
             misuse('destination for %s is a %s, not a branch'
                   % (spec_args, dest.type))
     else:
-        dest = default_loc._replace(path=cleanup_vfs_path(spec.dest))
+        dest = dest_loc_for_unresolved_path(spec.dest, 'branch', spec)
 
     if dest.path.startswith(b'/.'):
         misuse('destination for %s must be a valid branch name' % spec_args)
@@ -688,8 +731,7 @@ def resolve_pick(spec, src_repo, dest_repo):
             misuse(f'cannot currently --rewrite a {src.type}')
     dest = find_vfs_item(spec.dest, dest_repo)
     if not dest:
-        cp = validate_vfs_path(cleanup_vfs_path(spec.dest), spec)
-        dest = default_loc._replace(path=cp)
+        dest = dest_loc_for_unresolved_path(spec.dest, 'branch', spec)
         return Target(spec=spec, src=src, dest=dest)
     if not dest.type == 'branch' and not dest.path.startswith(b'/.tag/'):
         misuse('%s destination is not a tag or branch' % spec_args)
@@ -730,7 +772,7 @@ def resolve_new_tag(spec, src_repo, dest_repo):
     assert spec.dest, (spec, src)
     dest = find_vfs_item(spec.dest, dest_repo)
     if not dest:
-        dest = default_loc._replace(path=cleanup_vfs_path(spec.dest))
+        dest = dest_loc_for_unresolved_path(spec.dest, 'branch', src.type)
     if not dest.path.startswith(b'/.tag/'):
         misuse('destination for %s must be a VFS tag' % spec_args)
     if dest.hash:
@@ -763,8 +805,7 @@ def resolve_replace(spec, src_repo, dest_repo):
             misuse('%s impossible; can only overwrite branch or tag'
                   % spec_args)
     else:
-        cp = validate_vfs_path(cleanup_vfs_path(spec.dest), spec)
-        dest = default_loc._replace(path=cp)
+        dest = dest_loc_for_unresolved_path(spec.dest, 'branch', src.type)
     if not dest.path.startswith(b'/.tag/') \
        and not src.type in ('branch', 'save', 'commit'):
         misuse('cannot overwrite branch with %s for %s' % (src.type, spec_args))
