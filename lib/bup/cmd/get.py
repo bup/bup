@@ -549,30 +549,35 @@ def resolve_src(spec, src_repo, *, allow=None):
     return src
 
 
-def get_save_branch(repo, path):
-    res = repo.resolve(path, follow=False, want_meta=False)
-    leaf_name, leaf_item = res[-1]
-    if not leaf_item:
-        misuse('error: cannot access %r in %r' % (leaf_name, path))
-    assert len(res) == 3
-    res_path = b'/'.join(name for name, item in res[:-1])
-    return res_path
+def branch_path_for_vfs_res(res):
+    """Return the vfs path (bytes) for the resolved path, e.g. /branch
+    for /branch/SAVE/etc/..."""
+    assert len(res) >= 2, res
+    assert res[0][0] == b'', res
+    assert isinstance(res[0][1], vfs.Root), res
+    save_name, save_item = res[1]
+    if not save_item:
+        misuse(f'error: cannot access {path_msg(save_name)} in {res!r}')
+    assert isinstance(save_item, vfs.RevList), res
+    return b'/' + save_name
 
 
-def resolve_branch_dest(spec, src, src_repo, dest_repo):
+def resolved_loc_branch_or_tag_path(loc):
+    """Return the vfs path (bytes) for the resolved loc,
+    e.g. e.g. /branch for /branch/SAVE/etc/..., or /.tag/x/y.
+
+    """
+    if isinstance(loc.vfs_path[1][1], vfs.Tags):
+        return loc.path
+    return branch_path_for_vfs_res(loc.vfs_path)
+
+
+def resolve_branch_dest(spec, src, dest_repo):
     # Resulting dest must be treeish, or not exist.
     if not spec.dest:
-        # Pick a default dest.
-        if src.type == 'branch':
-            spec = dcreplace(spec, dest=spec.src)
-        elif src.type == 'save':
-            spec = dcreplace(spec, dest=get_save_branch(src_repo, spec.src))
-        elif src.path.startswith(b'/.tag/'):  # Dest defaults to the same.
-            spec = dcreplace(spec, dest=spec.src)
-
+        spec = dcreplace(spec, dest=resolved_loc_branch_or_tag_path(src))
+    assert spec.dest, (spec, src)
     spec_args = spec_msg(spec)
-    if not spec.dest:
-        misuse('no destination (implicit or explicit) for %s' % spec_args)
 
     dest = find_vfs_item(spec.dest, dest_repo)
     if dest:
@@ -603,7 +608,7 @@ def resolve_ff(spec, src_repo, dest_repo):
     if src.type not in ('branch', 'save', 'commit'):
         misuse('source for %s must be a branch, save, or commit, not %s'
               % (spec_args, src.type))
-    spec, dest = resolve_branch_dest(spec, src, src_repo, dest_repo)
+    spec, dest = resolve_branch_dest(spec, src, dest_repo)
     return Target(spec=spec, src=src, dest=dest)
 
 
@@ -627,7 +632,7 @@ def resolve_append(spec, src_repo, dest_repo):
     if src.type not in ('branch', 'save', 'commit', 'tree'):
         misuse('source for %s must be a branch, save, commit, or tree, not %s'
               % (spec_msg(spec), src.type))
-    spec, dest = resolve_branch_dest(spec, src, src_repo, dest_repo)
+    spec, dest = resolve_branch_dest(spec, src, dest_repo)
     if spec.rewriter:
         def vpm(path): return path_msg(b"/".join(x[0] for x in path))
         if not isinstance(src, Loc):
@@ -676,12 +681,8 @@ def resolve_pick(spec, src_repo, dest_repo):
         misuse('%s impossible; can only pick a commit or save, not %s'
                % (spec_args, src.type))
     if not spec.dest:
-        if src.path.startswith(b'/.tag/'):
-            spec = dcreplace(spec, dest=spec.src)
-        elif src.type == 'save':
-            spec = dcreplace(spec, dest=get_save_branch(src_repo, spec.src))
-    if not spec.dest:
-        misuse('no destination provided for %s' % spec_args)
+        spec = dcreplace(spec, dest=resolved_loc_branch_or_tag_path(src))
+    assert spec.dest, (spec, src)
     if spec.rewriter:
         if src.type != 'save':
             misuse(f'cannot currently --rewrite a {src.type}')
@@ -722,10 +723,11 @@ def resolve_new_tag(spec, src_repo, dest_repo):
     assert not spec.ignore_missing, spec
     src = resolve_src(spec, src_repo)
     spec_args = spec_msg(spec)
-    if not spec.dest and src.path.startswith(b'/.tag/'):
-        spec = dcreplace(spec, dest=src.path)
     if not spec.dest:
-        misuse('no destination (implicit or explicit) for %s' % spec_args)
+        if not src.path.startswith(b'/.tag/'):
+            misuse(f'destination for {spec_args} must be a VFS tag')
+        spec = dcreplace(spec, dest=src.path)
+    assert spec.dest, (spec, src)
     dest = find_vfs_item(spec.dest, dest_repo)
     if not dest:
         dest = default_loc._replace(path=cleanup_vfs_path(spec.dest))
@@ -751,10 +753,10 @@ def resolve_replace(spec, src_repo, dest_repo):
     src = resolve_src(spec, src_repo)
     spec_args = spec_msg(spec)
     if not spec.dest:
-        if src.path.startswith(b'/.tag/') or src.type == 'branch':
-            spec = dcreplace(spec, dest=spec.src)
-    if not spec.dest:
-        misuse('no destination provided for %s' % spec_args)
+        if src.type != 'branch' and not src.path.startswith(b'/.tag/'):
+            misuse(f'destination for {spec_args} must be a VFS branch or tag')
+        spec = dcreplace(spec, dest=src.path)
+    assert spec.dest, (spec, src)
     dest = find_vfs_item(spec.dest, dest_repo)
     if dest:
         if not dest.type == 'branch' and not dest.path.startswith(b'/.tag/'):
