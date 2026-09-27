@@ -137,7 +137,7 @@ def require_n_args_or_die(n, args):
     assert len(result[0]) == n
     return result
 
-@dataclass(slots=True, frozen=True)
+@dataclass_frozen_for_testing(slots=True)
 class Spec:
     method: str
     src: bytes
@@ -361,6 +361,21 @@ class GetResult:
     repairs: int = 0
 
 
+@dataclass_frozen_for_testing(slots=True)
+class VFSLoc:
+    path: bytes
+    type: str # find_vfs_item type (see below)
+    hash: Optional[bytes] = None # (e.g. None if destination doesn't exist)
+    vfs_path: Optional[bytes] = None
+    ref: Optional[bytes] = None # associated git ref (heads or tags)
+    def __post_init__(self):
+        assert self.path, self
+        assert isinstance(self.path, bytes)
+        assert self.type in ('root', 'tags', 'branch', 'save', 'commit', 'tree',
+                             'blob'), \
+            self.type
+
+
 def transfer_commit(hash, parent, src_repo, dest_repo, ignore_missing):
     now = time.time()
     items = get_commit_items(hash, src_repo.cat)
@@ -378,13 +393,13 @@ def transfer_commit(hash, parent, src_repo, dest_repo, ignore_missing):
 def append_commit(src_loc, parent, src_repo, dest_repo, rewriter, excludes,
                   repair_info, ignore_missing):
     if not rewriter:
-        assert isinstance(src_loc, (bytes, Loc)), src_loc
+        assert isinstance(src_loc, (bytes, VFSLoc)), src_loc
         oidx = src_loc if isinstance(src_loc, bytes) else hexlify(src_loc.hash)
         return transfer_commit(oidx, parent, src_repo, dest_repo,
                                ignore_missing)
 
     # Friendlier checking was done during resolve_*
-    assert isinstance(src_loc, Loc), src_loc
+    assert isinstance(src_loc, VFSLoc), src_loc
     path = src_loc.vfs_path
     assert len(path) == 3, path
     root_, ref, save = path
@@ -411,7 +426,7 @@ def append_commits(src_loc, dest_hash, src_repo, dest_repo, rewriter, excludes,
         return GetResult(last_c, tree)
 
     # Friendlier checking was done during resolve_*
-    assert isinstance(src_loc, Loc), src_loc
+    assert isinstance(src_loc, VFSLoc), src_loc
     assert src_loc.type in ('branch', 'commit', 'save'), src_loc
     path = src_loc.vfs_path
     assert len(path) == 2, path # root, ref
@@ -453,9 +468,8 @@ def find_git_item(ref, repo):
     return GitLoc(ref, unhexlify(oidx), typ)
 
 
-Loc = namedtuple('Loc', ['type', 'hash', 'path', 'vfs_path'])
-
 def find_vfs_item(name, repo):
+    # cf. VFSLoc.__post_init__ when changing the set of types
     res = repo.resolve(name, follow=False, want_meta=False)
     leaf_name, leaf_item = res[-1]
     if not leaf_item:
@@ -497,23 +511,21 @@ def find_vfs_item(name, repo):
     # This path must exactly match dest_loc_for_unresolved_path and
     # branch_path_for_vfs_res for equivalent VFS locations (i.e. wrt
     # ==).
-    path = b'/'.join(name for name, item in res)
+    path = b'/'.join(name for name, item in res) or b'/'
     if hasattr(leaf_item, 'coid'):
-        result = Loc(type=kind, hash=leaf_item.coid, path=path,
-                     vfs_path=vfs_path)
+        result = VFSLoc(type=kind, hash=leaf_item.coid, path=path,
+                        vfs_path=vfs_path)
     elif hasattr(leaf_item, 'oid'):
-        result = Loc(type=kind, hash=leaf_item.oid, path=path,
-                     vfs_path=vfs_path)
+        result = VFSLoc(type=kind, hash=leaf_item.oid, path=path,
+                        vfs_path=vfs_path)
     else:
-        result = Loc(type=kind, hash=None, path=path, vfs_path=vfs_path)
+        result = VFSLoc(type=kind, hash=None, path=path, vfs_path=vfs_path)
     return result
 
 
 Target = namedtuple('Target', ['spec', 'src', 'dest'])
 
 def loc_desc(loc):
-    if loc and loc.hash:
-        loc = loc._replace(hash=hexlify(loc.hash))
     return repr(loc)
 
 
@@ -546,9 +558,9 @@ def adjusted_loc_type_for_vfs_path(kind, path):
 
 
 def dest_loc_for_unresolved_path(path, src_kind, spec):
-    """Return a normalized, valid Loc for a path that does not yet
+    """Return a normalized, valid VFSLoc for a path that does not yet
     exist.  The src_kind must be a type as per find_vfs_item, and it
-    is used to select a suitable destination Loc type.  Since the Loc
+    is used to select a suitable destination VFSLoc type.  Since the VFSLoc
     does not exist, it is "unresolved" (no vfs_path).  This does not
     ensure the resulting type is valid for the path.  See
     adjusted_loc_type_for_vfs_path.
@@ -569,7 +581,7 @@ def dest_loc_for_unresolved_path(path, src_kind, spec):
     # Now path must exactly match branch_path_for_vfs_res and
     # find_vfs_path for equivalent VFS locations (i.e. wrt ==).
     kind = adjusted_loc_type_for_vfs_path(src_kind, path)
-    return Loc(type=kind, hash=None, path=path, vfs_path=None)
+    return VFSLoc(type=kind, hash=None, path=path, vfs_path=None)
 
 
 def resolve_src(spec, src_repo, *, allow=None):
@@ -662,7 +674,7 @@ def resolve_ff(spec, src_repo, dest_repo, dest_changes):
         misuse('source for %s must be a branch, save, or commit, not %s'
               % (spec_args, src.type))
     spec, dest = resolve_branch_dest(spec, src, dest_repo, dest_changes)
-    return Target(spec=spec, src=src, dest=dest), dest._replace(hash=src.hash)
+    return Target(spec=spec, src=src, dest=dest), dcreplace(dest, hash=src.hash)
 
 
 def handle_ff(item, src_repo, dest_repo):
@@ -678,7 +690,7 @@ def handle_ff(item, src_repo, dest_repo):
     get_random_item(src_oidx, src_repo, dest_repo, item.spec.ignore_missing)
     commit_items = get_commit_items(src_oidx, src_repo.cat)
     return GetResult(item.src.hash, unhexlify(commit_items.tree)), \
-        item.dest._replace(hash=item.src.hash)
+        dcreplace(item.dest, hash=item.src.hash)
 
 
 def resolve_append(spec, src_repo, dest_repo, dest_changes):
@@ -689,10 +701,10 @@ def resolve_append(spec, src_repo, dest_repo, dest_changes):
               % (spec_msg(spec), src.type))
     spec, dest = resolve_branch_dest(spec, src, dest_repo, dest_changes)
     if not spec.rewriter: # hash=None (append is defined to make new commits)
-        return Target(spec=spec, src=src, dest=dest), dest._replace(hash=None)
+        return Target(spec=spec, src=src, dest=dest), dcreplace(dest, hash=None)
 
     def vpm(path): return path_msg(b"/".join(x[0] for x in path))
-    if not isinstance(src, Loc):
+    if not isinstance(src, VFSLoc):
         misuse(f'cannot currently rewrite git location {src}') # GitLoc
     src_path = src.vfs_path
     if len(src_path) != 2: # root, src_ref
@@ -701,7 +713,7 @@ def resolve_append(spec, src_repo, dest_repo, dest_changes):
     if not isinstance(src_ref[1], vfs.RevList):
         misuse(f'cannot append {vpm(src_path)} saves'
                f' ({path_msg(src_ref[0])} is a {type(src_ref[1])})')
-    return Target(spec=spec, src=src, dest=dest), dest._replace(hash=None)
+    return Target(spec=spec, src=src, dest=dest), dcreplace(dest, hash=None)
 
 
 def handle_append(item, src_repo, dest_repo):
@@ -720,14 +732,15 @@ def handle_append(item, src_repo, dest_repo):
         commit = dest_repo.write_commit(item.src.hash, parent,
                                         userline, now, None,
                                         userline, now, None, msg)
-        return GetResult(commit, item.src.hash), item.dest._replace(hash=commit)
+        return GetResult(commit, item.src.hash), \
+            dcreplace(item.dest, hash=commit)
     if item.dest.hash:
         assert item.dest.type in ('branch', 'commit', 'save'), item.dest
     res = append_commits(item.src, parent, src_repo, dest_repo,
                          item.spec.rewriter, item.spec.excludes,
                          item.spec.repair_info,
                          item.spec.ignore_missing)
-    return res, item.dest._replace(hash=res.oid)
+    return res, dcreplace(item.dest, hash=res.oid)
 
 
 def resolve_pick(spec, src_repo, dest_repo, dest_changes):
@@ -751,7 +764,7 @@ def resolve_pick(spec, src_repo, dest_repo, dest_changes):
         dest = find_vfs_item(spec.dest, dest_repo)
     if not dest:
         dest = dest_loc_for_unresolved_path(spec.dest, 'branch', spec)
-        return Target(spec=spec, src=src, dest=dest), dest._replace(hash=None)
+        return Target(spec=spec, src=src, dest=dest), dcreplace(dest, hash=None)
     if not dest.type == 'branch' and not dest.path.startswith(b'/.tag/'):
         misuse('%s destination is not a tag or branch' % spec_args)
     if not dest.hash:
@@ -759,7 +772,7 @@ def resolve_pick(spec, src_repo, dest_repo, dest_changes):
     if spec.method != 'force-pick' and dest.path.startswith(b'/.tag/'):
         misuse('cannot overwrite existing tag for %s (requires --force-pick)'
                % spec_args)
-    return Target(spec=spec, src=src, dest=dest), dest._replace(hash=None)
+    return Target(spec=spec, src=src, dest=dest), dcreplace(dest, hash=None)
 
 
 def handle_pick(item, src_repo, dest_repo):
@@ -774,7 +787,7 @@ def handle_pick(item, src_repo, dest_repo):
     res = append_commit(item.src, parent, src_repo, dest_repo,
                         item.spec.rewriter, item.spec.excludes,
                         item.spec.repair_info, item.spec.ignore_missing)
-    return res, item.dest._replace(hash=res.oid)
+    return res, dcreplace(item.dest, hash=res.oid)
 
 
 def resolve_new_tag(spec, src_repo, dest_repo, dest_changes):
@@ -798,7 +811,7 @@ def resolve_new_tag(spec, src_repo, dest_repo, dest_changes):
         misuse('cannot overwrite existing tag for %s (requires --replace)'
               % spec_args)
     changed_type = adjusted_loc_type_for_vfs_path(src.type, dest.path)
-    change = dest._replace(type=changed_type, hash=src.hash)
+    change = dcreplace(dest, type=changed_type, hash=src.hash)
     return Target(spec=spec, src=src, dest=dest), change
 
 
@@ -808,7 +821,7 @@ def handle_new_tag(item, src_repo, dest_repo):
     get_random_item(hexlify(item.src.hash), src_repo, dest_repo,
                     item.spec.ignore_missing)
     # No rewriting for now, so item.src.hash it is
-    return GetResult(item.src.hash), item.dest._replace(hash=item.src.hash)
+    return GetResult(item.src.hash), dcreplace(item.dest, hash=item.src.hash)
 
 
 def resolve_replace(spec, src_repo, dest_repo, dest_changes):
@@ -836,7 +849,7 @@ def resolve_replace(spec, src_repo, dest_repo, dest_changes):
         misuse('%s impossible; can only overwrite branch or tag'
                % spec_args)
     changed_type = adjusted_loc_type_for_vfs_path(src.type, dest.path)
-    change = dest._replace(type=changed_type, hash=src.hash)
+    change = dcreplace(dest, type=changed_type, hash=src.hash)
     return Target(spec=spec, src=src, dest=dest), change
 
 
@@ -852,7 +865,7 @@ def handle_replace(item, src_repo, dest_repo):
         get_random_item(src_oidx, src_repo, dest_repo, item.spec.ignore_missing)
         commit_items = get_commit_items(src_oidx, src_repo.cat)
         res = GetResult(item.src.hash, unhexlify(commit_items.tree))
-    return res, item.dest._replace(hash=item.src.hash)
+    return res, dcreplace(item.dest, hash=item.src.hash)
 
 
 def resolve_unnamed(spec, src_repo, dest_repo_, dest_changes_):
@@ -892,7 +905,7 @@ def resolve_target(spec, src_repo, dest_repo, ref_changes):
 
 def validate_targets(opt, src_repo, dest_repo):
     resolved_items = []
-    ref_changes = {} # vfs_dest_path_bytes -> Loc
+    ref_changes = {} # vfs_dest_path_bytes -> VFSLoc
     for spec in opt.target_specs:
         res, change = resolve_target(spec, src_repo, dest_repo, ref_changes)
         if not res:
@@ -985,7 +998,7 @@ def get_everything(opt):
             # includes all the info needed for the final update_ref
             # for each modified ref.
             orig_ref_oids = {} # vfs_dest_path_bytes -> oid
-            ref_changes = {} # vfs_dest_path_bytes -> Loc
+            ref_changes = {} # vfs_dest_path_bytes -> VFSLoc
 
             handlers = {'ff': handle_ff,
                         'append': handle_append,
