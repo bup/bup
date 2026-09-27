@@ -973,19 +973,25 @@ def validate_targets(opt, src_repo, dest_repo):
     return resolved_items
 
 
-def log_item(name, type, opt, tree=None, commit=None, tag=None):
-    if tag and opt.print_tags:
-        print(tag.hex())
-    if tree and opt.print_trees:
-        print(tree.hex())
-    if commit and opt.print_commits:
-        print(commit.hex())
+def log_method_result(target, result, opt):
+    assert isinstance(target, Target), target
+    assert isinstance(result, GetResult), result
+    dest_path = target.dest and target.dest.path # --unnamed has none
+    if dest_path:
+        if dest_path.startswith(b'/.tag/'):
+            if opt.print_tags: print(result.oid.hex())
+        else: # committ
+            if opt.print_trees: print(result.tree.hex())
+            if opt.print_commits: print(result.oid.hex())
     if opt.verbose:
-        last = ''
-        if type in ('root', 'branch', 'save', 'commit', 'tree'):
-            if not name.endswith(b'/'):
-                last = '/'
-        log('%s%s\n' % (path_msg(name), last))
+        name = target.spec.src
+        if target.src.type in ('root', 'branch', 'save', 'commit', 'tree') \
+           and not name.endswith(b'/'):
+            name += b'/'
+        if target.spec.method == 'unnamed':
+            log(f'{path_msg(name)} -> {target.src.hash.hex()}\n')
+        else:
+            log(f'{path_msg(name)} -> {result.oid.hex()}\n')
 
 
 def get_everything(opt):
@@ -1079,18 +1085,12 @@ def get_everything(opt):
                 get_res, new_dest = handler(cur_item, src_repo, dest_repo)
                 repair_count += get_res.repairs
 
-                if not dest_path:
-                    log_item(item.spec.src, item.src.type, opt)
-                else:
+                if dest_path:
                     if dest_path not in ref_changes:
                         orig_ref_oids[dest_path] = item.dest.hash
                     ref_changes[dest_path] = new_dest
-                    if dest_path.startswith(b'/.tag/'):
-                        log_item(item.spec.src, item.src.type, opt,
-                                 tag=get_res.oid)
-                    else:
-                        log_item(item.spec.src, item.src.type, opt,
-                                 tree=get_res.tree, commit=get_res.oid)
+
+                log_method_result(item, get_res, opt)
 
         # Only update the refs at the very end, once the destination repo
         # finished writing, so that if something goes wrong above, the old
