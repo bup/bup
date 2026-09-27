@@ -835,6 +835,63 @@ def log_item(name, type, opt, tree=None, commit=None, tag=None):
         log('%s%s\n' % (path_msg(name), last))
 
 
+def update_any_ref_and_log_result(target, result, src_repo, dest_repo,
+                                  updated_refs, opt):
+    assert isinstance(target, Target), target
+    assert isinstance(result, GetResult), result
+
+    new_oid = result.oid
+    orig_oid = dest_path = dest_ref = None
+    if target.dest:
+        orig_oid = target.dest.hash
+        dest_path = target.dest.path
+        if dest_path: # --unnamed has none
+            # Until we fix path and ref handling (i.e. support fully
+            # normalizing VFS paths, and encoding git refs in VFS
+            # paths), this long-standing, naive approach could cause
+            # us to log a ref's initial hash more than once via
+            # updated_refs.
+            if dest_path.startswith(b'/.tag/'):
+                dest_ref = b'refs/tags/%s' % dest_path[6:]
+            else:
+                dest_ref = b'refs/heads/%s' % dest_path[1:]
+
+    update_ex = False
+    if dest_ref:
+        try:
+            dest_repo.update_ref(dest_ref, new_oid, orig_oid)
+        except (git.GitError, client.ClientError) as ex:
+            update_ex = ex
+
+    if dest_path:
+        assert dest_ref, dest_ref
+        if update_ex:
+            # git output includes the hashes when there's a mismatch
+            note_error(f'unable to update {path_msg(dest_path)}: {update_ex}\n')
+        elif dest_path.startswith(b'/.tag/'):
+            if opt.print_tags: print(result.oid.hex())
+        else: # commit
+            if opt.print_trees: print(result.tree.hex())
+            if opt.print_commits: print(result.oid.hex())
+    if opt.verbose and not update_ex:
+        what = spec_msg(target.spec)[2:]
+        if target.spec.method == 'unnamed':
+            log(f'get {what} -> {target.src.hash.hex()}\n')
+        else:
+            assert result.oid, result
+            if not dest_ref in updated_refs:
+                if orig_oid:
+                    log(f'{path_msg(dest_path)} started at {orig_oid.hex()}\n')
+                else:
+                    log(f'{path_msg(dest_path)} did not initially exist\n')
+                updated_refs.add(dest_ref)
+            log(f'get {what} -> {result.oid.hex()}\n')
+
+    if dest_ref:
+        dest_repo.notice_ref_changes()
+        src_repo.notice_ref_changes()
+
+
 def can_notice_ref_changes(repo):
     if not repo.is_remote():
         return True # we know we have it
@@ -882,26 +939,9 @@ def get_everything(opt):
                        'replace': (resolve_replace, handle_replace),
                        'unnamed': (resolve_unnamed, handle_unnamed)}
 
-            def update_ref(ref, new_oid, orig_oid):
-                def ref_update_msg():
-                    new_oidx = hexlify(new_oid).decode('ascii')
-                    ref_msg = path_msg(ref)
-                    if orig_oid:
-                        orig_oidx = hexlify(orig_oid).decode('ascii')
-                        return f'{ref_msg} ({orig_oidx} -> {new_oidx})'
-                    return f'{ref_msg} ({new_oidx})'
-                try:
-                    dest_repo.update_ref(ref, new_oid, orig_oid)
-                except (git.GitError, client.ClientError) as ex:
-                    note_error(f'unable to update {ref_update_msg()}: {ex}\n')
-                if opt.verbose:
-                    log(f'updated {ref_update_msg()}\n')
-                dest_repo.notice_ref_changes()
-                src_repo.notice_ref_changes()
-
+            updated_refs = set()
             for spec in opt.target_specs:
                 debug1(f'get-spec: {spec!r}\n')
-
                 if spec.rewriter:
                     spec = dcreplace(spec, rewriter=rewriter)
 
@@ -913,28 +953,11 @@ def get_everything(opt):
 
                 debug1('get-src: %s\n' % loc_desc(item.src))
                 debug1('get-dest: %s\n' % loc_desc(item.dest))
-                dest_path = item.dest and item.dest.path
-                if dest_path:
-                    if dest_path.startswith(b'/.tag/'):
-                        dest_ref = b'refs/tags/%s' % dest_path[6:]
-                    else:
-                        dest_ref = b'refs/heads/%s' % dest_path[1:]
-                else:
-                    dest_ref = None
 
                 get_res = handle(item, src_repo, dest_repo)
                 repair_count += get_res.repairs
-
-                if not dest_ref:
-                    log_item(item.spec.src, item.src.type, opt)
-                else:
-                    update_ref(dest_ref, get_res.oid, item.dest.hash)
-                    if dest_ref.startswith(b'refs/tags/'):
-                        log_item(item.spec.src, item.src.type, opt,
-                                 tag=get_res.oid)
-                    else:
-                        log_item(item.spec.src, item.src.type, opt,
-                                 tree=get_res.tree, commit=get_res.oid)
+                update_any_ref_and_log_result(item, get_res, src_repo,
+                                              dest_repo, updated_refs, opt)
 
     if repair_count and not saved_errors:
         msg = ('Repairs were needed and successful; see above. Additional'
