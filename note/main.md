@@ -33,6 +33,11 @@ Bugs
   (`--pick`, `--replace`, etc.) when evaluating the correctness of a
   command before execution.
 
+* `bup get` now detects attempts to write to a destination that is
+  either the parent or child of an existing reference early, and
+  rejects them with a invalid usage message, instead of failing more
+  abruptly later, when git refuses the request.
+
 Thanks to (at least)
 ====================
 

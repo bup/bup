@@ -21,6 +21,36 @@ WVPASS echo 2 > src/a/two
 WVPASS echo 3 > src/a/three
 WVPASS bup index src
 WVPASS bup save --strip -n src src
+WVPASS cp -pPR "$BUP_DIR" bup-complete
+
+
+WVSTART 'rejection of attempts to write ref when a prefix exists'
+WVPASS rm -rf get-dest && WVPASS bup -d get-dest init
+WVFAIL err-to log bup -d get-dest get -s bup \
+       --ff src \
+       --pick: src/latest src/x
+WVPASS grep -F \
+       'error: --pick: src/latest src/x creates /src/x when /src exists' log
+WVFAIL err-to log bup -d get-dest get -s bup \
+       --new-tag: src .tag/src \
+       --new-tag: src .tag/src/y
+WVPASS grep -F \
+       'error: --new-tag: src .tag/src/y creates /.tag/src/y when /.tag/src exists' log
+
+WVSTART 'rejection of attempts to write ref when a suffix exists'
+WVPASS rm -rf get-dest && WVPASS bup -d get-dest init
+WVFAIL err-to log bup -d get-dest get -s bup \
+       --pick: src/latest src/x \
+       --ff src
+WVPASS grep -F 'error: --ff src creates /src when /src/ exists' log
+WVFAIL err-to log bup -d get-dest get -s bup \
+      --new-tag: src .tag/src/y \
+      --new-tag: src .tag/src
+WVPASS grep -F \
+      'error: --new-tag: src .tag/src creates /.tag/src when /.tag/src/ exists' log
+
+
+WVPASS rm -rf bup && WVPASS cp -pPR bup-complete bup
 
 WVSTART '--rewrite --exclude-rx'
 WVPASS bup get --rewrite --exclude-rx 't.*' --pick: src/latest dst
@@ -42,6 +72,7 @@ WVPASSEQ $'three\ntwo' "$(bup ls dst-3/latest/a)"
 WVSTART 'ignored contextual arguments are disallowed'
 WVEXPRC 2 err-to err.log bup get --rewrite --append x --exclude-rx y --ignore-missing
 WVPASS grep -E '^error: trailing arguments with no effect: --exclude-rx --ignore-missing' err.log
+
 
 WVPASS cd "$top"
 WVPASS rm -rf "$tmpdir"

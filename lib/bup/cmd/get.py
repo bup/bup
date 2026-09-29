@@ -903,9 +903,41 @@ def resolve_target(spec, src_repo, dest_repo, ref_changes):
     assert False, spec
 
 
+def git_ref_for_vfs_path(vp):
+    # Assumes normalized path (cf cleanup_vfs_path)
+    if vp.startswith(b'/.tag/'):
+        return b'refs/tags/%s' % vp[6:]
+    return b'refs/heads/%s' % vp[1:]
+
+
+def vfs_path_for_git_ref(ref):
+    if ref.startswith(b'refs/heads/'):
+        return ref[10:]
+    if ref.startswith(b'refs/tags/'):
+        return b'/.tag' + ref[9:]
+    assert False, ref
+
+
+def ref_prefixes(ref):
+    assert ref, ref
+    assert not ref.endswith(b'/'), ref
+    assert not ref.startswith(b'/'), ref
+    i = ref.find(b'/')
+    while i != -1:
+        yield ref[:i]
+        i = ref.find(b'/', i + 1)
+
+
 def validate_targets(opt, src_repo, dest_repo):
     resolved_items = []
     ref_changes = {} # vfs_dest_path_bytes -> VFSLoc
+    existing_parents = set()
+    existing_refs = set()
+    for ex_ref, oid_ in dest_repo.refs(limit_to_heads=True, limit_to_tags=True):
+        for ex_prefix in ref_prefixes(ex_ref):
+            existing_parents.add(ex_prefix)
+        existing_refs.add(ex_ref)
+
     for spec in opt.target_specs:
         res, change = resolve_target(spec, src_repo, dest_repo, ref_changes)
         if not res:
@@ -914,30 +946,30 @@ def validate_targets(opt, src_repo, dest_repo):
             assert not change, change
             continue
         resolved_items.append(res)
+
         if change:
-            # FIXME: check for prefixes here, either in ref_changes or
-            # originally in dest_repo?
+            # Check for attempts to create a ref when the prefix
+            # already exists, e.g.:
+            #   bup get --ff foo --ff: baz foo/bar
+            #   bup get --new-tag .tag/foo --new-tag: bar .tag/foo/bar
+            # resolve_METHOD above handles exact overwrites
+            ref = git_ref_for_vfs_path(change.path)
+            # ensure that ref isn't below an existing ref
+            for ref_prefix in ref_prefixes(ref):
+                if ref_prefix in existing_refs:
+                    vfsp = path_msg(vfs_path_for_git_ref(ref_prefix))
+                    refm = path_msg(vfs_path_for_git_ref(ref))
+                    misuse(f'{spec_msg(spec)} creates {refm} when {vfsp} exists')
+            # ensure that ref isn't above an existing ref
+            for ex_parent in existing_parents:
+                if ref == ex_parent:
+                    vfsp = path_msg(vfs_path_for_git_ref(ex_parent))
+                    refm = path_msg(vfs_path_for_git_ref(ref))
+                    misuse(f'{spec_msg(spec)} creates {refm} when {vfsp}/ exists')
+            for prefix in ref_prefixes(ref):
+                existing_parents.add(prefix)
+            existing_refs.add(ref)
             ref_changes[change.path] = change
-
-    # FIXME: check for prefix overlap?  i.e.:
-    #   bup get --ff foo --ff: baz foo/bar
-    #   bup get --new-tag .tag/foo --new-tag: bar .tag/foo/bar
-
-    # Now that we have all the items, check for duplicate tags.
-    # FIXME: not right, handle above via ref_changes
-
-    tags_targeted = set()
-    for item in resolved_items:
-        dest_path = item.dest and item.dest.path
-        if dest_path:
-            assert dest_path.startswith(b'/')
-            if dest_path.startswith(b'/.tag/'):
-                if dest_path in tags_targeted:
-                    if item.spec.method not in ('replace', 'force-pick'):
-                        misuse('cannot overwrite tag %s via %s' \
-                              % (path_msg(dest_path), spec_msg(item.spec)))
-                else:
-                    tags_targeted.add(dest_path)
     return resolved_items
 
 
@@ -1064,10 +1096,7 @@ def get_everything(opt):
         # finished writing, so that if something goes wrong above, the old
         # refs will be undisturbed.
         for dest_path, new_loc in ref_changes.items():
-            if dest_path.startswith(b'/.tag/'):
-                dest_ref = b'refs/tags/%s' % dest_path[6:]
-            else:
-                dest_ref = b'refs/heads/%s' % dest_path[1:]
+            dest_ref = git_ref_for_vfs_path(dest_path)
             orig_oid = orig_ref_oids[dest_path]
             try:
                 dest_repo.update_ref(dest_ref, new_loc.hash, orig_oid)
