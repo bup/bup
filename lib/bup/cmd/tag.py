@@ -3,7 +3,7 @@ import sys
 
 from bup import git, options
 from bup.compat import argv_bytes
-from bup.helpers import EXIT_FAILURE, EXIT_SUCCESS, debug1, log
+from bup.helpers import EXIT_FAILURE, EXIT_SUCCESS, debug1, log, valid_save_name
 from bup.io import byte_stream, path_msg
 
 
@@ -56,11 +56,11 @@ def main(argv):
            % (path_msg(tag_name), commit.decode('ascii')))
 
     if tag_name in tags and not opt.force:
-        log("bup: error: tag '%s' already exists\n" % path_msg(tag_name))
+        log(f'bup: error: tag {path_msg(tag_name)} already exists\n')
         return EXIT_FAILURE
 
-    if tag_name.startswith(b'.'):
-        o.fatal("'%s' is not a valid tag name." % path_msg(tag_name))
+    if not valid_save_name(tag_name):
+        o.fatal(f'{path_msg(tag_name)} is not a valid tag name')
 
     try:
         hash = git.rev_parse(commit)

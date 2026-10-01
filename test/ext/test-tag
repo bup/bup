@@ -31,12 +31,12 @@ WVFAIL err-to log bup tag tag-1 nope
 WVPASS grep "error: commit nope not found" log
 WVPASSEQ "$(git tag)" ''
 WVFAIL err-to log bup tag .tag-1 main
-WVPASS grep "'.tag-1' is not a valid tag name" log
+WVPASS grep ".tag-1 is not a valid tag name" log
 WVPASSEQ "$(git tag)" ''
 WVPASS bup tag tag-1 main
 WVPASSEQ "$(git tag)" tag-1
-WVFAIL bup tag tag-1 main 2> log
-WVPASS grep -E "tag 'tag-1' already exists" log
+WVFAIL err-to log bup tag tag-1 main
+WVPASS grep -E "tag tag-1 already exists" log
 WVPASSEQ "$(git tag)" tag-1
 WVPASS bup tag -d tag-1
 WVPASSEQ "$(git tag)" ''
