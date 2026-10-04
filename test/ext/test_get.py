@@ -429,48 +429,48 @@ def _test_replace(get_disposition, src_info):
                                  commit_2_id, tree_2_id, b'src-2', exr.out)
             verify_only_refs(heads=[], tags=(b'obj',))
 
-        # Committish to branch.
-        existing_items = (('nothing', None),
-                          ('branch', (b'.tag/commit-1', b'obj')))
-        for ex_type, ex_ref in existing_items:
-            for item_type, item in (('commit', b'.tag/commit-2'),
-                                    ('save', b'src/latest'),
-                                    ('branch', b'src')):
-                wvstart(get_disposition + ' --replace '
-                        + ex_type + ' with ' + item_type)
-                exr = run_get(get_disposition, b'--replace', (item, b'obj'),
-                              given=ex_ref)
-                validate_save(b'obj/latest', b'/',
-                              commit_2_id, tree_2_id, b'src-2', exr.out)
-                verify_only_refs(heads=(b'obj',), tags=[])
+    # Committish to branch.
+    existing_items = (('nothing', None),
+                      ('branch', (b'.tag/commit-1', b'obj')))
+    for ex_type, ex_ref in existing_items:
+        for item_type, item in (('commit', b'.tag/commit-2'),
+                                ('save', b'src/latest'),
+                                ('branch', b'src')):
+            wvstart(get_disposition + ' --replace '
+                    + ex_type + ' with ' + item_type)
+            exr = run_get(get_disposition, b'--replace', (item, b'obj'),
+                          given=ex_ref)
+            validate_save(b'obj/latest', b'/',
+                          commit_2_id, tree_2_id, b'src-2', exr.out)
+            verify_only_refs(heads=(b'obj',), tags=[])
 
-        # Not committish to branch
-        existing_items = (('nothing', None),
-                          ('branch', (b'.tag/commit-1', b'obj')))
-        for ex_type, ex_ref in existing_items:
-            for item_type, item in (('blob', b'.tag/tinyfile'),
-                                    ('blob', b'src/latest' + tinyfile_path),
-                                    ('tree', b'.tag/subtree'),
-                                    ('tree', b'src/latest' + subtree_vfs_path)):
-                wvstart(get_disposition + ' --replace branch with '
-                        + item_type + ' given ' + ex_type + ' fails')
+    # Not committish to branch
+    existing_items = (('nothing', None),
+                      ('branch', (b'.tag/commit-1', b'obj')))
+    for ex_type, ex_ref in existing_items:
+        for item_type, item in (('blob', b'.tag/tinyfile'),
+                                ('blob', b'src/latest' + tinyfile_path),
+                                ('tree', b'.tag/subtree'),
+                                ('tree', b'src/latest' + subtree_vfs_path)):
+            wvstart(get_disposition + ' --replace branch with '
+                    + item_type + ' given ' + ex_type + ' fails')
 
-                exr = run_get(get_disposition, b'--replace', (item, b'obj'),
-                              given=ex_ref)
-                wvpassne(0, exr.rc)
-                verify_rx(br'cannot overwrite branch with .+ for', exr.err)
+            exr = run_get(get_disposition, b'--replace', (item, b'obj'),
+                          given=ex_ref)
+            wvpassne(0, exr.rc)
+            verify_rx(br'cannot overwrite branch with .+ for', exr.err)
 
-        wvstart(get_disposition + ' --replace, implicit destinations')
+    wvstart(get_disposition + ' --replace, implicit destinations')
 
-        exr = run_get(get_disposition, b'--replace', b'src')
-        validate_save(b'src/latest', b'/',
-                      commit_2_id, tree_2_id, b'src-2', exr.out)
-        verify_only_refs(heads=(b'src',), tags=[])
+    exr = run_get(get_disposition, b'--replace', b'src')
+    validate_save(b'src/latest', b'/',
+                  commit_2_id, tree_2_id, b'src-2', exr.out)
+    verify_only_refs(heads=(b'src',), tags=[])
 
-        exr = run_get(get_disposition, b'--replace', b'.tag/commit-2')
-        validate_tagged_save(b'commit-2', b'/',
-                             commit_2_id, tree_2_id, b'src-2', exr.out)
-        verify_only_refs(heads=[], tags=(b'commit-2',))
+    exr = run_get(get_disposition, b'--replace', b'.tag/commit-2')
+    validate_tagged_save(b'commit-2', b'/',
+                         commit_2_id, tree_2_id, b'src-2', exr.out)
+    verify_only_refs(heads=[], tags=(b'commit-2',))
 
 def _test_ff(get_disposition, src_info):
 
