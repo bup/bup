@@ -1133,7 +1133,12 @@ def utc_offset_str(t):
 _some_invalid_save_parts_rx = re.compile(br'[\[ ~^:?*\\]|\.\.|//|@{')
 
 def valid_save_name(name):
-    # Enforce a superset of the restrictions in git-check-ref-format(1)
+    # Enforce a superset of the restrictions in
+    # git-check-ref-format(1), and note that despite the name, this is
+    # also used to validate tag names.
+    assert isinstance(name, bytes), name
+    if not name:
+        return False
     if name == b'@' \
        or name.startswith(b'/') or name.endswith(b'/') \
        or name.endswith(b'.'):
