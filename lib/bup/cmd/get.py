@@ -299,7 +299,7 @@ def find_vfs_item(name, repo):
     else:
         raise Exception('unexpected resolution for %s: %r'
                         % (path_msg(name), res))
-    path = b'/'.join(name for name, item in res)
+    path = b'/'.join(name for name, item in res) or b'/'
     if hasattr(leaf_item, 'coid'):
         result = Loc(type=kind, hash=leaf_item.coid, path=path)
     elif hasattr(leaf_item, 'oid'):
