@@ -576,25 +576,25 @@ def root_items(repo, names=None, want_meta=True):
         # FIXME: maybe eventually support repo.clone() or something
         # and pass in two repos, so we can drop the tuple() and stream
         # in parallel (i.e. meta vs refs).
-        for name, oid in tuple(repo.refs([], limit_to_heads=True)):
-            assert(name.startswith(b'refs/heads/'))
-            yield name[11:], _revlist_item_from_oid(repo, oid, want_meta)
+        for ref, oid in tuple(repo.refs([], limit_to_heads=True)):
+            assert ref.startswith(b'refs/heads/'), ref
+            yield ref[11:], _revlist_item_from_oid(repo, oid, want_meta)
         return
 
     if b'.' in names:
         yield b'.', _root
     if b'.tag' in names:
         yield b'.tag', _tags
-    for ref in names:
-        if ref in (b'.', b'.tag'):
+    for name in names:
+        if name in (b'.', b'.tag'):
             continue
-        oidx, typ, size_, it = repo.cat(b'refs/heads/' + ref)
+        oidx, typ, size_, it = repo.cat(b'refs/heads/' + name)
         if not oidx:
             continue
         assert typ == b'commit'
         data = b''.join(it)
-        yield ref, _revlist_item_from_oid(repo, unhexlify(oidx), want_meta,
-                                          data=data)
+        yield name, _revlist_item_from_oid(repo, unhexlify(oidx), want_meta,
+                                           data=data)
 
 def ordered_tree_entries(entries, bupm=None):
     """Returns [(name, mangled_name, kind, gitmode, oid) ...] for each
@@ -976,7 +976,7 @@ def revlist_items(repo, oid, names, require_meta=True):
 def tags_items(repo, names):
     global _tags
 
-    def tag_item(oid):
+    def tag_item(oid, ref):
         assert len(oid) == 20
         cached = cache_get_commit_item(oid, need_meta=False)
         if cached:
@@ -989,16 +989,17 @@ def tags_items(repo, names):
             return Item(meta=default_file_mode, oid=oid)
         if typ == b'tree':
             return Item(meta=default_dir_mode, oid=oid)
-        raise Exception('unexpected tag type ' + typ.decode('ascii')
-                        + ' for tag ' + path_msg(name))
+        if typ == b'tag':
+            raise Exception(f'cannot handle tag object yet: {path_msg(ref)}')
+        assert False, f'unsupported {path_msg(ref)} type {typ.decode("ascii")}'
 
     if not names:
         yield b'.', _tags
         # We have to pull these all into ram because tag_item calls cat()
-        for name, oid in tuple(repo.refs(names, limit_to_tags=True)):
-            assert(name.startswith(b'refs/tags/'))
-            name = name[10:]
-            yield name, tag_item(oid)
+        for ref, oid in tuple(repo.refs(names, limit_to_tags=True)):
+            assert ref.startswith(b'refs/tags/'), ref
+            name = ref[10:]
+            yield name, tag_item(oid, ref)
         return
 
     # Assumes no duplicate refs
@@ -1012,14 +1013,14 @@ def tags_items(repo, names):
             return
         remaining -= 1
 
-    for name, oid in repo.refs(names, limit_to_tags=True):
-        assert(name.startswith(b'refs/tags/'))
-        name = name[10:]
+    for ref, oid in repo.refs(names, limit_to_tags=True):
+        assert ref.startswith(b'refs/tags/'), ref
+        name = ref[10:]
         if name > last_name:
             return
         if name not in names:
             continue
-        yield name, tag_item(oid)
+        yield name, tag_item(oid, ref)
         if remaining == 1:
             return
         remaining -= 1
