@@ -1,5 +1,5 @@
 
-import os, time, random, subprocess, glob
+import os, time, random, glob
 
 from buptest import exc as ex
 from pytest import raises
@@ -165,7 +165,7 @@ def test_midx_refreshing(tmpdir):
             assert not p2.exists(s1sha)
             assert p2.exists(s2sha)
 
-        subprocess.call([bup.path.exe(), b'midx', b'-f'])
+        ex((bup.path.exe(), b'midx', b'-f'))
         pi.refresh()
         assert len(pi.packs) == 1
         pi.refresh(skip_midx=True)
