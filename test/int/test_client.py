@@ -1,7 +1,9 @@
 
 from __future__ import absolute_import
-import os, time, random, subprocess, glob
+import os, time, random, glob
 import pytest
+
+from buptest import ex
 
 from bup import client, git, path
 from bup.compat import bytes_from_uint, environ
@@ -133,7 +135,7 @@ def test_midx_refreshing(tmpdir):
             assert not p2.exists(s1sha)
             assert p2.exists(s2sha)
 
-        subprocess.call([path.exe(), b'midx', b'-f'])
+        ex((path.exe(), b'midx', b'-f'))
         pi.refresh()
         assert len(pi.packs) == 1
         pi.refresh(skip_midx=True)
