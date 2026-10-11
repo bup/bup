@@ -179,7 +179,7 @@ def _command(fn):
 class CommandDenied(Exception): pass
 
 class Server:
-    def __init__(self, conn, backend, *, commands='all',
+    def __init__(self, conn, backend, *, commands='all', vet_client=None,
                  vet_init_dir=None, vet_set_dir=None, vet_update_ref=None):
         """When commands is a sequence of command names (bytes),
         enable those commands.  When it is 'all', enable all commands.
@@ -188,9 +188,15 @@ class Server:
         now, because earlier versions of the client unconditionally
         required them during initialization.
 
-        The vet_* arguments can provide a function that should accept
-        COMMAND's decoded arguments, and raise a CommandDenied
-        exception if the invocation is not acceptable.
+        When set, vet_client(repo, info, command) will be called for
+        every command except set_client_info init-dir and set-dir with
+        the client's info (if any has been provided yet; see
+        helpers.internal_info).
+
+        The other vet_COMMAND arguments must be a function that
+        accepts COMMAND's decoded arguments, and it should typically
+        raise a CommandDenied exception if the invocation is not
+        acceptable.
 
         """
         all_cmds = self._get_commands()
@@ -211,6 +217,7 @@ class Server:
         self.suspended = False
         self.repo = None
         self._deduplicate_writes = True
+        self._vet_client = vet_client
         self._vet_init_dir = vet_init_dir
         self._vet_set_dir = vet_set_dir
         self._vet_update_ref = vet_update_ref
@@ -378,6 +385,12 @@ class Server:
         self.conn.ok()
 
     @_command
+    def notice_ref_changes(self, args):
+        assert not args, args
+        vfs.uncache_refs()
+        self.conn.ok()
+
+    @_command
     def join(self, id):
         self.init_session()
         try:
@@ -521,6 +534,9 @@ class Server:
                 break
 
             cmdattr = cmd.replace(b'-', b'_').decode('ascii', errors='replace')
+            if self._vet_client \
+               and cmdattr not in ('help', 'info', 'set-client-info'):
+                self._vet_client(self.repo, self._client_info, cmdattr)
             getattr(self, cmdattr)(rest)
 
         debug1('bup server: done\n')

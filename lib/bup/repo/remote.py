@@ -67,6 +67,9 @@ class RemoteRepo(RepoProtocol):
         self.finish_writing()
         return self.client.update_ref(refname, newval, oldval)
 
+    def notice_ref_changes(self):
+        return self.client.notice_ref_changes()
+
     def _ensure_packwriter(self):
         if not self._packwriter:
             self._packwriter = self.client.new_packwriter(

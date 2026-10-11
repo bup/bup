@@ -19,7 +19,7 @@ def validate(info):
     return info
 
 def get():
-    provides = []
+    provides = ['immediate-get-ref-updates']
     if getattr(_helpers, 'read_acl', None):
         provides.append('posix1e-acls')
     if metadata.xattr:

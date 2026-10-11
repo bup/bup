@@ -68,6 +68,14 @@ class RepoProtocol:
         """
 
     @notimplemented
+    def notice_ref_changes(self):
+        """Ensure that any ref changes are noticed.  They may not be
+        unless this is called after changes (currently won't if
+        they've been read before).
+
+        """
+
+    @notimplemented
     def cat(self, ref):
         """Return (oidx, type, size, data_iterator).  When the ref is
         missing, all elements will be None.  For some repositories

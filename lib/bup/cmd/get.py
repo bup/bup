@@ -154,6 +154,23 @@ def spec_msg(s):
         return '--%s %s' % (s.method, path_msg(s.src))
     return '--%s: %s %s' % (s.method, path_msg(s.src), path_msg(s.dest))
 
+def requests_potentially_broken_transfers(args):
+    # Must return true if the args specify multiple get transfers that
+    # might be broken before the 0.34.1 fix.  It's fine if this
+    # doesn't recognize "new" methods because those by definition must
+    # have been added after the fix, and so are safe if supported by
+    # bup, and will be rejected if not.
+    n = 0
+    for arg in args:
+        if arg in (b'--append', b'--append:', b'--ff', b'--ff:',
+                   b'--force-pick', b'--force-pick:', b'--new-tag',
+                   b'--new-tag:', b'--pick', b'--pick:', b'--replace',
+                   b'--replace:', b'--unnamed'):
+            if n:
+                return True
+            n = 1
+    return False
+
 def parse_args(args):
     @dataclass(slots=True)
     class GetOpts:
@@ -585,6 +602,10 @@ def resolve_branch_dest(spec, src, src_repo, dest_repo):
     else:
         dest = default_loc._replace(path=cleanup_vfs_path(spec.dest))
 
+    # FIXME: tag dest is supposed to be fine (e.g. see --ff in
+    # bup-get-(1))?  Assuming so, this should be removed and tests
+    # will need adjustment (code above already ensures the path is
+    # valid).
     if dest.path.startswith(b'/.'):
         misuse('destination for %s must be a valid branch name' % spec_args)
 
@@ -799,48 +820,6 @@ def handle_unnamed(item, src_repo, dest_repo):
     return GetResult()
 
 
-def resolve_targets(specs, src_repo, dest_repo):
-    resolved_items = []
-    common_args = src_repo, dest_repo
-    for spec in specs:
-        debug1('initial-spec: %r\n' % (spec,))
-        if spec.method == 'ff':
-            resolved_items.append(resolve_ff(spec, *common_args))
-        elif spec.method == 'append':
-            resolved_items.append(resolve_append(spec, *common_args))
-        elif spec.method in ('pick', 'force-pick'):
-            resolved_items.append(resolve_pick(spec, *common_args))
-        elif spec.method == 'new-tag':
-            resolved_items.append(resolve_new_tag(spec, *common_args))
-        elif spec.method == 'replace':
-            resolved_items.append(resolve_replace(spec, *common_args))
-        elif spec.method == 'unnamed':
-            tgt = resolve_unnamed(spec, *common_args)
-            if tgt:
-                resolved_items.append(tgt)
-        else: # Should be impossible -- prevented by the option parser.
-            assert(False)
-
-    # FIXME: check for prefix overlap?  i.e.:
-    #   bup get --ff foo --ff: baz foo/bar
-    #   bup get --new-tag .tag/foo --new-tag: bar .tag/foo/bar
-
-    # Now that we have all the items, check for duplicate tags.
-    tags_targeted = set()
-    for item in resolved_items:
-        dest_path = item.dest and item.dest.path
-        if dest_path:
-            assert(dest_path.startswith(b'/'))
-            if dest_path.startswith(b'/.tag/'):
-                if dest_path in tags_targeted:
-                    if item.spec.method not in ('replace', 'force-pick'):
-                        misuse('cannot overwrite tag %s via %s' \
-                              % (path_msg(dest_path), spec_msg(item.spec)))
-                else:
-                    tags_targeted.add(dest_path)
-    return resolved_items
-
-
 def log_item(name, type, opt, tree=None, commit=None, tag=None):
     if tag and opt.print_tags:
         print(tag.hex())
@@ -856,10 +835,22 @@ def log_item(name, type, opt, tree=None, commit=None, tag=None):
         log('%s%s\n' % (path_msg(name), last))
 
 
+def can_notice_ref_changes(repo):
+    if not repo.is_remote():
+        return True # we know we have it
+    return repo.client.supports('notice-ref-changes')
+
+
 def get_everything(opt):
     repair_count = 0
     with repo_for_url(opt.source_loc) as src_repo, \
          repo_for_location(opt.dst_loc, compression_level=opt.compress) as dest_repo:
+
+        if len(opt.target_specs) > 1:
+            if not can_notice_ref_changes(src_repo):
+                misuse('must upgrade source repository (see 0.34.1 release notes)')
+            if not can_notice_ref_changes(dest_repo):
+                misuse('must upgrade destination repository (see 0.34.1 release notes)')
 
         src_split_cfg = hashsplit.configuration(src_repo.config_get)
         dest_split_cfg = hashsplit.configuration(dest_repo.config_get)
@@ -873,13 +864,6 @@ def get_everything(opt):
                 misuse('repository configs differ; need --[no-]rewrite before'
                        f' {spec_msg(spec)}')
 
-        # Resolve and validate all sources and destinations, implicit
-        # or explicit, combinations of methods and modes (rewrite,
-        # missing, etc.) and do it up-front, so we can fail before we
-        # start writing (for any obviously broken cases).  Do this
-        # before creating any database via the Rewriter.
-        target_items = resolve_targets(opt.target_specs, src_repo, dest_repo)
-
         # The current arrangement relies on the assumption that any
         # (sub)tree created by a --rewrite is exactly the same tree
         # that --repair would create. If we ever need to change that,
@@ -890,23 +874,43 @@ def get_everything(opt):
         with (Rewriter(split_cfg=dest_split_cfg) if rewrite else nullctx) \
              as rewriter:
 
-            target_items = [(x if not x.spec.rewriter
-                             else x._replace(spec=dcreplace(x.spec, rewriter=rewriter)))
-                            for x in target_items]
+            methods = {'ff': (resolve_ff, handle_ff),
+                       'append': (resolve_append, handle_append),
+                       'force-pick': (resolve_pick, handle_pick),
+                       'pick': (resolve_pick, handle_pick),
+                       'new-tag': (resolve_new_tag, handle_new_tag),
+                       'replace': (resolve_replace, handle_replace),
+                       'unnamed': (resolve_unnamed, handle_unnamed)}
 
-            updated_refs = {}  # ref_name -> (original_ref, tip_commit(bin))
-            no_ref_info = (None, None)
+            def update_ref(ref, new_oid, orig_oid):
+                def ref_update_msg():
+                    new_oidx = hexlify(new_oid).decode('ascii')
+                    ref_msg = path_msg(ref)
+                    if orig_oid:
+                        orig_oidx = hexlify(orig_oid).decode('ascii')
+                        return f'{ref_msg} ({orig_oidx} -> {new_oidx})'
+                    return f'{ref_msg} ({new_oidx})'
+                try:
+                    dest_repo.update_ref(ref, new_oid, orig_oid)
+                except (git.GitError, client.ClientError) as ex:
+                    note_error(f'unable to update {ref_update_msg()}: {ex}\n')
+                if opt.verbose:
+                    log(f'updated {ref_update_msg()}\n')
+                dest_repo.notice_ref_changes()
+                src_repo.notice_ref_changes()
 
-            handlers = {'ff': handle_ff,
-                        'append': handle_append,
-                        'force-pick': handle_pick,
-                        'pick': handle_pick,
-                        'new-tag': handle_new_tag,
-                        'replace': handle_replace,
-                        'unnamed': handle_unnamed}
+            for spec in opt.target_specs:
+                debug1(f'get-spec: {spec!r}\n')
 
-            for item in target_items:
-                debug1('get-spec: %r\n' % (item.spec,))
+                if spec.rewriter:
+                    spec = dcreplace(spec, rewriter=rewriter)
+
+                resolve, handle = methods[spec.method]
+                item = resolve(spec, src_repo, dest_repo)
+                if not item: # e.g. missing (--unnamed --ignore-missing)
+                    continue
+                spec = item.spec
+
                 debug1('get-src: %s\n' % loc_desc(item.src))
                 debug1('get-dest: %s\n' % loc_desc(item.dest))
                 dest_path = item.dest and item.dest.path
@@ -918,43 +922,19 @@ def get_everything(opt):
                 else:
                     dest_ref = None
 
-                dest_hash = item.dest and item.dest.hash
-                orig_ref, cur_ref = updated_refs.get(dest_ref, no_ref_info)
-                orig_ref = orig_ref or dest_hash
-                cur_ref = cur_ref or dest_hash
-
-                handler = handlers[item.spec.method]
-                get_res = handler(item, src_repo, dest_repo)
+                get_res = handle(item, src_repo, dest_repo)
                 repair_count += get_res.repairs
 
                 if not dest_ref:
                     log_item(item.spec.src, item.src.type, opt)
                 else:
-                    updated_refs[dest_ref] = (orig_ref, get_res.oid)
+                    update_ref(dest_ref, get_res.oid, item.dest.hash)
                     if dest_ref.startswith(b'refs/tags/'):
                         log_item(item.spec.src, item.src.type, opt,
                                  tag=get_res.oid)
                     else:
                         log_item(item.spec.src, item.src.type, opt,
                                  tree=get_res.tree, commit=get_res.oid)
-
-        # Only update the refs at the very end, once the destination repo
-        # finished writing, so that if something goes wrong above, the old
-        # refs will be undisturbed.
-        for ref_name, info in updated_refs.items():
-            orig_ref, new_ref = info
-            try:
-                dest_repo.update_ref(ref_name, new_ref, orig_ref)
-                if opt.verbose:
-                    new_hex = hexlify(new_ref).decode('ascii')
-                    ref_msg = path_msg(ref_name)
-                    if orig_ref:
-                        orig_hex = hexlify(orig_ref).decode('ascii')
-                        log(f'updated {ref_msg} ({orig_hex} -> {new_hex})\n')
-                    else:
-                        log(f'updated {ref_msg} ({new_hex})\n')
-            except (git.GitError, client.ClientError) as ex:
-                note_error('unable to update ref %r: %s\n' % (ref_name, ex))
 
     if repair_count and not saved_errors:
         msg = ('Repairs were needed and successful; see above. Additional'

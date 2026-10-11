@@ -1,5 +1,4 @@
 
-
 from bup import source_info
 try:
     from bup import checkout_info

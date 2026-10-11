@@ -552,6 +552,10 @@ class Client:
             self.conn.write(b'%s\n' % hexlify(newval))
             self.conn.write(b'%s\n' % (hexlify(oldval) if oldval else b''))
 
+    def notice_ref_changes(self):
+        with self._call('notice-ref-changes'):
+            pass
+
     def join(self, id):
         # Send 'cat' so we'll work fine with older versions
         with self._call('cat', re.sub(br'[\n\r]', b'_', id),

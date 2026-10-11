@@ -146,6 +146,13 @@ used to help test before/after results.)
     configurations differ in a relevant way, and so far, `--rewrite`
     is only supported for appends and picks of saves (e.g. not trees).
 
+    When rewriting multiple related items (e.g. incremental saves of
+    the same filesystem), the process may be much faster if all of the
+    rewrites are performed by multiple METHODSs given to the same bup
+    invocation (i.e. `bup get ... --pick ... --pick ...`) because bup
+    remembers what it has previously rewritten and so can avoid
+    recomputing the result.
+
     Note that rewriting a git-created save may, and for now will,
     introduce bup-related changes. Further, while tested, `--rewrite`
     is relatively new and so warrants even more caution (see CAUTION

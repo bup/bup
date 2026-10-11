@@ -343,6 +343,9 @@ _tags = Tags(meta=default_dir_mode)
 ### item is just as likely to be evicted as an entire "rev-list".  See
 ### is_valid_cache_key for a description of the expected content.
 
+### Consider uncache_refs when making any changes to the cache
+### contents.
+
 _cache = {}
 _cache_keys = []
 _cache_max_items = 30000
@@ -352,6 +355,32 @@ def clear_cache():
     _cache = {}
     _cache_keys = []
 
+def uncache_refs():
+    """Clear all cache items that could be affected by a changed
+    reference, always at least as much as requested, maybe more.
+
+    """
+    global _cache, _cache_keys
+
+    # For now drop all the resolutions so that we don't have to map
+    # each (update_ref) ref to a canonical form, and we don't have to
+    # determine the canonical ref for each res: key.
+    #
+    # We ignore the repository because we don't want to have to try to
+    # identify all the repositories that refer to the same location.
+    # At the moment we just can't, since we only have the id(repo) in
+    # the cache keys.
+    #
+    # FIXME: see above
+    for key in list(_cache):
+        if key.startswith(b'res:'):
+            del _cache[key]
+            continue
+        if key.startswith(b'itm:') or key.startswith(b'rvl:'):
+            continue
+        assert False, f'unrecognized cache key {key}'
+    _cache_keys = list(_cache.keys())
+
 def is_valid_cache_key(x):
     """Return logically true if x looks like it could be a valid cache key
     (with respect to structure).  Current valid cache entries:
@@ -360,6 +389,7 @@ def is_valid_cache_key(x):
       rvl:OID -> {'.', commit, '2012...', next_commit, ...}
     """
     # Suspect we may eventually add "(container_oid, name) -> ...", and others.
+    # Consider uncache_refs when making any changes to the cache contents.
     if isinstance(x, bytes):
         tag = x[:4]
         if tag in (b'itm:', b'rvl:') and len(x) == 24:
@@ -382,6 +412,7 @@ def cache_notice(key, value, overwrite=False):
         if overwrite:
             _cache[key] = value
         return
+    # Note: uncache_refs also adjusts _cache_keys
     if len(_cache) < _cache_max_items:
         _cache_keys.append(key)
         _cache[key] = value

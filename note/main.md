@@ -4,6 +4,27 @@ Notable changes in main (incomplete)
 May require attention
 ---------------------
 
+* Previously, `bup get` incorrectly handled invocations that requested
+  a transfer that depended on a git reference (branch or tag) that was
+  modified by an earlier transfer.  For example, it could omit
+  intermediate items from the result when asked to do this:
+
+      bup get -s SRC ... --pick x/SAVE-1 --pick x/SAVE-2 --pick x/SAVE-3
+
+  It would omit SAVE-2 from the updated x branch, though the content
+  would still be in the repository (barring a subsequent `gc`).
+
+  This should now be fixed, and so the command above will produce an x
+  branch with SAVE-2 preceding SAVE-3, and SAVE-1 preceding SAVE-2,
+  as intended.
+
+  This was the result of an undocumented attempt to defer all
+  reference updates until after all of the transfers.  The updates now
+  happen immediately after each individual transfer.
+
+  bup should be upgraded on both the client and server (when
+  relevant).
+
 * `bup prune-older` did not correctly consider the year when pruning
   dailies or monthlies and adjacent saves had the same day or month
   but different years.  It would incorrectly prune all but the most

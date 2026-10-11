@@ -7,12 +7,13 @@ import getopt
 import os, struct, sys
 
 from bup import git, options, ssh, protocol
+from bup.cmd.get import requests_potentially_broken_transfers
 from bup.cmd.save import opts_from_cmdline as parse_save_args
 from bup.cmd.split import opts_from_cmdline as parse_split_args
 from bup.compat import argv_bytes
 from bup.git import check_repo_or_die, parse_commit
-from bup.helpers import Conn, stopped
-from bup.io import path_msg as pm
+from bup.helpers import Conn, EXIT_FAILURE, stopped
+from bup.io import log, path_msg as pm
 from bup.protocol import CommandDenied
 from bup.repo import LocalRepo
 import bup.cmd.save, bup.cmd.split, bup.path
@@ -102,6 +103,12 @@ def save_or_split_server_config(argv, opt_parser):
             'vet_update_ref': vet_update_ref,
             **restricted_repo_config()}
 
+def disallow_broken_get_transfers(repo_, client_info, command_):
+    if 'immediate-get-ref-updates' in client_info['provides']:
+        return
+    log('error: remote bup needs upgrade (see 0.34.1 release notes)\n')
+    sys.exit(EXIT_FAILURE)
+
 def main(argv):
     o = options.Options(optspec, optfunc=getopt.getopt)
     extra = o.parse_bytes(argv[1:])[2]
@@ -132,6 +139,12 @@ def main(argv):
         else:
             o.fatal(f'{pm(cmd)} is not currently supported')
             assert False # (so pylint won't think srv_config might be unset)
+
+    # This guards against running the broken bup get client code (see
+    # the 0.34.1 release notes).
+    if cmd == b'get' and requests_potentially_broken_transfers(argv):
+        assert 'vet_client' not in srv_config, srv_config
+        srv_config['vet_client'] = disallow_broken_get_transfers
 
     sys.stdout.flush()
     sys.stderr.flush()

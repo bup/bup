@@ -109,6 +109,9 @@ class LocalRepo(RepoProtocol):
         self.finish_writing()
         return git.update_ref(refname, newval, oldval, repo_dir=self.repo_dir)
 
+    def notice_ref_changes(self):
+        vfs.uncache_refs()
+
     def cat(self, ref):
         return self._cp.get(ref)
 
