@@ -1,6 +1,7 @@
 
 from io import BytesIO
 from itertools import combinations_with_replacement
+from json import JSONDecodeError
 
 from pytest import raises
 from wvpytest import *
@@ -69,6 +70,64 @@ def test_bvec():
     WVEXCEPT(EOFError, vint.skip_bvec, BytesIO(b'\x01'))
 
 
+def encode_and_decode_tree(x):
+    f = BytesIO()
+    vint.write_tree(f, x)
+    f.seek(0)
+    return vint.read_tree(f)
+
+
+# List including each base value as itself, in a list, and in a map, e.g.
+# [True, [True], (True,), ...].
+idempotent_tree_values = \
+    [x for xs in [[x, [x], {str(x): x}]
+                  for x in (True, 3, 1.5, '', 'x', 'x\0y', b'', b'x', b'x\0y',
+                            '!', '!x',
+                            '?', '?x')]
+     for x in xs]
+
+
+def test_tree():
+
+    for x in idempotent_tree_values:
+        assert encode_and_decode_tree(x) == x
+    # Spot check tuples since python == doesn't work
+    assert encode_and_decode_tree((1, 2, 3)) == [1, 2, 3]
+
+    data = BytesIO()
+    vint.write_vuint(data, 32)
+    vint.write_bvec(data, b'[1, 2')
+    WVEXCEPT(EOFError, vint.read_tree, BytesIO(data.getvalue()))
+
+    data = BytesIO()
+    vint.write_bvec(data, b'["?"]')
+    assert vint.read_tree(BytesIO(data.getvalue())) == b''
+
+    data = BytesIO()
+    vint.write_bvec(data, b'["?",""]')
+    assert vint.read_tree(BytesIO(data.getvalue())) == b''
+
+    data = BytesIO()
+    vint.write_bvec(data, b'["?","Zm9v"]')
+    assert vint.read_tree(BytesIO(data.getvalue())) == b'foo'
+
+    data = BytesIO()
+    vint.write_bvec(data, b'["????",42]')
+    assert vint.read_tree(BytesIO(data.getvalue())) == vint.unrecognized_type
+
+    data = BytesIO()
+    truncated = b'[1, 2,'
+    vint.write_bvec(data, truncated)
+    WVEXCEPT(JSONDecodeError, vint.read_tree, BytesIO(data.getvalue()))
+
+    data = BytesIO()
+    vint.write_tree(data, 1)
+    vint.write_tree(data, [2])
+    data.seek(0)
+    assert vint.read_tree(data) == 1
+    assert vint.read_tree(data) == [2]
+
+
 def test_send_recv():
     b = BytesIO()
     with raises(ValueError, match='number of arguments does not match format string'):
@@ -102,6 +161,7 @@ def test_pack_and_unpack():
                   ('V', 0),
                   ('V', 1),
                   ('V', 10**100))
+    candidates += tuple(('t', v) for v in idempotent_tree_values)
     WVPASSEQ(pack_and_unpack(''), [])
     for f, v in candidates:
         WVPASSEQ(pack_and_unpack(f, v), [v])
