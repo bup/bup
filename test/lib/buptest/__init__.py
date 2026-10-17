@@ -23,13 +23,27 @@ def logcmd(cmd):
 
 ex_res = namedtuple('SubprocResult', ('out', 'err', 'rc'))
 
-def exc(cmd, **kwargs):
+def _normalize_cmd(cmd):
+    assert cmd, cmd
+    if not isinstance(cmd[0], (bytes, str)): # exc((arg, arg, ...), **kwds)
+        assert len(cmd) == 1, cmd
+        cmd = cmd[0]
+    for arg in cmd:
+        assert isinstance(arg, (bytes, str)), \
+            f'{arg} is not bytes or str in {cmd}'
+    return cmd
+
+def exc(*args, **kwargs):
     """Print cmd to stderr and then run it via subprocess.run(), but
     with a default of check=True.  If the command's stderr is
     captured, and there's any data, write it to stderr.  Return a
     corresponding ex_res().
 
+    Accepts both exc("echo", "x", ...) and exc(("echo", x"), ...),
+    i.e. the first argument can be the entire command..
+
     """
+    cmd = _normalize_cmd(args)
     logcmd(cmd)
     kwargs.setdefault('check', True)
     cp = subprocess.run(cmd, **kwargs)
@@ -41,14 +55,16 @@ def exc(cmd, **kwargs):
             sys.stderr.write(cp.stderr)
     return ex_res(out=cp.stdout, err=cp.stderr, rc=cp.returncode)
 
-def exo(cmd, **kwargs):
+def exo(*args, **kwargs):
     """Print cmd to stderr and then run it via ex(cmd, stdout=PIPE,
     ...).  Return a corresponding ex_res().
 
+    Accepts both exc("echo", "x", ...) and exc(("echo", x"), ...),
+    i.e. the first argument can be the entire command..
+
     """
-    logcmd(cmd)
     if 'stdout' not in kwargs:
         kwargs['stdout'] = PIPE
     else:
         assert kwargs['stdout'] == PIPE, kwargs
-    return exc(cmd, **kwargs)
+    return exc(*args, **kwargs)
