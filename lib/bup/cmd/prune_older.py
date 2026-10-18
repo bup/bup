@@ -10,7 +10,7 @@ from bup import git, options
 from bup.compat import argv_bytes
 from bup.gc import bup_gc
 from bup.helpers import die_if_errors, log, partition, period_as_secs, quote
-from bup.io import byte_stream, path_msg
+from bup.io import byte_stream
 from bup.repo import LocalRepo
 from bup.rm import bup_rm
 from bup.vfs import save_names_for_commit_utcs
@@ -38,8 +38,10 @@ def classify_saves(saves, period_start):
     for save in matches:
         yield True, save
 
-    tm_ranges = ((period_start['dailies'], lambda s: localtime(s[0]).tm_yday),
-                 (period_start['monthlies'], lambda s: localtime(s[0]).tm_mon),
+    tm_ranges = ((period_start['dailies'], lambda s: (localtime(s[0]).tm_year,
+                                                      localtime(s[0]).tm_yday)),
+                 (period_start['monthlies'], lambda s: (localtime(s[0]).tm_year,
+                                                        localtime(s[0]).tm_mon)),
                  (period_start['yearlies'], lambda s: localtime(s[0]).tm_year))
 
     # Break the decreasing utc sorted saves up into the respective
