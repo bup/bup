@@ -77,6 +77,17 @@ class RepoProtocol:
         """
 
     @notimplemented
+    def rev_list(self, ref_or_refs, parse=None, format=None):
+        """
+        Yield information about commits as per "git rev-list".  If a format
+        is not provided, yield one hex hash at a time.  If a format is
+        provided, pass it to rev-list and call parse(git_stdout) for each
+        commit with the stream positioned just after the rev-list "commit
+        HASH" header line.  When a format is provided yield (oidx,
+        parse(git_stdout)) for each commit.
+        """
+
+    @notimplemented
     def refs(self, patterns=None, limit_to_heads=False, limit_to_tags=False):
         """
         Yield the refs filtered according to the list of patterns,
