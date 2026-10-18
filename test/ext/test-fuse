@@ -14,7 +14,7 @@ bup() { "$top/bup" "$@"; }
 # exit with status 2 on failures
 bup fuse -h 2>/dev/null
 if [ $? -eq 2 ]; then
-    WSKIP 'unable to import fuse/check version; skipping test'
+    WVSKIP 'unable to import fuse/check version; skipping test'
     exit 0
 fi
 
