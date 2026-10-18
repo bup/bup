@@ -232,3 +232,24 @@ def test_config(tmpdir):
         with raises(PermissionError) as exinfo:
             c.config_get(b'bup.not-an-allowed-key')
         assert 'does not allow remote access' in str(exinfo.value)
+
+
+def test_refs_with_patterns(tmpdir):
+    environ[b'BUP_DIR'] = bupdir = tmpdir
+    environ[b'GIT_DIR'] = bupdir = tmpdir
+    git.init_repo(bupdir)
+    bup_exe = bup.path.exe()
+    src = os.path.join(tmpdir, b'src')
+    os.mkdir(src)
+    with open(os.path.join(src, b'data'), 'wb') as f:
+        f.write(b'one\n')
+    ex((bup_exe, b'index', src))
+    ex((bup_exe, b'save', b'-n', b'refs-src', b'--strip', src))
+    oid = git.read_ref(b'refs/heads/refs-src')
+    with subproc_client(bupdir, create=True) as c:
+        c.update_ref(b'refs/tags/v1', oid, None)
+        c.update_ref(b'refs/tags/v2', oid, None)
+        filtered = [n for n, _ in c.refs([b'refs/tags/v1'], limit_to_tags=True)]
+        assert filtered == [b'refs/tags/v1']
+        everything = sorted(n for n, _ in c.refs(limit_to_tags=True))
+        assert everything == [b'refs/tags/v1', b'refs/tags/v2']

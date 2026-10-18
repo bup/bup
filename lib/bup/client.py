@@ -564,8 +564,8 @@ class Client:
                     raise ClientError('unexpected leftover data ' + repr(detritus))
 
     def refs(self, patterns=None, limit_to_heads=False, limit_to_tags=False):
-        args = b'%d %d\n' % (1 if limit_to_heads else 0,
-                             1 if limit_to_tags else 0)
+        args = b'%d %d' % (1 if limit_to_heads else 0,
+                           1 if limit_to_tags else 0)
         with self._line_based_call('refs', args) as call:
             patterns = patterns or tuple()
             for pattern in patterns:
