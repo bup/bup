@@ -239,7 +239,7 @@ def main(argv):
                       'max_pack_size': opt.max_pack_size,
                       'max_pack_objects': opt.max_pack_objects}
         try:
-            if repo_location_url(opt.repo).scheme != b'file://':
+            if repo_location_url(opt.repo).scheme != b'file':
                 dest = repo_for_location(opt.repo, **write_opts)
             else:
                 # A repo isn't required for --noop or --copy, but if we do
