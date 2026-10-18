@@ -37,7 +37,8 @@ def http_date_from_utc_ns(utc_ns):
     return time.strftime('%a, %d %b %Y %H:%M:%S', time.gmtime(utc_ns / 10**9))
 
 
-def normalize_bool(k_, v): bool(v)
+def normalize_bool(k_, v):
+    return 1 if v else 0
 
 
 def from_req_bool(k, v):
