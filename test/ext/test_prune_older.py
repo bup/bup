@@ -96,11 +96,11 @@ def expected_dispositions(utcs, utc_start, spec):
     # Keep the newest save for each group in the given --keep period.
     in_period = list(takewhile(lambda x: x >= period_start[b'dailies'], candidates))
     candidates = candidates[len(in_period):]
-    add_period(in_period, lambda x: localtime(x).tm_yday)
+    add_period(in_period, lambda x: (localtime(x).tm_year, localtime(x).tm_yday))
 
     in_period = list(takewhile(lambda x: x >= period_start[b'monthlies'], candidates))
     candidates = candidates[len(in_period):]
-    add_period(in_period, lambda x: localtime(x).tm_mon)
+    add_period(in_period, lambda x: (localtime(x).tm_year, localtime(x).tm_mon))
 
     in_period = list(takewhile(lambda x: x >= period_start[b'yearlies'], candidates))
     candidates = candidates[len(in_period):]
@@ -320,3 +320,53 @@ def test_argument_validation(tmpdir):
                b'100000000000000000000000000000000000000y', b'main')
     assert cp.rc == 0
     assert rxs(br'(?m)^keeping all since \d+ seconds before', cp.err)
+
+
+def test_keep_across_years(tmpdir):
+    environ[b'GIT_AUTHOR_NAME'] = b'bup test'
+    environ[b'GIT_COMMITTER_NAME'] = b'bup test'
+    environ[b'GIT_AUTHOR_EMAIL'] = b'bup@a425bc70a02811e49bdf73ee56450e6f'
+    environ[b'GIT_COMMITTER_EMAIL'] = b'bup@a425bc70a02811e49bdf73ee56450e6f'
+
+    bup_cmd = bup.path.exe()
+    bup_dir = tmpdir + b'/bup'
+    environ[b'BUP_DIR'] = bup_dir
+    environ[b'GIT_DIR'] = bup_dir
+    chdir(tmpdir)
+    ex((bup_cmd, b'init'))
+
+    environ[b'TZ'] = b'UTC'
+
+    src = tmpdir + b'/src'
+    ex((b'mkdir', src))
+
+    def save_on(branch, when, i):
+        with open(src + b'/file', 'wb') as f:
+            f.write(b'save %d\n' % i)
+        ex((bup_cmd, b'index', src))
+        ex((bup_cmd, b'save', b'-n', branch, b'--date', b'%d' % when, src))
+
+    def kept_on(branch):
+        return [int(x) for x in
+                exo((b'git', b'log', b'--format=%at', branch)).out.split()]
+
+    # same day, different years, should be kept
+    same_yday = (1672574400,  # 2023-01-01
+                 1704110400)  # 2024-01-01
+    for i, when in enumerate(same_yday):
+        save_on(b'daily', when, i)
+    ex((bup_cmd, b'prune-older', b'--unsafe', b'--no-gc',
+        b'--keep-dailies-for', b'2y',
+        b'--wrt', b'%d' % 1704196800, b'daily'))  # 2024-01-02
+    wvpasseq(list(reversed(same_yday)), kept_on(b'daily'))
+
+    # same month, different years, should be kept
+    same_mon = (1673784000,  # 2023-01-15
+                1705320000)  # 2024-01-15
+    for i, when in enumerate(same_mon):
+        save_on(b'monthly', when, i)
+    ex((bup_cmd, b'prune-older', b'--unsafe', b'--no-gc',
+        b'--keep-dailies-for', b'1d',
+        b'--keep-monthlies-for', b'2y',
+        b'--wrt', b'%d' % 1709251200, b'monthly'))  # 2024-03-01
+    wvpasseq(list(reversed(same_mon)), kept_on(b'monthly'))

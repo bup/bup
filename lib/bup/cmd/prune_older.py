@@ -37,8 +37,10 @@ def classify_saves(saves, period_start):
     for save in matches:
         yield True, save
 
-    tm_ranges = ((period_start['dailies'], lambda s: localtime(s[0]).tm_yday),
-                 (period_start['monthlies'], lambda s: localtime(s[0]).tm_mon),
+    tm_ranges = ((period_start['dailies'], lambda s: (localtime(s[0]).tm_year,
+                                                      localtime(s[0]).tm_yday)),
+                 (period_start['monthlies'], lambda s: (localtime(s[0]).tm_year,
+                                                        localtime(s[0]).tm_mon)),
                  (period_start['yearlies'], lambda s: localtime(s[0]).tm_year))
 
     # Break the decreasing utc sorted saves up into the respective
