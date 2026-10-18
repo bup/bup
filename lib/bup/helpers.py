@@ -142,6 +142,7 @@ else:
 def os_closed(x): return finalized(x, os.close)
 
 
+# pylint: disable=invalid-name
 # singleton used when we don't care where the object is
 OBJECT_EXISTS = None
 
@@ -157,6 +158,7 @@ class ObjectLocation:
                              name=k, obj=self)
 
 OBJECT_EXISTS = ObjectLocation(None, None)
+# pylint: enable=invalid-name
 
 sc_arg_max = os.sysconf('SC_ARG_MAX')
 if sc_arg_max == -1:  # "no definite limit" - let's choose 2M

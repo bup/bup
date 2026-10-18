@@ -45,6 +45,7 @@ def wvmsg(msg):
 wvstart = wvmsg
 
 
+# pylint: disable=invalid-name
 WVPASS = wvpass
 WVFAIL = wvfail
 WVPASSEQ = wvpasseq
