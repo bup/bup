@@ -140,7 +140,7 @@ def _dir_contents(repo, resolution, params, param_info):
 
         if include_size:
             size = vfs.item_size(repo, item)
-            if params.get('human'):
+            if params.get('human') and size:
                 display_size = format_filesize(size)
             else:
                 display_size = size
