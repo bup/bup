@@ -90,7 +90,7 @@ def _test_resolve(repo, tmpdir):
                  b'/test/./latest/dir/../../..',
                  b'/test/././latest/dir/../../..',
                  b'/test/.//./latest/dir/../../..',
-                 b'/test//.//.//latest/dir/../../..'
+                 b'/test//.//.//latest/dir/../../..',
                  b'/test//./latest/dir/../../..'):
         vfs.clear_cache()
         res = resolve(path)
