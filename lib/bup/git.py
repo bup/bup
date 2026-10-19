@@ -450,7 +450,7 @@ class PackIdxV1(PackIdx):
     def __exit__(self, type, value, traceback): self.close()
 
     def __len__(self):
-        return int(self.nsha)  # int() from long for python 2
+        return self.nsha
 
     def _ofs_from_idx(self, idx):
         if idx >= self.nsha or idx < 0:
