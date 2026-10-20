@@ -54,7 +54,7 @@ class _AbstractTypicalCall:
     def __enter__(self):
         self._client._require_command(self._name)
         self._client.check_busy()
-        self._client._busy = self._name
+        self._client._busy = f'command {self._name.decode("ascii")}'
         self._client.conn.write(self._name)
         if self._args:
             self._client.conn.write(b' ')
@@ -63,17 +63,27 @@ class _AbstractTypicalCall:
         return self
 
     def __exit__(self, ex_type, ex, traceback):
+        if ex:
+            # Being busy with 'local exception (GeneratorExit)' is
+            # likey because the caller of a generator like
+            # client.rev_list didn't fully consume the result.  That
+            # eventually triggers the exception when the generator is
+            # closed, perhaps by the gc.
+            self._client._busy = \
+                f'local exception ({ex!r}) during {self._name.decode("ascii")}'
+            return None
         ok_ex = self._check_ok()
         # Since check_ok didn't raise we've reached a point where
         # we're synchronized on the protocol, the server has completed
         # the response
         self._client._busy = False
-        if ok_ex and not ex:
+        if ok_ex:
             for extp in self._exceptions:
                 name = extp.__name__
                 if ok_ex.args[0].startswith(name + ':'):
                     raise extp(*ok_ex.args)
             raise ok_ex
+        return None
 
     @notimplemented
     def _check_ok(self): pass
@@ -367,7 +377,7 @@ class Client:
 
     def check_busy(self):
         if self._busy:
-            raise ClientError('already busy with command %r' % self._busy)
+            raise ClientError(f'already busy with {self._busy}')
 
     def ensure_busy(self):
         if not self._busy:
@@ -466,7 +476,7 @@ class Client:
     def _suggest_packs(self):
         ob = self._busy
         if ob:
-            assert(ob == b'receive-objects-v2')
+            assert ob == b'command receive-objects-v2', ob
             self.conn.write(b'\xff\xff\xff\xff')  # suspend receive-objects-v2
         suggested = []
         for line in linereader(self.conn):
@@ -492,7 +502,7 @@ class Client:
         git.auto_midx(self.cachedir)
         if ob:
             self._busy = ob
-            self.conn.write(b'%s\n' % ob)
+            self.conn.write(b'receive-objects-v2\n')
         return idx
 
     def new_packwriter(self, compression_level=None,
@@ -501,7 +511,7 @@ class Client:
         self.sync_indexes()
         self.check_busy()
         def set_busy():
-            self._busy = b'receive-objects-v2'
+            self._busy = b'command receive-objects-v2'
             self.conn.write(b'receive-objects-v2\n')
         def unset_busy():
             self._busy = None

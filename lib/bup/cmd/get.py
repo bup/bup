@@ -610,7 +610,8 @@ def handle_ff(item, src_repo, dest_repo):
     assert item.src.type in ('branch', 'save', 'commit')
     src_oidx = hexlify(item.src.hash)
     dest_oidx = hexlify(item.dest.hash) if item.dest.hash else None
-    if not dest_oidx or dest_oidx in src_repo.rev_list(src_oidx):
+    src_oidxs = list(src_repo.rev_list(src_oidx))
+    if not dest_oidx or dest_oidx in src_oidxs:
         # Can fast forward.
         get_random_item(src_oidx, src_repo, dest_repo, item.spec.ignore_missing)
         commit_items = get_commit_items(src_oidx, src_repo.cat)
