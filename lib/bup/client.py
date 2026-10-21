@@ -644,7 +644,8 @@ class Client:
             assert success in (0, 1)
             if success:
                 return protocol.read_resolution(conn)
-            raise protocol.read_ioerror(conn)
+            err = protocol.read_ioerror(conn)
+        raise err
 
     def config_get(self, name, opttype=None):
         assert isinstance(name, bytes)
@@ -670,9 +671,10 @@ class Client:
                 val = read_bvec(conn)
                 if val is None: raise EOFError('EOF while reading bvec')
                 return val
-            if kind == 5:
-                raise PermissionError(f'config-get does not allow remote access to {name}')
-            raise TypeError(f'Unrecognized result type {kind}')
+            if kind != 5:
+                raise TypeError(f'Unrecognized result type {kind}')
+        # kind == 5
+        raise PermissionError(f'config-get does not allow remote access to {name}')
 
 
 class RemotePackStore:
