@@ -280,7 +280,8 @@ def test_local_resolve(tmpdir):
 
 def test_remote_resolve(tmpdir):
     prep_and_test_repo(tmpdir,
-                       lambda x: repo_for_url(URL(scheme=b'file', path=x)), _test_resolve)
+                       lambda x: repo_for_url(URL(scheme=b'ssh', host=b'-', path=x)),
+                       _test_resolve)
 
 def _test_resolve_loop(repo, tmpdir):
     data_path = tmpdir + b'/src'
@@ -304,7 +305,8 @@ def test_local_resolve_loop(tmpdir):
     prep_and_test_repo(tmpdir, LocalRepo, _test_resolve_loop)
 
 def test_remote_resolve_loop(tmpdir):
-    prep_and_test_repo(tmpdir, lambda x: repo_for_url(URL(scheme=b'file', path=x)),
+    prep_and_test_repo(tmpdir,
+                       lambda x: repo_for_url(URL(scheme=b'ssh', host=b'-', path=x)),
                        _test_resolve_loop)
 
 # FIXME: add tests for the want_meta=False cases.
