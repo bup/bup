@@ -2,12 +2,19 @@
 import os, struct
 from binascii import hexlify, unhexlify
 
-from bup import git, vfs, vint
+from bup import features, git, vfs, vint
 from bup.helpers import debug1, debug2, linereader, lines_until_sentinel, log
 from bup.io import path_msg
 from bup.metadata import Metadata
 from bup.vint import \
-    read_bvec, read_vint, read_vuint, write_bvec, write_vint, write_vuint
+    (read_bvec,
+     read_tree,
+     read_vint,
+     read_vuint,
+     write_bvec,
+     write_tree,
+     write_vint,
+     write_vuint)
 from bup.vfs import Item, Chunky, RevList, Root, Tags, Commit, FakeLink
 
 
@@ -199,6 +206,7 @@ class Server:
                                         b'list-indexes', b'send-index',
                                         *commands))
         self.conn = conn
+        self._client_info = features.skeleton()
         self._backend = backend
         self.suspended = False
         self.repo = None
@@ -223,6 +231,17 @@ class Server:
     @_command
     def help(self, args_):
         self.conn.write(b'Commands:\n    %s\n' % b'\n    '.join(sorted(self._commands)))
+        self.conn.ok()
+
+    @_command
+    def info(self, args_):
+        write_tree(self.conn, features.get())
+        self.conn.ok()
+
+    @_command
+    def set_client_info(self, args_):
+        self._client_info = features.validate(read_tree(self.conn))
+        debug1(f'bup server: client-info: {self._client_info}\n')
         self.conn.ok()
 
     def init_session(self, repo_dir=None):

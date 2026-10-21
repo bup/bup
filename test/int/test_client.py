@@ -1,15 +1,18 @@
 
+from platform import python_version_tuple
+from subprocess import PIPE
 import os, time, random, glob
 
 from buptest import exc as ex
 from pytest import raises
 import pytest
 
-from bup import client, git
+from bup import client, features, git
 from bup.compat import environ
 from bup.config import ConfigError
 from bup.repo import LocalRepo
 from bup.url import URL
+from bup.version import version as bup_version
 import bup.path
 
 
@@ -232,6 +235,26 @@ def test_config(tmpdir):
         with raises(PermissionError) as exinfo:
             c.config_get(b'bup.not-an-allowed-key')
         assert 'does not allow remote access' in str(exinfo.value)
+
+
+def test_client_server_info(tmpdir):
+    environ[b'BUP_DIR'] = bupdir = tmpdir
+    environ[b'GIT_DIR'] = bupdir = tmpdir
+    git.init_repo(bupdir)
+
+    provides = features.get()['provides']
+    with subproc_client(bupdir, create=True) as c:
+        info = c.info()
+        assert info['version'] == bup_version.decode('utf-8')
+        assert info['python'] == list(python_version_tuple())
+        assert set(info['provides']) == set(provides)
+
+    res = ex((bup.path.exe(), b'ls', '-r', '-:'), stderr=PIPE,
+             env={**environ, b'BUP_DEBUG': b'1'})
+    py_ver = repr(list(python_version_tuple())).encode('ascii')
+    assert b"'version': '%s'" % bup_version in res.err
+    assert b"'python': " + py_ver in res.err
+    assert b"'provides': " + repr(provides).encode('ascii') in res.err
 
 
 def test_refs_with_patterns(tmpdir):

@@ -3,10 +3,9 @@ from binascii import hexlify, unhexlify
 from contextlib import ExitStack, closing
 from functools import partial
 from ipaddress import IPv4Address, IPv6Address
-import os, re, struct, sys, time, zlib
-import socket, shutil
+import os, re, socket, shutil, struct, sys, time, zlib
 
-from bup import git, ssh, vint, protocol
+from bup import features, git, ssh, vint, protocol
 from bup.compat import dataclass
 from bup.git import PackWriter
 from bup.helpers import \
@@ -28,7 +27,8 @@ from bup.helpers import \
 from bup.io import path_msg as pm
 from bup.path import index_cache, legacy_index_cache
 from bup.url import URL
-from bup.vint import read_vint, read_vuint, read_bvec, write_bvec
+from bup.vint import \
+    read_tree, read_vint, read_vuint, read_bvec, write_bvec, write_tree
 
 
 bwlimit = None
@@ -359,6 +359,8 @@ class Client:
             self.cachedir = self._prep_cache(legacy_id)
             ctx.pop_all()
         self.closed = False
+        if self.supports(b'set-client-info'):
+            self._set_client_info()
 
     def __enter__(self): return self
     def __del__(self): assert self.closed
@@ -408,6 +410,17 @@ class Client:
 
     def supports(self, command):
         return command in self._available_commands
+
+    def info(self):
+        conn = self.conn
+        with self._call('info'):
+            return read_tree(conn)
+
+    def _set_client_info(self):
+        conn = self.conn
+        f = features.get()
+        with self._call('set-client-info'):
+            write_tree(conn, f)
 
     def _list_indexes(self):
         with self._line_based_call('list-indexes') as call:

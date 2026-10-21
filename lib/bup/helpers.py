@@ -424,6 +424,7 @@ class BaseConn:
     def __init__(self, outp):
         self._base_closed = False
         self.outp = outp
+        self.client_info = None # bit of a hack, set if client sends it later
 
     def close(self):
         self._base_closed = True
