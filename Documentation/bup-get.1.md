@@ -249,6 +249,10 @@ repairs may also be performed during a `--rewrite`.
    will have restrictive permissions (as if via umask 077) when
    presented, e.g. via `bup-restore(1)`, `bup-ls(1)`, etc.
 
+ * When a `.bupm` is missing, its related paths should be treated like
+   those for an abridged bupm with respect to ownership, permissions,
+   etc. (see above).
+
  * Use of `bup get` or `bup gc` versions before 0.33.5 could cause
    repositories to end up with missing objects (which can be detected
    by `bup-validate-object-links`(1)). To fix affected trees,

@@ -91,7 +91,7 @@ from stat import \
      S_IXOTH,
      S_IXUSR)
 from time import localtime, strftime
-import builtins, re
+import builtins, re, sys
 
 from bup import git
 from bup.git import \
@@ -104,7 +104,7 @@ from bup.git import \
      parse_commit,
      tree_entries,
      tree_iter)
-from bup.helpers import EXIT_FAILURE, debug2
+from bup.helpers import EXIT_FAILURE, debug2, log
 from bup.io import path_msg
 from bup.metadata import Metadata, empty_metadata
 
@@ -596,7 +596,7 @@ def root_items(repo, names=None, want_meta=True):
         yield name, _revlist_item_from_oid(repo, unhexlify(oidx), want_meta,
                                            data=data)
 
-def ordered_tree_entries(entries, bupm=None):
+def ordered_tree_entries(entries, bupm_order=None):
     """Returns [(name, mangled_name, kind, gitmode, oid) ...] for each
     item in tree, sorted by name.
 
@@ -614,7 +614,7 @@ def ordered_tree_entries(entries, bupm=None):
         return name, mangled_name, kind, gitmode, oid
 
     tree_ents = [result_from_tree_entry(x) for x in entries]
-    if bupm:
+    if bupm_order:
         tree_ents.sort(key=lambda x: x[0])
     return tree_ents
 
@@ -661,28 +661,35 @@ def _validated_meta_ents(oid, tree_ents, bupm, repair):
     if exp_meta_n != len(meta_entries):
         # should be increasingly rare, and rare to begin with
         if not repair:
-            ex = SystemExit('error: tree has missing metadata'
-                            f' (see bup-get(1)) - {oid.hex()}')
-            ex.code = EXIT_FAILURE
-            raise ex
+            log(f'error: tree has missing metadata (see bup-get(1)) - {oid.hex()}\n')
+            sys.exit(EXIT_FAILURE)
         return None
     meta_entries.reverse()
     return meta_entries
 
 def _tree_items_except_dot(oid, entries, names=None, bupm=None, *, repair=False):
-    """Returns all tree items except ".", and assumes that any bupm is
-    positioned just after that entry. Any paths whose metadata has
-    been lost will have restrictive permissions (as if via umask
-    077). See the Repository Taxonmy in DESIGN.
+    """Returns all tree items except ".", and assumes that any bupm
+    file reader is positioned just after that entry.  Paths whose
+    metadata has been lost will have restrictive permissions (as if
+    via umask 077). See the Repository Taxonomy in DESIGN.  bupm may
+    also be a MissingObject.
 
     """
+    if bupm is not None and not isinstance(bupm, (_FileReader, MissingObject)):
+        raise AssertionError(f'Unexpected bupm: {bupm!r}')
+
     # Ensure any changes to the metadata yielded coordinates properly
     # with bup.tree (e.g. _dir_metadata).
 
-    tree_ents = ordered_tree_entries(entries, bupm)
-    meta_ents = _validated_meta_ents(oid, tree_ents, bupm, repair)
+    tree_ents = ordered_tree_entries(entries, isinstance(bupm, _FileReader))
+
+    # None meta_ents means broken bupm (abridged or missing)
+    if isinstance(bupm, MissingObject):
+        meta_ents = None
+    else:
+        meta_ents = _validated_meta_ents(oid, tree_ents, bupm, repair)
     if meta_ents is None:
-        assert repair or not bupm, (meta_ents, repair, bupm)
+        assert repair or bupm is None, (meta_ents, repair, bupm)
 
     def read_nondir_meta(default_mode):
         if meta_ents is not None:
@@ -691,7 +698,7 @@ def _tree_items_except_dot(oid, entries, names=None, bupm=None, *, repair=False)
             if meta is None: # lost metadata
                 return default_mode & ~(S_IRWXO | S_IRWXG)
             return meta
-        if bupm: # repair
+        if bupm is not None: # repair
             return _lost_metadata_for_gitinfo(gitmode, kind)
         return default_mode
 
@@ -756,7 +763,12 @@ def _find_bupm_oid(entries):
             break
     return None
 
-def _split_subtree_items(repo, level, oid, entries, names, want_meta, root=True):
+def missing_bupm_exit(bupm_oid):
+    log(f'error: missing bupm {bupm_oid.hex()} and not repairing\n')
+    sys.exit(EXIT_FAILURE)
+
+def _split_subtree_items(repo, level, oid, entries, names, want_meta, root=True,
+                         *, repair=False):
     """Traverse the "internal" nodes of a split tree, yielding all of
     the real items (at the leaves).
 
@@ -771,7 +783,13 @@ def _split_subtree_items(repo, level, oid, entries, names, want_meta, root=True)
         else:
             with _FileReader(repo, bupm_oid) as bupm:
                  # skip dummy entry provided for older bups
-                if not Metadata.read(bupm):
+                try:
+                    dummy = Metadata.read(bupm)
+                except MissingObject as ex:
+                    if not repair:
+                        raise missing_bupm_exit(bupm_oid) from ex
+                    bupm = ex
+                if not dummy:
                     raise EOFError('EOF instead of split tree placeholder metadata')
                 yield from _tree_items_except_dot(oid, entries, names, bupm)
     else:
@@ -784,7 +802,7 @@ def _split_subtree_items(repo, level, oid, entries, names, want_meta, root=True)
                 f'found {path_msg(name)} in split subtree but should end with {validate}'
             yield from _split_subtree_items(repo, level - 1, sub_oid,
                                             tree_entries(_get_tree_object(repo, sub_oid)),
-                                            names, want_meta, False)
+                                            names, want_meta, False, repair=repair)
 
 _tree_depth_rx = re.compile(br'.*\.([0-9]+)\.bupd')
 
@@ -841,10 +859,24 @@ def tree_items(repo, oid, tree_data, names, *, want_meta=True, repair=False):
         if depth is None:
             with _FileReader(repo, bupm_oid) as bupm:
                 if not dot_requested: # skip it
-                    if not Metadata.read(bupm):
+                    try:
+                        dot_meta = Metadata.read(bupm)
+                    except MissingObject as ex:
+                        if not repair:
+                            raise missing_bupm_exit(bupm_oid) from ex
+                        dot_meta, bupm = None, ex
+                    if not dot_meta:
                         raise EOFError('EOF while skipping directory metadata')
                 else:
-                    yield b'.', Item(oid=oid, meta=_read_dir_meta(bupm))
+                    try:
+                        dot_meta=_read_dir_meta(bupm)
+                    except MissingObject as ex:
+                        if not repair:
+                            raise missing_bupm_exit(bupm_oid) from ex
+                        bupm = ex
+                        yield b'.', Item(oid=oid, meta=_lost_dir_meta)
+                    else:
+                        yield b'.', Item(oid=oid, meta=dot_meta)
                 yield from _tree_items_except_dot(oid, entries, names, bupm,
                                                   repair=repair)
         else:
@@ -852,7 +884,7 @@ def tree_items(repo, oid, tree_data, names, *, want_meta=True, repair=False):
                 with _FileReader(repo, bupm_oid) as bupm:
                     yield b'.', Item(oid=oid, meta=_read_dir_meta(bupm))
             yield from _split_subtree_items(repo, depth, oid, entries, names,
-                                            True)
+                                            True, repair=repair)
         return
 
     if dot_requested:
@@ -860,7 +892,8 @@ def tree_items(repo, oid, tree_data, names, *, want_meta=True, repair=False):
     if not depth:
         yield from _tree_items_except_dot(oid, entries, names, repair=repair)
     else:
-        yield from _split_subtree_items(repo, depth, oid, entries, names, False)
+        yield from _split_subtree_items(repo, depth, oid, entries, names, False,
+                                        repair=repair)
 
 _save_name_rx = re.compile(br'^\d\d\d\d-\d\d-\d\d-\d{6}(-\d+)?$')
 

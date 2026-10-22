@@ -28,7 +28,8 @@ def tree_items(repo, oid):
             return m
         m = maybe_meta(b'.')
         yield TreeDictValue(name=b'.', oid=oid, meta=m)
-        tree_ents = vfs.ordered_tree_entries(tree_entries(tree_data), bupm=True)
+        tree_ents = vfs.ordered_tree_entries(tree_entries(tree_data),
+                                             bupm_order=True)
         for name, mangled_name, kind, gitmode, sub_oid in tree_ents:
             if mangled_name == b'.bupm':
                 continue
