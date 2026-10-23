@@ -12,7 +12,7 @@ from bup import metadata, vfs, xstat
 from bup.compat import argv_bytes, dataclass
 from bup.io import path_msg
 from bup.options import Options
-from bup.helpers import columnate, istty1, log
+from bup.helpers import EXIT_FAILURE, columnate, istty1, log
 from bup.repo import main_repo_location, repo_for_location
 
 
@@ -159,7 +159,7 @@ def within_repo(repo, opt, out, pwd=b''):
                 log('error: cannot access %r in %r\n'
                     % ('/'.join(path_msg(name) for name, item in resolved),
                        path_msg(path)))
-                ret = 1
+                ret = EXIT_FAILURE
                 continue
             if not opt.directory and S_ISDIR(vfs.item_mode(leaf_item)):
                 items = vfs.contents(repo, leaf_item, want_meta=want_meta)
@@ -200,7 +200,7 @@ def within_repo(repo, opt, out, pwd=b''):
                     out.write(b'\n')
         except vfs.IOError as ex:
             log('bup: %s\n' % ex)
-            ret = 1
+            ret = EXIT_FAILURE
 
         if pending:
             out.write(columnate(pending, b''))

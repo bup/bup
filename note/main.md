@@ -62,6 +62,10 @@ Bugs
 * `bup tag` now reports invalid tag names as a usage error rather than
   throwing an exception.
 
+* `bup ls` now exits with status 2 for access failures, rather than 1;
+  this was overlooked in the general shift from 1 to 2 for errors in
+  0.34 (see the 0.34 release notes).
+
 Thanks to (at least)
 ====================
 
