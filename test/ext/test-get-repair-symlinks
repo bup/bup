@@ -24,6 +24,7 @@ WVPASS echo 1 > src/1
 WVPASS ln -s 1 src/2
 WVPASS bup index src
 WVPASS bup save --strip -n src src
+WVPASS cp -pPR bup bup-safe
 
 two_oid="$(WVPASS git ls-tree src: | grep -E '2$' | btl-ent-oid)"
 echo "$two_oid" | WVPASS "$top/dev/perforate-repo" --drop-oids "$BUP_DIR" || exit $?
@@ -73,6 +74,23 @@ WVPASS git --git-dir dst log -n1 src | tee commit-msg
 WVPASS grep -E "^[ ]+Bup-Fixed-Link-Blob: was not-1 for /2\$" commit-msg
 WVPASS rm -rf dst
 
+
+WVSTART 'symlinks with lost metadata are noticed by --rewrite'
+WVPASS rm -rf bup
+WVPASS cp -pPR bup-safe bup
+git ls-tree src
+bupm_oid="$(WVPIPE git ls-tree src | WVPASS head -1 | WVPASS btl-ent-oid)" \
+    || exit $?
+echo "$bupm_oid" | WVPASS "$top/dev/perforate-repo" --drop-oids "$BUP_DIR" || exit $?
+WVPASS bup init dst
+WVEXPRC 2 err-to err.log bup -d dst get -s bup --rewrite --pick src/latest
+WVPASS grep -qF "missing bupm $bupm_oid and not repairing" err.log
+
+WVSTART 'symlinks with lost metadata are repaired by --repair'
+WVEXPRC 3 err-to err.log bup -d dst get -s bup --repair --pick src/latest
+WVPASS out-to log bup -d dst ls -l src/latest
+wv-match-rx "$(< log)" \
+  '^lrwxr-xr-x \?/\?                  17 \?\?\?\?-\?\?-\?\? \?\?:\?\? src/latest -> '
 WVPASS rm -rf bup
 
 

@@ -271,8 +271,8 @@ def _rewrite_link(path, item_mode, srcrepo, dstrepo, stack, repairs):
     assert isinstance(name, bytes)
     assert not isinstance(item, FakeLink), item
 
-    have_meta = isinstance(item.meta, metadata.Metadata)
-    if have_meta:
+    if (meta_is_real := (isinstance(item.meta, metadata.Metadata) \
+                         and not isinstance(item.meta, LostMetadata))):
         # FIXME: not tested?
         if item.meta.size is None:
             item = vfs.copy_item(item)
@@ -281,39 +281,56 @@ def _rewrite_link(path, item_mode, srcrepo, dstrepo, stack, repairs):
             item.meta.freeze()
         assert item.meta.size == len(item.meta.symlink_target), item
 
-    target = \
-        item.meta.symlink_target if isinstance(item.meta, Metadata) else None
-
     replace = False
     _, kind, _, it = vfs.get_ref(srcrepo, hexlify(item.oid))
     if not kind: # no link target blob
-        if target:
-            git_mode, oid = GIT_MODE_SYMLINK, dstrepo.write_symlink(target)
+        if meta_is_real: # restore the missing link target blob
+            git_mode = GIT_MODE_SYMLINK
+            oid = dstrepo.write_symlink(item.meta.symlink_target)
             _restored_link_blob(path, item.oid, repairs)
             stack.append_to_current(name, item_mode, git_mode, oid, item.meta)
             return
         replace = True
-    else: # examine the link target blob to see if it might need fixing
+    else: # have link target blob
         assert kind == b'blob', kind
         target_blob = b''.join(it)
-        if target_blob != target: # very unlikely, but easy to handle
+        if isinstance(item.meta, LostMetadata):
+            # _meta_replaced has already logged and added the metadata
+            # loss to repairs, so just add the link with no metadata
+            # to the tree if we're repairing.
+            if not repairs.destructive:
+                # This may be difficult to reach.  For example, if the
+                # .bupm is missing, we'll raise MissingObject before
+                # we get here.
+                ep = path_msg(render_path(path))
+                log(f'Symlink with missing metadata (can --repair): {ep}\n')
+                sys.exit(EXIT_FAILURE)
+            stack.append_to_current(name, item_mode, GIT_MODE_SYMLINK, item.oid,
+                                    None)
+            return
+        if isinstance(item.meta, Metadata) \
+           and target_blob != item.meta.symlink_target:
+            # very unlikely, but easy to fix; defer to the
+            # symlink_target since bup (cf. vfs.readlink()) always
+            # prefers it.
             if not repairs.destructive:
                 ep = path_msg(render_path(path))
                 log(f'Symlink with mismatched targets (can --repair): {ep}\n')
                 sys.exit(EXIT_FAILURE)
-            # This defers to target since bup (cf. vfs.readlink())
-            # always prefers it.
+            target = item.meta.symlink_target
             git_mode, oid = GIT_MODE_SYMLINK, dstrepo.write_symlink(target)
             _fixed_link_blob(path, item.oid, target, target_blob, repairs)
             stack.append_to_current(name, item_mode, git_mode, oid, item.meta)
             return
 
     if not replace:
-        git_mode, oid = GIT_MODE_SYMLINK, dstrepo.write_symlink(target)
+        git_mode = GIT_MODE_SYMLINK
+        oid = dstrepo.write_symlink(item.meta.symlink_target)
         stack.append_to_current(name, item_mode, git_mode, oid, item.meta)
         return
 
     # No metadata symlink info, and blob was missing (git or pre-meta bup)
+    assert not kind, (kind, item)
     if not repairs.destructive:
         raise MissingObject(item.oid)
     replacement = \
