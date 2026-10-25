@@ -320,6 +320,10 @@ def _decompose_path(path):
     return is_absolute, must_be_dir, parts
 
 
+# FakeLink is completely synthetic, currently just for /branch/latest,
+# and so cannot be used for anything that should be transferred,
+# repaired, rewritten.
+
 Item = namedtuple('Item', ('meta', 'oid'))
 Chunky = namedtuple('Chunky', ('meta', 'oid'))
 FakeLink = namedtuple('FakeLink', ('meta', 'target'))

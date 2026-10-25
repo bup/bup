@@ -269,6 +269,8 @@ def _vfs_walk_dir_recursively(srcrepo, dstrepo, path, excludes, db, mapping,
 def _rewrite_link(path, item_mode, srcrepo, dstrepo, stack, repairs):
     name, item = path[-1]
     assert isinstance(name, bytes)
+    assert not isinstance(item, FakeLink), item
+
     have_meta = isinstance(item.meta, metadata.Metadata)
     if have_meta:
         # FIXME: not tested?
@@ -280,30 +282,25 @@ def _rewrite_link(path, item_mode, srcrepo, dstrepo, stack, repairs):
         else:
             assert item.meta.size == len(item.meta.symlink_target)
 
-    if isinstance(item, FakeLink):
-        target = item.target
-    elif isinstance(item.meta, Metadata):
-        target = item.meta.symlink_target
-    else:
-        target = None
+    target = \
+        item.meta.symlink_target if isinstance(item.meta, Metadata) else None
 
     change = None # restore/replace/fix
     target_blob = None
-    if not isinstance(item, FakeLink):
-        _, kind, _, it = vfs.get_ref(srcrepo, hexlify(item.oid))
-        if not kind:
-            change = 'restore' if target else 'replace'
-        else:
-            assert kind == b'blob', kind
-            target_blob = b''.join(it)
-            if target_blob != target: # very unlikely, but easy to handle
-                if not repairs.destructive:
-                    ep = path_msg(render_path(path))
-                    log(f'Symlink with mismatched targets (can --repair): {ep}\n')
-                    sys.exit(EXIT_FAILURE)
-                # This defers to target since bup (cf. vfs.readlink())
-                # always prefers it.
-                change = 'fix'
+    _, kind, _, it = vfs.get_ref(srcrepo, hexlify(item.oid))
+    if not kind:
+        change = 'restore' if target else 'replace'
+    else:
+        assert kind == b'blob', kind
+        target_blob = b''.join(it)
+        if target_blob != target: # very unlikely, but easy to handle
+            if not repairs.destructive:
+                ep = path_msg(render_path(path))
+                log(f'Symlink with mismatched targets (can --repair): {ep}\n')
+                sys.exit(EXIT_FAILURE)
+            # This defers to target since bup (cf. vfs.readlink())
+            # always prefers it.
+            change = 'fix'
 
     if change == 'replace':
         # No metadata symlink info, and blob was missing (git or pre-meta bup)
@@ -377,6 +374,8 @@ def _rewrite_save_item(path, replacement_dir, srcrepo, dstrepo, split_cfg,
     item_mode = vfs.item_mode(item)
     is_dir = S_ISDIR(item_mode)
     dir_path = fs_path if is_dir else fs_path[:-1]
+
+    assert not isinstance(item, FakeLink), item
 
     if isinstance(item.meta, LostMetadata):
         assert isinstance(repairs, Repairs), repairs
