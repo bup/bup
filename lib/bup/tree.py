@@ -22,7 +22,7 @@ class TreeItem:
         assert isinstance(mode, int), mode
         assert isinstance(gitmode, int), gitmode
         assert isinstance(oid, bytes), oid
-        assert isinstance(meta, (Metadata, int, type(None))), meta
+        assert isinstance(meta, (Metadata, int, type(None), LostMetadata)), meta
         self.name = name
         self.mode = mode
         self.gitmode = gitmode
@@ -122,21 +122,25 @@ def _dir_metadata(dir_meta, items, repair):
     # coordination with the relevant VFS behaviors
     # (e.g. tree_items_except_dot).
     any_real_meta = False
-    if isinstance(dir_meta, (int, type(None))):
+    if isinstance(dir_meta, Metadata):
+        any_real_meta = True
+        meta_ents = [(b'', dir_meta)]
+    elif isinstance(dir_meta, (int, type(None))):
         meta_ents = [(b'', empty_metadata)]
     elif isinstance(dir_meta, LostMetadata):
         if not repair:
             raise Exception(f'LostMetadata for ".", but not repairing {dir_meta!r}')
         meta_ents = [(b'', empty_metadata)]
-    elif isinstance(dir_meta, Metadata):
-        any_real_meta = True
-        meta_ents = [(b'', dir_meta)]
     else:
         raise Exception(f'Unexpected "." metadata type {dir_meta!r}')
     for entry in items:
         if S_ISDIR(entry.mode):
             continue
-        if isinstance(entry.meta, (int, type(None))):
+        if isinstance(entry.meta, Metadata):
+            any_real_meta = True
+            ml = (shalist_item_sort_key((entry.mode, entry.name, None)),
+                  entry.meta)
+        elif isinstance(entry.meta, (int, type(None))):
             ml = (shalist_item_sort_key((entry.mode, entry.name, None)),
                   empty_metadata)
         elif isinstance(entry.meta, LostMetadata):
@@ -144,10 +148,6 @@ def _dir_metadata(dir_meta, items, repair):
                 raise Exception(f'LostMetadata, but not repairing {entry!r}')
             ml = (shalist_item_sort_key((entry.mode, entry.name, None)),
                   empty_metadata)
-        elif isinstance(entry.meta, Metadata):
-            any_real_meta = True
-            ml = (shalist_item_sort_key((entry.mode, entry.name, None)),
-                  entry.meta)
         else:
             raise Exception(f'Unexpected metadata type in {entry!r}')
         meta_ents.append(ml)
@@ -175,7 +175,7 @@ class Stack:
         return [p.name for p in self._stack]
 
     def push(self, name, meta):
-        assert isinstance(meta, (Metadata, int, type(None))), meta
+        assert isinstance(meta, (Metadata, int, type(None), LostMetadata)), meta
         self._stack.append(StackDir(name, meta))
 
     def _clean(self, tree):

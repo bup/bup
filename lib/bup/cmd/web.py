@@ -17,6 +17,7 @@ from bup.io import path_msg
 from bup.metadata import Metadata
 from bup.path import resource_path
 from bup.repo import LocalRepo
+from bup.vfs import LostMetadata
 
 try:
     from tornado import gen
@@ -161,6 +162,8 @@ def _dir_contents(repo, resolution, params, param_info):
         query = encode_query(params, param_info)
         meta = resolved_item.meta
         if not isinstance(meta, Metadata):
+            # Should never escape the vfs when not repairing
+            assert not isinstance(meta, LostMetadata), meta
             meta = None
         oidx = getattr(resolved_item, 'oid', None)
         if oidx: oidx = hexlify(oidx)

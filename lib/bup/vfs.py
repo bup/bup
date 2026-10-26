@@ -432,6 +432,7 @@ def _has_metadata_if_needed(item, need_meta):
         return True
     if isinstance(item.meta, Metadata):
         return True
+    # LostMetadata too
     return False
 
 def cache_get_commit_item(oid, need_meta=True):
@@ -459,12 +460,13 @@ def copy_item(item):
     meta = getattr(item, 'meta', None)
     if isinstance(meta, Metadata):
         return(item._replace(meta=deepcopy(meta)))
+    # Any LostMetadata is immutable
     return item
 
 def item_mode(item):
     """Return the integer mode (stat st_mode) for item."""
     m = item.meta
-    if isinstance(m, Metadata):
+    if isinstance(m, (Metadata, LostMetadata)):
         return m.mode
     if isinstance(m, int):
         return m
@@ -478,6 +480,7 @@ def _read_dir_meta(bupm):
         raise EOFError('EOF while reading directory metadata')
     if isinstance(m, Metadata):
         assert m.mode is not None
+    assert not isinstance(m, LostMetadata), m # not from read()
     return m
 
 def _treeish_tree_data(repo, oid):
@@ -537,6 +540,7 @@ def readlink(repo, item):
         target = item.meta.symlink_target
         if target:
             return target
+    assert isinstance(item.meta, int), item
     return _readlink(repo, item.oid)
 
 def _compute_item_size(repo, item):
@@ -557,6 +561,7 @@ def item_size(repo, item):
     m = item.meta
     if isinstance(m, Metadata) and m.size is not None:
         return m.size
+    # For LostMetadata too
     return _compute_item_size(repo, item)
 
 def tree_data_reader(repo, oid):
@@ -653,13 +658,11 @@ def ordered_tree_entries(entries, bupm_order=None):
         tree_ents.sort(key=lambda x: x[0])
     return tree_ents
 
-class LostMetadata(Metadata):
-    """Representation for metadata that's been lost, e.g. due to a bug
-    like the one that dropped bupm entries."""
-    def __init__(self, mode):
-        super().__init__(frozen=False)
-        self.mode = mode
-        self.freeze()
+# This is disjont from Metadata because at least right now, it should
+# never exist outside the rewriter, and in any case, it's unexpected,
+# and shouldn't just follow a normal isinstance(x, Metadata) path.
+# It's really just a "typed" mode.
+LostMetadata = namedtuple('LostMetadata', ('mode',))
 
 _lost_dir_meta = LostMetadata(default_dir_mode & ~(S_IRWXO | S_IRWXG))
 _lost_file_meta = LostMetadata(default_file_mode & ~(S_IRWXO | S_IRWXG))
@@ -1376,7 +1379,7 @@ def augment_item_meta(repo, item, *, include_size=False, public=False):
             m.size = maybe_public(m.mode, _compute_item_size(repo, item))
             return item._replace(meta=m.freeze())
         return item
-    assert isinstance(m, int), item
+    assert isinstance(m, int), item # not LostMetadata
     meta = Metadata(frozen=False)
     meta.mode = m
     if S_ISLNK(m):
@@ -1397,12 +1400,15 @@ def fill_in_metadata_if_dir(repo, item):
     item.  May be useful for the output of contents().
 
     """
-    if S_ISDIR(item_mode(item)) and not isinstance(item.meta, Metadata):
-        items = tuple(contents(repo, item, (b'.',), want_meta=True))
-        assert len(items) == 1
-        assert items[0][0] == b'.'
-        item = items[0][1]
-    return item
+    if isinstance(item.meta, Metadata):
+        return item
+    assert isinstance(item.meta, int), item # e.g. not LostMetadata
+    if not S_ISDIR(item.meta):
+        return item
+    items = tuple(contents(repo, item, (b'.',), want_meta=True))
+    assert len(items) == 1
+    assert items[0][0] == b'.'
+    return items[0][1]
 
 def ensure_item_has_metadata(repo, item, *, include_size=False, public=False):
     """If item is a directory, attempt to find and add its metadata.  If

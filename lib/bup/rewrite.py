@@ -82,12 +82,14 @@ def _previous_conversion(dstrepo, item, db, mapping):
     size) that should be used instead of item.
 
     """
-    if isinstance(item.meta, metadata.Metadata):
-        size = item.meta.size
-        item_mode = item.meta.mode
+    if isinstance(item.meta, Metadata):
+        item_mode, size = item.meta.mode, item.meta.size
+    elif isinstance(item.meta, int):
+        item_mode, size = item.meta, None
+    elif isinstance(item.meta, LostMetadata):
+        item_mode, size = item.meta.mode, None
     else:
-        size = None
-        item_mode = item.meta
+        assert False, item
 
     db.execute(f'select dst, chunked, size from {mapping} where src = ?',
                (item.oid,))
@@ -153,9 +155,11 @@ def _blob_replacement(repo, meta, content):
         rm.gid = meta.gid
         rm.user = meta.user
         rm.group = meta.group
-    else:
+    elif isinstance(meta, (int, LostMetadata)):
         rm.uid = rm.gid = 0
         rm.user = rm.group = b''
+    else:
+        assert False, meta
     return Item(oid=oid, meta=rm.freeze())
 
 def _replacement_item(repo, item, kind, kind_msg, repair_id, missing_oid):
@@ -234,7 +238,7 @@ def _vfs_walk_dir_recursively(srcrepo, dstrepo, path, excludes, db, mapping,
             # Create version of path with its real metadata, not the
             # contents() placeholder mode for dirs.
             dir_name, dir_item = path[-1]
-            assert isinstance(meta, (Metadata, int)), (entry, meta)
+            assert isinstance(meta, (Metadata, int, LostMetadata)), entry
             path_w_meta = path[:-1] \
                 + ((dir_name, dir_item._replace(meta=meta)),)
             continue
@@ -244,7 +248,7 @@ def _vfs_walk_dir_recursively(srcrepo, dstrepo, path, excludes, db, mapping,
         if should_rx_exclude_path(sub_fs_path_in_save, excludes):
             continue
         assert path_w_meta is not None, '"." not before children in dir'
-        assert isinstance(entry[1].meta, (Metadata, int)), entry
+        assert isinstance(entry[1].meta, (Metadata, int, LostMetadata)), entry
         sub_path = path_w_meta + (entry,)
         if not S_ISDIR(vfs.item_mode(sub_item)):
             yield sub_path, None
@@ -263,16 +267,17 @@ def _vfs_walk_dir_recursively(srcrepo, dstrepo, path, excludes, db, mapping,
                                                      repairs,
                                                      _replacement_parents=sub_rpath)
     assert path_w_meta is not None, f'{path_msg(fs_path_in_save)} has no "."'
-    assert isinstance(path_w_meta[-1][1].meta, (Metadata, int)), path_w_meta
+    assert isinstance(path_w_meta[-1][1].meta, (Metadata, int, LostMetadata)), \
+        path_w_meta
     yield path_w_meta, None
 
 def _rewrite_link(path, item_mode, srcrepo, dstrepo, stack, repairs):
     name, item = path[-1]
     assert isinstance(name, bytes)
     assert not isinstance(item, FakeLink), item
+    assert isinstance(item.meta, (Metadata, int, LostMetadata)), item
 
-    if (meta_is_real := (isinstance(item.meta, metadata.Metadata) \
-                         and not isinstance(item.meta, LostMetadata))):
+    if isinstance(item.meta, metadata.Metadata):
         # FIXME: not tested?
         if item.meta.size is None:
             item = vfs.copy_item(item)
@@ -284,7 +289,7 @@ def _rewrite_link(path, item_mode, srcrepo, dstrepo, stack, repairs):
     replace = False
     _, kind, _, it = vfs.get_ref(srcrepo, hexlify(item.oid))
     if not kind: # no link target blob
-        if meta_is_real: # restore the missing link target blob
+        if isinstance(item.meta, Metadata): # restore the missing link target blob
             git_mode = GIT_MODE_SYMLINK
             oid = dstrepo.write_symlink(item.meta.symlink_target)
             _restored_link_blob(path, item.oid, repairs)

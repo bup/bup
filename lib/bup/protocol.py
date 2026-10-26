@@ -15,7 +15,7 @@ from bup.vint import \
      write_tree,
      write_vint,
      write_vuint)
-from bup.vfs import Item, Chunky, RevList, Root, Tags, Commit, FakeLink
+from bup.vfs import Chunky, Commit, FakeLink, Item, RevList, Root, Tags
 
 
 # See also RemoteRepo._config_get_fallback().  The current assumption
@@ -80,7 +80,12 @@ def write_item(port, item):
     kind = type(item)
     name = bytes(kind.__name__.encode('ascii'))
     meta = item.meta
-    has_meta = 1 if isinstance(meta, Metadata) else 0
+    if isinstance(meta, Metadata):
+        has_meta = 1
+    elif isinstance(meta, int):
+        has_meta = 0
+    else:
+        assert False, meta # no LostMetadata (not repairing)
     if kind in (Item, Chunky, RevList):
         assert len(item.oid) == 20
         if has_meta:
