@@ -853,7 +853,7 @@ class Metadata:
                      self.posix1e_acl))
 
     def __repr__(self):
-        result = ['<%s instance at %s' % (self.__class__, hex(id(self)))]
+        result = [f'<{self.__class__.__qualname__} object at {hex(id(self))}']
         if self.path is not None:
             result += ' path:' + repr(self.path)
         if self.mode is not None:

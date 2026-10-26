@@ -55,8 +55,7 @@ class LocalRepo(RepoProtocol):
         self.closed = False
 
     def __repr__(self):
-        cls = self.__class__
-        return f'<{cls.__module__}.{cls.__name__} object at {hex(id(self))}' \
+        return f'<{self.__class__.__qualname__} object at {hex(id(self))}' \
             f' repo_dir={self.repo_dir!r}>'
 
     def close(self):

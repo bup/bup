@@ -36,8 +36,7 @@ class RemoteRepo(RepoProtocol):
         self._packwriter = None
 
     def __repr__(self):
-        cls = self.__class__
-        return f'<{cls.__module__}.{cls.__name__} object at {hex(id(self))}' \
+        return f'<{self.__class__.__qualname__} object at {hex(id(self))}' \
             f' location={self._location!r}>'
 
     def close(self):

@@ -29,8 +29,7 @@ class TreeItem:
         self.oid = oid
         self.meta = meta or empty_metadata
     def __repr__(self):
-        cls = self.__class__
-        return f'<{cls.__module__}.{cls.__name__} object at {hex(id(self))}' \
+        return f'<{self.__class__.__qualname__} object at {hex(id(self))}' \
             f' name={self.name!r} oid={self.oid.hex()}>'
     def mangled_name(self):
         return mangle_name(self.name, self.mode, self.gitmode)
@@ -39,8 +38,7 @@ class RawTreeItem(TreeItem):
     def mangled_name(self):
         return self.name
     def __repr__(self):
-        cls = self.__class__
-        return f'<{cls.__module__}.{cls.__name__} object at {hex(id(self))}' \
+        return f'<{self.__class__.__qualname__} object at {hex(id(self))}' \
             f' name={self.name!r}>'
 
 class SplitTreeItem(RawTreeItem):
@@ -50,8 +48,7 @@ class SplitTreeItem(RawTreeItem):
         self.first_full_name = first
         self.last_full_name = last
     def __repr__(self):
-        cls = self.__class__
-        return f'<{cls.__module__}.{cls.__name__} object at {hex(id(self))}' \
+        return f'<{self.__class__.__qualname__} object at {hex(id(self))}' \
             f' first_full_name={self.first_full_name!r}' \
             f' last_full_name={self.last_full_name!r}>'
 
@@ -111,8 +108,7 @@ class StackDir:
         self.meta = meta
         self.items = []
     def __repr__(self):
-        cls = self.__class__
-        return f'<{cls.__module__}.{cls.__name__} object at {hex(id(self))}' \
+        return f'<{self.__class__.__qualname__} object at {hex(id(self))}' \
             f' name={self.name!r}' \
             f' items={[(x.name, x.oid.hex()) for x in self.items]!r}>'
 
@@ -168,8 +164,7 @@ class Stack:
         self._repair = repair
 
     def __repr__(self):
-        cls = self.__class__
-        return f'<{cls.__module__}.{cls.__name__} object at {hex(id(self))}' \
+        return f'<{self.__class__.__qualname__} object at {hex(id(self))}' \
             f' path={self.path()!r}>'
 
     def __len__(self):
