@@ -722,21 +722,22 @@ def _tree_items_except_dot(oid, entries, names=None, bupm=None, *, repair=False)
     if meta_ents is None:
         assert repair or bupm is None, (meta_ents, repair, bupm)
 
-    def read_nondir_meta(default_mode):
+    def read_nondir_meta(gitmode, kind):
         if meta_ents is not None:
             meta = meta_ents.pop()
             # empty for a number of reasons; see Repository Taxonomy in DESIGN
             if meta is None: # lost metadata
-                return default_mode & ~(S_IRWXO | S_IRWXG)
+                dm = _default_mode_for_gitinfo(gitmode, kind)
+                return dm & ~(S_IRWXO | S_IRWXG)
             return meta
         if bupm is not None: # repair
             return _lost_metadata_for_gitinfo(gitmode, kind)
-        return default_mode
+        return _default_mode_for_gitinfo(gitmode, kind)
 
     def tree_item(ent_oid, kind, gitmode):
         if kind == BUP_CHUNKED:
             assert S_ISDIR(gitmode), (ent_oid, kind, gitmode)
-            meta = read_nondir_meta(_default_mode_for_gitinfo(gitmode, kind))
+            meta = read_nondir_meta(gitmode, kind)
             return Chunky(oid=ent_oid, meta=meta)
 
         if S_ISDIR(gitmode):
@@ -744,7 +745,7 @@ def _tree_items_except_dot(oid, entries, names=None, bupm=None, *, repair=False)
             return Item(meta=_default_mode_for_gitinfo(gitmode, kind),
                         oid=ent_oid)
 
-        meta = read_nondir_meta(_default_mode_for_gitinfo(gitmode, kind))
+        meta = read_nondir_meta(gitmode, kind)
         return Item(oid=ent_oid, meta=meta)
 
     assert isinstance(names, (set, frozenset)) or names is None
