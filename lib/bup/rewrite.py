@@ -506,8 +506,7 @@ def _rewrite_save_item(path, replacement_dir, srcrepo, dstrepo, split_cfg,
             item.meta.thaw()
             item.meta.size = item_size
             item.meta.freeze()
-        else:
-            assert item.meta.size == item_size, (item.meta.size, item_size)
+        assert item.meta.size == item_size, (item.meta.size, item_size)
     chunked = 1 if S_ISDIR(git_mode) else 0
 
     # Isn't and must not be dir or replacement (since we must not
