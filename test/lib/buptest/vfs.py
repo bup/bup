@@ -3,7 +3,7 @@ from collections import namedtuple
 from stat import S_ISDIR
 
 from bup import vfs
-from bup.metadata import Metadata
+from bup.metadata import Metadata, meta_missing_common_rec
 from bup.git import BUP_CHUNKED, tree_entries
 
 TreeDictValue = namedtuple('TreeDictValue', ('name', 'oid', 'meta'))
@@ -22,9 +22,10 @@ def tree_items(repo, oid):
         def maybe_meta(name):
             if not bupm:
                 return None
-            m = Metadata.read(bupm)
-            if not m:
+            if not (m := Metadata.read(bupm)):
                 raise EOFError(f'EOF while reading metadata entry for {name}')
+            if meta_missing_common_rec(m):
+                raise Exception(f'{oid.hex()}:.bupm has missing common record for {m!r}')
             return m
         m = maybe_meta(b'.')
         yield TreeDictValue(name=b'.', oid=oid, meta=m)

@@ -18,7 +18,7 @@ from bup.helpers import \
      resolve_parent,
      slashappend)
 from bup.io import path_msg
-from bup.metadata import empty_metadata
+from bup.metadata import empty_metadata, meta_missing_common_rec
 
 
 EMPTY_SHA = b'\0' * 20
@@ -120,7 +120,9 @@ class MetaStoreReader:
     def metadata_at(self, ofs):
         # Must return a new instance (callers are allowed to modify it)
         self._file.seek(ofs)
-        return metadata.Metadata.read(self._file)
+        if meta_missing_common_rec(m := metadata.Metadata.read(self._file)):
+            raise Exception(f'missing common record at offset {ofs} for {m!r}')
+        return m
 
 
 class MetaStoreWriter:
@@ -141,12 +143,12 @@ class MetaStoreWriter:
             m_file.seek(0)
             try:
                 m_off = m_file.tell()
-                m = metadata.Metadata.read(m_file)
-                while m:
+                while m := metadata.Metadata.read(m_file):
+                    if meta_missing_common_rec(m):
+                        raise Exception(f'missing common record at offset {m_off} for {m!r}')
                     m_encoded = m.encode()
                     self._offsets[m_encoded] = m_off
                     m_off = m_file.tell()
-                    m = metadata.Metadata.read(m_file)
             except EOFError:
                 pass
             except:

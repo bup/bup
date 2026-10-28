@@ -59,6 +59,9 @@ General
   is treated the same as an "abridged" .bupm (see `bup-get(1)` for
   more information).  Previously the repair would just fail.
 
+* `bup validate-refs --bupm` now detects any entries that aren't empty
+  and are missing the "common" fields (mode, uid, gid, ...).
+
 Bugs
 ----
 

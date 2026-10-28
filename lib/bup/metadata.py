@@ -198,7 +198,7 @@ class ApplyError(Exception):
     pass
 
 # Because we want to use a Metadata instance as a default for
-# Metadata.read() staticmethod arg.
+# Metadata.read() staticmethod arg, and it's not defined there yet.
 _use_empty_metadata = object()
 
 class Metadata:
@@ -989,7 +989,16 @@ class Metadata:
             and self._same_linux_xattr(other)
 
 
+# Just an optimization, i.e. we can use this one instance when
+# feasible and avoid allocation, but any given "emtpy" Metadata
+# instance may or may not be this one.
 empty_metadata = Metadata()
+
+
+def meta_missing_common_rec(m):
+    if isinstance(m, int):
+        return False
+    return m.mode is None and m != empty_metadata
 
 
 def from_path(path, statinfo=None, archive_path=None,
@@ -1190,6 +1199,8 @@ def detailed_bytes(meta, fields = None):
 class _ArchiveIterator:
     """Yields the metadata instances in file, or None for empty metadata."""
     def __next__(self):
+        # For now, this just allows misssing common_recs so that bup
+        # meta can handle those cases too.
         m = Metadata.read(self._file)
         if m is empty_metadata:
             return None

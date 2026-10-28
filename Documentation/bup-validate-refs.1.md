@@ -46,9 +46,10 @@ has encountered before.
 \--bupm
 :   check bupm (metadata storage) files. Currently checks for missing
     path entries, which could have been caused by `bup` versions since
-    0.25 and before 0.30.1.  May notice missing objects, but may not
-    notice all of them without `--links`.  See REPAIRS in `bup-get`(1)
-    for additional information.
+    0.25 and before 0.30.1.  It also checks for non-empty entries that
+    omit the "common" fields (mode, uid, gid, ...).  May notice
+    missing objects, but may not notice all of them without `--links`.
+    See REPAIRS in `bup-get`(1) for additional information.
 
 \--links
 :   check for commits or trees that refer to missing objects. This
@@ -69,8 +70,9 @@ has encountered before.
 
 # EXIT STATUS
 
-The exit status will be 1 if any broken links are found, 0 if none are
-found, and some other positive integer for other failures.
+The exit status will currently be 1 if any repairable problems are
+found, 0 if none are found, and some other positive integer for other
+failures.
 
 # SEE ALSO
 

@@ -8,7 +8,7 @@ from bup.compat import argv_bytes
 from bup.gc import count_objects, find_live_objects
 from bup.git import BUP_CHUNKED, MissingObject, demangle_name, tree_iter
 from bup.helpers import EXIT_FAILURE, EXIT_FALSE, EXIT_TRUE, log
-from bup.metadata import Metadata
+from bup.metadata import Metadata, meta_missing_common_rec
 from bup.io import walk_path_msg, path_msg
 from bup.repo import LocalRepo
 from bup.vfs import tree_data_reader
@@ -99,9 +99,12 @@ def main(argv):
             if item.name != b'.bupm':
                 return True
             bupm_n = 0
+            missing_common = False
             with tree_data_reader(repo, item.oid) as bupm:
                 try:
-                    while Metadata.read(bupm):
+                    while meta := Metadata.read(bupm):
+                        if meta_missing_common_rec(meta):
+                            missing_common = True
                         bupm_n += 1
                 except MissingObject:
                     return True # bupm sub-item, will be handled by later for_item
@@ -111,17 +114,25 @@ def main(argv):
             parent = item_path[-2]
             info = vfs.get_ref(repo, hexlify(parent.oid))
             assert info[0], info
+            pm = None
+            if missing_common:
+                pm = walk_path_msg(ref_name, item_path)
+                log(f'error: {parent.oid.hex()}:.bupm via {pm} omits common records'
+                    f' (please report)\n')
+                bad_bupm += 1
             exp_n = expected_bup_entry_count_for_tree(b''.join(info[3]))
             if bupm_n == exp_n:
                 return True
             if bupm_n > exp_n:
-                bad_bupm += 1
-                log(f'error: tree with extra bupm entries ({bupm_n} > {exp_n})'
-                    f' (please report): {parent.oid.hex()}\n')
+                if not missing_common:
+                    bad_bupm += 1
+                pm = pm or walk_path_msg(ref_name, item_path)
+                log(f'error: {parent.oid.hex()}:.bupm via {pm} has extra entries ({bupm_n} > {exp_n})'
+                    f' (please report)\n')
             else:
                 abridged_bupm += 1
-                imsg = walk_path_msg(ref_name, item_path)
-                log(f'abridged-bupm {imsg}\n')
+                pm = pm or walk_path_msg(ref_name, item_path)
+                log(f'abridged-bupm {pm}\n')
             return True
 
         # Wanted all refs, or at least some specified weren't missing

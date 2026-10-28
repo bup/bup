@@ -5,7 +5,7 @@ from binascii import hexlify, unhexlify
 from bup import features, git, vfs, vint
 from bup.helpers import debug1, debug2, linereader, lines_until_sentinel, log
 from bup.io import path_msg
-from bup.metadata import Metadata
+from bup.metadata import Metadata, meta_missing_common_rec
 from bup.vint import \
     (read_bvec,
      read_tree,
@@ -40,9 +40,10 @@ def read_item(port):
         return bv
     def read_m(port, kind, has_meta):
         if has_meta:
-            m = Metadata.read(port)
-            if m is None:
+            if (m := Metadata.read(port)) is None:
                 raise EOFError(f'EOF while reading {kind} metadata')
+            if meta_missing_common_rec(m):
+                raise Exception(f'missing common record: {m!r}')
         else:
             m = read_vuint(port)
             if m is None:

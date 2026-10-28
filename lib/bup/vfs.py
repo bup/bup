@@ -106,7 +106,7 @@ from bup.git import \
      tree_iter)
 from bup.helpers import EXIT_FAILURE, debug2, log
 from bup.io import path_msg
-from bup.metadata import Metadata, empty_metadata
+from bup.metadata import Metadata, empty_metadata, meta_missing_common_rec
 
 
 # We currently assume that it's always appropriate to just forward IOErrors
@@ -475,11 +475,12 @@ def item_mode(item):
 def _read_dir_meta(bupm):
     # May be empty because save writes unmodified Metadata() entries
     # for fake parents -- test-save-strip-graft.sh demonstrates.
-    m = Metadata.read(bupm, empty=default_dir_mode)
-    if m is None:
+    if (m := Metadata.read(bupm, empty=default_dir_mode)) is None:
         raise EOFError('EOF while reading directory metadata')
+    if meta_missing_common_rec(m):
+        raise Exception(f'missing common record for {m!r}')
     if isinstance(m, Metadata):
-        assert m.mode is not None
+        assert m.mode is not None, m # empty=default_dir_mode
     assert not isinstance(m, LostMetadata), m # not from read()
     return m
 
@@ -688,10 +689,10 @@ def _validated_meta_ents(oid, tree_ents, bupm, repair):
     if not bupm:
         return None
     meta_entries = []
-    m = Metadata.read(bupm)
-    while m:
+    while (m := Metadata.read(bupm)):
+        if meta_missing_common_rec(m):
+            raise Exception(f'{oid.hex()}:.bupm has missing common record for {m!r}')
         meta_entries.append(None if m is empty_metadata else m)
-        m = Metadata.read(bupm)
     exp_meta_n = 0
     for ent in tree_ents:
         if ent[1] != b'.bupm' and (ent[2] == BUP_CHUNKED or not S_ISDIR(ent[3])):
@@ -830,6 +831,8 @@ def _split_subtree_items(repo, level, oid, entries, names, want_meta, root=True,
                     bupm = ex
                 if not dummy:
                     raise EOFError('EOF instead of split tree placeholder metadata')
+                if meta_missing_common_rec(dummy):
+                    raise Exception(f'{oid.hex()}:.bupm first entry has missing common record: {dummy!r}')
                 yield from _tree_items_except_dot(oid, entries, names, bupm)
     else:
         validate = b'.%d.bupd' % level
@@ -906,6 +909,8 @@ def tree_items(repo, oid, tree_data, names, *, want_meta=True, repair=False):
                         dot_meta, bupm = None, ex
                     if not dot_meta:
                         raise EOFError('EOF while skipping directory metadata')
+                    if meta_missing_common_rec(dot_meta):
+                        raise Exception(f'{oid.hex()}:.bupm . entry has missing common record: {dot_meta!r}')
                 else:
                     try:
                         dot_meta=_read_dir_meta(bupm)
