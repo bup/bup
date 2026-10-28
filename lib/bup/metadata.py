@@ -266,7 +266,7 @@ class Metadata:
             and self.size == other.size
 
     def _encode_common(self):
-        if not self.mode:
+        if self.mode is None: # test_detect_missing_common_rec depends on this
             return None
         atime = xstat.nsecs_to_timespec(self.atime)
         mtime = xstat.nsecs_to_timespec(self.mtime)
@@ -882,10 +882,13 @@ class Metadata:
         result += '>'
         return ''.join(result)
 
-    def write(self, port, include_path=True):
-        port.write(self.encode(include_path=include_path))
+    def write(self, port, include_path=True, *, require_common=True):
+        port.write(self.encode(include_path=include_path,
+                               require_common=require_common))
 
-    def encode(self, include_path=True):
+    def encode(self, include_path=True, *, require_common=True):
+        if require_common and self.mode is None and self != empty_metadata:
+            raise Exception(f'required common entries are missing: {self!r}')
         ret = []
         records = [(_rec_tag_path, self._encode_path())] if include_path else []
         records.extend([(_rec_tag_common_v3, self._encode_common()),

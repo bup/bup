@@ -55,7 +55,7 @@ def main(argv):
                     out.write(meta_stream.read())
         elif opt.meta:
             augmented = vfs.augment_item_meta(repo, leaf_item, include_size=True)
-            out.write(augmented.meta.encode())
+            out.write(augmented.meta.encode(require_common=False))
         else:
             if stat.S_ISREG(mode):
                 with vfs.fopen(repo, leaf_item) as f:

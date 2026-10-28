@@ -1371,6 +1371,8 @@ def augment_item_meta(repo, item, *, include_size=False, public=False):
     replace it.
 
     """
+    # Until/unless cat-file is improved, this needs to work with
+    # a "missing common_rec" (e.g. mode is None).
     def maybe_public(mode, size):
         if public and S_ISDIR(mode) and size is None:
             return 0
@@ -1379,6 +1381,8 @@ def augment_item_meta(repo, item, *, include_size=False, public=False):
     assert repo
     m = item.meta
     if isinstance(m, Metadata):
+        if m.mode is None:
+            raise Exception(f'Metadata without common fields {m!r}')
         if include_size and m.size is None:
             m = deepcopy(m).thaw()
             m.size = maybe_public(m.mode, _compute_item_size(repo, item))
