@@ -624,9 +624,14 @@ class Rewriter:
                         in _vfs_walk_dir_recursively(srcrepo, dstrepo, save_path,
                                                      excludes, dbc, self._mapping,
                                                      repairs):
-                    _rewrite_save_item(path, replacement_dir, srcrepo, dstrepo,
-                                       self._split_cfg, stack, dbc,
-                                       self._mapping, excludes, repairs)
+                    try:
+                        _rewrite_save_item(path, replacement_dir, srcrepo, dstrepo,
+                                           self._split_cfg, stack, dbc,
+                                           self._mapping, excludes, repairs)
+                    except Exception as ex:
+                        ep = path_msg(render_path(path))
+                        log(f'error: unable to rewrite {ep}\n')
+                        raise ex
                     path_count += 1
 
                 if len(stack):
