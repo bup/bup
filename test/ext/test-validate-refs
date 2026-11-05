@@ -16,7 +16,8 @@ bup() { "$top/bup" "$@"; }
 WVPASS cd "$tmpdir"
 
 
-# Additional --links tests are handled in test-validate-ref-links
+# Additional tests are in test_validate_refs.py and more --links tests
+# are handled in test-validate-ref-links.
 
 WVSTART 'handling of correct refs'
 WVPASS rm -rf bup src
