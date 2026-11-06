@@ -8,7 +8,6 @@ import re
 from buptest import exc as ex, exo
 import bup.path
 
-from bup import metadata
 from bup.metadata import Metadata, _rec_tag_linux_attr, _rec_tag_end
 
 
