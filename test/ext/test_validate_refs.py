@@ -9,6 +9,7 @@ from buptest import exc as ex, exo
 import bup.path
 
 from bup import metadata
+from bup.metadata import Metadata, _rec_tag_linux_attr, _rec_tag_end
 
 
 # Additional tests are in test-validate-refs and more --links tests
@@ -29,20 +30,19 @@ def test_detect_missing_common_rec(tmpdir):
     ex(bup, b'index', b'src')
     res = exo(bup, b'save', b'--strip', b'-n', b'src', b'src')
 
-    # Create and store a bupm with no common_rec in the src/1 entry
+    # Get the src/. metadata
     res = exo(bup, b'cat-file', b'--bupm', b'src/latest/')
-    bupm = metadata._ArchiveIterator(BytesIO(res.out))
+    dot_meta = Metadata.read(BytesIO(res.out))
+
+    # Create and store a bupm with empty metadata for src/1 and no
+    # common_rec for src/2.
+    #
+    # tag, attr_len, attr, end
+    missing_common = bytes((_rec_tag_linux_attr, 1, 1, _rec_tag_end))
     with open(b'broken-bupm', 'wb') as broken:
-        i = 0
-        for meta in bupm:
-            i += 1
-            if i != 2:
-                meta.write(broken, include_path=False)
-                continue
-            meta.thaw()
-            meta.mode = None # cf. _encode_common
-            meta.write(broken, include_path=False, require_common=False)
-        assert i == 3
+        broken.write(dot_meta.encode(include_path=False))   # .
+        broken.write(Metadata().encode(include_path=False)) # src/1
+        broken.write(missing_common)                        # src/2
     res = exo(b'git', b'hash-object', b'-w', b'broken-bupm')
     broken_oidx = res.out.strip()
     assert len(broken_oidx) == 40
@@ -70,7 +70,7 @@ def test_detect_missing_common_rec(tmpdir):
     assert len(new_commit_oidx) == 40
     ex(b'git', b'branch', b'-f', b'src', new_commit_oidx)
 
-    # Check it
+    # Ensure we notice the common record omission
     res = ex(bup, b'validate-refs', b'--bupm', check=False, stderr=PIPE)
     stderr.flush()
     stderr.buffer.write(res.err)
