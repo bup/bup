@@ -118,9 +118,15 @@ class MetaStoreReader:
     def __exit__(self, type, value, traceback): self.close()
 
     def metadata_at(self, ofs):
-        # Must return a new instance (callers are allowed to modify it)
+        """Return a new instance (callers are allowed to modify it) or
+        None for empty metadata."""
         self._file.seek(ofs)
-        if meta_missing_common_rec(m := metadata.Metadata.read(self._file)):
+        m = metadata.Metadata.read(self._file)
+        if m is None:
+            raise EOFError(f'unable to read metadata at offset {ofs}')
+        if m is empty_metadata:
+            return None
+        if meta_missing_common_rec(m):
             raise Exception(f'missing common record at offset {ofs} for {m!r}')
         return m
 

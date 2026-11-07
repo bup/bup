@@ -5,7 +5,7 @@ from binascii import hexlify, unhexlify
 from bup import features, git, vfs, vint
 from bup.helpers import debug1, debug2, linereader, lines_until_sentinel, log
 from bup.io import path_msg
-from bup.metadata import Metadata, meta_missing_common_rec
+from bup.metadata import Metadata, empty_metadata, meta_missing_common_rec
 from bup.vint import \
     (read_bvec,
      read_tree,
@@ -48,6 +48,8 @@ def read_item(port):
             m = read_vuint(port)
             if m is None:
                 raise EOFError(f'EOF while reading {kind} integer mode')
+        if m is empty_metadata:
+            return None
         return m
     # pylint: disable-next=unbalanced-tuple-unpacking
     kind, has_meta = vint.recv(port, 'sV')

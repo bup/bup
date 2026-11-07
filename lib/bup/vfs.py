@@ -920,7 +920,10 @@ def tree_items(repo, oid, tree_data, names, *, want_meta=True, repair=False):
                         bupm = ex
                         yield b'.', Item(oid=oid, meta=_lost_dir_meta)
                     else:
-                        yield b'.', Item(oid=oid, meta=dot_meta)
+                        if dot_meta is empty_metadata:
+                            yield b'.', Item(oid=oid, meta=None)
+                        else:
+                            yield b'.', Item(oid=oid, meta=dot_meta)
                 yield from _tree_items_except_dot(oid, entries, names, bupm,
                                                   repair=repair)
         else:
