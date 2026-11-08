@@ -30,7 +30,7 @@ Here are the most important things to know:
 
      - It allows more flexibility in dealing with upstream changes
        like the breakage of our ability to manipulate the
-       processes arguement list on platforms that support it during
+       processes argument list on platforms that support it during
        the Python 3.9 series.
 
      - It means that we'll no longer be affected by any changes to the
