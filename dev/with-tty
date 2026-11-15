@@ -8,7 +8,7 @@ usage() { echo 'Usage: with-tty command [arg ...]'; }
 misuse() { usage 1>&2; exit 2; }
 
 case "$OSTYPE" in
-    netbsd) exit 2 ;; # https://gnats.netbsd.org/56254
+    netbsd*) exit 2 ;; # https://gnats.netbsd.org/56254
 esac
 
 # script(1), originating in 3.0BSD, is not specified by POSIX and has

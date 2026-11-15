@@ -13,6 +13,10 @@ case "$OSTYPE" in
         sysctl hw.machine hw.machine_arch hw.model hw.ncpu
         sysctl hw.{phys,user,real}mem
         ;;
+    netbsd*)
+        sysctl hw.machine hw.machine_arch hw.model hw.ncpu
+        sysctl hw.{phys,user}mem64
+        ;;
     darwin*)
         system_profiler SPHardwareDataType
         ;;
