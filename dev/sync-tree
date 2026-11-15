@@ -38,7 +38,7 @@ if [[ ! "$rsync_version" =~ "ACLs" ]] || [[ "$rsync_version" =~ "no ACLs" ]]; th
     echo "Not syncing ACLs (not supported by available rsync)" 1>&2
 else
     case $OSTYPE in
-        cygwin|darwin|netbsd)
+        cygwin|darwin|netbsd*)
             echo "Not syncing ACLs (not yet supported on $OSTYPE)" 1>&2
             ;;
         *)
