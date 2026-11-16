@@ -5,8 +5,8 @@
   <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <meta name="author" content="Rob Browning rlb@defaultvalue.org" />
-  <meta name="dcterms.date" content="2026-09-01" />
-  <title>bup-get(1) Bup 0.34</title>
+  <meta name="dcterms.date" content="2026-11-16" />
+  <title>bup-get(1) Bup 0.34.1</title>
   <style>
     html {
       color: #1a1a1a;
@@ -172,10 +172,10 @@
 </head>
 <body>
 <header id="title-block-header">
-<h1 class="title">bup-get(1) Bup 0.34</h1>
+<h1 class="title">bup-get(1) Bup 0.34.1</h1>
 <p class="author">Rob Browning <a href="mailto:rlb@defaultvalue.org"
 class="email">rlb@defaultvalue.org</a></p>
-<p class="date">2026-09-01</p>
+<p class="date">2026-11-16</p>
 </header>
 <h1 id="name">NAME</h1>
 <p>bup-get - copy repository items (note CAUTION below)</p>
@@ -333,6 +333,12 @@ result (see REPAIRS below). Currently, <code>--rewrite</code>,
 whenever the source and destination repository configurations differ in
 a relevant way, and so far, <code>--rewrite</code> is only supported for
 appends and picks of saves (e.g. not trees).</p>
+<p>When rewriting multiple related items (e.g. incremental saves of the
+same filesystem), the process may be much faster if all of the rewrites
+are performed by multiple METHODSs given to the same bup invocation
+(i.e. <code>bup get ... --pick ... --pick ...</code>) because bup
+remembers what it has previously rewritten and so can avoid recomputing
+the result.</p>
 <p>Note that rewriting a git-created save may, and for now will,
 introduce bup-related changes. Further, while tested,
 <code>--rewrite</code> is relatively new and so warrants even more
@@ -438,6 +444,9 @@ affected paths lose most or all of their metadata (ownership,
 permissions, timestamps, etc.). These paths will have restrictive
 permissions (as if via umask 077) when presented, e.g. via
 <code>bup-restore(1)</code>, <code>bup-ls(1)</code>, etc.</p></li>
+<li><p>When a <code>.bupm</code> is missing, its related paths should be
+treated like those for an abridged bupm with respect to ownership,
+permissions, etc. (see above).</p></li>
 <li><p>Use of <code>bup get</code> or <code>bup gc</code> versions
 before 0.33.5 could cause repositories to end up with missing objects
 (which can be detected by <code>bup-validate-object-links</code>(1)). To
