@@ -34,6 +34,8 @@ considering:
   - Better VFS performance for large repositories (i.e. fuse, ls,
     web...).
 
+  - Support for SHA256.
+
   - Support for alternate remote storage APIs.
 
   - Encryption.
