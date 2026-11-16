@@ -75,4 +75,4 @@ Bugs
 Thanks to (at least)
 ====================
 
-...
+Greg Troxel, Johannes Berg, and Rob Browning
