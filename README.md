@@ -22,26 +22,25 @@ Reasons bup is awesome
 bup has a few advantages over other backup software:
 
  - It uses a rolling checksum algorithm (similar to rsync) to split large
-   files into chunks.  The most useful result of this is you can backup huge
-   virtual machine (VM) disk images, databases, and XML files incrementally,
-   even though they're typically all in one huge file, and not use tons of
-   disk space for multiple versions.
+   files into chunks.  You can backup huge virtual machine (VM) disk images, 
+   databases, and XML files incrementally.  Such files will be stored using 
+   minimal disk space for multiple versions.
    
  - It uses the packfile format from git (the open source version control
-   system), so you can access the stored data even if you don't like bup's
+   system), so you can access the stored data even if you do not like bup's
    user interface.
    
  - Unlike git, it writes packfiles *directly* (instead of having a separate
-   garbage collection / repacking stage) so it's fast even with gratuitously
-   huge amounts of data.  bup's improved index formats also allow you to
-   track far more filenames than git (millions) and keep track of far more
-   objects (hundreds or thousands of gigabytes).
+   garbage collection / repacking stage) so it's fast even with huge amounts 
+   of data.  bup's improved index formats also allow you to track far more 
+   filenames than git (millions) and keep track of far more objects 
+   (hundreds or thousands of gigabytes).
    
  - Data is "automagically" shared between incremental backups without having
    to know which backup is based on which other one - even if the backups
-   are made from two different computers that don't even know about each
-   other.  You just tell bup to back stuff up, and it saves only the minimum
-   amount of data needed.
+   are made from two different computers that don't know about each other.  
+   You just tell bup to back stuff up, and it saves only the minimum amount 
+   of data needed.
    
  - You can back up directly to a remote bup server, without needing tons of
    temporary disk space on the computer being backed up.  And if your backup
